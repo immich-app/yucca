@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+
+pnpm --filter restic-api test:e2e

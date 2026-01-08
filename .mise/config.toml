@@ -1,0 +1,12 @@
+[tools]
+node = "25.2.1"
+pnpm = "10.27.0"
+
+[tasks.build]
+depends = ["*:build"]
+
+[tasks.test]
+depends = ["*:test"]
+
+[tasks."test:e2e"]
+depends = ["*:test:e2e"]
