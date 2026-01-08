@@ -1,12 +1,110 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from 'src/services/app.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Head,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  NotImplementedException,
+  Param,
+  ParseBoolPipe,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
+import { type Response } from 'express';
+import { AppService, type BlobType } from 'src/services/app.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly service: AppService) {}
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  @Post(':path')
+  @HttpCode(HttpStatus.OK)
+  createRepository(@Param('path') path: string, @Query('create', ParseBoolPipe) isCreate: boolean): void {
+    this.service.createRepository(path, isCreate);
+  }
+
+  @Delete(':path')
+  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
+  deleteRepository(): void {
+    this.service.deleteRepository();
+  }
+
+  @Head(':path/config')
+  checkConfig(@Param('path') path: string, @Res() res: Response): void {
+    const size = this.service.checkConfig(path);
+    res.set('Content-Length', String(size)).end();
+  }
+
+  @Get(':path/config')
+  getConfig(@Param('path') path: string, @Res() res: Response): void {
+    const data = this.service.getConfig(path);
+    res.set('Content-Type', 'application/octet-stream').send(data);
+  }
+
+  @Post(':path/config')
+  @HttpCode(HttpStatus.OK)
+  saveConfig(@Param('path') path: string, @Body() body: Buffer): void {
+    this.service.saveConfig(path, body);
+  }
+
+  @Get(':path/:type')
+  listBlobs(
+    @Param('path') path: string,
+    @Param('type') type: BlobType,
+    @Headers('accept') accept: string | undefined,
+    @Res() res: Response,
+  ): void {
+    if (accept !== 'application/vnd.x.restic.rest.v2') {
+      throw new NotImplementedException();
+    }
+
+    const blobs = this.service.listBlobs(path, type);
+
+    // note: must set header and serialise manually or Express adds charset to header
+    res.setHeader('Content-Type', 'application/vnd.x.restic.rest.v2').end(JSON.stringify(blobs));
+  }
+
+  @Head(':path/:type/:name')
+  checkBlob(
+    @Param('path') path: string,
+    @Param('type') type: BlobType,
+    @Param('name') name: string,
+    @Res() res: Response,
+  ): void {
+    const size = this.service.checkBlob(path, type, name);
+    res.set('Content-Length', String(size)).end();
+  }
+
+  @Get(':path/:type/:name')
+  getBlob(
+    @Param('path') path: string,
+    @Param('type') type: BlobType,
+    @Param('name') name: string,
+    @Headers('range') range: string | undefined,
+    @Res() res: Response,
+  ): void {
+    const data = this.service.getBlob(path, type, name, range);
+    res.set('Content-Type', 'application/octet-stream').send(data);
+  }
+
+  @Post(':path/:type/:name')
+  @HttpCode(HttpStatus.OK)
+  saveBlob(
+    @Param('path') path: string,
+    @Param('type') type: BlobType,
+    @Param('name') name: string,
+    @Body() body: Buffer,
+  ): void {
+    this.service.saveBlob(path, type, name, body);
+  }
+
+  @Delete(':path/:type/:name')
+  @HttpCode(HttpStatus.OK)
+  deleteBlob(@Param('path') path: string, @Param('type') type: BlobType, @Param('name') name: string): void {
+    this.service.deleteBlob(path, type, name);
   }
 }

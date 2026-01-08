@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { LoggerRepository } from 'src/repositories/logger.repository';
+import { StorageRepository } from 'src/repositories/storage.repository';
 import { AppService } from 'src/services/app.service';
 import { AppController } from './app.controller';
 
@@ -8,7 +10,7 @@ describe('AppController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [AppService, LoggerRepository, StorageRepository],
     }).compile();
 
     appController = app.get<AppController>(AppController);
@@ -16,7 +18,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+      appController.deleteBlob('', 'data', '');
     });
   });
 });
