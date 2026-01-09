@@ -97,7 +97,10 @@ export class AppController {
     @Res() res: Response,
   ): Promise<void> {
     const data = await this.service.getBlob(auth.repository, type, name, range);
-    res.set('Content-Type', 'application/octet-stream').send(data);
+    res
+      .status(range ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK)
+      .set('Content-Type', 'application/octet-stream')
+      .send(data);
   }
 
   @Post(':path/:type/:name')
