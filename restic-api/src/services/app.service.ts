@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  MethodNotAllowedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Readable } from 'node:stream';
 import { S3Error } from 'src/errors';
 import { LoggerRepository } from 'src/repositories/logger.repository';
@@ -26,11 +32,18 @@ export class AppService {
 
     this.logger.debug(`Creating a new repository at ${repository}`);
 
+    let exists: boolean;
     try {
-      if (await this.storage.checkBucket(repository)) {
-        throw new ConflictException();
-      }
+      exists = await this.storage.checkBucket(repository);
+    } catch {
+      throw new S3Error();
+    }
 
+    if (exists) {
+      throw new ConflictException();
+    }
+
+    try {
       await this.storage.createBucket(repository);
     } catch {
       throw new S3Error();
@@ -68,12 +81,16 @@ export class AppService {
     }
   }
 
-  saveConfig(path: string, body: Readable): Promise<unknown> {
+  async saveConfig(path: string, body: Readable, writeOnce: boolean): Promise<unknown> {
     this.logger.debug(`Writing config to repository at ${path}`);
 
     try {
-      return this.storage.putObject(path, 'config', body);
-    } catch {
+      return await this.storage.putObject(path, 'config', body, writeOnce);
+    } catch (error: unknown) {
+      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 412) {
+        throw new ConflictException('Config already exists');
+      }
+
       throw new S3Error();
     }
   }
@@ -129,18 +146,26 @@ export class AppService {
     }
   }
 
-  saveBlob(path: string, type: BlobType, name: string, body: Readable): Promise<unknown> {
+  async saveBlob(path: string, type: BlobType, name: string, body: Readable, writeOnce: boolean): Promise<unknown> {
     this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name}`);
 
     try {
-      return this.storage.putObject(path, `${type}/${name}`, body);
-    } catch {
+      return await this.storage.putObject(path, `${type}/${name}`, body, writeOnce);
+    } catch (error: unknown) {
+      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 412) {
+        throw new ConflictException('Blob already exists');
+      }
+
       throw new S3Error();
     }
   }
 
-  deleteBlob(path: string, type: BlobType, name: string): Promise<unknown> {
+  deleteBlob(path: string, type: BlobType, name: string, writeOnce: boolean): Promise<unknown> {
     this.logger.debug(`Deleting repository blob at ${path} for ${type}/${name}`);
+
+    if (writeOnce && type !== 'locks') {
+      throw new MethodNotAllowedException();
+    }
 
     try {
       return this.storage.deleteObject(path, `${type}/${name}`);

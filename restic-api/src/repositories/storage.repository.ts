@@ -5,7 +5,7 @@ import {
   HeadBucketCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
-  PutObjectCommand,
+  PutObjectCommandInput,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
@@ -49,10 +49,16 @@ export class StorageRepository {
     );
   }
 
-  putObject(Bucket: string, Key: string, Body: Readable) {
+  putObject(Bucket: string, Key: string, Body: Readable, writeOnce: boolean) {
+    const params: PutObjectCommandInput = { Bucket, Key, Body };
+
+    if (writeOnce) {
+      params.IfNoneMatch = '*';
+    }
+
     const upload = new Upload({
       client: this.client,
-      params: { Bucket, Key, Body },
+      params,
     });
 
     return upload.done();

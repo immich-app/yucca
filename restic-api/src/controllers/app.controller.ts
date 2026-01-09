@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Delete,
   Get,
@@ -58,7 +57,7 @@ export class AppController {
   @AuthRoute()
   @HttpCode(HttpStatus.OK)
   async saveConfig(@Auth() auth: AuthDto, @Req() req: Request): Promise<void> {
-    await this.service.saveConfig(auth.repository, req);
+    await this.service.saveConfig(auth.repository, req, auth.writeOnce);
   }
 
   @Get(':path/:type')
@@ -111,13 +110,13 @@ export class AppController {
     @Param() { type, name }: BlobWithNameParamsDto,
     @Req() req: Request,
   ): Promise<void> {
-    await this.service.saveBlob(auth.repository, type, name, req);
+    await this.service.saveBlob(auth.repository, type, name, req, auth.writeOnce);
   }
 
   @Delete(':path/:type/:name')
   @AuthRoute()
   @HttpCode(HttpStatus.OK)
   async deleteBlob(@Auth() auth: AuthDto, @Param() { type, name }: BlobWithNameParamsDto): Promise<void> {
-    await this.service.deleteBlob(auth.repository, type, name);
+    await this.service.deleteBlob(auth.repository, type, name, auth.writeOnce);
   }
 }
