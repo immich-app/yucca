@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, Matches } from 'class-validator';
 
 const OBJECT_TYPES = ['data', 'index', 'keys', 'locks', 'snapshots'] as const;
 
@@ -12,6 +12,6 @@ export class BlobParamsDto {
 
 export class BlobWithNameParamsDto extends BlobParamsDto {
   @IsNotEmpty()
-  @IsString()
+  @Matches(/^[a-f0-9]{64}$/)
   name!: string;
 }
