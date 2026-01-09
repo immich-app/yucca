@@ -1,5 +1,9 @@
-export type AuthDto = {
-  user: string; // -> needed? i guess for metrics?
-  repository: string; // -> points to the correct bucket
-  writeOnce: boolean; // -> TODO: do not permit delete & prevent overwriting
-};
+import z from 'zod';
+
+export const authSchema = z.object({
+  user: z.string(),
+  repository: z.string(),
+  writeOnce: z.boolean(),
+});
+
+export type AuthDto = z.infer<typeof authSchema>;

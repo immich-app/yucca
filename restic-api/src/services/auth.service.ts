@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { type IncomingHttpHeaders } from 'node:http';
-import { type AuthDto } from 'src/dto/auth.dto';
+import { authSchema, type AuthDto } from 'src/dto/auth.dto';
 
 const BASIC_CONSTANT = 'Basic ';
 
@@ -26,7 +26,7 @@ export class AuthService {
     }
 
     try {
-      return await this.jwt.verifyAsync(token);
+      return await authSchema.parseAsync(await this.jwt.verifyAsync(token));
     } catch {
       throw new UnauthorizedException('Invalid JWT Token');
     }
