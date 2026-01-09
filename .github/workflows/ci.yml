@@ -22,7 +22,4 @@ jobs:
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
 
       - run: mise install:frozen
-      - run: mise format
-      - run: mise lint
-      - run: mise build
-      - run: mise test
+      - run: mise check

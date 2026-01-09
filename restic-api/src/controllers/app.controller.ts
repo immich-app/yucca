@@ -72,10 +72,7 @@ export class AppController {
   }
 
   @Head(':path/:type/:name')
-  async checkBlob(
-    @Param() { path, type, name }: BlobWithNameParamsDto,
-    @Res() res: Response,
-  ): Promise<void> {
+  async checkBlob(@Param() { path, type, name }: BlobWithNameParamsDto, @Res() res: Response): Promise<void> {
     const size = await this.service.checkBlob(path, type, name);
     res.set('Content-Length', String(size)).end();
   }
@@ -92,10 +89,7 @@ export class AppController {
 
   @Post(':path/:type/:name')
   @HttpCode(HttpStatus.OK)
-  async saveBlob(
-    @Param() { path, type, name }: BlobWithNameParamsDto,
-    @Body() body: Buffer,
-  ): Promise<void> {
+  async saveBlob(@Param() { path, type, name }: BlobWithNameParamsDto, @Body() body: Buffer): Promise<void> {
     await this.service.saveBlob(path, type, name, body);
   }
 

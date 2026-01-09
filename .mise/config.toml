@@ -10,3 +10,6 @@ depends = ["*:test"]
 
 [tasks."test:e2e"]
 depends = ["*:test:e2e"]
+
+[tasks.check]
+depends = ["build", "test", "test:e2e", "lint", "format"]
