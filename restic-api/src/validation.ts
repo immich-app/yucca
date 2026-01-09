@@ -6,10 +6,6 @@ export type BlobType = (typeof OBJECT_TYPES)[number];
 
 export class BlobParamsDto {
   @IsNotEmpty()
-  @IsString()
-  path!: string;
-
-  @IsNotEmpty()
   @IsIn(OBJECT_TYPES)
   type!: BlobType;
 }

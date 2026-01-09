@@ -15,6 +15,8 @@ import {
   Res,
 } from '@nestjs/common';
 import { type Response } from 'express';
+import { type AuthDto } from 'src/dto/auth.dto';
+import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { AppService } from 'src/services/app.service';
 import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
@@ -23,41 +25,45 @@ export class AppController {
   constructor(private readonly service: AppService) {}
 
   @Post(':path')
+  @AuthRoute()
   @HttpCode(HttpStatus.OK)
-  async createRepository(
-    @Param('path') path: string,
-    @Query('create', ParseBoolPipe) isCreate: boolean,
-  ): Promise<void> {
-    await this.service.createRepository(path, isCreate);
+  async createRepository(@Auth() auth: AuthDto, @Query('create', ParseBoolPipe) isCreate: boolean): Promise<void> {
+    await this.service.createRepository(auth.repository, isCreate);
   }
 
   @Delete(':path')
+  @AuthRoute()
   @HttpCode(HttpStatus.NOT_IMPLEMENTED)
-  deleteRepository(): void {
+  deleteRepository(@Auth() _auth: AuthDto): void {
     this.service.deleteRepository();
   }
 
   @Head(':path/config')
-  async checkConfig(@Param('path') path: string, @Res() res: Response): Promise<void> {
-    const size = await this.service.checkConfig(path);
+  @AuthRoute()
+  async checkConfig(@Auth() auth: AuthDto, @Res() res: Response): Promise<void> {
+    const size = await this.service.checkConfig(auth.repository);
     res.set('Content-Length', String(size)).end();
   }
 
   @Get(':path/config')
-  async getConfig(@Param('path') path: string, @Res() res: Response): Promise<void> {
-    const data = await this.service.getConfig(path);
+  @AuthRoute()
+  async getConfig(@Auth() auth: AuthDto, @Res() res: Response): Promise<void> {
+    const data = await this.service.getConfig(auth.repository);
     res.set('Content-Type', 'application/octet-stream').send(data);
   }
 
   @Post(':path/config')
+  @AuthRoute()
   @HttpCode(HttpStatus.OK)
-  async saveConfig(@Param('path') path: string, @Body() body: Buffer): Promise<void> {
-    await this.service.saveConfig(path, body);
+  async saveConfig(@Auth() auth: AuthDto, @Body() body: Buffer): Promise<void> {
+    await this.service.saveConfig(auth.repository, body);
   }
 
   @Get(':path/:type')
+  @AuthRoute()
   async listBlobs(
-    @Param() { path, type }: BlobParamsDto,
+    @Auth() auth: AuthDto,
+    @Param() { type }: BlobParamsDto,
     @Headers('accept') accept: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
@@ -65,37 +71,50 @@ export class AppController {
       throw new NotImplementedException();
     }
 
-    const blobs = await this.service.listBlobs(path, type);
+    const blobs = await this.service.listBlobs(auth.repository, type);
 
     // note: must set header and serialise manually or Express adds charset to header
     res.setHeader('Content-Type', 'application/vnd.x.restic.rest.v2').end(JSON.stringify(blobs));
   }
 
   @Head(':path/:type/:name')
-  async checkBlob(@Param() { path, type, name }: BlobWithNameParamsDto, @Res() res: Response): Promise<void> {
-    const size = await this.service.checkBlob(path, type, name);
+  @AuthRoute()
+  async checkBlob(
+    @Auth() auth: AuthDto,
+    @Param() { type, name }: BlobWithNameParamsDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const size = await this.service.checkBlob(auth.repository, type, name);
     res.set('Content-Length', String(size)).end();
   }
 
   @Get(':path/:type/:name')
+  @AuthRoute()
   async getBlob(
-    @Param() { path, type, name }: BlobWithNameParamsDto,
+    @Auth() auth: AuthDto,
+    @Param() { type, name }: BlobWithNameParamsDto,
     @Headers('range') range: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const data = await this.service.getBlob(path, type, name, range);
+    const data = await this.service.getBlob(auth.repository, type, name, range);
     res.set('Content-Type', 'application/octet-stream').send(data);
   }
 
   @Post(':path/:type/:name')
+  @AuthRoute()
   @HttpCode(HttpStatus.OK)
-  async saveBlob(@Param() { path, type, name }: BlobWithNameParamsDto, @Body() body: Buffer): Promise<void> {
-    await this.service.saveBlob(path, type, name, body);
+  async saveBlob(
+    @Auth() auth: AuthDto,
+    @Param() { type, name }: BlobWithNameParamsDto,
+    @Body() body: Buffer,
+  ): Promise<void> {
+    await this.service.saveBlob(auth.repository, type, name, body);
   }
 
   @Delete(':path/:type/:name')
+  @AuthRoute()
   @HttpCode(HttpStatus.OK)
-  async deleteBlob(@Param() { path, type, name }: BlobWithNameParamsDto): Promise<void> {
-    await this.service.deleteBlob(path, type, name);
+  async deleteBlob(@Auth() auth: AuthDto, @Param() { type, name }: BlobWithNameParamsDto): Promise<void> {
+    await this.service.deleteBlob(auth.repository, type, name);
   }
 }

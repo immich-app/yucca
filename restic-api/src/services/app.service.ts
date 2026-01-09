@@ -23,18 +23,18 @@ export class AppService {
     logger.setContext('AppService');
   }
 
-  async createRepository(path: string, isCreate: boolean): Promise<void> {
+  async createRepository(repository: string, isCreate: boolean): Promise<void> {
     if (!isCreate) {
       throw new BadRequestException();
     }
 
-    this.logger.debug(`Creating a new repository at ${path}`);
+    this.logger.debug(`Creating a new repository at ${repository}`);
 
-    if (await this.storage.checkBucket(path)) {
+    if (await this.storage.checkBucket(repository)) {
       throw new ConflictException();
     }
 
-    await this.storage.createBucket(path);
+    await this.storage.createBucket(repository);
   }
 
   deleteRepository(): void {
