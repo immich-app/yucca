@@ -6,7 +6,6 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
-  NotImplementedException,
   Param,
   ParseBoolPipe,
   Post,
@@ -17,7 +16,8 @@ import {
 import { type Request, type Response } from 'express';
 import { type AuthDto } from 'src/dto/auth.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
-import { AppService } from 'src/services/app.service';
+import { ResticRoute } from 'src/middleware/restic.interceptor';
+import { AppService, type BlobInfo } from 'src/services/app.service';
 import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
 @Controller()
@@ -62,20 +62,9 @@ export class AppController {
 
   @Get(':path/:type')
   @AuthRoute()
-  async listBlobs(
-    @Auth() auth: AuthDto,
-    @Param() { type }: BlobParamsDto,
-    @Headers('accept') accept: string | undefined,
-    @Res() res: Response,
-  ): Promise<void> {
-    if (accept !== 'application/vnd.x.restic.rest.v2') {
-      throw new NotImplementedException();
-    }
-
-    const blobs = await this.service.listBlobs(auth.repository, type);
-
-    // note: must set header and serialise manually or Express adds charset to header
-    res.setHeader('Content-Type', 'application/vnd.x.restic.rest.v2').end(JSON.stringify(blobs));
+  @ResticRoute()
+  async listBlobs(@Auth() auth: AuthDto, @Param() { type }: BlobParamsDto): Promise<BlobInfo[]> {
+    return this.service.listBlobs(auth.repository, type);
   }
 
   @Head(':path/:type/:name')
