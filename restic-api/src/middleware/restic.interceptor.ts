@@ -39,7 +39,7 @@ export class ResticInterceptor implements NestInterceptor {
       map((data) => {
         response.setHeader('Content-Type', RESTIC_CONTENT_TYPE);
         response.end(JSON.stringify(data));
-        return undefined;
+        return void 0;
       }),
     );
   }
