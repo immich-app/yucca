@@ -30,15 +30,17 @@ export class StorageRepository {
     });
   }
 
-  checkBucket(Bucket: string): Promise<boolean> {
-    return this.client
-      .send(
-        new HeadBucketCommand({
-          Bucket,
-        }),
-      )
-      .then(() => true)
-      .catch(() => false);
+  async checkBucket(Bucket: string): Promise<boolean> {
+    try {
+      await this.client.send(new HeadBucketCommand({ Bucket }));
+      return true;
+    } catch (error: unknown) {
+      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404) {
+        return false;
+      }
+      
+      throw error;
+    }
   }
 
   createBucket(Bucket: string) {

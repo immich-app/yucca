@@ -7,7 +7,7 @@ import env from './env';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe());
-  // app.use(raw({ type: 'application/octet-stream', limit: '100mb' }));
+  // TODO? app.use(raw({ type: 'application/octet-stream', limit: '100mb' }));
   await app.listen(env.PORT);
 }
 
