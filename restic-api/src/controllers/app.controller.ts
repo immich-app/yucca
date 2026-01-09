@@ -15,6 +15,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { type Response } from 'express';
+import { Readable } from 'node:stream';
 import { type AuthDto } from 'src/dto/auth.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { AppService } from 'src/services/app.service';
@@ -48,8 +49,9 @@ export class AppController {
   @Get(':path/config')
   @AuthRoute()
   async getConfig(@Auth() auth: AuthDto, @Res() res: Response): Promise<void> {
-    const data = await this.service.getConfig(auth.repository);
-    res.set('Content-Type', 'application/octet-stream').send(data);
+    const stream = await this.service.getConfig(auth.repository);
+    res.set('Content-Type', 'application/octet-stream');
+    stream.pipe(res);
   }
 
   @Post(':path/config')
@@ -96,11 +98,9 @@ export class AppController {
     @Headers('range') range: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const data = await this.service.getBlob(auth.repository, type, name, range);
-    res
-      .status(range ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK)
-      .set('Content-Type', 'application/octet-stream')
-      .send(data);
+    const stream = await this.service.getBlob(auth.repository, type, name, range);
+    res.status(range ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK).set('Content-Type', 'application/octet-stream');
+    stream.pipe(res);
   }
 
   @Post(':path/:type/:name')

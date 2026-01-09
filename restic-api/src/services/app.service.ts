@@ -5,6 +5,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { StreamingBlobPayloadOutputTypes } from '@smithy/types';
+import { Readable } from 'node:stream';
 import { S3Error } from 'src/errors';
 import { LoggerRepository } from 'src/repositories/logger.repository';
 import { StorageRepository } from 'src/repositories/storage.repository';
@@ -57,11 +59,11 @@ export class AppService {
     }
   }
 
-  async getConfig(path: string): Promise<Uint8Array> {
+  async getConfig(path: string): Promise<Readable> {
     this.logger.debug(`Reading repository config at ${path}`);
 
     try {
-      const buffer = await this.storage.getObjectAsByteArray(path, 'config');
+      const buffer = await this.storage.getObjectStream(path, 'config');
 
       if (!buffer) {
         throw void 0;
@@ -118,11 +120,11 @@ export class AppService {
     }
   }
 
-  async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<Uint8Array> {
+  async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<Readable> {
     this.logger.debug(`Downloading repository blob at ${path} for ${type}/${name} (range = ${range})`);
 
     try {
-      const buffer = await this.storage.getObjectAsByteArray(path, `${type}/${name}`, range);
+      const buffer = await this.storage.getObjectStream(path, `${type}/${name}`, range);
 
       if (!buffer) {
         throw void 0;

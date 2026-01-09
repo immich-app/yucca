@@ -9,6 +9,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
+import { Readable } from 'node:stream';
+import { ReadableStream } from 'node:stream/web';
 import env from 'src/env';
 
 @Injectable()
@@ -74,7 +76,7 @@ export class StorageRepository {
     );
   }
 
-  async getObjectAsByteArray(Bucket: string, Key: string, Range?: string) {
+  async getObjectStream(Bucket: string, Key: string, Range?: string) {
     const Object = await this.client.send(
       new GetObjectCommand({
         Bucket,
@@ -83,7 +85,8 @@ export class StorageRepository {
       }),
     );
 
-    return await Object.Body?.transformToByteArray();
+    const webStream = Object.Body?.transformToWebStream();
+    return webStream ? Readable.fromWeb(webStream as ReadableStream) : undefined;
   }
 
   deleteObject(Bucket: string, Key: string) {
