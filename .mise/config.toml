@@ -3,13 +3,17 @@ node = "25.2.1"
 pnpm = "10.27.0"
 
 [tasks.build]
+description = "Build all packages"
 depends = ["*:build"]
 
 [tasks.test]
+description = "Run all unit tests"
 depends = ["*:test"]
 
 [tasks."test:e2e"]
+description = "Run all end-to-end tests"
 depends = ["*:test:e2e"]
 
 [tasks.check]
+description = "Run all checks including build"
 depends = ["build", "test", "test:e2e", "lint", "format"]
