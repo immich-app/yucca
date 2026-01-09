@@ -246,6 +246,32 @@ describe('AppController (e2e)', () => {
       expect(response.body.toString()).toBe(blobData);
     });
 
+    it('returns partial content with range header', async () => {
+      const blobName = randomUUID();
+      const blobData = 'test-blob-data';
+
+      await request(app.getHttpServer())
+        .post(`/${repository}?create=true`)
+        .set('Authorization', authHeader)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`/${repository}/data/${blobName}`)
+        .set('Authorization', authHeader)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from(blobData))
+        .expect(200);
+
+      const response = await request(app.getHttpServer())
+        .get(`/${repository}/data/${blobName}`)
+        .set('Authorization', authHeader)
+        .set('Range', 'bytes=0-3')
+        .expect(206)
+        .expect('Content-Type', 'application/octet-stream');
+
+      expect(response.body.toString()).toBe('test');
+    });
+
     it('fails to overwrite blob with worm', async () => {
       const blobName = randomUUID();
       const blobData = 'test-blob-data';
