@@ -7,10 +7,7 @@ import {
 } from '@nestjs/common';
 import { LoggerRepository } from 'src/repositories/logger.repository';
 import { StorageRepository } from 'src/repositories/storage.repository';
-
-const OBJECT_TYPES = ['data', 'index', 'keys', 'locks', 'snapshots'] as const;
-
-export type BlobType = (typeof OBJECT_TYPES)[number];
+import { BlobType } from 'src/validation';
 
 export interface BlobInfo {
   name: string;

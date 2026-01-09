@@ -15,7 +15,8 @@ import {
   Res,
 } from '@nestjs/common';
 import { type Response } from 'express';
-import { AppService, type BlobType } from 'src/services/app.service';
+import { AppService } from 'src/services/app.service';
+import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
 @Controller()
 export class AppController {
@@ -56,8 +57,7 @@ export class AppController {
 
   @Get(':path/:type')
   async listBlobs(
-    @Param('path') path: string,
-    @Param('type') type: BlobType,
+    @Param() { path, type }: BlobParamsDto,
     @Headers('accept') accept: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
@@ -73,9 +73,7 @@ export class AppController {
 
   @Head(':path/:type/:name')
   async checkBlob(
-    @Param('path') path: string,
-    @Param('type') type: BlobType,
-    @Param('name') name: string,
+    @Param() { path, type, name }: BlobWithNameParamsDto,
     @Res() res: Response,
   ): Promise<void> {
     const size = await this.service.checkBlob(path, type, name);
@@ -84,9 +82,7 @@ export class AppController {
 
   @Get(':path/:type/:name')
   async getBlob(
-    @Param('path') path: string,
-    @Param('type') type: BlobType,
-    @Param('name') name: string,
+    @Param() { path, type, name }: BlobWithNameParamsDto,
     @Headers('range') range: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
@@ -97,9 +93,7 @@ export class AppController {
   @Post(':path/:type/:name')
   @HttpCode(HttpStatus.OK)
   async saveBlob(
-    @Param('path') path: string,
-    @Param('type') type: BlobType,
-    @Param('name') name: string,
+    @Param() { path, type, name }: BlobWithNameParamsDto,
     @Body() body: Buffer,
   ): Promise<void> {
     await this.service.saveBlob(path, type, name, body);
@@ -107,11 +101,7 @@ export class AppController {
 
   @Delete(':path/:type/:name')
   @HttpCode(HttpStatus.OK)
-  async deleteBlob(
-    @Param('path') path: string,
-    @Param('type') type: BlobType,
-    @Param('name') name: string,
-  ): Promise<void> {
+  async deleteBlob(@Param() { path, type, name }: BlobWithNameParamsDto): Promise<void> {
     await this.service.deleteBlob(path, type, name);
   }
 }
