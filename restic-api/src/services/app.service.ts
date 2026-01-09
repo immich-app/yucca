@@ -100,7 +100,7 @@ export class AppService {
 
   async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<Uint8Array> {
     this.logger.debug(`Downloading repository blob at ${path} for ${type}/${name} (range = ${range})`);
-    const buffer = await this.storage.getObjectAsByteArray(path, `${type}/${name}`);
+    const buffer = await this.storage.getObjectAsByteArray(path, `${type}/${name}`, range);
 
     if (!buffer) {
       throw new InternalServerErrorException('Object is missing');

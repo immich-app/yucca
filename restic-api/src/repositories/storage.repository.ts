@@ -73,11 +73,12 @@ export class StorageRepository {
     );
   }
 
-  async getObjectAsByteArray(Bucket: string, Key: string) {
+  async getObjectAsByteArray(Bucket: string, Key: string, Range?: string) {
     const Object = await this.client.send(
       new GetObjectCommand({
         Bucket,
         Key,
+        Range,
       }),
     );
 
