@@ -1,0 +1,7 @@
+packages:
+  - restic-api
+  - yucca-api
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - unrs-resolver

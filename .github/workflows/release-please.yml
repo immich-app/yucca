@@ -1,0 +1,37 @@
+name: release-please
+
+on:
+  workflow_dispatch: # For manual runs
+  release: # To update release PRs when one is merged
+    types: [published]
+  pull_request: # To handle the release label being removed
+    types: [unlabeled]
+  push: # Standard workflow
+    branches:
+      - main
+
+concurrency:
+  group: release-please
+  cancel-in-progress: true
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        with:
+          app-id: ${{ secrets.PUSH_O_MATIC_APP_ID }}
+          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+
+      - id: rp
+        uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+        with:
+          config-file: release-please-config.json
+          token: ${{ steps.generate-token.outputs.token }}

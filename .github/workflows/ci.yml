@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+
+      - run: mise install:frozen
+      - run: mise docker:start
+      - run: mise check

@@ -1,0 +1,15 @@
+name: yucca-devenv
+
+services:
+  minio:
+    image: quay.io/minio/minio
+    volumes:
+      - .dev/data/minio:/data
+    command: server --console-address ":9001" /data
+    ports:
+      - 9000:9000
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-miniominio}
+      _MINIO_DRIVE_ACTIVE_MONITORING: off
+    restart: always

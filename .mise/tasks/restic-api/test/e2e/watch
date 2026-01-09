@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run end-to-end tests in watch mode for restic-api"
+set -e
+
+pnpm --filter restic-api test:e2e --watch
