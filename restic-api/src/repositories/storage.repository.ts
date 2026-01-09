@@ -5,6 +5,7 @@ import {
   HeadBucketCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  NotFound,
   PutObjectCommandInput,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -34,11 +35,10 @@ export class StorageRepository {
     try {
       await this.client.send(new HeadBucketCommand({ Bucket }));
       return true;
-    } catch (error: unknown) {
-      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404) {
+    } catch (error) {
+      if (error instanceof NotFound) {
         return false;
       }
-      
       throw error;
     }
   }

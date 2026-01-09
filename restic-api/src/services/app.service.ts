@@ -1,3 +1,4 @@
+import { S3ServiceException } from '@aws-sdk/client-s3';
 import {
   BadRequestException,
   ConflictException,
@@ -86,11 +87,10 @@ export class AppService {
 
     try {
       return await this.storage.putObject(path, 'config', body, writeOnce);
-    } catch (error: unknown) {
-      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 412) {
+    } catch (error) {
+      if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
         throw new ConflictException('Config already exists');
       }
-
       throw new S3Error();
     }
   }
@@ -151,11 +151,10 @@ export class AppService {
 
     try {
       return await this.storage.putObject(path, `${type}/${name}`, body, writeOnce);
-    } catch (error: unknown) {
-      if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 412) {
+    } catch (error) {
+      if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
         throw new ConflictException('Blob already exists');
       }
-
       throw new S3Error();
     }
   }
