@@ -9,6 +9,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
+import env from 'src/env';
 
 @Injectable()
 export class StorageRepository {
@@ -17,12 +18,12 @@ export class StorageRepository {
   constructor() {
     this.client = new S3Client({
       credentials: {
-        accessKeyId: 'minio',
-        secretAccessKey: 'miniominio',
+        accessKeyId: env.S3_ACCESS_KEY_ID,
+        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
       },
-      region: 'minio',
-      endpoint: 'http://127.0.0.1:9000',
-      forcePathStyle: true,
+      region: env.S3_REGION,
+      endpoint: env.S3_ENDPOINT,
+      forcePathStyle: env.S3_FORCE_PATH_STYLE,
     });
   }
 

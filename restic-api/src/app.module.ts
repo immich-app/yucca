@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './controllers/app.controller';
+import env from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { LoggerRepository } from './repositories/logger.repository';
 import { StorageRepository } from './repositories/storage.repository';
@@ -12,7 +13,7 @@ import { AuthService } from './services/auth.service';
   imports: [
     JwtModule.register({
       global: true,
-      secret: 'a-string-secret-at-least-256-bits-long',
+      secret: env.JWT_SECRET,
     }),
   ],
   controllers: [AppController],
