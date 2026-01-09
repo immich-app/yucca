@@ -18,21 +18,17 @@ export class AuthService {
       throw new UnauthorizedException('Expected Basic auth');
     }
 
+    const auth = Buffer.from(headers.authorization.slice(BASIC_CONSTANT.length), 'base64').toString();
+    const [_, token] = auth.split(':');
+
+    if (!token) {
+      throw new UnauthorizedException('Expected Basic auth token');
+    }
+
     try {
-      const auth = Buffer.from(headers.authorization.slice(BASIC_CONSTANT.length), 'base64').toString();
-      const [_, token] = auth.split(':');
-
-      if (!token) {
-        throw new UnauthorizedException('Expected Basic auth token');
-      }
-
-      try {
-        return await this.jwt.verifyAsync(token);
-      } catch {
-        throw new UnauthorizedException('Invalid JWT Token');
-      }
+      return await this.jwt.verifyAsync(token);
     } catch {
-      throw new UnauthorizedException('Invalid Basic auth');
+      throw new UnauthorizedException('Invalid JWT Token');
     }
   }
 }
