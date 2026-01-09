@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { type IncomingHttpHeaders } from 'node:http';
 import { authSchema, type AuthDto } from 'src/dto/auth.dto';
@@ -25,10 +25,17 @@ export class AuthService {
       throw new UnauthorizedException('Expected Basic auth token');
     }
 
+    let jwt;
     try {
-      return await authSchema.parseAsync(await this.jwt.verifyAsync(token));
+      jwt = await this.jwt.verifyAsync(token);
     } catch {
       throw new UnauthorizedException('Invalid JWT Token');
+    }
+
+    try {
+      return await authSchema.parseAsync(jwt);
+    } catch {
+      throw new BadRequestException('Invalid auth payload');
     }
   }
 }
