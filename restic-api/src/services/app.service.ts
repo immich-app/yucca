@@ -82,15 +82,16 @@ export class AppService {
     }
   }
 
-  async saveConfig(path: string, body: Readable, writeOnce: boolean): Promise<unknown> {
+  async saveConfig(path: string, body: Readable, writeOnce: boolean): Promise<void> {
     this.logger.debug(`Writing config to repository at ${path}`);
 
     try {
-      return await this.storage.putObject(path, 'config', body, writeOnce);
+      await this.storage.putObject(path, 'config', body, writeOnce);
     } catch (error) {
       if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
         throw new ConflictException('Config already exists');
       }
+
       throw new S3Error();
     }
   }
@@ -146,20 +147,21 @@ export class AppService {
     }
   }
 
-  async saveBlob(path: string, type: BlobType, name: string, body: Readable, writeOnce: boolean): Promise<unknown> {
+  async saveBlob(path: string, type: BlobType, name: string, body: Readable, writeOnce: boolean): Promise<void> {
     this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name}`);
 
     try {
-      return await this.storage.putObject(path, `${type}/${name}`, body, writeOnce);
+      await this.storage.putObject(path, `${type}/${name}`, body, writeOnce);
     } catch (error) {
       if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
         throw new ConflictException('Blob already exists');
       }
+
       throw new S3Error();
     }
   }
 
-  deleteBlob(path: string, type: BlobType, name: string, writeOnce: boolean): Promise<unknown> {
+  async deleteBlob(path: string, type: BlobType, name: string, writeOnce: boolean): Promise<void> {
     this.logger.debug(`Deleting repository blob at ${path} for ${type}/${name}`);
 
     if (writeOnce && type !== 'locks') {
@@ -167,7 +169,7 @@ export class AppService {
     }
 
     try {
-      return this.storage.deleteObject(path, `${type}/${name}`);
+      await this.storage.deleteObject(path, `${type}/${name}`);
     } catch {
       throw new S3Error();
     }

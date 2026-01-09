@@ -17,7 +17,7 @@ import env from 'src/env';
 
 @Injectable()
 export class StorageRepository {
-  client: S3Client;
+  private client: S3Client;
 
   constructor() {
     this.client = new S3Client({
