@@ -1,30 +1,95 @@
+import {
+  CreateBucketCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadBucketCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class StorageRepository {
-  fs: Record<string, Buffer> = {};
+  client: S3Client;
 
-  write(path: string, data: Buffer) {
-    this.fs[path] = data;
-    console.debug(this.fs);
+  constructor() {
+    this.client = new S3Client({
+      credentials: {
+        accessKeyId: 'minio',
+        secretAccessKey: 'miniominio',
+      },
+      region: 'minio',
+      endpoint: 'http://127.0.0.1:9000',
+      forcePathStyle: true,
+    });
   }
 
-  read(path: string) {
-    return this.fs[path];
+  checkBucket(Bucket: string): Promise<boolean> {
+    return this.client
+      .send(
+        new HeadBucketCommand({
+          Bucket,
+        }),
+      )
+      .then(() => true)
+      .catch(() => false);
   }
 
-  length(path: string) {
-    return this.fs[path].length;
+  createBucket(Bucket: string) {
+    return this.client.send(
+      new CreateBucketCommand({
+        Bucket,
+      }),
+    );
   }
 
-  list(path: string, type: string) {
-    const parent = `${path}/${type}/`;
-    return Object.keys(this.fs)
-      .filter((key) => key.startsWith(parent))
-      .map((x) => x.slice(parent.length));
+  putObject(Bucket: string, Key: string, Body: Buffer) {
+    return this.client.send(
+      new PutObjectCommand({
+        Bucket,
+        Key,
+        Body,
+      }),
+    );
   }
 
-  delete(path: string) {
-    delete this.fs[path];
+  headObject(Bucket: string, Key: string) {
+    return this.client.send(
+      new HeadObjectCommand({
+        Bucket,
+        Key,
+      }),
+    );
+  }
+
+  async listObjects(Bucket: string, Prefix: string) {
+    return await this.client.send(
+      new ListObjectsV2Command({
+        Bucket,
+        Prefix,
+      }),
+    );
+  }
+
+  async getObjectAsByteArray(Bucket: string, Key: string) {
+    const Object = await this.client.send(
+      new GetObjectCommand({
+        Bucket,
+        Key,
+      }),
+    );
+
+    return await Object.Body?.transformToByteArray();
+  }
+
+  deleteObject(Bucket: string, Key: string) {
+    return this.client.send(
+      new DeleteObjectCommand({
+        Bucket,
+        Key,
+      }),
+    );
   }
 }

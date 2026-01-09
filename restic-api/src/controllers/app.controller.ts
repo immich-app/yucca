@@ -23,8 +23,11 @@ export class AppController {
 
   @Post(':path')
   @HttpCode(HttpStatus.OK)
-  createRepository(@Param('path') path: string, @Query('create', ParseBoolPipe) isCreate: boolean): void {
-    this.service.createRepository(path, isCreate);
+  async createRepository(
+    @Param('path') path: string,
+    @Query('create', ParseBoolPipe) isCreate: boolean,
+  ): Promise<void> {
+    await this.service.createRepository(path, isCreate);
   }
 
   @Delete(':path')
@@ -34,77 +37,81 @@ export class AppController {
   }
 
   @Head(':path/config')
-  checkConfig(@Param('path') path: string, @Res() res: Response): void {
-    const size = this.service.checkConfig(path);
+  async checkConfig(@Param('path') path: string, @Res() res: Response): Promise<void> {
+    const size = await this.service.checkConfig(path);
     res.set('Content-Length', String(size)).end();
   }
 
   @Get(':path/config')
-  getConfig(@Param('path') path: string, @Res() res: Response): void {
-    const data = this.service.getConfig(path);
+  async getConfig(@Param('path') path: string, @Res() res: Response): Promise<void> {
+    const data = await this.service.getConfig(path);
     res.set('Content-Type', 'application/octet-stream').send(data);
   }
 
   @Post(':path/config')
   @HttpCode(HttpStatus.OK)
-  saveConfig(@Param('path') path: string, @Body() body: Buffer): void {
-    this.service.saveConfig(path, body);
+  async saveConfig(@Param('path') path: string, @Body() body: Buffer): Promise<void> {
+    await this.service.saveConfig(path, body);
   }
 
   @Get(':path/:type')
-  listBlobs(
+  async listBlobs(
     @Param('path') path: string,
     @Param('type') type: BlobType,
     @Headers('accept') accept: string | undefined,
     @Res() res: Response,
-  ): void {
+  ): Promise<void> {
     if (accept !== 'application/vnd.x.restic.rest.v2') {
       throw new NotImplementedException();
     }
 
-    const blobs = this.service.listBlobs(path, type);
+    const blobs = await this.service.listBlobs(path, type);
 
     // note: must set header and serialise manually or Express adds charset to header
     res.setHeader('Content-Type', 'application/vnd.x.restic.rest.v2').end(JSON.stringify(blobs));
   }
 
   @Head(':path/:type/:name')
-  checkBlob(
+  async checkBlob(
     @Param('path') path: string,
     @Param('type') type: BlobType,
     @Param('name') name: string,
     @Res() res: Response,
-  ): void {
-    const size = this.service.checkBlob(path, type, name);
+  ): Promise<void> {
+    const size = await this.service.checkBlob(path, type, name);
     res.set('Content-Length', String(size)).end();
   }
 
   @Get(':path/:type/:name')
-  getBlob(
+  async getBlob(
     @Param('path') path: string,
     @Param('type') type: BlobType,
     @Param('name') name: string,
     @Headers('range') range: string | undefined,
     @Res() res: Response,
-  ): void {
-    const data = this.service.getBlob(path, type, name, range);
+  ): Promise<void> {
+    const data = await this.service.getBlob(path, type, name, range);
     res.set('Content-Type', 'application/octet-stream').send(data);
   }
 
   @Post(':path/:type/:name')
   @HttpCode(HttpStatus.OK)
-  saveBlob(
+  async saveBlob(
     @Param('path') path: string,
     @Param('type') type: BlobType,
     @Param('name') name: string,
     @Body() body: Buffer,
-  ): void {
-    this.service.saveBlob(path, type, name, body);
+  ): Promise<void> {
+    await this.service.saveBlob(path, type, name, body);
   }
 
   @Delete(':path/:type/:name')
   @HttpCode(HttpStatus.OK)
-  deleteBlob(@Param('path') path: string, @Param('type') type: BlobType, @Param('name') name: string): void {
-    this.service.deleteBlob(path, type, name);
+  async deleteBlob(
+    @Param('path') path: string,
+    @Param('type') type: BlobType,
+    @Param('name') name: string,
+  ): Promise<void> {
+    await this.service.deleteBlob(path, type, name);
   }
 }

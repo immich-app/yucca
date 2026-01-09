@@ -2,7 +2,7 @@ import { Injectable, Scope } from '@nestjs/common';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class LoggerRepository {
-    context: string;
+  context: string;
 
   setContext(context: string) {
     this.context = context;

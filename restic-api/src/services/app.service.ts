@@ -1,10 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { LoggerRepository } from 'src/repositories/logger.repository';
 import { StorageRepository } from 'src/repositories/storage.repository';
 
-const DIR_MODE = 0o700;
 const OBJECT_TYPES = ['data', 'index', 'keys', 'locks', 'snapshots'] as const;
 
 export type BlobType = (typeof OBJECT_TYPES)[number];
@@ -23,70 +26,96 @@ export class AppService {
     logger.setContext('AppService');
   }
 
-  createRepository(path: string, isCreate: boolean): void {
+  async createRepository(path: string, isCreate: boolean): Promise<void> {
     if (!isCreate) {
       throw new BadRequestException();
     }
 
     this.logger.debug(`Creating a new repository at ${path}`);
+
+    if (await this.storage.checkBucket(path)) {
+      throw new ConflictException();
+    }
+
+    await this.storage.createBucket(path);
   }
 
   deleteRepository(): void {
     this.logger.debug('Ignoring repository delete request');
   }
 
-  checkConfig(path: string): number {
+  async checkConfig(path: string): Promise<number> {
     this.logger.debug(`Checking config at ${path}`);
 
     try {
-      return this.storage.length(`${path}/config`);
+      const { ContentLength } = await this.storage.headObject(path, 'config');
+      return ContentLength || 0;
     } catch {
       throw new NotFoundException();
     }
   }
 
-  getConfig(path: string): Buffer {
+  async getConfig(path: string): Promise<Uint8Array> {
     this.logger.debug(`Reading repository config at ${path}`);
-    return this.storage.read(`${path}/config`);
+    const buffer = await this.storage.getObjectAsByteArray(path, 'config');
+
+    if (!buffer) {
+      throw new InternalServerErrorException();
+    }
+
+    return buffer;
   }
 
-  saveConfig(path: string, body: Buffer): void {
+  saveConfig(path: string, body: Buffer): Promise<unknown> {
     this.logger.debug(`Writing config to repository at ${path}`);
-    this.storage.write(`${path}/config`, body);
+    return this.storage.putObject(path, 'config', body);
   }
 
-  listBlobs(path: string, type: BlobType): BlobInfo[] {
+  async listBlobs(path: string, type: BlobType): Promise<BlobInfo[]> {
     this.logger.debug(`Listing repository blobs at ${path} for ${type}`);
 
-    return this.storage.list(path, type).map((name) => ({
-      name,
-      size: this.storage.length(`${path}/${type}/${name}`),
+    const suffix = `${type}/`;
+    const { Contents, KeyCount } = await this.storage.listObjects(path, suffix);
+
+    if (KeyCount === 0) {
+      return [];
+    }
+
+    return Contents!.map(({ Key, Size }) => ({
+      name: Key!.slice(suffix.length),
+      size: Size!,
     }));
   }
 
-  checkBlob(path: string, type: BlobType, name: string): number {
+  async checkBlob(path: string, type: BlobType, name: string): Promise<number> {
     this.logger.debug(`Checking repository blob at ${path} for ${type}/${name}`);
 
     try {
-      return this.storage.length(`${path}/config`);
+      const { ContentLength } = await this.storage.headObject(path, `${type}/${name}`);
+      return ContentLength || 0;
     } catch {
       throw new NotFoundException();
     }
   }
 
-  getBlob(path: string, type: BlobType, name: string, range?: string): Buffer {
+  async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<Uint8Array> {
     this.logger.debug(`Downloading repository blob at ${path} for ${type}/${name} (range = ${range})`);
-    return this.storage.read(`${path}/${type}/${name}`);
+    const buffer = await this.storage.getObjectAsByteArray(path, `${type}/${name}`);
+
+    if (!buffer) {
+      throw new InternalServerErrorException('Object is missing');
+    }
+
+    return buffer;
   }
 
-  saveBlob(path: string, type: BlobType, name: string, body: Buffer): void {
+  saveBlob(path: string, type: BlobType, name: string, body: Buffer): Promise<unknown> {
     this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name} (length = ${body.length})`);
-    this.storage.write(`${path}/${type}/${name}`, body);
+    return this.storage.putObject(path, `${type}/${name}`, body);
   }
 
-  deleteBlob(path: string, type: BlobType, name: string): void {
+  deleteBlob(path: string, type: BlobType, name: string): Promise<unknown> {
     this.logger.debug(`Deleting repository blob at ${path} for ${type}/${name}`);
-
-    this.storage.delete(`${path}/${type}/${name}`);
+    return this.storage.deleteObject(path, `${type}/${name}`);
   }
 }
