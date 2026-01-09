@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { S3Error } from 'src/errors';
 import { LoggerRepository } from 'src/repositories/logger.repository';
 import { StorageRepository } from 'src/repositories/storage.repository';
 import { BlobType } from 'src/validation';
@@ -30,11 +31,15 @@ export class AppService {
 
     this.logger.debug(`Creating a new repository at ${repository}`);
 
-    if (await this.storage.checkBucket(repository)) {
-      throw new ConflictException();
-    }
+    try {
+      if (await this.storage.checkBucket(repository)) {
+        throw new ConflictException();
+      }
 
-    await this.storage.createBucket(repository);
+      await this.storage.createBucket(repository);
+    } catch {
+      throw new S3Error();
+    }
   }
 
   deleteRepository(): void {
@@ -54,34 +59,52 @@ export class AppService {
 
   async getConfig(path: string): Promise<Uint8Array> {
     this.logger.debug(`Reading repository config at ${path}`);
-    const buffer = await this.storage.getObjectAsByteArray(path, 'config');
 
-    if (!buffer) {
-      throw new InternalServerErrorException();
+    try {
+      const buffer = await this.storage.getObjectAsByteArray(path, 'config');
+
+      if (!buffer) {
+        throw void 0;
+      }
+
+      return buffer;
+    } catch {
+      throw new S3Error();
     }
-
-    return buffer;
   }
 
   saveConfig(path: string, body: Buffer): Promise<unknown> {
     this.logger.debug(`Writing config to repository at ${path}`);
-    return this.storage.putObject(path, 'config', body);
+
+    try {
+      return this.storage.putObject(path, 'config', body);
+    } catch {
+      throw new S3Error();
+    }
   }
 
   async listBlobs(path: string, type: BlobType): Promise<BlobInfo[]> {
     this.logger.debug(`Listing repository blobs at ${path} for ${type}`);
 
-    const suffix = `${type}/`;
-    const { Contents, KeyCount } = await this.storage.listObjects(path, suffix);
+    try {
+      const suffix = `${type}/`;
+      const { Contents, KeyCount } = await this.storage.listObjects(path, suffix);
 
-    if (KeyCount === 0) {
-      return [];
+      if (KeyCount === 0) {
+        return [];
+      }
+
+      if (!Contents || Contents.some(({ Key, Size }) => !Key || !Size)) {
+        throw void 0;
+      }
+
+      return Contents!.map(({ Key, Size }) => ({
+        name: Key!.slice(suffix.length),
+        size: Size!,
+      }));
+    } catch {
+      throw new S3Error();
     }
-
-    return Contents!.map(({ Key, Size }) => ({
-      name: Key!.slice(suffix.length),
-      size: Size!,
-    }));
   }
 
   async checkBlob(path: string, type: BlobType, name: string): Promise<number> {
@@ -97,22 +120,37 @@ export class AppService {
 
   async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<Uint8Array> {
     this.logger.debug(`Downloading repository blob at ${path} for ${type}/${name} (range = ${range})`);
-    const buffer = await this.storage.getObjectAsByteArray(path, `${type}/${name}`, range);
 
-    if (!buffer) {
-      throw new InternalServerErrorException('Object is missing');
+    try {
+      const buffer = await this.storage.getObjectAsByteArray(path, `${type}/${name}`, range);
+
+      if (!buffer) {
+        throw void 0;
+      }
+
+      return buffer;
+    } catch {
+      throw new S3Error();
     }
-
-    return buffer;
   }
 
   saveBlob(path: string, type: BlobType, name: string, body: Buffer): Promise<unknown> {
     this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name} (length = ${body.length})`);
-    return this.storage.putObject(path, `${type}/${name}`, body);
+
+    try {
+      return this.storage.putObject(path, `${type}/${name}`, body);
+    } catch {
+      throw new S3Error();
+    }
   }
 
   deleteBlob(path: string, type: BlobType, name: string): Promise<unknown> {
     this.logger.debug(`Deleting repository blob at ${path} for ${type}/${name}`);
-    return this.storage.deleteObject(path, `${type}/${name}`);
+
+    try {
+      return this.storage.deleteObject(path, `${type}/${name}`);
+    } catch {
+      throw new S3Error();
+    }
   }
 }
