@@ -8,6 +8,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { Injectable } from '@nestjs/common';
 import { Readable } from 'node:stream';
 import { ReadableStream } from 'node:stream/web';
@@ -48,14 +49,13 @@ export class StorageRepository {
     );
   }
 
-  putObject(Bucket: string, Key: string, Body: Buffer) {
-    return this.client.send(
-      new PutObjectCommand({
-        Bucket,
-        Key,
-        Body,
-      }),
-    );
+  putObject(Bucket: string, Key: string, Body: Readable) {
+    const upload = new Upload({
+      client: this.client,
+      params: { Bucket, Key, Body },
+    });
+
+    return upload.done();
   }
 
   headObject(Bucket: string, Key: string) {

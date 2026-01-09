@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
-import { StreamingBlobPayloadOutputTypes } from '@smithy/types';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Readable } from 'node:stream';
 import { S3Error } from 'src/errors';
 import { LoggerRepository } from 'src/repositories/logger.repository';
@@ -75,7 +68,7 @@ export class AppService {
     }
   }
 
-  saveConfig(path: string, body: Buffer): Promise<unknown> {
+  saveConfig(path: string, body: Readable): Promise<unknown> {
     this.logger.debug(`Writing config to repository at ${path}`);
 
     try {
@@ -136,8 +129,8 @@ export class AppService {
     }
   }
 
-  saveBlob(path: string, type: BlobType, name: string, body: Buffer): Promise<unknown> {
-    this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name} (length = ${body.length})`);
+  saveBlob(path: string, type: BlobType, name: string, body: Readable): Promise<unknown> {
+    this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name}`);
 
     try {
       return this.storage.putObject(path, `${type}/${name}`, body);

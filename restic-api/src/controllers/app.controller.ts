@@ -12,10 +12,10 @@ import {
   ParseBoolPipe,
   Post,
   Query,
+  Req,
   Res,
 } from '@nestjs/common';
-import { type Response } from 'express';
-import { Readable } from 'node:stream';
+import { type Request, type Response } from 'express';
 import { type AuthDto } from 'src/dto/auth.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { AppService } from 'src/services/app.service';
@@ -57,8 +57,8 @@ export class AppController {
   @Post(':path/config')
   @AuthRoute()
   @HttpCode(HttpStatus.OK)
-  async saveConfig(@Auth() auth: AuthDto, @Body() body: Buffer): Promise<void> {
-    await this.service.saveConfig(auth.repository, body);
+  async saveConfig(@Auth() auth: AuthDto, @Req() req: Request): Promise<void> {
+    await this.service.saveConfig(auth.repository, req);
   }
 
   @Get(':path/:type')
@@ -109,9 +109,9 @@ export class AppController {
   async saveBlob(
     @Auth() auth: AuthDto,
     @Param() { type, name }: BlobWithNameParamsDto,
-    @Body() body: Buffer,
+    @Req() req: Request,
   ): Promise<void> {
-    await this.service.saveBlob(auth.repository, type, name, body);
+    await this.service.saveBlob(auth.repository, type, name, req);
   }
 
   @Delete(':path/:type/:name')
