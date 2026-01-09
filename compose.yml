@@ -9,7 +9,7 @@ services:
     ports:
       - 9000:9000
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-miniominio}
       _MINIO_DRIVE_ACTIVE_MONITORING: off
     restart: always
