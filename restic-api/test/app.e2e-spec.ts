@@ -25,8 +25,8 @@ describe('AppController (e2e)', () => {
 
     const jwtService = app.get(JwtService);
     repository = randomUUID();
-    authHeader = makeAuthHeader(jwtService.sign({ user: 'test-user', repository, writeOnce: false }));
-    wormAuthHeader = makeAuthHeader(jwtService.sign({ user: 'test-user', repository, writeOnce: true }));
+    authHeader = makeAuthHeader(jwtService.sign({ user: randomUUID(), repository, writeOnce: false }));
+    wormAuthHeader = makeAuthHeader(jwtService.sign({ user: randomUUID(), repository, writeOnce: true }));
   });
 
   describe('POST /:path', () => {

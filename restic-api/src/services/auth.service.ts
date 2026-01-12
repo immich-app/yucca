@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -33,7 +33,11 @@ export class AuthService {
     }
 
     const instance = plainToInstance(AuthDto, jwt);
-    await validate(instance);
+    const errors = await validate(instance);
+    if (errors.length > 0) {
+      throw new BadRequestException(errors.flatMap((err) => Object.values(err.constraints ?? {})));
+    }
+
     return instance;
   }
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { newJwtMock } from '../../test/mocks';
 import { AuthService } from './auth.service';
 
@@ -37,11 +38,11 @@ describe(AuthService.name, () => {
     it('should throw if JWT payload is invalid', async () => {
       jwt.verifyAsync.mockResolvedValue({ invalid: 'payload' });
       const auth = Buffer.from('username:token').toString('base64');
-      await expect(sut.authenticate({ authorization: `Basic ${auth}` })).rejects.toThrow('Invalid auth payload');
+      await expect(sut.authenticate({ authorization: `Basic ${auth}` })).rejects.toThrow('Bad Request Exception');
     });
 
     it('should return auth dto on success', async () => {
-      const payload = { user: 'testuser', repository: 'testrepo', writeOnce: true };
+      const payload = { user: randomUUID(), repository: randomUUID(), writeOnce: true };
       jwt.verifyAsync.mockResolvedValue(payload);
       const auth = Buffer.from('username:token').toString('base64');
       const result = await sut.authenticate({ authorization: `Basic ${auth}` });
