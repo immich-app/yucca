@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -18,7 +18,7 @@ export class AuthService {
       throw new UnauthorizedException('Expected Basic auth');
     }
 
-    const auth = Buffer.from(headers.authorization.split(' ').shift() || '', 'base64').toString();
+    const auth = Buffer.from(headers.authorization.split(' ').pop() || '', 'base64').toString();
     const [_, token] = auth.split(':');
 
     if (!token) {
@@ -32,12 +32,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid JWT Token');
     }
 
-    try {
-      const auth = plainToInstance(AuthDto, jwt);
-      await validate(auth);
-      return auth;
-    } catch {
-      throw new BadRequestException('Invalid auth payload');
-    }
+    const instance = plainToInstance(AuthDto, jwt);
+    await validate(instance);
+    return instance;
   }
 }
