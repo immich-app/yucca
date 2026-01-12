@@ -163,8 +163,14 @@ export class AppService {
     try {
       await this.storage.putObject(path, `${type}/${name}`, body, writeOnce, name);
     } catch (error) {
-      if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
-        throw new ForbiddenException('Blob already exists');
+      if (error instanceof S3ServiceException) {
+        if (error.$metadata.httpStatusCode === 412) {
+          throw new ForbiddenException('Blob already exists');
+        }
+
+        if (error.name === 'XAmzContentChecksumMismatch') {
+          throw new BadRequestException('Content hash does not match blob name');
+        }
       }
 
       throw new S3Error();

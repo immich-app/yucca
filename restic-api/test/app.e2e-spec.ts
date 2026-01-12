@@ -334,7 +334,7 @@ describe('AppController (e2e)', () => {
         .set('Authorization', authHeader)
         .set('Content-Type', 'application/octet-stream')
         .send(Buffer.from(blobData))
-        .expect(500);
+        .expect(400);
     });
   });
 
