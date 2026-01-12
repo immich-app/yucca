@@ -2,8 +2,8 @@ import { S3ServiceException } from '@aws-sdk/client-s3';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
-  MethodNotAllowedException,
   NotFoundException,
 } from '@nestjs/common';
 import { Readable } from 'node:stream';
@@ -161,7 +161,7 @@ export class AppService {
     this.logger.debug(`Deleting repository blob at ${path} for ${type}/${name}`);
 
     if (writeOnce && type !== BlobType.Locks) {
-      throw new MethodNotAllowedException();
+      throw new ForbiddenException();
     }
 
     try {

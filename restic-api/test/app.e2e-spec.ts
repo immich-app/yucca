@@ -344,7 +344,7 @@ describe('AppController (e2e)', () => {
       await request(app.getHttpServer())
         .delete(`/${repository}/data/${blobName}`)
         .set('Authorization', wormAuthHeader)
-        .expect(405);
+        .expect(403);
     });
   });
 });
