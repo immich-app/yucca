@@ -161,7 +161,7 @@ export class AppService {
     this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name}`);
 
     try {
-      await this.storage.putObject(path, `${type}/${name}`, body, writeOnce);
+      await this.storage.putObject(path, `${type}/${name}`, body, writeOnce, name);
     } catch (error) {
       if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
         throw new ForbiddenException('Blob already exists');

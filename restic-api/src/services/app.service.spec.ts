@@ -242,14 +242,14 @@ describe(AppService.name, () => {
       const body = Symbol('Body');
       mocks.storage.putObject.mockResolvedValue(void 0 as never);
       await sut.saveBlob('repository', BlobType.Data, 'abc123', body as never, false);
-      expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'data/abc123', body, false);
+      expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'data/abc123', body, false, 'abc123');
     });
 
     it('should pass writeOnce flag', async () => {
       const body = Symbol('Body');
       mocks.storage.putObject.mockResolvedValue(void 0 as never);
       await sut.saveBlob('repository', BlobType.Data, 'abc123', body as never, true);
-      expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'data/abc123', body, true);
+      expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'data/abc123', body, true, 'abc123');
     });
 
     it('should throw ConflictException on 412 error', async () => {

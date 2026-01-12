@@ -1,7 +1,7 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
@@ -21,6 +21,7 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
     const jwtService = app.get(JwtService);
@@ -162,13 +163,19 @@ describe('AppController (e2e)', () => {
     });
 
     it('returns list of blobs when they exist', async () => {
-      const blobName = randomUUID();
       const blobData = 'test-blob-data';
+      const blobName = createHash('sha256').update(blobData).digest('hex');
 
       await request(app.getHttpServer())
         .post(`/${repository}?create=true`)
         .set('Authorization', authHeader)
         .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`/${repository}/data/${blobName}`)
+        .set('Authorization', authHeader)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from(blobData));
 
       await request(app.getHttpServer())
         .post(`/${repository}/data/${blobName}`)
@@ -191,14 +198,14 @@ describe('AppController (e2e)', () => {
   describe('HEAD /:path/:type/:name', () => {
     it('returns 404 if blob does not exist', async () => {
       await request(app.getHttpServer())
-        .head(`/${repository}/data/${randomUUID()}`)
+        .head(`/${repository}/data/${'a'.repeat(64)}`)
         .set('Authorization', authHeader)
         .expect(404);
     });
 
     it('returns content-length if blob exists', async () => {
-      const blobName = randomUUID();
       const blobData = 'test-blob-data';
+      const blobName = createHash('sha256').update(blobData).digest('hex');
 
       await request(app.getHttpServer())
         .post(`/${repository}?create=true`)
@@ -222,8 +229,8 @@ describe('AppController (e2e)', () => {
 
   describe('GET, POST /:path/:type/:name', () => {
     it('saves and returns blob data', async () => {
-      const blobName = randomUUID();
       const blobData = 'test-blob-data';
+      const blobName = createHash('sha256').update(blobData).digest('hex');
 
       await request(app.getHttpServer())
         .post(`/${repository}?create=true`)
@@ -247,8 +254,8 @@ describe('AppController (e2e)', () => {
     });
 
     it('returns partial content with range header', async () => {
-      const blobName = randomUUID();
       const blobData = 'test-blob-data';
+      const blobName = createHash('sha256').update(blobData).digest('hex');
 
       await request(app.getHttpServer())
         .post(`/${repository}?create=true`)
@@ -273,8 +280,8 @@ describe('AppController (e2e)', () => {
     });
 
     it('fails to overwrite blob with worm', async () => {
-      const blobName = randomUUID();
       const blobData = 'test-blob-data';
+      const blobName = createHash('sha256').update(blobData).digest('hex');
 
       await request(app.getHttpServer())
         .post(`/${repository}?create=true`)
@@ -295,12 +302,46 @@ describe('AppController (e2e)', () => {
         .send(Buffer.from(blobData))
         .expect(403);
     });
+
+    it('fails to write blob with non-hash for name', async () => {
+      const blobData = 'test-blob-data';
+      const blobName = 'invalid-hash';
+
+      await request(app.getHttpServer())
+        .post(`/${repository}?create=true`)
+        .set('Authorization', authHeader)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`/${repository}/data/${blobName}`)
+        .set('Authorization', authHeader)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from(blobData))
+        .expect(400);
+    });
+
+    it('fails to write blob with non-matching hash for name', async () => {
+      const blobData = 'test-blob-data';
+      const blobName = 'a'.repeat(64);
+
+      await request(app.getHttpServer())
+        .post(`/${repository}?create=true`)
+        .set('Authorization', authHeader)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`/${repository}/data/${blobName}`)
+        .set('Authorization', authHeader)
+        .set('Content-Type', 'application/octet-stream')
+        .send(Buffer.from(blobData))
+        .expect(500);
+    });
   });
 
   describe('DELETE /:path/:type/:name', () => {
     it('deletes a blob', async () => {
-      const blobName = randomUUID();
       const blobData = 'test-blob-data';
+      const blobName = createHash('sha256').update(blobData).digest('hex');
 
       await request(app.getHttpServer())
         .post(`/${repository}?create=true`)
@@ -326,8 +367,8 @@ describe('AppController (e2e)', () => {
     });
 
     it('fails to delete blob with worm', async () => {
-      const blobName = randomUUID();
       const blobData = 'test-blob-data';
+      const blobName = createHash('sha256').update(blobData).digest('hex');
 
       await request(app.getHttpServer())
         .post(`/${repository}?create=true`)

@@ -51,11 +51,15 @@ export class StorageRepository {
     );
   }
 
-  putObject(Bucket: string, Key: string, Body: Readable, writeOnce: boolean) {
+  putObject(Bucket: string, Key: string, Body: Readable, writeOnce: boolean, sha256Hex?: string) {
     const params: PutObjectCommandInput = { Bucket, Key, Body };
 
     if (writeOnce) {
       params.IfNoneMatch = '*';
+    }
+
+    if (sha256Hex) {
+      params.ChecksumSHA256 = Buffer.from(sha256Hex, 'hex').toString('base64');
     }
 
     const upload = new Upload({
