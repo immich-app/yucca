@@ -136,7 +136,7 @@ describe('AppController (e2e)', () => {
         .set('Authorization', wormAuthHeader)
         .set('Content-Type', 'application/octet-stream')
         .send(Buffer.from(config))
-        .expect(409);
+        .expect(403);
     });
   });
 
@@ -293,7 +293,7 @@ describe('AppController (e2e)', () => {
         .set('Authorization', wormAuthHeader)
         .set('Content-Type', 'application/octet-stream')
         .send(Buffer.from(blobData))
-        .expect(409);
+        .expect(403);
     });
   });
 

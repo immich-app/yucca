@@ -85,7 +85,7 @@ export class AppService {
       await this.storage.putObject(path, 'config', body, writeOnce);
     } catch (error) {
       if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
-        throw new ConflictException('Config already exists');
+        throw new ForbiddenException('Config already exists');
       }
 
       throw new S3Error();
@@ -164,7 +164,7 @@ export class AppService {
       await this.storage.putObject(path, `${type}/${name}`, body, writeOnce);
     } catch (error) {
       if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
-        throw new ConflictException('Blob already exists');
+        throw new ForbiddenException('Blob already exists');
       }
 
       throw new S3Error();
