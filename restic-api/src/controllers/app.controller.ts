@@ -14,10 +14,11 @@ import {
   Res,
 } from '@nestjs/common';
 import { type Request, type Response } from 'express';
+import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { type AuthDto } from 'src/dto/auth.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { ResticRoute } from 'src/middleware/restic.interceptor';
-import { AppService, type BlobInfo } from 'src/services/app.service';
+import { AppService } from 'src/services/app.service';
 import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
 @Controller()
@@ -63,7 +64,7 @@ export class AppController {
   @Get(':path/:type')
   @AuthRoute()
   @ResticRoute()
-  async listBlobs(@Auth() auth: AuthDto, @Param() { type }: BlobParamsDto): Promise<BlobInfo[]> {
+  async listBlobs(@Auth() auth: AuthDto, @Param() { type }: BlobParamsDto): Promise<BlobInfoResponseDto[]> {
     return this.service.listBlobs(auth.repository, type);
   }
 

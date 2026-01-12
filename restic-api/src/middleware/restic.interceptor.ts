@@ -10,12 +10,10 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Request, Response } from 'express';
 import { Observable, map } from 'rxjs';
-
-const RESTIC_CONTENT_TYPE = 'application/vnd.x.restic.rest.v2';
-const MetadataKey = 'RESTIC_V2';
+import { ContentType, MetadataKey } from 'src/enum';
 
 export const ResticRoute = (): MethodDecorator => {
-  return applyDecorators(SetMetadata(MetadataKey, true));
+  return applyDecorators(SetMetadata(MetadataKey.Restic, true));
 };
 
 @Injectable()
@@ -23,7 +21,7 @@ export class ResticInterceptor implements NestInterceptor {
   constructor(private reflector: Reflector) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const isResticV2 = this.reflector.get<boolean>(MetadataKey, context.getHandler());
+    const isResticV2 = this.reflector.get<boolean>(MetadataKey.Restic, context.getHandler());
     if (!isResticV2) {
       return next.handle();
     }
@@ -31,13 +29,13 @@ export class ResticInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
 
-    if (request.headers.accept !== RESTIC_CONTENT_TYPE) {
+    if (request.headers.accept !== ContentType.ResticV2) {
       throw new NotImplementedException();
     }
 
     return next.handle().pipe(
       map((data) => {
-        response.setHeader('Content-Type', RESTIC_CONTENT_TYPE);
+        response.setHeader('Content-Type', ContentType.ResticV2);
         response.end(JSON.stringify(data));
         return void 0;
       }),

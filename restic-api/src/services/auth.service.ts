@@ -5,8 +5,6 @@ import { validate } from 'class-validator';
 import { type IncomingHttpHeaders } from 'node:http';
 import { AuthDto } from 'src/dto/auth.dto';
 
-const BASIC_CONSTANT = 'Basic ';
-
 @Injectable()
 export class AuthService {
   constructor(private readonly jwt: JwtService) {}
@@ -16,11 +14,11 @@ export class AuthService {
       throw new UnauthorizedException('Missing Authorization header');
     }
 
-    if (!headers.authorization.startsWith(BASIC_CONSTANT)) {
+    if (!headers.authorization.startsWith('Basic ')) {
       throw new UnauthorizedException('Expected Basic auth');
     }
 
-    const auth = Buffer.from(headers.authorization.slice(BASIC_CONSTANT.length), 'base64').toString();
+    const auth = Buffer.from(headers.authorization.split(' ').shift() || '', 'base64').toString();
     const [_, token] = auth.split(':');
 
     if (!token) {

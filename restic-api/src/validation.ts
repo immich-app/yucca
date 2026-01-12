@@ -1,12 +1,9 @@
-import { IsIn, IsNotEmpty, Matches } from 'class-validator';
-
-const OBJECT_TYPES = ['data', 'index', 'keys', 'locks', 'snapshots'] as const;
-
-export type BlobType = (typeof OBJECT_TYPES)[number];
+import { IsEnum, IsNotEmpty, Matches } from 'class-validator';
+import { BlobType } from './enum';
 
 export class BlobParamsDto {
   @IsNotEmpty()
-  @IsIn(OBJECT_TYPES)
+  @IsEnum(BlobType)
   type!: BlobType;
 }
 

@@ -10,12 +10,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { type AuthDto } from 'src/dto/auth.dto';
+import { MetadataKey } from 'src/enum';
 import { AuthService } from 'src/services/auth.service';
 
-const MetadataKey = 'AUTH';
-
 export const AuthRoute = (options = {}): MethodDecorator => {
-  return applyDecorators(SetMetadata(MetadataKey, options));
+  return applyDecorators(SetMetadata(MetadataKey.Auth, options));
 };
 
 export interface AuthRequest extends Request {
@@ -39,7 +38,7 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const targets = [context.getHandler()];
-    const options = this.reflector.getAllAndOverride<{ _emptyObject: never } | undefined>(MetadataKey, targets);
+    const options = this.reflector.getAllAndOverride<{ _emptyObject: never } | undefined>(MetadataKey.Auth, targets);
     if (!options) {
       return true;
     }

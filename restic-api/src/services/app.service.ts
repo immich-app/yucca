@@ -7,15 +7,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Readable } from 'node:stream';
+import { BlobInfoResponseDto } from 'src/dto/app.dto';
+import { BlobType } from 'src/enum';
 import { S3Error } from 'src/errors';
 import { LoggerRepository } from 'src/repositories/logger.repository';
 import { StorageRepository } from 'src/repositories/storage.repository';
-import { BlobType } from 'src/validation';
-
-export interface BlobInfo {
-  name: string;
-  size: number;
-}
 
 @Injectable()
 export class AppService {
@@ -96,7 +92,7 @@ export class AppService {
     }
   }
 
-  async listBlobs(path: string, type: BlobType): Promise<BlobInfo[]> {
+  async listBlobs(path: string, type: BlobType): Promise<BlobInfoResponseDto[]> {
     this.logger.debug(`Listing repository blobs at ${path} for ${type}`);
 
     try {
@@ -164,7 +160,7 @@ export class AppService {
   async deleteBlob(path: string, type: BlobType, name: string, writeOnce: boolean): Promise<void> {
     this.logger.debug(`Deleting repository blob at ${path} for ${type}/${name}`);
 
-    if (writeOnce && type !== 'locks') {
+    if (writeOnce && type !== BlobType.Locks) {
       throw new MethodNotAllowedException();
     }
 
