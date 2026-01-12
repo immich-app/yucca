@@ -1,4 +1,5 @@
 export enum ContentType {
+  Binary = 'application/octet-stream',
   ResticV2 = 'application/vnd.x.restic.rest.v2',
 }
 

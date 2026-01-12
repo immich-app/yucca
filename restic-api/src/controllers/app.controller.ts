@@ -16,6 +16,7 @@ import {
 import { type Request, type Response } from 'express';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { type AuthDto } from 'src/dto/auth.dto';
+import { ContentType } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { ResticRoute } from 'src/middleware/restic.interceptor';
 import { AppService } from 'src/services/app.service';
@@ -50,7 +51,7 @@ export class AppController {
   @AuthRoute()
   async getConfig(@Auth() auth: AuthDto, @Res() res: Response): Promise<void> {
     const stream = await this.service.getConfig(auth.repository);
-    res.set('Content-Type', 'application/octet-stream');
+    res.set('Content-Type', ContentType.Binary);
     stream.pipe(res);
   }
 
@@ -88,7 +89,7 @@ export class AppController {
     @Res() res: Response,
   ): Promise<void> {
     const stream = await this.service.getBlob(auth.repository, type, name, range);
-    res.status(range ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK).set('Content-Type', 'application/octet-stream');
+    res.status(range ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK).set('Content-Type', ContentType.Binary);
     stream.pipe(res);
   }
 
