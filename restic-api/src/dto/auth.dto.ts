@@ -1,9 +1,12 @@
-import z from 'zod';
+import { IsBoolean, IsUUID } from 'class-validator';
 
-export const authSchema = z.object({
-  user: z.string(),
-  repository: z.string(),
-  writeOnce: z.boolean(),
-});
+export class AuthDto {
+  @IsUUID()
+  user!: string;
 
-export type AuthDto = z.infer<typeof authSchema>;
+  @IsUUID()
+  repository!: string;
+
+  @IsBoolean()
+  writeOnce!: boolean;
+}
