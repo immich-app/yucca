@@ -62,6 +62,13 @@ export class AppController {
     await this.service.saveConfig(auth.repository, req, auth.writeOnce);
   }
 
+  @Delete(':path/config')
+  @AuthRoute()
+  @HttpCode(HttpStatus.OK)
+  async deleteConfig(@Auth() auth: AuthDto): Promise<void> {
+    await this.service.deleteConfig(auth.repository, auth.writeOnce);
+  }
+
   @Get(':path/:type')
   @AuthRoute()
   @ResticRoute()

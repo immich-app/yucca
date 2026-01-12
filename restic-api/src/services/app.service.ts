@@ -92,6 +92,20 @@ export class AppService {
     }
   }
 
+  async deleteConfig(path: string, writeOnce: boolean): Promise<void> {
+    this.logger.debug(`Deleting repository config at ${path}`);
+
+    if (writeOnce) {
+      throw new ForbiddenException();
+    }
+
+    try {
+      await this.storage.deleteObject(path, 'config');
+    } catch {
+      throw new S3Error();
+    }
+  }
+
   async listBlobs(path: string, type: BlobType): Promise<BlobInfoResponseDto[]> {
     this.logger.debug(`Listing repository blobs at ${path} for ${type}`);
 

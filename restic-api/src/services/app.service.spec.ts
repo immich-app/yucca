@@ -1,4 +1,5 @@
 import { S3ServiceException } from '@aws-sdk/client-s3';
+import { BlobType } from 'src/enum';
 import { type Mocks, newMocks } from '../../test/mocks';
 import { AppService } from './app.service';
 
@@ -125,6 +126,24 @@ describe(AppService.name, () => {
     });
   });
 
+  describe('deleteConfig', () => {
+    it('should delete config', async () => {
+      mocks.storage.deleteObject.mockResolvedValue(void 0 as never);
+      await sut.deleteConfig('repository', false);
+      expect(mocks.storage.deleteObject).toHaveBeenCalledWith('repository', 'config');
+    });
+
+    it('should throw when writeOnce and not locks', async () => {
+      await expect(sut.deleteConfig('repository', true)).rejects.toThrow();
+      expect(mocks.storage.deleteObject).not.toHaveBeenCalled();
+    });
+
+    it('should throw if deleteObject fails', async () => {
+      mocks.storage.deleteObject.mockRejectedValue(void 0);
+      await expect(sut.deleteConfig('repository', false)).rejects.toThrow();
+    });
+  });
+
   describe('listBlobs', () => {
     it('should return mapped blobs', async () => {
       mocks.storage.listObjects.mockResolvedValue({
@@ -136,7 +155,7 @@ describe(AppService.name, () => {
         $metadata: void 0 as never,
       });
 
-      const result = await sut.listBlobs('repository', 'data');
+      const result = await sut.listBlobs('repository', BlobType.Data);
       expect(result).toEqual([
         { name: 'abc123', size: 100 },
         { name: 'def456', size: 200 },
@@ -146,13 +165,13 @@ describe(AppService.name, () => {
 
     it('should return empty array when KeyCount is 0', async () => {
       mocks.storage.listObjects.mockResolvedValue({ KeyCount: 0, $metadata: void 0 as never });
-      const result = await sut.listBlobs('repository', 'data');
+      const result = await sut.listBlobs('repository', BlobType.Data);
       expect(result).toEqual([]);
     });
 
     it('should throw if Contents is undefined', async () => {
       mocks.storage.listObjects.mockResolvedValue({ KeyCount: 1, $metadata: void 0 as never });
-      await expect(sut.listBlobs('repository', 'data')).rejects.toThrow();
+      await expect(sut.listBlobs('repository', BlobType.Data)).rejects.toThrow();
     });
 
     it('should throw if Key or Size is missing', async () => {
@@ -162,32 +181,32 @@ describe(AppService.name, () => {
         $metadata: void 0 as never,
       });
 
-      await expect(sut.listBlobs('repository', 'data')).rejects.toThrow();
+      await expect(sut.listBlobs('repository', BlobType.Data)).rejects.toThrow();
     });
 
     it('should throw if listObjects fails', async () => {
       mocks.storage.listObjects.mockRejectedValue(void 0);
-      await expect(sut.listBlobs('repository', 'data')).rejects.toThrow();
+      await expect(sut.listBlobs('repository', BlobType.Data)).rejects.toThrow();
     });
   });
 
   describe('checkBlob', () => {
     it('should return content length', async () => {
       mocks.storage.headObject.mockResolvedValue({ ContentLength: 456, $metadata: void 0 as never });
-      const result = await sut.checkBlob('repository', 'data', 'abc123');
+      const result = await sut.checkBlob('repository', BlobType.Data, 'abc123');
       expect(result).toBe(456);
       expect(mocks.storage.headObject).toHaveBeenCalledWith('repository', 'data/abc123');
     });
 
     it('should return 0 if content length is undefined', async () => {
       mocks.storage.headObject.mockResolvedValue({ $metadata: void 0 as never });
-      const result = await sut.checkBlob('repository', 'data', 'abc123');
+      const result = await sut.checkBlob('repository', BlobType.Data, 'abc123');
       expect(result).toBe(0);
     });
 
     it('should throw if headObject fails', async () => {
       mocks.storage.headObject.mockRejectedValue(void 0);
-      await expect(sut.checkBlob('repository', 'data', 'abc123')).rejects.toThrow();
+      await expect(sut.checkBlob('repository', BlobType.Data, 'abc123')).rejects.toThrow();
     });
   });
 
@@ -195,7 +214,7 @@ describe(AppService.name, () => {
     it('should return the stream', async () => {
       const stream = Symbol('Stream');
       mocks.storage.getObjectStream.mockResolvedValue(stream as never);
-      const result = await sut.getBlob('repository', 'data', 'abc123');
+      const result = await sut.getBlob('repository', BlobType.Data, 'abc123');
       expect(result).toBe(stream);
       expect(mocks.storage.getObjectStream).toHaveBeenCalledWith('repository', 'data/abc123', undefined);
     });
@@ -203,18 +222,18 @@ describe(AppService.name, () => {
     it('should pass range to getObjectStream', async () => {
       const stream = Symbol('Stream');
       mocks.storage.getObjectStream.mockResolvedValue(stream as never);
-      await sut.getBlob('repository', 'data', 'abc123', 'bytes=0-100');
+      await sut.getBlob('repository', BlobType.Data, 'abc123', 'bytes=0-100');
       expect(mocks.storage.getObjectStream).toHaveBeenCalledWith('repository', 'data/abc123', 'bytes=0-100');
     });
 
     it('should throw if stream is falsy', async () => {
       mocks.storage.getObjectStream.mockResolvedValue(null as never);
-      await expect(sut.getBlob('repository', 'data', 'abc123')).rejects.toThrow();
+      await expect(sut.getBlob('repository', BlobType.Data, 'abc123')).rejects.toThrow();
     });
 
     it('should throw if getObjectStream fails', async () => {
       mocks.storage.getObjectStream.mockRejectedValue(void 0);
-      await expect(sut.getBlob('repository', 'data', 'abc123')).rejects.toThrow();
+      await expect(sut.getBlob('repository', BlobType.Data, 'abc123')).rejects.toThrow();
     });
   });
 
@@ -222,14 +241,14 @@ describe(AppService.name, () => {
     it('should save blob', async () => {
       const body = Symbol('Body');
       mocks.storage.putObject.mockResolvedValue(void 0 as never);
-      await sut.saveBlob('repository', 'data', 'abc123', body as never, false);
+      await sut.saveBlob('repository', BlobType.Data, 'abc123', body as never, false);
       expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'data/abc123', body, false);
     });
 
     it('should pass writeOnce flag', async () => {
       const body = Symbol('Body');
       mocks.storage.putObject.mockResolvedValue(void 0 as never);
-      await sut.saveBlob('repository', 'data', 'abc123', body as never, true);
+      await sut.saveBlob('repository', BlobType.Data, 'abc123', body as never, true);
       expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'data/abc123', body, true);
     });
 
@@ -240,38 +259,38 @@ describe(AppService.name, () => {
         $metadata: { httpStatusCode: 412 },
       });
       mocks.storage.putObject.mockRejectedValue(error);
-      await expect(sut.saveBlob('repository', 'data', 'abc123', null as never, true)).rejects.toThrow(
+      await expect(sut.saveBlob('repository', BlobType.Data, 'abc123', null as never, true)).rejects.toThrow(
         'Blob already exists',
       );
     });
 
     it('should throw on other errors', async () => {
       mocks.storage.putObject.mockRejectedValue(new Error('other'));
-      await expect(sut.saveBlob('repository', 'data', 'abc123', null as never, false)).rejects.toThrow();
+      await expect(sut.saveBlob('repository', BlobType.Data, 'abc123', null as never, false)).rejects.toThrow();
     });
   });
 
   describe('deleteBlob', () => {
     it('should delete blob', async () => {
       mocks.storage.deleteObject.mockResolvedValue(void 0 as never);
-      await sut.deleteBlob('repository', 'data', 'abc123', false);
+      await sut.deleteBlob('repository', BlobType.Data, 'abc123', false);
       expect(mocks.storage.deleteObject).toHaveBeenCalledWith('repository', 'data/abc123');
     });
 
     it('should allow delete of locks with writeOnce', async () => {
       mocks.storage.deleteObject.mockResolvedValue(void 0 as never);
-      await sut.deleteBlob('repository', 'locks', 'abc123', true);
+      await sut.deleteBlob('repository', BlobType.Locks, 'abc123', true);
       expect(mocks.storage.deleteObject).toHaveBeenCalledWith('repository', 'locks/abc123');
     });
 
-    it('should throw MethodNotAllowedException when writeOnce and not locks', async () => {
-      await expect(sut.deleteBlob('repository', 'data', 'abc123', true)).rejects.toThrow();
+    it('should throw when writeOnce and not locks', async () => {
+      await expect(sut.deleteBlob('repository', BlobType.Data, 'abc123', true)).rejects.toThrow();
       expect(mocks.storage.deleteObject).not.toHaveBeenCalled();
     });
 
     it('should throw if deleteObject fails', async () => {
       mocks.storage.deleteObject.mockRejectedValue(void 0);
-      await expect(sut.deleteBlob('repository', 'data', 'abc123', false)).rejects.toThrow();
+      await expect(sut.deleteBlob('repository', BlobType.Data, 'abc123', false)).rejects.toThrow();
     });
   });
 });
