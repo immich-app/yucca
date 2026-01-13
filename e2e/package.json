@@ -1,0 +1,46 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.27.0",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.19.3",
+    "jest": "^30.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "globalSetup": "<rootDir>/src/setup.js",
+    "globalTeardown": "<rootDir>/src/teardown.js",
+    "moduleNameMapper": {
+      "^@futo-org/restic-wrapper$": "<rootDir>/node_modules/@futo-org/restic-wrapper/dist/index.js",
+      "^src/(.*)$": "<rootDir>/src/$1"
+    },
+    "transform": {
+      "^.+\\.(ts|tsx|js|mjs)$": [
+        "ts-jest",
+        {
+          "useESM": false
+        }
+      ]
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@futo-org)/)"
+    ]
+  },
+  "dependencies": {
+    "@futo-org/restic-wrapper": "file:/Users/insert/Projects/yucca/restic-wrapper-ts",
+    "zod": "^4.3.5"
+  }
+}

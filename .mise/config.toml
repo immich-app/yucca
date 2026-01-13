@@ -1,6 +1,7 @@
 [tools]
 node = "25.2.1"
 pnpm = "10.27.0"
+restic = "0.18.0"
 
 [tasks.build]
 description = "Build all packages"
