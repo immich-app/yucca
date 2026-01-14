@@ -16,10 +16,10 @@ import {
 import { type Request, type Response } from 'express';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { type AuthDto } from 'src/dto/auth.dto';
-import { ContentType } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { ResticRoute } from 'src/middleware/restic.interceptor';
 import { AppService } from 'src/services/app.service';
+import { respondWithObject } from 'src/utils';
 import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
 @Controller()
@@ -49,10 +49,9 @@ export class AppController {
 
   @Get(':path/config')
   @AuthRoute()
-  async getConfig(@Auth() auth: AuthDto, @Res() res: Response): Promise<void> {
-    const stream = await this.service.getConfig(auth.repository);
-    res.set('Content-Type', ContentType.Binary);
-    stream.pipe(res);
+  async getConfig(@Auth() auth: AuthDto, @Req() req: Request, @Res() res: Response): Promise<void> {
+    const config = await this.service.getConfig(auth.repository);
+    respondWithObject(config, req, res);
   }
 
   @Post(':path/config')
@@ -93,11 +92,11 @@ export class AppController {
     @Auth() auth: AuthDto,
     @Param() { type, name }: BlobWithNameParamsDto,
     @Headers('range') range: string | undefined,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const stream = await this.service.getBlob(auth.repository, type, name, range);
-    res.status(range ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK).set('Content-Type', ContentType.Binary);
-    stream.pipe(res);
+    const blob = await this.service.getBlob(auth.repository, type, name, range);
+    respondWithObject(blob, req, res);
   }
 
   @Post(':path/:type/:name')

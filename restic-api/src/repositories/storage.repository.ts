@@ -12,7 +12,6 @@ import {
 import { Upload } from '@aws-sdk/lib-storage';
 import { Injectable } from '@nestjs/common';
 import { Readable } from 'node:stream';
-import { ReadableStream } from 'node:stream/web';
 import env from 'src/env';
 
 @Injectable()
@@ -88,17 +87,14 @@ export class StorageRepository {
     );
   }
 
-  async getObjectStream(Bucket: string, Key: string, Range?: string) {
-    const Object = await this.client.send(
+  async getObject(Bucket: string, Key: string, Range?: string) {
+    return await this.client.send(
       new GetObjectCommand({
         Bucket,
         Key,
         Range,
       }),
     );
-
-    const webStream = Object.Body?.transformToWebStream();
-    return webStream ? Readable.fromWeb(webStream as ReadableStream) : undefined;
   }
 
   deleteObject(Bucket: string, Key: string) {

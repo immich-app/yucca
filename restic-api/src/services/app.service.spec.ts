@@ -78,19 +78,19 @@ describe(AppService.name, () => {
   describe('getConfig', () => {
     it('should return the stream', async () => {
       const stream = Symbol('Stream');
-      mocks.storage.getObjectStream.mockResolvedValue(stream as never);
+      mocks.storage.getObject.mockResolvedValue(stream as never);
       const result = await sut.getConfig('repository');
       expect(result).toBe(stream);
-      expect(mocks.storage.getObjectStream).toHaveBeenCalledWith('repository', 'config');
+      expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'config');
     });
 
     it('should throw if stream is falsy', async () => {
-      mocks.storage.getObjectStream.mockResolvedValue(null as never);
+      mocks.storage.getObject.mockResolvedValue(null as never);
       await expect(sut.getConfig('repository')).rejects.toThrow();
     });
 
     it('should throw if getObjectStream fails', async () => {
-      mocks.storage.getObjectStream.mockRejectedValue(void 0);
+      mocks.storage.getObject.mockRejectedValue(void 0);
       await expect(sut.getConfig('repository')).rejects.toThrow();
     });
   });
@@ -213,26 +213,26 @@ describe(AppService.name, () => {
   describe('getBlob', () => {
     it('should return the stream', async () => {
       const stream = Symbol('Stream');
-      mocks.storage.getObjectStream.mockResolvedValue(stream as never);
+      mocks.storage.getObject.mockResolvedValue(stream as never);
       const result = await sut.getBlob('repository', BlobType.Data, 'abc123');
       expect(result).toBe(stream);
-      expect(mocks.storage.getObjectStream).toHaveBeenCalledWith('repository', 'data/abc123', undefined);
+      expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'data/abc123', undefined);
     });
 
     it('should pass range to getObjectStream', async () => {
       const stream = Symbol('Stream');
-      mocks.storage.getObjectStream.mockResolvedValue(stream as never);
+      mocks.storage.getObject.mockResolvedValue(stream as never);
       await sut.getBlob('repository', BlobType.Data, 'abc123', 'bytes=0-100');
-      expect(mocks.storage.getObjectStream).toHaveBeenCalledWith('repository', 'data/abc123', 'bytes=0-100');
+      expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'data/abc123', 'bytes=0-100');
     });
 
     it('should throw if stream is falsy', async () => {
-      mocks.storage.getObjectStream.mockResolvedValue(null as never);
+      mocks.storage.getObject.mockResolvedValue(null as never);
       await expect(sut.getBlob('repository', BlobType.Data, 'abc123')).rejects.toThrow();
     });
 
     it('should throw if getObjectStream fails', async () => {
-      mocks.storage.getObjectStream.mockRejectedValue(void 0);
+      mocks.storage.getObject.mockRejectedValue(void 0);
       await expect(sut.getBlob('repository', BlobType.Data, 'abc123')).rejects.toThrow();
     });
   });

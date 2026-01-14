@@ -1,4 +1,4 @@
-import { S3ServiceException } from '@aws-sdk/client-s3';
+import { GetObjectCommandOutput, S3ServiceException } from '@aws-sdk/client-s3';
 import {
   BadRequestException,
   ConflictException,
@@ -62,17 +62,11 @@ export class AppService {
     }
   }
 
-  async getConfig(path: string): Promise<Readable> {
+  async getConfig(path: string): Promise<GetObjectCommandOutput> {
     this.logger.debug(`Reading repository config at ${path}`);
 
     try {
-      const buffer = await this.storage.getObjectStream(path, 'config');
-
-      if (!buffer) {
-        throw void 0;
-      }
-
-      return buffer;
+      return await this.storage.getObject(path, 'config');
     } catch {
       throw new S3Error();
     }
@@ -141,17 +135,11 @@ export class AppService {
     }
   }
 
-  async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<Readable> {
+  async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<GetObjectCommandOutput> {
     this.logger.debug(`Downloading repository blob at ${path} for ${type}/${name} (range = ${range})`);
 
     try {
-      const buffer = await this.storage.getObjectStream(path, `${type}/${name}`, range);
-
-      if (!buffer) {
-        throw void 0;
-      }
-
-      return buffer;
+      return await this.storage.getObject(path, `${type}/${name}`, range);
     } catch {
       throw new S3Error();
     }

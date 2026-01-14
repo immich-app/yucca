@@ -19,7 +19,7 @@ export const newStorageRepositoryMock = (): jest.Mocked<RepositoryInterface<Stor
     checkBucket: jest.fn(),
     createBucket: jest.fn(),
     deleteObject: jest.fn(),
-    getObjectStream: jest.fn(),
+    getObject: jest.fn(),
     headObject: jest.fn(),
     listObjects: jest.fn(),
     putObject: jest.fn(),

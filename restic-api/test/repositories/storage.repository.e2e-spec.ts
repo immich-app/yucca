@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { text } from 'node:stream/consumers';
+import { ReadableStream } from 'node:stream/web';
 import { StorageRepository } from 'src/repositories/storage.repository';
 
 describe('StorageRepository (e2e)', () => {
@@ -30,7 +31,8 @@ describe('StorageRepository (e2e)', () => {
       }),
     );
 
-    const stream = await sut.getObjectStream(Bucket, Key);
+    const object = await sut.getObject(Bucket, Key);
+    const stream = Readable.fromWeb(object.Body!.transformToWebStream() as ReadableStream);
     await expect(text(stream!)).resolves.toBe(contents);
 
     await sut.deleteObject(Bucket, Key);
