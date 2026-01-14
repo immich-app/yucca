@@ -1,4 +1,4 @@
-import { backup, init, restore, snapshots } from '@futo-org/restic-wrapper';
+import { backup, forget, init, restore, snapshots } from '@futo-org/restic-wrapper';
 import * as jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
@@ -45,13 +45,13 @@ describe('restic API (e2e)', () => {
 
   it('creates a repository', async () => {
     await init().repository(repoUrl).password(password).run();
-  });
+  }, 10_000);
 
   it('creates a backup', async () => {
     await backup().repository(repoUrl).password(password).addFile(resolve(workingDir, 'folder')).run();
   });
 
-  it.skip('restores the file', async () => {
+  it('restores the file', async () => {
     const [snapshot] = await snapshots().repository(repoUrl).password(password).run();
 
     await restore()
@@ -61,6 +61,12 @@ describe('restic API (e2e)', () => {
       .target(resolve(workingDir, 'restored'))
       .run();
 
-    await stat(resolve(workingDir, 'restored', 'test-file'));
+    await stat(resolve(workingDir, 'restored', workingDir, 'folder', 'test-file'));
+  });
+
+  it('forgets snapshot', async () => {
+    const [snapshot] = await snapshots().repository(repoUrl).password(password).run();
+    await forget().repository(repoUrl).password(password).snapshot(snapshot.id).run();
+    await expect(snapshots().repository(repoUrl).password(password).run()).resolves.toEqual([]);
   });
 });
