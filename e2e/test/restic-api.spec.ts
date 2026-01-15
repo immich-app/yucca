@@ -1,5 +1,5 @@
 import { backup, forget, init, restore, snapshots } from '@futo-org/restic-wrapper';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

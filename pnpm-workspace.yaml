@@ -2,7 +2,9 @@ packages:
   - e2e
   - restic-api
   - yucca-api
+  - tmp/restic-wrapper-ts
 
 onlyBuiltDependencies:
   - '@nestjs/core'
+  - esbuild
   - unrs-resolver
