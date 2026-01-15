@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { DatabaseRepository } from 'src/repositories/database.repository';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
@@ -15,6 +16,10 @@ describe('AppController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+  });
+
+  afterEach(async () => {
+    await app.get(DatabaseRepository).shutdown();
   });
 
   describe('GET /', () => {
