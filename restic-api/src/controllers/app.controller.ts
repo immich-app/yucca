@@ -19,7 +19,7 @@ import { type AuthDto } from 'src/dto/auth.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { ResticRoute } from 'src/middleware/restic.interceptor';
 import { AppService } from 'src/services/app.service';
-import { respondWithObject } from 'src/utils';
+import { respondWithObject } from 'src/utils/s3';
 import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
 @Controller()

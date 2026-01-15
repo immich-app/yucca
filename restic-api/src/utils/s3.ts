@@ -3,7 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import { ReadableStream } from 'node:stream/web';
-import { ContentType } from './enum';
+import { ContentType } from '../enum';
 
 /**
  * Process S3 object as web response
