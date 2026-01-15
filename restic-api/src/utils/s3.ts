@@ -24,8 +24,6 @@ export function respondWithObject(object: GetObjectCommandOutput, request: Reque
     response.status(HttpStatus.OK);
   }
 
-  console.info(object);
-
   if (object.ETag) {
     response.header('ETag', object.ETag);
   }
