@@ -40,7 +40,7 @@
     ]
   },
   "dependencies": {
-    "@futo-org/restic-wrapper": "file:/Users/insert/Projects/yucca/restic-wrapper-ts",
+    "@futo-org/restic-wrapper": "file:../tmp/restic-wrapper-ts",
     "zod": "^4.3.5"
   }
 }

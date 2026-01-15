@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run all end-to-end tests"
+#MISE depends=["*:test:e2e"]
+set -e
+
+pnpm --filter e2e test
