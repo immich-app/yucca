@@ -1,5 +1,5 @@
+import { DummyRepository } from 'src/repositories/dummy.repository';
 import { LoggerRepository } from 'src/repositories/logger.repository';
-import { StorageRepository } from 'src/repositories/storage.repository';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 
@@ -14,22 +14,16 @@ export const newLoggerRepositoryMock = (): jest.Mocked<RepositoryInterface<Logge
   };
 };
 
-export const newStorageRepositoryMock = (): jest.Mocked<RepositoryInterface<StorageRepository>> => {
+export const newDummyRepositoryMock = (): jest.Mocked<RepositoryInterface<DummyRepository>> => {
   return {
-    checkBucket: jest.fn(),
-    createBucket: jest.fn(),
-    deleteObject: jest.fn(),
-    getObject: jest.fn(),
-    headObject: jest.fn(),
-    listObjects: jest.fn(),
-    putObject: jest.fn(),
+    get: jest.fn(),
   };
 };
 
 export const newMocks = () => {
   return {
     logger: newLoggerRepositoryMock(),
-    storage: newStorageRepositoryMock(),
+    dummy: newDummyRepositoryMock(),
   };
 };
 

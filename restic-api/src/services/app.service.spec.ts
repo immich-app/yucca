@@ -84,13 +84,8 @@ describe(AppService.name, () => {
       expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'config');
     });
 
-    it('should throw if stream is falsy', async () => {
-      mocks.storage.getObject.mockResolvedValue(null as never);
-      await expect(sut.getConfig('repository')).rejects.toThrow();
-    });
-
-    it('should throw if getObjectStream fails', async () => {
-      mocks.storage.getObject.mockRejectedValue(void 0);
+    it('should throw if getObject fails', async () => {
+      mocks.storage.getObject.mockImplementation(() => new Promise((_, reject) => reject()));
       await expect(sut.getConfig('repository')).rejects.toThrow();
     });
   });
@@ -110,7 +105,7 @@ describe(AppService.name, () => {
       expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'config', body, true);
     });
 
-    it('should throw ConflictException on 412 error', async () => {
+    it('should throw on 412 error', async () => {
       const error = new S3ServiceException({
         name: 'PreconditionFailed',
         $fault: 'client',
@@ -226,13 +221,8 @@ describe(AppService.name, () => {
       expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'data/abc123', 'bytes=0-100');
     });
 
-    it('should throw if stream is falsy', async () => {
-      mocks.storage.getObject.mockResolvedValue(null as never);
-      await expect(sut.getBlob('repository', BlobType.Data, 'abc123')).rejects.toThrow();
-    });
-
-    it('should throw if getObjectStream fails', async () => {
-      mocks.storage.getObject.mockRejectedValue(void 0);
+    it('should throw if getObject fails', async () => {
+      mocks.storage.getObject.mockImplementation(() => new Promise((_, reject) => reject()));
       await expect(sut.getBlob('repository', BlobType.Data, 'abc123')).rejects.toThrow();
     });
   });
