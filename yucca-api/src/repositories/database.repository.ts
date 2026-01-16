@@ -19,6 +19,30 @@ export class DatabaseRepository {
     await this.db.destroy();
   }
 
+  async runMigrations(): Promise<void> {
+    this.logger.log('Running migrations');
+
+    const migrator = this.createMigrator();
+    const { error, results } = await migrator.migrateToLatest();
+
+    for (const result of results ?? []) {
+      if (result.status === 'Success') {
+        this.logger.debug(`Migration "${result.migrationName}" succeeded`);
+      }
+
+      if (result.status === 'Error') {
+        this.logger.error(`Migration "${result.migrationName}" failed`);
+      }
+    }
+
+    if (error) {
+      this.logger.error(`Migrations failed: ${error}`);
+      throw error;
+    }
+
+    this.logger.log('Finished running migrations');
+  }
+
   private createMigrator(): Migrator {
     return new Migrator({
       db: this.db,
@@ -26,7 +50,9 @@ export class DatabaseRepository {
       // allowUnorderedMigrations: this.configRepository.isDev(),
       migrationTableName: 'kysely_migrations',
       provider: new FileMigrationProvider({
-        fs: { readdir },
+        fs: {
+          readdir,
+        },
         path: { join },
         migrationFolder: join(__dirname, '..', 'schema/migrations'),
       }),

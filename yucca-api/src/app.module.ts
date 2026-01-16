@@ -7,6 +7,7 @@ import { DatabaseRepository } from './repositories/database.repository';
 import { DummyRepository } from './repositories/dummy.repository';
 import { LoggerRepository } from './repositories/logger.repository';
 import { AppService } from './services/app.service';
+import { DatabaseService } from './services/database.service';
 import { getKyselyConfig } from './utils/database';
 
 @Module({
@@ -18,6 +19,6 @@ import { getKyselyConfig } from './utils/database';
     KyselyModule.forRoot(getKyselyConfig()),
   ],
   controllers: [AppController],
-  providers: [LoggerRepository, DatabaseRepository, DummyRepository, AppService],
+  providers: [LoggerRepository, DatabaseRepository, DummyRepository, DatabaseService, AppService],
 })
 export class AppModule {}
