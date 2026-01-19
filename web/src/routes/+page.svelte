@@ -1,5 +1,10 @@
-<h1>Welcome to SvelteKit</h1>
-<p>
-  Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the
-  documentation
-</p>
+<script lang="ts">
+  import { SupporterBadge, Logo, Heading } from "@immich/ui";
+</script>
+
+<main class="p-4">
+  <SupporterBadge effect="always">
+    <Logo size="large" variant="icon" />
+    <Heading tag="h1" size="large" color="primary">Purchase Immich</Heading>
+  </SupporterBadge>
+</main>

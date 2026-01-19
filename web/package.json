@@ -31,5 +31,8 @@
     "vite": "^7.2.6",
     "vitest": "^4.0.17",
     "vitest-browser-svelte": "^2.0.1"
+  },
+  "dependencies": {
+    "@immich/ui": "^0.59.0"
   }
 }
