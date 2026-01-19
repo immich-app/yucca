@@ -13,7 +13,7 @@ export default typescriptEslint.config([
   js.configs.recommended,
   typescriptEslint.configs.recommended,
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: ['eslint.config.mjs', '.dev', 'web/.svelte-kit'],
   },
   {
     languageOptions: {

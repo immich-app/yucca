@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run Svelte checks for web"
+set -e
+
+pnpm --filter web check

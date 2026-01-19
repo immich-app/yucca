@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run web in development mode"
+set -e
+
+pnpm --filter web dev

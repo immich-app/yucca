@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Install playwright dependencies"
+set -e
+
+pnpm --filter web exec playwright install

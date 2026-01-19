@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build web"
+set -e
+
+pnpm --filter web build

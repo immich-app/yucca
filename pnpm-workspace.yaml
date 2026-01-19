@@ -1,5 +1,6 @@
 packages:
   - e2e
+  - web
   - restic-api
   - yucca-api
   - tmp/restic-wrapper-ts

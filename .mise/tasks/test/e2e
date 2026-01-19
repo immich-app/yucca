@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Run all end-to-end tests"
+#MISE wait_for=["lint", "format"]
 #MISE depends=["*:test:e2e"]
 set -e
 

@@ -13,7 +13,15 @@ depends = ["*:test"]
 
 [tasks.check]
 description = "Run all checks including build"
-depends = ["build", "test", "test:e2e", "lint", "format"]
+run = [
+    { task = "build" },
+    { task = "lint" },
+    { task = "format" },
+    { tasks = [
+        "test",
+        "test:e2e",
+    ] },
+]
 
 [env]
 # default environment variables for development
