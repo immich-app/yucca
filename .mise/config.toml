@@ -17,11 +17,16 @@ description = "Run all unit tests"
 depends = ["*:test"]
 
 [tasks.check]
-description = "Run all checks including build"
+description = "Task group for CI checks"
 run = [
+    { task = "install:frozen" },
     { task = "build" },
     { task = "lint" },
     { task = "format" },
+    { tasks = [
+        "docker:start",
+        "web:test:install-deps",
+    ] },
     { tasks = [
         "test",
         "test:e2e",
