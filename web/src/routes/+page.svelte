@@ -17,6 +17,6 @@
       <Heading tag="h1" size="large" color="primary">Purchase Immich</Heading>
     </SupporterBadge>
 
-    <Text>{value}</Text>
+    <Text>From the yucca API: {value}</Text>
   </VStack>
 </main>
