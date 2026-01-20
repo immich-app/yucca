@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
+import path from 'node:path';
 
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
@@ -24,6 +25,12 @@ export default defineConfig({
     projects: [
       {
         extends: './vite.config.ts',
+
+        resolve: {
+          alias: {
+            '$env/dynamic/public': path.resolve('./src/test-mocks/env-dynamic-public.ts'),
+          },
+        },
 
         test: {
           name: 'client',
