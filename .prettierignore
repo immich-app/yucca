@@ -21,3 +21,4 @@ web/.svelte-kit
 web/test-results
 
 yucca-sdk/src/fetch-client.ts
+yucca-sdk/openapi-specs.json
