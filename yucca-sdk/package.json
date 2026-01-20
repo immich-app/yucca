@@ -16,5 +16,8 @@
   "devDependencies": {
     "oazapfts": "^7.0.1",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@oazapfts/runtime": "^1.1.0"
   }
 }
