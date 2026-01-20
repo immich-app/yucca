@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Build web"
+#MISE depends=["yucca-sdk:build"]
 set -e
 
 pnpm --filter web build

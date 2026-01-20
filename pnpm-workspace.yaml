@@ -3,9 +3,11 @@ packages:
   - web
   - restic-api
   - yucca-api
+  - yucca-sdk
   - tmp/restic-wrapper-ts
 
 onlyBuiltDependencies:
   - '@nestjs/core'
+  - '@scarf/scarf'
   - esbuild
   - unrs-resolver

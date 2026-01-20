@@ -19,3 +19,5 @@ yarn.lock
 
 web/.svelte-kit
 web/test-results
+
+yucca-sdk/src/fetch-client.ts

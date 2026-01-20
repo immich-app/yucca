@@ -3,6 +3,11 @@ node = "25.2.1"
 pnpm = "10.27.0"
 restic = "0.18.0"
 
+[tasks.dev]
+description = "Start all services in development mode"
+depends = ["install:deps", "docker:start"]
+run = [{ task = "*:dev" }]
+
 [tasks.build]
 description = "Build all packages"
 depends = ["*:build"]
