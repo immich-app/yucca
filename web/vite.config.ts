@@ -28,7 +28,9 @@ export default defineConfig({
 
         resolve: {
           alias: {
-            '$env/dynamic/public': path.resolve('./src/test-mocks/env-dynamic-public.ts'),
+            '$env/dynamic/public': path.resolve(
+              './src/test-mocks/env-dynamic-public.ts',
+            ),
           },
         },
 
