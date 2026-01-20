@@ -11,4 +11,4 @@ while ! nc -z localhost "$RESTIC_API_PORT" 2>/dev/null; do
   sleep 0.1
 done
 
-pnpm --filter e2e test
+pnpm --filter e2e test $1
