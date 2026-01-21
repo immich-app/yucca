@@ -1,6 +1,6 @@
 {
-    "editor.formatOnSave": true,
-    "files.associations": {
+  "editor.formatOnSave": true,
+  "files.associations": {
 		"*.css": "tailwindcss"
 	},
   "files.exclude": {
@@ -10,5 +10,6 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/pack-*": true
-  }
+  },
+  "nixEnvSelector.nixFile": "${workspaceFolder}/default.nix"
 }

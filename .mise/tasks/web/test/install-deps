@@ -2,4 +2,6 @@
 #MISE description="Install playwright dependencies"
 set -e
 
+if [[ -z "${PLAYWRIGHT_BROWSERS_PATH}" ]]; then
 pnpm --filter web exec playwright install
+fi
