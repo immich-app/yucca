@@ -42,8 +42,8 @@ importers:
   e2e:
     dependencies:
       '@futo-org/restic-wrapper':
-        specifier: 1.0.0
-        version: 1.0.0
+        specifier: 1.1.0
+        version: 1.1.0
       zod:
         specifier: ^4.3.5
         version: 4.3.5
@@ -932,8 +932,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@futo-org/restic-wrapper@1.0.0':
-    resolution: {integrity: sha512-ioxZyzfFgefsH26GNSNQLp+jTo4rVYS+K/aoE3tG6uWI21lsTxPSgKrI/wD/5iCsVOhQvAi+2ofKdpX89FeAaQ==}
+  '@futo-org/restic-wrapper@1.1.0':
+    resolution: {integrity: sha512-AQDafO3QsrMtorvYuSJBsJLy2xWqyoHN/b+LPpnSEXXV75oeAXFePVAszkVCExygmVadAbMhN9nXl3ITUjLQ3A==}
     engines: {node: '>=20'}
 
   '@humanfs/core@0.19.1':
@@ -5783,7 +5783,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@futo-org/restic-wrapper@1.0.0':
+  '@futo-org/restic-wrapper@1.1.0':
     dependencies:
       zod: 4.3.5
 
