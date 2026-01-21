@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Ensure i18n catalogs are up to date"
+#MISE depends=["web:lingui"]
 set -e
 
 git status --porcelain -- "web/src/locales" | grep -q . && exit 1 || exit 0
