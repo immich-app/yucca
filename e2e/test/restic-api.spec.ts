@@ -385,13 +385,19 @@ describe.each([
       await forget().repository(repoUrl).password('password').snapshot(snapshot_id).run();
     });
 
-    it('prunes old data', async () => {
-      const blobsBefore = await list().repository(repoUrl).password('password').type('blobs').run();
-      await prune().repository(repoUrl).password('password').run();
-      const blobsAfter = await list().repository(repoUrl).password('password').type('blobs').run();
+    if (writeOnce) {
+      it("can't prune data", async () => {
+        await expect(prune().repository(repoUrl).password('password').run()).rejects.toThrow();
+      });
+    } else {
+      it('prunes old data', async () => {
+        const blobsBefore = await list().repository(repoUrl).password('password').type('blobs').run();
+        await prune().repository(repoUrl).password('password').run();
+        const blobsAfter = await list().repository(repoUrl).password('password').type('blobs').run();
 
-      expect(blobsBefore).not.toEqual(blobsAfter);
-    });
+        expect(blobsBefore).not.toEqual(blobsAfter);
+      });
+    }
   });
 
   describe('recover', () => {
