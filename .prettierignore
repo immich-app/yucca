@@ -19,6 +19,7 @@ yarn.lock
 
 web/.svelte-kit
 web/test-results
+web/src/locales
 
 yucca-sdk/src/fetch-client.ts
 yucca-sdk/openapi-specs.json
