@@ -14,7 +14,7 @@
     "test": "npm run test:unit -- --run && npm run test:e2e",
     "test:e2e": "playwright test",
     "lingui:extract": "lingui extract",
-		"lingui:compile": "lingui compile --typescript"
+    "lingui:compile": "lingui compile --typescript"
   },
   "devDependencies": {
     "@lingui/cli": "^5.8.0",
