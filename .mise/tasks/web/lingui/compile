@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Compile i18n catalogs"
+set -e
+
+pnpm --filter web lingui:compile

@@ -25,7 +25,10 @@ description = "Task group for CI checks"
 run = [
     { task = "install:frozen" },
     { task = "build" },
-    { task = "lint" },
+    { tasks = [
+        "lint",
+        "*:check",
+    ] },
     { task = "format" },
     { tasks = [
         "docker:start",

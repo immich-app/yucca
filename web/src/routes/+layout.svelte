@@ -2,6 +2,11 @@
   import "./layout.css";
   import favicon from "$lib/assets/favicon.svg";
 
+  import { locale } from "svelte-i18n-lingui";
+  import { messages } from "../locales/en";
+
+  locale.set("en", messages);
+
   let { children } = $props();
 </script>
 
