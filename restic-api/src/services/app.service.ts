@@ -7,13 +7,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Counter } from '@opentelemetry/api';
-import { MetricService } from 'nestjs-otel';
+import { MetricService, Traceable } from 'nestjs-otel';
 import { Readable, Transform } from 'node:stream';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { BlobType } from 'src/enum';
 import { S3Error } from 'src/errors';
 import { StorageRepository } from 'src/repositories/storage.repository';
 
+@Traceable()
 @Injectable()
 export class AppService {
   private blobsRequested: Counter;
@@ -143,7 +144,9 @@ export class AppService {
     try {
       const blob = await this.storage.getObject(path, `${type}/${name}`, range);
       this.blobsRequested.add(1);
-      this.blobsRequestedBytes.add(blob.ContentLength ?? 0);
+      this.blobsRequestedBytes.add(blob.ContentLength ?? 0, {
+        path,
+      });
       return blob;
     } catch (error) {
       throw new S3Error(error);

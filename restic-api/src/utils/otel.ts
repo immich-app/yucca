@@ -7,6 +7,7 @@ import { JaegerPropagator } from '@opentelemetry/propagator-jaeger';
 import { logs, NodeSDK, tracing } from '@opentelemetry/sdk-node';
 // import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-proto';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
 import { AggregationTemporality, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 
@@ -14,6 +15,8 @@ import { AggregationTemporality, PeriodicExportingMetricReader } from '@opentele
 // diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
 const otelSDK = new NodeSDK({
+  // metrics
+
   metricReader: new PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
       url: 'http://localhost:8428/opentelemetry/v1/metrics',
@@ -22,6 +25,9 @@ const otelSDK = new NodeSDK({
     exportIntervalMillis: 1000,
   }),
   //   spanProcessor: new BatchSpanProcessor(new JaegerExporter()),
+  //   instrumentations: [getNodeAutoInstrumentations()],
+
+  // tracing
   contextManager: new AsyncLocalStorageContextManager(),
   textMapPropagator: new CompositePropagator({
     propagators: [
@@ -31,10 +37,13 @@ const otelSDK = new NodeSDK({
       new B3Propagator(),
     ],
   }),
-  //   instrumentations: [getNodeAutoInstrumentations()],
+  spanProcessor: new tracing.SimpleSpanProcessor(
+    new OTLPTraceExporter({
+      url: 'http://localhost:10428/insert/opentelemetry/v1/traces',
+    }),
+  ),
 
-  //   spanProcessor: new tracing.SimpleSpanProcessor(new tracing.ConsoleSpanExporter()),
-
+  // logging
   logRecordProcessors: [
     new logs.SimpleLogRecordProcessor( // todo: new logs.BatchLogRecordProcessor(
       new OTLPLogExporter({

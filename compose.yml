@@ -39,3 +39,10 @@ services:
     ports:
       - 9428:9428
     command: -storageDataPath=victoria-logs-data
+
+  victoria-traces:
+    image: docker.io/victoriametrics/victoria-traces:latest
+    ports:
+      - 10428:10428
+    command:
+      - "-jaegerGRPCListenAddr=:14250"

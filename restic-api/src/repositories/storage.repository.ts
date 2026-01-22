@@ -11,14 +11,17 @@ import {
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Injectable } from '@nestjs/common';
+import { Traceable } from 'nestjs-otel';
 import { Readable } from 'node:stream';
 import env from 'src/env';
+import { LoggerRepository } from './logger.repository';
 
+@Traceable()
 @Injectable()
 export class StorageRepository {
   private client: S3Client;
 
-  constructor() {
+  constructor(private readonly logger: LoggerRepository) {
     this.client = new S3Client({
       credentials: {
         accessKeyId: env.S3_ACCESS_KEY_ID,
@@ -44,6 +47,8 @@ export class StorageRepository {
   }
 
   createBucket(Bucket: string) {
+    this.logger.debug({ create: true });
+
     return this.client.send(
       new CreateBucketCommand({
         Bucket,

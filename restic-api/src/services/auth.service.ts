@@ -2,9 +2,11 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { Traceable } from 'nestjs-otel';
 import { type IncomingHttpHeaders } from 'node:http';
 import { AuthDto } from 'src/dto/auth.dto';
 
+@Traceable()
 @Injectable()
 export class AuthService {
   constructor(private readonly jwt: JwtService) {}
