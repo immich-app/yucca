@@ -38,6 +38,7 @@ export class StorageRepository {
       if (error instanceof NotFound) {
         return false;
       }
+
       throw error;
     }
   }

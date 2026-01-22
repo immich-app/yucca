@@ -28,3 +28,14 @@ services:
       timeout: 5s
       retries: 30
       start_period: 10s
+  
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    ports:
+      - 8428:8428
+
+  victoria-logs:
+    image: docker.io/victoriametrics/victoria-logs:v1.43.1
+    ports:
+      - 9428:9428
+    command: -storageDataPath=victoria-logs-data
