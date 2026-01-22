@@ -44,5 +44,3 @@ services:
     image: docker.io/victoriametrics/victoria-traces:latest
     ports:
       - 10428:10428
-    command:
-      - "-jaegerGRPCListenAddr=:14250"
