@@ -1,5 +1,5 @@
 import { version } from '@futo-org/restic-wrapper';
-import env from 'src/env';
+import env from '@common/server/env';
 
 it('can connect to the restic API', async () => {
   await expect(fetch(`http://localhost:${env.RESTIC_API_PORT}`).then((response) => response.status)).resolves.toBe(404);

@@ -22,7 +22,7 @@ export default typescriptEslint.config([
       sourceType: 'module',
 
       parserOptions: {
-        project: ['./*/tsconfig.json'],
+        project: ['./**/tsconfig.json'],
         tsconfigRootDir: path.dirname(__filename),
       },
     },

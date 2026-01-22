@@ -5,12 +5,16 @@ restic = "0.18.0"
 
 [tasks.dev]
 description = "Start all services in development mode"
-depends = ["install:deps", "docker:start"]
+depends = ["install:deps", "common:build", "docker:start"]
 run = [{ task = "*:dev" }]
 
 [tasks.build]
 description = "Build all packages"
 depends = ["*:build"]
+
+[tasks."common:build"]
+description = "Build all common packages"
+depends = ["common:*:build"]
 
 [tasks.test]
 description = "Run all unit tests"

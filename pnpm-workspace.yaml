@@ -4,6 +4,7 @@ packages:
   - restic-api
   - yucca-api
   - yucca-sdk
+  - common/server
 
 onlyBuiltDependencies:
   - '@nestjs/core'
