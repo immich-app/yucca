@@ -1,4 +1,5 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { trace } from '@opentelemetry/api';
 import { Request } from 'express';
 import { randomUUID } from 'node:crypto';
 import { Observable, catchError, tap } from 'rxjs';

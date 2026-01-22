@@ -51,7 +51,13 @@ const otelSDK = new NodeSDK({
       }),
     ),
   ],
-  instrumentations: [new PinoInstrumentation()],
+  instrumentations: [
+    new PinoInstrumentation({
+      logHook: (span, record) => {
+        record['customerId'] = (span as any).attributes.customerId;
+      },
+    }),
+  ],
 });
 
 otelSDK.start();

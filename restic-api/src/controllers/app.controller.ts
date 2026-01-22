@@ -13,18 +13,25 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { trace } from '@opentelemetry/api';
 import { type Request, type Response } from 'express';
+import { Traceable } from 'nestjs-otel';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { type AuthDto } from 'src/dto/auth.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { ResticRoute } from 'src/middleware/restic.interceptor';
+import { LoggerRepository } from 'src/repositories/logger.repository';
 import { AppService } from 'src/services/app.service';
 import { respondWithObject } from 'src/utils/s3';
 import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
+@Traceable()
 @Controller()
 export class AppController {
-  constructor(private readonly service: AppService) {}
+  constructor(
+    private readonly service: AppService,
+    private readonly logger: LoggerRepository,
+  ) {}
 
   @Post(':path')
   @AuthRoute()
