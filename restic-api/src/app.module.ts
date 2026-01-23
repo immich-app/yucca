@@ -1,5 +1,11 @@
 import { env } from '@common/server/env';
-import { LoggerRepository, LoggingInterceptor, OtelModule, shutdownOtel } from '@common/server/otel';
+import {
+  LoggerRepository,
+  LoggingInterceptor,
+  OtelModule,
+  shutdownOtel,
+  WideContextRepository,
+} from '@common/server/otel';
 import { Module, type OnApplicationShutdown } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -20,6 +26,7 @@ import { AuthService } from './services/auth.service';
   ],
   controllers: [AppController],
   providers: [
+    WideContextRepository,
     LoggerRepository,
     StorageRepository,
     AuthService,

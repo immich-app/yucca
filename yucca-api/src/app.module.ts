@@ -1,5 +1,5 @@
 import { env } from '@common/server/env';
-import { LoggerRepository, LoggingInterceptor, OtelModule } from '@common/server/otel';
+import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository } from '@common/server/otel';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -22,6 +22,7 @@ import { getKyselyConfig } from './utils/database';
   ],
   controllers: [AppController],
   providers: [
+    WideContextRepository,
     LoggerRepository,
     DatabaseRepository,
     DummyRepository,

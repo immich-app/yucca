@@ -1,13 +1,17 @@
-import { type CallHandler, type ExecutionContext, Injectable, type NestInterceptor } from '@nestjs/common';
+import { type CallHandler, type ExecutionContext, Injectable, type NestInterceptor, Scope } from '@nestjs/common';
 import { type Request } from 'express';
 import { randomUUID } from 'node:crypto';
 import { Observable, catchError, tap } from 'rxjs';
 import env from '../env.js';
 import { LoggerRepository } from './logger.repository.js';
+import { WideContextRepository } from './wideContext.repository.js';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class LoggingInterceptor implements NestInterceptor {
-  constructor(private readonly logger: LoggerRepository) {}
+  constructor(
+    private readonly logger: LoggerRepository,
+    private readonly wideContext: WideContextRepository,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const startTime = Date.now();
@@ -31,6 +35,8 @@ export class LoggingInterceptor implements NestInterceptor {
         event.duration_ms = Date.now() - startTime;
         event._msg += ' (OK)';
 
+        this.wideContext.applyContext(event);
+
         if ((event.duration_ms as number) > 500) {
           event._msg = '[SLOW] ' + event._msg;
           this.logger.warn(event);
@@ -50,6 +56,8 @@ export class LoggingInterceptor implements NestInterceptor {
         } as never;
         event.duration_ms = Date.now() - startTime;
         event._msg += ` (ERROR ${error.name})`;
+
+        this.wideContext.applyContext(event);
 
         this.logger.error(event);
         throw error;

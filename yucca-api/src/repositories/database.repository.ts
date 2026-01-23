@@ -1,26 +1,24 @@
+import { LoggerRepository } from '@common/server/otel';
 import { Injectable } from '@nestjs/common';
 import { FileMigrationProvider, Kysely, Migrator } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DB } from 'src/schema';
-import { LoggerRepository } from './logger.repository';
 
 @Injectable()
 export class DatabaseRepository {
   constructor(
     @InjectKysely() private db: Kysely<DB>,
     private logger: LoggerRepository,
-  ) {
-    this.logger.setContext(DatabaseRepository.name);
-  }
+  ) {}
 
   async shutdown() {
     await this.db.destroy();
   }
 
   async runMigrations(): Promise<void> {
-    this.logger.log('Running migrations');
+    this.logger.debug('Running migrations');
 
     const migrator = this.createMigrator();
     const { error, results } = await migrator.migrateToLatest();
@@ -40,7 +38,7 @@ export class DatabaseRepository {
       throw error;
     }
 
-    this.logger.log('Finished running migrations');
+    this.logger.info('Finished running migrations');
   }
 
   private createMigrator(): Migrator {
