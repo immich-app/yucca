@@ -2,4 +2,7 @@
 #MISE description="Run restic-api in development mode"
 set -e
 
-pnpm --filter restic-api start:dev
+trap 'kill -TERM $PID' INT
+pnpm --filter restic-api start:dev &
+PID=$!
+wait $PID

@@ -10,4 +10,5 @@ onlyBuiltDependencies:
   - '@nestjs/core'
   - '@scarf/scarf'
   - esbuild
+  - protobufjs
   - unrs-resolver

@@ -1,4 +1,5 @@
 import { GetObjectCommandOutput, S3ServiceException } from '@aws-sdk/client-s3';
+import { LoggerRepository } from '@common/server/otel';
 import {
   BadRequestException,
   ConflictException,
@@ -10,7 +11,6 @@ import { Readable } from 'node:stream';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { BlobType } from 'src/enum';
 import { S3Error } from 'src/errors';
-import { LoggerRepository } from 'src/repositories/logger.repository';
 import { StorageRepository } from 'src/repositories/storage.repository';
 
 @Injectable()
@@ -18,9 +18,7 @@ export class AppService {
   constructor(
     private readonly logger: LoggerRepository,
     private readonly storage: StorageRepository,
-  ) {
-    logger.setContext('AppService');
-  }
+  ) {}
 
   async createRepository(repository: string, isCreate: boolean): Promise<void> {
     if (!isCreate) {
