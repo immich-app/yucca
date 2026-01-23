@@ -8,6 +8,10 @@ export class WideContextRepository {
     this.context[key] = object;
   }
 
+  assignContext(object: unknown) {
+    Object.assign(this.context, object);
+  }
+
   applyContext(event: any) {
     Object.assign(event, this.context);
   }

@@ -5,6 +5,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { type IncomingHttpHeaders } from 'node:http';
 import { AuthDto } from 'src/dto/auth.dto';
+import { contextFromAuth } from 'src/utils/meters';
 
 @Injectable()
 export class AuthService {
@@ -42,7 +43,7 @@ export class AuthService {
       throw new BadRequestException(errors.flatMap((err) => Object.values(err.constraints ?? {})));
     }
 
-    this.wideContext.addContext('customerId', instance.user);
+    this.wideContext.assignContext(contextFromAuth(instance));
     return instance;
   }
 }
