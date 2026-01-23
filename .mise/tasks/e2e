@@ -2,9 +2,13 @@
 #MISE description="Run all end-to-end tests"
 set -e
 
-# setup restic API server
-trap "lsof -ti:$RESTIC_API_PORT | xargs kill -9 2>/dev/null || true" EXIT
+cleanup() {
+  lsof -ti:$RESTIC_API_PORT | xargs kill -9 2>/dev/null || true
+}
 
+trap cleanup EXIT INT TERM
+
+# start services
 mise restic-api:dev &
 
 while ! nc -z localhost "$RESTIC_API_PORT" 2>/dev/null; do
