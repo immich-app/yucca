@@ -31,13 +31,16 @@
     // "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
 
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
     // Recommended Options
+    "esModuleInterop": true,
     "strict": true,
     "jsx": "react-jsx",
-    "esModuleInterop": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
+    "skipLibCheck": true
   }
 }

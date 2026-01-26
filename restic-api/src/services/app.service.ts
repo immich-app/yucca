@@ -1,4 +1,4 @@
-import { GetObjectCommandOutput, S3ServiceException } from '@aws-sdk/client-s3';
+import { S3ServiceException } from '@aws-sdk/client-s3';
 import {
   BadRequestException,
   ConflictException,
@@ -6,28 +6,45 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Counter } from '@opentelemetry/api';
+import { MetricService, Traceable } from 'nestjs-otel';
 import { Readable } from 'node:stream';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
+import { AuthDto } from 'src/dto/auth.dto';
 import { BlobType } from 'src/enum';
 import { S3Error } from 'src/errors';
-import { LoggerRepository } from 'src/repositories/logger.repository';
 import { StorageRepository } from 'src/repositories/storage.repository';
+import { attachMeterToStream, contextFromAuth } from 'src/utils/meters';
+import { attachMeterToS3Object, S3RemoteObject } from 'src/utils/s3';
 
+@Traceable()
 @Injectable()
 export class AppService {
+  private blobsRequestedBytes: Counter;
+  private blobsDownloadedBytes: Counter;
+  private blobsUploadedBytes: Counter;
+
   constructor(
-    private readonly logger: LoggerRepository,
     private readonly storage: StorageRepository,
+    private readonly metricService: MetricService,
   ) {
-    logger.setContext('AppService');
+    this.blobsRequestedBytes = this.metricService.getCounter('blobs.requested_bytes', {
+      description: 'Total no. of blob bytes requested for download',
+    });
+
+    this.blobsDownloadedBytes = this.metricService.getCounter('blobs.downloaded_bytes', {
+      description: 'Total no. of blob bytes download',
+    });
+
+    this.blobsUploadedBytes = this.metricService.getCounter('blobs.uploaded_bytes', {
+      description: 'Total no. of blob bytes uploaded',
+    });
   }
 
   async createRepository(repository: string, isCreate: boolean): Promise<void> {
     if (!isCreate) {
       throw new BadRequestException();
     }
-
-    this.logger.debug(`Creating a new repository at ${repository}`);
 
     let exists: boolean;
     try {
@@ -47,36 +64,38 @@ export class AppService {
     }
   }
 
-  deleteRepository(): void {
-    this.logger.debug('Ignoring repository delete request');
-  }
+  deleteRepository(): void {}
 
-  async checkConfig(path: string): Promise<number> {
-    this.logger.debug(`Checking config at ${path}`);
-
+  async checkConfig(auth: AuthDto): Promise<number> {
     try {
-      const { ContentLength } = await this.storage.headObject(path, 'config');
+      const { ContentLength } = await this.storage.headObject(auth.repository, 'config');
       return ContentLength || 0;
     } catch {
       throw new NotFoundException();
     }
   }
 
-  async getConfig(path: string): Promise<GetObjectCommandOutput> {
-    this.logger.debug(`Reading repository config at ${path}`);
-
+  async getConfig(auth: AuthDto): Promise<S3RemoteObject> {
     try {
-      return await this.storage.getObject(path, 'config');
+      return attachMeterToS3Object(
+        auth,
+        await this.storage.getObject(auth.repository, 'config'),
+        this.blobsRequestedBytes,
+        this.blobsDownloadedBytes,
+      );
     } catch {
       throw new S3Error();
     }
   }
 
-  async saveConfig(path: string, body: Readable, writeOnce: boolean): Promise<void> {
-    this.logger.debug(`Writing config to repository at ${path}`);
-
+  async saveConfig(auth: AuthDto, body: Readable): Promise<void> {
     try {
-      await this.storage.putObject(path, 'config', body, writeOnce);
+      await this.storage.putObject(
+        auth.repository,
+        'config',
+        attachMeterToStream(body, this.blobsUploadedBytes, contextFromAuth(auth)),
+        auth.writeOnce,
+      );
     } catch (error) {
       if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
         throw new ForbiddenException('Config already exists');
@@ -86,26 +105,22 @@ export class AppService {
     }
   }
 
-  async deleteConfig(path: string, writeOnce: boolean): Promise<void> {
-    this.logger.debug(`Deleting repository config at ${path}`);
-
-    if (writeOnce) {
+  async deleteConfig(auth: AuthDto): Promise<void> {
+    if (auth.writeOnce) {
       throw new ForbiddenException();
     }
 
     try {
-      await this.storage.deleteObject(path, 'config');
+      await this.storage.deleteObject(auth.repository, 'config');
     } catch {
       throw new S3Error();
     }
   }
 
-  async listBlobs(path: string, type: BlobType): Promise<BlobInfoResponseDto[]> {
-    this.logger.debug(`Listing repository blobs at ${path} for ${type}`);
-
+  async listBlobs(auth: AuthDto, type: BlobType): Promise<BlobInfoResponseDto[]> {
     try {
       const suffix = `${type}/`;
-      const { Contents, KeyCount } = await this.storage.listObjects(path, suffix);
+      const { Contents, KeyCount } = await this.storage.listObjects(auth.repository, suffix);
 
       if (KeyCount === 0) {
         return [];
@@ -124,32 +139,37 @@ export class AppService {
     }
   }
 
-  async checkBlob(path: string, type: BlobType, name: string): Promise<number> {
-    this.logger.debug(`Checking repository blob at ${path} for ${type}/${name}`);
-
+  async checkBlob(auth: AuthDto, type: BlobType, name: string): Promise<number> {
     try {
-      const { ContentLength } = await this.storage.headObject(path, `${type}/${name}`);
+      const { ContentLength } = await this.storage.headObject(auth.repository, `${type}/${name}`);
       return ContentLength || 0;
     } catch {
       throw new NotFoundException();
     }
   }
 
-  async getBlob(path: string, type: BlobType, name: string, range?: string): Promise<GetObjectCommandOutput> {
-    this.logger.debug(`Downloading repository blob at ${path} for ${type}/${name} (range = ${range})`);
-
+  async getBlob(auth: AuthDto, type: BlobType, name: string, range?: string): Promise<S3RemoteObject> {
     try {
-      return await this.storage.getObject(path, `${type}/${name}`, range);
+      return attachMeterToS3Object(
+        auth,
+        await this.storage.getObject(auth.repository, `${type}/${name}`, range),
+        this.blobsRequestedBytes,
+        this.blobsDownloadedBytes,
+      );
     } catch {
       throw new S3Error();
     }
   }
 
-  async saveBlob(path: string, type: BlobType, name: string, body: Readable, writeOnce: boolean): Promise<void> {
-    this.logger.debug(`Uploading repository blob at ${path} for ${type}/${name}`);
-
+  async saveBlob(auth: AuthDto, type: BlobType, name: string, body: Readable): Promise<void> {
     try {
-      await this.storage.putObject(path, `${type}/${name}`, body, writeOnce, name);
+      await this.storage.putObject(
+        auth.repository,
+        `${type}/${name}`,
+        attachMeterToStream(body, this.blobsUploadedBytes, contextFromAuth(auth)),
+        auth.writeOnce,
+        name,
+      );
     } catch (error) {
       if (error instanceof S3ServiceException) {
         if (error.$metadata.httpStatusCode === 412) {
@@ -165,15 +185,13 @@ export class AppService {
     }
   }
 
-  async deleteBlob(path: string, type: BlobType, name: string, writeOnce: boolean): Promise<void> {
-    this.logger.debug(`Deleting repository blob at ${path} for ${type}/${name}`);
-
-    if (writeOnce && type !== BlobType.Locks) {
+  async deleteBlob(auth: AuthDto, type: BlobType, name: string): Promise<void> {
+    if (auth.writeOnce && type !== BlobType.Locks) {
       throw new ForbiddenException();
     }
 
     try {
-      await this.storage.deleteObject(path, `${type}/${name}`);
+      await this.storage.deleteObject(auth.repository, `${type}/${name}`);
     } catch {
       throw new S3Error();
     }

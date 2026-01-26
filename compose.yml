@@ -33,3 +33,19 @@ services:
     ports:
       - 8092:80
     image: ghcr.io/bluecatengineering/mock-oidc-provider
+
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:latest
+    ports:
+      - 8428:8428
+
+  victoria-logs:
+    image: docker.io/victoriametrics/victoria-logs:v1.43.1
+    ports:
+      - 9428:9428
+    command: -storageDataPath=victoria-logs-data
+
+  victoria-traces:
+    image: docker.io/victoriametrics/victoria-traces:latest
+    ports:
+      - 10428:10428

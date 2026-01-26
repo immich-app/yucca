@@ -28,8 +28,15 @@ const schema = z.object({
   OIDC_REQUIRE_PKCE: z.coerce.boolean().default(true),
   OIDC_REDIRECT_URI: z.string(),
   OIDC_SCOPE: z.string().default('openid'),
+
+  OTEL_DEBUG: z.coerce.boolean(),
+  OTEL_METRICS_EXPORT_INTERVAL: z.number().default(10_000),
+  OTEL_METRICS: z.string().default('http://localhost:8428/opentelemetry/v1/metrics'),
+  OTEL_TRACING: z.string().default('http://localhost:10428/insert/opentelemetry/v1/traces'),
+  OTEL_LOGGING: z.string().default('http://localhost:9428/insert/opentelemetry/v1/logs'),
 });
 
-export const env = schema.parse(process.env);
+const env = schema.parse(process.env);
 
+export { env };
 export default env;
