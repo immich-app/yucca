@@ -15,9 +15,9 @@
         ]
       }
     },
-    "/oidc": {
+    "/oidc/login": {
       "get": {
-        "operationId": "testOidcStart",
+        "operationId": "oidcStart",
         "parameters": [],
         "responses": {
           "200": {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test', 'provision']).default('development'),
-  
+
   RESTIC_API_PORT: z.coerce.number().min(1000),
   YUCCA_API_PORT: z.coerce.number().min(1000),
 
@@ -20,8 +20,16 @@ const schema = z.object({
   POSTGRES_PASSWORD: z.string(),
   POSTGRES_DATABASE: z.string(),
   POSTGRES_SSL: z.union([z.enum(['require', 'allow', 'prefer', 'verify-full']), z.boolean()]).default(false),
+
+  OIDC_ISSUER: z.url().transform((url) => new URL(url)),
+  OIDC_CLIENT_ID: z.string(),
+  OIDC_CLIENT_SECRET: z.string(),
+  OIDC_ALLOW_INSECURE: z.coerce.boolean().default(false),
+  OIDC_REQUIRE_PKCE: z.coerce.boolean().default(true),
+  OIDC_REDIRECT_URI: z.string(),
+  OIDC_SCOPE: z.string().default('openid'),
 });
 
-const env = schema.parse(process.env);
+export const env = schema.parse(process.env);
 
 export default env;

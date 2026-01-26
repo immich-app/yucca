@@ -19,8 +19,8 @@ export function hello(opts?: Oazapfts.RequestOpts) {
         ...opts
     });
 }
-export function testOidcStart(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.fetchText("/oidc", {
+export function oidcStart(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.fetchText("/oidc/login", {
         ...opts
     });
 }
