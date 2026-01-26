@@ -19,3 +19,13 @@ export function hello(opts?: Oazapfts.RequestOpts) {
         ...opts
     });
 }
+export function testOidcStart(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.fetchText("/oidc", {
+        ...opts
+    });
+}
+export function oidcCallback(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.fetchText("/oidc/callback", {
+        ...opts
+    });
+}

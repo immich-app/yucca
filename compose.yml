@@ -28,3 +28,8 @@ services:
       timeout: 5s
       retries: 30
       start_period: 10s
+
+  mock-oidc-provider:
+    ports:
+      - 8092:80
+    image: ghcr.io/bluecatengineering/mock-oidc-provider

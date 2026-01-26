@@ -9,7 +9,7 @@
   } from "@immich/ui";
   import { t, plural } from "svelte-i18n-lingui";
   import { onMount } from "svelte";
-  import { hello } from "yucca-sdk";
+  import { hello, testOidcStart } from "yucca-sdk";
 
   let value = $state("Loading from API...");
 
@@ -45,5 +45,7 @@
 
     <Button onclick={() => setLocale("en")}>Switch to English</Button>
     <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
+
+    <Button onclick={() => testOidcStart()}>OIDC test</Button>
   </VStack>
 </main>
