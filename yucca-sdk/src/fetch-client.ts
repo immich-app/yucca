@@ -14,18 +14,29 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "/api"
 };
+export type OidcAuthorizeDto = {
+    redirectTo: string;
+};
 export function hello(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.fetchText("/", {
+    return oazapfts.ok(oazapfts.fetchText("/", {
         ...opts
-    });
+    }));
 }
-export function oidcStart(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.fetchText("/oidc/login", {
+export function protectedRoute(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/protected-route", {
         ...opts
-    });
+    }));
+}
+export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: OidcAuthorizeDto;
+    }>("/auth/oidc/login", {
+        ...opts
+    }));
 }
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.fetchText("/oidc/callback", {
+    return oazapfts.ok(oazapfts.fetchText("/auth/oidc/callback", {
         ...opts
-    });
+    }));
 }

@@ -9,12 +9,14 @@
   } from "@immich/ui";
   import { t, plural } from "svelte-i18n-lingui";
   import { onMount } from "svelte";
-  import { hello, oidcStart } from "yucca-sdk";
+  import { defaults, hello, oidcAuthorize, protectedRoute } from "yucca-sdk";
+
+  let { data } = $props();
 
   let value = $state("Loading from API...");
 
   onMount(() => {
-    hello().then((v) => (value = v.data!));
+    hello().then((v) => (value = v!));
   });
 
   import { locale } from "svelte-i18n-lingui";
@@ -46,11 +48,21 @@
     <Button onclick={() => setLocale("en")}>Switch to English</Button>
     <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
 
-    <Button
-      onclick={() =>
-        oidcStart().then(
-          ({ data: { redirectTo } }) => (location.href = redirectTo),
-        )}>OIDC test</Button
-    >
+    <Text>Page data: {JSON.stringify(data)}</Text>
+
+    {#if data.isLoggedIn}
+      <Text>Currently logged in.</Text>
+      <Button
+        onclick={() => (location.href = defaults.baseUrl + "/auth/logout")}
+        >Log out</Button
+      >
+    {:else}
+      <Button
+        onclick={() =>
+          oidcAuthorize().then(
+            ({ redirectTo }) => (location.href = redirectTo),
+          )}>Login</Button
+      >
+    {/if}
   </VStack>
 </main>

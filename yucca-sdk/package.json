@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "generate": "oazapfts ./openapi-specs.json src/fetch-client.ts",
+    "generate": "oazapfts --optimistic ./openapi-specs.json src/fetch-client.ts",
     "build": "tsc"
   },
   "keywords": [],

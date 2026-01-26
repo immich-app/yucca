@@ -1,3 +1,7 @@
+import { SessionTable } from './tables/session.table';
+import { UserTable } from './tables/user.table';
+
 export interface DB {
-  dummy: any;
+  users: UserTable;
+  sessions: SessionTable;
 }
