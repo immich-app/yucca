@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './controllers/app.controller';
-import env from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { ResticInterceptor } from './middleware/restic.interceptor';
 import { LoggerRepository } from './repositories/logger.repository';
 import { StorageRepository } from './repositories/storage.repository';
 import { AppService } from './services/app.service';
 import { AuthService } from './services/auth.service';
+import env from '@common/server/env';
 
 @Module({
   imports: [
