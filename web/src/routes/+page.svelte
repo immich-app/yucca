@@ -11,8 +11,6 @@
   import { onMount } from "svelte";
   import { defaults, hello, oidcAuthorize, protectedRoute } from "yucca-sdk";
 
-  let { data } = $props();
-
   let value = $state("Loading from API...");
 
   onMount(() => {
@@ -20,6 +18,7 @@
   });
 
   import { locale } from "svelte-i18n-lingui";
+  import { user } from "$lib/stores/user.store";
 
   async function setLocale(lang: "en" | "ja") {
     const { messages } = await import(`../locales/${lang}.ts`);
@@ -48,9 +47,7 @@
     <Button onclick={() => setLocale("en")}>Switch to English</Button>
     <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
 
-    <Text>Page data: {JSON.stringify(data)}</Text>
-
-    {#if data.isLoggedIn}
+    {#if $user}
       <Text>Currently logged in.</Text>
       <Button
         onclick={() => (location.href = defaults.baseUrl + "/auth/logout")}

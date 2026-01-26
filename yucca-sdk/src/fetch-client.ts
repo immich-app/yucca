@@ -27,6 +27,11 @@ export function protectedRoute(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function logout(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/auth/logout", {
+        ...opts
+    }));
+}
 export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
