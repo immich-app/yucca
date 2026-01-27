@@ -66,3 +66,4 @@ OIDC_CLIENT_ID = "client ID"
 OIDC_CLIENT_SECRET = "client secret"
 OIDC_ALLOW_INSECURE = true
 OIDC_REDIRECT_URI = 'http://localhost:5173/api/auth/oidc/callback'
+OIDC_LOGOUT_REDIRECT_URI = 'http://localhost:5173'
