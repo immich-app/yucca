@@ -20,10 +20,15 @@ export const newDummyRepositoryMock = (): jest.Mocked<RepositoryInterface<DummyR
   };
 };
 
+export const newMetricServiceMock = () => ({
+  getCounter: jest.fn().mockReturnValue({ add: jest.fn() }),
+});
+
 export const newMocks = () => {
   return {
     logger: newLoggerRepositoryMock(),
     dummy: newDummyRepositoryMock(),
+    metrics: newMetricServiceMock(),
   };
 };
 

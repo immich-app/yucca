@@ -11,24 +11,29 @@ import { AppService } from './services/app.service';
 import { DatabaseService } from './services/database.service';
 import { getKyselyConfig } from './utils/database';
 
+export const imports = [
+  JwtModule.register({
+    global: true,
+    secret: env.JWT_SECRET,
+  }),
+  KyselyModule.forRoot(getKyselyConfig()),
+];
+
+export const controllers = [AppController];
+
+export const providers = [
+  WideContextRepository,
+  LoggerRepository,
+  DatabaseRepository,
+  DummyRepository,
+  DatabaseService,
+  AppService,
+  { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+];
+
 @Module({
-  imports: [
-    OtelModule,
-    JwtModule.register({
-      global: true,
-      secret: env.JWT_SECRET,
-    }),
-    KyselyModule.forRoot(getKyselyConfig()),
-  ],
-  controllers: [AppController],
-  providers: [
-    WideContextRepository,
-    LoggerRepository,
-    DatabaseRepository,
-    DummyRepository,
-    DatabaseService,
-    AppService,
-    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
-  ],
+  imports: [OtelModule, ...imports],
+  controllers,
+  providers,
 })
 export class AppModule {}
