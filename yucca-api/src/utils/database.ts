@@ -1,4 +1,4 @@
-import env from '@common/server/env';
+import { env } from '@common/server/env';
 import { KyselyConfig } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import postgres, { Notice } from 'postgres';
