@@ -14,9 +14,9 @@ export class AuthController {
   @Get('/logout')
   @AuthRoute()
   async logout(@Auth() auth: AuthDto, @Res() response: Response) {
-    await this.auth.logout(auth);
+    const url = await this.auth.logout(auth);
     response.clearCookie(CookieName.AccessToken);
-    response.redirect('/');
+    response.redirect(url?.href || '/');
   }
 
   @Get('/oidc/login')

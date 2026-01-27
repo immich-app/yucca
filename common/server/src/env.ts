@@ -27,6 +27,7 @@ const schema = z.object({
   OIDC_ALLOW_INSECURE: z.coerce.boolean().default(false),
   OIDC_REQUIRE_PKCE: z.coerce.boolean().default(true),
   OIDC_REDIRECT_URI: z.string(),
+  OIDC_LOGOUT_REDIRECT_URI: z.string(),
   OIDC_SCOPE: z.string().default('openid'),
 
   OTEL_DEBUG: z.coerce.boolean(),

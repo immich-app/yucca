@@ -38,8 +38,10 @@ export class AuthService {
     return user;
   }
 
-  async logout(auth: AuthDto) {
+  async logout(auth: AuthDto): Promise<URL | void> {
+    const url = this.oidc.logout();
     await this.session.delete(auth.sessionId);
+    return url;
   }
 
   async oidcAuthorize() /* todo */ {
@@ -49,6 +51,10 @@ export class AuthService {
 
   async oidcCallback(request: Request) {
     const url = new URL(`${request.protocol}://${request.get('Host')}${request.originalUrl}`);
+
+    if (url.searchParams.has('error')) {
+      throw new Error(`OIDC callback: ${url.searchParams.get('error_description') ?? 'unc'}`);
+    }
 
     const cookies = parse(request.headers.cookie || '');
     const { [CookieName.OidcState]: expectedState, [CookieName.OidcCodeVerifier]: codeVerifier } = cookies;
