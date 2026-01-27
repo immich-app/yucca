@@ -11,6 +11,8 @@
   import { onMount } from "svelte";
   import { defaults, hello, oidcAuthorize } from "yucca-sdk";
 
+  const { data } = $props();
+
   let value = $state("Loading from API...");
 
   onMount(() => {
@@ -18,7 +20,6 @@
   });
 
   import { locale } from "svelte-i18n-lingui";
-  import { user } from "$lib/stores/user.store.js";
 
   async function setLocale(lang: "en" | "ja") {
     const { messages } = await import(`../locales/${lang}.ts`);
@@ -27,6 +28,14 @@
 </script>
 
 <main class="p-4">
+  <Button
+    onclick={() =>
+      oidcAuthorize().then(({ redirectTo }) => (location.href = redirectTo))}
+    >Login</Button
+  >
+
+  <div class="h-120"></div>
+
   <VStack>
     <SupporterBadge effect="always">
       <Logo size="large" variant="icon" />
@@ -47,7 +56,7 @@
     <Button onclick={() => setLocale("en")}>Switch to English</Button>
     <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
 
-    {#if $user}
+    {#if data.isLoggedIn}
       <Text>Currently logged in.</Text>
       <Button
         onclick={() => (location.href = defaults.baseUrl + "/auth/logout")}

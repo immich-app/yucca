@@ -7,7 +7,7 @@
 
   locale.set("en", messages);
 
-  let { children } = $props();
+  const { children } = $props();
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
