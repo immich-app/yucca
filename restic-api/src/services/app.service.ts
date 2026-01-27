@@ -1,4 +1,5 @@
 import { S3ServiceException } from '@aws-sdk/client-s3';
+import { MetricService, Traceable } from '@common/server/otel';
 import {
   BadRequestException,
   ConflictException,
@@ -7,7 +8,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Counter } from '@opentelemetry/api';
-import { MetricService, Traceable } from 'nestjs-otel';
 import { Readable } from 'node:stream';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { AuthDto } from 'src/dto/auth.dto';

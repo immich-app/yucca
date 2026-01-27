@@ -10,10 +10,14 @@
   "dependencies": {
     "@nestjs/common": "11.0.1",
     "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/context-async-hooks": "^2.5.0",
+    "@opentelemetry/core": "^2.5.0",
     "@opentelemetry/exporter-logs-otlp-proto": "^0.211.0",
     "@opentelemetry/exporter-metrics-otlp-proto": "^0.211.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.211.0",
     "@opentelemetry/instrumentation-pino": "^0.57.0",
+    "@opentelemetry/propagator-b3": "^2.5.0",
+    "@opentelemetry/propagator-jaeger": "^2.5.0",
     "@opentelemetry/sdk-node": "^0.211.0",
     "nestjs-otel": "^8.0.2",
     "pino": "^10.3.0",
@@ -23,6 +27,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^25.0.10"
   },
   "scripts": {
