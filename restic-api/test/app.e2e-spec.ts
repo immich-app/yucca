@@ -1,10 +1,12 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { MetricService } from 'nestjs-otel';
 import { createHash, randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { controllers, imports, providers } from './../src/app.module';
+import { newMetricServiceMock } from './mocks';
 
 const makeAuthHeader = (token: string) => 'Basic ' + Buffer.from(`_:${token}`).toString('base64');
 
@@ -17,8 +19,13 @@ describe('AppController (e2e)', () => {
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+      imports,
+      controllers,
+      providers: [MetricService, ...providers],
+    })
+      .overrideProvider(MetricService)
+      .useValue(newMetricServiceMock())
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
