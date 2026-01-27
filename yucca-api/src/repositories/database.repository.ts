@@ -1,3 +1,4 @@
+import env from '@common/server/env';
 import { Injectable } from '@nestjs/common';
 import { FileMigrationProvider, Kysely, Migrator } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
@@ -37,7 +38,10 @@ export class DatabaseRepository {
 
     if (error) {
       this.logger.error(`Migrations failed: ${error}`);
-      throw error;
+
+      if (env.NODE_ENV !== 'development') {
+        throw error;
+      }
     }
 
     this.logger.log('Finished running migrations');
@@ -47,7 +51,7 @@ export class DatabaseRepository {
     return new Migrator({
       db: this.db,
       migrationLockTableName: 'kysely_migrations_lock',
-      // allowUnorderedMigrations: this.configRepository.isDev(),
+      allowUnorderedMigrations: env.NODE_ENV === 'development',
       migrationTableName: 'kysely_migrations',
       provider: new FileMigrationProvider({
         fs: {
