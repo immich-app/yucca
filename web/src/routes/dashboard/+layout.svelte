@@ -12,8 +12,8 @@
   const { data, children } = $props();
 </script>
 
-<AppShell>
-  <AppShellHeader>
+<div class="flex h-dvh flex-col overflow-hidden">
+  <header class="border-b">
     <div class="flex h-full items-center justify-between p-4">
       <Heading size="tiny">FUTO Backups</Heading>
       <HStack>
@@ -24,8 +24,8 @@
         >
       </HStack>
     </div>
-  </AppShellHeader>
+  </header>
   <div class="p-4">
     {@render children()}
   </div>
-</AppShell>
+</div>
