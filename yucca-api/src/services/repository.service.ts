@@ -15,10 +15,16 @@ export class RepositoryService {
 
   async create(auth: AuthDto, worm: boolean) {
     return {
-      repository: await this.repositoryRepository.create({
-        userId: auth.id,
-        worm,
-      }),
+      repository: {
+        ...(await this.repositoryRepository.create({
+          userId: auth.id,
+          worm,
+        })),
+        metrics: {
+          lastUpload: null,
+          sizeBytes: 0,
+        },
+      },
     };
   }
 
@@ -27,8 +33,16 @@ export class RepositoryService {
   }
 
   async getAll(auth: AuthDto) {
+    const repositories = await this.repositoryRepository.getByUser(auth.id);
+
     return {
-      repositories: await this.repositoryRepository.getByUser(auth.id),
+      repositories: repositories.map((repository) => ({
+        ...repository,
+        metrics: {
+          lastUpload: new Date(new Date().setDate(new Date().getDate() - 2 - Math.floor(Math.random() * 7))),
+          sizeBytes: Math.floor(Math.random() * 100_000),
+        },
+      })),
     };
   }
 

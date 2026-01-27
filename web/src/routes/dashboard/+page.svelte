@@ -3,7 +3,7 @@
   import { createRepository, createResticUrl } from 'yucca-sdk';
 
   const { data } = $props();
-
+  // svelte-ignore state_referenced_locally
   let repositories = $state(data.initialRepositories);
 
   async function create() {
@@ -25,6 +25,15 @@
           alert(await createResticUrl(repository.id).then(({ url }) => url))}
         size="tiny">Create URL</Button
       >
+      <span>{repository.metrics.sizeBytes} bytes</span>
+      {#if repository.metrics.lastUpload}
+        <span
+          >Last upload: {Math.floor(
+            (Date.now() - +new Date(repository.metrics.lastUpload)) /
+              (1000 * 60 * 60 * 24),
+          )} days ago</span
+        >
+      {/if}
     </li>
   {/each}
 </ul>

@@ -23,15 +23,20 @@ export type AuthDto = {
 export type OidcAuthorizeDto = {
     redirectTo: string;
 };
-export type RepositoryDto = {
+export type RepositoryMetricsDto = {
+    lastUpload?: string;
+    sizeBytes: number;
+};
+export type RepositoryWithMetricsDto = {
     id: string;
     worm: boolean;
+    metrics: RepositoryMetricsDto;
 };
 export type RepositoryCreateResponseDto = {
-    repository: RepositoryDto;
+    repository: RepositoryWithMetricsDto;
 };
 export type RepositoryListResponseDto = {
-    repositories: RepositoryDto[];
+    repositories: RepositoryWithMetricsDto[];
 };
 export type RepositoryCreateResticUrlDto = {
     url: string;

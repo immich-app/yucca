@@ -8,14 +8,27 @@ export class RepositoryDto {
   worm!: boolean;
 }
 
+export class RepositoryMetricsDto {
+  @ApiProperty({ type: 'string', required: false })
+  lastUpload!: Date | null;
+
+  @ApiProperty()
+  sizeBytes!: number;
+}
+
+export class RepositoryWithMetricsDto extends RepositoryDto {
+  @ApiProperty()
+  metrics!: RepositoryMetricsDto;
+}
+
 export class RepositoryCreateResponseDto {
   @ApiProperty()
-  repository!: RepositoryDto;
+  repository!: RepositoryWithMetricsDto;
 }
 
 export class RepositoryListResponseDto {
-  @ApiProperty({ type: [RepositoryDto] })
-  repositories!: RepositoryDto[];
+  @ApiProperty({ type: [RepositoryWithMetricsDto] })
+  repositories!: RepositoryWithMetricsDto[];
 }
 
 export class RepositoryCreateResticUrlDto {

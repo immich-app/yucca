@@ -218,7 +218,21 @@
           "redirectTo"
         ]
       },
-      "RepositoryDto": {
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastUpload": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "RepositoryWithMetricsDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -226,18 +240,22 @@
           },
           "worm": {
             "type": "boolean"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
           }
         },
         "required": [
           "id",
-          "worm"
+          "worm",
+          "metrics"
         ]
       },
       "RepositoryCreateResponseDto": {
         "type": "object",
         "properties": {
           "repository": {
-            "$ref": "#/components/schemas/RepositoryDto"
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
           }
         },
         "required": [
@@ -250,7 +268,7 @@
           "repositories": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/RepositoryDto"
+              "$ref": "#/components/schemas/RepositoryWithMetricsDto"
             }
           }
         },
