@@ -37,7 +37,4 @@ const schema = z.object({
   OTEL_LOGGING: z.string().default('http://localhost:9428/insert/opentelemetry/v1/logs'),
 });
 
-const env = schema.parse(process.env);
-
-export { env };
-export default env;
+export const env = schema.parse(process.env);

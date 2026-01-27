@@ -2,7 +2,7 @@ import { type CallHandler, type ExecutionContext, Injectable, type NestIntercept
 import { type Request } from 'express';
 import { randomUUID } from 'node:crypto';
 import { Observable, catchError, tap } from 'rxjs';
-import env from '../env.js';
+import { env } from '../env.js';
 import { LoggerRepository } from './logger.repository.js';
 import { WideContextRepository } from './wideContext.repository.js';
 
