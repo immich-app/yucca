@@ -20,12 +20,15 @@ describe('AppController (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      // OtelModule does not export MetricService when running in CI (but works locally?)
-      // Just force the provider to exist.
-      .overrideProvider(MetricService)
-      .useValue(newMetricServiceMock())
-      .compile();
+      providers: [
+        // OtelModule does not export MetricService when running in CI (but works locally?)
+        // Provide it directly in the test module to ensure it's available
+        {
+          provide: MetricService,
+          useValue: newMetricServiceMock(),
+        },
+      ],
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
