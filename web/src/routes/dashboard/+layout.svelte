@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { AppShell, AppShellHeader, Avatar, Button, Heading, HStack } from "@immich/ui";
+  import {
+    AppShell,
+    AppShellHeader,
+    Avatar,
+    Button,
+    Heading,
+    HStack,
+  } from "@immich/ui";
   import { defaults } from "yucca-sdk";
 
   const { data, children } = $props();
