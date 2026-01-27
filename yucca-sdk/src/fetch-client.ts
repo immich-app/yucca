@@ -23,6 +23,19 @@ export type AuthDto = {
 export type OidcAuthorizeDto = {
     redirectTo: string;
 };
+export type RepositoryDto = {
+    id: string;
+    worm: boolean;
+};
+export type RepositoryCreateResponseDto = {
+    repository: RepositoryDto;
+};
+export type RepositoryListResponseDto = {
+    repositories: RepositoryDto[];
+};
+export type RepositoryCreateResticUrlDto = {
+    url: string;
+};
 export function hello(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/", {
         ...opts
@@ -57,5 +70,31 @@ export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/auth/oidc/callback", {
         ...opts
+    }));
+}
+export function createRepository(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryCreateResponseDto;
+    }>("/repository", {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function getRepositories(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryListResponseDto;
+    }>("/repository", {
+        ...opts
+    }));
+}
+export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryCreateResticUrlDto;
+    }>(`/repository/${encodeURIComponent(id)}/restic`, {
+        ...opts,
+        method: "POST"
     }));
 }
