@@ -16,25 +16,30 @@ import { StorageRepository } from './repositories/storage.repository';
 import { AppService } from './services/app.service';
 import { AuthService } from './services/auth.service';
 
+export const imports = [
+  JwtModule.register({
+    global: true,
+    secret: env.JWT_SECRET,
+  }),
+];
+
+export const controllers = [AppController];
+
+export const providers = [
+  WideContextRepository,
+  LoggerRepository,
+  StorageRepository,
+  AuthService,
+  AppService,
+  { provide: APP_GUARD, useClass: AuthGuard },
+  { provide: APP_INTERCEPTOR, useClass: ResticInterceptor },
+  { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+];
+
 @Module({
-  imports: [
-    OtelModule,
-    JwtModule.register({
-      global: true,
-      secret: env.JWT_SECRET,
-    }),
-  ],
-  controllers: [AppController],
-  providers: [
-    WideContextRepository,
-    LoggerRepository,
-    StorageRepository,
-    AuthService,
-    AppService,
-    { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_INTERCEPTOR, useClass: ResticInterceptor },
-    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
-  ],
+  imports: [OtelModule, ...imports],
+  controllers,
+  providers,
 })
 export class AppModule implements OnApplicationShutdown {
   async onApplicationShutdown() {

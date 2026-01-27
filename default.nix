@@ -41,11 +41,13 @@ in pkgs.mkShell {
     export PLAYWRIGHT_BROWSERS_PATH=${unstablePkgs.playwright-driver.browsers}
     export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
 
-    playwrightNpmVersion="$(npm show @playwright/test version)"
-    echo "❄️  Playwright nix version: ${unstablePkgs.playwright.version}"
-    echo "📦 Playwright npm version: $playwrightNpmVersion"
+    playwrightPnpmVersion=($(pnpm list -r @playwright/test | grep playwright))
+    playwrightPnpmVersion=''${playwrightPnpmVersion[1]}
 
-    if [ "${unstablePkgs.playwright.version}" != "$playwrightNpmVersion" ]; then
+    echo "❄️  Playwright nix version: ${unstablePkgs.playwright.version}"
+    echo "📦 Playwright npm version: $playwrightPnpmVersion"
+
+    if [ "${unstablePkgs.playwright.version}" != "$playwrightPnpmVersion" ]; then
       echo "❌ Playwright versions in nix and npm are not the same!"
     else
       echo "✅ Playwright versions in nix and npm are the same"

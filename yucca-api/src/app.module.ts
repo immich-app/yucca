@@ -18,30 +18,35 @@ import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
 import { getKyselyConfig } from './utils/database';
 
+export const imports = [
+  JwtModule.register({
+    global: true,
+    secret: env.JWT_SECRET,
+  }),
+  KyselyModule.forRoot(getKyselyConfig()),
+];
+
+export const controllers = [AppController, AuthController];
+
+export const providers = [
+  WideContextRepository,
+  LoggerRepository,
+  DatabaseRepository,
+  CryptoRepository,
+  OidcRepository,
+  UserRepository,
+  SessionRepository,
+  DummyRepository,
+  DatabaseService,
+  AppService,
+  AuthService,
+  { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+  { provide: APP_GUARD, useClass: AuthGuard },
+];
+
 @Module({
-  imports: [
-    OtelModule,
-    JwtModule.register({
-      global: true,
-      secret: env.JWT_SECRET,
-    }),
-    KyselyModule.forRoot(getKyselyConfig()),
-  ],
-  controllers: [AppController, AuthController],
-  providers: [
-    WideContextRepository,
-    LoggerRepository,
-    DatabaseRepository,
-    CryptoRepository,
-    OidcRepository,
-    UserRepository,
-    SessionRepository,
-    DummyRepository,
-    DatabaseService,
-    AppService,
-    AuthService,
-    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
-    { provide: APP_GUARD, useClass: AuthGuard },
-  ],
+  imports: [OtelModule, ...imports],
+  controllers,
+  providers,
 })
 export class AppModule {}
