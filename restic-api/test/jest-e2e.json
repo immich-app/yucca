@@ -8,6 +8,5 @@
   },
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
-  },
-  "globalSetup": "<rootDir>/setup.js"
+  }
 }
