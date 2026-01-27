@@ -5,3 +5,55 @@ restic = "0.18.0"
 
 gh = "2.25.0"
 "github:git-town/git-town" = "22.4.0"
+
+[tasks.dev]
+description = "Start all services in development mode"
+depends = ["install:deps", "docker:start"]
+run = [{ task = "*:dev" }]
+
+[tasks.build]
+description = "Build all packages"
+depends = ["*:build"]
+
+[tasks.test]
+description = "Run all unit tests"
+depends = ["*:test"]
+
+[tasks."test:e2e"]
+description = "Run all e2e tests"
+run = [{ task = "*:test:e2e" }, { task = "e2e" }]
+
+[tasks.check]
+description = "Task group for CI checks"
+run = [
+    { task = "install:frozen" },
+    { task = "build" },
+    { tasks = [
+        "lint",
+        "*:check",
+    ] },
+    { task = "format" },
+    { tasks = [
+        "docker:start",
+        "web:test:install-deps",
+    ] },
+    { tasks = [
+        "test",
+        "test:e2e",
+    ] },
+]
+
+[env]
+# default environment variables for development
+YUCCA_API_PORT = 3000
+RESTIC_API_PORT = 3010
+S3_ACCESS_KEY_ID = "minio"
+S3_SECRET_ACCESS_KEY = "miniominio"
+S3_REGION = "minio"
+S3_ENDPOINT = "http://localhost:9000"
+S3_FORCE_PATH_STYLE = true
+POSTGRES_HOST = "localhost"
+POSTGRES_USERNAME = "postgres"
+POSTGRES_PASSWORD = "postgres"
+POSTGRES_DATABASE = "yucca"
+JWT_SECRET = "cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1"

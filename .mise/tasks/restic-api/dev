@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run restic-api in development mode"
+set -e
+
+pnpm --filter restic-api start:dev

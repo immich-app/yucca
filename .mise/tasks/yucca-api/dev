@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run yucca-api in development mode"
+set -e
+
+pnpm --filter yucca-api start:dev

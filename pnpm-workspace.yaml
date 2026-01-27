@@ -1,0 +1,12 @@
+packages:
+  - e2e
+  - web
+  - restic-api
+  - yucca-api
+  - yucca-sdk
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@scarf/scarf'
+  - esbuild
+  - unrs-resolver

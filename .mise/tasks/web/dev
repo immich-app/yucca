@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run web in development mode"
+#MISE depends=["yucca-sdk:build", "web:lingui:compile"]
+set -e
+
+pnpm --filter web dev --host

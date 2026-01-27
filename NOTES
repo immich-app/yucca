@@ -1,0 +1,21 @@
+init with valid JWT:
+
+RESTIC_PASSWORD=password restic -r rest:http://:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiMDE5YmEzMjQtMjc0Ni03NmE2LThhNzQtMDEwMzg4MGYxZjc2IiwicmVwb3NpdG9yeSI6IjAxOWJhMzI0LTI3NDYtNzZhNi04YTc0LTAxMDM4ODBmMWY3NiIsIndyaXRlT25jZSI6ZmFsc2V9.t2PtMiB099B-WosU0hpw6udb0nobSiUN0BEpXY1WWrM@localhost:3000/019ba324-2746-76a6-8a74-0103880f1f76 init
+
+The JWT:
+
+{
+  "user": "019ba324-2746-76a6-8a74-0103880f1f76",
+  "repository": "019ba324-2746-76a6-8a74-0103880f1f76",
+  "writeOnce": false
+}
+
+And a WORM repo:
+
+{
+  "user": "019ba324-2746-76a6-8a74-0103880f1f76",
+  "repository": "019ba324-2746-76a6-8a74-0103880f1f77",
+  "writeOnce": true
+}
+
+RESTIC_PASSWORD=password restic -r rest:http://:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiMDE5YmEzMjQtMjc0Ni03NmE2LThhNzQtMDEwMzg4MGYxZjc2IiwicmVwb3NpdG9yeSI6IjAxOWJhMzI0LTI3NDYtNzZhNi04YTc0LTAxMDM4ODBmMWY3NyIsIndyaXRlT25jZSI6dHJ1ZX0.f3mBt5KY3ZxLaOqzgOuvqaGJr2cPXKyV6alMjet4NCI@localhost:3000/019ba324-2746-76a6-8a74-0103880f1f77 init

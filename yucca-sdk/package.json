@@ -1,0 +1,23 @@
+{
+  "name": "yucca-sdk",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "generate": "oazapfts ./openapi-specs.json src/fetch-client.ts",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.27.0",
+  "devDependencies": {
+    "oazapfts": "^7.0.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@oazapfts/runtime": "^1.1.0"
+  }
+}

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Fix all lint problems in code files"
+set -e
+
+pnpm exec eslint "**/src/**/*.ts" --max-warnings 0 --fix

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run web in preview mode"
+#MISE depends=["web:build"]
+set -e
+
+pnpm --filter web preview --host
