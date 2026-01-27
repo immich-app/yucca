@@ -1,3 +1,4 @@
+import env from '@common/server/env';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
@@ -8,7 +9,6 @@ import { LoggerRepository } from './repositories/logger.repository';
 import { AppService } from './services/app.service';
 import { DatabaseService } from './services/database.service';
 import { getKyselyConfig } from './utils/database';
-import env from '@common/server/env';
 
 @Module({
   imports: [

@@ -1,3 +1,4 @@
+import env from '@common/server/env';
 import {
   backup,
   cache,
@@ -30,7 +31,6 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import env from '@common/server/env';
 
 const password = 'password';
 
