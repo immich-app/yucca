@@ -9,7 +9,7 @@
   } from "@immich/ui";
   import { t, plural } from "svelte-i18n-lingui";
   import { onMount } from "svelte";
-  import { defaults, hello, oidcAuthorize, protectedRoute } from "yucca-sdk";
+  import { defaults, hello, oidcAuthorize } from "yucca-sdk";
 
   let value = $state("Loading from API...");
 
@@ -18,7 +18,7 @@
   });
 
   import { locale } from "svelte-i18n-lingui";
-  import { user } from "$lib/stores/user.store";
+  import { user } from "$lib/stores/user.store.js";
 
   async function setLocale(lang: "en" | "ja") {
     const { messages } = await import(`../locales/${lang}.ts`);
