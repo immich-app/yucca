@@ -12,7 +12,7 @@ import {
 import { Upload } from '@aws-sdk/lib-storage';
 import { env } from '@common/server/env';
 import { Injectable } from '@nestjs/common';
-import { Traceable } from 'nestjs-otel';
+import { Traceable } from '@common/server/otel';
 import { Readable } from 'node:stream';
 
 @Traceable()

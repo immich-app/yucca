@@ -14,7 +14,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { type Request, type Response } from 'express';
-import { Traceable } from 'nestjs-otel';
+import { Traceable } from '@common/server/otel';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { type AuthDto } from 'src/dto/auth.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';

@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Counter } from '@opentelemetry/api';
-import { MetricService, Traceable } from 'nestjs-otel';
+import { MetricService, Traceable } from '@common/server/otel';
 import { Readable } from 'node:stream';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { AuthDto } from 'src/dto/auth.dto';

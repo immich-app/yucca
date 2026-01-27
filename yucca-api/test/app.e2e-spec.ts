@@ -1,6 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MetricService } from 'nestjs-otel';
+import { MetricService } from '@common/server/otel';
 import { DatabaseRepository } from 'src/repositories/database.repository';
 import request from 'supertest';
 import { App } from 'supertest/types';

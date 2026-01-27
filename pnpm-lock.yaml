@@ -163,9 +163,6 @@ importers:
       class-validator:
         specifier: ^0.14.3
         version: 0.14.3
-      nestjs-otel:
-        specifier: ^8.0.2
-        version: 8.0.2(@nestjs/common@11.1.11(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -336,9 +333,6 @@ importers:
       nestjs-kysely:
         specifier: ^3.1.2
         version: 3.1.2(@nestjs/common@11.1.11(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)(kysely@0.28.2)(reflect-metadata@0.2.2)
-      nestjs-otel:
-        specifier: ^8.0.2
-        version: 8.0.2(@nestjs/common@11.1.11(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)
       postgres:
         specifier: ^3.4.8
         version: 3.4.8
@@ -10460,13 +10454,6 @@ snapshots:
     dependencies:
       '@nestjs/common': 11.0.1(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.1)
       '@nestjs/core': 11.1.11(@nestjs/common@11.0.1(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/platform-express@11.1.11)(reflect-metadata@0.2.2)(rxjs@7.8.1)
-      '@opentelemetry/api': 1.9.0
-      '@opentelemetry/host-metrics': 0.38.2(@opentelemetry/api@1.9.0)
-
-  nestjs-otel@8.0.2(@nestjs/common@11.1.11(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11):
-    dependencies:
-      '@nestjs/common': 11.1.11(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/core': 11.1.11(@nestjs/common@11.1.11(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.11)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/host-metrics': 0.38.2(@opentelemetry/api@1.9.0)
 
