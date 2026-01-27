@@ -14,6 +14,12 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "/api"
 };
+export type AuthDto = {
+    id: string;
+    name: string;
+    email: string;
+    sessionId: string;
+};
 export type OidcAuthorizeDto = {
     redirectTo: string;
 };
@@ -24,6 +30,14 @@ export function hello(opts?: Oazapfts.RequestOpts) {
 }
 export function protectedRoute(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/protected-route", {
+        ...opts
+    }));
+}
+export function getAuth(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AuthDto;
+    }>("/auth", {
         ...opts
     }));
 }

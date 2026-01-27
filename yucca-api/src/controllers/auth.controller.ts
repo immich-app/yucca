@@ -11,6 +11,13 @@ import { AuthService } from 'src/services/auth.service';
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  @Get()
+  @AuthRoute()
+  @ApiOkResponse({ type: AuthDto })
+  getAuth(@Auth() auth: AuthDto) {
+    return auth;
+  }
+
   @Get('/logout')
   @AuthRoute()
   async logout(@Auth() auth: AuthDto, @Res() response: Response) {

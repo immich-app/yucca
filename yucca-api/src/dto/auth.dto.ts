@@ -7,8 +7,14 @@ export class OidcAuthorizeDto {
 
 export class AuthDto {
   @ApiProperty()
-  sessionId!: string;
+  id!: string;
 
   @ApiProperty()
-  userId!: string;
+  name!: string;
+
+  @ApiProperty()
+  email!: string;
+
+  @ApiProperty()
+  sessionId!: string;
 }

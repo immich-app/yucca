@@ -22,7 +22,7 @@ export class UserRepository {
       .where('accessToken', '=', accessToken)
       .innerJoin('users', 'users.id', 'sessions.userId')
       .selectAll('users')
-      .select(['users.id as userId', 'sessions.id as sessionId'])
+      .select(['sessions.id as sessionId'])
       .executeTakeFirst();
   }
 

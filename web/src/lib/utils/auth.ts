@@ -1,13 +1,11 @@
-import { protectedRoute } from 'yucca-sdk';
+import { getAuth } from 'yucca-sdk';
 
 export const auth = async (fetch: typeof globalThis.fetch) => {
   try {
-    await protectedRoute({
+    return await getAuth({
       fetch,
     });
-
-    return true;
   } catch {
-    return false;
+    return null;
   }
 };

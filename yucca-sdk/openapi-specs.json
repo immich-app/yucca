@@ -29,6 +29,27 @@
         ]
       }
     },
+    "/auth": {
+      "get": {
+        "operationId": "getAuth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/auth/logout": {
       "get": {
         "operationId": "logout",
@@ -93,6 +114,29 @@
   ],
   "components": {
     "schemas": {
+      "AuthDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "sessionId"
+        ]
+      },
       "OidcAuthorizeDto": {
         "type": "object",
         "properties": {
