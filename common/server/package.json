@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "private": true,
   "name": "@common/server",
   "version": "1.0.0",
@@ -21,11 +20,11 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./env": {
       "types": "./dist/env.d.ts",
-      "import": "./dist/env.js"
+      "default": "./dist/env.js"
     }
   }
 }

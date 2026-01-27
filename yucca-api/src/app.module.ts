@@ -1,4 +1,4 @@
-import env from '@common/server/env';
+import { env } from '@common/server/env';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';

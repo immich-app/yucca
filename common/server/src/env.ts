@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test', 'provision']).default('development'),
-  
+
   RESTIC_API_PORT: z.coerce.number().min(1000),
   YUCCA_API_PORT: z.coerce.number().min(1000),
 
@@ -22,6 +22,4 @@ const schema = z.object({
   POSTGRES_SSL: z.union([z.enum(['require', 'allow', 'prefer', 'verify-full']), z.boolean()]).default(false),
 });
 
-const env = schema.parse(process.env);
-
-export default env;
+export const env = schema.parse(process.env);

@@ -1,4 +1,4 @@
-import env from '@common/server/env';
+import { env } from '@common/server/env';
 import { Injectable } from '@nestjs/common';
 import { FileMigrationProvider, Kysely, Migrator } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';

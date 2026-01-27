@@ -1,4 +1,4 @@
-import env from '@common/server/env';
+import { env } from '@common/server/env';
 import { version } from '@futo-org/restic-wrapper';
 
 it('can connect to the restic API', async () => {

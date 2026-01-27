@@ -1,4 +1,4 @@
-import env from '@common/server/env';
+import { env } from '@common/server/env';
 import {
   backup,
   cache,
