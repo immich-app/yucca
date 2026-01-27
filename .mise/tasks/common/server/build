@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build common library for server code"
+set -e
+
+pnpm --filter @common/server build

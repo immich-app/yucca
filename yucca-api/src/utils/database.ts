@@ -1,7 +1,7 @@
+import { env } from '@common/server/env';
 import { KyselyConfig } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import postgres, { Notice } from 'postgres';
-import env from 'src/env';
 
 export const getKyselyConfig = (
   options: Partial<postgres.Options<Record<string, postgres.PostgresType>>> = {},

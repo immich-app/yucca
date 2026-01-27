@@ -1,8 +1,8 @@
+import { env } from '@common/server/env';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AppController } from './controllers/app.controller';
-import env from './env';
 import { DatabaseRepository } from './repositories/database.repository';
 import { DummyRepository } from './repositories/dummy.repository';
 import { LoggerRepository } from './repositories/logger.repository';

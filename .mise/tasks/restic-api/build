@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Build restic-api"
+#MISE depends=["common:build"]
 set -e
 
 pnpm --filter restic-api build
