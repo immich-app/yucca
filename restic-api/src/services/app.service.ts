@@ -1,5 +1,5 @@
 import { S3ServiceException } from '@aws-sdk/client-s3';
-import { MetricService, Traceable } from '@common/server/otel';
+import { MetricService, Traceable, WideContextRepository } from '@common/server/otel';
 import {
   BadRequestException,
   ConflictException,
@@ -27,6 +27,7 @@ export class AppService {
   constructor(
     private readonly storage: StorageRepository,
     private readonly metricService: MetricService,
+    private readonly wideContext: WideContextRepository,
   ) {
     this.blobsRequestedBytes = this.metricService.getCounter('blobs.requested_bytes', {
       description: 'Total no. of blob bytes requested for download',
@@ -43,23 +44,25 @@ export class AppService {
 
   async createRepository(repository: string, isCreate: boolean): Promise<void> {
     if (!isCreate) {
-      throw new BadRequestException();
+      throw new BadRequestException('isCreate must be true when creating repository');
     }
 
     let exists: boolean;
     try {
       exists = await this.storage.checkBucket(repository);
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new S3Error();
     }
 
     if (exists) {
-      throw new ConflictException();
+      throw new ConflictException('Repository already exists');
     }
 
     try {
       await this.storage.createBucket(repository);
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new S3Error();
     }
   }
@@ -70,7 +73,8 @@ export class AppService {
     try {
       const { ContentLength } = await this.storage.headObject(auth.repository, 'config');
       return ContentLength || 0;
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new NotFoundException();
     }
   }
@@ -83,7 +87,8 @@ export class AppService {
         this.blobsRequestedBytes,
         this.blobsDownloadedBytes,
       );
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new S3Error();
     }
   }
@@ -97,6 +102,8 @@ export class AppService {
         auth.writeOnce,
       );
     } catch (error) {
+      this.wideContext.setErrorCause(error);
+
       if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) {
         throw new ForbiddenException('Config already exists');
       }
@@ -107,12 +114,13 @@ export class AppService {
 
   async deleteConfig(auth: AuthDto): Promise<void> {
     if (auth.writeOnce) {
-      throw new ForbiddenException();
+      throw new ForbiddenException('Not permitted to write to WORM repository');
     }
 
     try {
       await this.storage.deleteObject(auth.repository, 'config');
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new S3Error();
     }
   }
@@ -126,7 +134,14 @@ export class AppService {
         return [];
       }
 
-      if (!Contents || Contents.some(({ Key, Size }) => !Key || !Size)) {
+      if (!Contents) {
+        this.wideContext.setErrorCause('Contents missing from ListObjects response');
+        throw void 0;
+      }
+
+      if (Contents.some(({ Key, Size }) => !Key || !Size)) {
+        this.wideContext.setErrorCause('Contents are malformed from ListObjects response');
+        this.wideContext.addContext('contents', Contents);
         throw void 0;
       }
 
@@ -134,7 +149,8 @@ export class AppService {
         name: Key!.slice(suffix.length),
         size: Size!,
       }));
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new S3Error();
     }
   }
@@ -143,7 +159,8 @@ export class AppService {
     try {
       const { ContentLength } = await this.storage.headObject(auth.repository, `${type}/${name}`);
       return ContentLength || 0;
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new NotFoundException();
     }
   }
@@ -156,7 +173,8 @@ export class AppService {
         this.blobsRequestedBytes,
         this.blobsDownloadedBytes,
       );
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
       throw new S3Error();
     }
   }
@@ -171,6 +189,8 @@ export class AppService {
         name,
       );
     } catch (error) {
+      this.wideContext.setErrorCause(error);
+
       if (error instanceof S3ServiceException) {
         if (error.$metadata.httpStatusCode === 412) {
           throw new ForbiddenException('Blob already exists');
@@ -187,12 +207,14 @@ export class AppService {
 
   async deleteBlob(auth: AuthDto, type: BlobType, name: string): Promise<void> {
     if (auth.writeOnce && type !== BlobType.Locks) {
-      throw new ForbiddenException();
+      throw new ForbiddenException('Not permitted to write to WORM repository');
     }
 
     try {
       await this.storage.deleteObject(auth.repository, `${type}/${name}`);
-    } catch {
+    } catch (error) {
+      this.wideContext.setErrorCause(error);
+
       throw new S3Error();
     }
   }

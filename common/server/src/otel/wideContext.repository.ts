@@ -12,6 +12,10 @@ export class WideContextRepository {
     Object.assign(this.context, object);
   }
 
+  setErrorCause(cause: any) {
+    this.context['error.cause'] = cause;
+  }
+
   applyContext(event: any) {
     Object.assign(event, this.context);
   }
