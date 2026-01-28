@@ -40,7 +40,7 @@ export class LoggingInterceptor implements NestInterceptor {
         if ((event.duration_ms as number) > 500) {
           event._msg = '[SLOW] ' + event._msg;
           this.logger.warn(event);
-        } else if (env.NODE_ENV === 'development' || Math.random() < 0.1 /* sample 10% of successful requests */) {
+        } else if (env.NODE_ENV === 'development' || Math.random() < env.OTEL_SAMPLE_RATE) {
           this.logger.info(event);
         }
       }),

@@ -1,4 +1,6 @@
-import type { LoggerRepository } from '@common/server/otel';
+import type { LoggerRepository, MetricService, WideContextRepository } from '@common/server/otel';
+import { Readable } from 'node:stream';
+import { text } from 'node:stream/consumers';
 import { StorageRepository } from 'src/repositories/storage.repository';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
@@ -25,15 +27,36 @@ export const newStorageRepositoryMock = (): jest.Mocked<RepositoryInterface<Stor
     checkBucket: jest.fn(),
     createBucket: jest.fn(),
     deleteObject: jest.fn(),
-    getObject: jest.fn(),
+    getObject: jest.fn().mockResolvedValue({
+      ContentLength: 1000,
+      Body: {
+        transformToWebStream() {
+          return Readable.toWeb(Readable.from('_'.repeat(1000)));
+        },
+      },
+    }),
     headObject: jest.fn(),
     listObjects: jest.fn(),
-    putObject: jest.fn(),
+    putObject: jest.fn().mockImplementation((_1, _2, body: Readable) => text(body)),
   };
 };
 
-export const newMetricServiceMock = () => ({
-  getCounter: jest.fn().mockReturnValue({ add: jest.fn() }),
+export const newWideContextRepositoryMock = (): jest.Mocked<RepositoryInterface<WideContextRepository>> => ({
+  context: {},
+  addContext: jest.fn(),
+  applyContext: jest.fn(),
+  assignContext: jest.fn(),
+  setErrorCause: jest.fn(),
+});
+
+export const newMetricServiceMock = (): jest.Mocked<RepositoryInterface<MetricService>> => ({
+  getCounter: jest.fn().mockImplementation(() => ({ add: jest.fn() })),
+  getGauge: jest.fn(),
+  getHistogram: jest.fn(),
+  getObservableCounter: jest.fn(),
+  getObservableGauge: jest.fn(),
+  getObservableUpDownCounter: jest.fn(),
+  getUpDownCounter: jest.fn(),
 });
 
 export const newMocks = () => {
@@ -41,6 +64,7 @@ export const newMocks = () => {
     logger: newLoggerRepositoryMock(),
     storage: newStorageRepositoryMock(),
     metricService: newMetricServiceMock(),
+    wideContext: newWideContextRepositoryMock(),
   };
 };
 
