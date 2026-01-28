@@ -22,6 +22,7 @@ const schema = z.object({
   POSTGRES_SSL: z.union([z.enum(['require', 'allow', 'prefer', 'verify-full']), z.boolean()]).default(false),
 
   OTEL_DEBUG: z.coerce.boolean(),
+  OTEL_SAMPLE_RATE: z.number().min(0).max(1).default(1),
   OTEL_METRICS_EXPORT_INTERVAL: z.number().default(10_000),
   OTEL_METRICS: z.string().default('http://localhost:8428/opentelemetry/v1/metrics'),
   OTEL_TRACING: z.string().default('http://localhost:10428/insert/opentelemetry/v1/traces'),

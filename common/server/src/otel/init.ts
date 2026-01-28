@@ -23,6 +23,10 @@ const otelSDK = new NodeSDK({
   }),
 
   // tracing
+  sampler:
+    env.NODE_ENV === 'development' || env.OTEL_SAMPLE_RATE == 1
+      ? new tracing.AlwaysOnSampler()
+      : new tracing.TraceIdRatioBasedSampler(env.OTEL_SAMPLE_RATE),
   contextManager: new AsyncLocalStorageContextManager(),
   textMapPropagator: new CompositePropagator({
     propagators: [
