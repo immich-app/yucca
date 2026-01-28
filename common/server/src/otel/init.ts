@@ -46,13 +46,7 @@ const otelSDK = new NodeSDK({
       }),
     ),
   ],
-  instrumentations: [
-    new PinoInstrumentation({
-      logHook(...args) {
-        console.info('log hook', ...args);
-      },
-    }),
-  ],
+  instrumentations: [new PinoInstrumentation()],
 });
 
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
