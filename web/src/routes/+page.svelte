@@ -16,7 +16,7 @@
   let value = $state("Loading from API...");
 
   onMount(() => {
-    hello().then((v) => (value = v!));
+    hello().then((v) => (value = v));
   });
 
   import { locale } from "svelte-i18n-lingui";
@@ -56,7 +56,7 @@
     <Button onclick={() => setLocale("en")}>Switch to English</Button>
     <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
 
-    {#if data.isLoggedIn}
+    {#if data.user}
       <Text>Currently logged in.</Text>
       <Button
         onclick={() => (location.href = defaults.baseUrl + "/auth/logout")}
