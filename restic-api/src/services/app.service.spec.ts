@@ -1,5 +1,6 @@
 import { S3ServiceException } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
+import { text } from 'node:stream/consumers';
 import { AuthDto } from 'src/dto/auth.dto';
 import { BlobType } from 'src/enum';
 import { type Mocks, newMocks } from '../../test/mocks';
@@ -17,7 +18,7 @@ describe(AppService.name, () => {
 
   beforeEach(() => {
     mocks = newMocks();
-    sut = new AppService(mocks.storage as never, mocks.metricService as never);
+    sut = new AppService(mocks.storage as never, mocks.metricService, mocks.wideContext);
   });
 
   it('should exist', () => {
@@ -45,15 +46,21 @@ describe(AppService.name, () => {
     });
 
     it('should fail if S3 command throws', async () => {
-      mocks.storage.checkBucket.mockRejectedValueOnce(void 0);
+      const S3Error = Symbol('S3Error');
+      mocks.storage.checkBucket.mockRejectedValueOnce(S3Error);
       await expect(sut.createRepository('repository', true)).rejects.toThrow();
       expect(mocks.storage.checkBucket).toHaveBeenCalled();
       expect(mocks.storage.createBucket).toHaveBeenCalledTimes(0);
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
+    });
 
-      mocks.storage.createBucket.mockRejectedValueOnce(void 0);
+    it('should fail if S3 command throws', async () => {
+      const S3Error = Symbol('S3Error');
+      mocks.storage.createBucket.mockRejectedValueOnce(S3Error);
       await expect(sut.createRepository('repository', true)).rejects.toThrow();
       expect(mocks.storage.checkBucket).toHaveBeenCalled();
       expect(mocks.storage.createBucket).toHaveBeenCalled();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
@@ -78,37 +85,71 @@ describe(AppService.name, () => {
     });
 
     it('should throw if headObject fails', async () => {
-      mocks.storage.headObject.mockRejectedValue(void 0);
+      const S3Error = Symbol('S3Error');
+      mocks.storage.headObject.mockRejectedValue(S3Error);
       await expect(sut.checkConfig(mockAuth())).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
   describe('getConfig', () => {
     it('should return the stream', async () => {
-      const object = Symbol('Object');
-      mocks.storage.getObject.mockResolvedValue(object as never);
       const result = await sut.getConfig(mockAuth());
-      expect(result).toEqual(expect.objectContaining({ object }));
+      expect(result).toEqual(
+        expect.objectContaining({
+          object: expect.objectContaining({
+            ContentLength: expect.any(Number),
+          }),
+        }),
+      );
       expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'config');
+
+      const data = await text(result.stream()!);
+      expect(data).toHaveLength(result.object.ContentLength!);
+      expect(sut.blobsDownloadedBytes.add).toHaveBeenCalledWith(
+        result.object.ContentLength,
+        expect.objectContaining({
+          customerId: 'user',
+          repositoryId: 'repository',
+        }),
+      );
+      expect(sut.blobsDownloadedBytes.add).toHaveBeenCalledTimes(1);
+      expect(sut.blobsRequestedBytes.add).toHaveBeenCalledWith(
+        result.object.ContentLength,
+        expect.objectContaining({
+          customerId: 'user',
+          repositoryId: 'repository',
+        }),
+      );
+      expect(sut.blobsRequestedBytes.add).toHaveBeenCalledTimes(1);
     });
 
     it('should throw if getObject fails', async () => {
-      mocks.storage.getObject.mockImplementation(() => new Promise((_, reject) => reject()));
+      const S3Error = Symbol('S3Error');
+      mocks.storage.getObject.mockImplementation(() => new Promise((_, reject) => reject(S3Error)));
       await expect(sut.getConfig(mockAuth())).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
   describe('saveConfig', () => {
     it('should save config', async () => {
       const body = Readable.from('body');
-      mocks.storage.putObject.mockResolvedValue(void 0 as never);
       await sut.saveConfig(mockAuth(), body as never);
       expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'config', expect.anything(), false);
+
+      expect(sut.blobsUploadedBytes.add).toHaveBeenCalledWith(
+        4,
+        expect.objectContaining({
+          customerId: 'user',
+          repositoryId: 'repository',
+        }),
+      );
+      expect(sut.blobsUploadedBytes.add).toHaveBeenCalledTimes(1);
     });
 
     it('should pass writeOnce flag', async () => {
       const body = Readable.from('body');
-      mocks.storage.putObject.mockResolvedValue(void 0 as never);
       await sut.saveConfig(mockAuth(true), body as never);
       expect(mocks.storage.putObject).toHaveBeenCalledWith('repository', 'config', expect.anything(), true);
     });
@@ -122,11 +163,15 @@ describe(AppService.name, () => {
       });
       mocks.storage.putObject.mockRejectedValue(error);
       await expect(sut.saveConfig(mockAuth(true), body as never)).rejects.toThrow('Config already exists');
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(error);
     });
 
     it('should throw on other errors', async () => {
-      mocks.storage.putObject.mockRejectedValue(new Error('other'));
-      await expect(sut.saveConfig(mockAuth(), null as never)).rejects.toThrow();
+      const body = Readable.from('body');
+      const S3Error = Symbol('S3Error');
+      mocks.storage.putObject.mockRejectedValue(S3Error);
+      await expect(sut.saveConfig(mockAuth(), body as never)).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
@@ -143,8 +188,10 @@ describe(AppService.name, () => {
     });
 
     it('should throw if deleteObject fails', async () => {
-      mocks.storage.deleteObject.mockRejectedValue(void 0);
+      const S3Error = Symbol('S3Error');
+      mocks.storage.deleteObject.mockRejectedValue(S3Error);
       await expect(sut.deleteConfig(mockAuth())).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
@@ -179,18 +226,22 @@ describe(AppService.name, () => {
     });
 
     it('should throw if Key or Size is missing', async () => {
+      const Contents = [{ Key: 'data/abc123' }];
       mocks.storage.listObjects.mockResolvedValue({
-        Contents: [{ Key: 'data/abc123' }],
+        Contents,
         KeyCount: 1,
         $metadata: void 0 as never,
       });
 
       await expect(sut.listBlobs(mockAuth(), BlobType.Data)).rejects.toThrow();
+      expect(mocks.wideContext.addContext).toHaveBeenCalledWith('contents', Contents);
     });
 
     it('should throw if listObjects fails', async () => {
-      mocks.storage.listObjects.mockRejectedValue(void 0);
+      const S3Error = Symbol('S3Error');
+      mocks.storage.listObjects.mockRejectedValue(S3Error);
       await expect(sut.listBlobs(mockAuth(), BlobType.Data)).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
@@ -209,37 +260,61 @@ describe(AppService.name, () => {
     });
 
     it('should throw if headObject fails', async () => {
-      mocks.storage.headObject.mockRejectedValue(void 0);
+      const S3Error = Symbol('S3Error');
+      mocks.storage.headObject.mockRejectedValue(S3Error);
       await expect(sut.checkBlob(mockAuth(), BlobType.Data, 'abc123')).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
   describe('getBlob', () => {
     it('should return the object', async () => {
-      const object = Symbol('Object');
-      mocks.storage.getObject.mockResolvedValue(object as never);
       const result = await sut.getBlob(mockAuth(), BlobType.Data, 'abc123');
-      expect(result).toEqual(expect.objectContaining({ object }));
+      expect(result).toEqual(
+        expect.objectContaining({
+          object: expect.objectContaining({
+            ContentLength: expect.any(Number),
+          }),
+        }),
+      );
       expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'data/abc123', undefined);
+
+      const data = await text(result.stream()!);
+      expect(data).toHaveLength(result.object.ContentLength!);
+      expect(sut.blobsDownloadedBytes.add).toHaveBeenCalledWith(
+        result.object.ContentLength,
+        expect.objectContaining({
+          customerId: 'user',
+          repositoryId: 'repository',
+        }),
+      );
+      expect(sut.blobsDownloadedBytes.add).toHaveBeenCalledTimes(1);
+      expect(sut.blobsRequestedBytes.add).toHaveBeenCalledWith(
+        result.object.ContentLength,
+        expect.objectContaining({
+          customerId: 'user',
+          repositoryId: 'repository',
+        }),
+      );
+      expect(sut.blobsRequestedBytes.add).toHaveBeenCalledTimes(1);
     });
 
     it('should pass range to getObjectStream', async () => {
-      const stream = Symbol('Stream');
-      mocks.storage.getObject.mockResolvedValue(stream as never);
       await sut.getBlob(mockAuth(), BlobType.Data, 'abc123', 'bytes=0-100');
       expect(mocks.storage.getObject).toHaveBeenCalledWith('repository', 'data/abc123', 'bytes=0-100');
     });
 
     it('should throw if getObject fails', async () => {
-      mocks.storage.getObject.mockImplementation(() => new Promise((_, reject) => reject()));
+      const S3Error = Symbol('S3Error');
+      mocks.storage.getObject.mockImplementation(() => new Promise((_, reject) => reject(S3Error)));
       await expect(sut.getBlob(mockAuth(), BlobType.Data, 'abc123')).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
   describe('saveBlob', () => {
     it('should save blob', async () => {
       const body = Readable.from('body');
-      mocks.storage.putObject.mockResolvedValue(void 0 as never);
       await sut.saveBlob(mockAuth(), BlobType.Data, 'abc123', body as never);
       expect(mocks.storage.putObject).toHaveBeenCalledWith(
         'repository',
@@ -248,11 +323,19 @@ describe(AppService.name, () => {
         false,
         'abc123',
       );
+
+      expect(sut.blobsUploadedBytes.add).toHaveBeenCalledWith(
+        4,
+        expect.objectContaining({
+          customerId: 'user',
+          repositoryId: 'repository',
+        }),
+      );
+      expect(sut.blobsUploadedBytes.add).toHaveBeenCalledTimes(1);
     });
 
     it('should pass writeOnce flag', async () => {
       const body = Readable.from('body');
-      mocks.storage.putObject.mockResolvedValue(void 0 as never);
       await sut.saveBlob(mockAuth(true), BlobType.Data, 'abc123', body as never);
       expect(mocks.storage.putObject).toHaveBeenCalledWith(
         'repository',
@@ -274,11 +357,15 @@ describe(AppService.name, () => {
       await expect(sut.saveBlob(mockAuth(true), BlobType.Data, 'abc123', body as never)).rejects.toThrow(
         'Blob already exists',
       );
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(error);
     });
 
     it('should throw on other errors', async () => {
-      mocks.storage.putObject.mockRejectedValue(new Error('other'));
-      await expect(sut.saveBlob(mockAuth(), BlobType.Data, 'abc123', null as never)).rejects.toThrow();
+      const body = Readable.from('body');
+      const S3Error = Symbol('S3Error');
+      mocks.storage.putObject.mockRejectedValue(S3Error);
+      await expect(sut.saveBlob(mockAuth(), BlobType.Data, 'abc123', body as never)).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 
@@ -301,8 +388,10 @@ describe(AppService.name, () => {
     });
 
     it('should throw if deleteObject fails', async () => {
-      mocks.storage.deleteObject.mockRejectedValue(void 0);
+      const S3Error = Symbol('S3Error');
+      mocks.storage.deleteObject.mockRejectedValue(S3Error);
       await expect(sut.deleteBlob(mockAuth(), BlobType.Data, 'abc123')).rejects.toThrow();
+      expect(mocks.wideContext.setErrorCause).toHaveBeenCalledWith(S3Error);
     });
   });
 });

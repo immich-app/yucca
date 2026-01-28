@@ -20,9 +20,9 @@ import { attachMeterToS3Object, S3RemoteObject } from 'src/utils/s3';
 @Traceable()
 @Injectable()
 export class AppService {
-  private blobsRequestedBytes: Counter;
-  private blobsDownloadedBytes: Counter;
-  private blobsUploadedBytes: Counter;
+  blobsRequestedBytes: Counter;
+  blobsDownloadedBytes: Counter;
+  blobsUploadedBytes: Counter;
 
   constructor(
     private readonly storage: StorageRepository,
