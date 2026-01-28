@@ -1,4 +1,4 @@
-import env from '@common/server/env';
+import { env } from '@common/server/env';
 import { WideContextRepository } from '@common/server/otel';
 import { Injectable, Scope } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
