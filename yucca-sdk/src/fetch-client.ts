@@ -20,9 +20,6 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
-export type OidcAuthorizeDto = {
-    redirectTo: string;
-};
 export type RepositoryMetricsDto = {
     lastUpload?: string;
     sizeBytes: number;
@@ -41,16 +38,6 @@ export type RepositoryListResponseDto = {
 export type RepositoryCreateResticUrlDto = {
     url: string;
 };
-export function hello(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/", {
-        ...opts
-    }));
-}
-export function protectedRoute(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/protected-route", {
-        ...opts
-    }));
-}
 export function getAuth(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;

@@ -172,17 +172,6 @@
           "sessionId"
         ]
       },
-      "OidcAuthorizeDto": {
-        "type": "object",
-        "properties": {
-          "redirectTo": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "redirectTo"
-        ]
-      },
       "RepositoryMetricsDto": {
         "type": "object",
         "properties": {

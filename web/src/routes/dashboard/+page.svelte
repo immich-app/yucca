@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { Button, Heading } from '@immich/ui';
-  import { createRepository, createResticUrl } from 'yucca-sdk';
+  import { Button, Heading } from "@immich/ui";
+  import { createRepository, createResticUrl } from "yucca-sdk";
 
   const { data } = $props();
   // svelte-ignore state_referenced_locally
   let repositories = $state(data.initialRepositories);
 
   async function create() {
-    repositories.push(await createRepository().then(({ repository }) => repository));
+    repositories.push(
+      await createRepository().then(({ repository }) => repository),
+    );
   }
 </script>
 
