@@ -28,7 +28,7 @@ export class AuthService {
       throw new UnauthorizedException(`Missing ${CookieName.AccessToken} cookie`);
     }
 
-    const user = await this.user.getBySessionToken(accessToken);
+    const user = await this.user.getByAccessToken(accessToken);
     if (!user) {
       throw new UnauthorizedException(`Invalid access token`);
     }

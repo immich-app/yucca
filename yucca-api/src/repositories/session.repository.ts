@@ -9,7 +9,7 @@ export class SessionRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
 
   create(session: Insertable<SessionTable>) {
-    return this.db.insertInto('sessions').values(session).returning('id').executeTakeFirstOrThrow();
+    return this.db.insertInto('sessions').values(session).returningAll().executeTakeFirstOrThrow();
   }
 
   delete(id: string) {

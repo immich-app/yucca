@@ -2,7 +2,7 @@ import { Controller, Get, Req, Res } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
-import { AuthDto, OidcAuthorizeDto } from 'src/dto/auth.dto';
+import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { AuthService } from 'src/services/auth.service';
@@ -27,14 +27,13 @@ export class AuthController {
   }
 
   @Get('/oidc/login')
-  @ApiOkResponse({ type: OidcAuthorizeDto })
-  async oidcAuthorize(@Res({ passthrough: true }) response: Response): Promise<OidcAuthorizeDto> {
+  async oidcAuthorize(@Res({ passthrough: true }) response: Response) {
     const { redirectTo, state, codeVerifier } = await this.auth.oidcAuthorize();
 
     response.cookie(CookieName.OidcState, state);
     response.cookie(CookieName.OidcCodeVerifier, codeVerifier);
 
-    return { redirectTo };
+    response.redirect(redirectTo);
   }
 
   @Get('/oidc/callback')

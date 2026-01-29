@@ -50,7 +50,7 @@ describe(AuthService.name, () => {
     });
 
     it('should return user if one is found', async () => {
-      mocks.user.getBySessionToken.mockResolvedValue(mockUser);
+      mocks.user.getByAccessToken.mockResolvedValue(mockUser);
       await expect(
         sut.authenticate({
           cookie: 'access-token=my-token',
