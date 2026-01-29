@@ -13,18 +13,18 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: src/routes/+page.svelte:40
+#: src/routes/+page.svelte:38
 msgid "{num, plural, one {# item} other {# items}}"
 msgstr "{num, plural, one {# hello} other {# hellos}}"
 
-#: src/routes/+page.svelte:37
-msgid "From the {0}: {1}"
-msgstr "{0}! {1}?"
+#: src/routes/+page.svelte:47
+#~ msgid "From the {0}: {1}"
+#~ msgstr "{0}! {1}?"
 
 #: src/routes/+page.svelte:33
 msgid "Purchase Immich"
 msgstr "Hello Immich"
 
-#: src/routes/+page.svelte:37
-msgid "yucca API"
-msgstr "the API"
+#: src/routes/+page.svelte:47
+#~ msgid "yucca API"
+#~ msgstr "the API"

@@ -47,6 +47,10 @@ run = [
     ] },
 ]
 
+[tasks.fix]
+description = "Run all possible code fixes"
+depends = ["*:fix"]
+
 [env]
 # default environment variables for development
 YUCCA_API_PORT = 3000

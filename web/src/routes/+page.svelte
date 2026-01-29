@@ -1,23 +1,7 @@
 <script lang="ts">
-  import {
-    SupporterBadge,
-    Logo,
-    Heading,
-    Text,
-    VStack,
-    Button,
-  } from "@immich/ui";
-  import { t, plural } from "svelte-i18n-lingui";
-  import { onMount } from "svelte";
-  import { defaults, hello, oidcAuthorize } from "yucca-sdk";
-
-  const { data } = $props();
-
-  let value = $state("Loading from API...");
-
-  onMount(() => {
-    hello().then((v) => (value = v));
-  });
+  import { Button } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
+  import { defaults } from "yucca-sdk";
 
   import { locale } from "svelte-i18n-lingui";
 
@@ -29,31 +13,10 @@
 
 <main class="p-4">
   <Button
-    onclick={() =>
-      oidcAuthorize().then(({ redirectTo }) => (location.href = redirectTo))}
-    >Login</Button
+    onclick={() => (location.href = defaults.baseUrl + "/api/auth/oidc/login")}
+    >{$t`Login`}</Button
   >
 
-  <div class="h-120"></div>
-
-  <VStack>
-    <SupporterBadge effect="always">
-      <Logo size="large" variant="icon" />
-      <Heading tag="h1" size="large" color="primary"
-        >{$t`Purchase Immich`}</Heading
-      >
-    </SupporterBadge>
-
-    <Text>{$t`From the ${$t`yucca API`}: ${value}`}</Text>
-
-    <Text
-      >{$plural(5, {
-        one: "# item",
-        other: "# items",
-      })}</Text
-    >
-
-    <Button onclick={() => setLocale("en")}>Switch to English</Button>
-    <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
-  </VStack>
+  <Button onclick={() => setLocale("en")}>Switch to English</Button>
+  <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
 </main>

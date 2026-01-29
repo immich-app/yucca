@@ -20,19 +20,6 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
-export type OidcAuthorizeDto = {
-    redirectTo: string;
-};
-export function hello(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/", {
-        ...opts
-    }));
-}
-export function protectedRoute(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/protected-route", {
-        ...opts
-    }));
-}
 export function getAuth(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -47,10 +34,7 @@ export function logout(opts?: Oazapfts.RequestOpts) {
     }));
 }
 export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: OidcAuthorizeDto;
-    }>("/auth/oidc/login", {
+    return oazapfts.ok(oazapfts.fetchText("/auth/oidc/login", {
         ...opts
     }));
 }
