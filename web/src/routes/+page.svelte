@@ -55,20 +55,5 @@
 
     <Button onclick={() => setLocale("en")}>Switch to English</Button>
     <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
-
-    {#if data.user}
-      <Text>Currently logged in.</Text>
-      <Button
-        onclick={() => (location.href = defaults.baseUrl + "/auth/logout")}
-        >Log out</Button
-      >
-    {:else}
-      <Button
-        onclick={() =>
-          oidcAuthorize().then(
-            ({ redirectTo }) => (location.href = redirectTo),
-          )}>Login</Button
-      >
-    {/if}
   </VStack>
 </main>

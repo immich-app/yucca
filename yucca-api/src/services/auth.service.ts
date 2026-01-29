@@ -44,7 +44,7 @@ export class AuthService {
     return url;
   }
 
-  async oidcAuthorize() /* todo */ {
+  async oidcAuthorize(): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
     const { redirectTo, state, codeVerifier } = await this.oidc.authorize();
     return { redirectTo: redirectTo.href, state, codeVerifier };
   }
@@ -60,7 +60,7 @@ export class AuthService {
     const { [CookieName.OidcState]: expectedState, [CookieName.OidcCodeVerifier]: codeVerifier } = cookies;
 
     if (!expectedState) {
-      throw new Error('missing expected state');
+      throw new Error('missing expectedState');
     }
 
     if (!codeVerifier) {
@@ -70,17 +70,17 @@ export class AuthService {
     const claims = await this.oidc.callback(url, expectedState, codeVerifier);
 
     if (!claims) {
-      throw new Error(' todo: error ');
+      throw new Error('no id token received');
     }
 
     this.wideContext.assignContext({ claims });
 
     if (typeof claims.name !== 'string') {
-      throw '';
+      throw new TypeError('name is missing from claims');
     }
 
     if (typeof claims.email !== 'string') {
-      throw '';
+      throw new TypeError('email is missing from claims');
     }
 
     let user = await this.user.getBySub(claims.sub);
