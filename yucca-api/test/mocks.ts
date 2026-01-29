@@ -5,8 +5,6 @@ import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
 
-jest.mock('openid-client', () => ({}));
-
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 
 export const newCryptoRepositoryMock = (): jest.Mocked<RepositoryInterface<CryptoRepository>> => {
