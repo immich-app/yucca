@@ -1,34 +1,6 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/": {
-      "get": {
-        "operationId": "hello",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "App"
-        ]
-      }
-    },
-    "/protected-route": {
-      "get": {
-        "operationId": "protectedRoute",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "App"
-        ]
-      }
-    },
     "/auth": {
       "get": {
         "operationId": "getAuth",
@@ -70,14 +42,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OidcAuthorizeDto"
-                }
-              }
-            }
+            "description": ""
           }
         },
         "tags": [

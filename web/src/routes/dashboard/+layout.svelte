@@ -1,13 +1,7 @@
 <script lang="ts">
-  import {
-    AppShell,
-    AppShellHeader,
-    Avatar,
-    Button,
-    Heading,
-    HStack,
-  } from "@immich/ui";
+  import { Avatar, Button, Heading, HStack } from "@immich/ui";
   import { defaults } from "yucca-sdk";
+  import { t } from "svelte-i18n-lingui";
 
   const { data, children } = $props();
 </script>
@@ -20,7 +14,7 @@
         <Avatar name={data.user!.name} />
         <Button
           onclick={() => (location.href = defaults.baseUrl + "/auth/logout")}
-          >Logout</Button
+          >{$t`Logout`}</Button
         >
       </HStack>
     </div>

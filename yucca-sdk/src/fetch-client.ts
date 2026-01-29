@@ -65,10 +65,7 @@ export function logout(opts?: Oazapfts.RequestOpts) {
     }));
 }
 export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: OidcAuthorizeDto;
-    }>("/auth/oidc/login", {
+    return oazapfts.ok(oazapfts.fetchText("/auth/oidc/login", {
         ...opts
     }));
 }

@@ -9,14 +9,14 @@ export class UserRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
 
   create(user: Insertable<UserTable>) {
-    return this.db.insertInto('users').values(user).returning('id').executeTakeFirstOrThrow();
+    return this.db.insertInto('users').values(user).returningAll().executeTakeFirstOrThrow();
   }
 
   getBySub(sub: string) {
     return this.db.selectFrom('users').select('id').where('sub', '=', sub).executeTakeFirst();
   }
 
-  getBySessionToken(accessToken: string) {
+  getByAccessToken(accessToken: string) {
     return this.db
       .selectFrom('sessions')
       .where('accessToken', '=', accessToken)

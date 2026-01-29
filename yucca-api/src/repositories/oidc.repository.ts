@@ -3,7 +3,7 @@ import { OnModuleInit } from '@nestjs/common';
 import * as client from 'openid-client';
 
 export class OidcRepository implements OnModuleInit {
-  config!: client.Configuration;
+  private config!: client.Configuration;
 
   async onModuleInit() {
     this.config = await client.discovery(env.OIDC_ISSUER, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET, undefined, {
