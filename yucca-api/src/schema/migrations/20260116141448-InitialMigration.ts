@@ -14,7 +14,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
     .addColumn('userId', 'uuid')
     .addColumn('accessToken', 'varchar')
-    .addForeignKeyConstraint('userIdFkey', ['userId'], 'users', ['id'])
+    .addForeignKeyConstraint('userIdFkey', ['userId'], 'users', ['id'], (cb) => cb.onDelete('cascade'))
     .execute();
 }
 
