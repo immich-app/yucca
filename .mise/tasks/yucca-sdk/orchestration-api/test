@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Test yucca-sdk/orchestration-api"
+set -e
+
+pnpm --filter orchestration-api test

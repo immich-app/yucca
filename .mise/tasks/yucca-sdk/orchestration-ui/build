@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build yucca-sdk/orchestration-ui"
+set -e
+
+pnpm --filter orchestration-ui build

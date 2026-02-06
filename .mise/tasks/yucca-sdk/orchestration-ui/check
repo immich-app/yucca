@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run Svelte checks for yucca-sdk/orchestration-ui"
+set -e
+
+pnpm --filter orchestration-ui check

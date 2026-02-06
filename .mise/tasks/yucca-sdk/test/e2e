@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Run end-to-end tests for yucca-sdk"
+#MISE depends=["yucca-sdk:*:test:e2e"]
+set -e
