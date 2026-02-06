@@ -40,6 +40,6 @@
     "@lingui/core": "^5.8.0",
     "@mdi/js": "^7.4.47",
     "svelte-i18n-lingui": "^0.2.2",
-    "yucca-sdk": "workspace:^"
+    "yucca-api-client": "workspace:^"
   }
 }

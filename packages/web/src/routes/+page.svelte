@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from "@immich/ui";
   import { t } from "svelte-i18n-lingui";
-  import { defaults } from "yucca-sdk";
+  import { defaults } from "yucca-api-client";
 
   import { locale } from "svelte-i18n-lingui";
 

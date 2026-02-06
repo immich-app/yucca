@@ -1,4 +1,4 @@
-import { getAuth } from 'yucca-sdk';
+import { getAuth } from 'yucca-api-client';
 
 export const auth = async (fetch: typeof globalThis.fetch) => {
   try {

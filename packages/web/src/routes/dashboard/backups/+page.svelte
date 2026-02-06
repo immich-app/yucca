@@ -22,7 +22,7 @@
     mdiDatabaseRefreshOutline,
     mdiPlus,
   } from "@mdi/js";
-  import { createRepository, createResticUrl } from "yucca-sdk";
+  import { createRepository, createResticUrl } from "yucca-api-client";
   import { t } from "svelte-i18n-lingui";
 
   const { data } = $props();

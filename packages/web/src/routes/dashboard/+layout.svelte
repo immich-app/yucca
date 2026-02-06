@@ -9,7 +9,7 @@
     HStack,
     NavbarItem,
   } from "@immich/ui";
-  import { defaults } from "yucca-sdk";
+  import { defaults } from "yucca-api-client";
   import { t } from "svelte-i18n-lingui";
   import { page } from "$app/state";
   import { mdiViewDashboard, mdiBackupRestore } from "@mdi/js";

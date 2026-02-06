@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Generate and build yucca-api-client"
+#MISE depends=["yucca-api:sync-openapi"]
+set -e
+
+pnpm --filter yucca-api-client generate
+pnpm --filter yucca-api-client build
