@@ -37,7 +37,9 @@ export class DatabaseRepository {
     if (error) {
       this.logger.error(`Migrations failed: ${error}`);
 
-      if (env.NODE_ENV !== 'development') {
+      if (env.NODE_ENV === 'development') {
+        this.logger.warn(`⚠️ Ignoring error in development mode!`);
+      } else {
         throw error;
       }
     }
