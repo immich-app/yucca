@@ -5,6 +5,6 @@
   "sourceRoot": "src",
   "entryFile": "index",
   "compilerOptions": {
-    "webpack": true
+    "webpack": false
   }
 }

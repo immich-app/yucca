@@ -1,8 +1,9 @@
 {
   "name": "orchestration-ui",
   "version": "0.0.1",
+  "license": "UNLICENSED",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "vite dev --port 5174",
     "build": "vite build && npm run prepack",
     "preview": "vite preview --port 4174",
     "prepare": "svelte-kit sync || echo ''",
@@ -11,7 +12,8 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test:unit": "vitest",
     "test": "npm run test:unit -- --run && npm run test:e2e",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "generate:fetch-client": "oazapfts --optimistic ../orchestration-api/openapi-specs.json src/lib/fetch-client.ts"
   },
   "files": [
     "dist",
@@ -41,6 +43,7 @@
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/vite": "^4.1.18",
     "@vitest/browser-playwright": "^4.0.18",
+    "oazapfts": "^7.0.1",
     "playwright": "^1.57.0",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "publint": "^0.3.17",
@@ -54,5 +57,8 @@
   },
   "keywords": [
     "svelte"
-  ]
+  ],
+  "dependencies": {
+    "@oazapfts/runtime": "^1.1.0"
+  }
 }

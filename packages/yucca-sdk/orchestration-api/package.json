@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "build": "nest build",
-    "test": "jest"
+    "test": "jest",
+    "sync:openapi": "ts-node bin/sync-openapi.ts"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
     "@nestjs/common": "^11.1.13",
@@ -18,11 +19,14 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.14",
     "@nestjs/schematics": "^11.0.9",
+    "@nestjs/swagger": "^11.2.5",
     "@nestjs/testing": "^11.1.11",
     "@types/jest": "^30.0.0",
+    "@types/node": "^25.2.1",
     "jest": "^30.2.0",
     "ts-jest": "^29.4.6",
-    "ts-loader": "^9.5.4"
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2"
   },
   "jest": {
     "moduleFileExtensions": [
