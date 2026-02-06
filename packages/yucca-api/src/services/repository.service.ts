@@ -1,6 +1,6 @@
 import { env } from '@common/server/env';
 import { WideContextRepository } from '@common/server/otel';
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
@@ -46,7 +46,12 @@ export class RepositoryService {
     };
   }
 
-  async createUrl(auth: AuthDto, repository: { id: string; worm: boolean }) {
+  async createUrl(auth: AuthDto, id: string) {
+    const repository = await this.repositoryRepository.get(id);
+    if (repository.userId !== auth.id) {
+      throw new UnauthorizedException();
+    }
+
     const token = await this.jwt.signAsync({
       user: auth.id,
       repository: repository.id,

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
@@ -31,11 +31,6 @@ export class RepositoryController {
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryCreateResticUrlDto })
   async createResticUrl(@Auth() auth: AuthDto, @Param('id') id: string): Promise<RepositoryCreateResticUrlDto> {
-    const repository = await this.repository.get(id);
-    if (repository.userId !== auth.id) {
-      throw new UnauthorizedException('todo: refactor somewhere else');
-    }
-
-    return this.repository.createUrl(auth, repository);
+    return this.repository.createUrl(auth, id);
   }
 }
