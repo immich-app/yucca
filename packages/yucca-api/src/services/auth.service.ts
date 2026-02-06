@@ -1,5 +1,5 @@
 import { WideContextRepository } from '@common/server/otel';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { parse } from 'cookie';
 import { Request } from 'express';
 import { IncomingHttpHeaders } from 'node:http';
@@ -53,34 +53,34 @@ export class AuthService {
     const url = new URL(`${request.protocol}://${request.get('Host')}${request.originalUrl}`);
 
     if (url.searchParams.has('error')) {
-      throw new Error(`OIDC callback: ${url.searchParams.get('error_description') ?? 'unc'}`);
+      throw new InternalServerErrorException(`OIDC callback: ${url.searchParams.get('error_description') ?? 'unc'}`);
     }
 
     const cookies = parse(request.headers.cookie || '');
     const { [CookieName.OidcState]: expectedState, [CookieName.OidcCodeVerifier]: codeVerifier } = cookies;
 
     if (!expectedState) {
-      throw new Error('missing expectedState');
+      throw new InternalServerErrorException('missing expectedState');
     }
 
     if (!codeVerifier) {
-      throw new Error('missing codeVerifier');
+      throw new InternalServerErrorException('missing codeVerifier');
     }
 
     const claims = await this.oidc.callback(url, expectedState, codeVerifier);
 
     if (!claims) {
-      throw new Error('no id token received');
+      throw new InternalServerErrorException('no id token received');
     }
 
     this.wideContext.assignContext({ claims });
 
     if (typeof claims.name !== 'string') {
-      throw new TypeError('name is missing from claims');
+      throw new InternalServerErrorException('name is missing from claims');
     }
 
     if (typeof claims.email !== 'string') {
-      throw new TypeError('email is missing from claims');
+      throw new InternalServerErrorException('email is missing from claims');
     }
 
     let user = await this.user.getBySub(claims.sub);
