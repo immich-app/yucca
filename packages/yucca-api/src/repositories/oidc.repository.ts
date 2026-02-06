@@ -19,8 +19,6 @@ export class OidcRepository implements OnModuleInit {
     const codeVerifier = client.randomPKCECodeVerifier();
     const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
 
-    let state: string | undefined;
-
     const parameters: Record<string, string> = {
       redirect_uri: env.OIDC_REDIRECT_URI,
       scope: env.OIDC_SCOPE,
@@ -28,16 +26,9 @@ export class OidcRepository implements OnModuleInit {
       code_challenge_method: 'S256',
     };
 
-    if (this.config.serverMetadata().supportsPKCE()) {
-      // we are using PKCE, but populate state anyways
-      // to avoid issues with the OIDC mock server
-      state = 'yucca';
-      parameters.state = state;
-    } else {
-      // non-PKCE fallback
-      state = client.randomState();
-      parameters.state = state;
-    }
+    // non-PKCE fallback
+    const state = client.randomState();
+    parameters.state = state;
 
     const redirectTo: URL = client.buildAuthorizationUrl(this.config, parameters);
 
