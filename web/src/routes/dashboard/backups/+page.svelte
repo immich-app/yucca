@@ -1,8 +1,29 @@
 <script lang="ts">
-  import { Badge, Button, Card, CardBody, CardFooter, CardHeader, CardTitle, Heading, HStack, Icon, IconButton, immichLogo, Text, VStack } from "@immich/ui";
-  import { mdiArchive, mdiArchiveOutline, mdiBackupRestore, mdiDatabaseRefreshOutline, mdiPlus } from "@mdi/js";
+  import {
+    Badge,
+    Button,
+    Card,
+    CardBody,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+    Heading,
+    HStack,
+    Icon,
+    IconButton,
+    immichLogo,
+    Text,
+    VStack,
+  } from "@immich/ui";
+  import {
+    mdiArchive,
+    mdiArchiveOutline,
+    mdiBackupRestore,
+    mdiDatabaseRefreshOutline,
+    mdiPlus,
+  } from "@mdi/js";
   import { createRepository, createResticUrl } from "yucca-sdk";
-import { t } from 'svelte-i18n-lingui';
+  import { t } from "svelte-i18n-lingui";
 
   const { data } = $props();
   // svelte-ignore state_referenced_locally

@@ -1,9 +1,18 @@
 <script lang="ts">
-  import { AppShell, AppShellHeader, AppShellSidebar, Avatar, Button, Heading, HStack, NavbarItem } from "@immich/ui";
+  import {
+    AppShell,
+    AppShellHeader,
+    AppShellSidebar,
+    Avatar,
+    Button,
+    Heading,
+    HStack,
+    NavbarItem,
+  } from "@immich/ui";
   import { defaults } from "yucca-sdk";
   import { t } from "svelte-i18n-lingui";
-  import { page } from '$app/state';
-  import { mdiViewDashboard, mdiBackupRestore } from '@mdi/js';
+  import { page } from "$app/state";
+  import { mdiViewDashboard, mdiBackupRestore } from "@mdi/js";
 
   const { data, children } = $props();
 
