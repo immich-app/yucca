@@ -9,5 +9,6 @@
   "transformIgnorePatterns": ["/node_modules/.pnpm/(?!(openid-client|oauth4webapi|jose))"],
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
-  }
+  },
+  "forceExit": true
 }

@@ -3,7 +3,6 @@ import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { parse } from 'cookie';
-import { DatabaseRepository } from 'src/repositories/database.repository';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { controllers, imports, providers } from '../src/app.module';
@@ -32,10 +31,6 @@ describe('AuthController (e2e)', () => {
 
     await testUtils.resetDatabase();
     ({ user, session } = await testUtils.createUser());
-  });
-
-  afterEach(async () => {
-    await app.get(DatabaseRepository).shutdown();
   });
 
   describe('GET /auth', () => {
