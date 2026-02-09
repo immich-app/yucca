@@ -107,9 +107,9 @@
             size="tiny"
             onclick={async () =>
               alert(
-                await provider
+                /*await provider
                   .createResticUrl(repository.id)
-                  .then(({ url }) => url),
+                  .then(({ url }) => url),*/ "unimplemented",
               )}>Test Create URL</Button
           ></CardFooter
         >

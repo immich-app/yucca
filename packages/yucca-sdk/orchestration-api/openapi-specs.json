@@ -1,17 +1,43 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/": {
-      "get": {
-        "operationId": "test",
+    "/api/repository": {
+      "post": {
+        "operationId": "createRepository",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
-          "OrchestrationApi"
+          "Repository"
+        ]
+      },
+      "get": {
+        "operationId": "getRepositories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
         ]
       }
     }
@@ -25,7 +51,7 @@
   "tags": [],
   "servers": [
     {
-      "url": "/"
+      "url": "http://localhost:22676"
     }
   ],
   "components": {

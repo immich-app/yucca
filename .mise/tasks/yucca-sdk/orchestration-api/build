@@ -3,4 +3,3 @@
 set -e
 
 pnpm --filter orchestration-api build
-pnpm --filter orchestration-api sync:open-api

@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
-import { OrchestrationApiController } from './orchestration-api.controller';
+import { RepositoryController } from './controllers/repository.controller';
 import { OrchestrationApiService } from './orchestration-api.service';
+import { ConfigRepository } from './repositories/config.repository';
+import { ResticRepository } from './repositories/restic.repository';
+import { YuccaApiRepository } from './repositories/yuccaApi.repository';
 
 @Module({
-  controllers: [OrchestrationApiController],
-  providers: [OrchestrationApiService],
+  controllers: [RepositoryController],
+  providers: [ConfigRepository, ResticRepository, YuccaApiRepository, OrchestrationApiService],
   exports: [OrchestrationApiService],
 })
 export class OrchestrationApiModule {}

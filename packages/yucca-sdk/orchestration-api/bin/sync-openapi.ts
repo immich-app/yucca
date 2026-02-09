@@ -6,6 +6,7 @@ import { OrchestrationApiModule } from '../dist/index';
 
 async function main() {
   const app = await NestFactory.create<NestApplication>(OrchestrationApiModule);
+  app.setGlobalPrefix('api');
 
   const builder = new DocumentBuilder()
     .setTitle('yucca')
@@ -16,7 +17,6 @@ async function main() {
 
   const options: SwaggerDocumentOptions = {
     operationIdFactory: (_: string, methodKey: string) => methodKey,
-    ignoreGlobalPrefix: true,
   };
 
   const specification = SwaggerModule.createDocument(app, config, options);

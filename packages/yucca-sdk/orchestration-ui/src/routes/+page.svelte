@@ -1,5 +1,14 @@
 <script>
   import BackupsList from "$lib/components/BackupsList.svelte";
+  import {
+    MockProvider,
+    orchestrationApiProvider,
+    setProvider,
+  } from "$lib/providers.ts";
+  import { Button } from "@immich/ui";
+  import TestUi from "./TestUi.svelte";
+
+  let mock = $state(true);
 </script>
 
 <h1>Welcome to your library project</h1>
@@ -12,4 +21,9 @@
   documentation
 </p>
 
-<BackupsList />
+<Button onclick={() => (mock = true)}>Use mock provider</Button>
+<Button onclick={() => (mock = false)}>Use orchestration API</Button>
+
+{#key mock}
+  <TestUi {mock} />
+{/key}

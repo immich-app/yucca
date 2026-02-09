@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/auth": {
+    "/api/auth": {
       "get": {
         "operationId": "getAuth",
         "parameters": [],
@@ -22,7 +22,7 @@
         ]
       }
     },
-    "/auth/logout": {
+    "/api/auth/logout": {
       "get": {
         "operationId": "logout",
         "parameters": [],
@@ -36,7 +36,7 @@
         ]
       }
     },
-    "/auth/oidc/login": {
+    "/api/auth/oidc/login": {
       "get": {
         "operationId": "oidcAuthorize",
         "parameters": [],
@@ -50,7 +50,7 @@
         ]
       }
     },
-    "/auth/oidc/callback": {
+    "/api/auth/oidc/callback": {
       "get": {
         "operationId": "oidcCallback",
         "parameters": [],
@@ -64,7 +64,7 @@
         ]
       }
     },
-    "/repository": {
+    "/api/repository": {
       "post": {
         "operationId": "createRepository",
         "parameters": [],
@@ -104,7 +104,7 @@
         ]
       }
     },
-    "/repository/{id}/restic": {
+    "/api/repository/{id}/restic": {
       "post": {
         "operationId": "createResticUrl",
         "parameters": [
@@ -144,7 +144,7 @@
   "tags": [],
   "servers": [
     {
-      "url": "/api"
+      "url": "/"
     }
   ],
   "components": {
