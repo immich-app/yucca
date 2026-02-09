@@ -5,9 +5,6 @@ import * as orchestrationApiClient from './fetch-client.ts';
 export abstract class BaseProvider {
   abstract getRepositories(): Promise<yuccaApiClient.RepositoryListResponseDto>;
   abstract createRepository(): Promise<yuccaApiClient.RepositoryCreateResponseDto>;
-  // abstract createResticUrl(
-  //   id: string,
-  // ): Promise<yuccaApiClient.RepositoryCreateResticUrlDto>;
 }
 
 export const yuccaApiProvider = yuccaApiClient as BaseProvider;
@@ -38,14 +35,6 @@ export class MockProvider extends BaseProvider {
           sizeBytes: 1337,
         },
       },
-    };
-  }
-
-  async createResticUrl(
-    id: string,
-  ): Promise<yuccaApiClient.RepositoryCreateResticUrlDto> {
-    return {
-      url: `http://example.com/${id}`,
     };
   }
 }

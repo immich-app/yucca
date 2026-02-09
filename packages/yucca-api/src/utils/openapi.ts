@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const useSwagger = (app: INestApplication, { write }: { write: boolean }) => {
-  const builder = new DocumentBuilder().setTitle('yucca').setDescription('yucca API').addServer('/').setBasePath('api');
+  const builder = new DocumentBuilder().setTitle('yucca').setDescription('yucca API').addServer('/');
 
   const config = builder.build();
 

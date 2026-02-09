@@ -1,2 +1,2 @@
-export * from './orchestration-api.module';
-export * from './orchestration-api.service';
+export * from './orchestrationApi.module';
+export * from './services/orchestrationApi.service';
