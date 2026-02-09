@@ -1,7 +1,13 @@
 <script lang="ts">
-	import './layout.css';
+  import { MockProvider, setProvider } from "$lib/providers.ts";
+  import { TooltipProvider } from "@immich/ui";
+  import "./layout.css";
 
-	const { children } = $props();
+  const { children } = $props();
+
+  setProvider(new MockProvider());
 </script>
 
-{@render children()}
+<TooltipProvider>
+  {@render children()}
+</TooltipProvider>

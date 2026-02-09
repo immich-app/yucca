@@ -59,6 +59,9 @@
     "svelte"
   ],
   "dependencies": {
-    "@oazapfts/runtime": "^1.1.0"
+    "@immich/ui": "^0.59.0",
+    "@mdi/js": "^7.4.47",
+    "@oazapfts/runtime": "^1.1.0",
+    "yucca-api-client": "workspace:^"
   }
 }

@@ -13,8 +13,11 @@
   import { t } from "svelte-i18n-lingui";
   import { page } from "$app/state";
   import { mdiViewDashboard, mdiBackupRestore } from "@mdi/js";
+  import { setProvider, yuccaApiProvider } from "orchestration-ui";
 
   const { data, children } = $props();
+
+  setProvider(yuccaApiProvider);
 
   let open = $state(true);
 </script>

@@ -13,8 +13,10 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
+    "@futo-org/restic-wrapper": "1.1.0",
     "@nestjs/common": "^11.1.13",
-    "@nestjs/core": "^11.1.11"
+    "@nestjs/core": "^11.1.11",
+    "yucca-api-client": "workspace:^"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.14",
