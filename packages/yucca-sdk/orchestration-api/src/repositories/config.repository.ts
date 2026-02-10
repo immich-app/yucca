@@ -1,14 +1,35 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 @Injectable()
-export class ConfigRepository {
-  getAccessToken() {
-    // from login flow -- need to grab it from client
-    return 'b2b8cf695f188e11bfd0b9348448972382a767aea426268c73afd350942c0f04';
+export class ConfigRepository implements OnModuleInit {
+  async onModuleInit() {
+    await mkdir('.data');
+    await writeFile('.data/encryptionKey', randomBytes(32).toString('hex'));
   }
 
-  getEncryptionKey(): Buffer {
-    // randomBytes(32) .hex .uppercase
-    return Buffer.from('19353BB7B8A5897279E55BF30C88ECD840CD8BDBD50E7F3E4B9199B91197A24C'.toLowerCase(), 'hex');
+  async getAccessToken() {
+    try {
+      const file = await readFile('.data/accessToken');
+      return file.toString();
+    } catch {
+      return;
+    }
+  }
+
+  async getAccessTokenOrThrow() {
+    const file = await readFile('.data/accessToken');
+    return file.toString();
+  }
+
+  async getEncryptionKey(): Promise<Buffer> {
+    const file = await readFile('.data/encryptionKey');
+    return Buffer.from(file.toString(), 'hex');
+  }
+
+  async getRecoveryKey(): Promise<string> {
+    const file = await readFile('.data/encryptionKey');
+    return file.toString().toUpperCase();
   }
 }

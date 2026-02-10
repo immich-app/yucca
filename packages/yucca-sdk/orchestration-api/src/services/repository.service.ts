@@ -10,11 +10,11 @@ export class RepositoryService {
     private readonly yucca: YuccaApiRepository,
   ) {}
 
-  createRepository(): Promise<RepositoryCreateResponseDto> {
-    return this.yucca.createRepository(this.config.getAccessToken(), false);
+  async createRepository(): Promise<RepositoryCreateResponseDto> {
+    return this.yucca.createRepository(await this.config.getAccessTokenOrThrow(), false);
   }
 
-  getRepositories(): Promise<RepositoryListResponseDto> {
-    return this.yucca.getRepositories(this.config.getAccessToken());
+  async getRepositories(): Promise<RepositoryListResponseDto> {
+    return this.yucca.getRepositories(await this.config.getAccessTokenOrThrow());
   }
 }
