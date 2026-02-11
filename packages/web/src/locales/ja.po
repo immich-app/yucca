@@ -13,30 +13,30 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: src/routes/+page.svelte:38
+#: src/routes/+page.svelte
 #~ msgid "{num, plural, one {# item} other {# items}}"
 #~ msgstr "{num, plural, one {# hello} other {# hellos}}"
 
-#: src/routes/dashboard/backups/+page.svelte:48
-msgid "Create new backup"
-msgstr ""
+#: src/routes/dashboard/backups/+page.svelte
+#~ msgid "Create new backup"
+#~ msgstr ""
 
-#: src/routes/+page.svelte:47
+#: src/routes/+page.svelte
 #~ msgid "From the {0}: {1}"
 #~ msgstr "{0}! {1}?"
 
-#: src/routes/+page.svelte:17
+#: src/routes/+page.svelte
 msgid "Login"
 msgstr ""
 
-#: src/routes/dashboard/+layout.svelte:30
+#: src/routes/dashboard/+layout.svelte
 msgid "Logout"
 msgstr ""
 
-#: src/routes/+page.svelte:33
+#: src/routes/+page.svelte
 #~ msgid "Purchase Immich"
 #~ msgstr "Hello Immich"
 
-#: src/routes/+page.svelte:47
+#: src/routes/+page.svelte
 #~ msgid "yucca API"
 #~ msgstr "the API"

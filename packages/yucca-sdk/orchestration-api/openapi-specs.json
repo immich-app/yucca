@@ -11,7 +11,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
                 }
               }
             }
@@ -30,7 +30,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/RepositoryListResponseDto"
                 }
               }
             }
@@ -38,6 +38,73 @@
         },
         "tags": [
           "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}": {
+      "post": {
+        "operationId": "createBackup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "get": {
+        "operationId": "login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/callback": {
+      "get": {
+        "operationId": "callback",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
         ]
       }
     }
@@ -55,6 +122,68 @@
     }
   ],
   "components": {
-    "schemas": {}
+    "schemas": {
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastUpload": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "LocalRepositoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "local": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "worm",
+          "metrics"
+        ]
+      },
+      "RepositoryCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/LocalRepositoryDto"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      },
+      "RepositoryListResponseDto": {
+        "type": "object",
+        "properties": {
+          "repositories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocalRepositoryDto"
+            }
+          }
+        },
+        "required": [
+          "repositories"
+        ]
+      }
+    }
   }
 }

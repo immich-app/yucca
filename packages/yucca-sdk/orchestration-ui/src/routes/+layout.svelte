@@ -3,7 +3,7 @@
     MockProvider,
     orchestrationApiProvider,
     setProvider,
-  } from "$lib/providers.ts";
+  } from "$lib/providers.js";
   import { TooltipProvider } from "@immich/ui";
   import "./layout.css";
 

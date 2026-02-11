@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
-import { RepositoryController } from './controllers/repository.controller';
-import { ConfigRepository } from './repositories/config.repository';
-import { ResticRepository } from './repositories/restic.repository';
-import { YuccaApiRepository } from './repositories/yuccaApi.repository';
-import { OrchestrationApiService } from './services/orchestrationApi.service';
-import { RepositoryService } from './services/repository.service';
+import { AuthController } from './controllers/auth.controller.js';
+import { RepositoryController } from './controllers/repository.controller.js';
+import { ConfigRepository } from './repositories/config.repository.js';
+import { ResticRepository } from './repositories/restic.repository.js';
+import { YuccaApiRepository } from './repositories/yuccaApi.repository.js';
+import { OrchestrationApiService } from './services/orchestrationApi.service.js';
+import { RepositoryService } from './services/repository.service.js';
 
 @Module({
-  controllers: [RepositoryController],
+  controllers: [RepositoryController, AuthController],
   providers: [ConfigRepository, ResticRepository, YuccaApiRepository, RepositoryService, OrchestrationApiService],
   exports: [OrchestrationApiService],
 })

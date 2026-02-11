@@ -12,12 +12,14 @@
     immichLogo,
   } from "@immich/ui";
   import { mdiArchiveOutline, mdiPlus } from "@mdi/js";
-  import { getProvider } from "$lib/providers.ts";
+  import { getProvider } from "$lib/providers.js";
   import { onMount } from "svelte";
-  import type { RepositoryListResponseDto } from "yucca-api-client";
+  import type { LocalRepositoryDto } from "$lib/fetch-client.js";
+
+  type Repository = Omit<LocalRepositoryDto, 'local'> & { local?: boolean };
 
   interface Props {
-    initialData?: RepositoryListResponseDto;
+    initialData?: { repositories: Repository[] };
   }
 
   const { initialData }: Props = $props();
@@ -102,17 +104,18 @@
             {/if}
           </HStack>
         </CardBody>
-        <CardFooter
-          ><Button
-            size="tiny"
-            onclick={async () =>
-              alert(
-                /*await provider
-                  .createResticUrl(repository.id)
-                  .then(({ url }) => url),*/ "unimplemented",
-              )}>Test Create URL</Button
-          ></CardFooter
-        >
+        {#if repository.local}
+          <CardFooter
+            ><Button
+              size="tiny"
+              onclick={async () =>
+                provider
+                  .createBackup(repository.id)
+                  .then(() => alert("success!"))
+                  .catch(() => alert("fail!"))}>Backup Now</Button
+            ></CardFooter
+          >
+        {/if}
       </Card>
     {/each}
   </div>

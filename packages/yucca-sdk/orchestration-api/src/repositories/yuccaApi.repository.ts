@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
-import { createRepository, defaults, getRepositories } from 'yucca-api-client';
+import { createRepository, createResticUrl, defaults, getRepositories } from 'yucca-api-client';
 
 @Injectable()
 export class YuccaApiRepository implements OnModuleInit {
@@ -19,6 +19,14 @@ export class YuccaApiRepository implements OnModuleInit {
 
   async getRepositories(accessToken: string) {
     return getRepositories({
+      headers: {
+        Cookie: `access-token=${accessToken}`,
+      },
+    });
+  }
+
+  async createResticUrl(id: string, accessToken: string) {
+    return createResticUrl(id, {
       headers: {
         Cookie: `access-token=${accessToken}`,
       },

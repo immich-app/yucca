@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigRepository } from 'src/repositories/config.repository';
-import { YuccaApiRepository } from 'src/repositories/yuccaApi.repository';
+import { ConfigRepository } from '../repositories/config.repository.js';
+import { YuccaApiRepository } from '../repositories/yuccaApi.repository.js';
 import { RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
 
 @Injectable()

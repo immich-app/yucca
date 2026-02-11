@@ -1,6 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { OrchestrationApiModule } from '../src';
+import { OrchestrationApiModule } from '../src/index.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(OrchestrationApiModule);

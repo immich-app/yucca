@@ -4,7 +4,7 @@
     MockProvider,
     orchestrationApiProvider,
     setProvider,
-  } from "$lib/providers.ts";
+  } from "$lib/providers.js";
 
   const { mock }: { mock: boolean } = $props();
 

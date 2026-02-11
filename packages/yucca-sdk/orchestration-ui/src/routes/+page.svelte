@@ -4,7 +4,7 @@
     MockProvider,
     orchestrationApiProvider,
     setProvider,
-  } from "$lib/providers.ts";
+  } from "$lib/providers.js";
   import { Button } from "@immich/ui";
   import TestUi from "./TestUi.svelte";
 
@@ -23,6 +23,11 @@
 
 <Button onclick={() => (mock = true)}>Use mock provider</Button>
 <Button onclick={() => (mock = false)}>Use orchestration API</Button>
+
+<Button
+  onclick={() => (window.location = "http://localhost:22676/api/auth/login")}
+  >Login</Button
+>
 
 {#key mock}
   <TestUi {mock} />

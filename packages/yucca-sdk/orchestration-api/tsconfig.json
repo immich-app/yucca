@@ -1,6 +1,6 @@
 {
   "ts-node": {
-    "require": ["tsconfig-paths/register"]
+    "esm": true
   },
   "compilerOptions": {
     "module": "nodenext",
@@ -23,10 +23,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "outDir": "dist",
-    "paths": {
-      "src/*": ["./src/*"]
-    },
     "types": ["@types/node", "@types/jest"]
   },
-  "include": ["src", "test"]
+  "include": ["src", "bin"]
 }

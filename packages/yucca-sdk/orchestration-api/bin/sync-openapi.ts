@@ -2,7 +2,7 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerCustomOptions, SwaggerDocumentOptions, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { OrchestrationApiModule } from '../dist/index';
+import { OrchestrationApiModule } from '../src/index.js';
 
 async function main() {
   const app = await NestFactory.create<NestApplication>(OrchestrationApiModule);

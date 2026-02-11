@@ -13,7 +13,9 @@ import { Upload } from '@aws-sdk/lib-storage';
 import { env } from '@common/server/env';
 import { Traceable } from '@common/server/otel';
 import { Injectable } from '@nestjs/common';
-import { Readable } from 'node:stream';
+import { createHash } from 'node:crypto';
+import { Readable, Transform } from 'node:stream';
+import { ChecksumMismatchError } from 'src/errors';
 
 @Traceable()
 @Injectable()
@@ -52,15 +54,24 @@ export class StorageRepository {
     );
   }
 
-  putObject(Bucket: string, Key: string, Body: Readable, writeOnce: boolean, sha256Hex?: string) {
-    const params: PutObjectCommandInput = { Bucket, Key, Body };
+  async putObject(Bucket: string, Key: string, Body: Readable, writeOnce: boolean, sha256Hex?: string) {
+    const hash = sha256Hex ? createHash('sha256') : undefined;
+
+    const body = hash
+      ? Body.pipe(
+          new Transform({
+            transform(chunk, _, callback) {
+              hash.update(chunk);
+              callback(null, chunk);
+            },
+          }),
+        )
+      : Body;
+
+    const params: PutObjectCommandInput = { Bucket, Key, Body: body };
 
     if (writeOnce) {
       params.IfNoneMatch = '*';
-    }
-
-    if (sha256Hex) {
-      params.ChecksumSHA256 = Buffer.from(sha256Hex, 'hex').toString('base64');
     }
 
     const upload = new Upload({
@@ -68,7 +79,12 @@ export class StorageRepository {
       params,
     });
 
-    return upload.done();
+    await upload.done();
+
+    if (hash && hash.digest('hex') !== sha256Hex) {
+      await this.deleteObject(Bucket, Key);
+      throw new ChecksumMismatchError();
+    }
   }
 
   headObject(Bucket: string, Key: string) {

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { OrchestrationApiService } from './orchestrationApi.service';
+import { OrchestrationApiService } from './orchestrationApi.service.js';
 
 describe('OrchestrationApiService', () => {
   let service: OrchestrationApiService;
