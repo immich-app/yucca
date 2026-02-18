@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="yucca-api: database migrations script"
-#MISE dir="{{config_root}}/yucca-api"
+#MISE dir="{{config_root}}/packages/yucca-api"
 #MISE depends=["yucca-api:build"]
 set -e
 

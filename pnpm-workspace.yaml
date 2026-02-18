@@ -1,10 +1,6 @@
 packages:
-  - e2e
-  - web
-  - restic-api
-  - yucca-api
-  - yucca-sdk
-  - common/server
+  - packages/*
+  - packages/common/*
 
 onlyBuiltDependencies:
   - '@nestjs/core'
