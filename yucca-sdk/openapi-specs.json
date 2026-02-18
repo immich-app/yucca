@@ -1,9 +1,30 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/": {
+    "/auth": {
       "get": {
-        "operationId": "hello",
+        "operationId": "getAuth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "get": {
+        "operationId": "logout",
         "parameters": [],
         "responses": {
           "200": {
@@ -11,7 +32,35 @@
           }
         },
         "tags": [
-          "App"
+          "Auth"
+        ]
+      }
+    },
+    "/auth/oidc/login": {
+      "get": {
+        "operationId": "oidcAuthorize",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/oidc/callback": {
+      "get": {
+        "operationId": "oidcCallback",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
         ]
       }
     }
@@ -29,6 +78,30 @@
     }
   ],
   "components": {
-    "schemas": {}
+    "schemas": {
+      "AuthDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "sessionId"
+        ]
+      }
+    }
   }
 }
