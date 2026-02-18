@@ -14,8 +14,32 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "/api"
 };
-export function hello(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/", {
+export type AuthDto = {
+    id: string;
+    name: string;
+    email: string;
+    sessionId: string;
+};
+export function getAuth(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AuthDto;
+    }>("/auth", {
+        ...opts
+    }));
+}
+export function logout(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/auth/logout", {
+        ...opts
+    }));
+}
+export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/auth/oidc/login", {
+        ...opts
+    }));
+}
+export function oidcCallback(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/auth/oidc/callback", {
         ...opts
     }));
 }
