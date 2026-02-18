@@ -3,16 +3,25 @@ import * as yuccaApiClient from 'yucca-api-client';
 import * as orchestrationApiClient from './fetch-client';
 
 export abstract class BaseProvider {
-  abstract getRepositories(): Promise<yuccaApiClient.RepositoryListResponseDto>;
-  abstract createRepository(): Promise<yuccaApiClient.RepositoryCreateResponseDto>;
+  abstract getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto>;
+  abstract createRepository(): Promise<orchestrationApiClient.RepositoryCreateResponseDto>;
+  abstract getBackends(): Promise<orchestrationApiClient.BackendsResponseDto>;
 }
 
-export const yuccaApiProvider = yuccaApiClient as BaseProvider;
+/* eslint-disable @typescript-eslint/require-await */
+export const yuccaApiProvider = {
+  ...yuccaApiClient,
+  async getBackends() {
+    return {
+      backends: [],
+    };
+  },
+} as BaseProvider;
+
 export const orchestrationApiProvider = orchestrationApiClient as BaseProvider;
 
-/* eslint-disable @typescript-eslint/require-await */
 export class MockProvider extends BaseProvider {
-  async getRepositories(): Promise<yuccaApiClient.RepositoryListResponseDto> {
+  async getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto> {
     return {
       repositories: [
         {
@@ -26,7 +35,7 @@ export class MockProvider extends BaseProvider {
     };
   }
 
-  async createRepository(): Promise<yuccaApiClient.RepositoryCreateResponseDto> {
+  async createRepository(): Promise<orchestrationApiClient.RepositoryCreateResponseDto> {
     return {
       repository: {
         id: 'repo' + Math.random().toString().slice(2),
@@ -35,6 +44,12 @@ export class MockProvider extends BaseProvider {
           sizeBytes: 1337,
         },
       },
+    };
+  }
+
+  async getBackends(): Promise<orchestrationApiClient.BackendsResponseDto> {
+    return {
+      backends: [],
     };
   }
 }

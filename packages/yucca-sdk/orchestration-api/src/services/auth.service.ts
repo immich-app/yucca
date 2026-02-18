@@ -1,7 +1,10 @@
-import { BadRequestException, Inject, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { calculatePKCECodeChallenge, randomPKCECodeVerifier } from 'openid-client';
 import { appToken } from 'yucca-api-client';
-import { YuccaApiEndpointUrlProvider } from '../providers';
+import { YUCCA_PRODUCTION_UUID } from '../const';
+import { BackendType } from '../enum';
+import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
+import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 
 @Injectable()
@@ -11,7 +14,8 @@ export class AuthService {
 
   constructor(
     readonly config: ConfigRepository,
-    @Optional() @Inject(YuccaApiEndpointUrlProvider) readonly yuccaUrl: string,
+    readonly backend: BackendRepository,
+    @Inject(ModuleConfigProvider) readonly moduleConfig: ModuleConfig,
   ) {}
 
   async login(redirectTo: string): Promise<{ redirectTo: string }> {
@@ -21,7 +25,7 @@ export class AuthService {
     const codeChallenge = await calculatePKCECodeChallenge(this.codeVerifier);
 
     return {
-      redirectTo: `${this.yuccaUrl ?? 'http://localhost:5173'}/api/auth/app/login?code_challenge=${codeChallenge}`,
+      redirectTo: `${this.moduleConfig.yuccaProductionApi}/api/auth/app/login?code_challenge=${codeChallenge}`,
     };
   }
 
@@ -36,6 +40,11 @@ export class AuthService {
     });
 
     await this.config.setAccessToken(accessToken);
+
+    await this.backend.updateBackend(YUCCA_PRODUCTION_UUID, {
+      type: BackendType.Yucca,
+      accessToken,
+    });
 
     return {
       redirectTo: this.redirectTo,
