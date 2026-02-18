@@ -434,6 +434,12 @@ importers:
       '@nestjs/core':
         specifier: ^11.1.11
         version: 11.1.11(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.11)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      openid-client:
+        specifier: ^6.8.1
+        version: 6.8.1
       yucca-api-client:
         specifier: workspace:^
         version: link:../../yucca-api-client
@@ -450,6 +456,9 @@ importers:
       '@nestjs/testing':
         specifier: ^11.1.11
         version: 11.1.11(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)(@nestjs/platform-express@11.1.11)
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0

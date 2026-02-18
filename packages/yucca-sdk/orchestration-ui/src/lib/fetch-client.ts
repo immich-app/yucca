@@ -31,3 +31,20 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function login(next: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/auth/login${QS.query(QS.explode({
+        next
+    }))}`, {
+        ...opts
+    }));
+}
+export function callback(code: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: object;
+    }>(`/api/auth/callback${QS.query(QS.explode({
+        code
+    }))}`, {
+        ...opts
+    }));
+}
