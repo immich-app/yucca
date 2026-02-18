@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Start yucca-sdk in development mode"
+#MISE depends=["yucca-sdk:*:dev"]
+set -e

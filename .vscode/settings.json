@@ -15,6 +15,8 @@
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.patterns": {
     "*.ts": "${capture}.spec.ts, ${capture}.mock.ts",
+    "+page.svelte": "page.test.svelte, page.svelte.spec.ts",
+    "+layout.svelte": "layout.css",
     "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb, bun.lock, pnpm-workspace.yaml, .pnpmfile.cjs, .npmrc, release-please-config.json, .release-please-manifest.json, renovate.json",
     ".prettierrc": ".prettierignore, .editorconfig",
     "README.md": "LICENSE, SECURITY.md, CODE_OF_CONDUCT.md"

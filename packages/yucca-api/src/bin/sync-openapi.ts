@@ -5,6 +5,7 @@ import { useSwagger } from 'src/utils/openapi';
 
 async function main() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { preview: true });
+  app.setGlobalPrefix('/api');
   useSwagger(app, { write: true });
   await app.close();
 }

@@ -4,13 +4,12 @@ import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const useSwagger = (app: INestApplication, { write }: { write: boolean }) => {
-  const builder = new DocumentBuilder().setTitle('yucca').setDescription('yucca API').addServer('/api');
+  const builder = new DocumentBuilder().setTitle('yucca').setDescription('yucca API').addServer('/');
 
   const config = builder.build();
 
   const options: SwaggerDocumentOptions = {
     operationIdFactory: (_: string, methodKey: string) => methodKey,
-    ignoreGlobalPrefix: true,
   };
 
   const specification = SwaggerModule.createDocument(app, config, options);

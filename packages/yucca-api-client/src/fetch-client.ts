@@ -8,11 +8,11 @@ import * as Oazapfts from "@oazapfts/runtime";
 import * as QS from "@oazapfts/runtime/query";
 export const defaults: Oazapfts.Defaults<Oazapfts.CustomHeaders> = {
     headers: {},
-    baseUrl: "/api"
+    baseUrl: "/"
 };
 const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
-    server1: "/api"
+    server1: "/"
 };
 export type AuthDto = {
     id: string;
@@ -42,22 +42,22 @@ export function getAuth(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: AuthDto;
-    }>("/auth", {
+    }>("/api/auth", {
         ...opts
     }));
 }
 export function logout(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/auth/logout", {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/logout", {
         ...opts
     }));
 }
 export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/auth/oidc/login", {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/login", {
         ...opts
     }));
 }
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/auth/oidc/callback", {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
     }));
 }
@@ -65,7 +65,7 @@ export function createRepository(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResponseDto;
-    }>("/repository", {
+    }>("/api/repository", {
         ...opts,
         method: "POST"
     }));
@@ -74,7 +74,7 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryListResponseDto;
-    }>("/repository", {
+    }>("/api/repository", {
         ...opts
     }));
 }
@@ -82,7 +82,7 @@ export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResticUrlDto;
-    }>(`/repository/${encodeURIComponent(id)}/restic`, {
+    }>(`/api/repository/${encodeURIComponent(id)}/restic`, {
         ...opts,
         method: "POST"
     }));

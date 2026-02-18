@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Generate fetch client for yucca-sdk/orchestration-ui"
+#MISE depends=["yucca-sdk:orchestration-api:build"]
+set -e
+
+pnpm --filter orchestration-api sync:openapi
+pnpm --filter orchestration-ui generate:fetch-client

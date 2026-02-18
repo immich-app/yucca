@@ -17,9 +17,8 @@ package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
-packages/web/.svelte-kit
-packages/web/test-results
-packages/web/src/locales
-
-packages/yucca-api-client/src/fetch-client.ts
-packages/yucca-api-client/openapi-specs.json
+**/.svelte-kit
+**/test-results
+**/locales
+**/fetch-client.ts
+**/openapi-specs.json

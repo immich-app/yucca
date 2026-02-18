@@ -16,9 +16,10 @@ export default typescriptEslint.config([
     ignores: [
       'eslint.config.mjs',
       '.dev',
-      'packages/web/.svelte-kit',
+      '**/dist',
+      '**/.svelte-kit',
+      '**/fetch-client.ts',
       'packages/web/src/locales',
-      'packages/yucca-api-client/src/fetch-client.ts',
     ],
   },
   {

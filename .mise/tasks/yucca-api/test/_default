@@ -2,4 +2,4 @@
 #MISE description="Run unit tests for yucca-api"
 set -e
 
-pnpm --filter yucca-api test
+pnpm --filter yucca-api test "$@"

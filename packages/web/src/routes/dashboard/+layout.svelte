@@ -13,8 +13,11 @@
   import { t } from "svelte-i18n-lingui";
   import { page } from "$app/state";
   import { mdiViewDashboard, mdiBackupRestore } from "@mdi/js";
+  import { setProvider, yuccaApiProvider } from "orchestration-ui";
 
   const { data, children } = $props();
+
+  setProvider(yuccaApiProvider);
 
   let open = $state(true);
 </script>
@@ -26,7 +29,7 @@
       <HStack>
         <Avatar name={data.user!.name} />
         <Button
-          onclick={() => (location.href = defaults.baseUrl + "/auth/logout")}
+          onclick={() => (location.href = defaults.baseUrl + "api/auth/logout")}
           >{$t`Logout`}</Button
         >
       </HStack>

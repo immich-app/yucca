@@ -1,0 +1,60 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/repository": {
+      "post": {
+        "operationId": "createRepository",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
+      "get": {
+        "operationId": "getRepositories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "yucca",
+    "description": "yucca SDK",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "http://localhost:22676"
+    }
+  ],
+  "components": {
+    "schemas": {}
+  }
+}

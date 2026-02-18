@@ -7,6 +7,10 @@ import path from 'node:path';
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
 
+  ssr: {
+    noExternal: ['orchestration-ui'],
+  },
+
   server: {
     proxy: {
       '/api': {

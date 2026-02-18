@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "type": "library",
+  "sourceRoot": "src",
+  "entryFile": "index",
+  "compilerOptions": {
+    "webpack": false
+  }
+}

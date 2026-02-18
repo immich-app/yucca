@@ -2,4 +2,4 @@
 #MISE description="Run unit tests for web"
 set -e
 
-pnpm --filter web test:unit
+pnpm --filter web test:unit "$@"
