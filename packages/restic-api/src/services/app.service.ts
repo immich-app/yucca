@@ -12,7 +12,7 @@ import { Readable } from 'node:stream';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { AuthDto } from 'src/dto/auth.dto';
 import { BlobType } from 'src/enum';
-import { S3Error } from 'src/errors';
+import { ChecksumMismatchError, S3Error } from 'src/errors';
 import { StorageRepository } from 'src/repositories/storage.repository';
 import { attachMeterToStream, contextFromAuth } from 'src/utils/meters';
 import { attachMeterToS3Object, S3RemoteObject } from 'src/utils/s3';
@@ -190,6 +190,10 @@ export class AppService {
       );
     } catch (error) {
       this.wideContext.setErrorCause(error);
+
+      if (error instanceof ChecksumMismatchError) {
+        throw error;
+      }
 
       if (error instanceof S3ServiceException) {
         if (error.$metadata.httpStatusCode === 412) {

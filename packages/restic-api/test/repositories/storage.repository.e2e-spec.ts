@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { text } from 'node:stream/consumers';
 import { ReadableStream } from 'node:stream/web';
@@ -48,5 +48,33 @@ describe('StorageRepository (e2e)', () => {
     await sut.createBucket(Bucket);
     await sut.putObject(Bucket, Key, Readable.from(contents), false);
     await expect(sut.putObject(Bucket, Key, Readable.from(contents), true)).rejects.toThrow();
+  });
+
+  it('checks hash', async () => {
+    const Bucket = randomUUID();
+    const Key = randomUUID();
+
+    const contents = randomBytes(5_000_000);
+
+    const hash = createHash('sha256');
+    hash.update(contents);
+
+    await sut.createBucket(Bucket);
+    await sut.putObject(Bucket, Key, Readable.from(contents), false, hash.digest('hex'));
+    await sut.deleteObject(Bucket, Key);
+  });
+
+  it('checks hash where files are chunked', async () => {
+    const Bucket = randomUUID();
+    const Key = randomUUID();
+
+    const contents = randomBytes(20_000_000);
+
+    const hash = createHash('sha256');
+    hash.update(contents);
+
+    await sut.createBucket(Bucket);
+    await sut.putObject(Bucket, Key, Readable.from(contents), false, hash.digest('hex'));
+    await sut.deleteObject(Bucket, Key);
   });
 });
