@@ -15,7 +15,7 @@ export const servers = {
     server1: "/api"
 };
 export function hello(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.fetchText("/", {
+    return oazapfts.ok(oazapfts.fetchText("/", {
         ...opts
-    });
+    }));
 }

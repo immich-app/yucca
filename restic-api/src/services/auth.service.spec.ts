@@ -1,14 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { newJwtMock } from '../../test/mocks';
+import { newJwtMock, newWideContextMock } from '../../test/mocks';
 import { AuthService } from './auth.service';
 
 describe(AuthService.name, () => {
   let jwt: ReturnType<typeof newJwtMock>;
+  let wideContext: ReturnType<typeof newWideContextMock>;
   let sut: AuthService;
 
   beforeEach(() => {
     jwt = newJwtMock();
-    sut = new AuthService(jwt as never);
+    wideContext = newWideContextMock();
+    sut = new AuthService(jwt as never, wideContext as never);
   });
 
   it('should exist', () => {

@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Scope,
   SetMetadata,
   applyDecorators,
   createParamDecorator,
@@ -29,7 +30,7 @@ export const Auth = createParamDecorator((_, context: ExecutionContext): AuthDto
   return context.switchToHttp().getRequest<AuthenticatedRequest>().auth;
 });
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class AuthGuard implements CanActivate {
   constructor(
     private reflector: Reflector,

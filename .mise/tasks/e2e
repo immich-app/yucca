@@ -9,7 +9,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # start services
-mise restic-api:dev &
+pnpm --filter restic-api start:dev &
 
 while ! nc -z localhost "$RESTIC_API_PORT" 2>/dev/null; do
   sleep 0.1

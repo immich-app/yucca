@@ -1,9 +1,37 @@
 import { GetObjectCommandOutput } from '@aws-sdk/client-s3';
 import { HttpStatus } from '@nestjs/common';
+import { Counter } from '@opentelemetry/api';
 import { Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import { ReadableStream } from 'node:stream/web';
+import { AuthDto } from 'src/dto/auth.dto';
 import { ContentType } from '../enum';
+import { attachMeterToStream, contextFromAuth } from './meters';
+
+export interface S3RemoteObject {
+  stream(): Readable | undefined;
+  object: GetObjectCommandOutput;
+}
+
+export function attachMeterToS3Object(
+  auth: AuthDto,
+  object: GetObjectCommandOutput,
+  requestedBytes: Counter,
+  downloadedBytes: Counter,
+): S3RemoteObject {
+  const context = contextFromAuth(auth);
+  requestedBytes.add(object.ContentLength || 0, context);
+
+  return {
+    object,
+    stream() {
+      const webStream = object.Body?.transformToWebStream();
+      if (webStream) {
+        return attachMeterToStream(Readable.fromWeb(webStream as ReadableStream), downloadedBytes, context);
+      }
+    },
+  };
+}
 
 /**
  * Process S3 object as web response
@@ -12,7 +40,7 @@ import { ContentType } from '../enum';
  * http#ServeContent
  * https://pkg.go.dev/net/http#ServeContent
  */
-export function respondWithObject(object: GetObjectCommandOutput, request: Request, response: Response) {
+export function respondWithObject({ stream, object }: S3RemoteObject, request: Request, response: Response) {
   if (request.headers['if-none-match'] === object.ETag) {
     return response.send(HttpStatus.NOT_MODIFIED);
   }
@@ -38,9 +66,9 @@ export function respondWithObject(object: GetObjectCommandOutput, request: Reque
     response.set('Content-Length', object.ContentLength.toString());
   }
 
-  const webStream = object.Body?.transformToWebStream();
-  if (webStream) {
-    Readable.fromWeb(webStream as ReadableStream).pipe(response);
+  const readable = stream();
+  if (readable) {
+    readable.pipe(response);
   } else {
     return response.send(HttpStatus.INTERNAL_SERVER_ERROR);
   }

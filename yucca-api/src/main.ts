@@ -1,3 +1,5 @@
+import '@common/server/otel';
+
 import { env } from '@common/server/env';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
