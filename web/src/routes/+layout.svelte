@@ -4,6 +4,7 @@
 
   import { locale } from "svelte-i18n-lingui";
   import { messages } from "../locales/en";
+  import { TooltipProvider } from "@immich/ui";
 
   locale.set("en", messages);
 
@@ -11,4 +12,6 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-{@render children()}
+<TooltipProvider>
+  {@render children()}
+</TooltipProvider>

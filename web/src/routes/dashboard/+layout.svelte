@@ -1,13 +1,26 @@
 <script lang="ts">
-  import { Avatar, Button, Heading, HStack } from "@immich/ui";
+  import {
+    AppShell,
+    AppShellHeader,
+    AppShellSidebar,
+    Avatar,
+    Button,
+    Heading,
+    HStack,
+    NavbarItem,
+  } from "@immich/ui";
   import { defaults } from "yucca-sdk";
   import { t } from "svelte-i18n-lingui";
+  import { page } from "$app/state";
+  import { mdiViewDashboard, mdiBackupRestore } from "@mdi/js";
 
   const { data, children } = $props();
+
+  let open = $state(true);
 </script>
 
-<div class="flex h-dvh flex-col overflow-hidden">
-  <header class="border-b">
+<AppShell>
+  <AppShellHeader>
     <div class="flex h-full items-center justify-between p-4">
       <Heading size="tiny">FUTO Backups</Heading>
       <HStack>
@@ -18,8 +31,26 @@
         >
       </HStack>
     </div>
-  </header>
+  </AppShellHeader>
+
+  <AppShellSidebar bind:open>
+    <div class="pt-4 pr-2">
+      <NavbarItem
+        title="Dashboard"
+        href="/dashboard"
+        icon={mdiViewDashboard}
+        active={page.url.pathname === "/dashboard"}
+      />
+      <NavbarItem
+        title="Backups"
+        href="/dashboard/backups"
+        icon={mdiBackupRestore}
+        active={page.url.pathname === "/dashboard/backups"}
+      />
+    </div>
+  </AppShellSidebar>
+
   <div class="p-4">
     {@render children()}
   </div>
-</div>
+</AppShell>

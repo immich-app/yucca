@@ -17,6 +17,10 @@ msgstr ""
 #~ msgid "{num, plural, one {# item} other {# items}}"
 #~ msgstr "{num, plural, one {# hello} other {# hellos}}"
 
+#: src/routes/dashboard/backups/+page.svelte:48
+msgid "Create new backup"
+msgstr ""
+
 #: src/routes/+page.svelte:47
 #~ msgid "From the {0}: {1}"
 #~ msgstr "{0}! {1}?"
@@ -25,7 +29,7 @@ msgstr ""
 msgid "Login"
 msgstr ""
 
-#: src/routes/dashboard/+layout.svelte:17
+#: src/routes/dashboard/+layout.svelte:30
 msgid "Logout"
 msgstr ""
 
