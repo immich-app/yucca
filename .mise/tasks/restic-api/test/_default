@@ -2,4 +2,4 @@
 #MISE description="Run unit tests for restic-api"
 set -e
 
-pnpm --filter restic-api test
+pnpm --filter restic-api test "$@"

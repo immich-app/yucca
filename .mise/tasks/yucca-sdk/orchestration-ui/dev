@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run yucca-sdk/orchestration-ui in development mode"
+#MISE depends=["yucca-sdk:orchestration-ui:generate-fetch-client"]
+set -e
+
+pnpm --filter orchestration-ui dev --host

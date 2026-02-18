@@ -9,5 +9,9 @@ export default {
       include: ['src/lib', 'src/routes'],
     },
   ],
+  formatOptions: {
+    origins: true,
+    lineNumbers: false,
+  },
   extractors: [jstsExtractor, svelteExtractor],
 };

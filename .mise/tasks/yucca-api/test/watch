@@ -2,4 +2,4 @@
 #MISE description="Run unit tests in watch mode for yucca-api"
 set -e
 
-pnpm --filter yucca-api test --watch
+pnpm --filter yucca-api test --watch "$@"

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Start yucca-sdk/orchestration-api test server"
+set -e
+
+pnpm --filter orchestration-api start

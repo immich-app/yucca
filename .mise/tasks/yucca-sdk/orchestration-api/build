@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Build yucca-sdk/orchestration-api"
+#MISE depends=["yucca-api-client:build"]
+set -e
+
+pnpm --filter orchestration-api build
