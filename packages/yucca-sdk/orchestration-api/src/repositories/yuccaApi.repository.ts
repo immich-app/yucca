@@ -1,12 +1,12 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
-import { YuccaApiEndpointUrlProvider } from '../providers';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { createRepository, defaults, getRepositories } from 'yucca-api-client';
+import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 
 @Injectable()
 export class YuccaApiRepository {
-  constructor(@Optional() @Inject(YuccaApiEndpointUrlProvider) endpoint: string) {
-    defaults.baseUrl = endpoint ?? 'http://localhost:3000';
+  constructor(@Inject(ModuleConfigProvider) { yuccaProductionApi }: ModuleConfig) {
+    defaults.baseUrl = yuccaProductionApi;
   }
 
   async createRepository(accessToken: string, _worm: boolean) {

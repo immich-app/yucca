@@ -1,1 +1,2 @@
 export const ORCHESTRATION_PORT = 22_676;
+export const YUCCA_PRODUCTION_UUID = 'd0368cdd-39ae-40e1-91d6-d81815c65c7e';

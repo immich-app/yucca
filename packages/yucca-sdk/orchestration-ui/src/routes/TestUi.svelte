@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BackendsList from "$lib/components/BackendsList.svelte";
   import BackupsList from "$lib/components/BackupsList.svelte";
   import {
     MockProvider,
@@ -16,4 +17,5 @@
   }
 </script>
 
+<BackendsList />
 <BackupsList />

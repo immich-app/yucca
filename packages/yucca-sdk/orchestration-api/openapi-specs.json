@@ -11,7 +11,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
                 }
               }
             }
@@ -30,7 +30,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/RepositoryListResponseDto"
                 }
               }
             }
@@ -38,6 +38,27 @@
         },
         "tags": [
           "Repository"
+        ]
+      }
+    },
+    "/api/backend": {
+      "get": {
+        "operationId": "getBackends",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Backend"
         ]
       }
     },
@@ -108,6 +129,140 @@
     }
   ],
   "components": {
-    "schemas": {}
+    "schemas": {
+      "Boolean": {
+        "type": "object",
+        "properties": {}
+      },
+      "RepositoryMetadataDto": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "paths"
+        ]
+      },
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastUpload": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "LocalRepositoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "local": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RepositoryMetadataDto"
+              }
+            ],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RepositoryMetadataDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "worm",
+          "metrics"
+        ]
+      },
+      "RepositoryCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/LocalRepositoryDto"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      },
+      "RepositoryListResponseDto": {
+        "type": "object",
+        "properties": {
+          "repositories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocalRepositoryDto"
+            }
+          }
+        },
+        "required": [
+          "repositories"
+        ]
+      },
+      "BackendType": {
+        "type": "string",
+        "enum": [
+          "yucca",
+          "local",
+          "s3"
+        ]
+      },
+      "BackendDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BackendType"
+              }
+            ]
+          },
+          "isOnline": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "isOnline"
+        ]
+      },
+      "BackendsResponseDto": {
+        "type": "object",
+        "properties": {
+          "backends": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackendDto"
+            }
+          }
+        },
+        "required": [
+          "backends"
+        ]
+      }
+    }
   }
 }

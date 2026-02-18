@@ -1,43 +1,44 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { Injectable } from '@nestjs/common';
+import { Kysely } from 'kysely';
+import { InjectKysely } from 'nestjs-kysely';
+import { ConfigurationKey } from '../enum';
+import { DB } from '../schema';
 
 @Injectable()
-export class ConfigRepository implements OnModuleInit {
-  async onModuleInit() {
-    try {
-      await stat('.data');
-    } catch {
-      await mkdir('.data');
-      await writeFile('.data/encryptionKey', randomBytes(32).toString('hex'));
-    }
+export class ConfigRepository {
+  constructor(@InjectKysely() private db: Kysely<DB>) {}
+
+  private async set(key: ConfigurationKey, value: string) {
+    await this.db
+      .insertInto('config')
+      .values({
+        key,
+        value,
+      })
+      .onConflict((oc) => oc.doUpdateSet({ value }))
+      .executeTakeFirstOrThrow();
   }
 
-  async setAccessToken(accessToken: string) {
-    await writeFile('.data/accessToken', accessToken);
+  private async get(key: ConfigurationKey) {
+    const { value } = await this.db
+      .selectFrom('config')
+      .where('config.key', '=', key)
+      .select('config.value')
+      .executeTakeFirstOrThrow();
+
+    return value;
   }
 
-  async getAccessToken() {
-    try {
-      const file = await readFile('.data/accessToken');
-      return file.toString();
-    } catch {
-      return;
-    }
+  setAccessToken(accessToken: string) {
+    return this.set(ConfigurationKey.AccessToken, accessToken);
   }
 
-  async getAccessTokenOrThrow() {
-    const file = await readFile('.data/accessToken');
-    return file.toString();
+  getAccessToken() {
+    return this.get(ConfigurationKey.AccessToken);
   }
 
   async getEncryptionKey(): Promise<Buffer> {
-    const file = await readFile('.data/encryptionKey');
-    return Buffer.from(file.toString(), 'hex');
-  }
-
-  async getRecoveryKey(): Promise<string> {
-    const file = await readFile('.data/encryptionKey');
-    return file.toString().toUpperCase();
+    const encryptionKey = await this.get(ConfigurationKey.EncryptionKey);
+    return Buffer.from(encryptionKey.toString(), 'hex');
   }
 }
