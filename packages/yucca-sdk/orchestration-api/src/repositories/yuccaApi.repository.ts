@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import { YuccaApiEndpointUrlProvider } from 'src/providers';
+import { YuccaApiEndpointUrlProvider } from '../providers';
 
 import { createRepository, defaults, getRepositories } from 'yucca-api-client';
 

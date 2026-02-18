@@ -64,6 +64,74 @@
         ]
       }
     },
+    "/api/auth/app/login": {
+      "get": {
+        "operationId": "appAuthorize",
+        "parameters": [
+          {
+            "name": "code_challenge",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/app/callback": {
+      "post": {
+        "operationId": "appCallback",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/app/token": {
+      "post": {
+        "operationId": "appToken",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppTokenRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppTokenResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/repository": {
       "post": {
         "operationId": "createRepository",
@@ -170,6 +238,32 @@
           "name",
           "email",
           "sessionId"
+        ]
+      },
+      "AppTokenRequestDto": {
+        "type": "object",
+        "properties": {
+          "codeVerifier": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "codeVerifier",
+          "code"
+        ]
+      },
+      "AppTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken"
         ]
       },
       "RepositoryMetricsDto": {

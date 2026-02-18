@@ -24,9 +24,6 @@
     "noFallthroughCasesInSwitch": false,
     "rootDir": "src",
     "outDir": "dist",
-    "paths": {
-      "src/*": ["./src/*"]
-    },
     "types": ["@types/node", "@types/jest"]
   },
   "include": ["src", "test"]

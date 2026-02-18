@@ -17,6 +17,10 @@ export const AuthRoute = (options = {}): MethodDecorator => {
   return applyDecorators(SetMetadata(MetadataKey.Auth, options));
 };
 
+export const OptionalAuth = (options = {}): MethodDecorator => {
+  return applyDecorators(SetMetadata(MetadataKey.OptionalAuth, options));
+};
+
 export interface AuthRequest extends Request {
   auth: AuthDto;
 }
@@ -44,7 +48,21 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthRequest>();
-    request.auth = await this.service.authenticate(request.headers);
-    return true;
+
+    try {
+      request.auth = await this.service.authenticate(request.headers);
+      return true;
+    } catch (error) {
+      const options = this.reflector.getAllAndOverride<{ _emptyObject: never } | undefined>(
+        MetadataKey.OptionalAuth,
+        targets,
+      );
+
+      if (options) {
+        return true;
+      }
+
+      throw error;
+    }
   }
 }

@@ -1,7 +1,7 @@
 import { Controller, Get, Post } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
-import { RepositoryService } from 'src/services/repository.service';
 import { RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
+import { RepositoryService } from '../services/repository.service';
 
 @Controller('/repository')
 export class RepositoryController {
