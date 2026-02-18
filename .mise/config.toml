@@ -49,7 +49,7 @@ run = [
 
 [tasks.fix]
 description = "Run all possible code fixes"
-depends = ["*:fix"]
+run = [{ task = "*:fix" }, { task = "web:lingui" }]
 
 [env]
 # default environment variables for development

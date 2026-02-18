@@ -63,6 +63,76 @@
           "Auth"
         ]
       }
+    },
+    "/repository": {
+      "post": {
+        "operationId": "createRepository",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
+      "get": {
+        "operationId": "getRepositories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/repository/{id}/restic": {
+      "post": {
+        "operationId": "createResticUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCreateResticUrlDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
     }
   },
   "info": {
@@ -100,6 +170,75 @@
           "name",
           "email",
           "sessionId"
+        ]
+      },
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastUpload": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "RepositoryWithMetricsDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          }
+        },
+        "required": [
+          "id",
+          "worm",
+          "metrics"
+        ]
+      },
+      "RepositoryCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      },
+      "RepositoryListResponseDto": {
+        "type": "object",
+        "properties": {
+          "repositories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+            }
+          }
+        },
+        "required": [
+          "repositories"
+        ]
+      },
+      "RepositoryCreateResticUrlDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
         ]
       }
     }
