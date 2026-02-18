@@ -1,3 +1,4 @@
+import { Traceable } from '@common/server/otel';
 import {
   Controller,
   Delete,
@@ -22,6 +23,7 @@ import { AppService } from 'src/services/app.service';
 import { respondWithObject } from 'src/utils/s3';
 import { BlobParamsDto, BlobWithNameParamsDto } from 'src/validation';
 
+@Traceable()
 @Controller()
 export class AppController {
   constructor(private readonly service: AppService) {}
@@ -43,14 +45,14 @@ export class AppController {
   @Head(':path/config')
   @AuthRoute()
   async checkConfig(@Auth() auth: AuthDto, @Res() res: Response): Promise<void> {
-    const size = await this.service.checkConfig(auth.repository);
+    const size = await this.service.checkConfig(auth);
     res.set('Content-Length', String(size)).end();
   }
 
   @Get(':path/config')
   @AuthRoute()
   async getConfig(@Auth() auth: AuthDto, @Req() req: Request, @Res() res: Response): Promise<void> {
-    const config = await this.service.getConfig(auth.repository);
+    const config = await this.service.getConfig(auth);
     respondWithObject(config, req, res);
   }
 
@@ -58,21 +60,21 @@ export class AppController {
   @AuthRoute()
   @HttpCode(HttpStatus.OK)
   async saveConfig(@Auth() auth: AuthDto, @Req() req: Request): Promise<void> {
-    await this.service.saveConfig(auth.repository, req, auth.writeOnce);
+    await this.service.saveConfig(auth, req);
   }
 
   @Delete(':path/config')
   @AuthRoute()
   @HttpCode(HttpStatus.OK)
   async deleteConfig(@Auth() auth: AuthDto): Promise<void> {
-    await this.service.deleteConfig(auth.repository, auth.writeOnce);
+    await this.service.deleteConfig(auth);
   }
 
   @Get(':path/:type')
   @AuthRoute()
   @ResticRoute()
   async listBlobs(@Auth() auth: AuthDto, @Param() { type }: BlobParamsDto): Promise<BlobInfoResponseDto[]> {
-    return this.service.listBlobs(auth.repository, type);
+    return this.service.listBlobs(auth, type);
   }
 
   @Head(':path/:type/:name')
@@ -82,7 +84,7 @@ export class AppController {
     @Param() { type, name }: BlobWithNameParamsDto,
     @Res() res: Response,
   ): Promise<void> {
-    const size = await this.service.checkBlob(auth.repository, type, name);
+    const size = await this.service.checkBlob(auth, type, name);
     res.set('Content-Length', String(size)).end();
   }
 
@@ -95,7 +97,7 @@ export class AppController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const blob = await this.service.getBlob(auth.repository, type, name, range);
+    const blob = await this.service.getBlob(auth, type, name, range);
     respondWithObject(blob, req, res);
   }
 
@@ -107,13 +109,13 @@ export class AppController {
     @Param() { type, name }: BlobWithNameParamsDto,
     @Req() req: Request,
   ): Promise<void> {
-    await this.service.saveBlob(auth.repository, type, name, req, auth.writeOnce);
+    await this.service.saveBlob(auth, type, name, req);
   }
 
   @Delete(':path/:type/:name')
   @AuthRoute()
   @HttpCode(HttpStatus.OK)
   async deleteBlob(@Auth() auth: AuthDto, @Param() { type, name }: BlobWithNameParamsDto): Promise<void> {
-    await this.service.deleteBlob(auth.repository, type, name, auth.writeOnce);
+    await this.service.deleteBlob(auth, type, name);
   }
 }

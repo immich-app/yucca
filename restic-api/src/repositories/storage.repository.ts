@@ -11,9 +11,11 @@ import {
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { env } from '@common/server/env';
+import { Traceable } from '@common/server/otel';
 import { Injectable } from '@nestjs/common';
 import { Readable } from 'node:stream';
 
+@Traceable()
 @Injectable()
 export class StorageRepository {
   private client: S3Client;

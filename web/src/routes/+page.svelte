@@ -14,7 +14,7 @@
   let value = $state("Loading from API...");
 
   onMount(() => {
-    hello().then((v) => (value = v.data!));
+    hello().then((v) => (value = v));
   });
 
   import { locale } from "svelte-i18n-lingui";

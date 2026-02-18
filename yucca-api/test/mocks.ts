@@ -1,5 +1,5 @@
+import { LoggerRepository } from '@common/server/otel';
 import { DummyRepository } from 'src/repositories/dummy.repository';
-import { LoggerRepository } from 'src/repositories/logger.repository';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 
@@ -9,8 +9,10 @@ export const newJwtMock = () => ({
 
 export const newLoggerRepositoryMock = (): jest.Mocked<RepositoryInterface<LoggerRepository>> => {
   return {
-    setContext: jest.fn(),
     debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
   };
 };
 
@@ -20,10 +22,15 @@ export const newDummyRepositoryMock = (): jest.Mocked<RepositoryInterface<DummyR
   };
 };
 
+export const newMetricServiceMock = () => ({
+  getCounter: jest.fn().mockReturnValue({ add: jest.fn() }),
+});
+
 export const newMocks = () => {
   return {
     logger: newLoggerRepositoryMock(),
     dummy: newDummyRepositoryMock(),
+    metrics: newMetricServiceMock(),
   };
 };
 

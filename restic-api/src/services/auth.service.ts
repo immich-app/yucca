@@ -1,13 +1,18 @@
+import { WideContextRepository } from '@common/server/otel';
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { type IncomingHttpHeaders } from 'node:http';
 import { AuthDto } from 'src/dto/auth.dto';
+import { contextFromAuth } from 'src/utils/meters';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly wideContext: WideContextRepository,
+  ) {}
 
   async authenticate(headers: IncomingHttpHeaders): Promise<AuthDto> {
     if (!headers.authorization) {
@@ -38,6 +43,7 @@ export class AuthService {
       throw new BadRequestException(errors.flatMap((err) => Object.values(err.constraints ?? {})));
     }
 
+    this.wideContext.assignContext(contextFromAuth(instance));
     return instance;
   }
 }
