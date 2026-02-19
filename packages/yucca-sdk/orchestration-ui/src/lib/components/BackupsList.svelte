@@ -14,7 +14,7 @@
   import { mdiArchiveOutline, mdiPlus } from "@mdi/js";
   import { getProvider } from "$lib/providers";
   import { onMount } from "svelte";
-  import type { RepositoryListResponseDto } from "yucca-api-client";
+  import type { RepositoryListResponseDto } from "$lib/fetch-client";
 
   interface Props {
     initialData?: RepositoryListResponseDto;
@@ -89,9 +89,9 @@
             >
           </HStack>
           <HStack wrap>
-            {#if repository.backend}
+            {#if repository.backends}
               <Badge size="tiny" color="info"
-                >Backing up to {repository.backend.primary.type}</Badge
+                >Backing up to {repository.backends.primary.type}</Badge
               >
             {/if}
             <Badge size="tiny" color="secondary"

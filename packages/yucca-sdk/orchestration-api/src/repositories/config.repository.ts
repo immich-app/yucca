@@ -29,14 +29,6 @@ export class ConfigRepository {
     return value;
   }
 
-  setAccessToken(accessToken: string) {
-    return this.set(ConfigurationKey.AccessToken, accessToken);
-  }
-
-  getAccessToken() {
-    return this.get(ConfigurationKey.AccessToken);
-  }
-
   async getEncryptionKey(): Promise<Buffer> {
     const encryptionKey = await this.get(ConfigurationKey.EncryptionKey);
     return Buffer.from(encryptionKey.toString(), 'hex');

@@ -39,8 +39,6 @@ export class AuthService {
       codeVerifier: this.codeVerifier,
     });
 
-    await this.config.setAccessToken(accessToken);
-
     await this.backend.updateBackend(YUCCA_PRODUCTION_UUID, {
       type: BackendType.Yucca,
       accessToken,

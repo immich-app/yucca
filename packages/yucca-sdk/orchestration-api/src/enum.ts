@@ -1,5 +1,4 @@
 export enum ConfigurationKey {
-  AccessToken = 'access-token',
   EncryptionKey = 'encryption-key',
 }
 
