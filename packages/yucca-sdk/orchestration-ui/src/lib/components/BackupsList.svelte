@@ -89,6 +89,11 @@
             >
           </HStack>
           <HStack wrap>
+            {#if repository.backend}
+              <Badge size="tiny" color="info"
+                >Backing up to {repository.backend.primary.type}</Badge
+              >
+            {/if}
             <Badge size="tiny" color="secondary"
               >{repository.metrics.sizeBytes} B</Badge
             >

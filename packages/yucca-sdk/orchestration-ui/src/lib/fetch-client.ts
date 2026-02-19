@@ -18,14 +18,24 @@ export type RepositoryMetricsDto = {
     lastUpload?: string;
     sizeBytes: number;
 };
-export type RepositoryMetadataDto = {
+export type BackendType = "yucca" | "local" | "s3";
+export type RepositoryBackendDto = {
+    id: string;
+    "type": BackendType;
+};
+export type RepositoryBackendsDto = {
+    primary: RepositoryBackendDto;
+    secondary: RepositoryBackendDto[];
+};
+export type RepositoryConfigurationDto = {
     paths: string[];
 };
 export type LocalRepositoryDto = {
     id: string;
     worm: boolean;
     metrics: RepositoryMetricsDto;
-    local?: RepositoryMetadataDto;
+    backends?: RepositoryBackendsDto;
+    configuration?: RepositoryConfigurationDto;
 };
 export type RepositoryCreateResponseDto = {
     repository: LocalRepositoryDto;
@@ -33,7 +43,6 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
-export type BackendType = "yucca" | "local" | "s3";
 export type BackendDto = {
     id: string;
     "type": BackendType;

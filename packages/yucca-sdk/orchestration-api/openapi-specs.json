@@ -130,24 +130,6 @@
   ],
   "components": {
     "schemas": {
-      "Boolean": {
-        "type": "object",
-        "properties": {}
-      },
-      "RepositoryMetadataDto": {
-        "type": "object",
-        "properties": {
-          "paths": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "paths"
-        ]
-      },
       "RepositoryMetricsDto": {
         "type": "object",
         "properties": {
@@ -162,6 +144,65 @@
           "sizeBytes"
         ]
       },
+      "BackendType": {
+        "type": "string",
+        "enum": [
+          "yucca",
+          "local",
+          "s3"
+        ]
+      },
+      "RepositoryBackendDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BackendType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ]
+      },
+      "RepositoryBackendsDto": {
+        "type": "object",
+        "properties": {
+          "primary": {
+            "$ref": "#/components/schemas/RepositoryBackendDto"
+          },
+          "secondary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RepositoryBackendDto"
+            }
+          }
+        },
+        "required": [
+          "primary",
+          "secondary"
+        ]
+      },
+      "RepositoryConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "paths"
+        ]
+      },
       "LocalRepositoryDto": {
         "type": "object",
         "properties": {
@@ -174,17 +215,11 @@
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
           },
-          "local": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RepositoryMetadataDto"
-              }
-            ],
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RepositoryMetadataDto"
-              }
-            ]
+          "backends": {
+            "$ref": "#/components/schemas/RepositoryBackendsDto"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/RepositoryConfigurationDto"
           }
         },
         "required": [
@@ -216,14 +251,6 @@
         },
         "required": [
           "repositories"
-        ]
-      },
-      "BackendType": {
-        "type": "string",
-        "enum": [
-          "yucca",
-          "local",
-          "s3"
         ]
       },
       "BackendDto": {

@@ -15,7 +15,7 @@ export class BackendService {
     const backends = await this.repository.getBackends();
 
     const isOnline = await Promise.all(
-      backends.map((backend) => Backend.from(backend.configuration).online(this.moduleConfig)),
+      backends.map((backend) => Backend.from(backend.configuration, this.moduleConfig).online()),
     );
 
     return {

@@ -1,4 +1,5 @@
 import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { BackendType } from '../enum';
 
 export class RepositoryDto {
   @ApiProperty({ type: String })
@@ -21,18 +22,36 @@ export class RepositoryWithMetricsDto extends RepositoryDto {
   metrics!: RepositoryMetricsDto;
 }
 
-export class RepositoryMetadataDto {
+export class RepositoryBackendDto {
+  @ApiProperty({ type: () => String })
+  id!: string;
+
+  @ApiProperty({ enumName: 'BackendType', enum: BackendType })
+  type!: BackendType;
+}
+
+export class RepositoryBackendsDto {
+  @ApiProperty({ type: () => RepositoryBackendDto })
+  primary!: RepositoryBackendDto;
+
+  @ApiProperty({ type: () => [RepositoryBackendDto] })
+  secondary!: RepositoryBackendDto[];
+}
+
+export class RepositoryConfigurationDto {
   @ApiProperty({ type: () => [String] })
   paths!: string[];
 }
 
-@ApiExtraModels(Boolean, RepositoryMetadataDto)
 export class LocalRepositoryDto extends RepositoryWithMetricsDto {
+  @ApiProperty({ type: RepositoryBackendsDto, required: false })
+  backends?: RepositoryBackendsDto;
+
   @ApiProperty({
-    oneOf: [{ $ref: getSchemaPath(RepositoryMetadataDto) }],
+    type: RepositoryConfigurationDto,
     required: false,
   })
-  local?: RepositoryMetadataDto;
+  configuration?: RepositoryConfigurationDto;
 }
 
 export class RepositoryCreateResponseDto {

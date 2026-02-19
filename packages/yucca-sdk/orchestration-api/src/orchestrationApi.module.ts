@@ -13,7 +13,6 @@ import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { ResticRepository } from './repositories/restic.repository';
-import { YuccaApiRepository } from './repositories/yuccaApi.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
@@ -52,7 +51,6 @@ export class OrchestrationApiModule {
         BackendRepository,
         ConfigRepository,
         ResticRepository,
-        YuccaApiRepository,
         DatabaseService,
         BackendService,
         RepositoryService,

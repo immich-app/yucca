@@ -426,8 +426,8 @@ importers:
   packages/yucca-sdk/orchestration-api:
     dependencies:
       '@futo-org/restic-wrapper':
-        specifier: 1.1.0
-        version: 1.1.0
+        specifier: 1.1.1
+        version: 1.1.1
       '@nestjs/common':
         specifier: ^11.1.13
         version: 11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -1334,6 +1334,10 @@ packages:
 
   '@futo-org/restic-wrapper@1.1.0':
     resolution: {integrity: sha512-AQDafO3QsrMtorvYuSJBsJLy2xWqyoHN/b+LPpnSEXXV75oeAXFePVAszkVCExygmVadAbMhN9nXl3ITUjLQ3A==}
+    engines: {node: '>=20'}
+
+  '@futo-org/restic-wrapper@1.1.1':
+    resolution: {integrity: sha512-qvq/N2ZYJ/AZjXHY9wdc5LXj8a0vBeI/dVyHDPiBaeeHTfT1VTtoK230iquC8V7Ca8jIOOUVVcVD3F2eRYhacw==}
     engines: {node: '>=20'}
 
   '@grpc/grpc-js@1.14.3':
@@ -7038,6 +7042,10 @@ snapshots:
   '@floating-ui/utils@0.2.10': {}
 
   '@futo-org/restic-wrapper@1.1.0':
+    dependencies:
+      zod: 4.3.5
+
+  '@futo-org/restic-wrapper@1.1.1':
     dependencies:
       zod: 4.3.5
 

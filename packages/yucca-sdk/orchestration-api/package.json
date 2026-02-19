@@ -15,7 +15,7 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@futo-org/restic-wrapper": "1.1.0",
+    "@futo-org/restic-wrapper": "1.1.1",
     "@nestjs/common": "^11.1.13",
     "@nestjs/core": "^11.1.11",
     "better-sqlite3": "^12.6.2",

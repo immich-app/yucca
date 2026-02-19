@@ -1,26 +1,37 @@
-import { getAuth } from 'yucca-api-client';
+import { createRepository, getAuth, getRepositories } from 'yucca-api-client';
 import { BackendType } from '../enum';
-import { ModuleConfig } from '../moduleConfig';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
 
 export class YuccaBackend extends Backend {
-  constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca }) {
+  constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca; url: string }) {
     super(configuration);
   }
 
-  async online(moduleConfig: ModuleConfig): Promise<boolean> {
+  private get requestOptions() {
+    return {
+      baseUrl: this.configuration.url,
+      headers: {
+        cookie: `access-token=${this.configuration.accessToken}`,
+      },
+    };
+  }
+
+  async online(): Promise<boolean> {
     try {
-      await getAuth({
-        baseUrl: this.configuration.url ?? moduleConfig.yuccaProductionApi,
-        headers: {
-          cookie: `access-token=${this.configuration.accessToken}`,
-        },
-      });
+      await getAuth(this.requestOptions);
 
       return true;
     } catch {
       return false;
     }
+  }
+
+  async createRepository(_worm: boolean) {
+    return createRepository(this.requestOptions);
+  }
+
+  async getRepositories() {
+    return getRepositories(this.requestOptions);
   }
 }
