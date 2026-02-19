@@ -182,12 +182,6 @@ describe('AppController (e2e)', () => {
         .post(`/${repository}/data/${blobName}`)
         .set('Authorization', authHeader)
         .set('Content-Type', 'application/octet-stream')
-        .send(Buffer.from(blobData));
-
-      await request(app.getHttpServer())
-        .post(`/${repository}/data/${blobName}`)
-        .set('Authorization', authHeader)
-        .set('Content-Type', 'application/octet-stream')
         .send(Buffer.from(blobData))
         .expect(200);
 

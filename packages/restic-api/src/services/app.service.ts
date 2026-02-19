@@ -7,7 +7,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Counter } from '@opentelemetry/api';
+import { Counter, UpDownCounter } from '@opentelemetry/api';
 import { Readable } from 'node:stream';
 import { BlobInfoResponseDto } from 'src/dto/app.dto';
 import { AuthDto } from 'src/dto/auth.dto';
@@ -15,7 +15,7 @@ import { BlobType } from 'src/enum';
 import { ChecksumMismatchError, S3Error } from 'src/errors';
 import { StorageRepository } from 'src/repositories/storage.repository';
 import { attachMeterToStream, contextFromAuth } from 'src/utils/meters';
-import { attachMeterToS3Object, S3RemoteObject } from 'src/utils/s3';
+import { attachMeterToS3GetObject, S3RemoteObject } from 'src/utils/s3';
 
 @Traceable()
 @Injectable()
@@ -23,6 +23,7 @@ export class AppService {
   blobsRequestedBytes: Counter;
   blobsDownloadedBytes: Counter;
   blobsUploadedBytes: Counter;
+  blobsStoredBytes: UpDownCounter;
 
   constructor(
     private readonly storage: StorageRepository,
@@ -39,6 +40,10 @@ export class AppService {
 
     this.blobsUploadedBytes = this.metricService.getCounter('blobs.uploaded_bytes', {
       description: 'Total no. of blob bytes uploaded',
+    });
+
+    this.blobsStoredBytes = this.metricService.getUpDownCounter('blobs.stored_bytes', {
+      description: 'Total no. of blob bytes stored',
     });
   }
 
@@ -81,7 +86,7 @@ export class AppService {
 
   async getConfig(auth: AuthDto): Promise<S3RemoteObject> {
     try {
-      return attachMeterToS3Object(
+      return attachMeterToS3GetObject(
         auth,
         await this.storage.getObject(auth.repository, 'config'),
         this.blobsRequestedBytes,
@@ -95,12 +100,16 @@ export class AppService {
 
   async saveConfig(auth: AuthDto, body: Readable): Promise<void> {
     try {
+      let stored = 0;
+
       await this.storage.putObject(
         auth.repository,
         'config',
-        attachMeterToStream(body, this.blobsUploadedBytes, contextFromAuth(auth)),
+        attachMeterToStream(body, this.blobsUploadedBytes, (bytes) => (stored += bytes), contextFromAuth(auth)),
         auth.writeOnce,
       );
+
+      this.blobsStoredBytes.add(stored, contextFromAuth(auth));
     } catch (error) {
       this.wideContext.setErrorCause(error);
 
@@ -118,7 +127,15 @@ export class AppService {
     }
 
     try {
+      const { ContentLength } = await this.storage.headObject(auth.repository, 'config');
+
+      if (!ContentLength) {
+        throw 'Missing ContentLength from headObject output';
+      }
+
       await this.storage.deleteObject(auth.repository, 'config');
+
+      this.blobsStoredBytes.add(-ContentLength, contextFromAuth(auth));
     } catch (error) {
       this.wideContext.setErrorCause(error);
       throw new S3Error();
@@ -167,7 +184,7 @@ export class AppService {
 
   async getBlob(auth: AuthDto, type: BlobType, name: string, range?: string): Promise<S3RemoteObject> {
     try {
-      return attachMeterToS3Object(
+      return attachMeterToS3GetObject(
         auth,
         await this.storage.getObject(auth.repository, `${type}/${name}`, range),
         this.blobsRequestedBytes,
@@ -181,13 +198,17 @@ export class AppService {
 
   async saveBlob(auth: AuthDto, type: BlobType, name: string, body: Readable): Promise<void> {
     try {
+      let stored = 0;
+
       await this.storage.putObject(
         auth.repository,
         `${type}/${name}`,
-        attachMeterToStream(body, this.blobsUploadedBytes, contextFromAuth(auth)),
-        auth.writeOnce,
+        attachMeterToStream(body, this.blobsUploadedBytes, (bytes) => (stored += bytes), contextFromAuth(auth)),
+        true,
         name,
       );
+
+      this.blobsStoredBytes.add(stored, contextFromAuth(auth));
     } catch (error) {
       this.wideContext.setErrorCause(error);
 
@@ -215,7 +236,15 @@ export class AppService {
     }
 
     try {
+      const { ContentLength } = await this.storage.headObject(auth.repository, `${type}/${name}`);
+
+      if (!ContentLength) {
+        throw 'Missing ContentLength from headObject output';
+      }
+
       await this.storage.deleteObject(auth.repository, `${type}/${name}`);
+
+      this.blobsStoredBytes.add(-ContentLength, contextFromAuth(auth));
     } catch (error) {
       this.wideContext.setErrorCause(error);
 

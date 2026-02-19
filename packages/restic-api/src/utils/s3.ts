@@ -13,7 +13,7 @@ export interface S3RemoteObject {
   object: GetObjectCommandOutput;
 }
 
-export function attachMeterToS3Object(
+export function attachMeterToS3GetObject(
   auth: AuthDto,
   object: GetObjectCommandOutput,
   requestedBytes: Counter,
@@ -27,7 +27,12 @@ export function attachMeterToS3Object(
     stream() {
       const webStream = object.Body?.transformToWebStream();
       if (webStream) {
-        return attachMeterToStream(Readable.fromWeb(webStream as ReadableStream), downloadedBytes, context);
+        return attachMeterToStream(
+          Readable.fromWeb(webStream as ReadableStream),
+          downloadedBytes,
+          () => void 0,
+          context,
+        );
       }
     },
   };

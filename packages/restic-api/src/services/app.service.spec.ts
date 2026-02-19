@@ -177,8 +177,10 @@ describe(AppService.name, () => {
 
   describe('deleteConfig', () => {
     it('should delete config', async () => {
+      mocks.storage.headObject.mockResolvedValue({ ContentLength: 500, $metadata: void 0 as never });
       mocks.storage.deleteObject.mockResolvedValue(void 0 as never);
       await sut.deleteConfig(mockAuth());
+      expect(mocks.storage.headObject).toHaveBeenCalledWith('repository', 'config');
       expect(mocks.storage.deleteObject).toHaveBeenCalledWith('repository', 'config');
     });
 
@@ -188,6 +190,7 @@ describe(AppService.name, () => {
     });
 
     it('should throw if deleteObject fails', async () => {
+      mocks.storage.headObject.mockResolvedValue({ ContentLength: 500, $metadata: void 0 as never });
       const S3Error = Symbol('S3Error');
       mocks.storage.deleteObject.mockRejectedValue(S3Error);
       await expect(sut.deleteConfig(mockAuth())).rejects.toThrow();
@@ -320,7 +323,7 @@ describe(AppService.name, () => {
         'repository',
         'data/abc123',
         expect.anything(),
-        false,
+        true,
         'abc123',
       );
 
@@ -371,12 +374,15 @@ describe(AppService.name, () => {
 
   describe('deleteBlob', () => {
     it('should delete blob', async () => {
+      mocks.storage.headObject.mockResolvedValue({ ContentLength: 500, $metadata: void 0 as never });
       mocks.storage.deleteObject.mockResolvedValue(void 0 as never);
       await sut.deleteBlob(mockAuth(), BlobType.Data, 'abc123');
+      expect(mocks.storage.headObject).toHaveBeenCalledWith('repository', 'data/abc123');
       expect(mocks.storage.deleteObject).toHaveBeenCalledWith('repository', 'data/abc123');
     });
 
     it('should allow delete of locks with writeOnce', async () => {
+      mocks.storage.headObject.mockResolvedValue({ ContentLength: 500, $metadata: void 0 as never });
       mocks.storage.deleteObject.mockResolvedValue(void 0 as never);
       await sut.deleteBlob(mockAuth(true), BlobType.Locks, 'abc123');
       expect(mocks.storage.deleteObject).toHaveBeenCalledWith('repository', 'locks/abc123');
@@ -388,6 +394,7 @@ describe(AppService.name, () => {
     });
 
     it('should throw if deleteObject fails', async () => {
+      mocks.storage.headObject.mockResolvedValue({ ContentLength: 500, $metadata: void 0 as never });
       const S3Error = Symbol('S3Error');
       mocks.storage.deleteObject.mockRejectedValue(S3Error);
       await expect(sut.deleteBlob(mockAuth(), BlobType.Data, 'abc123')).rejects.toThrow();

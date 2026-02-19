@@ -56,7 +56,7 @@ export const newMetricServiceMock = (): jest.Mocked<RepositoryInterface<MetricSe
   getObservableCounter: jest.fn(),
   getObservableGauge: jest.fn(),
   getObservableUpDownCounter: jest.fn(),
-  getUpDownCounter: jest.fn(),
+  getUpDownCounter: jest.fn().mockImplementation(() => ({ add: jest.fn() })),
 });
 
 export const newMocks = () => {
