@@ -1,4 +1,4 @@
-import { createRepository, getAuth, getRepositories } from 'yucca-api-client';
+import { createRepository, createResticUrl, getAuth, getRepositories } from 'yucca-api-client';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -17,14 +17,8 @@ export class YuccaBackend extends Backend {
     };
   }
 
-  async online(): Promise<boolean> {
-    try {
-      await getAuth(this.requestOptions);
-
-      return true;
-    } catch {
-      return false;
-    }
+  async checkOnline(): Promise<void> {
+    await getAuth(this.requestOptions);
   }
 
   async createRepository(_worm: boolean) {
@@ -33,5 +27,10 @@ export class YuccaBackend extends Backend {
 
   async getRepositories() {
     return getRepositories(this.requestOptions);
+  }
+
+  async getResticEndpoint(id: string): Promise<string> {
+    const { url } = await createResticUrl(id, this.requestOptions);
+    return url;
   }
 }

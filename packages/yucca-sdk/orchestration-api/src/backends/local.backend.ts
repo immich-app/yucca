@@ -13,9 +13,7 @@ export class LocalBackend extends Backend {
     super(configuration);
   }
 
-  async online(): Promise<boolean> {
-    return true;
-  }
+  async checkOnline(): Promise<void> {}
 
   async createRepository(_worm: boolean): Promise<RepositoryCreateResponseDto> {
     const id = randomUUID();
@@ -60,5 +58,9 @@ export class LocalBackend extends Backend {
           .filter((f) => f !== null),
       ),
     };
+  }
+
+  async getResticEndpoint(id: string): Promise<string> {
+    return resolve(this.configuration.path, id);
   }
 }

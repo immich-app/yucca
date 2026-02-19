@@ -12,6 +12,7 @@ import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { RepositoryRepository } from './repositories/repository.repository';
 import { ResticRepository } from './repositories/restic.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
@@ -51,6 +52,7 @@ export class OrchestrationApiModule {
         BackendRepository,
         ConfigRepository,
         ResticRepository,
+        RepositoryRepository,
         DatabaseService,
         BackendService,
         RepositoryService,

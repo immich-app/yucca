@@ -42,6 +42,11 @@
             {:else}
               <Badge size="tiny" color="danger">Offline</Badge>
             {/if}
+            {#if backend.error}
+              <Badge size="tiny" color="danger"
+                >{JSON.stringify(backend.error)}</Badge
+              >
+            {/if}
           </HStack>
         </CardBody>
       </Card>

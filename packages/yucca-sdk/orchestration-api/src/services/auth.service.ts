@@ -34,10 +34,15 @@ export class AuthService {
       throw new BadRequestException('Missing local auth state');
     }
 
-    const { accessToken } = await appToken({
-      code,
-      codeVerifier: this.codeVerifier,
-    });
+    const { accessToken } = await appToken(
+      {
+        code,
+        codeVerifier: this.codeVerifier,
+      },
+      {
+        baseUrl: this.moduleConfig.yuccaProductionApi,
+      },
+    );
 
     await this.backend.updateBackend(YUCCA_PRODUCTION_UUID, {
       type: BackendType.Yucca,

@@ -28,6 +28,9 @@ export class RepositoryBackendDto {
 
   @ApiProperty({ enumName: 'BackendType', enum: BackendType })
   type!: BackendType;
+
+  @ApiProperty({ type: () => Boolean })
+  online!: boolean;
 }
 
 export class RepositoryBackendsDto {

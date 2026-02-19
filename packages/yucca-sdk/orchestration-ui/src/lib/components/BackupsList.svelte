@@ -58,22 +58,6 @@
         />
       </div></Heading
     >
-    <Card>
-      <CardBody class="flex flex-col gap-2">
-        <HStack class="items-center">
-          <img
-            src={immichLogo}
-            style="width: 32px; height: 32px;"
-            alt="Immich Logo"
-          />
-          <Heading class="break-all">Immich</Heading>
-        </HStack>
-        <HStack wrap>
-          <Badge size="tiny" color="secondary">4.6 GB</Badge>
-          <Badge size="tiny" color="warning">Backed up 13 days ago</Badge>
-        </HStack>
-      </CardBody>
-    </Card>
     {#each repositories as repository, index (repository.id)}
       <Card>
         <CardBody class="flex flex-col gap-2">
@@ -90,9 +74,18 @@
           </HStack>
           <HStack wrap>
             {#if repository.backends}
-              <Badge size="tiny" color="info"
-                >Backing up to {repository.backends.primary.type}</Badge
-              >
+              {#if repository.configuration}
+                <Badge size="tiny" color="info"
+                  >Backing up to {repository.backends.primary.type}</Badge
+                >
+                {#if !repository.backends.primary.online}
+                  <Badge size="tiny" color="danger">Offline</Badge>
+                {/if}
+              {:else}
+                <Badge size="tiny" color="info"
+                  >Found on {repository.backends.primary.type}</Badge
+                >
+              {/if}
             {/if}
             <Badge size="tiny" color="secondary"
               >{repository.metrics.sizeBytes} B</Badge
@@ -107,17 +100,25 @@
             {/if}
           </HStack>
         </CardBody>
-        <CardFooter
-          ><Button
-            size="tiny"
-            onclick={async () =>
-              alert(
-                /*await provider
-                  .createResticUrl(repository.id)
-                  .then(({ url }) => url),*/ "unimplemented",
-              )}>Test Create URL</Button
-          ></CardFooter
-        >
+        <CardFooter class="flex gap-2">
+          {#if repository.backends}
+            {#if repository.configuration}
+              {#if repository.backends.primary.online}
+                <Button size="tiny">Backup now (🚧)</Button>
+              {:else}
+                <Badge size="tiny" color="danger"
+                  >Backend is unavailable or repository is missing on remote.</Badge
+                >
+              {/if}
+              <Button size="tiny">Logs (🚧)</Button>
+              <Button size="tiny">Configure (🚧)</Button>
+            {:else}
+              <Button size="tiny">Import (🚧)</Button>
+            {/if}
+          {:else}
+            [Options visible on yucca web portal]
+          {/if}
+        </CardFooter>
       </Card>
     {/each}
   </div>

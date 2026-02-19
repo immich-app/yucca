@@ -22,6 +22,7 @@ export type BackendType = "yucca" | "local" | "s3";
 export type RepositoryBackendDto = {
     id: string;
     "type": BackendType;
+    online: boolean;
 };
 export type RepositoryBackendsDto = {
     primary: RepositoryBackendDto;
@@ -47,6 +48,7 @@ export type BackendDto = {
     id: string;
     "type": BackendType;
     isOnline: boolean;
+    error?: string;
 };
 export type BackendsResponseDto = {
     backends: BackendDto[];

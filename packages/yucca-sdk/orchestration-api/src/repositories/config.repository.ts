@@ -1,12 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
+import { randomBytes } from 'node:crypto';
 import { ConfigurationKey } from '../enum';
 import { DB } from '../schema';
 
 @Injectable()
-export class ConfigRepository {
+export class ConfigRepository implements OnModuleInit {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
+
+  async onModuleInit() {
+    // temp: (until we replace with on-boarding)
+    try {
+      await this.getEncryptionKey();
+    } catch {
+      await this.set(ConfigurationKey.EncryptionKey, randomBytes(64).toString('hex'));
+    }
+  }
 
   private async set(key: ConfigurationKey, value: string) {
     await this.db

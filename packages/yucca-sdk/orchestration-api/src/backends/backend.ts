@@ -6,9 +6,10 @@ import { BackendConfiguration } from '../schema/tables/backend.table';
 export abstract class Backend {
   constructor(protected readonly configuration: BackendConfiguration) {}
 
-  abstract online(): Promise<boolean>;
+  abstract checkOnline(): Promise<void>;
   abstract createRepository(worm: boolean): Promise<RepositoryCreateResponseDto>;
   abstract getRepositories(): Promise<RepositoryListResponseDto>;
+  abstract getResticEndpoint(id: string): Promise<string>;
 
   static from(configuration: BackendConfiguration, moduleConfig: ModuleConfig) {
     switch (configuration.type) {
