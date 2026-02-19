@@ -1,4 +1,4 @@
-import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { BackendType } from '../enum';
 
 export class RepositoryDto {
