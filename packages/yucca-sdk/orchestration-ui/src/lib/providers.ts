@@ -5,21 +5,17 @@ import * as orchestrationApiClient from './fetch-client';
 export abstract class BaseProvider {
   abstract getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto>;
   abstract createRepository(): Promise<orchestrationApiClient.RepositoryCreateResponseDto>;
-  abstract getBackends(): Promise<orchestrationApiClient.BackendsResponseDto>;
+  abstract createBackup(repositoryId: string): Promise<void>;
 }
 
-/* eslint-disable @typescript-eslint/require-await */
 export const yuccaApiProvider = {
   ...yuccaApiClient,
-  async getBackends() {
-    return {
-      backends: [],
-    };
-  },
+  async createBackup() {},
 } as BaseProvider;
 
 export const orchestrationApiProvider = orchestrationApiClient as BaseProvider;
 
+/* eslint-disable @typescript-eslint/require-await */
 export class MockProvider extends BaseProvider {
   async getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto> {
     return {
@@ -47,11 +43,7 @@ export class MockProvider extends BaseProvider {
     };
   }
 
-  async getBackends(): Promise<orchestrationApiClient.BackendsResponseDto> {
-    return {
-      backends: [],
-    };
-  }
+  async createBackup() {}
 }
 /* eslint-enable @typescript-eslint/require-await */
 

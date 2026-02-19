@@ -41,24 +41,87 @@
         ]
       }
     },
-    "/api/backend": {
+    "/api/repository/{id}": {
+      "post": {
+        "operationId": "createBackup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
+      "patch": {
+        "operationId": "setRepositoryConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryMetadataDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/fs": {
       "get": {
-        "operationId": "getBackends",
-        "parameters": [],
+        "operationId": "getFileListing",
+        "parameters": [
+          {
+            "name": "path",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BackendsResponseDto"
+                  "$ref": "#/components/schemas/FilesystemListingResponseDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "Backend"
+          "Filesystem"
         ]
       }
     },
@@ -112,6 +175,74 @@
         },
         "tags": [
           "Auth"
+        ]
+      }
+    },
+    "/api/draft/{id}": {
+      "get": {
+        "operationId": "listRuns",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Draft"
+        ]
+      }
+    },
+    "/api/draft/{id}/{run}": {
+      "get": {
+        "operationId": "getRun",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "run",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Draft"
         ]
       }
     }
@@ -177,10 +308,8 @@
           "local": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/RepositoryMetadataDto"
-              }
-            ],
-            "allOf": [
+                "$ref": "#/components/schemas/Boolean"
+              },
               {
                 "$ref": "#/components/schemas/RepositoryMetadataDto"
               }
@@ -218,49 +347,69 @@
           "repositories"
         ]
       },
-      "BackendType": {
-        "type": "string",
-        "enum": [
-          "yucca",
-          "local",
-          "s3"
-        ]
-      },
-      "BackendDto": {
+      "FilesystemListingItemDto": {
         "type": "object",
         "properties": {
-          "id": {
+          "path": {
             "type": "string"
           },
-          "type": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/BackendType"
-              }
-            ]
-          },
-          "isOnline": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "type",
-          "isOnline"
-        ]
-      },
-      "BackendsResponseDto": {
-        "type": "object",
-        "properties": {
-          "backends": {
+          "isDirectory": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/BackendDto"
+              "type": "boolean"
             }
           }
         },
         "required": [
-          "backends"
+          "path",
+          "isDirectory"
+        ]
+      },
+      "FilesystemListingResponseDto": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FilesystemListingItemDto"
+            }
+          }
+        },
+        "required": [
+          "parent",
+          "path",
+          "items"
+        ]
+      },
+      "LogsDto": {
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "runs"
+        ]
+      },
+      "LogDto": {
+        "type": "object",
+        "properties": {
+          "log": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "log"
         ]
       }
     }

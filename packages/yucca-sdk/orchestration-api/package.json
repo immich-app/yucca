@@ -15,13 +15,10 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@futo-org/restic-wrapper": "1.1.0",
+    "@futo-org/restic-wrapper": "1.1.1",
     "@nestjs/common": "^11.1.13",
     "@nestjs/core": "^11.1.11",
-    "better-sqlite3": "^12.6.2",
     "express": "^5.2.1",
-    "kysely": "0.28.2",
-    "nestjs-kysely": "^3.1.2",
     "openid-client": "^6.8.1",
     "yucca-api-client": "workspace:^"
   },
@@ -30,7 +27,6 @@
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/swagger": "^11.2.5",
     "@nestjs/testing": "^11.1.11",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.2.1",

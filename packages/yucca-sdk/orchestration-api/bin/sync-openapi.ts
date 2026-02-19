@@ -5,12 +5,7 @@ import { resolve } from 'node:path';
 import { ORCHESTRATION_PORT, OrchestrationApiModule } from '../dist/index';
 
 async function main() {
-  const app = await NestFactory.create<NestApplication>(
-    OrchestrationApiModule.forRoot({
-      yuccaProductionApi: 'http://localhost',
-    }),
-  );
-
+  const app = await NestFactory.create<NestApplication>(OrchestrationApiModule);
   app.setGlobalPrefix('api');
 
   const builder = new DocumentBuilder()

@@ -18,6 +18,7 @@ export type RepositoryMetricsDto = {
     lastUpload?: string;
     sizeBytes: number;
 };
+export type Boolean = {};
 export type RepositoryMetadataDto = {
     paths: string[];
 };
@@ -25,7 +26,7 @@ export type LocalRepositoryDto = {
     id: string;
     worm: boolean;
     metrics: RepositoryMetricsDto;
-    local?: RepositoryMetadataDto;
+    local?: Boolean | RepositoryMetadataDto;
 };
 export type RepositoryCreateResponseDto = {
     repository: LocalRepositoryDto;
@@ -33,14 +34,20 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
-export type BackendType = "yucca" | "local" | "s3";
-export type BackendDto = {
-    id: string;
-    "type": BackendType;
-    isOnline: boolean;
+export type FilesystemListingItemDto = {
+    path: string;
+    isDirectory: boolean[];
 };
-export type BackendsResponseDto = {
-    backends: BackendDto[];
+export type FilesystemListingResponseDto = {
+    parent: string;
+    path: string;
+    items: FilesystemListingItemDto[];
+};
+export type LogsDto = {
+    runs: string[];
+};
+export type LogDto = {
+    log: string;
 };
 export function createRepository(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -59,11 +66,26 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function getBackends(opts?: Oazapfts.RequestOpts) {
+export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function setRepositoryConfig(id: string, repositoryMetadataDto: RepositoryMetadataDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: repositoryMetadataDto
+    })));
+}
+export function getFileListing(path: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
-        data: BackendsResponseDto;
-    }>("/api/backend", {
+        data: FilesystemListingResponseDto;
+    }>(`/api/fs${QS.query(QS.explode({
+        path
+    }))}`, {
         ...opts
     }));
 }
@@ -81,6 +103,22 @@ export function callback(code: string, opts?: Oazapfts.RequestOpts) {
     }>(`/api/auth/callback${QS.query(QS.explode({
         code
     }))}`, {
+        ...opts
+    }));
+}
+export function listRuns(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogsDto;
+    }>(`/api/draft/${encodeURIComponent(id)}`, {
+        ...opts
+    }));
+}
+export function getRun(id: string, run: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogDto;
+    }>(`/api/draft/${encodeURIComponent(id)}/${encodeURIComponent(run)}`, {
         ...opts
     }));
 }

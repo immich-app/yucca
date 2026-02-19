@@ -1,12 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { YuccaApiEndpointUrlProvider } from '../providers';
 
-import { createRepository, defaults, getRepositories } from 'yucca-api-client';
-import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
+import { createRepository, createResticUrl, defaults, getRepositories } from 'yucca-api-client';
 
 @Injectable()
 export class YuccaApiRepository {
-  constructor(@Inject(ModuleConfigProvider) { yuccaProductionApi }: ModuleConfig) {
-    defaults.baseUrl = yuccaProductionApi;
+  constructor(@Optional() @Inject(YuccaApiEndpointUrlProvider) endpoint: string) {
+    defaults.baseUrl = endpoint ?? 'http://localhost:3000';
   }
 
   async createRepository(accessToken: string, _worm: boolean) {
@@ -19,6 +19,14 @@ export class YuccaApiRepository {
 
   async getRepositories(accessToken: string) {
     return getRepositories({
+      headers: {
+        Cookie: `access-token=${accessToken}`,
+      },
+    });
+  }
+
+  async createResticUrl(id: string, accessToken: string) {
+    return createResticUrl(id, {
       headers: {
         Cookie: `access-token=${accessToken}`,
       },

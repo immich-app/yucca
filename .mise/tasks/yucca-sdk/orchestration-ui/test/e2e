@@ -2,5 +2,4 @@
 #MISE description="Run end-to-end tests for yucca-sdk/orchestration-ui"
 set -e
 
-# pnpm --filter orchestration-ui test:e2e "$@"
-echo Currently no tests are written for Orchestration UI.
+pnpm --filter orchestration-ui test:e2e "$@"

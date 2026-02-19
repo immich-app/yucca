@@ -29,10 +29,10 @@ export class RepositoryMetadataDto {
 @ApiExtraModels(Boolean, RepositoryMetadataDto)
 export class LocalRepositoryDto extends RepositoryWithMetricsDto {
   @ApiProperty({
-    oneOf: [{ $ref: getSchemaPath(RepositoryMetadataDto) }],
+    oneOf: [{ $ref: getSchemaPath(Boolean) }, { $ref: getSchemaPath(RepositoryMetadataDto) }],
     required: false,
   })
-  local?: RepositoryMetadataDto;
+  local?: RepositoryMetadataDto | false;
 }
 
 export class RepositoryCreateResponseDto {

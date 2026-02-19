@@ -114,7 +114,7 @@ export class AuthService {
     });
 
     return {
-      redirectTo: loginFlow === OidcLoginFlow.App ? '/login/grant' : '/',
+      redirectTo: loginFlow === OidcLoginFlow.App ? '/login/grant' : '',
       accessToken,
     };
   }

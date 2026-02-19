@@ -15,6 +15,13 @@
     <Button onclick={() => (mock = false)} disabled={!mock}
       >Use orchestration API</Button
     >
+    <Button
+      onclick={() => {
+        const loginUrl = new URL("http://localhost:22676/api/auth/login");
+        loginUrl.searchParams.set("next", window.location.href);
+        window.location.href = loginUrl.href;
+      }}>Login</Button
+    >
   </HStack>
 
   {#key mock}
