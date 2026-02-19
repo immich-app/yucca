@@ -1,4 +1,3 @@
-import { calculatePKCECodeChallenge, randomPKCECodeVerifier } from 'openid-client';
 import { AuthDto } from 'src/dto/auth.dto';
 import { Mocks, newMocks } from '../../test/mocks';
 import { AuthService } from './auth.service';
@@ -25,7 +24,6 @@ describe(AuthService.name, () => {
   beforeEach(() => {
     mocks = newMocks();
     sut = new AuthService(
-      mocks.jwt as never,
       mocks.oidc as never,
       mocks.user as never,
       mocks.crypto,
@@ -187,11 +185,9 @@ describe(AuthService.name, () => {
             cookie: 'oidc-state=state; oidc-code-verifier=code',
           },
         } as never),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          accessToken,
-        }),
-      );
+      ).resolves.toEqual({
+        accessToken,
+      });
 
       expect(mocks.wideContext.assignContext).toHaveBeenCalledWith({ claims });
       expect(mocks.wideContext.addContext).toHaveBeenCalledWith('customerId', mockUser.id);
@@ -220,11 +216,9 @@ describe(AuthService.name, () => {
             cookie: 'oidc-state=state; oidc-code-verifier=code',
           },
         } as never),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          accessToken,
-        }),
-      );
+      ).resolves.toEqual({
+        accessToken,
+      });
 
       expect(mocks.user.update).toHaveBeenCalledWith(mockUser.id, expect.any(Object));
       expect(mocks.wideContext.assignContext).toHaveBeenCalledWith({ claims });
@@ -233,86 +227,6 @@ describe(AuthService.name, () => {
         userId: mockUser.id,
         accessToken,
       });
-    });
-
-    it('should use redirect to app login if in flow', async () => {
-      const claims = {
-        name: 'name',
-        email: 'email',
-      };
-
-      mocks.user.getBySub.mockResolvedValue(mockUser);
-      mocks.oidc.callback.mockResolvedValue(claims as never);
-
-      await expect(
-        sut.oidcCallback({
-          ...request,
-          headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code; oidc-login-flow=app',
-          },
-        } as never),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          redirectTo: '/login/grant',
-        }),
-      );
-    });
-  });
-
-  describe('appAuthorize', () => {
-    it('generates expected parameters', () => {
-      expect(sut.appAuthorize(mockAuth)).toEqual(
-        expect.objectContaining({
-          redirectTo: '/login/grant',
-        }),
-      );
-
-      expect(sut.appAuthorize(void 0)).toEqual(
-        expect.objectContaining({
-          redirectTo: '/api/auth/oidc/login',
-        }),
-      );
-    });
-  });
-
-  describe('appCallback', () => {
-    it('generates JWT with current user and provided challenge', async () => {
-      mocks.jwt.signAsync.mockImplementation(({ userId, codeChallenge }) => userId + codeChallenge);
-
-      const codeVerifier = randomPKCECodeVerifier();
-      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-      const { redirectTo } = await sut.appCallback(mockAuth, {
-        cookie: `app-code-challenge=${codeChallenge}`,
-      });
-
-      const url = new URL(redirectTo);
-      expect(url.searchParams.get('code')).toBe(mockAuth.id + codeChallenge);
-    });
-  });
-
-  describe('appToken', () => {
-    it('validates PKCE from JWT', async () => {
-      const codeVerifier = randomPKCECodeVerifier();
-      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-
-      mocks.jwt.verifyAsync.mockImplementation((jwt) => ({
-        userId: jwt.split(',')[0],
-        codeChallenge: jwt.split(',')[1],
-      }));
-
-      const accessToken = Symbol('Access Token');
-      mocks.crypto.randomHex.mockReturnValue(accessToken as never);
-
-      await expect(
-        sut.appToken({
-          code: `${mockAuth.id},${codeChallenge}`,
-          codeVerifier,
-        }),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          accessToken,
-        }),
-      );
     });
   });
 });

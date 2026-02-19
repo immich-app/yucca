@@ -1,44 +1,35 @@
-import { Injectable } from '@nestjs/common';
-import { Kysely } from 'kysely';
-import { InjectKysely } from 'nestjs-kysely';
-import { ConfigurationKey } from '../enum';
-import { DB } from '../schema';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 @Injectable()
-export class ConfigRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
-
-  private async set(key: ConfigurationKey, value: string) {
-    await this.db
-      .insertInto('config')
-      .values({
-        key,
-        value,
-      })
-      .onConflict((oc) => oc.doUpdateSet({ value }))
-      .executeTakeFirstOrThrow();
+export class ConfigRepository implements OnModuleInit {
+  async onModuleInit() {
+    await mkdir('.data');
+    await writeFile('.data/encryptionKey', randomBytes(32).toString('hex'));
   }
 
-  private async get(key: ConfigurationKey) {
-    const { value } = await this.db
-      .selectFrom('config')
-      .where('config.key', '=', key)
-      .select('config.value')
-      .executeTakeFirstOrThrow();
-
-    return value;
+  async getAccessToken() {
+    try {
+      const file = await readFile('.data/accessToken');
+      return file.toString();
+    } catch {
+      return;
+    }
   }
 
-  setAccessToken(accessToken: string) {
-    return this.set(ConfigurationKey.AccessToken, accessToken);
-  }
-
-  getAccessToken() {
-    return this.get(ConfigurationKey.AccessToken);
+  async getAccessTokenOrThrow() {
+    const file = await readFile('.data/accessToken');
+    return file.toString();
   }
 
   async getEncryptionKey(): Promise<Buffer> {
-    const encryptionKey = await this.get(ConfigurationKey.EncryptionKey);
-    return Buffer.from(encryptionKey.toString(), 'hex');
+    const file = await readFile('.data/encryptionKey');
+    return Buffer.from(file.toString(), 'hex');
+  }
+
+  async getRecoveryKey(): Promise<string> {
+    const file = await readFile('.data/encryptionKey');
+    return file.toString().toUpperCase();
   }
 }

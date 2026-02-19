@@ -1,12 +1,10 @@
 import { WideContextRepository } from '@common/server/otel';
-import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { parse } from 'cookie';
 import { Request } from 'express';
 import { IncomingHttpHeaders } from 'node:http';
-import { calculatePKCECodeChallenge } from 'openid-client';
-import { AppTokenRequestDto, AppTokenResponseDto, AuthDto } from 'src/dto/auth.dto';
-import { CookieName, OidcLoginFlow } from 'src/enum';
+import { AuthDto } from 'src/dto/auth.dto';
+import { CookieName } from 'src/enum';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
@@ -15,7 +13,6 @@ import { UserRepository } from 'src/repositories/user.repository';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly jwt: JwtService,
     private readonly oidc: OidcRepository,
     private readonly user: UserRepository,
     private readonly crypto: CryptoRepository,
@@ -52,7 +49,7 @@ export class AuthService {
     return { redirectTo: redirectTo.href, state, codeVerifier };
   }
 
-  async oidcCallback(request: Request): Promise<{ redirectTo: string; accessToken: string }> {
+  async oidcCallback(request: Request) {
     const url = new URL(`${request.protocol}://${request.get('Host')}${request.originalUrl}`);
 
     if (url.searchParams.has('error')) {
@@ -60,11 +57,7 @@ export class AuthService {
     }
 
     const cookies = parse(request.headers.cookie || '');
-    const {
-      [CookieName.OidcLoginFlow]: loginFlow,
-      [CookieName.OidcState]: expectedState,
-      [CookieName.OidcCodeVerifier]: codeVerifier,
-    } = cookies;
+    const { [CookieName.OidcState]: expectedState, [CookieName.OidcCodeVerifier]: codeVerifier } = cookies;
 
     if (!expectedState) {
       throw new InternalServerErrorException('missing expectedState');
@@ -113,59 +106,6 @@ export class AuthService {
       accessToken,
     });
 
-    return {
-      redirectTo: loginFlow === OidcLoginFlow.App ? '/login/grant' : '/',
-      accessToken,
-    };
-  }
-
-  appAuthorize(auth: AuthDto | undefined): { redirectTo: string; setFlowCookie: boolean } {
-    return auth
-      ? {
-          redirectTo: '/login/grant',
-          setFlowCookie: false,
-        }
-      : {
-          redirectTo: '/api/auth/oidc/login',
-          setFlowCookie: true,
-        };
-  }
-
-  async appCallback(auth: AuthDto, headers: IncomingHttpHeaders): Promise<{ redirectTo: string }> {
-    const cookies = parse(headers.cookie ?? '');
-
-    const codeChallenge = cookies[CookieName.AppCodeChallenge];
-
-    const redirectUrl = new URL(`http://localhost:22676/api/auth/callback`);
-    redirectUrl.searchParams.set(
-      'code',
-      await this.jwt.signAsync({
-        userId: auth.id,
-        codeChallenge,
-      }),
-    );
-
-    return {
-      redirectTo: redirectUrl.href,
-    };
-  }
-
-  async appToken(dto: AppTokenRequestDto): Promise<AppTokenResponseDto> {
-    const { userId, codeChallenge }: { userId: string; codeChallenge: string } = await this.jwt.verifyAsync(dto.code);
-
-    const expectedChallenge = await calculatePKCECodeChallenge(dto.codeVerifier);
-    if (expectedChallenge !== codeChallenge) {
-      throw new BadRequestException('Bad PKCE');
-    }
-
-    const accessToken = this.crypto.randomHex(32);
-    await this.session.create({
-      userId,
-      accessToken,
-    });
-
-    return {
-      accessToken,
-    };
+    return { accessToken };
   }
 }

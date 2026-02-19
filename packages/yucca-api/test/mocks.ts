@@ -63,7 +63,6 @@ export const newWideContextRepositoryMock = (): jest.Mocked<RepositoryInterface<
 });
 
 export const newJwtServiceMock = () => ({
-  signAsync: jest.fn(),
   verifyAsync: jest.fn(),
 });
 

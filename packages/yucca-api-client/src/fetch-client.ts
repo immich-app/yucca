@@ -20,13 +20,6 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
-export type AppTokenRequestDto = {
-    codeVerifier: string;
-    code: string;
-};
-export type AppTokenResponseDto = {
-    accessToken: string;
-};
 export type RepositoryMetricsDto = {
     lastUpload?: string;
     sizeBytes: number;
@@ -67,29 +60,6 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
     }));
-}
-export function appAuthorize(codeChallenge: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/auth/app/login${QS.query(QS.explode({
-        code_challenge: codeChallenge
-    }))}`, {
-        ...opts
-    }));
-}
-export function appCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/auth/app/callback", {
-        ...opts,
-        method: "POST"
-    }));
-}
-export function appToken(appTokenRequestDto: AppTokenRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: AppTokenResponseDto;
-    }>("/api/auth/app/token", oazapfts.json({
-        ...opts,
-        method: "POST",
-        body: appTokenRequestDto
-    })));
 }
 export function createRepository(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import BackendsList from "$lib/components/BackendsList.svelte";
   import BackupsList from "$lib/components/BackupsList.svelte";
+  import KeyFlow from "$lib/components/key-flow/KeyFlow.svelte";
   import {
     MockProvider,
     orchestrationApiProvider,
@@ -17,5 +17,5 @@
   }
 </script>
 
-<BackendsList />
+<KeyFlow />
 <BackupsList />

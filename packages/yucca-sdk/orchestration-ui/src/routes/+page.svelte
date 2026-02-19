@@ -1,23 +1,23 @@
 <script>
-  import { Button, Heading, HStack } from "@immich/ui";
+  import { Button } from "@immich/ui";
   import TestUi from "./TestUi.svelte";
 
   let mock = $state(true);
 </script>
 
-<div class="p-8 flex flex-col gap-4">
-  <Heading size="giant">Orchestrator Test UI</Heading>
+<h1>Welcome to your library project</h1>
+<p>
+  Create your package using @sveltejs/package and preview/showcase your work
+  with SvelteKit
+</p>
+<p>
+  Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the
+  documentation
+</p>
 
-  <HStack>
-    <Button onclick={() => (mock = true)} disabled={mock}
-      >Use mock provider</Button
-    >
-    <Button onclick={() => (mock = false)} disabled={!mock}
-      >Use orchestration API</Button
-    >
-  </HStack>
+<Button onclick={() => (mock = true)}>Use mock provider</Button>
+<Button onclick={() => (mock = false)}>Use orchestration API</Button>
 
-  {#key mock}
-    <TestUi {mock} />
-  {/key}
-</div>
+{#key mock}
+  <TestUi {mock} />
+{/key}

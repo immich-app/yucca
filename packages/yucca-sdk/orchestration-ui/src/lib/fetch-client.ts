@@ -14,38 +14,10 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "http://localhost:22676"
 };
-export type RepositoryMetricsDto = {
-    lastUpload?: string;
-    sizeBytes: number;
-};
-export type RepositoryMetadataDto = {
-    paths: string[];
-};
-export type LocalRepositoryDto = {
-    id: string;
-    worm: boolean;
-    metrics: RepositoryMetricsDto;
-    local?: RepositoryMetadataDto;
-};
-export type RepositoryCreateResponseDto = {
-    repository: LocalRepositoryDto;
-};
-export type RepositoryListResponseDto = {
-    repositories: LocalRepositoryDto[];
-};
-export type BackendType = "yucca" | "local" | "s3";
-export type BackendDto = {
-    id: string;
-    "type": BackendType;
-    isOnline: boolean;
-};
-export type BackendsResponseDto = {
-    backends: BackendDto[];
-};
 export function createRepository(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
-        data: RepositoryCreateResponseDto;
+        data: object;
     }>("/api/repository", {
         ...opts,
         method: "POST"
@@ -54,33 +26,8 @@ export function createRepository(opts?: Oazapfts.RequestOpts) {
 export function getRepositories(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
-        data: RepositoryListResponseDto;
-    }>("/api/repository", {
-        ...opts
-    }));
-}
-export function getBackends(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: BackendsResponseDto;
-    }>("/api/backend", {
-        ...opts
-    }));
-}
-export function login(next: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/auth/login${QS.query(QS.explode({
-        next
-    }))}`, {
-        ...opts
-    }));
-}
-export function callback(code: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
         data: object;
-    }>(`/api/auth/callback${QS.query(QS.explode({
-        code
-    }))}`, {
+    }>("/api/repository", {
         ...opts
     }));
 }

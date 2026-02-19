@@ -11,7 +11,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
+                  "type": "object"
                 }
               }
             }
@@ -30,80 +30,6 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RepositoryListResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Repository"
-        ]
-      }
-    },
-    "/api/backend": {
-      "get": {
-        "operationId": "getBackends",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BackendsResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Backend"
-        ]
-      }
-    },
-    "/api/auth/login": {
-      "get": {
-        "operationId": "login",
-        "parameters": [
-          {
-            "name": "next",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/api/auth/callback": {
-      "get": {
-        "operationId": "callback",
-        "parameters": [
-          {
-            "name": "code",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
                   "type": "object"
                 }
               }
@@ -111,7 +37,7 @@
           }
         },
         "tags": [
-          "Auth"
+          "Repository"
         ]
       }
     }
@@ -129,140 +55,6 @@
     }
   ],
   "components": {
-    "schemas": {
-      "Boolean": {
-        "type": "object",
-        "properties": {}
-      },
-      "RepositoryMetadataDto": {
-        "type": "object",
-        "properties": {
-          "paths": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "paths"
-        ]
-      },
-      "RepositoryMetricsDto": {
-        "type": "object",
-        "properties": {
-          "lastUpload": {
-            "type": "string"
-          },
-          "sizeBytes": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "sizeBytes"
-        ]
-      },
-      "LocalRepositoryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "worm": {
-            "type": "boolean"
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/RepositoryMetricsDto"
-          },
-          "local": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/RepositoryMetadataDto"
-              }
-            ],
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RepositoryMetadataDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "worm",
-          "metrics"
-        ]
-      },
-      "RepositoryCreateResponseDto": {
-        "type": "object",
-        "properties": {
-          "repository": {
-            "$ref": "#/components/schemas/LocalRepositoryDto"
-          }
-        },
-        "required": [
-          "repository"
-        ]
-      },
-      "RepositoryListResponseDto": {
-        "type": "object",
-        "properties": {
-          "repositories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LocalRepositoryDto"
-            }
-          }
-        },
-        "required": [
-          "repositories"
-        ]
-      },
-      "BackendType": {
-        "type": "string",
-        "enum": [
-          "yucca",
-          "local",
-          "s3"
-        ]
-      },
-      "BackendDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/BackendType"
-              }
-            ]
-          },
-          "isOnline": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "type",
-          "isOnline"
-        ]
-      },
-      "BackendsResponseDto": {
-        "type": "object",
-        "properties": {
-          "backends": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BackendDto"
-            }
-          }
-        },
-        "required": [
-          "backends"
-        ]
-      }
-    }
+    "schemas": {}
   }
 }
