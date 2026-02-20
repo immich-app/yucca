@@ -54,10 +54,4 @@ export class AuthController {
 
     response.redirect(redirectTo);
   }
-
-  // @Post('/app/token')
-  // @ApiOkResponse({ type: AppTokenResponseDto })
-  // appToken(@Body() dto: AppTokenRequestDto): Promise<AppTokenResponseDto> {
-  //   return this.auth.appToken(dto);
-  // }
 }
