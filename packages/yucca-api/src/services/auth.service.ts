@@ -54,9 +54,10 @@ export class AuthService {
 
   async oidcCallback(request: Request): Promise<{ redirectTo: string; accessToken: string }> {
     const url = new URL(`${request.protocol}://${request.get('Host')}${request.originalUrl}`);
+    const error = url.searchParams.has('error');
 
-    if (url.searchParams.has('error')) {
-      throw new InternalServerErrorException(`OIDC callback: ${url.searchParams.get('error_description') ?? 'unc'}`);
+    if (error) {
+      throw new InternalServerErrorException(`OIDC error: ${url.searchParams.get('error_description') ?? error}`);
     }
 
     const cookies = parse(request.headers.cookie || '');
