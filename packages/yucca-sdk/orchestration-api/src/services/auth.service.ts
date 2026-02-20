@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { parse } from 'cookie';
 import { Request } from 'express';
 import { YUCCA_PRODUCTION_UUID } from '../const';
@@ -6,23 +6,39 @@ import { BackendType, CookieName } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
-import { OidcRepository } from '../repositories/oidc.repository';
 
 @Injectable()
 export class AuthService {
-  codeVerifier: string | undefined;
-  redirectTo: string | undefined;
-
   constructor(
     readonly config: ConfigRepository,
     readonly backend: BackendRepository,
-    readonly oidc: OidcRepository,
     @Inject(ModuleConfigProvider) readonly moduleConfig: ModuleConfig,
   ) {}
 
-  async oidcAuthorize(): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
-    const { redirectTo, state, codeVerifier } = await this.oidc.authorize();
-    return { redirectTo: redirectTo.href, state, codeVerifier };
+  async oidcAuthorize(request: Request): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
+    const redirectUri = new URL('/api/auth/oidc/callback', `${request.protocol}://${request.get('Host')}`);
+
+    const loginUrl = new URL('/api/auth/oidc/login', this.moduleConfig.yuccaProductionApi);
+    loginUrl.searchParams.set('redirect_uri', redirectUri.href);
+
+    const response = await fetch(loginUrl, {
+      redirect: 'manual',
+    });
+
+    const redirectTo = response.headers.get('location');
+    const cookies = parse(response.headers.getSetCookie().join('; '));
+    const codeVerifier = cookies[CookieName.OidcCodeVerifier];
+    const state = cookies[CookieName.OidcState];
+
+    if (!redirectTo || !codeVerifier || !state) {
+      throw new InternalServerErrorException('Missing state');
+    }
+
+    return {
+      redirectTo,
+      codeVerifier,
+      state,
+    };
   }
 
   async oidcCallback(request: Request): Promise<{ redirectTo: string }> {
@@ -33,7 +49,11 @@ export class AuthService {
     }
 
     const cookies = parse(request.headers.cookie || '');
-    const { [CookieName.OidcState]: expectedState, [CookieName.OidcCodeVerifier]: codeVerifier } = cookies;
+    const {
+      [CookieName.OidcState]: expectedState,
+      [CookieName.OidcCodeVerifier]: codeVerifier,
+      [CookieName.NextUrl]: nextUrl,
+    } = cookies;
 
     if (!expectedState) {
       throw new InternalServerErrorException('missing expectedState');
@@ -43,19 +63,28 @@ export class AuthService {
       throw new InternalServerErrorException('missing codeVerifier');
     }
 
-    const response = await this.oidc.callback(url, expectedState, codeVerifier);
-
-    if (!response?.id_token) {
-      throw new BadRequestException('authorization failed');
+    if (!nextUrl) {
+      throw new InternalServerErrorException('missing nextUrl');
     }
 
-    const claims = response.claims();
-
-    if (!claims) {
-      throw new InternalServerErrorException('missing claims');
+    const callbackUrl = new URL('/api/auth/oidc/callback', this.moduleConfig.yuccaProductionApi);
+    for (const [key, value] of url.searchParams.entries()) {
+      callbackUrl.searchParams.set(key, value);
     }
 
-    const accessToken = /* todo */;
+    const response = await fetch(callbackUrl, {
+      headers: {
+        cookie: `${CookieName.OidcCodeVerifier}=${codeVerifier}; ${CookieName.OidcState}=${expectedState}`,
+      },
+      redirect: 'manual',
+    });
+
+    const authCookies = parse(response.headers.getSetCookie().join('; '));
+    const accessToken = authCookies[CookieName.AccessToken];
+
+    if (!accessToken) {
+      throw new InternalServerErrorException('missing accessToken');
+    }
 
     await this.backend.updateBackend(YUCCA_PRODUCTION_UUID, {
       type: BackendType.Yucca,
@@ -63,7 +92,7 @@ export class AuthService {
     });
 
     return {
-      redirectTo: '/TODO',
+      redirectTo: nextUrl,
     };
   }
 }

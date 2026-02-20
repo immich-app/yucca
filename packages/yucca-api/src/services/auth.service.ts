@@ -47,8 +47,8 @@ export class AuthService {
     return url;
   }
 
-  async oidcAuthorize(): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
-    const { redirectTo, state, codeVerifier } = await this.oidc.authorize();
+  async oidcAuthorize(redirectUri?: string): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
+    const { redirectTo, state, codeVerifier } = await this.oidc.authorize(redirectUri);
     return { redirectTo: redirectTo.href, state, codeVerifier };
   }
 

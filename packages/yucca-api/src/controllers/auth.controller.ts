@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
-import { AppTokenRequestDto, AppTokenResponseDto, AuthDto } from 'src/dto/auth.dto';
+import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { AuthService } from 'src/services/auth.service';
@@ -27,8 +27,9 @@ export class AuthController {
   }
 
   @Get('/oidc/login')
-  async oidcAuthorize(@Res({ passthrough: true }) response: Response) {
-    const { redirectTo, state, codeVerifier } = await this.auth.oidcAuthorize();
+  @ApiQuery({ name: 'redirect_uri', type: String })
+  async oidcAuthorize(@Query('redirect_uri') redirectUri: string, @Res({ passthrough: true }) response: Response) {
+    const { redirectTo, state, codeVerifier } = await this.auth.oidcAuthorize(redirectUri);
 
     response.cookie(CookieName.OidcState, state);
     response.cookie(CookieName.OidcCodeVerifier, codeVerifier);
@@ -54,9 +55,9 @@ export class AuthController {
     response.redirect(redirectTo);
   }
 
-  @Post('/app/token')
-  @ApiOkResponse({ type: AppTokenResponseDto })
-  appToken(@Body() dto: AppTokenRequestDto): Promise<AppTokenResponseDto> {
-    return this.auth.appToken(dto);
-  }
+  // @Post('/app/token')
+  // @ApiOkResponse({ type: AppTokenResponseDto })
+  // appToken(@Body() dto: AppTokenRequestDto): Promise<AppTokenResponseDto> {
+  //   return this.auth.appToken(dto);
+  // }
 }

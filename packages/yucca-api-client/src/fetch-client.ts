@@ -20,13 +20,6 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
-export type AppTokenRequestDto = {
-    sub: string;
-    access_token: string;
-};
-export type AppTokenResponseDto = {
-    accessToken: string;
-};
 export type RepositoryMetricsDto = {
     lastUpload?: string;
     sizeBytes: number;
@@ -58,8 +51,10 @@ export function logout(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/login", {
+export function oidcAuthorize(redirectUri: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
+        redirect_uri: redirectUri
+    }))}`, {
         ...opts
     }));
 }
@@ -67,16 +62,6 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
     }));
-}
-export function appToken(appTokenRequestDto: AppTokenRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: AppTokenResponseDto;
-    }>("/api/auth/app/token", oazapfts.json({
-        ...opts,
-        method: "POST",
-        body: appTokenRequestDto
-    })));
 }
 export function createRepository(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

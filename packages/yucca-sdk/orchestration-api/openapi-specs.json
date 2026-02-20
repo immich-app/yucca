@@ -65,7 +65,16 @@
     "/api/auth/oidc/login": {
       "get": {
         "operationId": "oidcAuthorize",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "next",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""

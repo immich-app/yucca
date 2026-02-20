@@ -12,7 +12,6 @@ import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
-import { OidcRepository } from './repositories/oidc.repository';
 import { ResticRepository } from './repositories/restic.repository';
 import { YuccaApiRepository } from './repositories/yuccaApi.repository';
 import { AuthService } from './services/auth.service';
@@ -53,7 +52,6 @@ export class OrchestrationApiModule {
         BackendRepository,
         ConfigRepository,
         ResticRepository,
-        OidcRepository,
         YuccaApiRepository,
         DatabaseService,
         BackendService,

@@ -67,8 +67,10 @@ export function getBackends(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/login", {
+export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
+        next
+    }))}`, {
         ...opts
     }));
 }

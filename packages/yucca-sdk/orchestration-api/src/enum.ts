@@ -1,8 +1,8 @@
 export enum CookieName {
   AccessToken = 'access-token',
+  NextUrl = 'next',
   OidcState = 'oidc-state',
   OidcCodeVerifier = 'oidc-code-verifier',
-  AppCodeChallenge = 'app-code-challenge',
 }
 
 export enum ConfigurationKey {

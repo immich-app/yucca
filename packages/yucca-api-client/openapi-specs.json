@@ -39,7 +39,16 @@
     "/api/auth/oidc/login": {
       "get": {
         "operationId": "oidcAuthorize",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "redirect_uri",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -57,37 +66,6 @@
         "responses": {
           "200": {
             "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/api/auth/app/token": {
-      "post": {
-        "operationId": "appToken",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AppTokenRequestDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AppTokenResponseDto"
-                }
-              }
-            }
           }
         },
         "tags": [
@@ -201,32 +179,6 @@
           "name",
           "email",
           "sessionId"
-        ]
-      },
-      "AppTokenRequestDto": {
-        "type": "object",
-        "properties": {
-          "sub": {
-            "type": "string"
-          },
-          "access_token": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "sub",
-          "access_token"
-        ]
-      },
-      "AppTokenResponseDto": {
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "accessToken"
         ]
       },
       "RepositoryMetricsDto": {

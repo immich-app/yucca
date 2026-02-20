@@ -15,12 +15,12 @@ export class OidcRepository implements OnModuleInit {
     }
   }
 
-  async authorize(): Promise<{ redirectTo: URL; state: string; codeVerifier: string }> {
+  async authorize(redirectUri?: string): Promise<{ redirectTo: URL; state: string; codeVerifier: string }> {
     const codeVerifier = client.randomPKCECodeVerifier();
     const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
 
     const parameters: Record<string, string> = {
-      redirect_uri: env.OIDC_REDIRECT_URI,
+      redirect_uri: redirectUri ?? env.OIDC_REDIRECT_URI,
       scope: env.OIDC_SCOPE,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
