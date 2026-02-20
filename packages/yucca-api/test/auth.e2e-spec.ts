@@ -41,7 +41,7 @@ describe('AuthController (e2e)', () => {
     it('responds with user details', async () => {
       await request(app.getHttpServer())
         .get('/api/auth')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(200)
         .expect({
           id: user.id,
@@ -61,7 +61,7 @@ describe('AuthController (e2e)', () => {
     it('redirects to IdP logout', async () => {
       const { header } = await request(app.getHttpServer())
         .get('/api/auth/logout')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(302);
 
       expect(header.location).toEqual(expect.stringContaining(env.OIDC_ISSUER.href));
@@ -70,7 +70,7 @@ describe('AuthController (e2e)', () => {
     it('IdP redirects us back', async () => {
       const { header } = await request(app.getHttpServer())
         .get('/api/auth/logout')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(302)
         .redirects(1);
 
@@ -82,13 +82,13 @@ describe('AuthController (e2e)', () => {
     it('redirects to IdP', async () => {
       const { header } = await request(app.getHttpServer())
         .get('/api/auth/oidc/login')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(302);
 
       expect(header['set-cookie']).toEqual(
         expect.arrayContaining([
-          expect.stringContaining('oidc-state='),
-          expect.stringContaining('oidc-code-verifier='),
+          expect.stringContaining('yucca-oidc-state='),
+          expect.stringContaining('yucca-oidc-code-verifier='),
         ]),
       );
 
@@ -98,7 +98,7 @@ describe('AuthController (e2e)', () => {
     it('redirects to redirect_uri after IdP', async () => {
       const { header } = await request(app.getHttpServer())
         .get('/api/auth/oidc/login?redirect_uri=http://example.com')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(302);
 
       const redirectUrl = new URL(header.location);
@@ -133,10 +133,13 @@ describe('AuthController (e2e)', () => {
 
       const { header: authHeader } = await request(app.getHttpServer())
         .get(callbackUrl.pathname + callbackUrl.search)
-        .set('Cookie', [`oidc-state=${cookies['oidc-state']}`, `oidc-code-verifier=${cookies['oidc-code-verifier']}`])
+        .set('Cookie', [
+          `yucca-oidc-state=${cookies['yucca-oidc-state']}`,
+          `yucca-oidc-code-verifier=${cookies['yucca-oidc-code-verifier']}`,
+        ])
         .expect(302);
 
-      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('access-token')]));
+      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('yucca-access-token')]));
       await expect(testUtils.getUserBySub('bar')).resolves.toBeTruthy();
     });
 
@@ -156,13 +159,16 @@ describe('AuthController (e2e)', () => {
 
       const { header: authHeader } = await request(app.getHttpServer())
         .get(callbackUrl.pathname + callbackUrl.search)
-        .set('Cookie', [`oidc-state=${cookies['oidc-state']}`, `oidc-code-verifier=${cookies['oidc-code-verifier']}`])
+        .set('Cookie', [
+          `yucca-oidc-state=${cookies['yucca-oidc-state']}`,
+          `yucca-oidc-code-verifier=${cookies['yucca-oidc-code-verifier']}`,
+        ])
         .expect(302);
 
-      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('access-token')]));
+      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('yucca-access-token')]));
 
       const authCookies = parse((authHeader['set-cookie'] as never as string[]).join('; '));
-      await expect(testUtils.getUserByAccessToken(authCookies['access-token']!)).resolves.toEqual(
+      await expect(testUtils.getUserByAccessToken(authCookies['yucca-access-token']!)).resolves.toEqual(
         expect.objectContaining({
           id: user.id,
         }),

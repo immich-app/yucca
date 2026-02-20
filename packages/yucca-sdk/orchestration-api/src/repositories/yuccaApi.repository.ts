@@ -12,7 +12,7 @@ export class YuccaApiRepository {
   async createRepository(accessToken: string, _worm: boolean) {
     return createRepository({
       headers: {
-        Cookie: `access-token=${accessToken}`,
+        Cookie: `yucca-access-token=${accessToken}`,
       },
     });
   }
@@ -20,7 +20,7 @@ export class YuccaApiRepository {
   async getRepositories(accessToken: string) {
     return getRepositories({
       headers: {
-        Cookie: `access-token=${accessToken}`,
+        Cookie: `yucca-access-token=${accessToken}`,
       },
     });
   }

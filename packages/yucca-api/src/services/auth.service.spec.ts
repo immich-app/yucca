@@ -39,13 +39,15 @@ describe(AuthService.name, () => {
 
   describe('authenticate', () => {
     it('should fail if missing access token cookie', async () => {
-      await expect(sut.authenticate({})).rejects.toThrowErrorMatchingInlineSnapshot(`"Missing access-token cookie"`);
+      await expect(sut.authenticate({})).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Missing yucca-access-token cookie"`,
+      );
     });
 
     it('should fail if access token is invalid', async () => {
       await expect(
         sut.authenticate({
-          cookie: 'access-token=my-token',
+          cookie: 'yucca-access-token=my-token',
         }),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"Invalid access token"`);
     });
@@ -54,7 +56,7 @@ describe(AuthService.name, () => {
       mocks.user.getByAccessToken.mockResolvedValue(mockUser);
       await expect(
         sut.authenticate({
-          cookie: 'access-token=my-token',
+          cookie: 'yucca-access-token=my-token',
         }),
       ).resolves.toBe(mockUser);
       expect(mocks.wideContext.addContext).toHaveBeenCalledWith('customerId', mockUser.id);
@@ -96,7 +98,7 @@ describe(AuthService.name, () => {
           ...request,
           originalUrl: '?error=abc&error_description=failure',
         } as never),
-      ).rejects.toThrowErrorMatchingInlineSnapshot(`"OIDC callback: failure"`);
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`"OIDC error: failure"`);
     });
 
     it('should fail if missing state cookie', async () => {
@@ -112,7 +114,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state',
+            cookie: 'yucca-oidc-state=state',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"missing codeVerifier"`);
@@ -123,7 +125,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"no id token received"`);
@@ -134,7 +136,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"no id token received"`);
@@ -146,7 +148,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"name is missing from claims"`);
@@ -160,7 +162,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"email is missing from claims"`);
@@ -183,7 +185,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).resolves.toEqual(
@@ -216,7 +218,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).resolves.toEqual(
