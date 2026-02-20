@@ -6,10 +6,6 @@ async function bootstrap() {
   const app = await NestFactory.create(
     OrchestrationApiModule.forRoot({
       yuccaProductionApi: 'http://localhost:5173',
-      yuccaProductionIssuer: new URL('http://localhost:8092'),
-      yuccaProductionClientId: 'client ID',
-      yuccaProductionScope: 'client secret',
-      yuccaProductionRequirePKCE: true,
     }),
   );
 
