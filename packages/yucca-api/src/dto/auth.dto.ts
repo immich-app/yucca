@@ -16,9 +16,9 @@ export class AuthDto {
 
 export class AppTokenRequestDto {
   @ApiProperty()
-  codeVerifier!: string;
+  sub!: string;
   @ApiProperty()
-  code!: string;
+  access_token!: string;
 }
 
 export class AppTokenResponseDto {

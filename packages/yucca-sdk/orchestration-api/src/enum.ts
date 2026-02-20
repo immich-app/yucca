@@ -1,3 +1,10 @@
+export enum CookieName {
+  AccessToken = 'access-token',
+  OidcState = 'oidc-state',
+  OidcCodeVerifier = 'oidc-code-verifier',
+  AppCodeChallenge = 'app-code-challenge',
+}
+
 export enum ConfigurationKey {
   AccessToken = 'access-token',
   EncryptionKey = 'encryption-key',

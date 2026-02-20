@@ -62,19 +62,10 @@
         ]
       }
     },
-    "/api/auth/login": {
+    "/api/auth/oidc/login": {
       "get": {
-        "operationId": "login",
-        "parameters": [
-          {
-            "name": "next",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "operationId": "oidcAuthorize",
+        "parameters": [],
         "responses": {
           "200": {
             "description": ""
@@ -85,29 +76,13 @@
         ]
       }
     },
-    "/api/auth/callback": {
+    "/api/auth/oidc/callback": {
       "get": {
-        "operationId": "callback",
-        "parameters": [
-          {
-            "name": "code",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "operationId": "oidcCallback",
+        "parameters": [],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+            "description": ""
           }
         },
         "tags": [

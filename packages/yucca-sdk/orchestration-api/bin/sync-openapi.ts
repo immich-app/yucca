@@ -8,6 +8,10 @@ async function main() {
   const app = await NestFactory.create<NestApplication>(
     OrchestrationApiModule.forRoot({
       yuccaProductionApi: 'http://localhost',
+      yuccaProductionIssuer: new URL('http://localhost:8092'),
+      yuccaProductionClientId: 'client ID',
+      yuccaProductionScope: 'client secret',
+      yuccaProductionRequirePKCE: true,
     }),
   );
 

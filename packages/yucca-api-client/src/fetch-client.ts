@@ -21,8 +21,8 @@ export type AuthDto = {
     sessionId: string;
 };
 export type AppTokenRequestDto = {
-    codeVerifier: string;
-    code: string;
+    sub: string;
+    access_token: string;
 };
 export type AppTokenResponseDto = {
     accessToken: string;
@@ -66,19 +66,6 @@ export function oidcAuthorize(opts?: Oazapfts.RequestOpts) {
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
-    }));
-}
-export function appAuthorize(codeChallenge: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/auth/app/login${QS.query(QS.explode({
-        code_challenge: codeChallenge
-    }))}`, {
-        ...opts
-    }));
-}
-export function appCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/auth/app/callback", {
-        ...opts,
-        method: "POST"
     }));
 }
 export function appToken(appTokenRequestDto: AppTokenRequestDto, opts?: Oazapfts.RequestOpts) {

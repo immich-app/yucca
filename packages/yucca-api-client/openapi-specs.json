@@ -64,43 +64,6 @@
         ]
       }
     },
-    "/api/auth/app/login": {
-      "get": {
-        "operationId": "appAuthorize",
-        "parameters": [
-          {
-            "name": "code_challenge",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/api/auth/app/callback": {
-      "post": {
-        "operationId": "appCallback",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
     "/api/auth/app/token": {
       "post": {
         "operationId": "appToken",
@@ -243,16 +206,16 @@
       "AppTokenRequestDto": {
         "type": "object",
         "properties": {
-          "codeVerifier": {
+          "sub": {
             "type": "string"
           },
-          "code": {
+          "access_token": {
             "type": "string"
           }
         },
         "required": [
-          "codeVerifier",
-          "code"
+          "sub",
+          "access_token"
         ]
       },
       "AppTokenResponseDto": {

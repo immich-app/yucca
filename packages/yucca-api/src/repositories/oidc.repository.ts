@@ -7,7 +7,7 @@ export class OidcRepository implements OnModuleInit {
 
   async onModuleInit() {
     this.config = await client.discovery(env.OIDC_ISSUER, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET, undefined, {
-      execute: [client.allowInsecureRequests],
+      execute: env.NODE_ENV === 'development' ? [client.allowInsecureRequests] : [],
     });
 
     if (env.OIDC_REQUIRE_PKCE && !this.config.serverMetadata().supportsPKCE()) {
@@ -42,6 +42,10 @@ export class OidcRepository implements OnModuleInit {
     });
 
     return tokens.claims();
+  }
+
+  async fetchUserInfo(accessToken: string, sub: string): Promise<client.UserInfoResponse | undefined> {
+    return await client.fetchUserInfo(this.config, accessToken, sub);
   }
 
   logout(): URL | void {
