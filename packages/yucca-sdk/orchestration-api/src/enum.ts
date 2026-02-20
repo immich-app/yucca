@@ -1,8 +1,10 @@
 export enum CookieName {
-  AccessToken = 'access-token',
-  NextUrl = 'next',
-  OidcState = 'oidc-state',
-  OidcCodeVerifier = 'oidc-code-verifier',
+  NextUrl = 'sdk-next',
+  OidcState = 'sdk-oidc-state',
+  OidcCodeVerifier = 'sdk-oidc-code-verifier',
+  YuccaAccessToken = 'yucca-access-token',
+  YuccaOidcState = 'yucca-oidc-state',
+  YuccaOidcCodeVerifier = 'yucca-oidc-code-verifier',
 }
 
 export enum ConfigurationKey {

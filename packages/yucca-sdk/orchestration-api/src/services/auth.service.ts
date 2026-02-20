@@ -1,6 +1,7 @@
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { parse } from 'cookie';
 import { Request } from 'express';
+import { calculatePKCECodeChallenge, randomPKCECodeVerifier, randomState } from 'openid-client';
 import { YUCCA_PRODUCTION_UUID } from '../const';
 import { BackendType, CookieName } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
@@ -18,24 +19,17 @@ export class AuthService {
   async oidcAuthorize(request: Request): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
     const redirectUri = new URL('/api/auth/oidc/callback', `${request.protocol}://${request.get('Host')}`);
 
-    const loginUrl = new URL('/api/auth/oidc/login', this.moduleConfig.yuccaProductionApi);
-    loginUrl.searchParams.set('redirect_uri', redirectUri.href);
+    const state = randomState(); // non-PKCE fallback
+    const codeVerifier = randomPKCECodeVerifier();
+    const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
 
-    const response = await fetch(loginUrl, {
-      redirect: 'manual',
-    });
-
-    const redirectTo = response.headers.get('location');
-    const cookies = parse(response.headers.getSetCookie().join('; '));
-    const codeVerifier = cookies[CookieName.OidcCodeVerifier];
-    const state = cookies[CookieName.OidcState];
-
-    if (!redirectTo || !codeVerifier || !state) {
-      throw new InternalServerErrorException('Missing state');
-    }
+    const redirectTo = new URL('/api/auth/oidc/login', this.moduleConfig.yuccaProductionApi);
+    redirectTo.searchParams.set('code_challenge', codeChallenge);
+    redirectTo.searchParams.set('redirect_uri', redirectUri.href);
+    redirectTo.searchParams.set('state', state);
 
     return {
-      redirectTo,
+      redirectTo: redirectTo.href,
       codeVerifier,
       state,
     };
@@ -74,13 +68,13 @@ export class AuthService {
 
     const response = await fetch(callbackUrl, {
       headers: {
-        cookie: `${CookieName.OidcCodeVerifier}=${codeVerifier}; ${CookieName.OidcState}=${expectedState}`,
+        cookie: `${CookieName.YuccaOidcCodeVerifier}=${codeVerifier}; ${CookieName.YuccaOidcState}=${expectedState}`,
       },
       redirect: 'manual',
     });
 
     const authCookies = parse(response.headers.getSetCookie().join('; '));
-    const accessToken = authCookies[CookieName.AccessToken];
+    const accessToken = authCookies[CookieName.YuccaAccessToken];
 
     if (!accessToken) {
       throw new InternalServerErrorException('missing accessToken');

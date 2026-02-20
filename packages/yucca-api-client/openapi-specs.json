@@ -41,7 +41,23 @@
         "operationId": "oidcAuthorize",
         "parameters": [
           {
+            "name": "code_challenge",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "redirect_uri",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
             "required": true,
             "in": "query",
             "schema": {

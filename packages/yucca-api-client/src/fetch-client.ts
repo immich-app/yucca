@@ -51,9 +51,11 @@ export function logout(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(redirectUri: string, opts?: Oazapfts.RequestOpts) {
+export function oidcAuthorize(codeChallenge: string, redirectUri: string, state: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
-        redirect_uri: redirectUri
+        code_challenge: codeChallenge,
+        redirect_uri: redirectUri,
+        state
     }))}`, {
         ...opts
     }));

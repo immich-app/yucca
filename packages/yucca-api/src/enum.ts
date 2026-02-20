@@ -1,8 +1,8 @@
 export enum CookieName {
-  AccessToken = 'access-token',
-  OidcState = 'oidc-state',
-  OidcCodeVerifier = 'oidc-code-verifier',
-  AppCodeChallenge = 'app-code-challenge',
+  AccessToken = 'yucca-access-token',
+  OidcState = 'yucca-oidc-state',
+  OidcCodeVerifier = 'yucca-oidc-code-verifier',
+  AppCodeChallenge = 'yucca-app-code-challenge',
 }
 
 export enum MetadataKey {

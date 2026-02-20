@@ -15,9 +15,16 @@ export class OidcRepository implements OnModuleInit {
     }
   }
 
-  async authorize(redirectUri?: string): Promise<{ redirectTo: URL; state: string; codeVerifier: string }> {
-    const codeVerifier = client.randomPKCECodeVerifier();
-    const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
+  async authorize(
+    codeChallenge?: string,
+    redirectUri?: string,
+    state?: string,
+  ): Promise<{ redirectTo: URL; state: string; codeVerifier?: string }> {
+    let codeVerifier;
+    if (!codeChallenge) {
+      codeVerifier = client.randomPKCECodeVerifier();
+      codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
+    }
 
     const parameters: Record<string, string> = {
       redirect_uri: redirectUri ?? env.OIDC_REDIRECT_URI,
@@ -27,7 +34,7 @@ export class OidcRepository implements OnModuleInit {
     };
 
     // non-PKCE fallback
-    const state = client.randomState();
+    state ??= client.randomState();
     parameters.state = state;
 
     const redirectTo: URL = client.buildAuthorizationUrl(this.config, parameters);

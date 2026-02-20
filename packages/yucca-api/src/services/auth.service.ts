@@ -1,11 +1,11 @@
 import { WideContextRepository } from '@common/server/otel';
-import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { parse } from 'cookie';
 import { Request } from 'express';
 import { IncomingHttpHeaders } from 'node:http';
 import { UserInfoResponse } from 'openid-client';
-import { AppTokenRequestDto, AppTokenResponseDto, AuthDto } from 'src/dto/auth.dto';
+import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
@@ -47,9 +47,13 @@ export class AuthService {
     return url;
   }
 
-  async oidcAuthorize(redirectUri?: string): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
-    const { redirectTo, state, codeVerifier } = await this.oidc.authorize(redirectUri);
-    return { redirectTo: redirectTo.href, state, codeVerifier };
+  async oidcAuthorize(
+    codeChallenge?: string,
+    redirectUri?: string,
+    state?: string,
+  ): Promise<{ redirectTo: string; state: string; codeVerifier?: string }> {
+    const { redirectTo, state: newState, codeVerifier } = await this.oidc.authorize(codeChallenge, redirectUri, state);
+    return { redirectTo: redirectTo.href, state: newState, codeVerifier };
   }
 
   async oidcCallback(request: Request): Promise<{ redirectTo: string; accessToken: string }> {
@@ -92,28 +96,6 @@ export class AuthService {
 
     return {
       redirectTo: '/',
-      accessToken,
-    };
-  }
-
-  async appToken(dto: AppTokenRequestDto): Promise<AppTokenResponseDto> {
-    const userInfo = await this.oidc.fetchUserInfo(dto.access_token, dto.sub);
-    if (!userInfo) {
-      throw new BadRequestException('bad user');
-    }
-
-    const user = await this.getOrCreateUser(userInfo);
-
-    this.wideContext.addContext('customerId', user.id);
-
-    const accessToken = this.crypto.randomHex(32);
-
-    await this.session.create({
-      userId: user.id,
-      accessToken,
-    });
-
-    return {
       accessToken,
     };
   }
