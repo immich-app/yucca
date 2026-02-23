@@ -1,22 +1,37 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { type Response } from 'express';
+import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
+import { type Request, type Response } from 'express';
+import { CookieName } from '../enum';
 import { AuthService } from '../services/auth.service';
 
 @Controller('/auth')
 export class AuthController {
-  constructor(readonly service: AuthService) {}
+  constructor(readonly auth: AuthService) {}
 
-  @Get('login')
-  async login(@Query('next') next: string, @Res() response: Response) {
-    const { redirectTo } = await this.service.login(next);
+  @Get('/oidc/login')
+  @ApiQuery({ name: 'next', type: String })
+  async oidcAuthorize(
+    @Query('next') next: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { redirectTo, state, codeVerifier } = await this.auth.oidcAuthorize(request);
+
+    response.cookie(CookieName.NextUrl, next);
+    response.cookie(CookieName.OidcState, state);
+    response.cookie(CookieName.OidcCodeVerifier, codeVerifier);
+
     response.redirect(redirectTo);
   }
 
-  @Get('callback')
-  @ApiOkResponse({ type: Object })
-  async callback(@Query('code') code: string, @Res() response: Response) {
-    const { redirectTo } = await this.service.callback(code);
+  @Get('/oidc/callback')
+  async oidcCallback(@Req() request: Request, @Res() response: Response) {
+    const { redirectTo } = await this.auth.oidcCallback(request);
+
+    response.clearCookie(CookieName.NextUrl);
+    response.clearCookie(CookieName.OidcState);
+    response.clearCookie(CookieName.OidcCodeVerifier);
+
     response.redirect(redirectTo);
   }
 }

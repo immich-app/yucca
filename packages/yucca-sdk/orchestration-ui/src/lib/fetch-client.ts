@@ -78,20 +78,15 @@ export function getBackends(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function login(next: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/auth/login${QS.query(QS.explode({
+export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
         next
     }))}`, {
         ...opts
     }));
 }
-export function callback(code: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: object;
-    }>(`/api/auth/callback${QS.query(QS.explode({
-        code
-    }))}`, {
+export function oidcCallback(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
     }));
 }

@@ -13,15 +13,3 @@ export class AuthDto {
   @ApiProperty()
   sessionId!: string;
 }
-
-export class AppTokenRequestDto {
-  @ApiProperty()
-  codeVerifier!: string;
-  @ApiProperty()
-  code!: string;
-}
-
-export class AppTokenResponseDto {
-  @ApiProperty()
-  accessToken!: string;
-}

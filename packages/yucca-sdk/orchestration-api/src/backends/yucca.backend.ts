@@ -1,5 +1,5 @@
 import { createRepository, createResticUrl, getAuth, getRepositories } from 'yucca-api-client';
-import { BackendType } from '../enum';
+import { BackendType, CookieName } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
 
@@ -12,7 +12,7 @@ export class YuccaBackend extends Backend {
     return {
       baseUrl: this.configuration.url,
       headers: {
-        cookie: `access-token=${this.configuration.accessToken}`,
+        cookie: `${CookieName.YuccaAccessToken}=${this.configuration.accessToken}`,
       },
     };
   }

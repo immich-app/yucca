@@ -1,12 +1,12 @@
 import { WideContextRepository } from '@common/server/otel';
-import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { parse } from 'cookie';
 import { Request } from 'express';
 import { IncomingHttpHeaders } from 'node:http';
-import { calculatePKCECodeChallenge } from 'openid-client';
-import { AppTokenRequestDto, AppTokenResponseDto, AuthDto } from 'src/dto/auth.dto';
-import { CookieName, OidcLoginFlow } from 'src/enum';
+import { UserInfoResponse } from 'openid-client';
+import { AuthDto } from 'src/dto/auth.dto';
+import { CookieName } from 'src/enum';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
@@ -47,24 +47,25 @@ export class AuthService {
     return url;
   }
 
-  async oidcAuthorize(): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
-    const { redirectTo, state, codeVerifier } = await this.oidc.authorize();
-    return { redirectTo: redirectTo.href, state, codeVerifier };
+  async oidcAuthorize(
+    codeChallenge?: string,
+    redirectUri?: string,
+    state?: string,
+  ): Promise<{ redirectTo: string; state: string; codeVerifier?: string }> {
+    const { redirectTo, state: newState, codeVerifier } = await this.oidc.authorize(codeChallenge, redirectUri, state);
+    return { redirectTo: redirectTo.href, state: newState, codeVerifier };
   }
 
   async oidcCallback(request: Request): Promise<{ redirectTo: string; accessToken: string }> {
     const url = new URL(`${request.protocol}://${request.get('Host')}${request.originalUrl}`);
+    const error = url.searchParams.has('error');
 
-    if (url.searchParams.has('error')) {
-      throw new InternalServerErrorException(`OIDC callback: ${url.searchParams.get('error_description') ?? 'unc'}`);
+    if (error) {
+      throw new InternalServerErrorException(`OIDC error: ${url.searchParams.get('error_description') ?? error}`);
     }
 
     const cookies = parse(request.headers.cookie || '');
-    const {
-      [CookieName.OidcLoginFlow]: loginFlow,
-      [CookieName.OidcState]: expectedState,
-      [CookieName.OidcCodeVerifier]: codeVerifier,
-    } = cookies;
+    const { [CookieName.OidcState]: expectedState, [CookieName.OidcCodeVerifier]: codeVerifier } = cookies;
 
     if (!expectedState) {
       throw new InternalServerErrorException('missing expectedState');
@@ -82,6 +83,24 @@ export class AuthService {
 
     this.wideContext.assignContext({ claims });
 
+    const user = await this.getOrCreateUser(claims);
+
+    this.wideContext.addContext('customerId', user.id);
+
+    const accessToken = this.crypto.randomHex(32);
+
+    await this.session.create({
+      userId: user.id,
+      accessToken,
+    });
+
+    return {
+      redirectTo: '/',
+      accessToken,
+    };
+  }
+
+  async getOrCreateUser(claims: Pick<UserInfoResponse, 'sub' | 'name' | 'email'>) {
     if (typeof claims.name !== 'string') {
       throw new InternalServerErrorException('name is missing from claims');
     }
@@ -105,67 +124,6 @@ export class AuthService {
       });
     }
 
-    this.wideContext.addContext('customerId', user.id);
-
-    const accessToken = this.crypto.randomHex(32);
-    await this.session.create({
-      userId: user.id,
-      accessToken,
-    });
-
-    return {
-      redirectTo: loginFlow === OidcLoginFlow.App ? '/login/grant' : '/',
-      accessToken,
-    };
-  }
-
-  appAuthorize(auth: AuthDto | undefined): { redirectTo: string; setFlowCookie: boolean } {
-    return auth
-      ? {
-          redirectTo: '/login/grant',
-          setFlowCookie: false,
-        }
-      : {
-          redirectTo: '/api/auth/oidc/login',
-          setFlowCookie: true,
-        };
-  }
-
-  async appCallback(auth: AuthDto, headers: IncomingHttpHeaders): Promise<{ redirectTo: string }> {
-    const cookies = parse(headers.cookie ?? '');
-
-    const codeChallenge = cookies[CookieName.AppCodeChallenge];
-
-    const redirectUrl = new URL(`http://localhost:22676/api/auth/callback`);
-    redirectUrl.searchParams.set(
-      'code',
-      await this.jwt.signAsync({
-        userId: auth.id,
-        codeChallenge,
-      }),
-    );
-
-    return {
-      redirectTo: redirectUrl.href,
-    };
-  }
-
-  async appToken(dto: AppTokenRequestDto): Promise<AppTokenResponseDto> {
-    const { userId, codeChallenge }: { userId: string; codeChallenge: string } = await this.jwt.verifyAsync(dto.code);
-
-    const expectedChallenge = await calculatePKCECodeChallenge(dto.codeVerifier);
-    if (expectedChallenge !== codeChallenge) {
-      throw new BadRequestException('Bad PKCE');
-    }
-
-    const accessToken = this.crypto.randomHex(32);
-    await this.session.create({
-      userId,
-      accessToken,
-    });
-
-    return {
-      accessToken,
-    };
+    return user;
   }
 }

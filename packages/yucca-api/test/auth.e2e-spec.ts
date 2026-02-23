@@ -3,7 +3,6 @@ import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { parse } from 'cookie';
-import { calculatePKCECodeChallenge, randomPKCECodeVerifier } from 'openid-client';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { controllers, imports, providers } from '../src/app.module';
@@ -42,7 +41,7 @@ describe('AuthController (e2e)', () => {
     it('responds with user details', async () => {
       await request(app.getHttpServer())
         .get('/api/auth')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(200)
         .expect({
           id: user.id,
@@ -62,7 +61,7 @@ describe('AuthController (e2e)', () => {
     it('redirects to IdP logout', async () => {
       const { header } = await request(app.getHttpServer())
         .get('/api/auth/logout')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(302);
 
       expect(header.location).toEqual(expect.stringContaining(env.OIDC_ISSUER.href));
@@ -71,7 +70,7 @@ describe('AuthController (e2e)', () => {
     it('IdP redirects us back', async () => {
       const { header } = await request(app.getHttpServer())
         .get('/api/auth/logout')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(302)
         .redirects(1);
 
@@ -79,25 +78,43 @@ describe('AuthController (e2e)', () => {
     });
   });
 
-  describe('GET /auth/oidc', () => {
+  describe('GET /auth/oidc/login', () => {
     it('redirects to IdP', async () => {
       const { header } = await request(app.getHttpServer())
         .get('/api/auth/oidc/login')
-        .set('Cookie', `access-token=${session.accessToken}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
         .expect(302);
 
       expect(header['set-cookie']).toEqual(
         expect.arrayContaining([
-          expect.stringContaining('oidc-state='),
-          expect.stringContaining('oidc-code-verifier='),
+          expect.stringContaining('yucca-oidc-state='),
+          expect.stringContaining('yucca-oidc-code-verifier='),
         ]),
       );
 
       expect(header.location).toEqual(expect.stringContaining(env.OIDC_ISSUER.href));
     });
+
+    it('redirects to redirect_uri after IdP', async () => {
+      const { header } = await request(app.getHttpServer())
+        .get('/api/auth/oidc/login?redirect_uri=http://example.com')
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(302);
+
+      const redirectUrl = new URL(header.location);
+      redirectUrl.pathname = '/api/form';
+      redirectUrl.searchParams.set('sub', 'bar');
+
+      const { headers } = await fetch(redirectUrl, {
+        redirect: 'manual',
+      });
+
+      const callbackUrl = headers.get('location')!;
+      expect(callbackUrl).toEqual(expect.stringContaining('http://example.com'));
+    });
   });
 
-  describe('GET /auth/callback', () => {
+  describe('GET /auth/oidc/callback', () => {
     it('should create user if not exists', async () => {
       await expect(testUtils.getUserBySub('bar')).resolves.toBeUndefined();
 
@@ -116,10 +133,13 @@ describe('AuthController (e2e)', () => {
 
       const { header: authHeader } = await request(app.getHttpServer())
         .get(callbackUrl.pathname + callbackUrl.search)
-        .set('Cookie', [`oidc-state=${cookies['oidc-state']}`, `oidc-code-verifier=${cookies['oidc-code-verifier']}`])
+        .set('Cookie', [
+          `yucca-oidc-state=${cookies['yucca-oidc-state']}`,
+          `yucca-oidc-code-verifier=${cookies['yucca-oidc-code-verifier']}`,
+        ])
         .expect(302);
 
-      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('access-token')]));
+      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('yucca-access-token')]));
       await expect(testUtils.getUserBySub('bar')).resolves.toBeTruthy();
     });
 
@@ -139,131 +159,20 @@ describe('AuthController (e2e)', () => {
 
       const { header: authHeader } = await request(app.getHttpServer())
         .get(callbackUrl.pathname + callbackUrl.search)
-        .set('Cookie', [`oidc-state=${cookies['oidc-state']}`, `oidc-code-verifier=${cookies['oidc-code-verifier']}`])
+        .set('Cookie', [
+          `yucca-oidc-state=${cookies['yucca-oidc-state']}`,
+          `yucca-oidc-code-verifier=${cookies['yucca-oidc-code-verifier']}`,
+        ])
         .expect(302);
 
-      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('access-token')]));
+      expect(authHeader['set-cookie']).toEqual(expect.arrayContaining([expect.stringContaining('yucca-access-token')]));
 
       const authCookies = parse((authHeader['set-cookie'] as never as string[]).join('; '));
-      await expect(testUtils.getUserByAccessToken(authCookies['access-token']!)).resolves.toEqual(
+      await expect(testUtils.getUserByAccessToken(authCookies['yucca-access-token']!)).resolves.toEqual(
         expect.objectContaining({
           id: user.id,
         }),
       );
-    });
-  });
-
-  describe('GET /auth/app/login', () => {
-    it('redirects to IdP if logged out', async () => {
-      const { header } = await request(app.getHttpServer())
-        .get('/api/auth/app/login?code_challenge=my-pkce-challenge')
-        .expect(302);
-
-      expect(header['set-cookie']).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('app-code-challenge=my-pkce-challenge'),
-          expect.stringContaining('oidc-login-flow=app'),
-        ]),
-      );
-
-      expect(header.location).toEqual('/api/auth/oidc/login');
-    });
-
-    it('redirects to app if logged in', async () => {
-      const { header } = await request(app.getHttpServer())
-        .get('/api/auth/app/login?code_challenge=my-pkce-challenge')
-        .set('Cookie', `access-token=${session.accessToken}`)
-        .expect(302);
-
-      expect(header['set-cookie']).toEqual(
-        expect.arrayContaining([expect.stringContaining('app-code-challenge=my-pkce-challenge')]),
-      );
-
-      expect(header.location).toEqual('/login/grant');
-    });
-  });
-
-  describe('POST /auth/app/callback', () => {
-    it('redirects to app', async () => {
-      const { header: loginHeader } = await request(app.getHttpServer())
-        .get('/api/auth/app/login?code_challenge=my-pkce-challenge')
-        .set('Cookie', `access-token=${session.accessToken}`)
-        .expect(302);
-
-      const { header } = await request(app.getHttpServer())
-        .post('/api/auth/app/callback')
-        .set('Cookie', `access-token=${session.accessToken}; ${loginHeader['set-cookie']}`)
-        .expect(302);
-
-      expect(header.location).toEqual(expect.stringContaining('http://localhost:22676/api/auth/callback?code='));
-    });
-  });
-
-  describe('POST /auth/app/token', () => {
-    it('generates a new access token', async () => {
-      const codeVerifier = randomPKCECodeVerifier();
-      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-
-      const { header: loginHeader } = await request(app.getHttpServer())
-        .get(`/api/auth/app/login?code_challenge=${codeChallenge}`)
-        .set('Cookie', `access-token=${session.accessToken}`)
-        .expect(302);
-
-      const { header: callbackHeader } = await request(app.getHttpServer())
-        .post('/api/auth/app/callback')
-        .set('Cookie', `access-token=${session.accessToken}; ${loginHeader['set-cookie']}`)
-        .expect(302);
-
-      const url = new URL(callbackHeader.location);
-
-      const { body } = await request(app.getHttpServer())
-        .post('/api/auth/app/token')
-        .send({
-          codeVerifier,
-          code: url.searchParams.get('code'),
-        })
-        .expect(201);
-
-      expect(body).toEqual(
-        expect.objectContaining({
-          accessToken: expect.any(String),
-        }),
-      );
-    });
-
-    it('fails PKCE if wrong verifier', async () => {
-      const codeVerifier = randomPKCECodeVerifier();
-      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-
-      const { header: loginHeader } = await request(app.getHttpServer())
-        .get(`/api/auth/app/login?code_challenge=${codeChallenge}`)
-        .set('Cookie', `access-token=${session.accessToken}`)
-        .expect(302);
-
-      const { header: callbackHeader } = await request(app.getHttpServer())
-        .post('/api/auth/app/callback')
-        .set('Cookie', `access-token=${session.accessToken}; ${loginHeader['set-cookie']}`)
-        .expect(302);
-
-      const url = new URL(callbackHeader.location);
-
-      await request(app.getHttpServer())
-        .post('/api/auth/app/token')
-        .send({
-          codeVerifier: 'BAD TOKEN',
-          code: url.searchParams.get('code'),
-        })
-        .expect(400);
-    });
-
-    it('fails if missing code', async () => {
-      await request(app.getHttpServer())
-        .post('/api/auth/app/token')
-        .send({
-          codeVerifier: 'BAD TOKEN',
-          code: 'BAD CODE',
-        })
-        .expect(500);
     });
   });
 });
