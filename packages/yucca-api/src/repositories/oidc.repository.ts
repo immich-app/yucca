@@ -7,7 +7,7 @@ export class OidcRepository implements OnModuleInit {
 
   async onModuleInit() {
     this.config = await client.discovery(env.OIDC_ISSUER, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET, undefined, {
-      execute: [client.allowInsecureRequests],
+      execute: env.NODE_ENV === 'development' ? [client.allowInsecureRequests] : [],
     });
 
     if (env.OIDC_REQUIRE_PKCE && !this.config.serverMetadata().supportsPKCE()) {
@@ -15,19 +15,26 @@ export class OidcRepository implements OnModuleInit {
     }
   }
 
-  async authorize(): Promise<{ redirectTo: URL; state: string; codeVerifier: string }> {
-    const codeVerifier = client.randomPKCECodeVerifier();
-    const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
+  async authorize(
+    codeChallenge?: string,
+    redirectUri?: string,
+    state?: string,
+  ): Promise<{ redirectTo: URL; state: string; codeVerifier?: string }> {
+    let codeVerifier;
+    if (!codeChallenge) {
+      codeVerifier = client.randomPKCECodeVerifier();
+      codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
+    }
 
     const parameters: Record<string, string> = {
-      redirect_uri: env.OIDC_REDIRECT_URI,
+      redirect_uri: redirectUri ?? env.OIDC_REDIRECT_URI,
       scope: env.OIDC_SCOPE,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
     };
 
     // non-PKCE fallback
-    const state = client.randomState();
+    state ??= client.randomState();
     parameters.state = state;
 
     const redirectTo: URL = client.buildAuthorizationUrl(this.config, parameters);
@@ -42,6 +49,10 @@ export class OidcRepository implements OnModuleInit {
     });
 
     return tokens.claims();
+  }
+
+  async fetchUserInfo(accessToken: string, sub: string): Promise<client.UserInfoResponse | undefined> {
+    return await client.fetchUserInfo(this.config, accessToken, sub);
   }
 
   logout(): URL | void {

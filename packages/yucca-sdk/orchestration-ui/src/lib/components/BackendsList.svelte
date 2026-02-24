@@ -50,7 +50,7 @@
     <Button
       class="w-64"
       onclick={() => {
-        const loginUrl = new URL("http://localhost:22676/api/auth/login");
+        const loginUrl = new URL("http://localhost:22676/api/auth/oidc/login");
         loginUrl.searchParams.set("next", window.location.href);
         window.location.href = loginUrl.href;
       }}>Login to yucca</Button
