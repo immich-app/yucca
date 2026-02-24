@@ -10,7 +10,7 @@ export class RepositoryDto {
 
 export class RepositoryMetricsDto {
   @ApiProperty({ type: 'string', required: false })
-  lastUpload!: Date | null;
+  lastBackup!: Date | null;
 
   @ApiProperty()
   sizeBytes!: number;

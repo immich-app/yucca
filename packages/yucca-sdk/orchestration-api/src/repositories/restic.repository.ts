@@ -18,6 +18,6 @@ export class ResticRepository {
   }
 
   async stats(repository: string, key: Buffer) {
-    return await stats().repository(repository).password(key.toString('hex')).run();
+    return await stats().repository(repository).password(key.toString('hex')).modeRawData().run();
   }
 }

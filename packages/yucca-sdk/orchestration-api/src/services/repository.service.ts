@@ -11,6 +11,7 @@ import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
+import { RepositoryLocalMetricsRepository } from '../repositories/repositoryLocalMetrics.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { ResticRepository } from '../repositories/restic.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
@@ -24,6 +25,7 @@ export class RepositoryService {
     private readonly runHistory: RunHistoryRepository,
     private readonly repository: RepositoryRepository,
     private readonly repositoryPath: RepositoryPathRepository,
+    private readonly repositoryLocalMetrics: RepositoryLocalMetricsRepository,
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
@@ -85,6 +87,7 @@ export class RepositoryService {
 
     const localRepositories = await this.repository.getAll();
     const localPaths = await this.repositoryPath.getAll();
+    const localMetrics = await this.repositoryLocalMetrics.getAll();
 
     for (const { id, backendId } of localRepositories) {
       const remoteRepository = remoteRepositories[backendId][id];
@@ -92,6 +95,8 @@ export class RepositoryService {
       const configuration: RepositoryConfigurationDto = {
         paths: localPaths.filter((entry) => entry.id === id).map(({ path }) => path),
       };
+
+      const metrics = localMetrics.find((entry) => entry.id === id);
 
       if (remoteRepository) {
         repositories.push({
@@ -105,6 +110,7 @@ export class RepositoryService {
             secondary: [],
           },
           configuration,
+          metrics: metrics ?? remoteRepository.metrics,
         });
 
         delete remoteRepositories[backendId][id];
@@ -119,7 +125,7 @@ export class RepositoryService {
             },
             secondary: [],
           },
-          metrics: {
+          metrics: metrics ?? {
             sizeBytes: 0,
           },
           worm: false,
@@ -158,6 +164,7 @@ export class RepositoryService {
     const backend = await this.backend.getBackend(localRepository.backendId);
     const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
     const endpoint = await backendInstance.getResticEndpoint(id);
+
     const key = await this.config.getEncryptionKey();
 
     const paths = await this.repositoryPath.get(id);
@@ -166,6 +173,16 @@ export class RepositoryService {
     }
 
     await this.runHistory.createLog(id, (log) => this.restic.backup(endpoint, key, paths, log));
+
+    try {
+      return;
+    } finally {
+      const { total_size } = await this.restic.stats(endpoint, key);
+      await this.repositoryLocalMetrics.save(id, {
+        sizeBytes: total_size,
+        lastBackup: new Date().toISOString(),
+      });
+    }
   }
 
   async addRepositoryPath(id: string, path: string): Promise<void> {

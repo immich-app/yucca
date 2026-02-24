@@ -5,6 +5,7 @@
     Card,
     CardBody,
     CardFooter,
+    FormatBytes,
     Heading,
     HStack,
     Icon,
@@ -86,13 +87,13 @@
                 >
               {/if}
             {/if}
-            <Badge size="tiny" color="secondary"
-              >{repository.metrics.sizeBytes} B</Badge
-            >
-            {#if repository.metrics.lastUpload}
+            <Badge size="tiny" color="secondary">
+              <FormatBytes bytes={repository.metrics.sizeBytes} />
+            </Badge>
+            {#if repository.metrics.lastBackup}
               <Badge size="tiny" color="success"
                 >Backed up {Math.floor(
-                  (Date.now() - +new Date(repository.metrics.lastUpload)) /
+                  (Date.now() - +new Date(repository.metrics.lastBackup)) /
                     (1000 * 60 * 60 * 24),
                 )} days ago</Badge
               >

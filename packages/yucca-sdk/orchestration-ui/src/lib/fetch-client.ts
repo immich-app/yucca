@@ -15,7 +15,7 @@ export const servers = {
     server1: "http://localhost:22676"
 };
 export type RepositoryMetricsDto = {
-    lastUpload?: string;
+    lastBackup?: string;
     sizeBytes: number;
 };
 export type BackendType = "yucca" | "local" | "s3";

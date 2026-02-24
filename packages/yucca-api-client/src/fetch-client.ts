@@ -21,7 +21,7 @@ export type AuthDto = {
     sessionId: string;
 };
 export type RepositoryMetricsDto = {
-    lastUpload?: string;
+    lastBackup?: string;
     sizeBytes: number;
 };
 export type RepositoryWithMetricsDto = {

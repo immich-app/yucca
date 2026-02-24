@@ -21,7 +21,7 @@ export class RepositoryService {
           worm,
         })),
         metrics: {
-          lastUpload: null,
+          lastBackup: null,
           sizeBytes: 0,
         },
       },
@@ -39,7 +39,7 @@ export class RepositoryService {
       repositories: repositories.map((repository) => ({
         ...repository,
         metrics: {
-          lastUpload: new Date(new Date().setDate(new Date().getDate() - 2 - Math.floor(Math.random() * 7))),
+          lastBackup: new Date(new Date().setDate(new Date().getDate() - 2 - Math.floor(Math.random() * 7))),
           sizeBytes: Math.floor(Math.random() * 100_000),
         },
       })),

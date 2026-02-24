@@ -234,7 +234,7 @@
       "RepositoryMetricsDto": {
         "type": "object",
         "properties": {
-          "lastUpload": {
+          "lastBackup": {
             "type": "string"
           },
           "sizeBytes": {

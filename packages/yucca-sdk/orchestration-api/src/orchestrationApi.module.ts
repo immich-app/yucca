@@ -14,6 +14,7 @@ import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
+import { RepositoryLocalMetricsRepository } from './repositories/repositoryLocalMetrics.repository';
 import { RepositoryPathRepository } from './repositories/repositoryPath.repository';
 import { ResticRepository } from './repositories/restic.repository';
 import { RunHistoryRepository } from './repositories/runHistory.repository';
@@ -58,6 +59,7 @@ export class OrchestrationApiModule {
         RunHistoryRepository,
         RepositoryRepository,
         RepositoryPathRepository,
+        RepositoryLocalMetricsRepository,
         DatabaseService,
         BackendService,
         RepositoryService,

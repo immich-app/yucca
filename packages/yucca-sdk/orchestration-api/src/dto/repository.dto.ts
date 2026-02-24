@@ -11,7 +11,7 @@ export class RepositoryDto {
 
 export class RepositoryMetricsDto {
   @ApiProperty({ type: String, required: false })
-  lastUpload?: string;
+  lastBackup?: string;
 
   @ApiProperty({ type: Number })
   sizeBytes!: number;
