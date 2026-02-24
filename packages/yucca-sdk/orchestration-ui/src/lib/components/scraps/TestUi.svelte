@@ -1,6 +1,6 @@
 <script lang="ts">
-  import BackendsList from "$lib/components/BackendsList.svelte";
-  import BackupsList from "$lib/components/BackupsList.svelte";
+  import BackendsList from "$lib/components/scraps/BackendsList.svelte";
+  import BackupsList from "$lib/components/scraps/BackupsList.svelte";
   import KeyFlow from "$lib/components/key-flow/KeyFlow.svelte";
   import {
     MockProvider,

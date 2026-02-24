@@ -1,8 +1,8 @@
 <script>
   import { Button, Heading, HStack } from "@immich/ui";
-  import TestUi from "./TestUi.svelte";
+  import TestUi from "$lib/components/scraps/TestUi.svelte";
 
-  let mock = $state(true);
+  let mock = $state(false);
 </script>
 
 <div class="p-8 flex flex-col gap-4">

@@ -2,7 +2,7 @@
   import { Badge, Button, Card, CardBody, Heading, HStack } from "@immich/ui";
   import { getProvider } from "$lib/providers";
   import { onMount } from "svelte";
-  import { type BackendsResponseDto } from "../fetch-client";
+  import { type BackendsResponseDto } from "../../fetch-client";
 
   interface Props {
     initialData?: BackendsResponseDto;

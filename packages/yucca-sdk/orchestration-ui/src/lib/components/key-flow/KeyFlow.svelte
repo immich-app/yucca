@@ -15,7 +15,7 @@
     VStack,
   } from "@immich/ui";
   import { mdiImageAlbum, mdiInformation, mdiLock } from "@mdi/js";
-  import TimedButton from "../TimedButton.svelte";
+  import TimedButton from "../scraps/TimedButton.svelte";
 
   let stage = $state(0);
   let value = $state("");

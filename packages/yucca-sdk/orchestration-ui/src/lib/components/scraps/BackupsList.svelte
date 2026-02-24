@@ -16,7 +16,7 @@
   import { getProvider } from "$lib/providers";
   import { onMount } from "svelte";
   import type { RepositoryListResponseDto } from "$lib/fetch-client";
-  import ConfigureRepository from "./scraps/ConfigureRepository.svelte";
+  import ConfigureRepository from "./ConfigureRepository.svelte";
 
   interface Props {
     initialData?: RepositoryListResponseDto;
