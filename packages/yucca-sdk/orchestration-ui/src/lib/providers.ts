@@ -17,6 +17,10 @@ export abstract class BaseProvider {
     id: string,
     dto: orchestrationApiClient.RepositoryPathRequestDto,
   ): Promise<void>;
+
+  abstract getRunHistory(
+    id: string,
+  ): Promise<orchestrationApiClient.RunHistoryResponseDto>;
 }
 
 /* eslint-disable @typescript-eslint/require-await */
@@ -30,6 +34,11 @@ export const yuccaApiProvider = {
   async createBackup() {},
   async addRepositoryPath() {},
   async removeRepositoryPath() {},
+  async getRunHistory() {
+    return {
+      runs: [],
+    };
+  },
 } as BaseProvider;
 
 export const orchestrationApiProvider = orchestrationApiClient as BaseProvider;
@@ -71,6 +80,12 @@ export class MockProvider extends BaseProvider {
 
   async addRepositoryPath() {}
   async removeRepositoryPath() {}
+
+  async getRunHistory() {
+    return {
+      runs: [],
+    };
+  }
 }
 /* eslint-enable @typescript-eslint/require-await */
 

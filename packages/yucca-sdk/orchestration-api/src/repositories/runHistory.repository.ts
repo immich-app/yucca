@@ -3,7 +3,7 @@ import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream, WriteStream } from 'node:fs';
-import { mkdir, rename } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { RunHistoryStatus } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
@@ -20,13 +20,13 @@ export class RunHistoryRepository {
     const id = randomUUID();
 
     const start = new Date().toISOString();
-    const logPath = resolve(this.moduleConfig.statePath, 'logs', repositoryId, start);
+    const logFilePath = resolve(this.moduleConfig.statePath, 'logs', repositoryId, start + '.jsonl');
 
-    await mkdir(dirname(logPath), {
+    await mkdir(dirname(logFilePath), {
       recursive: true,
     });
 
-    const log = createWriteStream(`${logPath}.${RunHistoryStatus.Incomplete}.txt`);
+    const log = createWriteStream(logFilePath);
 
     await this.db
       .insertInto('runHistory')
@@ -35,7 +35,7 @@ export class RunHistoryRepository {
         repositoryId,
 
         start,
-        logFilePath: `${logPath}.${RunHistoryStatus.Incomplete}.txt`,
+        logFilePath,
 
         status: RunHistoryStatus.Incomplete,
       })
@@ -46,12 +46,9 @@ export class RunHistoryRepository {
 
       log.close();
 
-      await rename(`${logPath}.${RunHistoryStatus.Incomplete}.txt`, `${logPath}.txt`);
-
       await this.db
         .updateTable('runHistory')
         .where('id', '=', id)
-        .set('logFilePath', `${logPath}.txt`)
         .set('status', RunHistoryStatus.Complete)
         .set('end', new Date().toISOString())
         .executeTakeFirstOrThrow();
@@ -59,12 +56,9 @@ export class RunHistoryRepository {
       log.write(`${error}`);
       log.close();
 
-      await rename(`${logPath}.${RunHistoryStatus.Incomplete}.txt`, `${logPath}.${RunHistoryStatus.Failed}.txt`);
-
       await this.db
         .updateTable('runHistory')
         .where('id', '=', id)
-        .set('logFilePath', `${logPath}.${RunHistoryStatus.Failed}.txt`)
         .set('status', RunHistoryStatus.Failed)
         .set('end', new Date().toISOString())
         .executeTakeFirstOrThrow();

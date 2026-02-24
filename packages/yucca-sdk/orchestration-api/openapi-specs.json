@@ -143,7 +143,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunHistoryResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -390,6 +397,59 @@
         },
         "required": [
           "path"
+        ]
+      },
+      "RunStatus": {
+        "type": "string",
+        "enum": [
+          "incomplete",
+          "complete",
+          "failed"
+        ]
+      },
+      "RunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "logFilePath": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RunStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "start",
+          "end",
+          "logFilePath",
+          "status"
+        ]
+      },
+      "RunHistoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunDto"
+            }
+          }
+        },
+        "required": [
+          "runs"
         ]
       },
       "BackendDto": {

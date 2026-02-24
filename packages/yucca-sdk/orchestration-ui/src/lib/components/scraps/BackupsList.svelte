@@ -17,6 +17,7 @@
   import { onMount } from "svelte";
   import type { RepositoryListResponseDto } from "$lib/fetch-client";
   import ConfigureRepository from "./ConfigureRepository.svelte";
+  import LogViewer from "./LogViewer.svelte";
 
   interface Props {
     initialData?: RepositoryListResponseDto;
@@ -49,6 +50,8 @@
   let editingRepository = $derived(
     repositories?.find(({ id }) => id === editing),
   );
+
+  let logs: string | undefined = $state();
 </script>
 
 <div class="flex flex-col gap-4">
@@ -116,7 +119,9 @@
                   >Backend is unavailable or repository is missing on remote.</Badge
                 >
               {/if}
-              <Button size="tiny">Logs (🚧)</Button>
+              <Button size="tiny" onclick={() => (logs = repository.id)}
+                >Logs</Button
+              >
               <Button size="tiny" onclick={() => (editing = repository.id)}
                 >Configure</Button
               >
@@ -145,4 +150,8 @@
       );
     }}
   />
+{/if}
+
+{#if logs}
+  <LogViewer id={logs} onClose={() => (logs = undefined)} />
 {/if}

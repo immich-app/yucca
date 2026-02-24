@@ -1,4 +1,4 @@
-import { ApiPreconditionFailedResponse, ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { BackendType, RunHistoryStatus } from '../enum';
 
 export class RepositoryDto {
@@ -90,6 +90,6 @@ export class RunDto {
 }
 
 export class RunHistoryResponseDto {
-  @ApiProperty({ type: () => RunDto })
+  @ApiProperty({ type: () => [RunDto] })
   runs!: RunDto[];
 }

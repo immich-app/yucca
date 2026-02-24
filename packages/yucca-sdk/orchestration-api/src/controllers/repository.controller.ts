@@ -44,6 +44,7 @@ export class RepositoryController {
 
   @Get('/:id/runs')
   @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ type: RunHistoryResponseDto })
   getRunHistory(@Param('id') id: string): Promise<RunHistoryResponseDto> {
     return this.service.getRunHistory(id);
   }

@@ -47,6 +47,17 @@ export type RepositoryListResponseDto = {
 export type RepositoryPathRequestDto = {
     path: string;
 };
+export type RunStatus = "incomplete" | "complete" | "failed";
+export type RunDto = {
+    id: string;
+    start: string;
+    end: string;
+    logFilePath: string;
+    status: RunStatus;
+};
+export type RunHistoryResponseDto = {
+    runs: RunDto[];
+};
 export type BackendDto = {
     id: string;
     "type": BackendType;
@@ -103,7 +114,10 @@ export function removeRepositoryPath(id: string, repositoryPathRequestDto: Repos
     })));
 }
 export function getRunHistory(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/runs`, {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RunHistoryResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/runs`, {
         ...opts
     }));
 }
