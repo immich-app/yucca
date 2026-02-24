@@ -10,18 +10,18 @@ import {
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
-import { LogRepository } from '../repositories/log.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { ResticRepository } from '../repositories/restic.repository';
+import { RunHistoryRepository } from '../repositories/runHistory.repository';
 
 @Injectable()
 export class RepositoryService {
   constructor(
-    private readonly log: LogRepository,
     private readonly backend: BackendRepository,
     private readonly config: ConfigRepository,
     private readonly restic: ResticRepository,
+    private readonly runHistory: RunHistoryRepository,
     private readonly repository: RepositoryRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
@@ -165,11 +165,7 @@ export class RepositoryService {
       throw new BadRequestException('Missing configuration paths');
     }
 
-    const startTime = new Date();
-
-    await this.log.createLog(`${id}/${startTime.toISOString()}`, (log) =>
-      this.restic.backup(endpoint, key, paths, log),
-    );
+    await this.runHistory.createLog(id, (log) => this.restic.backup(endpoint, key, paths, log));
   }
 
   async addRepositoryPath(id: string, path: string): Promise<void> {

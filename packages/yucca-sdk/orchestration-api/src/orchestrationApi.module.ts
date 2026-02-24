@@ -13,10 +13,10 @@ import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
-import { LogRepository } from './repositories/log.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryPathRepository } from './repositories/repositoryPath.repository';
 import { ResticRepository } from './repositories/restic.repository';
+import { RunHistoryRepository } from './repositories/runHistory.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
@@ -51,11 +51,11 @@ export class OrchestrationApiModule {
       controllers: [RepositoryController, BackendController, FilesystemController, AuthController],
       providers: [
         { provide: ModuleConfigProvider, useValue: config },
-        LogRepository,
         DatabaseRepository,
         BackendRepository,
         ConfigRepository,
         ResticRepository,
+        RunHistoryRepository,
         RepositoryRepository,
         RepositoryPathRepository,
         DatabaseService,
