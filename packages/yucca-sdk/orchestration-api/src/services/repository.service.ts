@@ -1,10 +1,16 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
 import { Backend } from '../backends/backend';
-import { LocalRepositoryDto, RepositoryConfigurationDto, RepositoryWithMetricsDto } from '../dto/repository.dto';
+import {
+  LocalRepositoryDto,
+  RepositoryConfigurationDto,
+  RepositoryCreateResponseDto,
+  RepositoryListResponseDto,
+  RepositoryWithMetricsDto,
+} from '../dto/repository.dto';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
+import { LogRepository } from '../repositories/log.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { ResticRepository } from '../repositories/restic.repository';
@@ -12,6 +18,7 @@ import { ResticRepository } from '../repositories/restic.repository';
 @Injectable()
 export class RepositoryService {
   constructor(
+    private readonly log: LogRepository,
     private readonly backend: BackendRepository,
     private readonly config: ConfigRepository,
     private readonly restic: ResticRepository,
@@ -36,7 +43,22 @@ export class RepositoryService {
       backendId: defaultBackend.id,
     });
 
-    return { repository };
+    return {
+      repository: {
+        ...repository,
+        backends: {
+          primary: {
+            id: defaultBackend.id,
+            online: true,
+            type: defaultBackend.configuration.type,
+          },
+          secondary: [],
+        },
+        configuration: {
+          paths: [],
+        },
+      },
+    };
   }
 
   async getRepositories(): Promise<RepositoryListResponseDto> {
@@ -143,23 +165,11 @@ export class RepositoryService {
       throw new BadRequestException('Missing configuration paths');
     }
 
-    await this.restic.backup(endpoint, key, paths /*, log */);
+    const startTime = new Date();
 
-    // TODO: find somewhere to store
-    // await mkdir(`.data/logs/${id}`, { recursive: true });
-
-    // const startTime = new Date();
-    // const logPath = `.data/logs/${id}/${startTime.toISOString()}`;
-    // const log = createWriteStream(`${logPath}.incomplete.txt`);
-
-    // try {
-    //   log.close();
-    //   await rename(`${logPath}.incomplete.txt`, `${logPath}.txt`);
-    // } catch (error) {
-    //   log.write(`${error}`);
-    //   log.close();
-    //   await rename(`${logPath}.incomplete.txt`, `${logPath}.failed.txt`);
-    // }
+    await this.log.createLog(`${id}/${startTime.toISOString()}`, (log) =>
+      this.restic.backup(endpoint, key, paths, log),
+    );
   }
 
   async addRepositoryPath(id: string, path: string): Promise<void> {
