@@ -7,12 +7,14 @@ import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { AuthController } from './controllers/auth.controller';
 import { BackendController } from './controllers/backend.controller';
+import { FilesystemController } from './controllers/filesystem.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
+import { RepositoryPathRepository } from './repositories/repositoryPath.repository';
 import { ResticRepository } from './repositories/restic.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
@@ -45,7 +47,7 @@ export class OrchestrationApiModule {
           }),
         }),
       ],
-      controllers: [RepositoryController, BackendController, AuthController],
+      controllers: [RepositoryController, BackendController, FilesystemController, AuthController],
       providers: [
         { provide: ModuleConfigProvider, useValue: config },
         DatabaseRepository,
@@ -53,6 +55,7 @@ export class OrchestrationApiModule {
         ConfigRepository,
         ResticRepository,
         RepositoryRepository,
+        RepositoryPathRepository,
         DatabaseService,
         BackendService,
         RepositoryService,

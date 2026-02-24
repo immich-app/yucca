@@ -6,6 +6,17 @@ export abstract class BaseProvider {
   abstract getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto>;
   abstract createRepository(): Promise<orchestrationApiClient.RepositoryCreateResponseDto>;
   abstract getBackends(): Promise<orchestrationApiClient.BackendsResponseDto>;
+
+  abstract createBackup(id: string): Promise<void>;
+
+  abstract addRepositoryPath(
+    id: string,
+    dto: orchestrationApiClient.RepositoryPathRequestDto,
+  ): Promise<void>;
+  abstract removeRepositoryPath(
+    id: string,
+    dto: orchestrationApiClient.RepositoryPathRequestDto,
+  ): Promise<void>;
 }
 
 /* eslint-disable @typescript-eslint/require-await */
@@ -16,6 +27,9 @@ export const yuccaApiProvider = {
       backends: [],
     };
   },
+  async createBackup() {},
+  async addRepositoryPath() {},
+  async removeRepositoryPath() {},
 } as BaseProvider;
 
 export const orchestrationApiProvider = orchestrationApiClient as BaseProvider;
@@ -52,6 +66,11 @@ export class MockProvider extends BaseProvider {
       backends: [],
     };
   }
+
+  async createBackup() {}
+
+  async addRepositoryPath() {}
+  async removeRepositoryPath() {}
 }
 /* eslint-enable @typescript-eslint/require-await */
 

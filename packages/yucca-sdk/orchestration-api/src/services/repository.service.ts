@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
 import { Backend } from '../backends/backend';
 import { LocalRepositoryDto, RepositoryConfigurationDto, RepositoryWithMetricsDto } from '../dto/repository.dto';
@@ -6,6 +6,7 @@ import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
+import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { ResticRepository } from '../repositories/restic.repository';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class RepositoryService {
     private readonly config: ConfigRepository,
     private readonly restic: ResticRepository,
     private readonly repository: RepositoryRepository,
+    private readonly repositoryPath: RepositoryPathRepository,
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
@@ -60,11 +62,13 @@ export class RepositoryService {
     }
 
     const localRepositories = await this.repository.getAll();
+    const localPaths = await this.repositoryPath.getAll();
+
     for (const { id, backendId } of localRepositories) {
       const remoteRepository = remoteRepositories[backendId][id];
 
       const configuration: RepositoryConfigurationDto = {
-        paths: ['todo'],
+        paths: localPaths.filter((entry) => entry.id === id).map(({ path }) => path),
       };
 
       if (remoteRepository) {
@@ -121,5 +125,48 @@ export class RepositoryService {
     return {
       repositories,
     };
+  }
+
+  async createBackup(id: string): Promise<void> {
+    const localRepository = await this.repository.get(id);
+    if (!localRepository) {
+      throw new BadRequestException('Repository not found locally');
+    }
+
+    const backend = await this.backend.getBackend(localRepository.backendId);
+    const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
+    const endpoint = await backendInstance.getResticEndpoint(id);
+    const key = await this.config.getEncryptionKey();
+
+    const paths = await this.repositoryPath.get(id);
+    if (paths.length === 0) {
+      throw new BadRequestException('Missing configuration paths');
+    }
+
+    await this.restic.backup(endpoint, key, paths /*, log */);
+
+    // TODO: find somewhere to store
+    // await mkdir(`.data/logs/${id}`, { recursive: true });
+
+    // const startTime = new Date();
+    // const logPath = `.data/logs/${id}/${startTime.toISOString()}`;
+    // const log = createWriteStream(`${logPath}.incomplete.txt`);
+
+    // try {
+    //   log.close();
+    //   await rename(`${logPath}.incomplete.txt`, `${logPath}.txt`);
+    // } catch (error) {
+    //   log.write(`${error}`);
+    //   log.close();
+    //   await rename(`${logPath}.incomplete.txt`, `${logPath}.failed.txt`);
+    // }
+  }
+
+  async addRepositoryPath(id: string, path: string): Promise<void> {
+    await this.repositoryPath.create({ id, path });
+  }
+
+  async removeRepositoryPath(id: string, path: string): Promise<void> {
+    await this.repositoryPath.delete(id, path);
   }
 }

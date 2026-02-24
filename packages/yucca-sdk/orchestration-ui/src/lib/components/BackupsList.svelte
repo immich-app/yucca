@@ -15,6 +15,7 @@
   import { getProvider } from "$lib/providers";
   import { onMount } from "svelte";
   import type { RepositoryListResponseDto } from "$lib/fetch-client";
+  import ConfigureRepository from "./scraps/ConfigureRepository.svelte";
 
   interface Props {
     initialData?: RepositoryListResponseDto;
@@ -42,6 +43,11 @@
       await provider.createRepository().then(({ repository }) => repository),
     );
   }
+
+  let editing: string | undefined = $state();
+  let editingRepository = $derived(
+    repositories?.find(({ id }) => id === editing),
+  );
 </script>
 
 <div class="flex flex-col gap-4">
@@ -58,19 +64,12 @@
         />
       </div></Heading
     >
-    {#each repositories as repository, index (repository.id)}
+    {#each repositories as repository (repository.id)}
       <Card>
         <CardBody class="flex flex-col gap-2">
           <HStack>
             <Icon icon={mdiArchiveOutline} size="32" color="gray" />
-            <Heading class="break-all"
-              >{[
-                "Personal Documents",
-                "Music Collection",
-                "Emails",
-                "Computer",
-              ][index] ?? repository.id}</Heading
-            >
+            <Heading class="break-all">{repository.id}</Heading>
           </HStack>
           <HStack wrap>
             {#if repository.backends}
@@ -104,14 +103,22 @@
           {#if repository.backends}
             {#if repository.configuration}
               {#if repository.backends.primary.online}
-                <Button size="tiny">Backup now (🚧)</Button>
+                <Button
+                  size="tiny"
+                  onclick={() =>
+                    provider
+                      .createBackup(repository.id)
+                      .then(() => alert("success"))}>Backup now</Button
+                >
               {:else}
                 <Badge size="tiny" color="danger"
                   >Backend is unavailable or repository is missing on remote.</Badge
                 >
               {/if}
               <Button size="tiny">Logs (🚧)</Button>
-              <Button size="tiny">Configure (🚧)</Button>
+              <Button size="tiny" onclick={() => (editing = repository.id)}
+                >Configure</Button
+              >
             {:else}
               <Button size="tiny">Import (🚧)</Button>
             {/if}
@@ -123,3 +130,18 @@
     {/each}
   </div>
 </div>
+
+{#if editingRepository?.configuration}
+  <ConfigureRepository
+    id={editingRepository.id}
+    configuration={editingRepository.configuration}
+    onClose={() => (editing = undefined)}
+    onUpdate={(updated) => {
+      repositories = repositories?.map((repository) =>
+        repository.id === editing
+          ? { ...repository, configuration: updated }
+          : repository,
+      );
+    }}
+  />
+{/if}

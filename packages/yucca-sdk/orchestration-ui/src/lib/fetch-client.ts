@@ -44,6 +44,9 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
+export type RepositoryPathRequestDto = {
+    path: string;
+};
 export type BackendDto = {
     id: string;
     "type": BackendType;
@@ -52,6 +55,15 @@ export type BackendDto = {
 };
 export type BackendsResponseDto = {
     backends: BackendDto[];
+};
+export type FilesystemListingItemDto = {
+    path: string;
+    isDirectory: boolean[];
+};
+export type FilesystemListingResponseDto = {
+    parent: string;
+    path: string;
+    items: FilesystemListingItemDto[];
 };
 export function createRepository(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -70,11 +82,43 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function addRepositoryPath(id: string, repositoryPathRequestDto: RepositoryPathRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/paths`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: repositoryPathRequestDto
+    })));
+}
+export function removeRepositoryPath(id: string, repositoryPathRequestDto: RepositoryPathRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/paths`, oazapfts.json({
+        ...opts,
+        method: "DELETE",
+        body: repositoryPathRequestDto
+    })));
+}
 export function getBackends(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: BackendsResponseDto;
     }>("/api/backend", {
+        ...opts
+    }));
+}
+export function getFileListing({ path }: {
+    path?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: FilesystemListingResponseDto;
+    }>(`/api/fs${QS.query(QS.explode({
+        path
+    }))}`, {
         ...opts
     }));
 }

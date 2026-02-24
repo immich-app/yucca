@@ -41,6 +41,93 @@
         ]
       }
     },
+    "/api/repository/{id}": {
+      "post": {
+        "operationId": "createBackup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/paths": {
+      "put": {
+        "operationId": "addRepositoryPath",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryPathRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
+      "delete": {
+        "operationId": "removeRepositoryPath",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryPathRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/backend": {
       "get": {
         "operationId": "getBackends",
@@ -59,6 +146,36 @@
         },
         "tags": [
           "Backend"
+        ]
+      }
+    },
+    "/api/fs": {
+      "get": {
+        "operationId": "getFileListing",
+        "parameters": [
+          {
+            "name": "path",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilesystemListingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Filesystem"
         ]
       }
     },
@@ -241,6 +358,17 @@
           "repositories"
         ]
       },
+      "RepositoryPathRequestDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
       "BackendDto": {
         "type": "object",
         "properties": {
@@ -279,6 +407,46 @@
         },
         "required": [
           "backends"
+        ]
+      },
+      "FilesystemListingItemDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "isDirectory": {
+            "type": "array",
+            "items": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": [
+          "path",
+          "isDirectory"
+        ]
+      },
+      "FilesystemListingResponseDto": {
+        "type": "object",
+        "properties": {
+          "parent": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FilesystemListingItemDto"
+            }
+          }
+        },
+        "required": [
+          "parent",
+          "path",
+          "items"
         ]
       }
     }

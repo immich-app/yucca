@@ -66,3 +66,8 @@ export class RepositoryListResponseDto {
   @ApiProperty({ type: () => [LocalRepositoryDto] })
   repositories!: LocalRepositoryDto[];
 }
+
+export class RepositoryPathRequestDto {
+  @ApiProperty({ type: () => String })
+  path!: string;
+}
