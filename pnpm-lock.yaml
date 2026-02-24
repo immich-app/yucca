@@ -306,6 +306,9 @@ importers:
       '@common/server':
         specifier: workspace:^
         version: link:../common/server
+      '@immich/sql-tools':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.0.1(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -1360,6 +1363,9 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@immich/sql-tools@0.2.0':
+    resolution: {integrity: sha512-AH0GRIUYrckNKuid5uO33vgRbGaznhRtArdQ91K310A1oUFjaoNzOaZyZhXwEmft3WYeC1bx4fdgUeois2QH5A==}
 
   '@immich/svelte-markdown-preprocess@0.1.0':
     resolution: {integrity: sha512-jgSOJEGLPKEXQCNRI4r4YUayeM2b0ZYLdzgKGl891jZBhOQIetlY7rU44kPpV1AA3/8wGDwNFKduIQZZ/qJYzg==}
@@ -4402,6 +4408,10 @@ packages:
       postgres:
         optional: true
 
+  kysely@0.28.11:
+    resolution: {integrity: sha512-zpGIFg0HuoC893rIjYX1BETkVWdDnzTzF5e0kWXJFg5lE0k1/LfNWBejrcnOFu8Q2Rfq/hTDTU7XLUM8QOrpzg==}
+    engines: {node: '>=20.0.0'}
+
   kysely@0.28.2:
     resolution: {integrity: sha512-4YAVLoF0Sf0UTqlhgQMFU9iQECdah7n+13ANkiuVfRvlK+uI0Etbgd7bVP36dKlG+NXWbhGua8vnGt+sdhvT7A==}
     engines: {node: '>=18.0.0'}
@@ -4879,6 +4889,9 @@ packages:
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
+
+  pg-connection-string@2.11.0:
+    resolution: {integrity: sha512-kecgoJwhOpxYU21rZjULrmrBJ698U2RxXofKVzOn5UDj61BPj/qMb7diYUR1nLScCDbrztQFl1TaQZT0t1EtzQ==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -7063,6 +7076,13 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@immich/sql-tools@0.2.0':
+    dependencies:
+      kysely: 0.28.11
+      kysely-postgres-js: 3.0.0(kysely@0.28.11)(postgres@3.4.8)
+      pg-connection-string: 2.11.0
+      postgres: 3.4.8
 
   '@immich/svelte-markdown-preprocess@0.1.0(svelte@5.47.0)':
     dependencies:
@@ -11295,11 +11315,19 @@ snapshots:
 
   kleur@4.1.5: {}
 
+  kysely-postgres-js@3.0.0(kysely@0.28.11)(postgres@3.4.8):
+    dependencies:
+      kysely: 0.28.11
+    optionalDependencies:
+      postgres: 3.4.8
+
   kysely-postgres-js@3.0.0(kysely@0.28.2)(postgres@3.4.8):
     dependencies:
       kysely: 0.28.2
     optionalDependencies:
       postgres: 3.4.8
+
+  kysely@0.28.11: {}
 
   kysely@0.28.2: {}
 
@@ -11704,6 +11732,8 @@ snapshots:
   path-type@4.0.0: {}
 
   pathe@2.0.3: {}
+
+  pg-connection-string@2.11.0: {}
 
   picocolors@1.1.1: {}
 
