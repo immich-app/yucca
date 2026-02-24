@@ -16,3 +16,9 @@ export enum BackendType {
   Local = 'local',
   S3 = 's3',
 }
+
+export enum RunHistoryStatus {
+  Incomplete = 'incomplete',
+  Complete = 'complete',
+  Failed = 'failed',
+}

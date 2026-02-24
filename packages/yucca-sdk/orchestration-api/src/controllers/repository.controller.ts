@@ -4,6 +4,7 @@ import {
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryPathRequestDto,
+  RunHistoryResponseDto,
 } from '../dto/repository.dto';
 import { RepositoryService } from '../services/repository.service';
 
@@ -39,5 +40,11 @@ export class RepositoryController {
   @ApiParam({ name: 'id', type: String })
   removeRepositoryPath(@Param('id') id: string, @Body() dto: RepositoryPathRequestDto): Promise<void> {
     return this.service.removeRepositoryPath(id, dto.path);
+  }
+
+  @Get('/:id/runs')
+  @ApiParam({ name: 'id', type: String })
+  getRunHistory(@Param('id') id: string): Promise<RunHistoryResponseDto> {
+    return this.service.getRunHistory(id);
   }
 }

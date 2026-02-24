@@ -6,6 +6,7 @@ import {
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryWithMetricsDto,
+  RunHistoryResponseDto,
 } from '../dto/repository.dto';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
@@ -191,5 +192,13 @@ export class RepositoryService {
 
   async removeRepositoryPath(id: string, path: string): Promise<void> {
     await this.repositoryPath.delete(id, path);
+  }
+
+  async getRunHistory(id: string): Promise<RunHistoryResponseDto> {
+    const runs = await this.runHistory.getAll(id);
+
+    return {
+      runs,
+    };
   }
 }

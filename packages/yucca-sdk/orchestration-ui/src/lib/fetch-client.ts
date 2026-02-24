@@ -102,6 +102,11 @@ export function removeRepositoryPath(id: string, repositoryPathRequestDto: Repos
         body: repositoryPathRequestDto
     })));
 }
+export function getRunHistory(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/runs`, {
+        ...opts
+    }));
+}
 export function getBackends(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;

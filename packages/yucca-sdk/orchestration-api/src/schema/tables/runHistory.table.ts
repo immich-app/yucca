@@ -1,3 +1,5 @@
+import { RunHistoryStatus } from '../../enum';
+
 export class RunHistoryTable {
   id!: string;
   repositoryId!: string;
@@ -6,5 +8,5 @@ export class RunHistoryTable {
   end?: string;
 
   logFilePath!: string;
-  status!: 'incomplete' | 'complete' | 'failed';
+  status!: RunHistoryStatus;
 }

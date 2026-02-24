@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { BackendType } from '../enum';
+import { ApiPreconditionFailedResponse, ApiProperty } from '@nestjs/swagger';
+import { BackendType, RunHistoryStatus } from '../enum';
 
 export class RepositoryDto {
   @ApiProperty({ type: String })
@@ -70,4 +70,26 @@ export class RepositoryListResponseDto {
 export class RepositoryPathRequestDto {
   @ApiProperty({ type: () => String })
   path!: string;
+}
+
+export class RunDto {
+  @ApiProperty({ type: () => String })
+  id!: string;
+
+  @ApiProperty({ type: () => String })
+  start!: string;
+
+  @ApiProperty({ type: () => String })
+  end?: string;
+
+  @ApiProperty({ type: () => String })
+  logFilePath!: string;
+
+  @ApiProperty({ enumName: 'RunStatus', enum: RunHistoryStatus })
+  status!: RunHistoryStatus;
+}
+
+export class RunHistoryResponseDto {
+  @ApiProperty({ type: () => RunDto })
+  runs!: RunDto[];
 }

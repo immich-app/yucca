@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createWriteStream, WriteStream } from 'node:fs';
 import { mkdir, rename } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { RunHistoryStatus } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { DB } from '../schema';
 
@@ -25,7 +26,7 @@ export class RunHistoryRepository {
       recursive: true,
     });
 
-    const log = createWriteStream(`${logPath}.incomplete.txt`);
+    const log = createWriteStream(`${logPath}.${RunHistoryStatus.Incomplete}.txt`);
 
     await this.db
       .insertInto('runHistory')
@@ -34,9 +35,9 @@ export class RunHistoryRepository {
         repositoryId,
 
         start,
-        logFilePath: `${logPath}.incomplete.txt`,
+        logFilePath: `${logPath}.${RunHistoryStatus.Incomplete}.txt`,
 
-        status: 'incomplete',
+        status: RunHistoryStatus.Incomplete,
       })
       .executeTakeFirstOrThrow();
 
@@ -45,28 +46,32 @@ export class RunHistoryRepository {
 
       log.close();
 
-      await rename(`${logPath}.incomplete.txt`, `${logPath}.txt`);
+      await rename(`${logPath}.${RunHistoryStatus.Incomplete}.txt`, `${logPath}.txt`);
 
       await this.db
         .updateTable('runHistory')
         .where('id', '=', id)
         .set('logFilePath', `${logPath}.txt`)
-        .set('status', 'complete')
+        .set('status', RunHistoryStatus.Complete)
         .set('end', new Date().toISOString())
         .executeTakeFirstOrThrow();
     } catch (error) {
       log.write(`${error}`);
       log.close();
 
-      await rename(`${logPath}.incomplete.txt`, `${logPath}.failed.txt`);
+      await rename(`${logPath}.${RunHistoryStatus.Incomplete}.txt`, `${logPath}.${RunHistoryStatus.Failed}.txt`);
 
       await this.db
         .updateTable('runHistory')
         .where('id', '=', id)
-        .set('logFilePath', `${logPath}.failed.txt`)
-        .set('status', 'failed')
+        .set('logFilePath', `${logPath}.${RunHistoryStatus.Failed}.txt`)
+        .set('status', RunHistoryStatus.Failed)
         .set('end', new Date().toISOString())
         .executeTakeFirstOrThrow();
     }
+  }
+
+  async getAll(repositoryId: string) {
+    return this.db.selectFrom('runHistory').selectAll('runHistory').where('repositoryId', '=', repositoryId).execute();
   }
 }
