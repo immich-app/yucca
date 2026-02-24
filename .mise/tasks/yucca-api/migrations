@@ -4,4 +4,4 @@
 #MISE depends=["yucca-api:build"]
 set -e
 
-node dist/bin/migrations.js
+node dist/bin/migrations.js "$@"
