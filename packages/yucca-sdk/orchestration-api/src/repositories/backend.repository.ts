@@ -33,7 +33,7 @@ export class BackendRepository {
       .selectAll('backends')
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
-      
+
     return {
       id: backend.id,
       configuration: JSON.parse(backend.configuration) as BackendConfiguration,

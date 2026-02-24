@@ -24,7 +24,7 @@
   let listing: FilesystemListingResponseDto | undefined = $state();
 
   async function open(path?: string) {
-    listing = await getFileListing(path);
+    listing = await getFileListing({ path });
   }
 
   open();
