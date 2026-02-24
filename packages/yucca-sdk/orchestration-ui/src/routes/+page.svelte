@@ -18,6 +18,6 @@
   </HStack>
 
   {#key mock}
-    <TestUi {mock} />
+    <TestUi {mock} setMock={(value) => (mock = value)} />
   {/key}
 </div>

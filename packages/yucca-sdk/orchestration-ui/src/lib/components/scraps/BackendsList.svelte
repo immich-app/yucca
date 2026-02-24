@@ -22,9 +22,11 @@
   });
 </script>
 
-<div class="flex flex-col gap-4">
+<details class="flex flex-col gap-4">
+  <summary>
+    <Heading class="inline" size="medium">Backends</Heading>
+  </summary>
   <div class="flex flex-col gap-2">
-    <Heading size="medium">Backends</Heading>
     {#each backends as backend (backend.id)}
       <Card>
         <CardBody class="flex flex-col gap-2">
@@ -41,6 +43,19 @@
               <Badge size="tiny" color="success">Online</Badge>
             {:else}
               <Badge size="tiny" color="danger">Offline</Badge>
+
+              {#if backend.type === "yucca"}
+                <Button
+                  size="tiny"
+                  onclick={() => {
+                    const loginUrl = new URL(
+                      "http://localhost:22676/api/auth/oidc/login",
+                    );
+                    loginUrl.searchParams.set("next", window.location.href);
+                    window.location.href = loginUrl.href;
+                  }}>Login again</Button
+                >
+              {/if}
             {/if}
             {#if backend.error}
               <Badge size="tiny" color="danger"
@@ -51,14 +66,5 @@
         </CardBody>
       </Card>
     {/each}
-
-    <Button
-      class="w-64"
-      onclick={() => {
-        const loginUrl = new URL("http://localhost:22676/api/auth/oidc/login");
-        loginUrl.searchParams.set("next", window.location.href);
-        window.location.href = loginUrl.href;
-      }}>Login to yucca</Button
-    >
   </div>
-</div>
+</details>
