@@ -9,6 +9,7 @@ export enum CookieName {
 
 export enum ConfigurationKey {
   EncryptionKey = 'encryption-key',
+  OnboardedKey = 'onboarded-key',
 }
 
 export enum BackendType {

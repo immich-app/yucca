@@ -4,6 +4,7 @@
     Card,
     CardBody,
     HStack,
+    LoadingSpinner,
     Modal,
     ModalBody,
     ModalFooter,
@@ -17,7 +18,15 @@
     onCancel: () => void;
   };
 
-  const { code, onNext, onCancel }: Props = $props();
+  const { code: actualCode, onNext, onCancel }: Props = $props();
+
+  const code = $derived(
+    actualCode
+      .toUpperCase()
+      .match(/.{1,16}/g)!
+      .map((line) => line.match(/.{1,4}/g)!.join(" "))
+      .join("\n"),
+  );
 
   const print = () => window.print();
 
@@ -71,7 +80,11 @@
     <VStack>
       <Card>
         <CardBody class="flex justify-center">
-          <pre><code>{code}</code></pre>
+          {#if code}
+            <pre><code>{code}</code></pre>
+          {:else}
+            <LoadingSpinner />
+          {/if}
         </CardBody>
       </Card>
 

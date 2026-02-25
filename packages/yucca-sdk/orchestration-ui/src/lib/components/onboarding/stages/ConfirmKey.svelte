@@ -13,17 +13,17 @@
   type Props = {
     code: string;
 
-    onNext: () => void;
+    onConfirmKey: () => Promise<void>;
     onBack: () => void;
     onCancel: () => void;
   };
 
-  const { code, onNext, onBack, onCancel }: Props = $props();
+  const { code, onConfirmKey, onBack, onCancel }: Props = $props();
 
   let value = $state("");
 
   const strip = (key: string) => {
-    return key.replace(/\s/g, "").trim();
+    return key.replace(/\s/g, "").toLowerCase().trim();
   };
 </script>
 
@@ -37,7 +37,7 @@
   </ModalBody>
   <ModalFooter>
     <HStack>
-      <Button disabled={strip(code) !== strip(value)} onclick={onNext}
+      <Button disabled={strip(code) !== strip(value)} onclick={onConfirmKey}
         >Confirm</Button
       >
       <Button variant="ghost" onclick={onBack}>See the key again</Button>

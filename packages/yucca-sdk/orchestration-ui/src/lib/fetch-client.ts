@@ -76,6 +76,16 @@ export type FilesystemListingResponseDto = {
     path: string;
     items: FilesystemListingItemDto[];
 };
+export type OnboardingStatusResponseDto = {
+    hasOnboardedKey: boolean;
+    hasBackend: boolean;
+};
+export type CurrentRecoveryKeyResponse = {
+    recoveryKey: string;
+};
+export type ImportRecoveryKeyRequest = {
+    recoveryKey: string;
+};
 export function createRepository(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -151,5 +161,34 @@ export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
+    }));
+}
+export function onboardingStatus(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: OnboardingStatusResponseDto;
+    }>("/api/onboarding", {
+        ...opts
+    }));
+}
+export function currentRecoveryKey(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: CurrentRecoveryKeyResponse;
+    }>("/api/onboarding/recovery-key", {
+        ...opts
+    }));
+}
+export function importRecoveryKey(importRecoveryKeyRequest: ImportRecoveryKeyRequest, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: importRecoveryKeyRequest
+    })));
+}
+export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", {
+        ...opts,
+        method: "POST"
     }));
 }

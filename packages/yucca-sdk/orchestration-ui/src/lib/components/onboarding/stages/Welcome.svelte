@@ -13,10 +13,11 @@
 
   type Props = {
     onNext: () => void;
+    onImportKey: () => void;
     onCancel: () => void;
   };
 
-  const { onNext, onCancel }: Props = $props();
+  const { onNext, onImportKey, onCancel }: Props = $props();
 </script>
 
 <Modal size="small" title="Welcome to backups" onClose={onCancel}>
@@ -47,6 +48,7 @@
   <ModalFooter>
     <HStack>
       <Button onclick={onNext}>Next</Button>
+      <Button variant="ghost" onclick={onImportKey}>Import Key</Button>
       <Button variant="ghost" onclick={onCancel}>Cancel</Button>
     </HStack>
   </ModalFooter>

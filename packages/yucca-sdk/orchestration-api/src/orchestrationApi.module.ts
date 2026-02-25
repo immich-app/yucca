@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { AuthController } from './controllers/auth.controller';
 import { BackendController } from './controllers/backend.controller';
 import { FilesystemController } from './controllers/filesystem.controller';
+import { OnboardingController } from './controllers/onboarding.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
@@ -21,6 +22,7 @@ import { RunHistoryRepository } from './repositories/runHistory.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
+import { OnboardingService } from './services/onboarding.service';
 import { OrchestrationApiService } from './services/orchestrationApi.service';
 import { RepositoryService } from './services/repository.service';
 
@@ -49,7 +51,13 @@ export class OrchestrationApiModule {
           }),
         }),
       ],
-      controllers: [RepositoryController, BackendController, FilesystemController, AuthController],
+      controllers: [
+        RepositoryController,
+        BackendController,
+        FilesystemController,
+        AuthController,
+        OnboardingController,
+      ],
       providers: [
         { provide: ModuleConfigProvider, useValue: config },
         DatabaseRepository,
@@ -64,6 +72,7 @@ export class OrchestrationApiModule {
         BackendService,
         RepositoryService,
         AuthService,
+        OnboardingService,
         OrchestrationApiService,
       ],
       exports: [OrchestrationApiService],

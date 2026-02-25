@@ -245,6 +245,82 @@
           "Auth"
         ]
       }
+    },
+    "/api/onboarding": {
+      "get": {
+        "operationId": "onboardingStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingStatusResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      }
+    },
+    "/api/onboarding/recovery-key": {
+      "get": {
+        "operationId": "currentRecoveryKey",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentRecoveryKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      },
+      "put": {
+        "operationId": "importRecoveryKey",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRecoveryKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      },
+      "post": {
+        "operationId": "confirmRecoveryKey",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      }
     }
   },
   "info": {
@@ -530,6 +606,43 @@
           "parent",
           "path",
           "items"
+        ]
+      },
+      "OnboardingStatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "hasOnboardedKey": {
+            "type": "boolean"
+          },
+          "hasBackend": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hasOnboardedKey",
+          "hasBackend"
+        ]
+      },
+      "CurrentRecoveryKeyResponse": {
+        "type": "object",
+        "properties": {
+          "recoveryKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recoveryKey"
+        ]
+      },
+      "ImportRecoveryKeyRequest": {
+        "type": "object",
+        "properties": {
+          "recoveryKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recoveryKey"
         ]
       }
     }
