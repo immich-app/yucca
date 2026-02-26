@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import {
+  ListSnapshotsResponseDto,
   LocalRepositoryDto,
   RepositoryConfigurationDto,
   RepositoryCreateResponseDto,
@@ -157,7 +158,7 @@ export class RepositoryService {
     };
   }
 
-  async createBackup(id: string): Promise<void> {
+  private async getResticParameters(id: string): Promise<{ endpoint: string; key: Buffer }> {
     const localRepository = await this.repository.get(id);
     if (!localRepository) {
       throw new BadRequestException('Repository not found locally');
@@ -169,22 +170,35 @@ export class RepositoryService {
 
     const key = await this.config.getEncryptionKey();
 
+    return { endpoint, key };
+  }
+
+  private async updateLocalMetrics(id: string, endpoint: string, key: Buffer): Promise<void> {
+    try {
+      return;
+    } finally {
+      const { total_size } = await this.restic.stats(endpoint, key);
+
+      await this.repositoryLocalMetrics.save(id, {
+        sizeBytes: total_size,
+        lastBackup: new Date().toISOString(),
+      });
+
+      // debug
+      console.info(`RESTIC_PASSWORD=${key.toString('hex')} restic -r ${endpoint}`);
+    }
+  }
+
+  async createBackup(id: string): Promise<void> {
+    const { endpoint, key } = await this.getResticParameters(id);
+
     const paths = await this.repositoryPath.get(id);
     if (paths.length === 0) {
       throw new BadRequestException('Missing configuration paths');
     }
 
     await this.runHistory.createLog(id, (log) => this.restic.backup(endpoint, key, paths, log));
-
-    try {
-      return;
-    } finally {
-      const { total_size } = await this.restic.stats(endpoint, key);
-      await this.repositoryLocalMetrics.save(id, {
-        sizeBytes: total_size,
-        lastBackup: new Date().toISOString(),
-      });
-    }
+    await this.updateLocalMetrics(id, endpoint, key);
   }
 
   async addRepositoryPath(id: string, path: string): Promise<void> {
@@ -193,6 +207,24 @@ export class RepositoryService {
 
   async removeRepositoryPath(id: string, path: string): Promise<void> {
     await this.repositoryPath.delete(id, path);
+  }
+
+  async getSnapshots(id: string): Promise<ListSnapshotsResponseDto> {
+    const { endpoint, key } = await this.getResticParameters(id);
+    const snapshots = await this.restic.snapshots(endpoint, key);
+
+    return {
+      snapshots: snapshots.map((snapshot) => ({
+        ...snapshot,
+        time: snapshot.time.toISOString(),
+      })),
+    };
+  }
+
+  async forgetSnapshot(id: string, snapshotId: string): Promise<void> {
+    const { endpoint, key } = await this.getResticParameters(id);
+    await this.restic.forget(endpoint, key, snapshotId);
+    await this.updateLocalMetrics(id, endpoint, key);
   }
 
   async getRunHistory(id: string): Promise<RunHistoryResponseDto> {

@@ -1,9 +1,5 @@
 <script lang="ts">
-  import {
-    MockProvider,
-    orchestrationApiProvider,
-    setProvider,
-  } from "$lib/providers";
+  import { MockProvider, setProvider } from "$lib/providers";
   import { toastManager, TooltipProvider } from "@immich/ui";
   import "./layout.css";
 

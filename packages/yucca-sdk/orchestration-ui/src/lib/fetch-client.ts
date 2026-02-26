@@ -58,6 +58,13 @@ export type RunDto = {
 export type RunHistoryResponseDto = {
     runs: RunDto[];
 };
+export type SnapshotDto = {
+    id: string;
+    time: string;
+};
+export type ListSnapshotsResponseDto = {
+    snapshots: SnapshotDto[];
+};
 export type BackendDto = {
     id: string;
     "type": BackendType;
@@ -128,6 +135,28 @@ export function getRunHistory(id: string, opts?: Oazapfts.RequestOpts) {
         status: 200;
         data: RunHistoryResponseDto;
     }>(`/api/repository/${encodeURIComponent(id)}/runs`, {
+        ...opts
+    }));
+}
+export function getSnapshots(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ListSnapshotsResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/snapshots`, {
+        ...opts
+    }));
+}
+export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ListSnapshotsResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
+export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/logs/${encodeURIComponent(id)}`, {
         ...opts
     }));
 }

@@ -15,6 +15,7 @@
   import { DateTime } from "luxon";
   import RunHistoryModal from "./dialogs/RunHistoryModal.svelte";
   import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
+  import SnapshotsListModal from "./dialogs/SnapshotsListModal.svelte";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -36,6 +37,11 @@
 
   const onViewHistory = () =>
     modalManager.open(RunHistoryModal, {
+      repository,
+    });
+
+  const onViewSnapshots = () =>
+    modalManager.open(SnapshotsListModal, {
       repository,
     });
 
@@ -83,6 +89,7 @@
       {#if repository.backends.primary.online}
         <Button size="tiny" onclick={onBackupNow}>Backup Now</Button>
       {/if}
+      <Button size="tiny" onclick={onViewSnapshots}>Snapshots</Button>
       <Button size="tiny" onclick={onViewHistory}>Logs</Button>
       <Button size="tiny" onclick={onConfigure}>Configure</Button>
     </CardFooter>

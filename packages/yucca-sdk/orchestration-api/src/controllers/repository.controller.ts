@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Sse } from '@nestjs/co
 import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import {
+  ListSnapshotsResponseDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryPathRequestDto,
@@ -50,6 +51,22 @@ export class RepositoryController {
     return this.service.getRunHistory(id);
   }
 
+  @Get('/:id/snapshots')
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ type: ListSnapshotsResponseDto })
+  getSnapshots(@Param('id') id: string): Promise<ListSnapshotsResponseDto> {
+    return this.service.getSnapshots(id);
+  }
+
+  @Delete('/:id/snapshots/:snapshot')
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'snapshot', type: String })
+  @ApiOkResponse({ type: ListSnapshotsResponseDto })
+  forgetSnapshot(@Param('id') id: string, @Param('snapshot') snapshot: string): Promise<void> {
+    return this.service.forgetSnapshot(id, snapshot);
+  }
+
+  // todo: move to another controller?
   @Sse('/logs/:id')
   @ApiParam({ name: 'id', type: String })
   logStreamSse(@Param('id') id: string): Observable<MessageEvent> {

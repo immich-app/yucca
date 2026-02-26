@@ -158,6 +158,97 @@
         ]
       }
     },
+    "/api/repository/{id}/snapshots": {
+      "get": {
+        "operationId": "getSnapshots",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSnapshotsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/snapshots/{snapshot}": {
+      "delete": {
+        "operationId": "forgetSnapshot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "snapshot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSnapshotsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/repository/logs/{id}": {
+      "get": {
+        "operationId": "logStreamSse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/backend": {
       "get": {
         "operationId": "getBackends",
@@ -526,6 +617,35 @@
         },
         "required": [
           "runs"
+        ]
+      },
+      "SnapshotDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "time"
+        ]
+      },
+      "ListSnapshotsResponseDto": {
+        "type": "object",
+        "properties": {
+          "snapshots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotDto"
+            }
+          }
+        },
+        "required": [
+          "snapshots"
         ]
       },
       "BackendDto": {

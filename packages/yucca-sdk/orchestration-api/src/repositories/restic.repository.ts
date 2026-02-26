@@ -1,4 +1,4 @@
-import { backup, init, stats } from '@futo-org/restic-wrapper';
+import { backup, forget, init, snapshots, stats } from '@futo-org/restic-wrapper';
 import { Injectable } from '@nestjs/common';
 import { Writable } from 'node:stream';
 
@@ -19,5 +19,13 @@ export class ResticRepository {
 
   async stats(repository: string, key: Buffer) {
     return await stats().repository(repository).password(key.toString('hex')).modeRawData().run();
+  }
+
+  async snapshots(repository: string, key: Buffer) {
+    return await snapshots().repository(repository).password(key.toString('hex')).run();
+  }
+
+  async forget(repository: string, key: Buffer, snapshotId: string, prune = true) {
+    return await forget().repository(repository).password(key.toString('hex')).snapshot(snapshotId).prune(prune).run();
   }
 }

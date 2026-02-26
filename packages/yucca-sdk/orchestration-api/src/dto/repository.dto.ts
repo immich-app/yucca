@@ -93,3 +93,16 @@ export class RunHistoryResponseDto {
   @ApiProperty({ type: () => [RunDto] })
   runs!: RunDto[];
 }
+
+export class SnapshotDto {
+  @ApiProperty({ type: () => String })
+  id!: string;
+
+  @ApiProperty({ type: () => String })
+  time!: string;
+}
+
+export class ListSnapshotsResponseDto {
+  @ApiProperty({ type: () => [SnapshotDto] })
+  snapshots!: SnapshotDto[];
+}
