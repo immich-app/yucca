@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import {
   LocalRepositoryDto,
@@ -200,5 +201,9 @@ export class RepositoryService {
     return {
       runs,
     };
+  }
+
+  observableLog(id: string): Observable<MessageEvent> {
+    return this.runHistory.getObservable(id);
   }
 }

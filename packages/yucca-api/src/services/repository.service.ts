@@ -39,8 +39,8 @@ export class RepositoryService {
       repositories: repositories.map((repository) => ({
         ...repository,
         metrics: {
-          lastBackup: new Date(new Date().setDate(new Date().getDate() - 2 - Math.floor(Math.random() * 7))),
-          sizeBytes: Math.floor(Math.random() * 100_000),
+          lastBackup: null,
+          sizeBytes: 0,
         },
       })),
     };

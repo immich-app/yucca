@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
+import EventIterator from 'event-iterator';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream, WriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { from } from 'rxjs';
+import { Tail } from 'tail';
 import { RunHistoryStatus } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { DB } from '../schema';
@@ -65,7 +68,32 @@ export class RunHistoryRepository {
     }
   }
 
+  async get(id: string) {
+    return this.db.selectFrom('runHistory').selectAll('runHistory').where('id', '=', id).executeTakeFirstOrThrow();
+  }
+
   async getAll(repositoryId: string) {
     return this.db.selectFrom('runHistory').selectAll('runHistory').where('repositoryId', '=', repositoryId).execute();
+  }
+
+  getObservable(id: string) {
+    const db = this.db;
+
+    return from(
+      new EventIterator<MessageEvent>((queue) => {
+        db.selectFrom('runHistory')
+          .select('logFilePath')
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+          .then(({ logFilePath }) => {
+            const tail = new Tail(logFilePath, {
+              fromBeginning: true,
+            });
+
+            tail.on('line', (data) => queue.push({ data } as MessageEvent));
+          })
+          .catch(queue.fail);
+      }),
+    );
   }
 }

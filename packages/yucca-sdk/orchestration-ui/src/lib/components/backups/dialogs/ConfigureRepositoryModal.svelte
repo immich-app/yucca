@@ -17,24 +17,18 @@
     addRepositoryPath,
     removeRepositoryPath,
     type LocalRepositoryDto,
-    type RepositoryConfigurationDto,
-    type RunDto,
   } from "$lib/fetch-client";
-  import { BaseProvider, getProvider } from "$lib/providers";
-  import { onMount } from "svelte";
   import { mdiMinus } from "@mdi/js";
   import FileBrowserModal from "./FileBrowserModal.svelte";
 
   interface Props {
     repository: LocalRepositoryDto & { configuration: object };
-    provider: BaseProvider;
     onClose: () => void;
     onUpdate: (partial: Partial<LocalRepositoryDto>) => void;
   }
 
   let {
     repository: initialRepository,
-    provider,
     onClose,
     onUpdate: onUpdateParent,
   }: Props = $props();

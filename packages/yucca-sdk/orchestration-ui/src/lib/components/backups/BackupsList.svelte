@@ -14,6 +14,7 @@
     Heading,
     HStack,
     IconButton,
+    toastManager,
   } from "@immich/ui";
   import { onMount } from "svelte";
   import { DateTime } from "luxon";
@@ -57,6 +58,22 @@
         : repository,
     );
   };
+
+  const createNewBackup = async () => {
+    if (!repositories) {
+      return;
+    }
+
+    toastManager.info("Creating...", {
+      timeout: 3000,
+    });
+
+    const { repository } = await provider.createRepository();
+
+    repositories = [...repositories, repository];
+
+    toastManager.success("Created!");
+  };
 </script>
 
 <div class="flex flex-col gap-4">
@@ -70,6 +87,7 @@
             icon={mdiPlus}
             variant="outline"
             aria-label={`Create new backup`}
+            onclick={createNewBackup}
           />
         </div></Heading
       >

@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Sse } from '@nestjs/common';
 import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
+import { Observable } from 'rxjs';
 import {
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
@@ -47,5 +48,11 @@ export class RepositoryController {
   @ApiOkResponse({ type: RunHistoryResponseDto })
   getRunHistory(@Param('id') id: string): Promise<RunHistoryResponseDto> {
     return this.service.getRunHistory(id);
+  }
+
+  @Sse('/logs/:id')
+  @ApiParam({ name: 'id', type: String })
+  logStreamSse(@Param('id') id: string): Observable<MessageEvent> {
+    return this.service.observableLog(id);
   }
 }

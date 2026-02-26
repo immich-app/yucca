@@ -1,7 +1,9 @@
 <script lang="ts">
   import {
+    Button,
     Modal,
     ModalBody,
+    modalManager,
     Table,
     TableBody,
     TableCell,
@@ -9,30 +11,35 @@
     TableHeading,
     TableRow,
   } from "@immich/ui";
-  import { type LocalRepositoryDto, type RunDto } from "$lib/fetch-client";
-  import { BaseProvider, getProvider } from "$lib/providers";
+  import {
+    getRunHistory,
+    type LocalRepositoryDto,
+    type RunDto,
+  } from "$lib/fetch-client";
   import { onMount } from "svelte";
+  import ViewLogModal from "./ViewLogModal.svelte";
 
   interface Props {
     repository: LocalRepositoryDto;
-    provider: BaseProvider;
     onClose: () => void;
   }
 
-  let { repository, provider, onClose }: Props = $props();
+  let { repository, onClose }: Props = $props();
 
   let runs: RunDto[] = $state([]);
 
   onMount(() =>
-    provider
-      .getRunHistory(repository.id)
-      .then(
-        (result) =>
-          (runs = result.runs.toSorted((a, b) =>
-            b.start.localeCompare(a.start),
-          )),
-      ),
+    getRunHistory(repository.id).then(
+      (result) =>
+        (runs = result.runs.toSorted((a, b) => b.start.localeCompare(a.start))),
+    ),
   );
+
+  const onViewLog = (logId: string) => () => {
+    modalManager.show(ViewLogModal, {
+      logId,
+    });
+  };
 </script>
 
 <Modal title={`Run History for ${repository.id}`} size="giant" {onClose}>
@@ -42,7 +49,7 @@
         <TableHeading>Start</TableHeading>
         <TableHeading>End</TableHeading>
         <TableHeading>Status</TableHeading>
-        <!-- <TableHeading></TableHeading> -->
+        <TableHeading></TableHeading>
       </TableHeader>
 
       <TableBody>
@@ -51,9 +58,9 @@
             <TableCell>{run.start}</TableCell>
             <TableCell>{run.end}</TableCell>
             <TableCell>{run.status}</TableCell>
-            <!-- <TableCell>
-              <Button>View Log</Button>
-            </TableCell> -->
+            <TableCell>
+              <Button size="tiny" onclick={onViewLog(run.id)}>View Log</Button>
+            </TableCell>
           </TableRow>
         {/each}
       </TableBody>

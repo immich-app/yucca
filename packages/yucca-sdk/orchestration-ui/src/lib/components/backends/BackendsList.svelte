@@ -47,8 +47,8 @@
       </CardBody>
       {#if yuccaBackend.isOnline}
         <CardFooter class="flex gap-2">
-          <Button size="small" color="secondary">Manage my account</Button>
-          <Button size="small" color="secondary">Billing</Button>
+          <Button size="small" color="secondary">Manage my account (🚧)</Button>
+          <Button size="small" color="secondary">Billing (🚧)</Button>
         </CardFooter>
       {:else}
         <CardFooter>
@@ -77,7 +77,7 @@
           >
         </CardBody>
         <CardFooter>
-          <Button size="small" color="secondary">Configure</Button>
+          <Button size="small" color="secondary">Configure (🚧)</Button>
         </CardFooter>
       </Card>
     {/if}
@@ -85,8 +85,8 @@
 
   {#if $advanced}
     <HStack>
-      <Button size="small">Setup new local storage</Button>
-      <Button size="small">Setup new S3 storage</Button>
+      <Button size="small">Setup new local storage (🚧)</Button>
+      <Button size="small">Setup new S3 storage (🚧)</Button>
     </HStack>
   {/if}
 {:else}

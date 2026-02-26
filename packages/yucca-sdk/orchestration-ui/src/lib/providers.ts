@@ -6,21 +6,6 @@ export abstract class BaseProvider {
   abstract getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto>;
   abstract createRepository(): Promise<orchestrationApiClient.RepositoryCreateResponseDto>;
   abstract getBackends(): Promise<orchestrationApiClient.BackendsResponseDto>;
-
-  abstract createBackup(id: string): Promise<void>;
-
-  abstract addRepositoryPath(
-    id: string,
-    dto: orchestrationApiClient.RepositoryPathRequestDto,
-  ): Promise<void>;
-  abstract removeRepositoryPath(
-    id: string,
-    dto: orchestrationApiClient.RepositoryPathRequestDto,
-  ): Promise<void>;
-
-  abstract getRunHistory(
-    id: string,
-  ): Promise<orchestrationApiClient.RunHistoryResponseDto>;
 }
 
 /* eslint-disable @typescript-eslint/require-await */
@@ -73,17 +58,6 @@ export class MockProvider extends BaseProvider {
   async getBackends(): Promise<orchestrationApiClient.BackendsResponseDto> {
     return {
       backends: [],
-    };
-  }
-
-  async createBackup() {}
-
-  async addRepositoryPath() {}
-  async removeRepositoryPath() {}
-
-  async getRunHistory() {
-    return {
-      runs: [],
     };
   }
 }

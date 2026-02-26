@@ -20,10 +20,13 @@
     "@nestjs/core": "^11.1.11",
     "better-sqlite3": "^12.6.2",
     "cookie": "^1.1.1",
+    "event-iterator": "^2.0.0",
     "express": "^5.2.1",
     "kysely": "0.28.2",
     "nestjs-kysely": "^3.1.2",
     "openid-client": "^6.8.1",
+    "rxjs": "^7.8.2",
+    "tail": "^2.2.6",
     "yucca-api-client": "workspace:^"
   },
   "devDependencies": {
@@ -35,6 +38,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.2.1",
+    "@types/tail": "^2.2.3",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
     "ts-jest": "^29.4.6",
