@@ -90,6 +90,9 @@
               <Badge size="tiny" color="danger">Offline</Badge>
             {/if}
           {/if}
+          {#if repository.worm}
+            <Badge size="tiny" color="info">WORM</Badge>
+          {/if}
           <Badge size="tiny" color="secondary">
             <FormatBytes bytes={repository.metrics.sizeBytes} />
           </Badge>
