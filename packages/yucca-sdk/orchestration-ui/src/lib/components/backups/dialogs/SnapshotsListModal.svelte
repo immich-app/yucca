@@ -61,7 +61,7 @@
   };
 </script>
 
-<Modal title={`Snapshots for ${repository.id}`} size="giant" {onClose}>
+<Modal title={`Snapshots for ${repository.name}`} size="giant" {onClose}>
   <ModalBody>
     {#if snapshots}
       <Table>

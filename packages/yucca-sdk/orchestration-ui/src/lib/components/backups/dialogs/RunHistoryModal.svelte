@@ -42,7 +42,7 @@
   };
 </script>
 
-<Modal title={`Run History for ${repository.id}`} size="giant" {onClose}>
+<Modal title={`Run History for ${repository.name}`} size="giant" {onClose}>
   <ModalBody>
     <Table>
       <TableHeader>
