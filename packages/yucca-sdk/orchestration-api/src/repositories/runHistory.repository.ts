@@ -88,6 +88,7 @@ export class RunHistoryRepository {
           .then(({ logFilePath }) => {
             const tail = new Tail(logFilePath, {
               fromBeginning: true,
+              nLines: 50,
             });
 
             tail.on('line', (data) => queue.push({ data } as MessageEvent));

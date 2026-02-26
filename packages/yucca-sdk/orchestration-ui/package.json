@@ -42,6 +42,7 @@
     "@sveltejs/package": "^2.5.7",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/vite": "^4.1.18",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/luxon": "^3.7.1",
     "@vitest/browser-playwright": "^4.0.18",
     "oazapfts": "^7.0.1",
@@ -63,6 +64,7 @@
     "@immich/ui": "^0.59.0",
     "@mdi/js": "^7.4.47",
     "@oazapfts/runtime": "^1.1.0",
+    "lodash.debounce": "^4.0.8",
     "luxon": "^3.7.2",
     "yucca-api-client": "workspace:^"
   }
