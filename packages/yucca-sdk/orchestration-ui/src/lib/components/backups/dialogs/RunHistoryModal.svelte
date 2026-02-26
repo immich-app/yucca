@@ -1,6 +1,5 @@
 <script lang="ts">
   import {
-    Button,
     Modal,
     ModalBody,
     Table,
@@ -10,24 +9,23 @@
     TableHeading,
     TableRow,
   } from "@immich/ui";
-  import { type RunDto } from "$lib/fetch-client";
-  import { getProvider } from "$lib/providers";
+  import { type LocalRepositoryDto, type RunDto } from "$lib/fetch-client";
+  import { BaseProvider, getProvider } from "$lib/providers";
   import { onMount } from "svelte";
 
   interface Props {
-    id: string;
+    repository: LocalRepositoryDto;
+    provider: BaseProvider;
     onClose: () => void;
   }
 
-  let { id, onClose }: Props = $props();
+  let { repository, provider, onClose }: Props = $props();
 
   let runs: RunDto[] = $state([]);
 
-  const provider = getProvider();
-
   onMount(() =>
     provider
-      .getRunHistory(id)
+      .getRunHistory(repository.id)
       .then(
         (result) =>
           (runs = result.runs.toSorted((a, b) =>
@@ -37,7 +35,7 @@
   );
 </script>
 
-<Modal title={`Run History for ${id}`} size="giant" {onClose}>
+<Modal title={`Run History for ${repository.id}`} size="giant" {onClose}>
   <ModalBody>
     <Table>
       <TableHeader>

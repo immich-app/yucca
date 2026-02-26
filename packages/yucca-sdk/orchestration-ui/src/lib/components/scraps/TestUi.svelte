@@ -1,13 +1,11 @@
 <script lang="ts">
-  import BackendsList from "$lib/components/scraps/BackendsList.svelte";
-  import BackupsList from "$lib/components/scraps/BackupsList.svelte";
-
   import {
     MockProvider,
     orchestrationApiProvider,
     setProvider,
   } from "$lib/providers";
-  import Onboarding from "../onboarding/Onboarding.svelte";
+  import BackendsList from "../backends/BackendsList.svelte";
+  import BackupsList from "../backups/BackupsList.svelte";
   import OnboardingGate from "../onboarding/OnboardingGate.svelte";
 
   const { mock, setMock }: { mock: boolean; setMock(value: boolean): void } =
@@ -26,6 +24,7 @@
 {:else}
   <OnboardingGate onExit={() => setMock(true)}>
     <BackendsList />
+    <hr />
     <BackupsList />
   </OnboardingGate>
 {/if}

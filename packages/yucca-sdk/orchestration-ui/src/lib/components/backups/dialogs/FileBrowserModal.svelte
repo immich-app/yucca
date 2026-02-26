@@ -68,7 +68,10 @@
                   icon={mdiPlus}
                   aria-label="Add"
                   size="small"
-                  onclick={() => onSelect(item.path)}
+                  onclick={() => {
+                    onSelect(item.path);
+                    onClose();
+                  }}
                 />
               </TableCell>
             </TableRow>
