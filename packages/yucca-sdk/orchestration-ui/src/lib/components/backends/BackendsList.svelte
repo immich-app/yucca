@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getProvider } from "$lib/providers";
   import { onMount } from "svelte";
-  import { type BackendDto } from "../../fetch-client";
+  import { getBackends, type BackendDto } from "../../fetch-client";
   import {
     Button,
     Card,
@@ -18,13 +18,11 @@
   // svelte-ignore state_referenced_locally
   let backends: BackendDto[] | undefined = $state();
 
-  const provider = getProvider();
-
   const { advanced } = options;
 
   onMount(() => {
     if (!backends) {
-      provider.getBackends().then((data) => (backends = data.backends));
+      getBackends().then((data) => (backends = data.backends));
     }
   });
 

@@ -20,6 +20,10 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
+export type RepositoryCreateRequestDto = {
+    name: string;
+    worm: boolean;
+};
 export type RepositoryMetricsDto = {
     lastBackup?: string;
     sizeBytes: number;
@@ -27,6 +31,7 @@ export type RepositoryMetricsDto = {
 export type RepositoryWithMetricsDto = {
     id: string;
     worm: boolean;
+    name: string;
     metrics: RepositoryMetricsDto;
 };
 export type RepositoryCreateResponseDto = {
@@ -65,14 +70,15 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function createRepository(opts?: Oazapfts.RequestOpts) {
+export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResponseDto;
-    }>("/api/repository", {
+    }>("/api/repository", oazapfts.json({
         ...opts,
-        method: "POST"
-    }));
+        method: "POST",
+        body: repositoryCreateRequestDto
+    })));
 }
 export function getRepositories(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

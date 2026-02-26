@@ -16,6 +16,7 @@
   import RunHistoryModal from "./dialogs/RunHistoryModal.svelte";
   import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
   import SnapshotsListModal from "./dialogs/SnapshotsListModal.svelte";
+  import ViewLogModal from "./dialogs/ViewLogModal.svelte";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -28,8 +29,10 @@
     toastManager.info("Started backup");
 
     try {
-      await createBackup(repository.id);
-      toastManager.success("Finished backup");
+      const { logId } = await createBackup(repository.id);
+      modalManager.open(ViewLogModal, {
+        logId,
+      });
     } catch (error) {
       toastManager.danger(`Backup failed: ${error}`);
     }
@@ -55,10 +58,14 @@
     });
 </script>
 
-{#if repository.backends}
-  <Card color={repository.backends.primary.online ? undefined : "danger"}>
-    <CardBody class="flex gap-2">
-      <HStack>
+<Card
+  color={repository.backends && !repository.backends.primary.online
+    ? "danger"
+    : undefined}
+>
+  <CardBody class="flex gap-2">
+    <HStack>
+      {#if repository.backends}
         <Badge size="tiny" color="secondary">
           {repository.backends.primary.type === "yucca"
             ? "FUTO Backups"
@@ -69,22 +76,24 @@
         {#if !repository.backends.primary.online}
           <Badge size="tiny" color="danger">Offline</Badge>
         {/if}
-        <Badge size="tiny" color="secondary">
-          <FormatBytes bytes={repository.metrics.sizeBytes} />
+      {/if}
+      <Badge size="tiny" color="secondary">
+        <FormatBytes bytes={repository.metrics.sizeBytes} />
+      </Badge>
+      {#if repository.metrics.lastBackup}
+        <Badge size="tiny" color={"success"}>
+          Successful {DateTime.fromISO(
+            repository.metrics.lastBackup,
+          ).toRelative()}
         </Badge>
-        {#if repository.metrics.lastBackup}
-          <Badge size="tiny" color={"success"}>
-            Successful {DateTime.fromISO(
-              repository.metrics.lastBackup,
-            ).toRelative()}
-          </Badge>
-        {:else}
-          <Badge size="tiny" color="warning">Never backed up</Badge>
-        {/if}
-      </HStack>
+      {:else}
+        <Badge size="tiny" color="warning">Never backed up</Badge>
+      {/if}
+    </HStack>
 
-      <Heading>{repository.id}</Heading>
-    </CardBody>
+    <Heading>{repository.name}</Heading>
+  </CardBody>
+  {#if repository.backends}
     <CardFooter class="flex gap-2">
       {#if repository.backends.primary.online}
         <Button size="tiny" onclick={onBackupNow}>Backup Now</Button>
@@ -93,14 +102,9 @@
       <Button size="tiny" onclick={onViewHistory}>Logs</Button>
       <Button size="tiny" onclick={onConfigure}>Configure</Button>
     </CardFooter>
-  </Card>
-{:else}
-  <Card>
-    <CardBody>
-      <Heading>{repository.id}</Heading></CardBody
-    >
+  {:else}
     <CardFooter class="flex gap-2">
       <Button size="tiny">Import</Button>
     </CardFooter>
-  </Card>
-{/if}
+  {/if}
+</Card>

@@ -7,6 +7,9 @@ export class RepositoryDto {
 
   @ApiProperty({ type: Boolean })
   worm!: boolean;
+
+  @ApiProperty({ type: String })
+  name!: string;
 }
 
 export class RepositoryMetricsDto {
@@ -57,6 +60,14 @@ export class LocalRepositoryDto extends RepositoryWithMetricsDto {
   configuration?: RepositoryConfigurationDto;
 }
 
+export class RepositoryCreateRequestDto {
+  @ApiProperty({ type: String })
+  name!: string;
+
+  @ApiProperty({ type: Boolean })
+  worm!: boolean;
+}
+
 export class RepositoryCreateResponseDto {
   @ApiProperty({ type: () => LocalRepositoryDto })
   repository!: LocalRepositoryDto;
@@ -105,4 +116,9 @@ export class SnapshotDto {
 export class ListSnapshotsResponseDto {
   @ApiProperty({ type: () => [SnapshotDto] })
   snapshots!: SnapshotDto[];
+}
+
+export class LogResponseDto {
+  @ApiProperty()
+  logId!: string;
 }

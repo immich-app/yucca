@@ -20,11 +20,11 @@
 </script>
 
 {#if mock}
-  <BackupsList />
+  <BackupsList local />
 {:else}
   <OnboardingGate onExit={() => setMock(true)}>
     <BackendsList />
     <hr />
-    <BackupsList />
+    <BackupsList local />
   </OnboardingGate>
 {/if}

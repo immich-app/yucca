@@ -3,7 +3,11 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { RepositoryCreateResponseDto, RepositoryListResponseDto } from '../dto/repository.dto';
+import {
+  RepositoryCreateRequestDto,
+  RepositoryCreateResponseDto,
+  RepositoryListResponseDto,
+} from '../dto/repository.dto';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -15,7 +19,7 @@ export class LocalBackend extends Backend {
 
   async checkOnline(): Promise<void> {}
 
-  async createRepository(_worm: boolean): Promise<RepositoryCreateResponseDto> {
+  async createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
     const id = randomUUID();
 
     await mkdir(resolve(this.configuration.path, id), {
@@ -25,7 +29,8 @@ export class LocalBackend extends Backend {
     return {
       repository: {
         id,
-        worm: false,
+        name: dto.name,
+        worm: dto.worm,
         metrics: {
           sizeBytes: 0,
         },
@@ -48,6 +53,7 @@ export class LocalBackend extends Backend {
             f.isDirectory()
               ? {
                   id: files[index],
+                  name: 'Unknown',
                   worm: false,
                   metrics: {
                     sizeBytes: 0, // in local cache

@@ -1,4 +1,5 @@
 import { createRepository, createResticUrl, getAuth, getRepositories } from 'yucca-api-client';
+import { RepositoryCreateRequestDto } from '../dto/repository.dto';
 import { BackendType, CookieName } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -21,8 +22,8 @@ export class YuccaBackend extends Backend {
     await getAuth(this.requestOptions);
   }
 
-  async createRepository(_worm: boolean) {
-    return createRepository(this.requestOptions);
+  async createRepository(dto: RepositoryCreateRequestDto) {
+    return createRepository(dto, this.requestOptions);
   }
 
   async getRepositories() {

@@ -9,7 +9,13 @@
 </script>
 
 <div class="p-8 flex flex-col gap-4">
-  <Heading size="giant">Orchestrator Test UI</Heading>
+  <Heading size="giant"
+    >Orchestrator <img
+      alt="Test UI"
+      src="/test-ui.png"
+      class="inline h-24"
+    /></Heading
+  >
 
   <HStack>
     <Button onclick={() => (mock = true)} disabled={mock}

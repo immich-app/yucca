@@ -4,28 +4,17 @@
     RepositoryListResponseDto,
   } from "$lib/fetch-client";
   import { getProvider } from "$lib/providers";
-  import {
-    Badge,
-    Button,
-    Card,
-    CardBody,
-    CardFooter,
-    FormatBytes,
-    Heading,
-    HStack,
-    IconButton,
-    toastManager,
-  } from "@immich/ui";
+  import { Button, Heading, modalManager, toastManager } from "@immich/ui";
   import { onMount } from "svelte";
-  import { DateTime } from "luxon";
-  import { mdiPlus } from "@mdi/js";
   import BackupItem from "./BackupItem.svelte";
+  import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
 
   interface Props {
+    local?: boolean;
     initialData?: RepositoryListResponseDto;
   }
 
-  const { initialData }: Props = $props();
+  const { local, initialData }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   let repositories = $state(initialData?.repositories);
@@ -60,35 +49,24 @@
   };
 
   const createNewBackup = async () => {
-    if (!repositories) {
-      return;
-    }
-
-    toastManager.info("Creating...", {
-      timeout: 3000,
+    modalManager.show(CreateRepositoryModal, {
+      onCreate: (repository) => repositories?.push(repository),
+      onUpdate,
     });
-
-    const { repository } = await provider.createRepository();
-
-    repositories = [...repositories, repository];
-
-    toastManager.success("Created!");
   };
 </script>
 
 <div class="flex flex-col gap-4">
-  {#if localRepositories.length > 0}
+  {#if local}
     <div class="flex flex-col gap-2">
       <Heading
         >Backups on this machine <div class="inline-block">
-          <IconButton
+          <Button
             shape="round"
             size="tiny"
-            icon={mdiPlus}
             variant="outline"
-            aria-label={`Create new backup`}
-            onclick={createNewBackup}
-          />
+            onclick={createNewBackup}>Create new backup</Button
+          >
         </div></Heading
       >
       {#each localRepositories as repository (repository.id)}
@@ -97,12 +75,15 @@
     </div>
   {/if}
 
-  {#if remoteRepositories.length > 0}
-    <div class="flex flex-col gap-2">
+  <div class="flex flex-col gap-2">
+    {#if local}
       <Heading>Backups found elsewhere</Heading>
-      {#each remoteRepositories as repository (repository.id)}
-        <BackupItem {repository} onUpdate={onUpdate(repository.id)} />
-      {/each}
-    </div>
-  {/if}
+    {:else}
+      <Heading>Your Backups</Heading>
+    {/if}
+
+    {#each remoteRepositories as repository (repository.id)}
+      <BackupItem {repository} onUpdate={onUpdate(repository.id)} />
+    {/each}
+  </div>
 </div>

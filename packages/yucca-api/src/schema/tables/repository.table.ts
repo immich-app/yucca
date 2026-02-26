@@ -11,4 +11,7 @@ export class RepositoryTable {
 
   @Column({ type: 'boolean' })
   worm!: boolean;
+
+  @Column({ type: 'text' })
+  name!: string;
 }

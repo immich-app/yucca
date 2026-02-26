@@ -1,4 +1,5 @@
 import { RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
+import { RepositoryCreateRequestDto } from '../dto/repository.dto';
 import { BackendType } from '../enum';
 import { ModuleConfig } from '../moduleConfig';
 import { BackendConfiguration } from '../schema/tables/backend.table';
@@ -7,7 +8,7 @@ export abstract class Backend {
   constructor(protected readonly configuration: BackendConfiguration) {}
 
   abstract checkOnline(): Promise<void>;
-  abstract createRepository(worm: boolean): Promise<RepositoryCreateResponseDto>;
+  abstract createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto>;
   abstract getRepositories(): Promise<RepositoryListResponseDto>;
   abstract getResticEndpoint(id: string): Promise<string>;
 

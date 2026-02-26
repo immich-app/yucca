@@ -19,8 +19,8 @@ export class RunHistoryRepository {
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
-  async createLog(repositoryId: string, callback: (log: WriteStream) => Promise<void>) {
-    const id = randomUUID();
+  async createLog(repositoryId: string, fn: (log: WriteStream) => Promise<void>, callback: (error?: unknown) => void) {
+    const logId = randomUUID();
 
     const start = new Date().toISOString();
     const logFilePath = resolve(this.moduleConfig.statePath, 'logs', repositoryId, start + '.jsonl');
@@ -34,7 +34,7 @@ export class RunHistoryRepository {
     await this.db
       .insertInto('runHistory')
       .values({
-        id,
+        id: logId,
         repositoryId,
 
         start,
@@ -44,28 +44,46 @@ export class RunHistoryRepository {
       })
       .executeTakeFirstOrThrow();
 
-    try {
-      await callback(log);
+    fn(log)
+      .then(async () => {
+        callback();
+        log.close();
 
-      log.close();
+        await this.db
+          .updateTable('runHistory')
+          .where('id', '=', logId)
+          .set('status', RunHistoryStatus.Complete)
+          .set('end', new Date().toISOString())
+          .executeTakeFirstOrThrow();
+      })
+      .catch(async (error) => {
+        callback(error);
 
-      await this.db
-        .updateTable('runHistory')
-        .where('id', '=', id)
-        .set('status', RunHistoryStatus.Complete)
-        .set('end', new Date().toISOString())
-        .executeTakeFirstOrThrow();
-    } catch (error) {
-      log.write(`${error}`);
-      log.close();
+        log.write(JSON.stringify({ message_type: 'error', error: `${error}` }));
+        log.close();
 
-      await this.db
-        .updateTable('runHistory')
-        .where('id', '=', id)
-        .set('status', RunHistoryStatus.Failed)
-        .set('end', new Date().toISOString())
-        .executeTakeFirstOrThrow();
-    }
+        await this.db
+          .updateTable('runHistory')
+          .where('id', '=', logId)
+          .set('status', RunHistoryStatus.Failed)
+          .set('end', new Date().toISOString())
+          .executeTakeFirstOrThrow();
+      });
+
+    return { logId };
+  }
+
+  createLogAsync(repositoryId: string, fn: (log: WriteStream) => Promise<void>) {
+    return new Promise<void>(
+      (resolve, reject) =>
+        void this.createLog(repositoryId, fn, (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        }),
+    );
   }
 
   async get(id: string) {

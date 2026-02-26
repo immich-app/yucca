@@ -1,10 +1,13 @@
 <script lang="ts">
   import {
     Button,
+    Field,
     IconButton,
+    Label,
     Modal,
     ModalBody,
     modalManager,
+    Stack,
     Table,
     TableBody,
     TableCell,
@@ -12,6 +15,7 @@
     TableHeader,
     TableHeading,
     TableRow,
+    Text,
   } from "@immich/ui";
   import {
     addRepositoryPath,
@@ -75,32 +79,46 @@
   };
 </script>
 
-<Modal title={`Configure ${repository.id}`} size="large" {onClose}>
+<Modal title={`Configure ${repository.name}`} size="large" {onClose}>
   <ModalBody>
-    <Table>
-      <TableHeader>
-        <TableHeading>Backing up</TableHeading>
-      </TableHeader>
+    <Stack gap={2}>
+      <Table spacing="tiny">
+        <TableHeader>
+          <TableCell>Backup Path</TableCell>
+          <TableCell class="w-16"></TableCell>
+        </TableHeader>
 
-      <TableBody>
-        {#each repository.configuration.paths as path (path)}
+        <TableBody>
+          {#each repository.configuration.paths as path (path)}
+            <TableRow>
+              <TableCell>{path}</TableCell>
+              <TableCell class="w-16 flex flex-col items-end px-2">
+                <IconButton
+                  icon={mdiMinus}
+                  aria-label="Remove"
+                  size="small"
+                  color="danger"
+                  onclick={async () => removePath(path)}
+                />
+              </TableCell>
+            </TableRow>
+          {/each}
+
+          {#if repository.configuration.paths.length === 0}
+            <TableRow>
+              <TableCell>No paths configured yet.</TableCell>
+              <TableCell class="w-16"></TableCell>
+            </TableRow>
+          {/if}
+
           <TableRow>
-            <TableCell>{path}</TableCell>
-            <TableCell class="w-16">
-              <IconButton
-                icon={mdiMinus}
-                aria-label="Remove"
-                size="small"
-                onclick={async () => removePath(path)}
-              />
+            <TableCell class="flex flex-col items-center">
+              <Button onclick={addPath}>Add path</Button>
             </TableCell>
+            <TableCell class="w-16"></TableCell>
           </TableRow>
-        {/each}
-      </TableBody>
-
-      <TableFooter>
-        <Button onclick={addPath}>Add</Button>
-      </TableFooter>
-    </Table>
+        </TableBody>
+      </Table>
+    </Stack>
   </ModalBody>
 </Modal>

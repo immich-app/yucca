@@ -14,6 +14,10 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "http://localhost:22676"
 };
+export type RepositoryCreateRequestDto = {
+    name: string;
+    worm: boolean;
+};
 export type RepositoryMetricsDto = {
     lastBackup?: string;
     sizeBytes: number;
@@ -34,6 +38,7 @@ export type RepositoryConfigurationDto = {
 export type LocalRepositoryDto = {
     id: string;
     worm: boolean;
+    name: string;
     metrics: RepositoryMetricsDto;
     backends?: RepositoryBackendsDto;
     configuration?: RepositoryConfigurationDto;
@@ -43,6 +48,9 @@ export type RepositoryCreateResponseDto = {
 };
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
+};
+export type LogResponseDto = {
+    logId: string;
 };
 export type RepositoryPathRequestDto = {
     path: string;
@@ -93,14 +101,15 @@ export type CurrentRecoveryKeyResponse = {
 export type ImportRecoveryKeyRequest = {
     recoveryKey: string;
 };
-export function createRepository(opts?: Oazapfts.RequestOpts) {
+export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResponseDto;
-    }>("/api/repository", {
+    }>("/api/repository", oazapfts.json({
         ...opts,
-        method: "POST"
-    }));
+        method: "POST",
+        body: repositoryCreateRequestDto
+    })));
 }
 export function getRepositories(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -111,7 +120,10 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
     }));
 }
 export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}`, {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}`, {
         ...opts,
         method: "POST"
     }));

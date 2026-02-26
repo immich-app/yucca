@@ -6,6 +6,9 @@ export class RepositoryDto {
 
   @ApiProperty()
   worm!: boolean;
+
+  @ApiProperty()
+  name!: string;
 }
 
 export class RepositoryMetricsDto {
@@ -19,6 +22,14 @@ export class RepositoryMetricsDto {
 export class RepositoryWithMetricsDto extends RepositoryDto {
   @ApiProperty()
   metrics!: RepositoryMetricsDto;
+}
+
+export class RepositoryCreateRequestDto {
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  worm!: boolean;
 }
 
 export class RepositoryCreateResponseDto {

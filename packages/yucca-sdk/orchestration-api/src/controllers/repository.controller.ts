@@ -3,6 +3,8 @@ import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import {
   ListSnapshotsResponseDto,
+  LogResponseDto,
+  RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryPathRequestDto,
@@ -16,8 +18,8 @@ export class RepositoryController {
 
   @Post()
   @ApiOkResponse({ type: RepositoryCreateResponseDto })
-  createRepository(): Promise<RepositoryCreateResponseDto> {
-    return this.service.createRepository();
+  createRepository(@Body() dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
+    return this.service.createRepository(dto);
   }
 
   @Get()
@@ -28,7 +30,8 @@ export class RepositoryController {
 
   @Post('/:id')
   @ApiParam({ name: 'id', type: String })
-  createBackup(@Param('id') id: string): Promise<void> {
+  @ApiOkResponse({ type: LogResponseDto })
+  createBackup(@Param('id') id: string): Promise<LogResponseDto> {
     return this.service.createBackup(id);
   }
 

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/require-await */
 
-import { RepositoryCreateResponseDto, RepositoryListResponseDto } from '../dto/repository.dto';
+import {
+  RepositoryCreateRequestDto,
+  RepositoryCreateResponseDto,
+  RepositoryListResponseDto,
+} from '../dto/repository.dto';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -12,7 +16,7 @@ export class S3Backend extends Backend {
 
   async checkOnline(): Promise<void> {}
 
-  createRepository(_worm: boolean): Promise<RepositoryCreateResponseDto> {
+  createRepository(_dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
     throw new Error('Method not implemented.');
   }
 

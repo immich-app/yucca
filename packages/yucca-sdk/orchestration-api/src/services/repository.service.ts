@@ -4,7 +4,9 @@ import { Backend } from '../backends/backend';
 import {
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
+  LogResponseDto,
   RepositoryConfigurationDto,
+  RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryWithMetricsDto,
@@ -32,12 +34,12 @@ export class RepositoryService {
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
-  async createRepository(): Promise<RepositoryCreateResponseDto> {
+  async createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
     const backends = await this.backend.getBackends();
     const defaultBackend = backends[0];
     const backend = Backend.from(defaultBackend.configuration, this.moduleConfig);
 
-    const { repository } = await backend.createRepository(false);
+    const { repository } = await backend.createRepository(dto);
 
     const endpoint = await backend.getResticEndpoint(repository.id);
     const key = await this.config.getEncryptionKey();
@@ -131,6 +133,7 @@ export class RepositoryService {
           metrics: metrics ?? {
             sizeBytes: 0,
           },
+          name: 'Unknown',
           worm: false,
           configuration,
         });
@@ -189,16 +192,21 @@ export class RepositoryService {
     }
   }
 
-  async createBackup(id: string): Promise<void> {
+  async createBackup(id: string): Promise<LogResponseDto> {
     const { endpoint, key } = await this.getResticParameters(id);
 
-    const paths = await this.repositoryPath.get(id);
-    if (paths.length === 0) {
-      throw new BadRequestException('Missing configuration paths');
-    }
+    return await this.runHistory.createLog(
+      id,
+      async (log) => {
+        const paths = await this.repositoryPath.get(id);
+        if (paths.length === 0) {
+          throw new BadRequestException('Missing configuration paths');
+        }
 
-    await this.runHistory.createLog(id, (log) => this.restic.backup(endpoint, key, paths, log));
-    await this.updateLocalMetrics(id, endpoint, key);
+        await this.restic.backup(endpoint, key, paths, log);
+      },
+      () => void this.updateLocalMetrics(id, endpoint, key),
+    );
   }
 
   async addRepositoryPath(id: string, path: string): Promise<void> {

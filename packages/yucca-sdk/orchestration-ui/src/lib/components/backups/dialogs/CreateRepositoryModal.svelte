@@ -1,0 +1,86 @@
+<script lang="ts">
+  import {
+    Button,
+    Checkbox,
+    Field,
+    Input,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    modalManager,
+    Stack,
+    toastManager,
+  } from "@immich/ui";
+  import { createRepository, type LocalRepositoryDto } from "$lib/fetch-client";
+  import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
+
+  interface Props {
+    onClose: () => void;
+    onCreate: (repository: LocalRepositoryDto) => void;
+    onUpdate: (id: string) => (partial: Partial<LocalRepositoryDto>) => void;
+  }
+
+  let { onClose, onCreate, onUpdate }: Props = $props();
+
+  let name = $state("");
+  let worm = $state(false);
+  let creating = $state(false);
+
+  const create = async () => {
+    creating = true;
+
+    try {
+      toastManager.info("Creating new backup...", {
+        id: "new-backup",
+        closable: false,
+        timeout: null!,
+      });
+
+      const { repository } = await createRepository({
+        name,
+        worm,
+      });
+
+      toastManager.success("Created new backup!");
+
+      onCreate(repository);
+
+      modalManager.open(ConfigureRepositoryModal, {
+        repository: {
+          ...repository,
+          configuration: repository.configuration!,
+        },
+        onUpdate: onUpdate(repository.id),
+      });
+
+      onClose();
+    } catch (error) {
+      creating = false;
+    } finally {
+      (
+        toastManager as never as { remove(target: { id: string }): void }
+      ).remove({ id: "new-backup" });
+    }
+  };
+</script>
+
+<Modal title="Create A New Backup" {onClose}>
+  <ModalBody>
+    <Stack gap={4}>
+      <Field label="Name" description="A memorable name for this backup">
+        <Input bind:value={name} />
+      </Field>
+      <Field
+        label="Write once (WORM)"
+        description="Prevent anything being deleted"
+      >
+        <Checkbox bind:checked={worm} />
+      </Field>
+    </Stack>
+  </ModalBody>
+  <ModalFooter>
+    <Button disabled={creating || name.length === 0} onclick={create}
+      >Create</Button
+    >
+  </ModalFooter>
+</Modal>
