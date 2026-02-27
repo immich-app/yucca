@@ -42,7 +42,7 @@ export class RepositoryService {
     const { repository } = await backend.createRepository(dto);
 
     const endpoint = await backend.getResticEndpoint(repository.id);
-    const key = await this.config.getEncryptionKey();
+    const key = await this.config.deriveEncryptionKey(`repository-${repository.id}`);
     await this.restic.init(endpoint, key);
 
     await this.repository.create({
@@ -161,7 +161,7 @@ export class RepositoryService {
     };
   }
 
-  private async getResticParameters(id: string): Promise<{ endpoint: string; key: Buffer }> {
+  private async getResticParameters(id: string): Promise<{ endpoint: string; key: Uint8Array }> {
     const localRepository = await this.repository.get(id);
     if (!localRepository) {
       throw new BadRequestException('Repository not found locally');
@@ -171,12 +171,12 @@ export class RepositoryService {
     const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
     const endpoint = await backendInstance.getResticEndpoint(id);
 
-    const key = await this.config.getEncryptionKey();
+    const key = await this.config.deriveEncryptionKey(`repository-${id}`);
 
     return { endpoint, key };
   }
 
-  private async updateLocalMetrics(id: string, endpoint: string, key: Buffer): Promise<void> {
+  private async updateLocalMetrics(id: string, endpoint: string, key: Uint8Array): Promise<void> {
     try {
       return;
     } finally {
@@ -188,7 +188,7 @@ export class RepositoryService {
       });
 
       // debug
-      console.info(`RESTIC_PASSWORD=${key.toString('hex')} restic -r ${endpoint}`);
+      // console.info(`RESTIC_PASSWORD=${key.toHex()} restic -r ${endpoint}`);
     }
   }
 

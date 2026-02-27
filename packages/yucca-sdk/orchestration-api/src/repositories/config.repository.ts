@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { randomBytes } from 'node:crypto';
@@ -6,14 +6,14 @@ import { ConfigurationKey } from '../enum';
 import { DB } from '../schema';
 
 @Injectable()
-export class ConfigRepository implements OnModuleInit {
+export class ConfigRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
 
-  async onModuleInit() {
+  async bootstrap() {
     const hasKey = await this.hasEncryptionKey();
 
     if (!hasKey) {
-      await this.set(ConfigurationKey.EncryptionKey, randomBytes(64).toString('hex'));
+      await this.set(ConfigurationKey.EncryptionKey, randomBytes(32).toString('hex'));
     }
   }
 
@@ -48,13 +48,28 @@ export class ConfigRepository implements OnModuleInit {
     return this.has(ConfigurationKey.EncryptionKey);
   }
 
-  async getEncryptionKeyAsString(): Promise<string> {
+  async getMasterEncryptionKey(): Promise<string> {
     return await this.get(ConfigurationKey.EncryptionKey);
   }
 
-  async getEncryptionKey(): Promise<Buffer> {
+  async deriveEncryptionKey(info: `repository-${string}`): Promise<Uint8Array> {
     const encryptionKey = await this.get(ConfigurationKey.EncryptionKey);
-    return Buffer.from(encryptionKey, 'hex');
+    const masterKey = Buffer.from(encryptionKey, 'hex');
+
+    const key = new Uint8Array(
+      await crypto.subtle.deriveBits(
+        {
+          name: 'HKDF',
+          hash: 'SHA-256',
+          info: Buffer.from(info),
+          salt: Buffer.from(Array.from({ length: 32 }).fill(0) as number[]),
+        },
+        await crypto.subtle.importKey('raw', masterKey, 'HKDF', false, ['deriveBits']),
+        256,
+      ),
+    );
+
+    return key;
   }
 
   async importEncryptionKey(key: string): Promise<void> {

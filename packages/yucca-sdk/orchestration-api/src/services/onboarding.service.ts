@@ -22,7 +22,7 @@ export class OnboardingService {
   }
 
   async currentRecoveryKey(): Promise<CurrentRecoveryKeyResponse> {
-    const recoveryKey = await this.config.getEncryptionKeyAsString();
+    const recoveryKey = await this.config.getMasterEncryptionKey();
 
     return {
       recoveryKey,
