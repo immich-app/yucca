@@ -10,6 +10,7 @@ import { BackendController } from './controllers/backend.controller';
 import { FilesystemController } from './controllers/filesystem.controller';
 import { OnboardingController } from './controllers/onboarding.controller';
 import { RepositoryController } from './controllers/repository.controller';
+import { EventsGateway } from './events/events.gateway';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
@@ -60,6 +61,7 @@ export class OrchestrationApiModule {
       ],
       providers: [
         { provide: ModuleConfigProvider, useValue: config },
+        EventsGateway,
         DatabaseRepository,
         BackendRepository,
         ConfigRepository,

@@ -24,60 +24,47 @@
   } from "$lib/fetch-client";
   import { mdiMinus } from "@mdi/js";
   import FileBrowserModal from "./FileBrowserModal.svelte";
+  import OnEvents from "$lib/components/OnEvents.svelte";
+  import type { SocketEvent } from "$lib/events";
 
   interface Props {
     repository: LocalRepositoryDto & { configuration: object };
     onClose: () => void;
-    onUpdate: (partial: Partial<LocalRepositoryDto>) => void;
   }
 
-  let {
-    repository: initialRepository,
-    onClose,
-    onUpdate: onUpdateParent,
-  }: Props = $props();
+  let { repository: initialRepository, onClose }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   let repository = $state(initialRepository);
 
-  const onUpdate = (partial: Partial<LocalRepositoryDto>) => {
-    repository = {
-      ...repository,
-      ...partial,
-    };
-
-    onUpdateParent(repository);
+  const onRepositoryUpdate = (
+    event: SocketEvent<{
+      repositoryId: string;
+      repository: Partial<LocalRepositoryDto>;
+    }>,
+  ) => {
+    if (event.data.repositoryId === repository.id) {
+      repository = {
+        ...repository,
+        ...event.data.repository,
+      };
+    }
   };
 
   const removePath = async (path: string) => {
     await removeRepositoryPath(repository.id, { path });
-
-    onUpdate({
-      configuration: {
-        ...repository.configuration,
-        paths: repository.configuration.paths.filter((x) => x !== path),
-      },
-    });
   };
 
   const addPath = () => {
     modalManager.show(FileBrowserModal, {
       async onSelect(path) {
         await addRepositoryPath(repository.id, { path });
-
-        onUpdate({
-          configuration: {
-            ...repository.configuration,
-            paths: [
-              ...repository.configuration.paths.filter((x) => x !== path),
-              path,
-            ],
-          },
-        });
       },
     });
   };
 </script>
+
+<OnEvents {onRepositoryUpdate} />
 
 <Modal title={`Configure ${repository.name}`} size="large" {onClose}>
   <ModalBody>

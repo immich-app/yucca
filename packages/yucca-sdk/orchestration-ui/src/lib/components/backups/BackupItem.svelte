@@ -30,10 +30,9 @@
 
   type Props = {
     repository: LocalRepositoryDto;
-    onUpdate: (partial: Partial<LocalRepositoryDto>) => void;
   };
 
-  const { repository, onUpdate }: Props = $props();
+  const { repository }: Props = $props();
 
   const onBackupNow = async () => {
     toastManager.info("Started backup");
@@ -64,7 +63,6 @@
         ...repository,
         configuration: repository.configuration!,
       },
-      onUpdate,
     });
 </script>
 

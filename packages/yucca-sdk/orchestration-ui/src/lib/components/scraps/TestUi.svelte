@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { socket } from "$lib/events";
   import {
     MockProvider,
     orchestrationApiProvider,
@@ -13,8 +14,10 @@
 
   // svelte-ignore state_referenced_locally
   if (mock) {
+    socket.disconnect();
     setProvider(new MockProvider());
   } else {
+    socket.connect();
     setProvider(orchestrationApiProvider);
   }
 </script>

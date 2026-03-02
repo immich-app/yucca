@@ -66,6 +66,7 @@
     "@oazapfts/runtime": "^1.1.0",
     "lodash.debounce": "^4.0.8",
     "luxon": "^3.7.2",
+    "socket.io-client": "^4.8.3",
     "yucca-api-client": "workspace:^"
   }
 }

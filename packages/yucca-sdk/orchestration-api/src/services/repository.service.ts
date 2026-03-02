@@ -9,9 +9,11 @@ import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
+  RepositoryMetricsDto,
   RepositoryWithMetricsDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
+import { EventsGateway } from '../events/events.gateway';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
@@ -24,6 +26,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 @Injectable()
 export class RepositoryService {
   constructor(
+    private readonly events: EventsGateway,
     private readonly backend: BackendRepository,
     private readonly config: ConfigRepository,
     private readonly restic: ResticRepository,
@@ -34,37 +37,58 @@ export class RepositoryService {
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
+  private async getLocalRepository(
+    id: string,
+    configuration?: RepositoryConfigurationDto,
+    metrics?: RepositoryMetricsDto,
+  ): Promise<Pick<LocalRepositoryDto, 'configuration' | 'metrics'>> {
+    configuration ??= {
+      paths: await this.repositoryPath.get(id),
+    };
+    metrics ??= await this.repositoryLocalMetrics.get(id);
+
+    return {
+      metrics,
+      configuration,
+    };
+  }
+
   async createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
     const backends = await this.backend.getBackends();
     const defaultBackend = backends[0];
     const backend = Backend.from(defaultBackend.configuration, this.moduleConfig);
 
-    const { repository } = await backend.createRepository(dto);
+    const { repository: remote } = await backend.createRepository(dto);
 
-    const endpoint = await backend.getResticEndpoint(repository.id);
-    const key = await this.config.deriveEncryptionKey(`repository-${repository.id}`);
+    const endpoint = await backend.getResticEndpoint(remote.id);
+    const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
     await this.restic.init(endpoint, key);
 
     await this.repository.create({
-      id: repository.id,
+      id: remote.id,
       backendId: defaultBackend.id,
     });
 
-    return {
-      repository: {
-        ...repository,
-        backends: {
-          primary: {
-            id: defaultBackend.id,
-            online: true,
-            type: defaultBackend.configuration.type,
-          },
-          secondary: [],
+    const repository: LocalRepositoryDto = {
+      ...(await this.getLocalRepository(remote.id, { paths: [] })),
+      ...remote,
+      backends: {
+        primary: {
+          id: defaultBackend.id,
+          online: true,
+          type: defaultBackend.configuration.type,
         },
-        configuration: {
-          paths: [],
-        },
+        secondary: [],
       },
+    };
+
+    this.events.publish({
+      type: 'RepositoryCreate',
+      repository,
+    });
+
+    return {
+      repository,
     };
   }
 
@@ -106,6 +130,7 @@ export class RepositoryService {
       if (remoteRepository) {
         repositories.push({
           ...remoteRepository,
+          ...(await this.getLocalRepository(id, configuration, metrics)),
           backends: {
             primary: {
               id: backendId,
@@ -114,14 +139,15 @@ export class RepositoryService {
             },
             secondary: [],
           },
-          configuration,
-          metrics: metrics ?? remoteRepository.metrics,
         });
 
         delete remoteRepositories[backendId][id];
       } else {
         repositories.push({
           id,
+          name: 'Unknown',
+          worm: false,
+          ...(await this.getLocalRepository(id, configuration, metrics)),
           backends: {
             primary: {
               id: backendId,
@@ -130,12 +156,6 @@ export class RepositoryService {
             },
             secondary: [],
           },
-          metrics: metrics ?? {
-            sizeBytes: 0,
-          },
-          name: 'Unknown',
-          worm: false,
-          configuration,
         });
       }
     }
@@ -181,10 +201,19 @@ export class RepositoryService {
       return;
     } finally {
       const { total_size } = await this.restic.stats(endpoint, key);
-
-      await this.repositoryLocalMetrics.save(id, {
+      const metrics = {
         sizeBytes: total_size,
-        lastBackup: new Date().toISOString(),
+        lastBackup: new Date().toString(),
+      };
+
+      await this.repositoryLocalMetrics.save(id, metrics);
+
+      this.events.publish({
+        type: 'RepositoryUpdate',
+        repositoryId: id,
+        repository: {
+          metrics,
+        },
       });
 
       // debug
@@ -211,10 +240,34 @@ export class RepositoryService {
 
   async addRepositoryPath(id: string, path: string): Promise<void> {
     await this.repositoryPath.create({ id, path });
+
+    const paths = await this.repositoryPath.get(id);
+
+    this.events.publish({
+      type: 'RepositoryUpdate',
+      repositoryId: id,
+      repository: {
+        configuration: {
+          paths,
+        },
+      },
+    });
   }
 
   async removeRepositoryPath(id: string, path: string): Promise<void> {
     await this.repositoryPath.delete(id, path);
+
+    const paths = await this.repositoryPath.get(id);
+
+    this.events.publish({
+      type: 'RepositoryUpdate',
+      repositoryId: id,
+      repository: {
+        configuration: {
+          paths,
+        },
+      },
+    });
   }
 
   async getSnapshots(id: string): Promise<ListSnapshotsResponseDto> {

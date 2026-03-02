@@ -11,16 +11,14 @@
     Stack,
     toastManager,
   } from "@immich/ui";
-  import { createRepository, type LocalRepositoryDto } from "$lib/fetch-client";
+  import { createRepository } from "$lib/fetch-client";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
 
   interface Props {
     onClose: () => void;
-    onCreate: (repository: LocalRepositoryDto) => void;
-    onUpdate: (id: string) => (partial: Partial<LocalRepositoryDto>) => void;
   }
 
-  let { onClose, onCreate, onUpdate }: Props = $props();
+  let { onClose }: Props = $props();
 
   let name = $state("");
   let worm = $state(false);
@@ -43,14 +41,11 @@
 
       toastManager.success("Created new backup!");
 
-      onCreate(repository);
-
       modalManager.open(ConfigureRepositoryModal, {
         repository: {
           ...repository,
           configuration: repository.configuration!,
         },
-        onUpdate: onUpdate(repository.id),
       });
 
       onClose();

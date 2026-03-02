@@ -8,6 +8,8 @@
   import { onMount } from "svelte";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
+  import OnEvents from "../OnEvents.svelte";
+  import { events, SocketEvent } from "$lib/events";
 
   interface Props {
     local?: boolean;
@@ -37,24 +39,34 @@
     repositories?.filter((repository) => !repository.backends) ?? [],
   );
 
-  const onUpdate = (id: string) => (partial: Partial<LocalRepositoryDto>) => {
+  const createNewBackup = () => modalManager.show(CreateRepositoryModal);
+
+  const onRepositoryCreate = (
+    event: SocketEvent<{
+      repository: LocalRepositoryDto;
+    }>,
+  ) => {
+    repositories = [...(repositories ?? []), event.data.repository];
+  };
+
+  const onRepositoryUpdate = (
+    event: SocketEvent<{
+      repositoryId: string;
+      repository: Partial<LocalRepositoryDto>;
+    }>,
+  ) => {
     repositories = repositories?.map((repository) =>
-      repository.id === id
+      repository.id === event.data.repositoryId
         ? {
             ...repository,
-            ...partial,
+            ...event.data.repository,
           }
         : repository,
     );
   };
-
-  const createNewBackup = async () => {
-    modalManager.show(CreateRepositoryModal, {
-      onCreate: (repository) => repositories?.push(repository),
-      onUpdate,
-    });
-  };
 </script>
+
+<OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
 
 <div class="flex flex-col gap-4">
   {#if local}
@@ -70,7 +82,7 @@
         </div></Heading
       >
       {#each localRepositories as repository (repository.id)}
-        <BackupItem {repository} onUpdate={onUpdate(repository.id)} />
+        <BackupItem {repository} />
       {/each}
     </div>
   {/if}
@@ -83,7 +95,7 @@
     {/if}
 
     {#each remoteRepositories as repository (repository.id)}
-      <BackupItem {repository} onUpdate={onUpdate(repository.id)} />
+      <BackupItem {repository} />
     {/each}
   </div>
 </div>
