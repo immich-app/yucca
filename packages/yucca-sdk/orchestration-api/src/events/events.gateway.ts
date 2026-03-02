@@ -1,6 +1,6 @@
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { LocalRepositoryDto } from '../dto/repository.dto';
+import { ActiveTaskDto, LocalRepositoryDto } from '../dto/repository.dto';
 
 type Event =
   | {
@@ -11,6 +11,14 @@ type Event =
       type: 'RepositoryUpdate';
       repositoryId: string;
       repository: Partial<LocalRepositoryDto>;
+    }
+  | {
+      type: 'TaskStart';
+      task: ActiveTaskDto;
+    }
+  | {
+      type: 'TaskEnd';
+      parentId: string;
     };
 
 @WebSocketGateway({

@@ -13,6 +13,7 @@ import {
   RepositoryWithMetricsDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
+import { TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
@@ -22,10 +23,12 @@ import { RepositoryLocalMetricsRepository } from '../repositories/repositoryLoca
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { ResticRepository } from '../repositories/restic.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
+import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 
 @Injectable()
 export class RepositoryService {
   constructor(
+    private readonly tasks: RunningTasksRepository,
     private readonly events: EventsGateway,
     private readonly backend: BackendRepository,
     private readonly config: ConfigRepository,
@@ -222,17 +225,26 @@ export class RepositoryService {
   }
 
   async createBackup(id: string): Promise<LogResponseDto> {
+    if (!this.tasks.canStart(id)) {
+      throw new BadRequestException('Task already running!');
+    }
+
     const { endpoint, key } = await this.getResticParameters(id);
 
     return await this.runHistory.createLog(
       id,
-      async (log) => {
+      async (log, logId) => {
         const paths = await this.repositoryPath.get(id);
         if (paths.length === 0) {
           throw new BadRequestException('Missing configuration paths');
         }
 
-        await this.restic.backup(endpoint, key, paths, log);
+        try {
+          this.tasks.startTask(id, TaskType.Backup, logId);
+          await this.restic.backup(endpoint, key, paths, log);
+        } finally {
+          this.tasks.endTask(id);
+        }
       },
       () => void this.updateLocalMetrics(id, endpoint, key),
     );
@@ -283,8 +295,19 @@ export class RepositoryService {
   }
 
   async forgetSnapshot(id: string, snapshotId: string): Promise<void> {
+    if (!this.tasks.canStart(id)) {
+      throw new BadRequestException('Task already running!');
+    }
+
     const { endpoint, key } = await this.getResticParameters(id);
-    await this.restic.forget(endpoint, key, snapshotId);
+
+    try {
+      this.tasks.startTask(id, TaskType.Forget);
+      await this.restic.forget(endpoint, key, snapshotId);
+    } finally {
+      this.tasks.endTask(id);
+    }
+
     await this.updateLocalMetrics(id, endpoint, key);
   }
 

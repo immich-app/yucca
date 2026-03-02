@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { BackendType, RunHistoryStatus } from '../enum';
+import { BackendType, RunHistoryStatus, TaskType } from '../enum';
 
 export class RepositoryDto {
   @ApiProperty({ type: String })
@@ -21,31 +21,31 @@ export class RepositoryMetricsDto {
 }
 
 export class RepositoryWithMetricsDto extends RepositoryDto {
-  @ApiProperty({ type: () => RepositoryMetricsDto })
+  @ApiProperty({ type: RepositoryMetricsDto })
   metrics!: RepositoryMetricsDto;
 }
 
 export class RepositoryBackendDto {
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   id!: string;
 
   @ApiProperty({ enumName: 'BackendType', enum: BackendType })
   type!: BackendType;
 
-  @ApiProperty({ type: () => Boolean })
+  @ApiProperty({ type: Boolean })
   online!: boolean;
 }
 
 export class RepositoryBackendsDto {
-  @ApiProperty({ type: () => RepositoryBackendDto })
+  @ApiProperty({ type: RepositoryBackendDto })
   primary!: RepositoryBackendDto;
 
-  @ApiProperty({ type: () => [RepositoryBackendDto] })
+  @ApiProperty({ type: [RepositoryBackendDto] })
   secondary!: RepositoryBackendDto[];
 }
 
 export class RepositoryConfigurationDto {
-  @ApiProperty({ type: () => [String] })
+  @ApiProperty({ type: [String] })
   paths!: string[];
 }
 
@@ -69,31 +69,31 @@ export class RepositoryCreateRequestDto {
 }
 
 export class RepositoryCreateResponseDto {
-  @ApiProperty({ type: () => LocalRepositoryDto })
+  @ApiProperty({ type: LocalRepositoryDto })
   repository!: LocalRepositoryDto;
 }
 
 export class RepositoryListResponseDto {
-  @ApiProperty({ type: () => [LocalRepositoryDto] })
+  @ApiProperty({ type: [LocalRepositoryDto] })
   repositories!: LocalRepositoryDto[];
 }
 
 export class RepositoryPathRequestDto {
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   path!: string;
 }
 
 export class RunDto {
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   id!: string;
 
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   start!: string;
 
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   end?: string;
 
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   logFilePath!: string;
 
   @ApiProperty({ enumName: 'RunStatus', enum: RunHistoryStatus })
@@ -101,24 +101,35 @@ export class RunDto {
 }
 
 export class RunHistoryResponseDto {
-  @ApiProperty({ type: () => [RunDto] })
+  @ApiProperty({ type: [RunDto] })
   runs!: RunDto[];
 }
 
 export class SnapshotDto {
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   id!: string;
 
-  @ApiProperty({ type: () => String })
+  @ApiProperty({ type: String })
   time!: string;
 }
 
 export class ListSnapshotsResponseDto {
-  @ApiProperty({ type: () => [SnapshotDto] })
+  @ApiProperty({ type: [SnapshotDto] })
   snapshots!: SnapshotDto[];
 }
 
 export class LogResponseDto {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   logId!: string;
+}
+
+export class ActiveTaskDto {
+  @ApiProperty({ type: String })
+  parentId!: string;
+
+  @ApiProperty({ enumName: 'TaskType', enum: TaskType })
+  type!: TaskType;
+
+  @ApiProperty({ type: String, required: false })
+  logId?: string;
 }

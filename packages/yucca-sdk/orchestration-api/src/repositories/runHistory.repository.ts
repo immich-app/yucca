@@ -19,7 +19,11 @@ export class RunHistoryRepository {
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
-  async createLog(repositoryId: string, fn: (log: WriteStream) => Promise<void>, callback: (error?: unknown) => void) {
+  async createLog(
+    repositoryId: string,
+    fn: (log: WriteStream, logId: string) => Promise<void>,
+    callback: (error?: unknown) => void,
+  ) {
     const logId = randomUUID();
 
     const start = new Date().toISOString();
@@ -44,7 +48,7 @@ export class RunHistoryRepository {
       })
       .executeTakeFirstOrThrow();
 
-    fn(log)
+    fn(log, logId)
       .then(async () => {
         callback();
         log.close();

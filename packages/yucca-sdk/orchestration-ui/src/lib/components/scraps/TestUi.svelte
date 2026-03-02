@@ -8,6 +8,7 @@
   import BackendsList from "../backends/BackendsList.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
   import OnboardingGate from "../onboarding/OnboardingGate.svelte";
+  import TasksList from "../tasks/TasksList.svelte";
 
   const { mock, setMock }: { mock: boolean; setMock(value: boolean): void } =
     $props();
@@ -27,6 +28,8 @@
 {:else}
   <OnboardingGate onExit={() => setMock(true)}>
     <BackendsList />
+    <hr />
+    <TasksList />
     <hr />
     <BackupsList local />
   </OnboardingGate>

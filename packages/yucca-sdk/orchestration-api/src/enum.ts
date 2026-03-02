@@ -23,3 +23,8 @@ export enum RunHistoryStatus {
   Complete = 'complete',
   Failed = 'failed',
 }
+
+export enum TaskType {
+  Backup = 'backup',
+  Forget = 'forget',
+}
