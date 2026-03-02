@@ -24,7 +24,7 @@
   } from "$lib/fetch-client";
   import { mdiMinus } from "@mdi/js";
   import FileBrowserModal from "./FileBrowserModal.svelte";
-  import OnEvents from "$lib/components/OnEvents.svelte";
+  import OnEvents from "$lib/components/util/OnEvents.svelte";
   import type { SocketEvent } from "$lib/events";
 
   interface Props {

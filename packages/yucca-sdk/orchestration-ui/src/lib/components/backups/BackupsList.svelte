@@ -8,7 +8,7 @@
   import { onMount } from "svelte";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
-  import OnEvents from "../OnEvents.svelte";
+  import OnEvents from "../util/OnEvents.svelte";
   import { events, SocketEvent } from "$lib/events";
 
   interface Props {

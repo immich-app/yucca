@@ -2,10 +2,8 @@
   import { createBackup, type LocalRepositoryDto } from "$lib/fetch-client";
   import {
     Badge,
-    Button,
     Card,
     CardBody,
-    CardFooter,
     FormatBytes,
     Heading,
     HStack,
@@ -13,9 +11,7 @@
     modalManager,
     Stack,
     toastManager,
-    VStack,
   } from "@immich/ui";
-  import { DateTime } from "luxon";
   import RunHistoryModal from "./dialogs/RunHistoryModal.svelte";
   import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
   import SnapshotsListModal from "./dialogs/SnapshotsListModal.svelte";
@@ -27,6 +23,7 @@
     mdiListStatus,
     mdiPlay,
   } from "@mdi/js";
+  import RelativeTime from "../util/RelativeTime.svelte";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -96,9 +93,7 @@
           </Badge>
           {#if repository.metrics.lastBackup}
             <Badge size="tiny" color={"success"}>
-              Successful {DateTime.fromISO(
-                repository.metrics.lastBackup,
-              ).toRelative()}
+              Successful <RelativeTime time={repository.metrics.lastBackup} />
             </Badge>
           {:else}
             <Badge size="tiny" color="warning">Never backed up</Badge>
@@ -114,12 +109,12 @@
               aria-label="Backup Now"
               icon={mdiPlay}
             />
+            <IconButton
+              onclick={onViewSnapshots}
+              aria-label="Snapshots"
+              icon={mdiFormatListBulletedType}
+            />
           {/if}
-          <IconButton
-            onclick={onViewSnapshots}
-            aria-label="Snapshots"
-            icon={mdiFormatListBulletedType}
-          />
           <IconButton
             onclick={onViewHistory}
             aria-label="Logs"

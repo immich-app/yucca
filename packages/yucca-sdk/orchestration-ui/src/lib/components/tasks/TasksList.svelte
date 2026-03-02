@@ -9,7 +9,7 @@
     modalManager,
   } from "@immich/ui";
   import { SvelteMap } from "svelte/reactivity";
-  import OnEvents from "../OnEvents.svelte";
+  import OnEvents from "../util/OnEvents.svelte";
   import ViewLogModal from "../backups/dialogs/ViewLogModal.svelte";
 
   let tasks = new SvelteMap<

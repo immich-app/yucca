@@ -1,5 +1,5 @@
 <script lang="ts">
-  import TimedButton from "$lib/components/TimedButton.svelte";
+  import TimedButton from "$lib/components/util/TimedButton.svelte";
   import {
     Button,
     HStack,

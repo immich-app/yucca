@@ -206,7 +206,7 @@ export class RepositoryService {
       const { total_size } = await this.restic.stats(endpoint, key);
       const metrics = {
         sizeBytes: total_size,
-        lastBackup: new Date().toString(),
+        lastBackup: new Date().toISOString(),
       };
 
       await this.repositoryLocalMetrics.save(id, metrics);
