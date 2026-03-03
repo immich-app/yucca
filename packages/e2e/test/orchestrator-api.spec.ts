@@ -3,18 +3,28 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as sdk from 'orchestration-ui/sdk';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 
 const baseUrl = `http://localhost:22676`;
-const socket = io(baseUrl, {
-  transports: ['websocket'],
+let socket: Socket;
+
+beforeAll(() => {
+  socket = io(baseUrl, {
+    transports: ['websocket'],
+  });
+});
+
+afterAll(() => {
+  socket.close();
 });
 
 const waitForMessage = (type: string) => {
   return new Promise((resolve) => {
     const listener = (msg: string) => {
       const payload = JSON.parse(msg);
-      if (payload.type !== type) return;
+      if (payload.type !== type) {
+        return;
+      }
 
       resolve(payload);
       socket.offAny(listener);
