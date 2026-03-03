@@ -2,4 +2,4 @@
 #MISE description="Run integration tests for restic-api"
 set -e
 
-pnpm --filter restic-api test:e2e "$@"
+pnpm --filter restic-api test:integration "$@"

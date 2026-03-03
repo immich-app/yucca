@@ -5,7 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { createHash, randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { controllers, imports, providers } from './../src/app.module';
+import { controllers, imports, providers } from '../src/app.module';
 import { newMetricServiceMock } from './mocks';
 
 const makeAuthHeader = (token: string) => 'Basic ' + Buffer.from(`_:${token}`).toString('base64');
