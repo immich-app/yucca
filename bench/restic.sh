@@ -1,0 +1,662 @@
+#!/usr/bin/env bash
+#
+# Benchmark restic-compatible backends using the real restic CLI.
+#
+# Supports restic-api (Node.js/NestJS) and michael (Go), with an optional
+# comparison mode that runs both sequentially and prints a side-by-side table.
+#
+# Prerequisites:
+#   - MinIO running                    (mise docker:start)
+#   - restic, node, perl installed     (mise install)
+#   - For --compare: pnpm deps + go    (mise install:deps)
+#
+# Usage:
+#   # Benchmark both backends and compare (default):
+#   ./bench/restic.sh
+#
+#   # Benchmark a single backend:
+#   ./bench/restic.sh --backend restic-api
+#   ./bench/restic.sh --backend michael
+#
+# Options:
+#   --backend NAME       Benchmark only one backend: restic-api | michael
+#   --small-files N      Number of small files   (default: 1000)
+#   --medium-files N     Number of medium files   (default: 1000)
+#   --large-files N      Number of large files    (default: 100)
+#   --large-size-mb N    Size of each large file  (default: 100)
+#   --no-cleanup         Keep S3 buckets after run
+#
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# ─── Configuration ──────────────────────────────────────────────────────────────
+
+API_PORT="${RESTIC_API_PORT:-3010}"
+API_HOST="${RESTIC_API_HOST:-localhost}"
+export JWT_SECRET="${JWT_SECRET:-cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1}"
+
+BACKEND=""
+COMPARE=true
+SMALL_COUNT=50
+SMALL_SIZE_KB=100
+MEDIUM_COUNT=50
+MEDIUM_SIZE_MB=20
+LARGE_COUNT=20
+LARGE_SIZE_MB=100
+DO_CLEANUP=true
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --backend)        BACKEND="$2"; COMPARE=false; shift 2 ;;
+    --small-files)    SMALL_COUNT="$2";   shift 2 ;;
+    --medium-files)   MEDIUM_COUNT="$2";  shift 2 ;;
+    --large-files)    LARGE_COUNT="$2";   shift 2 ;;
+    --large-size-mb)  LARGE_SIZE_MB="$2"; shift 2 ;;
+    --no-cleanup)     DO_CLEANUP=false;   shift   ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+BENCH_DIR=$(mktemp -d)
+MEM_PID=""
+API_PID=""
+MANAGED_PID=""
+REPOS=()
+
+# ─── Formatting ─────────────────────────────────────────────────────────────────
+
+bold()  { printf '\033[1m%s\033[0m' "$*"; }
+dim()   { printf '\033[2m%s\033[0m' "$*"; }
+green() { printf '\033[32m%s\033[0m' "$*"; }
+red()   { printf '\033[31m%s\033[0m' "$*"; }
+
+# ─── Helpers ────────────────────────────────────────────────────────────────────
+
+on_exit() {
+  stop_mem_monitor
+  stop_backend
+  if [[ "$DO_CLEANUP" == true ]] && (( ${#REPOS[@]} > 0 )); then
+    cleanup_repos
+  fi
+  rm -rf "$BENCH_DIR"
+}
+trap on_exit EXIT
+
+now_ms() {
+  perl -MTime::HiRes -e 'printf "%.0f\n", Time::HiRes::time() * 1000'
+}
+
+elapsed_s() {
+  perl -e "printf '%.3f', ($2 - $1) / 1000"
+}
+
+throughput_mbs() {
+  local bytes="$1" secs="$2"
+  perl -e "if ($secs > 0) { printf '%.1f', $bytes / 1048576 / $secs } else { print 'inf' }"
+}
+
+human_size() {
+  perl -e '
+    my $b = $ARGV[0];
+    if    ($b >= 1073741824) { printf "%.1f GB", $b/1073741824 }
+    elsif ($b >= 1048576)    { printf "%.1f MB", $b/1048576 }
+    elsif ($b >= 1024)       { printf "%.1f KB", $b/1024 }
+    else                     { printf "%d B", $b }
+  ' "$1"
+}
+
+make_jwt() {
+  local repo="$1"
+  node --no-warnings -e "
+    const c = require('node:crypto');
+    const h = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+    const p = Buffer.from(JSON.stringify({
+      user: c.randomUUID(),
+      repository: process.argv[1],
+      writeOnce: false,
+      iat: Math.floor(Date.now()/1000),
+      exp: Math.floor(Date.now()/1000) + 7200
+    })).toString('base64url');
+    const s = c.createHmac('sha256', process.env.JWT_SECRET)
+      .update(h+'.'+p).digest('base64url');
+    process.stdout.write(h+'.'+p+'.'+s);
+  " "$repo"
+}
+
+init_repo() {
+  local repo
+  repo=$(node --no-warnings -e "process.stdout.write(require('node:crypto').randomUUID())")
+  local token
+  token=$(make_jwt "$repo")
+  REPOS+=("$repo")
+
+  export RESTIC_REPOSITORY="rest:http://_:${token}@${API_HOST}:${API_PORT}/${repo}"
+  export RESTIC_PASSWORD="bench"
+}
+
+cleanup_repos() {
+  echo ""
+  echo "  $(dim "Cleaning up ${#REPOS[@]} benchmark repositories...")"
+  (cd "$REPO_ROOT/packages/restic-api" && node --no-warnings -e "
+    const { S3Client, ListObjectsV2Command, DeleteObjectsCommand, DeleteBucketCommand }
+      = require('@aws-sdk/client-s3');
+    const client = new S3Client({
+      credentials: {
+        accessKeyId:     process.env.S3_ACCESS_KEY_ID     || 'minio',
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || 'miniominio',
+      },
+      region:         process.env.S3_REGION   || 'minio',
+      endpoint:       process.env.S3_ENDPOINT || 'http://localhost:9000',
+      forcePathStyle: true,
+    });
+    async function nuke(Bucket) {
+      try {
+        const { Contents } = await client.send(new ListObjectsV2Command({ Bucket }));
+        if (Contents?.length) {
+          await client.send(new DeleteObjectsCommand({
+            Bucket, Delete: { Objects: Contents.map(({ Key }) => ({ Key })) }
+          }));
+        }
+        await client.send(new DeleteBucketCommand({ Bucket }));
+      } catch {}
+    }
+    Promise.all(process.argv.slice(1).map(nuke)).then(() => process.exit(0));
+  " "${REPOS[@]}") || true
+}
+
+# ─── Results I/O ────────────────────────────────────────────────────────────────
+
+save_result() {
+  echo "$1=$2" >> "$BENCH_DIR/results/${CURRENT_BACKEND}.txt"
+}
+
+read_result() {
+  local key="$1" file="$2"
+  grep "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d= -f2
+}
+
+# ─── Memory monitoring ──────────────────────────────────────────────────────────
+
+start_mem_monitor() {
+  API_PID=$(lsof -ti ":$API_PORT" -sTCP:LISTEN 2>/dev/null | head -1 || true)
+  if [[ -z "$API_PID" ]]; then
+    echo "  $(dim '(could not find API process — memory stats unavailable)')"
+    return
+  fi
+  local peak_file="$BENCH_DIR/.mem_peak"
+  echo "0" > "$peak_file"
+  (
+    while kill -0 "$API_PID" 2>/dev/null; do
+      rss_kb=$(ps -o rss= -p "$API_PID" 2>/dev/null | tr -d ' ' || echo 0)
+      peak=$(cat "$peak_file")
+      if (( rss_kb > peak )); then echo "$rss_kb" > "$peak_file"; fi
+      sleep 0.5
+    done
+  ) &
+  MEM_PID=$!
+}
+
+stop_mem_monitor() {
+  [[ -n "${MEM_PID:-}" ]] && kill "$MEM_PID" 2>/dev/null || true
+  MEM_PID=""
+  API_PID=""
+}
+
+mem_rss_kb() {
+  [[ -z "${API_PID:-}" ]] && echo 0 && return
+  ps -o rss= -p "$API_PID" 2>/dev/null | tr -d ' ' || echo 0
+}
+
+mem_peak_kb() {
+  local peak_file="$BENCH_DIR/.mem_peak"
+  [[ -f "$peak_file" ]] && cat "$peak_file" || echo 0
+}
+
+fmt_mem_mb() {
+  perl -e "printf '%.1f MB', $1 / 1024"
+}
+
+# ─── Backend lifecycle ──────────────────────────────────────────────────────────
+
+start_backend() {
+  local name="$1"
+  echo "  $(dim "Starting ${name}...")"
+
+  # Ensure port is free before starting
+  lsof -ti ":$API_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
+  local elapsed=0
+  while nc -z "$API_HOST" "$API_PORT" 2>/dev/null; do
+    sleep 0.2
+    elapsed=$((elapsed + 1))
+    if (( elapsed > 50 )); then
+      echo "ERROR: port $API_PORT still in use after 10 seconds"
+      exit 1
+    fi
+  done
+
+  case "$name" in
+    restic-api)
+      (cd "$REPO_ROOT" && exec pnpm --filter restic-api start 2>&1) > "$BENCH_DIR/backend.log" 2>&1 &
+      MANAGED_PID=$!
+      ;;
+    michael)
+      (cd "$REPO_ROOT/packages/michael" && \
+        OTLP_METRICS_ENDPOINT=localhost:8428 \
+        OTLP_METRICS_URL_PATH=/opentelemetry/api/v1/push \
+        exec go run . 2>&1) > "$BENCH_DIR/backend.log" 2>&1 &
+      MANAGED_PID=$!
+      ;;
+    *)
+      echo "ERROR: unknown backend '$name' (expected restic-api or michael)"
+      exit 1
+      ;;
+  esac
+
+  local elapsed=0
+  while ! nc -z "$API_HOST" "$API_PORT" 2>/dev/null; do
+    sleep 0.2
+    elapsed=$((elapsed + 1))
+    if (( elapsed > 150 )); then
+      echo "ERROR: $name did not start within 30 seconds"
+      echo "--- backend log ---"
+      cat "$BENCH_DIR/backend.log"
+      exit 1
+    fi
+  done
+  echo "  $(dim "${name} ready on :${API_PORT}")"
+}
+
+stop_backend() {
+  if [[ -n "${MANAGED_PID:-}" ]]; then
+    kill "$MANAGED_PID" 2>/dev/null || true
+    wait "$MANAGED_PID" 2>/dev/null || true
+    MANAGED_PID=""
+  fi
+  # Also kill anything still on the port (child processes)
+  lsof -ti ":$API_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
+
+  # Wait for port to free up
+  local elapsed=0
+  while nc -z "$API_HOST" "$API_PORT" 2>/dev/null; do
+    sleep 0.2
+    elapsed=$((elapsed + 1))
+    if (( elapsed > 50 )); then break; fi
+  done
+}
+
+# ─── Prerequisites ──────────────────────────────────────────────────────────────
+
+check_prereqs() {
+  local missing=()
+  command -v restic >/dev/null 2>&1 || missing+=("restic")
+  command -v node   >/dev/null 2>&1 || missing+=("node")
+  command -v perl   >/dev/null 2>&1 || missing+=("perl")
+
+  if [[ "$COMPARE" == true ]]; then
+    command -v pnpm >/dev/null 2>&1 || missing+=("pnpm")
+    command -v go   >/dev/null 2>&1 || missing+=("go")
+  fi
+
+  if (( ${#missing[@]} > 0 )); then
+    echo "ERROR: missing required tools: ${missing[*]}"
+    exit 1
+  fi
+}
+
+check_api_reachable() {
+  local http_code
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 \
+    "http://${API_HOST}:${API_PORT}/" 2>/dev/null || echo "000")
+  if [[ "$http_code" == "000" ]]; then
+    echo "ERROR: backend not reachable at http://${API_HOST}:${API_PORT}"
+    echo "       Start it with: mise restic-api:dev  or  mise michael:dev"
+    exit 1
+  fi
+}
+
+# ─── Data generation ────────────────────────────────────────────────────────────
+
+generate_data() {
+  echo "$(bold 'Generating test data...')"
+
+  local dir="$BENCH_DIR/data/small" && mkdir -p "$dir"
+  for i in $(seq 1 "$SMALL_COUNT"); do
+    dd if=/dev/urandom of="$dir/f_$i" bs=1024 count="$SMALL_SIZE_KB" 2>/dev/null
+  done
+  echo "  small:  ${SMALL_COUNT} files x ${SMALL_SIZE_KB} KB"
+
+  dir="$BENCH_DIR/data/medium" && mkdir -p "$dir"
+  for i in $(seq 1 "$MEDIUM_COUNT"); do
+    dd if=/dev/urandom of="$dir/f_$i" bs=1048576 count="$MEDIUM_SIZE_MB" 2>/dev/null
+  done
+  echo "  medium: ${MEDIUM_COUNT} files x ${MEDIUM_SIZE_MB} MB"
+
+  dir="$BENCH_DIR/data/large" && mkdir -p "$dir"
+  for i in $(seq 1 "$LARGE_COUNT"); do
+    dd if=/dev/urandom of="$dir/f_$i" bs=1048576 count="$LARGE_SIZE_MB" 2>/dev/null
+  done
+  echo "  large:  ${LARGE_COUNT} files x ${LARGE_SIZE_MB} MB"
+
+  local total_bytes=$(( SMALL_COUNT * SMALL_SIZE_KB * 1024 + MEDIUM_COUNT * MEDIUM_SIZE_MB * 1048576 + LARGE_COUNT * LARGE_SIZE_MB * 1048576 ))
+  local peak_bytes=$(( total_bytes * 3 ))
+  echo ""
+  echo "  $(bold "total:  $(human_size $total_bytes)")  $(dim "(~$(human_size $peak_bytes) peak disk + S3)")"
+  echo ""
+}
+
+# ─── Throughput scenario ────────────────────────────────────────────────────────
+
+# run_throughput <tag> <label> <data_dir> <total_bytes> <file_count>
+run_throughput() {
+  local tag="$1" label="$2" data_dir="$3" total_bytes="$4" file_count="$5"
+  local restic_log="$BENCH_DIR/restic_${tag}.log"
+
+  echo "$(bold "  $label")"
+
+  init_repo
+
+  # init
+  local t0 t1
+  t0=$(now_ms)
+  if ! restic init -q 2>"$restic_log"; then
+    echo "    $(red 'ERROR: restic init failed')"
+    cat "$restic_log" | sed 's/^/    /' >&2
+    return 1
+  fi
+  t1=$(now_ms)
+  echo "    init:        $(elapsed_s "$t0" "$t1")s"
+
+  # backup
+  t0=$(now_ms)
+  if ! restic backup -q "$data_dir" 2>"$restic_log"; then
+    echo "    $(red 'ERROR: restic backup failed')"
+    cat "$restic_log" | sed 's/^/    /' >&2
+    return 1
+  fi
+  t1=$(now_ms)
+  local backup_s backup_tp
+  backup_s=$(elapsed_s "$t0" "$t1")
+  backup_tp=$(throughput_mbs "$total_bytes" "$backup_s")
+  echo "    backup:      ${backup_s}s  @ ${backup_tp} MB/s"
+  save_result "${tag}_backup_s"   "$backup_s"
+  save_result "${tag}_backup_mbs" "$backup_tp"
+
+  if (( file_count > 1 )); then
+    local ms_per_file
+    ms_per_file=$(perl -e "printf '%.1f', ($t1 - $t0) / $file_count")
+    echo "    $(dim "             ~${ms_per_file} ms/file")"
+  fi
+
+  # restore
+  local restore_dir="$BENCH_DIR/restore_${RANDOM}"
+  mkdir -p "$restore_dir"
+  t0=$(now_ms)
+  if ! restic restore latest --target "$restore_dir" -q 2>"$restic_log"; then
+    echo "    $(red 'ERROR: restic restore failed')"
+    cat "$restic_log" | sed 's/^/    /' >&2
+    rm -rf "$restore_dir"
+    return 1
+  fi
+  t1=$(now_ms)
+  local restore_s restore_tp
+  restore_s=$(elapsed_s "$t0" "$t1")
+  restore_tp=$(throughput_mbs "$total_bytes" "$restore_s")
+  echo "    restore:     ${restore_s}s  @ ${restore_tp} MB/s"
+  save_result "${tag}_restore_s"   "$restore_s"
+  save_result "${tag}_restore_mbs" "$restore_tp"
+  rm -rf "$restore_dir"
+
+  # incremental (re-backup identical data — exercises index/dedup path)
+  t0=$(now_ms)
+  if ! restic backup -q "$data_dir" 2>"$restic_log"; then
+    echo "    $(red 'ERROR: restic incremental backup failed')"
+    cat "$restic_log" | sed 's/^/    /' >&2
+    return 1
+  fi
+  t1=$(now_ms)
+  local incr_s
+  incr_s=$(elapsed_s "$t0" "$t1")
+  echo "    incremental: ${incr_s}s  (no new data)"
+  save_result "${tag}_incr_s" "$incr_s"
+
+  # memory
+  if [[ -n "${API_PID:-}" ]]; then
+    echo "    memory:      $(fmt_mem_mb "$(mem_rss_kb)") current, $(fmt_mem_mb "$(mem_peak_kb)") peak"
+  fi
+
+  echo ""
+}
+
+# ─── Run full benchmark suite for one backend ──────────────────────────────────
+
+CURRENT_BACKEND=""
+
+run_suite() {
+  local backend="$1"
+  CURRENT_BACKEND="$backend"
+  mkdir -p "$BENCH_DIR/results"
+  : > "$BENCH_DIR/results/${backend}.txt"
+
+  echo ""
+  echo "$(bold '════════════════════════════════════════════════════════════')"
+  echo "$(bold "  ${backend}")"
+  echo "$(bold '════════════════════════════════════════════════════════════')"
+  echo ""
+
+  # memory baseline
+  stop_mem_monitor
+  echo "0" > "$BENCH_DIR/.mem_peak"
+  start_mem_monitor
+  local baseline_kb
+  baseline_kb=$(mem_rss_kb)
+  save_result "mem_baseline_kb" "$baseline_kb"
+  echo "$(bold 'Memory')"
+  echo "  baseline: $(fmt_mem_mb "$baseline_kb") (PID ${API_PID:-?})"
+  echo ""
+
+  local small_bytes=$((SMALL_COUNT * SMALL_SIZE_KB * 1024))
+  local medium_bytes=$((MEDIUM_COUNT * MEDIUM_SIZE_MB * 1048576))
+  local large_bytes=$((LARGE_COUNT * LARGE_SIZE_MB * 1048576))
+
+  echo "$(bold 'Throughput')"
+  echo ""
+  run_throughput "small" \
+    "small  (${SMALL_COUNT} x ${SMALL_SIZE_KB} KB = $(human_size $small_bytes))" \
+    "$BENCH_DIR/data/small" "$small_bytes" "$SMALL_COUNT"
+
+  run_throughput "medium" \
+    "medium (${MEDIUM_COUNT} x ${MEDIUM_SIZE_MB} MB = $(human_size $medium_bytes))" \
+    "$BENCH_DIR/data/medium" "$medium_bytes" "$MEDIUM_COUNT"
+
+  run_throughput "large" \
+    "large  (${LARGE_COUNT} x ${LARGE_SIZE_MB} MB = $(human_size $large_bytes))" \
+    "$BENCH_DIR/data/large" "$large_bytes" "$LARGE_COUNT"
+
+  # save final memory
+  save_result "mem_peak_kb" "$(mem_peak_kb)"
+}
+
+# ─── Print single-backend summary ──────────────────────────────────────────────
+
+print_summary() {
+  local f="$BENCH_DIR/results/$1.txt"
+
+  echo "$(bold '════════════════════════════════════════════════════════════')"
+  echo "$(bold "Summary: $1")"
+  echo ""
+
+  printf '  %-28s %10s %10s %10s %10s\n' "" "backup" "restore" "up MB/s" "down MB/s"
+  printf '  %-28s %10s %10s %10s %10s\n' "" "──────" "───────" "───────" "─────────"
+  for tag in small medium large; do
+    printf '  %-28s %9ss %9ss %9s %9s\n' \
+      "$tag" \
+      "$(read_result "${tag}_backup_s" "$f")" \
+      "$(read_result "${tag}_restore_s" "$f")" \
+      "$(read_result "${tag}_backup_mbs" "$f")" \
+      "$(read_result "${tag}_restore_mbs" "$f")"
+  done
+
+
+  echo ""
+  local peak_kb
+  peak_kb=$(read_result mem_peak_kb "$f")
+  local base_kb
+  base_kb=$(read_result mem_baseline_kb "$f")
+  echo "  memory: baseline $(fmt_mem_mb "$base_kb"), peak $(fmt_mem_mb "$peak_kb")"
+
+  if [[ "$DO_CLEANUP" == false ]]; then
+    echo ""
+    echo "  $(dim "Repos kept (--no-cleanup): ${REPOS[*]}")"
+  fi
+  echo ""
+}
+
+# ─── Print comparison table ────────────────────────────────────────────────────
+
+# pct_delta <a> <b> → prints "(+12.3%)" or "(-12.3%)"
+# positive means b > a
+pct_delta() {
+  perl -e '
+    my ($a, $b) = @ARGV;
+    if ($a == 0) { print "n/a"; exit }
+    my $d = ($b - $a) / abs($a) * 100;
+    printf "%+.1f%%", $d;
+  ' "$1" "$2"
+}
+
+# color_delta <a> <b> <higher_is_better>
+# prints the delta in green if improvement, red if regression
+color_delta() {
+  local a="$1" b="$2" higher_better="${3:-false}"
+  local raw
+  raw=$(pct_delta "$a" "$b")
+  [[ "$raw" == "n/a" ]] && printf '%s' "$raw" && return
+
+  local numeric
+  numeric=$(perl -e '
+    my ($a, $b) = @ARGV;
+    if ($a == 0) { print 0; exit }
+    printf "%.1f", ($b - $a) / abs($a) * 100;
+  ' "$a" "$b")
+
+  local is_better
+  if [[ "$higher_better" == true ]]; then
+    is_better=$(perl -e "print $numeric > 0 ? 1 : 0")
+  else
+    is_better=$(perl -e "print $numeric < 0 ? 1 : 0")
+  fi
+
+  if (( is_better )); then
+    green "$raw"
+  else
+    # within 5% = dim, otherwise red
+    local abs_val
+    abs_val=$(perl -e "printf '%.1f', abs($numeric)")
+    if perl -e "exit( $abs_val < 5.0 ? 0 : 1 )"; then
+      dim "$raw"
+    else
+      red "$raw"
+    fi
+  fi
+}
+
+print_comparison() {
+  local fa="$BENCH_DIR/results/restic-api.txt"
+  local fb="$BENCH_DIR/results/michael.txt"
+
+  echo ""
+  echo "$(bold '════════════════════════════════════════════════════════════════════════════════')"
+  echo "$(bold 'Comparison: restic-api vs michael')"
+  echo "$(bold '════════════════════════════════════════════════════════════════════════════════')"
+  echo ""
+
+  # Header
+  printf '  %-24s %16s %16s %10s\n' "" "restic-api" "michael" "delta"
+  printf '  %-24s %16s %16s %10s\n' "" "──────────" "───────" "─────"
+
+  # Throughput rows — show MB/s (higher is better)
+  for tag in small medium large; do
+    for op in backup restore; do
+      local key="${tag}_${op}_mbs"
+      local va vb
+      va=$(read_result "$key" "$fa")
+      vb=$(read_result "$key" "$fb")
+      local delta
+      delta=$(color_delta "$va" "$vb" true)
+      printf '  %-24s %12s MB/s %12s MB/s  %b\n' \
+        "${tag} ${op}" "$va" "$vb" "$delta"
+    done
+
+    local key="${tag}_incr_s"
+    local va vb
+    va=$(read_result "$key" "$fa")
+    vb=$(read_result "$key" "$fb")
+    local delta
+    delta=$(color_delta "$va" "$vb" false)
+    printf '  %-24s %15ss %15ss  %b\n' \
+      "${tag} incremental" "$va" "$vb" "$delta"
+  done
+
+  echo ""
+
+  # Memory — lower is better
+  local va vb delta
+  va=$(read_result mem_baseline_kb "$fa")
+  vb=$(read_result mem_baseline_kb "$fb")
+  delta=$(color_delta "$va" "$vb" false)
+  printf '  %-24s %16s %16s  %b\n' \
+    "memory baseline" "$(fmt_mem_mb "$va")" "$(fmt_mem_mb "$vb")" "$delta"
+
+  va=$(read_result mem_peak_kb "$fa")
+  vb=$(read_result mem_peak_kb "$fb")
+  delta=$(color_delta "$va" "$vb" false)
+  printf '  %-24s %16s %16s  %b\n' \
+    "memory peak" "$(fmt_mem_mb "$va")" "$(fmt_mem_mb "$vb")" "$delta"
+
+  echo ""
+}
+
+# ─── Main ───────────────────────────────────────────────────────────────────────
+
+main() {
+  echo ""
+  echo "$(bold 'restic backend benchmark')"
+  echo "$(dim '────────────────────────────────────────────────────────────')"
+  echo "  restic   $(restic version 2>&1 | head -1)"
+  echo "  node     $(node -v)"
+  if [[ "$COMPARE" == true ]]; then
+    echo "  go       $(go version 2>&1 | awk '{print $3}')"
+    echo "  mode     comparison (restic-api vs michael)"
+  else
+    echo "  backend  ${BACKEND}"
+  fi
+  echo "  api      http://${API_HOST}:${API_PORT}"
+  echo "  tmpdir   ${BENCH_DIR}"
+  echo ""
+
+  check_prereqs
+  generate_data
+
+  if [[ "$COMPARE" == true ]]; then
+    for backend in restic-api michael; do
+      start_backend "$backend"
+      run_suite "$backend"
+      stop_mem_monitor
+      stop_backend
+    done
+    print_comparison
+  else
+    if nc -z "$API_HOST" "$API_PORT" 2>/dev/null; then
+      echo "  $(dim "Using already-running backend on :${API_PORT}")"
+    else
+      start_backend "$BACKEND"
+    fi
+    run_suite "$BACKEND"
+    stop_mem_monitor
+    stop_backend
+    print_summary "$BACKEND"
+  fi
+}
+
+main "$@"

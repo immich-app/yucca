@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Benchmark restic backends (restic-api, michael, or both)"
+#MISE depends=["docker:start", "restic-api:build", "michael:build"]
+set -e
+
+exec bench/restic.sh "$@"

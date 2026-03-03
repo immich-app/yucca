@@ -1,6 +1,7 @@
 [tools]
 node = "25.4.0"
 pnpm = "10.28.1"
+go = "1.24"
 restic = "0.18.0"
 
 gh = "2.25.0"
@@ -17,7 +18,7 @@ depends = ["*:build"]
 
 [tasks."common:build"]
 description = "Build all common packages"
-depends = ["common:*:build"]
+depends = ["install:deps", "common:*:build"]
 
 [tasks.test]
 description = "Run all unit tests"

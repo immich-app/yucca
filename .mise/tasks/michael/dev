@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run michael in development mode"
+set -e
+
+cd packages/michael && go run .
