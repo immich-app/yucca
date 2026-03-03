@@ -27,7 +27,7 @@
         message_type: "status";
         percent_done: number;
         seconds_remaining?: number;
-        current_files: string[];
+        current_files?: string[];
       };
 
   let { logId, onClose }: Props = $props();
@@ -64,7 +64,7 @@
           text: event.seconds_remaining
             ? `${event.seconds_remaining} seconds remaining`
             : "",
-          currentFiles: event.current_files,
+          currentFiles: event.current_files ?? [],
         });
         break;
       case "summary":

@@ -74,7 +74,7 @@ describe('RepositoryController (e2e)', () => {
   });
 
   describe('POST /auth/repository/:id/restic', () => {
-    it('generates RESTIC url for repository', async () => {
+    it('generates restic URL for repository', async () => {
       const { body } = await request(app.getHttpServer())
         .post(`/api/repository/${repository.id}/restic`)
         .set('Cookie', `yucca-access-token=${session.accessToken}`)
