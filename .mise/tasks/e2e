@@ -2,20 +2,7 @@
 #MISE description="Run all end-to-end tests"
 set -e
 
-cleanup() {
-  lsof -ti:$RESTIC_API_PORT | xargs kill -9 2>/dev/null || true
-  lsof -ti:$YUCCA_API_PORT | xargs kill -9 2>/dev/null || true
-  lsof -ti:22676 | xargs kill -9 2>/dev/null || true
-  lsof -ti:5173 | xargs kill -9 2>/dev/null || true
-}
-
-trap cleanup EXIT INT TERM
-
-# start services
-pnpm --filter restic-api start:dev &
-pnpm --filter yucca-api start:dev &
-mise yucca-sdk:orchestration-api:dev &
-mise web:dev &
+echo Ensure dev environment is running before invoking tests.
 
 while ! nc -z localhost "$RESTIC_API_PORT" 2>/dev/null; do
   sleep 0.1

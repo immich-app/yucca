@@ -23,29 +23,21 @@ depends = ["common:*:build"]
 description = "Run all unit tests"
 depends = ["*:test"]
 
+[tasks."test:integration"]
+description = "Run all integration tests"
+run = [{ task = "*:test:integration" }]
+
 [tasks."test:e2e"]
 description = "Run all e2e tests"
 run = [{ task = "*:test:e2e" }, { task = "e2e" }]
 
-[tasks.check]
-description = "Task group for CI checks"
-run = [
-    { task = "install:frozen" },
-    { task = "build" },
-    { tasks = [
-        "lint",
-        "*:check",
-    ] },
-    { task = "format" },
-    { tasks = [
-        "docker:start",
-        "web:test:install-deps",
-    ] },
-    { tasks = [
-        "test",
-        "test:e2e",
-    ] },
-]
+[tasks."prepare"]
+description = "Install and build packages"
+run = [{ task = "install:frozen" }, { task = "build" }]
+
+[tasks."check"]
+description = "Run checks & unit tests"
+run = [{ tasks = ["lint", "*:check"] }, { task = "format" }, { task = "test" }]
 
 [tasks.fix]
 description = "Run all possible code fixes"
