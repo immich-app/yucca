@@ -13,6 +13,7 @@
     "test:unit": "vitest --run",
     "test": "npm run test:unit && npm run test:e2e",
     "test:e2e": "playwright test",
+    "test:e2e:create": "playwright codegen http://localhost:5174",
     "generate:fetch-client": "oazapfts --optimistic ../orchestration-api/openapi-specs.json src/lib/fetch-client.ts"
   },
   "files": [

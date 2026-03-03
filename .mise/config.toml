@@ -27,9 +27,9 @@ depends = ["*:test"]
 description = "Run all integration tests"
 run = [{ task = "*:test:integration" }]
 
-[tasks."test:e2e"]
-description = "Run all e2e tests"
-run = [{ task = "*:test:e2e" }, { task = "e2e" }]
+[tasks."test:e2e:web"]
+description = "Run all web e2e tests"
+run = [{ task = "test:e2e:wait" }, { task = "*:test:e2e:web" }]
 
 [tasks."prepare"]
 description = "Install and build packages"
