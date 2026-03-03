@@ -79,4 +79,4 @@ jobs:
           mise docker:start
           mise dev &
       - name: Run end-to-end tests
-        run: mise test:e2e-web
+        run: mise test:e2e:web
