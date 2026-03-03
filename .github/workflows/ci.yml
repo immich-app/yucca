@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   checks:
+    name: Checks & Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
@@ -25,6 +26,7 @@ jobs:
         run: mise check
 
   integration:
+    name: Integration Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
@@ -42,6 +44,7 @@ jobs:
         run: mise test:integration
 
   e2e:
+    name: End-to-end Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
