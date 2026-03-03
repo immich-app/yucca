@@ -4,14 +4,20 @@ set -e
 
 cleanup() {
   lsof -ti:$RESTIC_API_PORT | xargs kill -9 2>/dev/null || true
+  lsof -ti:$YUCCA_API_PORT | xargs kill -9 2>/dev/null || true
 }
 
 trap cleanup EXIT INT TERM
 
 # start services
 pnpm --filter restic-api start:dev &
+pnpm --filter yucca-api start:dev &
 
 while ! nc -z localhost "$RESTIC_API_PORT" 2>/dev/null; do
+  sleep 0.1
+done
+
+while ! nc -z localhost "$YUCCA_API_PORT" 2>/dev/null; do
   sleep 0.1
 done
 
