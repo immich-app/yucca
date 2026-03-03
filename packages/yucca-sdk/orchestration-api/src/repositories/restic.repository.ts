@@ -26,6 +26,11 @@ export class ResticRepository {
   }
 
   async forget(repository: string, key: Uint8Array, snapshotId: string, prune = true) {
-    return await forget().repository(repository).password(Buffer.from(key).toString('hex')).snapshot(snapshotId).prune(prune).run();
+    return await forget()
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .snapshot(snapshotId)
+      .prune(prune)
+      .run();
   }
 }
