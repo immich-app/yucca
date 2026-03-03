@@ -25,7 +25,6 @@ import {
   tag,
   unlock,
 } from '@futo-org/restic-wrapper';
-import { jest } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
@@ -58,7 +57,7 @@ describe.each([
   { name: 'restic API', ...generateCase(false), writeOnce: false },
   { name: 'restic WORM API', ...generateCase(true), writeOnce: true },
 ])('$name (e2e)', ({ writeOnce, repoUrl }) => {
-  let workingDir;
+  let workingDir: string;
 
   beforeAll(async () => {
     workingDir = tmpdir();
