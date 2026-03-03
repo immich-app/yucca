@@ -105,7 +105,7 @@ describe('AuthController (e2e)', () => {
       redirectUrl.pathname = '/api/form';
       redirectUrl.searchParams.set('sub', 'bar');
 
-      const { oidcHeaders: headers } = await fetch(redirectUrl, {
+      const { headers } = await fetch(redirectUrl, {
         redirect: 'manual',
       });
 
@@ -125,7 +125,7 @@ describe('AuthController (e2e)', () => {
       redirectUrl.pathname = '/api/form';
       redirectUrl.searchParams.set('sub', 'bar');
 
-      const { oidcHeaders: headers } = await fetch(redirectUrl, {
+      const { headers } = await fetch(redirectUrl, {
         redirect: 'manual',
       });
 
@@ -151,7 +151,7 @@ describe('AuthController (e2e)', () => {
       redirectUrl.pathname = '/api/form';
       redirectUrl.searchParams.set('sub', 'foo');
 
-      const { oidcHeaders: headers } = await fetch(redirectUrl, {
+      const { headers } = await fetch(redirectUrl, {
         redirect: 'manual',
       });
 
