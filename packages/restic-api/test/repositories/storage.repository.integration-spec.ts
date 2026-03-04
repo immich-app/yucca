@@ -64,6 +64,19 @@ describe('StorageRepository (e2e)', () => {
     await sut.deleteObject(Bucket, Key);
   });
 
+  it('rejects invalid hash', async () => {
+    const Bucket = randomUUID();
+    const Key = randomUUID();
+
+    const contents = randomBytes(5_000_000);
+
+    const hash = createHash('sha256');
+    hash.update('invalid');
+
+    await sut.createBucket(Bucket);
+    await expect(sut.putObject(Bucket, Key, Readable.from(contents), false, hash.digest('hex'))).rejects.toThrow();
+  });
+
   it('checks hash where files are chunked', async () => {
     const Bucket = randomUUID();
     const Key = randomUUID();
