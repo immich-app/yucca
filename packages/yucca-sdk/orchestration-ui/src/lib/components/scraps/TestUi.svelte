@@ -85,14 +85,14 @@
     </div>
   </AppShellSidebar>
 
-  <div class="p-4 flex flex-col gap-2">
+  <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
     {#if route === "dashboard"}
       <Dashboard />
-
+    {:else if route === "backups"}
       {#if !mock}
         <TasksList />
       {/if}
-    {:else if route === "backups"}
+
       <BackupsList local />
     {:else if route === "config"}
       {#if !mock}
