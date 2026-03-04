@@ -27,12 +27,13 @@ test('user can log in', async ({ page }) => {
   await page.getByText('$0/TB per month').click();
   await page.getByRole('button', { name: 'Authorize' }).click();
   await expect(
-    page.getByRole('button', { name: 'Manage my account (🚧)' }),
+    page.getByRole('button', { name: 'Dashboard', exact: true }),
   ).toBeVisible();
 });
 
 test('user can create backup', async ({ page }) => {
   await page.goto('http://localhost:5174/');
+  await page.getByRole('button', { name: 'Backups', exact: true }).click();
   await page.getByRole('button', { name: 'Create new backup' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('My Backup');
   await page.getByRole('button', { name: 'Create', exact: true }).click();

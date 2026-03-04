@@ -2,6 +2,7 @@
   import { Button, Checkbox, Field, Heading, HStack, Text } from "@immich/ui";
   import TestUi from "$lib/components/scraps/TestUi.svelte";
   import { options } from "$lib/options";
+  import OnboardingGate from "$lib/components/onboarding/OnboardingGate.svelte";
 
   let mock = $state(false);
 
@@ -33,7 +34,11 @@
 
   <hr />
 
-  {#key mock}
-    <TestUi {mock} setMock={(value) => (mock = value)} />
-  {/key}
+  {#if mock}
+    <TestUi {mock} />
+  {:else}
+    <OnboardingGate onExit={() => (mock = false)}>
+      <TestUi {mock} />
+    </OnboardingGate>
+  {/if}
 </div>
