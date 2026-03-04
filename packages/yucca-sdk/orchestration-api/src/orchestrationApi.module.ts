@@ -7,6 +7,7 @@ import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { AuthController } from './controllers/auth.controller';
 import { BackendController } from './controllers/backend.controller';
+import { DevelopmentController } from './controllers/development.controller';
 import { FilesystemController } from './controllers/filesystem.controller';
 import { OnboardingController } from './controllers/onboarding.controller';
 import { RepositoryController } from './controllers/repository.controller';
@@ -54,6 +55,7 @@ export class OrchestrationApiModule {
         }),
       ],
       controllers: [
+        DevelopmentController,
         RepositoryController,
         BackendController,
         FilesystemController,

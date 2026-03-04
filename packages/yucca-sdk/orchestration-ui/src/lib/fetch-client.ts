@@ -101,6 +101,11 @@ export type CurrentRecoveryKeyResponse = {
 export type ImportRecoveryKeyRequest = {
     recoveryKey: string;
 };
+export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/debug", {
+        ...opts
+    }));
+}
 export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;

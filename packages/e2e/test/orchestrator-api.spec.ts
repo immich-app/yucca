@@ -8,7 +8,9 @@ import { io, Socket } from 'socket.io-client';
 const baseUrl = `http://localhost:22676`;
 let socket: Socket;
 
-beforeAll(() => {
+beforeAll(async () => {
+  await sdk.resetOrchestrator();
+
   socket = io(baseUrl, {
     transports: ['websocket'],
   });
@@ -34,8 +36,7 @@ const waitForMessage = (type: string) => {
   });
 };
 
-// TODO: process is already running so we can't do this
-describe.skip('Onboarding (before setup)', () => {
+describe('Onboarding (before setup)', () => {
   it('should report onboarding has not been performed', async () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
       hasBackend: false,
@@ -62,7 +63,7 @@ describe('Auth', () => {
       redirect: 'manual',
     });
 
-    await fetch(oidcHeaders.get('Location'), {
+    await fetch(oidcHeaders.get('Location')!, {
       redirect: 'manual',
       headers: {
         Cookie: loginHeaders.getSetCookie().join('; '),
@@ -93,8 +94,39 @@ describe('Filesystem', () => {
   });
 });
 
-// TODO: need to be able to reset the orchestrator
-describe.skip('Onboarding', () => void 0);
+describe('Onboarding', () => {
+  it('reports backend is present', async () => {
+    await expect(sdk.onboardingStatus()).resolves.toEqual({
+      hasBackend: true,
+      hasOnboardedKey: false,
+    });
+  });
+
+  it('provides a randomly generated key', async () => {
+    await expect(sdk.currentRecoveryKey()).resolves.toEqual({
+      recoveryKey: expect.stringMatching(/[a-f0-9]{64}/),
+    });
+  });
+
+  it('imports a provided key', async () => {
+    const recoveryKey = '0'.repeat(64);
+
+    await sdk.importRecoveryKey({
+      recoveryKey,
+    });
+
+    await expect(sdk.currentRecoveryKey()).resolves.toEqual({ recoveryKey });
+  });
+
+  it('marks key as onboarded', async () => {
+    await sdk.confirmRecoveryKey();
+
+    await expect(sdk.onboardingStatus()).resolves.toEqual({
+      hasBackend: true,
+      hasOnboardedKey: true,
+    });
+  });
+});
 
 describe('Repository', () => {
   let repository: sdk.LocalRepositoryDto;
