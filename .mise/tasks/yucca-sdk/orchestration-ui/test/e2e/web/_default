@@ -3,5 +3,4 @@
 #MISE depends=["yucca-sdk:orchestration-ui:test:install-deps"]
 set -e
 
-# pnpm --filter orchestration-ui test:e2e "$@"
-echo Currently no tests are written for Orchestration UI.
+pnpm --filter orchestration-ui test:e2e "$@"
