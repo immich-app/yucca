@@ -85,7 +85,6 @@ export class OrchestrationApiModule {
         RepositoryService,
         AuthService,
         OnboardingService,
-        OrchestrationApiService,
       ],
       exports: [OrchestrationApiService],
     };
