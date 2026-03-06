@@ -26,7 +26,6 @@ import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
 import { OnboardingService } from './services/onboarding.service';
-import { OrchestrationApiService } from './services/orchestrationApi.service';
 import { RepositoryService } from './services/repository.service';
 
 @Module({})
@@ -80,7 +79,6 @@ export class OrchestrationApiModule {
         AuthService,
         OnboardingService,
       ],
-      exports: [OrchestrationApiService],
     };
   }
 }
