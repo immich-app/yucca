@@ -1,6 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
-import { ScheduleCreateRequestDto, ScheduleCreateResponseDto, ScheduleListResponseDto } from '../dto/schedule.dto';
+import {
+  ScheduleCreateRequestDto,
+  ScheduleCreateResponseDto,
+  ScheduleListResponseDto,
+  ScheduleUpdateRequestDto,
+  ScheduleUpdateResponseDto,
+} from '../dto/schedule.dto';
 import { ScheduleService } from '../services/schedule.service';
 
 @Controller('/schedule')
@@ -17,6 +23,13 @@ export class ScheduleController {
   @ApiOkResponse({ type: ScheduleListResponseDto })
   getSchedules(): Promise<ScheduleListResponseDto> {
     return this.service.getSchedules();
+  }
+
+  @Patch('/:id')
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ type: ScheduleUpdateResponseDto })
+  updateSchedule(@Param('id') id: string, @Body() dto: ScheduleUpdateRequestDto): Promise<ScheduleUpdateResponseDto> {
+    return this.service.updateSchedule(id, dto);
   }
 
   @Delete('/:id')

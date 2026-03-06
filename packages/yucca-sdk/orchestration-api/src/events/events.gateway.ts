@@ -18,6 +18,15 @@ type Event =
       schedule: ScheduleDto;
     }
   | {
+      type: 'ScheduleUpdate';
+      scheduleId: string;
+      schedule: Partial<ScheduleDto>;
+    }
+  | {
+      type: 'ScheduleDelete';
+      scheduleId: string;
+    }
+  | {
       type: 'TaskStart';
       task: ActiveTaskDto;
     }

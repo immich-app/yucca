@@ -1,8 +1,5 @@
 <script lang="ts">
-  import {
-    getSchedules,
-    type ScheduleDto,
-  } from "$lib/fetch-client";
+  import { getSchedules, type ScheduleDto } from "$lib/fetch-client";
   import { getProvider } from "$lib/providers";
   import { Button, Heading, modalManager } from "@immich/ui";
   import { onMount } from "svelte";
@@ -20,13 +17,11 @@
   onMount(() => {
     getSchedules().then((data) => (schedules = data.schedules));
 
-    provider
-      .getRepositories()
-      .then((data) => {
-        repositoryNames = Object.fromEntries(
-          data.repositories.map((r) => [r.id, r.name]),
-        );
-      });
+    provider.getRepositories().then((data) => {
+      repositoryNames = Object.fromEntries(
+        data.repositories.map((r) => [r.id, r.name]),
+      );
+    });
   });
 
   const onCreate = () => {
@@ -43,6 +38,22 @@
     schedules = [...(schedules ?? []), event.data.schedule];
   };
 
+  const onScheduleUpdate = (
+    event: SocketEvent<{
+      scheduleId: string;
+      schedule: Partial<ScheduleDto>;
+    }>,
+  ) => {
+    schedules = schedules?.map((schedule) =>
+      schedule.id === event.data.scheduleId
+        ? {
+            ...schedule,
+            ...event.data.schedule,
+          }
+        : schedule,
+    );
+  };
+
   const onScheduleDelete = (
     event: SocketEvent<{
       scheduleId: string;
@@ -52,7 +63,7 @@
   };
 </script>
 
-<OnEvents {onScheduleCreate} {onScheduleDelete} />
+<OnEvents {onScheduleCreate} {onScheduleUpdate} {onScheduleDelete} />
 
 <div class="flex flex-col gap-2">
   <Heading

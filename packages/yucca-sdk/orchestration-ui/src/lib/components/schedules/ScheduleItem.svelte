@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { removeSchedule, type ScheduleDto } from "$lib/fetch-client";
+  import {
+    removeSchedule,
+    updateSchedule,
+    type ScheduleDto,
+  } from "$lib/fetch-client";
   import {
     Badge,
     Card,
@@ -11,7 +15,7 @@
     Text,
     toastManager,
   } from "@immich/ui";
-  import { mdiDelete } from "@mdi/js";
+  import { mdiDelete, mdiPause, mdiPlay } from "@mdi/js";
   import RelativeTime from "../util/RelativeTime.svelte";
 
   type Props = {
@@ -21,17 +25,41 @@
 
   const { schedule, repositoryNames }: Props = $props();
 
+  const onResume = async () => {
+    try {
+      await updateSchedule(schedule.id, {
+        paused: false,
+      });
+
+      toastManager.info(`Paused schedule ${schedule.name}`);
+    } catch (error) {
+      toastManager.danger(`Failed to delete schedule: ${error}`);
+    }
+  };
+
+  const onPause = async () => {
+    try {
+      await updateSchedule(schedule.id, {
+        paused: true,
+      });
+
+      toastManager.info(`Paused schedule ${schedule.name}`);
+    } catch (error) {
+      toastManager.danger(`Failed to delete schedule: ${error}`);
+    }
+  };
+
   const onDelete = async () => {
     try {
       await removeSchedule(schedule.id);
-      toastManager.info(`Deleted schedule "${schedule.name}"`);
+      toastManager.info(`Deleted schedule ${schedule.name}`);
     } catch (error) {
       toastManager.danger(`Failed to delete schedule: ${error}`);
     }
   };
 </script>
 
-<Card color={schedule.paused ? "warning" : undefined}>
+<Card>
   <CardBody>
     <HStack>
       <Stack>
@@ -52,6 +80,11 @@
       </Stack>
 
       <HStack class="grow justify-end">
+        {#if schedule.paused}
+          <IconButton onclick={onResume} aria-label="Resume" icon={mdiPlay} />
+        {:else}
+          <IconButton onclick={onPause} aria-label="Pause" icon={mdiPause} />
+        {/if}
         <IconButton onclick={onDelete} aria-label="Delete" icon={mdiDelete} />
       </HStack>
     </HStack>

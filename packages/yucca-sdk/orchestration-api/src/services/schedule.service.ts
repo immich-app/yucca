@@ -1,8 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import { Updateable } from 'kysely';
 import { randomUUID } from 'node:crypto';
-import { ScheduleCreateRequestDto, ScheduleCreateResponseDto, ScheduleListResponseDto } from '../dto/schedule.dto';
+import {
+  ScheduleCreateRequestDto,
+  ScheduleCreateResponseDto,
+  ScheduleListResponseDto,
+  ScheduleUpdateRequestDto,
+  ScheduleUpdateResponseDto,
+} from '../dto/schedule.dto';
 import { EventsGateway } from '../events/events.gateway';
 import { ScheduleRepository } from '../repositories/schedule.repository';
+import { ScheduleTable } from '../schema/tables/schedule.table';
 
 @Injectable()
 export class ScheduleService {
@@ -47,15 +55,66 @@ export class ScheduleService {
     };
   }
 
-  async removeSchedule(id: string): Promise<void> {
-    await this.schedule.removeSchedule(id);
+  async updateSchedule(
+    scheduleId: string,
+    { name, paused, cron, repositories }: ScheduleUpdateRequestDto,
+  ): Promise<ScheduleUpdateResponseDto> {
+    const linked = new Set(await this.schedule.getRepositories(scheduleId));
+
+    const set: Updateable<ScheduleTable> = {
+      name,
+      cron,
+    };
+
+    if (typeof paused === 'boolean') {
+      set.paused = paused ? 1 : 0;
+    }
+
+    if (Array.isArray(repositories)) {
+      set.ordering = JSON.stringify(repositories.filter((id) => linked.has(id)));
+    }
+
+    await this.schedule.updateSchedule(scheduleId, set);
+
+    const schedule = await this.schedule.get(scheduleId);
+
+    this.events.publish({
+      type: 'ScheduleUpdate',
+      scheduleId,
+      schedule,
+    });
+
+    return {
+      schedule,
+    };
   }
 
-  async addRepositoryToSchedule(id: string, repositoryId: string): Promise<void> {
-    await this.schedule.addRepositoryToSchedule(id, repositoryId);
+  async removeSchedule(scheduleId: string): Promise<void> {
+    await this.schedule.removeSchedule(scheduleId);
+
+    this.events.publish({
+      type: 'ScheduleDelete',
+      scheduleId,
+    });
   }
 
-  async removeRepositoryFromSchedule(id: string, repositoryId: string): Promise<void> {
-    await this.schedule.removeRepositoryFromSchedule(id, repositoryId);
+  async addRepositoryToSchedule(scheduleId: string, repositoryId: string): Promise<void> {
+    await this.schedule.addRepositoryToSchedule(scheduleId, repositoryId);
+
+    this.events.publish({
+      type: 'ScheduleUpdate',
+      scheduleId,
+      schedule: await this.schedule.get(scheduleId),
+    });
+  }
+
+  async removeRepositoryFromSchedule(scheduleId: string, repositoryId: string): Promise<void> {
+    await this.schedule.removeRepositoryFromSchedule(scheduleId, repositoryId);
+
+    this.events.publish({
+      type: 'ScheduleUpdate',
+      scheduleId,
+      schedule: await this.schedule.get(scheduleId),
+    });
   }
 }

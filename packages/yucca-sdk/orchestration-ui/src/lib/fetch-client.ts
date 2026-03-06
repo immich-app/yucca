@@ -105,8 +105,6 @@ export type ScheduleCreateRequestDto = {
     name: string;
     cron: string;
     repositories: string[];
-    lastRun?: string;
-    lastFinished?: string;
 };
 export type ScheduleDto = {
     id: string;
@@ -122,6 +120,15 @@ export type ScheduleCreateResponseDto = {
 };
 export type ScheduleListResponseDto = {
     schedules: ScheduleDto[];
+};
+export type ScheduleUpdateRequestDto = {
+    name?: string;
+    paused?: boolean;
+    cron?: string;
+    repositories?: string[];
+};
+export type ScheduleUpdateResponseDto = {
+    schedule: ScheduleDto;
 };
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/debug", {
@@ -277,6 +284,16 @@ export function getSchedules(opts?: Oazapfts.RequestOpts) {
     }>("/api/schedule", {
         ...opts
     }));
+}
+export function updateSchedule(id: string, scheduleUpdateRequestDto: ScheduleUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ScheduleUpdateResponseDto;
+    }>(`/api/schedule/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: scheduleUpdateRequestDto
+    })));
 }
 export function removeSchedule(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}`, {

@@ -495,6 +495,44 @@
       }
     },
     "/api/schedule/{id}": {
+      "patch": {
+        "operationId": "updateSchedule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleUpdateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Schedule"
+        ]
+      },
       "delete": {
         "operationId": "removeSchedule",
         "parameters": [
@@ -973,12 +1011,6 @@
             "items": {
               "type": "string"
             }
-          },
-          "lastRun": {
-            "type": "string"
-          },
-          "lastFinished": {
-            "type": "string"
           }
         },
         "required": [
@@ -1046,6 +1078,37 @@
         },
         "required": [
           "schedules"
+        ]
+      },
+      "ScheduleUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "repositories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ScheduleUpdateResponseDto": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "$ref": "#/components/schemas/ScheduleDto"
+          }
+        },
+        "required": [
+          "schedule"
         ]
       }
     }

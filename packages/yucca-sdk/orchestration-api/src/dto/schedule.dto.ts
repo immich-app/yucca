@@ -39,6 +39,25 @@ export class ScheduleCreateResponseDto {
   schedule!: ScheduleDto;
 }
 
+export class ScheduleUpdateRequestDto {
+  @ApiProperty({ type: String, required: false })
+  name?: string;
+
+  @ApiProperty({ type: Boolean, required: false })
+  paused?: boolean;
+
+  @ApiProperty({ type: String, required: false })
+  cron?: string;
+
+  @ApiProperty({ type: [String], required: false })
+  repositories?: string[];
+}
+
+export class ScheduleUpdateResponseDto {
+  @ApiProperty({ type: ScheduleDto })
+  schedule!: ScheduleDto;
+}
+
 export class ScheduleListResponseDto {
   @ApiProperty({ type: [ScheduleDto] })
   schedules!: ScheduleDto[];
