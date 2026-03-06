@@ -9,7 +9,7 @@
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
   import OnEvents from "../util/OnEvents.svelte";
-  import { events, SocketEvent } from "$lib/events";
+  import { SocketEvent } from "$lib/events";
 
   interface Props {
     local?: boolean;

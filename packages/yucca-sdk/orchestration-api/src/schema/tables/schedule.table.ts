@@ -1,7 +1,7 @@
 export class ScheduleTable {
   id!: string;
   name!: string;
-  paused!: boolean;
+  paused!: number;
   cron!: string;
   ordering!: string;
 

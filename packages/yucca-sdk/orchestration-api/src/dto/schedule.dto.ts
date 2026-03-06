@@ -32,12 +32,6 @@ export class ScheduleCreateRequestDto {
 
   @ApiProperty({ type: [String] })
   repositories!: string[];
-
-  @ApiProperty({ type: String, required: false })
-  lastRun?: string;
-
-  @ApiProperty({ type: String, required: false })
-  lastFinished?: string;
 }
 
 export class ScheduleCreateResponseDto {

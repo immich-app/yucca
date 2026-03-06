@@ -1,6 +1,7 @@
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { ActiveTaskDto, LocalRepositoryDto } from '../dto/repository.dto';
+import { ScheduleDto } from '../dto/schedule.dto';
 
 type Event =
   | {
@@ -11,6 +12,10 @@ type Event =
       type: 'RepositoryUpdate';
       repositoryId: string;
       repository: Partial<LocalRepositoryDto>;
+    }
+  | {
+      type: 'ScheduleCreate';
+      schedule: ScheduleDto;
     }
   | {
       type: 'TaskStart';

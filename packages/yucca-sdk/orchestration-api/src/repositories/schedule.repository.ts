@@ -1,16 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Insertable, Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
-import { EventsGateway } from '../events/events.gateway';
 import { DB } from '../schema';
 import { ScheduleTable } from '../schema/tables/schedule.table';
 
 @Injectable()
 export class ScheduleRepository {
-  constructor(
-    @InjectKysely() private db: Kysely<DB>,
-    private readonly events: EventsGateway,
-  ) {}
+  constructor(@InjectKysely() private db: Kysely<DB>) {}
 
   create(schedule: Insertable<ScheduleTable>) {
     return this.db.insertInto('schedules').values(schedule).returningAll().executeTakeFirstOrThrow();
@@ -23,8 +19,9 @@ export class ScheduleRepository {
       .selectAll('repositorySchedules')
       .execute();
 
-    return schedules.map(({ ordering, ...schedule }) => ({
+    return schedules.map(({ ordering, paused, ...schedule }) => ({
       ...schedule,
+      paused: !!paused,
       repositories: repositorySchedules
         .filter(({ schedule: scheduleId }) => scheduleId === schedule.id)
         .map(({ repository }) => repository)

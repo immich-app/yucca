@@ -101,6 +101,28 @@ export type CurrentRecoveryKeyResponse = {
 export type ImportRecoveryKeyRequest = {
     recoveryKey: string;
 };
+export type ScheduleCreateRequestDto = {
+    name: string;
+    cron: string;
+    repositories: string[];
+    lastRun?: string;
+    lastFinished?: string;
+};
+export type ScheduleDto = {
+    id: string;
+    name: string;
+    paused: boolean;
+    cron: string;
+    repositories: string[];
+    lastRun?: string;
+    lastFinished?: string;
+};
+export type ScheduleCreateResponseDto = {
+    schedule: ScheduleDto;
+};
+export type ScheduleListResponseDto = {
+    schedules: ScheduleDto[];
+};
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/debug", {
         ...opts
@@ -236,5 +258,41 @@ export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", {
         ...opts,
         method: "POST"
+    }));
+}
+export function createSchedule(scheduleCreateRequestDto: ScheduleCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ScheduleCreateResponseDto;
+    }>("/api/schedule", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: scheduleCreateRequestDto
+    })));
+}
+export function getSchedules(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ScheduleListResponseDto;
+    }>("/api/schedule", {
+        ...opts
+    }));
+}
+export function removeSchedule(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
+export function addRepositoryToSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
+        ...opts,
+        method: "PUT"
+    }));
+}
+export function removeRepositoryToSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
+        ...opts,
+        method: "DELETE"
     }));
 }
