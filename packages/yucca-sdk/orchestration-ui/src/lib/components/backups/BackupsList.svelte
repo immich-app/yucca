@@ -32,11 +32,11 @@
   });
 
   const localRepositories = $derived(
-    repositories?.filter((repository) => repository.backends) ?? [],
+    repositories?.filter((repository) => repository.configuration) ?? [],
   );
 
   const remoteRepositories = $derived(
-    repositories?.filter((repository) => !repository.backends) ?? [],
+    repositories?.filter((repository) => !repository.configuration) ?? [],
   );
 
   const createNewBackup = () => modalManager.show(CreateRepositoryModal);

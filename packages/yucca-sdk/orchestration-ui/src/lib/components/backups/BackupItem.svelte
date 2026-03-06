@@ -102,7 +102,7 @@
       </Stack>
 
       <HStack class="grow justify-end">
-        {#if repository.backends}
+        {#if repository.configuration}
           {#if repository.backends.primary.online}
             <IconButton
               onclick={onBackupNow}
