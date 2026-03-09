@@ -1,10 +1,12 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
@@ -19,48 +21,49 @@ type Config struct {
 	OTLPMetricsURLPath  string
 	OTLPMetricsInterval time.Duration
 	OTLPEnabled         bool
+	LogLevel            zerolog.Level
 }
 
 func LoadConfig() Config {
 	portStr := os.Getenv("RESTIC_API_PORT")
 	if portStr == "" {
-		log.Fatal("RESTIC_API_PORT is required")
+		log.Fatal().Msg("RESTIC_API_PORT is required")
 	}
 	port, err := strconv.Atoi(portStr)
 	if err != nil || port < 1000 {
-		log.Fatal("RESTIC_API_PORT must be a number >= 1000")
+		log.Fatal().Msg("RESTIC_API_PORT must be a number >= 1000")
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if len(jwtSecret) < 32 {
-		log.Fatal("JWT_SECRET is required and must be at least 32 characters")
+		log.Fatal().Msg("JWT_SECRET is required and must be at least 32 characters")
 	}
 
 	s3AccessKeyID := os.Getenv("S3_ACCESS_KEY_ID")
 	if s3AccessKeyID == "" {
-		log.Fatal("S3_ACCESS_KEY_ID is required")
+		log.Fatal().Msg("S3_ACCESS_KEY_ID is required")
 	}
 
 	s3SecretAccessKey := os.Getenv("S3_SECRET_ACCESS_KEY")
 	if s3SecretAccessKey == "" {
-		log.Fatal("S3_SECRET_ACCESS_KEY is required")
+		log.Fatal().Msg("S3_SECRET_ACCESS_KEY is required")
 	}
 
 	s3Region := os.Getenv("S3_REGION")
 	if s3Region == "" {
-		log.Fatal("S3_REGION is required")
+		log.Fatal().Msg("S3_REGION is required")
 	}
 
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
 	if s3Endpoint == "" {
-		log.Fatal("S3_ENDPOINT is required")
+		log.Fatal().Msg("S3_ENDPOINT is required")
 	}
 
 	s3ForcePathStyle := false
 	if v := os.Getenv("S3_FORCE_PATH_STYLE"); v != "" {
 		s3ForcePathStyle, err = strconv.ParseBool(v)
 		if err != nil {
-			log.Fatalf("S3_FORCE_PATH_STYLE must be a boolean: %v", err)
+			log.Fatal().Err(err).Msg("S3_FORCE_PATH_STYLE must be a boolean")
 		}
 	}
 
@@ -70,9 +73,18 @@ func LoadConfig() Config {
 	if v := os.Getenv("OTLP_METRICS_INTERVAL_MS"); v != "" {
 		ms, err := strconv.Atoi(v)
 		if err != nil {
-			log.Fatalf("OTLP_METRICS_INTERVAL_MS must be a number: %v", err)
+			log.Fatal().Err(err).Msg("OTLP_METRICS_INTERVAL_MS must be a number")
 		}
 		otlpInterval = time.Duration(ms) * time.Millisecond
+	}
+
+	logLevel := zerolog.InfoLevel
+	if v := os.Getenv("LOG_LEVEL"); v != "" {
+		parsed, err := zerolog.ParseLevel(v)
+		if err != nil {
+			log.Fatal().Str("value", v).Msg("LOG_LEVEL must be a valid level (trace, debug, info, warn, error, fatal, panic)")
+		}
+		logLevel = parsed
 	}
 
 	return Config{
@@ -87,5 +99,6 @@ func LoadConfig() Config {
 		OTLPMetricsURLPath:  otlpURLPath,
 		OTLPMetricsInterval: otlpInterval,
 		OTLPEnabled:         otlpEndpoint != "",
+		LogLevel:            logLevel,
 	}
 }

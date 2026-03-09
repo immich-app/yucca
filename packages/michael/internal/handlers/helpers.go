@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"io"
-	"log/slog"
+	"github.com/rs/zerolog/hlog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -27,15 +27,20 @@ var sha256HexPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 type ErrorResponse struct {
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
+	RequestID  string `json:"requestId,omitempty"`
 }
 
-func writeError(w http.ResponseWriter, code int, message string) {
+func writeError(w http.ResponseWriter, r *http.Request, code int, message string) {
+	reqID, _ := hlog.IDFromRequest(r)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(ErrorResponse{
+	if err := json.NewEncoder(w).Encode(ErrorResponse{
 		StatusCode: code,
 		Message:    message,
-	})
+		RequestID:  reqID.String(),
+	}); err != nil {
+		hlog.FromRequest(r).Error().Err(err).Msg("failed to write error response")
+	}
 }
 
 func (s *Server) respondWithS3Object(w http.ResponseWriter, r *http.Request, obj *storage.S3Object) {
@@ -79,6 +84,6 @@ func (s *Server) respondWithS3Object(w http.ResponseWriter, r *http.Request, obj
 	}
 
 	if _, err := io.Copy(w, obj.Body); err != nil {
-		slog.Error("error streaming response", "error", err)
+		hlog.FromRequest(r).Error().Err(err).Msg("error streaming response")
 	}
 }

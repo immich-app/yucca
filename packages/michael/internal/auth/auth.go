@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/rs/zerolog/hlog"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -42,14 +44,14 @@ func Middleware(secret []byte) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			auth, err := extractAuth(r, secret)
 			if err != nil {
-				writeError(w, err.code, err.message)
+				writeError(w, r, err.code, err.message)
 				return
 			}
 
 			// Validate path param matches auth repository
 			path := chi.URLParam(r, "path")
 			if path != "" && path != auth.Repository {
-				writeError(w, http.StatusBadRequest, "Repository mismatch")
+				writeError(w, r, http.StatusBadRequest, "Repository mismatch")
 				return
 			}
 
@@ -71,15 +73,20 @@ func (e *authError) Error() string {
 type errorResponse struct {
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
+	RequestID  string `json:"requestId,omitempty"`
 }
 
-func writeError(w http.ResponseWriter, code int, message string) {
+func writeError(w http.ResponseWriter, r *http.Request, code int, message string) {
+	reqID, _ := hlog.IDFromRequest(r)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(errorResponse{
+	if err := json.NewEncoder(w).Encode(errorResponse{
 		StatusCode: code,
 		Message:    message,
-	})
+		RequestID:  reqID.String(),
+	}); err != nil {
+		hlog.FromRequest(r).Error().Err(err).Msg("failed to write error response")
+	}
 }
 
 func extractAuth(r *http.Request, secret []byte) (Auth, *authError) {

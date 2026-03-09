@@ -234,7 +234,9 @@ func TestListBlobs_EmptyResult(t *testing.T) {
 	}
 
 	var blobs []storage.BlobInfo
-	json.NewDecoder(rec.Body).Decode(&blobs)
+	if err := json.NewDecoder(rec.Body).Decode(&blobs); err != nil {
+		t.Fatalf("failed to decode blob list: %v", err)
+	}
 	if len(blobs) != 0 {
 		t.Errorf("expected empty array, got %d blobs", len(blobs))
 	}

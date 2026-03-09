@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log/slog"
+	"github.com/rs/zerolog/hlog"
 	"net/http"
 	"strconv"
 
@@ -14,30 +14,30 @@ func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 
 	createStr := r.URL.Query().Get("create")
 	if createStr == "" {
-		writeError(w, http.StatusBadRequest, "isCreate must be true when creating repository")
+		writeError(w, r,http.StatusBadRequest, "isCreate must be true when creating repository")
 		return
 	}
 	isCreate, err := strconv.ParseBool(createStr)
 	if err != nil || !isCreate {
-		writeError(w, http.StatusBadRequest, "isCreate must be true when creating repository")
+		writeError(w, r,http.StatusBadRequest, "isCreate must be true when creating repository")
 		return
 	}
 
 	exists, err := s.Storage.CheckBucket(r.Context(), a.Repository)
 	if err != nil {
-		slog.Error("check bucket failed", "error", err)
-		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
+		hlog.FromRequest(r).Error().Err(err).Msg("check bucket failed")
+		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
 	if exists {
-		writeError(w, http.StatusConflict, "Repository already exists")
+		writeError(w, r,http.StatusConflict, "Repository already exists")
 		return
 	}
 
 	if err := s.Storage.CreateBucket(r.Context(), a.Repository); err != nil {
-		slog.Error("create bucket failed", "error", err)
-		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
+		hlog.FromRequest(r).Error().Err(err).Msg("create bucket failed")
+		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
@@ -46,5 +46,5 @@ func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /{path}
 func (s *Server) deleteRepository(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotImplemented, "Not Implemented")
+	writeError(w, r,http.StatusNotImplemented, "Not Implemented")
 }

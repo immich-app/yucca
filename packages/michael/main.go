@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,11 +14,18 @@ import (
 	"michael/internal/metrics"
 	"michael/internal/storage"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
 func main() {
+	zerolog.TimeFieldFormat = time.RFC3339
+	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
+	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
+
 	cfg := config.LoadConfig()
+	zerolog.SetGlobalLevel(cfg.LogLevel)
 	store := storage.NewS3Storage(cfg)
 
 	var m *metrics.Metrics
@@ -28,16 +34,14 @@ func main() {
 		var err error
 		meterProvider, err = metrics.SetupMeterProvider(cfg)
 		if err != nil {
-			slog.Error("failed to setup meter provider", "error", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Msg("failed to setup meter provider")
 		}
 		meter := meterProvider.Meter("michael")
 		m, err = metrics.NewMetrics(meter)
 		if err != nil {
-			slog.Error("failed to create metrics", "error", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Msg("failed to create metrics")
 		}
-		slog.Info("OpenTelemetry metrics enabled", "endpoint", cfg.OTLPMetricsEndpoint)
+		log.Info().Str("endpoint", cfg.OTLPMetricsEndpoint).Msg("OpenTelemetry metrics enabled")
 	}
 
 	srv := handlers.NewServer(store, cfg.JWTSecret, m)
@@ -53,29 +57,27 @@ func main() {
 	defer stop()
 
 	go func() {
-		slog.Info("starting michael", "port", cfg.Port)
+		log.Info().Int("port", cfg.Port).Msg("starting michael")
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("server error", "error", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Msg("server error")
 		}
 	}()
 
 	<-ctx.Done()
-	slog.Info("shutting down")
+	log.Info().Msg("shutting down")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("shutdown error", "error", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("shutdown error")
 	}
 
 	if meterProvider != nil {
 		if err := meterProvider.Shutdown(shutdownCtx); err != nil {
-			slog.Error("meter provider shutdown error", "error", err)
+			log.Error().Err(err).Msg("meter provider shutdown error")
 		}
 	}
 
-	slog.Info("shutdown complete")
+	log.Info().Msg("shutdown complete")
 }

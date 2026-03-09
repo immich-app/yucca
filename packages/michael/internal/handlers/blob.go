@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
+	"github.com/rs/zerolog/hlog"
 	"net/http"
 	"strconv"
 
@@ -20,27 +20,29 @@ func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 
 	accept := r.Header.Get("Accept")
 	if accept != ContentTypeResticV2 {
-		writeError(w, http.StatusNotImplemented, "Not Implemented")
+		writeError(w, r,http.StatusNotImplemented, "Not Implemented")
 		return
 	}
 
 	blobType := chi.URLParam(r, "type")
 	if !validBlobTypes[blobType] {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
+		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
 		return
 	}
 
 	prefix := blobType + "/"
 	blobs, err := s.Storage.ListObjects(r.Context(), a.Repository, prefix)
 	if err != nil {
-		slog.Error("list blobs failed", "error", err)
-		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
+		hlog.FromRequest(r).Error().Err(err).Msg("list blobs failed")
+		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
 	w.Header().Set("Content-Type", ContentTypeResticV2)
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(blobs)
+	if err := json.NewEncoder(w).Encode(blobs); err != nil {
+		hlog.FromRequest(r).Error().Err(err).Msg("failed to encode blob list response")
+	}
 }
 
 // HEAD /{path}/{type}/{name}
@@ -50,19 +52,19 @@ func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 
 	if !validBlobTypes[blobType] {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
+		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
 		return
 	}
 
 	if !sha256HexPattern.MatchString(name) {
-		writeError(w, http.StatusBadRequest, "Invalid blob name")
+		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
 		return
 	}
 
 	key := blobType + "/" + name
 	size, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "Not Found")
+		writeError(w, r,http.StatusNotFound, "Not Found")
 		return
 	}
 
@@ -77,12 +79,12 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 
 	if !validBlobTypes[blobType] {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
+		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
 		return
 	}
 
 	if !sha256HexPattern.MatchString(name) {
-		writeError(w, http.StatusBadRequest, "Invalid blob name")
+		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
 		return
 	}
 
@@ -90,8 +92,8 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	rangeHeader := r.Header.Get("Range")
 	obj, err := s.Storage.GetObject(r.Context(), a.Repository, key, rangeHeader)
 	if err != nil {
-		slog.Error("get blob failed", "error", err)
-		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
+		hlog.FromRequest(r).Error().Err(err).Msg("get blob failed")
+		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
@@ -105,12 +107,12 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 
 	if !validBlobTypes[blobType] {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
+		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
 		return
 	}
 
 	if !sha256HexPattern.MatchString(name) {
-		writeError(w, http.StatusBadRequest, "Invalid blob name")
+		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
 		return
 	}
 
@@ -118,15 +120,15 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	err := s.Storage.PutObject(r.Context(), a.Repository, key, r.Body, r.ContentLength, true, name)
 	if err != nil {
 		if errors.Is(err, storage.ErrPreconditionFailed) {
-			writeError(w, http.StatusForbidden, "Blob already exists")
+			writeError(w, r,http.StatusForbidden, "Blob already exists")
 			return
 		}
 		if errors.Is(err, storage.ErrChecksumMismatch) {
-			writeError(w, http.StatusBadRequest, "Content hash does not match blob name")
+			writeError(w, r,http.StatusBadRequest, "Content hash does not match blob name")
 			return
 		}
-		slog.Error("save blob failed", "error", err)
-		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
+		hlog.FromRequest(r).Error().Err(err).Msg("save blob failed")
+		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
@@ -140,31 +142,31 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 
 	if !validBlobTypes[blobType] {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
+		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
 		return
 	}
 
 	if !sha256HexPattern.MatchString(name) {
-		writeError(w, http.StatusBadRequest, "Invalid blob name")
+		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
 		return
 	}
 
 	if a.WriteOnce && blobType != "locks" {
-		writeError(w, http.StatusForbidden, "Not permitted to write to WORM repository")
+		writeError(w, r,http.StatusForbidden, "Not permitted to write to WORM repository")
 		return
 	}
 
 	key := blobType + "/" + name
 	_, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
-		slog.Error("head blob for delete failed", "error", err)
-		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
+		hlog.FromRequest(r).Error().Err(err).Msg("head blob for delete failed")
+		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
 	if err := s.Storage.DeleteObject(r.Context(), a.Repository, key); err != nil {
-		slog.Error("delete blob failed", "error", err)
-		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
+		hlog.FromRequest(r).Error().Err(err).Msg("delete blob failed")
+		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 

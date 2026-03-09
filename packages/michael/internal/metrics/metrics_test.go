@@ -217,7 +217,7 @@ func TestResponseWriter(t *testing.T) {
 		t.Fatalf("expected 5 bytes written, got %d", mrw.BytesWritten)
 	}
 
-	n, err = mrw.Write([]byte(" world"))
+	_, err = mrw.Write([]byte(" world"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -235,7 +235,9 @@ func TestResponseWriterDefaultStatus(t *testing.T) {
 	mrw := &ResponseWriter{ResponseWriter: rec}
 
 	// Write without explicit WriteHeader should default to 200
-	mrw.Write([]byte("data"))
+	if _, err := mrw.Write([]byte("data")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if mrw.Status != 200 {
 		t.Fatalf("expected default status 200, got %d", mrw.Status)
 	}
@@ -406,7 +408,9 @@ func TestBlobMiddlewareUnwraps(t *testing.T) {
 		if _, ok := w.(*ResponseWriter); !ok {
 			t.Error("expected w to be *ResponseWriter, not a new wrapper")
 		}
-		w.Write([]byte("hello"))
+		if _, err := w.Write([]byte("hello")); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 	})
 
 	handler := BlobMiddleware(m)(inner)

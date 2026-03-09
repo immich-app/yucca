@@ -73,7 +73,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	repo := "00000000-0000-0000-0000-integration01"
+	repo := "00000000-0000-0000-0000-000000000e01"
 	token := integrationJWT(t, cfg, repo, false)
 	authHeader := integrationAuth(token)
 
@@ -244,7 +244,7 @@ func TestIntegration_WORM(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	repo := "00000000-0000-0000-0000-integration02"
+	repo := "00000000-0000-0000-0000-000000000e02"
 	normalToken := integrationJWT(t, cfg, repo, false)
 	wormToken := integrationJWT(t, cfg, repo, true)
 	normalAuth := integrationAuth(normalToken)
