@@ -2,4 +2,4 @@
 #MISE description="Run unit tests for michael"
 set -e
 
-go test ./packages/michael/... "$@"
+cd packages/michael && go test ./... "$@"
