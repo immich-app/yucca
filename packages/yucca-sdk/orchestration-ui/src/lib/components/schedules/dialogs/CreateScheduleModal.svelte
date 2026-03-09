@@ -40,7 +40,7 @@
       <Field label="Name" description="Give this schedule a name">
         <Input bind:value={name} />
       </Field>
-      <Field label="Schedule" description="Cron syntax">
+      <Field label="Schedule" description="Uses cron syntax">
         <Input bind:value={cron} />
       </Field>
     </Stack>

@@ -94,7 +94,7 @@
           </CardFooter>
         {/if}
         {#if task.scheduleStatus}
-          {JSON.stringify(task.scheduleStatus)}
+          <!-- TODO: display schedule status -->
         {/if}
       </Card>
     {/if}
