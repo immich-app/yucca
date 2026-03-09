@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"michael/internal/storage"
 )
 
 var testBlobName = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -55,8 +57,8 @@ func TestCheckBlob_InvalidName(t *testing.T) {
 
 func TestGetBlob_Success(t *testing.T) {
 	store := &mockStorage{
-		getObjectFn: func(_ context.Context, _, _, _ string) (*S3Object, error) {
-			return &S3Object{
+		getObjectFn: func(_ context.Context, _, _, _ string) (*storage.S3Object, error) {
+			return &storage.S3Object{
 				Body:          io.NopCloser(bytes.NewReader([]byte("blob-content"))),
 				ContentLength: 12,
 				ContentType:   "application/octet-stream",
@@ -76,8 +78,8 @@ func TestGetBlob_Success(t *testing.T) {
 
 func TestGetBlob_RangeRequest(t *testing.T) {
 	store := &mockStorage{
-		getObjectFn: func(_ context.Context, _, _, rangeH string) (*S3Object, error) {
-			return &S3Object{
+		getObjectFn: func(_ context.Context, _, _, rangeH string) (*storage.S3Object, error) {
+			return &storage.S3Object{
 				Body:          io.NopCloser(bytes.NewReader([]byte("partial"))),
 				ContentLength: 7,
 				ContentRange:  "bytes 0-6/12",
@@ -139,7 +141,7 @@ func TestSaveBlob_InvalidName(t *testing.T) {
 func TestSaveBlob_WORMConflict(t *testing.T) {
 	store := &mockStorage{
 		putObjectFn: func(_ context.Context, _, _ string, _ io.Reader, _ int64, _ bool, _ string) error {
-			return ErrPreconditionFailed
+			return storage.ErrPreconditionFailed
 		},
 	}
 	srv := newTestServer(store)
@@ -153,7 +155,7 @@ func TestSaveBlob_WORMConflict(t *testing.T) {
 func TestSaveBlob_ChecksumMismatch(t *testing.T) {
 	store := &mockStorage{
 		putObjectFn: func(_ context.Context, _, _ string, _ io.Reader, _ int64, _ bool, _ string) error {
-			return ErrChecksumMismatch
+			return storage.ErrChecksumMismatch
 		},
 	}
 	srv := newTestServer(store)
@@ -168,8 +170,8 @@ func TestSaveBlob_ChecksumMismatch(t *testing.T) {
 
 func TestListBlobs_Success(t *testing.T) {
 	store := &mockStorage{
-		listObjectsFn: func(_ context.Context, _, _ string) ([]BlobInfo, error) {
-			return []BlobInfo{
+		listObjectsFn: func(_ context.Context, _, _ string) ([]storage.BlobInfo, error) {
+			return []storage.BlobInfo{
 				{Name: "abc123", Size: 1024},
 				{Name: "def456", Size: 2048},
 			}, nil
@@ -177,17 +179,17 @@ func TestListBlobs_Success(t *testing.T) {
 	}
 	srv := newTestServer(store)
 	rec := doRequest(t, srv, http.MethodGet, "/"+testRepository+"/data", nil, defaultAuth(), map[string]string{
-		"Accept": contentTypeResticV2,
+		"Accept": ContentTypeResticV2,
 	})
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d: %s", rec.Code, rec.Body.String())
 	}
-	if ct := rec.Header().Get("Content-Type"); ct != contentTypeResticV2 {
-		t.Errorf("expected content-type %s, got %s", contentTypeResticV2, ct)
+	if ct := rec.Header().Get("Content-Type"); ct != ContentTypeResticV2 {
+		t.Errorf("expected content-type %s, got %s", ContentTypeResticV2, ct)
 	}
 
-	var blobs []BlobInfo
+	var blobs []storage.BlobInfo
 	if err := json.NewDecoder(rec.Body).Decode(&blobs); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -208,7 +210,7 @@ func TestListBlobs_MissingAcceptHeader(t *testing.T) {
 func TestListBlobs_InvalidType(t *testing.T) {
 	srv := newTestServer(&mockStorage{})
 	rec := doRequest(t, srv, http.MethodGet, "/"+testRepository+"/invalid", nil, defaultAuth(), map[string]string{
-		"Accept": contentTypeResticV2,
+		"Accept": ContentTypeResticV2,
 	})
 
 	if rec.Code != http.StatusBadRequest {
@@ -218,20 +220,20 @@ func TestListBlobs_InvalidType(t *testing.T) {
 
 func TestListBlobs_EmptyResult(t *testing.T) {
 	store := &mockStorage{
-		listObjectsFn: func(_ context.Context, _, _ string) ([]BlobInfo, error) {
-			return []BlobInfo{}, nil
+		listObjectsFn: func(_ context.Context, _, _ string) ([]storage.BlobInfo, error) {
+			return []storage.BlobInfo{}, nil
 		},
 	}
 	srv := newTestServer(store)
 	rec := doRequest(t, srv, http.MethodGet, "/"+testRepository+"/data", nil, defaultAuth(), map[string]string{
-		"Accept": contentTypeResticV2,
+		"Accept": ContentTypeResticV2,
 	})
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", rec.Code)
 	}
 
-	var blobs []BlobInfo
+	var blobs []storage.BlobInfo
 	json.NewDecoder(rec.Body).Decode(&blobs)
 	if len(blobs) != 0 {
 		t.Errorf("expected empty array, got %d blobs", len(blobs))

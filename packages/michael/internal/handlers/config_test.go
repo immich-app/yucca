@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"michael/internal/storage"
 )
 
 func TestCheckConfig_Found(t *testing.T) {
@@ -45,8 +47,8 @@ func TestCheckConfig_NotFound(t *testing.T) {
 
 func TestGetConfig_Success(t *testing.T) {
 	store := &mockStorage{
-		getObjectFn: func(_ context.Context, _, key, _ string) (*S3Object, error) {
-			return &S3Object{
+		getObjectFn: func(_ context.Context, _, key, _ string) (*storage.S3Object, error) {
+			return &storage.S3Object{
 				Body:          io.NopCloser(strings.NewReader("config-data")),
 				ContentLength: 11,
 				ContentType:   "application/octet-stream",
@@ -70,8 +72,8 @@ func TestGetConfig_Success(t *testing.T) {
 
 func TestGetConfig_IfNoneMatch304(t *testing.T) {
 	store := &mockStorage{
-		getObjectFn: func(_ context.Context, _, _, _ string) (*S3Object, error) {
-			return &S3Object{
+		getObjectFn: func(_ context.Context, _, _, _ string) (*storage.S3Object, error) {
+			return &storage.S3Object{
 				Body:          io.NopCloser(strings.NewReader("config-data")),
 				ContentLength: 11,
 				ETag:          `"abc123"`,
@@ -111,7 +113,7 @@ func TestSaveConfig_Success(t *testing.T) {
 func TestSaveConfig_WORMConflict(t *testing.T) {
 	store := &mockStorage{
 		putObjectFn: func(_ context.Context, _, _ string, _ io.Reader, _ int64, _ bool, _ string) error {
-			return ErrPreconditionFailed
+			return storage.ErrPreconditionFailed
 		},
 	}
 	srv := newTestServer(store)
@@ -124,7 +126,7 @@ func TestSaveConfig_WORMConflict(t *testing.T) {
 
 func TestDeleteConfig_Success(t *testing.T) {
 	store := &mockStorage{
-		headObjectFn: func(_ context.Context, _, _ string) (int64, error) { return 100, nil },
+		headObjectFn:   func(_ context.Context, _, _ string) (int64, error) { return 100, nil },
 		deleteObjectFn: func(_ context.Context, _, _ string) error { return nil },
 	}
 	srv := newTestServer(store)

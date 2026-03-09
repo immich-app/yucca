@@ -16,11 +16,20 @@ import (
 	"testing"
 	"time"
 
+	"michael/internal/config"
+	"michael/internal/handlers"
+	"michael/internal/storage"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func integrationConfig() Config {
-	return Config{
+const (
+	testUser       = "00000000-0000-0000-0000-000000000001"
+	testRepository = "00000000-0000-0000-0000-000000000002"
+)
+
+func integrationConfig() config.Config {
+	return config.Config{
 		Port:             3010,
 		JWTSecret:        []byte(envOrDefault("JWT_SECRET", "cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1")),
 		S3AccessKeyID:    envOrDefault("S3_ACCESS_KEY_ID", "minio"),
@@ -38,7 +47,7 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-func integrationJWT(t *testing.T, cfg Config, repo string, writeOnce bool) string {
+func integrationJWT(t *testing.T, cfg config.Config, repo string, writeOnce bool) string {
 	t.Helper()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user":       testUser,
@@ -59,20 +68,20 @@ func integrationAuth(token string) string {
 
 func TestIntegration_FullWorkflow(t *testing.T) {
 	cfg := integrationConfig()
-	storage := NewS3Storage(cfg)
-	srv := NewServer(storage, cfg)
+	store := storage.NewS3Storage(cfg)
+	srv := handlers.NewServer(store, cfg.JWTSecret, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
 	repo := "00000000-0000-0000-0000-integration01"
 	token := integrationJWT(t, cfg, repo, false)
-	auth := integrationAuth(token)
+	authHeader := integrationAuth(token)
 
 	client := ts.Client()
 
 	// 1. Create repository
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/?create=true", nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("create repo: %v", err)
@@ -84,7 +93,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 2. Create again → 409
 	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/?create=true", nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("create repo again: %v", err)
@@ -97,7 +106,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 	// 3. Save config
 	configData := []byte("test-config-data")
 	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/config", bytes.NewReader(configData))
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("save config: %v", err)
@@ -109,7 +118,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 4. Check config
 	req, _ = http.NewRequest(http.MethodHead, ts.URL+"/"+repo+"/config", nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("check config: %v", err)
@@ -121,7 +130,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 5. Get config
 	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/"+repo+"/config", nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get config: %v", err)
@@ -141,7 +150,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 	blobName := hex.EncodeToString(hash[:])
 
 	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/data/"+blobName, bytes.NewReader(blobData))
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("save blob: %v", err)
@@ -153,7 +162,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 7. Check blob
 	req, _ = http.NewRequest(http.MethodHead, ts.URL+"/"+repo+"/data/"+blobName, nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("check blob: %v", err)
@@ -168,7 +177,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 8. Get blob
 	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/"+repo+"/data/"+blobName, nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("get blob: %v", err)
@@ -184,13 +193,13 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 9. List blobs
 	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/"+repo+"/data", nil)
-	req.Header.Set("Authorization", auth)
-	req.Header.Set("Accept", contentTypeResticV2)
+	req.Header.Set("Authorization", authHeader)
+	req.Header.Set("Accept", handlers.ContentTypeResticV2)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("list blobs: %v", err)
 	}
-	var blobs []BlobInfo
+	var blobs []storage.BlobInfo
 	json.NewDecoder(resp.Body).Decode(&blobs)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -205,7 +214,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 10. Delete blob
 	req, _ = http.NewRequest(http.MethodDelete, ts.URL+"/"+repo+"/data/"+blobName, nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("delete blob: %v", err)
@@ -217,7 +226,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	// 11. Delete config
 	req, _ = http.NewRequest(http.MethodDelete, ts.URL+"/"+repo+"/config", nil)
-	req.Header.Set("Authorization", auth)
+	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("delete config: %v", err)
@@ -230,8 +239,8 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 func TestIntegration_WORM(t *testing.T) {
 	cfg := integrationConfig()
-	storage := NewS3Storage(cfg)
-	srv := NewServer(storage, cfg)
+	store := storage.NewS3Storage(cfg)
+	srv := handlers.NewServer(store, cfg.JWTSecret, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 

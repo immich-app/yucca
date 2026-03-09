@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"io"
 	"log/slog"
 
+	"michael/internal/config"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -17,7 +19,7 @@ import (
 )
 
 var (
-	ErrChecksumMismatch  = errors.New("content hash does not match blob name")
+	ErrChecksumMismatch   = errors.New("content hash does not match blob name")
 	ErrPreconditionFailed = errors.New("precondition failed")
 )
 
@@ -48,7 +50,7 @@ type S3Storage struct {
 	client *s3.Client
 }
 
-func NewS3Storage(cfg Config) *S3Storage {
+func NewS3Storage(cfg config.Config) *S3Storage {
 	client := s3.New(s3.Options{
 		Region: cfg.S3Region,
 		Credentials: credentials.NewStaticCredentialsProvider(

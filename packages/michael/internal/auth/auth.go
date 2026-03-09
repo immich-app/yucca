@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"context"
@@ -23,16 +23,21 @@ type contextKey string
 
 const authContextKey contextKey = "auth"
 
+// NewContext returns a new context with the given Auth value.
+func NewContext(ctx context.Context, a Auth) context.Context {
+	return context.WithValue(ctx, authContextKey, a)
+}
+
 func isValidUUID(s string) bool {
 	_, err := uuid.Parse(s)
 	return err == nil
 }
 
-func authFromContext(ctx context.Context) Auth {
+func FromContext(ctx context.Context) Auth {
 	return ctx.Value(authContextKey).(Auth)
 }
 
-func authMiddleware(secret []byte) func(http.Handler) http.Handler {
+func Middleware(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			auth, err := extractAuth(r, secret)
@@ -61,6 +66,20 @@ type authError struct {
 
 func (e *authError) Error() string {
 	return e.message
+}
+
+type errorResponse struct {
+	StatusCode int    `json:"statusCode"`
+	Message    string `json:"message"`
+}
+
+func writeError(w http.ResponseWriter, code int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(errorResponse{
+		StatusCode: code,
+		Message:    message,
+	})
 }
 
 func extractAuth(r *http.Request, secret []byte) (Auth, *authError) {

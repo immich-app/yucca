@@ -1,14 +1,16 @@
-package main
+package handlers
 
 import (
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"michael/internal/auth"
 )
 
 // POST /{path}?create=true
 func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 
 	createStr := r.URL.Query().Get("create")
 	if createStr == "" {
@@ -21,7 +23,7 @@ func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists, err := s.storage.CheckBucket(r.Context(), auth.Repository)
+	exists, err := s.Storage.CheckBucket(r.Context(), a.Repository)
 	if err != nil {
 		slog.Error("check bucket failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
@@ -33,7 +35,7 @@ func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.storage.CreateBucket(r.Context(), auth.Repository); err != nil {
+	if err := s.Storage.CreateBucket(r.Context(), a.Repository); err != nil {
 		slog.Error("create bucket failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
 		return

@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
@@ -8,15 +8,18 @@ import (
 	"net/http"
 	"strconv"
 
+	"michael/internal/auth"
+	"michael/internal/storage"
+
 	"github.com/go-chi/chi/v5"
 )
 
 // GET /{path}/{type}
 func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 
 	accept := r.Header.Get("Accept")
-	if accept != contentTypeResticV2 {
+	if accept != ContentTypeResticV2 {
 		writeError(w, http.StatusNotImplemented, "Not Implemented")
 		return
 	}
@@ -28,21 +31,21 @@ func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	prefix := blobType + "/"
-	blobs, err := s.storage.ListObjects(r.Context(), auth.Repository, prefix)
+	blobs, err := s.Storage.ListObjects(r.Context(), a.Repository, prefix)
 	if err != nil {
 		slog.Error("list blobs failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
-	w.Header().Set("Content-Type", contentTypeResticV2)
+	w.Header().Set("Content-Type", ContentTypeResticV2)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(blobs)
 }
 
 // HEAD /{path}/{type}/{name}
 func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
 
@@ -57,7 +60,7 @@ func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := blobType + "/" + name
-	size, err := s.storage.HeadObject(r.Context(), auth.Repository, key)
+	size, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "Not Found")
 		return
@@ -69,7 +72,7 @@ func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 
 // GET /{path}/{type}/{name}
 func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
 
@@ -85,7 +88,7 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 
 	key := blobType + "/" + name
 	rangeHeader := r.Header.Get("Range")
-	obj, err := s.storage.GetObject(r.Context(), auth.Repository, key, rangeHeader)
+	obj, err := s.Storage.GetObject(r.Context(), a.Repository, key, rangeHeader)
 	if err != nil {
 		slog.Error("get blob failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
@@ -97,7 +100,7 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 
 // POST /{path}/{type}/{name}
 func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
 
@@ -112,13 +115,13 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := blobType + "/" + name
-	err := s.storage.PutObject(r.Context(), auth.Repository, key, r.Body, r.ContentLength, true, name)
+	err := s.Storage.PutObject(r.Context(), a.Repository, key, r.Body, r.ContentLength, true, name)
 	if err != nil {
-		if errors.Is(err, ErrPreconditionFailed) {
+		if errors.Is(err, storage.ErrPreconditionFailed) {
 			writeError(w, http.StatusForbidden, "Blob already exists")
 			return
 		}
-		if errors.Is(err, ErrChecksumMismatch) {
+		if errors.Is(err, storage.ErrChecksumMismatch) {
 			writeError(w, http.StatusBadRequest, "Content hash does not match blob name")
 			return
 		}
@@ -132,7 +135,7 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /{path}/{type}/{name}
 func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
 
@@ -146,20 +149,20 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if auth.WriteOnce && blobType != "locks" {
+	if a.WriteOnce && blobType != "locks" {
 		writeError(w, http.StatusForbidden, "Not permitted to write to WORM repository")
 		return
 	}
 
 	key := blobType + "/" + name
-	_, err := s.storage.HeadObject(r.Context(), auth.Repository, key)
+	_, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
 		slog.Error("head blob for delete failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
-	if err := s.storage.DeleteObject(r.Context(), auth.Repository, key); err != nil {
+	if err := s.Storage.DeleteObject(r.Context(), a.Repository, key); err != nil {
 		slog.Error("delete blob failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
 		return

@@ -1,13 +1,14 @@
-package main
+package metrics
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	"michael/internal/auth"
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel/metric/noop"
@@ -83,12 +84,12 @@ func TestCountingWriter(t *testing.T) {
 }
 
 func TestMetricAttrs(t *testing.T) {
-	auth := Auth{
+	a := auth.Auth{
 		User:       "customer-123",
 		Repository: "repo-456",
 	}
 
-	attrs := MetricAttrs(auth)
+	attrs := MetricAttrs(a)
 
 	customerID, found := attrs.Value("customerId")
 	if !found {
@@ -113,10 +114,10 @@ func TestMetricAttrs(t *testing.T) {
 }
 
 func TestMetricAttrsEquivalence(t *testing.T) {
-	auth := Auth{User: "u1", Repository: "r1"}
-	a := MetricAttrs(auth)
-	b := MetricAttrs(auth)
-	if !a.Equals(&b) {
+	a := auth.Auth{User: "u1", Repository: "r1"}
+	x := MetricAttrs(a)
+	y := MetricAttrs(a)
+	if !x.Equals(&y) {
 		t.Fatal("expected equivalent attribute sets")
 	}
 }
@@ -196,13 +197,13 @@ func TestCountingReadCloser(t *testing.T) {
 	}
 }
 
-func TestMetricsResponseWriter(t *testing.T) {
+func TestResponseWriter(t *testing.T) {
 	rec := &fakeResponseWriter{header: make(map[string][]string)}
-	mrw := &metricsResponseWriter{ResponseWriter: rec}
+	mrw := &ResponseWriter{ResponseWriter: rec}
 
 	mrw.WriteHeader(201)
-	if mrw.status != 201 {
-		t.Fatalf("expected status 201, got %d", mrw.status)
+	if mrw.Status != 201 {
+		t.Fatalf("expected status 201, got %d", mrw.Status)
 	}
 
 	n, err := mrw.Write([]byte("hello"))
@@ -212,16 +213,16 @@ func TestMetricsResponseWriter(t *testing.T) {
 	if n != 5 {
 		t.Fatalf("expected 5 bytes, got %d", n)
 	}
-	if mrw.bytesWritten != 5 {
-		t.Fatalf("expected 5 bytes written, got %d", mrw.bytesWritten)
+	if mrw.BytesWritten != 5 {
+		t.Fatalf("expected 5 bytes written, got %d", mrw.BytesWritten)
 	}
 
 	n, err = mrw.Write([]byte(" world"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mrw.bytesWritten != 11 {
-		t.Fatalf("expected 11 bytes written, got %d", mrw.bytesWritten)
+	if mrw.BytesWritten != 11 {
+		t.Fatalf("expected 11 bytes written, got %d", mrw.BytesWritten)
 	}
 
 	if mrw.Unwrap() != http.ResponseWriter(rec) {
@@ -229,20 +230,20 @@ func TestMetricsResponseWriter(t *testing.T) {
 	}
 }
 
-func TestMetricsResponseWriterDefaultStatus(t *testing.T) {
+func TestResponseWriterDefaultStatus(t *testing.T) {
 	rec := &fakeResponseWriter{header: make(map[string][]string)}
-	mrw := &metricsResponseWriter{ResponseWriter: rec}
+	mrw := &ResponseWriter{ResponseWriter: rec}
 
 	// Write without explicit WriteHeader should default to 200
 	mrw.Write([]byte("data"))
-	if mrw.status != 200 {
-		t.Fatalf("expected default status 200, got %d", mrw.status)
+	if mrw.Status != 200 {
+		t.Fatalf("expected default status 200, got %d", mrw.Status)
 	}
 }
 
-func TestMetricsResponseWriterReadFromDelegates(t *testing.T) {
+func TestResponseWriterReadFromDelegates(t *testing.T) {
 	rfw := &readFromResponseWriter{header: make(map[string][]string)}
-	mrw := &metricsResponseWriter{ResponseWriter: rfw}
+	mrw := &ResponseWriter{ResponseWriter: rfw}
 
 	src := bytes.NewReader([]byte("hello world"))
 	n, err := mrw.ReadFrom(src)
@@ -252,18 +253,18 @@ func TestMetricsResponseWriterReadFromDelegates(t *testing.T) {
 	if n != 11 {
 		t.Fatalf("expected 11 bytes, got %d", n)
 	}
-	if mrw.bytesWritten != 11 {
-		t.Fatalf("expected 11 bytes counted, got %d", mrw.bytesWritten)
+	if mrw.BytesWritten != 11 {
+		t.Fatalf("expected 11 bytes counted, got %d", mrw.BytesWritten)
 	}
 	if !rfw.readFromCalled {
 		t.Fatal("expected ReadFrom to be delegated to underlying writer")
 	}
 }
 
-func TestMetricsResponseWriterReadFromFallback(t *testing.T) {
+func TestResponseWriterReadFromFallback(t *testing.T) {
 	// fakeResponseWriter does NOT implement io.ReaderFrom, so fallback path is used
 	rec := &fakeResponseWriter{header: make(map[string][]string)}
-	mrw := &metricsResponseWriter{ResponseWriter: rec}
+	mrw := &ResponseWriter{ResponseWriter: rec}
 
 	src := bytes.NewReader([]byte("hello"))
 	n, err := mrw.ReadFrom(src)
@@ -273,8 +274,8 @@ func TestMetricsResponseWriterReadFromFallback(t *testing.T) {
 	if n != 5 {
 		t.Fatalf("expected 5 bytes, got %d", n)
 	}
-	if mrw.bytesWritten != 5 {
-		t.Fatalf("expected 5 bytes counted, got %d", mrw.bytesWritten)
+	if mrw.BytesWritten != 5 {
+		t.Fatalf("expected 5 bytes counted, got %d", mrw.BytesWritten)
 	}
 	if rec.buf.String() != "hello" {
 		t.Fatalf("expected 'hello', got %q", rec.buf.String())
@@ -293,9 +294,9 @@ type fakeResponseWriter struct {
 	buf    bytes.Buffer
 }
 
-func (f *fakeResponseWriter) Header() http.Header          { return http.Header(f.header) }
-func (f *fakeResponseWriter) Write(p []byte) (int, error)  { return f.buf.Write(p) }
-func (f *fakeResponseWriter) WriteHeader(int)              {}
+func (f *fakeResponseWriter) Header() http.Header         { return http.Header(f.header) }
+func (f *fakeResponseWriter) Write(p []byte) (int, error) { return f.buf.Write(p) }
+func (f *fakeResponseWriter) WriteHeader(int)             {}
 
 // readFromResponseWriter implements both http.ResponseWriter and io.ReaderFrom.
 type readFromResponseWriter struct {
@@ -304,43 +305,43 @@ type readFromResponseWriter struct {
 	readFromCalled bool
 }
 
-func (f *readFromResponseWriter) Header() http.Header          { return http.Header(f.header) }
-func (f *readFromResponseWriter) Write(p []byte) (int, error)  { return f.buf.Write(p) }
-func (f *readFromResponseWriter) WriteHeader(int)              {}
+func (f *readFromResponseWriter) Header() http.Header         { return http.Header(f.header) }
+func (f *readFromResponseWriter) Write(p []byte) (int, error) { return f.buf.Write(p) }
+func (f *readFromResponseWriter) WriteHeader(int)             {}
 func (f *readFromResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	f.readFromCalled = true
 	return io.Copy(&f.buf, r)
 }
 
 func TestAuthMetricOptionCacheHit(t *testing.T) {
-	auth := Auth{User: "u1", Repository: "r1"}
-	opt1 := authMetricOption(auth)
-	opt2 := authMetricOption(auth)
+	a := auth.Auth{User: "u1", Repository: "r1"}
+	opt1 := AuthMetricOption(a)
+	opt2 := AuthMetricOption(a)
 	// Same pointer means the cache returned the same object.
 	if opt1 != opt2 {
-		t.Fatal("expected cached authMetricOption to return the same object")
+		t.Fatal("expected cached AuthMetricOption to return the same object")
 	}
 }
 
 func TestAuthMetricOptionDifferentKeys(t *testing.T) {
-	a := authMetricOption(Auth{User: "u1", Repository: "r1"})
-	b := authMetricOption(Auth{User: "u2", Repository: "r2"})
+	a := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1"})
+	b := AuthMetricOption(auth.Auth{User: "u2", Repository: "r2"})
 	if a == b {
 		t.Fatal("different auth keys should produce different options")
 	}
 }
 
 func TestHttpMetricOptionCacheHit(t *testing.T) {
-	opt1 := httpMetricOption("GET", "/foo", 200)
-	opt2 := httpMetricOption("GET", "/foo", 200)
+	opt1 := HttpMetricOption("GET", "/foo", 200)
+	opt2 := HttpMetricOption("GET", "/foo", 200)
 	if opt1 != opt2 {
-		t.Fatal("expected cached httpMetricOption to return the same object")
+		t.Fatal("expected cached HttpMetricOption to return the same object")
 	}
 }
 
 func TestHttpMetricOptionDifferentKeys(t *testing.T) {
-	a := httpMetricOption("GET", "/foo", 200)
-	b := httpMetricOption("POST", "/foo", 201)
+	a := HttpMetricOption("GET", "/foo", 200)
+	b := HttpMetricOption("POST", "/foo", 201)
 	if a == b {
 		t.Fatal("different HTTP keys should produce different options")
 	}
@@ -386,13 +387,13 @@ func TestAuthMetricOptionConcurrency(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			authMetricOption(Auth{User: "u1", Repository: "r1"})
+			AuthMetricOption(auth.Auth{User: "u1", Repository: "r1"})
 		}()
 	}
 	wg.Wait()
 }
 
-func TestBlobMetricsMiddlewareUnwraps(t *testing.T) {
+func TestBlobMiddlewareUnwraps(t *testing.T) {
 	meter := noop.NewMeterProvider().Meter("test")
 	m, err := NewMetrics(meter)
 	if err != nil {
@@ -400,27 +401,27 @@ func TestBlobMetricsMiddlewareUnwraps(t *testing.T) {
 	}
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The writer passed through should be the outer metricsResponseWriter,
+		// The writer passed through should be the outer ResponseWriter,
 		// not a second wrapper.
-		if _, ok := w.(*metricsResponseWriter); !ok {
-			t.Error("expected w to be *metricsResponseWriter, not a new wrapper")
+		if _, ok := w.(*ResponseWriter); !ok {
+			t.Error("expected w to be *ResponseWriter, not a new wrapper")
 		}
 		w.Write([]byte("hello"))
 	})
 
-	handler := blobMetricsMiddleware(m)(inner)
+	handler := BlobMiddleware(m)(inner)
 
-	// Wrap in a metricsResponseWriter (simulating metricsMiddleware).
+	// Wrap in a ResponseWriter (simulating Middleware).
 	rec := httptest.NewRecorder()
-	mrw := &metricsResponseWriter{ResponseWriter: rec}
+	mrw := &ResponseWriter{ResponseWriter: rec}
 
 	req := httptest.NewRequest("GET", "/test", nil)
-	ctx := context.WithValue(req.Context(), authContextKey, Auth{User: "u1", Repository: "r1"})
+	ctx := auth.NewContext(req.Context(), auth.Auth{User: "u1", Repository: "r1"})
 	req = req.WithContext(ctx)
 
 	handler.ServeHTTP(mrw, req)
 
-	if mrw.bytesWritten != 5 {
-		t.Fatalf("expected 5 bytes written, got %d", mrw.bytesWritten)
+	if mrw.BytesWritten != 5 {
+		t.Fatalf("expected 5 bytes written, got %d", mrw.BytesWritten)
 	}
 }

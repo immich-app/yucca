@@ -1,17 +1,20 @@
-package main
+package handlers
 
 import (
 	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"michael/internal/auth"
+	"michael/internal/storage"
 )
 
 // HEAD /{path}/config
 func (s *Server) checkConfig(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 
-	size, err := s.storage.HeadObject(r.Context(), auth.Repository, "config")
+	size, err := s.Storage.HeadObject(r.Context(), a.Repository, "config")
 	if err != nil {
 		writeError(w, http.StatusNotFound, "Not Found")
 		return
@@ -23,10 +26,10 @@ func (s *Server) checkConfig(w http.ResponseWriter, r *http.Request) {
 
 // GET /{path}/config
 func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 
 	rangeHeader := r.Header.Get("Range")
-	obj, err := s.storage.GetObject(r.Context(), auth.Repository, "config", rangeHeader)
+	obj, err := s.Storage.GetObject(r.Context(), a.Repository, "config", rangeHeader)
 	if err != nil {
 		slog.Error("get config failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
@@ -38,11 +41,11 @@ func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 
 // POST /{path}/config
 func (s *Server) saveConfig(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 
-	err := s.storage.PutObject(r.Context(), auth.Repository, "config", r.Body, r.ContentLength, auth.WriteOnce, "")
+	err := s.Storage.PutObject(r.Context(), a.Repository, "config", r.Body, r.ContentLength, a.WriteOnce, "")
 	if err != nil {
-		if errors.Is(err, ErrPreconditionFailed) {
+		if errors.Is(err, storage.ErrPreconditionFailed) {
 			writeError(w, http.StatusForbidden, "Config already exists")
 			return
 		}
@@ -56,21 +59,21 @@ func (s *Server) saveConfig(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /{path}/config
 func (s *Server) deleteConfig(w http.ResponseWriter, r *http.Request) {
-	auth := authFromContext(r.Context())
+	a := auth.FromContext(r.Context())
 
-	if auth.WriteOnce {
+	if a.WriteOnce {
 		writeError(w, http.StatusForbidden, "Not permitted to write to WORM repository")
 		return
 	}
 
-	_, err := s.storage.HeadObject(r.Context(), auth.Repository, "config")
+	_, err := s.Storage.HeadObject(r.Context(), a.Repository, "config")
 	if err != nil {
 		slog.Error("head config for delete failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
-	if err := s.storage.DeleteObject(r.Context(), auth.Repository, "config"); err != nil {
+	if err := s.Storage.DeleteObject(r.Context(), a.Repository, "config"); err != nil {
 		slog.Error("delete config failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "An error occurred with the storage server")
 		return

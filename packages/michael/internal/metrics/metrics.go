@@ -1,4 +1,4 @@
-package main
+package metrics
 
 import (
 	"context"
@@ -8,6 +8,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"michael/internal/auth"
+	"michael/internal/config"
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel/attribute"
@@ -73,7 +76,7 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 	}, nil
 }
 
-func SetupMeterProvider(cfg Config) (*sdkmetric.MeterProvider, error) {
+func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {
 	ctx := context.Background()
 
 	opts := []otlpmetrichttp.Option{
@@ -100,10 +103,10 @@ func SetupMeterProvider(cfg Config) (*sdkmetric.MeterProvider, error) {
 	return provider, nil
 }
 
-func MetricAttrs(auth Auth) attribute.Set {
+func MetricAttrs(a auth.Auth) attribute.Set {
 	return attribute.NewSet(
-		attribute.String("customerId", auth.User),
-		attribute.String("repositoryId", auth.Repository),
+		attribute.String("customerId", a.User),
+		attribute.String("repositoryId", a.Repository),
 	)
 }
 
@@ -113,14 +116,14 @@ type authAttrKey struct{ user, repository string }
 
 var authAttrCache sync.Map
 
-func authMetricOption(auth Auth) otelmetric.MeasurementOption {
-	key := authAttrKey{auth.User, auth.Repository}
+func AuthMetricOption(a auth.Auth) otelmetric.MeasurementOption {
+	key := authAttrKey{a.User, a.Repository}
 	if v, ok := authAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
 	opt := otelmetric.WithAttributeSet(attribute.NewSet(
-		attribute.String("customerId", auth.User),
-		attribute.String("repositoryId", auth.Repository),
+		attribute.String("customerId", a.User),
+		attribute.String("repositoryId", a.Repository),
 	))
 	authAttrCache.Store(key, opt)
 	return opt
@@ -134,7 +137,7 @@ type httpAttrKey struct {
 
 var httpAttrCache sync.Map
 
-func httpMetricOption(method, route string, status int) otelmetric.MeasurementOption {
+func HttpMetricOption(method, route string, status int) otelmetric.MeasurementOption {
 	key := httpAttrKey{method, route, status}
 	if v, ok := httpAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
@@ -197,36 +200,36 @@ func (cw *countingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// metricsResponseWriter wraps http.ResponseWriter to count bytes written and track status.
-type metricsResponseWriter struct {
+// ResponseWriter wraps http.ResponseWriter to count bytes written and track status.
+type ResponseWriter struct {
 	http.ResponseWriter
-	bytesWritten int64
-	status       int
+	BytesWritten int64
+	Status       int
 }
 
-func (w *metricsResponseWriter) WriteHeader(code int) {
-	w.status = code
+func (w *ResponseWriter) WriteHeader(code int) {
+	w.Status = code
 	w.ResponseWriter.WriteHeader(code)
 }
 
-func (w *metricsResponseWriter) Write(p []byte) (int, error) {
-	if w.status == 0 {
-		w.status = http.StatusOK
+func (w *ResponseWriter) Write(p []byte) (int, error) {
+	if w.Status == 0 {
+		w.Status = http.StatusOK
 	}
 	n, err := w.ResponseWriter.Write(p)
-	w.bytesWritten += int64(n)
+	w.BytesWritten += int64(n)
 	return n, err
 }
 
 // ReadFrom implements io.ReaderFrom to preserve sendfile/splice zero-copy
 // optimization when the underlying ResponseWriter supports it.
-func (w *metricsResponseWriter) ReadFrom(r io.Reader) (int64, error) {
-	if w.status == 0 {
-		w.status = http.StatusOK
+func (w *ResponseWriter) ReadFrom(r io.Reader) (int64, error) {
+	if w.Status == 0 {
+		w.Status = http.StatusOK
 	}
 	if rf, ok := w.ResponseWriter.(io.ReaderFrom); ok {
 		n, err := rf.ReadFrom(r)
-		w.bytesWritten += n
+		w.BytesWritten += n
 		return n, err
 	}
 	// Fallback: copy through Write so bytes are still counted.
@@ -235,29 +238,29 @@ func (w *metricsResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	return n, err
 }
 
-func (w *metricsResponseWriter) Unwrap() http.ResponseWriter {
+func (w *ResponseWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-// blobMetricsMiddleware counts uploaded/downloaded bytes.
-// Must run after authMiddleware so auth context is available, and after
-// metricsMiddleware so w is already a *metricsResponseWriter.
-func blobMetricsMiddleware(m *Metrics) func(http.Handler) http.Handler {
+// BlobMiddleware counts uploaded/downloaded bytes.
+// Must run after auth.Middleware so auth context is available, and after
+// Middleware so w is already a *ResponseWriter.
+func BlobMiddleware(m *Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cr := &countingReadCloser{ReadCloser: r.Body}
 			r.Body = cr
 
-			mrw, ok := w.(*metricsResponseWriter)
+			mrw, ok := w.(*ResponseWriter)
 			if !ok {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			beforeBytes := mrw.bytesWritten
+			beforeBytes := mrw.BytesWritten
 			next.ServeHTTP(w, r)
 
-			status := mrw.status
+			status := mrw.Status
 			if status == 0 {
 				status = http.StatusOK
 			}
@@ -265,30 +268,30 @@ func blobMetricsMiddleware(m *Metrics) func(http.Handler) http.Handler {
 				return
 			}
 
-			auth := authFromContext(r.Context())
-			attrs := authMetricOption(auth)
+			a := auth.FromContext(r.Context())
+			attrs := AuthMetricOption(a)
 
 			if cr.n > 0 {
 				m.UploadedBytes.Add(r.Context(), cr.n, attrs)
 			}
-			if downloaded := mrw.bytesWritten - beforeBytes; downloaded > 0 {
+			if downloaded := mrw.BytesWritten - beforeBytes; downloaded > 0 {
 				m.DownloadedBytes.Add(r.Context(), downloaded, attrs)
 			}
 		})
 	}
 }
 
-// metricsMiddleware records HTTP request metrics.
-func metricsMiddleware(m *Metrics) func(http.Handler) http.Handler {
+// Middleware records HTTP request metrics.
+func Middleware(m *Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			ww := &metricsResponseWriter{ResponseWriter: w}
+			ww := &ResponseWriter{ResponseWriter: w}
 
 			next.ServeHTTP(ww, r)
 
 			duration := time.Since(start).Seconds()
-			status := ww.status
+			status := ww.Status
 			if status == 0 {
 				status = http.StatusOK
 			}
@@ -301,7 +304,7 @@ func metricsMiddleware(m *Metrics) func(http.Handler) http.Handler {
 				}
 			}
 
-			attrs := httpMetricOption(r.Method, route, status)
+			attrs := HttpMetricOption(r.Method, route, status)
 
 			m.RequestDuration.Record(r.Context(), duration, attrs)
 			m.RequestCount.Add(r.Context(), 1, attrs)

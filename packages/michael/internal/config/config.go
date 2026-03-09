@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"log"
@@ -8,12 +8,12 @@ import (
 )
 
 type Config struct {
-	Port             int
-	JWTSecret        []byte
-	S3AccessKeyID    string
-	S3SecretAccessKey string
-	S3Region         string
-	S3Endpoint       string
+	Port                int
+	JWTSecret           []byte
+	S3AccessKeyID       string
+	S3SecretAccessKey   string
+	S3Region            string
+	S3Endpoint          string
 	S3ForcePathStyle    bool
 	OTLPMetricsEndpoint string
 	OTLPMetricsURLPath  string

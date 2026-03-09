@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 func TestCreateRepository_Success(t *testing.T) {
 	store := &mockStorage{
-		checkBucketFn: func(_ context.Context, _ string) (bool, error) { return false, nil },
+		checkBucketFn:  func(_ context.Context, _ string) (bool, error) { return false, nil },
 		createBucketFn: func(_ context.Context, _ string) error { return nil },
 	}
 	srv := newTestServer(store)

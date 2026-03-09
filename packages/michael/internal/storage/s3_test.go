@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"testing"
@@ -43,5 +43,5 @@ type httpError struct {
 	statusCode int
 }
 
-func (e *httpError) Error() string            { return "http error" }
-func (e *httpError) HTTPStatusCode() int      { return e.statusCode }
+func (e *httpError) Error() string       { return "http error" }
+func (e *httpError) HTTPStatusCode() int { return e.statusCode }

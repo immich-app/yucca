@@ -10,24 +10,29 @@ import (
 	"syscall"
 	"time"
 
+	"michael/internal/config"
+	"michael/internal/handlers"
+	"michael/internal/metrics"
+	"michael/internal/storage"
+
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
 func main() {
-	cfg := LoadConfig()
-	storage := NewS3Storage(cfg)
+	cfg := config.LoadConfig()
+	store := storage.NewS3Storage(cfg)
 
-	var metrics *Metrics
+	var m *metrics.Metrics
 	var meterProvider *sdkmetric.MeterProvider
 	if cfg.OTLPEnabled {
 		var err error
-		meterProvider, err = SetupMeterProvider(cfg)
+		meterProvider, err = metrics.SetupMeterProvider(cfg)
 		if err != nil {
 			slog.Error("failed to setup meter provider", "error", err)
 			os.Exit(1)
 		}
 		meter := meterProvider.Meter("michael")
-		metrics, err = NewMetrics(meter)
+		m, err = metrics.NewMetrics(meter)
 		if err != nil {
 			slog.Error("failed to create metrics", "error", err)
 			os.Exit(1)
@@ -35,12 +40,12 @@ func main() {
 		slog.Info("OpenTelemetry metrics enabled", "endpoint", cfg.OTLPMetricsEndpoint)
 	}
 
-	server := NewServer(storage, cfg, metrics)
+	srv := handlers.NewServer(store, cfg.JWTSecret, m)
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
-	srv := &http.Server{
+	httpSrv := &http.Server{
 		Addr:    addr,
-		Handler: server.Handler(),
+		Handler: srv.Handler(),
 	}
 
 	// Graceful shutdown
@@ -49,7 +54,7 @@ func main() {
 
 	go func() {
 		slog.Info("starting michael", "port", cfg.Port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "error", err)
 			os.Exit(1)
 		}
@@ -61,7 +66,7 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "error", err)
 		os.Exit(1)
 	}

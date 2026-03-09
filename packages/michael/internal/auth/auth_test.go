@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"encoding/base64"
@@ -129,17 +129,17 @@ func TestAuthSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
 
-	auth, err := extractAuth(req, testSecret)
+	a, err := extractAuth(req, testSecret)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if auth.User != testUser {
-		t.Errorf("expected user %s, got %s", testUser, auth.User)
+	if a.User != testUser {
+		t.Errorf("expected user %s, got %s", testUser, a.User)
 	}
-	if auth.Repository != testRepository {
-		t.Errorf("expected repository %s, got %s", testRepository, auth.Repository)
+	if a.Repository != testRepository {
+		t.Errorf("expected repository %s, got %s", testRepository, a.Repository)
 	}
-	if auth.WriteOnce != false {
+	if a.WriteOnce != false {
 		t.Error("expected writeOnce to be false")
 	}
 }
@@ -150,7 +150,7 @@ func TestAuthMiddlewareRepoMismatch(t *testing.T) {
 	// Create a chi router to test the middleware with path params
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(authMiddleware(testSecret))
+		r.Use(Middleware(testSecret))
 		r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
@@ -173,9 +173,9 @@ func TestAuthMiddlewareSuccess(t *testing.T) {
 	var gotAuth Auth
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(authMiddleware(testSecret))
+		r.Use(Middleware(testSecret))
 		r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
-			gotAuth = authFromContext(r.Context())
+			gotAuth = FromContext(r.Context())
 			w.WriteHeader(http.StatusOK)
 		})
 	})
