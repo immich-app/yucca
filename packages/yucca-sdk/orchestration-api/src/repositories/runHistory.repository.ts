@@ -8,7 +8,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { from } from 'rxjs';
 import { Tail } from 'tail';
-import { RunHistoryStatus } from '../enum';
+import { TaskStatus } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { DB } from '../schema';
 
@@ -26,53 +26,57 @@ export class RunHistoryRepository {
   ) {
     const logId = randomUUID();
 
-    const start = new Date().toISOString();
-    const logFilePath = resolve(this.moduleConfig.statePath, 'logs', repositoryId, start + '.jsonl');
+    try {
+      const start = new Date().toISOString();
+      const logFilePath = resolve(this.moduleConfig.statePath, 'logs', repositoryId, start + '.jsonl');
 
-    await mkdir(dirname(logFilePath), {
-      recursive: true,
-    });
-
-    const log = createWriteStream(logFilePath);
-
-    await this.db
-      .insertInto('runHistory')
-      .values({
-        id: logId,
-        repositoryId,
-
-        start,
-        logFilePath,
-
-        status: RunHistoryStatus.Incomplete,
-      })
-      .executeTakeFirstOrThrow();
-
-    fn(log, logId)
-      .then(async () => {
-        callback();
-        log.close();
-
-        await this.db
-          .updateTable('runHistory')
-          .where('id', '=', logId)
-          .set('status', RunHistoryStatus.Complete)
-          .set('end', new Date().toISOString())
-          .executeTakeFirstOrThrow();
-      })
-      .catch(async (error) => {
-        callback(error);
-
-        log.write(JSON.stringify({ message_type: 'error', error: `${error}` }));
-        log.close();
-
-        await this.db
-          .updateTable('runHistory')
-          .where('id', '=', logId)
-          .set('status', RunHistoryStatus.Failed)
-          .set('end', new Date().toISOString())
-          .executeTakeFirstOrThrow();
+      await mkdir(dirname(logFilePath), {
+        recursive: true,
       });
+
+      const log = createWriteStream(logFilePath);
+
+      await this.db
+        .insertInto('runHistory')
+        .values({
+          id: logId,
+          repositoryId,
+
+          start,
+          logFilePath,
+
+          status: TaskStatus.Incomplete,
+        })
+        .executeTakeFirstOrThrow();
+
+      fn(log, logId)
+        .then(async () => {
+          callback();
+          log.close();
+
+          await this.db
+            .updateTable('runHistory')
+            .where('id', '=', logId)
+            .set('status', TaskStatus.Complete)
+            .set('end', new Date().toISOString())
+            .executeTakeFirstOrThrow();
+        })
+        .catch(async (error) => {
+          callback(error);
+
+          log.write(JSON.stringify({ message_type: 'error', error: `${error}` }));
+          log.close();
+
+          await this.db
+            .updateTable('runHistory')
+            .where('id', '=', logId)
+            .set('status', TaskStatus.Failed)
+            .set('end', new Date().toISOString())
+            .executeTakeFirstOrThrow();
+        });
+    } catch (error) {
+      callback(error);
+    }
 
     return { logId };
   }

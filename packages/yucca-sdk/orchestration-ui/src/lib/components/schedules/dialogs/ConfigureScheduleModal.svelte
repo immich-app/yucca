@@ -24,8 +24,10 @@
 
   let updating = $state(false);
 
-  let name = $state("");
-  let cron = $state("*/15 * * * *");
+  // svelte-ignore state_referenced_locally
+  let name = $state(schedule.name);
+  // svelte-ignore state_referenced_locally
+  let cron = $state(schedule.cron);
 
   const onUpdate = async () => {
     await updateSchedule(schedule.id, {

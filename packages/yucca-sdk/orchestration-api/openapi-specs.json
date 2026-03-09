@@ -614,6 +614,27 @@
           "Schedule"
         ]
       }
+    },
+    "/api/tasks": {
+      "get": {
+        "operationId": "getRunningTasks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunningTaskListResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "RunningTasks"
+        ]
+      }
     }
   },
   "info": {
@@ -1109,6 +1130,83 @@
         },
         "required": [
           "schedule"
+        ]
+      },
+      "TaskType": {
+        "type": "string",
+        "enum": [
+          "schedule",
+          "backup",
+          "forget"
+        ]
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "incomplete",
+          "complete",
+          "failed"
+        ]
+      },
+      "ActiveScheduleItemDto": {
+        "type": "object",
+        "properties": {
+          "repositoryId": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "repositoryId",
+          "status"
+        ]
+      },
+      "RunningTaskDto": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskType"
+              }
+            ]
+          },
+          "logId": {
+            "type": "string"
+          },
+          "scheduleStatus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActiveScheduleItemDto"
+            }
+          }
+        },
+        "required": [
+          "parentId",
+          "type"
+        ]
+      },
+      "RunningTaskListResponse": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunningTaskDto"
+            }
+          }
+        },
+        "required": [
+          "tasks"
         ]
       }
     }

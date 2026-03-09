@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { ActiveTaskDto } from '../dto/repository.dto';
+import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class RunningTasksRepository {
-  activeTasks = new Map<string, ActiveTaskDto>();
+  activeTasks = new Map<string, RunningTaskDto>();
 
   constructor(private readonly events: EventsGateway) {}
 
@@ -14,7 +14,7 @@ export class RunningTasksRepository {
   }
 
   startTask(parentId: string, type: TaskType, logId?: string) {
-    const task: ActiveTaskDto = {
+    const task: RunningTaskDto = {
       parentId,
       type,
       logId,
@@ -24,6 +24,24 @@ export class RunningTasksRepository {
     this.events.publish({
       type: 'TaskStart',
       task,
+    });
+  }
+
+  updateTask(parentId: string, data: Partial<RunningTaskDto>) {
+    const task = this.activeTasks.get(parentId);
+    if (!task) {
+      throw new Error(`Task for parent ${parentId} does not exist.`);
+    }
+
+    this.activeTasks.set(parentId, {
+      ...task,
+      ...data,
+    });
+
+    this.events.publish({
+      type: 'TaskUpdate',
+      parentId,
+      task: data,
     });
   }
 

@@ -52,7 +52,7 @@ export class ScheduleRepository {
     }));
   }
 
-  async getRepositories(id: string) {
+  async getRepositoryIds(id: string) {
     const repositorySchedules = await this.db
       .selectFrom('repositorySchedules')
       .selectAll('repositorySchedules')

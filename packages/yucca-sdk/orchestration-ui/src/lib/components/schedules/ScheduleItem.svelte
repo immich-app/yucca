@@ -11,12 +11,14 @@
     Heading,
     HStack,
     IconButton,
+    modalManager,
     Stack,
     Text,
     toastManager,
   } from "@immich/ui";
-  import { mdiDelete, mdiPause, mdiPlay } from "@mdi/js";
+  import { mdiCog, mdiDelete, mdiPause, mdiPlay } from "@mdi/js";
   import RelativeTime from "../util/RelativeTime.svelte";
+  import ConfigureScheduleModal from "./dialogs/ConfigureScheduleModal.svelte";
 
   type Props = {
     schedule: ScheduleDto;
@@ -49,7 +51,23 @@
     }
   };
 
+  const onConfigure = () => {
+    modalManager.open(ConfigureScheduleModal, {
+      schedule,
+    });
+  };
+
   const onDelete = async () => {
+    const confirm = await modalManager.showDialog({
+      confirmText: "Delete",
+      title: "Delete Schedule",
+      prompt: "This schedule will be removed.",
+    });
+
+    if (!confirm) {
+      return;
+    }
+
     try {
       await removeSchedule(schedule.id);
       toastManager.info(`Deleted schedule ${schedule.name}`);
@@ -85,6 +103,11 @@
         {:else}
           <IconButton onclick={onPause} aria-label="Pause" icon={mdiPause} />
         {/if}
+        <IconButton
+          onclick={onConfigure}
+          aria-label="Configure"
+          icon={mdiCog}
+        />
         <IconButton onclick={onDelete} aria-label="Delete" icon={mdiDelete} />
       </HStack>
     </HStack>

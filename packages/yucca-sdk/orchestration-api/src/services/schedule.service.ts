@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob, CronTime } from 'cron';
 import { Updateable } from 'kysely';
 import { randomUUID } from 'node:crypto';
+import { ActiveScheduleItemDto } from '../dto/runningTasks.dto';
 import {
   ScheduleCreateRequestDto,
   ScheduleCreateResponseDto,
@@ -8,16 +11,85 @@ import {
   ScheduleUpdateRequestDto,
   ScheduleUpdateResponseDto,
 } from '../dto/schedule.dto';
+import { TaskStatus, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
+import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { ScheduleRepository } from '../repositories/schedule.repository';
 import { ScheduleTable } from '../schema/tables/schedule.table';
+import { RepositoryService } from './repository.service';
 
 @Injectable()
 export class ScheduleService {
   constructor(
+    private readonly repository: RepositoryService, // TODO: invoke indirectly?
     private readonly events: EventsGateway,
     private readonly schedule: ScheduleRepository,
+    private readonly schedulerRegistry: SchedulerRegistry,
+    private readonly runningTasks: RunningTasksRepository,
   ) {}
+
+  async bootstrap() {
+    for (const schedule of await this.schedule.getAll()) {
+      this.createCronJob(schedule.id, schedule.cron, schedule.paused);
+    }
+  }
+
+  private createCronJob(id: string, cron: string, paused: boolean): void {
+    this.schedulerRegistry.addCronJob(
+      id,
+      new CronJob<null, null>(
+        cron, // expression
+        () => this.runSchedule(id), // onTick
+        undefined, // onComplete
+        !paused, // started
+        undefined, // timezone
+        undefined, // context
+        undefined, // runOnInit
+        undefined, // utcOffset
+        true, // clean up when process exists
+      ),
+    );
+  }
+
+  private updateCronJob(id: string, cron: string, paused: boolean): void {
+    const job = this.schedulerRegistry.getCronJob(id);
+    job.setTime(new CronTime(cron));
+
+    if (paused) {
+      void job.stop();
+    } else {
+      job.start();
+    }
+  }
+
+  private async runSchedule(id: string) {
+    const { repositories } = await this.schedule.get(id);
+
+    if (repositories.length === 0) {
+      return;
+    }
+
+    this.runningTasks.startTask(id, TaskType.Schedule);
+
+    const scheduleStatus: ActiveScheduleItemDto[] = [];
+
+    for (const repositoryId of repositories) {
+      try {
+        scheduleStatus.push({ repositoryId, status: TaskStatus.Incomplete });
+        this.runningTasks.updateTask(id, { scheduleStatus });
+
+        await this.repository.createBackup_(repositoryId);
+
+        scheduleStatus.splice(-1, 1, { repositoryId, status: TaskStatus.Complete });
+        this.runningTasks.updateTask(id, { scheduleStatus });
+      } catch {
+        scheduleStatus.splice(-1, 1, { repositoryId, status: TaskStatus.Failed });
+        this.runningTasks.updateTask(id, { scheduleStatus });
+      }
+    }
+
+    this.runningTasks.endTask(id);
+  }
 
   async createSchedule({ repositories, ...dto }: ScheduleCreateRequestDto): Promise<ScheduleCreateResponseDto> {
     const id = randomUUID();
@@ -44,6 +116,8 @@ export class ScheduleService {
       schedule,
     });
 
+    this.createCronJob(id, dto.cron, false);
+
     return {
       schedule,
     };
@@ -59,7 +133,7 @@ export class ScheduleService {
     scheduleId: string,
     { name, paused, cron, repositories }: ScheduleUpdateRequestDto,
   ): Promise<ScheduleUpdateResponseDto> {
-    const linked = new Set(await this.schedule.getRepositories(scheduleId));
+    const linked = new Set(await this.schedule.getRepositoryIds(scheduleId));
 
     const set: Updateable<ScheduleTable> = {
       name,
@@ -83,6 +157,8 @@ export class ScheduleService {
       scheduleId,
       schedule,
     });
+
+    this.updateCronJob(scheduleId, schedule.cron, schedule.paused);
 
     return {
       schedule,

@@ -130,6 +130,21 @@ export type ScheduleUpdateRequestDto = {
 export type ScheduleUpdateResponseDto = {
     schedule: ScheduleDto;
 };
+export type TaskType = "schedule" | "backup" | "forget";
+export type TaskStatus = "incomplete" | "complete" | "failed";
+export type ActiveScheduleItemDto = {
+    repositoryId: string;
+    status: TaskStatus;
+};
+export type RunningTaskDto = {
+    parentId: string;
+    "type": TaskType;
+    logId?: string;
+    scheduleStatus?: ActiveScheduleItemDto[];
+};
+export type RunningTaskListResponse = {
+    tasks: RunningTaskDto[];
+};
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/debug", {
         ...opts
@@ -311,5 +326,13 @@ export function removeRepositoryToSchedule(id: string, repositoryId: string, opt
     return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
         ...opts,
         method: "DELETE"
+    }));
+}
+export function getRunningTasks(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RunningTaskListResponse;
+    }>("/api/tasks", {
+        ...opts
     }));
 }
