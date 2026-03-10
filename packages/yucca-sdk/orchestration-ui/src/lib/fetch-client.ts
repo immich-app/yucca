@@ -153,7 +153,9 @@ export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function createRepository(backend: string, repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, { backend }: {
+    backend?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResponseDto;

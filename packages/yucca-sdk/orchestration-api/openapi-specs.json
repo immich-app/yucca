@@ -21,7 +21,7 @@
         "parameters": [
           {
             "name": "backend",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"

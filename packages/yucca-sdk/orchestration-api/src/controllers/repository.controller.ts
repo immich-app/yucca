@@ -18,7 +18,7 @@ export class RepositoryController {
   constructor(private readonly service: RepositoryService) {}
 
   @Post()
-  @ApiQuery({ name: 'backend', type: String })
+  @ApiQuery({ name: 'backend', type: String, required: false })
   @ApiOkResponse({ type: RepositoryCreateResponseDto })
   createRepository(
     @Body() dto: RepositoryCreateRequestDto,
