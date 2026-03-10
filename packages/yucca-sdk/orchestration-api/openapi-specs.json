@@ -586,7 +586,7 @@
         ]
       },
       "delete": {
-        "operationId": "removeRepositoryToSchedule",
+        "operationId": "removeRepositoryFromSchedule",
         "parameters": [
           {
             "name": "id",

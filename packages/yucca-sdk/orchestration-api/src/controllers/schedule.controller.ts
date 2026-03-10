@@ -48,7 +48,7 @@ export class ScheduleController {
   @Delete('/:id/:repositoryId')
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'repositoryId', type: String })
-  removeRepositoryToSchedule(@Param('id') id: string, @Param('repositoryId') repositoryId: string): Promise<void> {
+  removeRepositoryFromSchedule(@Param('id') id: string, @Param('repositoryId') repositoryId: string): Promise<void> {
     return this.service.removeRepositoryFromSchedule(id, repositoryId);
   }
 }

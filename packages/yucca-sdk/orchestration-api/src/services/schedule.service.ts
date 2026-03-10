@@ -29,6 +29,10 @@ export class ScheduleService {
   ) {}
 
   async bootstrap() {
+    for (const name of this.schedulerRegistry.getCronJobs().keys()) {
+      this.schedulerRegistry.deleteCronJob(name);
+    }
+
     for (const schedule of await this.schedule.getAll()) {
       this.createCronJob(schedule.id, schedule.cron, schedule.paused);
     }
@@ -65,6 +69,16 @@ export class ScheduleService {
   private async runSchedule(id: string) {
     const { repositories } = await this.schedule.get(id);
 
+    const lastRun = new Date().toISOString();
+
+    await this.schedule.updateSchedule(id, { lastRun });
+
+    this.events.publish({
+      type: 'ScheduleUpdate',
+      scheduleId: id,
+      schedule: { lastRun },
+    });
+
     if (repositories.length === 0) {
       return;
     }
@@ -89,6 +103,16 @@ export class ScheduleService {
     }
 
     this.runningTasks.endTask(id);
+
+    const lastFinished = new Date().toISOString();
+
+    await this.schedule.updateSchedule(id, { lastFinished });
+
+    this.events.publish({
+      type: 'ScheduleUpdate',
+      scheduleId: id,
+      schedule: { lastFinished },
+    });
   }
 
   async createSchedule({ repositories, ...dto }: ScheduleCreateRequestDto): Promise<ScheduleCreateResponseDto> {
