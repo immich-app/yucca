@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Sse } from '@nestjs/common';
-import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Sse } from '@nestjs/common';
+import { ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import {
   ListSnapshotsResponseDto,
   LogResponseDto,
+  RepositoryCheckImportResponseDto,
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
@@ -17,8 +18,12 @@ export class RepositoryController {
   constructor(private readonly service: RepositoryService) {}
 
   @Post()
+  @ApiQuery({ name: 'backend', type: String })
   @ApiOkResponse({ type: RepositoryCreateResponseDto })
-  createRepository(@Body() dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
+  createRepository(
+    @Body() dto: RepositoryCreateRequestDto,
+    @Query('backend') _backend?: string,
+  ): Promise<RepositoryCreateResponseDto> {
     return this.service.createRepository(dto);
   }
 
@@ -47,7 +52,19 @@ export class RepositoryController {
     return this.service.removeRepositoryPath(id, dto.path);
   }
 
-  // TODO: import external repository route
+  @Get('/:id/import')
+  @ApiQuery({ name: 'backend', type: String })
+  @ApiOkResponse({ type: RepositoryCheckImportResponseDto })
+  checkImportRepository(@Param('id') id: string, @Query('backend') backend: string) {
+    return this.service.checkImportRepository(id, backend);
+  }
+
+  @Post('/:id/import')
+  @ApiQuery({ name: 'backend', type: String })
+  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  importRepository(@Param('id') id: string, @Query('backend') backend: string): Promise<RepositoryCreateResponseDto> {
+    return this.service.importRepository(id, backend);
+  }
 
   @Get('/:id/runs')
   @ApiParam({ name: 'id', type: String })

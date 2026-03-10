@@ -24,6 +24,7 @@
     mdiPlay,
   } from "@mdi/js";
   import RelativeTime from "../util/RelativeTime.svelte";
+  import ImportRepositoryModal from "./dialogs/ImportRepositoryModal.svelte";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -60,6 +61,11 @@
         ...repository,
         configuration: repository.configuration!,
       },
+    });
+
+  const onImport = () =>
+    modalManager.open(ImportRepositoryModal, {
+      repository,
     });
 </script>
 
@@ -126,7 +132,7 @@
             icon={mdiCog}
           />
         {:else}
-          <IconButton aria-label="Import" icon={mdiImport} />
+          <IconButton aria-label="Import" icon={mdiImport} onclick={onImport} />
         {/if}
       </HStack>
     </HStack>

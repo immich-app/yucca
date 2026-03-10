@@ -46,7 +46,12 @@
       repository: LocalRepositoryDto;
     }>,
   ) => {
-    repositories = [...(repositories ?? []), event.data.repository];
+    repositories = [
+      ...(repositories ?? []).filter(
+        (repository) => repository.id !== event.data.repository.id,
+      ),
+      event.data.repository,
+    ];
   };
 
   const onRepositoryUpdate = (

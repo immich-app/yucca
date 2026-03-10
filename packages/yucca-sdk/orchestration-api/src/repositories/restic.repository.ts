@@ -1,4 +1,4 @@
-import { backup, forget, init, snapshots, stats } from '@futo-org/restic-wrapper';
+import { backup, forget, init, keyList, snapshots, stats } from '@futo-org/restic-wrapper';
 import { Injectable } from '@nestjs/common';
 import { Writable } from 'node:stream';
 
@@ -32,5 +32,9 @@ export class ResticRepository {
       .snapshot(snapshotId)
       .prune(prune)
       .run();
+  }
+
+  async keyList(repository: string, key: Uint8Array) {
+    return await keyList().repository(repository).password(Buffer.from(key).toString('hex')).run();
   }
 }
