@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="yucca-api: database migrations script"
 #MISE dir="{{config_root}}/packages/yucca-api"
-#MISE depends=["yucca-api:build"]
 set -e
 
-node dist/bin/migrations.js "$@"
+pnpm exec sql-tools -u "postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}" "$@"
