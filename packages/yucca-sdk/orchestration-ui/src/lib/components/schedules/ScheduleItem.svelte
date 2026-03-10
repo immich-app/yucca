@@ -33,7 +33,7 @@
         paused: false,
       });
 
-      toastManager.info(`Paused schedule ${schedule.name}`);
+      toastManager.success(`Resumed schedule "${schedule.name}"`);
     } catch (error) {
       toastManager.danger(`Failed to delete schedule: ${error}`);
     }
@@ -45,7 +45,7 @@
         paused: true,
       });
 
-      toastManager.info(`Paused schedule ${schedule.name}`);
+      toastManager.info(`Paused schedule "${schedule.name}"`);
     } catch (error) {
       toastManager.danger(`Failed to delete schedule: ${error}`);
     }
@@ -70,7 +70,7 @@
 
     try {
       await removeSchedule(schedule.id);
-      toastManager.info(`Deleted schedule ${schedule.name}`);
+      toastManager.info(`Deleted schedule "${schedule.name}"`);
     } catch (error) {
       toastManager.danger(`Failed to delete schedule: ${error}`);
     }
