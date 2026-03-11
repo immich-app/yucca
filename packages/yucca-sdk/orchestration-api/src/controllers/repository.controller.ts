@@ -1,6 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Sse } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { Observable } from 'rxjs';
 import {
   ListSnapshotsResponseDto,
   LogResponseDto,
@@ -100,12 +99,5 @@ export class RepositoryController {
   @ApiOkResponse({ type: ListSnapshotsResponseDto })
   forgetSnapshot(@Param('id') id: string, @Param('snapshot') snapshot: string): Promise<void> {
     return this.service.forgetSnapshot(id, snapshot);
-  }
-
-  @Sse('/logs/:id')
-  @ApiParam({ name: 'id', type: String })
-  logStreamSse(@Param('id') id: string): Observable<MessageEvent> {
-    // TODO: move to separate controller
-    return this.service.observableLog(id);
   }
 }

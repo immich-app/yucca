@@ -264,11 +264,6 @@ export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.Req
         method: "DELETE"
     }));
 }
-export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/repository/logs/${encodeURIComponent(id)}`, {
-        ...opts
-    }));
-}
 export function getBackends(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
