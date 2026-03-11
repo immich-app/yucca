@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
 
 @Injectable()
-export class RepositoryService {
+export class RunHistoryService {
   constructor(private readonly runHistory: RunHistoryRepository) {}
 
   observableLog(id: string): Observable<MessageEvent> {
