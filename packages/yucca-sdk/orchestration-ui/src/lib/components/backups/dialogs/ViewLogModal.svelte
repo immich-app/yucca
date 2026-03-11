@@ -1,6 +1,5 @@
 <script lang="ts">
   import {
-    Card,
     Heading,
     Modal,
     ModalBody,
@@ -13,6 +12,7 @@
   } from "@immich/ui";
   import { onDestroy, onMount } from "svelte";
   import debounce from "lodash.debounce";
+  import { defaults } from "$lib/fetch-client";
 
   // TODO: needs UI refactoring
 
@@ -80,10 +80,7 @@
   };
 
   onMount(() => {
-    source = new EventSource(
-      "http://localhost:22676/api/repository/logs/" + logId,
-    );
-
+    source = new EventSource(new URL("/api/logs/" + logId, defaults.baseUrl));
     source.addEventListener("message", ({ data }) => onEvent(JSON.parse(data)));
   });
 
