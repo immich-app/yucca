@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { importRecoveryKey } from "$lib/fetch-client";
+  import { handleImportRecoveryKey } from "$lib/services/onboarding.service";
   import {
     Button,
     Field,
@@ -30,9 +30,7 @@
   const onSave = async () => {
     const recoveryKey = strip(value);
 
-    await importRecoveryKey({
-      recoveryKey,
-    });
+    await handleImportRecoveryKey({ recoveryKey });
 
     onImported(recoveryKey);
   };

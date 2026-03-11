@@ -64,7 +64,13 @@
 
 <OnEvents {onRepositoryUpdate} />
 
-<FormModal title={`Configure ${name}`} size="large" {onSubmit} {onClose}>
+<FormModal
+  disabled={name.length === 0}
+  title={`Configure ${name}`}
+  size="large"
+  {onSubmit}
+  {onClose}
+>
   <Stack gap={4}>
     <Stack gap={2}>
       <Field label="Name">
