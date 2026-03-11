@@ -5,6 +5,7 @@ import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryCreateResticUrlDto,
+  RepositoryGetResponseDto,
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
@@ -19,11 +20,22 @@ export class RepositoryController {
   @Post()
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryCreateResponseDto })
-  createRepository(
+  async createRepository(
     @Auth() auth: AuthDto,
     @Body() dto: RepositoryCreateRequestDto,
   ): Promise<RepositoryCreateResponseDto> {
-    return this.repository.create(auth, dto);
+    return {
+      repository: await this.repository.create(auth, dto),
+    };
+  }
+
+  @Get('/:id')
+  @AuthRoute()
+  @ApiOkResponse({ type: RepositoryGetResponseDto })
+  async getRepository(@Param('id') id: string): Promise<RepositoryGetResponseDto> {
+    return {
+      repository: await this.repository.get(id),
+    };
   }
 
   @Get()

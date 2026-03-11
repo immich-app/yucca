@@ -140,6 +140,34 @@
       }
     },
     "/api/repository/{id}": {
+      "get": {
+        "operationId": "getRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryGetResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
       "patch": {
         "operationId": "updateRepository",
         "parameters": [
@@ -300,6 +328,17 @@
         ]
       },
       "RepositoryCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      },
+      "RepositoryGetResponseDto": {
         "type": "object",
         "properties": {
           "repository": {

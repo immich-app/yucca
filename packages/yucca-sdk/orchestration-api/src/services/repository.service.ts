@@ -378,13 +378,7 @@ export class RepositoryService {
   async importRepository(id: string, backendId: string): Promise<RepositoryCreateResponseDto> {
     const { configuration } = await this.backend.getBackend(backendId);
     const backend = Backend.from(configuration, this.moduleConfig);
-
-    // TODO: getRepository route
-    const { repositories } = await backend.getRepositories();
-    const remote = repositories.find((repository) => repository.id === id);
-    if (!remote) {
-      throw new Error('...');
-    }
+    const { repository: remote } = await backend.getRepository(id);
 
     const endpoint = await backend.getResticEndpoint(remote.id);
     const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);

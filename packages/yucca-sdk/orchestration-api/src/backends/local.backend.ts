@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
+  RepositoryGetResponseDto,
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
@@ -51,6 +52,10 @@ export class LocalBackend extends Backend {
         },
       },
     };
+  }
+
+  getRepository(_id: string): Promise<RepositoryGetResponseDto> {
+    throw new Error('Method not implemented.');
   }
 
   async getRepositories(): Promise<RepositoryListResponseDto> {

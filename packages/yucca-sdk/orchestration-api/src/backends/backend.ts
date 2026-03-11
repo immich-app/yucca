@@ -1,6 +1,7 @@
 import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
+  RepositoryGetResponseDto,
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
@@ -15,6 +16,7 @@ export abstract class Backend {
   abstract checkOnline(): Promise<void>;
   abstract createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto>;
   abstract updateRepository(id: string, dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto>;
+  abstract getRepository(id: string): Promise<RepositoryGetResponseDto>;
   abstract getRepositories(): Promise<RepositoryListResponseDto>;
   abstract getResticEndpoint(id: string): Promise<string>;
 

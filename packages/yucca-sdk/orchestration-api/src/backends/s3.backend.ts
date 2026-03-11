@@ -3,6 +3,7 @@
 import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
+  RepositoryGetResponseDto,
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
@@ -23,6 +24,10 @@ export class S3Backend extends Backend {
   }
 
   updateRepository(_id: string, _dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto> {
+    throw new Error('Method not implemented.');
+  }
+
+  getRepository(_id: string): Promise<RepositoryGetResponseDto> {
     throw new Error('Method not implemented.');
   }
 

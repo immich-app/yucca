@@ -40,6 +40,9 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: RepositoryWithMetricsDto[];
 };
+export type RepositoryGetResponseDto = {
+    repository: RepositoryWithMetricsDto;
+};
 export type RepositoryUpdateRequestDto = {
     name: string;
 };
@@ -91,6 +94,14 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         status: 200;
         data: RepositoryListResponseDto;
     }>("/api/repository", {
+        ...opts
+    }));
+}
+export function getRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryGetResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}`, {
         ...opts
     }));
 }

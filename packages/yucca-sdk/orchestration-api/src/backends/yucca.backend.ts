@@ -3,6 +3,7 @@ import {
   createResticUrl,
   getAuth,
   getRepositories,
+  getRepository,
   RepositoryCreateRequestDto,
   RepositoryUpdateRequestDto,
   updateRepository,
@@ -35,6 +36,10 @@ export class YuccaBackend extends Backend {
 
   updateRepository(id: string, dto: RepositoryUpdateRequestDto) {
     return updateRepository(id, dto, this.requestOptions);
+  }
+
+  getRepository(id: string) {
+    return getRepository(id, this.requestOptions);
   }
 
   getRepositories() {
