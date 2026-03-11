@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import {
@@ -277,54 +276,55 @@ export class RepositoryService {
     }
   }
 
-  createBackup(id: string): {
+  createBackup(id: string): Promise<{
     logId: string;
     task: Promise<void>;
-  } {
+  }> {
     if (!this.tasks.canStart(id)) {
       throw new BadRequestException('Task already running!');
     }
 
-    const logId = randomUUID();
+    return new Promise((resolve) => {
+      let endpoint: string, key: Uint8Array;
 
-    let endpoint: string, key: Uint8Array;
-    const task = new Promise<void>(
-      (resolve, reject) =>
-        void this.runHistory.createLog(
-          id,
-          async (log, logId) => {
-            ({ endpoint, key } = await this.getResticParameters(id));
+      const task = new Promise<void>(
+        (complete, fail) =>
+          void this.runHistory.createLog(
+            id,
+            async (log, logId) => {
+              resolve({
+                task,
+                logId,
+              });
 
-            const paths = await this.repositoryPath.get(id);
-            if (paths.length === 0) {
-              throw new BadRequestException('Missing configuration paths');
-            }
+              ({ endpoint, key } = await this.getResticParameters(id));
 
-            try {
-              this.tasks.startTask(id, TaskType.Backup, logId);
-              await this.restic.backup(endpoint, key, paths, log);
-            } finally {
-              this.tasks.endTask(id);
-            }
-          },
-          (error) => {
-            if (endpoint && key) {
-              void this.updateLocalMetrics(id, endpoint, key);
-            }
+              const paths = await this.repositoryPath.get(id);
+              if (paths.length === 0) {
+                throw new BadRequestException('Missing configuration paths');
+              }
 
-            if (error) {
-              reject(error);
-            } else {
-              resolve();
-            }
-          },
-        ),
-    );
+              try {
+                this.tasks.startTask(id, TaskType.Backup, logId);
+                await this.restic.backup(endpoint, key, paths, log);
+              } finally {
+                this.tasks.endTask(id);
+              }
+            },
+            (error) => {
+              if (endpoint && key) {
+                void this.updateLocalMetrics(id, endpoint, key);
+              }
 
-    return {
-      logId,
-      task,
-    };
+              if (error) {
+                fail(error);
+              } else {
+                complete();
+              }
+            },
+          ),
+      );
+    });
   }
 
   async addRepositoryPath(id: string, path: string): Promise<void> {
