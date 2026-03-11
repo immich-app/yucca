@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
@@ -6,6 +6,8 @@ import {
   RepositoryCreateResponseDto,
   RepositoryCreateResticUrlDto,
   RepositoryListResponseDto,
+  RepositoryUpdateRequestDto,
+  RepositoryUpdateResponseDto,
 } from 'src/dto/repository.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { RepositoryService } from 'src/services/repository.service';
@@ -24,13 +26,21 @@ export class RepositoryController {
     return this.repository.create(auth, dto);
   }
 
-  // TODO: missing PATCH
-
   @Get()
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryListResponseDto })
   getRepositories(@Auth() auth: AuthDto): Promise<RepositoryListResponseDto> {
     return this.repository.getAll(auth);
+  }
+
+  @Patch('/:id')
+  @AuthRoute()
+  @ApiOkResponse({ type: RepositoryUpdateResponseDto })
+  updateRepository(
+    @Param('id') id: string,
+    @Body() dto: RepositoryUpdateRequestDto,
+  ): Promise<RepositoryUpdateResponseDto> {
+    return this.repository.update(id, dto);
   }
 
   @Post('/:id/restic')

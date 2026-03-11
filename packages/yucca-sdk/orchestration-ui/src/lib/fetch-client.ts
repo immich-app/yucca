@@ -49,6 +49,12 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
+export type RepositoryUpdateRequestDto = {
+    name: string;
+};
+export type RepositoryUpdateResponseDto = {
+    repository: LocalRepositoryDto;
+};
 export type LogResponseDto = {
     logId: string;
 };
@@ -174,6 +180,20 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
     }>("/api/repository", {
         ...opts
     }));
+}
+export function updateRepository(id: string, repositoryUpdateRequestDto: RepositoryUpdateRequestDto, { backend }: {
+    backend?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryUpdateResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}${QS.query(QS.explode({
+        backend
+    }))}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: repositoryUpdateRequestDto
+    })));
 }
 export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

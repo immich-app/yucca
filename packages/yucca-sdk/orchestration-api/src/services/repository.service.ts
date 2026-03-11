@@ -5,13 +5,14 @@ import { Backend } from '../backends/backend';
 import {
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
-  LogResponseDto,
   RepositoryCheckImportResponseDto,
   RepositoryConfigurationDto,
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryMetricsDto,
+  RepositoryUpdateRequestDto,
+  RepositoryUpdateResponseDto,
   RepositoryWithMetricsDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
@@ -187,6 +188,48 @@ export class RepositoryService {
 
     return {
       repositories,
+    };
+  }
+
+  async updateRepository(
+    id: string,
+    dto: RepositoryUpdateRequestDto,
+    backendId?: string,
+  ): Promise<RepositoryUpdateResponseDto> {
+    if (!backendId) {
+      const localRepository = await this.repository.get(id);
+      backendId = localRepository.backendId;
+    }
+
+    const backend = await this.backend.getBackend(backendId);
+    const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
+    const { repository: remote } = await backendInstance.updateRepository(id, dto);
+
+    const paths = await this.repositoryPath.get(id);
+    const configuration = { paths };
+    const metrics = await this.repositoryLocalMetrics.get(id);
+
+    const repository: LocalRepositoryDto = {
+      ...remote,
+      ...(await this.getLocalRepository(id, configuration, metrics)),
+      backends: {
+        primary: {
+          id: backendId,
+          type: backend.configuration.type,
+          online: true,
+        },
+        secondary: [],
+      },
+    };
+
+    this.events.publish({
+      type: 'RepositoryUpdate',
+      repositoryId: id,
+      repository,
+    });
+
+    return {
+      repository,
     };
   }
 

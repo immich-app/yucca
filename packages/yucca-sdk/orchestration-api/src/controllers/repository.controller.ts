@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Sse } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Sse } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import {
@@ -9,6 +9,8 @@ import {
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryPathRequestDto,
+  RepositoryUpdateRequestDto,
+  RepositoryUpdateResponseDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
 import { RepositoryService } from '../services/repository.service';
@@ -22,15 +24,26 @@ export class RepositoryController {
   @ApiOkResponse({ type: RepositoryCreateResponseDto })
   createRepository(
     @Body() dto: RepositoryCreateRequestDto,
-    @Query('backend') _backend?: string,
+    @Query('backend') backendId?: string,
   ): Promise<RepositoryCreateResponseDto> {
-    return this.service.createRepository(dto);
+    return this.service.createRepository(dto, backendId);
   }
 
   @Get()
   @ApiOkResponse({ type: RepositoryListResponseDto })
   getRepositories(): Promise<RepositoryListResponseDto> {
     return this.service.getRepositories();
+  }
+
+  @Patch('/:id')
+  @ApiQuery({ name: 'backend', type: String, required: false })
+  @ApiOkResponse({ type: RepositoryUpdateResponseDto })
+  updateRepository(
+    @Param('id') id: string,
+    @Body() dto: RepositoryUpdateRequestDto,
+    @Query('backend') backendId?: string,
+  ): Promise<RepositoryUpdateResponseDto> {
+    return this.service.updateRepository(id, dto, backendId);
   }
 
   @Post('/:id')

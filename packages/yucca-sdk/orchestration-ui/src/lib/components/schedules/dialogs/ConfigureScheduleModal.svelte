@@ -1,9 +1,5 @@
 <script lang="ts">
-  import {
-    createSchedule,
-    updateSchedule,
-    type ScheduleDto,
-  } from "$lib/fetch-client";
+  import { updateSchedule, type ScheduleDto } from "$lib/fetch-client";
   import {
     Button,
     Field,

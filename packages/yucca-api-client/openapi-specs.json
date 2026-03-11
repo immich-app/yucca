@@ -139,6 +139,46 @@
         ]
       }
     },
+    "/api/repository/{id}": {
+      "patch": {
+        "operationId": "updateRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryUpdateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/repository/{id}/restic": {
       "post": {
         "operationId": "createResticUrl",
@@ -282,6 +322,28 @@
         },
         "required": [
           "repositories"
+        ]
+      },
+      "RepositoryUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "RepositoryUpdateResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+          }
+        },
+        "required": [
+          "repository"
         ]
       },
       "RepositoryCreateResticUrlDto": {

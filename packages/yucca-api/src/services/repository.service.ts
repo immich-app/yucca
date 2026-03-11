@@ -3,7 +3,7 @@ import { WideContextRepository } from '@common/server/otel';
 import { Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
-import { RepositoryCreateRequestDto } from 'src/dto/repository.dto';
+import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -44,6 +44,20 @@ export class RepositoryService {
           sizeBytes: 0,
         },
       })),
+    };
+  }
+
+  async update(id: string, dto: RepositoryUpdateRequestDto) {
+    return {
+      repository: {
+        ...(await this.repositoryRepository.update(id, {
+          ...dto,
+        })),
+        metrics: {
+          lastBackup: null,
+          sizeBytes: 0,
+        },
+      },
     };
   }
 

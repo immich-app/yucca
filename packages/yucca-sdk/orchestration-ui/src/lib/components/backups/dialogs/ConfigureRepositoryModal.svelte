@@ -1,7 +1,9 @@
 <script lang="ts">
   import {
     Button,
+    Field,
     IconButton,
+    Input,
     Modal,
     ModalBody,
     modalManager,
@@ -11,10 +13,12 @@
     TableCell,
     TableHeader,
     TableRow,
+    toastManager,
   } from "@immich/ui";
   import {
     addRepositoryPath,
     removeRepositoryPath,
+    updateRepository,
     type LocalRepositoryDto,
   } from "$lib/fetch-client";
   import { mdiMinus } from "@mdi/js";
@@ -31,6 +35,19 @@
 
   // svelte-ignore state_referenced_locally
   let repository = $state(initialRepository);
+
+  // svelte-ignore state_referenced_locally
+  let name = $state(repository.name);
+  let updating = $state(false);
+
+  const onUpdate = async () => {
+    try {
+      await updateRepository(repository.id, { name });
+      toastManager.success("Updated repository");
+    } catch (error) {
+      toastManager.danger(`Failed to update repository: ${error}`);
+    }
+  };
 
   const onRepositoryUpdate = (
     event: SocketEvent<{
@@ -63,6 +80,12 @@
 
 <Modal title={`Configure ${repository.name}`} size="large" {onClose}>
   <ModalBody>
+    <Stack gap={4}>
+      <Field label="Name">
+        <Input bind:value={name} />
+      </Field>
+      <Button disabled={updating} onclick={onUpdate}>Update</Button>
+    </Stack>
     <Stack gap={2}>
       <Table spacing="tiny">
         <TableHeader>

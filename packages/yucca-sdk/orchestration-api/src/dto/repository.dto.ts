@@ -73,6 +73,16 @@ export class RepositoryCreateResponseDto {
   repository!: LocalRepositoryDto;
 }
 
+export class RepositoryUpdateRequestDto {
+  @ApiProperty()
+  name!: string;
+}
+
+export class RepositoryUpdateResponseDto {
+  @ApiProperty()
+  repository!: LocalRepositoryDto;
+}
+
 export class RepositoryListResponseDto {
   @ApiProperty({ type: [LocalRepositoryDto] })
   repositories!: LocalRepositoryDto[];

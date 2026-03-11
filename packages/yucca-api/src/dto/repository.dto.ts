@@ -37,6 +37,16 @@ export class RepositoryCreateResponseDto {
   repository!: RepositoryWithMetricsDto;
 }
 
+export class RepositoryUpdateRequestDto {
+  @ApiProperty()
+  name!: string;
+}
+
+export class RepositoryUpdateResponseDto {
+  @ApiProperty()
+  repository!: RepositoryWithMetricsDto;
+}
+
 export class RepositoryListResponseDto {
   @ApiProperty({ type: [RepositoryWithMetricsDto] })
   repositories!: RepositoryWithMetricsDto[];
