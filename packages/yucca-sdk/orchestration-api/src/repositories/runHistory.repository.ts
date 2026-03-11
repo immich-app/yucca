@@ -23,8 +23,9 @@ export class RunHistoryRepository {
     repositoryId: string,
     fn: (log: WriteStream, logId: string) => Promise<void>,
     callback: (error?: unknown) => void,
+    logId?: string,
   ) {
-    const logId = randomUUID();
+    logId ??= randomUUID();
 
     try {
       const start = new Date().toISOString();

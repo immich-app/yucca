@@ -92,7 +92,8 @@ export class ScheduleService {
         scheduleStatus.push({ repositoryId, status: TaskStatus.Incomplete });
         this.runningTasks.updateTask(id, { scheduleStatus });
 
-        await this.repository.createBackup_(repositoryId);
+        const { task } = this.repository.createBackup(repositoryId);
+        await task;
 
         scheduleStatus.splice(-1, 1, { repositoryId, status: TaskStatus.Complete });
         this.runningTasks.updateTask(id, { scheduleStatus });

@@ -36,8 +36,9 @@ export class RepositoryController {
   @Post('/:id')
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ type: LogResponseDto })
-  createBackup(@Param('id') id: string): Promise<LogResponseDto> {
-    return this.service.createBackup(id);
+  createBackup(@Param('id') id: string): LogResponseDto {
+    const { logId } = this.service.createBackup(id);
+    return { logId };
   }
 
   @Put('/:id/paths')
