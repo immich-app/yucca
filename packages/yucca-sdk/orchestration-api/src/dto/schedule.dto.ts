@@ -1,4 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class ScheduleDto {
   @ApiProperty({ type: String })
@@ -25,12 +31,16 @@ export class ScheduleDto {
 
 export class ScheduleCreateRequestDto {
   @ApiProperty({ type: String })
+  @IsString()
   name!: string;
 
   @ApiProperty({ type: String })
+  @IsString()
   cron!: string;
 
   @ApiProperty({ type: [String] })
+  @IsArray()
+  @IsString({ each: true })
   repositories!: string[];
 }
 
@@ -41,15 +51,24 @@ export class ScheduleCreateResponseDto {
 
 export class ScheduleUpdateRequestDto {
   @ApiProperty({ type: String, required: false })
+  @IsOptional()
+  @IsString()
   name?: string;
 
   @ApiProperty({ type: Boolean, required: false })
+  @IsOptional()
+  @IsBoolean()
   paused?: boolean;
 
   @ApiProperty({ type: String, required: false })
+  @IsOptional()
+  @IsString()
   cron?: string;
 
   @ApiProperty({ type: [String], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   repositories?: string[];
 }
 

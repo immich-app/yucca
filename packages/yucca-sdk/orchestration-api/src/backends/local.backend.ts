@@ -45,7 +45,7 @@ export class LocalBackend extends Backend {
     return {
       repository: {
         id,
-        name: dto.name,
+        name: dto.name ?? 'new name',
         worm: false,
         metrics: {
           sizeBytes: 0,

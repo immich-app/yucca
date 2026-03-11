@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class RepositoryDto {
   @ApiProperty()
@@ -26,9 +27,11 @@ export class RepositoryWithMetricsDto extends RepositoryDto {
 
 export class RepositoryCreateRequestDto {
   @ApiProperty()
+  @IsString()
   name!: string;
 
   @ApiProperty()
+  @IsBoolean()
   worm!: boolean;
 }
 
@@ -48,8 +51,10 @@ export class RepositoryListResponseDto {
 }
 
 export class RepositoryUpdateRequestDto {
-  @ApiProperty()
-  name!: string;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
 }
 
 export class RepositoryUpdateResponseDto {

@@ -204,13 +204,29 @@ export class RepositoryService {
     const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
     const { repository: remote } = await backendInstance.updateRepository(id, dto);
 
-    const paths = await this.repositoryPath.get(id);
-    const configuration = { paths };
+    if (dto.paths) {
+      const currentPaths = new Set(await this.repositoryPath.get(id));
+      const requestedPaths = new Set(dto.paths);
+      const removedPaths = currentPaths.difference(requestedPaths);
+      const newPaths = requestedPaths.difference(currentPaths);
+
+      for (const path of removedPaths) {
+        await this.repositoryPath.delete(id, path);
+      }
+
+      for (const path of newPaths) {
+        await this.repositoryPath.create({
+          id,
+          path,
+        });
+      }
+    }
+
     const metrics = await this.repositoryLocalMetrics.get(id);
 
     const repository: LocalRepositoryDto = {
       ...remote,
-      ...(await this.getLocalRepository(id, configuration, metrics)),
+      ...(await this.getLocalRepository(id, undefined, metrics)),
       backends: {
         primary: {
           id: backendId,
@@ -324,38 +340,6 @@ export class RepositoryService {
             },
           ),
       );
-    });
-  }
-
-  async addRepositoryPath(id: string, path: string): Promise<void> {
-    await this.repositoryPath.create({ id, path });
-
-    const paths = await this.repositoryPath.get(id);
-
-    this.events.publish({
-      type: 'RepositoryUpdate',
-      repositoryId: id,
-      repository: {
-        configuration: {
-          paths,
-        },
-      },
-    });
-  }
-
-  async removeRepositoryPath(id: string, path: string): Promise<void> {
-    await this.repositoryPath.delete(id, path);
-
-    const paths = await this.repositoryPath.get(id);
-
-    this.events.publish({
-      type: 'RepositoryUpdate',
-      repositoryId: id,
-      repository: {
-        configuration: {
-          paths,
-        },
-      },
     });
   }
 

@@ -170,46 +170,12 @@ describe('Repository', () => {
     });
   });
 
-  it('updates a repository', async () => {
-    const addEvent = waitForMessage('RepositoryUpdate');
-
-    await sdk.addRepositoryPath(repository.id, {
-      path: '/test',
-    });
-
-    await expect(addEvent).resolves.toEqual({
-      type: 'RepositoryUpdate',
-      repositoryId: repository.id,
-      repository: expect.objectContaining({
-        configuration: {
-          paths: ['/test'],
-        },
-      }),
-    });
-
-    const removeEvent = waitForMessage('RepositoryUpdate');
-
-    await sdk.removeRepositoryPath(repository.id, {
-      path: '/test',
-    });
-
-    await expect(removeEvent).resolves.toEqual({
-      type: 'RepositoryUpdate',
-      repositoryId: repository.id,
-      repository: expect.objectContaining({
-        configuration: {
-          paths: [],
-        },
-      }),
-    });
-  });
-
   it('creates a backup', async () => {
     const workingDir = await mkdtemp(join(tmpdir(), 'test-'));
     await writeFile(join(workingDir, 'test-file'), 'hi');
 
-    await sdk.addRepositoryPath(repository.id, {
-      path: workingDir,
+    await sdk.updateRepository(repository.id, {
+      paths: [workingDir],
     });
 
     const startEvent = waitForMessage('TaskStart');

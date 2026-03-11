@@ -44,7 +44,7 @@ export type RepositoryGetResponseDto = {
     repository: RepositoryWithMetricsDto;
 };
 export type RepositoryUpdateRequestDto = {
-    name: string;
+    name?: string;
 };
 export type RepositoryUpdateResponseDto = {
     repository: RepositoryWithMetricsDto;

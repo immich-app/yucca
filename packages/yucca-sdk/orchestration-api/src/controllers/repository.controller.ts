@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import {
   ListSnapshotsResponseDto,
@@ -7,7 +7,6 @@ import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
-  RepositoryPathRequestDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
   RunHistoryResponseDto,
@@ -51,18 +50,6 @@ export class RepositoryController {
   async createBackup(@Param('id') id: string): Promise<LogResponseDto> {
     const { logId } = await this.service.createBackup(id);
     return { logId };
-  }
-
-  @Put('/:id/paths')
-  @ApiParam({ name: 'id', type: String })
-  addRepositoryPath(@Param('id') id: string, @Body() dto: RepositoryPathRequestDto): Promise<void> {
-    return this.service.addRepositoryPath(id, dto.path);
-  }
-
-  @Delete('/:id/paths')
-  @ApiParam({ name: 'id', type: String })
-  removeRepositoryPath(@Param('id') id: string, @Body() dto: RepositoryPathRequestDto): Promise<void> {
-    return this.service.removeRepositoryPath(id, dto.path);
   }
 
   @Get('/:id/import')

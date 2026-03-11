@@ -369,10 +369,7 @@
           "name": {
             "type": "string"
           }
-        },
-        "required": [
-          "name"
-        ]
+        }
       },
       "RepositoryUpdateResponseDto": {
         "type": "object",

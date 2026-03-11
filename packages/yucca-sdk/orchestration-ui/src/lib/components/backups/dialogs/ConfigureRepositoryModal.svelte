@@ -1,53 +1,32 @@
 <script lang="ts">
   import {
     Button,
-    Field,
+    FormModal,
+    HStack,
     IconButton,
     Input,
-    Modal,
-    ModalBody,
     modalManager,
     Stack,
-    Table,
-    TableBody,
-    TableCell,
-    TableHeader,
-    TableRow,
-    toastManager,
+    Text,
+    Field,
   } from "@immich/ui";
-  import {
-    addRepositoryPath,
-    removeRepositoryPath,
-    updateRepository,
-    type LocalRepositoryDto,
-  } from "$lib/fetch-client";
-  import { mdiMinus } from "@mdi/js";
+  import { type LocalRepositoryDto } from "$lib/fetch-client";
+  import { mdiClose } from "@mdi/js";
   import FileBrowserModal from "./FileBrowserModal.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
   import type { SocketEvent } from "$lib/events";
+  import { handleUpdateRepository } from "$lib/services/repository.service";
+  import { SvelteSet } from "svelte/reactivity";
 
   interface Props {
-    repository: LocalRepositoryDto & { configuration: object };
+    repository: LocalRepositoryDto;
     onClose: () => void;
   }
 
-  let { repository: initialRepository, onClose }: Props = $props();
+  let { repository, onClose }: Props = $props();
 
-  // svelte-ignore state_referenced_locally
-  let repository = $state(initialRepository);
-
-  // svelte-ignore state_referenced_locally
   let name = $state(repository.name);
-  let updating = $state(false);
-
-  const onUpdate = async () => {
-    try {
-      await updateRepository(repository.id, { name });
-      toastManager.success("Updated repository");
-    } catch (error) {
-      toastManager.danger(`Failed to update repository: ${error}`);
-    }
-  };
+  let paths = new SvelteSet(repository.configuration?.paths ?? []);
 
   const onRepositoryUpdate = (
     event: SocketEvent<{
@@ -55,75 +34,78 @@
       repository: Partial<LocalRepositoryDto>;
     }>,
   ) => {
-    if (event.data.repositoryId === repository.id) {
-      repository = {
-        ...repository,
-        ...event.data.repository,
-      };
+    const { repository, repositoryId } = event.data;
+
+    if (repositoryId === repository.id) {
+      if (repository.name) {
+        name = repository.name;
+      }
+
+      if (repository.configuration) {
+        paths.clear();
+
+        for (const path of repository.configuration!.paths) {
+          paths.add(path);
+        }
+      }
     }
   };
 
-  const removePath = async (path: string) => {
-    await removeRepositoryPath(repository.id, { path });
-  };
+  const onSubmit = async () => {
+    await handleUpdateRepository(
+      repository.id,
+      { name, paths: [...paths] },
+      typeof repository.configuration === "object",
+    );
 
-  const addPath = () => {
-    modalManager.show(FileBrowserModal, {
-      async onSelect(path) {
-        await addRepositoryPath(repository.id, { path });
-      },
-    });
+    onClose();
   };
 </script>
 
 <OnEvents {onRepositoryUpdate} />
 
-<Modal title={`Configure ${repository.name}`} size="large" {onClose}>
-  <ModalBody>
-    <Stack gap={4}>
+<FormModal title={`Configure ${name}`} size="large" {onSubmit} {onClose}>
+  <Stack gap={4}>
+    <Stack gap={2}>
       <Field label="Name">
         <Input bind:value={name} />
       </Field>
-      <Button disabled={updating} onclick={onUpdate}>Update</Button>
     </Stack>
-    <Stack gap={2}>
-      <Table spacing="tiny">
-        <TableHeader>
-          <TableCell>Backup Path</TableCell>
-          <TableCell class="w-16"></TableCell>
-        </TableHeader>
 
-        <TableBody>
-          {#each repository.configuration.paths as path (path)}
-            <TableRow>
-              <TableCell>{path}</TableCell>
-              <TableCell class="w-16 flex flex-col items-end px-2">
-                <IconButton
-                  icon={mdiMinus}
-                  aria-label="Remove"
-                  size="small"
-                  color="danger"
-                  onclick={async () => removePath(path)}
-                />
-              </TableCell>
-            </TableRow>
-          {/each}
+    {#if repository.configuration}
+      <Stack gap={1}>
+        <Text size="small">Backup Paths</Text>
+        {#each paths as path (path)}
+          <HStack
+            gap={2}
+            class="items-center py-2 px-4 bg-gray-100 rounded-md border border-gray-200"
+          >
+            <Text class="grow" size="small">{path}</Text>
+            <IconButton
+              icon={mdiClose}
+              size="tiny"
+              color="danger"
+              aria-label="Remove"
+              onclick={() => paths.delete(path)}
+            />
+          </HStack>
+        {/each}
 
-          {#if repository.configuration.paths.length === 0}
-            <TableRow>
-              <TableCell>No paths configured yet.</TableCell>
-              <TableCell class="w-16"></TableCell>
-            </TableRow>
-          {/if}
+        {#if paths.size === 0}
+          <Text color="secondary" size="small">No paths configured yet.</Text>
+        {/if}
 
-          <TableRow>
-            <TableCell class="flex flex-col items-center">
-              <Button onclick={addPath}>Add path</Button>
-            </TableCell>
-            <TableCell class="w-16"></TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </Stack>
-  </ModalBody>
-</Modal>
+        <div class="w-fit">
+          <Button
+            size="small"
+            variant="outline"
+            onclick={() =>
+              modalManager.show(FileBrowserModal, {
+                onSelect: (path) => paths.add(path),
+              })}>Add path</Button
+          >
+        </div>
+      </Stack>
+    {/if}
+  </Stack>
+</FormModal>
