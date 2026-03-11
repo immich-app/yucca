@@ -1,4 +1,6 @@
 <script lang="ts">
+  /* SLOP FILE */
+
   import {
     Alert,
     Badge,
@@ -59,11 +61,7 @@
   <Card class="flex-1">
     <CardBody class="flex flex-col gap-1">
       <Text class="text-sm opacity-70">Current Usage</Text>
-      <Heading size="giant"
-        >$2.67 <span class="text-sm font-normal opacity-60"
-          >since 1st March</span
-        ></Heading
-      >
+      <Heading size="giant">$2.67</Heading>
     </CardBody>
   </Card>
   <Card class="flex-1">

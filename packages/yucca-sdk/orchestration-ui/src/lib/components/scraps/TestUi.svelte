@@ -22,6 +22,7 @@
   } from "@mdi/js";
   import Dashboard from "./Dashboard.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
+  import DashboardLive from "./DashboardLive.svelte";
 
   const { mock }: { mock: boolean } = $props();
 
@@ -104,6 +105,9 @@
 
   <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
     {#if route === "dashboard"}
+      <Heading>Dashboard (Live) Scrap</Heading>
+      <DashboardLive />
+      <Heading>Dashboard (Mock) Scrap</Heading>
       <Dashboard />
     {:else if route === "backups"}
       {#if !mock}

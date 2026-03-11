@@ -1,4 +1,3 @@
-import { createContext } from 'svelte';
 import * as yuccaApiClient from 'yucca-api-client';
 import * as orchestrationApiClient from './fetch-client';
 
@@ -29,4 +28,16 @@ export class MockProvider extends BaseProvider {
 }
 /* eslint-enable @typescript-eslint/require-await */
 
-export const [getProvider, setProvider] = createContext<BaseProvider>();
+const KEY = '__yucca_provider__';
+
+export const setProvider = (provider: BaseProvider) => {
+  (globalThis as any)[KEY] = provider;
+};
+
+export const getProvider = (): BaseProvider => {
+  const provider = (globalThis as any)[KEY] as BaseProvider | undefined;
+  if (!provider) {
+    throw new Error('Provider not set — call setProvider() before getProvider()');
+  }
+  return provider;
+};
