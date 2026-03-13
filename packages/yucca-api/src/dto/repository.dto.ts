@@ -16,6 +16,12 @@ export class RepositoryMetricsDto {
   @ApiProperty({ type: 'string', required: false })
   lastBackup!: Date | null;
 
+  @ApiProperty({ type: 'string', required: false })
+  lastSuccessfulBackup!: Date | null;
+
+  @ApiProperty({ required: false })
+  lastBackupDuration?: number;
+
   @ApiProperty()
   sizeBytes!: number;
 }

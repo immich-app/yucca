@@ -1,22 +1,26 @@
 <script lang="ts">
   import {
     Alert,
-    Badge,
     Button,
     Card,
     CardBody,
-    FormatBytes,
     getByteUnitString,
-    HStack,
     Icon,
     Stack,
     Text,
   } from "@immich/ui";
-  import { mdiArrowDown, mdiArrowUp, mdiBackupRestore } from "@mdi/js";
+  import { mdiBackupRestore } from "@mdi/js";
   import { options } from "$lib/options";
 
+  import BackupHealth from "./BackupHealth.svelte";
+  import BackupStats from "./BackupStats.svelte";
+  import ActiveJobs from "./ActiveJobs.svelte";
+  import RecentBackups from "./RecentBackups.svelte";
   import StackedBarChart from "./visualisations/StackedBarChart.svelte";
   import HeatMap from "./visualisations/HeatMap.svelte";
+  import { getProvider } from "$lib/providers";
+  import { onMount } from "svelte";
+  import type { LocalRepositoryDto } from "$lib/fetch-client";
 
   type Props = {
     onNavigate?: (route: string) => void;
@@ -26,22 +30,18 @@
 
   const { onNavigate }: Props = $props();
 
-  // Mock data — will be wired to getDashboard() later
-  const status = { success: 8, inProgress: 2, failed: 3, neverRun: 2 };
-  const timeliness = { onTime: 9, late4hr: 3, late8hr: 2, neverRun: 2 };
-  const totalBackups =
-    status.success + status.inProgress + status.failed + status.neverRun;
-  const hasFailures = status.failed > 0;
-  const allHealthy =
-    totalBackups > 0 && status.failed === 0 && status.neverRun === 0;
-  const allNeverRun =
-    totalBackups > 0 &&
-    status.success === 0 &&
-    status.inProgress === 0 &&
-    status.failed === 0;
+  let repositories = $state<LocalRepositoryDto[]>([]);
+
+  const provider = getProvider();
+
+  onMount(() =>
+    provider
+      .getRepositories()
+      .then((data) => (repositories = data.repositories)),
+  );
 </script>
 
-{#if totalBackups === 0}
+{#if repositories.length === 0}
   <Card>
     <CardBody>
       <div class="flex flex-col items-center gap-4 py-8">
@@ -62,195 +62,20 @@
     </CardBody>
   </Card>
 {:else}
-  {#if allNeverRun}
-    <Alert color="info">
-      <Text class="grow">{totalBackups} backups configured</Text>
-    </Alert>
-  {:else if hasFailures}
-    <Alert color="danger">
-      <Text class="grow"
-        >{status.failed} backups failed — check the Backups page for details</Text
-      >
-    </Alert>
-  {:else if allHealthy}
-    <Alert color="success">
-      <Text class="grow">All {totalBackups} backups healthy</Text>
-    </Alert>
-  {/if}
+  <BackupHealth {repositories} />
 
-  <Card>
-    <CardBody>
-      <Stack>
-        <HStack class="justify-between">
-          <Text size="large">Backup Health</Text>
-          <Text color="secondary"
-            >{status.success} of {totalBackups} successful</Text
-          >
-        </HStack>
+  <BackupStats {repositories} />
 
-        <div
-          style="display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px;"
-        >
-          {#if status.success > 0}
-            <div
-              style="flex: {status.success}; background: var(--immich-ui-success-500); border-radius: 3px;"
-            ></div>
-          {/if}
-          {#if status.inProgress > 0}
-            <div
-              style="flex: {status.inProgress}; background: var(--immich-ui-warning-500); border-radius: 3px;"
-            ></div>
-          {/if}
-          {#if status.failed > 0}
-            <div
-              style="flex: {status.failed}; background: var(--immich-ui-danger-500); border-radius: 3px;"
-            ></div>
-          {/if}
-          {#if status.neverRun > 0}
-            <div
-              style="flex: {status.neverRun}; background: var(--immich-ui-light-400); border-radius: 3px;"
-            ></div>
-          {/if}
-        </div>
+  <ActiveJobs />
 
-        <HStack wrap>
-          {#if status.success > 0}
-            <Badge size="tiny" color="success"
-              >{status.success} Successful</Badge
-            >
-          {/if}
-          {#if status.inProgress > 0}
-            <Badge size="tiny" color="warning"
-              >{status.inProgress} In Progress</Badge
-            >
-          {/if}
-          {#if status.failed > 0}
-            <Badge size="tiny" color="danger">{status.failed} Failed</Badge>
-          {/if}
-          {#if status.neverRun > 0}
-            <Badge size="tiny" color="secondary"
-              >{status.neverRun} Never Run</Badge
-            >
-          {/if}
-        </HStack>
-      </Stack>
-    </CardBody>
-  </Card>
+  <RecentBackups
+    {repositories}
+    onNavigate={onNavigate ? () => onNavigate("backups") : undefined}
+  />
 
-  <Card>
-    <CardBody>
-      <Stack>
-        <HStack class="justify-between">
-          <Text size="large">Backup Schedule</Text>
-          <Text color="secondary"
-            >{timeliness.onTime} of {totalBackups} on schedule</Text
-          >
-        </HStack>
+  {#if $advanced}
+    <Alert>Mock data provided for advanced graphs below.</Alert>
 
-        <div
-          style="display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px;"
-        >
-          {#if timeliness.onTime > 0}
-            <div
-              style="flex: {timeliness.onTime}; background: var(--immich-ui-success-500); border-radius: 3px;"
-            ></div>
-          {/if}
-          {#if timeliness.late4hr > 0}
-            <div
-              style="flex: {timeliness.late4hr}; background: var(--immich-ui-warning-500); border-radius: 3px;"
-            ></div>
-          {/if}
-          {#if timeliness.late8hr > 0}
-            <div
-              style="flex: {timeliness.late8hr}; background: var(--immich-ui-danger-500); border-radius: 3px;"
-            ></div>
-          {/if}
-          {#if timeliness.neverRun > 0}
-            <div
-              style="flex: {timeliness.neverRun}; background: var(--immich-ui-light-400); border-radius: 3px;"
-            ></div>
-          {/if}
-        </div>
-
-        <HStack wrap>
-          {#if timeliness.onTime > 0}
-            <Badge size="tiny" color="success"
-              >{timeliness.onTime} On Time</Badge
-            >
-          {/if}
-          {#if timeliness.late4hr > 0}
-            <Badge size="tiny" color="warning"
-              >{timeliness.late4hr} Late (4hr+)</Badge
-            >
-          {/if}
-          {#if timeliness.late8hr > 0}
-            <Badge size="tiny" color="danger"
-              >{timeliness.late8hr} Late (8hr+)</Badge
-            >
-          {/if}
-          {#if timeliness.neverRun > 0}
-            <Badge size="tiny" color="secondary"
-              >{timeliness.neverRun} Never Run</Badge
-            >
-          {/if}
-        </HStack>
-      </Stack>
-    </CardBody>
-  </Card>
-
-  <Card>
-    <CardBody>
-      <Stack>
-        <div class="grid grid-cols-2 gap-5 sm:grid-cols-3">
-          <div>
-            <Text color="secondary">Cost This Period</Text>
-            <Text class="text-2xl">$2.43</Text>
-            <Text color="secondary" class="text-xs">Since March 1</Text>
-          </div>
-          <div>
-            <Text color="secondary">Monthly Estimate</Text>
-            <Text class="text-2xl">$13.52<span class="text-xs"> /mo</span></Text
-            >
-            <Text color="secondary" class="text-xs">
-              <Icon icon={mdiArrowDown} class="inline text-success-500" /> $2.52 less
-              than last month
-            </Text>
-          </div>
-          <div>
-            <Text color="secondary">Total Stored</Text>
-            <Text class="text-2xl"
-              ><FormatBytes bytes={8_720_000_000_000} /></Text
-            >
-            <Text color="secondary" class="text-xs">
-              <Icon icon={mdiArrowUp} class="inline text-info-500" />
-              <FormatBytes bytes={320_000_000_000} /> in 24h
-            </Text>
-          </div>
-        </div>
-
-        <hr
-          style="border: none; border-top: 1px solid var(--immich-ui-default-border);"
-        />
-
-        <div class="grid grid-cols-2 gap-5 opacity-80 sm:grid-cols-3">
-          <div>
-            <Text color="secondary" class="text-xs">Avg. Backup Time</Text>
-            <Text class="text-xl">12m 14s</Text>
-          </div>
-          <div>
-            <Text color="secondary" class="text-xs">Daily Backup Time</Text>
-            <Text class="text-xl">1h 24m</Text>
-          </div>
-          <div>
-            <Text color="secondary" class="text-xs">Space Saved</Text>
-            <Text class="text-xl">4.7x</Text>
-          </div>
-        </div>
-      </Stack>
-    </CardBody>
-  </Card>
-
-  {#if advanced}
     <Stack direction="row">
       <Card class="flex-1">
         <CardBody>

@@ -49,6 +49,8 @@ export type RepositoryCreateRequestDto = {
 };
 export type RepositoryMetricsDto = {
     lastBackup?: string;
+    lastSuccessfulBackup?: string;
+    lastBackupDuration?: number;
     sizeBytes: number;
 };
 export type RepositoryBackendDto = {

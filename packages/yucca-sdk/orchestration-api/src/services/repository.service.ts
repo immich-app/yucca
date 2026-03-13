@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Updateable } from 'kysely';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import {
@@ -26,6 +27,7 @@ import { RepositoryPathRepository } from '../repositories/repositoryPath.reposit
 import { ResticRepository } from '../repositories/restic.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
+import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
 
 @Injectable()
 export class RepositoryService {
@@ -267,23 +269,36 @@ export class RepositoryService {
     return { endpoint, key };
   }
 
-  private async updateLocalMetrics(id: string, endpoint: string, key: Uint8Array): Promise<void> {
+  private async updateLocalMetrics(
+    id: string,
+    options: {
+      resticParameters?: {
+        endpoint: string;
+        key: Uint8Array;
+      };
+      additionalMetrics?: Updateable<RepositoryLocalMetricsTable>;
+    },
+  ): Promise<void> {
     try {
       return;
     } finally {
-      const { total_size } = await this.restic.stats(endpoint, key);
-      const metrics = {
-        sizeBytes: total_size,
-        lastBackup: new Date().toISOString(),
+      const metrics: Updateable<RepositoryLocalMetricsTable> = {
+        ...options.additionalMetrics,
       };
 
-      await this.repositoryLocalMetrics.save(id, metrics);
+      if (options.resticParameters) {
+        const { endpoint, key } = options.resticParameters;
+        const { total_size } = await this.restic.stats(endpoint, key);
+        metrics.sizeBytes = total_size;
+      }
+
+      const updatedMetrics = await this.repositoryLocalMetrics.save(id, metrics);
 
       this.events.publish({
         type: 'RepositoryUpdate',
         repositoryId: id,
         repository: {
-          metrics,
+          metrics: updatedMetrics,
         },
       });
 
@@ -302,6 +317,7 @@ export class RepositoryService {
 
     return new Promise((resolve) => {
       let endpoint: string, key: Uint8Array;
+      let startTime: number;
 
       const task = new Promise<void>(
         (complete, fail) =>
@@ -313,6 +329,7 @@ export class RepositoryService {
                 logId,
               });
 
+              startTime = Date.now();
               ({ endpoint, key } = await this.getResticParameters(id));
 
               const paths = await this.repositoryPath.get(id);
@@ -328,9 +345,22 @@ export class RepositoryService {
               }
             },
             (error) => {
-              if (endpoint && key) {
-                void this.updateLocalMetrics(id, endpoint, key);
+              const lastBackup = new Date().toString();
+              let lastSuccessfulBackup;
+              const lastBackupDuration = startTime ? Date.now() - startTime : undefined;
+
+              if (!error) {
+                lastSuccessfulBackup = lastBackup;
               }
+
+              void this.updateLocalMetrics(id, {
+                resticParameters: endpoint ? { endpoint, key } : undefined,
+                additionalMetrics: {
+                  lastBackup: new Date().toString(),
+                  lastSuccessfulBackup,
+                  lastBackupDuration,
+                },
+              });
 
               if (error) {
                 fail(error);
@@ -422,7 +452,9 @@ export class RepositoryService {
       this.tasks.endTask(id);
     }
 
-    await this.updateLocalMetrics(id, endpoint, key);
+    await this.updateLocalMetrics(id, {
+      resticParameters: { endpoint, key },
+    });
   }
 
   async getRunHistory(id: string): Promise<RunHistoryResponseDto> {

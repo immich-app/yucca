@@ -862,6 +862,12 @@
           "lastBackup": {
             "type": "string"
           },
+          "lastSuccessfulBackup": {
+            "type": "string"
+          },
+          "lastBackupDuration": {
+            "type": "number"
+          },
           "sizeBytes": {
             "type": "number"
           }
