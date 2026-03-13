@@ -11,6 +11,7 @@ import {
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryMetricsDto,
+  RepositorySnapshotRestoreRequestDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
   RepositoryWithMetricsDto,
@@ -436,6 +437,48 @@ export class RepositoryService {
         time: snapshot.time.toISOString(),
       })),
     };
+  }
+
+  async restoreSnapshot(
+    id: string,
+    snapshotId: string,
+    dto: RepositorySnapshotRestoreRequestDto,
+  ): Promise<{
+    logId: string;
+    task: Promise<void>;
+  }> {
+    return new Promise((resolve) => {
+      let endpoint: string, key: Uint8Array;
+
+      const task = new Promise<void>(
+        (complete, fail) =>
+          void this.runHistory.createLog(
+            id,
+            async (log, logId) => {
+              resolve({
+                task,
+                logId,
+              });
+
+              ({ endpoint, key } = await this.getResticParameters(id));
+
+              try {
+                this.tasks.startTask(id, TaskType.Backup, logId);
+                await this.restic.restore(endpoint, key, snapshotId, dto, log);
+              } finally {
+                this.tasks.endTask(id);
+              }
+            },
+            (error) => {
+              if (error) {
+                fail(error);
+              } else {
+                complete();
+              }
+            },
+          ),
+      );
+    });
   }
 
   async forgetSnapshot(id: string, snapshotId: string): Promise<void> {

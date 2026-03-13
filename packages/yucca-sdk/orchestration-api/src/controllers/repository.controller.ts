@@ -7,6 +7,7 @@ import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
+  RepositorySnapshotRestoreRequestDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
   RunHistoryResponseDto,
@@ -78,6 +79,18 @@ export class RepositoryController {
   @ApiOkResponse({ type: ListSnapshotsResponseDto })
   getSnapshots(@Param('id') id: string): Promise<ListSnapshotsResponseDto> {
     return this.service.getSnapshots(id);
+  }
+
+  @Post('/:id/snapshots/:snapshot')
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'snapshot', type: String })
+  @ApiOkResponse({ type: LogResponseDto })
+  async restoreSnapshot(
+    @Param('id') id: string,
+    @Param('snapshot') snapshotId: string,
+    @Body() dto: RepositorySnapshotRestoreRequestDto,
+  ): Promise<LogResponseDto> {
+    return this.service.restoreSnapshot(id, snapshotId, dto);
   }
 
   @Delete('/:id/snapshots/:snapshot')
