@@ -38,7 +38,13 @@
 
 <AppShell>
   <AppShellHeader>
-    <Heading>App Name</Heading>
+    <Heading
+      ><img
+        alt="App Name Here"
+        src="/app-name-here.png"
+        class="inline h-12"
+      /></Heading
+    >
   </AppShellHeader>
 
   <AppShellSidebar bind:open>

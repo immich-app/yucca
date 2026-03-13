@@ -1,5 +1,5 @@
 <script>
-  import { Button, Checkbox, Field, Heading, HStack, Text } from "@immich/ui";
+  import { Button, Checkbox, Heading, HStack, Text } from "@immich/ui";
   import TestUi from "$lib/components/scraps/TestUi.svelte";
   import { options } from "$lib/options";
   import OnboardingGate from "$lib/components/onboarding/OnboardingGate.svelte";
