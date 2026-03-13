@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Card, CardBody, getByteUnitString, Icon, Stack } from "@immich/ui";
   import { mdiArrowDown, mdiArrowUp } from "@mdi/js";
-  import { Duration } from "luxon";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
+  import { formatDuration } from "$lib/utils/format";
   import Gauge from "./visualisations/Gauge.svelte";
 
   type Props = {
@@ -32,8 +32,7 @@
     repositories.reduce((sum, repo) => sum + (repo.metrics?.sizeBytes ?? 0), 0),
   );
 
-  const formatDuration = (ms: number) =>
-    Duration.fromMillis(ms).rescale().toHuman({ unitDisplay: "narrow" });
+
 </script>
 
 {#snippet costSubtitle()}

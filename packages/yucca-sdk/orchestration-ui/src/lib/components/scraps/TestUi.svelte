@@ -13,7 +13,6 @@
   } from "@immich/ui";
   import BackendsList from "../backends/BackendsList.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
-  import TasksList from "../tasks/TasksList.svelte";
   import {
     mdiBackupRestore,
     mdiClock,

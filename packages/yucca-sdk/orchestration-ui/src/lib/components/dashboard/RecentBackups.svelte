@@ -13,8 +13,8 @@
     mdiCheckCircleOutline,
     mdiChevronRight,
   } from "@mdi/js";
-  import { Duration } from "luxon";
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
+  import { formatDuration } from "$lib/utils/format";
   import type { RepositoryWithMetricsDto } from "yucca-api-client";
 
   type Props = {
@@ -37,8 +37,6 @@
   const isSuccess = (repo: RepositoryWithMetricsDto) =>
     repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup;
 
-  const formatDuration = (ms: number) =>
-    Duration.fromMillis(ms).rescale().toHuman({ unitDisplay: "narrow" });
 </script>
 
 <Card>

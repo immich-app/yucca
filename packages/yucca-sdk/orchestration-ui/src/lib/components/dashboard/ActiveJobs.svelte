@@ -95,7 +95,7 @@
   const hasFailedItems = (task: LiveTask) =>
     task.scheduleStatus?.some((item) => item.status === "failed") ?? false;
 
-  const borderColor = (task: LiveTask) =>
+  const statusColor = (task: LiveTask) =>
     !task.completedAt
       ? "var(--immich-ui-warning-500)"
       : hasFailedItems(task)
@@ -274,7 +274,7 @@
 {#each tasks.values() as task (task.parentId)}
   {#if shouldDisplay(task)}
     <div class="task-card" class:task-card-fading={task.fading}>
-      <Card style="border-left: 3px solid {borderColor(task)};">
+      <Card style="background: color-mix(in oklch, {statusColor(task)}, transparent 92%);">
         <CardBody class="flex flex-col gap-3">
           <HStack class="items-center justify-between">
             <HStack class="items-center gap-3">
