@@ -123,7 +123,7 @@
             aria-label="Configure"
             icon={mdiCog}
           />
-        {:else}
+        {:else if repository.backends}
           <IconButton aria-label="Import" icon={mdiImport} onclick={onImport} />
         {/if}
       </HStack>
