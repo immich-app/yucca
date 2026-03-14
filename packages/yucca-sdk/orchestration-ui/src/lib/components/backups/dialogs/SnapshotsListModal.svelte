@@ -4,6 +4,7 @@
     LoadingSpinner,
     Modal,
     ModalBody,
+    modalManager,
     Table,
     TableBody,
     TableCell,
@@ -11,13 +12,14 @@
     TableHeading,
     TableRow,
   } from "@immich/ui";
-  import type { LocalRepositoryDto, SnapshotDto } from "$lib/fetch-client";
+  import { type LocalRepositoryDto, type SnapshotDto } from "$lib/fetch-client";
   import { onMount } from "svelte";
   import { DateTime } from "luxon";
   import {
     handleForgetSnapshot,
     handleGetSnapshots,
   } from "$lib/services/snapshot.service";
+  import RestoreSnapshotModal from "./RestoreSnapshotModal.svelte";
 
   interface Props {
     repository: LocalRepositoryDto;
@@ -35,6 +37,15 @@
       b.time.localeCompare(a.time),
     );
   });
+
+  const restoreSnapshot = (id: string) => {
+    onClose();
+
+    modalManager.open(RestoreSnapshotModal, {
+      repository: repository.id,
+      snapshot: id,
+    });
+  };
 
   const deleteSnapshot = async (id: string) => {
     deleting = true;
@@ -65,7 +76,12 @@
               <TableCell
                 >{DateTime.fromISO(snapshot.time).toRelative()}</TableCell
               >
-              <TableCell>
+              <TableCell class="flex gap-2">
+                <Button
+                  size="tiny"
+                  disabled={deleting}
+                  onclick={() => restoreSnapshot(snapshot.id)}>Restore</Button
+                >
                 <Button
                   size="tiny"
                   color="danger"

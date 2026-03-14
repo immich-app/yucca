@@ -69,7 +69,7 @@
   <CardBody>
     <HStack>
       <Stack>
-        <Heading>{repository.name}</Heading>
+        <Heading size="small">{repository.name}</Heading>
         <HStack>
           {#if repository.backends}
             <Badge size="tiny" color="info">

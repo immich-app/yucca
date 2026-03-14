@@ -110,7 +110,10 @@ export type SnapshotDto = {
 export type ListSnapshotsResponseDto = {
     snapshots: SnapshotDto[];
 };
-export type TaskType = "schedule" | "backup" | "forget";
+export type RepositorySnapshotRestoreRequestDto = {
+    path: string;
+};
+export type TaskType = "schedule" | "restore" | "backup" | "forget";
 export type TaskStatus = "incomplete" | "complete" | "failed";
 export type ActiveScheduleItemDto = {
     repositoryId: string;
@@ -301,6 +304,16 @@ export function getSnapshots(id: string, opts?: Oazapfts.RequestOpts) {
     }>(`/api/repository/${encodeURIComponent(id)}/snapshots`, {
         ...opts
     }));
+}
+export function restoreSnapshot(id: string, snapshot: string, repositorySnapshotRestoreRequestDto: RepositorySnapshotRestoreRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: repositorySnapshotRestoreRequestDto
+    })));
 }
 export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

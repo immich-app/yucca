@@ -449,6 +449,52 @@
       }
     },
     "/api/repository/{id}/snapshots/{snapshot}": {
+      "post": {
+        "operationId": "restoreSnapshot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "snapshot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositorySnapshotRestoreRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
       "delete": {
         "operationId": "forgetSnapshot",
         "parameters": [
@@ -1114,10 +1160,22 @@
           "snapshots"
         ]
       },
+      "RepositorySnapshotRestoreRequestDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
       "TaskType": {
         "type": "string",
         "enum": [
           "schedule",
+          "restore",
           "backup",
           "forget"
         ]
