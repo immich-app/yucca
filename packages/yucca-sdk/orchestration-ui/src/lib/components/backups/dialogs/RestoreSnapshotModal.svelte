@@ -2,6 +2,7 @@
   import {
     Field,
     FormModal,
+    HStack,
     IconButton,
     Input,
     modalManager,
@@ -46,16 +47,18 @@
       label="Path"
       description="Where do you want this backup restored to?"
     >
-      <Input bind:value={path} />
-      <IconButton
-        icon={mdiFolder}
-        aria-label="Select folder"
-        onclick={() =>
-          modalManager.open(FileBrowserModal, {
-            folders: true,
-            onSelect: (value) => (path = value),
-          })}
-      />
+      <HStack>
+        <Input bind:value={path} />
+        <IconButton
+          icon={mdiFolder}
+          aria-label="Select folder"
+          onclick={() =>
+            modalManager.open(FileBrowserModal, {
+              folders: true,
+              onSelect: (value) => (path = value),
+            })}
+        />
+      </HStack>
     </Field>
   </Stack>
 </FormModal>
