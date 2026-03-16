@@ -147,8 +147,15 @@ export class ListSnapshotsResponseDto {
 
 export class RepositorySnapshotRestoreRequestDto {
   @ApiProperty()
+  @IsOptional()
   @IsString()
-  path!: string;
+  target?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  include?: string[];
 }
 
 export class LogResponseDto {

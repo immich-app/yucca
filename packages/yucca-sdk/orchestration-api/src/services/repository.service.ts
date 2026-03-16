@@ -1,7 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
+import { dirname } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
+import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
@@ -498,6 +500,29 @@ export class RepositoryService {
     await this.updateLocalMetrics(id, {
       resticParameters: { endpoint, key },
     });
+  }
+
+  async getSnapshotListing(
+    id: string,
+    snapshotId: string,
+    dto: FilesystemListingRequestDto,
+  ): Promise<FilesystemListingResponseDto> {
+    const path = dto.path ?? '/';
+
+    const { endpoint, key } = await this.getResticParameters(id);
+    const files = await this.restic.ls(endpoint, key, snapshotId, path);
+
+    return {
+      parent: dirname(path),
+      path,
+      items: files
+        .filter((file) => file.message_type === 'node')
+        .filter((file) => file.path !== path)
+        .map((file) => ({
+          path: file.path,
+          isDirectory: file.type === 'dir',
+        })),
+    };
   }
 
   async getRunHistory(id: string): Promise<RunHistoryResponseDto> {

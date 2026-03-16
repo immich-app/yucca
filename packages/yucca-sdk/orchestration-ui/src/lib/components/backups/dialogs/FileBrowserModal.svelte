@@ -17,15 +17,21 @@
     onSelect: (path: string) => void;
     onClose: () => void;
     folders?: boolean;
+    handleGetListing?: (path?: string) => Promise<FilesystemListingResponseDto>;
   }
 
-  const { onSelect, onClose, folders = false }: Props = $props();
+  const {
+    onSelect,
+    onClose,
+    folders = false,
+    handleGetListing,
+  }: Props = $props();
 
   let listing: FilesystemListingResponseDto | undefined = $state();
 
   async function open(path?: string) {
     listing = undefined;
-    listing = await handleGetFileListing(path);
+    listing = await (handleGetListing ?? handleGetFileListing)(path);
   }
 
   onMount(() => open());

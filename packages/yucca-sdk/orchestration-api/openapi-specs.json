@@ -532,6 +532,52 @@
         ]
       }
     },
+    "/api/repository/{id}/snapshots/{snapshot}/listing": {
+      "get": {
+        "operationId": "getSnapshotListing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "snapshot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilesystemListingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/logs/{id}": {
       "get": {
         "operationId": "logStreamSse",
@@ -1163,12 +1209,19 @@
       "RepositorySnapshotRestoreRequestDto": {
         "type": "object",
         "properties": {
-          "path": {
+          "target": {
             "type": "string"
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
-          "path"
+          "target",
+          "include"
         ]
       },
       "TaskType": {
