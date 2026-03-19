@@ -1,15 +1,14 @@
 <script lang="ts">
-  import type {
-    LocalRepositoryDto,
-    RepositoryListResponseDto,
-  } from "$lib/fetch-client";
-  import { getProvider } from "$lib/providers";
-  import { Button, Heading, modalManager } from "@immich/ui";
-  import { onMount } from "svelte";
+  import type { RepositoryListResponseDto } from "$lib/fetch-client";
+  import { Alert, Button, Heading, LoadingSpinner, modalManager } from "@immich/ui";
+  import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
   import OnEvents from "../util/OnEvents.svelte";
-  import { SocketEvent } from "$lib/events";
+  import {
+    useRepositories,
+    useRepositoryEventHandler,
+  } from "$lib/services/repository.service";
 
   interface Props {
     local?: boolean;
@@ -18,89 +17,58 @@
 
   const { local, initialData }: Props = $props();
 
-  // svelte-ignore state_referenced_locally
-  let repositories = $state(initialData?.repositories);
+  const query = useRepositories(initialData?.repositories);
 
-  const provider = getProvider();
-
-  onMount(() => {
-    if (!repositories) {
-      provider
-        .getRepositories()
-        .then((data) => (repositories = data.repositories));
-    }
-  });
+  const { onRepositoryCreate, onRepositoryUpdate } =
+    useRepositoryEventHandler();
 
   const localRepositories = $derived(
-    repositories?.filter((repository) => repository.configuration) ?? [],
+    query.data?.filter((repository) => repository.configuration) ?? [],
   );
 
   const remoteRepositories = $derived(
-    repositories?.filter((repository) => !repository.configuration) ?? [],
+    query.data?.filter((repository) => !repository.configuration) ?? [],
   );
 
   const createNewBackup = () => modalManager.show(CreateRepositoryModal);
-
-  const onRepositoryCreate = (
-    event: SocketEvent<{
-      repository: LocalRepositoryDto;
-    }>,
-  ) => {
-    repositories = [
-      ...(repositories ?? []).filter(
-        (repository) => repository.id !== event.data.repository.id,
-      ),
-      event.data.repository,
-    ];
-  };
-
-  const onRepositoryUpdate = (
-    event: SocketEvent<{
-      repositoryId: string;
-      repository: Partial<LocalRepositoryDto>;
-    }>,
-  ) => {
-    repositories = repositories?.map((repository) =>
-      repository.id === event.data.repositoryId
-        ? {
-            ...repository,
-            ...event.data.repository,
-          }
-        : repository,
-    );
-  };
 </script>
 
 <OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
 
-<div class="flex flex-col gap-4">
-  {#if local}
+{#if query.isLoading}
+  <LoadingSpinner />
+{:else if query.isError}
+  <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
+{:else if query.isSuccess}
+  <div class="flex flex-col gap-4">
+    {#if local}
+      <div class="flex flex-col gap-2">
+        <Heading
+          >Backups on this machine <div class="inline-block">
+            <Button
+              shape="round"
+              size="tiny"
+              variant="outline"
+              onclick={createNewBackup}>Create new backup</Button
+            >
+          </div></Heading
+        >
+        {#each localRepositories as repository (repository.id)}
+          <BackupItem {repository} />
+        {/each}
+      </div>
+    {/if}
+
     <div class="flex flex-col gap-2">
-      <Heading
-        >Backups on this machine <div class="inline-block">
-          <Button
-            shape="round"
-            size="tiny"
-            variant="outline"
-            onclick={createNewBackup}>Create new backup</Button
-          >
-        </div></Heading
-      >
-      {#each localRepositories as repository (repository.id)}
+      {#if local}
+        <Heading>Backups found elsewhere</Heading>
+      {:else}
+        <Heading>Your Backups</Heading>
+      {/if}
+
+      {#each remoteRepositories as repository (repository.id)}
         <BackupItem {repository} />
       {/each}
     </div>
-  {/if}
-
-  <div class="flex flex-col gap-2">
-    {#if local}
-      <Heading>Backups found elsewhere</Heading>
-    {:else}
-      <Heading>Your Backups</Heading>
-    {/if}
-
-    {#each remoteRepositories as repository (repository.id)}
-      <BackupItem {repository} />
-    {/each}
   </div>
-</div>
+{/if}

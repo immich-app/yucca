@@ -1,66 +1,30 @@
 <script lang="ts">
-  import type { ScheduleDto } from "$lib/fetch-client";
-  import { handleGetSchedules } from "$lib/services/schedule.service";
-  import { getProvider } from "$lib/providers";
   import { Button, Heading, modalManager } from "@immich/ui";
-  import { onMount } from "svelte";
   import CreateScheduleModal from "./dialogs/CreateScheduleModal.svelte";
   import ScheduleItem from "./ScheduleItem.svelte";
-  import type { SocketEvent } from "$lib/events";
   import OnEvents from "../util/OnEvents.svelte";
+  import {
+    useSchedules,
+    useScheduleEventHandler,
+  } from "$lib/services/schedule.service";
+  import { useRepositories } from "$lib/services/repository.service";
 
-  // svelte-ignore state_referenced_locally
-  let schedules: ScheduleDto[] | undefined = $state();
-  let repositoryNames: Record<string, string> = $state({});
+  const schedulesQuery = useSchedules();
+  const repositoriesQuery = useRepositories();
 
-  const provider = getProvider();
+  const { onScheduleCreate, onScheduleUpdate, onScheduleDelete } =
+    useScheduleEventHandler();
 
-  onMount(() => {
-    handleGetSchedules().then((data) => (schedules = data.schedules));
-
-    provider.getRepositories().then((data) => {
-      repositoryNames = Object.fromEntries(
-        data.repositories.map((r) => [r.id, r.name]),
-      );
-    });
-  });
+  const repositoryNames = $derived(
+    Object.fromEntries(
+      repositoriesQuery.data?.map((r) => [r.id, r.name]) ?? [],
+    ),
+  );
 
   const onCreate = () => {
     modalManager.open(CreateScheduleModal, {
       repositories: [],
     });
-  };
-
-  const onScheduleCreate = (
-    event: SocketEvent<{
-      schedule: ScheduleDto;
-    }>,
-  ) => {
-    schedules = [...(schedules ?? []), event.data.schedule];
-  };
-
-  const onScheduleUpdate = (
-    event: SocketEvent<{
-      scheduleId: string;
-      schedule: Partial<ScheduleDto>;
-    }>,
-  ) => {
-    schedules = schedules?.map((schedule) =>
-      schedule.id === event.data.scheduleId
-        ? {
-            ...schedule,
-            ...event.data.schedule,
-          }
-        : schedule,
-    );
-  };
-
-  const onScheduleDelete = (
-    event: SocketEvent<{
-      scheduleId: string;
-    }>,
-  ) => {
-    schedules = schedules?.filter((s) => s.id !== event.data.scheduleId);
   };
 </script>
 
@@ -74,7 +38,7 @@
       >
     </div></Heading
   >
-  {#each schedules ?? [] as schedule (schedule.id)}
+  {#each schedulesQuery.data ?? [] as schedule (schedule.id)}
     <ScheduleItem {schedule} {repositoryNames} />
   {/each}
 </div>

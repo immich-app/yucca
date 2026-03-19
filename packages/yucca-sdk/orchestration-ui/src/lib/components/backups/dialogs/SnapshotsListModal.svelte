@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    Button,
+    Alert,
     IconButton,
     LoadingSpinner,
     Modal,
@@ -13,12 +13,13 @@
     TableHeading,
     TableRow,
   } from "@immich/ui";
-  import { type LocalRepositoryDto, type SnapshotDto } from "$lib/fetch-client";
-  import { onMount } from "svelte";
+  import { getReadableErrorMessage } from "$lib/utils/handle-error";
+  import { type LocalRepositoryDto } from "$lib/fetch-client";
   import { DateTime } from "luxon";
   import {
     handleForgetSnapshot,
-    handleGetSnapshots,
+    useRemoveSnapshot,
+    useSnapshots,
   } from "$lib/services/snapshot.service";
   import RestoreSnapshotModal from "./RestoreSnapshotModal.svelte";
   import { mdiDeleteOutline, mdiRestore } from "@mdi/js";
@@ -30,15 +31,9 @@
 
   let { repository, onClose }: Props = $props();
 
-  let snapshots: SnapshotDto[] | undefined = $state();
+  const query = useSnapshots(repository.id);
+  const removeSnapshot = useRemoveSnapshot(repository.id);
   let deleting = $state(false);
-
-  onMount(async () => {
-    const result = await handleGetSnapshots(repository.id);
-    snapshots = result.snapshots.toSorted((a, b) =>
-      b.time.localeCompare(a.time),
-    );
-  });
 
   const restoreSnapshot = (id: string) => {
     onClose();
@@ -54,7 +49,7 @@
 
     try {
       await handleForgetSnapshot(repository.id, id);
-      snapshots = snapshots?.filter((snapshot) => snapshot.id !== id);
+      removeSnapshot(id);
     } finally {
       deleting = false;
     }
@@ -63,7 +58,11 @@
 
 <Modal title={`Snapshots for ${repository.name}`} {onClose}>
   <ModalBody>
-    {#if snapshots}
+    {#if query.isLoading}
+      <LoadingSpinner />
+    {:else if query.isError}
+      <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
+    {:else if query.isSuccess}
       <Table>
         <TableHeader>
           <TableHeading>Snapshot</TableHeading>
@@ -72,7 +71,7 @@
         </TableHeader>
 
         <TableBody>
-          {#each snapshots as snapshot (snapshot.id)}
+          {#each query.data as snapshot (snapshot.id)}
             <TableRow>
               <TableCell><code class="text-xs">{snapshot.id.slice(0, 12)}</code></TableCell>
               <TableCell>{DateTime.fromISO(snapshot.time).toRelative()}</TableCell>
@@ -97,8 +96,6 @@
           {/each}
         </TableBody>
       </Table>
-    {:else}
-      <LoadingSpinner />
     {/if}
   </ModalBody>
 </Modal>
