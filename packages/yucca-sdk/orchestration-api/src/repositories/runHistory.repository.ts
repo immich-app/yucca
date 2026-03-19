@@ -59,7 +59,7 @@ export class RunHistoryRepository {
             .where('id', '=', logId)
             .set('status', TaskStatus.Complete)
             .set('end', new Date().toISOString())
-            .executeTakeFirstOrThrow();
+            .execute();
         })
         .catch(async (error) => {
           callback(error);
@@ -72,7 +72,7 @@ export class RunHistoryRepository {
             .where('id', '=', logId)
             .set('status', TaskStatus.Failed)
             .set('end', new Date().toISOString())
-            .executeTakeFirstOrThrow();
+            .execute();
         });
     } catch (error) {
       callback(error);
