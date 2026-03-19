@@ -288,32 +288,25 @@ export class RepositoryService {
       additionalMetrics?: Updateable<RepositoryLocalMetricsTable>;
     },
   ): Promise<void> {
-    try {
-      return;
-    } finally {
-      const metrics: Updateable<RepositoryLocalMetricsTable> = {
-        ...options.additionalMetrics,
-      };
+    const metrics: Updateable<RepositoryLocalMetricsTable> = {
+      ...options.additionalMetrics,
+    };
 
-      if (options.resticParameters) {
-        const { endpoint, key } = options.resticParameters;
-        const { total_size } = await this.restic.stats(endpoint, key);
-        metrics.sizeBytes = total_size;
-      }
-
-      const updatedMetrics = await this.repositoryLocalMetrics.save(id, metrics);
-
-      this.events.publish({
-        type: 'RepositoryUpdate',
-        repositoryId: id,
-        repository: {
-          metrics: updatedMetrics,
-        },
-      });
-
-      // debug
-      // console.info(`RESTIC_PASSWORD=${key.toHex()} restic -r ${endpoint}`);
+    if (options.resticParameters) {
+      const { endpoint, key } = options.resticParameters;
+      const { total_size } = await this.restic.stats(endpoint, key);
+      metrics.sizeBytes = total_size;
     }
+
+    const updatedMetrics = await this.repositoryLocalMetrics.save(id, metrics);
+
+    this.events.publish({
+      type: 'RepositoryUpdate',
+      repositoryId: id,
+      repository: {
+        metrics: updatedMetrics,
+      },
+    });
   }
 
   createBackup(id: string): Promise<{
