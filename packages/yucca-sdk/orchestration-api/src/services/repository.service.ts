@@ -309,7 +309,7 @@ export class RepositoryService {
     });
   }
 
-  createBackup(id: string): Promise<{
+  async createBackup(id: string): Promise<{
     logId: string;
     task: Promise<void>;
   }> {
@@ -317,8 +317,14 @@ export class RepositoryService {
       throw new BadRequestException('Task already running!');
     }
 
+    const paths = await this.repositoryPath.get(id);
+    if (paths.length === 0) {
+      throw new BadRequestException('Missing configuration paths');
+    }
+
+    const { endpoint, key } = await this.getResticParameters(id);
+
     return new Promise((resolve) => {
-      let endpoint: string, key: Uint8Array;
       let startTime: number;
 
       const task = new Promise<void>(
@@ -332,12 +338,6 @@ export class RepositoryService {
               });
 
               startTime = Date.now();
-              ({ endpoint, key } = await this.getResticParameters(id));
-
-              const paths = await this.repositoryPath.get(id);
-              if (paths.length === 0) {
-                throw new BadRequestException('Missing configuration paths');
-              }
 
               try {
                 this.tasks.startTask(id, TaskType.Backup, logId);
@@ -356,7 +356,7 @@ export class RepositoryService {
               }
 
               void this.updateLocalMetrics(id, {
-                resticParameters: endpoint ? { endpoint, key } : undefined,
+                resticParameters: { endpoint, key },
                 additionalMetrics: {
                   lastBackup: new Date().toString(),
                   lastSuccessfulBackup,
