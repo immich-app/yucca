@@ -471,7 +471,7 @@ export class RepositoryService {
               ({ endpoint, key } = await this.getResticParameters(id));
 
               try {
-                this.tasks.startTask(id, TaskType.Backup, logId);
+                this.tasks.startTask(id, TaskType.Restore, logId);
                 await this.restic.restore(endpoint, key, snapshotId, dto, log);
               } finally {
                 this.tasks.endTask(id);
