@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
+import { defaults } from './fetch-client';
 
-export const socket = io('http://localhost:22676', {
+export const socket = io(defaults.baseUrl, {
   transports: ['websocket'],
   autoConnect: false,
 });
