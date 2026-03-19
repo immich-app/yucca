@@ -25,7 +25,7 @@ export class DatabaseRepository {
 
     if (error) {
       console.error(`Migrations failed: ${error}`);
-      throw 'Migrations failed.';
+      throw new Error('Migrations failed.');
     }
 
     console.info('Finished running migrations');
