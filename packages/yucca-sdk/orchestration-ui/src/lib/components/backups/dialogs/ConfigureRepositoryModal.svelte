@@ -25,7 +25,9 @@
 
   let { repository, onClose }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
   let name = $state(repository.name);
+  // svelte-ignore state_referenced_locally
   let paths = new SvelteSet(repository.configuration?.paths ?? []);
 
   const onRepositoryUpdate = (

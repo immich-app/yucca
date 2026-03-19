@@ -1218,11 +1218,7 @@
               "type": "string"
             }
           }
-        },
-        "required": [
-          "target",
-          "include"
-        ]
+        }
       },
       "TaskType": {
         "type": "string",

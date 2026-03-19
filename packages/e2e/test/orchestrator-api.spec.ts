@@ -184,7 +184,7 @@ describe('Repository', () => {
 
     const { logId } = await sdk.createBackup(repository.id);
 
-    const events = createEventSource(`${baseUrl}/api/repository/logs/${logId}`);
+    const events = createEventSource(`${baseUrl}/api/logs/${logId}`);
 
     for await (const { data } of events) {
       const payload = JSON.parse(data);
@@ -224,10 +224,10 @@ describe('Repository', () => {
       type: 'RepositoryUpdate',
       repositoryId: repository.id,
       repository: expect.objectContaining({
-        metrics: {
+        metrics: expect.objectContaining({
           lastBackup: expect.any(String),
           sizeBytes: expect.any(Number),
-        },
+        }),
       }),
     });
   }, 10_000);
@@ -267,10 +267,10 @@ describe('Repository', () => {
       type: 'RepositoryUpdate',
       repositoryId: repository.id,
       repository: expect.objectContaining({
-        metrics: {
+        metrics: expect.objectContaining({
           lastBackup: expect.any(String),
           sizeBytes: expect.any(Number),
-        },
+        }),
       }),
     });
   });

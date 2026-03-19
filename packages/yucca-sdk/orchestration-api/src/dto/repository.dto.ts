@@ -146,12 +146,12 @@ export class ListSnapshotsResponseDto {
 }
 
 export class RepositorySnapshotRestoreRequestDto {
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   target?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

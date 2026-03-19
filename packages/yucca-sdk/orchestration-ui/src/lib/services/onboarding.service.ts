@@ -29,7 +29,9 @@ export const handleConfirmRecoveryKey = async () => {
   }
 };
 
-export const handleImportRecoveryKey = async (dto: ImportRecoveryKeyRequest) => {
+export const handleImportRecoveryKey = async (
+  dto: ImportRecoveryKeyRequest,
+) => {
   try {
     await sdk.importRecoveryKey(dto);
   } catch (error) {

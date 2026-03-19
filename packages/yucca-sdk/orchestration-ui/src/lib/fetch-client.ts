@@ -111,8 +111,8 @@ export type ListSnapshotsResponseDto = {
     snapshots: SnapshotDto[];
 };
 export type RepositorySnapshotRestoreRequestDto = {
-    target: string;
-    include: string[];
+    target?: string;
+    include?: string[];
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
 export type TaskStatus = "incomplete" | "complete" | "failed";
