@@ -207,7 +207,13 @@ export class RepositoryService {
 
     const backend = await this.backend.getBackend(backendId);
     const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
-    const { repository: remote } = await backendInstance.updateRepository(id, dto);
+
+    let remote;
+    if (dto.name) {
+      ({ repository: remote } = await backendInstance.updateRepository(id, dto));
+    } else {
+      ({ repository: remote } = await backendInstance.getRepository(id));
+    }
 
     if (dto.paths) {
       const currentPaths = new Set(await this.repositoryPath.get(id));
