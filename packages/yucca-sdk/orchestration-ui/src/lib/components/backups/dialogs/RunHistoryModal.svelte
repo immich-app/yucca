@@ -25,6 +25,7 @@
 
   let { repository, onClose }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
   const query = useRunHistory(repository.id);
 </script>
 

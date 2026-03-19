@@ -17,6 +17,7 @@
 
   const { local, initialData }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
   const query = useRepositories(initialData?.repositories);
 
   const { onRepositoryCreate, onRepositoryUpdate } =

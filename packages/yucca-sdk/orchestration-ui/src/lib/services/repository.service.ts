@@ -26,9 +26,7 @@ export const useRepositoryEventHandler = () => {
   const queryClient = useQueryClient();
 
   return {
-    onRepositoryCreate(
-      event: SocketEvent<{ repository: LocalRepositoryDto }>,
-    ) {
+    onRepositoryCreate(event: SocketEvent<{ repository: LocalRepositoryDto }>) {
       queryClient.setQueryData(
         repositoryKeys.all,
         (data: LocalRepositoryDto[] | undefined) => {

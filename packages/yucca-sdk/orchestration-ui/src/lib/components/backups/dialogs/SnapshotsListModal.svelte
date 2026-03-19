@@ -31,7 +31,9 @@
 
   let { repository, onClose }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
   const query = useSnapshots(repository.id);
+  // svelte-ignore state_referenced_locally
   const removeSnapshot = useRemoveSnapshot(repository.id);
   let deleting = $state(false);
 
