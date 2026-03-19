@@ -42,7 +42,7 @@ type Event =
     };
 
 @WebSocketGateway({
-  cors: true,
+  cors: false,
   path: '/socket.io',
   transports: ['websocket'],
 })
