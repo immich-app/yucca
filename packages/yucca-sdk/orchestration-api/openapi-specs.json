@@ -863,10 +863,7 @@
             "type": "string"
           },
           "isDirectory": {
-            "type": "array",
-            "items": {
-              "type": "boolean"
-            }
+            "type": "boolean"
           }
         },
         "required": [

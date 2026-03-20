@@ -26,7 +26,7 @@ export type BackendsResponseDto = {
 };
 export type FilesystemListingItemDto = {
     path: string;
-    isDirectory: boolean[];
+    isDirectory: boolean;
 };
 export type FilesystemListingResponseDto = {
     parent: string;
