@@ -46,7 +46,7 @@ run = [{ task = "*:fix" }, { task = "web:lingui" }]
 [env]
 # default environment variables for development
 NODE_ENV = "development"
-YUCCA_API_PORT = 3000
+YUCCA_API_PORT = 3020
 RESTIC_API_PORT = 3010
 S3_ACCESS_KEY_ID = "minio"
 S3_SECRET_ACCESS_KEY = "miniominio"
@@ -57,6 +57,7 @@ POSTGRES_HOST = "localhost"
 POSTGRES_USERNAME = "postgres"
 POSTGRES_PASSWORD = "postgres"
 POSTGRES_DATABASE = "yucca"
+POSTGRES_PORT = 15432
 JWT_SECRET = "cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1"
 OIDC_ISSUER = "http://localhost:8092"
 OIDC_CLIENT_ID = "client ID"
