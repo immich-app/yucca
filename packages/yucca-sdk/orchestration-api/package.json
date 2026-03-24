@@ -1,6 +1,6 @@
 {
   "name": "orchestration-api",
-  "version": "1.0.0",
+  "version": "1.0.8",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -52,6 +52,9 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"
   },
+  "files": [
+    "dist"
+  ],
   "jest": {
     "moduleFileExtensions": [
       "js",
