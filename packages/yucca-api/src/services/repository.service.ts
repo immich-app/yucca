@@ -1,10 +1,10 @@
-import { env } from '@common/server/env';
 import { WideContextRepository } from '@common/server/otel';
 import { Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
+import { ResticApiRepository } from 'src/repositories/resticApi.repository';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RepositoryService {
@@ -12,6 +12,7 @@ export class RepositoryService {
     private readonly jwt: JwtService,
     private readonly repositoryRepository: RepositoryRepository,
     private readonly wideContext: WideContextRepository,
+    private readonly resticApi: ResticApiRepository,
   ) {}
 
   async create(auth: AuthDto, dto: RepositoryCreateRequestDto) {
@@ -80,6 +81,12 @@ export class RepositoryService {
     });
 
     this.wideContext.addContext('repositoryId', repository.id);
-    return { url: `rest:http://restic:${token}@localhost:${env.RESTIC_API_PORT}/${repository.id}/` };
+
+    const url = this.resticApi.getEndpoint();
+    url.username = 'restic';
+    url.password = token;
+    url.pathname = repository.id;
+
+    return { url: url.href };
   }
 }
