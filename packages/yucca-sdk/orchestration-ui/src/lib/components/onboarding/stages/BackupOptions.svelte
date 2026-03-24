@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { handleYuccaLogin } from "$lib/services/backend.service";
   import {
     Button,
     Card,
@@ -11,7 +12,6 @@
     Text,
     VStack,
   } from "@immich/ui";
-  import { defaults } from "yucca-api-client";
 
   type Props = {
     onFinish: () => void;
@@ -19,18 +19,12 @@
   };
 
   const { onFinish, onCancel }: Props = $props();
-
-  const login = () => {
-    const loginUrl = new URL("/api/auth/oidc/login", defaults.baseUrl);
-    loginUrl.searchParams.set("next", window.location.href);
-    window.location.href = loginUrl.href;
-  };
 </script>
 
 <Modal size="small" title="Backup options" onClose={onCancel}>
   <ModalBody>
     <VStack>
-      <Card class="cursor-pointer" onclick={login}>
+      <Card class="cursor-pointer" onclick={handleYuccaLogin}>
         <CardBody>
           <Heading size="small">$0/TB per month</Heading>
           <Text>Backups powered by FUTO</Text>

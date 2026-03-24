@@ -67,7 +67,7 @@ export function createLogObserver(logId: string) {
   };
 
   const source = new EventSource(
-    new URL(`/api/logs/${logId}`, defaults.baseUrl),
+    new URL(`/api/yucca/logs/${logId}`, defaults.baseUrl),
   );
   source.addEventListener('message', ({ data }) => onEvent(JSON.parse(data)));
 

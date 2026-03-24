@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/api/auth/oidc/login": {
+    "/api/yucca/auth/oidc/login": {
       "get": {
         "operationId": "oidcAuthorize",
         "parameters": [
@@ -24,7 +24,7 @@
         ]
       }
     },
-    "/api/auth/oidc/callback": {
+    "/api/yucca/auth/oidc/callback": {
       "get": {
         "operationId": "oidcCallback",
         "parameters": [],
@@ -38,7 +38,7 @@
         ]
       }
     },
-    "/api/backend": {
+    "/api/yucca/backend": {
       "get": {
         "operationId": "getBackends",
         "parameters": [],
@@ -59,7 +59,7 @@
         ]
       }
     },
-    "/api/debug": {
+    "/api/yucca/debug": {
       "get": {
         "operationId": "resetOrchestrator",
         "parameters": [],
@@ -73,7 +73,7 @@
         ]
       }
     },
-    "/api/fs": {
+    "/api/yucca/fs": {
       "get": {
         "operationId": "getFileListing",
         "parameters": [
@@ -103,7 +103,7 @@
         ]
       }
     },
-    "/api/onboarding": {
+    "/api/yucca/onboarding": {
       "get": {
         "operationId": "onboardingStatus",
         "parameters": [],
@@ -124,7 +124,7 @@
         ]
       }
     },
-    "/api/onboarding/recovery-key": {
+    "/api/yucca/onboarding/recovery-key": {
       "get": {
         "operationId": "currentRecoveryKey",
         "parameters": [],
@@ -179,7 +179,7 @@
         ]
       }
     },
-    "/api/repository": {
+    "/api/yucca/repository": {
       "post": {
         "operationId": "createRepository",
         "parameters": [
@@ -238,7 +238,7 @@
         ]
       }
     },
-    "/api/repository/{id}": {
+    "/api/yucca/repository/{id}": {
       "patch": {
         "operationId": "updateRepository",
         "parameters": [
@@ -314,7 +314,7 @@
         ]
       }
     },
-    "/api/repository/{id}/import": {
+    "/api/yucca/repository/{id}/import": {
       "get": {
         "operationId": "checkImportRepository",
         "parameters": [
@@ -388,7 +388,7 @@
         ]
       }
     },
-    "/api/repository/{id}/runs": {
+    "/api/yucca/repository/{id}/runs": {
       "get": {
         "operationId": "getRunHistory",
         "parameters": [
@@ -418,7 +418,7 @@
         ]
       }
     },
-    "/api/repository/{id}/snapshots": {
+    "/api/yucca/repository/{id}/snapshots": {
       "get": {
         "operationId": "getSnapshots",
         "parameters": [
@@ -448,7 +448,7 @@
         ]
       }
     },
-    "/api/repository/{id}/snapshots/{snapshot}": {
+    "/api/yucca/repository/{id}/snapshots/{snapshot}": {
       "post": {
         "operationId": "restoreSnapshot",
         "parameters": [
@@ -532,7 +532,7 @@
         ]
       }
     },
-    "/api/repository/{id}/snapshots/{snapshot}/listing": {
+    "/api/yucca/repository/{id}/snapshots/{snapshot}/listing": {
       "get": {
         "operationId": "getSnapshotListing",
         "parameters": [
@@ -578,7 +578,7 @@
         ]
       }
     },
-    "/api/logs/{id}": {
+    "/api/yucca/logs/{id}": {
       "get": {
         "operationId": "logStreamSse",
         "parameters": [
@@ -601,7 +601,7 @@
         ]
       }
     },
-    "/api/tasks": {
+    "/api/yucca/tasks": {
       "get": {
         "operationId": "getRunningTasks",
         "parameters": [],
@@ -622,7 +622,7 @@
         ]
       }
     },
-    "/api/schedule": {
+    "/api/yucca/schedule": {
       "post": {
         "operationId": "createSchedule",
         "parameters": [],
@@ -672,7 +672,7 @@
         ]
       }
     },
-    "/api/schedule/{id}": {
+    "/api/yucca/schedule/{id}": {
       "patch": {
         "operationId": "updateSchedule",
         "parameters": [
@@ -733,7 +733,7 @@
         ]
       }
     },
-    "/api/schedule/{id}/{repositoryId}": {
+    "/api/yucca/schedule/{id}/{repositoryId}": {
       "put": {
         "operationId": "addRepositoryToSchedule",
         "parameters": [
