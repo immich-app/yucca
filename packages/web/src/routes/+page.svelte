@@ -13,7 +13,8 @@
 
 <main class="p-4">
   <Button
-    onclick={() => (location.href = defaults.baseUrl + "api/auth/oidc/login")}
+    onclick={() =>
+      (location.href = defaults.baseUrl + "api/yucca/auth/oidc/login")}
     >{$t`Login`}</Button
   >
 
