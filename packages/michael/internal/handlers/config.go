@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"errors"
-	"github.com/rs/zerolog/hlog"
 	"net/http"
 	"strconv"
 
+	"github.com/rs/zerolog/hlog"
+
 	"michael/internal/auth"
+	"michael/internal/metrics"
 	"michael/internal/storage"
 )
 
@@ -54,6 +56,10 @@ func (s *Server) saveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.Metrics != nil && r.ContentLength > 0 {
+		s.Metrics.StoredBytes.Add(r.Context(), r.ContentLength, metrics.AuthMetricOption(a))
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -66,7 +72,7 @@ func (s *Server) deleteConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := s.Storage.HeadObject(r.Context(), a.Repository, "config")
+	size, err := s.Storage.HeadObject(r.Context(), a.Repository, "config")
 	if err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("head config for delete failed")
 		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
@@ -77,6 +83,10 @@ func (s *Server) deleteConfig(w http.ResponseWriter, r *http.Request) {
 		hlog.FromRequest(r).Error().Err(err).Msg("delete config failed")
 		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
+	}
+
+	if s.Metrics != nil && size > 0 {
+		s.Metrics.StoredBytes.Add(r.Context(), -size, metrics.AuthMetricOption(a))
 	}
 
 	w.WriteHeader(http.StatusOK)

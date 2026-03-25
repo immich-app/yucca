@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 
 	"michael/internal/auth"
+	"michael/internal/metrics"
 	"michael/internal/storage"
 
 	"github.com/go-chi/chi/v5"
@@ -94,6 +95,10 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.Metrics != nil && r.ContentLength > 0 {
+		s.Metrics.StoredBytes.Add(r.Context(), r.ContentLength, metrics.AuthMetricOption(a))
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -109,7 +114,7 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := blobType + "/" + name
-	_, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
+	size, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("head blob for delete failed")
 		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
@@ -120,6 +125,10 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 		hlog.FromRequest(r).Error().Err(err).Msg("delete blob failed")
 		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
+	}
+
+	if s.Metrics != nil && size > 0 {
+		s.Metrics.StoredBytes.Add(r.Context(), -size, metrics.AuthMetricOption(a))
 	}
 
 	w.WriteHeader(http.StatusOK)

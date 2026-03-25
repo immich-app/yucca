@@ -23,6 +23,7 @@ type Metrics struct {
 	RequestedBytes  otelmetric.Int64Counter
 	DownloadedBytes otelmetric.Int64Counter
 	UploadedBytes   otelmetric.Int64Counter
+	StoredBytes     otelmetric.Int64UpDownCounter
 	RequestDuration otelmetric.Float64Histogram
 	RequestCount    otelmetric.Int64Counter
 	RequestErrors   otelmetric.Int64Counter
@@ -45,6 +46,13 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		otelmetric.WithDescription("Total no. of blob bytes uploaded"))
 	if err != nil {
 		return nil, fmt.Errorf("creating uploaded_bytes counter: %w", err)
+	}
+
+	storedBytes, err := meter.Int64UpDownCounter("blobs.stored_bytes",
+		otelmetric.WithDescription("Estimated net stored bytes (uploads minus deletions)"),
+		otelmetric.WithUnit("By"))
+	if err != nil {
+		return nil, fmt.Errorf("creating stored_bytes counter: %w", err)
 	}
 
 	requestDuration, err := meter.Float64Histogram("http.server.request.duration",
@@ -70,6 +78,7 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		RequestedBytes:  requestedBytes,
 		DownloadedBytes: downloadedBytes,
 		UploadedBytes:   uploadedBytes,
+		StoredBytes:     storedBytes,
 		RequestDuration: requestDuration,
 		RequestCount:    requestCount,
 		RequestErrors:   requestErrors,
