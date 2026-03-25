@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,11 +23,31 @@ import (
 func main() {
 	zerolog.TimeFieldFormat = time.RFC3339
 	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
-	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	cfg := config.LoadConfig()
+
+	var output io.Writer = os.Stderr
+	if cfg.LogPretty {
+		output = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
+	}
+
+	var otelLogWriter *metrics.OTLPLogWriter
+	if cfg.OTLPLogsEnabled {
+		logProvider, err := metrics.SetupLogProvider(cfg)
+		if err != nil {
+			log.Logger = zerolog.New(output).With().Timestamp().Caller().Logger()
+			log.Fatal().Err(err).Msg("failed to setup OTLP log provider")
+		}
+		otelLogWriter = metrics.NewOTLPLogWriter(logProvider)
+		output = io.MultiWriter(output, otelLogWriter)
+	}
+	log.Logger = zerolog.New(output).With().Timestamp().Caller().Logger()
 	zerolog.SetGlobalLevel(cfg.LogLevel)
 	store := storage.NewS3Storage(cfg)
+
+	if cfg.OTLPLogsEnabled {
+		log.Info().Str("endpoint", cfg.OTLPLogsEndpoint).Msg("OpenTelemetry logs enabled")
+	}
 
 	var m *metrics.Metrics
 	var meterProvider *sdkmetric.MeterProvider
@@ -76,6 +97,12 @@ func main() {
 	if meterProvider != nil {
 		if err := meterProvider.Shutdown(shutdownCtx); err != nil {
 			log.Error().Err(err).Msg("meter provider shutdown error")
+		}
+	}
+
+	if otelLogWriter != nil {
+		if err := otelLogWriter.Shutdown(shutdownCtx); err != nil {
+			log.Error().Err(err).Msg("OTLP log provider shutdown error")
 		}
 	}
 

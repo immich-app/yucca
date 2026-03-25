@@ -3,10 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"github.com/rs/zerolog/hlog"
 	"net/http"
 	"strconv"
+
+	"github.com/rs/zerolog/hlog"
 
 	"michael/internal/auth"
 	"michael/internal/storage"
@@ -25,11 +25,6 @@ func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	blobType := chi.URLParam(r, "type")
-	if !validBlobTypes[blobType] {
-		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
-		return
-	}
-
 	prefix := blobType + "/"
 	blobs, err := s.Storage.ListObjects(r.Context(), a.Repository, prefix)
 	if err != nil {
@@ -50,17 +45,6 @@ func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
-
-	if !validBlobTypes[blobType] {
-		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
-		return
-	}
-
-	if !sha256HexPattern.MatchString(name) {
-		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
-		return
-	}
-
 	key := blobType + "/" + name
 	size, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
@@ -77,17 +61,6 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
-
-	if !validBlobTypes[blobType] {
-		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
-		return
-	}
-
-	if !sha256HexPattern.MatchString(name) {
-		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
-		return
-	}
-
 	key := blobType + "/" + name
 	rangeHeader := r.Header.Get("Range")
 	obj, err := s.Storage.GetObject(r.Context(), a.Repository, key, rangeHeader)
@@ -105,17 +78,6 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
-
-	if !validBlobTypes[blobType] {
-		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
-		return
-	}
-
-	if !sha256HexPattern.MatchString(name) {
-		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
-		return
-	}
-
 	key := blobType + "/" + name
 	err := s.Storage.PutObject(r.Context(), a.Repository, key, r.Body, r.ContentLength, true, name)
 	if err != nil {
@@ -140,16 +102,6 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
-
-	if !validBlobTypes[blobType] {
-		writeError(w, r,http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
-		return
-	}
-
-	if !sha256HexPattern.MatchString(name) {
-		writeError(w, r,http.StatusBadRequest, "Invalid blob name")
-		return
-	}
 
 	if a.WriteOnce && blobType != "locks" {
 		writeError(w, r,http.StatusForbidden, "Not permitted to write to WORM repository")

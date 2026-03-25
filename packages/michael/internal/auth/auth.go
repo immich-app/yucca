@@ -3,12 +3,11 @@ package auth
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/rs/zerolog/hlog"
+	"michael/internal/httputil"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
@@ -44,14 +43,14 @@ func Middleware(secret []byte) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			auth, err := extractAuth(r, secret)
 			if err != nil {
-				writeError(w, r, err.code, err.message)
+				httputil.WriteError(w, r, err.code, err.message)
 				return
 			}
 
 			// Validate path param matches auth repository
 			path := chi.URLParam(r, "path")
 			if path != "" && path != auth.Repository {
-				writeError(w, r, http.StatusBadRequest, "Repository mismatch")
+				httputil.WriteError(w, r, http.StatusBadRequest, "Repository mismatch")
 				return
 			}
 
@@ -68,25 +67,6 @@ type authError struct {
 
 func (e *authError) Error() string {
 	return e.message
-}
-
-type errorResponse struct {
-	StatusCode int    `json:"statusCode"`
-	Message    string `json:"message"`
-	RequestID  string `json:"requestId,omitempty"`
-}
-
-func writeError(w http.ResponseWriter, r *http.Request, code int, message string) {
-	reqID, _ := hlog.IDFromRequest(r)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(errorResponse{
-		StatusCode: code,
-		Message:    message,
-		RequestID:  reqID.String(),
-	}); err != nil {
-		hlog.FromRequest(r).Error().Err(err).Msg("failed to write error response")
-	}
 }
 
 func extractAuth(r *http.Request, secret []byte) (Auth, *authError) {
@@ -146,19 +126,11 @@ func extractAuth(r *http.Request, secret []byte) (Auth, *authError) {
 	}
 	auth.Repository = repository
 
-	writeOnce, ok := claims["writeOnce"]
+	writeOnce, ok := claims["writeOnce"].(bool)
 	if !ok {
 		return Auth{}, &authError{http.StatusBadRequest, "writeOnce must be a boolean"}
 	}
-	// JSON numbers and booleans
-	switch v := writeOnce.(type) {
-	case bool:
-		auth.WriteOnce = v
-	case json.Number:
-		auth.WriteOnce = v.String() != "0"
-	default:
-		return Auth{}, &authError{http.StatusBadRequest, "writeOnce must be a boolean"}
-	}
+	auth.WriteOnce = writeOnce
 
 	return auth, nil
 }

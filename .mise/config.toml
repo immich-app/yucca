@@ -73,3 +73,7 @@ OIDC_ALLOW_INSECURE = true
 OIDC_REDIRECT_URI = 'http://localhost:5173/api/auth/oidc/callback'
 OIDC_LOGOUT_REDIRECT_URI = 'http://localhost:5173'
 LOG_LEVEL = "debug"
+OTLP_METRICS_ENDPOINT = "localhost:8428"
+OTLP_METRICS_URL_PATH = "/opentelemetry/v1/metrics"
+OTLP_LOGS_ENDPOINT = "localhost:9428"
+OTLP_LOGS_URL_PATH = "/insert/opentelemetry/v1/logs"

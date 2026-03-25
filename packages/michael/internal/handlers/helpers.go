@@ -1,16 +1,17 @@
 package handlers
 
 import (
-	"encoding/json"
 	"io"
-	"github.com/rs/zerolog/hlog"
 	"net/http"
 	"regexp"
 	"strconv"
 
 	"michael/internal/auth"
+	"michael/internal/httputil"
 	"michael/internal/metrics"
 	"michael/internal/storage"
+
+	"github.com/rs/zerolog/hlog"
 )
 
 const (
@@ -24,24 +25,7 @@ var validBlobTypes = map[string]bool{
 
 var sha256HexPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
-type ErrorResponse struct {
-	StatusCode int    `json:"statusCode"`
-	Message    string `json:"message"`
-	RequestID  string `json:"requestId,omitempty"`
-}
-
-func writeError(w http.ResponseWriter, r *http.Request, code int, message string) {
-	reqID, _ := hlog.IDFromRequest(r)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(ErrorResponse{
-		StatusCode: code,
-		Message:    message,
-		RequestID:  reqID.String(),
-	}); err != nil {
-		hlog.FromRequest(r).Error().Err(err).Msg("failed to write error response")
-	}
-}
+var writeError = httputil.WriteError
 
 func (s *Server) respondWithS3Object(w http.ResponseWriter, r *http.Request, obj *storage.S3Object) {
 	defer obj.Body.Close()

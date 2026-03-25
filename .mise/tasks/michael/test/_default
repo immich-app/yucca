@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Run unit tests for michael"
+#MISE dir="{{config_root}}/packages/michael"
 set -e
 
-cd packages/michael && go test ./... "$@"
+go test ./... "$@"

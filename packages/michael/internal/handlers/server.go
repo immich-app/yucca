@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"michael/internal/auth"
 	"michael/internal/metrics"
@@ -33,6 +35,15 @@ func (s *Server) Handler() http.Handler {
 	r.Use(hlog.RequestIDHandler("request_id", "X-Request-Id"))
 	r.Use(hlog.RemoteAddrHandler("remote_ip"))
 	r.Use(hlog.UserAgentHandler("user_agent"))
+	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Info().
+			Int("status", status).
+			Int("size", size).
+			Dur("duration", duration).
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Msg("")
+	}))
 	r.Use(chimw.Recoverer)
 	if s.Metrics != nil {
 		r.Use(metrics.Middleware(s.Metrics))
@@ -53,15 +64,44 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/config", s.saveConfig)
 		r.Delete("/config", s.deleteConfig)
 
-		r.Get("/{type}", s.listBlobs)
-		r.Get("/{type}/", s.listBlobs)
-		r.Head("/{type}/{name}", s.checkBlob)
-		r.Get("/{type}/{name}", s.getBlob)
-		r.Post("/{type}/{name}", s.saveBlob)
-		r.Delete("/{type}/{name}", s.deleteBlob)
+		r.Group(func(r chi.Router) {
+			r.Use(validateBlobType)
+			r.Get("/{type}", s.listBlobs)
+			r.Get("/{type}/", s.listBlobs)
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(validateBlobType)
+			r.Use(validateBlobName)
+			r.Head("/{type}/{name}", s.checkBlob)
+			r.Get("/{type}/{name}", s.getBlob)
+			r.Post("/{type}/{name}", s.saveBlob)
+			r.Delete("/{type}/{name}", s.deleteBlob)
+		})
 	})
 
 	return r
+}
+
+func validateBlobType(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		blobType := chi.URLParam(r, "type")
+		if !validBlobTypes[blobType] {
+			writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func validateBlobName(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name := chi.URLParam(r, "name")
+		if !sha256HexPattern.MatchString(name) {
+			writeError(w, r, http.StatusBadRequest, "Invalid blob name")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func authLogContext(next http.Handler) http.Handler {

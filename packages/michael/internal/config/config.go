@@ -21,7 +21,11 @@ type Config struct {
 	OTLPMetricsURLPath  string
 	OTLPMetricsInterval time.Duration
 	OTLPEnabled         bool
+	OTLPLogsEndpoint    string
+	OTLPLogsURLPath     string
+	OTLPLogsEnabled     bool
 	LogLevel            zerolog.Level
+	LogPretty           bool
 }
 
 func LoadConfig() Config {
@@ -78,6 +82,9 @@ func LoadConfig() Config {
 		otlpInterval = time.Duration(ms) * time.Millisecond
 	}
 
+	otlpLogsEndpoint := os.Getenv("OTLP_LOGS_ENDPOINT")
+	otlpLogsURLPath := os.Getenv("OTLP_LOGS_URL_PATH")
+
 	logLevel := zerolog.InfoLevel
 	if v := os.Getenv("LOG_LEVEL"); v != "" {
 		parsed, err := zerolog.ParseLevel(v)
@@ -85,6 +92,16 @@ func LoadConfig() Config {
 			log.Fatal().Str("value", v).Msg("LOG_LEVEL must be a valid level (trace, debug, info, warn, error, fatal, panic)")
 		}
 		logLevel = parsed
+	}
+
+	logPretty := false
+	if v := os.Getenv("LOG_FORMAT"); v != "" {
+		switch v {
+		case "json", "pretty":
+			logPretty = v == "pretty"
+		default:
+			log.Fatal().Str("value", v).Msg("LOG_FORMAT must be 'json' or 'pretty'")
+		}
 	}
 
 	return Config{
@@ -99,6 +116,10 @@ func LoadConfig() Config {
 		OTLPMetricsURLPath:  otlpURLPath,
 		OTLPMetricsInterval: otlpInterval,
 		OTLPEnabled:         otlpEndpoint != "",
+		OTLPLogsEndpoint:    otlpLogsEndpoint,
+		OTLPLogsURLPath:     otlpLogsURLPath,
+		OTLPLogsEnabled:     otlpLogsEndpoint != "",
 		LogLevel:            logLevel,
+		LogPretty:           logPretty,
 	}
 }

@@ -7,7 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"github.com/rs/zerolog/log"
+
+	"github.com/rs/zerolog"
 
 	"michael/internal/config"
 
@@ -174,7 +175,7 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 	if hasher != nil {
 		actual := hex.EncodeToString(hasher.hash.Sum(nil))
 		if actual != sha256Hex {
-			log.Warn().Str("expected", sha256Hex).Str("actual", actual).Str("bucket", bucket).Str("key", key).Msg("checksum mismatch, deleting object")
+			zerolog.Ctx(ctx).Warn().Str("expected", sha256Hex).Str("actual", actual).Str("bucket", bucket).Str("key", key).Msg("checksum mismatch, deleting object")
 			_ = s.DeleteObject(ctx, bucket, key)
 			return ErrChecksumMismatch
 		}
