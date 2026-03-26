@@ -87,6 +87,6 @@ export class RepositoryService {
     url.password = token;
     url.pathname = repository.id;
 
-    return { url: url.href };
+    return { url: `rest:${url.href}` };
   }
 }
