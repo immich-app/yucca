@@ -7,7 +7,7 @@ import { DB } from '../schema';
 
 @Injectable()
 export class ConfigRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   async bootstrap() {
     const hasKey = await this.hasEncryptionKey();

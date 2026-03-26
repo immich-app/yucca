@@ -15,7 +15,7 @@ import { DB } from '../schema';
 @Injectable()
 export class RunHistoryRepository {
   constructor(
-    @InjectKysely() private db: Kysely<DB>,
+    @InjectKysely('orchestrator') private db: Kysely<DB>,
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 

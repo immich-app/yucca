@@ -1,6 +1,6 @@
 {
   "name": "orchestration-api",
-  "version": "1.0.8",
+  "version": "0.1.4",
   "description": "",
   "main": "index.js",
   "scripts": {

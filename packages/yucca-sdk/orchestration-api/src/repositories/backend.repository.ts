@@ -6,7 +6,7 @@ import { BackendConfiguration } from '../schema/tables/backend.table';
 
 @Injectable()
 export class BackendRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   async updateBackend(id: string, configuration: BackendConfiguration) {
     await this.db

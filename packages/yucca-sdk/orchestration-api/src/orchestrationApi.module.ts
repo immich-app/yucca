@@ -91,11 +91,14 @@ export class OrchestrationApiModule {
     return {
       module: OrchestrationApiModule,
       imports: [
-        KyselyModule.forRoot({
-          dialect: new SqliteDialect({
-            database,
-          }),
-        }),
+        KyselyModule.forRoot([
+          {
+            namespace: 'orchestrator',
+            dialect: new SqliteDialect({
+              database,
+            }),
+          },
+        ]),
         ScheduleModule.forRoot(),
       ],
       controllers,

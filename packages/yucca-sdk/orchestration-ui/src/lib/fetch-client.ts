@@ -163,14 +163,14 @@ export type ScheduleUpdateResponseDto = {
     schedule: ScheduleDto;
 };
 export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/auth/oidc/login${QS.query(QS.explode({
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/yucca/auth/oidc/login${QS.query(QS.explode({
         next
     }))}`, {
         ...opts
     }));
 }
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/auth/oidc/callback", {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/yucca/auth/oidc/callback", {
         ...opts
     }));
 }
@@ -178,12 +178,12 @@ export function getBackends(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: BackendsResponseDto;
-    }>("/api/yucca/backend", {
+    }>("/api/yucca/yucca/backend", {
         ...opts
     }));
 }
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/debug", {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/yucca/debug", {
         ...opts
     }));
 }
@@ -193,7 +193,7 @@ export function getFileListing({ path }: {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: FilesystemListingResponseDto;
-    }>(`/api/yucca/fs${QS.query(QS.explode({
+    }>(`/api/yucca/yucca/fs${QS.query(QS.explode({
         path
     }))}`, {
         ...opts
@@ -203,7 +203,7 @@ export function onboardingStatus(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: OnboardingStatusResponseDto;
-    }>("/api/yucca/onboarding", {
+    }>("/api/yucca/yucca/onboarding", {
         ...opts
     }));
 }
@@ -211,25 +211,25 @@ export function currentRecoveryKey(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: CurrentRecoveryKeyResponse;
-    }>("/api/yucca/onboarding/recovery-key", {
+    }>("/api/yucca/yucca/onboarding/recovery-key", {
         ...opts
     }));
 }
 export function importRecoveryKey(importRecoveryKeyRequest: ImportRecoveryKeyRequest, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/recovery-key", oazapfts.json({
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/yucca/onboarding/recovery-key", oazapfts.json({
         ...opts,
         method: "PUT",
         body: importRecoveryKeyRequest
     })));
 }
 export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/recovery-key", {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/yucca/onboarding/recovery-key", {
         ...opts,
         method: "POST"
     }));
 }
 export function skipOnboardingExtraConfig(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/skip", {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/yucca/onboarding/skip", {
         ...opts,
         method: "POST"
     }));
@@ -240,7 +240,7 @@ export function createRepository(repositoryCreateRequestDto: RepositoryCreateReq
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResponseDto;
-    }>(`/api/yucca/repository${QS.query(QS.explode({
+    }>(`/api/yucca/yucca/repository${QS.query(QS.explode({
         backend
     }))}`, oazapfts.json({
         ...opts,
@@ -252,7 +252,7 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryListResponseDto;
-    }>("/api/yucca/repository", {
+    }>("/api/yucca/yucca/repository", {
         ...opts
     }));
 }
@@ -262,7 +262,7 @@ export function updateRepository(id: string, repositoryUpdateRequestDto: Reposit
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryUpdateResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}${QS.query(QS.explode({
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}${QS.query(QS.explode({
         backend
     }))}`, oazapfts.json({
         ...opts,
@@ -274,7 +274,7 @@ export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: LogResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}`, {
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}`, {
         ...opts,
         method: "POST"
     }));
@@ -283,7 +283,7 @@ export function checkImportRepository(id: string, backend: string, opts?: Oazapf
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCheckImportResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}/import${QS.query(QS.explode({
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}/import${QS.query(QS.explode({
         backend
     }))}`, {
         ...opts
@@ -293,7 +293,7 @@ export function importRepository(id: string, backend: string, opts?: Oazapfts.Re
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}/import${QS.query(QS.explode({
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}/import${QS.query(QS.explode({
         backend
     }))}`, {
         ...opts,
@@ -304,7 +304,7 @@ export function getRunHistory(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RunHistoryResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}/runs`, {
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}/runs`, {
         ...opts
     }));
 }
@@ -312,7 +312,7 @@ export function getSnapshots(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: ListSnapshotsResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots`, {
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}/snapshots`, {
         ...opts
     }));
 }
@@ -320,7 +320,7 @@ export function restoreSnapshot(id: string, snapshot: string, repositorySnapshot
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: LogResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, oazapfts.json({
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, oazapfts.json({
         ...opts,
         method: "POST",
         body: repositorySnapshotRestoreRequestDto
@@ -330,7 +330,7 @@ export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.Req
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: ListSnapshotsResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, {
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, {
         ...opts,
         method: "DELETE"
     }));
@@ -341,14 +341,14 @@ export function getSnapshotListing(id: string, snapshot: string, { path }: {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: FilesystemListingResponseDto;
-    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}/listing${QS.query(QS.explode({
+    }>(`/api/yucca/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}/listing${QS.query(QS.explode({
         path
     }))}`, {
         ...opts
     }));
 }
 export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/logs/${encodeURIComponent(id)}`, {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/yucca/logs/${encodeURIComponent(id)}`, {
         ...opts
     }));
 }
@@ -356,7 +356,7 @@ export function getRunningTasks(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RunningTaskListResponse;
-    }>("/api/yucca/tasks", {
+    }>("/api/yucca/yucca/tasks", {
         ...opts
     }));
 }
@@ -364,7 +364,7 @@ export function createSchedule(scheduleCreateRequestDto: ScheduleCreateRequestDt
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: ScheduleCreateResponseDto;
-    }>("/api/yucca/schedule", oazapfts.json({
+    }>("/api/yucca/yucca/schedule", oazapfts.json({
         ...opts,
         method: "POST",
         body: scheduleCreateRequestDto
@@ -374,7 +374,7 @@ export function getSchedules(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: ScheduleListResponseDto;
-    }>("/api/yucca/schedule", {
+    }>("/api/yucca/yucca/schedule", {
         ...opts
     }));
 }
@@ -382,26 +382,26 @@ export function updateSchedule(id: string, scheduleUpdateRequestDto: ScheduleUpd
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: ScheduleUpdateResponseDto;
-    }>(`/api/yucca/schedule/${encodeURIComponent(id)}`, oazapfts.json({
+    }>(`/api/yucca/yucca/schedule/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
         method: "PATCH",
         body: scheduleUpdateRequestDto
     })));
 }
 export function removeSchedule(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}`, {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/yucca/schedule/${encodeURIComponent(id)}`, {
         ...opts,
         method: "DELETE"
     }));
 }
 export function addRepositoryToSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
         ...opts,
         method: "PUT"
     }));
 }
 export function removeRepositoryFromSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
         ...opts,
         method: "DELETE"
     }));
