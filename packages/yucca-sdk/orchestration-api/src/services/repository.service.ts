@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
 import { dirname } from 'node:path';
 import { Observable } from 'rxjs';
@@ -21,7 +21,7 @@ import {
 } from '../dto/repository.dto';
 import { TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
-import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
@@ -44,7 +44,7 @@ export class RepositoryService {
     private readonly repository: RepositoryRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryLocalMetrics: RepositoryLocalMetricsRepository,
-    @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
+    private readonly moduleConfig: ModuleConfigRepository,
   ) {}
 
   private async getLocalRepository(
@@ -70,7 +70,7 @@ export class RepositoryService {
     }
 
     const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig);
+    const backend = Backend.from(configuration, this.moduleConfig.get());
 
     const { repository: remote } = await backend.createRepository(dto);
 
@@ -114,7 +114,7 @@ export class RepositoryService {
     const remoteRepositories: Record<string, Record<string, RepositoryWithMetricsDto>> = {};
 
     for (const { id: backendId, configuration } of backends) {
-      const backend = Backend.from(configuration, this.moduleConfig);
+      const backend = Backend.from(configuration, this.moduleConfig.get());
       remoteRepositories[backendId] = {};
 
       try {
@@ -206,7 +206,7 @@ export class RepositoryService {
     }
 
     const backend = await this.backend.getBackend(backendId);
-    const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
+    const backendInstance = Backend.from(backend.configuration, this.moduleConfig.get());
 
     let remote;
     if (dto.name) {
@@ -270,7 +270,7 @@ export class RepositoryService {
     }
 
     const backend = await this.backend.getBackend(backendId);
-    const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
+    const backendInstance = Backend.from(backend.configuration, this.moduleConfig.get());
     const endpoint = await backendInstance.getResticEndpoint(id);
 
     const key = await this.config.deriveEncryptionKey(`repository-${id}`);
@@ -393,7 +393,7 @@ export class RepositoryService {
 
   async importRepository(id: string, backendId: string): Promise<RepositoryCreateResponseDto> {
     const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig);
+    const backend = Backend.from(configuration, this.moduleConfig.get());
     const { repository: remote } = await backend.getRepository(id);
 
     const endpoint = await backend.getResticEndpoint(remote.id);

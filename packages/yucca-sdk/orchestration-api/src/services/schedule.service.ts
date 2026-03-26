@@ -29,10 +29,6 @@ export class ScheduleService {
   ) {}
 
   async bootstrap() {
-    for (const name of this.schedulerRegistry.getCronJobs().keys()) {
-      this.schedulerRegistry.deleteCronJob(name);
-    }
-
     for (const schedule of await this.schedule.getAll()) {
       this.createCronJob(schedule.id, schedule.cron, schedule.paused);
     }

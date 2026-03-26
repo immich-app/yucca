@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import EventIterator from 'event-iterator';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
@@ -9,14 +9,14 @@ import { dirname, resolve } from 'node:path';
 import { from } from 'rxjs';
 import { Tail } from 'tail';
 import { TaskStatus } from '../enum';
-import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
+import { ModuleConfigRepository } from './moduleConfig.repository';
 import { DB } from '../schema';
 
 @Injectable()
 export class RunHistoryRepository {
   constructor(
     @InjectKysely('orchestrator') private db: Kysely<DB>,
-    @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
+    private readonly moduleConfig: ModuleConfigRepository,
   ) {}
 
   async createLog(
@@ -28,7 +28,7 @@ export class RunHistoryRepository {
 
     try {
       const start = new Date().toISOString();
-      const logFilePath = resolve(this.moduleConfig.statePath, 'logs', repositoryId, start + '.jsonl');
+      const logFilePath = resolve(this.moduleConfig.get().statePath, 'logs', repositoryId, start + '.jsonl');
 
       await mkdir(dirname(logFilePath), {
         recursive: true,

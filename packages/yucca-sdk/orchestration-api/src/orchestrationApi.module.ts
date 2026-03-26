@@ -20,6 +20,7 @@ import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { ModuleConfigRepository } from './repositories/moduleConfig.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryLocalMetricsRepository } from './repositories/repositoryLocalMetrics.repository';
 import { RepositoryPathRepository } from './repositories/repositoryPath.repository';
@@ -52,6 +53,7 @@ const repositories = [
   BackendRepository,
   ConfigRepository,
   DatabaseRepository,
+  ModuleConfigRepository,
   RepositoryRepository,
   RepositoryLocalMetricsRepository,
   RepositoryPathRepository,

@@ -1,6 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CurrentRecoveryKeyResponse, OnboardingStatusResponseDto } from '../dto/onboarding.dto';
-import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
@@ -13,7 +12,6 @@ export class OnboardingService {
     private readonly repository: RepositoryRepository,
     private readonly schedule: ScheduleRepository,
     private readonly config: ConfigRepository,
-    @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
   async onboardingStatus(): Promise<OnboardingStatusResponseDto> {
