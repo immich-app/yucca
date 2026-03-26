@@ -6,10 +6,10 @@ import { DatabaseRepository } from '../repositories/database.repository';
 import { DB } from '../schema';
 import { ScheduleService } from '../services/schedule.service';
 
-@Controller('/debug')
+@Controller('/yucca/debug')
 export class DevelopmentController {
   constructor(
-    @InjectKysely() private readonly db: Kysely<DB>,
+    @InjectKysely('orchestrator') private readonly db: Kysely<DB>,
     private readonly database: DatabaseRepository,
     private readonly config: ConfigRepository,
     private readonly schedule: ScheduleService,

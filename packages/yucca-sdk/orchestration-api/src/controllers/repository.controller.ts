@@ -15,7 +15,7 @@ import {
 } from '../dto/repository.dto';
 import { RepositoryService } from '../services/repository.service';
 
-@Controller('/repository')
+@Controller('/yucca/repository')
 export class RepositoryController {
   constructor(private readonly service: RepositoryService) {}
 

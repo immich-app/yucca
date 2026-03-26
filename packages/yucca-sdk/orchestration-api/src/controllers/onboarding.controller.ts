@@ -7,7 +7,7 @@ import {
 } from '../dto/onboarding.dto';
 import { OnboardingService } from '../services/onboarding.service';
 
-@Controller('/onboarding')
+@Controller('/yucca/onboarding')
 export class OnboardingController {
   constructor(readonly service: OnboardingService) {}
 

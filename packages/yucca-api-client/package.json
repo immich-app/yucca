@@ -1,6 +1,6 @@
 {
   "name": "yucca-api-client",
-  "version": "1.0.7",
+  "version": "0.1.4",
   "description": "",
   "type": "module",
   "main": "dist/index.js",
