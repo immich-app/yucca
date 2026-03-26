@@ -84,7 +84,7 @@ export class RepositoryService {
     });
 
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(remote.id, { paths: [] })),
+      ...(await this.getLocalRepository(remote.id, { paths: dto.paths ?? [] })),
       ...remote,
       backends: {
         primary: {

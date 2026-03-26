@@ -75,6 +75,12 @@ export class RepositoryCreateRequestDto {
   @ApiProperty({ type: Boolean })
   @IsBoolean()
   worm!: boolean;
+
+  @ApiProperty({ type: [String], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  paths?: string[];
 }
 
 export class RepositoryCreateResponseDto {
