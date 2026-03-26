@@ -179,6 +179,20 @@
         ]
       }
     },
+    "/api/yucca/onboarding/skip": {
+      "post": {
+        "operationId": "skipOnboardingExtraConfig",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      }
+    },
     "/api/yucca/repository": {
       "post": {
         "operationId": "createRepository",
@@ -901,11 +915,23 @@
           },
           "hasBackend": {
             "type": "boolean"
+          },
+          "hasBackup": {
+            "type": "boolean"
+          },
+          "hasSchedule": {
+            "type": "boolean"
+          },
+          "hasSkippedExtraConfig": {
+            "type": "boolean"
           }
         },
         "required": [
           "hasOnboardedKey",
-          "hasBackend"
+          "hasBackend",
+          "hasBackup",
+          "hasSchedule",
+          "hasSkippedExtraConfig"
         ]
       },
       "CurrentRecoveryKeyResponse": {
@@ -938,6 +964,12 @@
           },
           "worm": {
             "type": "boolean"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

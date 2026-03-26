@@ -3,6 +3,7 @@
   import {
     handleConfirmRecoveryKey,
     handleCurrentRecoveryKey,
+    handleSkipOnboardingExtraConfig,
   } from "$lib/services/onboarding.service";
   import { onMount } from "svelte";
   import BackupOptions from "./stages/BackupOptions.svelte";
@@ -11,6 +12,8 @@
   import SaveKey from "./stages/SaveKey.svelte";
   import Welcome from "./stages/Welcome.svelte";
   import ImportKey from "./stages/ImportKey.svelte";
+  import CreateFirstBackup from "./stages/CreateFirstBackup.svelte";
+  import CreateFirstSchedule from "./stages/CreateFirstSchedule.svelte";
 
   type Props = {
     status: OnboardingStatusResponseDto;
@@ -31,7 +34,15 @@
   const onImportKey = () => (stage = 5);
 
   // svelte-ignore state_referenced_locally
-  let stage = $state(status.hasOnboardedKey ? 4 : 0);
+  let stage = $state(
+    status.hasOnboardedKey
+      ? status.hasBackend
+        ? status.hasBackup
+          ? 7
+          : 6
+        : 4
+      : 0,
+  );
 
   onMount(() => {
     if (!status.hasOnboardedKey) {
@@ -48,6 +59,11 @@
       onNext();
     }
   };
+
+  const onSkip = () => {
+    void handleSkipOnboardingExtraConfig();
+    onFinish();
+  };
 </script>
 
 {#if stage === 0}
@@ -62,4 +78,8 @@
   <BackupOptions {onFinish} {onCancel} />
 {:else if stage === 5}
   <ImportKey {onStart} {onImported} {onCancel} />
+{:else if stage === 6}
+  <CreateFirstBackup {onNext} {onSkip} />
+{:else if stage === 7}
+  <CreateFirstSchedule {onFinish} {onSkip} />
 {/if}

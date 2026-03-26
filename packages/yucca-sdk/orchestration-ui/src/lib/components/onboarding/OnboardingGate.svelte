@@ -20,13 +20,16 @@
 </script>
 
 {#if typeof status === "object"}
-  {#if !status.hasBackend || !status.hasOnboardedKey}
+  {#if !(status.hasBackend && status.hasOnboardedKey && (status.hasSkippedExtraConfig || (status.hasBackup && status.hasSchedule)))}
     <Onboarding
       {status}
       onFinish={() =>
         (status = {
           hasBackend: true,
           hasOnboardedKey: true,
+          hasBackup: true,
+          hasSchedule: true,
+          hasSkippedExtraConfig: true,
         })}
       onCancel={onExit}
     />

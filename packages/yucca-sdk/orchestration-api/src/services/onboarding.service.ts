@@ -3,21 +3,30 @@ import { CurrentRecoveryKeyResponse, OnboardingStatusResponseDto } from '../dto/
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
+import { RepositoryRepository } from '../repositories/repository.repository';
+import { ScheduleRepository } from '../repositories/schedule.repository';
 
 @Injectable()
 export class OnboardingService {
   constructor(
     private readonly backend: BackendRepository,
+    private readonly repository: RepositoryRepository,
+    private readonly schedule: ScheduleRepository,
     private readonly config: ConfigRepository,
     @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
   ) {}
 
   async onboardingStatus(): Promise<OnboardingStatusResponseDto> {
     const backends = await this.backend.getBackends();
+    const repositories = await this.repository.getAll();
+    const schedules = await this.schedule.getAll();
 
     return {
       hasOnboardedKey: await this.config.hasOnboardedKey(),
       hasBackend: backends.length > 0,
+      hasBackup: repositories.length > 0,
+      hasSchedule: schedules.length > 0,
+      hasSkippedExtraConfig: await this.config.hasSkippedExtraConfig(),
     };
   }
 
@@ -35,5 +44,9 @@ export class OnboardingService {
 
   async confirmRecoveryKey() {
     await this.config.confirmKeyOnboarded();
+  }
+
+  async skipExtraConfig() {
+    await this.config.skipExtraConfig();
   }
 }

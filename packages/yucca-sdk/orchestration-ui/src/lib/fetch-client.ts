@@ -36,6 +36,9 @@ export type FilesystemListingResponseDto = {
 export type OnboardingStatusResponseDto = {
     hasOnboardedKey: boolean;
     hasBackend: boolean;
+    hasBackup: boolean;
+    hasSchedule: boolean;
+    hasSkippedExtraConfig: boolean;
 };
 export type CurrentRecoveryKeyResponse = {
     recoveryKey: string;
@@ -46,6 +49,7 @@ export type ImportRecoveryKeyRequest = {
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
+    paths?: string[];
 };
 export type RepositoryMetricsDto = {
     lastBackup?: string;
@@ -220,6 +224,12 @@ export function importRecoveryKey(importRecoveryKeyRequest: ImportRecoveryKeyReq
 }
 export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/recovery-key", {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function skipOnboardingExtraConfig(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/skip", {
         ...opts,
         method: "POST"
     }));

@@ -33,4 +33,9 @@ export class OnboardingController {
   async confirmRecoveryKey() {
     await this.service.confirmRecoveryKey();
   }
+
+  @Post('/skip')
+  async skipOnboardingExtraConfig() {
+    await this.service.skipExtraConfig();
+  }
 }

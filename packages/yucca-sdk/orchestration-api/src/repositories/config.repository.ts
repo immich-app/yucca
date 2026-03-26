@@ -83,4 +83,12 @@ export class ConfigRepository {
   async confirmKeyOnboarded() {
     return this.set(ConfigurationKey.OnboardedKey, '1');
   }
+
+  async hasSkippedExtraConfig() {
+    return this.has(ConfigurationKey.SkippedOnboardingExtraConfig);
+  }
+
+  async skipExtraConfig() {
+    return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
+  }
 }
