@@ -1,5 +1,5 @@
-import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
-import { Server } from 'socket.io';
+import { OnGatewayConnection, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
 import { LocalRepositoryDto } from '../dto/repository.dto';
 import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { ScheduleDto } from '../dto/schedule.dto';
@@ -41,16 +41,47 @@ type Event =
       parentId: string;
     };
 
+type AuthFn = (client: Socket) => Promise<{ user: { isAdmin: boolean } }>;
+
 @WebSocketGateway({
   cors: false,
   path: '/api/yucca/socket.io',
   transports: ['websocket'],
 })
-export class EventsGateway {
+export class EventsGateway implements OnGatewayConnection {
+  private authFn?: AuthFn;
+
   @WebSocketServer()
   server?: Server;
 
   publish(event: Event) {
     this.server?.emit(JSON.stringify(event));
+  }
+
+  async handleConnection(client: Socket) {
+    try {
+      const { user } = await this.authenticate(client);
+      if (!user.isAdmin) {
+        throw new Error("User isn't admin.");
+      }
+    } catch {
+      client.disconnect();
+    }
+  }
+
+  setAuthFn(fn: (client: Socket) => Promise<{ user: { isAdmin: boolean } }>) {
+    this.authFn = fn;
+  }
+
+  private async authenticate(client: Socket) {
+    if (!this.authFn) {
+      return {
+        user: {
+          isAdmin: true,
+        },
+      };
+    }
+
+    return this.authFn(client);
   }
 }

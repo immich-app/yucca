@@ -105,6 +105,7 @@ export class OrchestrationApiModule {
       ],
       controllers,
       providers: [{ provide: ModuleConfigProvider, useValue: config }, EventsGateway, ...repositories, ...services],
+      exports: [EventsGateway],
     };
   }
 }
