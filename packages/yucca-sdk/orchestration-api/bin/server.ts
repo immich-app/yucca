@@ -11,7 +11,7 @@ async function bootstrap() {
 
   app.enableCors({ origin: 'http://localhost:5174' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-  app.setGlobalPrefix('/api/yucca');
+  app.setGlobalPrefix('api');
   await app.listen(ORCHESTRATION_PORT, '127.0.0.1');
 }
 
