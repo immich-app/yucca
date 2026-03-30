@@ -14,8 +14,10 @@
   import ImportKey from "./stages/ImportKey.svelte";
   import CreateFirstBackup from "./stages/CreateFirstBackup.svelte";
   import CreateFirstSchedule from "./stages/CreateFirstSchedule.svelte";
+  import CreateImmichBackup from "./stages/CreateImmichBackup.svelte";
 
   type Props = {
+    flow?: "default" | "immich-setup" | "immich-restore";
     status: OnboardingStatusResponseDto;
     onFinish: () => void;
     onCancel: () => void;
@@ -23,7 +25,7 @@
 
   let code = $state("");
 
-  const { status, onFinish, onCancel }: Props = $props();
+  const { flow = "default", status, onFinish, onCancel }: Props = $props();
   const onNext = () => stage++;
   const onBack = () => stage--;
   const onStart = () => (stage = 0);
@@ -75,11 +77,17 @@
 {:else if stage === 3}
   <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
 {:else if stage === 4}
-  <BackupOptions {onFinish} {onCancel} />
+  <BackupOptions {onCancel} />
 {:else if stage === 5}
   <ImportKey {onStart} {onImported} {onCancel} />
-{:else if stage === 6}
-  <CreateFirstBackup {onNext} {onSkip} />
-{:else if stage === 7}
-  <CreateFirstSchedule {onFinish} {onSkip} />
+{:else if flow === "default"}
+  {#if stage === 6}
+    <CreateFirstBackup {onNext} {onSkip} />
+  {:else if stage === 7}
+    <CreateFirstSchedule {onFinish} {onSkip} />
+  {/if}
+{:else if flow === "immich-setup"}
+  {#if stage === 6}
+    <CreateImmichBackup {onNext} {onSkip} />
+  {/if}
 {/if}

@@ -10,6 +10,7 @@ import { AuthController } from './controllers/auth.controller';
 import { BackendController } from './controllers/backend.controller';
 import { DevelopmentController } from './controllers/development.controller';
 import { FilesystemController } from './controllers/filesystem.controller';
+import { IntegrationsController } from './controllers/integrations.controller';
 import { OnboardingController } from './controllers/onboarding.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { RunHistoryController } from './controllers/runHistory.controller';
@@ -31,6 +32,7 @@ import { ScheduleRepository } from './repositories/schedule.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
+import { IntegrationsService } from './services/integrations.service';
 import { OnboardingService } from './services/onboarding.service';
 import { RepositoryService } from './services/repository.service';
 import { RunHistoryService } from './services/runHistory.service';
@@ -42,6 +44,7 @@ const controllers = [
   BackendController,
   DevelopmentController,
   FilesystemController,
+  IntegrationsController,
   OnboardingController,
   RepositoryController,
   RunHistoryController,
@@ -67,6 +70,7 @@ const services = [
   AuthService,
   BackendService,
   DatabaseService,
+  IntegrationsService,
   OnboardingService,
   RepositoryService,
   RunHistoryService,
@@ -105,7 +109,7 @@ export class OrchestrationApiModule {
       ],
       controllers,
       providers: [{ provide: ModuleConfigProvider, useValue: config }, EventsGateway, ...repositories, ...services],
-      exports: [EventsGateway],
+      exports: [EventsGateway, ModuleConfigRepository],
     };
   }
 }

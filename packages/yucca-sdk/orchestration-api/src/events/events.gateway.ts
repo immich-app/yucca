@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { LocalRepositoryDto } from '../dto/repository.dto';
 import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { ScheduleDto } from '../dto/schedule.dto';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
 type Event =
   | {
@@ -51,6 +52,8 @@ type AuthFn = (client: Socket) => Promise<{ user: { isAdmin: boolean } }>;
 export class EventsGateway implements OnGatewayConnection {
   private authFn?: AuthFn;
 
+  constructor(private readonly moduleConfig: ModuleConfigRepository) {}
+
   @WebSocketServer()
   server?: Server;
 
@@ -75,6 +78,10 @@ export class EventsGateway implements OnGatewayConnection {
 
   private async authenticate(client: Socket) {
     if (!this.authFn) {
+      if (this.moduleConfig.get().requireWsAuth) {
+        throw new Error('Auth function not set');
+      }
+
       return {
         user: {
           isAdmin: true,

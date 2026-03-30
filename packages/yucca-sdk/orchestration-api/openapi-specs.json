@@ -103,6 +103,27 @@
         ]
       }
     },
+    "/api/yucca/integrations": {
+      "get": {
+        "operationId": "getIntegrations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/api/yucca/onboarding": {
       "get": {
         "operationId": "onboardingStatus",
@@ -906,6 +927,68 @@
           "path",
           "items"
         ]
+      },
+      "ImmichLibraryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "importPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exclusionPatterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "importPaths",
+          "exclusionPatterns"
+        ]
+      },
+      "ImmichIntegrationConfigDto": {
+        "type": "object",
+        "properties": {
+          "dataPath": {
+            "type": "string"
+          },
+          "dataFolders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "libraries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImmichLibraryDto"
+            }
+          }
+        },
+        "required": [
+          "dataPath",
+          "dataFolders",
+          "libraries"
+        ]
+      },
+      "IntegrationsResponseDto": {
+        "type": "object",
+        "properties": {
+          "immich": {
+            "$ref": "#/components/schemas/ImmichIntegrationConfigDto"
+          }
+        }
       },
       "OnboardingStatusResponseDto": {
         "type": "object",

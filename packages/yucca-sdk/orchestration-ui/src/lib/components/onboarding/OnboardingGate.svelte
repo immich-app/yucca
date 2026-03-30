@@ -6,11 +6,12 @@
   import { handleOnboardingStatus } from "$lib/services/onboarding.service";
 
   type Props = {
+    flow?: "default" | "immich-setup" | "immich-restore";
     onExit: () => void;
     children: Snippet;
   };
 
-  const { onExit, children }: Props = $props();
+  const { flow, onExit, children }: Props = $props();
 
   let status: OnboardingStatusResponseDto | undefined = $state();
 
@@ -22,6 +23,7 @@
 {#if typeof status === "object"}
   {#if !(status.hasBackend && status.hasOnboardedKey && (status.hasSkippedExtraConfig || (status.hasBackup && status.hasSchedule)))}
     <Onboarding
+      {flow}
       {status}
       onFinish={() =>
         (status = {

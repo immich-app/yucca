@@ -33,6 +33,20 @@ export type FilesystemListingResponseDto = {
     path: string;
     items: FilesystemListingItemDto[];
 };
+export type ImmichLibraryDto = {
+    id: string;
+    name: string;
+    importPaths: string[];
+    exclusionPatterns: string[];
+};
+export type ImmichIntegrationConfigDto = {
+    dataPath: string;
+    dataFolders: string[];
+    libraries: ImmichLibraryDto[];
+};
+export type IntegrationsResponseDto = {
+    immich?: ImmichIntegrationConfigDto;
+};
 export type OnboardingStatusResponseDto = {
     hasOnboardedKey: boolean;
     hasBackend: boolean;
@@ -196,6 +210,14 @@ export function getFileListing({ path }: {
     }>(`/api/yucca/fs${QS.query(QS.explode({
         path
     }))}`, {
+        ...opts
+    }));
+}
+export function getIntegrations(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: IntegrationsResponseDto;
+    }>("/api/yucca/integrations", {
         ...opts
     }));
 }
