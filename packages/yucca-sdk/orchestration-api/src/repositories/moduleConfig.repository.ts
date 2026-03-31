@@ -1,11 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InternalEvent } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 
 @Injectable()
 export class ModuleConfigRepository {
   private config: ModuleConfig;
 
-  constructor(@Inject(ModuleConfigProvider) initial: ModuleConfig) {
+  constructor(
+    @Inject(ModuleConfigProvider) initial: ModuleConfig,
+    private readonly eventEmitter: EventEmitter2,
+  ) {
     this.config = { ...initial };
   }
 
@@ -15,5 +20,6 @@ export class ModuleConfigRepository {
 
   update(partial: Partial<ModuleConfig>) {
     this.config = { ...this.config, ...partial };
+    this.eventEmitter.emit(InternalEvent.ModuleConfigUpdated, this.config);
   }
 }

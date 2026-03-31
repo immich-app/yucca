@@ -39,13 +39,32 @@ export type ImmichLibraryDto = {
     importPaths: string[];
     exclusionPatterns: string[];
 };
-export type ImmichIntegrationConfigDto = {
+export type ImmichStateDto = {
     dataPath: string;
     dataFolders: string[];
     libraries: ImmichLibraryDto[];
 };
+export type ImmichIntegrationConfigurationDto = {
+    dataFolders: string[];
+    backupConfiguration: boolean;
+    libraries: "all" | string[];
+};
+export type ImmichIntegrationDto = {
+    id: string;
+    scheduleId: string;
+    configuration: ImmichIntegrationConfigurationDto;
+};
 export type IntegrationsResponseDto = {
-    immich?: ImmichIntegrationConfigDto;
+    immichState?: ImmichStateDto;
+    immichIntegration?: ImmichIntegrationDto;
+};
+export type ConfigureImmichIntegrationRequestDto = {
+    name: string;
+    worm: boolean;
+    cron: string;
+    dataFolders: string[];
+    backupConfiguration: boolean;
+    libraries: "all" | string[];
 };
 export type OnboardingStatusResponseDto = {
     hasOnboardedKey: boolean;
@@ -220,6 +239,13 @@ export function getIntegrations(opts?: Oazapfts.RequestOpts) {
     }>("/api/yucca/integrations", {
         ...opts
     }));
+}
+export function configureImmichIntegration(configureImmichIntegrationRequestDto: ConfigureImmichIntegrationRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/integrations/immich", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: configureImmichIntegrationRequestDto
+    })));
 }
 export function onboardingStatus(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

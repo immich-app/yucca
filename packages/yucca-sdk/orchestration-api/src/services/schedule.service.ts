@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
 import { Updateable } from 'kysely';
@@ -13,6 +13,7 @@ import {
 } from '../dto/schedule.dto';
 import { TaskStatus, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
+import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { ScheduleRepository } from '../repositories/schedule.repository';
 import { ScheduleTable } from '../schema/tables/schedule.table';
@@ -26,6 +27,7 @@ export class ScheduleService {
     private readonly schedule: ScheduleRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly runningTasks: RunningTasksRepository,
+    private readonly integrationImmich: RepositoryIntegrationImmichRepository,
   ) {}
 
   async bootstrap() {
@@ -187,6 +189,11 @@ export class ScheduleService {
   }
 
   async removeSchedule(scheduleId: string): Promise<void> {
+    const integration = await this.integrationImmich.get();
+    if (integration?.scheduleId === scheduleId) {
+      throw new BadRequestException('Schedule managed by Immich integration');
+    }
+
     await this.schedule.removeSchedule(scheduleId);
 
     this.events.publish({

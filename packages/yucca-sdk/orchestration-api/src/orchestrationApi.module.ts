@@ -1,4 +1,5 @@
 import { DynamicModule, Module } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import Database from 'better-sqlite3';
 import { SqliteDialect } from 'kysely';
@@ -24,6 +25,7 @@ import { DatabaseRepository } from './repositories/database.repository';
 import { ModuleConfigRepository } from './repositories/moduleConfig.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryLocalMetricsRepository } from './repositories/repositoryLocalMetrics.repository';
+import { RepositoryIntegrationImmichRepository } from './repositories/repositoryIntegrationImmich.repository';
 import { RepositoryPathRepository } from './repositories/repositoryPath.repository';
 import { ResticRepository } from './repositories/restic.repository';
 import { RunHistoryRepository } from './repositories/runHistory.repository';
@@ -58,6 +60,7 @@ const repositories = [
   DatabaseRepository,
   ModuleConfigRepository,
   RepositoryRepository,
+  RepositoryIntegrationImmichRepository,
   RepositoryLocalMetricsRepository,
   RepositoryPathRepository,
   ResticRepository,
@@ -105,6 +108,7 @@ export class OrchestrationApiModule {
             }),
           },
         ]),
+        EventEmitterModule.forRoot(),
         ScheduleModule.forRoot(),
       ],
       controllers,

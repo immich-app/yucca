@@ -1,5 +1,6 @@
 import { OnGatewayConnection, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { IntegrationsResponseDto } from '../dto/integrations.dto';
 import { LocalRepositoryDto } from '../dto/repository.dto';
 import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { ScheduleDto } from '../dto/schedule.dto';
@@ -14,6 +15,10 @@ type Event =
       type: 'RepositoryUpdate';
       repositoryId: string;
       repository: Partial<LocalRepositoryDto>;
+    }
+  | {
+      type: 'IntegrationUpdate';
+      integrations: IntegrationsResponseDto;
     }
   | {
       type: 'ScheduleCreate';

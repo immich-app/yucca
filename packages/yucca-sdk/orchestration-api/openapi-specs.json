@@ -124,6 +124,30 @@
         ]
       }
     },
+    "/api/yucca/integrations/immich": {
+      "post": {
+        "operationId": "configureImmichIntegration",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureImmichIntegrationRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/api/yucca/onboarding": {
       "get": {
         "operationId": "onboardingStatus",
@@ -957,7 +981,7 @@
           "exclusionPatterns"
         ]
       },
-      "ImmichIntegrationConfigDto": {
+      "ImmichStateDto": {
         "type": "object",
         "properties": {
           "dataPath": {
@@ -982,13 +1006,117 @@
           "libraries"
         ]
       },
+      "ImmichIntegrationConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "dataFolders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "backupConfiguration": {
+            "type": "boolean"
+          },
+          "libraries": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "dataFolders",
+          "backupConfiguration",
+          "libraries"
+        ]
+      },
+      "ImmichIntegrationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scheduleId": {
+            "type": "string"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/ImmichIntegrationConfigurationDto"
+          }
+        },
+        "required": [
+          "id",
+          "scheduleId",
+          "configuration"
+        ]
+      },
       "IntegrationsResponseDto": {
         "type": "object",
         "properties": {
-          "immich": {
-            "$ref": "#/components/schemas/ImmichIntegrationConfigDto"
+          "immichState": {
+            "$ref": "#/components/schemas/ImmichStateDto"
+          },
+          "immichIntegration": {
+            "$ref": "#/components/schemas/ImmichIntegrationDto"
           }
         }
+      },
+      "ConfigureImmichIntegrationRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "dataFolders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "backupConfiguration": {
+            "type": "boolean"
+          },
+          "libraries": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "worm",
+          "cron",
+          "dataFolders",
+          "backupConfiguration",
+          "libraries"
+        ]
       },
       "OnboardingStatusResponseDto": {
         "type": "object",

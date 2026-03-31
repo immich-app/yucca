@@ -31,3 +31,7 @@ export enum TaskType {
   Backup = 'backup',
   Forget = 'forget',
 }
+
+export enum InternalEvent {
+  ModuleConfigUpdated = 'yucca.moduleConfig.updated',
+}

@@ -6,23 +6,26 @@ import {
 } from '$lib/fetch-client';
 import { toastManager } from '@immich/ui';
 import { handleError } from '$lib/utils/handle-error';
-import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { queryClient } from '$lib/query-client';
+import { createQuery } from '@tanstack/svelte-query';
 
 export const snapshotKeys = {
   byRepository: (id: string) => ['snapshots', id] as const,
 };
 
 export const useSnapshots = (repositoryId: string) =>
-  createQuery(() => ({
-    queryKey: snapshotKeys.byRepository(repositoryId),
-    queryFn: () =>
-      getSnapshots(repositoryId).then(({ snapshots }) =>
-        snapshots.toSorted((a, b) => b.time.localeCompare(a.time)),
-      ),
-  }));
+  createQuery(
+    () => ({
+      queryKey: snapshotKeys.byRepository(repositoryId),
+      queryFn: () =>
+        getSnapshots(repositoryId).then(({ snapshots }) =>
+          snapshots.toSorted((a, b) => b.time.localeCompare(a.time)),
+        ),
+    }),
+    () => queryClient,
+  );
 
 export const useRemoveSnapshot = (repositoryId: string) => {
-  const queryClient = useQueryClient();
 
   return (snapshotId: string) => {
     queryClient.setQueryData(
