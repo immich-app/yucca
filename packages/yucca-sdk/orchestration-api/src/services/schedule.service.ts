@@ -13,6 +13,7 @@ import {
 } from '../dto/schedule.dto';
 import { TaskStatus, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { ScheduleRepository } from '../repositories/schedule.repository';
@@ -27,6 +28,7 @@ export class ScheduleService {
     private readonly schedule: ScheduleRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly runningTasks: RunningTasksRepository,
+    private readonly moduleConfig: ModuleConfigRepository,
     private readonly integrationImmich: RepositoryIntegrationImmichRepository,
   ) {}
 
@@ -65,6 +67,10 @@ export class ScheduleService {
   }
 
   private async runSchedule(id: string) {
+    if (!this.moduleConfig.hasLock()) {
+      return;
+    }
+
     const { repositories } = await this.schedule.get(id);
 
     const lastRun = new Date().toISOString();

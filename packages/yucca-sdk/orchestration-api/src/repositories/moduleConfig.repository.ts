@@ -5,6 +5,7 @@ import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 
 @Injectable()
 export class ModuleConfigRepository {
+  private lock = false;
   private config: ModuleConfig;
 
   constructor(
@@ -21,5 +22,13 @@ export class ModuleConfigRepository {
   update(partial: Partial<ModuleConfig>) {
     this.config = { ...this.config, ...partial };
     this.eventEmitter.emit(InternalEvent.ModuleConfigUpdated, this.config);
+  }
+
+  acquireLock() {
+    this.lock = true;
+  }
+
+  hasLock() {
+    return this.lock || !this.config.requireLock;
   }
 }

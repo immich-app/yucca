@@ -16,6 +16,7 @@ export type ModuleConfig = {
   yuccaProductionApi: string;
   externalBaseUrl?: string;
   requireWsAuth?: boolean;
+  requireLock?: boolean;
 
   immichIntegration?: ImmichIntegration;
 };

@@ -1,4 +1,5 @@
 import { OnGatewayConnection, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { EventEmitter } from 'node:events';
 import { Server, Socket } from 'socket.io';
 import { IntegrationsResponseDto } from '../dto/integrations.dto';
 import { LocalRepositoryDto } from '../dto/repository.dto';
@@ -6,7 +7,7 @@ import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { ScheduleDto } from '../dto/schedule.dto';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
-type Event =
+export type GatewayEvent =
   | {
       type: 'RepositoryCreate';
       repository: LocalRepositoryDto;
@@ -56,14 +57,28 @@ type AuthFn = (client: Socket) => Promise<{ user: { isAdmin: boolean } }>;
 })
 export class EventsGateway implements OnGatewayConnection {
   private authFn?: AuthFn;
+  private emitter = new EventEmitter();
 
   constructor(private readonly moduleConfig: ModuleConfigRepository) {}
 
   @WebSocketServer()
   server?: Server;
 
-  publish(event: Event) {
+  publish(event: GatewayEvent) {
     this.server?.emit(JSON.stringify(event));
+    this.emitter.emit('event', event);
+  }
+
+  emit(event: GatewayEvent) {
+    this.server?.emit(JSON.stringify(event));
+  }
+
+  on(listener: (event: GatewayEvent) => void) {
+    this.emitter.on('event', listener);
+  }
+
+  off(listener: (event: GatewayEvent) => void) {
+    this.emitter.off('event', listener);
   }
 
   async handleConnection(client: Socket) {
