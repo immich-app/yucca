@@ -81,6 +81,43 @@ export class RunHistoryRepository {
     return { logId };
   }
 
+  async createEphemeralLog(
+    fn: (log: WriteStream, logId: string) => Promise<void>,
+    callback: (error?: unknown) => void,
+  ) {
+    const logId = randomUUID();
+
+    try {
+      const logFilePath = resolve(this.moduleConfig.get().statePath, 'logs', 'ephemeral', logId + '.jsonl');
+
+      await mkdir(dirname(logFilePath), {
+        recursive: true,
+      });
+
+      const log = createWriteStream(logFilePath);
+
+      // Store the path so getObservable can find it
+      this.ephemeralLogs.set(logId, logFilePath);
+
+      fn(log, logId)
+        .then(() => {
+          callback();
+          log.close();
+        })
+        .catch((error) => {
+          callback(error);
+          log.write(JSON.stringify({ message_type: 'error', error: `${error}` }));
+          log.close();
+        });
+    } catch (error) {
+      callback(error);
+    }
+
+    return { logId };
+  }
+
+  private ephemeralLogs = new Map<string, string>();
+
   createLogAsync(repositoryId: string, fn: (log: WriteStream) => Promise<void>) {
     return new Promise<void>(
       (resolve, reject) =>
@@ -104,24 +141,31 @@ export class RunHistoryRepository {
 
   getObservable(id: string) {
     const db = this.db;
+    const ephemeralPath = this.ephemeralLogs.get(id);
 
     return from(
       new EventIterator<MessageEvent>((queue) => {
         let tail: Tail | undefined;
 
-        db.selectFrom('runHistory')
-          .select('logFilePath')
-          .where('id', '=', id)
-          .executeTakeFirstOrThrow()
-          .then(({ logFilePath }) => {
-            tail = new Tail(logFilePath, {
-              fromBeginning: true,
-              nLines: 50,
-            });
+        const startTail = (logFilePath: string) => {
+          tail = new Tail(logFilePath, {
+            fromBeginning: true,
+            nLines: 50,
+          });
 
-            tail.on('line', (data) => queue.push({ data } as MessageEvent));
-          })
-          .catch(queue.fail);
+          tail.on('line', (data) => queue.push({ data } as MessageEvent));
+        };
+
+        if (ephemeralPath) {
+          startTail(ephemeralPath);
+        } else {
+          db.selectFrom('runHistory')
+            .select('logFilePath')
+            .where('id', '=', id)
+            .executeTakeFirstOrThrow()
+            .then(({ logFilePath }) => startTail(logFilePath))
+            .catch(queue.fail);
+        }
 
         return () => {
           tail?.unwatch();

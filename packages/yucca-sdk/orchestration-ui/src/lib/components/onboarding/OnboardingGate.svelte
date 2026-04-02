@@ -8,10 +8,11 @@
   type Props = {
     flow?: "default" | "immich-setup" | "immich-restore";
     onExit: () => void;
+    onFinish?: () => void;
     children: Snippet;
   };
 
-  const { flow, onExit, children }: Props = $props();
+  const { flow, onExit, onFinish, children }: Props = $props();
 
   let status: OnboardingStatusResponseDto | undefined = $state();
 
@@ -26,13 +27,15 @@
       {flow}
       {status}
       onFinish={() =>
-        (status = {
-          hasBackend: true,
-          hasOnboardedKey: true,
-          hasBackup: true,
-          hasSchedule: true,
-          hasSkippedExtraConfig: true,
-        })}
+        onFinish
+          ? onFinish()
+          : (status = {
+              hasBackend: true,
+              hasOnboardedKey: true,
+              hasBackup: true,
+              hasSchedule: true,
+              hasSkippedExtraConfig: true,
+            })}
       onCancel={onExit}
     />
   {:else}

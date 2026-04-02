@@ -15,6 +15,7 @@
   import CreateFirstBackup from "./stages/CreateFirstBackup.svelte";
   import CreateFirstSchedule from "./stages/CreateFirstSchedule.svelte";
   import CreateImmichBackup from "../backups/dialogs/ConfigureImmichBackup.svelte";
+  import SelectRestorePoint from "./stages/SelectRestorePoint.svelte";
 
   type Props = {
     flow?: "default" | "immich-setup" | "immich-restore";
@@ -28,22 +29,24 @@
   const { flow = "default", status, onFinish, onCancel }: Props = $props();
   const onNext = () => stage++;
   const onBack = () => stage--;
-  const onStart = () => (stage = 0);
-  const onImported = (key: string) => {
-    code = key;
-    stage = 2;
-  };
-  const onImportKey = () => (stage = 5);
 
   // svelte-ignore state_referenced_locally
   let stage = $state(
-    status.hasOnboardedKey
-      ? status.hasBackend
-        ? status.hasBackup
-          ? 7
-          : 6
-        : 4
-      : 0,
+    // immich-restore
+    flow === "immich-restore"
+      ? status.hasOnboardedKey
+        ? status.hasBackend
+          ? 2
+          : 1
+        : 0
+      : // immich-setup & default
+        status.hasOnboardedKey
+        ? status.hasBackend
+          ? status.hasBackup
+            ? 7
+            : 6
+          : 4
+        : 0,
   );
 
   onMount(() => {
@@ -51,6 +54,11 @@
       handleCurrentRecoveryKey().then((dto) => (code = dto.recoveryKey));
     }
   });
+
+  const onSkip = () => {
+    void handleSkipOnboardingExtraConfig();
+    onFinish();
+  };
 
   const onConfirmKey = async () => {
     await handleConfirmRecoveryKey();
@@ -61,33 +69,74 @@
       onNext();
     }
   };
-
-  const onSkip = () => {
-    void handleSkipOnboardingExtraConfig();
-    onFinish();
-  };
 </script>
 
-{#if stage === 0}
-  <Welcome {onNext} {onImportKey} {onCancel} />
-{:else if stage === 1}
-  <KeyIntro {onNext} {onCancel} />
-{:else if stage === 2}
-  <SaveKey {code} {onNext} {onCancel} />
-{:else if stage === 3}
-  <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
-{:else if stage === 4}
-  <BackupOptions {onCancel} />
-{:else if stage === 5}
-  <ImportKey {onStart} {onImported} {onCancel} />
-{:else if flow === "default"}
-  {#if stage === 6}
+{#if flow === "immich-restore"}
+  <!-- Immich Restore -->
+  {#if stage === 0}
+    <ImportKey
+      onImported={(key) => {
+        code = key;
+        onConfirmKey();
+        // TODO: go back to stage 2 if coming from there
+      }}
+      {onCancel}
+    />
+  {:else if stage === 1}
+    <BackupOptions {onCancel} />
+  {:else if stage === 10}
+    <ImportKey onImported={() => (stage = 2)} onCancel={() => (stage = 2)} />
+  {:else}
+    <SelectRestorePoint onImportKey={() => (stage = 10)} {onCancel} {onFinish} />
+  {/if}
+{:else if flow === "immich-setup"}
+  <!-- Immich Setup -->
+  {#if stage === 0}
+    <Welcome {onNext} onImportKey={() => (stage = 5)} {onCancel} />
+  {:else if stage === 1}
+    <KeyIntro {onNext} {onCancel} />
+  {:else if stage === 2}
+    <SaveKey {code} {onNext} {onCancel} />
+  {:else if stage === 3}
+    <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
+  {:else if stage === 4}
+    <BackupOptions {onCancel} />
+  {:else if stage === 5}
+    <ImportKey
+      onStart={() => (stage = 0)}
+      onImported={(key) => {
+        code = key;
+        stage = 2;
+      }}
+      {onCancel}
+    />
+  {:else}
+    <CreateImmichBackup onClose={onSkip} initialConfiguration />
+  {/if}
+{:else}
+  <!-- Sample Flow -->
+  {#if stage === 0}
+    <Welcome {onNext} onImportKey={() => (stage = 5)} {onCancel} />
+  {:else if stage === 1}
+    <KeyIntro {onNext} {onCancel} />
+  {:else if stage === 2}
+    <SaveKey {code} {onNext} {onCancel} />
+  {:else if stage === 3}
+    <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
+  {:else if stage === 4}
+    <BackupOptions {onCancel} />
+  {:else if stage === 5}
+    <ImportKey
+      onStart={() => (stage = 0)}
+      onImported={(key) => {
+        code = key;
+        stage = 2;
+      }}
+      {onCancel}
+    />
+  {:else if stage === 6}
     <CreateFirstBackup {onNext} {onSkip} />
   {:else if stage === 7}
     <CreateFirstSchedule {onFinish} {onSkip} />
-  {/if}
-{:else if flow === "immich-setup"}
-  {#if stage === 6}
-    <CreateImmichBackup onClose={onSkip} initialConfiguration />
   {/if}
 {/if}

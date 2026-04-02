@@ -297,6 +297,27 @@
         ]
       }
     },
+    "/api/yucca/repository/inspect": {
+      "get": {
+        "operationId": "inspectRepositories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryInspectResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/yucca/repository/{id}": {
       "patch": {
         "operationId": "updateRepository",
@@ -581,6 +602,62 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListSnapshotsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/yucca/repository/{id}/snapshots/{snapshot}/restore-from-point": {
+      "post": {
+        "operationId": "restoreFromPoint",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "snapshot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "backend",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositorySnapshotRestoreFromPointRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogResponseDto"
                 }
               }
             }
@@ -1317,6 +1394,78 @@
           "repositories"
         ]
       },
+      "SnapshotDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "paths"
+        ]
+      },
+      "InspectedLocalRepositoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "backends": {
+            "$ref": "#/components/schemas/RepositoryBackendsDto"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/RepositoryConfigurationDto"
+          },
+          "snapshots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "worm",
+          "name",
+          "metrics",
+          "snapshots"
+        ]
+      },
+      "RepositoryInspectResponseDto": {
+        "type": "object",
+        "properties": {
+          "repositories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectedLocalRepositoryDto"
+            }
+          }
+        },
+        "required": [
+          "repositories"
+        ]
+      },
       "RepositoryUpdateRequestDto": {
         "type": "object",
         "properties": {
@@ -1417,21 +1566,6 @@
           "runs"
         ]
       },
-      "SnapshotDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "time": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "time"
-        ]
-      },
       "ListSnapshotsResponseDto": {
         "type": "object",
         "properties": {
@@ -1450,6 +1584,20 @@
         "type": "object",
         "properties": {
           "target": {
+            "type": "string"
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RepositorySnapshotRestoreFromPointRequestDto": {
+        "type": "object",
+        "properties": {
+          "yuccaConfig": {
             "type": "string"
           },
           "include": {

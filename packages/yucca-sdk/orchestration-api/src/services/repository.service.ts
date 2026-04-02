@@ -5,14 +5,17 @@ import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
+  InspectedLocalRepositoryDto,
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
   RepositoryCheckImportResponseDto,
   RepositoryConfigurationDto,
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
+  RepositoryInspectResponseDto,
   RepositoryListResponseDto,
   RepositoryMetricsDto,
+  RepositorySnapshotRestoreFromPointRequestDto,
   RepositorySnapshotRestoreRequestDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
@@ -21,9 +24,9 @@ import {
 } from '../dto/repository.dto';
 import { TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
-import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { RepositoryLocalMetricsRepository } from '../repositories/repositoryLocalMetrics.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
@@ -192,6 +195,27 @@ export class RepositoryService {
 
     return {
       repositories,
+    };
+  }
+
+  async inspectRepositories(): Promise<RepositoryInspectResponseDto> {
+    const { repositories } = await this.getRepositories();
+
+    const snapshots = await Promise.allSettled(
+      repositories.map(async (repository) => {
+        const { endpoint, key } = await this.getResticParameters(repository.id, repository.backends?.primary.id);
+        return this.restic.snapshots(endpoint, key);
+      }),
+    );
+
+    return {
+      repositories: repositories.map(
+        (repository, idx) =>
+          ({
+            ...repository,
+            snapshots: snapshots[idx].status === 'fulfilled' ? snapshots[idx].value : undefined,
+          }) as InspectedLocalRepositoryDto,
+      ),
     };
   }
 
@@ -449,8 +473,6 @@ export class RepositoryService {
     task: Promise<void>;
   }> {
     return new Promise((resolve) => {
-      let endpoint: string, key: Uint8Array;
-
       const task = new Promise<void>(
         (complete, fail) =>
           void this.runHistory.createLog(
@@ -461,11 +483,54 @@ export class RepositoryService {
                 logId,
               });
 
-              ({ endpoint, key } = await this.getResticParameters(id));
+              const { endpoint, key } = await this.getResticParameters(id);
 
               try {
                 this.tasks.startTask(id, TaskType.Restore, logId);
                 await this.restic.restore(endpoint, key, snapshotId, dto, log);
+              } finally {
+                this.tasks.endTask(id);
+              }
+            },
+            (error) => {
+              if (error) {
+                fail(error);
+              } else {
+                complete();
+              }
+            },
+          ),
+      );
+    });
+  }
+
+  async restoreFromPoint(
+    id: string,
+    snapshotId: string,
+    backendId: string,
+    dto: RepositorySnapshotRestoreFromPointRequestDto,
+  ): Promise<{
+    logId: string;
+    task: Promise<void>;
+  }> {
+    return new Promise((resolve) => {
+      const task = new Promise<void>(
+        (complete, fail) =>
+          void this.runHistory.createEphemeralLog(
+            async (log, logId) => {
+              resolve({
+                task,
+                logId,
+              });
+
+              const { endpoint, key } = await this.getResticParameters(id, backendId);
+
+              try {
+                this.tasks.startTask(id, TaskType.Restore, logId);
+                await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log);
+
+                // todo: restore yucca configuration
+                // ...
               } finally {
                 this.tasks.endTask(id);
               }

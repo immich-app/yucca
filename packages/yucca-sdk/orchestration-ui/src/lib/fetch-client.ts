@@ -116,6 +116,23 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
+export type SnapshotDto = {
+    id: string;
+    time: string;
+    paths: string[];
+};
+export type InspectedLocalRepositoryDto = {
+    id: string;
+    worm: boolean;
+    name: string;
+    metrics: RepositoryMetricsDto;
+    backends?: RepositoryBackendsDto;
+    configuration?: RepositoryConfigurationDto;
+    snapshots: SnapshotDto[];
+};
+export type RepositoryInspectResponseDto = {
+    repositories: InspectedLocalRepositoryDto[];
+};
 export type RepositoryUpdateRequestDto = {
     name?: string;
     paths?: string[];
@@ -140,15 +157,15 @@ export type RunDto = {
 export type RunHistoryResponseDto = {
     runs: RunDto[];
 };
-export type SnapshotDto = {
-    id: string;
-    time: string;
-};
 export type ListSnapshotsResponseDto = {
     snapshots: SnapshotDto[];
 };
 export type RepositorySnapshotRestoreRequestDto = {
     target?: string;
+    include?: string[];
+};
+export type RepositorySnapshotRestoreFromPointRequestDto = {
+    yuccaConfig?: string;
     include?: string[];
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
@@ -304,6 +321,14 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function inspectRepositories(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryInspectResponseDto;
+    }>("/api/yucca/repository/inspect", {
+        ...opts
+    }));
+}
 export function updateRepository(id: string, repositoryUpdateRequestDto: RepositoryUpdateRequestDto, { backend }: {
     backend?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
@@ -382,6 +407,18 @@ export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.Req
         ...opts,
         method: "DELETE"
     }));
+}
+export function restoreFromPoint(id: string, snapshot: string, backend: string, repositorySnapshotRestoreFromPointRequestDto: RepositorySnapshotRestoreFromPointRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogResponseDto;
+    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}/restore-from-point${QS.query(QS.explode({
+        backend
+    }))}`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: repositorySnapshotRestoreFromPointRequestDto
+    })));
 }
 export function getSnapshotListing(id: string, snapshot: string, { path }: {
     path?: string;

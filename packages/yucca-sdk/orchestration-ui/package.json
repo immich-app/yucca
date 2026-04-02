@@ -1,6 +1,6 @@
 {
   "name": "orchestration-ui",
-  "version": "0.1.42",
+  "version": "0.1.48",
   "license": "UNLICENSED",
   "scripts": {
     "dev": "vite dev --port 5174",

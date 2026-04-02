@@ -1,7 +1,9 @@
 import { sdk } from '$lib';
 import {
   getRepositories,
+  inspectRepositories,
   updateRepository,
+  type InspectedLocalRepositoryDto,
   type LocalRepositoryDto,
   type RepositoryCreateRequestDto,
   type RepositoryUpdateRequestDto,
@@ -14,6 +16,7 @@ import { createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
   all: ['repositories'] as const,
+  inspectAll: ['repositories', 'inspect'] as const,
 };
 
 export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
@@ -26,8 +29,18 @@ export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
     () => queryClient,
   );
 
-export const useRepositoryEventHandler = () => {
+export const useInspectRepositories = (initialData?: InspectedLocalRepositoryDto[]) =>
+  createQuery(
+    () => ({
+      queryKey: repositoryKeys.inspectAll,
+      queryFn: () =>
+        inspectRepositories().then(({ repositories }) => repositories),
+      initialData,
+    }),
+    () => queryClient,
+  );
 
+export const useRepositoryEventHandler = () => {
   return {
     onRepositoryCreate(event: SocketEvent<{ repository: LocalRepositoryDto }>) {
       queryClient.setQueryData(

@@ -1,6 +1,7 @@
 import { sdk } from '$lib';
 import {
   getSnapshots,
+  type RepositorySnapshotRestoreFromPointRequestDto,
   type RepositorySnapshotRestoreRequestDto,
   type SnapshotDto,
 } from '$lib/fetch-client';
@@ -26,7 +27,6 @@ export const useSnapshots = (repositoryId: string) =>
   );
 
 export const useRemoveSnapshot = (repositoryId: string) => {
-
   return (snapshotId: string) => {
     queryClient.setQueryData(
       snapshotKeys.byRepository(repositoryId),
@@ -52,6 +52,20 @@ export const handleRestoreSnapshot = async (
   options: RepositorySnapshotRestoreRequestDto,
 ) => {
   return await sdk.restoreSnapshot(repositoryId, snapshotId, options);
+};
+
+export const handleRestoreFromPoint = async (
+  repositoryId: string,
+  snapshotId: string,
+  backendId: string,
+  options: RepositorySnapshotRestoreFromPointRequestDto,
+) => {
+  return await sdk.restoreFromPoint(
+    repositoryId,
+    snapshotId,
+    backendId,
+    options,
+  );
 };
 
 export const handleForgetSnapshot = async (

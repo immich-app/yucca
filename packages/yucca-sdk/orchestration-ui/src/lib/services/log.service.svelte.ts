@@ -14,6 +14,7 @@ export type LogStatus = {
   progress: number;
   text: string;
   currentFiles: string[];
+  finished: boolean;
 };
 
 export function createLogObserver(logId: string) {
@@ -22,6 +23,7 @@ export function createLogObserver(logId: string) {
       progress: 0,
       text: '',
       currentFiles: [],
+      finished: false,
     },
     events: [],
   });
@@ -58,6 +60,7 @@ export function createLogObserver(logId: string) {
           progress: 1,
           text: '',
           currentFiles: [],
+          finished: true,
         };
         flush();
         flush.flush();
