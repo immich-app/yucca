@@ -12,6 +12,7 @@ beforeAll(async () => {
   await sdk.resetOrchestrator();
 
   socket = io(baseUrl, {
+    path: '/api/yucca/socket.io',
     transports: ['websocket'],
   });
 });
@@ -47,7 +48,7 @@ describe('Onboarding (before setup)', () => {
 
 describe('Auth', () => {
   it('should log us in using IdP', async () => {
-    const { headers: loginHeaders } = await fetch(`${baseUrl}/api/auth/oidc/login`, {
+    const { headers: loginHeaders } = await fetch(`${baseUrl}/api/yucca/auth/oidc/login`, {
       redirect: 'manual',
     });
 
@@ -184,7 +185,7 @@ describe('Repository', () => {
 
     const { logId } = await sdk.createBackup(repository.id);
 
-    const events = createEventSource(`${baseUrl}/api/logs/${logId}`);
+    const events = createEventSource(`${baseUrl}/api/yucca/logs/${logId}`);
 
     for await (const { data } of events) {
       const payload = JSON.parse(data);
