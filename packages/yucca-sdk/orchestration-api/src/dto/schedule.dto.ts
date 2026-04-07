@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsOptional, IsString, Validate, ValidatorConstraint, type ValidatorConstraintInterface } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  Validate,
+  ValidatorConstraint,
+  type ValidatorConstraintInterface,
+} from 'class-validator';
 import { CronJob } from 'cron';
 
 @ValidatorConstraint({ name: 'cronValidator' })
