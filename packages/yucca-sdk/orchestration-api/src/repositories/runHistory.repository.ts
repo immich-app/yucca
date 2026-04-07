@@ -9,8 +9,8 @@ import { dirname, resolve } from 'node:path';
 import { from } from 'rxjs';
 import { Tail } from 'tail';
 import { TaskStatus } from '../enum';
-import { ModuleConfigRepository } from './moduleConfig.repository';
 import { DB } from '../schema';
+import { ModuleConfigRepository } from './moduleConfig.repository';
 
 @Injectable()
 export class RunHistoryRepository {

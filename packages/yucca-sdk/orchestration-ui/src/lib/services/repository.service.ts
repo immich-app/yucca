@@ -29,7 +29,9 @@ export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
     () => queryClient,
   );
 
-export const useInspectRepositories = (initialData?: InspectedLocalRepositoryDto[]) =>
+export const useInspectRepositories = (
+  initialData?: InspectedLocalRepositoryDto[],
+) =>
   createQuery(
     () => ({
       queryKey: repositoryKeys.inspectAll,

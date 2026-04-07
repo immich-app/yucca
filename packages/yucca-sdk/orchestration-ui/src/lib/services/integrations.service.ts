@@ -1,4 +1,7 @@
-import { getIntegrations, type IntegrationsResponseDto } from '$lib/fetch-client';
+import {
+  getIntegrations,
+  type IntegrationsResponseDto,
+} from '$lib/fetch-client';
 import { SocketEvent } from '$lib/events';
 import { queryClient } from '$lib/query-client';
 import { createQuery } from '@tanstack/svelte-query';
@@ -17,7 +20,9 @@ export const useIntegrations = () =>
   );
 
 export const useIntegrationEventHandler = () => ({
-  onIntegrationUpdate(event: SocketEvent<{ integrations: IntegrationsResponseDto }>) {
+  onIntegrationUpdate(
+    event: SocketEvent<{ integrations: IntegrationsResponseDto }>,
+  ) {
     queryClient.setQueryData(integrationsKeys.all, event.data.integrations);
   },
 });

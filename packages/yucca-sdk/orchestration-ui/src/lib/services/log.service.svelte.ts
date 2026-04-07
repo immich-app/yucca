@@ -51,6 +51,7 @@ export function createLogObserver(logId: string) {
             ? `${event.seconds_remaining} seconds remaining`
             : '',
           currentFiles: event.current_files ?? [],
+          finished: false,
         };
         flush();
         break;

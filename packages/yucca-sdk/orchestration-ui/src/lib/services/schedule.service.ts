@@ -25,7 +25,6 @@ export const useSchedules = () =>
   );
 
 export const useScheduleEventHandler = () => {
-
   return {
     onScheduleCreate(event: SocketEvent<{ schedule: ScheduleDto }>) {
       queryClient.setQueryData(
