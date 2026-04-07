@@ -12,6 +12,7 @@ beforeAll(async () => {
   await sdk.resetOrchestrator();
 
   socket = io(baseUrl, {
+    path: '/api/yucca/socket.io',
     transports: ['websocket'],
   });
 });
