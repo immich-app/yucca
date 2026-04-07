@@ -29,8 +29,7 @@
       <HStack>
         <Avatar name={data.user!.name} />
         <Button
-          onclick={() =>
-            (location.href = defaults.baseUrl + "api/yucca/auth/logout")}
+          onclick={() => (location.href = defaults.baseUrl + "api/auth/logout")}
           >{$t`Logout`}</Button
         >
       </HStack>
