@@ -1,4 +1,3 @@
-import { env } from '@common/server/env';
 import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository } from '@common/server/otel';
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -6,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
 import { RepositoryController } from './controllers/repository.controller';
+import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { CryptoRepository } from './repositories/crypto.repository';
 import { DatabaseRepository } from './repositories/database.repository';

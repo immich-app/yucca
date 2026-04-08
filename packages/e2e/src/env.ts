@@ -7,6 +7,4 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32),
 });
 
-const env = schema.parse(process.env);
-
-export default env;
+export const env = schema.parse(process.env);

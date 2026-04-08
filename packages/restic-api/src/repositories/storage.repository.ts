@@ -10,11 +10,11 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
-import { env } from '@common/server/env';
 import { Traceable } from '@common/server/otel';
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { Readable, Transform } from 'node:stream';
+import { env } from 'src/env';
 import { ChecksumMismatchError } from 'src/errors';
 
 @Traceable()

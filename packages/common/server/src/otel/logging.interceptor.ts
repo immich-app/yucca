@@ -2,7 +2,7 @@ import { type CallHandler, type ExecutionContext, Injectable, type NestIntercept
 import { type Request } from 'express';
 import { randomUUID } from 'node:crypto';
 import { Observable, catchError, tap } from 'rxjs';
-import { env } from '../env.js';
+import { otelEnv } from './env.js';
 import { LoggerRepository } from './logger.repository.js';
 import { WideContextRepository } from './wideContext.repository.js';
 
@@ -40,7 +40,7 @@ export class LoggingInterceptor implements NestInterceptor {
         if ((event.duration_ms as number) > 500) {
           event._msg = '[SLOW] ' + event._msg;
           this.logger.warn(event);
-        } else if (env.NODE_ENV === 'development' || Math.random() < env.OTEL_SAMPLE_RATE) {
+        } else if (otelEnv.NODE_ENV === 'development' || Math.random() < otelEnv.OTEL_SAMPLE_RATE) {
           this.logger.info(event);
         }
       }),

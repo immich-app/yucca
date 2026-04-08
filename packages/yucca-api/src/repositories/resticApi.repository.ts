@@ -1,9 +1,9 @@
-import { env } from '@common/server/env';
 import { Injectable } from '@nestjs/common';
+import { env } from 'src/env';
 
 @Injectable()
 export class ResticApiRepository {
   getEndpoint() {
-    return new URL(`http://${env.RESTIC_API_HOST}:${env.RESTIC_API_PORT}`);
+    return new URL(env.RESTIC_ENDPOINT);
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, Scope } from '@nestjs/common';
 import pino from 'pino';
-import { env } from '../env.js';
+import { otelEnv } from './env.js';
 
 @Injectable({ scope: Scope.DEFAULT })
 export class LoggerRepository {
@@ -8,7 +8,7 @@ export class LoggerRepository {
 
   constructor() {
     this.logger = pino(
-      env.NODE_ENV === 'development'
+      otelEnv.NODE_ENV === 'development'
         ? {
             transport: {
               target: 'pino-pretty',

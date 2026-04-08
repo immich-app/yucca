@@ -7,16 +7,16 @@ import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { JaegerPropagator } from '@opentelemetry/propagator-jaeger';
 import { logs, metrics, NodeSDK, tracing } from '@opentelemetry/sdk-node';
-import { env } from '../env.js';
+import { otelEnv } from './env.js';
 
-const SpanProcessor = env.NODE_ENV === 'development' ? tracing.SimpleSpanProcessor : tracing.BatchSpanProcessor;
-const LogProcessor = env.NODE_ENV === 'development' ? logs.SimpleLogRecordProcessor : logs.BatchLogRecordProcessor;
+const SpanProcessor = otelEnv.NODE_ENV === 'development' ? tracing.SimpleSpanProcessor : tracing.BatchSpanProcessor;
+const LogProcessor = otelEnv.NODE_ENV === 'development' ? logs.SimpleLogRecordProcessor : logs.BatchLogRecordProcessor;
 
 const otelSDK = new NodeSDK({
   // metrics
   metricReader: new metrics.PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
-      url: env.OTEL_METRICS,
+      url: otelEnv.OTEL_METRICS,
       temporalityPreference: metrics.AggregationTemporality.CUMULATIVE,
     }),
     exportIntervalMillis: 1000,
@@ -24,9 +24,9 @@ const otelSDK = new NodeSDK({
 
   // tracing
   sampler:
-    env.NODE_ENV === 'development' || env.OTEL_SAMPLE_RATE == 1
+    otelEnv.NODE_ENV === 'development' || otelEnv.OTEL_SAMPLE_RATE == 1
       ? new tracing.AlwaysOnSampler()
-      : new tracing.TraceIdRatioBasedSampler(env.OTEL_SAMPLE_RATE),
+      : new tracing.TraceIdRatioBasedSampler(otelEnv.OTEL_SAMPLE_RATE),
   contextManager: new AsyncLocalStorageContextManager(),
   textMapPropagator: new CompositePropagator({
     propagators: [
@@ -38,7 +38,7 @@ const otelSDK = new NodeSDK({
   }),
   spanProcessor: new SpanProcessor(
     new OTLPTraceExporter({
-      url: env.OTEL_TRACING,
+      url: otelEnv.OTEL_TRACING,
     }),
   ),
 
@@ -46,7 +46,7 @@ const otelSDK = new NodeSDK({
   logRecordProcessors: [
     new LogProcessor(
       new OTLPLogExporter({
-        url: env.OTEL_LOGGING,
+        url: otelEnv.OTEL_LOGGING,
       }),
     ),
   ],
@@ -56,7 +56,7 @@ const otelSDK = new NodeSDK({
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 import { OpenTelemetryModule } from 'nestjs-otel';
 
-if (env.OTEL_DEBUG) {
+if (otelEnv.OTEL_DEBUG) {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 }
 
