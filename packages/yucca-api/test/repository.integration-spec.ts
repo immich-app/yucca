@@ -56,6 +56,25 @@ describe('RepositoryController (e2e)', () => {
     });
   });
 
+  describe('GET /auth/repository/:id', () => {
+    it('gets a repository by id', async () => {
+      const { body } = await request(app.getHttpServer())
+        .get(`/api/repository/${repository.id}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(200);
+
+      expect(body).toEqual({
+        repository: {
+          id: repository.id,
+          userId: user.id,
+          worm: false,
+          name: expect.any(String),
+          metrics: expect.any(Object),
+        },
+      });
+    });
+  });
+
   describe('GET /auth/repository', () => {
     it('gets all repositories', async () => {
       const { body } = await request(app.getHttpServer())
@@ -69,6 +88,26 @@ describe('RepositoryController (e2e)', () => {
             id: repository.id,
           }),
         ]),
+      });
+    });
+  });
+
+  describe('PATCH /auth/repository/:id', () => {
+    it('updates a repository name', async () => {
+      const { body } = await request(app.getHttpServer())
+        .patch(`/api/repository/${repository.id}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .send({ name: 'Updated Name' })
+        .expect(200);
+
+      expect(body).toEqual({
+        repository: {
+          id: repository.id,
+          userId: user.id,
+          worm: false,
+          name: 'Updated Name',
+          metrics: expect.any(Object),
+        },
       });
     });
   });
