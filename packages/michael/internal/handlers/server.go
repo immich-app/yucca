@@ -36,13 +36,17 @@ func (s *Server) Handler() http.Handler {
 	r.Use(hlog.RemoteAddrHandler("remote_ip"))
 	r.Use(hlog.UserAgentHandler("user_agent"))
 	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		route := chi.RouteContext(r.Context()).RoutePattern()
+		if route == "" {
+			route = r.URL.Path
+		}
 		hlog.FromRequest(r).Info().
 			Int("status", status).
 			Int("size", size).
 			Dur("duration", duration).
 			Str("method", r.Method).
 			Str("path", r.URL.Path).
-			Msg("")
+			Msgf("%s %s (%d)", r.Method, route, status)
 	}))
 	r.Use(chimw.Recoverer)
 	if s.Metrics != nil {
