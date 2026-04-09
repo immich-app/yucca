@@ -9,6 +9,9 @@
     "generate": "oazapfts --optimistic ./openapi-specs.json src/fetch-client.ts",
     "build": "tsc"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",

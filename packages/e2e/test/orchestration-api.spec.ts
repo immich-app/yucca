@@ -1,12 +1,37 @@
 import { createEventSource } from 'eventsource-client';
 import { mkdtemp, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import * as sdk from 'orchestration-ui/sdk';
 import { io, Socket } from 'socket.io-client';
 
 const baseUrl = `http://localhost:22676`;
 let socket: Socket;
+
+const login = async () => {
+  const { headers: loginHeaders } = await fetch(`${baseUrl}/api/yucca/auth/oidc/login`, {
+    redirect: 'manual',
+  });
+
+  const { headers: nextHopHeaders } = await fetch(loginHeaders.get('Location')!, {
+    redirect: 'manual',
+  });
+
+  const redirectUrl = new URL(nextHopHeaders.get('Location')!);
+  redirectUrl.pathname = '/api/form';
+  redirectUrl.searchParams.set('sub', 'bar');
+
+  const { headers: oidcHeaders } = await fetch(redirectUrl, {
+    redirect: 'manual',
+  });
+
+  await fetch(oidcHeaders.get('Location')!, {
+    redirect: 'manual',
+    headers: {
+      Cookie: loginHeaders.getSetCookie().join('; '),
+    },
+  });
+};
 
 beforeAll(async () => {
   await sdk.resetOrchestrator();
@@ -51,28 +76,7 @@ describe('Onboarding (before setup)', () => {
 
 describe('Auth', () => {
   it('should log us in using IdP', async () => {
-    const { headers: loginHeaders } = await fetch(`${baseUrl}/api/yucca/auth/oidc/login`, {
-      redirect: 'manual',
-    });
-
-    const { headers: nextHopHeaders } = await fetch(loginHeaders.get('Location')!, {
-      redirect: 'manual',
-    });
-
-    const redirectUrl = new URL(nextHopHeaders.get('Location')!);
-    redirectUrl.pathname = '/api/form';
-    redirectUrl.searchParams.set('sub', 'bar');
-
-    const { headers: oidcHeaders } = await fetch(redirectUrl, {
-      redirect: 'manual',
-    });
-
-    await fetch(oidcHeaders.get('Location')!, {
-      redirect: 'manual',
-      headers: {
-        Cookie: loginHeaders.getSetCookie().join('; '),
-      },
-    });
+    await login();
   });
 });
 
@@ -95,6 +99,25 @@ describe('Backend', () => {
 describe('Filesystem', () => {
   it('works', async () => {
     await sdk.getFileListing();
+  });
+});
+
+describe('Integrations', () => {
+  it('gets integrations', async () => {
+    await expect(sdk.getIntegrations()).resolves.toEqual({});
+  });
+
+  it('rejects configuring immich when not enabled', async () => {
+    await expect(
+      sdk.configureImmichIntegration({
+        name: 'Immich Backup',
+        worm: false,
+        cron: '0 2 * * *',
+        dataFolders: [],
+        backupConfiguration: false,
+        libraries: 'all',
+      }),
+    ).rejects.toThrow();
   });
 });
 
@@ -127,12 +150,25 @@ describe('Onboarding', () => {
   it('marks key as onboarded', async () => {
     await sdk.confirmRecoveryKey();
 
-    await expect(sdk.onboardingStatus()).resolves.toEqual(
-      expect.objectContaining({
-        hasBackend: true,
-        hasOnboardedKey: true,
-      }),
-    );
+    await expect(sdk.onboardingStatus()).resolves.toEqual({
+      hasBackend: true,
+      hasOnboardedKey: true,
+      hasBackup: false,
+      hasSchedule: false,
+      hasSkippedExtraConfig: false,
+    });
+  });
+
+  it('skips extra config', async () => {
+    await sdk.skipOnboardingExtraConfig();
+
+    await expect(sdk.onboardingStatus()).resolves.toEqual({
+      hasBackend: true,
+      hasOnboardedKey: true,
+      hasBackup: false,
+      hasSchedule: false,
+      hasSkippedExtraConfig: true,
+    });
   });
 });
 
@@ -175,6 +211,14 @@ describe('Repository', () => {
       repository: expect.objectContaining({
         name: 'My Repository',
       }),
+    });
+
+    await expect(sdk.onboardingStatus()).resolves.toEqual({
+      hasBackend: true,
+      hasOnboardedKey: true,
+      hasBackup: true,
+      hasSchedule: false,
+      hasSkippedExtraConfig: true,
     });
   });
 
@@ -262,6 +306,69 @@ describe('Repository', () => {
     });
   });
 
+  it('inspects repositories', async () => {
+    await expect(sdk.inspectRepositories()).resolves.toEqual({
+      repositories: expect.arrayContaining([
+        expect.objectContaining({
+          id: repository.id,
+          snapshots: expect.arrayContaining([
+            expect.objectContaining({
+              id: expect.any(String),
+              time: expect.any(String),
+            }),
+          ]),
+        }),
+      ]),
+    });
+  }, 20_000);
+
+  it('lists snapshot contents', async () => {
+    const {
+      snapshots: [{ id }],
+    } = await sdk.getSnapshots(repository.id);
+
+    await expect(sdk.getSnapshotListing(repository.id, id)).resolves.toEqual({
+      items: expect.any(Array),
+      parent: '/',
+      path: '/',
+    });
+  });
+
+  it('restores a snapshot', async () => {
+    const {
+      snapshots: [{ id }],
+    } = await sdk.getSnapshots(repository.id);
+
+    const { logId } = await sdk.restoreSnapshot(repository.id, id, {});
+
+    expect(logId).toEqual(expect.any(String));
+  });
+
+  it('checks import repository', async () => {
+    const { backends } = await sdk.getBackends();
+
+    await expect(sdk.checkImportRepository(repository.id, backends[0].id)).resolves.toEqual({
+      readable: true,
+    });
+  });
+
+  it('restores from point', async () => {
+    const event = waitForMessage('TaskEnd');
+    const { backends } = await sdk.getBackends();
+    const {
+      snapshots: [{ id }],
+    } = await sdk.getSnapshots(repository.id);
+
+    const { logId } = await sdk.restoreFromPoint(repository.id, id, backends[0].id, {});
+
+    expect(logId).toEqual(expect.any(String));
+
+    await expect(event).resolves.toEqual({
+      type: 'TaskEnd',
+      parentId: repository.id,
+    });
+  });
+
   it('deletes snapshot', async () => {
     const updateEvent = waitForMessage('RepositoryUpdate');
 
@@ -321,6 +428,14 @@ describe('Schedule', () => {
       name: 'My Schedule',
       cron: '* * * * *',
       repositories: [],
+    });
+
+    await expect(sdk.onboardingStatus()).resolves.toEqual({
+      hasBackend: true,
+      hasOnboardedKey: true,
+      hasBackup: true,
+      hasSchedule: true,
+      hasSkippedExtraConfig: true,
     });
 
     await expect(createEvent).resolves.toEqual({
@@ -391,4 +506,99 @@ describe('Schedule', () => {
       }),
     });
   });
+});
+
+describe('Reset & Restore', () => {
+  let restoreRepositoryId: string;
+  let restoreSnapshotId: string;
+
+  let existingRepositoryId: string;
+  let existingScheduleId: string;
+
+  beforeAll(async () => {
+    ({
+      repositories: [{ id: existingRepositoryId }],
+    } = await sdk.getRepositories());
+
+    ({
+      schedules: [{ id: existingScheduleId }],
+    } = await sdk.getSchedules());
+
+    ({
+      repository: { id: restoreRepositoryId },
+    } = await sdk.createRepository({
+      name: 'My Restore',
+      worm: false,
+      paths: [resolve(homedir(), '.yucca')],
+    }));
+
+    const event = waitForMessage('TaskEnd');
+    await sdk.createBackup(restoreRepositoryId);
+    await expect(event).resolves.toEqual({
+      type: 'TaskEnd',
+      parentId: restoreRepositoryId,
+    });
+
+    ({
+      snapshots: [{ id: restoreSnapshotId }],
+    } = await sdk.getSnapshots(restoreRepositoryId));
+
+    await sdk.resetOrchestrator();
+    await login();
+    await sdk.importRecoveryKey({ recoveryKey: '0'.repeat(64) });
+    await sdk.confirmRecoveryKey();
+  }, 15_000);
+
+  it('imports a repository from backend', async () => {
+    const { backends } = await sdk.getBackends();
+    const event = waitForMessage('RepositoryCreate');
+
+    const { repository } = await sdk.importRepository(existingRepositoryId, backends[0].id);
+
+    expect(repository).toEqual(
+      expect.objectContaining({
+        id: existingRepositoryId,
+        name: expect.any(String),
+      }),
+    );
+
+    await expect(event).resolves.toEqual({
+      type: 'RepositoryCreate',
+      repository: expect.objectContaining({
+        id: existingRepositoryId,
+      }),
+    });
+  }, 10_000);
+
+  it('restores point from repository', async () => {
+    await expect(sdk.getSchedules()).resolves.toEqual(
+      expect.objectContaining({
+        schedules: expect.not.arrayContaining([
+          expect.objectContaining({
+            id: existingScheduleId,
+          }),
+        ]),
+      }),
+    );
+
+    const event = waitForMessage('TaskEnd');
+    const { backends } = await sdk.getBackends();
+
+    await sdk.restoreFromPoint(restoreRepositoryId, restoreSnapshotId, backends[0].id, {});
+
+    await expect(event).resolves.toEqual({
+      type: 'TaskEnd',
+      parentId: restoreRepositoryId,
+    });
+
+    await expect(sdk.getSchedules()).resolves.toEqual(
+      expect.objectContaining({
+        schedules: expect.arrayContaining([
+          expect.objectContaining({
+            id: existingScheduleId,
+          }),
+        ]),
+      }),
+    );
+  }, 10_000);
 });

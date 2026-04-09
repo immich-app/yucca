@@ -30,6 +30,9 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.10"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc"
   },

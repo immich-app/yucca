@@ -1,4 +1,3 @@
-import { env } from '@common/server/env';
 import {
   LoggerRepository,
   LoggingInterceptor,
@@ -10,6 +9,7 @@ import { Module, type OnApplicationShutdown } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './controllers/app.controller';
+import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { ResticInterceptor } from './middleware/restic.interceptor';
 import { StorageRepository } from './repositories/storage.repository';

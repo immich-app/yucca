@@ -3,4 +3,4 @@
 #MISE depends=["common:build"]
 set -e
 
-pnpm --filter yucca-api build
+NODE_ENV=production pnpm --filter yucca-api build

@@ -1,8 +1,8 @@
-import { env } from '@common/server/env';
 import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { parse } from 'cookie';
+import { env } from 'src/env';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { controllers, imports, providers } from '../src/app.module';

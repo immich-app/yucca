@@ -1,10 +1,10 @@
-import { env } from '@common/server/env';
 import { LoggerRepository } from '@common/server/otel';
 import { Injectable } from '@nestjs/common';
 import { FileMigrationProvider, Kysely, Migrator } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { env } from 'src/env';
 import { DB } from 'src/schema';
 
 @Injectable()

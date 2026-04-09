@@ -1,6 +1,5 @@
 packages:
   - packages/*
-  - packages/common/*
   - packages/yucca-sdk/*
 
 onlyBuiltDependencies:

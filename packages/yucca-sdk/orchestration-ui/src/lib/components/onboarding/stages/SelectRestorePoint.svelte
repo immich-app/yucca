@@ -68,7 +68,7 @@
 
   function selectSnapshot(snapshot: SnapshotDto) {
     selectedSnapshot = snapshot;
-    includePaths = new SvelteSet(snapshot.paths);
+    includePaths = new SvelteSet(snapshot.paths); // TODO: fix logic errors
 
     const yuccaMatch = snapshot.paths.find((path) => {
       return path.toLowerCase().includes("yucca");

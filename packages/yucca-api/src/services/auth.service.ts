@@ -7,6 +7,7 @@ import { IncomingHttpHeaders } from 'node:http';
 import { UserInfoResponse } from 'openid-client';
 import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
+import { env } from 'src/env';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
@@ -57,7 +58,8 @@ export class AuthService {
   }
 
   async oidcCallback(request: Request): Promise<{ redirectTo: string; accessToken: string }> {
-    const url = new URL(`${request.protocol}://${request.get('Host')}${request.originalUrl}`);
+    const redirectUri = new URL(env.OIDC_REDIRECT_URI);
+    const url = new URL(`${redirectUri.origin}${request.originalUrl}`);
     const error = url.searchParams.has('error');
 
     if (error) {

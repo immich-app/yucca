@@ -3,4 +3,4 @@
 #MISE depends=["common:build"]
 set -e
 
-pnpm --filter restic-api build
+NODE_ENV=production pnpm --filter restic-api build

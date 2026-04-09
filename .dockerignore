@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+**/.svelte-kit
+.git
+*.md
+LICENSE
+e2e
+**/coverage
+**/.env*
+Dockerfile
+packages/**/build

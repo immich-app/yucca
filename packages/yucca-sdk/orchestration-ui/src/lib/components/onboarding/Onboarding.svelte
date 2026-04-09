@@ -78,7 +78,6 @@
       onImported={(key) => {
         code = key;
         onConfirmKey();
-        // TODO: go back to stage 2 if coming from there
       }}
       {onCancel}
     />
@@ -87,7 +86,11 @@
   {:else if stage === 10}
     <ImportKey onImported={() => (stage = 2)} onCancel={() => (stage = 2)} />
   {:else}
-    <SelectRestorePoint onImportKey={() => (stage = 10)} {onCancel} {onFinish} />
+    <SelectRestorePoint
+      onImportKey={() => (stage = 10)}
+      {onCancel}
+      {onFinish}
+    />
   {/if}
 {:else if flow === "immich-setup"}
   <!-- Immich Setup -->

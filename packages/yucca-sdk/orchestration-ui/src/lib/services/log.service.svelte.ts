@@ -61,7 +61,7 @@ export function createLogObserver(logId: string) {
           progress: 1,
           text: '',
           currentFiles: [],
-          finished: true,
+          finished: true, // TODO: must wait for TaskEnd
         };
         flush();
         flush.flush();

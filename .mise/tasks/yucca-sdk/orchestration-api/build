@@ -3,4 +3,4 @@
 #MISE depends=["yucca-api-client:build"]
 set -e
 
-pnpm --filter orchestration-api build
+NODE_ENV=production pnpm --filter orchestration-api build

@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
-import { dirname } from 'node:path';
+import { cp, mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
@@ -26,6 +28,7 @@ import { TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
+import { DatabaseRepository } from '../repositories/database.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { RepositoryLocalMetricsRepository } from '../repositories/repositoryLocalMetrics.repository';
@@ -42,6 +45,7 @@ export class RepositoryService {
     private readonly events: EventsGateway,
     private readonly backend: BackendRepository,
     private readonly config: ConfigRepository,
+    private readonly database: DatabaseRepository,
     private readonly restic: ResticRepository,
     private readonly runHistory: RunHistoryRepository,
     private readonly repository: RepositoryRepository,
@@ -86,8 +90,13 @@ export class RepositoryService {
       backendId,
     });
 
+    const paths = dto.paths ?? [];
+    for (const path of paths) {
+      await this.repositoryPath.create({ id: remote.id, path });
+    }
+
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(remote.id, { paths: dto.paths ?? [] })),
+      ...(await this.getLocalRepository(remote.id, { paths })),
       ...remote,
       backends: {
         primary: {
@@ -316,21 +325,25 @@ export class RepositoryService {
       ...options.additionalMetrics,
     };
 
-    if (options.resticParameters) {
-      const { endpoint, key } = options.resticParameters;
-      const { total_size } = await this.restic.stats(endpoint, key);
-      metrics.sizeBytes = total_size;
+    try {
+      if (options.resticParameters) {
+        const { endpoint, key } = options.resticParameters;
+        const { total_size } = await this.restic.stats(endpoint, key);
+        metrics.sizeBytes = total_size;
+      }
+
+      const updatedMetrics = await this.repositoryLocalMetrics.save(id, metrics);
+
+      this.events.publish({
+        type: 'RepositoryUpdate',
+        repositoryId: id,
+        repository: {
+          metrics: updatedMetrics,
+        },
+      });
+    } catch {
+      // no-op
     }
-
-    const updatedMetrics = await this.repositoryLocalMetrics.save(id, metrics);
-
-    this.events.publish({
-      type: 'RepositoryUpdate',
-      repositoryId: id,
-      repository: {
-        metrics: updatedMetrics,
-      },
-    });
   }
 
   async createBackup(id: string): Promise<{
@@ -529,8 +542,20 @@ export class RepositoryService {
                 this.tasks.startTask(id, TaskType.Restore, logId);
                 await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log);
 
-                // todo: restore yucca configuration
-                // ...
+                if (dto.yuccaConfig) {
+                  const target = await mkdtemp(join(tmpdir(), 'yucca'));
+                  await this.restic.restore(endpoint, key, snapshotId, { include: [dto.yuccaConfig], target }, log);
+
+                  const { statePath } = this.moduleConfig.get();
+                  const restoredState = join(target, dto.yuccaConfig);
+
+                  await cp(restoredState, statePath, {
+                    recursive: true,
+                    filter: (src) => !src.endsWith('.sqlite3'),
+                  });
+
+                  await this.database.restoreFrom(join(restoredState, 'state.sqlite3'));
+                }
               } finally {
                 this.tasks.endTask(id);
               }
