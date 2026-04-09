@@ -7,7 +7,7 @@ import { DB } from '../schema';
 
 @Injectable()
 export class ConfigRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   async bootstrap() {
     const hasKey = await this.hasEncryptionKey();
@@ -82,5 +82,13 @@ export class ConfigRepository {
 
   async confirmKeyOnboarded() {
     return this.set(ConfigurationKey.OnboardedKey, '1');
+  }
+
+  async hasSkippedExtraConfig() {
+    return this.has(ConfigurationKey.SkippedOnboardingExtraConfig);
+  }
+
+  async skipExtraConfig() {
+    return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
   }
 }

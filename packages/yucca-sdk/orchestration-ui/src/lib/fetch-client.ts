@@ -33,9 +33,45 @@ export type FilesystemListingResponseDto = {
     path: string;
     items: FilesystemListingItemDto[];
 };
+export type ImmichLibraryDto = {
+    id: string;
+    name: string;
+    importPaths: string[];
+    exclusionPatterns: string[];
+};
+export type ImmichStateDto = {
+    dataPath: string;
+    dataFolders: string[];
+    libraries: ImmichLibraryDto[];
+};
+export type ImmichIntegrationConfigurationDto = {
+    dataFolders: string[];
+    backupConfiguration: boolean;
+    libraries: "all" | string[];
+};
+export type ImmichIntegrationDto = {
+    id: string;
+    scheduleId: string;
+    configuration: ImmichIntegrationConfigurationDto;
+};
+export type IntegrationsResponseDto = {
+    immichState?: ImmichStateDto;
+    immichIntegration?: ImmichIntegrationDto;
+};
+export type ConfigureImmichIntegrationRequestDto = {
+    name: string;
+    worm: boolean;
+    cron: string;
+    dataFolders: string[];
+    backupConfiguration: boolean;
+    libraries: "all" | string[];
+};
 export type OnboardingStatusResponseDto = {
     hasOnboardedKey: boolean;
     hasBackend: boolean;
+    hasBackup: boolean;
+    hasSchedule: boolean;
+    hasSkippedExtraConfig: boolean;
 };
 export type CurrentRecoveryKeyResponse = {
     recoveryKey: string;
@@ -46,6 +82,7 @@ export type ImportRecoveryKeyRequest = {
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
+    paths?: string[];
 };
 export type RepositoryMetricsDto = {
     lastBackup?: string;
@@ -79,6 +116,23 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
+export type SnapshotDto = {
+    id: string;
+    time: string;
+    paths: string[];
+};
+export type InspectedLocalRepositoryDto = {
+    id: string;
+    worm: boolean;
+    name: string;
+    metrics: RepositoryMetricsDto;
+    backends?: RepositoryBackendsDto;
+    configuration?: RepositoryConfigurationDto;
+    snapshots: SnapshotDto[];
+};
+export type RepositoryInspectResponseDto = {
+    repositories: InspectedLocalRepositoryDto[];
+};
 export type RepositoryUpdateRequestDto = {
     name?: string;
     paths?: string[];
@@ -103,15 +157,15 @@ export type RunDto = {
 export type RunHistoryResponseDto = {
     runs: RunDto[];
 };
-export type SnapshotDto = {
-    id: string;
-    time: string;
-};
 export type ListSnapshotsResponseDto = {
     snapshots: SnapshotDto[];
 };
 export type RepositorySnapshotRestoreRequestDto = {
     target?: string;
+    include?: string[];
+};
+export type RepositorySnapshotRestoreFromPointRequestDto = {
+    yuccaConfig?: string;
     include?: string[];
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
@@ -195,6 +249,21 @@ export function getFileListing({ path }: {
         ...opts
     }));
 }
+export function getIntegrations(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: IntegrationsResponseDto;
+    }>("/api/yucca/integrations", {
+        ...opts
+    }));
+}
+export function configureImmichIntegration(configureImmichIntegrationRequestDto: ConfigureImmichIntegrationRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/integrations/immich", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: configureImmichIntegrationRequestDto
+    })));
+}
 export function onboardingStatus(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -224,6 +293,12 @@ export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
         method: "POST"
     }));
 }
+export function skipOnboardingExtraConfig(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/skip", {
+        ...opts,
+        method: "POST"
+    }));
+}
 export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, { backend }: {
     backend?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
@@ -243,6 +318,14 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         status: 200;
         data: RepositoryListResponseDto;
     }>("/api/yucca/repository", {
+        ...opts
+    }));
+}
+export function inspectRepositories(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryInspectResponseDto;
+    }>("/api/yucca/repository/inspect", {
         ...opts
     }));
 }
@@ -324,6 +407,18 @@ export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.Req
         ...opts,
         method: "DELETE"
     }));
+}
+export function restoreFromPoint(id: string, snapshot: string, backend: string, repositorySnapshotRestoreFromPointRequestDto: RepositorySnapshotRestoreFromPointRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogResponseDto;
+    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}/restore-from-point${QS.query(QS.explode({
+        backend
+    }))}`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: repositorySnapshotRestoreFromPointRequestDto
+    })));
 }
 export function getSnapshotListing(id: string, snapshot: string, { path }: {
     path?: string;

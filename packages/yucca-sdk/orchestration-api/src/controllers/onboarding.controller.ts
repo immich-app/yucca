@@ -7,7 +7,7 @@ import {
 } from '../dto/onboarding.dto';
 import { OnboardingService } from '../services/onboarding.service';
 
-@Controller('/onboarding')
+@Controller('/yucca/onboarding')
 export class OnboardingController {
   constructor(readonly service: OnboardingService) {}
 
@@ -32,5 +32,10 @@ export class OnboardingController {
   @Post('/recovery-key')
   async confirmRecoveryKey() {
     await this.service.confirmRecoveryKey();
+  }
+
+  @Post('/skip')
+  async skipOnboardingExtraConfig() {
+    await this.service.skipExtraConfig();
   }
 }

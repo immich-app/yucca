@@ -3,10 +3,16 @@
   import TestUi from "$lib/components/scraps/TestUi.svelte";
   import { options } from "$lib/options";
   import OnboardingGate from "$lib/components/onboarding/OnboardingGate.svelte";
+  import { resetOrchestrator } from "$lib/fetch-client";
 
   let mock = $state(false);
 
   const { advanced } = options;
+
+  async function onReset() {
+    await resetOrchestrator();
+    location.reload();
+  }
 </script>
 
 <div class="p-8 flex flex-col gap-4">
@@ -25,6 +31,7 @@
     <Button onclick={() => (mock = false)} disabled={!mock}
       >Use orchestration API</Button
     >
+    <Button onclick={onReset} color="warning">Reset</Button>
   </HStack>
 
   <label class="select-none flex gap-2 items-center">
@@ -37,7 +44,7 @@
   {#if mock}
     <TestUi {mock} />
   {:else}
-    <OnboardingGate onExit={() => (mock = false)}>
+    <OnboardingGate flow="immich-restore" onExit={() => (mock = false)}>
       <TestUi {mock} />
     </OnboardingGate>
   {/if}

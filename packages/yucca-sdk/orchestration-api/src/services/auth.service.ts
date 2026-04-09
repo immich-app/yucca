@@ -1,30 +1,30 @@
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { parse } from 'cookie';
 import { Request } from 'express';
 import { calculatePKCECodeChallenge, randomPKCECodeVerifier, randomState } from 'openid-client';
 import { YUCCA_PRODUCTION_UUID } from '../const';
 import { BackendType, CookieName } from '../enum';
-import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
 @Injectable()
 export class AuthService {
   constructor(
     readonly config: ConfigRepository,
     readonly backend: BackendRepository,
-    @Inject(ModuleConfigProvider) readonly moduleConfig: ModuleConfig,
+    readonly moduleConfig: ModuleConfigRepository,
   ) {}
 
   async oidcAuthorize(request: Request): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
-    const baseUrl = this.moduleConfig.externalBaseUrl ?? `${request.protocol}://${request.get('Host')}`;
+    const baseUrl = this.moduleConfig.get().externalBaseUrl ?? `${request.protocol}://${request.get('Host')}`;
     const redirectUri = new URL(`/api/yucca/auth/oidc/callback`, baseUrl);
 
     const state = randomState(); // non-PKCE fallback
     const codeVerifier = randomPKCECodeVerifier();
     const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
 
-    const redirectTo = new URL('/api/auth/oidc/login', this.moduleConfig.yuccaProductionApi);
+    const redirectTo = new URL('/api/auth/oidc/login', this.moduleConfig.get().yuccaProductionApi);
     redirectTo.searchParams.set('code_challenge', codeChallenge);
     redirectTo.searchParams.set('redirect_uri', redirectUri.href);
     redirectTo.searchParams.set('state', state);
@@ -62,7 +62,7 @@ export class AuthService {
       throw new InternalServerErrorException('missing nextUrl');
     }
 
-    const callbackUrl = new URL('/api/auth/oidc/callback', this.moduleConfig.yuccaProductionApi);
+    const callbackUrl = new URL('/api/auth/oidc/callback', this.moduleConfig.get().yuccaProductionApi);
     for (const [key, value] of url.searchParams.entries()) {
       callbackUrl.searchParams.set(key, value);
     }

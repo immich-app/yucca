@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import EventIterator from 'event-iterator';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
@@ -9,14 +9,14 @@ import { dirname, resolve } from 'node:path';
 import { from } from 'rxjs';
 import { Tail } from 'tail';
 import { TaskStatus } from '../enum';
-import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { DB } from '../schema';
+import { ModuleConfigRepository } from './moduleConfig.repository';
 
 @Injectable()
 export class RunHistoryRepository {
   constructor(
-    @InjectKysely() private db: Kysely<DB>,
-    @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
+    @InjectKysely('orchestrator') private db: Kysely<DB>,
+    private readonly moduleConfig: ModuleConfigRepository,
   ) {}
 
   async createLog(
@@ -28,7 +28,7 @@ export class RunHistoryRepository {
 
     try {
       const start = new Date().toISOString();
-      const logFilePath = resolve(this.moduleConfig.statePath, 'logs', repositoryId, start + '.jsonl');
+      const logFilePath = resolve(this.moduleConfig.get().statePath, 'logs', repositoryId, start + '.jsonl');
 
       await mkdir(dirname(logFilePath), {
         recursive: true,
@@ -81,6 +81,43 @@ export class RunHistoryRepository {
     return { logId };
   }
 
+  async createEphemeralLog(
+    fn: (log: WriteStream, logId: string) => Promise<void>,
+    callback: (error?: unknown) => void,
+  ) {
+    const logId = randomUUID();
+
+    try {
+      const logFilePath = resolve(this.moduleConfig.get().statePath, 'logs', 'ephemeral', logId + '.jsonl');
+
+      await mkdir(dirname(logFilePath), {
+        recursive: true,
+      });
+
+      const log = createWriteStream(logFilePath);
+
+      // Store the path so getObservable can find it
+      this.ephemeralLogs.set(logId, logFilePath);
+
+      fn(log, logId)
+        .then(() => {
+          callback();
+          log.close();
+        })
+        .catch((error) => {
+          callback(error);
+          log.write(JSON.stringify({ message_type: 'error', error: `${error}` }));
+          log.close();
+        });
+    } catch (error) {
+      callback(error);
+    }
+
+    return { logId };
+  }
+
+  private ephemeralLogs = new Map<string, string>();
+
   createLogAsync(repositoryId: string, fn: (log: WriteStream) => Promise<void>) {
     return new Promise<void>(
       (resolve, reject) =>
@@ -104,24 +141,31 @@ export class RunHistoryRepository {
 
   getObservable(id: string) {
     const db = this.db;
+    const ephemeralPath = this.ephemeralLogs.get(id);
 
     return from(
       new EventIterator<MessageEvent>((queue) => {
         let tail: Tail | undefined;
 
-        db.selectFrom('runHistory')
-          .select('logFilePath')
-          .where('id', '=', id)
-          .executeTakeFirstOrThrow()
-          .then(({ logFilePath }) => {
-            tail = new Tail(logFilePath, {
-              fromBeginning: true,
-              nLines: 50,
-            });
+        const startTail = (logFilePath: string) => {
+          tail = new Tail(logFilePath, {
+            fromBeginning: true,
+            nLines: 50,
+          });
 
-            tail.on('line', (data) => queue.push({ data } as MessageEvent));
-          })
-          .catch(queue.fail);
+          tail.on('line', (data) => queue.push({ data } as MessageEvent));
+        };
+
+        if (ephemeralPath) {
+          startTail(ephemeralPath);
+        } else {
+          db.selectFrom('runHistory')
+            .select('logFilePath')
+            .where('id', '=', id)
+            .executeTakeFirstOrThrow()
+            .then(({ logFilePath }) => startTail(logFilePath))
+            .catch(queue.fail);
+        }
 
         return () => {
           tail?.unwatch();

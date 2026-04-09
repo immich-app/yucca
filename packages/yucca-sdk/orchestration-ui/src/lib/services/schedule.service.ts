@@ -8,21 +8,23 @@ import {
 import { SocketEvent } from '$lib/events';
 import { toastManager } from '@immich/ui';
 import { handleError } from '$lib/utils/handle-error';
-import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { queryClient } from '$lib/query-client';
+import { createQuery } from '@tanstack/svelte-query';
 
 export const scheduleKeys = {
   all: ['schedules'] as const,
 };
 
 export const useSchedules = () =>
-  createQuery(() => ({
-    queryKey: scheduleKeys.all,
-    queryFn: () => getSchedules().then(({ schedules }) => schedules),
-  }));
+  createQuery(
+    () => ({
+      queryKey: scheduleKeys.all,
+      queryFn: () => getSchedules().then(({ schedules }) => schedules),
+    }),
+    () => queryClient,
+  );
 
 export const useScheduleEventHandler = () => {
-  const queryClient = useQueryClient();
-
   return {
     onScheduleCreate(event: SocketEvent<{ schedule: ScheduleDto }>) {
       queryClient.setQueryData(

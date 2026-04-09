@@ -4,7 +4,7 @@ import { type Request, type Response } from 'express';
 import { CookieName } from '../enum';
 import { AuthService } from '../services/auth.service';
 
-@Controller('/auth')
+@Controller('/yucca/auth')
 export class AuthController {
   constructor(readonly auth: AuthService) {}
 

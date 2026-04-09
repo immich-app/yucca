@@ -13,7 +13,7 @@
 
   type Props = {
     onImported: (key: string) => void;
-    onStart: () => void;
+    onStart?: () => void;
     onCancel: () => void;
   };
 
@@ -47,7 +47,11 @@
   <ModalFooter>
     <HStack>
       <Button disabled={!isValidValue()} onclick={onSave}>Save</Button>
-      <Button variant="ghost" onclick={onStart}>Back</Button>
+      {#if onStart}
+        <Button variant="ghost" onclick={onStart}>Back</Button>
+      {:else}
+        <Button variant="ghost" onclick={onCancel}>Cancel</Button>
+      {/if}
     </HStack>
   </ModalFooter>
 </Modal>

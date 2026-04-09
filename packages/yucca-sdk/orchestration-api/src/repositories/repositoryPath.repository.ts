@@ -6,7 +6,7 @@ import { RepositoryPathTable } from '../schema/tables/repositoryPath.table';
 
 @Injectable()
 export class RepositoryPathRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   create(entry: Insertable<RepositoryPathTable>) {
     return this.db.insertInto('repositoryPaths').values(entry).returningAll().executeTakeFirstOrThrow();

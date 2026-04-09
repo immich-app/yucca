@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 
-@Controller('/fs')
+@Controller('/yucca/fs')
 export class FilesystemController {
   constructor() {}
 

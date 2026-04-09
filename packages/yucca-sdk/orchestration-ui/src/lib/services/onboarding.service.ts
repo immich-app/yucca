@@ -39,3 +39,12 @@ export const handleImportRecoveryKey = async (
     throw error;
   }
 };
+
+export const handleSkipOnboardingExtraConfig = async () => {
+  try {
+    await sdk.skipOnboardingExtraConfig();
+  } catch (error) {
+    handleError(error, 'Failed to save preferences');
+    throw error;
+  }
+};

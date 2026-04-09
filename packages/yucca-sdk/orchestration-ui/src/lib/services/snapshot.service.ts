@@ -1,29 +1,32 @@
 import { sdk } from '$lib';
 import {
   getSnapshots,
+  type RepositorySnapshotRestoreFromPointRequestDto,
   type RepositorySnapshotRestoreRequestDto,
   type SnapshotDto,
 } from '$lib/fetch-client';
 import { toastManager } from '@immich/ui';
 import { handleError } from '$lib/utils/handle-error';
-import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { queryClient } from '$lib/query-client';
+import { createQuery } from '@tanstack/svelte-query';
 
 export const snapshotKeys = {
   byRepository: (id: string) => ['snapshots', id] as const,
 };
 
 export const useSnapshots = (repositoryId: string) =>
-  createQuery(() => ({
-    queryKey: snapshotKeys.byRepository(repositoryId),
-    queryFn: () =>
-      getSnapshots(repositoryId).then(({ snapshots }) =>
-        snapshots.toSorted((a, b) => b.time.localeCompare(a.time)),
-      ),
-  }));
+  createQuery(
+    () => ({
+      queryKey: snapshotKeys.byRepository(repositoryId),
+      queryFn: () =>
+        getSnapshots(repositoryId).then(({ snapshots }) =>
+          snapshots.toSorted((a, b) => b.time.localeCompare(a.time)),
+        ),
+    }),
+    () => queryClient,
+  );
 
 export const useRemoveSnapshot = (repositoryId: string) => {
-  const queryClient = useQueryClient();
-
   return (snapshotId: string) => {
     queryClient.setQueryData(
       snapshotKeys.byRepository(repositoryId),
@@ -49,6 +52,20 @@ export const handleRestoreSnapshot = async (
   options: RepositorySnapshotRestoreRequestDto,
 ) => {
   return await sdk.restoreSnapshot(repositoryId, snapshotId, options);
+};
+
+export const handleRestoreFromPoint = async (
+  repositoryId: string,
+  snapshotId: string,
+  backendId: string,
+  options: RepositorySnapshotRestoreFromPointRequestDto,
+) => {
+  return await sdk.restoreFromPoint(
+    repositoryId,
+    snapshotId,
+    backendId,
+    options,
+  );
 };
 
 export const handleForgetSnapshot = async (
