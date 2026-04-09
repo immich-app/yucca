@@ -55,12 +55,11 @@ jobs:
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
       - run: mise prepare
 
-      - name: Start services
+      - name: Start services & run end-to-end tests
         run: |
           mise docker:start
           mise dev &
-      - name: Run end-to-end tests
-        run: mise test:e2e
+          mise test:e2e
 
   e2e-web:
     name: End-to-end (Web) Tests
@@ -74,9 +73,8 @@ jobs:
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
       - run: mise prepare
 
-      - name: Start services
+      - name: Start services & run end-to-end tests
         run: |
           mise docker:start
           mise dev &
-      - name: Run end-to-end tests
-        run: mise test:e2e:web
+          mise test:e2e:web
