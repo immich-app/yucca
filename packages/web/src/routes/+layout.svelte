@@ -4,7 +4,7 @@
 
   import { locale } from "svelte-i18n-lingui";
   import { messages } from "../locales/en";
-  import { TooltipProvider } from "@immich/ui";
+  import { YuccaContext } from "orchestration-ui";
 
   locale.set("en", messages);
 
@@ -12,6 +12,6 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-<TooltipProvider>
+<YuccaContext>
   {@render children()}
-</TooltipProvider>
+</YuccaContext>
