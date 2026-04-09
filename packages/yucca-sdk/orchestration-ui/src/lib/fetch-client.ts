@@ -101,6 +101,50 @@ export type CurrentRecoveryKeyResponse = {
 export type ImportRecoveryKeyRequest = {
     recoveryKey: string;
 };
+export type ScheduleCreateRequestDto = {
+    name: string;
+    cron: string;
+    repositories: string[];
+};
+export type ScheduleDto = {
+    id: string;
+    name: string;
+    paused: boolean;
+    cron: string;
+    repositories: string[];
+    lastRun?: string;
+    lastFinished?: string;
+};
+export type ScheduleCreateResponseDto = {
+    schedule: ScheduleDto;
+};
+export type ScheduleListResponseDto = {
+    schedules: ScheduleDto[];
+};
+export type ScheduleUpdateRequestDto = {
+    name?: string;
+    paused?: boolean;
+    cron?: string;
+    repositories?: string[];
+};
+export type ScheduleUpdateResponseDto = {
+    schedule: ScheduleDto;
+};
+export type TaskType = "schedule" | "backup" | "forget";
+export type TaskStatus = "incomplete" | "complete" | "failed";
+export type ActiveScheduleItemDto = {
+    repositoryId: string;
+    status: TaskStatus;
+};
+export type RunningTaskDto = {
+    parentId: string;
+    "type": TaskType;
+    logId?: string;
+    scheduleStatus?: ActiveScheduleItemDto[];
+};
+export type RunningTaskListResponse = {
+    tasks: RunningTaskDto[];
+};
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/debug", {
         ...opts
@@ -236,5 +280,59 @@ export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", {
         ...opts,
         method: "POST"
+    }));
+}
+export function createSchedule(scheduleCreateRequestDto: ScheduleCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ScheduleCreateResponseDto;
+    }>("/api/schedule", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: scheduleCreateRequestDto
+    })));
+}
+export function getSchedules(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ScheduleListResponseDto;
+    }>("/api/schedule", {
+        ...opts
+    }));
+}
+export function updateSchedule(id: string, scheduleUpdateRequestDto: ScheduleUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ScheduleUpdateResponseDto;
+    }>(`/api/schedule/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: scheduleUpdateRequestDto
+    })));
+}
+export function removeSchedule(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
+export function addRepositoryToSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
+        ...opts,
+        method: "PUT"
+    }));
+}
+export function removeRepositoryFromSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
+export function getRunningTasks(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RunningTaskListResponse;
+    }>("/api/tasks", {
+        ...opts
     }));
 }

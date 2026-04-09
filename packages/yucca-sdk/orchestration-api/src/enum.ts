@@ -18,13 +18,14 @@ export enum BackendType {
   S3 = 's3',
 }
 
-export enum RunHistoryStatus {
+export enum TaskStatus {
   Incomplete = 'incomplete',
   Complete = 'complete',
   Failed = 'failed',
 }
 
 export enum TaskType {
+  Schedule = 'schedule',
   Backup = 'backup',
   Forget = 'forget',
 }

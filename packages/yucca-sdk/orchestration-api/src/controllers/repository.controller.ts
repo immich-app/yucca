@@ -47,6 +47,8 @@ export class RepositoryController {
     return this.service.removeRepositoryPath(id, dto.path);
   }
 
+  // TODO: import external repository route
+
   @Get('/:id/runs')
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ type: RunHistoryResponseDto })
@@ -69,10 +71,10 @@ export class RepositoryController {
     return this.service.forgetSnapshot(id, snapshot);
   }
 
-  // todo: move to another controller?
   @Sse('/logs/:id')
   @ApiParam({ name: 'id', type: String })
   logStreamSse(@Param('id') id: string): Observable<MessageEvent> {
+    // TODO: move to separate controller
     return this.service.observableLog(id);
   }
 }

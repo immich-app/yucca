@@ -14,6 +14,8 @@
   import { onDestroy, onMount } from "svelte";
   import debounce from "lodash.debounce";
 
+  // TODO: needs UI refactoring
+
   type Props = {
     logId: string;
     onClose: () => void;
@@ -76,13 +78,6 @@
         break;
     }
   };
-
-  if (import.meta.env.DEV) {
-    // simulate delay
-    let i = 0;
-    const realOnEvent = onEvent;
-    onEvent = (event) => setTimeout(() => realOnEvent(event));
-  }
 
   onMount(() => {
     source = new EventSource(
