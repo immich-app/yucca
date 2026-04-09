@@ -110,7 +110,11 @@ export type SnapshotDto = {
 export type ListSnapshotsResponseDto = {
     snapshots: SnapshotDto[];
 };
-export type TaskType = "schedule" | "backup" | "forget";
+export type RepositorySnapshotRestoreRequestDto = {
+    target?: string;
+    include?: string[];
+};
+export type TaskType = "schedule" | "restore" | "backup" | "forget";
 export type TaskStatus = "incomplete" | "complete" | "failed";
 export type ActiveScheduleItemDto = {
     repositoryId: string;
@@ -302,6 +306,16 @@ export function getSnapshots(id: string, opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function restoreSnapshot(id: string, snapshot: string, repositorySnapshotRestoreRequestDto: RepositorySnapshotRestoreRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: repositorySnapshotRestoreRequestDto
+    })));
+}
 export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -309,6 +323,18 @@ export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.Req
     }>(`/api/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, {
         ...opts,
         method: "DELETE"
+    }));
+}
+export function getSnapshotListing(id: string, snapshot: string, { path }: {
+    path?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: FilesystemListingResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}/listing${QS.query(QS.explode({
+        path
+    }))}`, {
+        ...opts
     }));
 }
 export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {

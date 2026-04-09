@@ -26,6 +26,7 @@ export enum TaskStatus {
 
 export enum TaskType {
   Schedule = 'schedule',
+  Restore = 'restore',
   Backup = 'backup',
   Forget = 'forget',
 }

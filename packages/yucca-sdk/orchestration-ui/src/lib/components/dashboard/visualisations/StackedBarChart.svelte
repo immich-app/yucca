@@ -21,11 +21,13 @@
   const marginTop = 20;
   const marginRight = 10;
   const marginBottom = 40;
+  // svelte-ignore state_referenced_locally
   const series = d3
     .stack<Datum>()
     .keys(keys)
     .value((d, key) => (d[key] as number) ?? 0)(data);
 
+  // svelte-ignore state_referenced_locally
   const categories = data.map((d) => String(d[categoryKey]));
 
   const yScale = d3
@@ -53,6 +55,7 @@
     .range([marginLeft, width - marginRight])
     .padding(0.5);
 
+  // svelte-ignore state_referenced_locally
   const colourScale = d3.scaleOrdinal<string>().domain(keys).range(colours);
 
   let hoveredCat = $state<string | null>(null);

@@ -1,6 +1,7 @@
-import { backup, forget, init, keyList, snapshots, stats } from '@futo-org/restic-wrapper';
+import { backup, forget, init, keyList, ls, restore, snapshots, stats } from '@futo-org/restic-wrapper';
 import { Injectable } from '@nestjs/common';
 import { Writable } from 'node:stream';
+import { RepositorySnapshotRestoreRequestDto } from '../dto/repository.dto';
 
 @Injectable()
 export class ResticRepository {
@@ -14,6 +15,36 @@ export class ResticRepository {
       .password(Buffer.from(key).toString('hex'))
       .addFile(...paths)
       .on('event', (event) => logStream?.write(JSON.stringify(event) + '\n'))
+      .run();
+  }
+
+  async restore(
+    repository: string,
+    key: Uint8Array,
+    snapshotId: string,
+    { include, target }: RepositorySnapshotRestoreRequestDto,
+    logStream?: Writable,
+  ) {
+    let command = restore()
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .snapshot(snapshotId)
+      .target(target ?? '/')
+      .on('event', (event) => logStream?.write(JSON.stringify(event) + '\n'));
+
+    if (include) {
+      command = command.include(...include);
+    }
+
+    return command.run();
+  }
+
+  async ls(repository: string, key: Uint8Array, snapshotId: string, path: string) {
+    return await ls()
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .snapshot(snapshotId)
+      .directory(path)
       .run();
   }
 

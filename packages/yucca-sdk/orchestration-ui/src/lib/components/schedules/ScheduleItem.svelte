@@ -51,7 +51,7 @@
   <CardBody>
     <HStack>
       <Stack>
-        <Heading>{schedule.name}</Heading>
+        <Heading size="small">{schedule.name}</Heading>
         <HStack>
           <Badge size="tiny" color="info">{schedule.cron}</Badge>
           {#if schedule.paused}
