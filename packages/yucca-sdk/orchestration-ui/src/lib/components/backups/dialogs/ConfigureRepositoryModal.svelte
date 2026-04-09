@@ -13,8 +13,6 @@
   import { type LocalRepositoryDto } from "$lib/fetch-client";
   import { mdiClose } from "@mdi/js";
   import FileBrowserModal from "./FileBrowserModal.svelte";
-  import OnEvents from "$lib/components/util/OnEvents.svelte";
-  import type { SocketEvent } from "$lib/events";
   import { handleUpdateRepository } from "$lib/services/repository.service";
   import { SvelteSet } from "svelte/reactivity";
 
@@ -30,29 +28,6 @@
   // svelte-ignore state_referenced_locally
   let paths = new SvelteSet(repository.configuration?.paths ?? []);
 
-  const onRepositoryUpdate = (
-    event: SocketEvent<{
-      repositoryId: string;
-      repository: Partial<LocalRepositoryDto>;
-    }>,
-  ) => {
-    const { repository, repositoryId } = event.data;
-
-    if (repositoryId === repository.id) {
-      if (repository.name) {
-        name = repository.name;
-      }
-
-      if (repository.configuration) {
-        paths.clear();
-
-        for (const path of repository.configuration!.paths) {
-          paths.add(path);
-        }
-      }
-    }
-  };
-
   const onSubmit = async () => {
     await handleUpdateRepository(
       repository.id,
@@ -63,8 +38,6 @@
     onClose();
   };
 </script>
-
-<OnEvents {onRepositoryUpdate} />
 
 <FormModal
   disabled={name.length === 0}

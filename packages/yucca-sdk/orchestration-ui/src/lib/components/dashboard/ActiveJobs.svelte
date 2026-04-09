@@ -3,10 +3,10 @@
   import type {
     RunningTaskDto,
     ActiveScheduleItemDto,
-    LocalRepositoryDto,
-    ScheduleDto,
   } from "$lib/fetch-client";
   import { handleGetRunningTasks } from "$lib/services/task.service";
+  import { useRepositories } from "$lib/services/repository.service";
+  import { useSchedules } from "$lib/services/schedule.service";
   import {
     createLogObserver,
     type LogStatus,
@@ -34,7 +34,6 @@
   import OnEvents from "../util/OnEvents.svelte";
   import RelativeTime from "../util/RelativeTime.svelte";
   import ViewLogModal from "../backups/dialogs/ViewLogModal.svelte";
-  import { sdk } from "$lib";
 
   const LINGER_MS = 3000;
   const FADE_MS = 600;
@@ -46,14 +45,17 @@
   };
 
   let tasks = new SvelteMap<string, LiveTask>();
-  let repositories = new SvelteMap<string, LocalRepositoryDto>();
-  let schedules = new SvelteMap<string, ScheduleDto>();
+
+  const repositoriesQuery = useRepositories();
+  const schedulesQuery = useSchedules();
 
   const logObservers = new Map<string, ReturnType<typeof createLogObserver>>();
   const timers = new Map<string, ReturnType<typeof setTimeout>[]>();
 
-  const getRepoName = (id: string) => repositories.get(id)?.name ?? id;
-  const getScheduleName = (id: string) => schedules.get(id)?.name ?? id;
+  const getRepoName = (id: string) =>
+    repositoriesQuery.data?.find((r) => r.id === id)?.name ?? id;
+  const getScheduleName = (id: string) =>
+    schedulesQuery.data?.find((s) => s.id === id)?.name ?? id;
 
   const ensureLogObserver = (logId: string) => {
     if (!logObservers.has(logId)) {
@@ -103,19 +105,7 @@
         : "var(--immich-ui-success-500)";
 
   onMount(async () => {
-    const [taskData, repoData, scheduleData] = await Promise.all([
-      handleGetRunningTasks(),
-      sdk.getRepositories(),
-      sdk.getSchedules(),
-    ]);
-
-    for (const repo of repoData.repositories) {
-      repositories.set(repo.id, repo);
-    }
-
-    for (const schedule of scheduleData.schedules) {
-      schedules.set(schedule.id, schedule);
-    }
+    const taskData = await handleGetRunningTasks();
 
     const now = new Date().toISOString();
     for (const task of taskData.tasks) {

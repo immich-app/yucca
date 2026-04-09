@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    Alert,
     Button,
     LoadingSpinner,
     Modal,
@@ -12,10 +13,10 @@
     TableHeading,
     TableRow,
   } from "@immich/ui";
-  import type { LocalRepositoryDto, RunDto } from "$lib/fetch-client";
-  import { onMount } from "svelte";
+  import { getReadableErrorMessage } from "$lib/utils/handle-error";
+  import type { LocalRepositoryDto } from "$lib/fetch-client";
   import ViewLogModal from "./ViewLogModal.svelte";
-  import { handleGetRunHistory } from "$lib/services/runHistory.service";
+  import { useRunHistory } from "$lib/services/runHistory.service";
 
   interface Props {
     repository: LocalRepositoryDto;
@@ -24,17 +25,17 @@
 
   let { repository, onClose }: Props = $props();
 
-  let runs: RunDto[] | undefined = $state();
-
-  onMount(async () => {
-    const result = await handleGetRunHistory(repository.id);
-    runs = result.runs.toSorted((a, b) => b.start.localeCompare(a.start));
-  });
+  // svelte-ignore state_referenced_locally
+  const query = useRunHistory(repository.id);
 </script>
 
 <Modal title={`Run History for ${repository.name}`} size="giant" {onClose}>
   <ModalBody>
-    {#if runs}
+    {#if query.isLoading}
+      <LoadingSpinner />
+    {:else if query.isError}
+      <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
+    {:else if query.isSuccess}
       <Table>
         <TableHeader>
           <TableHeading>Start</TableHeading>
@@ -44,7 +45,7 @@
         </TableHeader>
 
         <TableBody>
-          {#each runs as run (run.id)}
+          {#each query.data as run (run.id)}
             <TableRow>
               <TableCell>{run.start}</TableCell>
               <TableCell>{run.end}</TableCell>
@@ -61,8 +62,6 @@
           {/each}
         </TableBody>
       </Table>
-    {:else}
-      <LoadingSpinner />
     {/if}
   </ModalBody>
 </Modal>

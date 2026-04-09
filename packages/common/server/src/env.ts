@@ -15,7 +15,7 @@ const schema = z.object({
   S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
 
   POSTGRES_HOST: z.string(),
-  POSTGRES_PORT: z.number().default(5432),
+  POSTGRES_PORT: z.coerce.number().default(5432),
   POSTGRES_USERNAME: z.string(),
   POSTGRES_PASSWORD: z.string(),
   POSTGRES_DATABASE: z.string(),
