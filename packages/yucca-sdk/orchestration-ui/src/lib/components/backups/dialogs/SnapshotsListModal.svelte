@@ -1,9 +1,11 @@
 <script lang="ts">
   import {
     Button,
+    IconButton,
     LoadingSpinner,
     Modal,
     ModalBody,
+    modalManager,
     Table,
     TableBody,
     TableCell,
@@ -11,13 +13,15 @@
     TableHeading,
     TableRow,
   } from "@immich/ui";
-  import type { LocalRepositoryDto, SnapshotDto } from "$lib/fetch-client";
+  import { type LocalRepositoryDto, type SnapshotDto } from "$lib/fetch-client";
   import { onMount } from "svelte";
   import { DateTime } from "luxon";
   import {
     handleForgetSnapshot,
     handleGetSnapshots,
   } from "$lib/services/snapshot.service";
+  import RestoreSnapshotModal from "./RestoreSnapshotModal.svelte";
+  import { mdiDeleteOutline, mdiRestore } from "@mdi/js";
 
   interface Props {
     repository: LocalRepositoryDto;
@@ -36,6 +40,15 @@
     );
   });
 
+  const restoreSnapshot = (id: string) => {
+    onClose();
+
+    modalManager.open(RestoreSnapshotModal, {
+      repository: repository.id,
+      snapshot: id,
+    });
+  };
+
   const deleteSnapshot = async (id: string) => {
     deleting = true;
 
@@ -48,12 +61,12 @@
   };
 </script>
 
-<Modal title={`Snapshots for ${repository.name}`} size="giant" {onClose}>
+<Modal title={`Snapshots for ${repository.name}`} {onClose}>
   <ModalBody>
     {#if snapshots}
       <Table>
         <TableHeader>
-          <TableHeading>ID</TableHeading>
+          <TableHeading>Snapshot</TableHeading>
           <TableHeading>Created</TableHeading>
           <TableHeading></TableHeading>
         </TableHeader>
@@ -61,17 +74,24 @@
         <TableBody>
           {#each snapshots as snapshot (snapshot.id)}
             <TableRow>
-              <TableCell>{snapshot.id}</TableCell>
-              <TableCell
-                >{DateTime.fromISO(snapshot.time).toRelative()}</TableCell
-              >
-              <TableCell>
-                <Button
-                  size="tiny"
+              <TableCell><code class="text-xs">{snapshot.id.slice(0, 12)}</code></TableCell>
+              <TableCell>{DateTime.fromISO(snapshot.time).toRelative()}</TableCell>
+              <TableCell class="flex gap-1 justify-end">
+                <IconButton
+                  icon={mdiRestore}
+                  aria-label="Restore"
+                  size="small"
+                  disabled={deleting}
+                  onclick={() => restoreSnapshot(snapshot.id)}
+                />
+                <IconButton
+                  icon={mdiDeleteOutline}
+                  aria-label="Delete"
+                  size="small"
                   color="danger"
                   disabled={deleting}
-                  onclick={() => deleteSnapshot(snapshot.id)}>Delete</Button
-                >
+                  onclick={() => deleteSnapshot(snapshot.id)}
+                />
               </TableCell>
             </TableRow>
           {/each}

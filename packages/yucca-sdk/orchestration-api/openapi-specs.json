@@ -449,6 +449,52 @@
       }
     },
     "/api/repository/{id}/snapshots/{snapshot}": {
+      "post": {
+        "operationId": "restoreSnapshot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "snapshot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositorySnapshotRestoreRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
       "delete": {
         "operationId": "forgetSnapshot",
         "parameters": [
@@ -476,6 +522,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListSnapshotsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/snapshots/{snapshot}/listing": {
+      "get": {
+        "operationId": "getSnapshotListing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "snapshot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilesystemListingResponseDto"
                 }
               }
             }
@@ -1114,10 +1206,25 @@
           "snapshots"
         ]
       },
+      "RepositorySnapshotRestoreRequestDto": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "include": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "TaskType": {
         "type": "string",
         "enum": [
           "schedule",
+          "restore",
           "backup",
           "forget"
         ]

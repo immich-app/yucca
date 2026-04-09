@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
   ListSnapshotsResponseDto,
   LogResponseDto,
@@ -7,6 +8,7 @@ import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
+  RepositorySnapshotRestoreRequestDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
   RunHistoryResponseDto,
@@ -80,11 +82,36 @@ export class RepositoryController {
     return this.service.getSnapshots(id);
   }
 
+  @Post('/:id/snapshots/:snapshot')
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'snapshot', type: String })
+  @ApiOkResponse({ type: LogResponseDto })
+  async restoreSnapshot(
+    @Param('id') id: string,
+    @Param('snapshot') snapshotId: string,
+    @Body() dto: RepositorySnapshotRestoreRequestDto,
+  ): Promise<LogResponseDto> {
+    return this.service.restoreSnapshot(id, snapshotId, dto);
+  }
+
   @Delete('/:id/snapshots/:snapshot')
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'snapshot', type: String })
   @ApiOkResponse({ type: ListSnapshotsResponseDto })
   forgetSnapshot(@Param('id') id: string, @Param('snapshot') snapshot: string): Promise<void> {
     return this.service.forgetSnapshot(id, snapshot);
+  }
+
+  @Get('/:id/snapshots/:snapshot/listing')
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'snapshot', type: String })
+  @ApiQuery({ name: 'path', type: String, required: false })
+  @ApiOkResponse({ type: FilesystemListingResponseDto })
+  async getSnapshotListing(
+    @Param('id') id: string,
+    @Param('snapshot') snapshotId: string,
+    @Query() dto: FilesystemListingRequestDto,
+  ): Promise<FilesystemListingResponseDto> {
+    return this.service.getSnapshotListing(id, snapshotId, dto);
   }
 }

@@ -42,7 +42,7 @@ export function createLogObserver(logId: string) {
     buffer.splice(50);
 
     switch (event.message_type) {
-      case 'status':
+      case 'status': {
         state.status = {
           progress: event.percent_done,
           text: event.seconds_remaining
@@ -52,7 +52,8 @@ export function createLogObserver(logId: string) {
         };
         flush();
         break;
-      case 'summary':
+      }
+      case 'summary': {
         state.status = {
           progress: 1,
           text: '',
@@ -61,15 +62,22 @@ export function createLogObserver(logId: string) {
         flush();
         flush.flush();
         break;
+      }
     }
   };
 
-  const source = new EventSource(new URL(`/api/logs/${logId}`, defaults.baseUrl));
+  const source = new EventSource(
+    new URL(`/api/logs/${logId}`, defaults.baseUrl),
+  );
   source.addEventListener('message', ({ data }) => onEvent(JSON.parse(data)));
 
   return {
-    get status() { return state.status; },
-    get events() { return state.events; },
+    get status() {
+      return state.status;
+    },
+    get events() {
+      return state.events;
+    },
     destroy() {
       flush.cancel();
       source.close();
