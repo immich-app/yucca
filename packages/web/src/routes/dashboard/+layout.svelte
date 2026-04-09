@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import {
     AppShell,
     AppShellHeader,
@@ -9,11 +10,10 @@
     HStack,
     NavbarItem,
   } from "@immich/ui";
-  import { defaults } from "yucca-api-client";
-  import { t } from "svelte-i18n-lingui";
-  import { page } from "$app/state";
-  import { mdiViewDashboard, mdiBackupRestore } from "@mdi/js";
+  import { mdiBackupRestore, mdiViewDashboard } from "@mdi/js";
   import { setProvider, yuccaApiProvider } from "orchestration-ui";
+  import { t } from "svelte-i18n-lingui";
+  import { defaults } from "yucca-api-client";
 
   const { data, children } = $props();
 

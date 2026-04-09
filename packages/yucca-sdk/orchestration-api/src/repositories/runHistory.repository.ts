@@ -59,7 +59,7 @@ export class RunHistoryRepository {
             .where('id', '=', logId)
             .set('status', TaskStatus.Complete)
             .set('end', new Date().toISOString())
-            .executeTakeFirstOrThrow();
+            .execute();
         })
         .catch(async (error) => {
           callback(error);
@@ -72,7 +72,7 @@ export class RunHistoryRepository {
             .where('id', '=', logId)
             .set('status', TaskStatus.Failed)
             .set('end', new Date().toISOString())
-            .executeTakeFirstOrThrow();
+            .execute();
         });
     } catch (error) {
       callback(error);
@@ -107,12 +107,14 @@ export class RunHistoryRepository {
 
     return from(
       new EventIterator<MessageEvent>((queue) => {
+        let tail: Tail | undefined;
+
         db.selectFrom('runHistory')
           .select('logFilePath')
           .where('id', '=', id)
           .executeTakeFirstOrThrow()
           .then(({ logFilePath }) => {
-            const tail = new Tail(logFilePath, {
+            tail = new Tail(logFilePath, {
               fromBeginning: true,
               nLines: 50,
             });
@@ -120,6 +122,10 @@ export class RunHistoryRepository {
             tail.on('line', (data) => queue.push({ data } as MessageEvent));
           })
           .catch(queue.fail);
+
+        return () => {
+          tail?.unwatch();
+        };
       }),
     );
   }

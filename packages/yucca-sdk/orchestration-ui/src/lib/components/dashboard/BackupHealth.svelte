@@ -13,11 +13,14 @@
 
   const status = $derived.by(() => {
     let success = 0;
+    let offline = 0;
     let failed = 0;
     let neverRun = 0;
 
     for (const repo of repositories) {
-      if (!repo.metrics?.lastBackup) {
+      if (!repo.backends?.primary.online) {
+        offline++;
+      } else if (!repo.metrics?.lastBackup) {
         neverRun++;
       } else if (
         repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup
@@ -28,15 +31,21 @@
       }
     }
 
-    return { success, failed, neverRun };
+    return { success, offline, failed, neverRun };
   });
 
-  const hasFailures = $derived(status.failed > 0);
+  const hasFailures = $derived(status.offline > 0 || status.failed > 0);
   const allHealthy = $derived(
-    total > 0 && status.failed === 0 && status.neverRun === 0,
+    total > 0 &&
+      status.offline === 0 &&
+      status.failed === 0 &&
+      status.neverRun === 0,
   );
   const allNeverRun = $derived(
-    total > 0 && status.success === 0 && status.failed === 0,
+    total > 0 &&
+      status.success === 0 &&
+      status.offline === 0 &&
+      status.failed === 0,
   );
 </script>
 
@@ -47,7 +56,8 @@
 {:else if hasFailures}
   <Alert color="danger">
     <Text class="grow"
-      >{status.failed} backups failed — check the Backups page for details</Text
+      >{status.failed + status.offline} backups failed or offline — check the Backups
+      page for details</Text
     >
   </Alert>
 {:else if allHealthy}
@@ -65,6 +75,12 @@
       label: "Successful",
       color: "var(--immich-ui-success-500)",
       badge: "success",
+    },
+    {
+      value: status.offline,
+      label: "Offline",
+      color: "var(--immich-ui-warning-500)",
+      badge: "warning",
     },
     {
       value: status.failed,

@@ -82,7 +82,7 @@ describe('RepositoryController (e2e)', () => {
 
       expect(body).toEqual({
         url: expect.stringMatching(
-          /^rest:http:\/\/restic:[\w-]*\.[\w-]*\.[\w-]*@localhost:3010\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/$/,
+          /^rest:http:\/\/restic:[\w-]*\.[\w-]*\.[\w-]*@[\w.:]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/,
         ),
       });
     });

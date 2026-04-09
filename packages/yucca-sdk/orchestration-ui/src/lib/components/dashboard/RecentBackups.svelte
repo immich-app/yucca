@@ -36,7 +36,6 @@
 
   const isSuccess = (repo: RepositoryWithMetricsDto) =>
     repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup;
-
 </script>
 
 <Card>
