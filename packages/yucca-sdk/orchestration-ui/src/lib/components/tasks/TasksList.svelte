@@ -13,7 +13,8 @@
   import OnEvents from "../util/OnEvents.svelte";
   import ViewLogModal from "../backups/dialogs/ViewLogModal.svelte";
   import { onMount } from "svelte";
-  import { getRunningTasks, type RunningTaskDto } from "$lib/fetch-client";
+  import type { RunningTaskDto } from "$lib/fetch-client";
+  import { handleGetRunningTasks } from "$lib/services/task.service";
   import RelativeTime from "../util/RelativeTime.svelte";
 
   let tasks = new SvelteMap<
@@ -22,7 +23,7 @@
   >();
 
   onMount(() => {
-    getRunningTasks().then((data) => {
+    handleGetRunningTasks().then((data) => {
       for (const task of data.tasks) {
         tasks.set(task.parentId, task);
       }

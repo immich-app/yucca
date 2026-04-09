@@ -1,20 +1,17 @@
 <script lang="ts">
   import {
+    HStack,
     IconButton,
+    LoadingSpinner,
     Modal,
     ModalBody,
-    Table,
-    TableBody,
-    TableCell,
-    TableRow,
+    Stack,
+    Text,
   } from "@immich/ui";
-  import { mdiChevronRight, mdiChevronUp, mdiPlus } from "@mdi/js";
-  import {
-    type FilesystemListingResponseDto,
-    getFileListing,
-  } from "$lib/fetch-client";
-
-  // TODO: needs UI refactoring
+  import { mdiFolderOpen, mdiPlus } from "@mdi/js";
+  import type { FilesystemListingResponseDto } from "$lib/fetch-client";
+  import { handleGetFileListing } from "$lib/services/filesystem.service";
+  import { onMount } from "svelte";
 
   interface Props {
     onSelect: (path: string) => void;
@@ -26,60 +23,60 @@
   let listing: FilesystemListingResponseDto | undefined = $state();
 
   async function open(path?: string) {
-    listing = await getFileListing({ path });
+    listing = undefined;
+    listing = await handleGetFileListing(path);
   }
 
-  open();
+  onMount(() => open());
 </script>
 
 {#if listing}
   <Modal title={listing.path} {onClose}>
     <ModalBody>
-      <Table spacing="tiny">
-        <TableBody>
-          <TableRow>
-            <TableCell class="text-left">...</TableCell>
-            <TableCell class="w-16">
-              <IconButton
-                icon={mdiChevronUp}
-                aria-label="Go up directory"
-                onclick={() => open(listing!.parent)}
-                size="small"
-              />
-            </TableCell>
-            <TableCell class="w-16" />
-          </TableRow>
+      <Stack gap={1}>
+        <HStack gap={2} class="items-center py-2 px-4">
+          <IconButton
+            icon={mdiFolderOpen}
+            aria-label="Go up directory"
+            size="tiny"
+            onclick={() => open(listing!.parent)}
+          />
+          <Text size="small" class="grow">..</Text>
+        </HStack>
 
-          {#each listing.items as item (item.path)}
-            <TableRow>
-              <TableCell class="text-left"
-                >{item.path.split(/\\|\//).pop()}</TableCell
-              >
-              <TableCell class="w-16">
-                {#if item.isDirectory}
-                  <IconButton
-                    icon={mdiChevronRight}
-                    aria-label="Open folder"
-                    onclick={() => open(item.path)}
-                    size="small"
-                  />
-                {/if}
-              </TableCell>
-              <TableCell class="w-16">
-                <IconButton
-                  icon={mdiPlus}
-                  aria-label="Add"
-                  size="small"
-                  onclick={() => {
-                    onSelect(item.path);
-                    onClose();
-                  }}
-                />
-              </TableCell>
-            </TableRow>
-          {/each}
-        </TableBody>
-      </Table>
+        {#each listing.items as item (item.path)}
+          <HStack gap={2} class="items-center py-2 px-4">
+            {#if item.isDirectory}
+              <IconButton
+                icon={mdiFolderOpen}
+                aria-label="Open folder"
+                size="tiny"
+                onclick={() => open(item.path)}
+              />
+            {:else}
+              <div class="w-7"></div>
+            {/if}
+            <Text size="small" class="grow"
+              >{item.path.split(/\\|\//).pop()}</Text
+            >
+            <IconButton
+              icon={mdiPlus}
+              aria-label="Add"
+              size="tiny"
+              onclick={() => {
+                onSelect(item.path);
+                onClose();
+              }}
+            />
+          </HStack>
+        {/each}
+      </Stack>
+    </ModalBody>
+  </Modal>
+{:else}
+  <Modal title="Loading..." {onClose}>
+    <ModalBody>
+      <LoadingSpinner />
     </ModalBody>
   </Modal>
 {/if}

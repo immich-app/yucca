@@ -1,16 +1,13 @@
 <script lang="ts">
   import {
-    Button,
     Checkbox,
     Field,
+    FormModal,
     Input,
-    Modal,
-    ModalBody,
-    ModalFooter,
     modalManager,
     Stack,
   } from "@immich/ui";
-  import { createRepository } from "$lib/fetch-client";
+  import { handleCreateRepository } from "$lib/services/repository.service";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
 
   interface Props {
@@ -21,48 +18,31 @@
 
   let name = $state("");
   let worm = $state(false);
-  let creating = $state(false);
 
-  const create = async () => {
-    creating = true;
+  const onSubmit = async () => {
+    const { repository } = await handleCreateRepository({ name, worm });
 
-    try {
-      const { repository } = await createRepository({
-        name,
-        worm,
-      });
+    onClose();
 
-      modalManager.open(ConfigureRepositoryModal, {
-        repository: {
-          ...repository,
-          configuration: repository.configuration!,
-        },
-      });
-
-      onClose();
-    } catch (error) {
-      creating = false;
-    }
+    modalManager.open(ConfigureRepositoryModal, {
+      repository: {
+        ...repository,
+        configuration: repository.configuration!,
+      },
+    });
   };
 </script>
 
-<Modal title="Create A New Backup" {onClose}>
-  <ModalBody>
-    <Stack gap={4}>
-      <Field label="Name" description="A memorable name for this backup">
-        <Input bind:value={name} />
-      </Field>
-      <Field
-        label="Write once (WORM)"
-        description="Prevent anything being deleted"
-      >
-        <Checkbox bind:checked={worm} />
-      </Field>
-    </Stack>
-  </ModalBody>
-  <ModalFooter>
-    <Button disabled={creating || name.length === 0} onclick={create}
-      >Create</Button
+<FormModal title="Create A New Backup" disabled={name.length === 0} {onSubmit} {onClose}>
+  <Stack gap={4}>
+    <Field label="Name" description="A memorable name for this backup">
+      <Input bind:value={name} />
+    </Field>
+    <Field
+      label="Write once (WORM)"
+      description="Prevent anything being deleted"
     >
-  </ModalFooter>
-</Modal>
+      <Checkbox bind:checked={worm} />
+    </Field>
+  </Stack>
+</FormModal>

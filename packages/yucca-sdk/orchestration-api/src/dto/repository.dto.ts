@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
 import { BackendType, TaskStatus } from '../enum';
 
 export class RepositoryDto {
@@ -15,6 +16,12 @@ export class RepositoryDto {
 export class RepositoryMetricsDto {
   @ApiProperty({ type: String, required: false })
   lastBackup?: string;
+
+  @ApiProperty({ type: String, required: false })
+  lastSuccessfulBackup?: string;
+
+  @ApiProperty({ type: Number, required: false })
+  lastBackupDuration?: number;
 
   @ApiProperty({ type: Number })
   sizeBytes!: number;
@@ -62,9 +69,11 @@ export class LocalRepositoryDto extends RepositoryWithMetricsDto {
 
 export class RepositoryCreateRequestDto {
   @ApiProperty({ type: String })
+  @IsString()
   name!: string;
 
   @ApiProperty({ type: Boolean })
+  @IsBoolean()
   worm!: boolean;
 }
 
@@ -73,14 +82,27 @@ export class RepositoryCreateResponseDto {
   repository!: LocalRepositoryDto;
 }
 
+export class RepositoryUpdateRequestDto {
+  @ApiProperty({ type: String, required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ type: [String], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  paths?: string[];
+}
+
+export class RepositoryUpdateResponseDto {
+  @ApiProperty()
+  repository!: LocalRepositoryDto;
+}
+
 export class RepositoryListResponseDto {
   @ApiProperty({ type: [LocalRepositoryDto] })
   repositories!: LocalRepositoryDto[];
-}
-
-export class RepositoryPathRequestDto {
-  @ApiProperty({ type: String })
-  path!: string;
 }
 
 export class RepositoryCheckImportResponseDto {

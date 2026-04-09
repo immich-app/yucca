@@ -3,7 +3,14 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { RepositoryCreateRequestDto, RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
+import {
+  RepositoryCreateRequestDto,
+  RepositoryCreateResponseDto,
+  RepositoryGetResponseDto,
+  RepositoryListResponseDto,
+  RepositoryUpdateRequestDto,
+  RepositoryUpdateResponseDto,
+} from 'yucca-api-client';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -32,6 +39,23 @@ export class LocalBackend extends Backend {
         },
       },
     };
+  }
+
+  async updateRepository(id: string, dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto> {
+    return {
+      repository: {
+        id,
+        name: dto.name ?? 'new name',
+        worm: false,
+        metrics: {
+          sizeBytes: 0,
+        },
+      },
+    };
+  }
+
+  getRepository(_id: string): Promise<RepositoryGetResponseDto> {
+    throw new Error('Method not implemented.');
   }
 
   async getRepositories(): Promise<RepositoryListResponseDto> {

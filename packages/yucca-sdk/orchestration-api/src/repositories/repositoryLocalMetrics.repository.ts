@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Kysely } from 'kysely';
+import { Kysely, Updateable } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { RepositoryMetricsDto } from '../dto/repository.dto';
 import { DB } from '../schema';
@@ -9,14 +9,16 @@ import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMet
 export class RepositoryLocalMetricsRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
 
-  async save(id: string, metrics: Pick<RepositoryLocalMetricsTable, 'lastBackup' | 'sizeBytes'>) {
-    await this.db
+  async save(id: string, metrics: Updateable<RepositoryLocalMetricsTable>) {
+    return await this.db
       .insertInto('repositoryLocalMetrics')
       .values({
         id,
+        sizeBytes: 0,
         ...metrics,
       })
       .onConflict((oc) => oc.doUpdateSet(metrics))
+      .returningAll()
       .executeTakeFirstOrThrow();
   }
 
