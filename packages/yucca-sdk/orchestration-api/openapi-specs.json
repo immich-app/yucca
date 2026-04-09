@@ -18,7 +18,16 @@
     "/api/repository": {
       "post": {
         "operationId": "createRepository",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "backend",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -152,6 +161,80 @@
         "responses": {
           "200": {
             "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/import": {
+      "get": {
+        "operationId": "checkImportRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "backend",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCheckImportResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
+      "post": {
+        "operationId": "importRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "backend",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -817,6 +900,17 @@
         },
         "required": [
           "path"
+        ]
+      },
+      "RepositoryCheckImportResponseDto": {
+        "type": "object",
+        "properties": {
+          "readable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "readable"
         ]
       },
       "RunStatus": {
