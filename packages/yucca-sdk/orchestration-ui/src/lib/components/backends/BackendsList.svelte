@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { getProvider } from "$lib/providers";
   import { onMount } from "svelte";
   import { getBackends, type BackendDto } from "../../fetch-client";
   import {
@@ -10,7 +9,6 @@
     Heading,
     HStack,
     LoadingSpinner,
-    modalManager,
     Text,
   } from "@immich/ui";
   import { options } from "$lib/options";

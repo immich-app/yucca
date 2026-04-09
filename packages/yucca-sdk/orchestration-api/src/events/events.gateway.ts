@@ -1,6 +1,8 @@
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { ActiveTaskDto, LocalRepositoryDto } from '../dto/repository.dto';
+import { LocalRepositoryDto } from '../dto/repository.dto';
+import { RunningTaskDto } from '../dto/runningTasks.dto';
+import { ScheduleDto } from '../dto/schedule.dto';
 
 type Event =
   | {
@@ -13,8 +15,26 @@ type Event =
       repository: Partial<LocalRepositoryDto>;
     }
   | {
+      type: 'ScheduleCreate';
+      schedule: ScheduleDto;
+    }
+  | {
+      type: 'ScheduleUpdate';
+      scheduleId: string;
+      schedule: Partial<ScheduleDto>;
+    }
+  | {
+      type: 'ScheduleDelete';
+      scheduleId: string;
+    }
+  | {
       type: 'TaskStart';
-      task: ActiveTaskDto;
+      task: RunningTaskDto;
+    }
+  | {
+      type: 'TaskUpdate';
+      parentId: string;
+      task: Partial<RunningTaskDto>;
     }
   | {
       type: 'TaskEnd';

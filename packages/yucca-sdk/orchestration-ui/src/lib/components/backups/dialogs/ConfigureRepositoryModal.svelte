@@ -1,9 +1,7 @@
 <script lang="ts">
   import {
     Button,
-    Field,
     IconButton,
-    Label,
     Modal,
     ModalBody,
     modalManager,
@@ -11,11 +9,8 @@
     Table,
     TableBody,
     TableCell,
-    TableFooter,
     TableHeader,
-    TableHeading,
     TableRow,
-    Text,
   } from "@immich/ui";
   import {
     addRepositoryPath,

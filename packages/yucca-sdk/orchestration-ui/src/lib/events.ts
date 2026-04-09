@@ -21,3 +21,30 @@ socket.onAny((msg) => {
   const event = new SocketEvent(payload.type, payload);
   events.dispatchEvent(event);
 });
+
+const socketHandles = new Set();
+
+let timer: ReturnType<typeof setTimeout>;
+
+const socketGc = () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    if (socketHandles.size === 0 && socket.connected) {
+      socket.disconnect();
+    }
+  }, 1000);
+};
+
+export const useSocket = () => {
+  const handle = Symbol();
+  socketHandles.add(handle);
+
+  if (socket.disconnected) {
+    socket.connect();
+  }
+
+  return () => {
+    socketHandles.delete(handle);
+    socketGc();
+  };
+};

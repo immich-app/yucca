@@ -9,7 +9,6 @@
     ModalFooter,
     modalManager,
     Stack,
-    toastManager,
   } from "@immich/ui";
   import { createRepository } from "$lib/fetch-client";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
@@ -28,18 +27,10 @@
     creating = true;
 
     try {
-      toastManager.info("Creating new backup...", {
-        id: "new-backup",
-        closable: false,
-        timeout: null!,
-      });
-
       const { repository } = await createRepository({
         name,
         worm,
       });
-
-      toastManager.success("Created new backup!");
 
       modalManager.open(ConfigureRepositoryModal, {
         repository: {
@@ -51,10 +42,6 @@
       onClose();
     } catch (error) {
       creating = false;
-    } finally {
-      (
-        toastManager as never as { remove(target: { id: string }): void }
-      ).remove({ id: "new-backup" });
     }
   };
 </script>

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { BackendType, RunHistoryStatus, TaskType } from '../enum';
+import { BackendType, TaskStatus } from '../enum';
 
 export class RepositoryDto {
   @ApiProperty({ type: String })
@@ -96,8 +96,8 @@ export class RunDto {
   @ApiProperty({ type: String })
   logFilePath!: string;
 
-  @ApiProperty({ enumName: 'RunStatus', enum: RunHistoryStatus })
-  status!: RunHistoryStatus;
+  @ApiProperty({ enumName: 'RunStatus', enum: TaskStatus })
+  status!: TaskStatus;
 }
 
 export class RunHistoryResponseDto {
@@ -121,15 +121,4 @@ export class ListSnapshotsResponseDto {
 export class LogResponseDto {
   @ApiProperty({ type: String })
   logId!: string;
-}
-
-export class ActiveTaskDto {
-  @ApiProperty({ type: String })
-  parentId!: string;
-
-  @ApiProperty({ enumName: 'TaskType', enum: TaskType })
-  type!: TaskType;
-
-  @ApiProperty({ type: String, required: false })
-  logId?: string;
 }

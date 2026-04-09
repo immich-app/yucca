@@ -24,6 +24,8 @@ export class RepositoryController {
     return this.repository.create(auth, dto);
   }
 
+  // TODO: missing PATCH
+
   @Get()
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryListResponseDto })

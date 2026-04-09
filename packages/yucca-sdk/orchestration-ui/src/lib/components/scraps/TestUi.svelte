@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { socket } from "$lib/events";
   import {
     MockProvider,
     orchestrationApiProvider,
@@ -15,17 +14,21 @@
   import BackendsList from "../backends/BackendsList.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
   import TasksList from "../tasks/TasksList.svelte";
-  import { mdiBackupRestore, mdiCog, mdiViewDashboard } from "@mdi/js";
+  import {
+    mdiBackupRestore,
+    mdiClock,
+    mdiCog,
+    mdiViewDashboard,
+  } from "@mdi/js";
   import Dashboard from "./Dashboard.svelte";
+  import ScheduleList from "../schedules/ScheduleList.svelte";
 
   const { mock }: { mock: boolean } = $props();
 
   // svelte-ignore state_referenced_locally
   if (mock) {
-    socket.disconnect();
     setProvider(new MockProvider());
   } else {
-    socket.connect();
     setProvider(orchestrationApiProvider);
   }
 
@@ -69,6 +72,20 @@
         />
       </div>
       <div
+        onclick={() => (route = "schedules")}
+        onkeydown={() => (route = "schedules")}
+        tabindex={0}
+        role="button"
+        aria-label="Schedules"
+      >
+        <NavbarItem
+          href="#"
+          title="Schedules"
+          icon={mdiClock}
+          active={route === "schedules"}
+        />
+      </div>
+      <div
         onclick={() => (route = "config")}
         onkeydown={() => (route = "config")}
         tabindex={0}
@@ -97,6 +114,10 @@
     {:else if route === "config"}
       {#if !mock}
         <BackendsList />
+      {/if}
+    {:else if route === "schedules"}
+      {#if !mock}
+        <ScheduleList />
       {/if}
     {/if}
   </div>

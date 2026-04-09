@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { events, SocketEvent } from "$lib/events";
+  import { events, SocketEvent, useSocket } from "$lib/events";
   import { onDestroy, onMount } from "svelte";
 
   type Props = {
@@ -7,6 +7,7 @@
   };
 
   const props: Props = $props();
+  const disconnect = useSocket();
 
   onMount(() => {
     for (const key of Object.keys(props)) {
@@ -18,6 +19,8 @@
   });
 
   onDestroy(() => {
+    disconnect();
+
     for (const key of Object.keys(props)) {
       events.removeEventListener(
         key.slice(2),
