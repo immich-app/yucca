@@ -7,7 +7,7 @@ import { DB } from '../schema';
 
 @Injectable()
 export class DatabaseRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   async runMigrations(): Promise<void> {
     const migrator = this.createMigrator();

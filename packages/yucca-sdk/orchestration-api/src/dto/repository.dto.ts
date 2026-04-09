@@ -75,6 +75,12 @@ export class RepositoryCreateRequestDto {
   @ApiProperty({ type: Boolean })
   @IsBoolean()
   worm!: boolean;
+
+  @ApiProperty({ type: [String], required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  paths?: string[];
 }
 
 export class RepositoryCreateResponseDto {
@@ -138,6 +144,9 @@ export class SnapshotDto {
 
   @ApiProperty({ type: String })
   time!: string;
+
+  @ApiProperty({ type: [String] })
+  paths!: string[];
 }
 
 export class ListSnapshotsResponseDto {
@@ -158,7 +167,30 @@ export class RepositorySnapshotRestoreRequestDto {
   include?: string[];
 }
 
+export class RepositorySnapshotRestoreFromPointRequestDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  yuccaConfig?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  include?: string[];
+}
+
 export class LogResponseDto {
   @ApiProperty({ type: String })
   logId!: string;
+}
+
+export class InspectedLocalRepositoryDto extends LocalRepositoryDto {
+  @ApiProperty({ type: [SnapshotDto] })
+  snapshots?: SnapshotDto[];
+}
+
+export class RepositoryInspectResponseDto {
+  @ApiProperty({ type: [InspectedLocalRepositoryDto] })
+  repositories!: InspectedLocalRepositoryDto[];
 }

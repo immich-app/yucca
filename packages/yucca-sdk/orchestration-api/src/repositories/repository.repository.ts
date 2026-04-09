@@ -6,7 +6,7 @@ import { RepositoryTable } from '../schema/tables/repository.table';
 
 @Injectable()
 export class RepositoryRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   create(repository: Insertable<RepositoryTable>) {
     return this.db.insertInto('repositories').values(repository).returningAll().executeTakeFirstOrThrow();

@@ -106,8 +106,8 @@ importers:
         specifier: workspace:^
         version: link:../common/server
       '@futo-org/restic-wrapper':
-        specifier: 1.1.0
-        version: 1.1.0
+        specifier: 1.1.2
+        version: 1.1.2
       '@jest/globals':
         specifier: ^30.2.0
         version: 30.2.0
@@ -128,10 +128,10 @@ importers:
         version: 1.2.0
       jest:
         specifier: ^30.2.0
-        version: 30.2.0(@types/node@22.19.3)
+        version: 30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))
       jest-extended:
         specifier: ^7.0.0
-        version: 7.0.0(jest@30.2.0(@types/node@22.19.3))(typescript@5.9.3)
+        version: 7.0.0(jest@30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3)))(typescript@5.9.3)
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
@@ -143,7 +143,7 @@ importers:
         version: 4.8.3
       ts-jest:
         specifier: ^29.4.6
-        version: 29.4.6(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(jest@30.2.0(@types/node@22.19.3))(typescript@5.9.3)
+        version: 29.4.6(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(jest@30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3)))(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -455,14 +455,17 @@ importers:
   packages/yucca-sdk/orchestration-api:
     dependencies:
       '@futo-org/restic-wrapper':
-        specifier: 1.1.1
-        version: 1.1.1
+        specifier: 1.1.2
+        version: 1.1.2
       '@nestjs/common':
         specifier: ^11.1.13
         version: 11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core':
         specifier: ^11.1.11
         version: 11.1.11(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.11)(@nestjs/websockets@11.1.14)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/event-emitter':
+        specifier: ^3.0.1
+        version: 3.0.1(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)
       '@nestjs/platform-socket.io':
         specifier: ^11.1.14
         version: 11.1.14(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/websockets@11.1.14)(rxjs@7.8.2)
@@ -1421,12 +1424,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@futo-org/restic-wrapper@1.1.0':
-    resolution: {integrity: sha512-AQDafO3QsrMtorvYuSJBsJLy2xWqyoHN/b+LPpnSEXXV75oeAXFePVAszkVCExygmVadAbMhN9nXl3ITUjLQ3A==}
-    engines: {node: '>=20'}
-
-  '@futo-org/restic-wrapper@1.1.1':
-    resolution: {integrity: sha512-qvq/N2ZYJ/AZjXHY9wdc5LXj8a0vBeI/dVyHDPiBaeeHTfT1VTtoK230iquC8V7Ca8jIOOUVVcVD3F2eRYhacw==}
+  '@futo-org/restic-wrapper@1.1.2':
+    resolution: {integrity: sha512-luTXwUW/5fP7EA2vDkVvPXrTXKSubos7ijv7ofTYNjQqAxOaeIdUvkAz+Le2VtB5jQKOnSCsjjTBgUZtjxiKGg==}
     engines: {node: '>=20'}
 
   '@grpc/grpc-js@1.14.3':
@@ -1863,6 +1862,12 @@ packages:
         optional: true
       '@nestjs/websockets':
         optional: true
+
+  '@nestjs/event-emitter@3.0.1':
+    resolution: {integrity: sha512-0Ln/x+7xkU6AJFOcQI9tIhUMXVF7D5itiaQGOyJbXtlAfAIt8gzDdJm+Im7cFzKoWkiW5nCXCPh6GSvdQd/3Dw==}
+    peerDependencies:
+      '@nestjs/common': ^10.0.0 || ^11.0.0
+      '@nestjs/core': ^10.0.0 || ^11.0.0
 
   '@nestjs/jwt@11.0.2':
     resolution: {integrity: sha512-rK8aE/3/Ma45gAWfCksAXUNbOoSOUudU0Kn3rT39htPF7wsYXtKfjALKeKKJbFrIWbLjsbqfXX5bIJNvgBugGA==}
@@ -4173,6 +4178,9 @@ packages:
 
   event-iterator@2.0.0:
     resolution: {integrity: sha512-KGft0ldl31BZVV//jj+IAIGCxkvvUkkON+ScH6zfoX+l+omX6001ggyRSpI0Io2Hlro0ThXotswCtfzS8UkIiQ==}
+
+  eventemitter2@6.4.9:
+    resolution: {integrity: sha512-JEPTiaOt9f04oa6NOkc4aH+nVp5I3wEjpHbIPqfgCdD5v5bUzy7xQqwcVO2aDQgOWhI28da57HksMrzK9HlRxg==}
 
   events@3.3.0:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
@@ -7546,11 +7554,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@futo-org/restic-wrapper@1.1.0':
-    dependencies:
-      zod: 4.3.5
-
-  '@futo-org/restic-wrapper@1.1.1':
+  '@futo-org/restic-wrapper@1.1.2':
     dependencies:
       zod: 4.3.5
 
@@ -7938,42 +7942,6 @@ snapshots:
       jest-message-util: 30.2.0
       jest-util: 30.2.0
       slash: 3.0.0
-
-  '@jest/core@30.2.0':
-    dependencies:
-      '@jest/console': 30.2.0
-      '@jest/pattern': 30.0.1
-      '@jest/reporters': 30.2.0
-      '@jest/test-result': 30.2.0
-      '@jest/transform': 30.2.0
-      '@jest/types': 30.2.0
-      '@types/node': 22.19.3
-      ansi-escapes: 4.3.2
-      chalk: 4.1.2
-      ci-info: 4.3.1
-      exit-x: 0.2.2
-      graceful-fs: 4.2.11
-      jest-changed-files: 30.2.0
-      jest-config: 30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))
-      jest-haste-map: 30.2.0
-      jest-message-util: 30.2.0
-      jest-regex-util: 30.0.1
-      jest-resolve: 30.2.0
-      jest-resolve-dependencies: 30.2.0
-      jest-runner: 30.2.0
-      jest-runtime: 30.2.0
-      jest-snapshot: 30.2.0
-      jest-util: 30.2.0
-      jest-validate: 30.2.0
-      jest-watcher: 30.2.0
-      micromatch: 4.0.8
-      pretty-format: 30.2.0
-      slash: 3.0.0
-    transitivePeerDependencies:
-      - babel-plugin-macros
-      - esbuild-register
-      - supports-color
-      - ts-node
 
   '@jest/core@30.2.0(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))':
     dependencies:
@@ -8454,6 +8422,12 @@ snapshots:
     optionalDependencies:
       '@nestjs/platform-express': 11.1.11(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)
       '@nestjs/websockets': 11.1.14(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)(@nestjs/platform-socket.io@11.1.14)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+
+  '@nestjs/event-emitter@3.0.1(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)':
+    dependencies:
+      '@nestjs/common': 11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core': 11.1.11(@nestjs/common@11.1.13(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.11)(@nestjs/websockets@11.1.14)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      eventemitter2: 6.4.9
 
   '@nestjs/jwt@11.0.2(@nestjs/common@11.0.1(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.1))':
     dependencies:
@@ -11277,6 +11251,8 @@ snapshots:
 
   event-iterator@2.0.0: {}
 
+  eventemitter2@6.4.9: {}
+
   events@3.3.0: {}
 
   eventsource-client@1.2.0:
@@ -11763,25 +11739,6 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  jest-cli@30.2.0(@types/node@22.19.3):
-    dependencies:
-      '@jest/core': 30.2.0
-      '@jest/test-result': 30.2.0
-      '@jest/types': 30.2.0
-      chalk: 4.1.2
-      exit-x: 0.2.2
-      import-local: 3.2.0
-      jest-config: 30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))
-      jest-util: 30.2.0
-      jest-validate: 30.2.0
-      yargs: 17.7.2
-    transitivePeerDependencies:
-      - '@types/node'
-      - babel-plugin-macros
-      - esbuild-register
-      - supports-color
-      - ts-node
-
   jest-cli@30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3)):
     dependencies:
       '@jest/core': 30.2.0(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))
@@ -11948,12 +11905,12 @@ snapshots:
       jest-util: 30.2.0
       jest-validate: 30.2.0
 
-  jest-extended@7.0.0(jest@30.2.0(@types/node@22.19.3))(typescript@5.9.3):
+  jest-extended@7.0.0(jest@30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3)))(typescript@5.9.3):
     dependencies:
       jest-diff: 30.2.0
       typescript: 5.9.3
     optionalDependencies:
-      jest: 30.2.0(@types/node@22.19.3)
+      jest: 30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))
 
   jest-get-type@29.6.3: {}
 
@@ -12157,19 +12114,6 @@ snapshots:
       jest-util: 30.2.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
-
-  jest@30.2.0(@types/node@22.19.3):
-    dependencies:
-      '@jest/core': 30.2.0
-      '@jest/types': 30.2.0
-      import-local: 3.2.0
-      jest-cli: 30.2.0(@types/node@22.19.3)
-    transitivePeerDependencies:
-      - '@types/node'
-      - babel-plugin-macros
-      - esbuild-register
-      - supports-color
-      - ts-node
 
   jest@30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3)):
     dependencies:
@@ -13585,26 +13529,6 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       handlebars: 4.7.8
       jest: 30.2.0(@types/node@22.19.3)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))
-      json5: 2.2.3
-      lodash.memoize: 4.1.2
-      make-error: 1.3.6
-      semver: 7.7.3
-      type-fest: 4.41.0
-      typescript: 5.9.3
-      yargs-parser: 21.1.1
-    optionalDependencies:
-      '@babel/core': 7.28.5
-      '@jest/transform': 30.2.0
-      '@jest/types': 30.2.0
-      babel-jest: 30.2.0(@babel/core@7.28.5)
-      jest-util: 30.2.0
-
-  ts-jest@29.4.6(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(jest@30.2.0(@types/node@22.19.3))(typescript@5.9.3):
-    dependencies:
-      bs-logger: 0.2.6
-      fast-json-stable-stringify: 2.1.0
-      handlebars: 4.7.8
-      jest: 30.2.0(@types/node@22.19.3)
       json5: 2.2.3
       lodash.memoize: 4.1.2
       make-error: 1.3.6

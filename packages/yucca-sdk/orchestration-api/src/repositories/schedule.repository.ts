@@ -6,7 +6,7 @@ import { ScheduleTable } from '../schema/tables/schedule.table';
 
 @Injectable()
 export class ScheduleRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   create(schedule: Insertable<ScheduleTable>) {
     return this.db.insertInto('schedules').values(schedule).returningAll().executeTakeFirstOrThrow();

@@ -10,6 +10,7 @@ export enum CookieName {
 export enum ConfigurationKey {
   EncryptionKey = 'encryption-key',
   OnboardedKey = 'onboarded-key',
+  SkippedOnboardingExtraConfig = 'skipped-onboarding-extra-config',
 }
 
 export enum BackendType {
@@ -29,4 +30,8 @@ export enum TaskType {
   Restore = 'restore',
   Backup = 'backup',
   Forget = 'forget',
+}
+
+export enum InternalEvent {
+  ModuleConfigUpdated = 'yucca.moduleConfig.updated',
 }

@@ -14,19 +14,27 @@
   } from "@immich/ui";
 
   type Props = {
-    onFinish: () => void;
+    restore?: boolean;
     onCancel: () => void;
   };
 
-  const { onFinish, onCancel }: Props = $props();
+  const { restore = false, onCancel }: Props = $props();
 </script>
 
-<Modal size="small" title="Backup options" onClose={onCancel}>
+<Modal
+  size="small"
+  title={restore ? "Where would you like to restore from?" : "Backup options"}
+  onClose={onCancel}
+>
   <ModalBody>
     <VStack>
       <Card class="cursor-pointer" onclick={handleYuccaLogin}>
         <CardBody>
-          <Heading size="small">$0/TB per month</Heading>
+          {#if restore}
+            <Heading size="small">FUTO Backups</Heading>
+          {:else}
+            <Heading size="small">$0/TB per month</Heading>
+          {/if}
           <Text>Backups powered by FUTO</Text>
           <Text>Alerts and monitoring included</Text>
         </CardBody>

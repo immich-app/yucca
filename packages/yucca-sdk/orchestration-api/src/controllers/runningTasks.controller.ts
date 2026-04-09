@@ -3,7 +3,7 @@ import { ApiOkResponse } from '@nestjs/swagger';
 import { RunningTaskListResponse } from '../dto/runningTasks.dto';
 import { RunningTasksService } from '../services/runningTasks.service';
 
-@Controller('/tasks')
+@Controller('/yucca/tasks')
 export class RunningTasksController {
   constructor(private readonly service: RunningTasksService) {}
 

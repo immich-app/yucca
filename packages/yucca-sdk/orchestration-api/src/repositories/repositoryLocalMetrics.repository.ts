@@ -7,7 +7,7 @@ import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMet
 
 @Injectable()
 export class RepositoryLocalMetricsRepository {
-  constructor(@InjectKysely() private db: Kysely<DB>) {}
+  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   async save(id: string, metrics: Updateable<RepositoryLocalMetricsTable>) {
     return await this.db

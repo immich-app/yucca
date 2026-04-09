@@ -6,6 +6,7 @@
     CardBody,
     getByteUnitString,
     Icon,
+    LoadingSpinner,
     Stack,
     Text,
   } from "@immich/ui";
@@ -16,6 +17,7 @@
   import BackupHealth from "./BackupHealth.svelte";
   import BackupStats from "./BackupStats.svelte";
   import ActiveJobs from "./ActiveJobs.svelte";
+  import ImmichIntegrationCard from "./ImmichIntegrationCard.svelte";
   import RecentBackups from "./RecentBackups.svelte";
   import StackedBarChart from "./visualisations/StackedBarChart.svelte";
   import HeatMap from "./visualisations/HeatMap.svelte";
@@ -24,6 +26,14 @@
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
+  import {
+    useIntegrations,
+    useIntegrationEventHandler,
+  } from "$lib/services/integrations.service";
+  import {
+    useSchedules,
+    useScheduleEventHandler,
+  } from "$lib/services/schedule.service";
 
   type Props = {
     onNavigate?: (route: string) => void;
@@ -34,14 +44,18 @@
   const { onNavigate }: Props = $props();
 
   const query = useRepositories();
+  const integrationsQuery = useIntegrations();
+  const schedulesQuery = useSchedules();
   const { onRepositoryCreate, onRepositoryUpdate } =
     useRepositoryEventHandler();
+  const { onScheduleUpdate } = useScheduleEventHandler();
+  const { onIntegrationUpdate } = useIntegrationEventHandler();
 </script>
 
-<OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
+<OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onScheduleUpdate} {onIntegrationUpdate} />
 
 {#if query.isLoading}
-  <!-- loading -->
+  <LoadingSpinner />
 {:else if query.isError}
   <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
 {:else if query.isSuccess && query.data.length === 0}
@@ -65,6 +79,15 @@
     </CardBody>
   </Card>
 {:else if query.isSuccess}
+  {#if integrationsQuery.isSuccess && integrationsQuery.data.immichIntegration}
+    <ImmichIntegrationCard
+      schedule={schedulesQuery.data?.find(
+        (schedule) =>
+          schedule.id === integrationsQuery.data!.immichIntegration!.scheduleId,
+      )}
+    />
+  {/if}
+
   <BackupHealth repositories={query.data} />
 
   <BackupStats repositories={query.data} />

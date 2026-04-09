@@ -1,4 +1,5 @@
 import { defaults, getBackends } from '$lib/fetch-client';
+import { queryClient } from '$lib/query-client';
 import { createQuery } from '@tanstack/svelte-query';
 
 export const backendKeys = {
@@ -6,10 +7,13 @@ export const backendKeys = {
 };
 
 export const useBackends = () =>
-  createQuery(() => ({
-    queryKey: backendKeys.all,
-    queryFn: () => getBackends().then(({ backends }) => backends),
-  }));
+  createQuery(
+    () => ({
+      queryKey: backendKeys.all,
+      queryFn: () => getBackends().then(({ backends }) => backends),
+    }),
+    () => queryClient,
+  );
 
 /* eslint-disable unicorn/prefer-global-this */
 export function handleYuccaLogin() {

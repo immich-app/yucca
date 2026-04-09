@@ -1,30 +1,48 @@
 import { sdk } from '$lib';
 import {
   getRepositories,
+  inspectRepositories,
   updateRepository,
+  type InspectedLocalRepositoryDto,
   type LocalRepositoryDto,
   type RepositoryCreateRequestDto,
   type RepositoryUpdateRequestDto,
 } from '$lib/fetch-client';
 import { SocketEvent } from '$lib/events';
 import { handleError } from '$lib/utils/handle-error';
+import { queryClient } from '$lib/query-client';
 import { toastManager } from '@immich/ui';
-import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
   all: ['repositories'] as const,
+  inspectAll: ['repositories', 'inspect'] as const,
 };
 
 export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
-  createQuery(() => ({
-    queryKey: repositoryKeys.all,
-    queryFn: () => getRepositories().then(({ repositories }) => repositories),
-    initialData,
-  }));
+  createQuery(
+    () => ({
+      queryKey: repositoryKeys.all,
+      queryFn: () => getRepositories().then(({ repositories }) => repositories),
+      initialData,
+    }),
+    () => queryClient,
+  );
+
+export const useInspectRepositories = (
+  initialData?: InspectedLocalRepositoryDto[],
+) =>
+  createQuery(
+    () => ({
+      queryKey: repositoryKeys.inspectAll,
+      queryFn: () =>
+        inspectRepositories().then(({ repositories }) => repositories),
+      initialData,
+    }),
+    () => queryClient,
+  );
 
 export const useRepositoryEventHandler = () => {
-  const queryClient = useQueryClient();
-
   return {
     onRepositoryCreate(event: SocketEvent<{ repository: LocalRepositoryDto }>) {
       queryClient.setQueryData(
