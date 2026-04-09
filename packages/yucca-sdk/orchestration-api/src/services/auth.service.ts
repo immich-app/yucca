@@ -17,7 +17,8 @@ export class AuthService {
   ) {}
 
   async oidcAuthorize(request: Request): Promise<{ redirectTo: string; state: string; codeVerifier: string }> {
-    const redirectUri = new URL('/api/auth/oidc/callback', `${request.protocol}://${request.get('Host')}`);
+    const baseUrl = this.moduleConfig.externalBaseUrl ?? `${request.protocol}://${request.get('Host')}`;
+    const redirectUri = new URL(`/api/yucca/auth/oidc/callback`, baseUrl);
 
     const state = randomState(); // non-PKCE fallback
     const codeVerifier = randomPKCECodeVerifier();

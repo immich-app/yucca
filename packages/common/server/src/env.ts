@@ -3,6 +3,7 @@ import { z } from 'zod';
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test', 'provision']).default('development'),
 
+  RESTIC_API_HOST: z.string().default('localhost'),
   RESTIC_API_PORT: z.coerce.number().min(1000),
   YUCCA_API_PORT: z.coerce.number().min(1000),
 
