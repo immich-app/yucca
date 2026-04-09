@@ -12,7 +12,7 @@ export class FilesystemListingItemDto {
   @ApiProperty({ type: () => String })
   path!: string;
 
-  @ApiProperty({ type: () => [Boolean] })
+  @ApiProperty({ type: () => Boolean })
   isDirectory!: boolean;
 }
 

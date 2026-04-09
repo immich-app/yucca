@@ -1,5 +1,28 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  Validate,
+  ValidatorConstraint,
+  type ValidatorConstraintInterface,
+} from 'class-validator';
+import { CronJob } from 'cron';
+
+@ValidatorConstraint({ name: 'cronValidator' })
+class CronValidator implements ValidatorConstraintInterface {
+  validate(expression: string): boolean {
+    try {
+      new CronJob(expression, () => {});
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+const IsCronExpression = () => Validate(CronValidator, { message: 'Invalid cron expression' });
 
 export class ScheduleDto {
   @ApiProperty({ type: String })
@@ -31,6 +54,7 @@ export class ScheduleCreateRequestDto {
 
   @ApiProperty({ type: String })
   @IsString()
+  @IsCronExpression()
   cron!: string;
 
   @ApiProperty({ type: [String] })
@@ -58,6 +82,7 @@ export class ScheduleUpdateRequestDto {
   @ApiProperty({ type: String, required: false })
   @IsOptional()
   @IsString()
+  @IsCronExpression()
   cron?: string;
 
   @ApiProperty({ type: [String], required: false })

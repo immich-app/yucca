@@ -42,8 +42,8 @@ type Event =
     };
 
 @WebSocketGateway({
-  cors: true,
-  path: '/socket.io',
+  cors: false,
+  path: '/api/yucca/socket.io',
   transports: ['websocket'],
 })
 export class EventsGateway {

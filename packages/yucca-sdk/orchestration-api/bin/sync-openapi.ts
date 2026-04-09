@@ -11,7 +11,7 @@ async function main() {
     }),
   );
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api/yucca');
 
   const builder = new DocumentBuilder()
     .setTitle('yucca')
