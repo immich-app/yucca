@@ -309,3 +309,112 @@ describe('Repository', () => {
     });
   });
 });
+
+describe('Running Tasks', () => {
+  it('works', async () => {
+    await sdk.getRunningTasks();
+  });
+});
+
+describe('Schedule', () => {
+  let repository: sdk.LocalRepositoryDto;
+  let repository2: sdk.LocalRepositoryDto;
+  let schedule: sdk.ScheduleDto;
+
+  beforeAll(async () => {
+    ({ repository } = await sdk.createRepository({
+      name: 'Test Repository',
+      worm: false,
+    }));
+
+    ({ repository: repository2 } = await sdk.createRepository({
+      name: 'Test Repository',
+      worm: false,
+    }));
+
+    ({ schedule } = await sdk.createSchedule({
+      name: 'Schedule',
+      cron: '* * * * *',
+      repositories: [repository.id, repository2.id],
+    }));
+  }, 10_000);
+
+  it('creates and deletes a schedule', async () => {
+    const createEvent = waitForMessage('ScheduleCreate');
+    const deleteEvent = waitForMessage('ScheduleDelete');
+
+    const { schedule } = await sdk.createSchedule({
+      name: 'My Schedule',
+      cron: '* * * * *',
+      repositories: [],
+    });
+
+    await expect(createEvent).resolves.toEqual({
+      type: 'ScheduleCreate',
+      schedule: expect.objectContaining({
+        name: 'My Schedule',
+      }),
+    });
+
+    await sdk.removeSchedule(schedule.id);
+
+    await expect(deleteEvent).resolves.toEqual({
+      type: 'ScheduleDelete',
+      scheduleId: schedule.id,
+    });
+  });
+
+  it('gets a list of schedules', async () => {
+    await expect(sdk.getSchedules()).resolves.toEqual({
+      schedules: expect.arrayContaining([
+        expect.objectContaining({
+          id: schedule.id,
+        }),
+      ]),
+    });
+  });
+
+  it('updates schedule', async () => {
+    const event = waitForMessage('ScheduleUpdate');
+
+    await sdk.updateSchedule(schedule.id, {
+      name: 'Updated Schedule',
+      paused: true,
+      repositories: [repository2.id, repository.id],
+    });
+
+    await expect(event).resolves.toEqual({
+      type: 'ScheduleUpdate',
+      scheduleId: schedule.id,
+      schedule: expect.objectContaining({
+        name: 'Updated Schedule',
+        paused: true,
+        repositories: [repository2.id, repository.id],
+      }),
+    });
+  });
+
+  it('removes and adds repository', async () => {
+    const removeEvent = waitForMessage('ScheduleUpdate');
+    await sdk.removeRepositoryFromSchedule(schedule.id, repository.id);
+
+    await expect(removeEvent).resolves.toEqual({
+      type: 'ScheduleUpdate',
+      scheduleId: schedule.id,
+      schedule: expect.objectContaining({
+        repositories: [repository2.id],
+      }),
+    });
+
+    const addEvent = waitForMessage('ScheduleUpdate');
+    await sdk.addRepositoryToSchedule(schedule.id, repository.id);
+
+    await expect(addEvent).resolves.toEqual({
+      type: 'ScheduleUpdate',
+      scheduleId: schedule.id,
+      schedule: expect.objectContaining({
+        repositories: [repository2.id, repository.id],
+      }),
+    });
+  });
+});

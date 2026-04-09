@@ -14,6 +14,8 @@
     getFileListing,
   } from "$lib/fetch-client";
 
+  // TODO: needs UI refactoring
+
   interface Props {
     onSelect: (path: string) => void;
     onClose: () => void;

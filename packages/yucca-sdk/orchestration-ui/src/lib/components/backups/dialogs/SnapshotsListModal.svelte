@@ -21,6 +21,10 @@
   import { onMount } from "svelte";
   import { DateTime } from "luxon";
 
+  // TODO: needs UI+logic refactoring
+  // Why? no snapshot deletions will work while another is going on
+  //      -- at least in the way the server currently handles them
+
   interface Props {
     repository: LocalRepositoryDto;
     onClose: () => void;

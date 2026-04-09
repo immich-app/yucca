@@ -224,6 +224,44 @@ export class RepositoryService {
     }
   }
 
+  // TODO: not DRY; duplicate of createBackup()
+  async createBackup_(id: string): Promise<void> {
+    if (!this.tasks.canStart(id)) {
+      throw new BadRequestException('Task already running!');
+    }
+
+    const { endpoint, key } = await this.getResticParameters(id);
+
+    return await new Promise<void>(
+      (resolve, reject) =>
+        void this.runHistory.createLog(
+          id,
+          async (log, logId) => {
+            const paths = await this.repositoryPath.get(id);
+            if (paths.length === 0) {
+              throw new BadRequestException('Missing configuration paths');
+            }
+
+            try {
+              this.tasks.startTask(id, TaskType.Backup, logId);
+              await this.restic.backup(endpoint, key, paths, log);
+            } finally {
+              this.tasks.endTask(id);
+            }
+          },
+          (error) => {
+            void this.updateLocalMetrics(id, endpoint, key);
+
+            if (error) {
+              reject(error);
+            } else {
+              resolve();
+            }
+          },
+        ),
+    );
+  }
+
   async createBackup(id: string): Promise<LogResponseDto> {
     if (!this.tasks.canStart(id)) {
       throw new BadRequestException('Task already running!');

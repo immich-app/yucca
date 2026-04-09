@@ -19,6 +19,8 @@
   import { onMount } from "svelte";
   import ViewLogModal from "./ViewLogModal.svelte";
 
+  // TODO: needs UI refactoring
+
   interface Props {
     repository: LocalRepositoryDto;
     onClose: () => void;

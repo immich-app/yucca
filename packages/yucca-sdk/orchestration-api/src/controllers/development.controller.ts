@@ -4,6 +4,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { ConfigRepository } from '../repositories/config.repository';
 import { DatabaseRepository } from '../repositories/database.repository';
 import { DB } from '../schema';
+import { ScheduleService } from '../services/schedule.service';
 
 @Controller('/debug')
 export class DevelopmentController {
@@ -11,6 +12,7 @@ export class DevelopmentController {
     @InjectKysely() private readonly db: Kysely<DB>,
     private readonly database: DatabaseRepository,
     private readonly config: ConfigRepository,
+    private readonly schedule: ScheduleService,
   ) {}
 
   @Get()
@@ -33,5 +35,6 @@ export class DevelopmentController {
 
     await this.database.runMigrations();
     await this.config.bootstrap();
+    await this.schedule.bootstrap();
   }
 }
