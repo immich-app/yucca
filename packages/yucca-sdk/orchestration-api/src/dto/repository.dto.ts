@@ -83,6 +83,11 @@ export class RepositoryPathRequestDto {
   path!: string;
 }
 
+export class RepositoryCheckImportResponseDto {
+  @ApiProperty({ type: Boolean })
+  readable!: boolean;
+}
+
 export class RunDto {
   @ApiProperty({ type: String })
   id!: string;
