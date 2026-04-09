@@ -1,4 +1,3 @@
-import { calculatePKCECodeChallenge, randomPKCECodeVerifier } from 'openid-client';
 import { AuthDto } from 'src/dto/auth.dto';
 import { Mocks, newMocks } from '../../test/mocks';
 import { AuthService } from './auth.service';
@@ -40,13 +39,15 @@ describe(AuthService.name, () => {
 
   describe('authenticate', () => {
     it('should fail if missing access token cookie', async () => {
-      await expect(sut.authenticate({})).rejects.toThrowErrorMatchingInlineSnapshot(`"Missing access-token cookie"`);
+      await expect(sut.authenticate({})).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Missing yucca-access-token cookie"`,
+      );
     });
 
     it('should fail if access token is invalid', async () => {
       await expect(
         sut.authenticate({
-          cookie: 'access-token=my-token',
+          cookie: 'yucca-access-token=my-token',
         }),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"Invalid access token"`);
     });
@@ -55,7 +56,7 @@ describe(AuthService.name, () => {
       mocks.user.getByAccessToken.mockResolvedValue(mockUser);
       await expect(
         sut.authenticate({
-          cookie: 'access-token=my-token',
+          cookie: 'yucca-access-token=my-token',
         }),
       ).resolves.toBe(mockUser);
       expect(mocks.wideContext.addContext).toHaveBeenCalledWith('customerId', mockUser.id);
@@ -97,7 +98,7 @@ describe(AuthService.name, () => {
           ...request,
           originalUrl: '?error=abc&error_description=failure',
         } as never),
-      ).rejects.toThrowErrorMatchingInlineSnapshot(`"OIDC callback: failure"`);
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`"OIDC error: failure"`);
     });
 
     it('should fail if missing state cookie', async () => {
@@ -113,7 +114,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state',
+            cookie: 'yucca-oidc-state=state',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"missing codeVerifier"`);
@@ -124,7 +125,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"no id token received"`);
@@ -135,7 +136,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"no id token received"`);
@@ -147,7 +148,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"name is missing from claims"`);
@@ -161,7 +162,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`"email is missing from claims"`);
@@ -184,7 +185,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).resolves.toEqual(
@@ -217,7 +218,7 @@ describe(AuthService.name, () => {
         sut.oidcCallback({
           ...request,
           headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code',
+            cookie: 'yucca-oidc-state=state; yucca-oidc-code-verifier=code',
           },
         } as never),
       ).resolves.toEqual(
@@ -233,86 +234,6 @@ describe(AuthService.name, () => {
         userId: mockUser.id,
         accessToken,
       });
-    });
-
-    it('should use redirect to app login if in flow', async () => {
-      const claims = {
-        name: 'name',
-        email: 'email',
-      };
-
-      mocks.user.getBySub.mockResolvedValue(mockUser);
-      mocks.oidc.callback.mockResolvedValue(claims as never);
-
-      await expect(
-        sut.oidcCallback({
-          ...request,
-          headers: {
-            cookie: 'oidc-state=state; oidc-code-verifier=code; oidc-login-flow=app',
-          },
-        } as never),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          redirectTo: '/login/grant',
-        }),
-      );
-    });
-  });
-
-  describe('appAuthorize', () => {
-    it('generates expected parameters', () => {
-      expect(sut.appAuthorize(mockAuth)).toEqual(
-        expect.objectContaining({
-          redirectTo: '/login/grant',
-        }),
-      );
-
-      expect(sut.appAuthorize(void 0)).toEqual(
-        expect.objectContaining({
-          redirectTo: '/api/auth/oidc/login',
-        }),
-      );
-    });
-  });
-
-  describe('appCallback', () => {
-    it('generates JWT with current user and provided challenge', async () => {
-      mocks.jwt.signAsync.mockImplementation(({ userId, codeChallenge }) => userId + codeChallenge);
-
-      const codeVerifier = randomPKCECodeVerifier();
-      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-      const { redirectTo } = await sut.appCallback(mockAuth, {
-        cookie: `app-code-challenge=${codeChallenge}`,
-      });
-
-      const url = new URL(redirectTo);
-      expect(url.searchParams.get('code')).toBe(mockAuth.id + codeChallenge);
-    });
-  });
-
-  describe('appToken', () => {
-    it('validates PKCE from JWT', async () => {
-      const codeVerifier = randomPKCECodeVerifier();
-      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
-
-      mocks.jwt.verifyAsync.mockImplementation((jwt) => ({
-        userId: jwt.split(',')[0],
-        codeChallenge: jwt.split(',')[1],
-      }));
-
-      const accessToken = Symbol('Access Token');
-      mocks.crypto.randomHex.mockReturnValue(accessToken as never);
-
-      await expect(
-        sut.appToken({
-          code: `${mockAuth.id},${codeChallenge}`,
-          codeVerifier,
-        }),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          accessToken,
-        }),
-      );
     });
   });
 });

@@ -14,7 +14,7 @@ export class YuccaBackend extends Backend {
       await getAuth({
         baseUrl: this.configuration.url ?? moduleConfig.yuccaProductionApi,
         headers: {
-          cookie: `access-token=${this.configuration.accessToken}`,
+          cookie: `yucca-access-token=${this.configuration.accessToken}`,
         },
       });
 
