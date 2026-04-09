@@ -5,6 +5,7 @@ import {
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
   LogResponseDto,
+  RepositoryCheckImportResponseDto,
   RepositoryConfigurationDto,
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
@@ -56,10 +57,14 @@ export class RepositoryService {
     };
   }
 
-  async createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
-    const backends = await this.backend.getBackends();
-    const defaultBackend = backends[0];
-    const backend = Backend.from(defaultBackend.configuration, this.moduleConfig);
+  async createRepository(dto: RepositoryCreateRequestDto, backendId?: string): Promise<RepositoryCreateResponseDto> {
+    if (!backendId) {
+      const backends = await this.backend.getBackends();
+      backendId = backends[0].id;
+    }
+
+    const { configuration } = await this.backend.getBackend(backendId);
+    const backend = Backend.from(configuration, this.moduleConfig);
 
     const { repository: remote } = await backend.createRepository(dto);
 
@@ -69,7 +74,7 @@ export class RepositoryService {
 
     await this.repository.create({
       id: remote.id,
-      backendId: defaultBackend.id,
+      backendId,
     });
 
     const repository: LocalRepositoryDto = {
@@ -77,9 +82,9 @@ export class RepositoryService {
       ...remote,
       backends: {
         primary: {
-          id: defaultBackend.id,
+          id: backendId,
           online: true,
-          type: defaultBackend.configuration.type,
+          type: configuration.type,
         },
         secondary: [],
       },
@@ -184,13 +189,17 @@ export class RepositoryService {
     };
   }
 
-  private async getResticParameters(id: string): Promise<{ endpoint: string; key: Uint8Array }> {
-    const localRepository = await this.repository.get(id);
-    if (!localRepository) {
-      throw new BadRequestException('Repository not found locally');
+  private async getResticParameters(id: string, backendId?: string): Promise<{ endpoint: string; key: Uint8Array }> {
+    if (!backendId) {
+      const localRepository = await this.repository.get(id);
+      if (!localRepository) {
+        throw new BadRequestException('Repository not found locally');
+      }
+
+      backendId = localRepository.backendId;
     }
 
-    const backend = await this.backend.getBackend(localRepository.backendId);
+    const backend = await this.backend.getBackend(backendId);
     const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
     const endpoint = await backendInstance.getResticEndpoint(id);
 
@@ -318,6 +327,65 @@ export class RepositoryService {
         },
       },
     });
+  }
+
+  async checkImportRepository(id: string, backendId: string): Promise<RepositoryCheckImportResponseDto> {
+    const { endpoint, key } = await this.getResticParameters(id, backendId);
+
+    try {
+      await this.restic.snapshots(endpoint, key);
+
+      return {
+        readable: true,
+      };
+    } catch {
+      return {
+        readable: false,
+      };
+    }
+  }
+
+  async importRepository(id: string, backendId: string): Promise<RepositoryCreateResponseDto> {
+    const { configuration } = await this.backend.getBackend(backendId);
+    const backend = Backend.from(configuration, this.moduleConfig);
+
+    // TODO: getRepository route
+    const { repositories } = await backend.getRepositories();
+    const remote = repositories.find((repository) => repository.id === id);
+    if (!remote) {
+      throw new Error('...');
+    }
+
+    const endpoint = await backend.getResticEndpoint(remote.id);
+    const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
+    await this.restic.keyList(endpoint, key);
+
+    await this.repository.create({
+      id: remote.id,
+      backendId,
+    });
+
+    const repository: LocalRepositoryDto = {
+      ...(await this.getLocalRepository(id, { paths: [] })),
+      ...remote,
+      backends: {
+        primary: {
+          id: backendId,
+          online: true,
+          type: configuration.type,
+        },
+        secondary: [],
+      },
+    };
+
+    this.events.publish({
+      type: 'RepositoryCreate',
+      repository,
+    });
+
+    return {
+      repository,
+    };
   }
 
   async getSnapshots(id: string): Promise<ListSnapshotsResponseDto> {

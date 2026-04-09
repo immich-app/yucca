@@ -55,6 +55,9 @@ export type LogResponseDto = {
 export type RepositoryPathRequestDto = {
     path: string;
 };
+export type RepositoryCheckImportResponseDto = {
+    readable: boolean;
+};
 export type RunStatus = "incomplete" | "complete" | "failed";
 export type RunDto = {
     id: string;
@@ -150,11 +153,15 @@ export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, { backend }: {
+    backend?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResponseDto;
-    }>("/api/repository", oazapfts.json({
+    }>(`/api/repository${QS.query(QS.explode({
+        backend
+    }))}`, oazapfts.json({
         ...opts,
         method: "POST",
         body: repositoryCreateRequestDto
@@ -190,6 +197,27 @@ export function removeRepositoryPath(id: string, repositoryPathRequestDto: Repos
         method: "DELETE",
         body: repositoryPathRequestDto
     })));
+}
+export function checkImportRepository(id: string, backend: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryCheckImportResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/import${QS.query(QS.explode({
+        backend
+    }))}`, {
+        ...opts
+    }));
+}
+export function importRepository(id: string, backend: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryCreateResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/import${QS.query(QS.explode({
+        backend
+    }))}`, {
+        ...opts,
+        method: "POST"
+    }));
 }
 export function getRunHistory(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
