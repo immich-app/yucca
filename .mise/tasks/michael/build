@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build michael"
+set -e
+
+cd packages/michael && go build -o ../../dist/michael .
