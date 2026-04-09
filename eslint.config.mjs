@@ -16,7 +16,8 @@ export default typescriptEslint.config([
     ignores: [
       'eslint.config.mjs',
       '.dev',
-      '**/dist',
+      'packages/**/dist',
+      'packages/**/build',
       '**/.svelte-kit',
       '**/fetch-client.ts',
       'packages/web/src/locales',

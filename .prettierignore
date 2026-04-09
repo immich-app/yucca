@@ -10,7 +10,8 @@ compiled
 .rpt2_cache
 docs
 
-dist
+packages/**/build
+packages/**/dist
 .dev
 
 package-lock.json
