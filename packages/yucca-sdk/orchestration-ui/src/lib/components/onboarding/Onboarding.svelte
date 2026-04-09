@@ -1,9 +1,9 @@
 <script lang="ts">
+  import type { OnboardingStatusResponseDto } from "$lib/fetch-client";
   import {
-    confirmRecoveryKey,
-    currentRecoveryKey,
-    type OnboardingStatusResponseDto,
-  } from "$lib/fetch-client";
+    handleConfirmRecoveryKey,
+    handleCurrentRecoveryKey,
+  } from "$lib/services/onboarding.service";
   import { onMount } from "svelte";
   import BackupOptions from "./stages/BackupOptions.svelte";
   import ConfirmKey from "./stages/ConfirmKey.svelte";
@@ -35,12 +35,12 @@
 
   onMount(() => {
     if (!status.hasOnboardedKey) {
-      currentRecoveryKey().then((dto) => (code = dto.recoveryKey));
+      handleCurrentRecoveryKey().then((dto) => (code = dto.recoveryKey));
     }
   });
 
   const onConfirmKey = async () => {
-    await confirmRecoveryKey();
+    await handleConfirmRecoveryKey();
 
     if (status.hasBackend) {
       onFinish();

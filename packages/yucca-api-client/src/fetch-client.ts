@@ -26,6 +26,8 @@ export type RepositoryCreateRequestDto = {
 };
 export type RepositoryMetricsDto = {
     lastBackup?: string;
+    lastSuccessfulBackup?: string;
+    lastBackupDuration?: number;
     sizeBytes: number;
 };
 export type RepositoryWithMetricsDto = {
@@ -39,6 +41,15 @@ export type RepositoryCreateResponseDto = {
 };
 export type RepositoryListResponseDto = {
     repositories: RepositoryWithMetricsDto[];
+};
+export type RepositoryGetResponseDto = {
+    repository: RepositoryWithMetricsDto;
+};
+export type RepositoryUpdateRequestDto = {
+    name?: string;
+};
+export type RepositoryUpdateResponseDto = {
+    repository: RepositoryWithMetricsDto;
 };
 export type RepositoryCreateResticUrlDto = {
     url: string;
@@ -87,6 +98,24 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
     }>("/api/repository", {
         ...opts
     }));
+}
+export function getRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryGetResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}`, {
+        ...opts
+    }));
+}
+export function updateRepository(id: string, repositoryUpdateRequestDto: RepositoryUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryUpdateResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: repositoryUpdateRequestDto
+    })));
 }
 export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

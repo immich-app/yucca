@@ -2,10 +2,8 @@
   import { LoadingSpinner } from "@immich/ui";
   import { onMount, type Snippet } from "svelte";
   import Onboarding from "./Onboarding.svelte";
-  import {
-    onboardingStatus,
-    type OnboardingStatusResponseDto,
-  } from "$lib/fetch-client";
+  import type { OnboardingStatusResponseDto } from "$lib/fetch-client";
+  import { handleOnboardingStatus } from "$lib/services/onboarding.service";
 
   type Props = {
     onExit: () => void;
@@ -17,7 +15,7 @@
   let status: OnboardingStatusResponseDto | undefined = $state();
 
   onMount(() => {
-    onboardingStatus().then((data) => (status = data));
+    handleOnboardingStatus().then((data) => (status = data));
   });
 </script>
 

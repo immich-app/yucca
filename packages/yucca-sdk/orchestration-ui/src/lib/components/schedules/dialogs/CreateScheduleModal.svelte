@@ -1,15 +1,7 @@
 <script lang="ts">
-  import { createSchedule } from "$lib/fetch-client";
-  import {
-    Button,
-    Field,
-    Input,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    Stack,
-  } from "@immich/ui";
+  import { Field, FormModal, Input, Stack } from "@immich/ui";
   import validate from "cron-validate";
+  import { handleCreateSchedule } from "$lib/services/schedule.service";
 
   type Props = {
     onClose: () => void;
@@ -18,37 +10,27 @@
 
   const { onClose, repositories }: Props = $props();
 
-  let creating = $state(false);
-
   let name = $state("");
   let cron = $state("*/15 * * * *");
 
-  const onCreate = async () => {
-    await createSchedule({
-      name,
-      cron,
-      repositories,
-    });
-
+  const onSubmit = async () => {
+    await handleCreateSchedule({ name, cron, repositories });
     onClose();
   };
 </script>
 
-<Modal title="Create A New Schedule" {onClose}>
-  <ModalBody>
-    <Stack gap={4}>
-      <Field label="Name" description="Give this schedule a name">
-        <Input bind:value={name} />
-      </Field>
-      <Field label="Schedule" description="Uses cron syntax">
-        <Input bind:value={cron} />
-      </Field>
-    </Stack>
-  </ModalBody>
-  <ModalFooter>
-    <Button
-      disabled={creating || name.length === 0 || validate(cron).isError()}
-      onclick={onCreate}>Create</Button
-    >
-  </ModalFooter>
-</Modal>
+<FormModal
+  title="Create A New Schedule"
+  disabled={name.length === 0 || validate(cron).isError()}
+  {onSubmit}
+  {onClose}
+>
+  <Stack gap={4}>
+    <Field label="Name" description="Give this schedule a name">
+      <Input bind:value={name} />
+    </Field>
+    <Field label="Schedule" description="Uses cron syntax">
+      <Input bind:value={cron} />
+    </Field>
+  </Stack>
+</FormModal>

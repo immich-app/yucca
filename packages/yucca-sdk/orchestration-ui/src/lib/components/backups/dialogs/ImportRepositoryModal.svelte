@@ -1,21 +1,12 @@
 <script lang="ts">
-  import {
-    checkImportRepository,
-    importRepository,
-    type LocalRepositoryDto,
-    type RepositoryCheckImportResponseDto,
-  } from "$lib/fetch-client";
-  import {
-    Button,
-    LoadingSpinner,
-    Modal,
-    ModalBody,
-    ModalFooter,
-    modalManager,
-    toastManager,
-  } from "@immich/ui";
+  import { type LocalRepositoryDto } from "$lib/fetch-client";
+  import { FormModal, LoadingSpinner, modalManager, Text } from "@immich/ui";
   import { onMount } from "svelte";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
+  import {
+    handleCheckImportRepository,
+    handleImportRepository,
+  } from "$lib/services/repository.service";
 
   interface Props {
     onClose: () => void;
@@ -23,55 +14,46 @@
   }
 
   let { onClose, repository }: Props = $props();
-  let importing = $state(false);
-  let check: RepositoryCheckImportResponseDto | undefined = $state();
+  let readable: boolean | undefined = $state();
 
-  onMount(() => {
-    checkImportRepository(repository.id, repository.backends!.primary.id).then(
-      (data) => (check = data),
+  onMount(async () => {
+    const check = await handleCheckImportRepository(
+      repository.id,
+      repository.backends!.primary.id,
     );
+
+    readable = check.readable;
   });
 
-  const onImport = async () => {
-    importing = true;
+  const onSubmit = async () => {
+    const { repository: created } = await handleImportRepository(
+      repository.id,
+      repository.backends!.primary.id,
+    );
 
-    try {
-      const { repository: created } = await importRepository(
-        repository.id,
-        repository.backends!.primary.id,
-      );
+    onClose();
 
-      onClose();
-
-      modalManager.open(ConfigureRepositoryModal, {
-        repository: {
-          ...created,
-          configuration: created.configuration!,
-        },
-      });
-    } catch (error) {
-      toastManager.danger(`Failed to import backup: ${error}`);
-    } finally {
-      importing = false;
-    }
+    modalManager.open(ConfigureRepositoryModal, {
+      repository: {
+        ...created,
+        configuration: created.configuration!,
+      },
+    });
   };
 </script>
 
-<Modal title={`Import ${repository.name}`} {onClose}>
-  <ModalBody>
-    {#if check}
-      {#if check.readable}
-        Repository is readable and accessible!
-      {:else}
-        Can't read repository.
-      {/if}
-    {:else}
-      <LoadingSpinner />
-    {/if}
-  </ModalBody>
-  <ModalFooter>
-    <Button disabled={importing || !check?.readable} onclick={onImport}
-      >Import</Button
-    >
-  </ModalFooter>
-</Modal>
+<FormModal
+  title={`Import ${repository.name}`}
+  submitText="Import"
+  disabled={readable !== true}
+  {onSubmit}
+  {onClose}
+>
+  {#if readable === undefined}
+    <LoadingSpinner />
+  {:else if readable}
+    <Text>Repository is readable and accessible!</Text>
+  {:else}
+    <Text>Can't read repository.</Text>
+  {/if}
+</FormModal>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getBackends, type BackendDto } from "../../fetch-client";
+  import { defaults, getBackends, type BackendDto } from "../../fetch-client";
   import {
     Button,
     Card,
@@ -29,7 +29,7 @@
   );
 
   const login = () => {
-    const loginUrl = new URL("http://localhost:22676/api/auth/oidc/login");
+    const loginUrl = new URL("/api/auth/oidc/login", defaults.baseUrl);
     loginUrl.searchParams.set("next", window.location.href);
     window.location.href = loginUrl.href;
   };

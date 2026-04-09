@@ -14,68 +14,7 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "http://localhost:22676"
 };
-export type RepositoryCreateRequestDto = {
-    name: string;
-    worm: boolean;
-};
-export type RepositoryMetricsDto = {
-    lastBackup?: string;
-    sizeBytes: number;
-};
 export type BackendType = "yucca" | "local" | "s3";
-export type RepositoryBackendDto = {
-    id: string;
-    "type": BackendType;
-    online: boolean;
-};
-export type RepositoryBackendsDto = {
-    primary: RepositoryBackendDto;
-    secondary: RepositoryBackendDto[];
-};
-export type RepositoryConfigurationDto = {
-    paths: string[];
-};
-export type LocalRepositoryDto = {
-    id: string;
-    worm: boolean;
-    name: string;
-    metrics: RepositoryMetricsDto;
-    backends?: RepositoryBackendsDto;
-    configuration?: RepositoryConfigurationDto;
-};
-export type RepositoryCreateResponseDto = {
-    repository: LocalRepositoryDto;
-};
-export type RepositoryListResponseDto = {
-    repositories: LocalRepositoryDto[];
-};
-export type LogResponseDto = {
-    logId: string;
-};
-export type RepositoryPathRequestDto = {
-    path: string;
-};
-export type RepositoryCheckImportResponseDto = {
-    readable: boolean;
-};
-export type RunStatus = "incomplete" | "complete" | "failed";
-export type RunDto = {
-    id: string;
-    start: string;
-    end: string;
-    logFilePath: string;
-    status: RunStatus;
-};
-export type RunHistoryResponseDto = {
-    runs: RunDto[];
-};
-export type SnapshotDto = {
-    id: string;
-    time: string;
-};
-export type ListSnapshotsResponseDto = {
-    snapshots: SnapshotDto[];
-};
 export type BackendDto = {
     id: string;
     "type": BackendType;
@@ -103,6 +42,88 @@ export type CurrentRecoveryKeyResponse = {
 };
 export type ImportRecoveryKeyRequest = {
     recoveryKey: string;
+};
+export type RepositoryCreateRequestDto = {
+    name: string;
+    worm: boolean;
+};
+export type RepositoryMetricsDto = {
+    lastBackup?: string;
+    lastSuccessfulBackup?: string;
+    lastBackupDuration?: number;
+    sizeBytes: number;
+};
+export type RepositoryBackendDto = {
+    id: string;
+    "type": BackendType;
+    online: boolean;
+};
+export type RepositoryBackendsDto = {
+    primary: RepositoryBackendDto;
+    secondary: RepositoryBackendDto[];
+};
+export type RepositoryConfigurationDto = {
+    paths: string[];
+};
+export type LocalRepositoryDto = {
+    id: string;
+    worm: boolean;
+    name: string;
+    metrics: RepositoryMetricsDto;
+    backends?: RepositoryBackendsDto;
+    configuration?: RepositoryConfigurationDto;
+};
+export type RepositoryCreateResponseDto = {
+    repository: LocalRepositoryDto;
+};
+export type RepositoryListResponseDto = {
+    repositories: LocalRepositoryDto[];
+};
+export type RepositoryUpdateRequestDto = {
+    name?: string;
+    paths?: string[];
+};
+export type RepositoryUpdateResponseDto = {
+    repository: LocalRepositoryDto;
+};
+export type LogResponseDto = {
+    logId: string;
+};
+export type RepositoryCheckImportResponseDto = {
+    readable: boolean;
+};
+export type RunStatus = "incomplete" | "complete" | "failed";
+export type RunDto = {
+    id: string;
+    start: string;
+    end: string;
+    logFilePath: string;
+    status: RunStatus;
+};
+export type RunHistoryResponseDto = {
+    runs: RunDto[];
+};
+export type SnapshotDto = {
+    id: string;
+    time: string;
+};
+export type ListSnapshotsResponseDto = {
+    snapshots: SnapshotDto[];
+};
+export type TaskType = "schedule" | "backup" | "forget";
+export type TaskStatus = "incomplete" | "complete" | "failed";
+export type ActiveScheduleItemDto = {
+    repositoryId: string;
+    status: TaskStatus;
+};
+export type RunningTaskDto = {
+    parentId: string;
+    "type": TaskType;
+    logId?: string;
+    scheduleStatus?: ActiveScheduleItemDto[];
+};
+export type RunningTaskListResponse = {
+    tasks: RunningTaskDto[];
 };
 export type ScheduleCreateRequestDto = {
     name: string;
@@ -133,24 +154,70 @@ export type ScheduleUpdateRequestDto = {
 export type ScheduleUpdateResponseDto = {
     schedule: ScheduleDto;
 };
-export type TaskType = "schedule" | "backup" | "forget";
-export type TaskStatus = "incomplete" | "complete" | "failed";
-export type ActiveScheduleItemDto = {
-    repositoryId: string;
-    status: TaskStatus;
-};
-export type RunningTaskDto = {
-    parentId: string;
-    "type": TaskType;
-    logId?: string;
-    scheduleStatus?: ActiveScheduleItemDto[];
-};
-export type RunningTaskListResponse = {
-    tasks: RunningTaskDto[];
-};
+export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
+        next
+    }))}`, {
+        ...opts
+    }));
+}
+export function oidcCallback(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
+        ...opts
+    }));
+}
+export function getBackends(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: BackendsResponseDto;
+    }>("/api/backend", {
+        ...opts
+    }));
+}
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/debug", {
         ...opts
+    }));
+}
+export function getFileListing({ path }: {
+    path?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: FilesystemListingResponseDto;
+    }>(`/api/fs${QS.query(QS.explode({
+        path
+    }))}`, {
+        ...opts
+    }));
+}
+export function onboardingStatus(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: OnboardingStatusResponseDto;
+    }>("/api/onboarding", {
+        ...opts
+    }));
+}
+export function currentRecoveryKey(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: CurrentRecoveryKeyResponse;
+    }>("/api/onboarding/recovery-key", {
+        ...opts
+    }));
+}
+export function importRecoveryKey(importRecoveryKeyRequest: ImportRecoveryKeyRequest, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: importRecoveryKeyRequest
+    })));
+}
+export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", {
+        ...opts,
+        method: "POST"
     }));
 }
 export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, { backend }: {
@@ -175,6 +242,20 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function updateRepository(id: string, repositoryUpdateRequestDto: RepositoryUpdateRequestDto, { backend }: {
+    backend?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryUpdateResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}${QS.query(QS.explode({
+        backend
+    }))}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: repositoryUpdateRequestDto
+    })));
+}
 export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -183,20 +264,6 @@ export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
         ...opts,
         method: "POST"
     }));
-}
-export function addRepositoryPath(id: string, repositoryPathRequestDto: RepositoryPathRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/paths`, oazapfts.json({
-        ...opts,
-        method: "PUT",
-        body: repositoryPathRequestDto
-    })));
-}
-export function removeRepositoryPath(id: string, repositoryPathRequestDto: RepositoryPathRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/paths`, oazapfts.json({
-        ...opts,
-        method: "DELETE",
-        body: repositoryPathRequestDto
-    })));
 }
 export function checkImportRepository(id: string, backend: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -245,69 +312,16 @@ export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.Req
     }));
 }
 export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/repository/logs/${encodeURIComponent(id)}`, {
+    return oazapfts.ok(oazapfts.fetchText(`/api/logs/${encodeURIComponent(id)}`, {
         ...opts
     }));
 }
-export function getBackends(opts?: Oazapfts.RequestOpts) {
+export function getRunningTasks(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
-        data: BackendsResponseDto;
-    }>("/api/backend", {
+        data: RunningTaskListResponse;
+    }>("/api/tasks", {
         ...opts
-    }));
-}
-export function getFileListing({ path }: {
-    path?: string;
-} = {}, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: FilesystemListingResponseDto;
-    }>(`/api/fs${QS.query(QS.explode({
-        path
-    }))}`, {
-        ...opts
-    }));
-}
-export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
-        next
-    }))}`, {
-        ...opts
-    }));
-}
-export function oidcCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
-        ...opts
-    }));
-}
-export function onboardingStatus(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: OnboardingStatusResponseDto;
-    }>("/api/onboarding", {
-        ...opts
-    }));
-}
-export function currentRecoveryKey(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: CurrentRecoveryKeyResponse;
-    }>("/api/onboarding/recovery-key", {
-        ...opts
-    }));
-}
-export function importRecoveryKey(importRecoveryKeyRequest: ImportRecoveryKeyRequest, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", oazapfts.json({
-        ...opts,
-        method: "PUT",
-        body: importRecoveryKeyRequest
-    })));
-}
-export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/onboarding/recovery-key", {
-        ...opts,
-        method: "POST"
     }));
 }
 export function createSchedule(scheduleCreateRequestDto: ScheduleCreateRequestDto, opts?: Oazapfts.RequestOpts) {
@@ -354,13 +368,5 @@ export function removeRepositoryFromSchedule(id: string, repositoryId: string, o
     return oazapfts.ok(oazapfts.fetchText(`/api/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
         ...opts,
         method: "DELETE"
-    }));
-}
-export function getRunningTasks(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: RunningTaskListResponse;
-    }>("/api/tasks", {
-        ...opts
     }));
 }

@@ -1,16 +1,18 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Updateable } from 'kysely';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import {
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
-  LogResponseDto,
   RepositoryCheckImportResponseDto,
   RepositoryConfigurationDto,
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryMetricsDto,
+  RepositoryUpdateRequestDto,
+  RepositoryUpdateResponseDto,
   RepositoryWithMetricsDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
@@ -25,6 +27,7 @@ import { RepositoryPathRepository } from '../repositories/repositoryPath.reposit
 import { ResticRepository } from '../repositories/restic.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
+import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
 
 @Injectable()
 export class RepositoryService {
@@ -189,6 +192,64 @@ export class RepositoryService {
     };
   }
 
+  async updateRepository(
+    id: string,
+    dto: RepositoryUpdateRequestDto,
+    backendId?: string,
+  ): Promise<RepositoryUpdateResponseDto> {
+    if (!backendId) {
+      const localRepository = await this.repository.get(id);
+      backendId = localRepository.backendId;
+    }
+
+    const backend = await this.backend.getBackend(backendId);
+    const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
+    const { repository: remote } = await backendInstance.updateRepository(id, dto);
+
+    if (dto.paths) {
+      const currentPaths = new Set(await this.repositoryPath.get(id));
+      const requestedPaths = new Set(dto.paths);
+      const removedPaths = currentPaths.difference(requestedPaths);
+      const newPaths = requestedPaths.difference(currentPaths);
+
+      for (const path of removedPaths) {
+        await this.repositoryPath.delete(id, path);
+      }
+
+      for (const path of newPaths) {
+        await this.repositoryPath.create({
+          id,
+          path,
+        });
+      }
+    }
+
+    const metrics = await this.repositoryLocalMetrics.get(id);
+
+    const repository: LocalRepositoryDto = {
+      ...remote,
+      ...(await this.getLocalRepository(id, undefined, metrics)),
+      backends: {
+        primary: {
+          id: backendId,
+          type: backend.configuration.type,
+          online: true,
+        },
+        secondary: [],
+      },
+    };
+
+    this.events.publish({
+      type: 'RepositoryUpdate',
+      repositoryId: id,
+      repository,
+    });
+
+    return {
+      repository,
+    };
+  }
+
   private async getResticParameters(id: string, backendId?: string): Promise<{ endpoint: string; key: Uint8Array }> {
     if (!backendId) {
       const localRepository = await this.repository.get(id);
@@ -208,23 +269,36 @@ export class RepositoryService {
     return { endpoint, key };
   }
 
-  private async updateLocalMetrics(id: string, endpoint: string, key: Uint8Array): Promise<void> {
+  private async updateLocalMetrics(
+    id: string,
+    options: {
+      resticParameters?: {
+        endpoint: string;
+        key: Uint8Array;
+      };
+      additionalMetrics?: Updateable<RepositoryLocalMetricsTable>;
+    },
+  ): Promise<void> {
     try {
       return;
     } finally {
-      const { total_size } = await this.restic.stats(endpoint, key);
-      const metrics = {
-        sizeBytes: total_size,
-        lastBackup: new Date().toISOString(),
+      const metrics: Updateable<RepositoryLocalMetricsTable> = {
+        ...options.additionalMetrics,
       };
 
-      await this.repositoryLocalMetrics.save(id, metrics);
+      if (options.resticParameters) {
+        const { endpoint, key } = options.resticParameters;
+        const { total_size } = await this.restic.stats(endpoint, key);
+        metrics.sizeBytes = total_size;
+      }
+
+      const updatedMetrics = await this.repositoryLocalMetrics.save(id, metrics);
 
       this.events.publish({
         type: 'RepositoryUpdate',
         repositoryId: id,
         repository: {
-          metrics,
+          metrics: updatedMetrics,
         },
       });
 
@@ -233,99 +307,69 @@ export class RepositoryService {
     }
   }
 
-  // TODO: not DRY; duplicate of createBackup()
-  async createBackup_(id: string): Promise<void> {
+  createBackup(id: string): Promise<{
+    logId: string;
+    task: Promise<void>;
+  }> {
     if (!this.tasks.canStart(id)) {
       throw new BadRequestException('Task already running!');
     }
 
-    const { endpoint, key } = await this.getResticParameters(id);
+    return new Promise((resolve) => {
+      let endpoint: string, key: Uint8Array;
+      let startTime: number;
 
-    return await new Promise<void>(
-      (resolve, reject) =>
-        void this.runHistory.createLog(
-          id,
-          async (log, logId) => {
-            const paths = await this.repositoryPath.get(id);
-            if (paths.length === 0) {
-              throw new BadRequestException('Missing configuration paths');
-            }
+      const task = new Promise<void>(
+        (complete, fail) =>
+          void this.runHistory.createLog(
+            id,
+            async (log, logId) => {
+              resolve({
+                task,
+                logId,
+              });
 
-            try {
-              this.tasks.startTask(id, TaskType.Backup, logId);
-              await this.restic.backup(endpoint, key, paths, log);
-            } finally {
-              this.tasks.endTask(id);
-            }
-          },
-          (error) => {
-            void this.updateLocalMetrics(id, endpoint, key);
+              startTime = Date.now();
+              ({ endpoint, key } = await this.getResticParameters(id));
 
-            if (error) {
-              reject(error);
-            } else {
-              resolve();
-            }
-          },
-        ),
-    );
-  }
+              const paths = await this.repositoryPath.get(id);
+              if (paths.length === 0) {
+                throw new BadRequestException('Missing configuration paths');
+              }
 
-  async createBackup(id: string): Promise<LogResponseDto> {
-    if (!this.tasks.canStart(id)) {
-      throw new BadRequestException('Task already running!');
-    }
+              try {
+                this.tasks.startTask(id, TaskType.Backup, logId);
+                await this.restic.backup(endpoint, key, paths, log);
+              } finally {
+                this.tasks.endTask(id);
+              }
+            },
+            (error) => {
+              const lastBackup = new Date().toString();
+              let lastSuccessfulBackup;
+              const lastBackupDuration = startTime ? Date.now() - startTime : undefined;
 
-    const { endpoint, key } = await this.getResticParameters(id);
+              if (!error) {
+                lastSuccessfulBackup = lastBackup;
+              }
 
-    return await this.runHistory.createLog(
-      id,
-      async (log, logId) => {
-        const paths = await this.repositoryPath.get(id);
-        if (paths.length === 0) {
-          throw new BadRequestException('Missing configuration paths');
-        }
+              void this.updateLocalMetrics(id, {
+                resticParameters: endpoint ? { endpoint, key } : undefined,
+                additionalMetrics: {
+                  lastBackup: new Date().toString(),
+                  lastSuccessfulBackup,
+                  lastBackupDuration,
+                },
+              });
 
-        try {
-          this.tasks.startTask(id, TaskType.Backup, logId);
-          await this.restic.backup(endpoint, key, paths, log);
-        } finally {
-          this.tasks.endTask(id);
-        }
-      },
-      () => void this.updateLocalMetrics(id, endpoint, key),
-    );
-  }
-
-  async addRepositoryPath(id: string, path: string): Promise<void> {
-    await this.repositoryPath.create({ id, path });
-
-    const paths = await this.repositoryPath.get(id);
-
-    this.events.publish({
-      type: 'RepositoryUpdate',
-      repositoryId: id,
-      repository: {
-        configuration: {
-          paths,
-        },
-      },
-    });
-  }
-
-  async removeRepositoryPath(id: string, path: string): Promise<void> {
-    await this.repositoryPath.delete(id, path);
-
-    const paths = await this.repositoryPath.get(id);
-
-    this.events.publish({
-      type: 'RepositoryUpdate',
-      repositoryId: id,
-      repository: {
-        configuration: {
-          paths,
-        },
-      },
+              if (error) {
+                fail(error);
+              } else {
+                complete();
+              }
+            },
+          ),
+      );
     });
   }
 
@@ -348,13 +392,7 @@ export class RepositoryService {
   async importRepository(id: string, backendId: string): Promise<RepositoryCreateResponseDto> {
     const { configuration } = await this.backend.getBackend(backendId);
     const backend = Backend.from(configuration, this.moduleConfig);
-
-    // TODO: getRepository route
-    const { repositories } = await backend.getRepositories();
-    const remote = repositories.find((repository) => repository.id === id);
-    if (!remote) {
-      throw new Error('...');
-    }
+    const { repository: remote } = await backend.getRepository(id);
 
     const endpoint = await backend.getResticEndpoint(remote.id);
     const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
@@ -414,7 +452,9 @@ export class RepositoryService {
       this.tasks.endTask(id);
     }
 
-    await this.updateLocalMetrics(id, endpoint, key);
+    await this.updateLocalMetrics(id, {
+      resticParameters: { endpoint, key },
+    });
   }
 
   async getRunHistory(id: string): Promise<RunHistoryResponseDto> {
