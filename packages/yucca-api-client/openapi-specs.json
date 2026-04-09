@@ -93,6 +93,16 @@
       "post": {
         "operationId": "createRepository",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryCreateRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -197,10 +207,25 @@
           "sessionId"
         ]
       },
+      "RepositoryCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "worm"
+        ]
+      },
       "RepositoryMetricsDto": {
         "type": "object",
         "properties": {
-          "lastUpload": {
+          "lastBackup": {
             "type": "string"
           },
           "sizeBytes": {
@@ -220,6 +245,9 @@
           "worm": {
             "type": "boolean"
           },
+          "name": {
+            "type": "string"
+          },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
           }
@@ -227,6 +255,7 @@
         "required": [
           "id",
           "worm",
+          "name",
           "metrics"
         ]
       },

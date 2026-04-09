@@ -3,8 +3,6 @@ name: yucca-devenv
 services:
   minio:
     image: quay.io/minio/minio
-    volumes:
-      - .dev/data/minio:/data
     command: server --console-address ":9001" /data
     ports:
       - 9000:9000

@@ -1,0 +1,40 @@
+<script lang="ts">
+  import { LoadingSpinner } from "@immich/ui";
+  import { onMount, type Snippet } from "svelte";
+  import Onboarding from "./Onboarding.svelte";
+  import {
+    onboardingStatus,
+    type OnboardingStatusResponseDto,
+  } from "$lib/fetch-client";
+
+  type Props = {
+    onExit: () => void;
+    children: Snippet;
+  };
+
+  const { onExit, children }: Props = $props();
+
+  let status: OnboardingStatusResponseDto | undefined = $state();
+
+  onMount(() => {
+    onboardingStatus().then((data) => (status = data));
+  });
+</script>
+
+{#if typeof status === "object"}
+  {#if !status.hasBackend || !status.hasOnboardedKey}
+    <Onboarding
+      {status}
+      onFinish={() =>
+        (status = {
+          hasBackend: true,
+          hasOnboardedKey: true,
+        })}
+      onCancel={onExit}
+    />
+  {:else}
+    {@render children()}
+  {/if}
+{:else}
+  <LoadingSpinner />
+{/if}

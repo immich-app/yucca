@@ -26,4 +26,17 @@ export class BackendRepository {
       configuration: JSON.parse(configuration) as BackendConfiguration,
     }));
   }
+
+  async getBackend(id: string) {
+    const backend = await this.db
+      .selectFrom('backends')
+      .selectAll('backends')
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+
+    return {
+      id: backend.id,
+      configuration: JSON.parse(backend.configuration) as BackendConfiguration,
+    };
+  }
 }

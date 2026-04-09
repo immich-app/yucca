@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#MISE description="Wait for development environment to be ready"
+set -e
+
+echo Ensure dev environment is running before invoking tests.
+
+while ! nc -z localhost "$RESTIC_API_PORT" 2>/dev/null; do
+  sleep 0.1
+done
+
+while ! nc -z localhost "$YUCCA_API_PORT" 2>/dev/null; do
+  sleep 0.1
+done
+
+while ! nc -z localhost "22676" 2>/dev/null; do
+  sleep 0.1
+done
+
+while ! nc -z localhost "5173" 2>/dev/null; do
+  sleep 0.1
+done

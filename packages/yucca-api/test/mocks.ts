@@ -26,6 +26,7 @@ export const newOidcRepositoryMock = (): jest.Mocked<RepositoryInterface<OidcRep
     callback: jest.fn(),
     logout: jest.fn(),
     onModuleInit: jest.fn(),
+    fetchUserInfo: jest.fn(),
   };
 };
 

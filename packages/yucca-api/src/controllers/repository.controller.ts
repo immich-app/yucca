@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
+  RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryCreateResticUrlDto,
   RepositoryListResponseDto,
@@ -16,8 +17,11 @@ export class RepositoryController {
   @Post()
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryCreateResponseDto })
-  createRepository(@Auth() auth: AuthDto): Promise<RepositoryCreateResponseDto> {
-    return this.repository.create(auth, false);
+  createRepository(
+    @Auth() auth: AuthDto,
+    @Body() dto: RepositoryCreateRequestDto,
+  ): Promise<RepositoryCreateResponseDto> {
+    return this.repository.create(auth, dto);
   }
 
   @Get()

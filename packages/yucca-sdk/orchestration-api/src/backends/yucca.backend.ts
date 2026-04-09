@@ -1,26 +1,42 @@
-import { getAuth } from 'yucca-api-client';
-import { BackendType } from '../enum';
-import { ModuleConfig } from '../moduleConfig';
+import {
+  createRepository,
+  createResticUrl,
+  getAuth,
+  getRepositories,
+  RepositoryCreateRequestDto,
+} from 'yucca-api-client';
+import { BackendType, CookieName } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
 
 export class YuccaBackend extends Backend {
-  constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca }) {
+  constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca; url: string }) {
     super(configuration);
   }
 
-  async online(moduleConfig: ModuleConfig): Promise<boolean> {
-    try {
-      await getAuth({
-        baseUrl: this.configuration.url ?? moduleConfig.yuccaProductionApi,
-        headers: {
-          cookie: `yucca-access-token=${this.configuration.accessToken}`,
-        },
-      });
+  private get requestOptions() {
+    return {
+      baseUrl: this.configuration.url,
+      headers: {
+        cookie: `${CookieName.YuccaAccessToken}=${this.configuration.accessToken}`,
+      },
+    };
+  }
 
-      return true;
-    } catch {
-      return false;
-    }
+  async checkOnline(): Promise<void> {
+    await getAuth(this.requestOptions);
+  }
+
+  async createRepository(dto: RepositoryCreateRequestDto) {
+    return createRepository(dto, this.requestOptions);
+  }
+
+  async getRepositories() {
+    return getRepositories(this.requestOptions);
+  }
+
+  async getResticEndpoint(id: string): Promise<string> {
+    const { url } = await createResticUrl(id, this.requestOptions);
+    return url;
   }
 }

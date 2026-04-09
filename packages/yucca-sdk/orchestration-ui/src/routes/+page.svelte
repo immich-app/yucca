@@ -1,12 +1,22 @@
 <script>
-  import { Button, Heading, HStack } from "@immich/ui";
-  import TestUi from "./TestUi.svelte";
+  import { Button, Checkbox, Field, Heading, HStack, Text } from "@immich/ui";
+  import TestUi from "$lib/components/scraps/TestUi.svelte";
+  import { options } from "$lib/options";
+  import OnboardingGate from "$lib/components/onboarding/OnboardingGate.svelte";
 
-  let mock = $state(true);
+  let mock = $state(false);
+
+  const { advanced } = options;
 </script>
 
 <div class="p-8 flex flex-col gap-4">
-  <Heading size="giant">Orchestrator Test UI</Heading>
+  <Heading size="giant"
+    >Orchestrator <img
+      alt="Test UI"
+      src="/test-ui.png"
+      class="inline h-24"
+    /></Heading
+  >
 
   <HStack>
     <Button onclick={() => (mock = true)} disabled={mock}
@@ -17,7 +27,18 @@
     >
   </HStack>
 
-  {#key mock}
+  <label class="select-none flex gap-2 items-center">
+    <Checkbox bind:checked={$advanced} />
+    <Text size="giant">Show advanced options</Text>
+  </label>
+
+  <hr />
+
+  {#if mock}
     <TestUi {mock} />
-  {/key}
+  {:else}
+    <OnboardingGate onExit={() => (mock = false)}>
+      <TestUi {mock} />
+    </OnboardingGate>
+  {/if}
 </div>
