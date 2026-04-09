@@ -3,7 +3,7 @@ import { ApiParam } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
 
-@Controller('/logs')
+@Controller('/yucca/logs')
 export class RunHistoryController {
   constructor(private readonly repository: RunHistoryRepository) {}
 

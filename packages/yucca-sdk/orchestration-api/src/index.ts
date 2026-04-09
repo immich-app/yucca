@@ -1,3 +1,4 @@
 export * from './const';
-export * from './moduleConfig';
+export { EventsGateway } from './events/events.gateway';
 export * from './orchestrationApi.module';
+export { ModuleConfigRepository } from './repositories/moduleConfig.repository';

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Build yucca-sdk"
+#MISE depends=["yucca-sdk:*:build"]
+set -e

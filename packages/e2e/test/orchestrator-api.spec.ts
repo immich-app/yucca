@@ -42,6 +42,9 @@ describe('Onboarding (before setup)', () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
       hasBackend: false,
       hasOnboardedKey: false,
+      hasBackup: false,
+      hasSchedule: false,
+      hasSkippedExtraConfig: false,
     });
   });
 });
@@ -97,10 +100,12 @@ describe('Filesystem', () => {
 
 describe('Onboarding', () => {
   it('reports backend is present', async () => {
-    await expect(sdk.onboardingStatus()).resolves.toEqual({
-      hasBackend: true,
-      hasOnboardedKey: false,
-    });
+    await expect(sdk.onboardingStatus()).resolves.toEqual(
+      expect.objectContaining({
+        hasBackend: true,
+        hasOnboardedKey: false,
+      }),
+    );
   });
 
   it('provides a randomly generated key', async () => {
@@ -122,10 +127,12 @@ describe('Onboarding', () => {
   it('marks key as onboarded', async () => {
     await sdk.confirmRecoveryKey();
 
-    await expect(sdk.onboardingStatus()).resolves.toEqual({
-      hasBackend: true,
-      hasOnboardedKey: true,
-    });
+    await expect(sdk.onboardingStatus()).resolves.toEqual(
+      expect.objectContaining({
+        hasBackend: true,
+        hasOnboardedKey: true,
+      }),
+    );
   });
 });
 

@@ -7,7 +7,9 @@ import {
   RepositoryCheckImportResponseDto,
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
+  RepositoryInspectResponseDto,
   RepositoryListResponseDto,
+  RepositorySnapshotRestoreFromPointRequestDto,
   RepositorySnapshotRestoreRequestDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
@@ -15,7 +17,7 @@ import {
 } from '../dto/repository.dto';
 import { RepositoryService } from '../services/repository.service';
 
-@Controller('/repository')
+@Controller('/yucca/repository')
 export class RepositoryController {
   constructor(private readonly service: RepositoryService) {}
 
@@ -33,6 +35,12 @@ export class RepositoryController {
   @ApiOkResponse({ type: RepositoryListResponseDto })
   getRepositories(): Promise<RepositoryListResponseDto> {
     return this.service.getRepositories();
+  }
+
+  @Get('/inspect')
+  @ApiOkResponse({ type: RepositoryInspectResponseDto })
+  inspectRepositories(): Promise<RepositoryInspectResponseDto> {
+    return this.service.inspectRepositories();
   }
 
   @Patch('/:id')
@@ -92,6 +100,20 @@ export class RepositoryController {
     @Body() dto: RepositorySnapshotRestoreRequestDto,
   ): Promise<LogResponseDto> {
     return this.service.restoreSnapshot(id, snapshotId, dto);
+  }
+
+  @Post('/:id/snapshots/:snapshot/restore-from-point')
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'snapshot', type: String })
+  @ApiQuery({ name: 'backend', type: String })
+  @ApiOkResponse({ type: LogResponseDto })
+  async restoreFromPoint(
+    @Param('id') id: string,
+    @Param('snapshot') snapshotId: string,
+    @Query('backend') backendId: string,
+    @Body() dto: RepositorySnapshotRestoreFromPointRequestDto,
+  ): Promise<LogResponseDto> {
+    return this.service.restoreFromPoint(id, snapshotId, backendId, dto);
   }
 
   @Delete('/:id/snapshots/:snapshot')
