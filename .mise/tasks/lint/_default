@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Lint all code files"
+#MISE depends=["*:check"]
 set -e
 
 pnpm exec eslint "**/src/**/*.ts" --max-warnings 0

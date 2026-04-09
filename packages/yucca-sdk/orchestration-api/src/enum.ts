@@ -8,12 +8,23 @@ export enum CookieName {
 }
 
 export enum ConfigurationKey {
-  AccessToken = 'access-token',
   EncryptionKey = 'encryption-key',
+  OnboardedKey = 'onboarded-key',
 }
 
 export enum BackendType {
   Yucca = 'yucca',
   Local = 'local',
   S3 = 's3',
+}
+
+export enum RunHistoryStatus {
+  Incomplete = 'incomplete',
+  Complete = 'complete',
+  Failed = 'failed',
+}
+
+export enum TaskType {
+  Backup = 'backup',
+  Forget = 'forget',
 }

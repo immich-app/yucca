@@ -6,11 +6,14 @@ export class RepositoryDto {
 
   @ApiProperty()
   worm!: boolean;
+
+  @ApiProperty()
+  name!: string;
 }
 
 export class RepositoryMetricsDto {
   @ApiProperty({ type: 'string', required: false })
-  lastUpload!: Date | null;
+  lastBackup!: Date | null;
 
   @ApiProperty()
   sizeBytes!: number;
@@ -19,6 +22,14 @@ export class RepositoryMetricsDto {
 export class RepositoryWithMetricsDto extends RepositoryDto {
   @ApiProperty()
   metrics!: RepositoryMetricsDto;
+}
+
+export class RepositoryCreateRequestDto {
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  worm!: boolean;
 }
 
 export class RepositoryCreateResponseDto {

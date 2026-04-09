@@ -9,6 +9,9 @@ export class RepositoryTable {
   @ForeignKeyColumn(() => UserTable, { onUpdate: 'RESTRICT', onDelete: 'RESTRICT' })
   userId!: string;
 
-  @Column()
+  @Column({ type: 'boolean' })
   worm!: boolean;
+
+  @Column({ type: 'text' })
+  name!: string;
 }

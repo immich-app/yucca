@@ -1,3 +1,5 @@
+import { RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
+import { RepositoryCreateRequestDto } from '../dto/repository.dto';
 import { BackendType } from '../enum';
 import { ModuleConfig } from '../moduleConfig';
 import { BackendConfiguration } from '../schema/tables/backend.table';
@@ -5,12 +7,18 @@ import { BackendConfiguration } from '../schema/tables/backend.table';
 export abstract class Backend {
   constructor(protected readonly configuration: BackendConfiguration) {}
 
-  abstract online(moduleConfig: ModuleConfig): Promise<boolean>;
+  abstract checkOnline(): Promise<void>;
+  abstract createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto>;
+  abstract getRepositories(): Promise<RepositoryListResponseDto>;
+  abstract getResticEndpoint(id: string): Promise<string>;
 
-  static from(configuration: BackendConfiguration) {
+  static from(configuration: BackendConfiguration, moduleConfig: ModuleConfig) {
     switch (configuration.type) {
       case BackendType.Yucca: {
-        return new YuccaBackend(configuration);
+        return new YuccaBackend({
+          url: moduleConfig.yuccaProductionApi,
+          ...configuration,
+        });
       }
       case BackendType.Local: {
         return new LocalBackend(configuration);

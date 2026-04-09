@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Create end-to-end test for web"
+set -e
+
+pnpm --filter web test:e2e:create

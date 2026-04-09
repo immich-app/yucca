@@ -1,5 +1,6 @@
 import { Kysely } from 'kysely';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
+import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { DB } from 'src/schema';
@@ -57,5 +58,16 @@ export const testUtils = {
     const db = getDb();
     const userRepository = new UserRepository(db);
     return userRepository.getByAccessToken(accessToken);
+  },
+
+  createRepository: async (userId: string, name = 'My Repository', worm = false) => {
+    const db = getDb();
+    const repositoryRepository = new RepositoryRepository(db);
+
+    return await repositoryRepository.create({
+      name,
+      worm,
+      userId,
+    });
   },
 };
