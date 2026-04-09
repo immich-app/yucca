@@ -1,4 +1,4 @@
-import { RunHistoryStatus } from '../../enum';
+import { TaskStatus } from '../../enum';
 
 export class RunHistoryTable {
   id!: string;
@@ -8,5 +8,5 @@ export class RunHistoryTable {
   end?: string;
 
   logFilePath!: string;
-  status!: RunHistoryStatus;
+  status!: TaskStatus;
 }
