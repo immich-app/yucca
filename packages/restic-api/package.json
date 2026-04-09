@@ -5,6 +5,9 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "nest build",
     "start": "nest start",

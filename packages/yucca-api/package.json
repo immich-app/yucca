@@ -16,6 +16,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:integration": "jest --config ./test/jest-integration.json --runInBand"
   },
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@common/server": "workspace:^",
     "@immich/sql-tools": "^0.3.2",

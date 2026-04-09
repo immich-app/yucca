@@ -22,7 +22,7 @@ const schema = z
     OIDC_REQUIRE_PKCE: z.coerce.boolean().default(true),
     OIDC_REDIRECT_URI: z.string(),
     OIDC_LOGOUT_REDIRECT_URI: z.string(),
-    OIDC_SCOPE: z.string().default('openid'),
+    OIDC_SCOPE: z.string().default('openid profile email'),
 
     // temp.
     RESTIC_API_HOST: z.string().default('localhost'),
