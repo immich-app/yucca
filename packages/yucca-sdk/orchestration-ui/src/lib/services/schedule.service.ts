@@ -1,10 +1,68 @@
 import { sdk } from '$lib';
-import type {
-  ScheduleCreateRequestDto,
-  ScheduleUpdateRequestDto,
+import {
+  getSchedules,
+  type ScheduleCreateRequestDto,
+  type ScheduleDto,
+  type ScheduleUpdateRequestDto,
 } from '$lib/fetch-client';
+import { SocketEvent } from '$lib/events';
 import { toastManager } from '@immich/ui';
 import { handleError } from '$lib/utils/handle-error';
+import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+
+export const scheduleKeys = {
+  all: ['schedules'] as const,
+};
+
+export const useSchedules = () =>
+  createQuery(() => ({
+    queryKey: scheduleKeys.all,
+    queryFn: () => getSchedules().then(({ schedules }) => schedules),
+  }));
+
+export const useScheduleEventHandler = () => {
+  const queryClient = useQueryClient();
+
+  return {
+    onScheduleCreate(event: SocketEvent<{ schedule: ScheduleDto }>) {
+      queryClient.setQueryData(
+        scheduleKeys.all,
+        (data: ScheduleDto[] | undefined) => {
+          return data ? [...data, event.data.schedule] : void 0;
+        },
+      );
+    },
+    onScheduleUpdate(
+      event: SocketEvent<{
+        scheduleId: string;
+        schedule: Partial<ScheduleDto>;
+      }>,
+    ) {
+      queryClient.setQueryData(
+        scheduleKeys.all,
+        (data: ScheduleDto[] | undefined) => {
+          return data
+            ? data.map((entry) =>
+                entry.id === event.data.scheduleId
+                  ? { ...entry, ...event.data.schedule }
+                  : entry,
+              )
+            : void 0;
+        },
+      );
+    },
+    onScheduleDelete(event: SocketEvent<{ scheduleId: string }>) {
+      queryClient.setQueryData(
+        scheduleKeys.all,
+        (data: ScheduleDto[] | undefined) => {
+          return data
+            ? data.filter((entry) => entry.id !== event.data.scheduleId)
+            : void 0;
+        },
+      );
+    },
+  };
+};
 
 export const handleGetSchedules = async () => {
   try {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { MockProvider, setProvider } from "$lib/providers";
-  import { toastManager, TooltipProvider } from "@immich/ui";
+  import { toastManager } from "@immich/ui";
+  import { YuccaContext } from "$lib";
   import "./layout.css";
 
   const { children } = $props();
@@ -12,6 +13,6 @@
   });
 </script>
 
-<TooltipProvider>
+<YuccaContext>
   {@render children()}
-</TooltipProvider>
+</YuccaContext>
