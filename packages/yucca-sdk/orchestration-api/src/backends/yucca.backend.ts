@@ -3,7 +3,10 @@ import {
   createResticUrl,
   getAuth,
   getRepositories,
+  getRepository,
   RepositoryCreateRequestDto,
+  RepositoryUpdateRequestDto,
+  updateRepository,
 } from 'yucca-api-client';
 import { BackendType, CookieName } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
@@ -23,19 +26,27 @@ export class YuccaBackend extends Backend {
     };
   }
 
-  async checkOnline(): Promise<void> {
+  async checkOnline() {
     await getAuth(this.requestOptions);
   }
 
-  async createRepository(dto: RepositoryCreateRequestDto) {
+  createRepository(dto: RepositoryCreateRequestDto) {
     return createRepository(dto, this.requestOptions);
   }
 
-  async getRepositories() {
+  updateRepository(id: string, dto: RepositoryUpdateRequestDto) {
+    return updateRepository(id, dto, this.requestOptions);
+  }
+
+  getRepository(id: string) {
+    return getRepository(id, this.requestOptions);
+  }
+
+  getRepositories() {
     return getRepositories(this.requestOptions);
   }
 
-  async getResticEndpoint(id: string): Promise<string> {
+  async getResticEndpoint(id: string) {
     const { url } = await createResticUrl(id, this.requestOptions);
     return url;
   }

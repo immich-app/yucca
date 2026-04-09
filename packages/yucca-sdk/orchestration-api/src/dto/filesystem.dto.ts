@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 export class FilesystemListingRequestDto {
   @ApiProperty({ type: () => String, required: false })
+  @IsOptional()
+  @IsString()
   path?: string;
 }
 

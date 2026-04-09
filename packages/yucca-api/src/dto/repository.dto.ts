@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class RepositoryDto {
   @ApiProperty()
@@ -15,6 +16,12 @@ export class RepositoryMetricsDto {
   @ApiProperty({ type: 'string', required: false })
   lastBackup!: Date | null;
 
+  @ApiProperty({ type: 'string', required: false })
+  lastSuccessfulBackup!: Date | null;
+
+  @ApiProperty({ required: false })
+  lastBackupDuration?: number;
+
   @ApiProperty()
   sizeBytes!: number;
 }
@@ -26,9 +33,11 @@ export class RepositoryWithMetricsDto extends RepositoryDto {
 
 export class RepositoryCreateRequestDto {
   @ApiProperty()
+  @IsString()
   name!: string;
 
   @ApiProperty()
+  @IsBoolean()
   worm!: boolean;
 }
 
@@ -37,9 +46,26 @@ export class RepositoryCreateResponseDto {
   repository!: RepositoryWithMetricsDto;
 }
 
+export class RepositoryGetResponseDto {
+  @ApiProperty()
+  repository!: RepositoryWithMetricsDto;
+}
+
 export class RepositoryListResponseDto {
   @ApiProperty({ type: [RepositoryWithMetricsDto] })
   repositories!: RepositoryWithMetricsDto[];
+}
+
+export class RepositoryUpdateRequestDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
+
+export class RepositoryUpdateResponseDto {
+  @ApiProperty()
+  repository!: RepositoryWithMetricsDto;
 }
 
 export class RepositoryCreateResticUrlDto {

@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/require-await */
 
-import { RepositoryCreateRequestDto, RepositoryCreateResponseDto, RepositoryListResponseDto } from 'yucca-api-client';
+import {
+  RepositoryCreateRequestDto,
+  RepositoryCreateResponseDto,
+  RepositoryGetResponseDto,
+  RepositoryListResponseDto,
+  RepositoryUpdateRequestDto,
+  RepositoryUpdateResponseDto,
+} from 'yucca-api-client';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -13,6 +20,14 @@ export class S3Backend extends Backend {
   async checkOnline(): Promise<void> {}
 
   createRepository(_dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateRepository(_id: string, _dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto> {
+    throw new Error('Method not implemented.');
+  }
+
+  getRepository(_id: string): Promise<RepositoryGetResponseDto> {
     throw new Error('Method not implemented.');
   }
 

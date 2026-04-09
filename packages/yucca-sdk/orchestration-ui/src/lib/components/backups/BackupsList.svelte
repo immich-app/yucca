@@ -4,7 +4,7 @@
     RepositoryListResponseDto,
   } from "$lib/fetch-client";
   import { getProvider } from "$lib/providers";
-  import { Button, Heading, modalManager, toastManager } from "@immich/ui";
+  import { Button, Heading, modalManager } from "@immich/ui";
   import { onMount } from "svelte";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
