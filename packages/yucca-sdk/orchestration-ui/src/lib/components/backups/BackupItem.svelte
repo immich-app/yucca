@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createBackup, type LocalRepositoryDto } from "$lib/fetch-client";
+  import type { LocalRepositoryDto } from "$lib/fetch-client";
   import {
     Badge,
     Card,
@@ -10,8 +10,8 @@
     IconButton,
     modalManager,
     Stack,
-    toastManager,
   } from "@immich/ui";
+  import { handleCreateBackup } from "$lib/services/repository.service";
   import RunHistoryModal from "./dialogs/RunHistoryModal.svelte";
   import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
   import SnapshotsListModal from "./dialogs/SnapshotsListModal.svelte";
@@ -33,16 +33,8 @@
   const { repository }: Props = $props();
 
   const onBackupNow = async () => {
-    toastManager.info("Started backup");
-
-    try {
-      const { logId } = await createBackup(repository.id);
-      modalManager.open(ViewLogModal, {
-        logId,
-      });
-    } catch (error) {
-      toastManager.danger(`Backup failed: ${error}`);
-    }
+    const { logId } = await handleCreateBackup(repository.id);
+    modalManager.open(ViewLogModal, { logId });
   };
 
   const onViewHistory = () =>
@@ -131,7 +123,7 @@
             aria-label="Configure"
             icon={mdiCog}
           />
-        {:else}
+        {:else if repository.backends}
           <IconButton aria-label="Import" icon={mdiImport} onclick={onImport} />
         {/if}
       </HStack>

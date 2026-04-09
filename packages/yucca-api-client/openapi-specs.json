@@ -139,6 +139,74 @@
         ]
       }
     },
+    "/api/repository/{id}": {
+      "get": {
+        "operationId": "getRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryGetResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
+      "patch": {
+        "operationId": "updateRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryUpdateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/repository/{id}/restic": {
       "post": {
         "operationId": "createResticUrl",
@@ -228,6 +296,12 @@
           "lastBackup": {
             "type": "string"
           },
+          "lastSuccessfulBackup": {
+            "type": "string"
+          },
+          "lastBackupDuration": {
+            "type": "number"
+          },
           "sizeBytes": {
             "type": "number"
           }
@@ -270,6 +344,17 @@
           "repository"
         ]
       },
+      "RepositoryGetResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      },
       "RepositoryListResponseDto": {
         "type": "object",
         "properties": {
@@ -282,6 +367,25 @@
         },
         "required": [
           "repositories"
+        ]
+      },
+      "RepositoryUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RepositoryUpdateResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+          }
+        },
+        "required": [
+          "repository"
         ]
       },
       "RepositoryCreateResticUrlDto": {

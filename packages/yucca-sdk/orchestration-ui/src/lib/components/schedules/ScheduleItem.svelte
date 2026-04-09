@@ -1,9 +1,5 @@
 <script lang="ts">
-  import {
-    removeSchedule,
-    updateSchedule,
-    type ScheduleDto,
-  } from "$lib/fetch-client";
+  import type { ScheduleDto } from "$lib/fetch-client";
   import {
     Badge,
     Card,
@@ -14,11 +10,15 @@
     modalManager,
     Stack,
     Text,
-    toastManager,
   } from "@immich/ui";
   import { mdiCog, mdiDelete, mdiPause, mdiPlay } from "@mdi/js";
   import RelativeTime from "../util/RelativeTime.svelte";
   import ConfigureScheduleModal from "./dialogs/ConfigureScheduleModal.svelte";
+  import {
+    handlePauseSchedule,
+    handleRemoveSchedule,
+    handleResumeSchedule,
+  } from "$lib/services/schedule.service";
 
   type Props = {
     schedule: ScheduleDto;
@@ -27,34 +27,11 @@
 
   const { schedule, repositoryNames }: Props = $props();
 
-  const onResume = async () => {
-    try {
-      await updateSchedule(schedule.id, {
-        paused: false,
-      });
-
-      toastManager.success(`Resumed schedule "${schedule.name}"`);
-    } catch (error) {
-      toastManager.danger(`Failed to delete schedule: ${error}`);
-    }
-  };
-
-  const onPause = async () => {
-    try {
-      await updateSchedule(schedule.id, {
-        paused: true,
-      });
-
-      toastManager.info(`Paused schedule "${schedule.name}"`);
-    } catch (error) {
-      toastManager.danger(`Failed to delete schedule: ${error}`);
-    }
-  };
+  const onResume = () => handleResumeSchedule(schedule.id, schedule.name);
+  const onPause = () => handlePauseSchedule(schedule.id, schedule.name);
 
   const onConfigure = () => {
-    modalManager.open(ConfigureScheduleModal, {
-      schedule,
-    });
+    modalManager.open(ConfigureScheduleModal, { schedule });
   };
 
   const onDelete = async () => {
@@ -64,16 +41,9 @@
       prompt: "This schedule will be removed.",
     });
 
-    if (!confirm) {
-      return;
-    }
+    if (!confirm) return;
 
-    try {
-      await removeSchedule(schedule.id);
-      toastManager.info(`Deleted schedule "${schedule.name}"`);
-    } catch (error) {
-      toastManager.danger(`Failed to delete schedule: ${error}`);
-    }
+    await handleRemoveSchedule(schedule.id, schedule.name);
   };
 </script>
 

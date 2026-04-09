@@ -10,20 +10,14 @@
     TableHeader,
     TableHeading,
     TableRow,
-    toastManager,
   } from "@immich/ui";
-  import {
-    forgetSnapshot,
-    getSnapshots,
-    type LocalRepositoryDto,
-    type SnapshotDto,
-  } from "$lib/fetch-client";
+  import type { LocalRepositoryDto, SnapshotDto } from "$lib/fetch-client";
   import { onMount } from "svelte";
   import { DateTime } from "luxon";
-
-  // TODO: needs UI+logic refactoring
-  // Why? no snapshot deletions will work while another is going on
-  //      -- at least in the way the server currently handles them
+  import {
+    handleForgetSnapshot,
+    handleGetSnapshots,
+  } from "$lib/services/snapshot.service";
 
   interface Props {
     repository: LocalRepositoryDto;
@@ -33,34 +27,23 @@
   let { repository, onClose }: Props = $props();
 
   let snapshots: SnapshotDto[] | undefined = $state();
+  let deleting = $state(false);
 
-  onMount(() =>
-    getSnapshots(repository.id).then(
-      (result) =>
-        (snapshots = result.snapshots.toSorted((a, b) =>
-          b.time.localeCompare(a.time),
-        )),
-    ),
-  );
+  onMount(async () => {
+    const result = await handleGetSnapshots(repository.id);
+    snapshots = result.snapshots.toSorted((a, b) =>
+      b.time.localeCompare(a.time),
+    );
+  });
 
-  const deleteSnapshot = (id: string) => async () => {
-    toastManager.info("Deleting snapshot", {
-      id,
-      closable: false,
-      timeout: null!,
-    });
+  const deleteSnapshot = async (id: string) => {
+    deleting = true;
 
     try {
-      await forgetSnapshot(repository.id, id);
-
-      toastManager.success("Deleted snapshot");
+      await handleForgetSnapshot(repository.id, id);
       snapshots = snapshots?.filter((snapshot) => snapshot.id !== id);
-    } catch (error) {
-      toastManager.danger(`Failed to delete snapshot: ${error}`);
     } finally {
-      (
-        toastManager as never as { remove(target: { id: string }): void }
-      ).remove({ id });
+      deleting = false;
     }
   };
 </script>
@@ -86,7 +69,8 @@
                 <Button
                   size="tiny"
                   color="danger"
-                  onclick={deleteSnapshot(snapshot.id)}>Delete</Button
+                  disabled={deleting}
+                  onclick={() => deleteSnapshot(snapshot.id)}>Delete</Button
                 >
               </TableCell>
             </TableRow>

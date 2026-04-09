@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 
 export class OnboardingStatusResponseDto {
   @ApiProperty({ type: Boolean })
@@ -15,5 +16,6 @@ export class CurrentRecoveryKeyResponse {
 
 export class ImportRecoveryKeyRequest {
   @ApiProperty({ type: String })
+  @IsString()
   recoveryKey!: string;
 }

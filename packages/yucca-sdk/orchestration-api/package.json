@@ -22,6 +22,7 @@
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/websockets": "^11.1.14",
     "better-sqlite3": "^12.6.2",
+    "class-validator": "^0.14.3",
     "cookie": "^1.1.1",
     "cron": "^4.4.0",
     "event-iterator": "^2.0.0",

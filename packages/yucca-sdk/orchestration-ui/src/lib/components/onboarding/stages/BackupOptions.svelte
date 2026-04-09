@@ -11,6 +11,7 @@
     Text,
     VStack,
   } from "@immich/ui";
+  import { defaults } from "yucca-api-client";
 
   type Props = {
     onFinish: () => void;
@@ -20,7 +21,7 @@
   const { onFinish, onCancel }: Props = $props();
 
   const login = () => {
-    const loginUrl = new URL("/api/auth/oidc/login", "http://localhost:22676");
+    const loginUrl = new URL("/api/auth/oidc/login", defaults.baseUrl);
     loginUrl.searchParams.set("next", window.location.href);
     window.location.href = loginUrl.href;
   };

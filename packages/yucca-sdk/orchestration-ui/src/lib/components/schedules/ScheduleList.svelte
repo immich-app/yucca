@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { getSchedules, type ScheduleDto } from "$lib/fetch-client";
+  import type { ScheduleDto } from "$lib/fetch-client";
+  import { handleGetSchedules } from "$lib/services/schedule.service";
   import { getProvider } from "$lib/providers";
   import { Button, Heading, modalManager } from "@immich/ui";
   import { onMount } from "svelte";
@@ -15,7 +16,7 @@
   const provider = getProvider();
 
   onMount(() => {
-    getSchedules().then((data) => (schedules = data.schedules));
+    handleGetSchedules().then((data) => (schedules = data.schedules));
 
     provider.getRepositories().then((data) => {
       repositoryNames = Object.fromEntries(

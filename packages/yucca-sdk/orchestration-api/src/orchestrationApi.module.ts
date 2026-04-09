@@ -12,6 +12,7 @@ import { DevelopmentController } from './controllers/development.controller';
 import { FilesystemController } from './controllers/filesystem.controller';
 import { OnboardingController } from './controllers/onboarding.controller';
 import { RepositoryController } from './controllers/repository.controller';
+import { RunHistoryController } from './controllers/runHistory.controller';
 import { RunningTasksController } from './controllers/runningTasks.controller';
 import { ScheduleController } from './controllers/schedule.controller';
 import { EventsGateway } from './events/events.gateway';
@@ -31,8 +32,45 @@ import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
 import { OnboardingService } from './services/onboarding.service';
 import { RepositoryService } from './services/repository.service';
+import { RunHistoryService } from './services/runHistory.service';
 import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
+
+const controllers = [
+  AuthController,
+  BackendController,
+  DevelopmentController,
+  FilesystemController,
+  OnboardingController,
+  RepositoryController,
+  RunHistoryController,
+  RunningTasksController,
+  ScheduleController,
+];
+
+const repositories = [
+  BackendRepository,
+  ConfigRepository,
+  DatabaseRepository,
+  RepositoryRepository,
+  RepositoryLocalMetricsRepository,
+  RepositoryPathRepository,
+  ResticRepository,
+  RunHistoryRepository,
+  RunningTasksRepository,
+  ScheduleRepository,
+];
+
+const services = [
+  AuthService,
+  BackendService,
+  DatabaseService,
+  OnboardingService,
+  RepositoryService,
+  RunHistoryService,
+  RunningTasksService,
+  ScheduleService,
+];
 
 @Module({})
 export class OrchestrationApiModule {
@@ -60,37 +98,8 @@ export class OrchestrationApiModule {
         }),
         ScheduleModule.forRoot(),
       ],
-      controllers: [
-        DevelopmentController,
-        RepositoryController,
-        BackendController,
-        FilesystemController,
-        AuthController,
-        OnboardingController,
-        ScheduleController,
-        RunningTasksController,
-      ],
-      providers: [
-        { provide: ModuleConfigProvider, useValue: config },
-        EventsGateway,
-        RunningTasksRepository,
-        DatabaseRepository,
-        BackendRepository,
-        ConfigRepository,
-        ResticRepository,
-        RunHistoryRepository,
-        RepositoryRepository,
-        RepositoryPathRepository,
-        RepositoryLocalMetricsRepository,
-        ScheduleRepository,
-        ScheduleService,
-        DatabaseService,
-        BackendService,
-        RepositoryService,
-        AuthService,
-        OnboardingService,
-        RunningTasksService,
-      ],
+      controllers,
+      providers: [{ provide: ModuleConfigProvider, useValue: config }, EventsGateway, ...repositories, ...services],
     };
   }
 }
