@@ -7,6 +7,15 @@ export class OnboardingStatusResponseDto {
 
   @ApiProperty({ type: Boolean })
   hasBackend!: boolean;
+
+  @ApiProperty({ type: Boolean })
+  hasBackup!: boolean;
+
+  @ApiProperty({ type: Boolean })
+  hasSchedule!: boolean;
+
+  @ApiProperty({ type: Boolean })
+  hasSkippedExtraConfig!: boolean;
 }
 
 export class CurrentRecoveryKeyResponse {

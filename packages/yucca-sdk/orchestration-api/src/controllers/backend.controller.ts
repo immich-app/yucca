@@ -3,7 +3,7 @@ import { ApiOkResponse } from '@nestjs/swagger';
 import { BackendsResponseDto } from '../dto/backend.dto';
 import { BackendService } from '../services/backend.service';
 
-@Controller('/backend')
+@Controller('/yucca/backend')
 export class BackendController {
   constructor(private readonly service: BackendService) {}
 

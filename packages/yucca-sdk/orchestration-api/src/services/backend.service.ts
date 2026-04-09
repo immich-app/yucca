@@ -1,13 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Backend } from '../backends/backend';
 import { BackendsResponseDto } from '../dto/backend.dto';
-import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
 @Injectable()
 export class BackendService {
   constructor(
-    @Inject(ModuleConfigProvider) private readonly moduleConfig: ModuleConfig,
+    private readonly moduleConfig: ModuleConfigRepository,
     private readonly repository: BackendRepository,
   ) {}
 
@@ -16,7 +16,7 @@ export class BackendService {
 
     const error = await Promise.all(
       backends.map((backend) =>
-        Backend.from(backend.configuration, this.moduleConfig)
+        Backend.from(backend.configuration, this.moduleConfig.get())
           .checkOnline()
           .then(() => void 0)
           .catch((error) => error),

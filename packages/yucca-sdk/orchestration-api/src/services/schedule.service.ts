@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
 import { Updateable } from 'kysely';
@@ -13,6 +13,8 @@ import {
 } from '../dto/schedule.dto';
 import { TaskStatus, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { ScheduleRepository } from '../repositories/schedule.repository';
 import { ScheduleTable } from '../schema/tables/schedule.table';
@@ -26,13 +28,11 @@ export class ScheduleService {
     private readonly schedule: ScheduleRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly runningTasks: RunningTasksRepository,
+    private readonly moduleConfig: ModuleConfigRepository,
+    private readonly integrationImmich: RepositoryIntegrationImmichRepository,
   ) {}
 
   async bootstrap() {
-    for (const name of this.schedulerRegistry.getCronJobs().keys()) {
-      this.schedulerRegistry.deleteCronJob(name);
-    }
-
     for (const schedule of await this.schedule.getAll()) {
       this.createCronJob(schedule.id, schedule.cron, schedule.paused);
     }
@@ -67,6 +67,10 @@ export class ScheduleService {
   }
 
   private async runSchedule(id: string) {
+    if (!this.moduleConfig.hasLock()) {
+      return;
+    }
+
     const { repositories } = await this.schedule.get(id);
 
     const lastRun = new Date().toISOString();
@@ -191,6 +195,11 @@ export class ScheduleService {
   }
 
   async removeSchedule(scheduleId: string): Promise<void> {
+    const integration = await this.integrationImmich.get();
+    if (integration?.scheduleId === scheduleId) {
+      throw new BadRequestException('Schedule managed by Immich integration');
+    }
+
     await this.schedule.removeSchedule(scheduleId);
 
     this.events.publish({

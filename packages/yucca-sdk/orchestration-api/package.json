@@ -1,6 +1,6 @@
 {
   "name": "orchestration-api",
-  "version": "1.0.0",
+  "version": "0.1.48",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -15,9 +15,10 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@futo-org/restic-wrapper": "1.1.1",
+    "@futo-org/restic-wrapper": "1.1.2",
     "@nestjs/common": "^11.1.13",
     "@nestjs/core": "^11.1.11",
+    "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/platform-socket.io": "^11.1.14",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/websockets": "^11.1.14",
@@ -52,6 +53,9 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"
   },
+  "files": [
+    "dist"
+  ],
   "jest": {
     "moduleFileExtensions": [
       "js",
