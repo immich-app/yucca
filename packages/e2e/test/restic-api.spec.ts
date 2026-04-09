@@ -34,9 +34,7 @@ import { env } from 'src/env';
 
 const password = 'password';
 
-function generateCase(writeOnce: boolean) {
-  const repository = randomUUID();
-
+function generateRepoUrl(repository: string, writeOnce: boolean) {
   const token = jwt.sign(
     {
       user: randomUUID(),
@@ -46,7 +44,15 @@ function generateCase(writeOnce: boolean) {
     env.JWT_SECRET,
   );
 
-  const repoUrl = `rest:http://restic:${token}@localhost:${env.RESTIC_API_PORT}/${repository}/`;
+  return {
+    token,
+    repoUrl: `rest:http://restic:${token}@localhost:${env.RESTIC_API_PORT}/${repository}/`,
+  };
+}
+
+function generateCase(writeOnce: boolean) {
+  const repository = randomUUID();
+  const { repoUrl } = generateRepoUrl(repository, writeOnce);
 
   return {
     repository,
@@ -375,28 +381,68 @@ describe.each([
   });
 
   describe('prune', () => {
-    beforeEach(async () => {
-      const { snapshot_id } = await backup()
-        .repository(repoUrl)
-        .password('password')
-        .addFile(join(workingDir, 'pwd'))
-        .run();
+    async function createPruneRepo() {
+      const { repoUrl: pruneRepoUrl } = generateCase(writeOnce);
+      await init().repository(pruneRepoUrl).password(password).run();
+      return pruneRepoUrl;
+    }
 
-      await forget().repository(repoUrl).password('password').snapshot(snapshot_id).run();
-    });
+    async function createForgottenSnapshot(pruneRepoUrl: string) {
+      const file = join(workingDir, `prune-${randomUUID()}.txt`);
+      await writeFile(file, randomUUID());
+
+      const { snapshot_id } = await backup().repository(pruneRepoUrl).password(password).addFile(file).run();
+      await forget().repository(pruneRepoUrl).password(password).snapshot(snapshot_id).run();
+      return snapshot_id;
+    }
 
     if (writeOnce) {
-      it("can't prune data", async () => {
-        await expect(prune().repository(repoUrl).password('password').run()).rejects.toThrow();
-      });
+      it('keeps snapshots after forget and allows no-op prune', async () => {
+        const pruneRepoUrl = await createPruneRepo();
+        const snapshotId = await createForgottenSnapshot(pruneRepoUrl);
+        const allSnapshots = await snapshots().repository(pruneRepoUrl).password(password).run();
+
+        expect(allSnapshots).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: snapshotId,
+            }),
+          ]),
+        );
+
+        const output = await prune().repository(pruneRepoUrl).password(password).run();
+        expect(output).toMatch(/total prune:\s+0 blobs/);
+      }, 15_000);
+
+      it("can't delete data via prune in WORM repo when prune has work to do", async () => {
+        const repository = randomUUID();
+        const { repoUrl: mutableRepoUrl } = generateRepoUrl(repository, false);
+        const { repoUrl: wormRepoUrl } = generateRepoUrl(repository, true);
+
+        await init().repository(mutableRepoUrl).password(password).run();
+        const snapshotId = await createForgottenSnapshot(mutableRepoUrl);
+
+        await expect(snapshots().repository(mutableRepoUrl).password(password).run()).resolves.toEqual(
+          expect.not.arrayContaining([
+            expect.objectContaining({
+              id: snapshotId,
+            }),
+          ]),
+        );
+
+        await expect(prune().repository(wormRepoUrl).password(password).run()).rejects.toThrow();
+      }, 20_000);
     } else {
       it('prunes old data', async () => {
-        const blobsBefore = await list().repository(repoUrl).password('password').type('blobs').run();
-        await prune().repository(repoUrl).password('password').run();
-        const blobsAfter = await list().repository(repoUrl).password('password').type('blobs').run();
+        const pruneRepoUrl = await createPruneRepo();
+        await createForgottenSnapshot(pruneRepoUrl);
+
+        const blobsBefore = await list().repository(pruneRepoUrl).password(password).type('blobs').run();
+        await prune().repository(pruneRepoUrl).password(password).run();
+        const blobsAfter = await list().repository(pruneRepoUrl).password(password).type('blobs').run();
 
         expect(blobsBefore).not.toEqual(blobsAfter);
-      });
+      }, 15_000);
     }
   });
 
