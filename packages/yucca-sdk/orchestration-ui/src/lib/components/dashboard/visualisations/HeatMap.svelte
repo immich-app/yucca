@@ -23,26 +23,31 @@
   const marginBottom = 30;
   const marginLeft = 35;
 
+  // svelte-ignore state_referenced_locally
   const xScale = d3
     .scaleBand()
     .domain(cols)
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
+  // svelte-ignore state_referenced_locally
   const yScale = d3
     .scaleBand()
     .domain(rows)
     .range([marginTop, height - marginBottom])
     .padding(0.1);
 
+  // svelte-ignore state_referenced_locally
   const maxValue = d3.max(data, (d) => d.value) ?? 1;
 
+  // svelte-ignore state_referenced_locally
   const valueMap = new Map(data.map((d) => [`${d.row}:${d.col}`, d.value]));
 
   function intensity(value: number): number {
     return maxValue > 0 ? Math.round((value / maxValue) * 100) : 0;
   }
 
+  // svelte-ignore state_referenced_locally
   const labelInterval = Math.max(1, Math.ceil(cols.length / 8));
 
   let hovered = $state<{ row: string; col: string } | null>(null);

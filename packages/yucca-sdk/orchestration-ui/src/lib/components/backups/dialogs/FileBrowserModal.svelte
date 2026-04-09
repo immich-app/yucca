@@ -8,7 +8,7 @@
     Stack,
     Text,
   } from "@immich/ui";
-  import { mdiFolderOpen, mdiPlus } from "@mdi/js";
+  import { mdiFolderOpen, mdiFolderPlus, mdiPlus } from "@mdi/js";
   import type { FilesystemListingResponseDto } from "$lib/fetch-client";
   import { handleGetFileListing } from "$lib/services/filesystem.service";
   import { onMount } from "svelte";
@@ -16,15 +16,22 @@
   interface Props {
     onSelect: (path: string) => void;
     onClose: () => void;
+    folders?: boolean;
+    handleGetListing?: (path?: string) => Promise<FilesystemListingResponseDto>;
   }
 
-  const { onSelect, onClose }: Props = $props();
+  const {
+    onSelect,
+    onClose,
+    folders = false,
+    handleGetListing,
+  }: Props = $props();
 
   let listing: FilesystemListingResponseDto | undefined = $state();
 
   async function open(path?: string) {
     listing = undefined;
-    listing = await handleGetFileListing(path);
+    listing = await (handleGetListing ?? handleGetFileListing)(path);
   }
 
   onMount(() => open());
@@ -45,30 +52,32 @@
         </HStack>
 
         {#each listing.items as item (item.path)}
-          <HStack gap={2} class="items-center py-2 px-4">
-            {#if item.isDirectory}
+          {#if item.isDirectory || !folders}
+            <HStack gap={2} class="items-center py-2 px-4">
+              {#if item.isDirectory}
+                <IconButton
+                  icon={mdiFolderOpen}
+                  aria-label="Open folder"
+                  size="tiny"
+                  onclick={() => open(item.path)}
+                />
+              {:else}
+                <div class="w-7"></div>
+              {/if}
+              <Text size="small" class="grow"
+                >{item.path.split(/\\|\//).pop()}</Text
+              >
               <IconButton
-                icon={mdiFolderOpen}
-                aria-label="Open folder"
+                icon={folders ? mdiFolderPlus : mdiPlus}
+                aria-label={folders ? "Select folder" : "Add"}
                 size="tiny"
-                onclick={() => open(item.path)}
+                onclick={() => {
+                  onSelect(item.path);
+                  onClose();
+                }}
               />
-            {:else}
-              <div class="w-7"></div>
-            {/if}
-            <Text size="small" class="grow"
-              >{item.path.split(/\\|\//).pop()}</Text
-            >
-            <IconButton
-              icon={mdiPlus}
-              aria-label="Add"
-              size="tiny"
-              onclick={() => {
-                onSelect(item.path);
-                onClose();
-              }}
-            />
-          </HStack>
+            </HStack>
+          {/if}
         {/each}
       </Stack>
     </ModalBody>

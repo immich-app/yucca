@@ -12,6 +12,7 @@
   const height = 300;
   const radius = Math.min(width, height) / 2 - 50;
 
+  // svelte-ignore state_referenced_locally
   const colourScale = d3
     .scaleOrdinal<string>()
     .domain(data.map((d) => d.name))
@@ -39,6 +40,7 @@
     .innerRadius(radius * 1.1)
     .outerRadius(radius * 1.1);
 
+  // svelte-ignore state_referenced_locally
   const arcs = pie(data);
 
   function midAngle(d: d3.PieArcDatum<Datum>) {
