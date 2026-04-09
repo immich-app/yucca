@@ -21,6 +21,14 @@ export function standardizeError(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+export function getReadableErrorMessage(error: unknown): string {
+  return (
+    getServerErrorMessage(error as never) ||
+    standardizeError(error).message ||
+    'An unknown error occurred'
+  );
+}
+
 export function handleError(error: unknown, localizedMessage: string) {
   const standardizedError = standardizeError(error);
   if (standardizedError.name === 'AbortError') {
@@ -36,7 +44,7 @@ export function handleError(error: unknown, localizedMessage: string) {
   try {
     let serverMessage = getServerErrorMessage(error as never);
     if (serverMessage) {
-      serverMessage = `${String(serverMessage).slice(0, 75)}\n(Immich Server Error)`;
+      serverMessage = `${String(serverMessage).slice(0, 75)}\n(Yucca Server Error)`;
     }
 
     const errorMessage = serverMessage || localizedMessage;

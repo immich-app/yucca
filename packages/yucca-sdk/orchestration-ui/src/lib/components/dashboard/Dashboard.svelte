@@ -9,6 +9,7 @@
     Stack,
     Text,
   } from "@immich/ui";
+  import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import { mdiBackupRestore } from "@mdi/js";
   import { options } from "$lib/options";
 
@@ -18,11 +19,11 @@
   import RecentBackups from "./RecentBackups.svelte";
   import StackedBarChart from "./visualisations/StackedBarChart.svelte";
   import HeatMap from "./visualisations/HeatMap.svelte";
-  import type { SocketEvent } from "$lib/events";
-  import type { LocalRepositoryDto } from "$lib/fetch-client";
-  import { getProvider } from "$lib/providers";
-  import { onMount } from "svelte";
   import OnEvents from "../util/OnEvents.svelte";
+  import {
+    useRepositories,
+    useRepositoryEventHandler,
+  } from "$lib/services/repository.service";
 
   type Props = {
     onNavigate?: (route: string) => void;
@@ -32,45 +33,18 @@
 
   const { onNavigate }: Props = $props();
 
-  let repositories = $state<LocalRepositoryDto[]>([]);
-  let loaded = $state(false);
-
-  const provider = getProvider();
-
-  onMount(() =>
-    provider
-      .getRepositories()
-      .then((data) => {
-        repositories = data.repositories;
-        loaded = true;
-      }),
-  );
-
-  const onRepositoryCreate = (
-    event: SocketEvent<{ repository: LocalRepositoryDto }>,
-  ) => {
-    repositories = [...repositories, event.data.repository];
-  };
-
-  const onRepositoryUpdate = (
-    event: SocketEvent<{
-      repositoryId: string;
-      repository: Partial<LocalRepositoryDto>;
-    }>,
-  ) => {
-    repositories = repositories.map((repo) =>
-      repo.id === event.data.repositoryId
-        ? { ...repo, ...event.data.repository }
-        : repo,
-    );
-  };
+  const query = useRepositories();
+  const { onRepositoryCreate, onRepositoryUpdate } =
+    useRepositoryEventHandler();
 </script>
 
 <OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
 
-{#if !loaded}
+{#if query.isLoading}
   <!-- loading -->
-{:else if repositories.length === 0}
+{:else if query.isError}
+  <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
+{:else if query.isSuccess && query.data.length === 0}
   <Card>
     <CardBody>
       <div class="flex flex-col items-center gap-4 py-8">
@@ -90,15 +64,15 @@
       </div>
     </CardBody>
   </Card>
-{:else}
-  <BackupHealth {repositories} />
+{:else if query.isSuccess}
+  <BackupHealth repositories={query.data} />
 
-  <BackupStats {repositories} />
+  <BackupStats repositories={query.data} />
 
   <ActiveJobs />
 
   <RecentBackups
-    {repositories}
+    repositories={query.data}
     onNavigate={onNavigate ? () => onNavigate("backups") : undefined}
   />
 

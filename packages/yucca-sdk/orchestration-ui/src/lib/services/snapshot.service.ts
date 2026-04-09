@@ -1,7 +1,38 @@
 import { sdk } from '$lib';
+import {
+  getSnapshots,
+  type RepositorySnapshotRestoreRequestDto,
+  type SnapshotDto,
+} from '$lib/fetch-client';
 import { toastManager } from '@immich/ui';
 import { handleError } from '$lib/utils/handle-error';
-import type { RepositorySnapshotRestoreRequestDto } from '$lib/fetch-client';
+import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+
+export const snapshotKeys = {
+  byRepository: (id: string) => ['snapshots', id] as const,
+};
+
+export const useSnapshots = (repositoryId: string) =>
+  createQuery(() => ({
+    queryKey: snapshotKeys.byRepository(repositoryId),
+    queryFn: () =>
+      getSnapshots(repositoryId).then(({ snapshots }) =>
+        snapshots.toSorted((a, b) => b.time.localeCompare(a.time)),
+      ),
+  }));
+
+export const useRemoveSnapshot = (repositoryId: string) => {
+  const queryClient = useQueryClient();
+
+  return (snapshotId: string) => {
+    queryClient.setQueryData(
+      snapshotKeys.byRepository(repositoryId),
+      (data: SnapshotDto[] | undefined) => {
+        return data ? data.filter((entry) => entry.id !== snapshotId) : void 0;
+      },
+    );
+  };
+};
 
 export const handleGetSnapshots = async (repositoryId: string) => {
   try {
