@@ -3,6 +3,15 @@ import { KyselyConfig } from 'kysely';
 import { PostgresJSDialect } from 'kysely-postgres-js';
 import postgres, { Notice } from 'postgres';
 
+export const getKyselyConnectionParameters = () => ({
+  connectionType: 'parts' as const,
+  host: env.POSTGRES_HOST,
+  port: env.POSTGRES_PORT,
+  username: env.POSTGRES_USERNAME,
+  password: env.POSTGRES_PASSWORD,
+  database: env.POSTGRES_DATABASE,
+});
+
 export const getKyselyConfig = (
   options: Partial<postgres.Options<Record<string, postgres.PostgresType>>> = {},
 ): KyselyConfig => {
@@ -17,12 +26,7 @@ export const getKyselyConfig = (
         connection: {
           TimeZone: 'UTC',
         },
-        host: env.POSTGRES_HOST,
-        port: env.POSTGRES_PORT,
-        username: env.POSTGRES_USERNAME,
-        password: env.POSTGRES_PASSWORD,
-        database: env.POSTGRES_DATABASE,
-        ssl: env.POSTGRES_SSL,
+        ...getKyselyConnectionParameters(),
         ...options,
       }),
     }),
