@@ -7,17 +7,25 @@ import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { AuthController } from './controllers/auth.controller';
 import { BackendController } from './controllers/backend.controller';
+import { DevelopmentController } from './controllers/development.controller';
+import { FilesystemController } from './controllers/filesystem.controller';
+import { OnboardingController } from './controllers/onboarding.controller';
 import { RepositoryController } from './controllers/repository.controller';
+import { EventsGateway } from './events/events.gateway';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { RepositoryRepository } from './repositories/repository.repository';
+import { RepositoryLocalMetricsRepository } from './repositories/repositoryLocalMetrics.repository';
+import { RepositoryPathRepository } from './repositories/repositoryPath.repository';
 import { ResticRepository } from './repositories/restic.repository';
-import { YuccaApiRepository } from './repositories/yuccaApi.repository';
+import { RunHistoryRepository } from './repositories/runHistory.repository';
+import { RunningTasksRepository } from './repositories/runningTasks.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
-import { OrchestrationApiService } from './services/orchestrationApi.service';
+import { OnboardingService } from './services/onboarding.service';
 import { RepositoryService } from './services/repository.service';
 
 @Module({})
@@ -45,21 +53,32 @@ export class OrchestrationApiModule {
           }),
         }),
       ],
-      controllers: [RepositoryController, BackendController, AuthController],
+      controllers: [
+        DevelopmentController,
+        RepositoryController,
+        BackendController,
+        FilesystemController,
+        AuthController,
+        OnboardingController,
+      ],
       providers: [
         { provide: ModuleConfigProvider, useValue: config },
+        EventsGateway,
+        RunningTasksRepository,
         DatabaseRepository,
         BackendRepository,
         ConfigRepository,
         ResticRepository,
-        YuccaApiRepository,
+        RunHistoryRepository,
+        RepositoryRepository,
+        RepositoryPathRepository,
+        RepositoryLocalMetricsRepository,
         DatabaseService,
         BackendService,
         RepositoryService,
         AuthService,
-        OrchestrationApiService,
+        OnboardingService,
       ],
-      exports: [OrchestrationApiService],
     };
   }
 }

@@ -19,6 +19,7 @@
     "noImplicitAny": true,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
+    "types": ["jest", "jest-extended", "node"],
     "paths": {
       "src/*": ["./src/*"]
     }

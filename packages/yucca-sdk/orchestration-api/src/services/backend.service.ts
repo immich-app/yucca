@@ -14,15 +14,21 @@ export class BackendService {
   async getBackends(): Promise<BackendsResponseDto> {
     const backends = await this.repository.getBackends();
 
-    const isOnline = await Promise.all(
-      backends.map((backend) => Backend.from(backend.configuration).online(this.moduleConfig)),
+    const error = await Promise.all(
+      backends.map((backend) =>
+        Backend.from(backend.configuration, this.moduleConfig)
+          .checkOnline()
+          .then(() => void 0)
+          .catch((error) => error),
+      ),
     );
 
     return {
       backends: backends.map((backend, idx) => ({
         id: backend.id,
         type: backend.configuration.type,
-        isOnline: isOnline[idx],
+        isOnline: error[idx] === undefined,
+        error: error[idx],
       })),
     };
   }

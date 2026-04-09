@@ -64,7 +64,7 @@ describe.each([
   { name: 'restic API', ...generateCase(false), writeOnce: false },
   { name: 'restic WORM API', ...generateCase(true), writeOnce: true },
 ])('$name (e2e)', ({ writeOnce, repoUrl }) => {
-  let workingDir;
+  let workingDir: string;
 
   beforeAll(async () => {
     workingDir = tmpdir();

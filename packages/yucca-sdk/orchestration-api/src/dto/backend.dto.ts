@@ -10,6 +10,9 @@ export class BackendDto {
 
   @ApiProperty({ type: Boolean })
   isOnline!: boolean;
+
+  @ApiProperty({ type: String, required: false })
+  error?: string;
 }
 
 export class BackendsResponseDto {

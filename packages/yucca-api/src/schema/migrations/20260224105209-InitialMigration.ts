@@ -14,7 +14,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   await sql`CREATE TABLE "repositories" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
   "userId" uuid NOT NULL,
-  "worm" character varying NOT NULL,
+  "worm" boolean NOT NULL,
   CONSTRAINT "repositories_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON UPDATE RESTRICT ON DELETE RESTRICT,
   CONSTRAINT "repositories_pkey" PRIMARY KEY ("id")
 );`.execute(db);
