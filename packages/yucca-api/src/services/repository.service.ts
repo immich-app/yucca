@@ -57,9 +57,7 @@ export class RepositoryService {
   async update(id: string, dto: RepositoryUpdateRequestDto) {
     return {
       repository: {
-        ...(await this.repositoryRepository.update(id, {
-          ...dto,
-        })),
+        ...(await this.repositoryRepository.update(id, dto)),
         metrics: {
           lastBackup: null,
           lastSuccessfulBackup: null,

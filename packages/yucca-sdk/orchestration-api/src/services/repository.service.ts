@@ -1,7 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
+import { dirname } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
+import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
@@ -11,6 +13,7 @@ import {
   RepositoryCreateResponseDto,
   RepositoryListResponseDto,
   RepositoryMetricsDto,
+  RepositorySnapshotRestoreRequestDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
   RepositoryWithMetricsDto,
@@ -204,7 +207,13 @@ export class RepositoryService {
 
     const backend = await this.backend.getBackend(backendId);
     const backendInstance = Backend.from(backend.configuration, this.moduleConfig);
-    const { repository: remote } = await backendInstance.updateRepository(id, dto);
+
+    let remote;
+    if (dto.name) {
+      ({ repository: remote } = await backendInstance.updateRepository(id, dto));
+    } else {
+      ({ repository: remote } = await backendInstance.getRepository(id));
+    }
 
     if (dto.paths) {
       const currentPaths = new Set(await this.repositoryPath.get(id));
@@ -438,6 +447,48 @@ export class RepositoryService {
     };
   }
 
+  async restoreSnapshot(
+    id: string,
+    snapshotId: string,
+    dto: RepositorySnapshotRestoreRequestDto,
+  ): Promise<{
+    logId: string;
+    task: Promise<void>;
+  }> {
+    return new Promise((resolve) => {
+      let endpoint: string, key: Uint8Array;
+
+      const task = new Promise<void>(
+        (complete, fail) =>
+          void this.runHistory.createLog(
+            id,
+            async (log, logId) => {
+              resolve({
+                task,
+                logId,
+              });
+
+              ({ endpoint, key } = await this.getResticParameters(id));
+
+              try {
+                this.tasks.startTask(id, TaskType.Backup, logId);
+                await this.restic.restore(endpoint, key, snapshotId, dto, log);
+              } finally {
+                this.tasks.endTask(id);
+              }
+            },
+            (error) => {
+              if (error) {
+                fail(error);
+              } else {
+                complete();
+              }
+            },
+          ),
+      );
+    });
+  }
+
   async forgetSnapshot(id: string, snapshotId: string): Promise<void> {
     if (!this.tasks.canStart(id)) {
       throw new BadRequestException('Task already running!');
@@ -455,6 +506,29 @@ export class RepositoryService {
     await this.updateLocalMetrics(id, {
       resticParameters: { endpoint, key },
     });
+  }
+
+  async getSnapshotListing(
+    id: string,
+    snapshotId: string,
+    dto: FilesystemListingRequestDto,
+  ): Promise<FilesystemListingResponseDto> {
+    const path = dto.path ?? '/';
+
+    const { endpoint, key } = await this.getResticParameters(id);
+    const files = await this.restic.ls(endpoint, key, snapshotId, path);
+
+    return {
+      parent: dirname(path),
+      path,
+      items: files
+        .filter((file) => file.message_type === 'node')
+        .filter((file) => file.path !== path)
+        .map((file) => ({
+          path: file.path,
+          isDirectory: file.type === 'dir',
+        })),
+    };
   }
 
   async getRunHistory(id: string): Promise<RunHistoryResponseDto> {

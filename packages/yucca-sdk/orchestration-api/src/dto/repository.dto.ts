@@ -145,6 +145,19 @@ export class ListSnapshotsResponseDto {
   snapshots!: SnapshotDto[];
 }
 
+export class RepositorySnapshotRestoreRequestDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  target?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  include?: string[];
+}
+
 export class LogResponseDto {
   @ApiProperty({ type: String })
   logId!: string;

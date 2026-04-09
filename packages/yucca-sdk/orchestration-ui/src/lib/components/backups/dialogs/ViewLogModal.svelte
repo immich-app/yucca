@@ -20,6 +20,7 @@
   let { logId, onClose }: Props = $props();
 
   const advanced = options.advanced;
+  // svelte-ignore state_referenced_locally
   const log = createLogObserver(logId);
 
   onDestroy(() => log.destroy());
