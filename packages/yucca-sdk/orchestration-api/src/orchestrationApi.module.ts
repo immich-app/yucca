@@ -31,6 +31,7 @@ import { ResticRepository } from './repositories/restic.repository';
 import { RunHistoryRepository } from './repositories/runHistory.repository';
 import { RunningTasksRepository } from './repositories/runningTasks.repository';
 import { ScheduleRepository } from './repositories/schedule.repository';
+import { StorageRepository } from './repositories/storage.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { DatabaseService } from './services/database.service';
@@ -67,6 +68,7 @@ const repositories = [
   RunHistoryRepository,
   RunningTasksRepository,
   ScheduleRepository,
+  StorageRepository,
 ];
 
 const services = [

@@ -3,20 +3,21 @@ import EventIterator from 'event-iterator';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { randomUUID } from 'node:crypto';
-import { createWriteStream, WriteStream } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { type WriteStream } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { from } from 'rxjs';
 import { Tail } from 'tail';
 import { TaskStatus } from '../enum';
 import { DB } from '../schema';
 import { ModuleConfigRepository } from './moduleConfig.repository';
+import { StorageRepository } from './storage.repository';
 
 @Injectable()
 export class RunHistoryRepository {
   constructor(
     @InjectKysely('orchestrator') private db: Kysely<DB>,
     private readonly moduleConfig: ModuleConfigRepository,
+    private readonly storage: StorageRepository,
   ) {}
 
   async createLog(
@@ -30,11 +31,11 @@ export class RunHistoryRepository {
       const start = new Date().toISOString();
       const logFilePath = resolve(this.moduleConfig.get().statePath, 'logs', repositoryId, start + '.jsonl');
 
-      await mkdir(dirname(logFilePath), {
+      await this.storage.mkdir(dirname(logFilePath), {
         recursive: true,
       });
 
-      const log = createWriteStream(logFilePath);
+      const log = this.storage.createWriteStream(logFilePath);
 
       await this.db
         .insertInto('runHistory')
@@ -90,13 +91,12 @@ export class RunHistoryRepository {
     try {
       const logFilePath = resolve(this.moduleConfig.get().statePath, 'logs', 'ephemeral', logId + '.jsonl');
 
-      await mkdir(dirname(logFilePath), {
+      await this.storage.mkdir(dirname(logFilePath), {
         recursive: true,
       });
 
-      const log = createWriteStream(logFilePath);
+      const log = this.storage.createWriteStream(logFilePath);
 
-      // Store the path so getObservable can find it
       this.ephemeralLogs.set(logId, logFilePath);
 
       fn(log, logId)
