@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Run integration tests for yucca-sdk"
+#MISE depends=["yucca-sdk:*:test:integration"]
+set -e

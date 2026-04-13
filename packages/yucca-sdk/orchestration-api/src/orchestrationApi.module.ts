@@ -41,7 +41,7 @@ import { RunHistoryService } from './services/runHistory.service';
 import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
 
-const controllers = [
+export const controllers = [
   AuthController,
   BackendController,
   DevelopmentController,
@@ -54,7 +54,7 @@ const controllers = [
   ScheduleController,
 ];
 
-const repositories = [
+export const repositories = [
   BackendRepository,
   ConfigRepository,
   DatabaseRepository,
@@ -69,7 +69,7 @@ const repositories = [
   ScheduleRepository,
 ];
 
-const services = [
+export const services = [
   AuthService,
   BackendService,
   DatabaseService,

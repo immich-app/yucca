@@ -5,6 +5,7 @@
   "sourceRoot": "src",
   "entryFile": "index",
   "compilerOptions": {
-    "webpack": false
+    "webpack": false,
+    "tsConfigPath": "tsconfig.build.json"
   }
 }
