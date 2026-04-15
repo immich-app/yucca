@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
 import { cp, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -37,6 +37,7 @@ import { ResticRepository } from '../repositories/restic.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
+import { ScheduleService } from './schedule.service';
 
 @Injectable()
 export class RepositoryService {
@@ -47,6 +48,8 @@ export class RepositoryService {
     private readonly config: ConfigRepository,
     private readonly database: DatabaseRepository,
     private readonly restic: ResticRepository,
+    @Inject(forwardRef(() => ScheduleService))
+    private readonly schedule: ScheduleService,
     private readonly runHistory: RunHistoryRepository,
     private readonly repository: RepositoryRepository,
     private readonly repositoryPath: RepositoryPathRepository,
@@ -555,6 +558,10 @@ export class RepositoryService {
                   });
 
                   await this.database.restoreFrom(join(restoredState, 'state.sqlite3'));
+
+                  await this.database.runMigrations();
+                  await this.config.bootstrap();
+                  await this.schedule.bootstrap();
                 }
               } finally {
                 this.tasks.endTask(id);
