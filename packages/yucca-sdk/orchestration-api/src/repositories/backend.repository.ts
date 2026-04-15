@@ -9,13 +9,14 @@ export class BackendRepository {
   constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
   async updateBackend(id: string, configuration: BackendConfiguration) {
-    await this.db
+    return await this.db
       .insertInto('backends')
       .values({
         id,
         configuration: JSON.stringify(configuration),
       })
       .onConflict((oc) => oc.doUpdateSet({ configuration: JSON.stringify(configuration) }))
+      .returningAll()
       .executeTakeFirstOrThrow();
   }
 
