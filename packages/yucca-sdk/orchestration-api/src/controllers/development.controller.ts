@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get } from '@nestjs/common';
+import { Controller, Post } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { ConfigRepository } from '../repositories/config.repository';
@@ -15,12 +15,8 @@ export class DevelopmentController {
     private readonly schedule: ScheduleService,
   ) {}
 
-  @Get()
+  @Post('reset')
   async resetOrchestrator(): Promise<void> {
-    if (process.env['NODE_ENV'] !== 'development') {
-      throw new BadRequestException(`Not in development mode, currently ${process.env['NODE_ENV']}`);
-    }
-
     await sql`PRAGMA foreign_keys = OFF`.execute(this.db);
 
     const tables = await sql<{ name: string }>`
