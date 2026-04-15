@@ -24,6 +24,12 @@ export type BackendDto = {
 export type BackendsResponseDto = {
     backends: BackendDto[];
 };
+export type CreateLocalBackendRequestDto = {
+    path: string;
+};
+export type BackendResponseDto = {
+    backend: BackendDto;
+};
 export type FilesystemListingItemDto = {
     path: string;
     isDirectory: boolean;
@@ -232,9 +238,20 @@ export function getBackends(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function createLocalBackend(createLocalBackendRequestDto: CreateLocalBackendRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: BackendResponseDto;
+    }>("/api/yucca/backend/local", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: createLocalBackendRequestDto
+    })));
+}
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/debug", {
-        ...opts
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/debug/reset", {
+        ...opts,
+        method: "POST"
     }));
 }
 export function getFileListing({ path }: {
