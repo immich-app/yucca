@@ -58,8 +58,21 @@ export class AuthService {
   }
 
   async oidcCallback(request: Request): Promise<{ redirectTo: string; accessToken: string }> {
-    const redirectUri = new URL(env.OIDC_REDIRECT_URI);
-    const url = new URL(`${redirectUri.origin}${request.originalUrl}`);
+    const redirectUri = request.query['redirect_uri'];
+
+    let url: URL;
+    if (typeof redirectUri === 'string') {
+      url = new URL(redirectUri);
+      for (const [key, value] of Object.entries(request.query)) {
+        if (key !== 'redirect_uri' && typeof value === 'string') {
+          url.searchParams.set(key, value);
+        }
+      }
+    } else {
+      const redirectUri = new URL(env.OIDC_REDIRECT_URI);
+      url = new URL(`${redirectUri.origin}${request.originalUrl}`);
+    }
+
     const error = url.searchParams.has('error');
 
     if (error) {
