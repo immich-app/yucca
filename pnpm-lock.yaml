@@ -399,6 +399,9 @@ importers:
       '@types/luxon':
         specifier: ^3.7.1
         version: 3.7.1
+      '@types/ms':
+        specifier: ^2.1.0
+        version: 2.1.0
       '@types/node':
         specifier: ^22.10.7
         version: 22.19.3
