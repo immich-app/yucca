@@ -8,7 +8,7 @@
     modalManager,
     Text,
   } from "@immich/ui";
-  import type { ScheduleDto } from "$lib/fetch-client";
+  import type { RepositoryMetricsDto, ScheduleDto } from "$lib/fetch-client";
   import {
     handlePauseSchedule,
     handleResumeSchedule,
@@ -18,10 +18,11 @@
 
   type Props = {
     schedule?: ScheduleDto;
+    metrics?: RepositoryMetricsDto;
     unconfigured?: boolean;
   };
 
-  const { schedule, unconfigured = false }: Props = $props();
+  const { schedule, metrics, unconfigured = false }: Props = $props();
 
   const onConfigure = () => {
     modalManager.open(CreateImmichBackup, {});
@@ -47,13 +48,13 @@
           <Text color="secondary" class="text-sm">
             Set up Immich automatic backups
           </Text>
-        {:else if schedule?.lastFinished}
-          <Text color="success" class="text-sm">
-            Successful <RelativeTime time={schedule.lastFinished} />
+        {:else if metrics?.lastBackup && (!metrics.lastSuccessfulBackup || metrics.lastBackup > metrics.lastSuccessfulBackup)}
+          <Text color="danger" class="text-sm">
+            Failed <RelativeTime time={metrics.lastBackup} />
           </Text>
-        {:else if schedule?.lastRun}
-          <Text color="warning" class="text-sm">
-            Running since <RelativeTime time={schedule.lastRun} />
+        {:else if metrics?.lastSuccessfulBackup}
+          <Text color="success" class="text-sm">
+            Successful <RelativeTime time={metrics.lastSuccessfulBackup} />
           </Text>
         {:else}
           <Text color="secondary" class="text-sm">Never run</Text>
