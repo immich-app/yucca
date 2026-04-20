@@ -103,7 +103,7 @@
   {:else if stage === 3}
     <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
   {:else if stage === 4}
-    <BackupOptions {onNext} {onCancel} />
+    <BackupOptions onNext={() => (stage = 6)} {onCancel} />
   {:else if stage === 5}
     <ImportKey
       onStart={() => (stage = 0)}
@@ -127,7 +127,7 @@
   {:else if stage === 3}
     <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
   {:else if stage === 4}
-    <BackupOptions {onNext} {onCancel} />
+    <BackupOptions onNext={() => (stage = 6)} {onCancel} />
   {:else if stage === 5}
     <ImportKey
       onStart={() => (stage = 0)}
