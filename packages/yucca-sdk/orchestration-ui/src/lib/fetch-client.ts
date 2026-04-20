@@ -496,15 +496,3 @@ export function removeSchedule(id: string, opts?: Oazapfts.RequestOpts) {
         method: "DELETE"
     }));
 }
-export function addRepositoryToSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
-        ...opts,
-        method: "PUT"
-    }));
-}
-export function removeRepositoryFromSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
-        ...opts,
-        method: "DELETE"
-    }));
-}

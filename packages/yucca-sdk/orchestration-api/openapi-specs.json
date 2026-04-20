@@ -899,66 +899,6 @@
           "Schedule"
         ]
       }
-    },
-    "/api/yucca/schedule/{id}/{repositoryId}": {
-      "put": {
-        "operationId": "addRepositoryToSchedule",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "repositoryId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Schedule"
-        ]
-      },
-      "delete": {
-        "operationId": "removeRepositoryFromSchedule",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "repositoryId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Schedule"
-        ]
-      }
     }
   },
   "info": {
