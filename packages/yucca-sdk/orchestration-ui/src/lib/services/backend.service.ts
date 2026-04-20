@@ -1,4 +1,9 @@
-import { createLocalBackend, type CreateLocalBackendRequestDto, defaults, getBackends } from '$lib/fetch-client';
+import {
+  createLocalBackend,
+  type CreateLocalBackendRequestDto,
+  defaults,
+  getBackends,
+} from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createQuery } from '@tanstack/svelte-query';
@@ -24,7 +29,9 @@ export function handleYuccaLogin() {
 }
 /* eslint-enable unicorn/prefer-global-this */
 
-export const handleCreateLocalBackend = async (dto: CreateLocalBackendRequestDto) => {
+export const handleCreateLocalBackend = async (
+  dto: CreateLocalBackendRequestDto,
+) => {
   try {
     const result = await createLocalBackend(dto);
     await queryClient.invalidateQueries({ queryKey: backendKeys.all });
