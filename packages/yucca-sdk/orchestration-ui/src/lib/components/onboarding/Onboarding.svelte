@@ -15,7 +15,7 @@
   import CreateFirstBackup from "./stages/CreateFirstBackup.svelte";
   import CreateFirstSchedule from "./stages/CreateFirstSchedule.svelte";
   import CreateImmichBackup from "../backups/dialogs/ConfigureImmichBackup.svelte";
-  import SelectRestorePoint from "./stages/SelectRestorePoint.svelte";
+  import RestorePointFlow from "./restore-point-flow/RestorePointFlow.svelte";
 
   type Props = {
     flow?: "default" | "immich-setup" | "immich-restore";
@@ -86,11 +86,7 @@
   {:else if stage === 10}
     <ImportKey onImported={() => (stage = 2)} onCancel={() => (stage = 2)} />
   {:else}
-    <SelectRestorePoint
-      onImportKey={() => (stage = 10)}
-      {onCancel}
-      {onFinish}
-    />
+    <RestorePointFlow onImportKey={() => (stage = 10)} {onCancel} {onFinish} />
   {/if}
 {:else if flow === "immich-setup"}
   <!-- Immich Setup -->
