@@ -9,3 +9,12 @@ export const handleGetRunningTasks = async () => {
     throw error;
   }
 };
+
+export const handleCancelTask = async (parentId: string) => {
+  try {
+    await sdk.cancelTask(parentId);
+  } catch (error) {
+    handleError(error, 'Failed to cancel task');
+    throw error;
+  }
+};

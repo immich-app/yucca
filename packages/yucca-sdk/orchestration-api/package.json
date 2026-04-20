@@ -1,6 +1,6 @@
 {
   "name": "orchestration-api",
-  "version": "0.1.61",
+  "version": "0.1.62",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -15,7 +15,7 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@futo-org/restic-wrapper": "1.1.2",
+    "@futo-org/restic-wrapper": "1.2.0",
     "@nestjs/common": "^11.1.13",
     "@nestjs/core": "^11.1.11",
     "@nestjs/event-emitter": "^3.0.1",
