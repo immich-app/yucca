@@ -1,8 +1,9 @@
-import { Controller, Post } from '@nestjs/common';
+import { BadRequestException, Controller, Post } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { ConfigRepository } from '../repositories/config.repository';
 import { DatabaseRepository } from '../repositories/database.repository';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { DB } from '../schema';
 import { ScheduleService } from '../services/schedule.service';
 
@@ -12,11 +13,16 @@ export class DevelopmentController {
     @InjectKysely('orchestrator') private readonly db: Kysely<DB>,
     private readonly database: DatabaseRepository,
     private readonly config: ConfigRepository,
+    private readonly moduleConfig: ModuleConfigRepository,
     private readonly schedule: ScheduleService,
   ) {}
 
   @Post('reset')
   async resetOrchestrator(): Promise<void> {
+    if (!this.moduleConfig.get().developmentMode) {
+      throw new BadRequestException('Not in development mode');
+    }
+
     await sql`PRAGMA foreign_keys = OFF`.execute(this.db);
 
     const tables = await sql<{ name: string }>`
