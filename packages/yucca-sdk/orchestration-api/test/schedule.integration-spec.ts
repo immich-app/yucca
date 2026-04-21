@@ -3,7 +3,7 @@ import { ModuleConfigRepository } from 'src/repositories/moduleConfig.repository
 import { RepositoryIntegrationImmichRepository } from 'src/repositories/repositoryIntegrationImmich.repository';
 import { RepositoryService } from 'src/services/repository.service';
 import { ScheduleService } from 'src/services/schedule.service';
-import { createTestingModule, waitForEvent, TestContext } from './testUtils';
+import { createTestingModule, TestContext, waitForEvent } from './testUtils';
 
 let ctx: TestContext;
 
@@ -193,9 +193,7 @@ describe('Schedule', () => {
       libraries: 'all',
     });
 
-    await expect(scheduleService.removeSchedule(schedule.id)).rejects.toThrow(
-      'Schedule managed by Immich integration',
-    );
+    await expect(scheduleService.removeSchedule(schedule.id)).rejects.toThrow('Schedule managed by Immich integration');
 
     await immichRepository.delete();
   });

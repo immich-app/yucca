@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { BackendRepository } from 'src/repositories/backend.repository';
 import { RepositoryService } from 'src/services/repository.service';
-import { createTestingModule, waitForEvent, TestContext } from './testUtils';
+import { createTestingModule, TestContext, waitForEvent } from './testUtils';
 
 let ctx: TestContext;
 
@@ -29,16 +29,12 @@ describe('Repository', () => {
       ctx.backendId,
     );
 
-    ctx.resticMock.backup.mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 500)),
-    );
+    ctx.resticMock.backup.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
 
     const pendingBackup = repositoryService.createBackup(repository.id);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    await expect(repositoryService.createBackup(repository.id)).rejects.toThrow(
-      'Task already running!',
-    );
+    await expect(repositoryService.createBackup(repository.id)).rejects.toThrow('Task already running!');
 
     const { task } = await pendingBackup;
     await task;
@@ -52,9 +48,7 @@ describe('Repository', () => {
       ctx.backendId,
     );
 
-    await expect(repositoryService.createBackup(repository.id)).rejects.toThrow(
-      'Missing configuration paths',
-    );
+    await expect(repositoryService.createBackup(repository.id)).rejects.toThrow('Missing configuration paths');
   });
 
   it('updates metrics after successful backup', async () => {
@@ -166,9 +160,7 @@ describe('Repository', () => {
       ctx.backendId,
     );
 
-    ctx.resticMock.backup.mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 500)),
-    );
+    ctx.resticMock.backup.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
 
     const pendingBackup = repositoryService.createBackup(repository.id);
     await new Promise((resolve) => setTimeout(resolve, 50));

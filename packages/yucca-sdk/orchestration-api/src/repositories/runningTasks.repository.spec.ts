@@ -80,9 +80,7 @@ describe(RunningTasksRepository.name, () => {
     });
 
     it('throws when task does not exist', () => {
-      expect(() => sut.updateTask('nonexistent', {})).toThrow(
-        'Task for parent nonexistent does not exist.',
-      );
+      expect(() => sut.updateTask('nonexistent', {})).toThrow('Task for parent nonexistent does not exist.');
     });
   });
 
