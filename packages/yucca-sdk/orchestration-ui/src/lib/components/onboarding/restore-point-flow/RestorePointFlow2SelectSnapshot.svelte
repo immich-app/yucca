@@ -15,6 +15,7 @@
     Text,
     VStack,
   } from "@immich/ui";
+  import RestorePointFlow3ConfirmRestore from "./RestorePointFlow3ConfirmRestore.svelte";
 
   type Props = {
     onBack: () => void;
@@ -29,7 +30,12 @@
 </script>
 
 {#if selectedSnapshot}
-  test
+  <RestorePointFlow3ConfirmRestore
+    onBack={() => (selectedSnapshot = undefined)}
+    {onFinish}
+    {repository}
+    snapshot={selectedSnapshot}
+  />
 {:else}
   <Modal
     title={`Restore from ${repository.name}`}
