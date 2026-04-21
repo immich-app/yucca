@@ -14,7 +14,6 @@ export type LogStatus = {
   progress: number;
   text: string;
   currentFiles: string[];
-  finished: boolean;
 };
 
 export function createLogObserver(logId: string) {
@@ -23,7 +22,6 @@ export function createLogObserver(logId: string) {
       progress: 0,
       text: '',
       currentFiles: [],
-      finished: false,
     },
     events: [],
   });
@@ -51,7 +49,6 @@ export function createLogObserver(logId: string) {
             ? `${event.seconds_remaining} seconds remaining`
             : '',
           currentFiles: event.current_files ?? [],
-          finished: false,
         };
         flush();
         break;
@@ -61,7 +58,6 @@ export function createLogObserver(logId: string) {
           progress: 1,
           text: '',
           currentFiles: [],
-          finished: true, // TODO: must wait for TaskEnd
         };
         flush();
         flush.flush();
