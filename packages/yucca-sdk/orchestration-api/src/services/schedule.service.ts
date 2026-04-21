@@ -23,7 +23,7 @@ import { RepositoryService } from './repository.service';
 @Injectable()
 export class ScheduleService {
   constructor(
-    private readonly repository: RepositoryService, // TODO: invoke indirectly?
+    private readonly repository: RepositoryService,
     private readonly events: EventsGateway,
     private readonly schedule: ScheduleRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
