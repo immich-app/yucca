@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import {
   ScheduleCreateRequestDto,
@@ -36,19 +36,5 @@ export class ScheduleController {
   @ApiParam({ name: 'id', type: String })
   removeSchedule(@Param('id') id: string): Promise<void> {
     return this.service.removeSchedule(id);
-  }
-
-  @Put('/:id/:repositoryId')
-  @ApiParam({ name: 'id', type: String })
-  @ApiParam({ name: 'repositoryId', type: String })
-  addRepositoryToSchedule(@Param('id') id: string, @Param('repositoryId') repositoryId: string): Promise<void> {
-    return this.service.addRepositoryToSchedule(id, repositoryId);
-  }
-
-  @Delete('/:id/:repositoryId')
-  @ApiParam({ name: 'id', type: String })
-  @ApiParam({ name: 'repositoryId', type: String })
-  removeRepositoryFromSchedule(@Param('id') id: string, @Param('repositoryId') repositoryId: string): Promise<void> {
-    return this.service.removeRepositoryFromSchedule(id, repositoryId);
   }
 }

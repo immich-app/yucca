@@ -23,6 +23,7 @@ export const imports = [
   JwtModule.register({
     global: true,
     secret: env.JWT_SECRET,
+    signOptions: { expiresIn: env.JWT_EXPIRES_IN },
   }),
   KyselyModule.forRoot(getKyselyConfig()),
 ];

@@ -92,24 +92,24 @@ export class OrchestrationApiModule {
       throw new Error('config.yuccaProductionApi is missing');
     }
 
-    if (!existsSync(config.statePath)) {
-      mkdirSync(config.statePath, { recursive: true });
-    }
-
-    const database = new Database(resolve(config.statePath, 'state.sqlite3'));
-    database.pragma('journal_mode = WAL');
-
     return {
       module: OrchestrationApiModule,
       imports: [
-        KyselyModule.forRoot([
-          {
-            namespace: 'orchestrator',
-            dialect: new SqliteDialect({
-              database,
-            }),
+        KyselyModule.forRootAsync({
+          namespace: 'orchestrator',
+          useFactory: () => {
+            if (!existsSync(config.statePath!)) {
+              mkdirSync(config.statePath!, { recursive: true });
+            }
+
+            const database = new Database(resolve(config.statePath!, 'state.sqlite3'));
+            database.pragma('journal_mode = WAL');
+
+            return {
+              dialect: new SqliteDialect({ database }),
+            };
           },
-        ]),
+        }),
         EventEmitterModule.forRoot(),
         ScheduleModule.forRoot(),
       ],

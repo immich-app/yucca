@@ -4,7 +4,10 @@
     RunningTaskDto,
     ActiveScheduleItemDto,
   } from "$lib/fetch-client";
-  import { handleGetRunningTasks } from "$lib/services/task.service";
+  import {
+    handleCancelTask,
+    handleGetRunningTasks,
+  } from "$lib/services/task.service";
   import { useRepositories } from "$lib/services/repository.service";
   import { useSchedules } from "$lib/services/schedule.service";
   import {
@@ -27,6 +30,7 @@
     mdiCheckCircleOutline,
     mdiClockOutline,
     mdiLoading,
+    mdiStopCircleOutline,
     mdiTextBoxOutline,
   } from "@mdi/js";
   import { onDestroy, onMount } from "svelte";
@@ -183,6 +187,8 @@
     modalManager.open(ViewLogModal, { logId });
   };
 
+  const onCancel = (parentId: string) => handleCancelTask(parentId);
+
   const subItemIcon = (
     item: ActiveScheduleItemDto,
     subLog: LogStatus | undefined,
@@ -247,7 +253,20 @@
               <Badge size="tiny" color={badge.color}>{badge.label}</Badge>
             </HStack>
             {#if !compact}
-              {@render logButton(subTask?.logId)}
+              <HStack class="items-center gap-2">
+                {@render logButton(subTask?.logId)}
+                {#if subTask && !subTask.completedAt}
+                  <Button
+                    size="tiny"
+                    variant="ghost"
+                    color="danger"
+                    onclick={() => onCancel(item.repositoryId)}
+                  >
+                    <Icon icon={mdiStopCircleOutline} size="14" />
+                    Cancel
+                  </Button>
+                {/if}
+              </HStack>
             {/if}
           </HStack>
           {#if !compact && subLog && subLog.progress > 0}
@@ -306,6 +325,17 @@
                 {/if}
               </Text>
               {@render logButton(task.logId)}
+              {#if !task.completedAt}
+                <Button
+                  size="tiny"
+                  variant="ghost"
+                  color="danger"
+                  onclick={() => onCancel(task.parentId)}
+                >
+                  <Icon icon={mdiStopCircleOutline} size="14" />
+                  Cancel
+                </Button>
+              {/if}
             </HStack>
           </HStack>
 

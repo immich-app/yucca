@@ -59,12 +59,43 @@
         ]
       }
     },
-    "/api/yucca/debug": {
-      "get": {
+    "/api/yucca/backend/local": {
+      "post": {
+        "operationId": "createLocalBackend",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalBackendRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Backend"
+        ]
+      }
+    },
+    "/api/yucca/debug/reset": {
+      "post": {
         "operationId": "resetOrchestrator",
         "parameters": [],
         "responses": {
-          "200": {
+          "201": {
             "description": ""
           }
         },
@@ -758,6 +789,29 @@
         ]
       }
     },
+    "/api/yucca/tasks/{parentId}/cancel": {
+      "post": {
+        "operationId": "cancelTask",
+        "parameters": [
+          {
+            "name": "parentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "RunningTasks"
+        ]
+      }
+    },
     "/api/yucca/schedule": {
       "post": {
         "operationId": "createSchedule",
@@ -868,66 +922,6 @@
           "Schedule"
         ]
       }
-    },
-    "/api/yucca/schedule/{id}/{repositoryId}": {
-      "put": {
-        "operationId": "addRepositoryToSchedule",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "repositoryId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Schedule"
-        ]
-      },
-      "delete": {
-        "operationId": "removeRepositoryFromSchedule",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "repositoryId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Schedule"
-        ]
-      }
     }
   },
   "info": {
@@ -990,6 +984,28 @@
         },
         "required": [
           "backends"
+        ]
+      },
+      "CreateLocalBackendRequestDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "BackendResponseDto": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "$ref": "#/components/schemas/BackendDto"
+          }
+        },
+        "required": [
+          "backend"
         ]
       },
       "FilesystemListingItemDto": {

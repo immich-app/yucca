@@ -62,10 +62,14 @@ export class AuthService {
       throw new InternalServerErrorException('missing nextUrl');
     }
 
+    const baseUrl = this.moduleConfig.get().externalBaseUrl ?? `${request.protocol}://${request.get('Host')}`;
+    const redirectUri = new URL('/api/yucca/auth/oidc/callback', baseUrl);
+
     const callbackUrl = new URL('/api/auth/oidc/callback', this.moduleConfig.get().yuccaProductionApi);
     for (const [key, value] of url.searchParams.entries()) {
       callbackUrl.searchParams.set(key, value);
     }
+    callbackUrl.searchParams.set('redirect_uri', redirectUri.href);
 
     const response = await fetch(callbackUrl, {
       headers: {

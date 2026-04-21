@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
@@ -36,6 +36,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
+import { ScheduleService } from './schedule.service';
 
 @Injectable()
 export class RepositoryService {
@@ -46,6 +47,8 @@ export class RepositoryService {
     private readonly config: ConfigRepository,
     private readonly database: DatabaseRepository,
     private readonly restic: ResticRepository,
+    @Inject(forwardRef(() => ScheduleService))
+    private readonly schedule: ScheduleService,
     private readonly runHistory: RunHistoryRepository,
     private readonly repository: RepositoryRepository,
     private readonly repositoryPath: RepositoryPathRepository,
@@ -346,7 +349,10 @@ export class RepositoryService {
     }
   }
 
-  async createBackup(id: string): Promise<{
+  async createBackup(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<{
     logId: string;
     task: Promise<void>;
   }> {
@@ -377,8 +383,8 @@ export class RepositoryService {
               startTime = Date.now();
 
               try {
-                this.tasks.startTask(id, TaskType.Backup, logId);
-                await this.restic.backup(endpoint, key, paths, log);
+                const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
+                await this.restic.backup(endpoint, key, paths, log, taskSignal);
               } finally {
                 this.tasks.endTask(id);
               }
@@ -499,8 +505,8 @@ export class RepositoryService {
               const { endpoint, key } = await this.getResticParameters(id);
 
               try {
-                this.tasks.startTask(id, TaskType.Restore, logId);
-                await this.restic.restore(endpoint, key, snapshotId, dto, log);
+                const signal = this.tasks.startTask(id, TaskType.Restore, logId);
+                await this.restic.restore(endpoint, key, snapshotId, dto, log, signal);
               } finally {
                 this.tasks.endTask(id);
               }
@@ -539,12 +545,20 @@ export class RepositoryService {
               const { endpoint, key } = await this.getResticParameters(id, backendId);
 
               try {
-                this.tasks.startTask(id, TaskType.Restore, logId);
-                await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log);
+                const signal = this.tasks.startTask(id, TaskType.Restore, logId);
+                await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log, signal);
 
                 if (dto.yuccaConfig) {
                   const target = await this.storage.tempdir();
-                  await this.restic.restore(endpoint, key, snapshotId, { include: [dto.yuccaConfig], target }, log);
+
+                  await this.restic.restore(
+                    endpoint,
+                    key,
+                    snapshotId,
+                    { include: [dto.yuccaConfig], target },
+                    log,
+                    signal,
+                  );
 
                   const { statePath } = this.moduleConfig.get();
                   const restoredState = join(target, dto.yuccaConfig);
@@ -555,6 +569,10 @@ export class RepositoryService {
                   });
 
                   await this.database.restoreFrom(join(restoredState, 'state.sqlite3'));
+
+                  await this.database.runMigrations();
+                  await this.config.bootstrap();
+                  await this.schedule.bootstrap();
                 }
               } finally {
                 this.tasks.endTask(id);
@@ -580,8 +598,8 @@ export class RepositoryService {
     const { endpoint, key } = await this.getResticParameters(id);
 
     try {
-      this.tasks.startTask(id, TaskType.Forget);
-      await this.restic.forget(endpoint, key, snapshotId);
+      const signal = this.tasks.startTask(id, TaskType.Forget);
+      await this.restic.forget(endpoint, key, snapshotId, true, signal);
     } finally {
       this.tasks.endTask(id);
     }

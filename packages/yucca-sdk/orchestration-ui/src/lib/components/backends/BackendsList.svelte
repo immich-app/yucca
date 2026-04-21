@@ -8,11 +8,13 @@
     Heading,
     HStack,
     LoadingSpinner,
+    modalManager,
     Text,
   } from "@immich/ui";
   import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import { options } from "$lib/options";
   import { handleYuccaLogin, useBackends } from "$lib/services/backend.service";
+  import CreateLocalBackend from "./CreateLocalBackend.svelte";
 
   const { advanced } = options;
   const query = useBackends();
@@ -72,7 +74,11 @@
 
   {#if $advanced}
     <HStack>
-      <Button size="small">Setup new local storage (🚧)</Button>
+      <Button
+        size="small"
+        onclick={() => modalManager.open(CreateLocalBackend, {})}
+        >Setup new local storage</Button
+      >
       <Button size="small">Setup new S3 storage (🚧)</Button>
     </HStack>
   {/if}

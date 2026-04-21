@@ -8,7 +8,7 @@
     modalManager,
     Text,
   } from "@immich/ui";
-  import type { ScheduleDto } from "$lib/fetch-client";
+  import type { RepositoryMetricsDto, ScheduleDto } from "$lib/fetch-client";
   import {
     handlePauseSchedule,
     handleResumeSchedule,
@@ -18,9 +18,11 @@
 
   type Props = {
     schedule?: ScheduleDto;
+    metrics?: RepositoryMetricsDto;
+    unconfigured?: boolean;
   };
 
-  const { schedule }: Props = $props();
+  const { schedule, metrics, unconfigured = false }: Props = $props();
 
   const onConfigure = () => {
     modalManager.open(CreateImmichBackup, {});
@@ -42,13 +44,17 @@
 
       <div class="flex-1">
         <Text size="large">Immich Backup</Text>
-        {#if schedule?.lastFinished}
-          <Text color="success" class="text-sm">
-            Successful <RelativeTime time={schedule.lastFinished} />
+        {#if unconfigured}
+          <Text color="secondary" class="text-sm">
+            Set up Immich automatic backups
           </Text>
-        {:else if schedule?.lastRun}
-          <Text color="warning" class="text-sm">
-            Running since <RelativeTime time={schedule.lastRun} />
+        {:else if metrics?.lastBackup && (!metrics.lastSuccessfulBackup || metrics.lastBackup > metrics.lastSuccessfulBackup)}
+          <Text color="danger" class="text-sm">
+            Failed <RelativeTime time={metrics.lastBackup} />
+          </Text>
+        {:else if metrics?.lastSuccessfulBackup}
+          <Text color="success" class="text-sm">
+            Successful <RelativeTime time={metrics.lastSuccessfulBackup} />
           </Text>
         {:else}
           <Text color="secondary" class="text-sm">Never run</Text>
@@ -56,18 +62,24 @@
       </div>
 
       <HStack gap={2}>
-        <Button size="small" variant="outline" onclick={onConfigure}
-          >Configure</Button
-        >
-        {#if schedule}
-          <Button
-            size="small"
-            variant="outline"
-            color={schedule.paused ? "primary" : "danger"}
-            onclick={onTogglePause}
+        {#if unconfigured}
+          <Button size="small" color="primary" onclick={onConfigure}
+            >Set Up</Button
           >
-            {schedule.paused ? "Resume" : "Pause"}
-          </Button>
+        {:else}
+          <Button size="small" variant="outline" onclick={onConfigure}
+            >Configure</Button
+          >
+          {#if schedule}
+            <Button
+              size="small"
+              variant="outline"
+              color={schedule.paused ? "primary" : "danger"}
+              onclick={onTogglePause}
+            >
+              {schedule.paused ? "Resume" : "Pause"}
+            </Button>
+          {/if}
         {/if}
       </HStack>
     </div>

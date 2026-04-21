@@ -6,19 +6,22 @@
     CardBody,
     Heading,
     HStack,
+    modalManager,
     Modal,
     ModalBody,
     ModalFooter,
     Text,
     VStack,
   } from "@immich/ui";
+  import CreateLocalBackend from "$lib/components/backends/CreateLocalBackend.svelte";
 
   type Props = {
     restore?: boolean;
+    onNext: () => void;
     onCancel: () => void;
   };
 
-  const { restore = false, onCancel }: Props = $props();
+  const { restore = false, onNext, onCancel }: Props = $props();
 </script>
 
 <Modal
@@ -45,6 +48,18 @@
           <Text>Hook up your own S3 provider</Text>
         </CardBody>
       </Card> -->
+      <Card
+        class="cursor-pointer"
+        onclick={() =>
+          modalManager.open(CreateLocalBackend, {
+            onCreated: onNext,
+          })}
+      >
+        <CardBody>
+          <Heading size="small">Local Folder</Heading>
+          <Text>Select a local destination</Text>
+        </CardBody>
+      </Card>
     </VStack>
   </ModalBody>
   <ModalFooter>
