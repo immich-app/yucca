@@ -411,6 +411,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 
@@ -516,6 +518,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 
@@ -581,6 +585,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 
