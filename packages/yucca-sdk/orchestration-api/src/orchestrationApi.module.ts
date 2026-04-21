@@ -34,7 +34,7 @@ import { ScheduleRepository } from './repositories/schedule.repository';
 import { StorageRepository } from './repositories/storage.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
-import { DatabaseService } from './services/database.service';
+import { BootstrapService } from './services/bootstrap.service';
 import { IntegrationsService } from './services/integrations.service';
 import { OnboardingService } from './services/onboarding.service';
 import { RepositoryService } from './services/repository.service';
@@ -74,7 +74,7 @@ const repositories = [
 const services = [
   AuthService,
   BackendService,
-  DatabaseService,
+  BootstrapService,
   IntegrationsService,
   OnboardingService,
   RepositoryService,

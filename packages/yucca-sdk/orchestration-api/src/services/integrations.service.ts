@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { join } from 'node:path';
 import { ConfigureImmichIntegrationRequestDto, IntegrationsResponseDto } from '../dto/integrations.dto';
@@ -14,8 +14,6 @@ import { ScheduleService } from './schedule.service';
 
 @Injectable()
 export class IntegrationsService {
-  private readonly logger = new Logger(IntegrationsService.name);
-
   constructor(
     private readonly events: EventsGateway,
     private readonly moduleConfig: ModuleConfigRepository,

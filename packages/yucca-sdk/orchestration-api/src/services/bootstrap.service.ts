@@ -4,15 +4,15 @@ import { DatabaseRepository } from '../repositories/database.repository';
 import { ScheduleService } from './schedule.service';
 
 @Injectable()
-export class DatabaseService implements OnApplicationBootstrap {
+export class BootstrapService implements OnApplicationBootstrap {
   constructor(
-    private readonly repository: DatabaseRepository,
+    private readonly database: DatabaseRepository,
     private readonly config: ConfigRepository,
     private readonly schedule: ScheduleService,
   ) {}
 
   async onApplicationBootstrap() {
-    await this.repository.runMigrations();
+    await this.database.runMigrations();
     await this.config.bootstrap();
     await this.schedule.bootstrap();
   }
