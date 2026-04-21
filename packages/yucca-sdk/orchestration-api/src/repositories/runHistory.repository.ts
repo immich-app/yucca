@@ -20,6 +20,16 @@ export class RunHistoryRepository {
     private readonly storage: StorageRepository,
   ) {}
 
+  private writeError(log: WriteStream, error: unknown) {
+    const events = Array.isArray((error as { error?: unknown })?.error)
+      ? ((error as { error: unknown[] }).error as object[])
+      : [{ message_type: 'error', error: `${error}` }];
+
+    for (const event of events) {
+      log.write(JSON.stringify(event) + '\n');
+    }
+  }
+
   async createLog(
     repositoryId: string,
     fn: (log: WriteStream, logId: string) => Promise<void>,
@@ -65,7 +75,7 @@ export class RunHistoryRepository {
         .catch(async (error) => {
           callback(error);
 
-          log.write(JSON.stringify({ message_type: 'error', error: `${error}` }));
+          this.writeError(log, error);
           log.close();
 
           await this.db
@@ -106,7 +116,7 @@ export class RunHistoryRepository {
         })
         .catch((error) => {
           callback(error);
-          log.write(JSON.stringify({ message_type: 'error', error: `${error}` }));
+          this.writeError(log, error);
           log.close();
         });
     } catch (error) {
