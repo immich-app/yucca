@@ -1,7 +1,5 @@
 import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
-import { cp, mkdtemp } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
@@ -36,6 +34,7 @@ import { RepositoryPathRepository } from '../repositories/repositoryPath.reposit
 import { ResticRepository } from '../repositories/restic.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
+import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
 import { ScheduleService } from './schedule.service';
 
@@ -55,6 +54,7 @@ export class RepositoryService {
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryLocalMetrics: RepositoryLocalMetricsRepository,
     private readonly moduleConfig: ModuleConfigRepository,
+    private readonly storage: StorageRepository,
   ) {}
 
   private async getLocalRepository(
@@ -549,13 +549,21 @@ export class RepositoryService {
                 await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log, signal);
 
                 if (dto.yuccaConfig) {
-                  const target = await mkdtemp(join(tmpdir(), 'yucca'));
-                  await this.restic.restore(endpoint, key, snapshotId, { include: [dto.yuccaConfig], target }, log, signal);
+                  const target = await this.storage.tempdir();
+
+                  await this.restic.restore(
+                    endpoint,
+                    key,
+                    snapshotId,
+                    { include: [dto.yuccaConfig], target },
+                    log,
+                    signal,
+                  );
 
                   const { statePath } = this.moduleConfig.get();
                   const restoredState = join(target, dto.yuccaConfig);
 
-                  await cp(restoredState, statePath, {
+                  await this.storage.cp(restoredState, statePath, {
                     recursive: true,
                     filter: (src) => !src.endsWith('.sqlite3'),
                   });
