@@ -89,9 +89,15 @@
           <Badge size="tiny" color="secondary">
             <FormatBytes bytes={repository.metrics.sizeBytes} />
           </Badge>
-          {#if repository.metrics.lastBackup}
-            <Badge size="tiny" color={"success"}>
-              Successful <RelativeTime time={repository.metrics.lastBackup} />
+          {#if repository.metrics.lastBackup && (!repository.metrics.lastSuccessfulBackup || +new Date(repository.metrics.lastBackup) > +new Date(repository.metrics.lastSuccessfulBackup))}
+            <Badge size="tiny" color="danger">
+              Failed <RelativeTime time={repository.metrics.lastBackup} />
+            </Badge>
+          {:else if repository.metrics.lastSuccessfulBackup}
+            <Badge size="tiny" color="success">
+              Successful <RelativeTime
+                time={repository.metrics.lastSuccessfulBackup}
+              />
             </Badge>
           {:else}
             <Badge size="tiny" color="warning">Never backed up</Badge>
