@@ -2,7 +2,7 @@
   import OnEvents from "$lib/components/util/OnEvents.svelte";
   import type { SocketEvent } from "$lib/events";
   import { createLogObserver } from "$lib/services/log.service.svelte";
-  import { Modal, ModalBody, ProgressBar, Stack, Text } from "@immich/ui";
+  import { Alert, Modal, ModalBody, ProgressBar, Stack, Text } from "@immich/ui";
   import { onDestroy } from "svelte";
 
   type Props = {
@@ -19,7 +19,7 @@
   onDestroy(() => log.destroy());
 
   const onTaskEnd = (event: SocketEvent<{ parentId: string }>) => {
-    if (event.data.parentId === taskId) {
+    if (event.data.parentId === taskId && log.errors.length === 0) {
       onFinish();
     }
   };
@@ -27,9 +27,17 @@
 
 <OnEvents {onTaskEnd} />
 
-<Modal title="Restoring" size="small">
+<Modal
+  title={log.errors.length > 0 ? "Restore failed" : "Restoring"}
+  size="small"
+  onClose={log.errors.length > 0 ? onFinish : undefined}
+>
   <ModalBody>
     <Stack gap={2}>
+      {#each log.errors as error}
+        <Alert color="danger">{error}</Alert>
+      {/each}
+
       <ProgressBar progress={log.status.progress} size="large">
         <Text
           size="small"
