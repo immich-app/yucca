@@ -390,18 +390,14 @@ export class RepositoryService {
               }
             },
             (error) => {
-              const lastBackup = new Date().toString();
-              let lastSuccessfulBackup;
+              const lastBackup = new Date().toISOString();
+              const lastSuccessfulBackup = error ? undefined : lastBackup;
               const lastBackupDuration = startTime ? Date.now() - startTime : undefined;
-
-              if (!error) {
-                lastSuccessfulBackup = lastBackup;
-              }
 
               void this.updateLocalMetrics(id, {
                 resticParameters: { endpoint, key },
                 additionalMetrics: {
-                  lastBackup: new Date().toString(),
+                  lastBackup,
                   lastSuccessfulBackup,
                   lastBackupDuration,
                 },
