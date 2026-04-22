@@ -94,6 +94,10 @@ export class LocalBackend extends Backend {
     };
   }
 
+  async deleteRepository(_id: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   async getResticEndpoint(id: string): Promise<string> {
     return resolve(this.configuration.path, id);
   }

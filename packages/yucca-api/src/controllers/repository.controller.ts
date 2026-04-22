@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
@@ -32,9 +32,9 @@ export class RepositoryController {
   @Get('/:id')
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryGetResponseDto })
-  async getRepository(@Param('id') id: string): Promise<RepositoryGetResponseDto> {
+  async getRepository(@Auth() auth: AuthDto, @Param('id') id: string): Promise<RepositoryGetResponseDto> {
     return {
-      repository: await this.repository.get(id),
+      repository: await this.repository.get(auth, id),
     };
   }
 
@@ -49,10 +49,11 @@ export class RepositoryController {
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryUpdateResponseDto })
   updateRepository(
+    @Auth() auth: AuthDto,
     @Param('id') id: string,
     @Body() dto: RepositoryUpdateRequestDto,
   ): Promise<RepositoryUpdateResponseDto> {
-    return this.repository.update(id, dto);
+    return this.repository.update(auth, id, dto);
   }
 
   @Post('/:id/restic')
@@ -60,5 +61,11 @@ export class RepositoryController {
   @ApiOkResponse({ type: RepositoryCreateResticUrlDto })
   async createResticUrl(@Auth() auth: AuthDto, @Param('id') id: string): Promise<RepositoryCreateResticUrlDto> {
     return this.repository.createUrl(auth, id);
+  }
+
+  @Delete('/:id')
+  @AuthRoute()
+  deleteRepository(@Auth() auth: AuthDto, @Param('id') id: string) {
+    return this.repository.delete(auth, id);
   }
 }

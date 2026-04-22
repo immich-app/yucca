@@ -13,7 +13,10 @@
   import { type LocalRepositoryDto } from "$lib/fetch-client";
   import { mdiClose } from "@mdi/js";
   import FileBrowserModal from "./FileBrowserModal.svelte";
-  import { handleUpdateRepository } from "$lib/services/repository.service";
+  import {
+    handleRemoveRepository,
+    handleUpdateRepository,
+  } from "$lib/services/repository.service";
   import { SvelteSet } from "svelte/reactivity";
 
   interface Props {
@@ -28,14 +31,31 @@
   // svelte-ignore state_referenced_locally
   let paths = new SvelteSet(repository.configuration?.paths ?? []);
 
+  const local = $derived(typeof repository.configuration === "object");
+
   const onSubmit = async () => {
     await handleUpdateRepository(
       repository.id,
       { name, paths: [...paths] },
-      typeof repository.configuration === "object",
+      local,
     );
 
     onClose();
+  };
+
+  const onRemove = async () => {
+    const confirm = await modalManager.showDialog({
+      confirmText: local ? "Remove" : "Delete",
+      title: local ? "Remove Repository" : "Delete Repository",
+      prompt: local
+        ? "Repository will be removed locally."
+        : "This repository will be removed.",
+    });
+
+    if (!confirm) return;
+    onClose();
+
+    await handleRemoveRepository(repository.id, local);
   };
 </script>
 
@@ -88,5 +108,7 @@
         </div>
       </Stack>
     {/if}
+
+    <Button color="danger" onclick={onRemove}>Remove Repository</Button>
   </Stack>
 </FormModal>

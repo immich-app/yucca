@@ -21,6 +21,7 @@ export abstract class Backend {
   abstract updateRepository(id: string, dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto>;
   abstract getRepository(id: string): Promise<RepositoryGetResponseDto>;
   abstract getRepositories(): Promise<RepositoryListResponseDto>;
+  abstract deleteRepository(id: string): Promise<void>;
 
   abstract getResticEndpoint(id: string): Promise<string>;
 

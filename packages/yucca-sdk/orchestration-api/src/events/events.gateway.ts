@@ -18,6 +18,10 @@ export type GatewayEvent =
       repository: Partial<LocalRepositoryDto>;
     }
   | {
+      type: 'RepositoryDelete';
+      repositoryId: string;
+    }
+  | {
       type: 'IntegrationUpdate';
       integrations: IntegrationsResponseDto;
     }

@@ -295,6 +295,15 @@ export class RepositoryService {
     };
   }
 
+  async deleteRepository(id: string): Promise<void> {
+    await this.repository.delete(id);
+
+    this.events.publish({
+      type: 'RepositoryDelete',
+      repositoryId: id,
+    });
+  }
+
   private async getResticParameters(id: string, backendId?: string): Promise<{ endpoint: string; key: Uint8Array }> {
     if (!backendId) {
       const localRepository = await this.repository.get(id);

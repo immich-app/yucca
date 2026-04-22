@@ -1,6 +1,12 @@
 <script lang="ts">
   import type { RepositoryListResponseDto } from "$lib/fetch-client";
-  import { Alert, Button, Heading, LoadingSpinner, modalManager } from "@immich/ui";
+  import {
+    Alert,
+    Button,
+    Heading,
+    LoadingSpinner,
+    modalManager,
+  } from "@immich/ui";
   import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
@@ -20,7 +26,7 @@
   // svelte-ignore state_referenced_locally
   const query = useRepositories(initialData?.repositories);
 
-  const { onRepositoryCreate, onRepositoryUpdate } =
+  const { onRepositoryCreate, onRepositoryUpdate, onRepositoryDelete } =
     useRepositoryEventHandler();
 
   const localRepositories = $derived(
@@ -34,7 +40,7 @@
   const createNewBackup = () => modalManager.show(CreateRepositoryModal);
 </script>
 
-<OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
+<OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onRepositoryDelete} />
 
 {#if query.isLoading}
   <LoadingSpinner />
