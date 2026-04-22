@@ -15,57 +15,20 @@ export class RepositoryService {
     private readonly resticApi: ResticApiRepository,
   ) {}
 
-  async create(auth: AuthDto, dto: RepositoryCreateRequestDto) {
-    return {
-      ...(await this.repositoryRepository.create({
-        userId: auth.id,
-        ...dto,
-      })),
-      metrics: {
-        lastBackup: null,
-        lastSuccessfulBackup: null,
-        sizeBytes: 0,
-      },
-    };
+  create(auth: AuthDto, dto: RepositoryCreateRequestDto) {
+    return this.repositoryRepository.create({ userId: auth.id, ...dto });
   }
 
-  async get(id: string) {
-    return {
-      ...(await this.repositoryRepository.get(id)),
-      metrics: {
-        lastBackup: null,
-        lastSuccessfulBackup: null,
-        sizeBytes: 0,
-      },
-    };
+  get(id: string) {
+    return this.repositoryRepository.get(id);
   }
 
   async getAll(auth: AuthDto) {
-    const repositories = await this.repositoryRepository.getByUser(auth.id);
-
-    return {
-      repositories: repositories.map((repository) => ({
-        ...repository,
-        metrics: {
-          lastBackup: null,
-          lastSuccessfulBackup: null,
-          sizeBytes: 0,
-        },
-      })),
-    };
+    return { repositories: await this.repositoryRepository.getByUser(auth.id) };
   }
 
   async update(id: string, dto: RepositoryUpdateRequestDto) {
-    return {
-      repository: {
-        ...(await this.repositoryRepository.update(id, dto)),
-        metrics: {
-          lastBackup: null,
-          lastSuccessfulBackup: null,
-          sizeBytes: 0,
-        },
-      },
-    };
+    return { repository: await this.repositoryRepository.update(id, dto) };
   }
 
   async createUrl(auth: AuthDto, id: string) {

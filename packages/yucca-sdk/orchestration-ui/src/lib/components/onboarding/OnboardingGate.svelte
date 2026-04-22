@@ -19,6 +19,16 @@
   onMount(() => {
     handleOnboardingStatus().then((data) => (status = data));
   });
+
+  function onSkip() {
+    status = {
+      hasBackend: true,
+      hasOnboardedKey: true,
+      hasBackup: true,
+      hasSchedule: true,
+      hasSkippedExtraConfig: true,
+    };
+  }
 </script>
 
 {#if typeof status === "object"}
@@ -26,17 +36,11 @@
     <Onboarding
       {flow}
       {status}
-      onFinish={() =>
-        onFinish
-          ? onFinish()
-          : (status = {
-              hasBackend: true,
-              hasOnboardedKey: true,
-              hasBackup: true,
-              hasSchedule: true,
-              hasSkippedExtraConfig: true,
-            })}
-      onCancel={onExit}
+      onFinish={() => (onFinish ? onFinish() : onSkip())}
+      onCancel={() => {
+        onSkip();
+        onExit();
+      }}
     />
   {:else}
     {@render children()}

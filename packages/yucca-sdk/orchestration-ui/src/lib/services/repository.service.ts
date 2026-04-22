@@ -1,6 +1,5 @@
 import { sdk } from '$lib';
 import {
-  getRepositories,
   inspectRepositories,
   updateRepository,
   type InspectedLocalRepositoryDto,
@@ -9,6 +8,7 @@ import {
   type RepositoryUpdateRequestDto,
 } from '$lib/fetch-client';
 import { SocketEvent } from '$lib/events';
+import { getProvider } from '$lib/providers';
 import { handleError } from '$lib/utils/handle-error';
 import { queryClient } from '$lib/query-client';
 import { toastManager } from '@immich/ui';
@@ -23,7 +23,10 @@ export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
   createQuery(
     () => ({
       queryKey: repositoryKeys.all,
-      queryFn: () => getRepositories().then(({ repositories }) => repositories),
+      queryFn: () =>
+        getProvider()
+          .getRepositories()
+          .then(({ repositories }) => repositories),
       initialData,
     }),
     () => queryClient,

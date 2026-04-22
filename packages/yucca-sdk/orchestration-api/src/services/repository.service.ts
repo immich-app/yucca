@@ -344,6 +344,18 @@ export class RepositoryService {
           metrics: updatedMetrics,
         },
       });
+
+      if (metrics.sizeBytes) {
+        const { backendId } = await this.repository.get(id);
+        const { configuration } = await this.backend.getBackend(backendId);
+        const backend = Backend.from(configuration, this.moduleConfig.get());
+
+        if (backend.isMetricsCapable()) {
+          await backend.submitMetricRepositorySize(id, metrics.sizeBytes);
+        }
+
+        // ... in the future, this should push to all mirrors too
+      }
     } catch {
       // no-op
     }
@@ -368,7 +380,7 @@ export class RepositoryService {
     const { endpoint, key } = await this.getResticParameters(id);
 
     return new Promise((resolve) => {
-      let startTime: number;
+      const startTime = Date.now();
 
       const task = new Promise<void>(
         (complete, fail) =>
@@ -380,8 +392,6 @@ export class RepositoryService {
                 logId,
               });
 
-              startTime = Date.now();
-
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
                 await this.restic.backup(endpoint, key, paths, log, taskSignal);
@@ -389,10 +399,10 @@ export class RepositoryService {
                 this.tasks.endTask(id);
               }
             },
-            (error) => {
+            async (error) => {
               const lastBackup = new Date().toISOString();
               const lastSuccessfulBackup = error ? undefined : lastBackup;
-              const lastBackupDuration = startTime ? Date.now() - startTime : undefined;
+              const lastBackupDuration = Date.now() - startTime;
 
               void this.updateLocalMetrics(id, {
                 resticParameters: { endpoint, key },
@@ -407,6 +417,14 @@ export class RepositoryService {
                 fail(error);
               } else {
                 complete();
+              }
+
+              const { backendId } = await this.repository.get(id);
+              const { configuration } = await this.backend.getBackend(backendId);
+              const backend = Backend.from(configuration, this.moduleConfig.get());
+
+              if (backend.isMetricsCapable()) {
+                await backend.submitMetricBackupEnd(id, !error, lastBackupDuration);
               }
             },
           ),
