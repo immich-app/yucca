@@ -33,9 +33,9 @@ export class RepositoryService {
   }
 
   async update(auth: AuthDto, id: string, dto: RepositoryUpdateRequestDto) {
-    await this.get(auth, id);
+    const repository = await this.get(auth, id);
 
-    if (!dto.worm) {
+    if (repository.worm && typeof dto.worm === 'boolean' && dto.worm !== repository.worm) {
       throw new BadRequestException('Refusing to disable write-only on repository');
     }
 
