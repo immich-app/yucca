@@ -468,13 +468,22 @@ export class RepositoryService {
     const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
     await this.restic.keyList(endpoint, key);
 
+    let paths: string[] = [];
+    try {
+      const snapshots = await this.restic.snapshots(endpoint, key);
+      snapshots.sort((a, b) => +b.time - +a.time);
+      paths = snapshots[0].paths;
+    } catch {
+      // no-op
+    }
+
     await this.repository.create({
       id: remote.id,
       backendId,
     });
 
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(id, { paths: [] })),
+      ...(await this.getLocalRepository(id, { paths })),
       ...remote,
       backends: {
         primary: {
