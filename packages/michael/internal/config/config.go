@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
