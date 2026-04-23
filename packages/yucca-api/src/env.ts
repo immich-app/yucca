@@ -7,7 +7,7 @@ const schema = z
 
     YUCCA_API_PORT: z.coerce.number().min(1000),
 
-    JWT_SECRET: z.string().min(32),
+    JWT_PRIVATE_KEY: z.string(),
     JWT_EXPIRES_IN: z
       .string()
       .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "1d", "30m", "3600s"')

@@ -41,7 +41,8 @@ function generateRepoUrl(repository: string, writeOnce: boolean) {
       repository,
       writeOnce,
     },
-    env.JWT_SECRET,
+    env.JWT_PRIVATE_KEY,
+    { algorithm: 'ES256' },
   );
 
   return {

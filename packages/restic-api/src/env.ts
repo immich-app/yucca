@@ -5,7 +5,7 @@ const schema = z.object({
 
   RESTIC_API_PORT: z.coerce.number().min(1000),
 
-  JWT_SECRET: z.string().min(32),
+  JWT_PUBLIC_KEY: z.string(),
 
   S3_ACCESS_KEY_ID: z.string(),
   S3_SECRET_ACCESS_KEY: z.string(),

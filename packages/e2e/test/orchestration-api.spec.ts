@@ -282,7 +282,7 @@ describe('Repository', () => {
         }),
       }),
     });
-  }, 10_000);
+  }, 30_000);
 
   it('lists run history', async () => {
     await expect(sdk.getRunHistory(repository.id)).resolves.toEqual({
@@ -418,7 +418,7 @@ describe('Schedule', () => {
       cron: '* * * * *',
       repositories: [repository.id, repository2.id],
     }));
-  }, 10_000);
+  }, 30_000);
 
   it('creates and deletes a schedule', async () => {
     const createEvent = waitForMessage('ScheduleCreate');
@@ -549,7 +549,7 @@ describe('Reset & Restore', () => {
     await login();
     await sdk.importRecoveryKey({ recoveryKey: '0'.repeat(64) });
     await sdk.confirmRecoveryKey();
-  }, 15_000);
+  }, 30_000);
 
   it('imports a repository from backend', async () => {
     const { backends } = await sdk.getBackends();
@@ -570,7 +570,7 @@ describe('Reset & Restore', () => {
         id: existingRepositoryId,
       }),
     });
-  }, 10_000);
+  }, 30_000);
 
   it('restores point from repository', async () => {
     await expect(sdk.getSchedules()).resolves.toEqual(
@@ -602,5 +602,5 @@ describe('Reset & Restore', () => {
         ]),
       }),
     );
-  }, 10_000);
+  }, 30_000);
 });

@@ -1,8 +1,13 @@
 package config
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/x509"
+	"encoding/pem"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -11,7 +16,7 @@ import (
 
 type Config struct {
 	Port                int
-	JWTSecret           []byte
+	JWTPublicKey        *ecdsa.PublicKey
 	S3AccessKeyID       string
 	S3SecretAccessKey   string
 	S3Region            string
@@ -38,10 +43,7 @@ func LoadConfig() Config {
 		log.Fatal().Msg("RESTIC_API_PORT must be a number >= 1000")
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if len(jwtSecret) < 32 {
-		log.Fatal().Msg("JWT_SECRET is required and must be at least 32 characters")
-	}
+	jwtPublicKey := parseES256PublicKey(os.Getenv("JWT_PUBLIC_KEY"))
 
 	s3AccessKeyID := os.Getenv("S3_ACCESS_KEY_ID")
 	if s3AccessKeyID == "" {
@@ -106,7 +108,7 @@ func LoadConfig() Config {
 
 	return Config{
 		Port:                port,
-		JWTSecret:           []byte(jwtSecret),
+		JWTPublicKey:        jwtPublicKey,
 		S3AccessKeyID:       s3AccessKeyID,
 		S3SecretAccessKey:   s3SecretAccessKey,
 		S3Region:            s3Region,
@@ -122,4 +124,30 @@ func LoadConfig() Config {
 		LogLevel:            logLevel,
 		LogPretty:           logPretty,
 	}
+}
+
+func parseES256PublicKey(key string) *ecdsa.PublicKey {
+	if key == "" {
+		log.Fatal().Msg("JWT_PUBLIC_KEY is required")
+	}
+
+	block, _ := pem.Decode([]byte(key))
+	if block == nil {
+		log.Fatal().Msg("JWT_PUBLIC_KEY must be a PEM-encoded ECDSA P-256 public key")
+	}
+
+	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		log.Fatal().Err(err).Msg("JWT_PUBLIC_KEY could not be parsed")
+	}
+
+	pub, ok := parsed.(*ecdsa.PublicKey)
+	if !ok {
+		log.Fatal().Msg("JWT_PUBLIC_KEY must be an ECDSA public key")
+	}
+	if pub.Curve != elliptic.P256() {
+		log.Fatal().Msg("JWT_PUBLIC_KEY must use the P-256 curve (ES256)")
+	}
+
+	return pub
 }

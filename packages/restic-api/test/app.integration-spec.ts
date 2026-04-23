@@ -31,10 +31,14 @@ describe('AppController (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    const jwtService = app.get(JwtService);
+    const signer = new JwtService({
+      privateKey: process.env.JWT_PRIVATE_KEY,
+      signOptions: { algorithm: 'ES256' },
+    });
+
     repository = randomUUID();
-    authHeader = makeAuthHeader(jwtService.sign({ user: randomUUID(), repository, writeOnce: false }));
-    wormAuthHeader = makeAuthHeader(jwtService.sign({ user: randomUUID(), repository, writeOnce: true }));
+    authHeader = makeAuthHeader(signer.sign({ user: randomUUID(), repository, writeOnce: false }));
+    wormAuthHeader = makeAuthHeader(signer.sign({ user: randomUUID(), repository, writeOnce: true }));
   });
 
   describe('POST /:path', () => {
