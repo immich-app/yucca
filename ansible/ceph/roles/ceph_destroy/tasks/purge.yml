@@ -1,0 +1,90 @@
+---
+# Phase 4: Purge Ceph from all nodes using cephadm
+# This removes all containers, config, and cluster state.
+#
+# cephadm rm-cluster only purges ONE FSID at a time. Join nodes can accumulate
+# containers from multiple cluster FSIDs (e.g., failed bootstrap + rebuild).
+# We discover ALL FSIDs present on each node and purge each one.
+
+- name: Discover all Ceph FSIDs on this node
+  ansible.builtin.shell: |
+    set -o pipefail
+    FSIDS=""
+
+    # Source 1: running ceph cluster
+    LIVE=$(timeout 10 ceph fsid 2>/dev/null || true)
+    [ -n "$LIVE" ] && FSIDS="$LIVE"
+
+    # Source 2: ceph.conf
+    CONF=$(grep -oP '(?<=fsid = )[a-f0-9-]+' /etc/ceph/ceph.conf 2>/dev/null || true)
+    [ -n "$CONF" ] && FSIDS="$FSIDS $CONF"
+
+    # Source 3: /var/lib/ceph directories (each FSID has a subdirectory)
+    if [ -d /var/lib/ceph ]; then
+      for d in /var/lib/ceph/*/; do
+        DIRNAME=$(basename "$d")
+        if echo "$DIRNAME" | grep -qP '^[a-f0-9]{8}-'; then
+          FSIDS="$FSIDS $DIRNAME"
+        fi
+      done
+    fi
+
+    # Source 4: podman containers with ceph FSID in their name
+    UUID_RE='[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
+    for name in $(podman ps -a --format '{{ '{{' }}.Names{{ '}}' }}' 2>/dev/null \
+        | grep -oP "$UUID_RE" || true); do
+      FSIDS="$FSIDS $name"
+    done
+
+    # Source 5: systemd units referencing ceph FSIDs
+    for unit in $(systemctl list-units --all --no-legend 'ceph-*' 2>/dev/null \
+        | grep -oP "$UUID_RE" || true); do
+      FSIDS="$FSIDS $unit"
+    done
+
+    # Deduplicate — output nothing if no FSIDs found
+    echo "$FSIDS" | tr ' ' '\n' | sort -u | grep -P '^[a-f0-9]{8}-' || true
+  args:
+    executable: /bin/bash
+  register: discovered_fsids
+  changed_when: false
+
+- name: Show discovered FSIDs
+  ansible.builtin.debug:
+    msg: "FSIDs found on {{ hostname_short }}: {{ discovered_fsids.stdout_lines | default(['none']) }}"
+
+- name: Purge each Ceph cluster FSID from this node
+  ansible.builtin.shell: |
+    FSID="{{ item }}"
+    echo "Purging FSID: $FSID"
+    cephadm rm-cluster --fsid "$FSID" --force 2>&1
+  loop: "{{ discovered_fsids.stdout_lines | default([]) }}"
+  when:
+    - discovered_fsids.stdout_lines | default([]) | length > 0
+    - item | length > 0
+  register: purge_results
+  changed_when: purge_results.rc | default(1) == 0
+
+- name: Show purge results
+  ansible.builtin.debug:
+    msg: "{{ item.stdout_lines | default(['Nothing to purge']) }}"
+  loop: "{{ purge_results.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default('unknown') }}"
+  when: item.stdout is defined
+
+- name: Remove any remaining Ceph podman containers
+  ansible.builtin.shell: |
+    set -o pipefail
+    REMOVED=0
+    for ctr in $(podman ps -a --format '{{ '{{' }}.Names{{ '}}' }}' 2>/dev/null | grep -i ceph || true); do
+      echo "Removing container: $ctr"
+      podman stop "$ctr" 2>/dev/null || true
+      podman rm -f "$ctr" 2>/dev/null || true
+      REMOVED=$((REMOVED+1))
+    done
+    if [ $REMOVED -eq 0 ]; then echo "No orphaned Ceph containers"; fi
+  args:
+    executable: /bin/bash
+  register: container_cleanup
+  changed_when: "'Removing container' in container_cleanup.stdout"

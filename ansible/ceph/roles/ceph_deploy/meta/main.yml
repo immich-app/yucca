@@ -1,0 +1,18 @@
+---
+# Advisory: os_tuning and hardware_tuning should run before this role.
+# Not declared as hard dependencies because the tuning playbooks are
+# separate operational steps, not automatic prerequisites.
+#
+# Execution order:
+#   1. provision_host (bare metal → Debian)
+#   2. os_tuning (sysctl, ulimits)
+#   3. hardware_tuning (I/O scheduler, readahead)
+#   4. ceph_deploy (this role)
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: ceph_deploy
+  description: Deploy Ceph Tentacle cluster via cephadm
+  min_ansible_version: "2.19"

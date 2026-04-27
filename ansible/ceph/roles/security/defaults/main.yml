@@ -1,0 +1,48 @@
+---
+# Security hardening defaults for Ceph nodes
+
+# --- Firewall (nftables) ---
+ceph_firewall_enabled: true
+
+# Trusted source networks allowed to reach Ceph services.
+# RFC1918 + Tailscale CGNAT. Loopback is always allowed via iifname "lo".
+ceph_firewall_trusted_networks:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 100.64.0.0/10
+
+# Ports to open (derived from Ceph service layout)
+ceph_firewall_mon_ports: [3300, 6789]
+ceph_firewall_osd_port_range: "6800-7300"
+ceph_firewall_rgw_port: "{{ ceph_rgw_port | default(443) }}"
+ceph_firewall_dashboard_port: 8443
+ceph_firewall_prometheus_port: "{{ ceph_prometheus_port | default(9095) }}"
+ceph_firewall_grafana_port: "{{ ceph_grafana_port | default(3000) }}"
+ceph_firewall_alertmanager_port: "{{ ceph_alertmanager_port | default(9093) }}"
+ceph_firewall_node_exporter_port: 9100
+ceph_firewall_mgr_exporter_port: 9283
+ceph_firewall_ceph_exporter_port: 9926
+
+# --- Optional service gateways (disabled by default) ---
+
+# iSCSI gateway — block storage for non-native clients
+ceph_firewall_iscsi_enabled: false
+ceph_firewall_iscsi_port: 3260
+ceph_firewall_iscsi_api_port: 5000
+
+# NFS-Ganesha — CephFS export for NFS clients
+ceph_firewall_nfs_enabled: false
+ceph_firewall_nfs_port: 2049
+ceph_firewall_nfs_mgmt_port: 12049
+
+# Allow SSH from any source (true) or restrict to trusted networks (false).
+# Default true for dev/bootstrapping. Set false in production once
+# management networks are confirmed.
+ceph_firewall_ssh_any_source: true
+
+# --- SSH hardening ---
+ceph_ssh_max_auth_tries: 3
+ceph_ssh_permit_root_login: prohibit-password
+ceph_ssh_allowed_users: "ansible-iac ops root"
+# root is needed for cephadm orchestrator SSH between nodes

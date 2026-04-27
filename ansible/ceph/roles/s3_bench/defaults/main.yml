@@ -1,0 +1,33 @@
+---
+# S3 benchmark defaults
+#
+# Runs s3bench.py on each ceph_node against its local RGW endpoint.
+# Results land in {{ s3bench_log_dir }} on each node and are fetched
+# to {{ playbook_dir }}/bench/ on the controller.
+
+# Benchmark parameters
+s3bench_bucket: s3bench
+s3bench_object_size_mb: 16
+s3bench_num_objects: 1000
+s3bench_concurrency: 8
+s3bench_ops: put             # put, get, delete, or mixed
+s3bench_key_prefix: "bench"
+
+# Per-node key offset spacing — ensures non-overlapping keys when
+# running in parallel across multiple nodes. Node N gets offset
+# N * s3bench_key_offset_stride.
+s3bench_key_offset_stride: 100000
+
+# RGW endpoint (per-node, uses local RGW)
+s3bench_endpoint_scheme: "{{ ceph_rgw_scheme | default('https') }}"
+s3bench_endpoint_port: "{{ ceph_rgw_port | default(443) }}"
+s3bench_ssl_verify: false
+
+# S3 credentials — uses the svc-yucca-restic user by default.
+# Override with dedicated bench user if desired.
+s3bench_s3_user: "{{ ceph_rgw_s3_user_uid | default('svc-yucca-restic') }}"
+
+# Output
+s3bench_log_dir: /var/log/s3bench
+s3bench_fetch_results: true
+s3bench_local_results_dir: "{{ playbook_dir }}/bench"

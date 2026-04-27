@@ -4,7 +4,32 @@ node_modules
 .env.local
 .env
 
+# Exception: tf/.env is committed — contains only op:// references to 1P items,
+# no literal secrets. Resolved at runtime by `op run --env-file=tf/.env -- ...`.
+!tf/.env
+
 mise.local.toml
 
 dist/
 packages/michael/michael
+
+# OpenTofu / Terraform
+# .terraform.lock.hcl IS committed for reproducibility
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfvars.local
+# terragrunt-generated backend.tf contains absolute per-operator paths
+**/backend.tf
+
+# Ansible runtime artifacts
+ansible/*/ansible.log
+ansible/*/ansible.*.log
+ansible/*/.ansible/
+ansible/*/.ansible_facts_cache/
+ansible/*/.venv/
+
+# Lens / decision-support artifacts are controller-local notes, not repo code.
+# Per-project: kept outside the repo (e.g., ~/Projects/immich/yucca-ceph-import/analysis/
+# on operator workstation, but not tracked).
+analysis/

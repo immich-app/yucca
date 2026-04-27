@@ -1,0 +1,91 @@
+---
+# Post-reboot verification for systemd-networkd migration.
+# All checks are read-only assertions.
+
+- name: Check systemd-networkd is active
+  ansible.builtin.systemd:
+    name: systemd-networkd.service
+  register: networkd_svc
+
+- name: Assert systemd-networkd is running
+  ansible.builtin.assert:
+    that:
+      - networkd_svc.status.ActiveState == 'active'
+    fail_msg: >-
+      systemd-networkd is not active ({{ networkd_svc.status.ActiveState }}).
+      Check: journalctl -u systemd-networkd
+    success_msg: "systemd-networkd is active"
+
+- name: Check networking.service state
+  ansible.builtin.systemd:
+    name: networking.service
+  register: ifupdown_svc
+
+- name: Assert ifupdown is not actively running
+  ansible.builtin.assert:
+    that:
+      - ifupdown_svc.status.SubState in ['exited', 'dead']
+    fail_msg: >-
+      networking.service is {{ ifupdown_svc.status.ActiveState }}/{{ ifupdown_svc.status.SubState }}.
+      Expected exited (oneshot from boot) or dead (disabled).
+    success_msg: >-
+      ifupdown: {{ ifupdown_svc.status.ActiveState }}/{{ ifupdown_svc.status.SubState }}
+      (no running daemon)
+
+- name: Check bond0 IP address
+  ansible.builtin.shell: |
+    set -o pipefail
+    ip -4 addr show {{ networkd_bond_name }} | grep -oP 'inet \K[0-9.]+'
+  args:
+    executable: /bin/bash
+  register: bond0_ip_check
+  changed_when: false
+
+- name: Assert bond0 has expected IP
+  ansible.builtin.assert:
+    that:
+      - bond_ip in bond0_ip_check.stdout
+    fail_msg: "bond0 IP mismatch: expected {{ bond_ip }}, got {{ bond0_ip_check.stdout | trim }}"
+    success_msg: "bond0 IP: {{ bond_ip }}"
+
+- name: Check bond member interfaces
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat /proc/net/bonding/{{ networkd_bond_name }} \
+      | grep 'Slave Interface' \
+      | awk '{print $NF}' \
+      | sort
+  args:
+    executable: /bin/bash
+  register: bond_members
+  changed_when: false
+
+- name: Assert bond members are present
+  ansible.builtin.assert:
+    that:
+      - item in bond_members.stdout
+    fail_msg: "Bond member {{ item }} missing from {{ networkd_bond_name }}"
+    success_msg: "Bond member {{ item }} present"
+  loop: "{{ bond_interfaces }}"
+
+- name: Check gateway reachability
+  ansible.builtin.command: "ping -c 2 -W 3 {{ gateway }}"
+  changed_when: false
+  failed_when: false
+  register: gw_ping
+
+- name: Assert gateway is reachable
+  ansible.builtin.assert:
+    that:
+      - gw_ping.rc == 0
+    fail_msg: "Gateway {{ gateway }} unreachable"
+    success_msg: "Gateway {{ gateway }} reachable"
+
+- name: Show networkctl status
+  ansible.builtin.command: "networkctl status {{ networkd_bond_name }}"
+  register: networkctl_out
+  changed_when: false
+
+- name: Report bond status
+  ansible.builtin.debug:
+    msg: "{{ networkctl_out.stdout_lines }}"

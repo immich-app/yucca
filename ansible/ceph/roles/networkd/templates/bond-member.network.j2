@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+# Bond member: {{ member_interface }} -> {{ networkd_bond_name }}
+
+[Match]
+Name={{ member_interface }}
+
+[Network]
+Bond={{ networkd_bond_name }}

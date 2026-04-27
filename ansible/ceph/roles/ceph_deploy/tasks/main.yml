@@ -1,0 +1,43 @@
+---
+# Ceph Tentacle deployment via cephadm
+# Phases: prerequisites -> bootstrap -> join nodes -> placement -> OSDs -> verify
+
+- name: Phase 1 - Prerequisites
+  ansible.builtin.import_tasks: prerequisites.yml
+  tags: [prerequisites]
+
+- name: Phase 2 - Bootstrap cluster
+  ansible.builtin.import_tasks: bootstrap.yml
+  tags: [bootstrap]
+
+- name: Phase 3 - Join nodes
+  ansible.builtin.import_tasks: join.yml
+  tags: [join]
+
+- name: Phase 4 - MON/MGR placement
+  ansible.builtin.import_tasks: placement.yml
+  tags: [placement]
+
+- name: Phase 4.5 - Ensure block.db LVM exists
+  ansible.builtin.import_tasks: lvm-setup.yml
+  tags: [lvm, osds]
+
+- name: Phase 5 - Create OSDs
+  ansible.builtin.import_tasks: osds.yml
+  tags: [osds]
+
+- name: Phase 5.5 - CRUSH device-class rules
+  ansible.builtin.import_tasks: crush-rules.yml
+  tags: [crush, osds]
+
+- name: Phase 5.75 - RadosGW (S3 Object Gateway)
+  ansible.builtin.import_tasks: rgw.yml
+  tags: [rgw]
+
+- name: Phase 5.8 - Monitoring stack
+  ansible.builtin.import_tasks: monitoring.yml
+  tags: [monitoring]
+
+- name: Phase 6 - Verify cluster
+  ansible.builtin.import_tasks: verify.yml
+  tags: [verify]

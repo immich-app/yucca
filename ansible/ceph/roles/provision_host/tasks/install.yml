@@ -1,0 +1,27 @@
+---
+# Phase 4: Base OS install via debootstrap
+#
+# Idempotent via stat check on /mnt/etc/debian_version. If that file
+# already exists we trust that a previous debootstrap run succeeded
+# and skip. A failed debootstrap leaves /mnt partially populated but
+# without /etc/debian_version, so re-runs will re-bootstrap.
+
+- name: Check for existing debootstrap result
+  ansible.builtin.stat:
+    path: "{{ provision_mnt }}/etc/debian_version"
+  register: debian_version_stat
+
+- name: Debootstrap into target root
+  ansible.builtin.command: >-
+    debootstrap --arch amd64 {{ provision_debian_release }}
+    {{ provision_mnt }} {{ provision_debian_mirror }}
+  when: not debian_version_stat.stat.exists
+  changed_when: true
+  # Debootstrap downloads a lot of packages — give it room to breathe.
+  async: 1800
+  poll: 15
+
+- name: Announce skip
+  ansible.builtin.debug:
+    msg: "{{ provision_mnt }}/etc/debian_version already exists — skipping debootstrap."
+  when: debian_version_stat.stat.exists

@@ -1,0 +1,11 @@
+---
+# Runs after provision_host, before ceph_deploy.
+# Requires ansible-iac SSH access (set up during provisioning).
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: baseline
+  description: Post-boot OS baseline — ops user, packages, hosts, services
+  min_ansible_version: "2.19"

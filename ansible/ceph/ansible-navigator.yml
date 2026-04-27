@@ -1,0 +1,21 @@
+---
+ansible-navigator:
+  mode: stdout
+  playbook-artifact:
+    enable: true
+    save-as: .artifacts/{playbook_name}-{time_stamp}.json
+
+  ansible:
+    config:
+      path: ansible.cfg
+
+  logging:
+    level: warning
+    file: ansible-navigator.log
+
+  color:
+    enable: true
+    osc4: true
+
+  execution-environment:
+    enabled: false

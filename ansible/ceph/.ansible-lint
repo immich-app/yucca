@@ -1,0 +1,11 @@
+---
+# All roles share the ceph_ variable prefix for consistency across the
+# cluster stack. The var-naming[no-role-prefix] rule expects each role
+# to use its own prefix, which doesn't fit our single-product layout.
+skip_list:
+  - var-naming[no-role-prefix]
+
+# Molecule verify playbooks use relative paths to test template rendering
+# outside of role context. This is intentional and expected.
+exclude_paths:
+  - roles/*/molecule/

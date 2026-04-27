@@ -1,0 +1,27 @@
+---
+# Ceph cluster teardown — reverse order of deploy
+# Phases: preflight → pools → osds → hosts → purge → cleanup
+
+- name: Phase 0 - Preflight safety checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags: [preflight, pools, osds, hosts, purge, cleanup]
+
+- name: Phase 1 - Remove all pools
+  ansible.builtin.import_tasks: pools.yml
+  tags: [pools]
+
+- name: Phase 2 - Remove all OSDs
+  ansible.builtin.import_tasks: osds.yml
+  tags: [osds]
+
+- name: Phase 3 - Remove non-bootstrap hosts
+  ansible.builtin.import_tasks: hosts.yml
+  tags: [hosts]
+
+- name: Phase 4 - Purge cluster from all nodes
+  ansible.builtin.import_tasks: purge.yml
+  tags: [purge]
+
+- name: Phase 5 - Clean up devices and LVM
+  ansible.builtin.import_tasks: cleanup.yml
+  tags: [cleanup]
