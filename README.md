@@ -21,11 +21,11 @@ mise check # run all CI checks
 
 ## Infrastructure
 
-| Start here | Path | Purpose |
-|---|---|---|
-| [`ansible/ceph/README.md`](./ansible/ceph/README.md) | `ansible/ceph/` | Ansible automation for Ceph clusters (sietch, painbox). Deploys + operates via cephadm on bare-metal and Hetzner. |
-| [`tf/README.md`](./tf/README.md) | `tf/` | Terraform/OpenTofu authority for cluster identity, 1P secret items, rendered Ansible inventories. Terragrunt multi-env (`deployment/<env>/<stack>/`). |
-| (coming in follow-up) | `kubernetes/` | Flux GitOps surface for the (future) Talos K8s cluster. |
+| Start here                                           | Path            | Purpose                                                                                                                                               |
+| ---------------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`ansible/ceph/README.md`](./ansible/ceph/README.md) | `ansible/ceph/` | Ansible automation for Ceph clusters (sietch, painbox). Deploys + operates via cephadm on bare-metal and Hetzner.                                     |
+| [`tf/README.md`](./tf/README.md)                     | `tf/`           | Terraform/OpenTofu authority for cluster identity, 1P secret items, rendered Ansible inventories. Terragrunt multi-env (`deployment/<env>/<stack>/`). |
+| (coming in follow-up)                                | `kubernetes/`   | Flux GitOps surface for the (future) Talos K8s cluster.                                                                                               |
 
 **Secrets are managed via the `yucca_tf_*` 1Password vaults.** Runtime reads use a
 read-only service account; TF writes use a superuser service account. See
