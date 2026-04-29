@@ -42,8 +42,9 @@ export const useBackendEventHandler = () => {
 };
 
 export async function handleYuccaLogin() {
-  const { verificationUri } = await oidcDeviceFlow();
-  window.open(verificationUri, '_blank');
+  const response = await oidcDeviceFlow();
+  window.open(response.verificationUri, '_blank');
+  return response;
 }
 
 export const handleCreateLocalBackend = async (

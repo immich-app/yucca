@@ -87,7 +87,7 @@ export class OidcRepository implements OnModuleInit {
     });
 
     return {
-      userCode: response.userCode,
+      userCode: (response.user_code as string) ?? response.userCode,
       verificationUri: (response.verification_uri_complete as string) ?? response.verification_uri,
       tokens: client.pollDeviceAuthorizationGrant(this.deviceConfig, response),
     };

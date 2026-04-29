@@ -20,6 +20,7 @@
   } from "$lib/services/backend.service";
   import OnEvents from "../util/OnEvents.svelte";
   import CreateLocalBackend from "./CreateLocalBackend.svelte";
+  import OAuthDeviceFlow from "./OAuthDeviceFlow.svelte";
 
   const { advanced } = options;
   const query = useBackends();
@@ -28,6 +29,10 @@
   const yuccaBackend = $derived(
     query.data?.find((backend) => backend.type === "yucca"),
   );
+
+  async function getStarted() {
+    modalManager.show(OAuthDeviceFlow, await handleYuccaLogin());
+  }
 </script>
 
 <OnEvents {onBackendCreate} />
@@ -49,7 +54,7 @@
         </CardFooter>
       {:else}
         <CardFooter>
-          <Button onclick={handleYuccaLogin} size="small">Login again</Button>
+          <Button onclick={getStarted} size="small">Login again</Button>
         </CardFooter>
       {/if}
     </Card>
@@ -60,7 +65,7 @@
         <Text>Upsell text here</Text>
       </CardBody>
       <CardFooter>
-        <Button onclick={handleYuccaLogin} size="small">Get started</Button>
+        <Button onclick={getStarted} size="small">Get started</Button>
       </CardFooter>
     </Card>
   {/if}
