@@ -1,7 +1,8 @@
-import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { Controller, Get, Query, Req, Res, Sse } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
+import { type Observable } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
@@ -64,5 +65,10 @@ export class AuthController {
     });
 
     response.redirect(redirectTo);
+  }
+
+  @Sse('/oidc/device')
+  oidcDeviceFlow(): Observable<MessageEvent> {
+    return this.auth.oidcDeviceFlowObservable();
   }
 }

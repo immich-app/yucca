@@ -89,6 +89,11 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/device", {
+        ...opts
+    }));
+}
 export function submitMetricBackupEnd(id: string, submitBackupEndRequestDto: SubmitBackupEndRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(id)}/backup/end`, oazapfts.json({
         ...opts,

@@ -1,6 +1,27 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/yucca/auth/oidc/device": {
+      "get": {
+        "operationId": "oidcDeviceFlow",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceFlowResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/yucca/auth/oidc/login": {
       "get": {
         "operationId": "oidcAuthorize",
@@ -959,6 +980,21 @@
   ],
   "components": {
     "schemas": {
+      "DeviceFlowResponseDto": {
+        "type": "object",
+        "properties": {
+          "userCode": {
+            "type": "string"
+          },
+          "verificationUri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userCode",
+          "verificationUri"
+        ]
+      },
       "BackendType": {
         "type": "string",
         "enum": [

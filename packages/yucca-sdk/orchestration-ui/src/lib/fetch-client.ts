@@ -14,6 +14,10 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "http://localhost:22676"
 };
+export type DeviceFlowResponseDto = {
+    userCode: string;
+    verificationUri: string;
+};
 export type BackendType = "yucca" | "local" | "s3";
 export type BackendDto = {
     id: string;
@@ -218,6 +222,14 @@ export type ScheduleUpdateRequestDto = {
 export type ScheduleUpdateResponseDto = {
     schedule: ScheduleDto;
 };
+export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DeviceFlowResponseDto;
+    }>("/api/yucca/auth/oidc/device", {
+        ...opts
+    }));
+}
 export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/yucca/auth/oidc/login${QS.query(QS.explode({
         next

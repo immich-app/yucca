@@ -30,6 +30,11 @@ const schema = z
     OIDC_LOGOUT_REDIRECT_URI: z.string(),
     OIDC_SCOPE: z.string().default('openid profile email'),
 
+    OIDC_DEVICE_ISSUER: z.url().transform((url) => new URL(url)),
+    OIDC_DEVICE_CLIENT_ID: z.string(),
+    OIDC_DEVICE_ALLOW_INSECURE: z.coerce.boolean().default(false),
+    OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
+
     // temp.
     RESTIC_API_HOST: z.string().default('localhost'),
     RESTIC_API_PORT: z.coerce.number().min(1000),

@@ -89,6 +89,20 @@
         ]
       }
     },
+    "/api/auth/oidc/device": {
+      "get": {
+        "operationId": "oidcDeviceFlow",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/metrics/submit/{id}/backup/end": {
       "post": {
         "operationId": "submitMetricBackupEnd",

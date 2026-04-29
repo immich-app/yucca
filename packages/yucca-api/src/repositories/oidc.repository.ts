@@ -4,6 +4,7 @@ import { env } from 'src/env';
 
 export class OidcRepository implements OnModuleInit {
   private config!: client.Configuration;
+  private deviceConfig!: client.Configuration;
 
   async onModuleInit() {
     this.config = await client.discovery(env.OIDC_ISSUER, env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET, undefined, {
@@ -13,6 +14,16 @@ export class OidcRepository implements OnModuleInit {
     if (env.OIDC_REQUIRE_PKCE && !this.config.serverMetadata().supportsPKCE()) {
       throw new Error('OIDC server does not support PKCE while OIDC_REQUIRE_PKCE is true!');
     }
+
+    this.deviceConfig = await client.discovery(
+      env.OIDC_DEVICE_ISSUER,
+      env.OIDC_DEVICE_CLIENT_ID,
+      undefined,
+      undefined,
+      {
+        execute: env.NODE_ENV === 'development' ? [client.allowInsecureRequests] : [],
+      },
+    );
   }
 
   async authorize(
@@ -64,5 +75,21 @@ export class OidcRepository implements OnModuleInit {
       url.searchParams.set('post_logout_redirect_uri', env.OIDC_LOGOUT_REDIRECT_URI);
       return url;
     }
+  }
+
+  async deviceFlow(): Promise<{
+    userCode: string;
+    verificationUri: string;
+    tokens: Promise<client.TokenEndpointResponse & client.TokenEndpointResponseHelpers>;
+  }> {
+    const response = await client.initiateDeviceAuthorization(this.deviceConfig, {
+      scope: env.OIDC_SCOPE,
+    });
+
+    return {
+      userCode: response.userCode,
+      verificationUri: (response.verification_uri_complete as string) ?? response.verification_uri,
+      tokens: client.pollDeviceAuthorizationGrant(this.deviceConfig, response),
+    };
   }
 }

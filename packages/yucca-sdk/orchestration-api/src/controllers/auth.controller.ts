@@ -1,12 +1,19 @@
 import { Controller, Get, Query, Req, Res } from '@nestjs/common';
-import { ApiQuery } from '@nestjs/swagger';
+import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
+import { DeviceFlowResponseDto } from '../dto/auth.dto';
 import { CookieName } from '../enum';
 import { AuthService } from '../services/auth.service';
 
 @Controller('/yucca/auth')
 export class AuthController {
   constructor(readonly auth: AuthService) {}
+
+  @Get('/oidc/device')
+  @ApiOkResponse({ type: DeviceFlowResponseDto })
+  oidcDeviceFlow(): Promise<DeviceFlowResponseDto> {
+    return this.auth.oidcDeviceFlow();
+  }
 
   @Get('/oidc/login')
   @ApiQuery({ name: 'next', type: String })

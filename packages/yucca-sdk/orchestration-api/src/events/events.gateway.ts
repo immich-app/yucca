@@ -1,6 +1,7 @@
 import { OnGatewayConnection, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { EventEmitter } from 'node:events';
 import { Server, Socket } from 'socket.io';
+import { BackendDto } from '../dto/backend.dto';
 import { IntegrationsResponseDto } from '../dto/integrations.dto';
 import { LocalRepositoryDto } from '../dto/repository.dto';
 import { RunningTaskDto } from '../dto/runningTasks.dto';
@@ -8,6 +9,10 @@ import { ScheduleDto } from '../dto/schedule.dto';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
 export type GatewayEvent =
+  | {
+      type: 'BackendCreate';
+      backend: BackendDto;
+    }
   | {
       type: 'RepositoryCreate';
       repository: LocalRepositoryDto;

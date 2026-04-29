@@ -13,16 +13,24 @@
   } from "@immich/ui";
   import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import { options } from "$lib/options";
-  import { handleYuccaLogin, useBackends } from "$lib/services/backend.service";
+  import {
+    handleYuccaLogin,
+    useBackendEventHandler,
+    useBackends,
+  } from "$lib/services/backend.service";
+  import OnEvents from "../util/OnEvents.svelte";
   import CreateLocalBackend from "./CreateLocalBackend.svelte";
 
   const { advanced } = options;
   const query = useBackends();
+  const { onBackendCreate } = useBackendEventHandler();
 
   const yuccaBackend = $derived(
     query.data?.find((backend) => backend.type === "yucca"),
   );
 </script>
+
+<OnEvents {onBackendCreate} />
 
 {#if query.isLoading}
   <LoadingSpinner />

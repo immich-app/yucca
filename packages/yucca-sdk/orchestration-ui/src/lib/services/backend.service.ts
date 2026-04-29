@@ -1,12 +1,14 @@
 import {
   createLocalBackend,
+  type BackendDto,
   type CreateLocalBackendRequestDto,
-  defaults,
   getBackends,
 } from '$lib/fetch-client';
+import { SocketEvent } from '$lib/events';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createQuery } from '@tanstack/svelte-query';
+import { oidcDeviceFlow } from '$lib/fetch-client';
 
 export const backendKeys = {
   all: ['backends'] as const,
@@ -21,21 +23,34 @@ export const useBackends = () =>
     () => queryClient,
   );
 
-/* eslint-disable unicorn/prefer-global-this */
-export function handleYuccaLogin() {
-  const loginUrl = new URL('api/yucca/auth/oidc/login', defaults.baseUrl);
-  loginUrl.searchParams.set('next', window.location.href);
-  window.location.href = loginUrl.href;
+export const useBackendEventHandler = () => {
+  return {
+    onBackendCreate(event: SocketEvent<{ backend: BackendDto }>) {
+      queryClient.setQueryData(
+        backendKeys.all,
+        (data: BackendDto[] | undefined) => {
+          return data
+            ? [
+                ...data.filter((entry) => entry.id !== event.data.backend.id),
+                event.data.backend,
+              ]
+            : void 0;
+        },
+      );
+    },
+  };
+};
+
+export async function handleYuccaLogin() {
+  const { verificationUri } = await oidcDeviceFlow();
+  window.open(verificationUri, '_blank');
 }
-/* eslint-enable unicorn/prefer-global-this */
 
 export const handleCreateLocalBackend = async (
   dto: CreateLocalBackendRequestDto,
 ) => {
   try {
-    const result = await createLocalBackend(dto);
-    await queryClient.invalidateQueries({ queryKey: backendKeys.all });
-    return result;
+    return await createLocalBackend(dto);
   } catch (error) {
     handleError(error, 'Failed to create local backend');
     throw error;
