@@ -22,43 +22,6 @@
         ]
       }
     },
-    "/api/yucca/auth/oidc/login": {
-      "get": {
-        "operationId": "oidcAuthorize",
-        "parameters": [
-          {
-            "name": "next",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/api/yucca/auth/oidc/callback": {
-      "get": {
-        "operationId": "oidcCallback",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
     "/api/yucca/backend": {
       "get": {
         "operationId": "getBackends",

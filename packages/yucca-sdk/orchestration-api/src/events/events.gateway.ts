@@ -55,6 +55,9 @@ export type GatewayEvent =
   | {
       type: 'TaskEnd';
       parentId: string;
+    }
+  | {
+      type: 'DeviceFlowFailure';
     };
 
 type AuthFn = (client: Socket) => Promise<{ user: { isAdmin: boolean } }>;

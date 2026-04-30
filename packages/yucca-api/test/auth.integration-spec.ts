@@ -110,7 +110,7 @@ describe('AuthController (e2e)', () => {
       });
 
       const callbackUrl = headers.get('location')!;
-      expect(callbackUrl).toEqual(expect.stringContaining('http://example.com'));
+      expect(callbackUrl).toEqual(expect.stringContaining('http://localhost:36033'));
     });
   });
 

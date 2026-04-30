@@ -230,18 +230,6 @@ export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/auth/oidc/login${QS.query(QS.explode({
-        next
-    }))}`, {
-        ...opts
-    }));
-}
-export function oidcCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/auth/oidc/callback", {
-        ...opts
-    }));
-}
 export function getBackends(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;

@@ -28,7 +28,6 @@ export class OidcRepository implements OnModuleInit {
 
   async authorize(
     codeChallenge?: string,
-    redirectUri?: string,
     state?: string,
   ): Promise<{ redirectTo: URL; state: string; codeVerifier?: string }> {
     let codeVerifier;
@@ -38,7 +37,7 @@ export class OidcRepository implements OnModuleInit {
     }
 
     const parameters: Record<string, string> = {
-      redirect_uri: redirectUri ?? env.OIDC_REDIRECT_URI,
+      redirect_uri: env.OIDC_REDIRECT_URI,
       scope: env.OIDC_SCOPE,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
