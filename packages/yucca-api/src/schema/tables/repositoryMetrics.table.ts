@@ -10,6 +10,9 @@ export class RepositoryMetricsTable {
   sizeBytes!: number;
 
   @Column({ type: 'timestamp with time zone', nullable: true })
+  lastStarted?: Date;
+
+  @Column({ type: 'timestamp with time zone', nullable: true })
   lastBackup?: Date;
 
   @Column({ type: 'timestamp with time zone', nullable: true })

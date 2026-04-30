@@ -11,6 +11,17 @@ export class MetricsService {
     private readonly metrics: RepositoryMetricsRepository,
   ) {}
 
+  async submitBackupStart(auth: AuthDto, repositoryId: string) {
+    const repository = await this.repositories.get(repositoryId);
+    if (repository.userId !== auth.id) {
+      throw new UnauthorizedException();
+    }
+
+    await this.metrics.save(repositoryId, {
+      lastStarted: new Date(),
+    });
+  }
+
   async submitBackupEnd(auth: AuthDto, repositoryId: string, dto: SubmitBackupEndRequestDto) {
     const repository = await this.repositories.get(repositoryId);
     if (repository.userId !== auth.id) {

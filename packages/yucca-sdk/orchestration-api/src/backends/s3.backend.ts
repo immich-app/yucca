@@ -52,6 +52,10 @@ export class S3Backend extends Backend {
     return `s3:${this.configuration.endpoint}/${id}`;
   }
 
+  submitMetricBackupStart(): Promise<void> {
+    throw new Error('not capable');
+  }
+
   submitMetricBackupEnd(): Promise<void> {
     throw new Error('not capable');
   }

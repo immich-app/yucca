@@ -388,6 +388,10 @@ export class RepositoryService {
 
     const { endpoint, key } = await this.getResticParameters(id);
 
+    const { backendId } = await this.repository.get(id);
+    const { configuration } = await this.backend.getBackend(backendId);
+    const backend = Backend.from(configuration, this.moduleConfig.get());
+
     return new Promise((resolve) => {
       const startTime = Date.now();
 
@@ -400,6 +404,10 @@ export class RepositoryService {
                 task,
                 logId,
               });
+
+              if (backend.isMetricsCapable()) {
+                await backend.submitMetricBackupStart(id);
+              }
 
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
@@ -427,10 +435,6 @@ export class RepositoryService {
               } else {
                 complete();
               }
-
-              const { backendId } = await this.repository.get(id);
-              const { configuration } = await this.backend.getBackend(backendId);
-              const backend = Backend.from(configuration, this.moduleConfig.get());
 
               if (backend.isMetricsCapable()) {
                 await backend.submitMetricBackupEnd(id, !error, lastBackupDuration);
