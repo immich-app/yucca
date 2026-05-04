@@ -47,4 +47,4 @@ if ! op inject -f -i "$TEMPLATE" -o "$TMPFILE"; then
   exit 3
 fi
 
-exec ansible-playbook -i "$CEPH_ENV" --extra-vars "@$TMPFILE" "$@"
+ansible-playbook -i "$CEPH_ENV" --extra-vars "@$TMPFILE" "$@"
