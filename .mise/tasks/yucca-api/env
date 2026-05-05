@@ -23,7 +23,7 @@ export OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI:-http://localhost:36033/api/auth/oi
 export OIDC_LOGOUT_REDIRECT_URI=${OIDC_LOGOUT_REDIRECT_URI:-http://localhost:36033}
 
 export OIDC_DEVICE_ISSUER=${OIDC_DEVICE_ISSUER:-http://localhost:8092}
-export OIDC_DEVICE_CLIENT_ID=${OIDC_DEVICE_CLIENT_ID:-client ID}
+export OIDC_DEVICE_CLIENT_ID=${OIDC_DEVICE_CLIENT_ID:-device client ID}
 export OIDC_DEVICE_CLIENT_SECRET=${OIDC_DEVICE_CLIENT_SECRET:-client secret}
 
 # ... temp

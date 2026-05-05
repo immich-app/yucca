@@ -28,9 +28,17 @@ services:
       start_period: 10s
 
   mock-oidc-provider:
+    build:
+      context: .
+      dockerfile: packages/mock-oidc-provider/Dockerfile
     ports:
       - 8092:80
-    image: ghcr.io/bluecatengineering/mock-oidc-provider
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost/.well-known/openid-configuration > /dev/null']
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
 
   victoria-metrics:
     image: victoriametrics/victoria-metrics:latest
