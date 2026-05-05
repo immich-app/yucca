@@ -2,5 +2,6 @@
 #MISE description="yucca-api: database migrations script"
 #MISE dir="{{config_root}}/packages/yucca-api"
 set -e
+source "$(dirname "$0")/env"
 
 pnpm exec sql-tools -u "postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}" "$@"

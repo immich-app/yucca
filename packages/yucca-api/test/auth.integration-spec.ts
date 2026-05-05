@@ -2,7 +2,9 @@ import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { parse } from 'cookie';
+import { firstValueFrom, ReplaySubject, skip } from 'rxjs';
 import { env } from 'src/env';
+import { AuthService } from 'src/services/auth.service';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { controllers, imports, providers } from '../src/app.module';
@@ -11,6 +13,7 @@ import { testUtils } from './testUtils';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication<App>;
+  let auth: AuthService;
   let user: { id: string; name: string; email: string; sub: string };
   let session: { id: string; accessToken: string };
 
@@ -28,6 +31,8 @@ describe('AuthController (e2e)', () => {
     app.setGlobalPrefix('/api');
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+
+    auth = await moduleFixture.resolve(AuthService);
 
     await testUtils.resetDatabase();
     ({ user, session } = await testUtils.createUser());
@@ -174,5 +179,41 @@ describe('AuthController (e2e)', () => {
         }),
       );
     });
+  });
+
+  describe('GET /auth/oidc/device (SSE)', () => {
+    it('completes device flow and creates user', async () => {
+      const replay = new ReplaySubject<MessageEvent>();
+      const subscription = auth.oidcDeviceFlowObservable().subscribe(replay);
+
+      try {
+        const startMessage = await firstValueFrom(replay);
+        const start = startMessage.data as { type: string; userCode: string; verificationUri: string };
+        expect(start).toEqual({
+          type: 'START',
+          userCode: expect.any(String),
+          verificationUri: expect.any(String),
+        });
+
+        const approveUrl = new URL('/api/form/device', env.OIDC_DEVICE_ISSUER);
+        approveUrl.searchParams.set('user_code', start.userCode);
+        approveUrl.searchParams.set('sub', 'device-flow-user');
+        await fetch(approveUrl);
+
+        const successMessage = await firstValueFrom(replay.pipe(skip(1)));
+        const success = successMessage.data as { type: string; accessToken: string };
+        expect(success).toEqual({
+          type: 'SUCCESS',
+          accessToken: expect.any(String),
+        });
+
+        await expect(testUtils.getUserBySub('device-flow-user')).resolves.toBeTruthy();
+        await expect(testUtils.getUserByAccessToken(success.accessToken)).resolves.toEqual(
+          expect.objectContaining({ sub: 'device-flow-user' }),
+        );
+      } finally {
+        subscription.unsubscribe();
+      }
+    }, 15_000);
   });
 });
