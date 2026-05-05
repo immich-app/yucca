@@ -165,13 +165,20 @@ export class ScheduleService {
 
   async updateSchedule(
     scheduleId: string,
-    { name, paused, cron, repositories }: ScheduleUpdateRequestDto,
+    dto: ScheduleUpdateRequestDto,
   ): Promise<ScheduleUpdateResponseDto> {
     const integration = await this.integrationImmich.get();
     if (integration?.scheduleId === scheduleId) {
       throw new BadRequestException('Schedule managed by Immich integration');
     }
 
+    return this.applyScheduleUpdate(scheduleId, dto);
+  }
+
+  async applyScheduleUpdate(
+    scheduleId: string,
+    { name, paused, cron, repositories }: ScheduleUpdateRequestDto,
+  ): Promise<ScheduleUpdateResponseDto> {
     const linked = new Set(await this.schedule.getRepositoryIds(scheduleId));
 
     const set: Updateable<ScheduleTable> = {
