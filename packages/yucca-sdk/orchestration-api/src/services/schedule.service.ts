@@ -163,12 +163,9 @@ export class ScheduleService {
     };
   }
 
-  async updateSchedule(
-    scheduleId: string,
-    dto: ScheduleUpdateRequestDto,
-  ): Promise<ScheduleUpdateResponseDto> {
+  async updateSchedule(scheduleId: string, dto: ScheduleUpdateRequestDto): Promise<ScheduleUpdateResponseDto> {
     const integration = await this.integrationImmich.get();
-    if (integration?.scheduleId === scheduleId) {
+    if (integration?.scheduleId === scheduleId && !(typeof dto.paused === 'boolean' && Object.keys(dto).length === 1)) {
       throw new BadRequestException('Schedule managed by Immich integration');
     }
 
