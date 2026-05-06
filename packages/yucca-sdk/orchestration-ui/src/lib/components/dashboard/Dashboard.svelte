@@ -1,37 +1,36 @@
 <script lang="ts">
+  import { options } from "$lib/options";
+  import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import {
     Alert,
     Button,
     Card,
     CardBody,
-    getByteUnitString,
     Icon,
     LoadingSpinner,
     Stack,
     Text,
   } from "@immich/ui";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import { mdiBackupRestore } from "@mdi/js";
-  import { options } from "$lib/options";
 
-  import BackupHealth from "./BackupHealth.svelte";
-  import BackupStats from "./BackupStats.svelte";
-  import ActiveJobs from "./ActiveJobs.svelte";
-  import ImmichIntegrationCard from "./ImmichIntegrationCard.svelte";
-  import RecentBackups from "./RecentBackups.svelte";
-  import OnEvents from "../util/OnEvents.svelte";
+  import {
+    useIntegrationEventHandler,
+    useIntegrations,
+  } from "$lib/services/integrations.service";
   import {
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
   import {
-    useIntegrations,
-    useIntegrationEventHandler,
-  } from "$lib/services/integrations.service";
-  import {
-    useSchedules,
     useScheduleEventHandler,
+    useSchedules,
   } from "$lib/services/schedule.service";
+  import ImmichIntegrationCard from "../integrations/immich/draft/ImmichIntegrationCard.svelte";
+  import OnEvents from "../util/OnEvents.svelte";
+  import ActiveJobs from "./ActiveJobs.svelte";
+  import BackupHealth from "./BackupHealth.svelte";
+  import BackupStats from "./BackupStats.svelte";
+  import RecentBackups from "./RecentBackups.svelte";
 
   type Props = {
     onNavigate?: (route: string) => void;

@@ -1,4 +1,9 @@
 <script lang="ts">
+  import type { RepositoryMetricsDto, ScheduleDto } from "$lib/fetch-client";
+  import {
+    handlePauseSchedule,
+    handleResumeSchedule,
+  } from "$lib/services/schedule.service";
   import {
     Button,
     Card,
@@ -8,13 +13,8 @@
     modalManager,
     Text,
   } from "@immich/ui";
-  import type { RepositoryMetricsDto, ScheduleDto } from "$lib/fetch-client";
-  import {
-    handlePauseSchedule,
-    handleResumeSchedule,
-  } from "$lib/services/schedule.service";
-  import CreateImmichBackup from "../backups/dialogs/ConfigureImmichBackup.svelte";
-  import RelativeTime from "../util/RelativeTime.svelte";
+  import RelativeTime from "../../../util/RelativeTime.svelte";
+  import CreateImmichBackup from "./ConfigureImmichBackup.svelte";
 
   type Props = {
     schedule?: ScheduleDto;

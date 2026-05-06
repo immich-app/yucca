@@ -5,7 +5,7 @@
     RepositoryBackendDto,
   } from "$lib/fetch-client";
   import { getBackendActions } from "$lib/services/backend.service";
-  import { Badge, Text } from "@immich/ui";
+  import { Badge, Icon, Text } from "@immich/ui";
   import { mdiCloudOutline, mdiHarddisk, mdiShieldCheckOutline } from "@mdi/js";
   import StackListItem from "../ui/StackListItem.svelte";
 
@@ -31,7 +31,11 @@
   const { LoginAgain } = $derived(getBackendActions(backend));
 </script>
 
-<StackListItem icon={BackendIcons[backend.type]} actions={[LoginAgain]}>
+<StackListItem actions={[LoginAgain]}>
+  {#snippet icon()}
+    <Icon icon={BackendIcons[backend.type]} />
+  {/snippet}
+
   <Text>{BackendNames[backend.type]}</Text>
 
   {#if repositoryBackend?.primary}

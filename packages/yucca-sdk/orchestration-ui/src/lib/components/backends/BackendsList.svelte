@@ -52,7 +52,7 @@
       {/if}
     {/snippet}
 
-    {#each query.data as backend}
+    {#each query.data as backend (backend.id)}
       <BackendItem
         {backend}
         repositoryBackend={repositoryBackends.find(

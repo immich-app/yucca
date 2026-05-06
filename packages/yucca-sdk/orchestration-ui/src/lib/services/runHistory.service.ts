@@ -1,7 +1,9 @@
 import { sdk } from '$lib';
-import { getRunHistory } from '$lib/fetch-client';
-import { handleError } from '$lib/utils/handle-error';
+import ViewLogModal from '$lib/components/backups/dialogs/ViewLogModal.svelte';
+import { getRunHistory, type RunDto } from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
+import { handleError } from '$lib/utils/handle-error';
+import { modalManager, type ActionItem } from '@immich/ui';
 import { createQuery } from '@tanstack/svelte-query';
 
 export const runHistoryKeys = {
@@ -27,4 +29,13 @@ export const handleGetRunHistory = async (id: string) => {
     handleError(error, 'Failed to load run history');
     throw error;
   }
+};
+
+export const getRunActions = (run: RunDto) => {
+  const ViewLog: ActionItem = {
+    title: 'View Log',
+    onAction: () => void modalManager.open(ViewLogModal, { logId: run.id }),
+  };
+
+  return { ViewLog };
 };

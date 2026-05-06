@@ -6,16 +6,16 @@
     handleSkipOnboardingExtraConfig,
   } from "$lib/services/onboarding.service";
   import { onMount } from "svelte";
+  import CreateImmichBackup from "../integrations/immich/draft/ConfigureImmichBackup.svelte";
+  import RestorePointFlow from "./restore-point-flow/RestorePointFlow.svelte";
   import BackupOptions from "./stages/BackupOptions.svelte";
   import ConfirmKey from "./stages/ConfirmKey.svelte";
+  import CreateFirstBackup from "./stages/CreateFirstBackup.svelte";
+  import CreateFirstSchedule from "./stages/CreateFirstSchedule.svelte";
+  import ImportKey from "./stages/ImportKey.svelte";
   import KeyIntro from "./stages/KeyIntro.svelte";
   import SaveKey from "./stages/SaveKey.svelte";
   import Welcome from "./stages/Welcome.svelte";
-  import ImportKey from "./stages/ImportKey.svelte";
-  import CreateFirstBackup from "./stages/CreateFirstBackup.svelte";
-  import CreateFirstSchedule from "./stages/CreateFirstSchedule.svelte";
-  import CreateImmichBackup from "../backups/dialogs/ConfigureImmichBackup.svelte";
-  import RestorePointFlow from "./restore-point-flow/RestorePointFlow.svelte";
 
   type Props = {
     flow?: "default" | "immich-setup" | "immich-restore";

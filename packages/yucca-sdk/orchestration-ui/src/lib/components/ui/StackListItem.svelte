@@ -1,17 +1,11 @@
 <script lang="ts">
   import { hasActions } from "$lib/utils/actions";
-  import {
-    ContextMenuButton,
-    HStack,
-    Icon,
-    type ActionItem,
-    type IconLike,
-  } from "@immich/ui";
+  import { ContextMenuButton, HStack, type ActionItem } from "@immich/ui";
   import { mdiDotsVertical } from "@mdi/js";
   import type { Snippet } from "svelte";
 
   type Props = {
-    icon?: IconLike;
+    icon?: Snippet;
     children: Snippet;
     trailing?: Snippet;
     actions?: ActionItem[];
@@ -25,7 +19,7 @@
     <div
       class="flex h-10 w-10 items-center justify-center rounded-lg bg-subtle text-lg"
     >
-      <Icon {icon} />
+      {@render icon?.()}
     </div>
   {/if}
 
