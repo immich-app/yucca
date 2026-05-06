@@ -21,7 +21,7 @@
   interface Props {
     userCode: string;
     verificationUri: string;
-    onCreate?: () => void;
+    onCreate?: (backendId: string) => void;
     onClose: () => void;
   }
 
@@ -31,7 +31,7 @@
 
   function onBackendCreate(event: SocketEvent<{ backend: BackendDto }>) {
     onBackendCreateHandler(event);
-    onCreate?.();
+    onCreate?.(event.data.backend.id);
     onClose();
   }
 

@@ -51,8 +51,8 @@
         size="small"
         >{backend.isOnline
           ? repositoryBackend.online
-            ? "Available"
-            : "Missing"
+            ? "Active"
+            : "Missing on service"
           : "Offline"}</Badge
       >
     {:else}

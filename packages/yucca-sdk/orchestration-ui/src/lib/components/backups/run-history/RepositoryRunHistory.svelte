@@ -40,7 +40,7 @@
       Recent backup attempts
     {/snippet}
 
-    {#each query.data as run (run.id)}
+    {#each query.data.slice(0, 10) as run (run.id)}
       <RepositoryRunHistoryItem {run} />
     {/each}
   </StackList>

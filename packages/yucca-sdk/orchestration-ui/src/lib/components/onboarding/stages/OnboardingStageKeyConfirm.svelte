@@ -7,7 +7,8 @@
     Modal,
     ModalBody,
     ModalFooter,
-    VStack,
+    Stack,
+    Text,
   } from "@immich/ui";
 
   type Props = {
@@ -27,13 +28,22 @@
   };
 </script>
 
-<Modal size="small" title="Confirm recovery key" onClose={onCancel}>
+<Modal
+  size="small"
+  title="Confirm recovery key"
+  onClose={onCancel}
+  icon={false}
+>
   <ModalBody>
-    <VStack>
+    <Stack>
+      <Text size="small" class="text-muted text-left"
+        >Ensure you've saved the key properly.</Text
+      >
+
       <Field label="Recovery Key">
         <Input bind:value />
       </Field>
-    </VStack>
+    </Stack>
   </ModalBody>
   <ModalFooter>
     <HStack>

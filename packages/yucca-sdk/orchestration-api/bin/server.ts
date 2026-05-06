@@ -7,6 +7,18 @@ async function bootstrap() {
     OrchestrationApiModule.forRoot({
       yuccaProductionApi: 'http://localhost:36033',
       developmentMode: true,
+      immichIntegration: {
+        dataFolders: ['upload', 'profile', 'library', 'backups', 'thumbs', 'encoded-video'],
+        dataPath: '/immich_data',
+        libraries: [
+          {
+            id: 'my-library',
+            name: 'my library',
+            importPaths: ['/immich_library'],
+            exclusionPatterns: [],
+          },
+        ],
+      },
     }),
   );
 

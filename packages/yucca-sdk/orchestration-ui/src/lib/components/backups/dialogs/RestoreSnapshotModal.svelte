@@ -59,7 +59,7 @@
       {#each include as path (path)}
         <HStack
           gap={2}
-          class="items-center py-2 px-4 bg-gray-100 rounded-md border border-gray-200"
+          class="items-center py-2 px-4 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
         >
           <Text class="grow" size="small">{path}</Text>
           <IconButton

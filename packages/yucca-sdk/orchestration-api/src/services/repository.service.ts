@@ -381,16 +381,16 @@ export class RepositoryService {
       throw new BadRequestException('Task already running!');
     }
 
+    const { backendId } = await this.repository.get(id);
+    const { configuration } = await this.backend.getBackend(backendId);
+    const backend = Backend.from(configuration, this.moduleConfig.get());
+
+    const { endpoint, key } = await this.getResticParameters(id);
+
     const paths = await this.repositoryPath.get(id);
     if (paths.length === 0) {
       throw new BadRequestException('Missing configuration paths');
     }
-
-    const { endpoint, key } = await this.getResticParameters(id);
-
-    const { backendId } = await this.repository.get(id);
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
 
     return new Promise((resolve) => {
       const startTime = Date.now();

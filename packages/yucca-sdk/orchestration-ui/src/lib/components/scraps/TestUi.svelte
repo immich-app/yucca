@@ -10,17 +10,19 @@
     AppShellSidebar,
     Heading,
     NavbarItem,
+    Text,
+    ThemeSwitcher,
   } from "@immich/ui";
-  import BackendsList from "../backends/BackendsList.svelte";
-  import BackupsList from "../backups/BackupsList.svelte";
   import {
     mdiBackupRestore,
     mdiClock,
     mdiCog,
     mdiViewDashboard,
   } from "@mdi/js";
-  import ScheduleList from "../schedules/ScheduleList.svelte";
+  import BackendsList from "../backends/BackendsList.svelte";
+  import BackupsList from "../backups/BackupsList.svelte";
   import Dashboard from "../dashboard/Dashboard.svelte";
+  import ScheduleList from "../schedules/ScheduleList.svelte";
 
   const { mock }: { mock: boolean } = $props();
 
@@ -37,13 +39,20 @@
 
 <AppShell>
   <AppShellHeader>
-    <Heading
-      ><img
-        alt="App Name Here"
-        src="/app-name-here.png"
-        class="inline h-12"
-      /></Heading
-    >
+    <div class="flex items-center justify-between w-full px-4 py-2">
+      <Heading>
+        {#if mock}
+          <Text class="h-12 font-bold">FUTO Backups</Text>
+        {:else}
+          <img
+            alt="App Name Here"
+            src="/app-name-here.png"
+            class="inline h-12"
+          />
+        {/if}
+      </Heading>
+      <ThemeSwitcher size="medium" color="secondary" />
+    </div>
   </AppShellHeader>
 
   <AppShellSidebar bind:open>

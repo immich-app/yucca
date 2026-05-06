@@ -17,7 +17,7 @@
     </Stack>
   {/if}
 
-  <Stack gap={0} class="divide-y rounded-2xl border">
+  <Stack gap={0} class="divide-y rounded-2xl border overflow-hidden">
     {@render children()}
   </Stack>
 </Stack>

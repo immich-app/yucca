@@ -6,8 +6,8 @@
     Modal,
     ModalBody,
     ModalFooter,
+    Stack,
     Text,
-    VStack,
   } from "@immich/ui";
   import { mdiImageAlbum, mdiInformation, mdiLock } from "@mdi/js";
 
@@ -15,14 +15,15 @@
     onNext: () => void;
     onImportKey: () => void;
     onCancel: () => void;
+    icon?: boolean;
   };
 
-  const { onNext, onImportKey, onCancel }: Props = $props();
+  const { onNext, onImportKey, onCancel, icon = true }: Props = $props();
 </script>
 
-<Modal size="small" title="Welcome to backups" onClose={onCancel}>
+<Modal size="small" title="Welcome to FUTO Backups" onClose={onCancel} {icon}>
   <ModalBody>
-    <VStack>
+    <Stack>
       <HStack>
         <Icon icon={mdiImageAlbum} class="shrink-0 place-self-start mt-1" />
         <Text>
@@ -43,7 +44,7 @@
           storage.</Text
         >
       </HStack>
-    </VStack>
+    </Stack>
   </ModalBody>
   <ModalFooter>
     <HStack>

@@ -1,21 +1,28 @@
 <script lang="ts">
-  import { Button, Field, FormModal, HStack, Input, Stack } from "@immich/ui";
-  import { modalManager } from "@immich/ui";
   import FileBrowserModal from "$lib/components/backups/dialogs/FileBrowserModal.svelte";
   import { handleCreateLocalBackend } from "$lib/services/backend.service";
+  import {
+    Button,
+    Field,
+    FormModal,
+    HStack,
+    Input,
+    modalManager,
+    Stack,
+  } from "@immich/ui";
 
   interface Props {
     onClose: () => void;
-    onCreated?: () => void;
+    onCreate?: (backendId: string) => void;
   }
 
-  let { onClose, onCreated }: Props = $props();
+  let { onClose, onCreate }: Props = $props();
 
   let path = $state("");
 
   const onSubmit = async () => {
-    await handleCreateLocalBackend({ path });
-    onCreated?.();
+    const { backend } = await handleCreateLocalBackend({ path });
+    onCreate?.(backend.id);
     onClose();
   };
 

@@ -1,18 +1,18 @@
+import CreateLocalBackend from '$lib/components/backends/CreateLocalBackend.svelte';
+import OAuthDeviceFlow from '$lib/components/backends/OAuthDeviceFlow.svelte';
+import { SocketEvent } from '$lib/events';
 import {
   createLocalBackend,
+  getBackends,
+  oidcDeviceFlow,
   type BackendDto,
   type CreateLocalBackendRequestDto,
-  getBackends,
 } from '$lib/fetch-client';
-import { SocketEvent } from '$lib/events';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
-import { createQuery } from '@tanstack/svelte-query';
-import { oidcDeviceFlow } from '$lib/fetch-client';
 import { modalManager, type ActionItem } from '@immich/ui';
-import OAuthDeviceFlow from '$lib/components/backends/OAuthDeviceFlow.svelte';
 import { mdiLogin } from '@mdi/js';
-import CreateLocalBackend from '$lib/components/backends/CreateLocalBackend.svelte';
+import { createQuery } from '@tanstack/svelte-query';
 
 export const backendKeys = {
   all: ['backends'] as const,
@@ -45,10 +45,15 @@ export const useBackendEventHandler = () => {
   };
 };
 
-export const handleYuccaLogin = async () => {
+export const handleYuccaLogin = async (
+  onCreate?: (backendId: string) => void,
+) => {
   try {
     const response = await oidcDeviceFlow();
-    void modalManager.show(OAuthDeviceFlow, response);
+    void modalManager.show(OAuthDeviceFlow, {
+      ...response,
+      onCreate,
+    });
     window.open(response.verificationUri, '_blank');
   } catch (error) {
     handleError(error, 'Failed to start login');
@@ -56,8 +61,10 @@ export const handleYuccaLogin = async () => {
   }
 };
 
-export const handleSetupLocalStorage = () => {
-  void modalManager.show(CreateLocalBackend, {});
+export const handleSetupLocalStorage = (
+  onCreate?: (backendId: string) => void,
+) => {
+  void modalManager.show(CreateLocalBackend, { onCreate });
 };
 
 export const handleCreateLocalBackend = async (
