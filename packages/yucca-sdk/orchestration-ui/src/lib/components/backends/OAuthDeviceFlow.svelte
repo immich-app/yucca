@@ -1,9 +1,22 @@
 <script lang="ts">
-  import { Button, Modal, ModalBody, ModalFooter } from "@immich/ui";
-  import { useBackendEventHandler } from "$lib/services/backend.service";
-  import OnEvents from "../util/OnEvents.svelte";
   import type { SocketEvent } from "$lib/events";
   import type { BackendDto } from "$lib/fetch-client";
+  import { useBackendEventHandler } from "$lib/services/backend.service";
+  import {
+    Button,
+    Code,
+    HStack,
+    IconButton,
+    LoadingSpinner,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    Stack,
+    Text,
+    VStack,
+  } from "@immich/ui";
+  import { mdiContentCopy } from "@mdi/js";
+  import OnEvents from "../util/OnEvents.svelte";
 
   interface Props {
     userCode: string;
@@ -33,12 +46,33 @@
 
 <OnEvents {onBackendCreate} />
 
-<Modal title="Login with FUTO Backups" {onClose}>
+<Modal title="Logging into FUTO Backups" icon={false} {onClose}>
   <ModalBody>
-    If asked, enter the code <code>{userCode}</code>
+    <VStack>
+      <Text>You may be asked or shown the following code:</Text>
+      <Stack direction="row" align="center">
+        <Code class="text-3xl select-all">{userCode}</Code>
+        <IconButton
+          color="secondary"
+          variant="outline"
+          icon={mdiContentCopy}
+          onclick={onCopy}
+          aria-label="Copy code"
+        />
+      </Stack>
+
+      <HStack class="mt-4">
+        <LoadingSpinner />
+        <Text>Waiting for you to confirm login...</Text>
+      </HStack>
+    </VStack>
   </ModalBody>
   <ModalFooter>
-    <Button onclick={onOpen}>Open link again</Button>
-    <Button onclick={onCopy}>Copy code</Button>
+    <HStack fullWidth>
+      <Button shape="round" color="secondary" fullWidth onclick={onClose}>
+        Cancel
+      </Button>
+      <Button shape="round" fullWidth onclick={onOpen}>Open login again</Button>
+    </HStack>
   </ModalFooter>
 </Modal>

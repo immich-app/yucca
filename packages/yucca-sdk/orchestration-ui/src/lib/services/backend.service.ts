@@ -9,6 +9,10 @@ import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createQuery } from '@tanstack/svelte-query';
 import { oidcDeviceFlow } from '$lib/fetch-client';
+import { modalManager, type ActionItem } from '@immich/ui';
+import OAuthDeviceFlow from '$lib/components/backends/OAuthDeviceFlow.svelte';
+import { mdiLogin } from '@mdi/js';
+import CreateLocalBackend from '$lib/components/backends/CreateLocalBackend.svelte';
 
 export const backendKeys = {
   all: ['backends'] as const,
@@ -41,11 +45,20 @@ export const useBackendEventHandler = () => {
   };
 };
 
-export async function handleYuccaLogin() {
-  const response = await oidcDeviceFlow();
-  window.open(response.verificationUri, '_blank');
-  return response;
-}
+export const handleYuccaLogin = async () => {
+  try {
+    const response = await oidcDeviceFlow();
+    void modalManager.show(OAuthDeviceFlow, response);
+    window.open(response.verificationUri, '_blank');
+  } catch (error) {
+    handleError(error, 'Failed to start login');
+    throw error;
+  }
+};
+
+export const handleSetupLocalStorage = () => {
+  void modalManager.show(CreateLocalBackend, {});
+};
 
 export const handleCreateLocalBackend = async (
   dto: CreateLocalBackendRequestDto,
@@ -56,4 +69,15 @@ export const handleCreateLocalBackend = async (
     handleError(error, 'Failed to create local backend');
     throw error;
   }
+};
+
+export const getBackendActions = (backend: BackendDto) => {
+  const LoginAgain: ActionItem = {
+    icon: mdiLogin,
+    title: 'Login again',
+    onAction: () => void handleYuccaLogin(),
+    $if: () => backend.type === 'yucca' && !backend.isOnline,
+  };
+
+  return { LoginAgain };
 };

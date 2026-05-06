@@ -1,6 +1,14 @@
 <script lang="ts">
+  import BackendsList from "$lib/components/backends/BackendsList.svelte";
+  import { type LocalRepositoryDto } from "$lib/fetch-client";
+  import { options } from "$lib/options";
+  import {
+    handleRemoveRepository,
+    handleUpdateRepository,
+  } from "$lib/services/repository.service";
   import {
     Button,
+    Field,
     FormModal,
     HStack,
     IconButton,
@@ -8,16 +16,10 @@
     modalManager,
     Stack,
     Text,
-    Field,
   } from "@immich/ui";
-  import { type LocalRepositoryDto } from "$lib/fetch-client";
   import { mdiClose } from "@mdi/js";
-  import FileBrowserModal from "./FileBrowserModal.svelte";
-  import {
-    handleRemoveRepository,
-    handleUpdateRepository,
-  } from "$lib/services/repository.service";
   import { SvelteSet } from "svelte/reactivity";
+  import FileBrowserModal from "./FileBrowserModal.svelte";
 
   interface Props {
     repository: LocalRepositoryDto;
@@ -57,6 +59,8 @@
 
     await handleRemoveRepository(repository.id, local);
   };
+
+  const { advanced } = options;
 </script>
 
 <FormModal
@@ -110,5 +114,9 @@
     {/if}
 
     <Button color="danger" onclick={onRemove}>Remove Repository</Button>
+
+    {#if advanced}
+      <BackendsList {repository} />
+    {/if}
   </Stack>
 </FormModal>
