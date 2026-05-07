@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { sdk } from "$lib";
+  import { useIntegrations } from "$lib/services/integrations.service";
+  import { useSchedules } from "$lib/services/schedule.service";
+  import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import {
     Alert,
     Checkbox,
@@ -10,11 +14,7 @@
     Text,
   } from "@immich/ui";
   import validate from "cron-validate";
-  import { sdk } from "$lib";
   import { SvelteSet } from "svelte/reactivity";
-  import { useIntegrations } from "$lib/services/integrations.service";
-  import { useSchedules } from "$lib/services/schedule.service";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
 
   interface Props {
     onClose: () => void;

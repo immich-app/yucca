@@ -7,10 +7,10 @@
     useBackendEventHandler,
     useBackends,
   } from "$lib/services/backend.service";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
-  import { Alert, Button, HStack, LoadingSpinner } from "@immich/ui";
+  import { Button, HStack } from "@immich/ui";
   import StackList from "../ui/StackList.svelte";
   import OnEvents from "../util/OnEvents.svelte";
+  import Suspense from "../util/Suspense.svelte";
   import BackendItem from "./BackendItem.svelte";
 
   type Props = {
@@ -38,11 +38,7 @@
 
 <OnEvents {onBackendCreate} />
 
-{#if query.isLoading}
-  <LoadingSpinner />
-{:else if query.isError}
-  <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-{:else if query.isSuccess}
+<Suspense {query}>
   <StackList>
     {#snippet title()}
       {#if repository}
@@ -64,12 +60,14 @@
 
   {#if $advanced}
     <HStack>
-      <Button size="small" variant="outline" onclick={handleYuccaLogin}
+      <Button size="small" variant="outline" onclick={() => handleYuccaLogin()}
         >Login with FUTO Backups</Button
       >
-      <Button size="small" variant="outline" onclick={handleSetupLocalStorage}
-        >New local storage</Button
+      <Button
+        size="small"
+        variant="outline"
+        onclick={() => handleSetupLocalStorage()}>New local storage</Button
       >
     </HStack>
   {/if}
-{/if}
+</Suspense>

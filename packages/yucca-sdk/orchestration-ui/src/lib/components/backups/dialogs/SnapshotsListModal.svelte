@@ -1,8 +1,13 @@
 <script lang="ts">
+  import Suspense from "$lib/components/util/Suspense.svelte";
+  import { type LocalRepositoryDto } from "$lib/fetch-client";
   import {
-    Alert,
+    handleForgetSnapshot,
+    useRemoveSnapshot,
+    useSnapshots,
+  } from "$lib/services/snapshot.service";
+  import {
     IconButton,
-    LoadingSpinner,
     Modal,
     ModalBody,
     modalManager,
@@ -13,16 +18,9 @@
     TableHeading,
     TableRow,
   } from "@immich/ui";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
-  import { type LocalRepositoryDto } from "$lib/fetch-client";
-  import { DateTime } from "luxon";
-  import {
-    handleForgetSnapshot,
-    useRemoveSnapshot,
-    useSnapshots,
-  } from "$lib/services/snapshot.service";
-  import RestoreSnapshotModal from "./RestoreSnapshotModal.svelte";
   import { mdiDeleteOutline, mdiRestore } from "@mdi/js";
+  import { DateTime } from "luxon";
+  import RestoreSnapshotModal from "./RestoreSnapshotModal.svelte";
 
   interface Props {
     repository: LocalRepositoryDto;
@@ -60,11 +58,7 @@
 
 <Modal title={`Snapshots for ${repository.name}`} {onClose}>
   <ModalBody>
-    {#if query.isLoading}
-      <LoadingSpinner />
-    {:else if query.isError}
-      <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-    {:else if query.isSuccess}
+    <Suspense {query}>
       <Table>
         <TableHeader>
           <TableHeading>Snapshot</TableHeading>
@@ -75,8 +69,13 @@
         <TableBody>
           {#each query.data as snapshot (snapshot.id)}
             <TableRow>
-              <TableCell><code class="text-xs">{snapshot.id.slice(0, 12)}</code></TableCell>
-              <TableCell>{DateTime.fromISO(snapshot.time).toRelative()}</TableCell>
+              <TableCell
+                ><code class="text-xs">{snapshot.id.slice(0, 12)}</code
+                ></TableCell
+              >
+              <TableCell
+                >{DateTime.fromISO(snapshot.time).toRelative()}</TableCell
+              >
               <TableCell class="flex gap-1 justify-end">
                 <IconButton
                   icon={mdiRestore}
@@ -98,6 +97,6 @@
           {/each}
         </TableBody>
       </Table>
-    {/if}
+    </Suspense>
   </ModalBody>
 </Modal>

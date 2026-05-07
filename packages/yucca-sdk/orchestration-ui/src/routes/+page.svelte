@@ -54,7 +54,7 @@
   </Stack>
 </div>
 
-<hr class="mb-4" />
+<hr />
 
 {#if mock === "immich"}
   <ImmichTestUi onExit={() => (mock = true)} />

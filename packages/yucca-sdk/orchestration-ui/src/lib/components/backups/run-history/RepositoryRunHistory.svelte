@@ -1,14 +1,13 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { queryClient } from "$lib/query-client";
   import {
     runHistoryKeys,
     useRunHistory,
   } from "$lib/services/runHistory.service";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
-  import { Alert, LoadingSpinner } from "@immich/ui";
   import RepositoryRunHistoryItem from "./RepositoryRunHistoryItem.svelte";
 
   interface Props {
@@ -30,18 +29,16 @@
 
 <OnEvents onTaskStart={temp__invalidate} onTaskEnd={temp__invalidate} />
 
-{#if query.isLoading}
-  <LoadingSpinner />
-{:else if query.isError}
-  <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-{:else if query.isSuccess}
-  <StackList>
-    {#snippet title()}
-      Recent backup attempts
-    {/snippet}
+<Suspense {query}>
+  {#snippet children(runs)}
+    <StackList>
+      {#snippet title()}
+        Recent backup attempts
+      {/snippet}
 
-    {#each query.data.slice(0, 10) as run (run.id)}
-      <RepositoryRunHistoryItem {run} />
-    {/each}
-  </StackList>
-{/if}
+      {#each runs.slice(0, 10) as run (run.id)}
+        <RepositoryRunHistoryItem {run} />
+      {/each}
+    </StackList>
+  {/snippet}
+</Suspense>

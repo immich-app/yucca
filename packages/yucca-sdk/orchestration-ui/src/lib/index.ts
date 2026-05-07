@@ -5,6 +5,7 @@ export { default as OnboardingGate } from './components/onboarding/OnboardingGat
 export { default as ScheduleList } from './components/schedules/ScheduleList.svelte';
 export { default as YuccaContext } from './components/util/YuccaContext.svelte';
 export { default as OnEvents } from './components/util/OnEvents.svelte';
+export { default as ImmichBackupsPage } from './components/integrations/immich/ImmichBackupsPage.svelte';
 export * from './providers';
 
 export * as sdk from './fetch-client';
