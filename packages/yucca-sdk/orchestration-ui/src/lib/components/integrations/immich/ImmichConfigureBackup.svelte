@@ -1,10 +1,10 @@
 <script lang="ts">
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import * as sdk from "$lib/fetch-client";
   import { useIntegrations } from "$lib/services/integrations.service";
   import { useSchedules } from "$lib/services/schedule.service";
   import { handleError } from "$lib/utils/handle-error";
   import {
-    Alert,
     Button,
     Checkbox,
     Field,
@@ -12,14 +12,13 @@
     Heading,
     HStack,
     Input,
-    LoadingSpinner,
     Stack,
     Switch,
     Text,
   } from "@immich/ui";
+  import validateCron from "cron-validate";
+  import cronstrue from "cronstrue";
   import { SvelteSet } from "svelte/reactivity";
-
-  // TODO REFACTOR
 
   interface Props {
     onFinish?: () => void;
@@ -30,14 +29,15 @@
 
   let { onFinish, onCancel, onClose }: Props = $props();
 
-  const integrationsQuery = useIntegrations();
+  const query = useIntegrations();
   const schedulesQuery = useSchedules();
 
   let name = $state("Immich");
   let worm = $state(false);
-  let cron = $state("0 3 * * *");
   let backupConfiguration = $state(true);
   let librariesMode = $state<"all" | "none" | "some">("all");
+
+  let cron = $state("0 3 * * *");
   let scheduleMode = $state<"daily" | "custom">("daily");
   let scheduleHour = $state(3);
   let scheduleMinute = $state(0);
@@ -47,38 +47,15 @@
 
   type FolderItem = { label: string; description?: string; folders: string[] };
 
-  const FOLDER_ITEMS: FolderItem[] = [
-    {
-      label: "Photos and videos",
-      description: "Your media uploaded directly to Immich.",
-      folders: ["upload", "profile", "library"],
-    },
-    {
-      label: "Database backups",
-      description: "Albums, faces, and metadata. You'll need this to restore.",
-      folders: ["backups"],
-    },
-    {
-      label: "Thumbnails and previews",
-      description: "Generated photo previews, can be recreated later.",
-      folders: ["thumbs"],
-    },
-    {
-      label: "Encoded videos",
-      description: "Generated video previews, can be recreated later.",
-      folders: ["encoded-video"],
-    },
-  ];
-
   let populated = false;
 
   $effect(() => {
-    if (populated || !integrationsQuery.data?.immichState) {
+    if (populated || !query.data?.immichState) {
       return;
     }
     populated = true;
 
-    const integration = integrationsQuery.data.immichIntegration;
+    const integration = query.data.immichIntegration;
     if (integration) {
       const config = integration.configuration;
       backupConfiguration = config.backupConfiguration;
@@ -89,6 +66,7 @@
         librariesMode = "none";
       } else {
         librariesMode = "some";
+
         for (const id of config.libraries) {
           selectedLibraries.add(id);
         }
@@ -99,21 +77,23 @@
       }
 
       const schedule = schedulesQuery.data?.find(
-        (s) => s.id === integration.scheduleId,
+        (schedule) => schedule.id === integration.scheduleId,
       );
+
       if (schedule) {
         cron = schedule.cron;
-        const parsed = parseDailyCron(cron);
-        if (parsed) {
+
+        const match = /(\d+) (\d+) \* \* \*/.exec(cron);
+        if (match) {
           scheduleMode = "daily";
-          scheduleHour = parsed.hour;
-          scheduleMinute = parsed.minute;
+          scheduleHour = parseInt(match[2]);
+          scheduleMinute = parseInt(match[1]);
         } else {
           scheduleMode = "custom";
         }
       }
     } else {
-      for (const folder of integrationsQuery.data.immichState.dataFolders) {
+      for (const folder of query.data.immichState.dataFolders) {
         selectedFolders.add(folder);
       }
     }
@@ -121,11 +101,6 @@
 
   const effectiveCron = $derived(
     scheduleMode === "daily" ? `${scheduleMinute} ${scheduleHour} * * *` : cron,
-  );
-
-  const cronPreview = $derived(describeCron(effectiveCron));
-  const cronValid = $derived(
-    /^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/.test(effectiveCron.trim()),
   );
 
   const onSubmit = async () => {
@@ -179,39 +154,12 @@
       selectedLibraries.add(id);
     }
   }
-
-  function parseDailyCron(
-    expr: string,
-  ): { hour: number; minute: number } | undefined {
-    const parts = expr.trim().split(/\s+/);
-    if (parts.length !== 5) {
-      return undefined;
-    }
-    const [min, hour, dom, mon, dow] = parts;
-    if (dom !== "*" || mon !== "*" || dow !== "*") {
-      return undefined;
-    }
-    if (!/^\d+$/.test(min) || !/^\d+$/.test(hour)) {
-      return undefined;
-    }
-    return { hour: Number(hour), minute: Number(min) };
-  }
-
-  function describeCron(expr: string): string {
-    const parsed = parseDailyCron(expr);
-    if (!parsed) {
-      return expr;
-    }
-    const ampm = parsed.hour >= 12 ? "PM" : "AM";
-    const display = parsed.hour % 12 || 12;
-    return `Daily at ${display}:${String(parsed.minute).padStart(2, "0")} ${ampm}`;
-  }
 </script>
 
 <FormModal
   title="Backup settings"
   size="large"
-  disabled={!cronValid || name.length === 0}
+  disabled={!validateCron(effectiveCron) || name.length === 0}
   onClose={() => {
     onCancel?.();
     onClose?.();
@@ -223,136 +171,169 @@
       <Input bind:value={name} />
     </Field>
 
-    {#if integrationsQuery.isLoading}
-      <LoadingSpinner />
-    {:else if integrationsQuery.isError}
-      <Alert color="danger">Couldn't load Immich state.</Alert>
-    {:else if integrationsQuery.data?.immichState}
-      {@const immich = integrationsQuery.data.immichState}
+    <Suspense {query}>
+      {#snippet children({ immichState: immich })}
+        <Stack gap={2}>
+          <Heading size="tiny" tag="h3">What to back up</Heading>
 
-      <Stack gap={2}>
-        <Heading size="tiny" tag="h3">What to back up</Heading>
-        {#each FOLDER_ITEMS.filter((i) => applicableFolders(i, immich.dataFolders).length > 0) as item (item.label)}
-          <label class="flex select-none items-start gap-2">
-            <Checkbox
-              checked={isItemChecked(item, immich.dataFolders)}
-              onCheckedChange={() => toggleItem(item, immich.dataFolders)}
-              class="mt-0.5"
-            />
-            <div>
-              <Text>{item.label}</Text>
-              {#if item.description}
-                <Text size="small" color="secondary">{item.description}</Text>
-              {/if}
-            </div>
-          </label>
-        {/each}
-        <label class="flex select-none items-start gap-2">
-          <Checkbox bind:checked={backupConfiguration} class="mt-0.5" />
-          <div>
-            <Text>Backup configuration</Text>
-            <Text size="small" color="secondary">Saves these settings too.</Text
-            >
-          </div>
-        </label>
-      </Stack>
-
-      <Stack gap={2}>
-        <Stack gap={0}>
-          <Heading size="tiny" tag="h3">External Libraries</Heading>
-          <Text size="small" color="secondary"
-            >By default, all existing and future external libraries will be
-            backed up.</Text
-          >
-        </Stack>
-        <HStack fullWidth>
-          {#each [{ id: "all" as const, label: "All" }, { id: "none" as const, label: "None" }, { id: "some" as const, label: "Pick" }] as opt (opt.id)}
-            <Button
-              fullWidth
-              size="small"
-              variant={librariesMode === opt.id ? "filled" : "outline"}
-              color={librariesMode === opt.id ? "primary" : "secondary"}
-              onclick={() => (librariesMode = opt.id)}
-            >
-              {opt.label}
-            </Button>
+          {#each [{ label: "Photos and videos", description: "Your media uploaded directly to Immich.", folders: ["upload", "profile", "library"], recommended: true }, { label: "Database backups", description: "Albums, faces, and metadata. You'll need this to restore.", folders: ["backups"], recommended: true }, { label: "Thumbnails and previews", description: "Generated photo previews, can be recreated later.", folders: ["thumbs"], regenerate: true }, { label: "Encoded videos", description: "Generated video previews, can be recreated later.", folders: ["encoded-video"], regenerate: true }] as item (item.label)}
+            <label class="select-none">
+              <Stack direction="row">
+                <Checkbox
+                  checked={isItemChecked(item, immich!.dataFolders)}
+                  onCheckedChange={() => toggleItem(item, immich!.dataFolders)}
+                />
+                <Stack gap={0}>
+                  <Text>{item.label}</Text>
+                  {#if item.description}
+                    <Text size="small" color="secondary"
+                      >{item.description}</Text
+                    >
+                  {/if}
+                  {#if item.recommended && !isItemChecked(item, immich!.dataFolders)}
+                    <Text size="small" color="danger"
+                      >It is highly recommended you back this up!</Text
+                    >
+                  {/if}
+                  {#if item.regenerate && !isItemChecked(item, immich!.dataFolders)}
+                    <Text size="small" color="warning"
+                      >When restoring, you will see broken previews, use the
+                      admin panel to regenerate them.</Text
+                    >
+                  {/if}
+                </Stack>
+              </Stack>
+            </label>
           {/each}
-        </HStack>
-        {#if librariesMode === "some"}
-          {#if immich.libraries.length === 0}
-            <Text size="small" color="secondary"
-              >No external libraries found.</Text
-            >
-          {:else}
-            <Stack gap={1}>
-              {#each immich.libraries as library (library.id)}
-                <label class="flex select-none items-center gap-2">
-                  <Checkbox
-                    checked={selectedLibraries.has(library.id)}
-                    onCheckedChange={() => toggleLibrary(library.id)}
-                  />
-                  <Text>{library.name}</Text>
-                </label>
-              {/each}
+
+          <label class="select-none">
+            <Stack direction="row">
+              <Checkbox bind:checked={backupConfiguration} />
+              <Stack gap={0}>
+                <Text>Backup configuration</Text>
+                <Text size="small" color="secondary"
+                  >Saves these settings too.</Text
+                >
+                {#if !backupConfiguration}
+                  <Text size="small" color="warning"
+                    >You will need to reconfigure backups from scratch after
+                    restoring.</Text
+                  >
+                {/if}
+              </Stack>
             </Stack>
+          </label>
+        </Stack>
+
+        <Stack gap={2}>
+          <Stack gap={0}>
+            <Heading size="tiny" tag="h3">External Libraries</Heading>
+            <Text size="small" color="secondary">
+              External libraries stored outside of Immich can also be included
+              in your backup. <br /> By default, all existing and future external
+              libraries will be included in your backup.
+            </Text>
+          </Stack>
+
+          <HStack fullWidth>
+            {#each [{ id: "all" as const, label: "All" }, { id: "none" as const, label: "None" }, { id: "some" as const, label: "Pick" }] as option (option.id)}
+              <Button
+                fullWidth
+                size="small"
+                variant={librariesMode === option.id ? "filled" : "outline"}
+                color={librariesMode === option.id ? "primary" : "secondary"}
+                onclick={() => (librariesMode = option.id)}
+              >
+                {option.label}
+              </Button>
+            {/each}
+          </HStack>
+
+          {#if librariesMode === "all"}
+            {#if immich!.libraries.length !== 0}
+              <Text size="small" color="secondary"
+                >Libraries included: {immich!.libraries
+                  .map((item) => item.name)
+                  .join(", ")}</Text
+              >
+            {/if}
+          {:else if librariesMode === "some"}
+            {#if immich!.libraries.length === 0}
+              <Text size="small" color="secondary"
+                >No external libraries found.</Text
+              >
+            {:else}
+              <Stack gap={1}>
+                {#each immich!.libraries as library (library.id)}
+                  <label class="flex select-none items-center gap-2">
+                    <Checkbox
+                      checked={selectedLibraries.has(library.id)}
+                      onCheckedChange={() => toggleLibrary(library.id)}
+                    />
+                    <Text>{library.name}</Text>
+                  </label>
+                {/each}
+              </Stack>
+            {/if}
           {/if}
-        {/if}
-      </Stack>
+        </Stack>
 
-      <Stack gap={2}>
-        <Heading size="tiny" tag="h3">Schedule</Heading>
+        <Stack gap={2}>
+          <Heading size="tiny" tag="h3">Schedule</Heading>
 
-        <HStack fullWidth>
-          <Button
-            fullWidth
-            size="small"
-            variant={scheduleMode === "daily" ? "filled" : "outline"}
-            color={scheduleMode === "daily" ? "primary" : "secondary"}
-            onclick={() => (scheduleMode = "daily")}
-          >
-            Every day
-          </Button>
-          <Button
-            fullWidth
-            size="small"
-            variant={scheduleMode === "custom" ? "filled" : "outline"}
-            color={scheduleMode === "custom" ? "primary" : "secondary"}
-            onclick={() => (scheduleMode = "custom")}
-          >
-            Custom (cron)
-          </Button>
-        </HStack>
-        {#if scheduleMode === "daily"}
-          <Field label="Time">
-            <Input
-              type="time"
-              value={`${String(scheduleHour).padStart(2, "0")}:${String(scheduleMinute).padStart(2, "0")}`}
-              oninput={(e) => {
-                const [h, m] = (
-                  e.currentTarget as HTMLInputElement
-                ).value.split(":");
-                scheduleHour = Number(h);
-                scheduleMinute = Number(m);
-              }}
-            />
-          </Field>
-        {:else}
-          <Field label="Cron expression">
-            <Input bind:value={cron} placeholder="0 3 * * *" />
-          </Field>
-        {/if}
-        <Text size="small" color="secondary">{cronPreview}</Text>
-      </Stack>
+          <HStack fullWidth>
+            {#each [{ id: "daily" as const, label: "Every day" }, { id: "custom" as const, label: "Custom cron expression" }] as option (option.id)}
+              <Button
+                fullWidth
+                size="small"
+                variant={scheduleMode === option.id ? "filled" : "outline"}
+                color={scheduleMode === option.id ? "primary" : "secondary"}
+                onclick={() => (scheduleMode = option.id)}
+              >
+                {option.label}
+              </Button>
+            {/each}
+          </HStack>
 
-      <Stack gap={2}>
-        <Heading size="tiny" tag="h3">Advanced</Heading>
-        <Field
-          label="Write-only"
-          description="Once written, files can't be removed."
-        >
-          <Switch bind:checked={worm} />
-        </Field>
-      </Stack>
-    {/if}
+          {#if scheduleMode === "daily"}
+            <Field label="Time">
+              <Input
+                type="time"
+                value={`${String(scheduleHour).padStart(2, "0")}:${String(scheduleMinute).padStart(2, "0")}`}
+                oninput={(e) => {
+                  const [h, m] = (
+                    e.currentTarget as HTMLInputElement
+                  ).value.split(":");
+                  scheduleHour = Number(h);
+                  scheduleMinute = Number(m);
+                }}
+              />
+            </Field>
+          {:else}
+            <Field label="Cron expression">
+              <Input bind:value={cron} placeholder="0 3 * * *" />
+            </Field>
+
+            <Text size="small" color="secondary"
+              >Your backups will run <span class="lowercase"
+                >{cronstrue.toString(cron, {
+                  verbose: true,
+                })}</span
+              ></Text
+            >
+          {/if}
+        </Stack>
+      {/snippet}
+    </Suspense>
+
+    <Stack gap={2}>
+      <Heading size="tiny" tag="h3">Advanced</Heading>
+      <Field
+        label="Write-only"
+        description="Once written, files can't be removed."
+      >
+        <Switch bind:checked={worm} />
+      </Field>
+    </Stack>
   </Stack>
 </FormModal>
