@@ -1,20 +1,14 @@
 <script lang="ts">
+  import StackList from "$lib/components/ui/StackList.svelte";
   import { useInspectRepositories } from "$lib/services/repository.service";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import {
-    Alert,
     Button,
-    Card,
-    CardBody,
-    Heading,
     HStack,
-    LoadingSpinner,
     Modal,
     ModalBody,
     ModalFooter,
     Stack,
     Text,
-    VStack,
   } from "@immich/ui";
   import RestorePointFlow2SelectSnapshot from "./RestorePointFlow2SelectSnapshot.svelte";
 
@@ -56,44 +50,39 @@
 {:else}
   <Modal title="Select Restore Point" size="small" onClose={onCancel}>
     <ModalBody>
-      <VStack>
-        {#if query.isPending}
-          <LoadingSpinner />
-        {:else if query.isError}
-          <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-        {:else if query.isSuccess && sortedRepositories?.length}
-          {#each sortedRepositories as repo (repo.id)}
+      <StackList {query}>
+        {#snippet children()}
+          {#each sortedRepositories ?? [] as repo (repo.id)}
             {@const accessible = repo.snapshots !== undefined}
-            <Card class={accessible ? "" : "opacity-50"}>
-              <CardBody>
-                <HStack>
-                  <Stack gap={0} class="flex-1">
-                    <Heading size="small">{repo.name}</Heading>
-                    <Text color={!accessible ? "danger" : undefined}>
-                      {#if !accessible}
-                        Unable to access repository
-                      {:else if repo.snapshots.length}
-                        Last backup: {new Date(
-                          repo.snapshots[0].time,
-                        ).toLocaleDateString()}
-                      {:else}
-                        No backups yet
-                      {/if}
-                    </Text>
-                  </Stack>
-                  {#if accessible}
-                    <Button onclick={() => (selectedRepository = repo.id)}
-                      >Select</Button
-                    >
+            <HStack gap={2} class="px-4 py-3">
+              <Stack gap={0} class="grow min-w-0">
+                <Text>{repo.name}</Text>
+                <Text size="small" color={accessible ? "secondary" : "danger"}>
+                  {#if !accessible}
+                    Unable to access repository
+                  {:else if repo.snapshots.length}
+                    Last backup: {new Date(
+                      repo.snapshots[0].time,
+                    ).toLocaleDateString()}
+                  {:else}
+                    No backups yet
                   {/if}
-                </HStack>
-              </CardBody>
-            </Card>
+                </Text>
+              </Stack>
+              {#if accessible}
+                <Button onclick={() => (selectedRepository = repo.id)}>
+                  Select
+                </Button>
+              {/if}
+            </HStack>
           {/each}
-        {:else}
-          <Text>No repositories found.</Text>
-        {/if}
-      </VStack>
+          {#if (sortedRepositories ?? []).length === 0}
+            <Text class="text-center py-6" color="muted">
+              No repositories found.
+            </Text>
+          {/if}
+        {/snippet}
+      </StackList>
     </ModalBody>
     <ModalFooter>
       <HStack>

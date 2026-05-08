@@ -31,13 +31,17 @@
     mdiTrayArrowUp,
     mdiTune,
   } from "@mdi/js";
-  import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
+  import { options } from "$lib/options";
+  import ImmichManageBackup from "../integrations/immich/ImmichManageBackup.svelte";
+  import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
+  import ImmichOnboardingSetupFlow from "../integrations/immich/ImmichOnboardingSetupFlow.svelte";
 
   type Props = {
     onExit: () => void;
   };
 
   const { onExit }: Props = $props();
+  const { testUiRestore } = options;
 
   // svelte-ignore state_referenced_locally
   setProvider(orchestrationApiProvider);
@@ -162,5 +166,14 @@
     </div>
   </AppShellSidebar>
 
-  <ImmichBackupsPage {onExit} />
+  {#if $testUiRestore}
+    <ImmichOnboardingRestoreFlow
+      {onExit}
+      onFinish={() => testUiRestore.set(false)}
+    />
+  {:else}
+    <ImmichOnboardingSetupFlow {onExit}>
+      <ImmichManageBackup />
+    </ImmichOnboardingSetupFlow>
+  {/if}
 </AppShell>

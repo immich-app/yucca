@@ -1,19 +1,17 @@
 <script lang="ts">
+  import StackList from "$lib/components/ui/StackList.svelte";
   import type {
     InspectedLocalRepositoryDto,
     SnapshotDto,
   } from "$lib/fetch-client";
   import {
     Button,
-    Card,
-    CardBody,
     HStack,
     Modal,
     ModalBody,
     ModalFooter,
     Stack,
     Text,
-    VStack,
   } from "@immich/ui";
   import RestorePointFlow3ConfirmRestore from "./RestorePointFlow3ConfirmRestore.svelte";
 
@@ -43,25 +41,26 @@
     onClose={onBack}
   >
     <ModalBody>
-      <VStack>
+      <StackList>
         {#each repository.snapshots.toSorted((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) as snapshot (snapshot.id)}
-          <Card>
-            <CardBody>
-              <HStack>
-                <Stack gap={0} class="flex-1">
-                  <Text>{new Date(snapshot.time).toLocaleString()}</Text>
-                  {#each snapshot.paths as path}
-                    <Text color="muted">{path}</Text>
-                  {/each}
-                </Stack>
-                <Button onclick={() => (selectedSnapshot = snapshot)}>
-                  Restore
-                </Button>
-              </HStack>
-            </CardBody>
-          </Card>
+          <HStack gap={2} class="px-4 py-3">
+            <Stack gap={0} class="grow min-w-0">
+              <Text>{new Date(snapshot.time).toLocaleString()}</Text>
+              {#each snapshot.paths as path}
+                <Text size="small" color="muted">{path}</Text>
+              {/each}
+            </Stack>
+            <Button onclick={() => (selectedSnapshot = snapshot)}>
+              Restore
+            </Button>
+          </HStack>
         {/each}
-      </VStack>
+        {#if repository.snapshots.length === 0}
+          <Text class="text-center py-6" color="muted">
+            No snapshots in this repository.
+          </Text>
+        {/if}
+      </StackList>
     </ModalBody>
     <ModalFooter>
       <HStack>

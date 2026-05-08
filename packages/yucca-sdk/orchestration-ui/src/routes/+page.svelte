@@ -9,7 +9,7 @@
 
   let mock: true | false | "immich" = $state(false);
 
-  const { advanced } = options;
+  const { advanced, testUiRestore } = options;
 
   async function onReset() {
     await resetOrchestrator();
@@ -47,10 +47,16 @@
       <Button onclick={onReset} color="warning">Reset</Button>
     </HStack>
 
-    <label class="select-none flex gap-2 items-center">
-      <Checkbox bind:checked={$advanced} />
-      <Text size="giant">Show advanced options</Text>
-    </label>
+    <HStack gap={4}>
+      <label class="select-none flex gap-2 items-center">
+        <Checkbox bind:checked={$advanced} />
+        <Text size="giant">Show advanced options</Text>
+      </label>
+      <label class="select-none flex gap-2 items-center">
+        <Checkbox bind:checked={$testUiRestore} />
+        <Text size="giant">Immich restore mode</Text>
+      </label>
+    </HStack>
   </Stack>
 </div>
 
@@ -61,7 +67,7 @@
 {:else if mock}
   <TestUi mock={true} />
 {:else}
-  <OnboardingGate flow="default" onExit={() => (mock = true)}>
+  <OnboardingGate onExit={() => (mock = true)}>
     <TestUi mock={false} />
   </OnboardingGate>
 {/if}

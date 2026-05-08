@@ -6,6 +6,7 @@
     useSnapshotEventHandler,
     useSnapshots,
   } from "$lib/services/snapshot.service";
+  import { Text } from "@immich/ui";
   import RepositorySnapshotsListItem from "./RepositorySnapshotsListItem.svelte";
 
   type Props = {
@@ -27,8 +28,12 @@
   {/snippet}
 
   {#snippet children(snapshots)}
-    {#each snapshots.slice(0, 10) as snapshot (snapshot.id)}
-      <RepositorySnapshotsListItem repositoryId={repository.id} {snapshot} />
-    {/each}
+    {#if snapshots.length === 0}
+      <Text class="text-center py-6" color="muted">No backups yet</Text>
+    {:else}
+      {#each snapshots.slice(0, 10) as snapshot (snapshot.id)}
+        <RepositorySnapshotsListItem repositoryId={repository.id} {snapshot} />
+      {/each}
+    {/if}
   {/snippet}
 </StackList>

@@ -6,6 +6,7 @@
     useRunEventHandler,
     useRunHistory,
   } from "$lib/services/runHistory.service";
+  import { Text } from "@immich/ui";
   import RepositoryRunHistoryItem from "./RepositoryRunHistoryItem.svelte";
 
   type Props = {
@@ -27,8 +28,12 @@
   {/snippet}
 
   {#snippet children(runs)}
-    {#each runs.slice(0, 10) as run (run.id)}
-      <RepositoryRunHistoryItem {run} />
-    {/each}
+    {#if runs.length === 0}
+      <Text class="text-center py-6" color="muted">No recent backups</Text>
+    {:else}
+      {#each runs.slice(0, 10) as run (run.id)}
+        <RepositoryRunHistoryItem {run} />
+      {/each}
+    {/if}
   {/snippet}
 </StackList>

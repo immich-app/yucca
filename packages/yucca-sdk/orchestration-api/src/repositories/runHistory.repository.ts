@@ -174,6 +174,10 @@ export class RunHistoryRepository {
           });
 
           tail.on('line', (data) => queue.push({ data } as MessageEvent));
+          tail.on('error', (error) => {
+            console.warn(`tail ${logFilePath} stopped:`, error);
+            tail?.unwatch();
+          });
         };
 
         if (ephemeralPath) {
