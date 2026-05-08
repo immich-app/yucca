@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { options } from "$lib/options";
   import {
     Button,
     ContextMenuButton,
@@ -7,13 +8,14 @@
   } from "@immich/ui";
   import type { Snippet } from "svelte";
 
-  interface Props {
+  type Props = {
     title?: string;
     actions?: ActionItem[];
     children?: Snippet;
-  }
+  };
 
   const { title, actions = [], children }: Props = $props();
+  const { demoPadding } = options;
 </script>
 
 <main class="relative h-full">
@@ -56,9 +58,9 @@
   {/if}
 
   <div
-    class="absolute w-full overflow-y-auto p-2 {title || actions.length > 0
+    class="absolute w-full overflow-y-auto {title || actions.length > 0
       ? 'top-16 h-[calc(100%-4rem)]'
-      : 'top-0 h-full'}"
+      : 'top-0 h-full'} {$demoPadding ? 'p-4' : ''}"
   >
     {@render children?.()}
   </div>

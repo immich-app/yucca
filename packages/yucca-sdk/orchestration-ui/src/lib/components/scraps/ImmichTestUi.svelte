@@ -32,6 +32,7 @@
     mdiTune,
   } from "@mdi/js";
   import { options } from "$lib/options";
+  import { onDestroy } from "svelte";
   import ImmichManageBackup from "../integrations/immich/ImmichManageBackup.svelte";
   import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
   import ImmichOnboardingSetupFlow from "../integrations/immich/ImmichOnboardingSetupFlow.svelte";
@@ -41,7 +42,10 @@
   };
 
   const { onExit }: Props = $props();
-  const { testUiRestore } = options;
+  const { testUiRestore, demoPadding } = options;
+
+  demoPadding.set(true);
+  onDestroy(() => demoPadding.set(false));
 
   // svelte-ignore state_referenced_locally
   setProvider(orchestrationApiProvider);

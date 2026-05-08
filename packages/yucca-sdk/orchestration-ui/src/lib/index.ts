@@ -6,6 +6,9 @@ export { default as ScheduleList } from './components/schedules/ScheduleList.sve
 export { default as YuccaContext } from './components/util/YuccaContext.svelte';
 export { default as OnEvents } from './components/util/OnEvents.svelte';
 export { default as ImmichBackupsPage } from './components/integrations/immich/ImmichBackupsPage.svelte';
+export { default as ImmichOnboardingSetupFlow } from './components/integrations/immich/ImmichOnboardingSetupFlow.svelte';
+export { default as ImmichOnboardingRestoreFlow } from './components/integrations/immich/ImmichOnboardingRestoreFlow.svelte';
+export { default as ImmichManageBackup } from './components/integrations/immich/ImmichManageBackup.svelte';
 export * from './providers';
 
 export * as sdk from './fetch-client';

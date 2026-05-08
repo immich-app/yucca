@@ -13,6 +13,7 @@
   import { LoadingSpinner } from "@immich/ui";
   import { onMount, type Snippet } from "svelte";
   import ImmichConfigureBackup from "./ImmichConfigureBackup.svelte";
+  import ImmichConfirmDefaultBackup from "./ImmichConfirmDefaultBackup.svelte";
 
   type Props = {
     onExit: () => void;
@@ -27,7 +28,7 @@
   let stage:
     | `welcome`
     | `key-${"intro" | "save" | "confirm" | "import"}`
-    | `backup-${"service" | "create"}`
+    | `backup-${"service" | "confirm" | "create"}`
     | `finished` = $state("welcome");
 
   onMount(() => {
@@ -54,7 +55,7 @@
 
   const onSelectBackend = (id: string) => {
     backendId = id;
-    stage = "backup-create";
+    stage = "backup-confirm";
   };
 </script>
 
@@ -87,6 +88,12 @@
     />
   {:else if stage === "backup-service"}
     <OnboardingStageBackupServices onNext={onSelectBackend} onCancel={onExit} />
+  {:else if stage === "backup-confirm"}
+    <ImmichConfirmDefaultBackup
+      onCustomize={() => (stage = "backup-create")}
+      onConfirm={() => (stage = "finished")}
+      onCancel={onExit}
+    />
   {:else if stage === "backup-create"}
     <ImmichConfigureBackup
       onFinish={() => (stage = "finished")}
