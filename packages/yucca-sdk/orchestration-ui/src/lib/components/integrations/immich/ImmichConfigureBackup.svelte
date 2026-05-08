@@ -174,7 +174,7 @@
     <Suspense {query}>
       {#snippet children({ immichState: immich })}
         <Stack gap={2}>
-          <Heading size="tiny" tag="h3">What to back up</Heading>
+          <Heading size="tiny">What to back up</Heading>
 
           {#each [{ label: "Photos and videos", description: "Your media uploaded directly to Immich.", folders: ["upload", "profile", "library"], recommended: true }, { label: "Database backups", description: "Albums, faces, and metadata. You'll need this to restore.", folders: ["backups"], recommended: true }, { label: "Thumbnails and previews", description: "Generated photo previews, can be recreated later.", folders: ["thumbs"], regenerate: true }, { label: "Encoded videos", description: "Generated video previews, can be recreated later.", folders: ["encoded-video"], regenerate: true }] as item (item.label)}
             <label class="select-none">
@@ -227,7 +227,7 @@
 
         <Stack gap={2}>
           <Stack gap={0}>
-            <Heading size="tiny" tag="h3">External Libraries</Heading>
+            <Heading size="tiny">External Libraries</Heading>
             <Text size="small" color="secondary">
               External libraries stored outside of Immich can also be included
               in your backup. <br /> By default, all existing and future external
@@ -279,7 +279,7 @@
         </Stack>
 
         <Stack gap={2}>
-          <Heading size="tiny" tag="h3">Schedule</Heading>
+          <Heading size="tiny">Schedule</Heading>
 
           <HStack fullWidth>
             {#each [{ id: "daily" as const, label: "Every day" }, { id: "custom" as const, label: "Custom cron expression" }] as option (option.id)}
@@ -327,7 +327,7 @@
     </Suspense>
 
     <Stack gap={2}>
-      <Heading size="tiny" tag="h3">Advanced</Heading>
+      <Heading size="tiny">Advanced</Heading>
       <Field
         label="Write-only"
         description="Once written, files can't be removed."

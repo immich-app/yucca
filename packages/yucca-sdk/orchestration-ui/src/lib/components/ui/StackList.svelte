@@ -15,9 +15,7 @@
 
 <Stack gap={2}>
   {#if title}
-    <Stack gap={0} class="px-1">
-      <Heading size="tiny" tag="h2">{@render title()}</Heading>
-    </Stack>
+    <Heading class="px-1" size="tiny">{@render title()}</Heading>
   {/if}
 
   {#if query?.isLoading}

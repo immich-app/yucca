@@ -50,7 +50,7 @@
 
     <HStack gap={4}>
       <Stack gap={0}>
-        <Heading size="tiny" tag="h2">Your library</Heading>
+        <Heading size="tiny">Your library</Heading>
         <Text>
           <FormatBytes bytes={repository.metrics.sizeBytes} /> &middot;
           <span class="lowercase"
