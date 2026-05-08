@@ -6,7 +6,6 @@
     handleSkipOnboardingExtraConfig,
   } from "$lib/services/onboarding.service";
   import { onMount } from "svelte";
-  import CreateImmichBackup from "../integrations/immich/draft/ConfigureImmichBackup.svelte";
   import RestorePointFlow from "./restore-point-flow/RestorePointFlow.svelte";
   import CreateFirstBackup from "./stages/CreateFirstBackup.svelte";
   import CreateFirstSchedule from "./stages/CreateFirstSchedule.svelte";
@@ -18,7 +17,7 @@
   import Welcome from "./stages/OnboardingStageWelcome.svelte";
 
   type Props = {
-    flow?: "default" | "immich-setup" | "immich-restore";
+    flow?: "default" | "immich-restore";
     status: OnboardingStatusResponseDto;
     onFinish: () => void;
     onCancel: () => void;
@@ -32,15 +31,13 @@
 
   // svelte-ignore state_referenced_locally
   let stage = $state(
-    // immich-restore
     flow === "immich-restore"
       ? status.hasOnboardedKey
         ? status.hasBackend
           ? 2
           : 1
         : 0
-      : // immich-setup & default
-        status.hasOnboardedKey
+      : status.hasOnboardedKey
         ? status.hasBackend
           ? status.hasBackup
             ? 7
@@ -87,30 +84,6 @@
     <ImportKey onImported={() => (stage = 2)} onCancel={() => (stage = 2)} />
   {:else}
     <RestorePointFlow onImportKey={() => (stage = 10)} {onCancel} {onFinish} />
-  {/if}
-{:else if flow === "immich-setup"}
-  <!-- Immich Setup -->
-  {#if stage === 0}
-    <Welcome {onNext} onImportKey={() => (stage = 5)} {onCancel} />
-  {:else if stage === 1}
-    <KeyIntro {onNext} {onCancel} />
-  {:else if stage === 2}
-    <SaveKey {code} {onNext} {onCancel} />
-  {:else if stage === 3}
-    <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
-  {:else if stage === 4}
-    <BackupOptions onNext={() => (stage = 6)} {onCancel} />
-  {:else if stage === 5}
-    <ImportKey
-      onStart={() => (stage = 0)}
-      onImported={(key) => {
-        code = key;
-        stage = 2;
-      }}
-      {onCancel}
-    />
-  {:else}
-    <CreateImmichBackup onClose={onSkip} initialConfiguration />
   {/if}
 {:else}
   <!-- Sample Flow -->

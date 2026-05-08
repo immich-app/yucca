@@ -14,18 +14,9 @@
   import { mdiBackupRestore } from "@mdi/js";
 
   import {
-    useIntegrationEventHandler,
-    useIntegrations,
-  } from "$lib/services/integrations.service";
-  import {
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
-  import {
-    useScheduleEventHandler,
-    useSchedules,
-  } from "$lib/services/schedule.service";
-  import ImmichIntegrationCard from "../integrations/immich/draft/ImmichIntegrationCard.svelte";
   import OnEvents from "../util/OnEvents.svelte";
   import ActiveJobs from "./ActiveJobs.svelte";
   import BackupHealth from "./BackupHealth.svelte";
@@ -41,20 +32,11 @@
   const { onNavigate }: Props = $props();
 
   const query = useRepositories();
-  const integrationsQuery = useIntegrations();
-  const schedulesQuery = useSchedules();
   const { onRepositoryCreate, onRepositoryUpdate } =
     useRepositoryEventHandler();
-  const { onScheduleUpdate } = useScheduleEventHandler();
-  const { onIntegrationUpdate } = useIntegrationEventHandler();
 </script>
 
-<OnEvents
-  {onRepositoryCreate}
-  {onRepositoryUpdate}
-  {onScheduleUpdate}
-  {onIntegrationUpdate}
-/>
+<OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
 
 {#if query.isLoading}
   <LoadingSpinner />
@@ -81,21 +63,6 @@
     </CardBody>
   </Card>
 {:else if query.isSuccess}
-  {#if integrationsQuery.isSuccess && integrationsQuery.data.immichIntegration}
-    <ImmichIntegrationCard
-      schedule={schedulesQuery.data?.find(
-        (schedule) =>
-          schedule.id === integrationsQuery.data!.immichIntegration!.scheduleId,
-      )}
-      metrics={query.data.find(
-        (repository) =>
-          repository.id === integrationsQuery.data!.immichIntegration!.id,
-      )?.metrics}
-    />
-  {:else if integrationsQuery.isSuccess && integrationsQuery.data.immichState}
-    <ImmichIntegrationCard unconfigured />
-  {/if}
-
   <BackupHealth repositories={query.data} />
 
   <BackupStats repositories={query.data} />
