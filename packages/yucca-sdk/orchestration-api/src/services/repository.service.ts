@@ -399,6 +399,7 @@ export class RepositoryService {
         (complete, fail) =>
           void this.runHistory.createLog(
             id,
+            TaskType.Backup,
             async (log, logId) => {
               resolve({
                 task,
@@ -514,9 +515,19 @@ export class RepositoryService {
     const snapshots = await this.restic.snapshots(endpoint, key);
 
     return {
-      snapshots: snapshots.map((snapshot) => ({
+      snapshots: snapshots.map(({ summary, ...snapshot }) => ({
         ...snapshot,
         time: snapshot.time.toISOString(),
+        summary: summary
+          ? {
+              filesNew: summary.files_new,
+              filesChanged: summary.files_changed,
+              filesUnmodified: summary.files_unmodified,
+              totalFiles: summary.total_files_processed,
+              totalBytes: summary.total_bytes_processed,
+              dataAdded: summary.data_added,
+            }
+          : undefined,
       })),
     };
   }
@@ -534,6 +545,7 @@ export class RepositoryService {
         (complete, fail) =>
           void this.runHistory.createLog(
             id,
+            TaskType.Restore,
             async (log, logId) => {
               resolve({
                 task,

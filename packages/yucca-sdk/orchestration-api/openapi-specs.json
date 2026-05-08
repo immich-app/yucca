@@ -752,6 +752,36 @@
     },
     "/api/yucca/logs/{id}": {
       "get": {
+        "operationId": "getRun",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "RunHistory"
+        ]
+      }
+    },
+    "/api/yucca/logs/{id}/stream": {
+      "get": {
         "operationId": "logStreamSse",
         "parameters": [
           {
@@ -1430,6 +1460,37 @@
           "repositories"
         ]
       },
+      "SnapshotSummaryDto": {
+        "type": "object",
+        "properties": {
+          "filesNew": {
+            "type": "number"
+          },
+          "filesChanged": {
+            "type": "number"
+          },
+          "filesUnmodified": {
+            "type": "number"
+          },
+          "totalFiles": {
+            "type": "number"
+          },
+          "totalBytes": {
+            "type": "number"
+          },
+          "dataAdded": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "filesNew",
+          "filesChanged",
+          "filesUnmodified",
+          "totalFiles",
+          "totalBytes",
+          "dataAdded"
+        ]
+      },
       "SnapshotDto": {
         "type": "object",
         "properties": {
@@ -1444,6 +1505,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SnapshotSummaryDto"
           }
         },
         "required": [
@@ -1557,10 +1621,20 @@
           "failed"
         ]
       },
+      "RunType": {
+        "type": "string",
+        "enum": [
+          "backup",
+          "restore"
+        ]
+      },
       "RunDto": {
         "type": "object",
         "properties": {
           "id": {
+            "type": "string"
+          },
+          "repositoryId": {
             "type": "string"
           },
           "start": {
@@ -1578,14 +1652,23 @@
                 "$ref": "#/components/schemas/RunStatus"
               }
             ]
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RunType"
+              }
+            ]
           }
         },
         "required": [
           "id",
+          "repositoryId",
           "start",
           "end",
           "logFilePath",
-          "status"
+          "status",
+          "type"
         ]
       },
       "RunHistoryResponseDto": {
@@ -1643,6 +1726,17 @@
             }
           }
         }
+      },
+      "RunResponseDto": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/RunDto"
+          }
+        },
+        "required": [
+          "run"
+        ]
       },
       "TaskType": {
         "type": "string",

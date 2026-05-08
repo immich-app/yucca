@@ -10,9 +10,9 @@
     mdiLoading,
   } from "@mdi/js";
 
-  interface Props {
+  type Props = {
     run: RunDto;
-  }
+  };
 
   const { run }: Props = $props();
   const { ViewLog } = $derived(getRunActions(run));
@@ -29,10 +29,14 @@
     {/if}
   {/snippet}
 
-  {#if run.end}
-    {run.status === "failed" ? "Failed" : "Completed"}
-    <RelativeTime time={run.end} />
+  {#if run.status === "incomplete"}
+    {run.type === "restore" ? "Restoring" : "Backing up"} &middot; started
+    <RelativeTime time={run.start} />
+  {:else if run.status === "failed"}
+    {run.type === "restore" ? "Restore" : "Backup"} failed
+    {#if run.end}<RelativeTime time={run.end} />{/if}
   {:else}
-    Started <RelativeTime time={run.start} />
+    {run.type === "restore" ? "Restored" : "Backed up"}
+    {#if run.end}<RelativeTime time={run.end} />{/if}
   {/if}
 </StackListItem>

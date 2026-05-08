@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { FilesystemListingResponseDto } from "$lib/fetch-client";
+  import { handleGetFileListing } from "$lib/services/filesystem.service";
   import {
     HStack,
     IconButton,
@@ -9,8 +11,6 @@
     Text,
   } from "@immich/ui";
   import { mdiFolderOpen, mdiFolderPlus, mdiPlus } from "@mdi/js";
-  import type { FilesystemListingResponseDto } from "$lib/fetch-client";
-  import { handleGetFileListing } from "$lib/services/filesystem.service";
   import { onMount } from "svelte";
 
   interface Props {

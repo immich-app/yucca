@@ -1,4 +1,9 @@
 <script lang="ts">
+  import type { RepositorySnapshotRestoreRequestDto } from "$lib/fetch-client";
+  import {
+    handleGetSnapshotListing,
+    handleRestoreSnapshot,
+  } from "$lib/services/snapshot.service";
   import {
     Button,
     Checkbox,
@@ -11,15 +16,10 @@
     Stack,
     Text,
   } from "@immich/ui";
-  import {
-    handleGetSnapshotListing,
-    handleRestoreSnapshot,
-  } from "$lib/services/snapshot.service";
-  import ViewLogModal from "./ViewLogModal.svelte";
   import { mdiClose, mdiFolder } from "@mdi/js";
-  import FileBrowserModal from "./FileBrowserModal.svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import type { RepositorySnapshotRestoreRequestDto } from "$lib/fetch-client";
+  import FileBrowserModal from "./FileBrowserModal.svelte";
+  import ViewLogModal from "./ViewLogModal.svelte";
 
   interface Props {
     repository: string;

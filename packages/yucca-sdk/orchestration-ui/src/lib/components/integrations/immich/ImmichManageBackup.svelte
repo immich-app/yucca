@@ -1,6 +1,7 @@
 <script lang="ts">
   import BackendsList from "$lib/components/backends/BackendsList.svelte";
   import RepositoryRunHistory from "$lib/components/backups/run-history/RepositoryRunHistory.svelte";
+  import RepositorySnapshotsList from "$lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte";
   import PageLayout from "$lib/components/ui/PageLayout.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
   import { getBackupPageActions } from "$lib/services/immich.integration.service";
@@ -69,6 +70,7 @@
         <ImmichManageBackupOverview {repository} {schedule} />
         <BackendsList {repository} />
         <RepositoryRunHistory {repository} />
+        <RepositorySnapshotsList {repository} />
       </Stack>
     {/if}
   </Container>

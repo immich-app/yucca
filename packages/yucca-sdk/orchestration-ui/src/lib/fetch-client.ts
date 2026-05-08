@@ -126,10 +126,19 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
+export type SnapshotSummaryDto = {
+    filesNew: number;
+    filesChanged: number;
+    filesUnmodified: number;
+    totalFiles: number;
+    totalBytes: number;
+    dataAdded: number;
+};
 export type SnapshotDto = {
     id: string;
     time: string;
     paths: string[];
+    summary?: SnapshotSummaryDto;
 };
 export type InspectedLocalRepositoryDto = {
     id: string;
@@ -157,12 +166,15 @@ export type RepositoryCheckImportResponseDto = {
     readable: boolean;
 };
 export type RunStatus = "incomplete" | "complete" | "failed";
+export type RunType = "backup" | "restore";
 export type RunDto = {
     id: string;
+    repositoryId: string;
     start: string;
     end: string;
     logFilePath: string;
     status: RunStatus;
+    "type": RunType;
 };
 export type RunHistoryResponseDto = {
     runs: RunDto[];
@@ -177,6 +189,9 @@ export type RepositorySnapshotRestoreRequestDto = {
 export type RepositorySnapshotRestoreFromPointRequestDto = {
     yuccaConfig?: string;
     include?: string[];
+};
+export type RunResponseDto = {
+    run: RunDto;
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
 export type TaskStatus = "incomplete" | "complete" | "failed";
@@ -455,8 +470,16 @@ export function getSnapshotListing(id: string, snapshot: string, { path }: {
         ...opts
     }));
 }
+export function getRun(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RunResponseDto;
+    }>(`/api/yucca/logs/${encodeURIComponent(id)}`, {
+        ...opts
+    }));
+}
 export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/logs/${encodeURIComponent(id)}`, {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/logs/${encodeURIComponent(id)}/stream`, {
         ...opts
     }));
 }

@@ -1,4 +1,5 @@
 import { sdk } from '$lib';
+import ViewLogModal from '$lib/components/backups/dialogs/ViewLogModal.svelte';
 import {
   deleteRepository,
   inspectRepositories,
@@ -12,7 +13,7 @@ import { SocketEvent } from '$lib/events';
 import { getProvider } from '$lib/providers';
 import { handleError } from '$lib/utils/handle-error';
 import { queryClient } from '$lib/query-client';
-import { toastManager } from '@immich/ui';
+import { modalManager, toastManager } from '@immich/ui';
 import { createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
@@ -127,7 +128,9 @@ export const handleCreateRepository = async (
 export const handleCreateBackup = async (id: string) => {
   try {
     toastManager.info('Started backup');
-    return await sdk.createBackup(id);
+    const response = await sdk.createBackup(id);
+    void modalManager.open(ViewLogModal, { logId: response.logId });
+    return response;
   } catch (error) {
     handleError(error, 'Failed to start backup');
     throw error;

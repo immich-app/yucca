@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { handleCreateRepository } from "$lib/services/repository.service";
   import {
     Checkbox,
     Field,
@@ -7,7 +8,6 @@
     modalManager,
     Stack,
   } from "@immich/ui";
-  import { handleCreateRepository } from "$lib/services/repository.service";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
 
   interface Props {
@@ -33,7 +33,12 @@
   };
 </script>
 
-<FormModal title="Create A New Backup" disabled={name.length === 0} {onSubmit} {onClose}>
+<FormModal
+  title="Create A New Backup"
+  disabled={name.length === 0}
+  {onSubmit}
+  {onClose}
+>
   <Stack gap={4}>
     <Field label="Name" description="A memorable name for this backup">
       <Input bind:value={name} />

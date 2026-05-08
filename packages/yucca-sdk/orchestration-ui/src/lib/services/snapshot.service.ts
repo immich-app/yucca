@@ -1,13 +1,17 @@
 import { sdk } from '$lib';
+import RestoreSnapshotModal from '$lib/components/backups/dialogs/RestoreSnapshotModal.svelte';
+import { SocketEvent } from '$lib/events';
 import {
   getSnapshots,
   type RepositorySnapshotRestoreFromPointRequestDto,
   type RepositorySnapshotRestoreRequestDto,
+  type RunDto,
   type SnapshotDto,
 } from '$lib/fetch-client';
-import { toastManager } from '@immich/ui';
-import { handleError } from '$lib/utils/handle-error';
 import { queryClient } from '$lib/query-client';
+import { handleError } from '$lib/utils/handle-error';
+import { modalManager, toastManager, type ActionItem } from '@immich/ui';
+import { mdiBackupRestore, mdiDeleteOutline } from '@mdi/js';
 import { createQuery } from '@tanstack/svelte-query';
 
 export const snapshotKeys = {
@@ -25,6 +29,24 @@ export const useSnapshots = (repositoryId: string) =>
     }),
     () => queryClient,
   );
+
+export const useSnapshotEventHandler = () => {
+  return {
+    onRunUpdate(
+      event: SocketEvent<{
+        runId: string;
+        repositoryId: string;
+        run: Partial<RunDto>;
+      }>,
+    ) {
+      if (event.data.run.status === 'complete') {
+        void queryClient.invalidateQueries({
+          queryKey: snapshotKeys.byRepository(event.data.repositoryId),
+        });
+      }
+    },
+  };
+};
 
 export const useRemoveSnapshot = (repositoryId: string) => {
   return (snapshotId: string) => {
@@ -102,4 +124,41 @@ export const handleGetSnapshotListing = async (
     handleError(error, 'Failed to load directory listing');
     throw error;
   }
+};
+
+export const getSnapshotActions = (
+  repositoryId: string,
+  snapshot: SnapshotDto,
+) => {
+  const removeSnapshot = useRemoveSnapshot(repositoryId);
+
+  const Restore: ActionItem = {
+    title: 'Restore',
+    icon: mdiBackupRestore,
+    onAction: () =>
+      void modalManager.open(RestoreSnapshotModal, {
+        repository: repositoryId,
+        snapshot: snapshot.id,
+      }),
+  };
+
+  const Delete: ActionItem = {
+    title: 'Delete',
+    icon: mdiDeleteOutline,
+    color: 'danger',
+    onAction: async () => {
+      const confirm = await modalManager.showDialog({
+        confirmText: 'Delete',
+        title: 'Delete Snapshot',
+        prompt: 'This snapshot will be permanently removed.',
+      });
+
+      if (!confirm) {return;}
+
+      await handleForgetSnapshot(repositoryId, snapshot.id);
+      removeSnapshot(snapshot.id);
+    },
+  };
+
+  return { Restore, Delete };
 };

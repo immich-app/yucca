@@ -23,7 +23,6 @@
   import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
   import ImportRepositoryModal from "./dialogs/ImportRepositoryModal.svelte";
   import SnapshotsListModal from "./dialogs/SnapshotsListModal.svelte";
-  import ViewLogModal from "./dialogs/ViewLogModal.svelte";
   import RunHistoryModal from "./run-history/RunHistoryModal.svelte";
 
   type Props = {
@@ -32,10 +31,7 @@
 
   const { repository }: Props = $props();
 
-  const onBackupNow = async () => {
-    const { logId } = await handleCreateBackup(repository.id);
-    modalManager.open(ViewLogModal, { logId });
-  };
+  const onBackupNow = () => void handleCreateBackup(repository.id);
 
   const onViewHistory = () =>
     modalManager.open(RunHistoryModal, {

@@ -8,7 +8,9 @@ import { dirname, resolve } from 'node:path';
 import { from } from 'rxjs';
 import { Tail } from 'tail';
 import { TaskStatus } from '../enum';
+import { EventsGateway } from '../events/events.gateway';
 import { DB } from '../schema';
+import { type RunType } from '../schema/tables/runHistory.table';
 import { ModuleConfigRepository } from './moduleConfig.repository';
 import { StorageRepository } from './storage.repository';
 
@@ -18,6 +20,7 @@ export class RunHistoryRepository {
     @InjectKysely('orchestrator') private db: Kysely<DB>,
     private readonly moduleConfig: ModuleConfigRepository,
     private readonly storage: StorageRepository,
+    private readonly events: EventsGateway,
   ) {}
 
   private writeError(log: WriteStream, error: unknown) {
@@ -32,6 +35,7 @@ export class RunHistoryRepository {
 
   async createLog(
     repositoryId: string,
+    type: RunType,
     fn: (log: WriteStream, logId: string) => Promise<void>,
     callback: (error?: unknown) => unknown,
   ) {
@@ -47,30 +51,41 @@ export class RunHistoryRepository {
 
       const log = this.storage.createWriteStream(logFilePath);
 
-      await this.db
+      const run = await this.db
         .insertInto('runHistory')
         .values({
           id: logId,
           repositoryId,
+          type,
 
           start,
           logFilePath,
 
           status: TaskStatus.Incomplete,
         })
+        .returningAll()
         .executeTakeFirstOrThrow();
+
+      this.events.publish({ type: 'RunCreate', run });
+
+      const finalize = async (status: TaskStatus) => {
+        const end = new Date().toISOString();
+        await this.db.updateTable('runHistory').where('id', '=', logId).set('status', status).set('end', end).execute();
+
+        this.events.publish({
+          type: 'RunUpdate',
+          runId: logId,
+          repositoryId,
+          run: { status, end },
+        });
+      };
 
       fn(log, logId)
         .then(async () => {
           callback();
           log.close();
 
-          await this.db
-            .updateTable('runHistory')
-            .where('id', '=', logId)
-            .set('status', TaskStatus.Complete)
-            .set('end', new Date().toISOString())
-            .execute();
+          await finalize(TaskStatus.Complete);
         })
         .catch(async (error) => {
           callback(error);
@@ -78,12 +93,7 @@ export class RunHistoryRepository {
           this.writeError(log, error);
           log.close();
 
-          await this.db
-            .updateTable('runHistory')
-            .where('id', '=', logId)
-            .set('status', TaskStatus.Failed)
-            .set('end', new Date().toISOString())
-            .execute();
+          await finalize(TaskStatus.Failed);
         });
     } catch (error) {
       callback(error);
@@ -128,10 +138,10 @@ export class RunHistoryRepository {
 
   private ephemeralLogs = new Map<string, string>();
 
-  createLogAsync(repositoryId: string, fn: (log: WriteStream) => Promise<void>) {
+  createLogAsync(repositoryId: string, type: RunType, fn: (log: WriteStream) => Promise<void>) {
     return new Promise<void>(
       (resolve, reject) =>
-        void this.createLog(repositoryId, fn, (error) => {
+        void this.createLog(repositoryId, type, fn, (error) => {
           if (error) {
             reject(error);
           } else {
