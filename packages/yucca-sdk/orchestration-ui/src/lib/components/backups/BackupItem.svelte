@@ -22,7 +22,7 @@
   import RelativeTime from "../util/RelativeTime.svelte";
   import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
   import ImportRepositoryModal from "./dialogs/ImportRepositoryModal.svelte";
-  import SnapshotsListModal from "./dialogs/SnapshotsListModal.svelte";
+  import SnapshotsListModal from "./snapshots-list/SnapshotsListModal.svelte";
   import RunHistoryModal from "./run-history/RunHistoryModal.svelte";
 
   type Props = {
