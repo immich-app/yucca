@@ -1,4 +1,4 @@
-import { getAuth } from 'yucca-api-client';
+import { getAuth } from '@futo-org/backups-api-client';
 
 export const auth = async (fetch: typeof globalThis.fetch) => {
   try {

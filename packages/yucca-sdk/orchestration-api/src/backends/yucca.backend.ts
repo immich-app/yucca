@@ -11,7 +11,7 @@ import {
   submitMetricBackupStart,
   submitMetricRepositorySize,
   updateRepository,
-} from 'yucca-api-client';
+} from '@futo-org/backups-api-client';
 import { BackendType, CookieName } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';

@@ -5,7 +5,7 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
-} from 'yucca-api-client';
+} from '@futo-org/backups-api-client';
 import { BackendType } from '../enum';
 import { ModuleConfig } from '../moduleConfig';
 import { BackendConfiguration } from '../schema/tables/backend.table';

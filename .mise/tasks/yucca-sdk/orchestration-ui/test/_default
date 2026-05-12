@@ -2,4 +2,4 @@
 #MISE description="Run unit tests for yucca-sdk/orchestration-ui"
 set -e
 
-pnpm --filter orchestration-ui test:unit "$@"
+pnpm --filter @futo-org/backups-orchestrator-ui test:unit "$@"

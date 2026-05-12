@@ -4,7 +4,7 @@
 
   import { locale } from "svelte-i18n-lingui";
   import { messages } from "../locales/en";
-  import { YuccaContext } from "orchestration-ui";
+  import { YuccaContext } from "@futo-org/backups-orchestrator-ui";
 
   locale.set("en", messages);
 

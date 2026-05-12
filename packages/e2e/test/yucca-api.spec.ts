@@ -8,7 +8,7 @@ import {
   getAuth,
   getRepositories,
   RepositoryWithMetricsDto,
-} from 'yucca-api-client';
+} from '@futo-org/backups-api-client';
 
 const baseUrl = `http://localhost:${env.YUCCA_API_PORT}`;
 const headers: Record<string, string> = {};
