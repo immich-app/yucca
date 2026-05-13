@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 import { BackendType } from '../enum';
 
 export class BackendDto {
@@ -18,4 +19,15 @@ export class BackendDto {
 export class BackendsResponseDto {
   @ApiProperty({ type: [BackendDto] })
   backends!: BackendDto[];
+}
+
+export class BackendResponseDto {
+  @ApiProperty({ type: BackendDto })
+  backend!: BackendDto;
+}
+
+export class CreateLocalBackendRequestDto {
+  @ApiProperty({ type: String })
+  @IsString()
+  path!: string;
 }

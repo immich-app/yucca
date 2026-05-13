@@ -86,6 +86,8 @@
           schedule.id === integrationsQuery.data!.immichIntegration!.scheduleId,
       )}
     />
+  {:else if integrationsQuery.isSuccess && integrationsQuery.data.immichState}
+    <ImmichIntegrationCard unconfigured />
   {/if}
 
   <BackupHealth repositories={query.data} />

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { Backend } from '../backends/backend';
-import { BackendsResponseDto } from '../dto/backend.dto';
+import { BackendResponseDto, BackendsResponseDto, CreateLocalBackendRequestDto } from '../dto/backend.dto';
+import { BackendType } from '../enum';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
@@ -30,6 +32,21 @@ export class BackendService {
         isOnline: error[idx] === undefined,
         error: error[idx],
       })),
+    };
+  }
+
+  async createLocalBackend(dto: CreateLocalBackendRequestDto): Promise<BackendResponseDto> {
+    const { id } = await this.repository.updateBackend(randomUUID(), {
+      type: BackendType.Local,
+      path: dto.path,
+    });
+
+    return {
+      backend: {
+        type: BackendType.Local,
+        id,
+        isOnline: true,
+      },
     };
   }
 }

@@ -82,7 +82,7 @@
       {onCancel}
     />
   {:else if stage === 1}
-    <BackupOptions {onCancel} />
+    <BackupOptions onNext={() => (stage = 2)} {onCancel} restore />
   {:else if stage === 10}
     <ImportKey onImported={() => (stage = 2)} onCancel={() => (stage = 2)} />
   {:else}
@@ -99,7 +99,7 @@
   {:else if stage === 3}
     <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
   {:else if stage === 4}
-    <BackupOptions {onCancel} />
+    <BackupOptions onNext={() => (stage = 6)} {onCancel} />
   {:else if stage === 5}
     <ImportKey
       onStart={() => (stage = 0)}
@@ -123,7 +123,7 @@
   {:else if stage === 3}
     <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
   {:else if stage === 4}
-    <BackupOptions {onCancel} />
+    <BackupOptions onNext={() => (stage = 6)} {onCancel} />
   {:else if stage === 5}
     <ImportKey
       onStart={() => (stage = 0)}

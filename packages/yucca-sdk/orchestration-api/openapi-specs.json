@@ -59,12 +59,43 @@
         ]
       }
     },
-    "/api/yucca/debug": {
-      "get": {
+    "/api/yucca/backend/local": {
+      "post": {
+        "operationId": "createLocalBackend",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalBackendRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Backend"
+        ]
+      }
+    },
+    "/api/yucca/debug/reset": {
+      "post": {
         "operationId": "resetOrchestrator",
         "parameters": [],
         "responses": {
-          "200": {
+          "201": {
             "description": ""
           }
         },
@@ -990,6 +1021,28 @@
         },
         "required": [
           "backends"
+        ]
+      },
+      "CreateLocalBackendRequestDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "BackendResponseDto": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "$ref": "#/components/schemas/BackendDto"
+          }
+        },
+        "required": [
+          "backend"
         ]
       },
       "FilesystemListingItemDto": {

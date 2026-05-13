@@ -1,5 +1,11 @@
-import { defaults, getBackends } from '$lib/fetch-client';
+import {
+  createLocalBackend,
+  type CreateLocalBackendRequestDto,
+  defaults,
+  getBackends,
+} from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
+import { handleError } from '$lib/utils/handle-error';
 import { createQuery } from '@tanstack/svelte-query';
 
 export const backendKeys = {
@@ -22,3 +28,16 @@ export function handleYuccaLogin() {
   window.location.href = loginUrl.href;
 }
 /* eslint-enable unicorn/prefer-global-this */
+
+export const handleCreateLocalBackend = async (
+  dto: CreateLocalBackendRequestDto,
+) => {
+  try {
+    const result = await createLocalBackend(dto);
+    await queryClient.invalidateQueries({ queryKey: backendKeys.all });
+    return result;
+  } catch (error) {
+    handleError(error, 'Failed to create local backend');
+    throw error;
+  }
+};
