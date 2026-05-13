@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 import { BackendType, TaskStatus, TaskType } from '../enum';
 import type { RunType } from '../schema/tables/runHistory.table';
 
@@ -55,6 +55,9 @@ export class RepositoryBackendsDto {
 export class RepositoryConfigurationDto {
   @ApiProperty({ type: [String] })
   paths!: string[];
+
+  @ApiProperty({ enumName: 'RetentionPreset', enum: ['default', 'off'] })
+  retentionPreset!: `default` | `off`;
 }
 
 export class LocalRepositoryDto extends RepositoryWithMetricsDto {
@@ -100,6 +103,11 @@ export class RepositoryUpdateRequestDto {
   @IsArray()
   @IsString({ each: true })
   paths?: string[];
+
+  @ApiProperty({ enumName: 'RetentionPreset', enum: ['default', 'off'], required: false })
+  @IsOptional()
+  @IsIn(['default', 'off'])
+  retentionPreset?: `default` | `off`;
 }
 
 export class RepositoryUpdateResponseDto {
@@ -136,7 +144,7 @@ export class RunDto {
   @ApiProperty({ enumName: 'RunStatus', enum: TaskStatus })
   status!: TaskStatus;
 
-  @ApiProperty({ enumName: 'RunType', enum: [TaskType.Backup, TaskType.Restore] })
+  @ApiProperty({ enumName: 'RunType', enum: TaskType })
   type!: RunType;
 }
 

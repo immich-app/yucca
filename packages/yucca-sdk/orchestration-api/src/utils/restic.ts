@@ -2,6 +2,27 @@ import { Writable } from 'node:stream';
 
 type ResticStatusEvent = { message_type: string; percent_done?: number };
 
+export type RetentionPolicy = {
+  keepWithinDaily?: string;
+  keepWithinWeekly?: string;
+  keepWithinMonthly?: string;
+};
+
+export const retentionPolicyForPreset = (preset: `default` | `off`): RetentionPolicy | undefined => {
+  switch (preset) {
+    case 'default': {
+      return {
+        keepWithinDaily: '7d',
+        keepWithinWeekly: '1m',
+        keepWithinMonthly: '1y',
+      };
+    }
+    case 'off': {
+      return undefined;
+    }
+  }
+};
+
 export const createSampledLogWriter = (logStream: Writable | undefined) => {
   let lastAt = 0;
   let lastPercent = -1;

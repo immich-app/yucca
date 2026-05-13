@@ -1,9 +1,9 @@
 <script lang="ts">
   import OnEvents from "$lib/components/util/OnEvents.svelte";
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
+  import { options } from "$lib/options";
   import { createLogObserver } from "$lib/services/log.service.svelte";
   import { useRun, useRunEventHandler } from "$lib/services/runHistory.service";
-  import { options } from "$lib/options";
   import { formatDuration } from "$lib/utils/format";
   import {
     Alert,
@@ -42,7 +42,6 @@
     log.destroy();
   });
 
-  const isRestore = $derived(run?.type === "restore");
   const running = $derived(run?.status === "incomplete");
   const duration = $derived(
     run
@@ -56,7 +55,15 @@
 
 <OnEvents {onRunUpdate} />
 
-<Modal title={isRestore ? "Restore Log" : "Backup Log"} size="giant" {onClose}>
+<Modal
+  title={run?.type === "restore"
+    ? "Restore Log"
+    : run?.type === "forget"
+      ? "Prune Log"
+      : "Backup Log"}
+  size="giant"
+  {onClose}
+>
   <ModalBody>
     <Stack gap={5}>
       <Stack gap={1}>
@@ -64,22 +71,26 @@
           <Heading size="medium">Connecting…</Heading>
         {:else if run.status === "incomplete"}
           <Heading size="medium">
-            {isRestore ? "Restoring" : "Backing up"} &middot; {Math.round(
-              log.status.progress * 100,
-            )}%
+            {#if run.type === "restore"}Restoring{:else if run.type === "forget"}Pruning{:else}Backing
+              up{/if} &middot; {Math.round(log.status.progress * 100)}%
           </Heading>
         {:else if run.status === "failed"}
           <Heading size="medium" color="danger">
-            {isRestore ? "Restore" : "Backup"} failed after {duration}
+            {#if run.type === "restore"}Restore{:else if run.type === "forget"}Prune{:else}Backup{/if}
+            failed after {duration}
           </Heading>
         {:else if log.errors.length > 0}
           <Heading size="medium" color="warning">
-            {isRestore ? "Restored" : "Backed up"} in {duration} &middot; {log.errors
-              .length} error{log.errors.length === 1 ? "" : "s"}
+            {#if run.type === "restore"}Restored{:else if run.type === "forget"}Pruned{:else}Backed
+              up{/if} in {duration} &middot; {log.errors.length} error{log
+              .errors.length === 1
+              ? ""
+              : "s"}
           </Heading>
         {:else}
           <Heading size="medium" color="success">
-            {isRestore ? "Restored" : "Backed up"} in {duration}
+            {#if run.type === "restore"}Restored{:else if run.type === "forget"}Pruned{:else}Backed
+              up{/if} in {duration}
           </Heading>
         {/if}
 
@@ -118,9 +129,9 @@
         </Stack>
       {/if}
 
-      {#if log.summary}
+      {#if log.summary && run?.type !== "forget"}
         <Stack gap={1}>
-          {#if isRestore}
+          {#if run?.type === "restore"}
             <Text>
               {(log.summary.files_restored ?? 0).toLocaleString()} restored
               {#if log.summary.files_skipped}

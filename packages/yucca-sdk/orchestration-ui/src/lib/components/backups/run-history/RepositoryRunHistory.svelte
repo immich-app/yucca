@@ -31,7 +31,7 @@
     {#if runs.length === 0}
       <Text class="text-center py-6" color="muted">No recent backups</Text>
     {:else}
-      {#each runs.slice(0, 10) as run (run.id)}
+      {#each runs.slice(0, 5) as run (run.id)}
         <RepositoryRunHistoryItem {run} />
       {/each}
     {/if}

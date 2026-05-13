@@ -138,7 +138,7 @@ export class RunHistoryRepository {
 
   private ephemeralLogs = new Map<string, string>();
 
-  createLogAsync(repositoryId: string, type: RunType, fn: (log: WriteStream) => Promise<void>) {
+  createLogAsync(repositoryId: string, type: RunType, fn: (log: WriteStream, logId: string) => Promise<void>) {
     return new Promise<void>(
       (resolve, reject) =>
         void this.createLog(repositoryId, type, fn, (error) => {

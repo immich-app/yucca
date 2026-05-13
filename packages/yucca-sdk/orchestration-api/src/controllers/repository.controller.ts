@@ -95,6 +95,14 @@ export class RepositoryController {
     return this.service.getSnapshots(id);
   }
 
+  @Post('/:id/snapshots/prune')
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ type: LogResponseDto })
+  async pruneRepository(@Param('id') id: string): Promise<LogResponseDto> {
+    const { logId } = await this.service.pruneRepository(id);
+    return { logId };
+  }
+
   @Post('/:id/snapshots/:snapshot')
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'snapshot', type: String })

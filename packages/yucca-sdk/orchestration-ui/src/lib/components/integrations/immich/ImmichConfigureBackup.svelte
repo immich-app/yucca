@@ -2,6 +2,7 @@
   import Suspense from "$lib/components/util/Suspense.svelte";
   import * as sdk from "$lib/fetch-client";
   import { useIntegrations } from "$lib/services/integrations.service";
+  import { useRepositories } from "$lib/services/repository.service";
   import { useSchedules } from "$lib/services/schedule.service";
   import { handleError } from "$lib/utils/handle-error";
   import {
@@ -31,11 +32,13 @@
 
   const query = useIntegrations();
   const schedulesQuery = useSchedules();
+  const repositoriesQuery = useRepositories();
 
   let name = $state("Immich");
   let worm = $state(false);
   let backupConfiguration = $state(true);
   let librariesMode = $state<"all" | "none" | "some">("all");
+  let retentionEnabled = $state(true);
 
   let cron = $state("0 3 * * *");
   let scheduleMode = $state<"daily" | "custom">("daily");
@@ -59,6 +62,12 @@
     if (integration) {
       const config = integration.configuration;
       backupConfiguration = config.backupConfiguration;
+
+      const repository = repositoriesQuery.data?.find(
+        (entry) => entry.id === integration.id,
+      );
+
+      retentionEnabled = repository?.configuration?.retentionPreset !== "off";
 
       if (config.libraries === "all") {
         librariesMode = "all";
@@ -117,6 +126,7 @@
             : librariesMode === "none"
               ? []
               : [...selectedLibraries],
+        retentionPreset: retentionEnabled ? "default" : "off",
       });
 
       onFinish?.();
@@ -333,6 +343,13 @@
         description="Once written, files can't be removed."
       >
         <Switch bind:checked={worm} />
+      </Field>
+
+      <Field
+        label="Delete old backups"
+        description="Keep daily backups for 7 days, weekly for a month, monthly for a year."
+      >
+        <Switch bind:checked={retentionEnabled} disabled={worm} />
       </Field>
     </Stack>
   </Stack>

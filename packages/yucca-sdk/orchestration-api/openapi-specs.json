@@ -564,6 +564,36 @@
         ]
       }
     },
+    "/api/yucca/repository/{id}/snapshots/prune": {
+      "post": {
+        "operationId": "pruneRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/yucca/repository/{id}/snapshots/{snapshot}": {
       "post": {
         "operationId": "restoreSnapshot",
@@ -1214,6 +1244,13 @@
           }
         }
       },
+      "RetentionPreset": {
+        "type": "string",
+        "enum": [
+          "default",
+          "off"
+        ]
+      },
       "ConfigureImmichIntegrationRequestDto": {
         "type": "object",
         "properties": {
@@ -1250,6 +1287,13 @@
                 }
               }
             ]
+          },
+          "retentionPreset": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetentionPreset"
+              }
+            ]
           }
         },
         "required": [
@@ -1258,7 +1302,8 @@
           "cron",
           "dataFolders",
           "backupConfiguration",
-          "libraries"
+          "libraries",
+          "retentionPreset"
         ]
       },
       "OnboardingStatusResponseDto": {
@@ -1400,10 +1445,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "retentionPreset": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetentionPreset"
+              }
+            ]
           }
         },
         "required": [
-          "paths"
+          "paths",
+          "retentionPreset"
         ]
       },
       "LocalRepositoryDto": {
@@ -1577,6 +1630,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "retentionPreset": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetentionPreset"
+              }
+            ]
           }
         }
       },
@@ -1624,8 +1684,10 @@
       "RunType": {
         "type": "string",
         "enum": [
+          "schedule",
+          "restore",
           "backup",
-          "restore"
+          "forget"
         ]
       },
       "RunDto": {

@@ -1,6 +1,6 @@
 import { TaskStatus, TaskType } from '../../enum';
 
-export type RunType = TaskType.Backup | TaskType.Restore;
+export type RunType = TaskType.Backup | TaskType.Restore | TaskType.Forget;
 
 export class RunHistoryTable {
   id!: string;

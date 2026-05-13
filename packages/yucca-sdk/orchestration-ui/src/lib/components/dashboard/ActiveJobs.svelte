@@ -89,7 +89,7 @@
 
   const taskVerb: Record<string, [string, string]> = {
     schedule: ["Running schedule", "Finished schedule"],
-    forget: ["Cleaning up", "Finished cleanup"],
+    forget: ["Pruning", "Finished pruning"],
     backup: ["Backing up", "Finished backup"],
   };
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Insertable, Kysely } from 'kysely';
+import { Insertable, Kysely, Updateable } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from '../schema';
 import { RepositoryTable } from '../schema/tables/repository.table';
@@ -10,6 +10,10 @@ export class RepositoryRepository {
 
   create(repository: Insertable<RepositoryTable>) {
     return this.db.insertInto('repositories').values(repository).returningAll().executeTakeFirstOrThrow();
+  }
+
+  update(id: string, patch: Updateable<RepositoryTable>) {
+    return this.db.updateTable('repositories').set(patch).where('id', '=', id).execute();
   }
 
   get(id: string) {
