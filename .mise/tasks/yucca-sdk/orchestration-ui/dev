@@ -2,5 +2,6 @@
 #MISE description="Run yucca-sdk/orchestration-ui in development mode"
 #MISE depends=["yucca-sdk:orchestration-ui:generate-fetch-client"]
 set -e
+export ORCHESTRATOR_WEB_PORT=${ORCHESTRATOR_WEB_PORT:-36066} 
 
-pnpm --filter orchestration-ui dev --host
+pnpm --filter orchestration-ui dev --host --port $ORCHESTRATOR_WEB_PORT

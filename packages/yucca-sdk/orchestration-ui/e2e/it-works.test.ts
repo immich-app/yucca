@@ -10,7 +10,7 @@ test.beforeAll(async () => {
 });
 
 test('user can log in', async ({ page }) => {
-  await page.goto('http://localhost:5174/');
+  await page.goto('http://localhost:36066/');
   await expect(page.getByText('Welcome to backups')).toBeVisible();
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Next' }).click();
@@ -32,7 +32,7 @@ test('user can log in', async ({ page }) => {
 });
 
 test('user can create backup', async ({ page }) => {
-  await page.goto('http://localhost:5174/');
+  await page.goto('http://localhost:36066/');
   await page.getByRole('button', { name: 'Backups', exact: true }).click();
   await page.getByRole('button', { name: 'Create new backup' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('My Backup');
