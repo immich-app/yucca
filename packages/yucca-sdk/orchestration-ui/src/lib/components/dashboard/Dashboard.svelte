@@ -85,6 +85,10 @@
         (schedule) =>
           schedule.id === integrationsQuery.data!.immichIntegration!.scheduleId,
       )}
+      metrics={query.data.find(
+        (repository) =>
+          repository.id === integrationsQuery.data!.immichIntegration!.id,
+      )?.metrics}
     />
   {:else if integrationsQuery.isSuccess && integrationsQuery.data.immichState}
     <ImmichIntegrationCard unconfigured />
