@@ -60,7 +60,7 @@ export class IntegrationsService {
       repositoryId = existing.id;
       scheduleId = existing.scheduleId;
       await this.repositoryService.updateRepository(existing.id, { name: dto.name });
-      await this.scheduleService.updateSchedule(scheduleId, { cron: dto.cron });
+      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron });
     } else {
       ({
         repository: { id: repositoryId },

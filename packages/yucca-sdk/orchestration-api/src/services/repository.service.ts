@@ -381,16 +381,16 @@ export class RepositoryService {
       throw new BadRequestException('Task already running!');
     }
 
+    const { backendId } = await this.repository.get(id);
+    const { configuration } = await this.backend.getBackend(backendId);
+    const backend = Backend.from(configuration, this.moduleConfig.get());
+
+    const { endpoint, key } = await this.getResticParameters(id);
+
     const paths = await this.repositoryPath.get(id);
     if (paths.length === 0) {
       throw new BadRequestException('Missing configuration paths');
     }
-
-    const { endpoint, key } = await this.getResticParameters(id);
-
-    const { backendId } = await this.repository.get(id);
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
 
     return new Promise((resolve) => {
       const startTime = Date.now();
@@ -399,6 +399,7 @@ export class RepositoryService {
         (complete, fail) =>
           void this.runHistory.createLog(
             id,
+            TaskType.Backup,
             async (log, logId) => {
               resolve({
                 task,
@@ -514,9 +515,19 @@ export class RepositoryService {
     const snapshots = await this.restic.snapshots(endpoint, key);
 
     return {
-      snapshots: snapshots.map((snapshot) => ({
+      snapshots: snapshots.map(({ summary, ...snapshot }) => ({
         ...snapshot,
         time: snapshot.time.toISOString(),
+        summary: summary
+          ? {
+              filesNew: summary.files_new,
+              filesChanged: summary.files_changed,
+              filesUnmodified: summary.files_unmodified,
+              totalFiles: summary.total_files_processed,
+              totalBytes: summary.total_bytes_processed,
+              dataAdded: summary.data_added,
+            }
+          : undefined,
       })),
     };
   }
@@ -534,6 +545,7 @@ export class RepositoryService {
         (complete, fail) =>
           void this.runHistory.createLog(
             id,
+            TaskType.Restore,
             async (log, logId) => {
               resolve({
                 task,

@@ -1,31 +1,28 @@
 <script lang="ts">
-  import {
-    Button,
-    Checkbox,
-    Field,
-    FormModal,
-    HStack,
-    IconButton,
-    Input,
-    modalManager,
-    Stack,
-    Text,
-  } from "@immich/ui";
+  import PathListField from "$lib/components/ui/PathListField.svelte";
+  import PathPickerField from "$lib/components/ui/PathPickerField.svelte";
+  import type { RepositorySnapshotRestoreRequestDto } from "$lib/fetch-client";
   import {
     handleGetSnapshotListing,
     handleRestoreSnapshot,
   } from "$lib/services/snapshot.service";
-  import ViewLogModal from "./ViewLogModal.svelte";
-  import { mdiClose, mdiFolder } from "@mdi/js";
-  import FileBrowserModal from "./FileBrowserModal.svelte";
+  import {
+    FormModal,
+    Heading,
+    HStack,
+    modalManager,
+    Stack,
+    Switch,
+    Text,
+  } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
-  import type { RepositorySnapshotRestoreRequestDto } from "$lib/fetch-client";
+  import ViewLogModal from "./ViewLogModal.svelte";
 
-  interface Props {
+  type Props = {
     repository: string;
     snapshot: string;
     onClose: () => void;
-  }
+  };
 
   let { repository, snapshot, onClose }: Props = $props();
 
@@ -50,73 +47,50 @@
       logId,
     });
   };
+
 </script>
 
-<FormModal title="Restore Backup" {onSubmit} {onClose}>
-  <Stack gap={4}>
-    <Stack>
-      <Text size="small">Selected Files</Text>
-      {#each include as path (path)}
-        <HStack
-          gap={2}
-          class="items-center py-2 px-4 bg-gray-100 rounded-md border border-gray-200"
-        >
-          <Text class="grow" size="small">{path}</Text>
-          <IconButton
-            icon={mdiClose}
-            size="tiny"
-            color="danger"
-            aria-label="Remove"
-            onclick={() => include.delete(path)}
-          />
-        </HStack>
-      {/each}
-
-      {#if include.size === 0}
-        <Text color="secondary" size="small"
-          >Restoring all files and folders.</Text
-        >
-      {/if}
-
-      <div class="w-fit">
-        <Button
-          size="small"
-          variant="outline"
-          onclick={() =>
-            modalManager.show(FileBrowserModal, {
-              onSelect: (path) => include.add(path),
-              handleGetListing: (path) =>
-                handleGetSnapshotListing(repository, snapshot, path),
-            })}>Add file or folder</Button
-        >
-      </div>
-    </Stack>
-
-    <Field
-      label="In-place restore"
-      description="Restore files to where they were originally"
+<FormModal title="Restore Backup" submitText="Restore" {onSubmit} {onClose}>
+  <Stack gap={5}>
+    <PathListField
+      paths={include}
+      addLabel="Add more files"
+      manageLabel="Select files instead"
+      pickerTitle="Files to restore"
+      pickerDescription="Pick the files and folders to restore. Leave empty to restore everything."
+      handleGetListing={(path) =>
+        handleGetSnapshotListing(repository, snapshot, path)}
     >
-      <Checkbox bind:checked={inPlace} />
-    </Field>
+      {#snippet label()}Files to restore{/snippet}
+      {#snippet empty()}Restoring all files and folders.{/snippet}
+    </PathListField>
 
-    {#if !inPlace}
-      <Field
-        label="Target"
-        description="Where do you want this backup restored to?"
-      >
-        <HStack class="items-end">
-          <Input bind:value={target} />
-          <IconButton
-            icon={mdiFolder}
-            aria-label="Select folder"
-            onclick={() =>
-              modalManager.open(FileBrowserModal, {
-                folders: true,
-                onSelect: (value) => (target = value),
-              })}
-          />
-        </HStack>
-      </Field>
-    {/if}
+    <Stack gap={4}>
+      <Heading class="px-1" size="tiny">Options</Heading>
+
+      <HStack gap={4}>
+        <Stack gap={0}>
+          <Text>In-place restore</Text>
+          <Text color="secondary" size="small">
+            Restore files to where they were originally.
+          </Text>
+        </Stack>
+        <Switch bind:checked={inPlace} />
+      </HStack>
+
+      {#if !inPlace}
+        <PathPickerField
+          bind:value={target}
+          placeholder="/path/to/restore/into"
+          pickerTitle="Choose target folder"
+          pickerDescription="Pick the folder to restore files into."
+        >
+          {#snippet title()}Target{/snippet}
+          {#snippet description()}
+            Where do you want this backup restored to?
+          {/snippet}
+        </PathPickerField>
+      {/if}
+    </Stack>
   </Stack>
 </FormModal>

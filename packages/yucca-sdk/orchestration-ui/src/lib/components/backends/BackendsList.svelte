@@ -1,98 +1,73 @@
 <script lang="ts">
-  import {
-    Alert,
-    Button,
-    Card,
-    CardBody,
-    CardFooter,
-    Heading,
-    HStack,
-    LoadingSpinner,
-    modalManager,
-    Text,
-  } from "@immich/ui";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
+  import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { options } from "$lib/options";
   import {
+    handleSetupLocalStorage,
     handleYuccaLogin,
     useBackendEventHandler,
     useBackends,
   } from "$lib/services/backend.service";
+  import { Button, HStack } from "@immich/ui";
+  import StackList from "../ui/StackList.svelte";
   import OnEvents from "../util/OnEvents.svelte";
-  import CreateLocalBackend from "./CreateLocalBackend.svelte";
-  import OAuthDeviceFlow from "./OAuthDeviceFlow.svelte";
+  import Suspense from "../util/Suspense.svelte";
+  import BackendItem from "./BackendItem.svelte";
+
+  type Props = {
+    repository?: LocalRepositoryDto;
+  };
+
+  const { repository }: Props = $props();
 
   const { advanced } = options;
   const query = useBackends();
   const { onBackendCreate } = useBackendEventHandler();
 
-  const yuccaBackend = $derived(
-    query.data?.find((backend) => backend.type === "yucca"),
+  const repositoryBackends = $derived(
+    repository?.backends
+      ? [
+          {
+            ...repository.backends.primary,
+            primary: true,
+          },
+          ...repository.backends.secondary,
+        ]
+      : [],
   );
-
-  async function getStarted() {
-    modalManager.show(OAuthDeviceFlow, await handleYuccaLogin());
-  }
 </script>
 
 <OnEvents {onBackendCreate} />
 
-{#if query.isLoading}
-  <LoadingSpinner />
-{:else if query.isError}
-  <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-{:else if query.isSuccess}
-  {#if yuccaBackend}
-    <Card color={yuccaBackend.isOnline ? "success" : "danger"}>
-      <CardBody class="flex flex-col gap-2">
-        <Heading>FUTO Backups</Heading>
-      </CardBody>
-      {#if yuccaBackend.isOnline}
-        <CardFooter class="flex gap-2">
-          <Button size="small" color="secondary">Manage my account (🚧)</Button>
-          <Button size="small" color="secondary">Billing (🚧)</Button>
-        </CardFooter>
+<Suspense {query}>
+  <StackList>
+    {#snippet title()}
+      {#if repository}
+        Where your backup is stored
       {:else}
-        <CardFooter>
-          <Button onclick={getStarted} size="small">Login again</Button>
-        </CardFooter>
+        Configured backends
       {/if}
-    </Card>
-  {:else}
-    <Card color={"info"}>
-      <CardBody class="flex flex-col gap-2">
-        <Heading>FUTO Backups</Heading>
-        <Text>Upsell text here</Text>
-      </CardBody>
-      <CardFooter>
-        <Button onclick={getStarted} size="small">Get started</Button>
-      </CardFooter>
-    </Card>
-  {/if}
+    {/snippet}
 
-  {#each query.data as backend (backend.id)}
-    {#if backend.type !== "yucca"}
-      <Card color={backend.isOnline ? "success" : "danger"}>
-        <CardBody class="flex flex-col gap-2">
-          <Heading
-            >{backend.type === "local" ? "Local Storage" : "S3 Server"}</Heading
-          >
-        </CardBody>
-        <CardFooter>
-          <Button size="small" color="secondary">Configure (🚧)</Button>
-        </CardFooter>
-      </Card>
-    {/if}
-  {/each}
+    {#each query.data as backend (backend.id)}
+      <BackendItem
+        {backend}
+        repositoryBackend={repositoryBackends.find(
+          ({ id }) => backend.id === id,
+        )}
+      />
+    {/each}
+  </StackList>
 
   {#if $advanced}
     <HStack>
+      <Button size="small" variant="outline" onclick={() => handleYuccaLogin()}
+        >Login with FUTO Backups</Button
+      >
       <Button
         size="small"
-        onclick={() => modalManager.open(CreateLocalBackend, {})}
-        >Setup new local storage</Button
+        variant="outline"
+        onclick={() => handleSetupLocalStorage()}>New local storage</Button
       >
-      <Button size="small">Setup new S3 storage (🚧)</Button>
     </HStack>
   {/if}
-{/if}
+</Suspense>

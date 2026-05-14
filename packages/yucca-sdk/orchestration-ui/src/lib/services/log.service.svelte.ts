@@ -1,8 +1,30 @@
 import { defaults } from '$lib/fetch-client';
 import debounce from 'lodash.debounce';
 
+type SummaryEvent = {
+  message_type: 'summary';
+  // backup
+  files_new?: number;
+  files_changed?: number;
+  files_unmodified?: number;
+  data_added?: number;
+  total_files_processed?: number;
+  total_bytes_processed?: number;
+  total_duration?: number;
+  snapshot_id?: string;
+  // restore
+  files_restored?: number;
+  files_skipped?: number;
+  files_deleted?: number;
+  total_files?: number;
+  bytes_restored?: number;
+  bytes_skipped?: number;
+  total_bytes?: number;
+  seconds_elapsed?: number;
+};
+
 type LogEvent =
-  | { message_type: 'summary' }
+  | SummaryEvent
   | {
       message_type: 'error';
       error?: string | { message: string };
@@ -41,6 +63,7 @@ export function createLogObserver(logId: string) {
     status: LogStatus;
     errors: string[];
     events: LogEvent[];
+    summary: SummaryEvent | undefined;
   }>({
     status: {
       progress: 0,
@@ -49,6 +72,7 @@ export function createLogObserver(logId: string) {
     },
     errors: [],
     events: [],
+    summary: undefined,
   });
 
   const buffer: LogEvent[] = [];
@@ -64,8 +88,10 @@ export function createLogObserver(logId: string) {
   );
 
   const onEvent = (event: LogEvent) => {
-    buffer.unshift(event);
-    buffer.splice(50);
+    if (event.message_type !== 'status') {
+      buffer.unshift(event);
+      buffer.splice(50);
+    }
 
     switch (event.message_type) {
       case 'status': {
@@ -80,6 +106,7 @@ export function createLogObserver(logId: string) {
         break;
       }
       case 'summary': {
+        state.summary = event;
         state.status = {
           progress: 1,
           text: '',
@@ -107,7 +134,7 @@ export function createLogObserver(logId: string) {
   };
 
   const source = new EventSource(
-    new URL(`/api/yucca/logs/${logId}`, defaults.baseUrl),
+    new URL(`/api/yucca/logs/${logId}/stream`, defaults.baseUrl),
   );
   source.addEventListener('message', ({ data }) => onEvent(JSON.parse(data)));
 
@@ -120,6 +147,9 @@ export function createLogObserver(logId: string) {
     },
     get events() {
       return state.events;
+    },
+    get summary() {
+      return state.summary;
     },
     destroy() {
       flush.cancel();

@@ -1,22 +1,20 @@
 <script lang="ts">
-  import {
-    Button,
-    FormModal,
-    HStack,
-    IconButton,
-    Input,
-    modalManager,
-    Stack,
-    Text,
-    Field,
-  } from "@immich/ui";
+  import BackendsList from "$lib/components/backends/BackendsList.svelte";
   import { type LocalRepositoryDto } from "$lib/fetch-client";
-  import { mdiClose } from "@mdi/js";
-  import FileBrowserModal from "./FileBrowserModal.svelte";
+  import { options } from "$lib/options";
   import {
     handleRemoveRepository,
     handleUpdateRepository,
   } from "$lib/services/repository.service";
+  import PathListField from "$lib/components/ui/PathListField.svelte";
+  import {
+    Button,
+    Field,
+    FormModal,
+    Input,
+    modalManager,
+    Stack,
+  } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
 
   interface Props {
@@ -57,6 +55,8 @@
 
     await handleRemoveRepository(repository.id, local);
   };
+
+  const { advanced } = options;
 </script>
 
 <FormModal
@@ -74,41 +74,22 @@
     </Stack>
 
     {#if repository.configuration}
-      <Stack gap={1}>
-        <Text size="small">Backup Paths</Text>
-        {#each paths as path (path)}
-          <HStack
-            gap={2}
-            class="items-center py-2 px-4 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
-          >
-            <Text class="grow" size="small">{path}</Text>
-            <IconButton
-              icon={mdiClose}
-              size="tiny"
-              color="danger"
-              aria-label="Remove"
-              onclick={() => paths.delete(path)}
-            />
-          </HStack>
-        {/each}
-
-        {#if paths.size === 0}
-          <Text color="secondary" size="small">No paths configured yet.</Text>
-        {/if}
-
-        <div class="w-fit">
-          <Button
-            size="small"
-            variant="outline"
-            onclick={() =>
-              modalManager.show(FileBrowserModal, {
-                onSelect: (path) => paths.add(path),
-              })}>Add path</Button
-          >
-        </div>
-      </Stack>
+      <PathListField
+        {paths}
+        addLabel="Add path"
+        manageLabel="Add first path"
+        pickerTitle="Backup Paths"
+        pickerDescription="Select files and folders to include in this backup."
+      >
+        {#snippet label()}Backup Paths{/snippet}
+        {#snippet empty()}No paths configured yet.{/snippet}
+      </PathListField>
     {/if}
 
     <Button color="danger" onclick={onRemove}>Remove Repository</Button>
+
+    {#if advanced}
+      <BackendsList {repository} />
+    {/if}
   </Stack>
 </FormModal>

@@ -2,6 +2,7 @@ import { backup, forget, init, keyList, ls, restore, snapshots, stats } from '@f
 import { Injectable } from '@nestjs/common';
 import { Writable } from 'node:stream';
 import { RepositorySnapshotRestoreRequestDto } from '../dto/repository.dto';
+import { createSampledLogWriter } from '../utils/restic';
 
 @Injectable()
 export class ResticRepository {
@@ -10,16 +11,14 @@ export class ResticRepository {
   }
 
   async backup(repository: string, key: Uint8Array, paths: string[], logStream?: Writable, signal?: AbortSignal) {
+    const write = createSampledLogWriter(logStream);
+
     await backup()
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .addFile(...paths)
       .signal(signal)
-      .on('event', (event) => {
-        if (logStream?.writable) {
-          logStream.write(JSON.stringify(event) + '\n');
-        }
-      })
+      .on('event', write)
       .run();
   }
 
@@ -31,17 +30,15 @@ export class ResticRepository {
     logStream?: Writable,
     signal?: AbortSignal,
   ) {
+    const write = createSampledLogWriter(logStream);
+
     let command = restore()
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
       .target(target ?? '/')
       .signal(signal)
-      .on('event', (event) => {
-        if (logStream?.writable) {
-          logStream.write(JSON.stringify(event) + '\n');
-        }
-      });
+      .on('event', write);
 
     if (include) {
       command = command.include(...include);

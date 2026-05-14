@@ -68,6 +68,6 @@ export class AuthService {
       };
     }
 
-    throw new InternalServerErrorException('No events received');
+    throw new InternalServerErrorException('Failed to start authentication with FUTO Backups');
   }
 }

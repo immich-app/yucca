@@ -8,8 +8,11 @@
     Modal,
     ModalBody,
     ModalFooter,
+    Stack,
+    Text,
     VStack,
   } from "@immich/ui";
+  import { mdiAsterisk, mdiContentCopy, mdiFile, mdiPrinter } from "@mdi/js";
 
   type Props = {
     code: string;
@@ -75,10 +78,14 @@
   };
 </script>
 
-<Modal size="small" title="Your recovery key" onClose={onCancel}>
+<Modal size="small" title="Your recovery key" onClose={onCancel} icon={false}>
   <ModalBody>
-    <VStack>
-      <Card>
+    <Stack gap={4}>
+      <Text size="small" class="text-muted text-left"
+        >Save this key somewhere safe, it will be used to restore your backups.</Text
+      >
+
+      <Card class="bg-primary-50 shadow-none">
         <CardBody class="flex justify-center">
           {#if code}
             <pre><code>{code}</code></pre>
@@ -88,15 +95,29 @@
         </CardBody>
       </Card>
 
-      <HStack>
-        <Button onclick={print}>Print</Button>
-        <Button onclick={saveFile}>Save as file</Button>
-      </HStack>
-      <Button onclick={copyToClipboard}>Copy to clipboard</Button>
-      {#if PasswordCredential}
-        <Button onclick={storeCredentials}>Save to password manager</Button>
-      {/if}
-    </VStack>
+      <VStack>
+        <HStack>
+          <Button leadingIcon={mdiPrinter} variant="outline" onclick={print}
+            >Print</Button
+          >
+          <Button leadingIcon={mdiFile} variant="outline" onclick={saveFile}
+            >Save as file</Button
+          >
+        </HStack>
+        <Button
+          leadingIcon={mdiContentCopy}
+          variant="outline"
+          onclick={copyToClipboard}>Copy to clipboard</Button
+        >
+        {#if PasswordCredential}
+          <Button
+            leadingIcon={mdiAsterisk}
+            variant="outline"
+            onclick={storeCredentials}>Save to password manager</Button
+          >
+        {/if}
+      </VStack>
+    </Stack>
   </ModalBody>
   <ModalFooter>
     <HStack>

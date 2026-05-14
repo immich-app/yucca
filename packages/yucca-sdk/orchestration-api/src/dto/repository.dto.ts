@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
-import { BackendType, TaskStatus } from '../enum';
+import { BackendType, TaskStatus, TaskType } from '../enum';
+import type { RunType } from '../schema/tables/runHistory.table';
 
 export class RepositoryDto {
   @ApiProperty({ type: String })
@@ -121,6 +122,9 @@ export class RunDto {
   id!: string;
 
   @ApiProperty({ type: String })
+  repositoryId!: string;
+
+  @ApiProperty({ type: String })
   start!: string;
 
   @ApiProperty({ type: String })
@@ -131,11 +135,39 @@ export class RunDto {
 
   @ApiProperty({ enumName: 'RunStatus', enum: TaskStatus })
   status!: TaskStatus;
+
+  @ApiProperty({ enumName: 'RunType', enum: [TaskType.Backup, TaskType.Restore] })
+  type!: RunType;
 }
 
 export class RunHistoryResponseDto {
   @ApiProperty({ type: [RunDto] })
   runs!: RunDto[];
+}
+
+export class RunResponseDto {
+  @ApiProperty({ type: RunDto })
+  run!: RunDto;
+}
+
+export class SnapshotSummaryDto {
+  @ApiProperty({ type: Number })
+  filesNew!: number;
+
+  @ApiProperty({ type: Number })
+  filesChanged!: number;
+
+  @ApiProperty({ type: Number })
+  filesUnmodified!: number;
+
+  @ApiProperty({ type: Number })
+  totalFiles!: number;
+
+  @ApiProperty({ type: Number })
+  totalBytes!: number;
+
+  @ApiProperty({ type: Number })
+  dataAdded!: number;
 }
 
 export class SnapshotDto {
@@ -147,6 +179,9 @@ export class SnapshotDto {
 
   @ApiProperty({ type: [String] })
   paths!: string[];
+
+  @ApiProperty({ type: SnapshotSummaryDto, required: false })
+  summary?: SnapshotSummaryDto;
 }
 
 export class ListSnapshotsResponseDto {
