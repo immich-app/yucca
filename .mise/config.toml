@@ -59,7 +59,20 @@ POSTGRES_USERNAME = "postgres"
 POSTGRES_PASSWORD = "postgres"
 POSTGRES_DATABASE = "yucca"
 POSTGRES_PORT = 15432
-JWT_SECRET = "cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1"
+# openssl ecparam -name prime256v1 -genkey -noout -out priv.pem
+# openssl pkcs8 -topk8 -nocrypt -in priv.pem -out priv-pkcs8.pem
+# openssl ec -in priv.pem -pubout -out pub.pem
+JWT_PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgCla79+Sip4o2hZ1K
+nQJYp2xU/nsCJmRoZmvXjeX6cW+hRANCAASkubBRIE7Sns/VS8ZF5XEVO8CwJ+AZ
+Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
+-----END PRIVATE KEY-----
+"""
+JWT_PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpLmwUSBO0p7P1UvGReVxFTvAsCfg
+GS7NQtJ3AnJkYaigO1MS5J59I4uRXCmpLtcwTocUGHMRVZrGLQMWdZY4DQ==
+-----END PUBLIC KEY-----
+"""
 OIDC_ISSUER = "http://localhost:8092"
 OIDC_CLIENT_ID = "client ID"
 OIDC_CLIENT_SECRET = "client secret"

@@ -25,8 +25,8 @@ import { getKyselyConfig } from './utils/database';
 export const imports = [
   JwtModule.register({
     global: true,
-    secret: env.JWT_SECRET,
-    signOptions: { expiresIn: env.JWT_EXPIRES_IN },
+    privateKey: env.JWT_PRIVATE_KEY,
+    signOptions: { algorithm: 'ES256', expiresIn: env.JWT_EXPIRES_IN },
   }),
   KyselyModule.forRoot(getKyselyConfig()),
 ];

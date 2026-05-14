@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +14,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var testSecret = []byte("cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1")
+var testPrivateKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+var testPublicKey = &testPrivateKey.PublicKey
 
 const (
 	testUser       = "00000000-0000-0000-0000-000000000001"
@@ -20,8 +24,8 @@ const (
 
 func makeJWT(t *testing.T, claims jwt.MapClaims) string {
 	t.Helper()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(testSecret)
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	signed, err := token.SignedString(testPrivateKey)
 	if err != nil {
 		t.Fatalf("failed to sign JWT: %v", err)
 	}
@@ -43,7 +47,7 @@ func validClaims() jwt.MapClaims {
 
 func TestAuthMissingHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
-	_, err := extractAuth(req, testSecret)
+	_, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for missing auth header")
 	}
@@ -55,7 +59,7 @@ func TestAuthMissingHeader(t *testing.T) {
 func TestAuthInvalidAuthType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", "Bearer some-token")
-	_, err := extractAuth(req, testSecret)
+	_, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for non-Basic auth")
 	}
@@ -68,7 +72,7 @@ func TestAuthMissingToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	// Basic auth with no password (just username, no colon)
 	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("restic")))
-	_, err := extractAuth(req, testSecret)
+	_, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for missing token")
 	}
@@ -80,7 +84,7 @@ func TestAuthMissingToken(t *testing.T) {
 func TestAuthInvalidJWT(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth("not-a-valid-jwt"))
-	_, err := extractAuth(req, testSecret)
+	_, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for invalid JWT")
 	}
@@ -98,7 +102,7 @@ func TestAuthInvalidPayloadNonUUID(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
-	_, err := extractAuth(req, testSecret)
+	_, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for non-UUID user")
 	}
@@ -115,7 +119,7 @@ func TestAuthInvalidPayloadMissingWriteOnce(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
-	_, err := extractAuth(req, testSecret)
+	_, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for missing writeOnce")
 	}
@@ -129,7 +133,7 @@ func TestAuthSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
 
-	a, err := extractAuth(req, testSecret)
+	a, err := extractAuth(req, testPublicKey)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -150,7 +154,7 @@ func TestAuthMiddlewareRepoMismatch(t *testing.T) {
 	// Create a chi router to test the middleware with path params
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(Middleware(testSecret))
+		r.Use(Middleware(testPublicKey))
 		r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
@@ -173,7 +177,7 @@ func TestAuthMiddlewareSuccess(t *testing.T) {
 	var gotAuth Auth
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(Middleware(testSecret))
+		r.Use(Middleware(testPublicKey))
 		r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
 			gotAuth = FromContext(r.Context())
 			w.WriteHeader(http.StatusOK)

@@ -65,7 +65,7 @@ func main() {
 		log.Info().Str("endpoint", cfg.OTLPMetricsEndpoint).Msg("OpenTelemetry metrics enabled")
 	}
 
-	srv := handlers.NewServer(store, cfg.JWTSecret, m)
+	srv := handlers.NewServer(store, cfg.JWTPublicKey, m)
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
 	httpSrv := &http.Server{
