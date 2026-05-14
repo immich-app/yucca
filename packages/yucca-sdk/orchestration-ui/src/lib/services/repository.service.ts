@@ -1,5 +1,6 @@
 import { sdk } from '$lib';
 import {
+  deleteRepository,
   inspectRepositories,
   updateRepository,
   type InspectedLocalRepositoryDto,
@@ -81,6 +82,13 @@ export const useRepositoryEventHandler = () => {
         },
       );
     },
+    onRepositoryDelete() {
+      queryClient
+        .invalidateQueries({
+          queryKey: repositoryKeys.all,
+        })
+        .catch(() => void 0);
+    },
   };
 };
 
@@ -140,6 +148,20 @@ export const handleUpdateRepository = async (
     }
   } catch (error) {
     handleError(error, 'Failed to update repository');
+    throw error;
+  }
+};
+
+export const handleRemoveRepository = async (id: string, local = false) => {
+  try {
+    // eslint-disable-next-line unicorn/prefer-ternary
+    if (local) {
+      await sdk.deleteRepository(id);
+    } else {
+      await deleteRepository(id);
+    }
+  } catch (error) {
+    handleError(error, 'Failed to delete repository');
     throw error;
   }
 };

@@ -396,6 +396,27 @@
           "Repository"
         ]
       },
+      "delete": {
+        "operationId": "deleteRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      },
       "post": {
         "operationId": "createBackup",
         "parameters": [

@@ -54,6 +54,11 @@ export class RepositoryController {
     return this.service.updateRepository(id, dto, backendId);
   }
 
+  @Delete('/:id')
+  deleteRepository(@Param('id') id: string): Promise<void> {
+    return this.service.deleteRepository(id);
+  }
+
   @Post('/:id')
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ type: LogResponseDto })

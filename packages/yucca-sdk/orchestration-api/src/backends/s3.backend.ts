@@ -43,6 +43,10 @@ export class S3Backend extends Backend {
     throw new Error('Method not implemented.');
   }
 
+  async deleteRepository(_id: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   async getResticEndpoint(id: string): Promise<string> {
     // TODO: requires additional auth parameters for restic
     return `s3:${this.configuration.endpoint}/${id}`;

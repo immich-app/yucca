@@ -46,4 +46,8 @@ export class RepositoryRepository {
     await this.db.updateTable('repositories').where('id', '=', id).set(repository).execute();
     return this.get(id);
   }
+
+  async delete(id: string) {
+    await this.db.deleteFrom('repositories').where('id', '=', id).execute();
+  }
 }

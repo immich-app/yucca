@@ -61,6 +61,11 @@ export class RepositoryUpdateRequestDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  worm?: boolean;
 }
 
 export class RepositoryUpdateResponseDto {

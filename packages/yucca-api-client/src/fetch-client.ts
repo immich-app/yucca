@@ -54,6 +54,7 @@ export type RepositoryGetResponseDto = {
 };
 export type RepositoryUpdateRequestDto = {
     name?: string;
+    worm?: boolean;
 };
 export type RepositoryUpdateResponseDto = {
     repository: RepositoryWithMetricsDto;
@@ -137,6 +138,12 @@ export function updateRepository(id: string, repositoryUpdateRequestDto: Reposit
         method: "PATCH",
         body: repositoryUpdateRequestDto
     })));
+}
+export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
 }
 export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

@@ -1,6 +1,7 @@
 import {
   createRepository,
   createResticUrl,
+  deleteRepository,
   getAuth,
   getRepositories,
   getRepository,
@@ -54,6 +55,10 @@ export class YuccaBackend extends Backend {
 
   getRepositories() {
     return getRepositories(this.requestOptions);
+  }
+
+  deleteRepository(id: string) {
+    return deleteRepository(id, this.requestOptions);
   }
 
   async getResticEndpoint(id: string) {

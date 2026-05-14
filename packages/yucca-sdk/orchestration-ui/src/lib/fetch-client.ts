@@ -360,6 +360,12 @@ export function updateRepository(id: string, repositoryUpdateRequestDto: Reposit
         body: repositoryUpdateRequestDto
     })));
 }
+export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/repository/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
 export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;

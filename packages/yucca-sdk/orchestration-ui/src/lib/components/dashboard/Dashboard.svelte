@@ -52,7 +52,12 @@
   const { onIntegrationUpdate } = useIntegrationEventHandler();
 </script>
 
-<OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onScheduleUpdate} {onIntegrationUpdate} />
+<OnEvents
+  {onRepositoryCreate}
+  {onRepositoryUpdate}
+  {onScheduleUpdate}
+  {onIntegrationUpdate}
+/>
 
 {#if query.isLoading}
   <LoadingSpinner />
