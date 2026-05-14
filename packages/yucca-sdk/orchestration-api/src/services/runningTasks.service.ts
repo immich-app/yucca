@@ -11,4 +11,8 @@ export class RunningTasksService {
       tasks: [...this.tasks.activeTasks.values()],
     };
   }
+
+  cancelTask(parentId: string): void {
+    this.tasks.cancelTask(parentId);
+  }
 }

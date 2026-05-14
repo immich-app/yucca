@@ -87,22 +87,27 @@ export class ScheduleService {
       return;
     }
 
-    this.runningTasks.startTask(id, TaskType.Schedule);
+    const scheduleSignal = this.runningTasks.startTask(id, TaskType.Schedule);
 
-    const scheduleStatus: ActiveScheduleItemDto[] = [];
+    const scheduleStatus: ActiveScheduleItemDto[] = repositories.map((repositoryId) => ({
+      repositoryId,
+      status: TaskStatus.Incomplete,
+    }));
+    this.runningTasks.updateTask(id, { scheduleStatus });
 
-    for (const repositoryId of repositories) {
+    for (const [index, repositoryId] of repositories.entries()) {
+      if (scheduleSignal.aborted) {
+        break;
+      }
+
       try {
-        scheduleStatus.push({ repositoryId, status: TaskStatus.Incomplete });
-        this.runningTasks.updateTask(id, { scheduleStatus });
-
-        const { task } = await this.repository.createBackup(repositoryId);
+        const { task } = await this.repository.createBackup(repositoryId, scheduleSignal);
         await task;
 
-        scheduleStatus.splice(-1, 1, { repositoryId, status: TaskStatus.Complete });
+        scheduleStatus[index] = { repositoryId, status: TaskStatus.Complete };
         this.runningTasks.updateTask(id, { scheduleStatus });
       } catch {
-        scheduleStatus.splice(-1, 1, { repositoryId, status: TaskStatus.Failed });
+        scheduleStatus[index] = { repositoryId, status: TaskStatus.Failed };
         this.runningTasks.updateTask(id, { scheduleStatus });
       }
     }

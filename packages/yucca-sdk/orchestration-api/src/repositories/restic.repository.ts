@@ -9,12 +9,17 @@ export class ResticRepository {
     await init().repository(repository).password(Buffer.from(key).toString('hex')).run();
   }
 
-  async backup(repository: string, key: Uint8Array, paths: string[], logStream?: Writable) {
+  async backup(repository: string, key: Uint8Array, paths: string[], logStream?: Writable, signal?: AbortSignal) {
     await backup()
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .addFile(...paths)
-      .on('event', (event) => logStream?.write(JSON.stringify(event) + '\n'))
+      .signal(signal)
+      .on('event', (event) => {
+        if (logStream?.writable) {
+          logStream.write(JSON.stringify(event) + '\n');
+        }
+      })
       .run();
   }
 
@@ -24,19 +29,25 @@ export class ResticRepository {
     snapshotId: string,
     { include, target }: RepositorySnapshotRestoreRequestDto,
     logStream?: Writable,
+    signal?: AbortSignal,
   ) {
     let command = restore()
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
       .target(target ?? '/')
-      .on('event', (event) => logStream?.write(JSON.stringify(event) + '\n'));
+      .signal(signal)
+      .on('event', (event) => {
+        if (logStream?.writable) {
+          logStream.write(JSON.stringify(event) + '\n');
+        }
+      });
 
     if (include) {
       command = command.include(...include);
     }
 
-    return command.run();
+    await command.run();
   }
 
   async ls(repository: string, key: Uint8Array, snapshotId: string, path: string) {
@@ -56,12 +67,13 @@ export class ResticRepository {
     return await snapshots().repository(repository).password(Buffer.from(key).toString('hex')).run();
   }
 
-  async forget(repository: string, key: Uint8Array, snapshotId: string, prune = true) {
+  async forget(repository: string, key: Uint8Array, snapshotId: string, prune = true, signal?: AbortSignal) {
     return await forget()
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
       .prune(prune)
+      .signal(signal)
       .run();
   }
 
