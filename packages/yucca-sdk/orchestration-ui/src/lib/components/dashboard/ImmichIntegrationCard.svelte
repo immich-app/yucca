@@ -18,9 +18,10 @@
 
   type Props = {
     schedule?: ScheduleDto;
+    unconfigured?: boolean;
   };
 
-  const { schedule }: Props = $props();
+  const { schedule, unconfigured = false }: Props = $props();
 
   const onConfigure = () => {
     modalManager.open(CreateImmichBackup, {});
@@ -42,7 +43,11 @@
 
       <div class="flex-1">
         <Text size="large">Immich Backup</Text>
-        {#if schedule?.lastFinished}
+        {#if unconfigured}
+          <Text color="secondary" class="text-sm">
+            Set up Immich automatic backups
+          </Text>
+        {:else if schedule?.lastFinished}
           <Text color="success" class="text-sm">
             Successful <RelativeTime time={schedule.lastFinished} />
           </Text>
@@ -56,18 +61,24 @@
       </div>
 
       <HStack gap={2}>
-        <Button size="small" variant="outline" onclick={onConfigure}
-          >Configure</Button
-        >
-        {#if schedule}
-          <Button
-            size="small"
-            variant="outline"
-            color={schedule.paused ? "primary" : "danger"}
-            onclick={onTogglePause}
+        {#if unconfigured}
+          <Button size="small" color="primary" onclick={onConfigure}
+            >Set Up</Button
           >
-            {schedule.paused ? "Resume" : "Pause"}
-          </Button>
+        {:else}
+          <Button size="small" variant="outline" onclick={onConfigure}
+            >Configure</Button
+          >
+          {#if schedule}
+            <Button
+              size="small"
+              variant="outline"
+              color={schedule.paused ? "primary" : "danger"}
+              onclick={onTogglePause}
+            >
+              {schedule.paused ? "Resume" : "Pause"}
+            </Button>
+          {/if}
         {/if}
       </HStack>
     </div>

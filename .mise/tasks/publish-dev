@@ -3,6 +3,6 @@
 pnpm --filter yucca-api-client exec npm version patch
 pnpm --filter orchestration-api exec npm version patch
 pnpm --filter orchestration-ui exec npm version patch
-pnpm --filter yucca-api-client publish --registry http://localhost:4873/ --no-git-checks
-pnpm --filter orchestration-api publish --registry http://localhost:4873/ --no-git-checks
-pnpm --filter orchestration-ui publish --registry http://localhost:4873/ --no-git-checks
+pnpm --filter yucca-api-client publish --registry https://npm.raccoon.sh/ --no-git-checks
+pnpm --filter orchestration-api publish --registry https://npm.raccoon.sh/ --no-git-checks
+pnpm --filter orchestration-ui publish --registry https://npm.raccoon.sh/ --no-git-checks
