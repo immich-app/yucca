@@ -4,4 +4,4 @@
 set -e
 export ORCHESTRATOR_WEB_PORT=${ORCHESTRATOR_WEB_PORT:-36066} 
 
-pnpm --filter orchestration-ui dev --host --port $ORCHESTRATOR_WEB_PORT
+pnpm --filter @futo-org/backups-orchestrator-ui dev --host --port $ORCHESTRATOR_WEB_PORT

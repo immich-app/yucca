@@ -2,9 +2,31 @@
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "release-type": "node",
   "prerelease": true,
+  "separate-pull-requests": false,
+  "include-component-in-tag": true,
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "yucca-sdk",
+      "components": [
+        "@futo-org/backups-api-client",
+        "@futo-org/backups-orchestrator-api",
+        "@futo-org/backups-orchestrator-ui"
+      ]
+    },
+    "node-workspace"
+  ],
   "packages": {
-    "restic-api": {
-      "package-name": "restic-api",
+    "packages/yucca-api-client": {
+      "package-name": "@futo-org/backups-api-client",
+      "prerelease-type": "alpha"
+    },
+    "packages/yucca-sdk/orchestration-api": {
+      "package-name": "@futo-org/backups-orchestrator-api",
+      "prerelease-type": "alpha"
+    },
+    "packages/yucca-sdk/orchestration-ui": {
+      "package-name": "@futo-org/backups-orchestrator-ui",
       "prerelease-type": "alpha"
     }
   }

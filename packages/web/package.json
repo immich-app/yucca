@@ -40,11 +40,11 @@
     "vitest-browser-svelte": "^2.0.1"
   },
   "dependencies": {
+    "@futo-org/backups-orchestrator-ui": "workspace:^",
+    "@futo-org/backups-api-client": "workspace:^",
     "@immich/ui": "^0.59.0",
     "@lingui/core": "^5.8.0",
     "@mdi/js": "^7.4.47",
-    "orchestration-ui": "workspace:^",
-    "svelte-i18n-lingui": "^0.2.2",
-    "yucca-api-client": "workspace:^"
+    "svelte-i18n-lingui": "^0.2.2"
   }
 }

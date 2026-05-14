@@ -1,5 +1,5 @@
 import type { PageLoad } from '../../$types';
-import { getRepositories } from 'yucca-api-client';
+import { getRepositories } from '@futo-org/backups-api-client';
 
 export const load: PageLoad = async ({ fetch }) => {
   return {

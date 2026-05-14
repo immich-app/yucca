@@ -3,4 +3,4 @@
 #MISE depends=["yucca-sdk:orchestration-ui:test:install-deps"]
 set -e
 
-pnpm --filter orchestration-ui test:e2e "$@"
+pnpm --filter @futo-org/backups-orchestrator-ui test:e2e "$@"

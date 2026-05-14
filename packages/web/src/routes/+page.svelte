@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from "@immich/ui";
   import { t } from "svelte-i18n-lingui";
-  import { defaults } from "yucca-api-client";
+  import { defaults } from "@futo-org/backups-api-client";
 
   import { locale } from "svelte-i18n-lingui";
 
