@@ -1,23 +1,25 @@
 import { Column, ForeignKeyColumn, Table } from '@immich/sql-tools';
 import { RepositoryTable } from './repository.table';
 
-@Table({ name: 'repositoryMetrics' })
+@Table({ name: 'repositoryMetricsHistory' })
 export class RepositoryMetricsTable {
-  @ForeignKeyColumn(() => RepositoryTable, { primary: true, onUpdate: 'CASCADE', onDelete: 'CASCADE' })
   id!: string;
 
-  @Column({ type: 'bigint' })
-  sizeBytes!: number;
+  @ForeignKeyColumn(() => RepositoryTable, { primary: true, onUpdate: 'CASCADE', onDelete: 'CASCADE' })
+  repositoryId!: string;
+
+  @Column({ type: 'bigint', nullable: false })
+  sizeBytes?: number;
 
   @Column({ type: 'timestamp with time zone', nullable: true })
-  lastStarted?: Date;
+  started?: Date;
 
   @Column({ type: 'timestamp with time zone', nullable: true })
-  lastBackup?: Date;
+  backup?: Date;
 
   @Column({ type: 'timestamp with time zone', nullable: true })
-  lastSuccessfulBackup?: Date;
+  successfulBackup?: Date;
 
   @Column({ type: 'integer', nullable: true })
-  lastBackupDuration?: number;
+  backupDuration?: number;
 }

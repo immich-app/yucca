@@ -8,6 +8,7 @@ import {
   RepositoryCreateRequestDto,
   RepositoryUpdateRequestDto,
   submitMetricBackupEnd,
+  submitMetricBackupStart,
   submitMetricRepositorySize,
   updateRepository,
 } from 'yucca-api-client';
@@ -64,6 +65,10 @@ export class YuccaBackend extends Backend {
   async getResticEndpoint(id: string) {
     const { url } = await createResticUrl(id, this.requestOptions);
     return url;
+  }
+
+  submitMetricBackupStart(id: string): Promise<void> {
+    return submitMetricBackupStart(id, this.requestOptions);
   }
 
   submitMetricBackupEnd(id: string, success: boolean, durationMs: number): Promise<void> {

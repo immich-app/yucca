@@ -95,12 +95,35 @@
         ]
       }
     },
-    "/api/metrics/submit/{id}/backup/end": {
+    "/api/metrics/submit/{repositoryId}/backup/start": {
+      "post": {
+        "operationId": "submitMetricBackupStart",
+        "parameters": [
+          {
+            "name": "repositoryId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/metrics/submit/{repositoryId}/backup/end": {
       "post": {
         "operationId": "submitMetricBackupEnd",
         "parameters": [
           {
-            "name": "id",
+            "name": "repositoryId",
             "required": true,
             "in": "path",
             "schema": {
@@ -128,12 +151,12 @@
         ]
       }
     },
-    "/api/metrics/submit/{id}/size": {
+    "/api/metrics/submit/{repositoryId}/size": {
       "patch": {
         "operationId": "submitMetricRepositorySize",
         "parameters": [
           {
-            "name": "id",
+            "name": "repositoryId",
             "required": true,
             "in": "path",
             "schema": {

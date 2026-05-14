@@ -93,15 +93,21 @@ export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function submitMetricBackupEnd(id: string, submitBackupEndRequestDto: SubmitBackupEndRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(id)}/backup/end`, oazapfts.json({
+export function submitMetricBackupStart(repositoryId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/backup/start`, {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function submitMetricBackupEnd(repositoryId: string, submitBackupEndRequestDto: SubmitBackupEndRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/backup/end`, oazapfts.json({
         ...opts,
         method: "POST",
         body: submitBackupEndRequestDto
     })));
 }
-export function submitMetricRepositorySize(id: string, submitUpdateSizeRequestDto: SubmitUpdateSizeRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(id)}/size`, oazapfts.json({
+export function submitMetricRepositorySize(repositoryId: string, submitUpdateSizeRequestDto: SubmitUpdateSizeRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/size`, oazapfts.json({
         ...opts,
         method: "PATCH",
         body: submitUpdateSizeRequestDto
