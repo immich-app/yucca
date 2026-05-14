@@ -30,13 +30,16 @@
   {/snippet}
 
   {#if run.status === "incomplete"}
-    {run.type === "restore" ? "Restoring" : "Backing up"} &middot; started
+    {#if run.type === "restore"}Restoring{:else if run.type === "forget"}Pruning{:else}Backing
+      up{/if} &middot; started
     <RelativeTime time={run.start} />
   {:else if run.status === "failed"}
-    {run.type === "restore" ? "Restore" : "Backup"} failed
+    {#if run.type === "restore"}Restore{:else if run.type === "forget"}Prune{:else}Backup{/if}
+    failed
     {#if run.end}<RelativeTime time={run.end} />{/if}
   {:else}
-    {run.type === "restore" ? "Restored" : "Backed up"}
+    {#if run.type === "restore"}Restored{:else if run.type === "forget"}Pruned{:else}Backed
+      up{/if}
     {#if run.end}<RelativeTime time={run.end} />{/if}
   {/if}
 </StackListItem>

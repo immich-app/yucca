@@ -68,6 +68,7 @@ export type IntegrationsResponseDto = {
     immichState?: ImmichStateDto;
     immichIntegration?: ImmichIntegrationDto;
 };
+export type RetentionPreset = "default" | "off";
 export type ConfigureImmichIntegrationRequestDto = {
     name: string;
     worm: boolean;
@@ -75,6 +76,7 @@ export type ConfigureImmichIntegrationRequestDto = {
     dataFolders: string[];
     backupConfiguration: boolean;
     libraries: "all" | string[];
+    retentionPreset: RetentionPreset;
 };
 export type OnboardingStatusResponseDto = {
     hasOnboardedKey: boolean;
@@ -111,6 +113,7 @@ export type RepositoryBackendsDto = {
 };
 export type RepositoryConfigurationDto = {
     paths: string[];
+    retentionPreset: RetentionPreset;
 };
 export type LocalRepositoryDto = {
     id: string;
@@ -155,6 +158,7 @@ export type RepositoryInspectResponseDto = {
 export type RepositoryUpdateRequestDto = {
     name?: string;
     paths?: string[];
+    retentionPreset?: RetentionPreset;
 };
 export type RepositoryUpdateResponseDto = {
     repository: LocalRepositoryDto;
@@ -166,7 +170,7 @@ export type RepositoryCheckImportResponseDto = {
     readable: boolean;
 };
 export type RunStatus = "incomplete" | "complete" | "failed";
-export type RunType = "backup" | "restore";
+export type RunType = "schedule" | "restore" | "backup" | "forget";
 export type RunDto = {
     id: string;
     repositoryId: string;
@@ -425,6 +429,15 @@ export function getSnapshots(id: string, opts?: Oazapfts.RequestOpts) {
         data: ListSnapshotsResponseDto;
     }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots`, {
         ...opts
+    }));
+}
+export function pruneRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogResponseDto;
+    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/prune`, {
+        ...opts,
+        method: "POST"
     }));
 }
 export function restoreSnapshot(id: string, snapshot: string, repositorySnapshotRestoreRequestDto: RepositorySnapshotRestoreRequestDto, opts?: Oazapfts.RequestOpts) {

@@ -59,7 +59,10 @@ export class IntegrationsService {
     if (existing) {
       repositoryId = existing.id;
       scheduleId = existing.scheduleId;
-      await this.repositoryService.updateRepository(existing.id, { name: dto.name });
+      await this.repositoryService.updateRepository(existing.id, {
+        name: dto.name,
+        retentionPreset: dto.retentionPreset,
+      });
       await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron });
     } else {
       ({
@@ -68,6 +71,12 @@ export class IntegrationsService {
         name: dto.name,
         worm: dto.worm,
       }));
+
+      if (dto.retentionPreset !== 'default') {
+        await this.repositoryService.updateRepository(repositoryId, {
+          retentionPreset: dto.retentionPreset,
+        });
+      }
 
       ({
         schedule: { id: scheduleId },

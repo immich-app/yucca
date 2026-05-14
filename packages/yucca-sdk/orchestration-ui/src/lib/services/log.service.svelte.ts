@@ -130,6 +130,10 @@ export function createLogObserver(logId: string) {
         flush.flush();
         break;
       }
+      default: {
+        flush();
+        break;
+      }
     }
   };
 

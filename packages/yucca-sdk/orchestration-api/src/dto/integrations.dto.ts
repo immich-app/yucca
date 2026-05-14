@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsDefined, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsDefined, IsIn, IsString } from 'class-validator';
 
 export class ImmichLibraryDto {
   @ApiProperty({ type: String })
@@ -91,4 +91,8 @@ export class ConfigureImmichIntegrationRequestDto {
   })
   @IsDefined()
   libraries!: 'all' | string[];
+
+  @ApiProperty({ enumName: 'RetentionPreset', enum: ['default', 'off'] })
+  @IsIn(['default', 'off'])
+  retentionPreset!: `default` | `off`;
 }

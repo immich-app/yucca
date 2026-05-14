@@ -1,8 +1,8 @@
-import { backup, forget, init, keyList, ls, restore, snapshots, stats } from '@futo-org/restic-wrapper';
+import { backup, forget, init, keyList, ls, prune, restore, snapshots, stats } from '@futo-org/restic-wrapper';
 import { Injectable } from '@nestjs/common';
 import { Writable } from 'node:stream';
 import { RepositorySnapshotRestoreRequestDto } from '../dto/repository.dto';
-import { createSampledLogWriter } from '../utils/restic';
+import { createSampledLogWriter, RetentionPolicy } from '../utils/restic';
 
 @Injectable()
 export class ResticRepository {
@@ -72,6 +72,21 @@ export class ResticRepository {
       .prune(prune)
       .signal(signal)
       .run();
+  }
+
+  async forgetByPolicy(repository: string, key: Uint8Array, policy: RetentionPolicy, signal?: AbortSignal) {
+    return await forget()
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .signal(signal)
+      .keepWithinDaily(policy.keepWithinDaily)
+      .keepWithinWeekly(policy.keepWithinWeekly)
+      .keepWithinMonthly(policy.keepWithinMonthly)
+      .run();
+  }
+
+  prune(repository: string, key: Uint8Array, signal?: AbortSignal) {
+    return prune().repository(repository).password(Buffer.from(key).toString('hex')).signal(signal).run();
   }
 
   async keyList(repository: string, key: Uint8Array) {
