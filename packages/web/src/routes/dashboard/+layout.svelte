@@ -11,7 +11,10 @@
     NavbarItem,
   } from "@immich/ui";
   import { mdiBackupRestore, mdiViewDashboard } from "@mdi/js";
-  import { setProvider, yuccaApiProvider } from "@futo-org/backups-orchestrator-ui";
+  import {
+    setProvider,
+    yuccaApiProvider,
+  } from "@futo-org/backups-orchestrator-ui";
   import { t } from "svelte-i18n-lingui";
   import { defaults } from "@futo-org/backups-api-client";
 

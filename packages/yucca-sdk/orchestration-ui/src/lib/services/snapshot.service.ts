@@ -153,7 +153,9 @@ export const getSnapshotActions = (
         prompt: 'This snapshot will be permanently removed.',
       });
 
-      if (!confirm) {return;}
+      if (!confirm) {
+        return;
+      }
 
       await handleForgetSnapshot(repositoryId, snapshot.id);
       removeSnapshot(snapshot.id);
