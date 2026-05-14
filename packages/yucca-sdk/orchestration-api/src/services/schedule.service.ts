@@ -162,6 +162,11 @@ export class ScheduleService {
     scheduleId: string,
     { name, paused, cron, repositories }: ScheduleUpdateRequestDto,
   ): Promise<ScheduleUpdateResponseDto> {
+    const integration = await this.integrationImmich.get();
+    if (integration?.scheduleId === scheduleId) {
+      throw new BadRequestException('Schedule managed by Immich integration');
+    }
+
     const linked = new Set(await this.schedule.getRepositoryIds(scheduleId));
 
     const set: Updateable<ScheduleTable> = {
@@ -174,7 +179,19 @@ export class ScheduleService {
     }
 
     if (Array.isArray(repositories)) {
-      set.ordering = JSON.stringify(repositories.filter((id) => linked.has(id)));
+      const incoming = new Set(repositories);
+      const toAdd = repositories.filter((id) => !linked.has(id));
+      const toRemove = [...linked].filter((id) => !incoming.has(id));
+
+      for (const id of toAdd) {
+        await this.schedule.addRepositoryToSchedule(scheduleId, id);
+      }
+
+      for (const id of toRemove) {
+        await this.schedule.removeRepositoryFromSchedule(scheduleId, id);
+      }
+
+      set.ordering = JSON.stringify(repositories);
     }
 
     await this.schedule.updateSchedule(scheduleId, set);
@@ -205,26 +222,6 @@ export class ScheduleService {
     this.events.publish({
       type: 'ScheduleDelete',
       scheduleId,
-    });
-  }
-
-  async addRepositoryToSchedule(scheduleId: string, repositoryId: string): Promise<void> {
-    await this.schedule.addRepositoryToSchedule(scheduleId, repositoryId);
-
-    this.events.publish({
-      type: 'ScheduleUpdate',
-      scheduleId,
-      schedule: await this.schedule.get(scheduleId),
-    });
-  }
-
-  async removeRepositoryFromSchedule(scheduleId: string, repositoryId: string): Promise<void> {
-    await this.schedule.removeRepositoryFromSchedule(scheduleId, repositoryId);
-
-    this.events.publish({
-      type: 'ScheduleUpdate',
-      scheduleId,
-      schedule: await this.schedule.get(scheduleId),
     });
   }
 }

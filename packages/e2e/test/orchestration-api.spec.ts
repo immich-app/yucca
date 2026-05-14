@@ -485,7 +485,7 @@ describe('Schedule', () => {
 
   it('removes and adds repository', async () => {
     const removeEvent = waitForMessage('ScheduleUpdate');
-    await sdk.removeRepositoryFromSchedule(schedule.id, repository.id);
+    await sdk.updateSchedule(schedule.id, { repositories: [repository2.id] });
 
     await expect(removeEvent).resolves.toEqual({
       type: 'ScheduleUpdate',
@@ -496,7 +496,9 @@ describe('Schedule', () => {
     });
 
     const addEvent = waitForMessage('ScheduleUpdate');
-    await sdk.addRepositoryToSchedule(schedule.id, repository.id);
+    await sdk.updateSchedule(schedule.id, {
+      repositories: [repository2.id, repository.id],
+    });
 
     await expect(addEvent).resolves.toEqual({
       type: 'ScheduleUpdate',
