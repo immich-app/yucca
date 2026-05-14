@@ -1,0 +1,15 @@
+import { z } from 'zod';
+
+const schema = z.object({
+  ISSUER: z.url().default('http://localhost:8092'),
+  PORT: z.coerce.number().default(80),
+
+  CLIENT_ID: z.string().default('client ID'),
+  CLIENT_SECRET: z.string().default('client secret'),
+  DEVICE_CLIENT_ID: z.string().default('device client ID'),
+
+  REDIRECT_URI: z.url().default('http://localhost:36033/api/auth/oidc/callback'),
+  POST_LOGOUT_REDIRECT_URI: z.url().default('http://localhost:36033'),
+});
+
+export const env = schema.parse(process.env);

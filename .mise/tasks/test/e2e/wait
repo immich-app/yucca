@@ -6,6 +6,10 @@ source "$(dirname "$0")/../../yucca-api/env"
 
 echo Ensure dev environment is running before invoking tests.
 
+while ! nc -z localhost "8092" 2>/dev/null; do
+  sleep 0.1
+done
+
 while ! nc -z localhost "$RESTIC_API_PORT" 2>/dev/null; do
   sleep 0.1
 done

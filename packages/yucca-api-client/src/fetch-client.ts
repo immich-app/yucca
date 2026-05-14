@@ -75,10 +75,9 @@ export function logout(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(codeChallenge: string, redirectUri: string, state: string, opts?: Oazapfts.RequestOpts) {
+export function oidcAuthorize(codeChallenge: string, state: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
         code_challenge: codeChallenge,
-        redirect_uri: redirectUri,
         state
     }))}`, {
         ...opts
@@ -86,6 +85,11 @@ export function oidcAuthorize(codeChallenge: string, redirectUri: string, state:
 }
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
+        ...opts
+    }));
+}
+export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/device", {
         ...opts
     }));
 }

@@ -14,6 +14,7 @@
     VStack,
   } from "@immich/ui";
   import CreateLocalBackend from "$lib/components/backends/CreateLocalBackend.svelte";
+  import OAuthDeviceFlow from "$lib/components/backends/OAuthDeviceFlow.svelte";
 
   type Props = {
     restore?: boolean;
@@ -22,6 +23,13 @@
   };
 
   const { restore = false, onNext, onCancel }: Props = $props();
+
+  async function onFutoBackups() {
+    modalManager.show(OAuthDeviceFlow, {
+      ...(await handleYuccaLogin()),
+      onCreate: onNext,
+    });
+  }
 </script>
 
 <Modal
@@ -31,7 +39,7 @@
 >
   <ModalBody>
     <VStack>
-      <Card class="cursor-pointer" onclick={handleYuccaLogin}>
+      <Card class="cursor-pointer" onclick={onFutoBackups}>
         <CardBody>
           {#if restore}
             <Heading size="small">FUTO Backups</Heading>

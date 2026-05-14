@@ -1,10 +1,11 @@
-import { WideContextRepository } from '@common/server/otel';
+import { LoggerRepository, WideContextRepository } from '@common/server/otel';
 import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { parse } from 'cookie';
+import EventIterator from 'event-iterator';
 import { Request } from 'express';
 import { IncomingHttpHeaders } from 'node:http';
 import { UserInfoResponse } from 'openid-client';
+import { from } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { env } from 'src/env';
@@ -16,7 +17,7 @@ import { UserRepository } from 'src/repositories/user.repository';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly jwt: JwtService,
+    private readonly logger: LoggerRepository,
     private readonly oidc: OidcRepository,
     private readonly user: UserRepository,
     private readonly crypto: CryptoRepository,
@@ -50,28 +51,15 @@ export class AuthService {
 
   async oidcAuthorize(
     codeChallenge?: string,
-    redirectUri?: string,
     state?: string,
   ): Promise<{ redirectTo: string; state: string; codeVerifier?: string }> {
-    const { redirectTo, state: newState, codeVerifier } = await this.oidc.authorize(codeChallenge, redirectUri, state);
+    const { redirectTo, state: newState, codeVerifier } = await this.oidc.authorize(codeChallenge, state);
     return { redirectTo: redirectTo.href, state: newState, codeVerifier };
   }
 
   async oidcCallback(request: Request): Promise<{ redirectTo: string; accessToken: string }> {
-    const redirectUri = request.query['redirect_uri'];
-
-    let url: URL;
-    if (typeof redirectUri === 'string') {
-      url = new URL(redirectUri);
-      for (const [key, value] of Object.entries(request.query)) {
-        if (key !== 'redirect_uri' && typeof value === 'string') {
-          url.searchParams.set(key, value);
-        }
-      }
-    } else {
-      const redirectUri = new URL(env.OIDC_REDIRECT_URI);
-      url = new URL(`${redirectUri.origin}${request.originalUrl}`);
-    }
+    const redirectUri = new URL(env.OIDC_REDIRECT_URI);
+    const url = new URL(`${redirectUri.origin}${request.originalUrl}`);
 
     const error = url.searchParams.has('error');
 
@@ -140,5 +128,60 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async oidcDeviceFlow(
+    callback: (data: { userCode: string; verificationUri: string }) => void,
+  ): Promise<{ accessToken: string }> {
+    const { userCode, verificationUri, tokens } = await this.oidc.deviceFlow();
+
+    callback({ userCode, verificationUri });
+
+    const token = await tokens;
+    const claims = token.claims();
+
+    if (!claims) {
+      throw new InternalServerErrorException('no id token received');
+    }
+
+    this.wideContext.assignContext({ claims });
+
+    const user = await this.getOrCreateUser(claims);
+
+    this.wideContext.addContext('customerId', user.id);
+
+    const accessToken = this.crypto.randomHex(32);
+
+    await this.session.create({
+      userId: user.id,
+      accessToken,
+    });
+
+    return {
+      accessToken,
+    };
+  }
+
+  oidcDeviceFlowObservable() {
+    return from(
+      new EventIterator<MessageEvent>(
+        (queue) =>
+          void this.oidcDeviceFlow((data) =>
+            queue.push({
+              data: {
+                type: 'START',
+                ...data,
+              },
+            } as MessageEvent),
+          )
+            .then(({ accessToken }) => queue.push({ data: { type: 'SUCCESS', accessToken } } as MessageEvent))
+            .catch((error) => {
+              this.wideContext.setErrorCause(error);
+              this.logger.error('oidcDeviceFlow error:', error);
+              queue.push({ data: { type: 'FAILURE' } } as MessageEvent);
+            })
+            .finally(() => queue.stop()),
+      ),
+    );
   }
 }

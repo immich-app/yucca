@@ -44,7 +44,7 @@
   {#if mock}
     <TestUi {mock} />
   {:else}
-    <OnboardingGate flow="immich-restore" onExit={() => (mock = false)}>
+    <OnboardingGate flow="default" onExit={() => (mock = false)}>
       <TestUi {mock} />
     </OnboardingGate>
   {/if}

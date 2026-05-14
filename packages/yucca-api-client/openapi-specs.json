@@ -49,14 +49,6 @@
             }
           },
           {
-            "name": "redirect_uri",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "state",
             "required": true,
             "in": "query",
@@ -78,6 +70,20 @@
     "/api/auth/oidc/callback": {
       "get": {
         "operationId": "oidcCallback",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/oidc/device": {
+      "get": {
+        "operationId": "oidcDeviceFlow",
         "parameters": [],
         "responses": {
           "200": {
