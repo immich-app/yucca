@@ -36,7 +36,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
-import { ScheduleService } from './schedule.service';
+import { BootstrapService } from './bootstrap.service';
 
 @Injectable()
 export class RepositoryService {
@@ -47,14 +47,14 @@ export class RepositoryService {
     private readonly config: ConfigRepository,
     private readonly database: DatabaseRepository,
     private readonly restic: ResticRepository,
-    @Inject(forwardRef(() => ScheduleService))
-    private readonly schedule: ScheduleService,
     private readonly runHistory: RunHistoryRepository,
     private readonly repository: RepositoryRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryLocalMetrics: RepositoryLocalMetricsRepository,
     private readonly moduleConfig: ModuleConfigRepository,
     private readonly storage: StorageRepository,
+    @Inject(forwardRef(() => BootstrapService))
+    private readonly bootstrap: BootstrapService,
   ) {}
 
   private async getLocalRepository(
@@ -390,18 +390,14 @@ export class RepositoryService {
               }
             },
             (error) => {
-              const lastBackup = new Date().toString();
-              let lastSuccessfulBackup;
+              const lastBackup = new Date().toISOString();
+              const lastSuccessfulBackup = error ? undefined : lastBackup;
               const lastBackupDuration = startTime ? Date.now() - startTime : undefined;
-
-              if (!error) {
-                lastSuccessfulBackup = lastBackup;
-              }
 
               void this.updateLocalMetrics(id, {
                 resticParameters: { endpoint, key },
                 additionalMetrics: {
-                  lastBackup: new Date().toString(),
+                  lastBackup,
                   lastSuccessfulBackup,
                   lastBackupDuration,
                 },
@@ -415,6 +411,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 
@@ -520,6 +518,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 
@@ -570,9 +570,7 @@ export class RepositoryService {
 
                   await this.database.restoreFrom(join(restoredState, 'state.sqlite3'));
 
-                  await this.database.runMigrations();
-                  await this.config.bootstrap();
-                  await this.schedule.bootstrap();
+                  await this.bootstrap.onApplicationBootstrap();
                 }
               } finally {
                 this.tasks.endTask(id);
@@ -587,6 +585,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 

@@ -7,5 +7,4 @@ export enum CookieName {
 
 export enum MetadataKey {
   Auth = 'AUTH',
-  OptionalAuth = 'OPTIONAL_AUTH',
 }

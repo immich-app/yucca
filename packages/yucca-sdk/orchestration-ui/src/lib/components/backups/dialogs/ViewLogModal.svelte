@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    Alert,
     Heading,
     Modal,
     ModalBody,
@@ -29,12 +30,21 @@
 <Modal title="Log Output" size="giant" {onClose}>
   <ModalBody>
     <Stack gap={2}>
+      {#each log.errors as error}
+        <Alert color="danger">{error}</Alert>
+      {/each}
+
       <ProgressBar progress={log.status.progress} size="large">
         <Text
           size="small"
           class={log.status.progress > 0.5 ? "text-light" : "text-dark"}
-          >{log.status.text}</Text
         >
+          {#if log.status.progress >= 1}
+            {log.errors.length > 0 ? "Completed with errors" : "Complete"}
+          {:else}
+            {log.status.text}
+          {/if}
+        </Text>
       </ProgressBar>
 
       {#if log.status.currentFiles.length > 0}

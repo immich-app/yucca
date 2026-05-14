@@ -48,7 +48,7 @@
           <Text color="secondary" class="text-sm">
             Set up Immich automatic backups
           </Text>
-        {:else if metrics?.lastBackup && (!metrics.lastSuccessfulBackup || metrics.lastBackup > metrics.lastSuccessfulBackup)}
+        {:else if metrics?.lastBackup && (!metrics.lastSuccessfulBackup || +new Date(metrics.lastBackup) > +new Date(metrics.lastSuccessfulBackup))}
           <Text color="danger" class="text-sm">
             Failed <RelativeTime time={metrics.lastBackup} />
           </Text>
