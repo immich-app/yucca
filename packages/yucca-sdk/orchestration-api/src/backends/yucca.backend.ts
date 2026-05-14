@@ -6,6 +6,8 @@ import {
   getRepository,
   RepositoryCreateRequestDto,
   RepositoryUpdateRequestDto,
+  submitMetricBackupEnd,
+  submitMetricRepositorySize,
   updateRepository,
 } from 'yucca-api-client';
 import { BackendType, CookieName } from '../enum';
@@ -24,6 +26,14 @@ export class YuccaBackend extends Backend {
         cookie: `${CookieName.YuccaAccessToken}=${this.configuration.accessToken}`,
       },
     };
+  }
+
+  isBackupCapable(): boolean {
+    return true;
+  }
+
+  isMetricsCapable(): boolean {
+    return true;
   }
 
   async checkOnline() {
@@ -49,5 +59,20 @@ export class YuccaBackend extends Backend {
   async getResticEndpoint(id: string) {
     const { url } = await createResticUrl(id, this.requestOptions);
     return url;
+  }
+
+  submitMetricBackupEnd(id: string, success: boolean, durationMs: number): Promise<void> {
+    return submitMetricBackupEnd(
+      id,
+      {
+        durationMs,
+        success,
+      },
+      this.requestOptions,
+    );
+  }
+
+  submitMetricRepositorySize(id: string, sizeBytes: number): Promise<void> {
+    return submitMetricRepositorySize(id, { sizeBytes }, this.requestOptions);
   }
 }

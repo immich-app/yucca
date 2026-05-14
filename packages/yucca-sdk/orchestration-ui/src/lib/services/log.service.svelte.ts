@@ -19,7 +19,9 @@ type LogEvent =
       current_files?: string[];
     };
 
-const formatErrorEvent = (event: LogEvent & { message_type: 'error' }): string => {
+const formatErrorEvent = (
+  event: LogEvent & { message_type: 'error' },
+): string => {
   const text =
     (typeof event.error === 'string' ? event.error : event.error?.message) ??
     event.message ??
@@ -35,7 +37,11 @@ export type LogStatus = {
 };
 
 export function createLogObserver(logId: string) {
-  const state = $state<{ status: LogStatus; errors: string[]; events: LogEvent[] }>({
+  const state = $state<{
+    status: LogStatus;
+    errors: string[];
+    events: LogEvent[];
+  }>({
     status: {
       progress: 0,
       text: '',
@@ -90,7 +96,9 @@ export function createLogObserver(logId: string) {
         break;
       }
       case 'exit_error': {
-        state.errors.push(`restic exited with code ${event.code}: ${event.message}`);
+        state.errors.push(
+          `restic exited with code ${event.code}: ${event.message}`,
+        );
         flush();
         flush.flush();
         break;

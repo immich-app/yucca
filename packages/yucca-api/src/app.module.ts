@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
+import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
@@ -11,11 +12,13 @@ import { CryptoRepository } from './repositories/crypto.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
+import { RepositoryMetricsRepository } from './repositories/repositoryMetrics.repository';
 import { ResticApiRepository } from './repositories/resticApi.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { UserRepository } from './repositories/user.repository';
 import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
+import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
 import { getKyselyConfig } from './utils/database';
 
@@ -28,7 +31,7 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, RepositoryController];
+export const controllers = [AuthController, MetricsController, RepositoryController];
 
 export const providers = [
   WideContextRepository,
@@ -39,8 +42,10 @@ export const providers = [
   OidcRepository,
   UserRepository,
   RepositoryRepository,
+  RepositoryMetricsRepository,
   SessionRepository,
   DatabaseService,
+  MetricsService,
   RepositoryService,
   AuthService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },

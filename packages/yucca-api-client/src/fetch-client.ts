@@ -20,6 +20,13 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
+export type SubmitBackupEndRequestDto = {
+    success: boolean;
+    durationMs: number;
+};
+export type SubmitUpdateSizeRequestDto = {
+    sizeBytes: number;
+};
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
@@ -80,6 +87,20 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
     }));
+}
+export function submitMetricBackupEnd(id: string, submitBackupEndRequestDto: SubmitBackupEndRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(id)}/backup/end`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: submitBackupEndRequestDto
+    })));
+}
+export function submitMetricRepositorySize(id: string, submitUpdateSizeRequestDto: SubmitUpdateSizeRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(id)}/size`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: submitUpdateSizeRequestDto
+    })));
 }
 export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

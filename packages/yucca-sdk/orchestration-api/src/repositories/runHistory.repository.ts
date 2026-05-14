@@ -33,7 +33,7 @@ export class RunHistoryRepository {
   async createLog(
     repositoryId: string,
     fn: (log: WriteStream, logId: string) => Promise<void>,
-    callback: (error?: unknown) => void,
+    callback: (error?: unknown) => unknown,
   ) {
     const logId = randomUUID();
 

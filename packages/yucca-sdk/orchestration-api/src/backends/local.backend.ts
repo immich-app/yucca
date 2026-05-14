@@ -20,6 +20,14 @@ export class LocalBackend extends Backend {
     super(configuration);
   }
 
+  isBackupCapable(): boolean {
+    return true;
+  }
+
+  isMetricsCapable(): boolean {
+    return false;
+  }
+
   async checkOnline(): Promise<void> {}
 
   async createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
@@ -88,5 +96,13 @@ export class LocalBackend extends Backend {
 
   async getResticEndpoint(id: string): Promise<string> {
     return resolve(this.configuration.path, id);
+  }
+
+  submitMetricBackupEnd(): Promise<void> {
+    throw new Error('not capable');
+  }
+
+  submitMetricRepositorySize(): Promise<void> {
+    throw new Error('not capable');
   }
 }

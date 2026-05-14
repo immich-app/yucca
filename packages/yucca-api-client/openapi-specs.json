@@ -89,6 +89,72 @@
         ]
       }
     },
+    "/api/metrics/submit/{id}/backup/end": {
+      "post": {
+        "operationId": "submitMetricBackupEnd",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitBackupEndRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/metrics/submit/{id}/size": {
+      "patch": {
+        "operationId": "submitMetricRepositorySize",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitUpdateSizeRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/repository": {
       "post": {
         "operationId": "createRepository",
@@ -273,6 +339,32 @@
           "name",
           "email",
           "sessionId"
+        ]
+      },
+      "SubmitBackupEndRequestDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "success",
+          "durationMs"
+        ]
+      },
+      "SubmitUpdateSizeRequestDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
         ]
       },
       "RepositoryCreateRequestDto": {

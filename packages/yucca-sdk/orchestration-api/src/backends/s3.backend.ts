@@ -17,6 +17,14 @@ export class S3Backend extends Backend {
     super(configuration);
   }
 
+  isBackupCapable(): boolean {
+    return true;
+  }
+
+  isMetricsCapable(): boolean {
+    return false;
+  }
+
   async checkOnline(): Promise<void> {}
 
   createRepository(_dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
@@ -38,5 +46,13 @@ export class S3Backend extends Backend {
   async getResticEndpoint(id: string): Promise<string> {
     // TODO: requires additional auth parameters for restic
     return `s3:${this.configuration.endpoint}/${id}`;
+  }
+
+  submitMetricBackupEnd(): Promise<void> {
+    throw new Error('not capable');
+  }
+
+  submitMetricRepositorySize(): Promise<void> {
+    throw new Error('not capable');
   }
 }
