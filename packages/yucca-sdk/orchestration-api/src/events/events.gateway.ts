@@ -1,13 +1,18 @@
 import { OnGatewayConnection, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { EventEmitter } from 'node:events';
 import { Server, Socket } from 'socket.io';
+import { BackendDto } from '../dto/backend.dto';
 import { IntegrationsResponseDto } from '../dto/integrations.dto';
-import { LocalRepositoryDto } from '../dto/repository.dto';
+import { LocalRepositoryDto, RunDto } from '../dto/repository.dto';
 import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { ScheduleDto } from '../dto/schedule.dto';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
 export type GatewayEvent =
+  | {
+      type: 'BackendCreate';
+      backend: BackendDto;
+    }
   | {
       type: 'RepositoryCreate';
       repository: LocalRepositoryDto;
@@ -16,6 +21,10 @@ export type GatewayEvent =
       type: 'RepositoryUpdate';
       repositoryId: string;
       repository: Partial<LocalRepositoryDto>;
+    }
+  | {
+      type: 'RepositoryDelete';
+      repositoryId: string;
     }
   | {
       type: 'IntegrationUpdate';
@@ -46,6 +55,19 @@ export type GatewayEvent =
   | {
       type: 'TaskEnd';
       parentId: string;
+    }
+  | {
+      type: 'RunCreate';
+      run: RunDto;
+    }
+  | {
+      type: 'RunUpdate';
+      runId: string;
+      repositoryId: string;
+      run: Partial<RunDto>;
+    }
+  | {
+      type: 'DeviceFlowFailure';
     };
 
 type AuthFn = (client: Socket) => Promise<{ user: { isAdmin: boolean } }>;

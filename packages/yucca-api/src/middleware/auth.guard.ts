@@ -17,20 +17,12 @@ export const AuthRoute = (options = {}): MethodDecorator => {
   return applyDecorators(SetMetadata(MetadataKey.Auth, options));
 };
 
-export const OptionalAuth = (options = {}): MethodDecorator => {
-  return applyDecorators(SetMetadata(MetadataKey.OptionalAuth, options));
-};
-
 export interface AuthRequest extends Request {
   auth: AuthDto;
 }
 
-export interface AuthenticatedRequest extends Request {
-  auth: AuthDto;
-}
-
 export const Auth = createParamDecorator((_, context: ExecutionContext): AuthDto => {
-  return context.switchToHttp().getRequest<AuthenticatedRequest>().auth;
+  return context.switchToHttp().getRequest<AuthRequest>().auth;
 });
 
 @Injectable({ scope: Scope.REQUEST })
@@ -48,21 +40,7 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthRequest>();
-
-    try {
-      request.auth = await this.service.authenticate(request.headers);
-      return true;
-    } catch (error) {
-      const options = this.reflector.getAllAndOverride<{ _emptyObject: never } | undefined>(
-        MetadataKey.OptionalAuth,
-        targets,
-      );
-
-      if (options) {
-        return true;
-      }
-
-      throw error;
-    }
+    request.auth = await this.service.authenticate(request.headers);
+    return true;
   }
 }

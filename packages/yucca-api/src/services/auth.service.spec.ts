@@ -90,6 +90,7 @@ describe(AuthService.name, () => {
       },
       originalUrl: '',
       headers: {},
+      query: {},
     };
 
     it('should fail if error in URL', async () => {

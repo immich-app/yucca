@@ -17,6 +17,7 @@ export type ModuleConfig = {
   externalBaseUrl?: string;
   requireWsAuth?: boolean;
   requireLock?: boolean;
+  developmentMode?: boolean;
 
   immichIntegration?: ImmichIntegration;
 };

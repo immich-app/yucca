@@ -1,4 +1,7 @@
 <script lang="ts">
+  import RelativeTime from "$lib/components/util/RelativeTime.svelte";
+  import { formatDuration } from "$lib/utils/format";
+  import type { RepositoryWithMetricsDto } from "@futo-org/backups-api-client";
   import {
     Button,
     Card,
@@ -13,9 +16,6 @@
     mdiCheckCircleOutline,
     mdiChevronRight,
   } from "@mdi/js";
-  import RelativeTime from "$lib/components/util/RelativeTime.svelte";
-  import { formatDuration } from "$lib/utils/format";
-  import type { RepositoryWithMetricsDto } from "yucca-api-client";
 
   type Props = {
     repositories: RepositoryWithMetricsDto[];
@@ -33,9 +33,6 @@
       )
       .slice(0, 5),
   );
-
-  const isSuccess = (repo: RepositoryWithMetricsDto) =>
-    repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup;
 </script>
 
 <Card>
@@ -65,7 +62,7 @@
             {/if}
             <HStack class="items-center justify-between py-2">
               <HStack class="items-center gap-2">
-                {#if isSuccess(repo)}
+                {#if repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup}
                   <Icon
                     icon={mdiCheckCircleOutline}
                     size="16"

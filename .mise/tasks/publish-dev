@@ -1,8 +1,27 @@
 #!/usr/bin/env bash
 #MISE depends=["yucca-sdk:build"]
-pnpm --filter yucca-api-client exec npm version patch
-pnpm --filter orchestration-api exec npm version patch
-pnpm --filter orchestration-ui exec npm version patch
-pnpm --filter yucca-api-client publish --registry http://localhost:4873/ --no-git-checks
-pnpm --filter orchestration-api publish --registry http://localhost:4873/ --no-git-checks
-pnpm --filter orchestration-ui publish --registry http://localhost:4873/ --no-git-checks
+set -euo pipefail
+
+pnpm --filter @futo-org/backups-api-client      exec npm version patch --no-git-tag-version
+pnpm --filter @futo-org/backups-orchestrator-api exec npm version patch --no-git-tag-version
+pnpm --filter @futo-org/backups-orchestrator-ui exec npm version patch --no-git-tag-version
+
+# Linked-versions: all three move together, so the manifest gets the same version.
+version=$(node -p "require('./packages/yucca-api-client/package.json').version")
+node -e "
+  const fs = require('fs');
+  const file = '.release-please-manifest.json';
+  const m = JSON.parse(fs.readFileSync(file, 'utf8'));
+  for (const k of Object.keys(m)) m[k] = '$version';
+  fs.writeFileSync(file, JSON.stringify(m, null, 2) + '\n');
+"
+
+pnpm --filter @futo-org/backups-api-client       publish --registry https://npm.raccoon.sh/ --no-git-checks
+pnpm --filter @futo-org/backups-orchestrator-api publish --registry https://npm.raccoon.sh/ --no-git-checks
+pnpm --filter @futo-org/backups-orchestrator-ui  publish --registry https://npm.raccoon.sh/ --no-git-checks
+
+echo
+echo "Published @ $version:"
+echo "  @futo-org/backups-api-client"
+echo "  @futo-org/backups-orchestrator-api"
+echo "  @futo-org/backups-orchestrator-ui"

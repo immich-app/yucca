@@ -3,5 +3,5 @@
 #MISE depends=["yucca-sdk:orchestration-api:build"]
 set -e
 
-pnpm --filter orchestration-api sync:openapi
-pnpm --filter orchestration-ui generate:fetch-client
+pnpm --filter @futo-org/backups-orchestrator-api sync:openapi
+pnpm --filter @futo-org/backups-orchestrator-ui generate:fetch-client

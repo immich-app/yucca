@@ -1,4 +1,4 @@
-import * as yuccaApiClient from 'yucca-api-client';
+import * as yuccaApiClient from '@futo-org/backups-api-client';
 import * as orchestrationApiClient from './fetch-client';
 
 export abstract class BaseProvider {

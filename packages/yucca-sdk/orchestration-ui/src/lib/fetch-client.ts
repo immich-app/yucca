@@ -14,6 +14,10 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "http://localhost:22676"
 };
+export type DeviceFlowResponseDto = {
+    userCode: string;
+    verificationUri: string;
+};
 export type BackendType = "yucca" | "local" | "s3";
 export type BackendDto = {
     id: string;
@@ -23,6 +27,12 @@ export type BackendDto = {
 };
 export type BackendsResponseDto = {
     backends: BackendDto[];
+};
+export type CreateLocalBackendRequestDto = {
+    path: string;
+};
+export type BackendResponseDto = {
+    backend: BackendDto;
 };
 export type FilesystemListingItemDto = {
     path: string;
@@ -58,6 +68,7 @@ export type IntegrationsResponseDto = {
     immichState?: ImmichStateDto;
     immichIntegration?: ImmichIntegrationDto;
 };
+export type RetentionPreset = "default" | "off";
 export type ConfigureImmichIntegrationRequestDto = {
     name: string;
     worm: boolean;
@@ -65,6 +76,7 @@ export type ConfigureImmichIntegrationRequestDto = {
     dataFolders: string[];
     backupConfiguration: boolean;
     libraries: "all" | string[];
+    retentionPreset: RetentionPreset;
 };
 export type OnboardingStatusResponseDto = {
     hasOnboardedKey: boolean;
@@ -101,6 +113,7 @@ export type RepositoryBackendsDto = {
 };
 export type RepositoryConfigurationDto = {
     paths: string[];
+    retentionPreset: RetentionPreset;
 };
 export type LocalRepositoryDto = {
     id: string;
@@ -116,10 +129,19 @@ export type RepositoryCreateResponseDto = {
 export type RepositoryListResponseDto = {
     repositories: LocalRepositoryDto[];
 };
+export type SnapshotSummaryDto = {
+    filesNew: number;
+    filesChanged: number;
+    filesUnmodified: number;
+    totalFiles: number;
+    totalBytes: number;
+    dataAdded: number;
+};
 export type SnapshotDto = {
     id: string;
     time: string;
     paths: string[];
+    summary?: SnapshotSummaryDto;
 };
 export type InspectedLocalRepositoryDto = {
     id: string;
@@ -136,6 +158,7 @@ export type RepositoryInspectResponseDto = {
 export type RepositoryUpdateRequestDto = {
     name?: string;
     paths?: string[];
+    retentionPreset?: RetentionPreset;
 };
 export type RepositoryUpdateResponseDto = {
     repository: LocalRepositoryDto;
@@ -147,12 +170,15 @@ export type RepositoryCheckImportResponseDto = {
     readable: boolean;
 };
 export type RunStatus = "incomplete" | "complete" | "failed";
+export type RunType = "schedule" | "restore" | "backup" | "forget";
 export type RunDto = {
     id: string;
+    repositoryId: string;
     start: string;
     end: string;
     logFilePath: string;
     status: RunStatus;
+    "type": RunType;
 };
 export type RunHistoryResponseDto = {
     runs: RunDto[];
@@ -167,6 +193,9 @@ export type RepositorySnapshotRestoreRequestDto = {
 export type RepositorySnapshotRestoreFromPointRequestDto = {
     yuccaConfig?: string;
     include?: string[];
+};
+export type RunResponseDto = {
+    run: RunDto;
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
 export type TaskStatus = "incomplete" | "complete" | "failed";
@@ -212,15 +241,11 @@ export type ScheduleUpdateRequestDto = {
 export type ScheduleUpdateResponseDto = {
     schedule: ScheduleDto;
 };
-export function oidcAuthorize(next: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/auth/oidc/login${QS.query(QS.explode({
-        next
-    }))}`, {
-        ...opts
-    }));
-}
-export function oidcCallback(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/auth/oidc/callback", {
+export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DeviceFlowResponseDto;
+    }>("/api/yucca/auth/oidc/device", {
         ...opts
     }));
 }
@@ -232,9 +257,20 @@ export function getBackends(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function createLocalBackend(createLocalBackendRequestDto: CreateLocalBackendRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: BackendResponseDto;
+    }>("/api/yucca/backend/local", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: createLocalBackendRequestDto
+    })));
+}
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/debug", {
-        ...opts
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/debug/reset", {
+        ...opts,
+        method: "POST"
     }));
 }
 export function getFileListing({ path }: {
@@ -343,6 +379,12 @@ export function updateRepository(id: string, repositoryUpdateRequestDto: Reposit
         body: repositoryUpdateRequestDto
     })));
 }
+export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/repository/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
 export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -389,6 +431,15 @@ export function getSnapshots(id: string, opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function pruneRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LogResponseDto;
+    }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/prune`, {
+        ...opts,
+        method: "POST"
+    }));
+}
 export function restoreSnapshot(id: string, snapshot: string, repositorySnapshotRestoreRequestDto: RepositorySnapshotRestoreRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -432,8 +483,16 @@ export function getSnapshotListing(id: string, snapshot: string, { path }: {
         ...opts
     }));
 }
+export function getRun(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RunResponseDto;
+    }>(`/api/yucca/logs/${encodeURIComponent(id)}`, {
+        ...opts
+    }));
+}
 export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/logs/${encodeURIComponent(id)}`, {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/logs/${encodeURIComponent(id)}/stream`, {
         ...opts
     }));
 }
@@ -443,6 +502,12 @@ export function getRunningTasks(opts?: Oazapfts.RequestOpts) {
         data: RunningTaskListResponse;
     }>("/api/yucca/tasks", {
         ...opts
+    }));
+}
+export function cancelTask(parentId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/tasks/${encodeURIComponent(parentId)}/cancel`, {
+        ...opts,
+        method: "POST"
     }));
 }
 export function createSchedule(scheduleCreateRequestDto: ScheduleCreateRequestDto, opts?: Oazapfts.RequestOpts) {
@@ -475,18 +540,6 @@ export function updateSchedule(id: string, scheduleUpdateRequestDto: ScheduleUpd
 }
 export function removeSchedule(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}`, {
-        ...opts,
-        method: "DELETE"
-    }));
-}
-export function addRepositoryToSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
-        ...opts,
-        method: "PUT"
-    }));
-}
-export function removeRepositoryFromSchedule(id: string, repositoryId: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/yucca/schedule/${encodeURIComponent(id)}/${encodeURIComponent(repositoryId)}`, {
         ...opts,
         method: "DELETE"
     }));

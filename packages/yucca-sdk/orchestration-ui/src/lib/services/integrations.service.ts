@@ -1,10 +1,12 @@
+import { SocketEvent } from '$lib/events';
 import {
+  configureImmichIntegration,
   getIntegrations,
   type IntegrationsResponseDto,
 } from '$lib/fetch-client';
-import { SocketEvent } from '$lib/events';
 import { queryClient } from '$lib/query-client';
-import { createQuery } from '@tanstack/svelte-query';
+import { handleError } from '$lib/utils/handle-error';
+import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const integrationsKeys = {
   all: ['integrations'] as const,
@@ -26,3 +28,30 @@ export const useIntegrationEventHandler = () => ({
     queryClient.setQueryData(integrationsKeys.all, event.data.integrations);
   },
 });
+
+export const useConfigureImmichDefaults = () =>
+  createMutation(
+    () => ({
+      mutationFn: async () => {
+        const { immichState } = await getIntegrations();
+        if (!immichState) {
+          throw new Error('No Immich instance detected.');
+        }
+
+        await configureImmichIntegration({
+          name: 'Immich',
+          worm: false,
+          cron: '0 3 * * *',
+          dataFolders: immichState.dataFolders,
+          backupConfiguration: true,
+          libraries: 'all',
+          retentionPreset: 'default',
+        });
+      },
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: integrationsKeys.all });
+      },
+      onError: (error) => handleError(error, 'Failed to create backup'),
+    }),
+    () => queryClient,
+  );

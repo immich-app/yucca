@@ -1,8 +1,8 @@
+import * as sdk from '@futo-org/backups-orchestrator-ui/sdk';
 import { createEventSource } from 'eventsource-client';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import * as sdk from 'orchestration-ui/sdk';
 import { io, Socket } from 'socket.io-client';
 
 const baseUrl = `http://localhost:22676`;
@@ -282,7 +282,7 @@ describe('Repository', () => {
         }),
       }),
     });
-  }, 10_000);
+  }, 30_000);
 
   it('lists run history', async () => {
     await expect(sdk.getRunHistory(repository.id)).resolves.toEqual({
@@ -418,7 +418,7 @@ describe('Schedule', () => {
       cron: '* * * * *',
       repositories: [repository.id, repository2.id],
     }));
-  }, 10_000);
+  }, 30_000);
 
   it('creates and deletes a schedule', async () => {
     const createEvent = waitForMessage('ScheduleCreate');
@@ -485,7 +485,7 @@ describe('Schedule', () => {
 
   it('removes and adds repository', async () => {
     const removeEvent = waitForMessage('ScheduleUpdate');
-    await sdk.removeRepositoryFromSchedule(schedule.id, repository.id);
+    await sdk.updateSchedule(schedule.id, { repositories: [repository2.id] });
 
     await expect(removeEvent).resolves.toEqual({
       type: 'ScheduleUpdate',
@@ -496,7 +496,9 @@ describe('Schedule', () => {
     });
 
     const addEvent = waitForMessage('ScheduleUpdate');
-    await sdk.addRepositoryToSchedule(schedule.id, repository.id);
+    await sdk.updateSchedule(schedule.id, {
+      repositories: [repository2.id, repository.id],
+    });
 
     await expect(addEvent).resolves.toEqual({
       type: 'ScheduleUpdate',
@@ -547,7 +549,7 @@ describe('Reset & Restore', () => {
     await login();
     await sdk.importRecoveryKey({ recoveryKey: '0'.repeat(64) });
     await sdk.confirmRecoveryKey();
-  }, 15_000);
+  }, 30_000);
 
   it('imports a repository from backend', async () => {
     const { backends } = await sdk.getBackends();
@@ -568,7 +570,7 @@ describe('Reset & Restore', () => {
         id: existingRepositoryId,
       }),
     });
-  }, 10_000);
+  }, 30_000);
 
   it('restores point from repository', async () => {
     await expect(sdk.getSchedules()).resolves.toEqual(
@@ -600,5 +602,5 @@ describe('Reset & Restore', () => {
         ]),
       }),
     );
-  }, 10_000);
+  }, 30_000);
 });

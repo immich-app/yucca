@@ -23,7 +23,7 @@ import { RepositoryService } from './repository.service';
 @Injectable()
 export class ScheduleService {
   constructor(
-    private readonly repository: RepositoryService, // TODO: invoke indirectly?
+    private readonly repository: RepositoryService,
     private readonly events: EventsGateway,
     private readonly schedule: ScheduleRepository,
     private readonly schedulerRegistry: SchedulerRegistry,
@@ -87,22 +87,27 @@ export class ScheduleService {
       return;
     }
 
-    this.runningTasks.startTask(id, TaskType.Schedule);
+    const scheduleSignal = this.runningTasks.startTask(id, TaskType.Schedule);
 
-    const scheduleStatus: ActiveScheduleItemDto[] = [];
+    const scheduleStatus: ActiveScheduleItemDto[] = repositories.map((repositoryId) => ({
+      repositoryId,
+      status: TaskStatus.Incomplete,
+    }));
+    this.runningTasks.updateTask(id, { scheduleStatus });
 
-    for (const repositoryId of repositories) {
+    for (const [index, repositoryId] of repositories.entries()) {
+      if (scheduleSignal.aborted) {
+        break;
+      }
+
       try {
-        scheduleStatus.push({ repositoryId, status: TaskStatus.Incomplete });
-        this.runningTasks.updateTask(id, { scheduleStatus });
-
-        const { task } = await this.repository.createBackup(repositoryId);
+        const { task } = await this.repository.createBackup(repositoryId, scheduleSignal);
         await task;
 
-        scheduleStatus.splice(-1, 1, { repositoryId, status: TaskStatus.Complete });
+        scheduleStatus[index] = { repositoryId, status: TaskStatus.Complete };
         this.runningTasks.updateTask(id, { scheduleStatus });
       } catch {
-        scheduleStatus.splice(-1, 1, { repositoryId, status: TaskStatus.Failed });
+        scheduleStatus[index] = { repositoryId, status: TaskStatus.Failed };
         this.runningTasks.updateTask(id, { scheduleStatus });
       }
     }
@@ -158,7 +163,16 @@ export class ScheduleService {
     };
   }
 
-  async updateSchedule(
+  async updateSchedule(scheduleId: string, dto: ScheduleUpdateRequestDto): Promise<ScheduleUpdateResponseDto> {
+    const integration = await this.integrationImmich.get();
+    if (integration?.scheduleId === scheduleId && !(typeof dto.paused === 'boolean' && Object.keys(dto).length === 1)) {
+      throw new BadRequestException('Schedule managed by Immich integration');
+    }
+
+    return this.applyScheduleUpdate(scheduleId, dto);
+  }
+
+  async applyScheduleUpdate(
     scheduleId: string,
     { name, paused, cron, repositories }: ScheduleUpdateRequestDto,
   ): Promise<ScheduleUpdateResponseDto> {
@@ -174,7 +188,19 @@ export class ScheduleService {
     }
 
     if (Array.isArray(repositories)) {
-      set.ordering = JSON.stringify(repositories.filter((id) => linked.has(id)));
+      const incoming = new Set(repositories);
+      const toAdd = repositories.filter((id) => !linked.has(id));
+      const toRemove = [...linked].filter((id) => !incoming.has(id));
+
+      for (const id of toAdd) {
+        await this.schedule.addRepositoryToSchedule(scheduleId, id);
+      }
+
+      for (const id of toRemove) {
+        await this.schedule.removeRepositoryFromSchedule(scheduleId, id);
+      }
+
+      set.ordering = JSON.stringify(repositories);
     }
 
     await this.schedule.updateSchedule(scheduleId, set);
@@ -205,26 +231,6 @@ export class ScheduleService {
     this.events.publish({
       type: 'ScheduleDelete',
       scheduleId,
-    });
-  }
-
-  async addRepositoryToSchedule(scheduleId: string, repositoryId: string): Promise<void> {
-    await this.schedule.addRepositoryToSchedule(scheduleId, repositoryId);
-
-    this.events.publish({
-      type: 'ScheduleUpdate',
-      scheduleId,
-      schedule: await this.schedule.get(scheduleId),
-    });
-  }
-
-  async removeRepositoryFromSchedule(scheduleId: string, repositoryId: string): Promise<void> {
-    await this.schedule.removeRepositoryFromSchedule(scheduleId, repositoryId);
-
-    this.events.publish({
-      type: 'ScheduleUpdate',
-      scheduleId,
-      schedule: await this.schedule.get(scheduleId),
     });
   }
 }

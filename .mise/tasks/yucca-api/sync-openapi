@@ -3,5 +3,6 @@
 #MISE dir="{{config_root}}/packages/yucca-api"
 #MISE depends=["yucca-api:build"]
 set -e
+source "$(dirname "$0")/env"
 
 node dist/bin/sync-openapi.js

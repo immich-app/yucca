@@ -7,7 +7,7 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
-} from 'yucca-api-client';
+} from '@futo-org/backups-api-client';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -15,6 +15,14 @@ import { Backend } from './backend';
 export class S3Backend extends Backend {
   constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.S3 }) {
     super(configuration);
+  }
+
+  isBackupCapable(): boolean {
+    return true;
+  }
+
+  isMetricsCapable(): boolean {
+    return false;
   }
 
   async checkOnline(): Promise<void> {}
@@ -35,8 +43,24 @@ export class S3Backend extends Backend {
     throw new Error('Method not implemented.');
   }
 
+  async deleteRepository(_id: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   async getResticEndpoint(id: string): Promise<string> {
     // TODO: requires additional auth parameters for restic
     return `s3:${this.configuration.endpoint}/${id}`;
+  }
+
+  submitMetricBackupStart(): Promise<void> {
+    throw new Error('not capable');
+  }
+
+  submitMetricBackupEnd(): Promise<void> {
+    throw new Error('not capable');
+  }
+
+  submitMetricRepositorySize(): Promise<void> {
+    throw new Error('not capable');
   }
 }

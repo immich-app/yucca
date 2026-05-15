@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -38,10 +39,10 @@ func FromContext(ctx context.Context) Auth {
 	return ctx.Value(authContextKey).(Auth)
 }
 
-func Middleware(secret []byte) func(http.Handler) http.Handler {
+func Middleware(publicKey *ecdsa.PublicKey) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			auth, err := extractAuth(r, secret)
+			auth, err := extractAuth(r, publicKey)
 			if err != nil {
 				httputil.WriteError(w, r, err.code, err.message)
 				return
@@ -69,7 +70,7 @@ func (e *authError) Error() string {
 	return e.message
 }
 
-func extractAuth(r *http.Request, secret []byte) (Auth, *authError) {
+func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, *authError) {
 	header := r.Header.Get("Authorization")
 	if header == "" {
 		return Auth{}, &authError{http.StatusUnauthorized, "Missing Authorization header"}
@@ -97,10 +98,10 @@ func extractAuth(r *http.Request, secret []byte) (Auth, *authError) {
 	token := parts[1]
 
 	parsed, err := jwt.Parse(token, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if _, ok := t.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
-		return secret, nil
+		return publicKey, nil
 	})
 	if err != nil {
 		return Auth{}, &authError{http.StatusUnauthorized, "Invalid JWT Token"}

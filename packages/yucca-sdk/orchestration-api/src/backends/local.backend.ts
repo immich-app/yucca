@@ -1,8 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await */
 
-import { randomUUID } from 'node:crypto';
-import { mkdir, readdir, stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
@@ -10,7 +7,10 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
-} from 'yucca-api-client';
+} from '@futo-org/backups-api-client';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readdir, stat } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
@@ -18,6 +18,14 @@ import { Backend } from './backend';
 export class LocalBackend extends Backend {
   constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Local }) {
     super(configuration);
+  }
+
+  isBackupCapable(): boolean {
+    return true;
+  }
+
+  isMetricsCapable(): boolean {
+    return false;
   }
 
   async checkOnline(): Promise<void> {}
@@ -86,7 +94,23 @@ export class LocalBackend extends Backend {
     };
   }
 
+  async deleteRepository(_id: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   async getResticEndpoint(id: string): Promise<string> {
     return resolve(this.configuration.path, id);
+  }
+
+  submitMetricBackupStart(): Promise<void> {
+    throw new Error('not capable');
+  }
+
+  submitMetricBackupEnd(): Promise<void> {
+    throw new Error('not capable');
+  }
+
+  submitMetricRepositorySize(): Promise<void> {
+    throw new Error('not capable');
   }
 }

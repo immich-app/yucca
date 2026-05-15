@@ -31,9 +31,12 @@ import { ResticRepository } from './repositories/restic.repository';
 import { RunHistoryRepository } from './repositories/runHistory.repository';
 import { RunningTasksRepository } from './repositories/runningTasks.repository';
 import { ScheduleRepository } from './repositories/schedule.repository';
+import { StorageRepository } from './repositories/storage.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
-import { DatabaseService } from './services/database.service';
+import { BootstrapService } from './services/bootstrap.service';
+import { DevelopmentService } from './services/development.service';
+import { FilesystemService } from './services/filesystem.service';
 import { IntegrationsService } from './services/integrations.service';
 import { OnboardingService } from './services/onboarding.service';
 import { RepositoryService } from './services/repository.service';
@@ -67,12 +70,15 @@ const repositories = [
   RunHistoryRepository,
   RunningTasksRepository,
   ScheduleRepository,
+  StorageRepository,
 ];
 
 const services = [
   AuthService,
   BackendService,
-  DatabaseService,
+  BootstrapService,
+  DevelopmentService,
+  FilesystemService,
   IntegrationsService,
   OnboardingService,
   RepositoryService,
@@ -90,24 +96,24 @@ export class OrchestrationApiModule {
       throw new Error('config.yuccaProductionApi is missing');
     }
 
-    if (!existsSync(config.statePath)) {
-      mkdirSync(config.statePath, { recursive: true });
-    }
-
-    const database = new Database(resolve(config.statePath, 'state.sqlite3'));
-    database.pragma('journal_mode = WAL');
-
     return {
       module: OrchestrationApiModule,
       imports: [
-        KyselyModule.forRoot([
-          {
-            namespace: 'orchestrator',
-            dialect: new SqliteDialect({
-              database,
-            }),
+        KyselyModule.forRootAsync({
+          namespace: 'orchestrator',
+          useFactory: () => {
+            if (!existsSync(config.statePath!)) {
+              mkdirSync(config.statePath!, { recursive: true });
+            }
+
+            const database = new Database(resolve(config.statePath!, 'state.sqlite3'));
+            database.pragma('journal_mode = WAL');
+
+            return {
+              dialect: new SqliteDialect({ database }),
+            };
           },
-        ]),
+        }),
         EventEmitterModule.forRoot(),
         ScheduleModule.forRoot(),
       ],

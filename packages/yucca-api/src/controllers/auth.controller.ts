@@ -1,7 +1,8 @@
-import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { Controller, Get, Query, Req, Res, Sse } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
+import { type Observable } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
@@ -28,19 +29,13 @@ export class AuthController {
 
   @Get('/oidc/login')
   @ApiQuery({ name: 'code_challenge', type: String })
-  @ApiQuery({ name: 'redirect_uri', type: String })
   @ApiQuery({ name: 'state', type: String })
   async oidcAuthorize(
     @Query('code_challenge') codeChallenge: string,
-    @Query('redirect_uri') redirectUri: string,
     @Query('state') state: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const {
-      redirectTo,
-      state: newState,
-      codeVerifier,
-    } = await this.auth.oidcAuthorize(codeChallenge, redirectUri, state);
+    const { redirectTo, state: newState, codeVerifier } = await this.auth.oidcAuthorize(codeChallenge, state);
 
     response.cookie(CookieName.OidcState, newState);
     response.cookie(CookieName.OidcCodeVerifier, codeVerifier);
@@ -64,5 +59,10 @@ export class AuthController {
     });
 
     response.redirect(redirectTo);
+  }
+
+  @Sse('/oidc/device')
+  oidcDeviceFlow(): Observable<MessageEvent> {
+    return this.auth.oidcDeviceFlowObservable();
   }
 }

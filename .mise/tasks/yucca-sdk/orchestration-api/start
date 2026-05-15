@@ -2,4 +2,4 @@
 #MISE description="Start yucca-sdk/orchestration-api test server"
 set -e
 
-pnpm --filter orchestration-api start
+pnpm --filter @futo-org/backups-orchestrator-api start

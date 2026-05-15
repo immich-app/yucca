@@ -1,6 +1,8 @@
 import { sdk } from '$lib';
+import ViewLogModal from '$lib/components/backups/dialogs/ViewLogModal.svelte';
+import { SocketEvent } from '$lib/events';
 import {
-  getRepositories,
+  deleteRepository,
   inspectRepositories,
   updateRepository,
   type InspectedLocalRepositoryDto,
@@ -8,10 +10,10 @@ import {
   type RepositoryCreateRequestDto,
   type RepositoryUpdateRequestDto,
 } from '$lib/fetch-client';
-import { SocketEvent } from '$lib/events';
-import { handleError } from '$lib/utils/handle-error';
+import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
-import { toastManager } from '@immich/ui';
+import { handleError } from '$lib/utils/handle-error';
+import { modalManager, toastManager } from '@immich/ui';
 import { createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
@@ -23,7 +25,10 @@ export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
   createQuery(
     () => ({
       queryKey: repositoryKeys.all,
-      queryFn: () => getRepositories().then(({ repositories }) => repositories),
+      queryFn: () =>
+        getProvider()
+          .getRepositories()
+          .then(({ repositories }) => repositories),
       initialData,
     }),
     () => queryClient,
@@ -78,6 +83,13 @@ export const useRepositoryEventHandler = () => {
         },
       );
     },
+    onRepositoryDelete() {
+      queryClient
+        .invalidateQueries({
+          queryKey: repositoryKeys.all,
+        })
+        .catch(() => void 0);
+    },
   };
 };
 
@@ -116,9 +128,23 @@ export const handleCreateRepository = async (
 export const handleCreateBackup = async (id: string) => {
   try {
     toastManager.info('Started backup');
-    return await sdk.createBackup(id);
+    const response = await sdk.createBackup(id);
+    void modalManager.open(ViewLogModal, { logId: response.logId });
+    return response;
   } catch (error) {
     handleError(error, 'Failed to start backup');
+    throw error;
+  }
+};
+
+export const handlePruneRepository = async (id: string) => {
+  try {
+    toastManager.info('Cleaning up old backups');
+    const response = await sdk.pruneRepository(id);
+    void modalManager.open(ViewLogModal, { logId: response.logId });
+    return response;
+  } catch (error) {
+    handleError(error, 'Failed to start cleanup');
     throw error;
   }
 };
@@ -137,6 +163,20 @@ export const handleUpdateRepository = async (
     }
   } catch (error) {
     handleError(error, 'Failed to update repository');
+    throw error;
+  }
+};
+
+export const handleRemoveRepository = async (id: string, local = false) => {
+  try {
+    // eslint-disable-next-line unicorn/prefer-ternary
+    if (local) {
+      await sdk.deleteRepository(id);
+    } else {
+      await deleteRepository(id);
+    }
+  } catch (error) {
+    handleError(error, 'Failed to delete repository');
     throw error;
   }
 };

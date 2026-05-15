@@ -1,5 +1,25 @@
 {
   "editor.formatOnSave": true,
+  "svelte.enable-ts-plugin": true,
+  "[typescript]": {
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.removeUnusedImports": "explicit"
+    }
+  },
+  "[javascript]": {
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.removeUnusedImports": "explicit"
+    }
+  },
+  "[svelte]": {
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.removeUnusedImports": "explicit"
+    },
+    "editor.defaultFormatter": "svelte.svelte-vscode"
+  },
   "files.associations": {
 		"*.css": "tailwindcss"
 	},

@@ -20,6 +20,13 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
+export type SubmitBackupEndRequestDto = {
+    success: boolean;
+    durationMs: number;
+};
+export type SubmitUpdateSizeRequestDto = {
+    sizeBytes: number;
+};
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
@@ -47,6 +54,7 @@ export type RepositoryGetResponseDto = {
 };
 export type RepositoryUpdateRequestDto = {
     name?: string;
+    worm?: boolean;
 };
 export type RepositoryUpdateResponseDto = {
     repository: RepositoryWithMetricsDto;
@@ -67,10 +75,9 @@ export function logout(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(codeChallenge: string, redirectUri: string, state: string, opts?: Oazapfts.RequestOpts) {
+export function oidcAuthorize(codeChallenge: string, state: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
         code_challenge: codeChallenge,
-        redirect_uri: redirectUri,
         state
     }))}`, {
         ...opts
@@ -80,6 +87,31 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
         ...opts
     }));
+}
+export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/device", {
+        ...opts
+    }));
+}
+export function submitMetricBackupStart(repositoryId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/backup/start`, {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function submitMetricBackupEnd(repositoryId: string, submitBackupEndRequestDto: SubmitBackupEndRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/backup/end`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: submitBackupEndRequestDto
+    })));
+}
+export function submitMetricRepositorySize(repositoryId: string, submitUpdateSizeRequestDto: SubmitUpdateSizeRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/size`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: submitUpdateSizeRequestDto
+    })));
 }
 export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -116,6 +148,12 @@ export function updateRepository(id: string, repositoryUpdateRequestDto: Reposit
         method: "PATCH",
         body: repositoryUpdateRequestDto
     })));
+}
+export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
 }
 export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

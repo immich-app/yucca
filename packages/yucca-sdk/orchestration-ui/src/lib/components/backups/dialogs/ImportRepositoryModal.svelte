@@ -1,12 +1,12 @@
 <script lang="ts">
   import { type LocalRepositoryDto } from "$lib/fetch-client";
-  import { FormModal, LoadingSpinner, modalManager, Text } from "@immich/ui";
-  import { onMount } from "svelte";
-  import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
   import {
     handleCheckImportRepository,
     handleImportRepository,
   } from "$lib/services/repository.service";
+  import { FormModal, LoadingSpinner, modalManager, Text } from "@immich/ui";
+  import { onMount } from "svelte";
+  import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
 
   interface Props {
     onClose: () => void;

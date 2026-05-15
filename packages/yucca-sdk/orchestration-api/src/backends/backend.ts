@@ -5,7 +5,7 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
-} from 'yucca-api-client';
+} from '@futo-org/backups-api-client';
 import { BackendType } from '../enum';
 import { ModuleConfig } from '../moduleConfig';
 import { BackendConfiguration } from '../schema/tables/backend.table';
@@ -13,12 +13,21 @@ import { BackendConfiguration } from '../schema/tables/backend.table';
 export abstract class Backend {
   constructor(protected readonly configuration: BackendConfiguration) {}
 
+  abstract isBackupCapable(): boolean;
+  abstract isMetricsCapable(): boolean;
+
   abstract checkOnline(): Promise<void>;
   abstract createRepository(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto>;
   abstract updateRepository(id: string, dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto>;
   abstract getRepository(id: string): Promise<RepositoryGetResponseDto>;
   abstract getRepositories(): Promise<RepositoryListResponseDto>;
+  abstract deleteRepository(id: string): Promise<void>;
+
   abstract getResticEndpoint(id: string): Promise<string>;
+
+  abstract submitMetricBackupStart(id: string): Promise<void>;
+  abstract submitMetricBackupEnd(id: string, success: boolean, duration: number): Promise<void>;
+  abstract submitMetricRepositorySize(id: string, size: number): Promise<void>;
 
   static from(configuration: BackendConfiguration, moduleConfig: ModuleConfig) {
     switch (configuration.type) {

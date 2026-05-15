@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"net/http"
 	"time"
@@ -16,16 +17,16 @@ import (
 )
 
 type Server struct {
-	Storage   storage.Storage
-	JWTSecret []byte
-	Metrics   *metrics.Metrics
+	Storage      storage.Storage
+	JWTPublicKey *ecdsa.PublicKey
+	Metrics      *metrics.Metrics
 }
 
-func NewServer(s storage.Storage, jwtSecret []byte, m *metrics.Metrics) *Server {
+func NewServer(s storage.Storage, jwtPublicKey *ecdsa.PublicKey, m *metrics.Metrics) *Server {
 	return &Server{
-		Storage:   s,
-		JWTSecret: jwtSecret,
-		Metrics:   m,
+		Storage:      s,
+		JWTPublicKey: jwtPublicKey,
+		Metrics:      m,
 	}
 }
 
@@ -54,7 +55,7 @@ func (s *Server) Handler() http.Handler {
 	}
 
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(auth.Middleware(s.JWTSecret))
+		r.Use(auth.Middleware(s.JWTPublicKey))
 		r.Use(authLogContext)
 		if s.Metrics != nil {
 			r.Use(metrics.BlobMiddleware(s.Metrics))

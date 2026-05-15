@@ -1,6 +1,3 @@
-import { init } from '@futo-org/restic-wrapper';
-import { parse } from 'cookie';
-import { env } from 'src/env';
 import {
   AuthDto,
   createRepository,
@@ -8,7 +5,10 @@ import {
   getAuth,
   getRepositories,
   RepositoryWithMetricsDto,
-} from 'yucca-api-client';
+} from '@futo-org/backups-api-client';
+import { init } from '@futo-org/restic-wrapper';
+import { parse } from 'cookie';
+import { env } from 'src/env';
 
 const baseUrl = `http://localhost:${env.YUCCA_API_PORT}`;
 const headers: Record<string, string> = {};

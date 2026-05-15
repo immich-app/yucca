@@ -3,5 +3,5 @@
 set -e
 
 if [[ -z "${PLAYWRIGHT_BROWSERS_PATH}" ]]; then
-pnpm --filter orchestration-ui exec playwright install
+pnpm --filter @futo-org/backups-orchestrator-ui exec playwright install
 fi

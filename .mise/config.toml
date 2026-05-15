@@ -74,28 +74,9 @@ description = "Format terraform + terragrunt files recursively"
 run = "tofu fmt -recursive tf/ && terragrunt hcl format --working-dir tf/"
 
 [env]
-# default environment variables for development
 NODE_ENV = "development"
-YUCCA_API_PORT = 3020
-RESTIC_API_PORT = 3010
-S3_ACCESS_KEY_ID = "minio"
-S3_SECRET_ACCESS_KEY = "miniominio"
-S3_REGION = "minio"
-S3_ENDPOINT = "http://localhost:9000"
-S3_FORCE_PATH_STYLE = true
-POSTGRES_HOST = "localhost"
-POSTGRES_USERNAME = "postgres"
-POSTGRES_PASSWORD = "postgres"
-POSTGRES_DATABASE = "yucca"
-POSTGRES_PORT = 15432
-JWT_SECRET = "cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1"
-OIDC_ISSUER = "http://localhost:8092"
-OIDC_CLIENT_ID = "client ID"
-OIDC_CLIENT_SECRET = "client secret"
-OIDC_ALLOW_INSECURE = true
-OIDC_REDIRECT_URI = 'http://localhost:5173/api/auth/oidc/callback'
-OIDC_LOGOUT_REDIRECT_URI = 'http://localhost:5173'
 LOG_LEVEL = "debug"
+
 OTLP_METRICS_ENDPOINT = "localhost:8428"
 OTLP_METRICS_URL_PATH = "/opentelemetry/v1/metrics"
 OTLP_LOGS_ENDPOINT = "localhost:9428"
