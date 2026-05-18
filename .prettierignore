@@ -23,3 +23,10 @@ yarn.lock
 **/locales
 **/fetch-client.ts
 **/openapi-specs.json
+
+# Infrastructure subtrees own their own format conventions (yamllint +
+# ansible-lint inside ansible/ceph/; tofu fmt inside tf/). Prettier on
+# ansible YAML is opinionated in ways that conflict with Jinja2 + ansible
+# task structure, so these subtrees are exempt from root prettier checks.
+ansible/
+tf/

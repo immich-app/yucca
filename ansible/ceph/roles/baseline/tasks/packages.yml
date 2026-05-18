@@ -1,0 +1,18 @@
+---
+# Install podman ecosystem + diagnostic toolset.
+# Convergeable: re-running installs anything missing.
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install podman ecosystem
+  ansible.builtin.apt:
+    name: "{{ baseline_podman_packages }}"
+    state: present
+
+- name: Install diagnostic and ops packages
+  ansible.builtin.apt:
+    name: "{{ baseline_diag_packages }}"
+    state: present

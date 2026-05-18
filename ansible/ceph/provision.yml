@@ -1,0 +1,208 @@
+---
+# Provision sietch-ceph nodes from the Debian 12 live image.
+#
+# Fresh-install workflow (no cloning):
+#   1. Boot all target nodes to Debian 12 live image (user/live credentials)
+#   2. Ensure the live image is reachable on its reserved IP (= bond_ip)
+#   3. CEPH_ENV=inventories/<cluster>/inventory-provision.ini \
+#        scripts/ansible-play.sh provision.yml -e confirm_wipe=true
+#
+# Flags:
+#   confirm_wipe=true                    required — destroys all data on SSDs
+#   provision_create_iac_keypair=true    opt-in: preflight auto-generates
+#                                        the ansible-iac deploy keypair if
+#                                        it doesn't already exist on disk
+#   provision_skip_reboot=true           opt-in: skip the final reboot and
+#                                        the post-reboot verification play
+#                                        (canary inspection of the chroot)
+#   --limit <host>                       provision one node at a time
+#
+# Post-reboot: a separate verification play waits on the installed OS
+# (reached via the production sietch-ceph-<name> SSH alias / ansible-iac
+# user with key) and confirms the provisioning marker is in place.
+
+# --- Preflight: controller-side prerequisites -------------------------
+#
+# Runs BEFORE the target hosts are touched. Verifies the ansible-iac
+# deploy keypair exists on the controller (it gets installed into every
+# node's ~ansible-iac/.ssh/authorized_keys via file lookup during the
+# main play). Keypair generation is strictly opt-in via
+# -e provision_create_iac_keypair=true — default behavior is to fail
+# fast with a clear message if the keypair is missing.
+
+- name: Preflight — verify controller prerequisites
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Stat ansible-iac private key
+      ansible.builtin.stat:
+        path: "{{ provision_iac_ssh_key_path | expanduser }}"
+      register: iac_privkey_stat
+
+    - name: Stat ansible-iac public key
+      ansible.builtin.stat:
+        path: "{{ (provision_iac_ssh_key_path | expanduser) ~ '.pub' }}"
+      register: iac_pubkey_stat
+
+    - name: Generate ansible-iac keypair (only when opt-in flag is set)
+      ansible.builtin.command:
+        cmd: >-
+          ssh-keygen -t ed25519 -N ''
+          -C "ansible-iac@{{ cluster_name }}-{{ cluster_role }}.{{ cluster_domain }}"
+          -f {{ provision_iac_ssh_key_path | expanduser }}
+      args:
+        creates: "{{ provision_iac_ssh_key_path | expanduser }}"
+      when:
+        - not iac_privkey_stat.stat.exists
+        - provision_create_iac_keypair | default(false) | bool
+
+    - name: Fail if ansible-iac keypair missing and create flag not set
+      ansible.builtin.fail:
+        msg: |
+          ansible-iac deploy keypair is missing on the controller:
+            {{ provision_iac_ssh_key_path | expanduser }}
+            {{ provision_iac_ssh_key_path | expanduser }}.pub
+
+          This keypair is required to provision the cluster — it is
+          installed into ansible-iac's authorized_keys on every node
+          and used by ansible_ssh_private_key_file in inventory.ini.
+
+          To auto-generate it on this run, re-invoke with:
+            -e provision_create_iac_keypair=true
+
+          Or generate it yourself first:
+            ssh-keygen -t ed25519 -N '' \
+              -C "ansible-iac@{{ cluster_name }}-{{ cluster_role }}.{{ cluster_domain }}" \
+              -f {{ provision_iac_ssh_key_path }}
+      when:
+        - not iac_privkey_stat.stat.exists
+        - not (provision_create_iac_keypair | default(false) | bool)
+
+    - name: Re-stat public key after potential creation
+      ansible.builtin.stat:
+        path: "{{ (provision_iac_ssh_key_path | expanduser) ~ '.pub' }}"
+      register: iac_pubkey_final_stat
+
+    - name: Assert ansible-iac public key exists after preflight
+      ansible.builtin.assert:
+        that:
+          - iac_pubkey_final_stat.stat.exists
+        fail_msg: >-
+          ansible-iac public key still missing at
+          {{ (provision_iac_ssh_key_path | expanduser) ~ '.pub' }}
+          after preflight completed. Investigate ssh-keygen task above.
+
+    - name: Report ansible-iac keypair ready
+      ansible.builtin.debug:
+        msg: >-
+          ansible-iac keypair present at
+          {{ provision_iac_ssh_key_path | expanduser }}(.pub) —
+          preflight OK.
+
+- name: Provision sietch-ceph nodes (live image → installed OS)
+  hosts: provision_targets
+  gather_facts: false
+  serial: 1
+  become: true
+  max_fail_percentage: 0
+
+  roles:
+    - role: provision_host
+
+- name: Verify provisioned nodes after reboot
+  hosts: provision_targets
+  gather_facts: false
+  become: false
+  tasks:
+    # Verification runs on localhost via delegate_to + the production
+    # sietch-ceph-<name> SSH alias. That avoids having to juggle live
+    # vs installed credentials inside a single play.
+
+    - name: Skip verification play when reboot was intentionally skipped
+      ansible.builtin.meta: end_play
+      when: provision_skip_reboot | default(false) | bool
+
+    # Give the box a head start before we start hammering ssh. R730xd
+    # POST + GRUB + initramfs + systemd brings the bond up in ~60-90s.
+    - name: Initial reboot wait
+      delegate_to: localhost
+      ansible.builtin.pause:
+        seconds: "{{ provision_reboot_wait_delay | default(60) }}"
+
+    # The ssh probe is the actual gate — it honors ~/.ssh/config
+    # (including any ProxyJump or ProxyCommand entries) so it works
+    # from the controller regardless of whether the target subnet is
+    # directly routable. wait_for/tcp does NOT honor ssh_config, so
+    # we rely on retries here instead.
+    #
+    # We force user + identity explicitly with -l / -i / IdentitiesOnly
+    # because ~/.ssh/config for the host alias lands as the 'ops' human
+    # user (which has NO authorized_keys on a fresh provision — operator
+    # keys are distributed out-of-band). The verify play is an automation
+    # reachability test, so it uses ansible-iac (the same identity
+    # ansible_ssh_private_key_file points at in inventory.ini).
+    #
+    # UserKnownHostsFile=/dev/null + StrictHostKeyChecking=no bypass
+    # known_hosts entirely: fresh provisioning generates new host keys,
+    # and on reprovisioning a stale known_hosts entry would otherwise
+    # trigger "REMOTE HOST IDENTIFICATION HAS CHANGED" and abort. The
+    # real identity check happens via the marker assertion below, not
+    # via the SSH host key cache. LogLevel=ERROR suppresses the
+    # "Warning: Permanently added..." noise.
+    - name: Probe installed OS via production SSH alias (as ansible-iac)
+      delegate_to: localhost
+      ansible.builtin.command:
+        cmd: >-
+          ssh -o BatchMode=yes -o ConnectTimeout=10
+          -o StrictHostKeyChecking=no
+          -o UserKnownHostsFile=/dev/null
+          -o IdentitiesOnly=yes
+          -o LogLevel=ERROR
+          -l ansible-iac
+          -i {{ provision_iac_ssh_key_path | expanduser }}
+          {{ hostname_short }}
+          "cat {{ provision_marker_path | default('/etc/ceph-provisioned.json') }}"
+      register: marker_read
+      changed_when: false
+      retries: "{{ provision_verify_retries | default(30) }}"
+      delay: "{{ provision_verify_delay | default(15) }}"
+      until: marker_read.rc == 0
+
+    - name: Parse provisioning marker
+      ansible.builtin.set_fact:
+        marker: "{{ marker_read.stdout | from_json }}"
+
+    - name: Verify marker contents match inventory expectations
+      ansible.builtin.assert:
+        that:
+          - marker.hostname == hostname_short
+          - marker.bond_ip == bond_ip
+          - marker.cluster_domain == cluster_domain
+          - marker.admin_user == admin_user
+        fail_msg: "Marker contents do not match inventory: {{ marker }}"
+        success_msg: "{{ hostname_short }} provisioned OK at {{ marker.provisioned_at }}"
+
+    - name: Gather installed OS hostname (as ansible-iac)
+      delegate_to: localhost
+      ansible.builtin.command:
+        cmd: >-
+          ssh -o BatchMode=yes -o ConnectTimeout=10
+          -o StrictHostKeyChecking=no
+          -o UserKnownHostsFile=/dev/null
+          -o IdentitiesOnly=yes
+          -o LogLevel=ERROR
+          -l ansible-iac
+          -i {{ provision_iac_ssh_key_path | expanduser }}
+          {{ hostname_short }} hostname -f
+      register: installed_hostname
+      changed_when: false
+
+    - name: Display post-provision state
+      ansible.builtin.debug:
+        msg:
+          - "hostname -f:        {{ installed_hostname.stdout | trim }}"
+          - "marker.hostname:    {{ marker.hostname }}"
+          - "marker.fqdn:        {{ marker.fqdn }}"
+          - "marker.bond_ip:     {{ marker.bond_ip }}"
+          - "marker.provisioned: {{ marker.provisioned_at }}"

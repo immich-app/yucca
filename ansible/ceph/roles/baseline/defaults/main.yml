@@ -1,0 +1,49 @@
+---
+# Post-boot OS baseline — runs via ansible-iac after provisioning.
+# Configures everything that doesn't need to be in the chroot.
+
+# --- ops user ---
+baseline_ops_user: ops
+baseline_ops_uid: 1001
+baseline_ops_sudo: "ALL"      # "ALL" = password required; "NOPASSWD:ALL" for dev
+
+# --- /etc/hosts ---
+# Rendered from the same cluster variables used by ceph_deploy/hosts.j2.
+# Keeps host entries converged even if ceph_deploy hasn't run yet.
+baseline_manage_hosts: true
+
+# --- Packages ---
+# Podman ecosystem (needed by cephadm)
+baseline_podman_packages:
+  - podman
+  - catatonit
+  - dbus-user-session
+  - fuse-overlayfs
+  - slirp4netns
+  - uidmap
+
+# Diagnostic and ops toolset
+baseline_diag_packages:
+  - smartmontools
+  - ipmitool
+  - lsscsi
+  - pciutils
+  - lshw
+  - ethtool
+  - jq
+  - htop
+  - btop
+  - tmux
+  - bat
+  - ncdu
+  - nload
+  - sysstat
+  - iotop
+  - bsdmainutils
+  - python3-boto3
+
+# --- Services ---
+baseline_enable_services:
+  - dbus
+  - chrony
+  - podman.socket

@@ -1,0 +1,103 @@
+---
+# RADOS benchmark — tests raw cluster I/O bypassing RGW/S3.
+# Useful for isolating storage performance from S3 overhead.
+#
+# Usage:
+#   scripts/ansible-play.sh rados-bench.yml                        # 30s write, replicated
+#   scripts/ansible-play.sh rados-bench.yml -e rados_ec=true       # EC 8+3 (matches RGW data pool)
+#   scripts/ansible-play.sh rados-bench.yml -e rados_mode=seq      # sequential read
+#   scripts/ansible-play.sh rados-bench.yml -e rados_seconds=60
+#   scripts/ansible-play.sh rados-bench.yml -e rados_cleanup=false # keep data for read test
+#
+# Modes: write, seq (sequential read), rand (random read)
+# Read modes require a prior write run with rados_cleanup=false.
+
+- name: RADOS benchmark
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  vars:
+    rados_pool: "rados-bench"
+    rados_mode: write
+    rados_seconds: 30
+    rados_threads: 16
+    rados_cleanup: true
+    rados_ec: false
+    rados_ec_profile: "ec-k8m3-osd"    # reuse the RGW EC profile (8+3)
+
+  tasks:
+    - name: Create EC bench pool if missing
+      ansible.builtin.shell: |
+        set -o pipefail
+        if ceph osd pool ls | grep -q '^{{ rados_pool }}$'; then
+          echo "EXISTS"
+        else
+          ceph osd pool create {{ rados_pool }} 64 erasure {{ rados_ec_profile }}
+          ceph osd pool set {{ rados_pool }} allow_ec_overwrites true
+          echo "CREATED"
+        fi
+      args:
+        executable: /bin/bash
+      when:
+        - inventory_hostname in groups['ceph_bootstrap']
+        - rados_ec | bool
+      register: ec_pool_create
+      changed_when: "'CREATED' in ec_pool_create.stdout | default('')"
+
+    - name: Create replicated bench pool if missing
+      ansible.builtin.shell: |
+        set -o pipefail
+        if ceph osd pool ls | grep -q '^{{ rados_pool }}$'; then
+          echo "EXISTS"
+        else
+          ceph osd pool create {{ rados_pool }} 32 replicated
+          ceph osd pool set {{ rados_pool }} size 2
+          ceph osd pool set {{ rados_pool }} min_size 1
+          echo "CREATED"
+        fi
+      args:
+        executable: /bin/bash
+      when:
+        - inventory_hostname in groups['ceph_bootstrap']
+        - not (rados_ec | bool)
+      register: rep_pool_create
+      changed_when: "'CREATED' in rep_pool_create.stdout | default('')"
+
+    - name: Show benchmark parameters
+      ansible.builtin.debug:
+        msg:
+          - "Node: {{ inventory_hostname }}"
+          - "Pool: {{ rados_pool }}"
+          - "Mode: {{ rados_mode }}"
+          - "Duration: {{ rados_seconds }}s"
+          - "Threads: {{ rados_threads }}"
+
+    - name: Run rados bench
+      ansible.builtin.command: >
+        rados bench -p {{ rados_pool }}
+        {{ rados_seconds }} {{ rados_mode }}
+        -t {{ rados_threads }}
+        --run-name {{ inventory_hostname }}
+        {{ '--no-cleanup' if not (rados_cleanup | bool) else '' }}
+      register: rados_result
+      changed_when: true
+      timeout: "{{ (rados_seconds | int * 3) + 60 }}"
+
+    - name: Display results
+      ansible.builtin.debug:
+        msg: "{{ rados_result.stdout_lines[-20:] }}"
+
+    - name: Clean up bench pool
+      ansible.builtin.shell: |
+        ceph config set mon mon_allow_pool_delete true
+        ceph osd pool delete {{ rados_pool }} {{ rados_pool }} \
+          --yes-i-really-really-mean-it
+        ceph config set mon mon_allow_pool_delete false
+      args:
+        executable: /bin/bash
+      when:
+        - inventory_hostname in groups['ceph_bootstrap']
+        - rados_cleanup | bool
+        - rados_mode == 'write'
+      changed_when: true

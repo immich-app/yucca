@@ -1,0 +1,44 @@
+---
+# Phase 6: Verify cluster health
+
+- name: Show cluster status
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "=== Cluster Status ==="
+    ceph status
+    echo ""
+    echo "=== OSD Tree ==="
+    ceph osd tree
+    echo ""
+    echo "=== Cluster Capacity ==="
+    ceph df
+    echo ""
+    echo "=== RGW Services ==="
+    ceph orch ls --service-type rgw 2>/dev/null || echo "No RGW services deployed"
+    echo ""
+    echo "=== RGW Endpoints ==="
+    radosgw-admin zonegroup get --rgw-zonegroup={{ ceph_rgw_zonegroup }} 2>/dev/null | python3 -c "
+    import sys, json
+    try:
+        zg = json.load(sys.stdin)
+        print(f\"Region (api_name): {zg.get('api_name', 'N/A')}\")
+        print(f\"Endpoints: {zg.get('endpoints', [])}\")
+    except: print('RGW not configured')
+    " || echo "RGW not configured"
+    echo ""
+    echo "=== Monitoring Services ==="
+    ceph orch ls --service-type prometheus 2>/dev/null || echo "No monitoring deployed"
+    ceph orch ls --service-type grafana 2>/dev/null || true
+    ceph orch ls --service-type alertmanager 2>/dev/null || true
+    ceph orch ls --service-type node-exporter 2>/dev/null || true
+    ceph orch ls --service-type ceph-exporter 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: cluster_status
+  changed_when: false
+
+- name: Display final cluster state
+  ansible.builtin.debug:
+    msg: "{{ cluster_status.stdout_lines }}"
+  when: inventory_hostname in groups['ceph_bootstrap']

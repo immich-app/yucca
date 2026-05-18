@@ -1,0 +1,22 @@
+---
+# Deploy Ceph Tentacle cluster (cluster chosen via CEPH_ENV)
+#
+# Prerequisites:
+#   1. All nodes provisioned and running Debian 12 with bond0 networking
+#   2. SSH access via inventory.ini credentials (rendered by tofu apply)
+#   3. Storage partitioned with Ceph block.db LVs and SSD OSD partitions
+#
+# Usage:
+#   scripts/ansible-play.sh deploy-ceph.yml
+#
+# To run a specific phase only:
+#   scripts/ansible-play.sh deploy-ceph.yml --tags bootstrap
+#   scripts/ansible-play.sh deploy-ceph.yml --tags osds
+
+- name: Deploy Ceph Tentacle cluster
+  hosts: ceph_nodes
+  become: true
+  gather_facts: true
+
+  roles:
+    - ceph_deploy

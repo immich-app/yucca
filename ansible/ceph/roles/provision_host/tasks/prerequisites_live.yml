@@ -1,0 +1,48 @@
+---
+# Phase 2: Live-image prerequisites
+#
+# Installs the packages needed to run the rest of provisioning
+# (debootstrap, sgdisk, mdadm, lvm2, etc.) on the live image itself.
+# Idempotent — apt module only installs what's missing.
+
+# The Debian live image ships with a sources.list (and/or sources.list.d
+# entries) referencing `file:/run/live/medium`, which is NOT a real apt
+# repo and causes apt-get update to fail with "File not found". Replace
+# with the network sources we actually want before doing anything else.
+
+- name: Find any sources.list.d entries referencing the live medium
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns: '*.list'
+    contains: '^deb +file:'
+    use_regex: true
+  register: live_apt_cdrom_entries
+
+- name: Disable live-medium sources.list.d entries
+  ansible.builtin.command:
+    cmd: "mv {{ item.path }} {{ item.path }}.disabled"
+  loop: "{{ live_apt_cdrom_entries.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  changed_when: true
+
+- name: Render network apt sources.list on the live image
+  ansible.builtin.template:
+    src: apt-sources.list.j2
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Update apt cache on live image
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  changed_when: false
+
+- name: Install provisioning prerequisites on live image
+  ansible.builtin.apt:
+    name: "{{ provision_live_packages }}"
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive

@@ -1,0 +1,342 @@
+---
+# Drift detection — compares expected Ansible state against live cluster.
+# Read-only. No changes. Reports mismatches.
+#
+# Usage:
+#   scripts/ansible-play.sh drift.yml
+#   mise run drift
+
+- name: Drift detection
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  vars:
+    drift_results: []
+  vars_files:
+    - roles/baseline/defaults/main.yml
+    - roles/os_tuning/defaults/main.yml
+    - roles/hardware_tuning/defaults/main.yml
+    - roles/ceph_tuning/defaults/main.yml
+    - roles/security/defaults/main.yml
+
+  tasks:
+    # --- Collect all checks ---
+
+    # sysctl
+    - name: Check sysctl values
+      ansible.builtin.shell: |
+        set -o pipefail
+        sysctl -n {{ item.key }} 2>/dev/null | tr -d ' '
+      args:
+        executable: /bin/bash
+      loop:
+        - key: vm.swappiness
+          expected: "{{ ceph_sysctl_vm_swappiness }}"
+        - key: vm.min_free_kbytes
+          expected: "{{ ceph_sysctl_vm_min_free_kbytes }}"
+        - key: vm.zone_reclaim_mode
+          expected: "{{ ceph_sysctl_vm_zone_reclaim_mode }}"
+        - key: fs.aio-max-nr
+          expected: "{{ ceph_sysctl_fs_aio_max_nr }}"
+        - key: kernel.pid_max
+          expected: "{{ ceph_sysctl_kernel_pid_max }}"
+      register: sysctl_checks
+      changed_when: false
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Record sysctl drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'sysctl',
+            'item': item.item.key,
+            'expected': item.item.expected | string,
+            'actual': item.stdout | trim,
+            'match': (item.stdout | trim) == (item.item.expected | string)
+          }] }}
+      loop: "{{ sysctl_checks.results }}"
+      loop_control:
+        label: "{{ item.item.key }}"
+
+    # I/O scheduler
+    - name: Check HDD I/O scheduler
+      ansible.builtin.shell: |
+        set -o pipefail
+        for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                     | awk '$2==1 && $3=="disk" {print $1}' | head -1); do
+          BDEV=$(basename "$dev")
+          cat /sys/block/$BDEV/queue/scheduler \
+            | grep -oP '\[\K[^\]]+'
+        done
+      args:
+        executable: /bin/bash
+      register: hdd_sched
+      changed_when: false
+
+    - name: Record HDD scheduler drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'hardware',
+            'item': 'HDD I/O scheduler',
+            'expected': ceph_hdd_scheduler,
+            'actual': hdd_sched.stdout | trim | default('none'),
+            'match': (hdd_sched.stdout | trim | default('none'))
+                     == ceph_hdd_scheduler
+          }] }}
+
+    - name: Check SSD I/O scheduler
+      ansible.builtin.shell: |
+        set -o pipefail
+        for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                     | awk '$2==0 && $3=="disk" {print $1}' | head -1); do
+          BDEV=$(basename "$dev")
+          cat /sys/block/$BDEV/queue/scheduler \
+            | grep -oP '\[\K[^\]]+'
+        done
+      args:
+        executable: /bin/bash
+      register: ssd_sched
+      changed_when: false
+
+    - name: Record SSD scheduler drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'hardware',
+            'item': 'SSD I/O scheduler',
+            'expected': ceph_ssd_scheduler,
+            'actual': ssd_sched.stdout | trim | default('none'),
+            'match': (ssd_sched.stdout | trim | default('none'))
+                     == ceph_ssd_scheduler
+          }] }}
+
+    # nftables
+    - name: Check nftables policy
+      ansible.builtin.shell: |
+        set -o pipefail
+        nft list chain inet filter input 2>/dev/null \
+          | grep -c 'policy drop' || echo 0
+      args:
+        executable: /bin/bash
+      register: nft_policy
+      changed_when: false
+
+    - name: Record firewall drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'security',
+            'item': 'nftables policy drop',
+            'expected': 'enabled',
+            'actual': 'enabled' if (nft_policy.stdout | trim | int > 0)
+                      else 'missing',
+            'match': (nft_policy.stdout | trim | int > 0)
+          }] }}
+
+    # SSH hardening
+    - name: Check PasswordAuthentication
+      ansible.builtin.shell: |
+        set -o pipefail
+        sshd -T 2>/dev/null | grep -i passwordauthentication \
+          | awk '{print $2}'
+      args:
+        executable: /bin/bash
+      register: ssh_pwauth
+      changed_when: false
+
+    - name: Record SSH drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'security',
+            'item': 'SSH PasswordAuthentication',
+            'expected': 'no',
+            'actual': ssh_pwauth.stdout | trim,
+            'match': (ssh_pwauth.stdout | trim) == 'no'
+          }] }}
+
+    # sudo config
+    - name: Check ops sudo config
+      ansible.builtin.shell: |
+        grep -c 'NOPASSWD' /etc/sudoers.d/ops 2>/dev/null || echo 0
+      args:
+        executable: /bin/bash
+      register: ops_sudo
+      changed_when: false
+
+    - name: Record sudo drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'security',
+            'item': 'ops sudo requires password',
+            'expected': 'yes',
+            'actual': 'no (NOPASSWD)' if (ops_sudo.stdout | trim | int > 0)
+                      else 'yes',
+            'match': (ops_sudo.stdout | trim | int == 0)
+          }] }}
+
+    # --- Ceph cluster checks (bootstrap only) ---
+
+    - name: Check OSD status
+      ansible.builtin.shell: |
+        set -o pipefail
+        ceph osd stat --format json 2>/dev/null | python3 -c "
+        import sys, json
+        d = json.load(sys.stdin)
+        print(d.get('num_osds', 0), d.get('num_up_osds', 0))
+        "
+      args:
+        executable: /bin/bash
+      register: osd_stat
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Record OSD drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'ceph',
+            'item': 'OSDs up/total',
+            'expected': (osd_stat.stdout.split()[0]) ~ '/'
+                        ~ (osd_stat.stdout.split()[0]),
+            'actual': (osd_stat.stdout.split()[1]) ~ '/'
+                      ~ (osd_stat.stdout.split()[0]),
+            'match': osd_stat.stdout.split()[0]
+                     == osd_stat.stdout.split()[1]
+          }] }}
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: Check MON quorum
+      ansible.builtin.shell: |
+        set -o pipefail
+        ceph mon stat --format json 2>/dev/null | python3 -c "
+        import sys, json
+        print(json.load(sys.stdin).get('num_mons', 0))
+        "
+      args:
+        executable: /bin/bash
+      register: mon_count
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Record MON drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'ceph',
+            'item': 'MON count',
+            'expected': groups['ceph_nodes'] | length | string,
+            'actual': mon_count.stdout | trim,
+            'match': (mon_count.stdout | trim)
+                     == (groups['ceph_nodes'] | length | string)
+          }] }}
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: Check RGW daemons
+      ansible.builtin.shell: |
+        set -o pipefail
+        ceph orch ls --service-type rgw --format json 2>/dev/null \
+          | python3 -c "
+        import sys, json
+        svcs = json.load(sys.stdin)
+        print(sum(s.get('status',{}).get('running',0) for s in svcs))
+        "
+      args:
+        executable: /bin/bash
+      register: rgw_count
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Record RGW drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'ceph',
+            'item': 'RGW daemons',
+            'expected': groups['ceph_nodes'] | length | string,
+            'actual': rgw_count.stdout | trim,
+            'match': (rgw_count.stdout | trim)
+                     == (groups['ceph_nodes'] | length | string)
+          }] }}
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: Check cluster health
+      ansible.builtin.command: ceph health --format json
+      register: health_check
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Record health drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'ceph',
+            'item': 'cluster health',
+            'expected': 'HEALTH_OK',
+            'actual': (health_check.stdout | from_json).status,
+            'match': (health_check.stdout | from_json).status
+                     == 'HEALTH_OK'
+          }] }}
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    # Ceph config values
+    - name: Check Ceph config values
+      ansible.builtin.command: "ceph config get osd {{ item.key }}"
+      loop:
+        - key: osd_recovery_max_active
+          expected: "{{ ceph_osd_recovery_max_active }}"
+        - key: osd_max_backfills
+          expected: "{{ ceph_osd_max_backfills }}"
+        - key: osd_scrub_begin_hour
+          expected: "{{ ceph_osd_scrub_begin_hour }}"
+        - key: osd_scrub_end_hour
+          expected: "{{ ceph_osd_scrub_end_hour }}"
+      register: ceph_config_checks
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Record Ceph config drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'ceph-config',
+            'item': item.item.key,
+            'expected': item.item.expected | string,
+            'actual': item.stdout | trim,
+            'match': (item.stdout | trim) == (item.item.expected | string)
+          }] }}
+      loop: "{{ ceph_config_checks.results | default([]) }}"
+      when: inventory_hostname in groups['ceph_bootstrap']
+      loop_control:
+        label: "{{ item.item.key | default('skipped') }}"
+
+    # --- Report ---
+
+    - name: Build drift report
+      ansible.builtin.set_fact:
+        drift_report: |
+          === Drift Report: {{ inventory_hostname }} @ {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }} ===
+          {% for r in drift_results %}
+          {% if r.match %}
+            {{ '%-14s' | format(r.category) }} {{ '%-30s' | format(r.item) }} expected: {{ '%-12s' | format(r.expected) }} actual: {{ '%-12s' | format(r.actual) }}  OK
+          {% else %}
+            {{ '%-14s' | format(r.category) }} {{ '%-30s' | format(r.item) }} expected: {{ '%-12s' | format(r.expected) }} actual: {{ '%-12s' | format(r.actual) }}  !! DRIFT
+          {% endif %}
+          {% endfor %}
+
+          {% set drifts = drift_results | selectattr('match', 'equalto', false) | list %}
+          {% if drifts | length == 0 %}
+          No drift detected. Cluster matches expected state.
+          {% else %}
+          {{ drifts | length }} drift(s) detected. Run 'mise run deploy' to converge.
+          {% endif %}
+
+    - name: Display drift report
+      ansible.builtin.debug:
+        msg: "{{ drift_report.split('\n') }}"
