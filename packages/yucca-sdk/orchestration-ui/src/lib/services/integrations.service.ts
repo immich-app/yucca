@@ -45,7 +45,6 @@ export const useConfigureImmichDefaults = () =>
           dataFolders: immichState.dataFolders,
           backupConfiguration: true,
           libraries: 'all',
-          retentionPreset: 'default',
         });
       },
       onSuccess: () => {

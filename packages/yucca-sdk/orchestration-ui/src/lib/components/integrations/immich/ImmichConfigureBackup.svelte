@@ -13,6 +13,7 @@
     Heading,
     HStack,
     Input,
+    Select,
     Stack,
     Switch,
     Text,
@@ -34,11 +35,27 @@
   const schedulesQuery = useSchedules();
   const repositoriesQuery = useRepositories();
 
+  type RetentionChoice = {
+    key: string;
+    label: string;
+    policy: sdk.RetentionPolicyDto | null;
+  };
+
+  const retentionChoices: RetentionChoice[] = [
+    { key: "15d", label: "After 15 days", policy: { keepWithin: "15d" } },
+    { key: "30d", label: "After 30 days", policy: { keepWithin: "30d" } },
+    { key: "60d", label: "After 60 days", policy: { keepWithin: "60d" } },
+    { key: "90d", label: "After 90 days", policy: { keepWithin: "90d" } },
+    { key: "2", label: "Keep latest two backups", policy: { keepLast: 2 } },
+    { key: "never", label: "Never (keep all backups)", policy: null },
+  ];
+  const defaultRetentionKey = "60d";
+
   let name = $state("Immich");
   let worm = $state(false);
   let backupConfiguration = $state(true);
   let librariesMode = $state<"all" | "none" | "some">("all");
-  let retentionEnabled = $state(true);
+  let retentionKey = $state<string>(defaultRetentionKey);
 
   let cron = $state("0 3 * * *");
   let scheduleMode = $state<"daily" | "custom">("daily");
@@ -67,7 +84,11 @@
         (entry) => entry.id === integration.id,
       );
 
-      retentionEnabled = repository?.configuration?.retentionPreset !== "off";
+      const policy = repository?.configuration?.retentionPolicy ?? null;
+      const matched = retentionChoices.find(
+        (choice) => JSON.stringify(choice.policy) === JSON.stringify(policy),
+      );
+      retentionKey = matched?.key ?? defaultRetentionKey;
 
       if (config.libraries === "all") {
         librariesMode = "all";
@@ -126,7 +147,10 @@
             : librariesMode === "none"
               ? []
               : [...selectedLibraries],
-        retentionPreset: retentionEnabled ? "default" : "off",
+        retentionPolicy: worm
+          ? null
+          : (retentionChoices.find((choice) => choice.key === retentionKey)
+              ?.policy ?? null),
       });
 
       onFinish?.();
@@ -347,9 +371,17 @@
 
       <Field
         label="Delete old backups"
-        description="Keep daily backups for 7 days, weekly for a month, monthly for a year."
+        description="Older snapshots will be pruned automatically."
+        disabled={worm}
       >
-        <Switch bind:checked={retentionEnabled} disabled={worm} />
+        <Select
+          options={retentionChoices.map(({ key, label }) => ({
+            value: key,
+            label,
+          }))}
+          value={worm ? "never" : retentionKey}
+          onChange={(value) => (retentionKey = value)}
+        />
       </Field>
     </Stack>
   </Stack>

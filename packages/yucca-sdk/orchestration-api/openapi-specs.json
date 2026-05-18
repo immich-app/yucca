@@ -1244,12 +1244,25 @@
           }
         }
       },
-      "RetentionPreset": {
-        "type": "string",
-        "enum": [
-          "default",
-          "off"
-        ]
+      "RetentionPolicyDto": {
+        "type": "object",
+        "properties": {
+          "keepLast": {
+            "type": "number"
+          },
+          "keepWithin": {
+            "type": "string"
+          },
+          "keepWithinDaily": {
+            "type": "string"
+          },
+          "keepWithinWeekly": {
+            "type": "string"
+          },
+          "keepWithinMonthly": {
+            "type": "string"
+          }
+        }
       },
       "ConfigureImmichIntegrationRequestDto": {
         "type": "object",
@@ -1288,10 +1301,11 @@
               }
             ]
           },
-          "retentionPreset": {
+          "retentionPolicy": {
+            "nullable": true,
             "allOf": [
               {
-                "$ref": "#/components/schemas/RetentionPreset"
+                "$ref": "#/components/schemas/RetentionPolicyDto"
               }
             ]
           }
@@ -1302,8 +1316,7 @@
           "cron",
           "dataFolders",
           "backupConfiguration",
-          "libraries",
-          "retentionPreset"
+          "libraries"
         ]
       },
       "OnboardingStatusResponseDto": {
@@ -1446,17 +1459,17 @@
               "type": "string"
             }
           },
-          "retentionPreset": {
+          "retentionPolicy": {
+            "nullable": true,
             "allOf": [
               {
-                "$ref": "#/components/schemas/RetentionPreset"
+                "$ref": "#/components/schemas/RetentionPolicyDto"
               }
             ]
           }
         },
         "required": [
-          "paths",
-          "retentionPreset"
+          "paths"
         ]
       },
       "LocalRepositoryDto": {
@@ -1631,10 +1644,11 @@
               "type": "string"
             }
           },
-          "retentionPreset": {
+          "retentionPolicy": {
+            "nullable": true,
             "allOf": [
               {
-                "$ref": "#/components/schemas/RetentionPreset"
+                "$ref": "#/components/schemas/RetentionPolicyDto"
               }
             ]
           }

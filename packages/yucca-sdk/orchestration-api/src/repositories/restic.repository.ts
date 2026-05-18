@@ -79,9 +79,13 @@ export class ResticRepository {
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .signal(signal)
+      .keepLast(policy.keepLast)
+      .keepWithin(policy.keepWithin)
+      .keepWithinHourly(policy.keepWithinHourly)
       .keepWithinDaily(policy.keepWithinDaily)
       .keepWithinWeekly(policy.keepWithinWeekly)
       .keepWithinMonthly(policy.keepWithinMonthly)
+      .keepWithinYearly(policy.keepWithinYearly)
       .run();
   }
 
