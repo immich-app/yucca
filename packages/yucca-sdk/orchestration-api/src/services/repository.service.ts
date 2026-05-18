@@ -3,10 +3,8 @@ import { Updateable } from 'kysely';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
-import { DEFAULT_RETENTION_POLICY } from '../utils/restic';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
-  InspectedLocalRepositoryDto,
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
   RepositoryCheckImportResponseDto,
@@ -37,6 +35,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
+import { DEFAULT_RETENTION_POLICY } from '../utils/restic';
 import { BootstrapService } from './bootstrap.service';
 
 @Injectable()
@@ -226,13 +225,28 @@ export class RepositoryService {
     );
 
     return {
-      repositories: repositories.map(
-        (repository, idx) =>
-          ({
-            ...repository,
-            snapshots: snapshots[idx].status === 'fulfilled' ? snapshots[idx].value : undefined,
-          }) as InspectedLocalRepositoryDto,
-      ),
+      repositories: repositories.map((repository, idx) => ({
+        ...repository,
+        snapshots:
+          snapshots[idx].status === 'fulfilled' ? snapshots[idx].value.map((snapshot) => this.mapSnapshot(snapshot)) : undefined,
+      })),
+    };
+  }
+
+  private mapSnapshot({ summary, ...snapshot }: Awaited<ReturnType<ResticRepository['snapshots']>>[number]) {
+    return {
+      ...snapshot,
+      time: snapshot.time.toISOString(),
+      summary: summary
+        ? {
+            filesNew: summary.files_new,
+            filesChanged: summary.files_changed,
+            filesUnmodified: summary.files_unmodified,
+            totalFiles: summary.total_files_processed,
+            totalBytes: summary.total_bytes_processed,
+            dataAdded: summary.data_added,
+          }
+        : undefined,
     };
   }
 
@@ -596,20 +610,7 @@ export class RepositoryService {
     const snapshots = await this.restic.snapshots(endpoint, key);
 
     return {
-      snapshots: snapshots.map(({ summary, ...snapshot }) => ({
-        ...snapshot,
-        time: snapshot.time.toISOString(),
-        summary: summary
-          ? {
-              filesNew: summary.files_new,
-              filesChanged: summary.files_changed,
-              filesUnmodified: summary.files_unmodified,
-              totalFiles: summary.total_files_processed,
-              totalBytes: summary.total_bytes_processed,
-              dataAdded: summary.data_added,
-            }
-          : undefined,
-      })),
+      snapshots: snapshots.map((snapshot) => this.mapSnapshot(snapshot)),
     };
   }
 

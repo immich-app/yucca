@@ -48,7 +48,7 @@
     {onFinish}
   />
 {:else}
-  <Modal title="Select Restore Point" size="small" onClose={onCancel}>
+  <Modal title="Select Backup" size="small" onClose={onCancel}>
     <ModalBody>
       <StackList {query}>
         {#snippet children()}

@@ -1,11 +1,14 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
+  import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import type {
     InspectedLocalRepositoryDto,
     SnapshotDto,
   } from "$lib/fetch-client";
+  import { humanizeBackupPath } from "$lib/utils/format";
   import {
     Button,
+    FormatBytes,
     HStack,
     Modal,
     ModalBody,
@@ -37,7 +40,7 @@
 {:else}
   <Modal
     title={`Restore from ${repository.name}`}
-    size="small"
+    size="medium"
     onClose={onBack}
   >
     <ModalBody>
@@ -45,10 +48,19 @@
         {#each repository.snapshots.toSorted((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) as snapshot (snapshot.id)}
           <HStack gap={2} class="px-4 py-3">
             <Stack gap={0} class="grow min-w-0">
-              <Text>{new Date(snapshot.time).toLocaleString()}</Text>
-              {#each snapshot.paths as path}
-                <Text size="small" color="muted">{path}</Text>
-              {/each}
+              <HStack
+                ><RelativeTime time={snapshot.time} />
+                {#if snapshot.summary}
+                  <Text size="small" color="secondary">
+                    &middot; <FormatBytes bytes={snapshot.summary.totalBytes} />
+                  </Text>
+                {/if}</HStack
+              >
+              <Text size="small" color="muted"
+                >{[...new Set(snapshot.paths.map(humanizeBackupPath))].join(
+                  ", ",
+                )}</Text
+              >
             </Stack>
             <Button onclick={() => (selectedSnapshot = snapshot)}>
               Restore
