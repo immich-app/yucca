@@ -1,0 +1,11 @@
+---
+# No dependencies — runs pre-deploy on provisioned nodes.
+# Should run BEFORE ceph_deploy so OSDs use optimal I/O settings.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: hardware_tuning
+  description: I/O scheduler, readahead, and queue depth tuning for Ceph nodes
+  min_ansible_version: "2.19"

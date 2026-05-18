@@ -1,0 +1,658 @@
+---
+# Phase 5.75: RadosGW (S3 Object Gateway)
+# Deploys RGW with EC data pool, realm/zonegroup/zone, and S3 service user
+
+# --- Step 1: EC profile ---
+
+- name: Check existing EC profiles
+  ansible.builtin.command: ceph osd erasure-code-profile ls
+  register: ec_profiles
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Create EC profile {{ ceph_rgw_ec_profile }}
+  ansible.builtin.command: >
+    ceph osd erasure-code-profile set {{ ceph_rgw_ec_profile }}
+    k={{ ceph_rgw_ec_k }} m={{ ceph_rgw_ec_m }}
+    crush-failure-domain={{ ceph_rgw_ec_failure_domain }}
+    crush-device-class={{ ceph_rgw_ec_device_class }}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "ceph_rgw_ec_profile not in ec_profiles.stdout"
+  changed_when: true
+
+# --- Step 2-3: EC data pool ---
+
+- name: Check existing pools
+  ansible.builtin.command: ceph osd pool ls
+  register: pool_list
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Create EC data pool {{ ceph_rgw_data_pool }}
+  ansible.builtin.command: >
+    ceph osd pool create {{ ceph_rgw_data_pool }} erasure {{ ceph_rgw_ec_profile }}
+  register: create_data_pool
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "ceph_rgw_data_pool not in pool_list.stdout"
+  changed_when: true
+
+- name: Enable EC overwrites on data pool
+  ansible.builtin.command: >
+    ceph osd pool set {{ ceph_rgw_data_pool }} allow_ec_overwrites true
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - create_data_pool is changed
+  changed_when: true
+
+# --- Step 4: Replicated index pool ---
+
+- name: Create replicated index pool {{ ceph_rgw_index_pool }}
+  ansible.builtin.command: >
+    ceph osd pool create {{ ceph_rgw_index_pool }} replicated
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "ceph_rgw_index_pool not in pool_list.stdout"
+  changed_when: true
+
+- name: Set index pool replication parameters
+  ansible.builtin.shell: |
+    set -e
+    ceph osd pool set {{ ceph_rgw_index_pool }} size {{ ceph_rgw_replicated_size }}
+    ceph osd pool set {{ ceph_rgw_index_pool }} min_size {{ ceph_rgw_replicated_min_size }}
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 5: Replicated non-EC pool (multipart uploads) ---
+
+- name: Create replicated non-EC pool {{ ceph_rgw_extra_pool }}
+  ansible.builtin.command: >
+    ceph osd pool create {{ ceph_rgw_extra_pool }} replicated
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "ceph_rgw_extra_pool not in pool_list.stdout"
+  changed_when: true
+
+- name: Set non-EC pool replication parameters
+  ansible.builtin.shell: |
+    set -e
+    ceph osd pool set {{ ceph_rgw_extra_pool }} size {{ ceph_rgw_replicated_size }}
+    ceph osd pool set {{ ceph_rgw_extra_pool }} min_size {{ ceph_rgw_replicated_min_size }}
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 6: Pool application tags ---
+
+- name: Check pool application tags
+  ansible.builtin.command: "ceph osd pool application get {{ item }}"
+  loop:
+    - "{{ ceph_rgw_data_pool }}"
+    - "{{ ceph_rgw_index_pool }}"
+    - "{{ ceph_rgw_extra_pool }}"
+  register: pool_apps
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Enable rgw application on pools
+  ansible.builtin.command: "ceph osd pool application enable {{ item.item }} rgw"
+  loop: "{{ pool_apps.results }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item is not skipped
+    - "'rgw' not in (item.stdout | default(''))"
+  changed_when: true
+  loop_control:
+    label: "{{ item.item | default('skipped') }}"
+
+# --- Step 6.5: Initial PG counts ---
+#
+# Pools are created with pg_num=1 (ceph default). The autoscaler will
+# eventually grow them, but splitting PGs under load causes latency
+# spikes and throughput drops. Pre-sizing avoids this penalty during
+# the first fill. Idempotent: only increases pg_num, never decreases.
+
+- name: Set initial PG count on data pool
+  ansible.builtin.command: >
+    ceph osd pool set {{ ceph_rgw_data_pool }}
+    pg_num {{ ceph_pg_init_data }}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_data_pool in pool_list.stdout
+  register: pg_data_result
+  changed_when: "'set' in pg_data_result.stdout | default('')"
+  failed_when:
+    - pg_data_result.rc != 0
+    - "'is not >= current' not in pg_data_result.stderr | default('')"
+
+- name: Set initial PG count on index pool
+  ansible.builtin.command: >
+    ceph osd pool set {{ ceph_rgw_index_pool }}
+    pg_num {{ ceph_pg_init_index }}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_index_pool in pool_list.stdout
+  register: pg_index_result
+  changed_when: "'set' in pg_index_result.stdout | default('')"
+  failed_when:
+    - pg_index_result.rc != 0
+    - "'is not >= current' not in pg_index_result.stderr | default('')"
+
+- name: Set initial PG count on non-EC pool
+  ansible.builtin.command: >
+    ceph osd pool set {{ ceph_rgw_extra_pool }}
+    pg_num {{ ceph_pg_init_non_ec }}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_extra_pool in pool_list.stdout
+  register: pg_extra_result
+  changed_when: "'set' in pg_extra_result.stdout | default('')"
+  failed_when:
+    - pg_extra_result.rc != 0
+    - "'is not >= current' not in pg_extra_result.stderr | default('')"
+
+- name: Set initial PG count on RGW metadata pools
+  ansible.builtin.command: >
+    ceph osd pool set {{ item }} pg_num {{ ceph_pg_init_meta }}
+  loop:
+    - .rgw.root
+    - "{{ ceph_rgw_zone }}.rgw.log"
+    - "{{ ceph_rgw_zone }}.rgw.control"
+    - "{{ ceph_rgw_zone }}.rgw.meta"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    # Skip pools that haven't materialized yet — RGW creates them
+    # lazily on first daemon startup. Mirrors the per-pool gate used
+    # by the data/index/extra pool tasks above.
+    - item in pool_list.stdout
+  register: pg_meta_result
+  changed_when: "'set' in pg_meta_result.stdout | default('')"
+  failed_when:
+    - pg_meta_result.rc is defined
+    - pg_meta_result.rc != 0
+    - "'is not >= current' not in pg_meta_result.stderr | default('')"
+
+- name: Wait for PG peering to complete
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in $(seq 1 60); do
+      STATE=$(ceph pg stat --format json 2>/dev/null | python3 -c "
+    import sys, json
+    d = json.load(sys.stdin)
+    s = d.get('pg_summary', {}).get('num_pg_by_state', [])
+    non_clean = sum(x['num'] for x in s if 'active+clean' not in x['name'])
+    print(non_clean)
+    " 2>/dev/null || echo 999)
+      if [ "$STATE" = "0" ]; then
+        echo "All PGs active+clean"
+        exit 0
+      fi
+      echo "Waiting for PG peering... ($STATE PGs not clean)"
+      sleep 5
+    done
+    echo "WARNING: PGs still peering after 5 minutes"
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  timeout: 330
+
+# --- Step 7: Realm ---
+
+- name: Check existing realms
+  ansible.builtin.command: radosgw-admin realm list
+  register: realm_list
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Create realm {{ ceph_rgw_realm }}
+  ansible.builtin.command: >
+    radosgw-admin realm create --rgw-realm={{ ceph_rgw_realm }} --default
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "ceph_rgw_realm not in (realm_list.stdout | default(''))"
+  changed_when: true
+
+- name: Ensure realm is default
+  ansible.builtin.command: >
+    radosgw-admin realm default --rgw-realm={{ ceph_rgw_realm }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 8: Zonegroup ---
+
+- name: Check existing zonegroups
+  ansible.builtin.command: radosgw-admin zonegroup list
+  register: zonegroup_list
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Create zonegroup {{ ceph_rgw_zonegroup }}
+  ansible.builtin.command: >
+    radosgw-admin zonegroup create
+    --rgw-realm={{ ceph_rgw_realm }}
+    --rgw-zonegroup={{ ceph_rgw_zonegroup }}
+    --endpoints={{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}
+    --master --default
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "ceph_rgw_zonegroup not in (zonegroup_list.stdout | default(''))"
+  changed_when: true
+
+- name: Set zonegroup api_name to {{ ceph_rgw_zonegroup_api_name }}
+  ansible.builtin.shell: |
+    set -e
+    python3 -c "
+    import json, subprocess, sys
+    zg = json.loads(subprocess.check_output(
+        ['radosgw-admin', 'zonegroup', 'get',
+         '--rgw-zonegroup', '{{ ceph_rgw_zonegroup }}']))
+    if zg.get('api_name') == '{{ ceph_rgw_zonegroup_api_name }}':
+        sys.exit(0)
+    zg['api_name'] = '{{ ceph_rgw_zonegroup_api_name }}'
+    subprocess.run(
+        ['radosgw-admin', 'zonegroup', 'set',
+         '--rgw-zonegroup', '{{ ceph_rgw_zonegroup }}'],
+        input=json.dumps(zg).encode(), check=True)
+    print('CHANGED')
+    "
+  args:
+    executable: /bin/bash
+  register: set_api_name
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: "'CHANGED' in (set_api_name.stdout | default(''))"
+
+# --- Step 9: Zone ---
+
+- name: Check existing zones
+  ansible.builtin.command: radosgw-admin zone list
+  register: zone_list
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Create zone {{ ceph_rgw_zone }}
+  ansible.builtin.command: >
+    radosgw-admin zone create
+    --rgw-realm={{ ceph_rgw_realm }}
+    --rgw-zonegroup={{ ceph_rgw_zonegroup }}
+    --rgw-zone={{ ceph_rgw_zone }}
+    --endpoints={{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}
+    --master --default
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "ceph_rgw_zone not in (zone_list.stdout | default(''))"
+  changed_when: true
+
+# --- Step 10: Zone placement targets ---
+
+- name: Configure zone placement targets for EC pools
+  ansible.builtin.shell: |
+    set -e
+    python3 -c "
+    import json, subprocess, sys
+    zone = json.loads(subprocess.check_output(
+        ['radosgw-admin', 'zone', 'get', '--rgw-zone', '{{ ceph_rgw_zone }}']))
+    changed = False
+    for pt in zone.get('placement_targets', []):
+        if pt['name'] == 'default-placement':
+            if (pt.get('data_pool') != '{{ ceph_rgw_data_pool }}' or
+                pt.get('index_pool') != '{{ ceph_rgw_index_pool }}' or
+                pt.get('data_extra_pool') != '{{ ceph_rgw_extra_pool }}'):
+                pt['data_pool'] = '{{ ceph_rgw_data_pool }}'
+                pt['index_pool'] = '{{ ceph_rgw_index_pool }}'
+                pt['data_extra_pool'] = '{{ ceph_rgw_extra_pool }}'
+                changed = True
+    if not changed:
+        sys.exit(0)
+    subprocess.run(
+        ['radosgw-admin', 'zone', 'set', '--rgw-zone', '{{ ceph_rgw_zone }}'],
+        input=json.dumps(zone).encode(), check=True)
+    print('CHANGED')
+    "
+  args:
+    executable: /bin/bash
+  register: zone_placement
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: "'CHANGED' in (zone_placement.stdout | default(''))"
+
+# --- Step 10.5: Zonegroup hostnames ---
+#
+# The dashboard connects to RGW using the node's hostname or IP in the
+# Host header. RGW validates the Host header during S3 signature
+# verification — if the hostname isn't in the zonegroup's hostnames
+# list, signature verification fails with SignatureDoesNotMatch (403).
+# Adding all node hostnames and IPs ensures both dashboard and direct
+# client access work regardless of which address is used.
+
+- name: Add cluster hostnames and IPs to zonegroup
+  ansible.builtin.shell: |
+    set -o pipefail
+    python3 -c "
+    import json, subprocess
+    zg = json.loads(subprocess.check_output(
+        ['radosgw-admin', 'zonegroup', 'get',
+         '--rgw-zonegroup', '{{ ceph_rgw_zonegroup }}']))
+    hostnames = set(zg.get('hostnames', []))
+    needed = set([
+    {% for h in groups['ceph_nodes'] %}
+        '{{ hostvars[h]['hostname_short'] }}',
+        '{{ hostvars[h]['bond_ip'] }}',
+    {% endfor %}
+        '{{ ceph_rgw_dns_name }}',
+    ])
+    if needed.issubset(hostnames):
+        print('OK')
+    else:
+        hostnames.update(needed)
+        zg['hostnames'] = sorted(hostnames)
+        subprocess.run(
+            ['radosgw-admin', 'zonegroup', 'set',
+             '--rgw-zonegroup', '{{ ceph_rgw_zonegroup }}'],
+            input=json.dumps(zg).encode(), check=True,
+            capture_output=True)
+        print('CHANGED: ' + ','.join(sorted(needed)))
+    "
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: zonegroup_hostnames
+  changed_when: "'CHANGED' in zonegroup_hostnames.stdout"
+
+# --- Step 11: Commit period ---
+
+- name: Commit the period
+  ansible.builtin.command: >
+    radosgw-admin period update --commit --rgw-realm={{ ceph_rgw_realm }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 11.5: rgw_dns_name for virtual-hosted bucket addressing ---
+#
+# With this set, a request to bucket.{{ ceph_rgw_dns_name }} is
+# recognized as the bucket "bucket" rather than a literal bucket whose
+# name is the full FQDN. Clients can then use either path-style
+# ({{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}/bucket/key) or
+# virtual-hosted style ({{ ceph_rgw_scheme }}://bucket.{{ ceph_rgw_dns_name }}/key).
+
+- name: Get current rgw_dns_name
+  ansible.builtin.command: ceph config get client.rgw rgw_dns_name
+  register: current_rgw_dns_name
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Set rgw_dns_name for virtual-hosted bucket support
+  ansible.builtin.command: >
+    ceph config set client.rgw rgw_dns_name {{ ceph_rgw_dns_name }}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "(current_rgw_dns_name.stdout | default('')) | trim != ceph_rgw_dns_name"
+  changed_when: true
+
+# --- Step 11.6: Self-signed TLS cert for RGW frontend ---
+#
+# Generated on the bootstrap node via openssl, handed to cephadm via the
+# service spec template below. cephadm distributes the combined PEM to
+# every RGW daemon container on apply.
+#
+# Idempotent via `creates:` — the openssl run only fires if the cert file
+# is absent. To rotate: delete /etc/ceph/rgw-ssl.{crt,key} on the bootstrap
+# node and re-run the role.
+#
+# SANs include:
+#   - the canonical DNS name (CN)
+#   - a wildcard under the same name for virtual-hosted buckets
+#   - per-node FQDNs so direct-host addressing also validates
+#   - per-node bond IPs so IP-based S3 clients also validate
+
+- name: Generate RGW self-signed cert and key (10 year validity)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    umask 077
+    openssl req -x509 -newkey rsa:4096 -nodes \
+      -keyout /etc/ceph/rgw-ssl.key \
+      -out /etc/ceph/rgw-ssl.crt \
+      -days {{ ceph_rgw_ssl_cert_days }} \
+      -subj "/C={{ ceph_rgw_ssl_cert_subject_c }}\
+    /ST={{ ceph_rgw_ssl_cert_subject_st }}\
+    /L={{ ceph_rgw_ssl_cert_subject_l }}\
+    /O={{ ceph_rgw_ssl_cert_subject_o }}\
+    /CN={{ ceph_rgw_dns_name }}\
+    /emailAddress={{ ceph_rgw_ssl_cert_email }}" \
+      -addext "subjectAltName=\
+    DNS:{{ ceph_rgw_dns_name }},\
+    DNS:*.{{ ceph_rgw_dns_name }}\
+    {% for h in groups['ceph_nodes'] %},DNS:{{ hostvars[h]['hostname_short'] }}.{{ cluster_domain }}{% endfor %}\
+    {% for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['bond_ip'] }}{% endfor %}"
+  args:
+    executable: /bin/bash
+    creates: /etc/ceph/rgw-ssl.crt
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ssl | default(false) | bool
+  changed_when: true
+
+- name: Read combined cert + key for service spec
+  ansible.builtin.shell: cat /etc/ceph/rgw-ssl.crt /etc/ceph/rgw-ssl.key
+  args:
+    executable: /bin/bash
+  register: rgw_ssl_combined
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ssl | default(false) | bool
+  changed_when: false
+  no_log: true
+
+- name: Set combined PEM fact
+  ansible.builtin.set_fact:
+    rgw_ssl_cert_combined_pem: "{{ rgw_ssl_combined.stdout }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ssl | default(false) | bool
+  no_log: true
+
+# --- Step 12: Deploy RGW daemons via cephadm service spec ---
+#
+# We render a YAML service spec rather than using `ceph orch apply rgw
+# <realm> <zone> --placement=... --port=...` because the command-line
+# form doesn't accept cert content. The YAML spec supports both
+# `ssl: true` and inline `rgw_frontend_ssl_certificate` — cephadm
+# distributes the cert to every RGW container.
+#
+# Placement is pinned to groups['ceph_nodes'] (not ansible_play_batch)
+# so a --limit re-run doesn't accidentally shrink the spec and
+# de-deploy daemons on omitted hosts (cephadm is declarative: applying
+# a smaller placement REMOVES daemons).
+
+- name: Render RGW service spec
+  ansible.builtin.template:
+    src: rgw-spec.yaml.j2
+    dest: /etc/ceph/rgw-spec.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  when: inventory_hostname in groups['ceph_bootstrap']
+  no_log: true
+
+- name: Apply RGW service spec
+  ansible.builtin.command: ceph orch apply -i /etc/ceph/rgw-spec.yaml
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 12.5: Dashboard RGW SSL verify ---
+#
+# With self-signed certs the dashboard's RGW client rejects the cert
+# and returns 500 on the Object Gateway page. Disable verification so
+# the dashboard can talk to the local RGW endpoints.
+
+- name: Disable dashboard RGW API SSL verification (self-signed cert)
+  ansible.builtin.command: ceph dashboard set-rgw-api-ssl-verify false
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ssl | default(false) | bool
+  changed_when: false
+
+- name: Sync dashboard RGW credentials
+  ansible.builtin.command: ceph dashboard set-rgw-credentials
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 13: Wait for RGW daemons ---
+
+- name: Wait for RGW daemons to start
+  ansible.builtin.shell: |
+    set -eo pipefail
+    ceph orch ls --service-type rgw --format json | python3 -c "
+    import sys, json
+    svcs = json.load(sys.stdin)
+    running = sum(s.get('status', {}).get('running', 0) for s in svcs)
+    print(running)
+    "
+  args:
+    executable: /bin/bash
+  register: rgw_running_count
+  until: "(rgw_running_count.stdout | int) >= (groups['ceph_nodes'] | length)"
+  retries: 30
+  delay: 10
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 13.5: Ensure dashboard RGW user has admin caps ---
+#
+# cephadm auto-creates a "dashboard" RGW user with system=true but
+# zero caps. Without admin caps the dashboard's Object Gateway page
+# returns 403 SignatureDoesNotMatch on every admin API call.
+
+- name: Ensure dashboard RGW user has admin caps
+  ansible.builtin.shell: |
+    set -o pipefail
+    CAPS=$(radosgw-admin user info --uid=dashboard --format json 2>/dev/null \
+      | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('caps',[])))")
+    if [ "$CAPS" = "0" ]; then
+      radosgw-admin caps add --uid=dashboard \
+        --caps='buckets=*;users=*;usage=*;metadata=*;zone=*' >/dev/null 2>&1
+      echo "CHANGED"
+    else
+      echo "OK"
+    fi
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: dashboard_caps
+  changed_when: "'CHANGED' in dashboard_caps.stdout"
+
+# --- Step 14: Create S3 user ---
+
+- name: Check if S3 user exists
+  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_s3_user_uid }}"
+  register: s3_user_check
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Create S3 service user with predetermined keys — {{ ceph_rgw_s3_user_uid }}
+  ansible.builtin.command: >
+    radosgw-admin user create
+    --uid={{ ceph_rgw_s3_user_uid }}
+    --display-name='{{ ceph_rgw_s3_user_display_name }}'
+    --access-key='{{ ceph_rgw_s3_user_access_key }}'
+    --secret-key='{{ ceph_rgw_s3_user_secret_key }}'
+    --max-buckets=100
+  register: s3_user_create
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - s3_user_check.rc != 0
+  changed_when: true
+  no_log: true
+
+# --- Step 15: Align existing S3 user keys with 1P (idempotent rotation) ---
+#
+# For clusters that predate the TF+1P-predetermined-keys pattern, the user
+# exists but with cephadm-generated random keys. This task detects that
+# drift and realigns — destructive for the Yucca-app side, so gated by an
+# explicit flag.
+
+- name: Get current S3 user info
+  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_s3_user_uid }}"
+  register: s3_user_info
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  no_log: true
+
+- name: Detect S3 key drift (1P vs cluster)
+  ansible.builtin.set_fact:
+    s3_key_drift: >-
+      {{
+        (s3_user_info.stdout | from_json)['keys'][0]['access_key']
+          != ceph_rgw_s3_user_access_key
+      }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  no_log: true
+
+- name: Align S3 user keys with 1P values (only when rotate_s3_keys=true)
+  ansible.builtin.command: >
+    radosgw-admin key create
+    --uid={{ ceph_rgw_s3_user_uid }}
+    --access-key='{{ ceph_rgw_s3_user_access_key }}'
+    --secret-key='{{ ceph_rgw_s3_user_secret_key }}'
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - s3_key_drift | default(false)
+    - rotate_s3_keys | default(false) | bool
+  changed_when: true
+  no_log: true
+
+- name: S3 key drift notice (dry flag — no action taken)
+  ansible.builtin.debug:
+    msg:
+      - "S3 svc-user keys differ from 1P values."
+      - "To align (rotates keys, requires Yucca-app re-config): re-run with -e rotate_s3_keys=true"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - s3_key_drift | default(false)
+    - not (rotate_s3_keys | default(false) | bool)
+
+- name: Display S3 endpoint (credentials live in 1P, not log output)
+  ansible.builtin.debug:
+    msg:
+      - "=== S3 endpoint for {{ ceph_rgw_s3_user_uid }} ==="
+      - "Access Key:        op://{{ cluster_secrets_vault }}/{{ cluster_name | upper }}_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY/password"
+      - "Secret Key:        op://{{ cluster_secrets_vault }}/{{ cluster_name | upper }}_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY/password"
+      - "Endpoint (DNS):    {{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}"
+      - "Endpoint (direct): {{ ceph_rgw_scheme }}://{{ bond_ip }}:{{ ceph_rgw_port }}"
+      - "Region:            {{ ceph_rgw_zonegroup_api_name }}"
+      - "Virtual-hosted:    {{ ceph_rgw_scheme }}://<bucket>.{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}"
+      - "Path-style:        {{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}/<bucket>"
+  when: inventory_hostname in groups['ceph_bootstrap']
+  no_log: false
+
+# --- Step 16: Show RGW status ---
+
+- name: Show RGW status
+  ansible.builtin.shell: |
+    echo "=== RGW Services ==="
+    ceph orch ls --service-type rgw
+    echo ""
+    echo "=== Realm ==="
+    radosgw-admin realm list
+    echo ""
+    echo "=== Zonegroup ==="
+    radosgw-admin zonegroup get --rgw-zonegroup={{ ceph_rgw_zonegroup }}
+  args:
+    executable: /bin/bash
+  register: rgw_final_status
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Display RGW status
+  ansible.builtin.debug:
+    msg: "{{ rgw_final_status.stdout_lines }}"
+  when: inventory_hostname in groups['ceph_bootstrap']

@@ -1,0 +1,4 @@
+# Ceph log forwarding — managed by Ansible (os_tuning role)
+# Forwards all syslog to a central aggregator.
+
+*.* {{ '@@' if ceph_logging_protocol == 'tcp' else '@' }}{{ ceph_logging_target }}

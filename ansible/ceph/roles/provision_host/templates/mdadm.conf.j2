@@ -1,0 +1,5 @@
+HOMEHOST <system>
+MAILADDR root
+
+# Arrays (populated by mdadm --detail --scan during install)
+{{ mdadm_scan_output | default('') }}

@@ -1,0 +1,12 @@
+---
+# Start systemd-networkd to adopt the existing bond0.
+# ifupdown's networking.service is active (exited) — no daemon to conflict.
+# networkd sees bond0 already exists and adopts it without disruption.
+
+- name: Flush handlers (ensure daemon-reload before start)
+  ansible.builtin.meta: flush_handlers
+
+- name: Start systemd-networkd
+  ansible.builtin.systemd:
+    name: systemd-networkd.service
+    state: started

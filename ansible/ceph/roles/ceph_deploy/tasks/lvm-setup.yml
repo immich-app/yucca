@@ -1,0 +1,110 @@
+---
+# Phase 4.5: Ensure Ceph block.db LVM is set up on each node (sietch-shape only)
+#
+# This task is sietch-shape-specific: it assumes dual SAS-attached SSDs each
+# with partition 5 → its own VG, with 6 db-slot LVs per VG (12 total). It
+# ensures PVs, VGs, and LVs exist. Idempotent — skips if already present.
+# Provides a recovery path if the LVM was destroyed by `mise run destroy`.
+#
+# Painbox-shape (Hetzner SX295, NVMe RAID-1 → single vg0 with all LVs created
+# by installimage post-install) skips the whole block — its host_vars don't
+# define `sas_path_prefix` so the gate below short-circuits.
+#
+# Required host_vars (sietch-shape only):
+#   sas_path_prefix  — by-path prefix for SSD discovery (e.g., pci-0000:02:00.0-sas-exp...)
+#   ssd1_phy, ssd2_phy — PHY slot numbers for the two SSDs
+#   ceph_db_vg1, ceph_db_vg2 — VG names for SSD1/SSD2 partition 5
+#
+# VG mapping: ceph_db_vg1 on SSD1 partition 5, ceph_db_vg2 on SSD2 partition 5
+# LV naming: db-slot0..5 on VG1, db-slot6..11 on VG2 (one per HDD OSD)
+
+- name: Skip in-role LVM setup (no sas_path_prefix — externally-managed LVM)
+  ansible.builtin.debug:
+    msg: >-
+      LVM is externally managed on this host (e.g., Hetzner installimage
+      post-install creates vg0 + db-slots on a RAID-1 NVMe). Skipping the
+      sietch-shape dual-SSD-VG setup. If LVM is missing on this host,
+      reprovision via the cluster's installimage flow.
+  when: sas_path_prefix is undefined
+
+- name: Set up LVM (sietch-shape dual-SSD-VG topology)
+  when: sas_path_prefix is defined
+  block:
+    - name: Resolve SSD1 device path
+      ansible.builtin.command: >
+        readlink -f /dev/disk/by-path/{{ sas_path_prefix }}-phy{{ ssd1_phy }}-lun-0
+      register: ssd1_dev
+      changed_when: false
+
+    - name: Resolve SSD2 device path
+      ansible.builtin.command: >
+        readlink -f /dev/disk/by-path/{{ sas_path_prefix }}-phy{{ ssd2_phy }}-lun-0
+      register: ssd2_dev
+      changed_when: false
+
+    - name: Check if VG1 exists
+      ansible.builtin.shell: vgs {{ ceph_db_vg1 }} 2>/dev/null
+      register: vg1_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check if VG2 exists
+      ansible.builtin.shell: vgs {{ ceph_db_vg2 }} 2>/dev/null
+      register: vg2_check
+      changed_when: false
+      failed_when: false
+
+    - name: Create PV and VG on SSD1 partition 5
+      ansible.builtin.shell: |
+        PART="{{ ssd1_dev.stdout }}5"
+        wipefs -af "$PART"
+        pvcreate -f "$PART" && vgcreate {{ ceph_db_vg1 }} "$PART"
+      when: vg1_check.rc != 0
+      changed_when: true
+
+    - name: Create PV and VG on SSD2 partition 5
+      ansible.builtin.shell: |
+        PART="{{ ssd2_dev.stdout }}5"
+        wipefs -af "$PART"
+        pvcreate -f "$PART" && vgcreate {{ ceph_db_vg2 }} "$PART"
+      when: vg2_check.rc != 0
+      changed_when: true
+
+    - name: Create block.db LVs on VG1 (slots 0-4 at 240G, slot 5 gets remainder)
+      ansible.builtin.shell: |
+        if lvs {{ ceph_db_vg1 }}/db-slot{{ item }} 2>/dev/null; then
+          echo "db-slot{{ item }} already exists"
+        else
+          {% if item < 5 %}
+          lvcreate --yes -Wy -L {{ ceph_db_lv_size }} -n db-slot{{ item }} {{ ceph_db_vg1 }}
+          {% else %}
+          lvcreate --yes -Wy -l 100%FREE -n db-slot{{ item }} {{ ceph_db_vg1 }}
+          {% endif %}
+        fi
+      loop: [0, 1, 2, 3, 4, 5]
+      register: vg1_lv_results
+      changed_when: "'already exists' not in (vg1_lv_results.stdout | default(''))"
+
+    - name: Create block.db LVs on VG2 (slots 6-10 at 240G, slot 11 gets remainder)
+      ansible.builtin.shell: |
+        if lvs {{ ceph_db_vg2 }}/db-slot{{ item }} 2>/dev/null; then
+          echo "db-slot{{ item }} already exists"
+        else
+          {% if item < 11 %}
+          lvcreate --yes -Wy -L {{ ceph_db_lv_size }} -n db-slot{{ item }} {{ ceph_db_vg2 }}
+          {% else %}
+          lvcreate --yes -Wy -l 100%FREE -n db-slot{{ item }} {{ ceph_db_vg2 }}
+          {% endif %}
+        fi
+      loop: [6, 7, 8, 9, 10, 11]
+      register: vg2_lv_results
+      changed_when: "'already exists' not in (vg2_lv_results.stdout | default(''))"
+
+    - name: Verify LVM setup
+      ansible.builtin.command: lvs -o lv_name,vg_name,lv_size --noheadings
+      register: lvm_state
+      changed_when: false
+
+    - name: Show LVM state
+      ansible.builtin.debug:
+        msg: "{{ lvm_state.stdout_lines }}"

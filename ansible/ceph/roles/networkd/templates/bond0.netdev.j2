@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# Bond device: {{ networkd_bond_mode }}, MIIMon {{ networkd_bond_miimon }}ms
+
+[NetDev]
+Name={{ networkd_bond_name }}
+Kind=bond
+
+[Bond]
+Mode={{ networkd_bond_mode }}
+MIIMonitorSec={{ networkd_bond_miimon }}ms

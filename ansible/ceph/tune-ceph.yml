@@ -1,0 +1,14 @@
+---
+# Apply post-deploy Ceph cluster tuning.
+# Requires a running cluster — run AFTER deploy-ceph.yml.
+#
+# Usage:
+#   scripts/ansible-play.sh tune-ceph.yml
+
+- name: Ceph cluster tuning
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  roles:
+    - ceph_tuning

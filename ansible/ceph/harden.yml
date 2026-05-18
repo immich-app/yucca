@@ -1,0 +1,19 @@
+---
+# Security hardening for Ceph nodes.
+# Deploys nftables firewall rules and SSH hardening.
+# Run AFTER deploy-ceph.yml — cephadm needs unrestricted access during deploy.
+#
+# WARNING: This locks down inbound traffic. Ensure ceph_firewall_trusted_networks
+# includes all subnets that need to reach Ceph services. SSH (port 22) is always
+# open from any source to prevent lockout.
+#
+# Usage:
+#   scripts/ansible-play.sh harden.yml
+
+- name: Security hardening for Ceph nodes
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  roles:
+    - security

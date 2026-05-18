@@ -1,0 +1,40 @@
+---
+# Kernel / OS tuning defaults for Ceph OSD nodes
+#
+# cephadm does NOT assert these (unlike ceph-ansible), so they must be
+# applied explicitly. Values sourced from Red Hat Ceph Storage hardening
+# guide and Heinlein Support's production tuning.
+
+# --- VM ---
+ceph_sysctl_vm_swappiness: 10
+ceph_sysctl_vm_min_free_kbytes: 4194303    # ~4 GB — headroom to prevent OSD OOM
+ceph_sysctl_vm_zone_reclaim_mode: 0        # disable NUMA zone reclaim (causes stalls)
+
+# --- FS ---
+ceph_sysctl_fs_aio_max_nr: 1048576         # async I/O slots — OSD prepare fails if too low
+ceph_sysctl_fs_file_max: 26234859          # file descriptor ceiling
+
+# --- Kernel ---
+ceph_sysctl_kernel_pid_max: 4194304        # high OSD count spawns many threads
+
+# --- Network (TCP buffer tuning for OSD replication) ---
+ceph_sysctl_net_core_rmem_max: 56623104    # ~54 MB receive buffer
+ceph_sysctl_net_core_wmem_max: 56623104    # ~54 MB send buffer
+ceph_sysctl_net_core_rmem_default: 56623104
+ceph_sysctl_net_core_wmem_default: 56623104
+ceph_sysctl_net_core_optmem_max: 40960
+ceph_sysctl_net_core_netdev_max_backlog: 300000
+ceph_sysctl_net_ipv4_tcp_max_syn_backlog: 30000
+ceph_sysctl_net_ipv4_tcp_wmem: "4096 65536 56623104"
+ceph_sysctl_net_ipv4_tcp_slow_start_after_idle: 0
+ceph_sysctl_net_ipv4_tcp_fin_timeout: 10
+ceph_sysctl_net_ipv4_tcp_tw_reuse: 1
+ceph_sysctl_net_ipv4_tcp_max_tw_buckets: 2000000
+ceph_sysctl_net_ipv4_ip_local_port_range: "8192 65535"
+
+# --- Centralized logging (opt-in) ---
+# When enabled, configures rsyslog to forward all logs to a remote syslog
+# server. Disabled by default — enable when a log aggregator is available.
+ceph_logging_enabled: false
+ceph_logging_target: ""          # e.g., "10.10.10.50:514"
+ceph_logging_protocol: tcp       # tcp or udp

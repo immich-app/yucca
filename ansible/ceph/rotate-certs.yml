@@ -1,0 +1,54 @@
+---
+# Rotate the self-signed RGW TLS certificate.
+#
+# Deletes the existing cert/key on the bootstrap node, re-generates via
+# the ceph_deploy RGW role, and restarts RGW daemons to pick up the new cert.
+#
+# Usage:
+#   scripts/ansible-play.sh rotate-certs.yml
+#
+# The new cert inherits all SANs (DNS names, IPs, wildcard) from
+# group_vars/all/vars.yml. Validity period: ceph_rgw_ssl_cert_days (default 3650).
+
+- name: Rotate RGW TLS certificate
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Remove existing RGW cert and key
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/ceph/rgw-ssl.crt
+        - /etc/ceph/rgw-ssl.key
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: Re-run RGW role to regenerate cert and redeploy
+      ansible.builtin.include_role:
+        name: ceph_deploy
+        tasks_from: rgw.yml
+        apply:
+          tags: [rgw]
+
+    - name: Restart RGW daemons to load new cert
+      ansible.builtin.command: ceph orch restart rgw
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: true
+
+    - name: Show new cert expiry
+      ansible.builtin.shell: |
+        set -o pipefail
+        openssl x509 -in /etc/ceph/rgw-ssl.crt -noout \
+          -subject -dates -ext subjectAltName 2>/dev/null
+      args:
+        executable: /bin/bash
+      register: cert_info
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Display new certificate info
+      ansible.builtin.debug:
+        msg: "{{ cert_info.stdout_lines }}"
+      when: inventory_hostname in groups['ceph_bootstrap']

@@ -1,0 +1,37 @@
+---
+# Helper: unmount the chroot bind mounts and /mnt hierarchy in reverse
+# order. Called by finalize.yml at the end of a successful run and by
+# main.yml's rescue block on failure.
+#
+# Every unmount is best-effort (failed_when: false) — if a path isn't
+# mounted we just want to keep going.
+
+- name: Unmount chroot bind mounts (reverse order)
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}{{ item }}"
+    state: unmounted
+  loop:
+    - /sys/firmware/efi/efivars
+    - /sys
+    - /proc
+    - /dev/pts
+    - /dev
+  failed_when: false
+
+- name: Unmount /mnt/boot/efi
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}/boot/efi"
+    state: unmounted
+  failed_when: false
+
+- name: Unmount /mnt/boot
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}/boot"
+    state: unmounted
+  failed_when: false
+
+- name: Unmount /mnt
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}"
+    state: unmounted
+  failed_when: false

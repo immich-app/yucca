@@ -1,0 +1,20 @@
+auto lo
+iface lo inet loopback
+
+auto {{ bond_interfaces[0] }}
+iface {{ bond_interfaces[0] }} inet manual
+    bond-master bond0
+
+auto {{ bond_interfaces[1] }}
+iface {{ bond_interfaces[1] }} inet manual
+    bond-master bond0
+
+auto bond0
+iface bond0 inet static
+    address {{ bond_ip }}/24
+    gateway {{ gateway }}
+    dns-nameservers {{ dns_server }}
+    bond-slaves {{ bond_interfaces | join(' ') }}
+    bond-mode {{ bond_mode }}
+    bond-miimon 100
+    bond-primary {{ bond_interfaces[0] }}
