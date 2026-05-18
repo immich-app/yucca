@@ -1,0 +1,210 @@
+---
+# Phase 5: Clean up LVM, device signatures, and leftover Ceph state on all nodes
+#
+# Order matters:
+#   1. Close dm-crypt/LUKS mappings (devices are locked until closed)
+#   2. Remove device-mapper entries
+#   3. Remove LVM volume groups and physical volumes
+#   4. Wipe device signatures (HDD and SSD OSD partitions)
+#   5. Clean stale LVM metadata files
+#   6. Reset failed systemd units
+#   7. Remove Ceph directories
+
+# --- Step 1: Close dm-crypt LUKS mappings ---
+# ceph-volume --dmcrypt creates LUKS volumes on OSD devices. These persist after
+# cephadm rm-cluster and lock the underlying block devices. Must close before wipefs.
+- name: Close dm-crypt LUKS mappings
+  ansible.builtin.shell: |
+    set -o pipefail
+    CLOSED=0
+    TARGETS=$(dmsetup ls --target crypt 2>/dev/null | grep -v 'No devices found' || true)
+    for dm in $(echo "$TARGETS" | awk 'NF {print $1}'); do
+      echo "Closing LUKS: $dm"
+      cryptsetup close "$dm" 2>&1 || dmsetup remove -f "$dm" 2>&1 || true
+      CLOSED=$((CLOSED+1))
+    done
+    if [ $CLOSED -eq 0 ]; then echo "No LUKS mappings to close"; fi
+  args:
+    executable: /bin/bash
+  register: luks_cleanup
+  changed_when: "'Closing LUKS' in luks_cleanup.stdout"
+
+# --- Step 2: Remove leftover device mapper entries ---
+- name: Remove Ceph device mapper entries
+  ansible.builtin.shell: |
+    set -o pipefail
+    REMOVED=0
+    for dm in $(dmsetup ls 2>/dev/null | grep -i ceph | awk '{print $1}'); do
+      echo "Removing DM: $dm"
+      dmsetup remove -f "$dm" 2>&1 || true
+      REMOVED=$((REMOVED+1))
+    done
+    if [ $REMOVED -eq 0 ]; then echo "No Ceph DM entries found"; fi
+  args:
+    executable: /bin/bash
+  register: dm_cleanup
+  changed_when: "'Removing DM' in dm_cleanup.stdout"
+
+# --- Step 3: Remove Ceph LVM volume groups ---
+# Catches both ceph-db VGs (ceph-db-rear12, ceph-db-rear13) and ceph-volume
+# created VGs (ceph-<uuid> from dmcrypt OSDs).
+- name: Remove Ceph LVM volume groups
+  ansible.builtin.shell: |
+    set -o pipefail
+    REMOVED=0
+    for vg in $(vgs --noheadings -o vg_name 2>/dev/null | grep -i ceph | tr -d ' '); do
+      echo "Removing VG: $vg"
+      vgremove -f "$vg" 2>&1 || true
+      REMOVED=$((REMOVED+1))
+    done
+    if [ $REMOVED -eq 0 ]; then echo "No Ceph VGs found"; fi
+  args:
+    executable: /bin/bash
+  register: vg_cleanup
+  changed_when: "'Removing VG' in vg_cleanup.stdout"
+
+# --- Step 4: Remove LVM physical volumes ---
+# After VG removal, PVs are orphaned (no VG name in pvs output). Must catch BOTH
+# PVs that still reference a ceph VG AND orphaned PVs on HDD/SSD OSD devices.
+- name: Remove Ceph LVM physical volumes (named VGs)
+  ansible.builtin.shell: |
+    set -o pipefail
+    REMOVED=0
+    for pv in $(pvs --noheadings -o pv_name,vg_name 2>/dev/null | grep -i ceph | awk '{print $1}'); do
+      echo "Removing PV: $pv"
+      pvremove -f "$pv" 2>&1 || true
+      REMOVED=$((REMOVED+1))
+    done
+    if [ $REMOVED -eq 0 ]; then echo "No named Ceph PVs found"; fi
+  args:
+    executable: /bin/bash
+  register: pv_cleanup_named
+  changed_when: "'Removing PV' in pv_cleanup_named.stdout"
+
+- name: Remove orphaned LVM physical volumes on HDD devices
+  ansible.builtin.shell: |
+    set -o pipefail
+    REMOVED=0
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE | awk '$2==1 && $3=="disk" {print $1}'); do
+      if pvs "$dev" --noheadings 2>/dev/null | grep -q "$dev"; then
+        echo "Removing orphaned PV: $dev"
+        pvremove -f "$dev" 2>&1 || true
+        REMOVED=$((REMOVED+1))
+      fi
+    done
+    if [ $REMOVED -eq 0 ]; then echo "No orphaned HDD PVs found"; fi
+  args:
+    executable: /bin/bash
+  register: pv_cleanup_hdd
+  changed_when: "'Removing orphaned PV' in pv_cleanup_hdd.stdout"
+
+- name: Remove orphaned LVM physical volumes on SSD OSD partitions
+  ansible.builtin.shell: |
+    set -o pipefail
+    REMOVED=0
+    for ssd in $(lsblk -dnpo NAME,MODEL | grep -i "{{ ssd_model_pattern }}" | awk '{print $1}'); do
+      if [[ "$ssd" == *nvme* ]]; then PART="${ssd}p6"; else PART="${ssd}6"; fi
+      if [ -b "$PART" ] && pvs "$PART" --noheadings 2>/dev/null | grep -q "$PART"; then
+        echo "Removing orphaned PV: $PART"
+        pvremove -f "$PART" 2>&1 || true
+        REMOVED=$((REMOVED+1))
+      fi
+    done
+    if [ $REMOVED -eq 0 ]; then echo "No orphaned SSD OSD PVs found"; fi
+  args:
+    executable: /bin/bash
+  register: pv_cleanup_ssd
+  changed_when: "'Removing orphaned PV' in pv_cleanup_ssd.stdout"
+
+# --- Step 5: Wipe device signatures ---
+# Wipe ALL rotational (HDD) devices that have any filesystem/LVM/LUKS signatures.
+# Every HDD in these servers is a Ceph OSD — no ambiguity about which to wipe.
+# Only wipes devices that actually have signatures (idempotent on clean disks).
+- name: Wipe HDD device signatures
+  ansible.builtin.shell: |
+    set -o pipefail
+    ZAPPED=0
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE | awk '$2==1 && $3=="disk" {print $1}'); do
+      SIGS=$(wipefs "$dev" 2>/dev/null | tail -n +2)
+      if [ -n "$SIGS" ]; then
+        echo "Wiping $dev"
+        wipefs -af "$dev" 2>&1 || true
+        dd if=/dev/zero of="$dev" bs=1M count=10 2>/dev/null || true
+        ZAPPED=$((ZAPPED+1))
+      fi
+    done
+    if [ $ZAPPED -eq 0 ]; then echo "No HDD devices to wipe"; fi
+  args:
+    executable: /bin/bash
+  register: hdd_zap
+  changed_when: "'Wiping' in hdd_zap.stdout"
+
+- name: Wipe SSD OSD partition signatures (partition 6)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ZAPPED=0
+    for ssd in $(lsblk -dnpo NAME,MODEL | grep -i "{{ ssd_model_pattern }}" | awk '{print $1}'); do
+      if [[ "$ssd" == *nvme* ]]; then PART="${ssd}p6"; else PART="${ssd}6"; fi
+      if [ -b "$PART" ]; then
+        SIGS=$(wipefs "$PART" 2>/dev/null | tail -n +2)
+        if [ -n "$SIGS" ]; then
+          echo "Wiping SSD OSD partition $PART"
+          wipefs -af "$PART" 2>&1 || true
+          dd if=/dev/zero of="$PART" bs=1M count=10 2>/dev/null || true
+          ZAPPED=$((ZAPPED+1))
+        fi
+      fi
+    done
+    if [ $ZAPPED -eq 0 ]; then echo "No SSD OSD partitions to wipe"; fi
+  args:
+    executable: /bin/bash
+  register: ssd_zap
+  changed_when: "'Wiping' in ssd_zap.stdout"
+
+# --- Step 6: Clean stale LVM metadata ---
+# ceph-volume operations generate LVM archive/backup files that accumulate across
+# cluster lifecycles. Hundreds of ceph-* files can build up in /etc/lvm/.
+- name: Remove stale Ceph LVM archive and backup files
+  ansible.builtin.shell: |
+    REMOVED=0
+    for dir in /etc/lvm/archive /etc/lvm/backup; do
+      for f in "$dir"/ceph-*; do
+        [ -f "$f" ] || continue
+        rm -f "$f"
+        REMOVED=$((REMOVED+1))
+      done
+    done
+    echo "Removed $REMOVED stale LVM metadata files"
+  register: lvm_meta_cleanup
+  changed_when: "lvm_meta_cleanup.stdout is not search('Removed 0')"
+
+# --- Step 7: Reset failed Ceph systemd units ---
+- name: Reset failed Ceph systemd units
+  ansible.builtin.shell: |
+    set -o pipefail
+    RESET=0
+    for unit in $(systemctl list-units --all --failed --no-legend 2>/dev/null | grep -i ceph | awk '{print $1}'); do
+      echo "Resetting failed unit: $unit"
+      systemctl reset-failed "$unit" 2>&1 || true
+      RESET=$((RESET+1))
+    done
+    if [ $RESET -eq 0 ]; then echo "No failed Ceph units to reset"; fi
+  args:
+    executable: /bin/bash
+  register: systemd_cleanup
+  changed_when: "'Resetting failed unit' in systemd_cleanup.stdout"
+
+# --- Step 8: Remove Ceph directories ---
+- name: Clean up leftover Ceph directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/ceph
+    - /var/lib/ceph
+    - /var/log/ceph
+    - /tmp/ceph-initial.conf
+
+- name: Summary
+  ansible.builtin.debug:
+    msg: "Ceph cluster teardown complete on {{ hostname_short }}. Devices are clean and ready for reuse."

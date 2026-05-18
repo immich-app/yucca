@@ -1,0 +1,68 @@
+---
+# OS-level kernel tuning for Ceph nodes.
+# All parameters apply live (no reboot required) and persist via config files.
+
+- name: Deploy sysctl tuning for Ceph
+  ansible.builtin.template:
+    src: 99-ceph-tuning.conf.j2
+    dest: /etc/sysctl.d/99-ceph-tuning.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: sysctl_config
+  notify: Apply sysctl tuning
+
+- name: Flush handlers to apply sysctl before verify
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify key sysctl values are active
+  ansible.builtin.shell: |
+    set -euo pipefail
+    FAIL=0
+    check() {
+      ACTUAL=$(sysctl -n "$1" 2>/dev/null | tr -d ' ')
+      EXPECT=$(echo "$2" | tr -d ' ')
+      if [ "$ACTUAL" != "$EXPECT" ]; then
+        echo "MISMATCH: $1 = $ACTUAL (expected $EXPECT)"
+        FAIL=1
+      fi
+    }
+    check vm.swappiness {{ ceph_sysctl_vm_swappiness }}
+    check fs.aio-max-nr {{ ceph_sysctl_fs_aio_max_nr }}
+    check vm.zone_reclaim_mode {{ ceph_sysctl_vm_zone_reclaim_mode }}
+    check kernel.pid_max {{ ceph_sysctl_kernel_pid_max }}
+    if [ $FAIL -ne 0 ]; then exit 1; fi
+    echo "All sysctl checks passed"
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Display active tuning summary
+  ansible.builtin.debug:
+    msg:
+      - "vm.swappiness = {{ ceph_sysctl_vm_swappiness }}"
+      - "vm.min_free_kbytes = {{ ceph_sysctl_vm_min_free_kbytes }}"
+      - "fs.aio-max-nr = {{ ceph_sysctl_fs_aio_max_nr }}"
+      - "kernel.pid_max = {{ ceph_sysctl_kernel_pid_max }}"
+      - "net.core.rmem_max = {{ ceph_sysctl_net_core_rmem_max }}"
+
+# --- Centralized logging (opt-in) ---
+
+- name: Deploy rsyslog forwarding config
+  ansible.builtin.template:
+    src: 49-ceph-forward.conf.j2
+    dest: /etc/rsyslog.d/49-ceph-forward.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart rsyslog
+  when:
+    - ceph_logging_enabled | bool
+    - ceph_logging_target | length > 0
+
+- name: Remove rsyslog forwarding config when disabled
+  ansible.builtin.file:
+    path: /etc/rsyslog.d/49-ceph-forward.conf
+    state: absent
+  notify: Restart rsyslog
+  when: not (ceph_logging_enabled | bool)

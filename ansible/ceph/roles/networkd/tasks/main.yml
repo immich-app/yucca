@@ -1,0 +1,27 @@
+---
+# systemd-networkd bond0 configuration.
+#
+# Live migration — no reboot required:
+#   1. deploy: write .netdev/.network configs + rollback script
+#   2. activate: start networkd (adopts existing bond0 from ifupdown)
+#   3. verify: assert networkd is managing bond0 correctly
+#   4. commit: disable ifupdown, enable networkd for future boots
+#
+# If verify fails, networkd is stopped and ifupdown still owns next boot.
+# Gated on networkd_enabled (default: false).
+
+- name: Deploy networkd configs
+  ansible.builtin.import_tasks: deploy.yml
+  when: networkd_enabled | bool
+
+- name: Start networkd and verify live
+  ansible.builtin.import_tasks: activate.yml
+  when: networkd_enabled | bool
+
+- name: Verify networkd state
+  ansible.builtin.import_tasks: verify.yml
+  when: networkd_enabled | bool
+
+- name: Commit migration (toggle boot services)
+  ansible.builtin.import_tasks: commit.yml
+  when: networkd_enabled | bool

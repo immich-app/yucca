@@ -1,0 +1,26 @@
+---
+# systemd-networkd bond0 configuration.
+# Replaces ifupdown /etc/network/interfaces with .netdev + .network
+# unit files. Designed for active-backup bond with static IP.
+#
+# Prerequisites:
+#   - systemd-networkd is installed (present in Debian 12 base)
+#   - bond_ip, bond_interfaces, bond_mode, gateway, dns_server
+#     defined in group_vars / host_vars
+#
+# Safety:
+#   - /etc/network/interfaces is left on disk as rollback backup
+#   - Rollback script deployed to /usr/local/sbin/rollback-networkd.sh
+#   - Migration requires a reboot (services are never toggled live)
+
+# Master toggle. When false, the entire role is skipped.
+networkd_enabled: false
+
+# --- Bond ---
+networkd_bond_name: bond0
+networkd_bond_mode: "{{ bond_mode | default('active-backup') }}"
+networkd_bond_miimon: 100                          # MII link monitoring interval (ms)
+
+# --- Paths ---
+networkd_config_dir: /etc/systemd/network
+networkd_rollback_script: /usr/local/sbin/rollback-networkd.sh

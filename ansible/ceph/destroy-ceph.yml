@@ -1,0 +1,26 @@
+---
+# Destroy Ceph Tentacle cluster — COMPLETE TEARDOWN
+#
+# This removes ALL pools, OSDs, daemons, and cluster state.
+# All data on Ceph-managed devices will be permanently lost.
+#
+# Guardrails:
+#   1. Must pass yes_destroy_ceph=true or it refuses to run
+#   2. Must pass destroy_target_domain matching cluster_domain
+#   3. Pauses for manual confirmation before destructive steps
+#
+# Usage:
+#   scripts/ansible-play.sh destroy-ceph.yml \
+#     -e "yes_destroy_ceph=true destroy_target_domain=dev.austin.int.futo.cloud"
+#
+# To run a specific phase only:
+#   scripts/ansible-play.sh destroy-ceph.yml -e "yes_destroy_ceph=true destroy_target_domain=dev.austin.int.futo.cloud" --tags purge
+#   scripts/ansible-play.sh destroy-ceph.yml -e "yes_destroy_ceph=true destroy_target_domain=dev.austin.int.futo.cloud" --tags cleanup
+
+- name: Destroy Ceph Tentacle cluster
+  hosts: ceph_nodes
+  become: true
+  gather_facts: true
+
+  roles:
+    - ceph_destroy

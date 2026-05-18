@@ -1,0 +1,105 @@
+---
+# Phase 2: Remove all OSDs (from bootstrap node)
+# For each OSD: mark out → stop daemon → purge (removes from CRUSH, auth, etc.)
+
+- name: Get all OSD IDs
+  ansible.builtin.shell: |
+    timeout 10 ceph osd ls --format json 2>/dev/null || echo "[]"
+  register: osd_list
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Parse OSD IDs
+  ansible.builtin.set_fact:
+    ceph_osd_ids: "{{ osd_list.stdout | from_json }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - osd_list.stdout is defined
+
+- name: Show OSDs to be removed
+  ansible.builtin.debug:
+    msg: "OSDs to remove: {{ ceph_osd_ids | default([]) }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Set noout flag to prevent rebalancing during teardown
+  ansible.builtin.command: ceph osd set noout
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_osd_ids | default([]) | length > 0
+  changed_when: true
+
+- name: Mark all OSDs out
+  ansible.builtin.shell: |
+    ceph osd out osd.{{ item }} 2>&1 || true
+  loop: "{{ ceph_osd_ids | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_osd_ids | default([]) | length > 0
+  changed_when: true
+
+- name: Stop all OSD daemons via orchestrator
+  ansible.builtin.shell: |
+    ceph orch daemon stop osd.{{ item }} 2>&1 || true
+  loop: "{{ ceph_osd_ids | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_osd_ids | default([]) | length > 0
+  changed_when: true
+
+- name: Wait for OSD daemons to stop
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in $(seq 1 30); do
+      up=$(ceph osd stat --format json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('num_up_osds',0))" 2>/dev/null || echo 0)
+      if [ "$up" -eq 0 ]; then
+        echo "All OSD daemons stopped"
+        exit 0
+      fi
+      echo "Waiting for OSDs to stop... ($up still up)"
+      sleep 5
+    done
+    echo "WARNING: Some OSDs still up, proceeding anyway"
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_osd_ids | default([]) | length > 0
+  changed_when: false
+
+- name: Remove all OSDs via orchestrator
+  ansible.builtin.shell: |
+    ceph orch osd rm {{ ceph_osd_ids | join(' ') }} --zap --force 2>&1 || true
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_osd_ids | default([]) | length > 0
+  changed_when: true
+
+- name: Wait for OSD removal to complete
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in $(seq 1 60); do
+      remaining=$(ceph osd ls --format json 2>/dev/null | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
+      if [ "$remaining" -eq 0 ]; then
+        echo "All OSDs removed"
+        exit 0
+      fi
+      echo "Waiting for OSD removal... ($remaining remaining)"
+      sleep 10
+    done
+    echo "WARNING: OSD removal timed out, force-purging remaining"
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_osd_ids | default([]) | length > 0
+  changed_when: false
+
+- name: Force-purge any remaining OSDs
+  ansible.builtin.shell: |
+    for osd_id in $(ceph osd ls 2>/dev/null); do
+      echo "Force-purging osd.${osd_id}"
+      ceph osd purge osd.${osd_id} --yes-i-really-mean-it 2>&1 || true
+    done
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: force_purge
+  changed_when: "'Force-purging' in force_purge.stdout"

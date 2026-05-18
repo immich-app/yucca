@@ -1,0 +1,111 @@
+---
+# Phase 9: Finalize
+#
+# 1. Write the provisioning marker to /mnt/etc/ceph-provisioned.json
+#    (skipped on marker-driven resume — provisioning_done guards it)
+# 2. Sync the primary ESP to the backup ESP on SSD2
+#    (also skipped on resume)
+# 3. If provision_skip_reboot is true, stop here — /mnt stays mounted
+#    with chroot bind mounts active for canary inspection. Operator
+#    can `chroot /mnt` to verify, unmount manually, reboot when ready.
+# 4. Otherwise include unmount.yml to tear down the chroot bind mounts
+#    and the /mnt hierarchy in reverse order (shared with the rescue
+#    path in main.yml).
+# 5. Trigger a reboot via systemd-run (fire-and-forget — the live
+#    image will disappear, so ansible cannot wait on SSH here).
+#
+# A separate post-reboot verification play runs from localhost after
+# this one completes.
+
+# --- Write marker + mirror ESP (skipped on resume via marker gate) -----
+#
+# Both of these tasks are gated on `not provisioning_done` because the
+# marker file IS the marker — if it already exists, we wrote it on a
+# previous run and don't want to bump the timestamp. The ESP mirror
+# is similarly idempotent on re-run and would just waste time.
+
+- name: Write marker and mirror ESP
+  when: not provisioning_done
+  block:
+    - name: Render provisioning marker file
+      ansible.builtin.template:
+        src: ceph-provisioned.json.j2
+        dest: "{{ provision_mnt }}{{ provision_marker_path }}"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Create temporary mount point for backup ESP
+      ansible.builtin.file:
+        path: /tmp/provision-backup-esp
+        state: directory
+        mode: '0755'
+
+    - name: Mount backup ESP
+      ansible.posix.mount:
+        path: /tmp/provision-backup-esp
+        src: "{{ ssd2_dev }}1"
+        fstype: vfat
+        opts: umask=0077
+        state: ephemeral
+
+    - name: Rsync primary ESP to backup ESP  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: "rsync -a --delete {{ provision_mnt }}/boot/efi/ /tmp/provision-backup-esp/"
+      changed_when: true
+
+    - name: Unmount backup ESP
+      ansible.posix.mount:
+        path: /tmp/provision-backup-esp
+        state: unmounted
+
+    - name: Remove backup ESP mount point
+      ansible.builtin.file:
+        path: /tmp/provision-backup-esp
+        state: absent
+
+# --- Skip-reboot inspection mode ---------------------------------------
+#
+# When provision_skip_reboot is set, finalize stops here. Marker is
+# written, ESP is mirrored, but /mnt stays mounted (with the chroot
+# bind mounts still active). Operator can then `chroot /mnt` to verify,
+# unmount manually, and reboot when ready.
+
+- name: Report inspection-mode finalize (reboot skipped)
+  ansible.builtin.debug:
+    msg:
+      - "{{ inventory_hostname }}: provision_skip_reboot=true — stopping before unmount/reboot."
+      - "Marker written to {{ provision_mnt }}{{ provision_marker_path }}"
+      - "ESP mirrored from {{ ssd1_dev }}1 to {{ ssd2_dev }}1"
+      - "/mnt is still mounted with chroot bind mounts active."
+      - "Inspect with: chroot {{ provision_mnt }} <cmd>"
+      - "When done, unmount + reboot manually, or re-run without provision_skip_reboot."
+  when: provision_skip_reboot | bool
+
+- name: End play here when skip-reboot mode is active
+  ansible.builtin.meta: end_host
+  when: provision_skip_reboot | bool
+
+# --- Unmount chroot bind mounts and /mnt hierarchy ---------------------
+
+- name: Include unmount tasks (reverse order, best-effort)
+  ansible.builtin.include_tasks: unmount.yml
+
+- name: Sync filesystems
+  ansible.builtin.command: sync
+  changed_when: false
+
+# --- Reboot ------------------------------------------------------------
+
+- name: Schedule async reboot via systemd-run
+  ansible.builtin.shell: |
+    systemd-run --no-block --on-active=3s /sbin/reboot
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Report reboot scheduled
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }} rebooting into installed OS. Post-reboot
+      verification will run from the controller as {{ admin_user }}@{{ bond_ip }}.

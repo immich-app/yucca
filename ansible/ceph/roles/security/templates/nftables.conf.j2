@@ -1,0 +1,81 @@
+#!/usr/sbin/nft -f
+# Ceph node firewall — managed by Ansible (security role)
+# Allows only Ceph services + SSH from trusted networks. Drops everything else.
+
+flush ruleset
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Loopback
+        iifname "lo" accept
+
+        # Established/related
+        ct state established,related accept
+
+        # ICMP (ping, MTU discovery)
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # SSH
+{% if ceph_firewall_ssh_any_source | bool %}
+        tcp dport 22 accept
+{% endif %}
+
+        # RGW / S3 (all sources)
+        tcp dport {{ ceph_firewall_rgw_port }} accept
+
+{% for net in ceph_firewall_trusted_networks %}
+        # --- Trusted network: {{ net }} ---
+
+{% if not (ceph_firewall_ssh_any_source | bool) %}
+        # SSH (restricted to trusted networks)
+        ip saddr {{ net }} tcp dport 22 accept
+{% endif %}
+
+        # Ceph MON
+{% for port in ceph_firewall_mon_ports %}
+        ip saddr {{ net }} tcp dport {{ port }} accept
+{% endfor %}
+
+        # Ceph OSD
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_osd_port_range }} accept
+
+        # Dashboard
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_dashboard_port }} accept
+
+        # Monitoring stack
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_prometheus_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_grafana_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_alertmanager_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_node_exporter_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_mgr_exporter_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_ceph_exporter_port }} accept
+{% if ceph_firewall_iscsi_enabled | bool %}
+
+        # iSCSI gateway
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_iscsi_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_iscsi_api_port }} accept
+{% endif %}
+{% if ceph_firewall_nfs_enabled | bool %}
+
+        # NFS-Ganesha
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_nfs_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_nfs_mgmt_port }} accept
+{% endif %}
+{% endfor %}
+
+        # Log + drop everything else
+        limit rate 5/minute log prefix "nftables-drop: " level warn
+        drop
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}

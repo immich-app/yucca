@@ -1,0 +1,18 @@
+---
+# Post-boot OS baseline.
+# Runs via ansible-iac on the installed OS (not in chroot).
+# Assumes: ansible-iac user exists with key-only SSH + NOPASSWD sudo
+#          (created by provision_host during initial OS install).
+# Everything here is convergeable via normal deploy pipeline.
+
+- name: Configure ops user
+  ansible.builtin.import_tasks: users.yml
+  tags: [users]
+
+- name: Configure system packages
+  ansible.builtin.import_tasks: packages.yml
+  tags: [packages]
+
+- name: Configure /etc/hosts and services
+  ansible.builtin.import_tasks: system.yml
+  tags: [system]

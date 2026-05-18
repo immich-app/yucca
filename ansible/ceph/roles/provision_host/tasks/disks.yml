@@ -1,0 +1,487 @@
+---
+# Phase 3: Disk preparation
+#
+# SSD discovery and validation already happened in detect.yml — this
+# phase consumes ssd1_dev/ssd2_dev (plus serials/sizes/models) and does
+# the destructive work: partitions both SSDs identically with an
+# ESP/boot/root/swap/ceph-db/ceph-osd layout, creates RAID1 arrays for
+# boot/root/swap, creates filesystems, sets up LVM for Ceph block.db,
+# and mounts everything under /mnt.
+#
+# Resume semantics come in two flavors:
+#
+#   1. Fast path — /mnt is already mounted on /dev/md/root. The whole
+#      disks block is skipped and we move on to the install phase. This
+#      lets a post-disks crash (e.g. during debootstrap) be recovered by
+#      just re-running the playbook.
+#
+#   2. Opportunistic remount — /dev/md/root exists but nothing is
+#      mounted (happens after a skip_reboot canary inspection where the
+#      operator unmounted by hand, or after a rescue). We remount
+#      /dev/md/root, read the marker, and if the marker hostname matches
+#      inventory_hostname we finish mounting /mnt/boot + ESP and
+#      continue on the resume path. If the marker is missing or belongs
+#      to a different host, we unmount and fall through to a full wipe.
+#
+# The destructive subpath itself is also defensive about udev
+# re-assembling old mdraid: we stop arrays, then dd-zero the first 4 MB
+# (metadata 1.2) AND the last 4 MB (metadata 1.0) of every RAID member
+# partition before wipefs, so there is no superblock left for udev's
+# `mdadm --incremental` to latch onto during the tiny race window
+# between partprobe and mdadm --create.
+
+# --- State check --------------------------------------------------------
+
+- name: Check if /dev/md/root exists
+  ansible.builtin.stat:
+    path: /dev/md/root
+  register: md_root_stat
+
+- name: Check if /mnt is already a mountpoint
+  ansible.builtin.command: mountpoint -q "{{ provision_mnt }}"
+  register: mnt_mounted
+  changed_when: false
+  failed_when: false
+
+# --- Opportunistic remount + marker validation --------------------------
+#
+# If /dev/md/root exists but /mnt is not mounted (e.g. previous run was
+# rescued mid-flight, or a skip_reboot run was unmounted by hand), try
+# to remount and validate the on-disk marker. The marker has to match
+# inventory_hostname to be considered legitimate — otherwise we assume
+# this is an old install of a differently-named host and proceed with
+# the wipe.
+#
+# This is the keystone of the marker-driven resume path. Without it,
+# we'd re-wipe a perfectly provisioned system on every commit run after
+# a skip_reboot inspection.
+
+- name: Opportunistic remount + marker validation
+  when:
+    - md_root_stat.stat.exists
+    - mnt_mounted.rc != 0
+  block:
+    - name: Mount /dev/md/root at /mnt for marker probe
+      ansible.posix.mount:
+        path: "{{ provision_mnt }}"
+        src: /dev/md/root
+        fstype: ext4
+        state: ephemeral
+      register: resume_mount_root
+      failed_when: false
+
+    - name: Check for marker file in remounted root
+      ansible.builtin.stat:
+        path: "{{ provision_mnt }}{{ provision_marker_path }}"
+      register: resume_marker_stat
+
+    - name: Read marker file content
+      ansible.builtin.slurp:
+        src: "{{ provision_mnt }}{{ provision_marker_path }}"
+      register: resume_marker_slurp
+      when: resume_marker_stat.stat.exists
+
+    - name: Parse marker JSON
+      ansible.builtin.set_fact:
+        resume_marker: "{{ resume_marker_slurp.content | b64decode | from_json }}"
+      when: resume_marker_stat.stat.exists
+
+    - name: Determine whether marker matches this host
+      ansible.builtin.set_fact:
+        marker_matches_host: >-
+          {{ resume_marker_stat.stat.exists
+             and (resume_marker.hostname | default('')) == inventory_hostname }}
+
+    - name: Announce marker validation result
+      ansible.builtin.debug:
+        msg: >-
+          {{ ('Marker validated for ' + inventory_hostname +
+              ' (provisioned ' + (resume_marker.provisioned_at | default('?')) + ') —' +
+              ' will resume without wiping.')
+             if marker_matches_host
+             else ('No matching marker on existing /dev/md/root —' +
+                   ' will unmount and wipe. Marker hostname: ' +
+                   (resume_marker.hostname | default('<missing>'))) }}
+
+    - name: Mount /dev/md/boot at /mnt/boot when marker matches
+      ansible.posix.mount:
+        path: "{{ provision_mnt }}/boot"
+        src: /dev/md/boot
+        fstype: ext4
+        state: ephemeral
+      when: marker_matches_host
+
+    - name: Mount primary ESP at /mnt/boot/efi when marker matches
+      ansible.posix.mount:
+        path: "{{ provision_mnt }}/boot/efi"
+        src: "{{ ssd1_dev }}1"
+        fstype: vfat
+        opts: umask=0077
+        state: ephemeral
+      when: marker_matches_host
+
+    - name: Unmount /mnt when marker missing or wrong host (will re-wipe)
+      ansible.posix.mount:
+        path: "{{ provision_mnt }}"
+        state: unmounted
+      when: not marker_matches_host
+
+- name: Recheck /mnt mountpoint after potential remount
+  ansible.builtin.command: mountpoint -q "{{ provision_mnt }}"
+  register: mnt_mounted_final
+  changed_when: false
+  failed_when: false
+
+- name: Decide whether disks phase can be skipped
+  ansible.builtin.set_fact:
+    disks_prepared: "{{ md_root_stat.stat.exists and mnt_mounted_final.rc == 0 }}"
+
+- name: Announce resume
+  ansible.builtin.debug:
+    msg: "Disks already prepared and {{ provision_mnt }} is mounted — skipping disk phase."
+  when: disks_prepared
+
+# --- Disk preparation block --------------------------------------------
+
+- name: Prepare disks
+  when: not disks_prepared
+  block:
+    # SSD discovery + validation already happened in detect.yml. The
+    # facts ssd1_dev / ssd2_dev / ssd1_serial / ssd2_serial are set
+    # there and consumed throughout the rest of this file.
+
+    # ----- Stop any lingering mdraid arrays and clear PVs -----
+    #
+    # The previous install may have left arrays under any name (homehost
+    # prefix from a different hostname, /dev/md0..md127, etc.) that the
+    # live image's udev auto-assembled at boot. Walking /proc/mdstat and
+    # using --stop --scan catches them all, regardless of naming.
+
+    - name: Stop all assembled mdraid arrays
+      ansible.builtin.shell: |
+        # First pass: stop everything mdadm knows about
+        mdadm --stop --scan 2>/dev/null || true
+        # Second pass: catch any stragglers still listed in /proc/mdstat
+        for md in $(awk '/^md/ {print "/dev/"$1}' /proc/mdstat 2>/dev/null); do
+          mdadm --stop "$md" 2>/dev/null || true
+        done
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    # ----- Deactivate and remove any lingering LVM state -----
+    #
+    # Same idea as the mdraid cleanup: a previous install left a VG with
+    # PVs at partition 5 of each SSD. The live image's lvmetad/udev will
+    # auto-activate it, holding the partition device, and the subsequent
+    # wipefs/sgdisk pass would otherwise fail to clear the PV signature.
+    # vgchange -an + vgremove + pvremove is the explicit teardown.
+
+    - name: Deactivate any auto-activated VGs
+      ansible.builtin.shell: |
+        set -o pipefail
+        for vg in $(vgs --noheadings -o vg_name 2>/dev/null | awk '{print $1}'); do
+          vgchange -an "$vg" 2>/dev/null || true
+          vgremove -ff "$vg" 2>/dev/null || true
+        done
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Remove any lingering PV signatures on partition 5 of both SSDs
+      ansible.builtin.shell: |
+        pvremove -ff -y {{ ssd1_dev }}5 2>/dev/null || true
+        pvremove -ff -y {{ ssd2_dev }}5 2>/dev/null || true
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    # ----- Full wipe of both SSDs -----
+
+    - name: Wipe whole-disk signatures on SSDs
+      ansible.builtin.command: "wipefs -af {{ item }}"
+      loop:
+        - "{{ ssd1_dev }}"
+        - "{{ ssd2_dev }}"
+      changed_when: true
+
+    - name: Zap GPT on SSDs
+      ansible.builtin.command: "sgdisk -Z {{ item }}"
+      loop:
+        - "{{ ssd1_dev }}"
+        - "{{ ssd2_dev }}"
+      changed_when: true
+
+    # ----- Partition SSD1 -----
+
+    - name: Partition SSD1 with six-partition layout
+      ansible.builtin.command: >-
+        sgdisk
+        -n 1:0:+{{ os_partitions.esp_size }}    -t 1:ef00 -c 1:ESP
+        -n 2:0:+{{ os_partitions.boot_size }}   -t 2:fd00 -c 2:boot
+        -n 3:0:+{{ os_partitions.root_size }}   -t 3:fd00 -c 3:root
+        -n 4:0:+{{ os_partitions.swap_size }}   -t 4:fd00 -c 4:swap
+        -n 5:0:+{{ os_partitions.ceph_db_size }} -t 5:8e00 -c 5:ceph-db
+        -n 6:0:0                                 -t 6:8300 -c 6:ceph-osd-ssd
+        {{ ssd1_dev }}
+      changed_when: true
+
+    - name: Clone partition table to SSD2
+      ansible.builtin.command: "sgdisk -R {{ ssd2_dev }} {{ ssd1_dev }}"
+      changed_when: true
+
+    - name: Randomize GUIDs on SSD2
+      ansible.builtin.command: "sgdisk -G {{ ssd2_dev }}"
+      changed_when: true
+
+    - name: Reload partition tables
+      ansible.builtin.command: "partprobe {{ item }}"
+      loop:
+        - "{{ ssd1_dev }}"
+        - "{{ ssd2_dev }}"
+      changed_when: false
+
+    # NOTE: partition-name concatenation assumes SAS-style device names
+    # (sda1, sdb2). R730xd rear SSDs use a SAS HBA, not NVMe. If this role
+    # is ever adapted for NVMe SSDs, add a part_sep fact ("" for SAS,
+    # "p" for NVMe) and interpose it in the paths below.
+    - name: Wait for partition device nodes to appear
+      ansible.builtin.wait_for:
+        path: "{{ item }}"
+        state: present
+        timeout: 10
+      loop:
+        - "{{ ssd1_dev }}1"
+        - "{{ ssd1_dev }}2"
+        - "{{ ssd1_dev }}3"
+        - "{{ ssd1_dev }}4"
+        - "{{ ssd1_dev }}5"
+        - "{{ ssd1_dev }}6"
+        - "{{ ssd2_dev }}1"
+        - "{{ ssd2_dev }}2"
+        - "{{ ssd2_dev }}3"
+        - "{{ ssd2_dev }}4"
+        - "{{ ssd2_dev }}5"
+        - "{{ ssd2_dev }}6"
+
+    # ----- Post-partprobe mdraid cleanup -----
+    #
+    # After partprobe, udev rescans the new partition table. Because we
+    # recreate identical partition layouts on a re-provision, mdraid
+    # superblocks from the previous install are still at the same byte
+    # offsets — udev runs `mdadm --incremental` on each partition and
+    # re-assembles the old md arrays. Unless we explicitly stop them
+    # again here AND destroy the on-disk superblocks, the partitions
+    # remain "device busy" and mdadm --create fails with
+    # "not suitable for this array".
+
+    - name: Stop any mdraid arrays auto-assembled by udev after partprobe
+      ansible.builtin.shell: |
+        mdadm --stop --scan 2>/dev/null || true
+        for md in $(awk '/^md/ {print "/dev/"$1}' /proc/mdstat 2>/dev/null); do
+          mdadm --stop "$md" 2>/dev/null || true
+        done
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    # Even with the stop above, there's a tiny race window where udev
+    # could re-assemble between the stop and the wipefs below. Destroy
+    # the on-disk superblock regions directly so re-assembly becomes
+    # impossible: zero the first 4 MB (catches mdraid metadata 1.2 at
+    # offset 4 KB) AND the last 4 MB (catches mdraid metadata 1.0 in
+    # the last 8 KB) of every RAID member partition.
+    - name: Zero mdraid superblock regions on RAID member partitions
+      ansible.builtin.shell: |
+        set -e
+        for part in {{ ssd1_dev }}2 {{ ssd1_dev }}3 {{ ssd1_dev }}4 \
+                    {{ ssd2_dev }}2 {{ ssd2_dev }}3 {{ ssd2_dev }}4; do
+          dd if=/dev/zero of="$part" bs=1M count=4 conv=fsync 2>/dev/null
+          size_bytes=$(blockdev --getsize64 "$part")
+          seek_mb=$(( size_bytes / 1024 / 1024 - 4 ))
+          dd if=/dev/zero of="$part" bs=1M count=4 seek="$seek_mb" conv=fsync 2>/dev/null
+        done
+      args:
+        executable: /bin/bash
+      changed_when: true
+
+    # ----- Clear partition-level stale signatures -----
+    #
+    # wipefs is the catch-all for any non-mdraid signatures (LVM PV
+    # labels on partition 5, vfat on partition 1, etc.) that weren't
+    # covered by the dd-zero above.
+
+    - name: Wipe partition signatures on SSD1
+      ansible.builtin.command: "wipefs -af {{ ssd1_dev }}{{ item }}"
+      loop: [1, 2, 3, 4, 5, 6]
+      changed_when: true
+
+    - name: Wipe partition signatures on SSD2
+      ansible.builtin.command: "wipefs -af {{ ssd2_dev }}{{ item }}"
+      loop: [1, 2, 3, 4, 5, 6]
+      changed_when: true
+
+    # ----- Final mdraid cleanup before array creation -----
+    #
+    # wipefs and dd-zero removed the on-disk superblocks, but udev may
+    # have already re-assembled stale arrays from signatures it saw
+    # *before* the wipe. We must: (1) stop anything udev auto-assembled,
+    # (2) let udev finish processing the wipe events, (3) remove the
+    # mdadm assemble cache so nothing tries to re-appear. Without this,
+    # mdadm --create fails with "Device or resource busy".
+
+    - name: Final mdraid stop + udev settle before array creation
+      ansible.builtin.shell: |
+        set -e
+        mdadm --stop --scan 2>/dev/null || true
+        udevadm settle --timeout=10
+        rm -f /run/mdadm/map /run/mdadm/autorebuild.pid
+        # Double-check nothing re-appeared
+        for md in $(awk '/^md/ {print "/dev/"$1}' /proc/mdstat 2>/dev/null); do
+          mdadm --stop "$md" 2>/dev/null || true
+        done
+        udevadm settle --timeout=5
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    # ----- Create mdraid arrays -----
+
+    - name: Create md/boot (RAID1, metadata 1.0 for GRUB compatibility)
+      ansible.builtin.command: >-
+        mdadm --create /dev/md/boot --level=1 --raid-devices=2
+        --metadata=1.0 --run --force
+        {{ ssd1_dev }}2 {{ ssd2_dev }}2
+      changed_when: true
+
+    - name: Create md/root (RAID1, metadata 1.2)
+      ansible.builtin.command: >-
+        mdadm --create /dev/md/root --level=1 --raid-devices=2
+        --run --force
+        {{ ssd1_dev }}3 {{ ssd2_dev }}3
+      changed_when: true
+
+    - name: Create md/swap (RAID1, metadata 1.2)
+      ansible.builtin.command: >-
+        mdadm --create /dev/md/swap --level=1 --raid-devices=2
+        --run --force
+        {{ ssd1_dev }}4 {{ ssd2_dev }}4
+      changed_when: true
+
+    # ----- Filesystems -----
+
+    - name: Create FAT32 ESP on SSD1 partition 1
+      community.general.filesystem:
+        fstype: vfat
+        dev: "{{ ssd1_dev }}1"
+        opts: -F32
+        force: true
+
+    - name: Create FAT32 backup ESP on SSD2 partition 1
+      community.general.filesystem:
+        fstype: vfat
+        dev: "{{ ssd2_dev }}1"
+        opts: -F32
+        force: true
+
+    - name: Create ext4 on /dev/md/boot
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/md/boot
+        opts: -L boot
+        force: true
+
+    - name: Create ext4 on /dev/md/root
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/md/root
+        opts: -L root
+        force: true
+
+    - name: Create swap on /dev/md/swap
+      ansible.builtin.command: "mkswap -L swap /dev/md/swap"
+      changed_when: true
+
+    # ----- LVM for Ceph block.db -----
+
+    - name: Create VG1 on SSD1 partition 5
+      community.general.lvg:
+        vg: "{{ ceph_db_vg1 }}"
+        pvs: "{{ ssd1_dev }}5"
+        state: present
+
+    - name: Create VG2 on SSD2 partition 5
+      community.general.lvg:
+        vg: "{{ ceph_db_vg2 }}"
+        pvs: "{{ ssd2_dev }}5"
+        state: present
+
+    - name: Create fixed-size block.db LVs on VG1 (slots 0-4)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg1 }}"
+        lv: "db-slot{{ item }}"
+        size: "{{ provision_ceph_db_lv_size }}"
+        state: present
+      loop: [0, 1, 2, 3, 4]
+
+    - name: Create remainder LV on VG1 (slot 5)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg1 }}"
+        lv: "db-slot5"
+        size: 100%FREE
+        state: present
+
+    - name: Create fixed-size block.db LVs on VG2 (slots 6-10)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg2 }}"
+        lv: "db-slot{{ item }}"
+        size: "{{ provision_ceph_db_lv_size }}"
+        state: present
+      loop: [6, 7, 8, 9, 10]
+
+    - name: Create remainder LV on VG2 (slot 11)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg2 }}"
+        lv: "db-slot11"
+        size: 100%FREE
+        state: present
+
+    # ----- Mount new filesystems at /mnt (ephemeral, not in fstab) -----
+
+    - name: Mount /dev/md/root at /mnt
+      ansible.posix.mount:
+        path: "{{ provision_mnt }}"
+        src: /dev/md/root
+        fstype: ext4
+        state: ephemeral
+
+    - name: Create /mnt/boot on the mounted root
+      ansible.builtin.file:
+        path: "{{ provision_mnt }}/boot"
+        state: directory
+        mode: '0755'
+
+    - name: Mount /dev/md/boot at /mnt/boot
+      ansible.posix.mount:
+        path: "{{ provision_mnt }}/boot"
+        src: /dev/md/boot
+        fstype: ext4
+        state: ephemeral
+
+    - name: Create /mnt/boot/efi on the mounted boot
+      ansible.builtin.file:
+        path: "{{ provision_mnt }}/boot/efi"
+        state: directory
+        mode: '0755'
+
+    - name: Mount primary ESP at /mnt/boot/efi
+      ansible.posix.mount:
+        path: "{{ provision_mnt }}/boot/efi"
+        src: "{{ ssd1_dev }}1"
+        fstype: vfat
+        opts: umask=0077
+        state: ephemeral
+
+# Resume-path SSD rediscovery removed: detect.yml now sets ssd1_dev /
+# ssd2_dev / ssd1_serial / ssd2_serial unconditionally on every run,
+# so the resume path inherits them automatically.

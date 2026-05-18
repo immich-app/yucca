@@ -1,0 +1,138 @@
+---
+# Phase 5.8: Monitoring stack — dashboard integration
+#
+# cephadm auto-deploys the full monitoring stack (node-exporter,
+# ceph-exporter, prometheus, alertmanager, grafana) during bootstrap.
+# This task file only:
+#   1. Ensures the prometheus mgr module is enabled
+#   2. Waits for all monitoring daemons to come up
+#   3. Configures dashboard integration URLs and credentials
+
+# --- Step 1: Enable prometheus mgr module ---
+
+- name: Check prometheus mgr module status
+  ansible.builtin.shell: |
+    set -o pipefail
+    ceph mgr module ls --format json 2>/dev/null | python3 -c "
+    import sys, json
+    data = json.load(sys.stdin)
+    enabled = data.get('enabled_modules', [])
+    print('enabled' if 'prometheus' in enabled else 'disabled')
+    "
+  args:
+    executable: /bin/bash
+  register: prometheus_module
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Enable prometheus mgr module
+  ansible.builtin.command: ceph mgr module enable prometheus
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "'disabled' in prometheus_module.stdout"
+  changed_when: true
+
+# --- Step 2: Wait for cephadm to deploy monitoring ---
+
+- name: Wait for monitoring daemons to start
+  ansible.builtin.shell: |
+    python3 -c "
+    import json, subprocess
+    services = ['node-exporter', 'ceph-exporter', 'prometheus',
+                'alertmanager', 'grafana']
+    for svc in services:
+        out = subprocess.check_output(
+            ['ceph', 'orch', 'ls', '--service-type', svc,
+             '--format', 'json'],
+            stderr=subprocess.DEVNULL)
+        data = json.loads(out)
+        running = sum(
+            s.get('status', {}).get('running', 0) for s in data)
+        if running == 0:
+            print(f'waiting:{svc}')
+            exit(1)
+    print('all_running')
+    " 2>/dev/null
+  args:
+    executable: /bin/bash
+  register: monitoring_wait
+  until: "'all_running' in monitoring_wait.stdout"
+  retries: 30
+  delay: 10
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 3: Configure dashboard integrations ---
+
+- name: Configure dashboard Prometheus URL
+  ansible.builtin.command: >
+    ceph dashboard set-prometheus-api-host
+    http://{{ hostvars[groups['ceph_bootstrap'][0]]['bond_ip'] }}:{{ ceph_prometheus_port }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Configure dashboard Alertmanager URL
+  ansible.builtin.command: >
+    ceph dashboard set-alertmanager-api-host
+    http://{{ hostvars[groups['ceph_bootstrap'][0]]['bond_ip'] }}:{{ ceph_alertmanager_port }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Configure dashboard Grafana URL
+  ansible.builtin.command: >
+    ceph dashboard set-grafana-api-url
+    https://{{ hostvars[groups['ceph_bootstrap'][0]]['bond_ip'] }}:{{ ceph_grafana_port }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Disable Grafana SSL cert verification in dashboard
+  ansible.builtin.command: >
+    ceph dashboard set-grafana-api-ssl-verify false
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 4: Set Grafana admin credentials ---
+
+- name: Set Grafana admin user
+  ansible.builtin.command: >
+    ceph dashboard set-grafana-api-username {{ ceph_grafana_admin_user }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Set Grafana admin password
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo '{{ ceph_grafana_admin_password }}' \
+      | ceph dashboard set-grafana-api-password -i -
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  no_log: true
+
+# --- Step 5: Display monitoring endpoints ---
+
+- name: Show monitoring status
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "=== Monitoring Services ==="
+    ceph orch ls --service-type prometheus
+    ceph orch ls --service-type grafana
+    ceph orch ls --service-type alertmanager
+    ceph orch ls --service-type node-exporter
+    ceph orch ls --service-type ceph-exporter
+    echo ""
+    echo "=== Endpoints ==="
+    echo "Prometheus:   http://{{ bond_ip }}:{{ ceph_prometheus_port }}"
+    echo "Grafana:      https://{{ bond_ip }}:{{ ceph_grafana_port }}"
+    echo "Alertmanager: http://{{ bond_ip }}:{{ ceph_alertmanager_port }}"
+  args:
+    executable: /bin/bash
+  register: monitoring_status
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Display monitoring status
+  ansible.builtin.debug:
+    msg: "{{ monitoring_status.stdout_lines }}"
+  when: inventory_hostname in groups['ceph_bootstrap']

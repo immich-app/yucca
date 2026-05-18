@@ -1,0 +1,56 @@
+---
+# Phase 8: Bootloader installation
+#
+# Builds the initramfs with mdraid/LVM support, installs GRUB to the
+# primary ESP, and creates a fallback efibootmgr entry pointing at
+# the backup ESP on SSD2. All three steps run inside chroot.
+#
+# initramfs and grub-install overwrite idempotently; efibootmgr is
+# guarded by a check for an existing "Debian (mirror)" entry.
+
+- name: Rebuild initramfs inside chroot for all kernels
+  ansible.builtin.command: "chroot {{ provision_mnt }} update-initramfs -u -k all"
+  register: update_initramfs
+  changed_when: true
+
+- name: Install GRUB to primary ESP
+  ansible.builtin.command: >-
+    chroot {{ provision_mnt }}
+    grub-install --target=x86_64-efi
+    --efi-directory=/boot/efi
+    --bootloader-id=debian
+    --recheck
+  register: grub_install
+  changed_when: true
+
+- name: Run update-grub inside chroot
+  ansible.builtin.command: "chroot {{ provision_mnt }} update-grub"
+  changed_when: true
+
+- name: Check for existing "Debian (mirror)" efi boot entry
+  ansible.builtin.shell: |
+    set -o pipefail
+    chroot {{ provision_mnt }} efibootmgr | grep -c 'Debian (mirror)' || echo 0
+  args:
+    executable: /bin/bash
+  register: mirror_entry_count
+  changed_when: false
+
+- name: Create fallback efi boot entry for backup ESP on SSD2
+  ansible.builtin.command: >-
+    chroot {{ provision_mnt }}
+    efibootmgr -c -d {{ ssd2_dev }} -p 1
+    -L "Debian (mirror)"
+    -l "\\EFI\\debian\\grubx64.efi"
+  when: (mirror_entry_count.stdout | int) == 0
+  changed_when: true
+
+- name: Verify grubx64.efi was installed
+  ansible.builtin.stat:
+    path: "{{ provision_mnt }}/boot/efi/EFI/debian/grubx64.efi"
+  register: grubx64_stat
+
+- name: Fail if GRUB EFI binary missing after install
+  ansible.builtin.fail:
+    msg: "grubx64.efi missing at {{ provision_mnt }}/boot/efi/EFI/debian/grubx64.efi after grub-install"
+  when: not grubx64_stat.stat.exists

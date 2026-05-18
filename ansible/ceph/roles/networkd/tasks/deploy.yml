@@ -1,0 +1,53 @@
+---
+# Write systemd-networkd config files and rollback script.
+# No services are started or stopped. Safe to re-run.
+
+- name: Deploy bond0.netdev
+  ansible.builtin.template:
+    src: bond0.netdev.j2
+    dest: "{{ networkd_config_dir }}/20-bond0.netdev"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd for networkd
+
+- name: Deploy bond member .network files
+  ansible.builtin.template:
+    src: bond-member.network.j2
+    dest: "{{ networkd_config_dir }}/10-bond0-{{ member_interface }}.network"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ bond_interfaces }}"
+  loop_control:
+    loop_var: member_interface
+  notify: Reload systemd for networkd
+
+- name: Deploy bond0.network
+  ansible.builtin.template:
+    src: bond0.network.j2
+    dest: "{{ networkd_config_dir }}/20-bond0.network"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd for networkd
+
+- name: Deploy rollback script
+  ansible.builtin.template:
+    src: rollback-networkd.sh.j2
+    dest: "{{ networkd_rollback_script }}"
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Check /etc/network/interfaces exists (rollback backup)
+  ansible.builtin.stat:
+    path: /etc/network/interfaces
+  register: networkd_ifupdown_backup
+
+- name: Warn if /etc/network/interfaces is missing
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: /etc/network/interfaces not found.
+      Rollback script may not work without it.
+  when: not networkd_ifupdown_backup.stat.exists

@@ -1,0 +1,165 @@
+---
+# Phase 1: Detect state
+#
+# Confirms we're running on a Debian live image (not an installed OS)
+# and booted in UEFI mode, snapshots the current disk layout, then runs
+# the full SSD pre-flight: model-pattern discovery, rotational-flag
+# check, minimum-size floor, and capture of model/serial/size facts.
+# SSD pre-flight lives here (not in disks.yml) so that a bad hardware
+# configuration fails BEFORE any destructive disk work begins, and so
+# that ssd1_dev/ssd2_dev/ssd1_serial/ssd2_serial are available to every
+# later phase unconditionally (including the resume path in disks.yml).
+
+- name: Verify host is booted from a Debian live image
+  ansible.builtin.stat:
+    path: /run/live/medium
+  register: live_probe
+
+- name: Abort if not running from a live image
+  ansible.builtin.fail:
+    msg: >-
+      {{ inventory_hostname }} does not appear to be running from a Debian
+      live image (no /run/live/medium). Refusing to touch an installed
+      system. If you intend to re-provision, reboot the target into the
+      Debian 12 live image first.
+  when: not live_probe.stat.exists
+
+- name: Verify host is booted in UEFI mode
+  ansible.builtin.stat:
+    path: /sys/firmware/efi
+  register: uefi_probe
+
+- name: Abort if not in UEFI mode
+  ansible.builtin.fail:
+    msg: >-
+      {{ inventory_hostname }} is not booted in UEFI mode (/sys/firmware/efi
+      missing). The provision-host role installs GRUB to ESP partitions and
+      writes UEFI NVRAM entries — both require UEFI firmware. Reboot the
+      target with UEFI enabled in BIOS setup.
+  when: not uefi_probe.stat.exists
+
+- name: Collect current disk layout
+  ansible.builtin.command: lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINT,MODEL
+  register: pre_lsblk
+  changed_when: false
+
+- name: Display current disk state
+  ansible.builtin.debug:
+    msg: "{{ pre_lsblk.stdout_lines }}"
+
+# --- SSD pre-flight ----------------------------------------------------
+#
+# This block validates the boot SSDs BEFORE the destructive disks phase
+# even gets a chance to run. Failing here means the role exits cleanly
+# with no state changes. The facts set here (ssd1_dev, ssd2_dev,
+# ssd1_serial, ssd2_serial) are consumed by disks.yml + the marker
+# template later in finalize.yml.
+
+- name: Discover candidate SSDs by model pattern
+  ansible.builtin.shell: |
+    set -o pipefail
+    lsblk -dnpo NAME,MODEL | awk 'tolower($0) ~ tolower("{{ provision_ssd_model_pattern }}") {print $1}'
+  args:
+    executable: /bin/bash
+  register: ssd_discovery
+  changed_when: false
+
+- name: Parse discovered SSD device paths
+  ansible.builtin.set_fact:
+    ssd_devices: "{{ ssd_discovery.stdout_lines | sort }}"
+
+- name: Assert exactly two candidate SSDs found
+  ansible.builtin.assert:
+    that:
+      - ssd_devices | length == 2
+    fail_msg: >-
+      Expected exactly 2 SSDs matching '{{ provision_ssd_model_pattern }}',
+      found {{ ssd_devices | length }}: {{ ssd_devices }}.
+      Verify both rear-bay SSDs are physically present, the SAS HBA is
+      visible to the OS, and the model string matches. `lsscsi` and
+      `lsblk -dnpo NAME,SIZE,MODEL,TRAN` are useful for diagnosis.
+
+- name: Set SSD device facts
+  ansible.builtin.set_fact:
+    ssd1_dev: "{{ ssd_devices[0] }}"
+    ssd2_dev: "{{ ssd_devices[1] }}"
+
+- name: Gather ROTA flag for both SSDs
+  ansible.builtin.command: "lsblk -dno ROTA {{ item }}"
+  loop:
+    - "{{ ssd1_dev }}"
+    - "{{ ssd2_dev }}"
+  register: ssd_rota
+  changed_when: false
+
+- name: Refuse to proceed if either SSD is rotational
+  ansible.builtin.fail:
+    msg: >-
+      One or both candidate disks are rotational (ROTA != 0):
+      {{ ssd1_dev }}={{ ssd_rota.results[0].stdout | trim }},
+      {{ ssd2_dev }}={{ ssd_rota.results[1].stdout | trim }}.
+      Refusing to proceed — this would wipe spinning disks.
+  when: >-
+    ssd_rota.results[0].stdout | trim != '0'
+    or ssd_rota.results[1].stdout | trim != '0'
+
+- name: Gather size in bytes for both SSDs
+  ansible.builtin.command: "lsblk -dnbo SIZE {{ item }}"
+  loop:
+    - "{{ ssd1_dev }}"
+    - "{{ ssd2_dev }}"
+  register: ssd_sizes
+  changed_when: false
+
+- name: Refuse to proceed if either SSD is below the minimum size floor
+  ansible.builtin.fail:
+    msg: >-
+      One or both candidate SSDs are below the {{ provision_ssd_min_size_gb }}GB
+      floor:
+      {{ ssd1_dev }}={{ (ssd_sizes.results[0].stdout | int / 1024 / 1024 / 1024) | round(1) }}GB,
+      {{ ssd2_dev }}={{ (ssd_sizes.results[1].stdout | int / 1024 / 1024 / 1024) | round(1) }}GB.
+      Either the wrong device matched the model pattern, or the SSDs are
+      too small for the partition layout. Override provision_ssd_min_size_gb
+      if intentional.
+  when: >-
+    (ssd_sizes.results[0].stdout | int) < (provision_ssd_min_size_gb | int * 1024 * 1024 * 1024)
+    or (ssd_sizes.results[1].stdout | int) < (provision_ssd_min_size_gb | int * 1024 * 1024 * 1024)
+
+- name: Gather model strings for both SSDs
+  ansible.builtin.command: "lsblk -dno MODEL {{ item }}"
+  loop:
+    - "{{ ssd1_dev }}"
+    - "{{ ssd2_dev }}"
+  register: ssd_models
+  changed_when: false
+
+- name: Gather serials for both SSDs
+  ansible.builtin.command: "lsblk -dno SERIAL {{ item }}"
+  loop:
+    - "{{ ssd1_dev }}"
+    - "{{ ssd2_dev }}"
+  register: ssd_serials
+  changed_when: false
+
+- name: Set SSD model/serial/size facts
+  ansible.builtin.set_fact:
+    ssd1_serial: "{{ ssd_serials.results[0].stdout | trim }}"
+    ssd2_serial: "{{ ssd_serials.results[1].stdout | trim }}"
+    ssd1_model: "{{ ssd_models.results[0].stdout | trim }}"
+    ssd2_model: "{{ ssd_models.results[1].stdout | trim }}"
+    ssd1_size_gb: "{{ (ssd_sizes.results[0].stdout | int / 1024 / 1024 / 1024) | round(1) }}"
+    ssd2_size_gb: "{{ (ssd_sizes.results[1].stdout | int / 1024 / 1024 / 1024) | round(1) }}"
+
+- name: Report SSDs targeted for wipe
+  ansible.builtin.debug:
+    msg:
+      - "═══ Boot SSDs targeted for wipe ═══"
+      - "SSD1: {{ ssd1_dev }} | {{ ssd1_model }} | {{ ssd1_size_gb }}GB | serial {{ ssd1_serial }}"
+      - "SSD2: {{ ssd2_dev }} | {{ ssd2_model }} | {{ ssd2_size_gb }}GB | serial {{ ssd2_serial }}"
+
+- name: Gather minimal facts
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - '!min'
+      - date_time

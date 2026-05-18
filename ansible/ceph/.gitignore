@@ -1,0 +1,40 @@
+# Ansible
+ansible.log
+ansible.*.log
+*.retry
+.ansible/
+.ansible_facts_cache/
+
+# Transient outputs — benchmark results, hardware inventory snapshots, backups, exports
+bench/
+hardware/
+backups/
+exports/
+
+# TF-generated artifacts — do not commit; re-render with `tofu apply` in tf/deployment/<env>/ceph/
+inventories/*/inventory.ini
+inventories/*/inventory-provision.ini
+inventories/*/inventory-destroy.ini
+inventories/*/secrets.yml.tpl
+
+# host_vars IS committed (per-node hardware facts — stable, part of the inventory
+# source of truth). Operator-local overrides use host_vars/*.local.yml if needed.
+inventories/*/host_vars/*.local.yml
+
+# Rendered installimage scripts (source of truth is the .tpl file).
+inventories/*/installimage/post-install.sh
+
+# Python virtualenv (mise setup) and bytecode
+.venv/
+__pycache__/
+*.pyc
+
+# Ansible navigator artifacts
+.artifacts/
+ansible-navigator.log
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*~

@@ -1,0 +1,12 @@
+127.0.0.1   localhost
+
+# Sietch Ceph cluster nodes (local node included — do NOT add a 127.0.1.1
+# entry for the local short name, or it will dual-bind to loopback and
+# cephadm hostname-to-IP resolution may latch onto 127.0.1.1).
+{% for host in groups['provision_targets'] %}
+{{ hostvars[host]['bond_ip'] }}   {{ hostvars[host]['hostname_short'] }}.{{ cluster_domain }} {{ hostvars[host]['hostname_short'] }}
+{% endfor %}
+
+::1         localhost ip6-localhost ip6-loopback
+ff02::1     ip6-allnodes
+ff02::2     ip6-allrouters

@@ -1,0 +1,44 @@
+---
+# Phase 1: Remove all pools (from bootstrap node)
+
+- name: Get list of all pools
+  ansible.builtin.shell: |
+    timeout 10 ceph osd pool ls --format json 2>/dev/null || echo "[]"
+  register: pool_list
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Parse pool names
+  ansible.builtin.set_fact:
+    ceph_pools: "{{ pool_list.stdout | from_json }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - pool_list.stdout is defined
+
+- name: Show pools to be removed
+  ansible.builtin.debug:
+    msg: "Pools to remove: {{ ceph_pools | default([]) }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Remove all pools
+  ansible.builtin.shell: |
+    # Must allow pool deletion first
+    ceph tell mon.\* injectargs '--mon-allow-pool-delete=true' 2>/dev/null || true
+    ceph config set mon mon_allow_pool_delete true 2>/dev/null || true
+    ceph osd pool rm "{{ item }}" "{{ item }}" --yes-i-really-really-mean-it
+  loop: "{{ ceph_pools | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_pools | default([]) | length > 0
+  register: pool_rm_results
+  changed_when: true
+
+- name: Show pool removal results
+  ansible.builtin.debug:
+    msg: "{{ item.stdout | default(item.stderr | default('done')) }}"
+  loop: "{{ pool_rm_results.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default('unknown') }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - pool_rm_results.results is defined
