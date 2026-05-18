@@ -1,0 +1,30 @@
+---
+# Post-deploy Ceph cluster tuning
+# These require a running cluster (ceph config set / ceph commands).
+
+# Disable telemetry phone-home
+ceph_telemetry_enabled: false
+
+# OSD recovery throttling (also in cluster-spec.yml.j2 initial config,
+# but re-asserted here for idempotency after config changes)
+ceph_osd_recovery_max_active: 1
+ceph_osd_recovery_sleep_hdd: 0.1
+ceph_osd_max_backfills: 1
+
+# Scrub window
+ceph_osd_scrub_begin_hour: 2
+ceph_osd_scrub_end_hour: 6
+ceph_osd_deep_scrub_interval: 604800    # 7 days
+
+# PG autoscaler
+ceph_mon_target_pg_per_osd: 100
+
+# BlueStore block.db — 0 means use the entire LV
+ceph_bluestore_block_db_size: 0
+
+# Log rotation retention (days)
+ceph_log_retention_days: 30
+
+# Audit logging — logs ceph admin commands to the cluster log channel.
+# Viewable via: ceph log last -W audit
+ceph_audit_enabled: true

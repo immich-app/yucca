@@ -1,0 +1,36 @@
+---
+# Copy to host_vars/sietch-ceph-<name>.yml (full inventory_hostname).
+# The <name> segment is either operator-declared in clusters.auto.tfvars
+# or TF-auto-picked from wordlist.txt — see docs/naming.md.
+# Filename MUST match inventory_hostname for Ansible auto-load.
+# Values are node-specific — hardware paths differ per chassis.
+hostname_short: sietch-ceph-EXAMPLE
+bond_ip: 10.0.0.1
+
+# SAS expander base path (unique per chassis)
+# Find with: ls /dev/disk/by-path/ | grep sas
+sas_path_prefix: "pci-0000:02:00.0-sas-exp0x500056b3XXXXXXXX"
+
+# SSD PHY positions in the SAS topology
+ssd1_phy: 12
+ssd2_phy: 13
+
+# LVM volume group names for block.db (on SSD partition 5)
+ceph_db_vg1: ceph-db-ssd1
+ceph_db_vg2: ceph-db-ssd2
+
+# HDD OSD mappings: SAS PHY slot -> block.db LV
+# 6 HDDs per SSD, each gets a dedicated 240G block.db LV
+ceph_hdd_osds:
+  - path_phy: phy0
+    db: ceph-db-ssd1/db-slot0
+  - path_phy: phy1
+    db: ceph-db-ssd1/db-slot1
+  # ... one entry per HDD
+
+# SSD OSD partitions (partition 6 on each SSD, no separate block.db)
+ceph_ssd_osds:
+  - path_phy: phy12
+    partition: 6
+  - path_phy: phy13
+    partition: 6

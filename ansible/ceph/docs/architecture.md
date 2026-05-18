@@ -1,0 +1,825 @@
+# Architecture
+
+How the Ceph automation in `yucca/ansible/ceph/` is shaped, what each tool
+owns, and how the four tools (Terraform, 1Password, Ansible, mise) hand off
+work to each other.
+
+This is a structural reference. For step-by-step usage see
+[CONTRIBUTING.md](../CONTRIBUTING.md); for narrower topics see the
+specialized docs under `docs/`.
+
+---
+
+## 1. System context
+
+```mermaid
+flowchart LR
+    OP([Operator workstation<br/>mise · op CLI · ansible · tofu])
+    YUCCA[/Yucca monorepo<br/>tf/ + ansible/ceph/ + kubernetes//]
+    ONEP[("1Password org<br/>yucca_tf · yucca_tf_dev · ...")]
+    S3[("OVH S3<br/>yucca-tf-state bucket")]
+    SIETCH["Sietch · Austin DC<br/>3× Dell R730xd"]
+    PAINBOX["Painbox · Hetzner Helsinki<br/>1× SX295"]
+
+    OP -->|edits| YUCCA
+    OP -->|reads/writes secrets| ONEP
+    OP -->|TF state I/O| S3
+    OP -->|SSH ansible-iac| SIETCH
+    OP -->|SSH ansible-iac| PAINBOX
+```
+
+The yucca monorepo is the single source of truth for cluster identity and
+configuration. Operators run mise tasks on their workstation; secrets stay
+in 1Password (never on disk); TF state lives in OVH S3; Ansible drives
+configuration over SSH against bare-metal Ceph nodes.
+
+External dependencies are minimal and explicit:
+
+- **1Password org** — organization-scoped vaults shared with other Futo infra
+  (Immich, o11y). Authoritative store for live secret values.
+- **OVH S3** — `yucca-tf-state` bucket at `s3.eu-west-par.io.cloud.ovh.net`.
+  Project-keyed (`ceph/<env>/<stack>/terraform.tfstate`) so multiple stacks
+  share the bucket without collision.
+- **Hardware** — Austin colo for sietch (Dell R730xd × 3, single 10G bond);
+  Hetzner Helsinki for painbox (SX295 × 1). Detail in [hardware.md](hardware.md).
+
+---
+
+## 2. Environments
+
+Environments are a first-class concern: every tool in the mesh derives
+its environment from the same source — directory layout — so dev / staging
+/ prod isolation is structural, not flag-driven.
+
+| Layer        | dev (today)                                                    | staging (planned)                                       | prod (planned)                                       |
+|--------------|----------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------|
+| TF stack dir | `tf/deployment/dev/ceph/`                                      | `tf/deployment/staging/ceph/`                           | `tf/deployment/prod/ceph/`                           |
+| TF state key | `ceph/dev/ceph/terraform.tfstate`                              | `ceph/staging/ceph/terraform.tfstate`                   | `ceph/prod/ceph/terraform.tfstate`                   |
+| 1P vaults    | `yucca_tf_dev` (live) · `yucca_tf_dev_manual` (human-fillable) | `yucca_tf_staging` · `yucca_tf_staging_manual`          | `yucca_tf` (live) · `yucca_tf_prod_manual`           |
+| Ansible inv  | `inventories/<cluster>-ceph.dev.<dc>.<provider>/`              | `inventories/<cluster>-ceph.staging.<dc>.<provider>/`   | `inventories/<cluster>-ceph.prod.<dc>.<provider>/`   |
+| mise default | `CEPH_ENV=...sietch-ceph.dev.austin.int/inventory.ini`         | overridden via env at invocation                        | overridden via env at invocation                     |
+
+Today the only deployed environment is dev (sietch + painbox). Adding
+staging/prod is purely additive: create the matching `tf/deployment/<env>/ceph/`
+directory, populate `clusters.auto.tfvars`, and the same module + Ansible
+roles + mise tasks work unchanged. The state backend key path, 1P vault
+selection, and inventory directory naming all derive from the env segment.
+
+`TF_STACK_DIR` is the operator-side override for `mise run tf:*` tasks; it
+defaults to `tf/deployment/dev/ceph` and points at any sibling stack directory.
+`CEPH_ENV` is the matching override for Ansible — points at the rendered
+`inventory.ini` for the cluster you intend to operate on.
+
+---
+
+## 3. The four-tool mesh
+
+```mermaid
+flowchart TB
+    subgraph ws["Operator workstation"]
+        direction LR
+        MISE([mise<br/>orchestration])
+        TF[Terraform / Tofu<br/>via Terragrunt]
+        OP[op CLI]
+        ANS[Ansible]
+        WRAP[scripts/<br/>ansible-play.sh<br/>install-ssh-keys.sh]
+    end
+
+    ONEP[("1Password<br/>yucca_tf_*")]
+    S3[("OVH S3<br/>tfstate")]
+    REPO[/"Yucca repo<br/>inventories/<cluster>/<br/>(host_vars committed,<br/>TF outputs gitignored)"/]
+    NODES[Ceph nodes]
+
+    MISE -->|tf:*| TF
+    MISE -->|deploy / status / drift| WRAP
+    MISE -->|capture| WRAP
+
+    TF -->|reads SA token via op run --env-file| OP
+    TF -->|reads/writes state| S3
+    TF -->|renders| REPO
+
+    WRAP -->|reads inventory + secrets.yml.tpl| REPO
+    WRAP -->|op inject / op read| OP
+    WRAP -->|exec| ANS
+    ANS -->|SSH ansible-iac| NODES
+
+    OP <-->|item CRUD| ONEP
+```
+
+### Who owns what
+
+| Tool          | Owns                                                                           | Reads from                                  |
+|---------------|--------------------------------------------------------------------------------|---------------------------------------------|
+| **Terraform** | Cluster identity, host names, rendered Ansible artifacts, TF state             | `clusters.auto.tfvars` · 1P (via op CLI)    |
+| **1Password** | Live secret values, SSH keypairs, service-account tokens                       | nothing — authoritative store               |
+| **op CLI**    | Auth and resolution: env-injection, file-template injection, single-value read | 1P (session or SA token)                    |
+| **Ansible**   | Convergence: applying configuration to nodes                                   | Rendered inventory + op-injected tmpfile    |
+| **mise**      | Task discovery, toolchain pinning, env defaults                                | `.mise.toml`, `tf/.env`                     |
+
+### Handoff points (the edges of the mesh)
+
+1. **TF → repo** — `terragrunt apply` renders `inventory.ini`,
+   `inventory-destroy.ini`, optional `inventory-provision-<profile>.ini`,
+   and `secrets.yml.tpl` into `inventories/<cluster>/`. These files are
+   gitignored — the source of truth is `clusters.auto.tfvars` + the
+   ceph-cluster module.
+2. **TF ↔ op CLI** — TF runs are wrapped with `op run --env-file=tf/.env`,
+   which resolves `op://...` references in `tf/.env` and injects them as
+   `OP_SERVICE_ACCOUNT_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+   for the child process. The `tf/.env` file is committed (it contains only
+   pointers, never literal secrets).
+3. **Ansible ↔ op CLI** — `scripts/ansible-play.sh` reads the cluster's
+   `secrets.yml.tpl`, runs `op inject -f` to resolve `op://` references into
+   a `mktemp`'d tmpfile (chmod 600, trap-cleaned), then execs
+   `ansible-playbook --extra-vars @<tmpfile>`. The tmpfile lives only for
+   the duration of the play.
+4. **mise → wrappers** — `mise run deploy` invokes
+   `scripts/ansible-play.sh deploy.yml ...`; `mise run tf:*` invokes
+   `op run --env-file=tf/.env -- terragrunt --working-dir <stack> <cmd>`.
+   mise tasks never call `ansible-playbook` directly.
+
+---
+
+## 4. Terraform (authority)
+
+### Layout
+
+```
+tf/
+├── .env                              op:// references (committed; no literal secrets)
+├── shared/modules/ceph-cluster/      per-cluster orchestration module
+│   ├── main.tf · variables.tf · outputs.tf · rendering.tf
+│   ├── wordlist.txt                  923 words for auto-picked hostnames
+│   └── templates/                    inventory + secrets.yml.tpl templates
+└── deployment/
+    ├── terragrunt.hcl                root: state backend, env/stack derived from path
+    └── dev/ceph/
+        ├── terragrunt.hcl            includes root, sets ansible_project_root
+        ├── main.tf · variables.tf · versions.tf
+        └── clusters.auto.tfvars      declarative cluster list
+```
+
+### Cluster identity is declared, not derived
+
+The `clusters` map in `clusters.auto.tfvars` is the source of truth.
+Each top-level key becomes a cluster:
+
+```hcl
+sietch = {
+  domain            = "dev.austin.int.futo.cloud"
+  environment       = "dev"
+  datacenter        = "austin"
+  provider_code     = "int"
+  role_in_hostname  = "ceph"
+  ansible_ssh_user  = "ansible-iac"
+  ansible_ssh_key   = "~/.ssh/id_ed25519_sietch"
+  vault             = "yucca_tf_dev"
+  provision_profile = "debian-live"
+  hosts = [
+    { name = "laurel", bond_ip = "10.10.10.90", bootstrap = true },
+    { name = "lawson", bond_ip = "10.10.10.91" },
+    { name = "samara", bond_ip = "10.10.10.92" },
+  ]
+}
+```
+
+The module computes everything else: hostname (`<cluster>-<role>-<name>`),
+FQDN (`<hostname>.<domain>`), 1P item names
+(`<CLUSTER>_CEPH_<ROLE>_PASSWORD`), inventory directory path
+(`inventories/<cluster>-<role>.<env>.<dc>.<provider>/`).
+
+### Auto-naming via wordlist
+
+For hosts where `name = null`, the module picks a stable name from a
+923-word pool using `random_shuffle` seeded by `(cluster_name, name_seed)`.
+Operator-declared names are excluded from the pool to prevent collisions
+within a cluster. Adding hosts at the tail is safe — existing positions
+keep their names across applies.
+
+Painbox today demonstrates this: its single host has no `name`, so TF
+auto-picked `evelyn` → hostname `painbox-ceph-evelyn`.
+
+### Rendered artifacts (gitignored)
+
+Per `tf/shared/modules/ceph-cluster/rendering.tf`, the module writes four
+files into `inventories/<cluster>/`:
+
+| File                                       | Purpose                                                                                  |
+|--------------------------------------------|------------------------------------------------------------------------------------------|
+| `inventory.ini`                            | Normal-ops inventory: `ansible-iac` user + cluster SSH key                               |
+| `inventory-destroy.ini`                    | Destroy-mode inventory (same credentials; separate file as a speed bump)                 |
+| `inventory-provision-<profile>.ini`        | Provisioning inventory (only when `provision_profile != null`; uses live-image creds)    |
+| `secrets.yml.tpl`                          | `vault_*: op://<vault>/<CLUSTER>_CEPH_*/password` pointers, consumed by `op inject -f`   |
+
+All four are in `ansible/ceph/.gitignore`. Re-render with `mise run tf:apply`.
+
+### State backend
+
+S3 backend in `tf/deployment/terragrunt.hcl`:
+
+- Bucket: `yucca-tf-state` (shared with o11y and other Futo stacks)
+- Region: `eu-west-par` (OVH Paris)
+- Endpoint: `https://s3.eu-west-par.io.cloud.ovh.net/`
+- Key: `ceph/${env}/${stack}/terraform.tfstate` — derived from
+  the child stack's path under `deployment/`
+- Skip AWS-specific validation; use path-style URLs (OVH compatibility)
+
+State locking is **not enabled today**. OVH has no DynamoDB equivalent.
+OpenTofu's `use_lockfile = true` would work but expects the lockfile object
+to already exist — fresh-backend init fails with 404 before it can create
+one. Single-operator workflow today; revisit when concurrent applies become
+likely. See `deployment/terragrunt.hcl` for the inline rationale.
+
+### What TF does not yet manage
+
+`onepassword_item` resources are **dormant** (`tf/.../secrets.tf.disabled`).
+1P items are created today via the `op` CLI (operator runs `op item create`
+once per cluster). Re-enabling them is tracked in
+[ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md) — the gate
+is the dedicated `sietch-ceph` service account that lets us split write
+authority from the org-wide superuser SA.
+
+---
+
+## 5. 1Password (live values)
+
+### Vault hierarchy
+
+| Vault                     | Purpose                                                | Who reads it                       | Who writes it                       |
+|---------------------------|--------------------------------------------------------|------------------------------------|-------------------------------------|
+| `yucca_tf`                | Cross-env shared (TF state S3 creds)                   | TF (via op run --env-file)         | Operator (manual)                   |
+| `yucca_tf_dev`            | dev environment live values                            | Ansible runtime (op inject)        | Superuser SA (TF) + operator (op CLI) |
+| `yucca_tf_dev_manual`     | dev human-fillable placeholders (API tokens, OAuth)    | Ansible runtime                    | Operator (manual)                   |
+| `yucca_tf_staging(_manual)` · `yucca_tf_prod_manual` | (planned) staging/prod analogues   | (future)                           | (future)                            |
+
+The `_manual` vaults exist for items that can't be auto-generated (third-party
+API tokens, OAuth client secrets) — they're populated by humans, not by TF.
+
+### Service accounts
+
+Two service accounts in `yucca_tf_dev`, both shared org-wide:
+
+| SA                                            | Scope                                       | Consumed by                         |
+|-----------------------------------------------|---------------------------------------------|-------------------------------------|
+| `yucca_futo_1pass_superuser_service_account`  | Read + write all `yucca_tf_*` vaults        | TF (via `tf/.env`) + interactive op CLI |
+| `yucca_futo_1pass_service_account`            | Read-only on `yucca_tf` and `yucca_tf_dev`  | Ansible runtime / future CI         |
+
+Rotation procedure: [docs/runbooks/rotate-sa-token.md](runbooks/rotate-sa-token.md).
+
+### Item categories and naming
+
+Per cluster, the following items live in the cluster's `vault` (currently
+`yucca_tf_dev` for both sietch and painbox):
+
+| Category   | Item title pattern                                      | Field consumed       |
+|------------|---------------------------------------------------------|----------------------|
+| Password   | `<CLUSTER>_CEPH_OPS_PASSWORD`                           | `password`           |
+| Password   | `<CLUSTER>_CEPH_DASHBOARD_PASSWORD`                     | `password`           |
+| Password   | `<CLUSTER>_CEPH_GRAFANA_PASSWORD`                       | `password`           |
+| Password   | `<CLUSTER>_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY`         | `password`           |
+| Password   | `<CLUSTER>_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY`         | `password`           |
+| SSH Key    | `<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY`                    | `private_key` / `public_key` |
+| Document   | `<CLUSTER>_CEPH_RGW_TLS_CERT` · `..._RGW_TLS_KEY`       | file content         |
+| Document   | `<CLUSTER>_CEPH_CLIENT_ADMIN_KEYRING`                   | file content         |
+
+The `<CLUSTER>_CEPH_*` prefix is hardcoded in
+`tf/shared/modules/ceph-cluster/main.tf` (`secret_prefix = "${upper(var.cluster_name)}_CEPH"`)
+so every Ceph-project item across all clusters is grep-discoverable as
+`*_CEPH_*` regardless of the role segment in node hostnames.
+
+Full item-by-item catalog: [docs/secrets.md](secrets.md).
+
+### Three op-CLI patterns
+
+The op CLI is invoked in three distinct ways across the codebase. Each
+serves a different shape of secret consumption:
+
+1. **`op run --env-file=tf/.env -- <cmd>`** — env-var injection.
+   Resolves `op://` references in a dotenv file and injects the resolved
+   values as env vars into the child process. Used for TF (SA token) and
+   the S3 backend (AWS creds). Wrapped by all `mise run tf:*` tasks.
+2. **`op inject -f -i <tpl> -o <out>`** — file-template resolution.
+   Reads a file containing inline `op://` references, resolves each, writes
+   to the output path. Used by `scripts/ansible-play.sh` to render
+   `secrets.yml.tpl` → tmpfile, and by the Hetzner installimage flow to
+   render `post-install.sh.tpl` → `post-install.sh`.
+3. **`op read "op://<vault>/<item>/<field>"`** — single-value read.
+   Used by `scripts/install-ssh-keys.sh`, `rotate-ssh-key.yml`,
+   `post-deploy-capture.yml`. Returns one value to stdout for one specific
+   field; fails closed if missing.
+
+No custom password-script (no `vault-password.sh`); no
+`ansible-vault`-encrypted file in git. Lint and syntax-check tasks don't
+invoke op at all — they don't need secrets, so "1P unavailable" never
+silently degrades them. See [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md).
+
+---
+
+## 6. Ansible (consumer)
+
+### Role dependency graph
+
+Provisioning is a separate concern (`provision.yml`, sietch only). The main
+pipeline (`site.yml`) runs everything else in this order:
+
+```mermaid
+flowchart TB
+    PROV["provision_host<br/><i>separate playbook, live image</i>"]
+    BASE["baseline<br/><i>users, packages, /etc/hosts</i>"]
+    OST["os_tuning<br/><i>sysctl, TCP buffers</i>"]
+    HWT["hardware_tuning<br/><i>I/O scheduler, readahead</i>"]
+    DEPLOY["ceph_deploy<br/><i>bootstrap, join, OSDs, RGW,<br/>crush rules, monitoring</i>"]
+    CTUNE["ceph_tuning<br/><i>recovery throttling, scrub<br/>window, telemetry, audit</i>"]
+    SEC["security<br/><i>nftables, SSH hardening</i>"]
+
+    PROV -.->|reboot into installed OS| BASE
+    BASE --> OST
+    BASE --> HWT
+    OST --> DEPLOY
+    HWT --> DEPLOY
+    DEPLOY --> CTUNE
+    CTUNE --> SEC
+
+    classDef separate stroke-dasharray: 4 4
+    class PROV separate
+```
+
+`site.yml` starts at `baseline` — `provision_host` runs only on first
+install via `provision.yml`.
+
+### Why this order matters
+
+1. **baseline before tuning** — cephadm needs podman, dbus, chrony.
+   The baseline role installs these and enables the services. Running
+   tuning on a node without podman would leave cephadm unable to bootstrap.
+2. **tuning before deploy** — OSD daemons inherit kernel parameters
+   active at startup. Applying sysctl (`vm.min_free_kbytes`, `fs.aio-max-nr`)
+   and I/O scheduler (`mq-deadline` for HDD, `none` for SSD) before bootstrap
+   means daemons launch with correct limits from the first second.
+3. **ceph_tuning after deploy** — these settings use `ceph config set`
+   which requires a running cluster. Recovery throttling, scrub windows, and
+   PG autoscaler targets cannot be applied until MONs are up.
+4. **security last** — nftables drops all traffic not explicitly allowed.
+   Running it before ceph_deploy would block cephadm's inter-node SSH,
+   container image pulls, and MON/OSD port negotiation. Once the cluster is
+   healthy, the firewall locks it down.
+
+### ceph_deploy internal pipeline
+
+`roles/ceph_deploy/tasks/main.yml` orchestrates ten phases:
+
+```mermaid
+flowchart TB
+    P1["Phase 1 · prerequisites.yml<br/><i>Ceph repo, cephadm, ceph-common</i>"]
+    P2["Phase 2 · bootstrap.yml<br/><i>cephadm bootstrap on first node</i>"]
+    P3["Phase 3 · join.yml<br/><i>ceph orch host add for remaining nodes</i>"]
+    P4["Phase 4 · placement.yml<br/><i>MON/MGR placement calculation</i>"]
+    P45["Phase 4.5 · lvm-setup.yml<br/><i>ensure block.db VGs/LVs exist (sietch-shape only;<br/>painbox skips — LVM owned by installimage post-install)</i>"]
+    P5["Phase 5 · osds.yml<br/><i>render osd-spec.yml.j2 → ceph orch apply osd<br/>(cephadm provisions LUKS + LVM internally)</i>"]
+    P55["Phase 5.5 · crush-rules.yml<br/><i>replicated_hdd / replicated_ssd rules</i>"]
+    P575["Phase 5.75 · rgw.yml<br/><i>EC pools, realm/zone, TLS, S3 user</i>"]
+    P58["Phase 5.8 · monitoring.yml<br/><i>dashboard URL integration, Grafana creds</i>"]
+    P6["Phase 6 · verify.yml<br/><i>cluster health report</i>"]
+
+    P1 --> P2 --> P3 --> P4 --> P45 --> P5 --> P55 --> P575 --> P58 --> P6
+```
+
+Tag-driven re-runs are first-class:
+`scripts/ansible-play.sh deploy-ceph.yml --tags rgw,monitoring` re-runs
+just those phases.
+
+### Inventory layout
+
+```
+inventories/
+  sietch-ceph.dev.austin.int/        Austin dev cluster
+    inventory.ini                     TF-generated, gitignored
+    inventory-destroy.ini             TF-generated, gitignored
+    inventory-provision.ini           TF-generated, gitignored
+    secrets.yml.tpl                   TF-generated, gitignored
+    group_vars/all/vars.yml           cluster-wide variables (committed)
+    host_vars/                        per-node hardware topology (committed)
+      sietch-ceph-laurel.yml          bond_ip, SAS path prefix, OSD maps
+      sietch-ceph-lawson.yml
+      sietch-ceph-samara.yml
+    installimage/                     Hetzner installimage assets (sietch n/a)
+
+  painbox-ceph.dev.hel.htz/          Hetzner dev cluster
+    inventory.ini                     TF-generated, gitignored
+    inventory-destroy.ini             TF-generated, gitignored
+    secrets.yml.tpl                   TF-generated, gitignored
+    group_vars/all/vars.yml           committed
+    host_vars/painbox-ceph-evelyn.yml committed
+    installimage/                     post-install.sh.tpl (op-injected)
+```
+
+`host_vars/*.yml` is committed because per-node hardware facts (bond_ip, SAS
+expander paths, SSD PHY positions, HDD-to-block.db mappings) are stable
+inventory truth — not operator preference. The `.local.yml` suffix is
+gitignored as an escape hatch for operator-local overrides.
+
+### Variable precedence
+
+```mermaid
+flowchart TB
+    D["<b>role defaults</b><br/>roles/*/defaults/main.yml<br/><i>lowest priority</i>"]
+    G["<b>group_vars</b><br/>inventories/&lt;cluster&gt;/group_vars/all/vars.yml"]
+    H["<b>host_vars</b><br/>inventories/&lt;cluster&gt;/host_vars/&lt;host&gt;.yml"]
+    T["<b>extra-vars @tmpfile</b><br/>scripts/ansible-play.sh<br/><i>op-injected secrets</i>"]
+    E["<b>extra-vars -e X=Y</b><br/>-e confirm_wipe=true<br/><i>highest priority</i>"]
+
+    D --> G --> H --> T --> E
+```
+
+- **Role defaults** define every tunable with a safe value
+  (`ceph_firewall_ssh_any_source: true`, `ceph_cpu_governor_enabled: false`).
+- **group_vars/all/vars.yml** sets cluster-wide values: network topology,
+  Ceph release, RGW config, monitoring ports, plus the `vault_*` →
+  consumable-name aliases (`ops_password: "{{ vault_ops_password }}"`).
+- **host_vars** provides per-node physical topology.
+- **extra-vars from @tmpfile** carries op-injected `vault_ops_password`,
+  `vault_ceph_dashboard_password`, `vault_grafana_admin_password`,
+  `vault_s3_restic_access_key`, `vault_s3_restic_secret_key`.
+- **extra-vars via `-e`** carries safety gates: `confirm_wipe=true`,
+  `provision_skip_reboot=true`, `yes_destroy_ceph=true`.
+
+### ansible.cfg stays generic
+
+`ansible.cfg` contains zero site-specific values. No default inventory, no
+ProxyJump, no hardcoded key paths. Site-specifics live exclusively in
+`clusters.auto.tfvars` (which TF renders into the inventory) or in the
+inventory's `group_vars`. The same `ansible.cfg` and the same roles work
+unchanged across Austin, Hetzner, or any future cluster — only the cluster
+entry in `clusters.auto.tfvars` differs.
+
+---
+
+## 7. mise (orchestration surface)
+
+### Why mise
+
+- **Toolchain pinning** — `.mise.toml` declares the exact versions of
+  `python`, `tofu`, `terragrunt`, `op`. New operators get a working
+  environment with `mise trust && mise run setup`.
+- **Task discovery** — `mise tasks` lists every operation; tasks are
+  shell-script-shaped, kept in `.mise.toml`, and committed.
+- **Devtools parity** — matches the conventions in `immich-app/devtools`
+  (where the `op run --env-file=tf/.env --` pattern originated).
+
+### Task taxonomy
+
+| Group          | Tasks                                                                    |
+|----------------|--------------------------------------------------------------------------|
+| Bootstrap      | `setup`                                                                  |
+| Verify         | `lint` · `check` · `test` · `preflight`                                  |
+| TF (wrapped)   | `tf:init` · `tf:plan` · `tf:apply` · `tf:destroy`                        |
+| Read-only ops  | `status` · `drift`                                                       |
+| State change   | `deploy` · `destroy` · `capture` · `backup`                              |
+| Benchmarks     | `bench` · `bench-rados`                                                  |
+
+### How mise wraps the underlying CLIs
+
+- `mise run tf:*` → `op run --env-file=tf/.env -- terragrunt --working-dir <stack> <cmd>`
+- `mise run deploy` → `scripts/ansible-play.sh deploy-ceph.yml ...` (per phase)
+- `mise run status` → `scripts/ansible-play.sh status.yml`
+- `mise run capture` → `scripts/ansible-play.sh post-deploy-capture.yml`
+
+mise never invokes `ansible-playbook` or `terragrunt` directly. The wrappers
+own secrets injection and pre-flight checks; mise owns task discovery and
+env defaults.
+
+### Env defaults
+
+```toml
+[env]
+CEPH_ENV = "inventories/sietch-ceph.dev.austin.int/inventory.ini"
+```
+
+`TF_STACK_DIR` defaults to `tf/deployment/dev/ceph` inside each `tf:*` task.
+Both are overridable per-invocation:
+
+```bash
+TF_STACK_DIR=tf/deployment/staging/ceph mise run tf:plan
+CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini mise run status
+```
+
+---
+
+## 8. Wrapper scripts (the glue layer)
+
+Three scripts under `ansible/ceph/scripts/` sit between mise and the
+underlying CLIs. They exist to keep secrets out of `argv`, fail closed
+when 1P is unreachable, and give better error messages than the raw tools.
+
+| Script                  | Purpose                                                                          |
+|-------------------------|----------------------------------------------------------------------------------|
+| `ansible-play.sh`       | Render secrets via `op inject -f` to a `mktemp`'d file (chmod 600, trap-cleaned), then exec `ansible-playbook --extra-vars @<tmpfile>` |
+| `install-ssh-keys.sh`   | Idempotent `op read` → `~/.ssh/id_ed25519_<cluster>` installer; refuses overwrite on fingerprint mismatch                                |
+| `preflight.sh`          | Verifies TF artifacts present, 1P session live, SSH reachable, Python on targets — surfaced via `mise run preflight`                    |
+
+Per-script reference (synopsis, args, env, exit codes, examples):
+[docs/scripts.md](scripts.md).
+
+---
+
+## 9. Data flow: concrete operations
+
+### 9.1 `mise run tf:apply` — render artifacts
+
+```mermaid
+sequenceDiagram
+    actor OP as Operator
+    participant MISE as mise
+    participant OPCLI as op CLI
+    participant ONEP as 1Password
+    participant TG as terragrunt / tofu
+    participant S3 as OVH S3
+    participant REPO as Repo (inventories/)
+
+    OP->>MISE: mise run tf:apply
+    MISE->>OPCLI: op run --env-file=tf/.env -- ...
+    OPCLI->>ONEP: resolve op:// references
+    ONEP-->>OPCLI: SA token + AWS keys
+    OPCLI->>TG: exec child process<br/>with env vars injected
+    TG->>S3: read tfstate<br/>(ceph/<env>/<stack>/terraform.tfstate)
+    S3-->>TG: current state
+    TG->>TG: plan + apply
+    TG->>S3: write updated tfstate
+    TG->>REPO: render inventory.ini,<br/>secrets.yml.tpl, ...
+```
+
+### 9.2 `mise run deploy` — full Ceph deploy
+
+```mermaid
+sequenceDiagram
+    actor OP as Operator
+    participant MISE as mise
+    participant WRAP as ansible-play.sh
+    participant OPCLI as op CLI
+    participant ONEP as 1Password
+    participant TMP as /tmp/<id>-secrets.yml
+    participant ANS as ansible-playbook
+    participant NODES as Ceph nodes
+
+    OP->>MISE: mise run deploy
+    MISE->>WRAP: ansible-play.sh deploy-ceph.yml
+    WRAP->>OPCLI: op account get
+    OPCLI-->>WRAP: session OK
+    WRAP->>TMP: mktemp + chmod 600 + trap rm
+    WRAP->>OPCLI: op inject -f -i secrets.yml.tpl -o TMP
+    OPCLI->>ONEP: resolve op://yucca_tf_dev/SIETCH_CEPH_*/password
+    ONEP-->>OPCLI: secret values
+    OPCLI->>TMP: write resolved YAML
+    WRAP->>ANS: exec --extra-vars @TMP
+    loop phases 1..6
+        ANS->>NODES: SSH ansible-iac@<bond_ip><br/>via id_ed25519_<cluster>
+    end
+    Note over WRAP,TMP: tmpfile rm'd on exit (trap)
+```
+
+### 9.3 `mise run capture` — DR snapshot
+
+```mermaid
+sequenceDiagram
+    actor OP as Operator
+    participant MISE as mise
+    participant ANS as ansible-playbook<br/>(post-deploy-capture.yml)
+    participant BOOT as Bootstrap node
+    participant LOCAL as localhost (delegated)
+    participant OPCLI as op CLI
+    participant ONEP as 1Password
+
+    OP->>MISE: mise run capture
+    MISE->>ANS: ansible-play.sh post-deploy-capture.yml
+    ANS->>BOOT: SSH read /etc/ceph/rgw-ssl.crt
+    ANS->>BOOT: SSH read /etc/ceph/rgw-ssl.key
+    ANS->>BOOT: SSH read /etc/ceph/ceph.client.admin.keyring
+    BOOT-->>ANS: file contents
+    loop for each artifact
+        ANS->>LOCAL: delegate_to: localhost
+        LOCAL->>OPCLI: op item edit/create<br/><CLUSTER>_CEPH_<ITEM>
+        OPCLI->>ONEP: upsert Document item<br/>in yucca_tf_dev
+    end
+    Note over ONEP: Now holds RGW_TLS_CERT,<br/>RGW_TLS_KEY, CLIENT_ADMIN_KEYRING
+```
+
+### 9.4 `scripts/install-ssh-keys.sh` — fresh workstation
+
+```mermaid
+sequenceDiagram
+    actor OP as Operator (new ws)
+    participant SCRIPT as install-ssh-keys.sh
+    participant OPCLI as op CLI
+    participant ONEP as 1Password
+    participant SSH as ~/.ssh/
+
+    OP->>SCRIPT: install-ssh-keys.sh sietch
+    SCRIPT->>OPCLI: op read .../public_key
+    OPCLI->>ONEP: SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY
+    ONEP-->>OPCLI: public_key
+    OPCLI-->>SCRIPT: pubkey content
+    SCRIPT->>SSH: compare with id_ed25519_sietch (if exists)
+    alt fingerprint match
+        SCRIPT-->>OP: skip (already present)
+    else fingerprint mismatch
+        SCRIPT-->>OP: refuse (operator must mv aside)
+    else file missing
+        SCRIPT->>OPCLI: op read .../private_key
+        OPCLI-->>SCRIPT: private_key
+        SCRIPT->>SSH: write id_ed25519_sietch (0600)<br/>+ .pub (0644)<br/>(umask 077)
+    end
+```
+
+---
+
+## 10. OSD lifecycle
+
+### Phase flow
+
+```mermaid
+flowchart TB
+    SIETCH["Sietch prep:<br/>provision_host/disks.yml partitions SSDs<br/>then ceph_deploy/lvm-setup.yml<br/><i>creates VG + db-slot LVs on each SSD's partition 5</i>"]
+    PAINBOX["Painbox prep:<br/>installimage post-install.sh<br/><i>NVMe RAID-1 → vg0 → db-slot0..13 + ssd-osd LVs</i>"]
+    SPEC["ceph_deploy/osds.yml renders<br/>templates/osd-spec.yml.j2 → /etc/ceph/osd-spec.yml<br/><i>one document per host; paths from host_vars</i>"]
+    APPLY["ceph orch apply osd -i /etc/ceph/osd-spec.yml<br/><i>cephadm: discover disks, LUKS-format, LVM, deploy daemons</i>"]
+    POLL["Wait for cephadm to provision<br/><i>poll num_osds until expected count reached</i>"]
+    UP["Wait for OSDs up<br/><i>poll num_up_osds == num_osds</i>"]
+    UNSET["Defensive: ceph osd unset noin<br/><i>idempotent — clears stale flag from prior runs</i>"]
+    REWEIGHT["Safety net: fix any reweight=0 OSDs"]
+
+    SIETCH --> SPEC
+    PAINBOX --> SPEC
+    SPEC --> APPLY --> POLL --> UP --> UNSET --> REWEIGHT
+```
+
+### Service-spec model, not per-disk loops
+
+Earlier versions of this role iterated `cephadm ceph-volume lvm create`
+per disk and composed `/dev/disk/by-path/...` paths from host_vars
+(`sas_path_prefix` + `path_phy`). That assumed sietch's SAS expander
+topology and broke on painbox's PCI-ATA disks plus LV-backed SSD OSD.
+
+The current flow renders a cephadm OSD service spec from per-host data
+and applies it via `ceph orch apply osd -i`. Cephadm handles device
+path resolution, LUKS encryption (`encrypted: true`), LVM provisioning,
+and daemon deployment. The role is hardware-shape-agnostic — the only
+shape-aware logic is the template's Jinja conditional. See
+[ADR-011](adr/011-cephadm-osd-service-specs.md) for the decision record.
+
+### Hardware-shape independence in the template
+
+`templates/osd-spec.yml.j2` renders one document per host (sietch nodes
+have unique SAS prefixes per chassis, so a shared spec doesn't work)
+with two shape branches:
+
+- **Sietch** (`sas_path_prefix` defined): data path =
+  `/dev/disk/by-path/{{ sas_path_prefix }}-{{ path_phy }}-lun-0`; SSD
+  OSD = partition on the SAS-attached SSD via `path_phy + partition`.
+- **Painbox** (`sas_path_prefix` undefined): data path =
+  `/dev/disk/by-path/{{ path_phy }}` (operator authors the full PCI-ATA
+  identifier in host_vars); SSD OSD = LV via the `lv` field
+  (`/dev/{{ lv }}`).
+
+`db_devices.paths` is always `/dev/{{ db }}` — both shapes use LVs for
+block.db, no composition needed.
+
+### Idempotency
+
+`ceph orch apply osd` is idempotent — re-applying the same spec is a
+no-op when deployed OSDs match. New disks (populating an empty bay
+later, future expansion) are picked up automatically on the next apply.
+Existing OSDs are not destroyed by a spec apply — removal requires
+explicit `ceph orch osd rm`.
+
+### Defensive noin handling
+
+The spec-based flow doesn't need the `noin` flag (cephadm rolls out
+OSDs gracefully one at a time). The role's tail still includes a
+`ceph osd unset noin` task as a defensive cleanup — stale `noin` flags
+from a prior failed run of the older imperative flow can leave the
+cluster degraded; the unconditional unset clears that safely (no-op
+when already unset).
+
+### Reweight-zero safety net
+
+`osds.yml` ends with a task that fixes any OSD stuck at `reweight=0` by
+running `ceph osd reweight <id> 1.0`. Rare with the spec-based flow but
+kept as a backstop against an OSD coming up while `noin` was set
+externally.
+
+---
+
+## 11. Monitoring
+
+### What cephadm auto-deploys
+
+cephadm's bootstrap automatically deploys:
+- **node-exporter** on every node
+- **ceph-exporter** on every node
+- **prometheus** (single instance, cephadm-managed)
+- **alertmanager** (single instance)
+- **grafana** (single instance, with pre-built Ceph dashboards)
+- **89 Prometheus alert rules** across 16 groups
+
+### What we configure
+
+`roles/ceph_deploy/tasks/monitoring.yml` handles only integration:
+
+1. Enable the `prometheus` MGR module (if not already enabled)
+2. Wait for all five monitoring service types to report `running > 0`
+3. Set dashboard integration URLs for Prometheus, Alertmanager, Grafana
+   (using the bootstrap node's `bond_ip`)
+4. Set Grafana admin credentials from the op-injected
+   `vault_grafana_admin_password`
+5. Disable Grafana SSL cert verification in dashboard (self-signed cert)
+
+`roles/ceph_tuning/tasks/main.yml` verifies the alert rule count and warns
+if fewer than 10 rule groups are loaded (expects 16+).
+
+---
+
+## 12. Provision host internals
+
+### Ten-phase flow
+
+```mermaid
+flowchart TB
+    P1["detect.yml<br/><i>live image + UEFI assertions, SSD discovery</i>"]
+    P2["prerequisites_live.yml<br/><i>apt setup on live image, install debootstrap/mdadm/lvm2</i>"]
+    P3["disks.yml<br/><i>partition, mdraid, LVM, mount at /mnt</i>"]
+    P4["install.yml<br/><i>debootstrap Bookworm into /mnt</i>"]
+    P5["configure.yml<br/><i>hostname, hosts, network, fstab, mdadm templates</i>"]
+    P6["chroot_packages.yml<br/><i>bind mounts, apt install, machine-id, SSH keys</i>"]
+    P7["admin_user.yml<br/><i>ansible-iac (key-only) inside chroot;<br/>ops user is created post-boot by baseline (ADR-003)</i>"]
+    P8["bootloader.yml<br/><i>initramfs, grub-install, efibootmgr</i>"]
+    P9["finalize.yml<br/><i>marker, ESP mirror, unmount, reboot</i>"]
+    P10["unmount.yml<br/><i>reverse-order cleanup (shared with rescue)</i>"]
+
+    P1 --> P2 --> P3 --> P4 --> P5 --> P6 --> P7 --> P8 --> P9 --> P10
+```
+
+### Marker-driven resume gate
+
+After `disks.yml` runs, `main.yml` checks for
+`/mnt/etc/ceph-provisioned.json`. If present and the hostname matches, all
+chroot phases (4-8) plus the marker/ESP block are skipped. The role goes
+straight to unmount + reboot.
+
+This prevents:
+- Re-binding bind mounts that are already in place
+- Re-rotating SSH host keys (would break known_hosts)
+- Re-hashing the ops password with a fresh salt
+- Re-running grub-install for no reason
+- Overwriting the marker with a stale `provisioned_at` timestamp
+
+The marker filename (`ceph-provisioned.json`) is project-scoped, not
+cluster-scoped — every Ceph cluster (sietch, painbox, future) writes the
+same filename. The marker's *contents* identify which cluster + host the
+machine belongs to.
+
+### Block/rescue cleanup
+
+The entire provisioning sequence (phases 2-9) runs inside a `block/rescue`.
+If any phase fails, the rescue block includes `unmount.yml` which tears
+down chroot bind mounts and the /mnt hierarchy in reverse order, then
+re-raises the failure. This ensures the next run starts from a clean mount
+state.
+
+---
+
+## 13. Future
+
+- **CI / GitHub Actions** — the SA split (superuser write vs read-only
+  consume) already enables it. Read-only SA in CI runs `mise run lint`,
+  `mise run check`, `mise run test`, `mise run preflight` against every PR.
+  Superuser SA only runs `mise run tf:plan` (never `apply`) to detect drift.
+- **Talos K8s as a sibling stack** — `tf/deployment/<env>/talos/` would
+  share the same terragrunt root config and S3 backend, with its own state
+  key (`ceph/<env>/talos/terraform.tfstate`). Deployment plan lives
+  outside this repo until Phase A begins; a per-stack README lands
+  alongside the code when it's implemented.
+- **TF-managed `onepassword_item` resources** — re-enable the dormant
+  resources in `secrets.tf.disabled` once the dedicated ceph service
+  account lands. Tracked in [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md).
+- **OSD LUKS keys in 1P** — store dm-crypt keys for DR. Deferred until
+  the hybrid is stable.
+
+---
+
+## See also
+
+| Topic                              | Doc                                                                            |
+|------------------------------------|--------------------------------------------------------------------------------|
+| TF/Terragrunt detail               | [`tf/README.md`](../../../tf/README.md)                                        |
+| Wrapper script reference           | [docs/scripts.md](scripts.md)                                                  |
+| Secrets catalog + rotation         | [docs/secrets.md](secrets.md)                                                  |
+| Trust boundaries + encryption      | [docs/security-model.md](security-model.md)                                    |
+| Hardware specs + network topology  | [docs/hardware.md](hardware.md)                                                |
+| Coding idioms and anti-patterns    | [docs/patterns.md](patterns.md)                                                |
+| Adding a new cluster (walkthrough) | [docs/adding-a-cluster.md](adding-a-cluster.md)                                |
+| TF-first + op inject decision      | [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md)                |
+| SSH keys in 1P decision            | [ADR-010](adr/010-ssh-keys-in-1password.md)                                    |
+| Cephadm OSD service spec decision  | [ADR-011](adr/011-cephadm-osd-service-specs.md)                                |
+| Why explicit OSD-to-disk mapping   | [ADR-002](adr/002-explicit-osd-mapping.md)                                     |
+| Why baseline is split from provision | [ADR-003](adr/003-baseline-split-from-provision.md)                          |
+| Why debootstrap (not preseed) for sietch | [ADR-008](adr/008-debootstrap-over-preseed.md)                           |

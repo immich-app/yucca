@@ -1,0 +1,28 @@
+---
+driver:
+  name: default
+
+platforms:
+  - name: molecule-security-test
+    image: debian:bookworm
+    pre_build_image: true
+
+provisioner:
+  name: ansible
+  inventory:
+    hosts:
+      all:
+        hosts:
+          molecule-security-test:
+            hostname_short: molecule-security-test
+            bond_ip: 10.10.10.99
+        children:
+          ceph_nodes:
+            hosts:
+              molecule-security-test:
+          ceph_bootstrap:
+            hosts:
+              molecule-security-test:
+
+verifier:
+  name: ansible

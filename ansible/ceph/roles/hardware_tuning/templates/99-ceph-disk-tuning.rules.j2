@@ -1,0 +1,16 @@
+# Ceph disk tuning udev rules — managed by Ansible (hardware-tuning role)
+# Applied on device add/change events. Survives reboots and hot-plug.
+
+# HDD: rotational devices
+ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="{{ ceph_hdd_scheduler }}"
+ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="1", ATTR{queue/read_ahead_kb}="{{ ceph_hdd_readahead_kb }}"
+{% if ceph_hdd_nr_requests > 0 %}
+ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="1", ATTR{queue/nr_requests}="{{ ceph_hdd_nr_requests }}"
+{% endif %}
+
+# SSD: non-rotational devices
+ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="{{ ceph_ssd_scheduler }}"
+ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="0", ATTR{queue/read_ahead_kb}="{{ ceph_ssd_readahead_kb }}"
+{% if ceph_ssd_nr_requests > 0 %}
+ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="0", ATTR{queue/nr_requests}="{{ ceph_ssd_nr_requests }}"
+{% endif %}

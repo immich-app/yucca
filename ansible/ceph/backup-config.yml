@@ -1,0 +1,159 @@
+---
+# Export Ceph cluster configuration for disaster recovery.
+# Captures: ceph.conf, admin keyring, CRUSH map, RGW realm config,
+# monitor map, and OSD map to the controller's backups/ directory.
+#
+# Usage:
+#   scripts/ansible-play.sh backup-config.yml
+#
+# Outputs: backups/<timestamp>/ on the controller (gitignored)
+# Restore: see docs/runbooks/recovery.md
+
+- name: Backup Ceph cluster configuration
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  vars:
+    backup_timestamp: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+    backup_local_dir: "{{ playbook_dir }}/backups/{{ backup_timestamp }}"
+
+  tasks:
+    - name: Create local backup directory
+      ansible.builtin.file:
+        path: "{{ backup_local_dir }}"
+        state: directory
+        mode: '0700'
+      delegate_to: localhost
+      run_once: true  # noqa: run-once[task]
+
+    - name: Export cluster configuration
+      when: inventory_hostname in groups['ceph_bootstrap']
+      block:
+        - name: Export ceph.conf
+          ansible.builtin.command: ceph config generate-minimal-conf
+          register: ceph_conf_export
+          changed_when: false
+
+        - name: Export admin keyring
+          ansible.builtin.command: ceph auth get client.admin
+          register: admin_keyring_export
+          changed_when: false
+
+        - name: Export CRUSH map (decompiled)
+          ansible.builtin.shell: |
+            set -o pipefail
+            ceph osd getcrushmap -o /tmp/crushmap.bin 2>/dev/null
+            crushtool -d /tmp/crushmap.bin -o /tmp/crushmap.txt
+            cat /tmp/crushmap.txt
+            rm -f /tmp/crushmap.bin /tmp/crushmap.txt
+          args:
+            executable: /bin/bash
+          register: crush_export
+          changed_when: false
+
+        - name: Export OSD map summary
+          ansible.builtin.command: ceph osd dump --format json
+          register: osd_dump_export
+          changed_when: false
+
+        - name: Export monitor map
+          ansible.builtin.command: ceph mon dump --format json
+          register: mon_dump_export
+          changed_when: false
+
+        - name: Export cluster config dump
+          ansible.builtin.command: ceph config dump --format json
+          register: config_dump_export
+          changed_when: false
+
+        - name: Export RGW realm configuration
+          ansible.builtin.shell: |
+            set -o pipefail
+            echo '{"realm":' && radosgw-admin realm get 2>/dev/null
+            echo ',"zonegroup":' && radosgw-admin zonegroup get 2>/dev/null
+            echo ',"zone":' && radosgw-admin zone get 2>/dev/null
+            echo '}'
+          args:
+            executable: /bin/bash
+          register: rgw_realm_export
+          changed_when: false
+          failed_when: false
+
+        - name: Export service specs
+          ansible.builtin.command: ceph orch ls --format yaml
+          register: orch_services_export
+          changed_when: false
+
+        - name: Export host list
+          ansible.builtin.command: ceph orch host ls --format yaml
+          register: orch_hosts_export
+          changed_when: false
+
+        - name: Write ceph.conf backup
+          ansible.builtin.copy:
+            content: "{{ ceph_conf_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/ceph.conf"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write admin keyring backup
+          ansible.builtin.copy:
+            content: "{{ admin_keyring_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/ceph.client.admin.keyring"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write CRUSH map backup
+          ansible.builtin.copy:
+            content: "{{ crush_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/crushmap.txt"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write OSD dump backup
+          ansible.builtin.copy:
+            content: "{{ osd_dump_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/osd-dump.json"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write monitor dump backup
+          ansible.builtin.copy:
+            content: "{{ mon_dump_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/mon-dump.json"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write config dump backup
+          ansible.builtin.copy:
+            content: "{{ config_dump_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/config-dump.json"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write RGW realm backup
+          ansible.builtin.copy:
+            content: "{{ rgw_realm_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/rgw-realm.json"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write service specs backup
+          ansible.builtin.copy:
+            content: "{{ orch_services_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/orch-services.yaml"
+            mode: '0600'
+          delegate_to: localhost
+
+        - name: Write host list backup
+          ansible.builtin.copy:
+            content: "{{ orch_hosts_export.stdout }}\n"
+            dest: "{{ backup_local_dir }}/orch-hosts.yaml"
+            mode: '0600'
+          delegate_to: localhost
+
+    - name: Report backup location
+      ansible.builtin.debug:
+        msg: "Backup written to {{ backup_local_dir }}/"
+      run_once: true  # noqa: run-once[task]

@@ -1,0 +1,50 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ${MOLECULE_PROJECT_DIRECTORY}/../../requirements.yml
+
+driver:
+  name: default
+
+platforms:
+  - name: molecule-ceph-test
+    image: debian:bookworm
+    pre_build_image: true
+
+provisioner:
+  name: ansible
+  inventory:
+    hosts:
+      all:
+        hosts:
+          molecule-ceph-test:
+            hostname_short: molecule-ceph-test
+            bond_ip: 10.10.10.99
+            sas_path_prefix: "pci-0000:02:00.0-sas-exp0x500056b300000000"
+            ssd1_phy: 12
+            ssd2_phy: 13
+            ceph_db_vg1: ceph-db-rear12
+            ceph_db_vg2: ceph-db-rear13
+            ceph_hdd_osds:
+              - path_phy: phy0
+                db: ceph-db-rear12/db-slot0
+            ceph_ssd_osds:
+              - path_phy: phy12
+                partition: 6
+        children:
+          ceph_nodes:
+            hosts:
+              molecule-ceph-test:
+          ceph_bootstrap:
+            hosts:
+              molecule-ceph-test:
+          ceph_join:
+            hosts: {}
+  config_options:
+    defaults:
+      gathering: implicit
+
+# Only verify templates render — don't converge (needs real hardware)
+verifier:
+  name: ansible

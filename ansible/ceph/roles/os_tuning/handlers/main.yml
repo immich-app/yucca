@@ -1,0 +1,9 @@
+---
+- name: Apply sysctl tuning
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/99-ceph-tuning.conf
+  changed_when: true
+
+- name: Restart rsyslog
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: restarted

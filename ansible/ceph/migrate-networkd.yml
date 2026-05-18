@@ -1,0 +1,62 @@
+---
+# Migrate ifupdown -> systemd-networkd on sietch Ceph nodes.
+#
+# Live migration — no reboot, no Ceph disruption:
+#   1. Deploys networkd configs
+#   2. Starts networkd (adopts existing bond0)
+#   3. Verifies bond0 IP, members, gateway
+#   4. Commits: disables ifupdown, enables networkd for boot
+#
+# If verification fails, the play stops before committing.
+# networkd can be stopped and ifupdown still owns next boot.
+#
+# Safety:
+#   - serial: 1 -- one node at a time
+#   - /etc/network/interfaces preserved on disk
+#   - Rollback: /usr/local/sbin/rollback-networkd.sh
+#   - iDRAC at 10.10.11.9{0,1,2} for emergency recovery
+#
+# Usage (samara first):
+#   scripts/ansible-play.sh migrate-networkd.yml --limit sietch-ceph-samara
+#
+# Usage (remaining nodes):
+#   scripts/ansible-play.sh migrate-networkd.yml --limit 'ceph_nodes:!sietch-ceph-samara'
+#
+# Dry run:
+#   scripts/ansible-play.sh migrate-networkd.yml --limit sietch-ceph-samara --check --diff
+
+- name: Migrate to systemd-networkd
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+  serial: 1
+
+  pre_tasks:
+    - name: Preflight -- check Ceph health
+      ansible.builtin.command: ceph health --format json
+      register: ceph_health_pre
+      changed_when: false
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+    - name: Assert cluster is healthy
+      ansible.builtin.assert:
+        that:
+          - (ceph_health_pre.stdout | from_json).status in ['HEALTH_OK', 'HEALTH_WARN']
+        fail_msg: >-
+          Ceph is {{ (ceph_health_pre.stdout | from_json).status }}.
+          Fix cluster health before migrating.
+        success_msg: "Ceph: {{ (ceph_health_pre.stdout | from_json).status }}"
+
+  roles:
+    - role: networkd
+
+  post_tasks:
+    - name: Confirm Ceph health after migration
+      ansible.builtin.command: ceph health --format json
+      register: ceph_health_post
+      changed_when: false
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+    - name: Report Ceph health
+      ansible.builtin.debug:
+        msg: "Ceph: {{ (ceph_health_post.stdout | from_json).status }}"

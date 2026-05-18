@@ -1,0 +1,21 @@
+# RGW service spec — rendered by ceph-deploy role
+# Applied via: ceph orch apply -i /etc/ceph/rgw-spec.yaml
+#
+# Do not edit by hand. Regenerate by re-running the ceph-deploy role.
+service_type: rgw
+service_id: {{ ceph_rgw_realm }}.{{ ceph_rgw_zone }}
+placement:
+  hosts:
+{% for host in groups['ceph_nodes'] %}
+    - {{ hostvars[host]['hostname_short'] }}
+{% endfor %}
+spec:
+  rgw_realm: {{ ceph_rgw_realm }}
+  rgw_zone: {{ ceph_rgw_zone }}
+  rgw_frontend_port: {{ ceph_rgw_port }}
+  rgw_frontend_type: beast
+{% if ceph_rgw_ssl | default(false) %}
+  ssl: true
+  rgw_frontend_ssl_certificate: |
+{{ rgw_ssl_cert_combined_pem | trim | indent(4, True) }}
+{% endif %}
