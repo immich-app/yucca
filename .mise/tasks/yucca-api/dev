@@ -5,4 +5,8 @@
 set -e
 source "$(dirname "$0")/env"
 
-op run --env-file="./.env" -- pnpm --filter yucca-api start:dev
+if command -v op &>/dev/null; then
+  op run --env-file="./.env" -- pnpm --filter yucca-api start:dev
+else
+  pnpm --filter yucca-api start:dev
+fi
