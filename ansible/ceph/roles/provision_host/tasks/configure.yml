@@ -1,0 +1,174 @@
+---
+# Phase 5: Configure the installed system
+#
+# All tasks write to /mnt (the installed system's root). No chroot
+# needed for file placement — ansible modules handle it fine because
+# /mnt is just a directory on the live image as far as the module
+# machinery is concerned.
+#
+# UUIDs are gathered at runtime from blkid so the fstab template
+# reflects reality. mdadm.conf is built from `mdadm --detail --scan`.
+
+# --- Gather filesystem UUIDs for fstab ---------------------------------
+
+- name: Gather UUID for md/root
+  ansible.builtin.command: "blkid -s UUID -o value /dev/md/root"
+  register: blkid_root
+  changed_when: false
+
+- name: Gather UUID for md/boot
+  ansible.builtin.command: "blkid -s UUID -o value /dev/md/boot"
+  register: blkid_boot
+  changed_when: false
+
+- name: Gather UUID for md/swap
+  ansible.builtin.command: "blkid -s UUID -o value /dev/md/swap"
+  register: blkid_swap
+  changed_when: false
+
+- name: Gather UUID for primary ESP
+  ansible.builtin.command: "blkid -s UUID -o value {{ ssd1_dev }}1"
+  register: blkid_esp
+  changed_when: false
+
+- name: Gather PARTUUID for backup ESP (used by kernel postinst hook)
+  ansible.builtin.command: "blkid -s PARTUUID -o value {{ ssd2_dev }}1"
+  register: blkid_backup_esp_partuuid
+  changed_when: false
+
+- name: Set UUID facts
+  ansible.builtin.set_fact:
+    uuid_root: "{{ blkid_root.stdout | trim }}"
+    uuid_boot: "{{ blkid_boot.stdout | trim }}"
+    uuid_swap: "{{ blkid_swap.stdout | trim }}"
+    uuid_esp: "{{ blkid_esp.stdout | trim }}"
+    backup_esp_partuuid: "{{ blkid_backup_esp_partuuid.stdout | trim }}"
+
+# --- Hostname and /etc/hosts -------------------------------------------
+
+- name: Write /mnt/etc/hostname
+  ansible.builtin.copy:
+    content: "{{ hostname_short }}\n"
+    dest: "{{ provision_mnt }}/etc/hostname"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Render /mnt/etc/hosts
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: "{{ provision_mnt }}/etc/hosts"
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- Network interfaces (bond0 static) ---------------------------------
+
+- name: Ensure /mnt/etc/network directory exists
+  ansible.builtin.file:
+    path: "{{ provision_mnt }}/etc/network"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Render /mnt/etc/network/interfaces
+  ansible.builtin.template:
+    src: interfaces.j2
+    dest: "{{ provision_mnt }}/etc/network/interfaces"
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- DNS resolver (so chroot apt works) --------------------------------
+
+- name: Render /mnt/etc/resolv.conf
+  ansible.builtin.template:
+    src: resolv.conf.j2
+    dest: "{{ provision_mnt }}/etc/resolv.conf"
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- apt sources list --------------------------------------------------
+
+- name: Render /mnt/etc/apt/sources.list
+  ansible.builtin.template:
+    src: apt-sources.list.j2
+    dest: "{{ provision_mnt }}/etc/apt/sources.list"
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- Timezone ----------------------------------------------------------
+
+- name: Symlink /etc/localtime to target timezone
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ timezone | default('UTC') }}"
+    dest: "{{ provision_mnt }}/etc/localtime"
+    state: link
+    force: true
+    follow: false
+
+- name: Write /mnt/etc/timezone
+  ansible.builtin.copy:
+    content: "{{ timezone | default('UTC') }}\n"
+    dest: "{{ provision_mnt }}/etc/timezone"
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- fstab -------------------------------------------------------------
+
+- name: Render /mnt/etc/fstab
+  ansible.builtin.template:
+    src: fstab.j2
+    dest: "{{ provision_mnt }}/etc/fstab"
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- mdadm.conf --------------------------------------------------------
+
+- name: Gather mdadm --detail --scan output
+  ansible.builtin.command: mdadm --detail --scan
+  register: mdadm_scan
+  changed_when: false
+
+- name: Set mdadm scan fact
+  ansible.builtin.set_fact:
+    mdadm_scan_output: "{{ mdadm_scan.stdout }}"
+
+- name: Ensure /mnt/etc/mdadm directory exists
+  ansible.builtin.file:
+    path: "{{ provision_mnt }}/etc/mdadm"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Render /mnt/etc/mdadm/mdadm.conf
+  ansible.builtin.template:
+    src: mdadm.conf.j2
+    dest: "{{ provision_mnt }}/etc/mdadm/mdadm.conf"
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- ESP mirror kernel postinst hook -----------------------------------
+
+- name: Ensure /mnt/etc/kernel/postinst.d directory exists
+  ansible.builtin.file:
+    path: "{{ provision_mnt }}/etc/kernel/postinst.d"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Render ESP mirror kernel postinst hook
+  ansible.builtin.template:
+    src: zz-mirror-esp.j2
+    dest: "{{ provision_mnt }}/etc/kernel/postinst.d/zz-mirror-esp"
+    owner: root
+    group: root
+    mode: '0755'

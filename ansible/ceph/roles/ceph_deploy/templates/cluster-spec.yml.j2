@@ -1,0 +1,23 @@
+[global]
+# Initial cluster config applied during cephadm bootstrap
+osd_pool_default_size = 2
+osd_pool_default_min_size = 1
+public_network = {{ public_network }}
+cluster_network = {{ cluster_network }}
+
+# Recovery/backfill throttling (small cluster, shared network)
+osd_recovery_max_active = 1
+osd_recovery_sleep_hdd = 0.1
+osd_max_backfills = 1
+
+# PG autoscaler target
+mon_target_pg_per_osd = 100
+
+[osd]
+# Let BlueStore use the entire block.db LV (pre-created at 240G)
+bluestore_block_db_size = 0
+
+# Scrub window — 2-6 AM, deep scrub weekly
+osd_scrub_begin_hour = 2
+osd_scrub_end_hour = 6
+osd_deep_scrub_interval = 604800

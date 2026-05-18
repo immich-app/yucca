@@ -1,0 +1,21 @@
+#!/bin/bash
+# /etc/kernel/postinst.d/zz-mirror-esp
+# Mirrors the primary ESP to the backup ESP on SSD2 after every kernel update.
+# Managed by provision-host role — do not edit by hand.
+set -u
+
+BACKUP_ESP="/dev/disk/by-partuuid/{{ backup_esp_partuuid }}"
+MOUNT_POINT=$(mktemp -d)
+
+if ! mount "$BACKUP_ESP" "$MOUNT_POINT"; then
+    logger -t zz-mirror-esp "WARNING: failed to mount backup ESP $BACKUP_ESP — kernel mirror skipped"
+    rmdir "$MOUNT_POINT"
+    exit 0
+fi
+
+if ! rsync -a --delete /boot/efi/ "$MOUNT_POINT/"; then
+    logger -t zz-mirror-esp "WARNING: rsync from /boot/efi to backup ESP failed"
+fi
+
+umount "$MOUNT_POINT"
+rmdir "$MOUNT_POINT"

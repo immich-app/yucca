@@ -1,0 +1,11 @@
+---
+# No dependencies — runs pre-deploy on provisioned nodes.
+# Should run BEFORE ceph_deploy so OSD daemons start with correct limits.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: os_tuning
+  description: Kernel and sysctl tuning for Ceph OSD nodes
+  min_ansible_version: "2.19"

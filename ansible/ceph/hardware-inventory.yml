@@ -1,0 +1,85 @@
+---
+- name: Hardware inventory
+  hosts: ceph_nodes
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Gather dmidecode memory info
+      ansible.builtin.command: dmidecode -t memory
+      register: dmidecode_memory
+      changed_when: false
+
+    - name: Gather lsblk disk info
+      ansible.builtin.command: lsblk -d -J -o NAME,SIZE,MODEL,ROTA,TRAN,SERIAL
+      register: lsblk_output
+      changed_when: false
+
+    - name: Gather network interface info
+      ansible.builtin.command: ip -j link show
+      register: ip_link_output
+      changed_when: false
+
+    - name: Parse system info
+      ansible.builtin.set_fact:
+        hw_info:
+          hostname: "{{ ansible_hostname }}"
+          ip: "{{ ansible_host }}"
+          system:
+            manufacturer: "{{ ansible_system_vendor }}"
+            product: "{{ ansible_product_name }}"
+            serial: "{{ ansible_product_serial }}"
+          cpu:
+            model: "{{ ansible_processor[2] }}"
+            sockets: "{{ ansible_processor_count }}"
+            cores_per_socket: "{{ ansible_processor_cores }}"
+            threads_per_core: "{{ ansible_processor_threads_per_core }}"
+            total_vcpus: "{{ ansible_processor_vcpus }}"
+          memory:
+            total_mb: "{{ ansible_memtotal_mb }}"
+            dimms: "{{ dmidecode_memory.stdout }}"
+          storage:
+            disks: "{{ (lsblk_output.stdout | from_json).blockdevices }}"
+          network:
+            interfaces: "{{ ip_link_output.stdout | from_json }}"
+          os:
+            distribution: "{{ ansible_distribution }}"
+            version: "{{ ansible_distribution_version }}"
+            kernel: "{{ ansible_kernel }}"
+
+    - name: Ensure hardware/ output directory exists
+      delegate_to: localhost
+      become: false
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/hardware"
+        state: directory
+        mode: '0755'
+      run_once: true  # noqa: run-once[task]
+
+    - name: Write per-host JSON
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        content: "{{ hw_info | to_nice_json }}"
+        dest: "{{ playbook_dir }}/hardware/{{ inventory_hostname }}.json"
+        mode: '0644'
+
+    - name: Stash for aggregation
+      ansible.builtin.set_fact:
+        _collected: "{{ hw_info }}"
+
+- name: Combine inventory into single file
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Build combined inventory
+      ansible.builtin.set_fact:
+        combined: >-
+          {{ combined | default({}) |
+             combine({item: hostvars[item]['_collected']}) }}
+      loop: "{{ groups['ceph_nodes'] }}"
+
+    - name: Write combined JSON
+      ansible.builtin.copy:
+        content: "{{ combined | to_nice_json }}"
+        dest: "{{ playbook_dir }}/hardware/combined.json"
+        mode: '0644'

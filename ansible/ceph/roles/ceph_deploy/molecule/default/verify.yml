@@ -1,0 +1,55 @@
+---
+# Molecule verify — validates that templates render without errors.
+# Does NOT require a running Ceph cluster.
+
+- name: Verify ceph_deploy template rendering
+  hosts: all
+  gather_facts: false
+
+  vars:
+    cluster_domain: dev.austin.int.futo.cloud
+    public_network: 10.10.10.0/24
+    cluster_network: 10.10.10.0/24
+    ceph_rgw_realm: sietch
+    ceph_rgw_zone: dev-z1
+    ceph_rgw_port: 443
+    ceph_rgw_ssl: true
+    rgw_ssl_cert_combined_pem: "MOCK_CERT_CONTENT"
+    ceph_rgw_dns_name: s3.dev.austin.int.futo.cloud
+
+  tasks:
+    - name: Render hosts.j2
+      ansible.builtin.template:
+        src: "../../templates/hosts.j2"
+        dest: /tmp/molecule-hosts.txt
+        mode: '0644'
+
+    - name: Verify hosts.j2 has no 127.0.1.1
+      ansible.builtin.command: grep -c '127.0.1.1' /tmp/molecule-hosts.txt
+      register: hosts_check
+      failed_when: hosts_check.rc == 0
+      changed_when: false
+
+    - name: Render cluster-spec.yml.j2
+      ansible.builtin.template:
+        src: "../../templates/cluster-spec.yml.j2"
+        dest: /tmp/molecule-cluster-spec.yml
+        mode: '0644'
+
+    - name: Render rgw-spec.yaml.j2
+      ansible.builtin.template:
+        src: "../../templates/rgw-spec.yaml.j2"
+        dest: /tmp/molecule-rgw-spec.yaml
+        mode: '0644'
+
+    - name: Verify rgw-spec uses hostname_short
+      ansible.builtin.shell: |
+        set -o pipefail
+        grep 'molecule-ceph-test' /tmp/molecule-rgw-spec.yaml
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Report success
+      ansible.builtin.debug:
+        msg: "All templates rendered and validated successfully"

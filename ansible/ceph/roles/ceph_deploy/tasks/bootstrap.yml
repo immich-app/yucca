@@ -1,0 +1,70 @@
+---
+# Phase 2: Bootstrap cluster (first node only)
+
+- name: Check if Ceph cluster already exists
+  ansible.builtin.stat:
+    path: /etc/ceph/ceph.conf
+  register: ceph_conf
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Write initial ceph config
+  ansible.builtin.template:
+    src: cluster-spec.yml.j2
+    dest: /tmp/ceph-initial.conf
+    mode: '0644'
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - not (ceph_conf.stat.exists | default(false))
+
+- name: Write dashboard password to temp file
+  ansible.builtin.copy:
+    content: "{{ ceph_dashboard_password }}"
+    dest: /tmp/.ceph-dashboard-pw
+    owner: root
+    group: root
+    mode: '0600'
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - not (ceph_conf.stat.exists | default(false))
+  no_log: true
+
+- name: Bootstrap Ceph cluster
+  ansible.builtin.shell: |
+    set -o pipefail
+    cephadm bootstrap \
+      --mon-ip {{ bond_ip }} \
+      --initial-dashboard-user {{ ceph_dashboard_user }} \
+      --initial-dashboard-password "$(cat /tmp/.ceph-dashboard-pw)" \
+      --dashboard-password-noupdate \
+      --allow-fqdn-hostname \
+      --config /tmp/ceph-initial.conf \
+      2>&1 | tee /var/log/ceph-bootstrap.log
+    RC=$?
+    rm -f /tmp/.ceph-dashboard-pw
+    exit $RC
+  args:
+    executable: /bin/bash
+  register: bootstrap_result
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - not (ceph_conf.stat.exists | default(false))
+  changed_when: bootstrap_result.rc | default(1) == 0
+  no_log: true
+
+- name: Clean up dashboard password file on skip
+  ansible.builtin.file:
+    path: /tmp/.ceph-dashboard-pw
+    state: absent
+  when: inventory_hostname in groups['ceph_bootstrap']
+  timeout: 600
+
+- name: Show bootstrap result
+  ansible.builtin.debug:
+    msg: "{{ bootstrap_result.stdout_lines[-15:] | default(['Already bootstrapped']) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - bootstrap_result is not skipped
+
+    # cephadm automatically distributes ceph.conf, admin keyring, and
+    # its SSH key to managed hosts during `ceph orch host add`. No
+    # manual capture or distribution needed.

@@ -1,0 +1,22 @@
+---
+# Ceph release train. Upstream publishes per-release apt trees at
+# download.ceph.com/debian-<release>/, and each tree has subdirectories
+# per Debian codename. prerequisites.yml pins the codename to 'bookworm'
+# in the sources.list entry — when upgrading the base OS to Trixie,
+# flip the codename there. This split keeps the Ceph release and the
+# Debian release independently versionable.
+ceph_release: tentacle
+ceph_release_version: "20.2.*"  # pin to patch range; set "20.2.1" to pin exactly
+ceph_repo_url: "https://download.ceph.com/debian-{{ ceph_release }}/"
+ceph_repo_key_url: "https://download.ceph.com/keys/release.asc"
+cephadm_install_method: repo   # 'repo' or 'curl'
+
+# Initial PG counts per pool. The autoscaler is left on and will adjust
+# over time, but starting at pg_num=1 (the ceph default) causes PG
+# splitting under load which tanks performance during the first fill.
+# These values are sized for ~36 OSDs. Scale proportionally for larger
+# clusters.
+ceph_pg_init_data: 128        # EC data pool — bulk of I/O
+ceph_pg_init_index: 16        # bucket index
+ceph_pg_init_non_ec: 16       # multipart uploads
+ceph_pg_init_meta: 8          # .rgw.root, .meta, .log, .control
