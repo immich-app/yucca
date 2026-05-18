@@ -1,0 +1,14 @@
+---
+# Apply OS-level kernel tuning to Ceph nodes.
+# Run BEFORE deploy-ceph.yml so OSD daemons start with correct limits.
+#
+# Usage:
+#   scripts/ansible-play.sh tune-os.yml
+
+- name: OS tuning for Ceph nodes
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  roles:
+    - os_tuning

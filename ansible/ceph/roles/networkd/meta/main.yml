@@ -1,0 +1,12 @@
+---
+# Standalone migration role -- NOT wired into site.yml.
+# Run via migrate-networkd.yml playbook only.
+# Requires: systemd-networkd installed, bond_ip + bond_interfaces defined.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: networkd
+  description: systemd-networkd bond0 configuration (replaces ifupdown)
+  min_ansible_version: "2.19"

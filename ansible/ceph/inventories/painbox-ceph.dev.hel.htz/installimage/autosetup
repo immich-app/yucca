@@ -1,0 +1,32 @@
+## Hetzner installimage autosetup for SX295 Ceph node
+## Cluster: painbox-ceph.dev.hel.htz.futo.cloud (reprovision target)
+## Hardware: EPYC 7502P / 2x 7.68TB NVMe / 14x 22TB SATA
+##
+## Usage (from rescue):
+##   cat > /autosetup < autosetup
+##   installimage -a -c /autosetup -x /tmp/post-install.sh
+##
+## IMPORTANT: Only NVMe drives are listed. SATA drives are untouched.
+## Ceph: Tentacle (v20) — EOL 2027-11-18
+## BOOT MODE: BIOS (verified 2026-03-27). If UEFI, add before /boot:
+##   PART /boot/efi esp 256M
+
+DRIVE1 /dev/nvme0n1
+DRIVE2 /dev/nvme1n1
+
+SWRAID 1
+SWRAIDLEVEL 1
+
+BOOTLOADER grub
+
+HOSTNAME painbox-ceph-evelyn.dev.hel.htz.futo.cloud
+
+PART /boot ext4 1G
+PART lvm   vg0  all
+
+LV vg0 swap   swap     swap  32G
+LV vg0 root   /        ext4  100G
+LV vg0 var    /var     ext4  200G
+LV vg0 varlog /var/log ext4  50G
+
+IMAGE /root/.oldroot/nfs/install/../images/Debian-bookworm-latest-amd64-base.tar.zst

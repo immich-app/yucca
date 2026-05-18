@@ -1,0 +1,11 @@
+---
+# Must run AFTER ceph_deploy — cephadm needs unrestricted SSH during deploy.
+# Firewall rules are derived from Ceph service ports.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: security
+  description: nftables firewall and SSH hardening for Ceph nodes
+  min_ansible_version: "2.19"

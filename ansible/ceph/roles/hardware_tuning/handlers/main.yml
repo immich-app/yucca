@@ -1,0 +1,12 @@
+---
+- name: Reload udev rules
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: true
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Update GRUB
+  ansible.builtin.command: update-grub
+  changed_when: true

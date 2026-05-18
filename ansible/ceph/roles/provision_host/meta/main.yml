@@ -1,0 +1,14 @@
+---
+# No dependencies — runs against bare-metal live images.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: provision_host
+  description: Provision Debian 12 on bare-metal nodes via debootstrap
+  min_ansible_version: "2.19"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm

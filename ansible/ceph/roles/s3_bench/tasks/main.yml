@@ -1,0 +1,97 @@
+---
+# S3 benchmark role — deploys s3bench.py to each node and runs a
+# parallel workload against each node's local RGW endpoint.
+#
+# Prerequisites: python3-boto3 (installed by the baseline role)
+# Results: JSONL logs on each node + fetched to controller bench/ dir
+
+- name: Create log directory
+  ansible.builtin.file:
+    path: "{{ s3bench_log_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy s3bench.py
+  ansible.builtin.copy:
+    src: s3bench.py
+    dest: /usr/local/bin/s3bench.py
+    mode: '0755'
+
+- name: Get S3 credentials for bench user
+  ansible.builtin.command: >
+    radosgw-admin user info --uid={{ s3bench_s3_user }} --format=json
+  register: s3_user_info
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Set credential facts
+  ansible.builtin.set_fact:
+    s3bench_access_key: >-
+      {{ (s3_user_info.stdout | from_json)['keys'][0]['access_key'] }}
+    s3bench_secret_key: >-
+      {{ (s3_user_info.stdout | from_json)['keys'][0]['secret_key'] }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Distribute credentials to all nodes
+  ansible.builtin.set_fact:
+    s3bench_access_key: >-
+      {{ hostvars[groups['ceph_bootstrap'][0]]['s3bench_access_key'] }}
+    s3bench_secret_key: >-
+      {{ hostvars[groups['ceph_bootstrap'][0]]['s3bench_secret_key'] }}
+  when: inventory_hostname not in groups['ceph_bootstrap']
+
+- name: Calculate per-node key offset
+  ansible.builtin.set_fact:
+    s3bench_node_offset: >-
+      {{ (groups['ceph_nodes'].index(inventory_hostname)) *
+         (s3bench_key_offset_stride | int) }}
+
+- name: Show benchmark parameters
+  ansible.builtin.debug:
+    msg:
+      - "Node: {{ inventory_hostname }}"
+      - "Endpoint: {{ s3bench_endpoint_scheme }}://127.0.0.1:{{ s3bench_endpoint_port }}"
+      - "Ops: {{ s3bench_ops }}"
+      - "Objects: {{ s3bench_num_objects }} x {{ s3bench_object_size_mb }} MiB"
+      - "Concurrency: {{ s3bench_concurrency }}"
+      - "Key offset: {{ s3bench_node_offset }}"
+
+- name: Run s3bench
+  ansible.builtin.command: >-
+    python3 /usr/local/bin/s3bench.py
+    --endpoint {{ s3bench_endpoint_scheme }}://127.0.0.1:{{ s3bench_endpoint_port }}
+    --access-key {{ s3bench_access_key | trim }}
+    --secret-key {{ s3bench_secret_key | trim }}
+    --bucket {{ s3bench_bucket }}
+    --num-objects {{ s3bench_num_objects }}
+    --object-size-mb {{ s3bench_object_size_mb }}
+    --concurrency {{ s3bench_concurrency }}
+    --ops {{ s3bench_ops }}
+    --key-offset {{ s3bench_node_offset }}
+    --key-prefix {{ s3bench_key_prefix }}
+    {{ '--ssl-verify' if s3bench_ssl_verify else '' }}
+    --log {{ s3bench_log_dir }}/{{ inventory_hostname }}-{{ s3bench_ops }}.jsonl
+  register: s3bench_result
+  changed_when: true
+  async: 7200
+  poll: 30
+
+- name: Display results
+  ansible.builtin.debug:
+    msg: "{{ s3bench_result.stdout_lines[-15:] }}"
+
+- name: Create local results directory
+  ansible.builtin.file:
+    path: "{{ s3bench_local_results_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  run_once: true
+  when: s3bench_fetch_results | bool
+
+- name: Fetch JSONL results to controller
+  ansible.builtin.fetch:
+    src: "{{ s3bench_log_dir }}/{{ inventory_hostname }}-{{ s3bench_ops }}.jsonl"
+    dest: "{{ s3bench_local_results_dir }}/"
+    flat: true
+  when: s3bench_fetch_results | bool

@@ -1,0 +1,31 @@
+---
+# Hardware tuning defaults for Ceph OSD nodes
+
+# I/O scheduler per device class
+ceph_hdd_scheduler: mq-deadline
+ceph_ssd_scheduler: none
+
+# Read-ahead in KB per device class
+# HDDs benefit from large read-ahead for sequential recovery/deep-scrub.
+# SSDs don't benefit and excess read-ahead wastes DRAM.
+ceph_hdd_readahead_kb: 4096     # 4 MB
+ceph_ssd_readahead_kb: 128      # 128 KB (kernel default)
+
+# nr_requests (disk queue depth) — 0 means leave at kernel default
+ceph_hdd_nr_requests: 128
+ceph_ssd_nr_requests: 0         # NVMe/SSD defaults are fine
+
+# Enable weekly SSD TRIM for OS partitions (ESP, boot).
+# BlueStore manages discard for OSD devices internally.
+ceph_enable_fstrim_timer: true
+
+# CPU governor — force performance mode (disables power saving C-states)
+# Useful for dedicated Ceph nodes where latency matters more than power.
+ceph_cpu_governor_enabled: false
+ceph_cpu_governor: performance
+ceph_cpu_max_cstate: 1    # kernel param processor.max_cstate
+
+# LVM device filter — restrict LVM scanning to known VGs.
+# Prevents LVM from scanning raw OSD disks (speeds up lvscan/pvscan).
+ceph_lvm_filter_enabled: false
+ceph_lvm_filter: '[ "a|/dev/vg0/.*|", "a|/dev/md.*|", "r|.*|" ]'

@@ -1,0 +1,19 @@
+---
+# Lock in the migration: disable ifupdown, enable networkd for future boots.
+# Only runs after verify.yml passes. If verify failed, we never reach here
+# and ifupdown still owns the next boot.
+
+- name: Disable ifupdown networking.service
+  ansible.builtin.systemd:
+    name: networking.service
+    enabled: false
+
+- name: Enable systemd-networkd.service
+  ansible.builtin.systemd:
+    name: systemd-networkd.service
+    enabled: true
+
+- name: Enable systemd-networkd.socket
+  ansible.builtin.systemd:
+    name: systemd-networkd.socket
+    enabled: true

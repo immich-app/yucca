@@ -1,0 +1,26 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Emergency rollback: systemd-networkd -> ifupdown
+# Run from iDRAC console if SSH is unreachable after migration.
+# /etc/network/interfaces was preserved during migration.
+
+set -euo pipefail
+
+echo "=== Rollback: networkd -> ifupdown ==="
+
+systemctl stop systemd-networkd.service systemd-networkd.socket
+systemctl disable systemd-networkd.service systemd-networkd.socket
+
+systemctl enable networking.service
+systemctl start networking.service
+
+echo "Waiting 5s for link..."
+sleep 5
+
+if ip addr show {{ networkd_bond_name }} | grep -q '{{ bond_ip }}'; then
+  echo "OK: {{ bond_ip }} is up on {{ networkd_bond_name }}"
+  echo "Rollback complete. Verify SSH access, then investigate."
+else
+  echo "WARN: {{ bond_ip }} not found on {{ networkd_bond_name }}"
+  echo "Try: ip addr show; cat /etc/network/interfaces; journalctl -u networking"
+fi

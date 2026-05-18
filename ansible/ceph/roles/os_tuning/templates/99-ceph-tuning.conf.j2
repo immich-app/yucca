@@ -1,0 +1,29 @@
+# Ceph OSD node kernel tuning — managed by Ansible (os-tuning role)
+# Applied live via sysctl -p and persisted across reboots.
+
+# --- VM ---
+vm.swappiness = {{ ceph_sysctl_vm_swappiness }}
+vm.min_free_kbytes = {{ ceph_sysctl_vm_min_free_kbytes }}
+vm.zone_reclaim_mode = {{ ceph_sysctl_vm_zone_reclaim_mode }}
+
+# --- FS ---
+fs.aio-max-nr = {{ ceph_sysctl_fs_aio_max_nr }}
+fs.file-max = {{ ceph_sysctl_fs_file_max }}
+
+# --- Kernel ---
+kernel.pid_max = {{ ceph_sysctl_kernel_pid_max }}
+
+# --- Network (TCP buffer tuning for OSD replication) ---
+net.core.rmem_max = {{ ceph_sysctl_net_core_rmem_max }}
+net.core.wmem_max = {{ ceph_sysctl_net_core_wmem_max }}
+net.core.rmem_default = {{ ceph_sysctl_net_core_rmem_default }}
+net.core.wmem_default = {{ ceph_sysctl_net_core_wmem_default }}
+net.core.optmem_max = {{ ceph_sysctl_net_core_optmem_max }}
+net.core.netdev_max_backlog = {{ ceph_sysctl_net_core_netdev_max_backlog }}
+net.ipv4.tcp_max_syn_backlog = {{ ceph_sysctl_net_ipv4_tcp_max_syn_backlog }}
+net.ipv4.tcp_wmem = {{ ceph_sysctl_net_ipv4_tcp_wmem }}
+net.ipv4.tcp_slow_start_after_idle = {{ ceph_sysctl_net_ipv4_tcp_slow_start_after_idle }}
+net.ipv4.tcp_fin_timeout = {{ ceph_sysctl_net_ipv4_tcp_fin_timeout }}
+net.ipv4.tcp_tw_reuse = {{ ceph_sysctl_net_ipv4_tcp_tw_reuse }}
+net.ipv4.tcp_max_tw_buckets = {{ ceph_sysctl_net_ipv4_tcp_max_tw_buckets }}
+net.ipv4.ip_local_port_range = {{ ceph_sysctl_net_ipv4_ip_local_port_range }}
