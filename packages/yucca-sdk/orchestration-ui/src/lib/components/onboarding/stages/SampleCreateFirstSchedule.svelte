@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Field, FormModal, Input, Stack } from "@immich/ui";
   import validate from "cron-validate";
-  import { handleCreateSchedule } from "$lib/services/schedule.service";
+  import { useCreateSchedule } from "$lib/services/schedule.service";
   import { useRepositories } from "$lib/services/repository.service";
 
   type Props = {
@@ -19,19 +19,22 @@
   let name = $state("");
   let cron = $state("*/15 * * * *");
 
-  const onSubmit = async () => {
-    await handleCreateSchedule({
-      name,
-      cron,
-      repositories: repositories.map((repository) => repository.id),
-    });
-    onFinish();
-  };
+  const mutation = useCreateSchedule();
+
+  const onSubmit = () =>
+    mutation.mutate(
+      {
+        name,
+        cron,
+        repositories: repositories.map((repository) => repository.id),
+      },
+      { onSuccess: () => onFinish() },
+    );
 </script>
 
 <FormModal
   title="Create First Schedule"
-  disabled={name.length === 0 || validate(cron).isError()}
+  disabled={name.length === 0 || validate(cron).isError() || mutation.isPending}
   onClose={onSkip}
   {onSubmit}
 >

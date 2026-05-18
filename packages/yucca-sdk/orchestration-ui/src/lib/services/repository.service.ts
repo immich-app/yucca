@@ -14,7 +14,7 @@ import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { modalManager, toastManager } from '@immich/ui';
-import { createQuery } from '@tanstack/svelte-query';
+import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
   all: ['repositories'] as const,
@@ -105,25 +105,60 @@ export const handleCheckImportRepository = async (
   }
 };
 
-export const handleImportRepository = async (id: string, backendId: string) => {
-  try {
-    return await sdk.importRepository(id, backendId);
-  } catch (error) {
-    handleError(error, 'Failed to import repository');
-    throw error;
-  }
-};
+export const useCreateRepository = () =>
+  createMutation(
+    () => ({
+      mutationFn: (dto: RepositoryCreateRequestDto) =>
+        sdk.createRepository(dto),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
+      onError: (error) => handleError(error, 'Failed to create repository'),
+    }),
+    () => queryClient,
+  );
 
-export const handleCreateRepository = async (
-  dto: RepositoryCreateRequestDto,
-) => {
-  try {
-    return await sdk.createRepository(dto);
-  } catch (error) {
-    handleError(error, 'Failed to create repository');
-    throw error;
-  }
-};
+export const useImportRepository = () =>
+  createMutation(
+    () => ({
+      mutationFn: ({ id, backendId }: { id: string; backendId: string }) =>
+        sdk.importRepository(id, backendId),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
+      onError: (error) => handleError(error, 'Failed to import repository'),
+    }),
+    () => queryClient,
+  );
+
+export const useUpdateRepository = () =>
+  createMutation(
+    () => ({
+      mutationFn: ({
+        id,
+        dto,
+        local = false,
+      }: {
+        id: string;
+        dto: RepositoryUpdateRequestDto;
+        local?: boolean;
+      }) => (local ? sdk.updateRepository(id, dto) : updateRepository(id, dto)),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
+      onError: (error) => handleError(error, 'Failed to update repository'),
+    }),
+    () => queryClient,
+  );
+
+export const useRemoveRepository = () =>
+  createMutation(
+    () => ({
+      mutationFn: ({ id, local = false }: { id: string; local?: boolean }) =>
+        local ? sdk.deleteRepository(id) : deleteRepository(id),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
+      onError: (error) => handleError(error, 'Failed to delete repository'),
+    }),
+    () => queryClient,
+  );
 
 export const handleCreateBackup = async (id: string) => {
   try {
@@ -149,34 +184,3 @@ export const handlePruneRepository = async (id: string) => {
   }
 };
 
-export const handleUpdateRepository = async (
-  id: string,
-  dto: RepositoryUpdateRequestDto,
-  local = false,
-) => {
-  try {
-    // eslint-disable-next-line unicorn/prefer-ternary
-    if (local) {
-      await sdk.updateRepository(id, dto);
-    } else {
-      await updateRepository(id, dto);
-    }
-  } catch (error) {
-    handleError(error, 'Failed to update repository');
-    throw error;
-  }
-};
-
-export const handleRemoveRepository = async (id: string, local = false) => {
-  try {
-    // eslint-disable-next-line unicorn/prefer-ternary
-    if (local) {
-      await sdk.deleteRepository(id);
-    } else {
-      await deleteRepository(id);
-    }
-  } catch (error) {
-    handleError(error, 'Failed to delete repository');
-    throw error;
-  }
-};

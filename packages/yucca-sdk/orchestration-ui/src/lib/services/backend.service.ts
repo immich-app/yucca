@@ -12,7 +12,7 @@ import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { modalManager, type ActionItem } from '@immich/ui';
 import { mdiLogin } from '@mdi/js';
-import { createQuery } from '@tanstack/svelte-query';
+import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const backendKeys = {
   all: ['backends'] as const,
@@ -67,16 +67,16 @@ export const handleSetupLocalStorage = (
   void modalManager.show(CreateLocalBackend, { onCreate });
 };
 
-export const handleCreateLocalBackend = async (
-  dto: CreateLocalBackendRequestDto,
-) => {
-  try {
-    return await createLocalBackend(dto);
-  } catch (error) {
-    handleError(error, 'Failed to create local backend');
-    throw error;
-  }
-};
+export const useCreateLocalBackend = () =>
+  createMutation(
+    () => ({
+      mutationFn: (dto: CreateLocalBackendRequestDto) => createLocalBackend(dto),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: backendKeys.all }),
+      onError: (error) => handleError(error, 'Failed to create local backend'),
+    }),
+    () => queryClient,
+  );
 
 export const getBackendActions = (backend: BackendDto) => {
   const LoginAgain: ActionItem = {

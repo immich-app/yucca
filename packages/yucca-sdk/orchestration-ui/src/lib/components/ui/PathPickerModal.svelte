@@ -67,15 +67,29 @@
       : [],
   );
 
+  let submitting = $state(false);
+
   const handleSubmit = async () => {
-    await onSubmit([...selected]);
-    onClose();
+    if (submitting) return;
+    submitting = true;
+    try {
+      await onSubmit([...selected]);
+      onClose();
+    } finally {
+      submitting = false;
+    }
   };
 
   const add = async (path: string) => {
     if (single) {
-      await onSubmit([path]);
-      onClose();
+      if (submitting) return;
+      submitting = true;
+      try {
+        await onSubmit([path]);
+        onClose();
+      } finally {
+        submitting = false;
+      }
     } else {
       selected.add(path);
     }
@@ -86,6 +100,7 @@
   {title}
   size="large"
   submitText="Save"
+  disabled={submitting}
   onSubmit={handleSubmit}
   {onClose}
 >

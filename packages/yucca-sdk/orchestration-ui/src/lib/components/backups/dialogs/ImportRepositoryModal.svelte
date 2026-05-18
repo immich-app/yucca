@@ -2,7 +2,7 @@
   import { type LocalRepositoryDto } from "$lib/fetch-client";
   import {
     handleCheckImportRepository,
-    handleImportRepository,
+    useImportRepository,
   } from "$lib/services/repository.service";
   import { FormModal, LoadingSpinner, modalManager, Text } from "@immich/ui";
   import { onMount } from "svelte";
@@ -25,27 +25,30 @@
     readable = check.readable;
   });
 
-  const onSubmit = async () => {
-    const { repository: created } = await handleImportRepository(
-      repository.id,
-      repository.backends!.primary.id,
-    );
+  const mutation = useImportRepository();
 
-    onClose();
+  const onSubmit = () =>
+    mutation.mutate(
+      { id: repository.id, backendId: repository.backends!.primary.id },
+      {
+        onSuccess: ({ repository: created }) => {
+          onClose();
 
-    modalManager.open(ConfigureRepositoryModal, {
-      repository: {
-        ...created,
-        configuration: created.configuration!,
+          modalManager.open(ConfigureRepositoryModal, {
+            repository: {
+              ...created,
+              configuration: created.configuration!,
+            },
+          });
+        },
       },
-    });
-  };
+    );
 </script>
 
 <FormModal
   title={`Import ${repository.name}`}
   submitText="Import"
-  disabled={readable !== true}
+  disabled={readable !== true || mutation.isPending}
   {onSubmit}
   {onClose}
 >

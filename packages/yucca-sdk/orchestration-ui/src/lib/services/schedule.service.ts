@@ -9,7 +9,7 @@ import { SocketEvent } from '$lib/events';
 import { toastManager } from '@immich/ui';
 import { handleError } from '$lib/utils/handle-error';
 import { queryClient } from '$lib/query-client';
-import { createQuery } from '@tanstack/svelte-query';
+import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const scheduleKeys = {
   all: ['schedules'] as const,
@@ -75,26 +75,33 @@ export const handleGetSchedules = async () => {
   }
 };
 
-export const handleCreateSchedule = async (dto: ScheduleCreateRequestDto) => {
-  try {
-    return await sdk.createSchedule(dto);
-  } catch (error) {
-    handleError(error, 'Failed to create schedule');
-    throw error;
-  }
-};
+export const useCreateSchedule = () =>
+  createMutation(
+    () => ({
+      mutationFn: (dto: ScheduleCreateRequestDto) => sdk.createSchedule(dto),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: scheduleKeys.all }),
+      onError: (error) => handleError(error, 'Failed to create schedule'),
+    }),
+    () => queryClient,
+  );
 
-export const handleUpdateSchedule = async (
-  id: string,
-  dto: ScheduleUpdateRequestDto,
-) => {
-  try {
-    await sdk.updateSchedule(id, dto);
-  } catch (error) {
-    handleError(error, 'Failed to update schedule');
-    throw error;
-  }
-};
+export const useUpdateSchedule = () =>
+  createMutation(
+    () => ({
+      mutationFn: ({
+        id,
+        dto,
+      }: {
+        id: string;
+        dto: ScheduleUpdateRequestDto;
+      }) => sdk.updateSchedule(id, dto),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: scheduleKeys.all }),
+      onError: (error) => handleError(error, 'Failed to update schedule'),
+    }),
+    () => queryClient,
+  );
 
 export const handlePauseSchedule = async (id: string, name: string) => {
   try {
