@@ -1,6 +1,7 @@
 <script lang="ts">
   import OnboardingStageBackupServices from "$lib/components/onboarding/stages/OnboardingStageBackupServices.svelte";
   import OnboardingStageKeyConfirm from "$lib/components/onboarding/stages/OnboardingStageKeyConfirm.svelte";
+  import OnboardingStageKeyImport from "$lib/components/onboarding/stages/OnboardingStageKeyImport.svelte";
   import OnboardingStageKeyIntro from "$lib/components/onboarding/stages/OnboardingStageKeyIntro.svelte";
   import OnboardingStageSaveKey from "$lib/components/onboarding/stages/OnboardingStageKeySave.svelte";
   import OnboardingStageWelcome from "$lib/components/onboarding/stages/OnboardingStageWelcome.svelte";
@@ -66,6 +67,12 @@
     <OnboardingStageWelcome
       onNext={() => (stage = "key-intro")}
       onImportKey={() => (stage = "key-import")}
+      onCancel={onExit}
+    />
+  {:else if stage === "key-import"}
+    <OnboardingStageKeyImport
+      onStart={() => (stage = "welcome")}
+      onImported={() => (stage = "key-confirm")}
       onCancel={onExit}
     />
   {:else if stage === "key-intro"}
