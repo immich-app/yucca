@@ -1,0 +1,62 @@
+# OSD service spec — rendered by ceph_deploy role
+# Applied via: ceph orch apply osd -i /etc/ceph/osd-spec.yml
+#
+# One document per host because per-host disk paths differ:
+#   - sietch nodes: each has a unique sas_path_prefix (different SAS expander
+#     address per chassis), so explicit data_devices.paths can't be shared.
+#   - painbox: single host, single spec.
+#
+# Hardware-shape independence: when sas_path_prefix is defined the host is
+# sietch-shape (SAS expander, dual-SSD-VG block.db); otherwise the host is
+# painbox-shape (PCI-ATA disks, single NVMe-RAID VG, SSD OSD as an LV).
+#
+# Idempotent: cephadm no-ops when the spec matches what's deployed. New
+# disks (e.g. populating an empty bay) are picked up automatically on apply.
+#
+# Do not edit by hand. Regenerate by re-running the ceph_deploy role.
+{% for host in groups['ceph_nodes'] %}
+{% set h = hostvars[host] %}
+{% if h.ceph_hdd_osds | default([]) | length > 0 %}
+---
+service_type: osd
+service_id: {{ h.hostname_short }}-hdd
+placement:
+  hosts:
+    - {{ h.hostname_short }}
+spec:
+  data_devices:
+    paths:
+{% for hdd in h.ceph_hdd_osds %}
+{% if h.sas_path_prefix is defined %}
+      - /dev/disk/by-path/{{ h.sas_path_prefix }}-{{ hdd.path_phy }}-lun-0
+{% else %}
+      - /dev/disk/by-path/{{ hdd.path_phy }}
+{% endif %}
+{% endfor %}
+  db_devices:
+    paths:
+{% for hdd in h.ceph_hdd_osds %}
+      - /dev/{{ hdd.db }}
+{% endfor %}
+  encrypted: true
+{% endif %}
+{% if h.ceph_ssd_osds | default([]) | length > 0 %}
+---
+service_type: osd
+service_id: {{ h.hostname_short }}-ssd
+placement:
+  hosts:
+    - {{ h.hostname_short }}
+spec:
+  data_devices:
+    paths:
+{% for ssd in h.ceph_ssd_osds %}
+{% if ssd.lv is defined %}
+      - /dev/{{ ssd.lv }}
+{% else %}
+      - /dev/disk/by-path/{{ h.sas_path_prefix }}-{{ ssd.path_phy }}-lun-0-part{{ ssd.partition }}
+{% endif %}
+{% endfor %}
+  encrypted: true
+{% endif %}
+{% endfor %}

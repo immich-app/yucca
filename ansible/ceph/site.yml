@@ -1,0 +1,32 @@
+---
+# Full site playbook: tune → deploy → tune ceph → harden
+#
+# Runs all post-provision steps in the correct dependency order.
+# Provisioning is a separate concern — run provision.yml first.
+#
+# Workflow:
+#   1. Boot nodes from Debian live image
+#   2. CEPH_ENV=inventories/<cluster>/inventory-provision.ini \
+#        scripts/ansible-play.sh provision.yml -e confirm_wipe=true
+#   3. Nodes reboot into installed OS
+#   4. scripts/ansible-play.sh site.yml
+#
+# Or use: mise run deploy  (wraps scripts/ansible-play.sh per sub-playbook)
+
+- name: OS baseline (ops user, packages, /etc/hosts)
+  import_playbook: baseline.yml
+
+- name: OS tuning (sysctl, TCP buffers)
+  import_playbook: tune-os.yml
+
+- name: Hardware tuning (I/O scheduler, readahead)
+  import_playbook: tune-hardware.yml
+
+- name: Deploy Ceph Tentacle cluster
+  import_playbook: deploy-ceph.yml
+
+- name: Post-deploy Ceph tuning
+  import_playbook: tune-ceph.yml
+
+- name: Security hardening (nftables, SSH)
+  import_playbook: harden.yml

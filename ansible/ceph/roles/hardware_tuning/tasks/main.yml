@@ -1,0 +1,150 @@
+---
+# Hardware-level tuning for Ceph OSD nodes.
+# Sets I/O scheduler, readahead, and queue depth per device class.
+# All changes apply live and persist via udev rules (no reboot).
+
+- name: Deploy udev rules for disk tuning
+  ansible.builtin.template:
+    src: 99-ceph-disk-tuning.rules.j2
+    dest: /etc/udev/rules.d/99-ceph-disk-tuning.rules
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload udev rules
+
+- name: Apply tuning to existing HDD devices
+  ansible.builtin.shell: |
+    set -euo pipefail
+    NR="{{ ceph_hdd_nr_requests }}"
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                 | awk '$2==1 && $3=="disk" {print $1}'); do
+      BDEV=$(basename "$dev")
+      echo "{{ ceph_hdd_scheduler }}" \
+        > /sys/block/"$BDEV"/queue/scheduler 2>/dev/null || true
+      echo "{{ ceph_hdd_readahead_kb }}" \
+        > /sys/block/"$BDEV"/queue/read_ahead_kb 2>/dev/null || true
+      if [ "$NR" -gt 0 ] 2>/dev/null; then
+        echo "$NR" > /sys/block/"$BDEV"/queue/nr_requests 2>/dev/null || true
+      fi
+      echo "HDD $BDEV: sched={{ ceph_hdd_scheduler }} ra={{ ceph_hdd_readahead_kb }}KB"
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Apply tuning to existing SSD devices
+  ansible.builtin.shell: |
+    set -euo pipefail
+    NR="{{ ceph_ssd_nr_requests }}"
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                 | awk '$2==0 && $3=="disk" {print $1}'); do
+      BDEV=$(basename "$dev")
+      echo "{{ ceph_ssd_scheduler }}" \
+        > /sys/block/"$BDEV"/queue/scheduler 2>/dev/null || true
+      echo "{{ ceph_ssd_readahead_kb }}" \
+        > /sys/block/"$BDEV"/queue/read_ahead_kb 2>/dev/null || true
+      if [ "$NR" -gt 0 ] 2>/dev/null; then
+        echo "$NR" > /sys/block/"$BDEV"/queue/nr_requests 2>/dev/null || true
+      fi
+      echo "SSD $BDEV: sched={{ ceph_ssd_scheduler }} ra={{ ceph_ssd_readahead_kb }}KB"
+    done
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Enable fstrim.timer for OS partitions
+  ansible.builtin.systemd:
+    name: fstrim.timer
+    enabled: true
+    state: started
+  when: ceph_enable_fstrim_timer | bool
+
+# ---------- CPU governor tuning ----------
+
+- name: Install cpupower package
+  ansible.builtin.package:
+    name: linux-cpupower
+    state: present
+  when: ceph_cpu_governor_enabled | bool
+
+- name: Set CPU governor on all cores
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if command -v cpupower &>/dev/null; then
+      cpupower frequency-set -g {{ ceph_cpu_governor }}
+    else
+      for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        echo "{{ ceph_cpu_governor }}" > "$cpu" 2>/dev/null || true
+      done
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: true
+  when: ceph_cpu_governor_enabled | bool
+
+- name: Deploy systemd unit for CPU governor persistence
+  ansible.builtin.template:
+    src: ceph-cpu-governor.service.j2
+    dest: /etc/systemd/system/ceph-cpu-governor.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd
+  when: ceph_cpu_governor_enabled | bool
+
+- name: Enable ceph-cpu-governor service
+  ansible.builtin.systemd:
+    name: ceph-cpu-governor.service
+    enabled: true
+    daemon_reload: true
+  when: ceph_cpu_governor_enabled | bool
+
+- name: Add processor.max_cstate to GRUB cmdline
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+    line: >-
+      GRUB_CMDLINE_LINUX_DEFAULT="quiet processor.max_cstate={{ ceph_cpu_max_cstate }}"
+    backrefs: false
+  notify: Update GRUB
+  when: ceph_cpu_governor_enabled | bool
+
+# ---------- LVM device filter ----------
+
+- name: Set LVM device filter in lvm.conf
+  ansible.builtin.lineinfile:
+    path: /etc/lvm/lvm.conf
+    regexp: '^\s*filter\s*='
+    line: '    filter = {{ ceph_lvm_filter }}'
+    insertafter: '^\s*# filter\s*='
+  when: ceph_lvm_filter_enabled | bool
+
+# ---------- Verification ----------
+
+- name: Verify I/O scheduler on sample devices
+  ansible.builtin.shell: |
+    set -euo pipefail
+    echo "=== HDD schedulers ==="
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                 | awk '$2==1 && $3=="disk" {print $1}' | head -3); do
+      BDEV=$(basename "$dev")
+      SCHED=$(cat /sys/block/$BDEV/queue/scheduler)
+      RA=$(cat /sys/block/$BDEV/queue/read_ahead_kb)
+      echo "$BDEV: scheduler=$SCHED readahead=${RA}KB"
+    done
+    echo "=== SSD schedulers ==="
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                 | awk '$2==0 && $3=="disk" {print $1}' | head -3); do
+      BDEV=$(basename "$dev")
+      SCHED=$(cat /sys/block/$BDEV/queue/scheduler)
+      RA=$(cat /sys/block/$BDEV/queue/read_ahead_kb)
+      echo "$BDEV: scheduler=$SCHED readahead=${RA}KB"
+    done
+  args:
+    executable: /bin/bash
+  register: scheduler_verify
+  changed_when: false
+
+- name: Display disk tuning state
+  ansible.builtin.debug:
+    msg: "{{ scheduler_verify.stdout_lines }}"

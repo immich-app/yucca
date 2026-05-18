@@ -1,0 +1,59 @@
+---
+# Phase 0: Safety checks before any destructive action
+
+- name: Fail if yes_destroy_ceph is not set
+  ansible.builtin.fail:
+    msg: >
+      REFUSING TO RUN. You must pass -e "yes_destroy_ceph=true" to confirm
+      you want to destroy the entire Ceph cluster and all its data.
+  when: yes_destroy_ceph | default(false) | bool is not true
+  run_once: true
+
+- name: Validate destroy target matches cluster_domain
+  ansible.builtin.fail:
+    msg: >
+      REFUSING TO RUN. destroy_target_domain is not set or does not match
+      cluster_domain ('{{ cluster_domain }}'). Pass
+      -e "destroy_target_domain={{ cluster_domain }}" to confirm the target.
+  when: (destroy_target_domain | default('')) != cluster_domain
+  run_once: true
+
+- name: Check if Ceph cluster exists
+  ansible.builtin.stat:
+    path: /etc/ceph/ceph.conf
+  register: ceph_conf_check
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Gather cluster status for confirmation
+  ansible.builtin.shell: |
+    echo "=== CLUSTER STATUS ==="
+    timeout 10 ceph status 2>/dev/null || echo "(cluster unreachable)"
+    echo ""
+    echo "=== POOLS ==="
+    timeout 10 ceph osd pool ls detail 2>/dev/null || echo "(no pools or cluster unreachable)"
+    echo ""
+    echo "=== OSDs ==="
+    timeout 10 ceph osd tree 2>/dev/null || echo "(no OSDs or cluster unreachable)"
+    echo ""
+    echo "=== HOSTS ==="
+    timeout 10 ceph orch host ls 2>/dev/null || echo "(no hosts or cluster unreachable)"
+  register: cluster_summary
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_conf_check.stat.exists | default(false)
+  changed_when: false
+  timeout: 120
+
+- name: Show what will be destroyed
+  ansible.builtin.debug:
+    msg: "{{ cluster_summary.stdout_lines }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - cluster_summary.stdout is defined
+
+- name: FINAL CONFIRMATION — pause before destroying cluster
+  ansible.builtin.pause:
+    prompt: >
+      ALL DATA WILL BE PERMANENTLY LOST.
+      Press Enter to proceed with cluster destruction, or Ctrl-C to abort.
+  when: inventory_hostname in groups['ceph_bootstrap']

@@ -1,0 +1,96 @@
+---
+# post-deploy-capture.yml — snapshot bootstrap-side secrets into 1Password.
+#
+# Captures:
+#   /etc/ceph/rgw-ssl.crt         -> <CLUSTER>_CEPH_RGW_TLS_CERT
+#   /etc/ceph/rgw-ssl.key         -> <CLUSTER>_CEPH_RGW_TLS_KEY
+#   /etc/ceph/ceph.client.admin.keyring -> <CLUSTER>_CEPH_CLIENT_ADMIN_KEYRING
+#
+# Idempotent: creates item if missing, updates if content drifted.
+#
+# Belt-and-suspenders only. The cluster continues to run from on-node
+# copies; the 1P copies exist for disaster recovery (e.g., laurel dies +
+# filesystem loss + you want to restore the RGW cert to a new bootstrap
+# node without re-trusting it in every S3 client).
+#
+# Usage:
+#   scripts/ansible-play.sh post-deploy-capture.yml
+#
+# Requires: superuser SA read access from controller (already required by
+# mise run tf:* tasks), op CLI on controller, 1P session live.
+
+- name: Capture bootstrap-side secrets to 1Password
+  hosts: ceph_bootstrap
+  become: true
+  gather_facts: false
+  strategy: linear
+
+  vars:
+    capture_items:
+      - file: /etc/ceph/rgw-ssl.crt
+        title_suffix: RGW_TLS_CERT
+      - file: /etc/ceph/rgw-ssl.key
+        title_suffix: RGW_TLS_KEY
+      - file: /etc/ceph/ceph.client.admin.keyring
+        title_suffix: CLIENT_ADMIN_KEYRING
+
+  tasks:
+    - name: Read bootstrap files
+      ansible.builtin.slurp:
+        src: "{{ item.file }}"
+      loop: "{{ capture_items }}"
+      register: slurped
+      no_log: true
+
+    - name: Fetch superuser SA token from 1P (localhost)  # noqa: run-once[task]
+      ansible.builtin.command:
+        argv:
+          - op
+          - read
+          - "op://yucca_tf_dev/yucca_futo_1pass_superuser_service_account/password"
+      register: su_token
+      delegate_to: localhost
+      become: false  # run as operator on controller — root has no op session
+      run_once: true
+      changed_when: false
+      check_mode: false
+      no_log: true
+
+    # exec 0<&- closes stdin. op CLI treats non-TTY piped stdin as a JSON
+    # item template; without this redirect op fails with "invalid JSON in
+    # piped input" because ansible pipes an empty stdin to the shell.
+    - name: Upsert each captured file to 1Password  # noqa: run-once[task]
+      ansible.builtin.shell: |
+        set -euo pipefail
+        exec 0<&-
+        TITLE="{{ cluster_name | upper }}_CEPH_{{ item.item.title_suffix }}"
+        VALUE="$CONTENT"
+        if op item get "$TITLE" --vault yucca_tf_dev >/dev/null 2>&1; then
+          op item edit "$TITLE" --vault yucca_tf_dev "password=$VALUE" >/dev/null
+          echo "updated: $TITLE"
+        else
+          op item create --vault yucca_tf_dev --category password --title "$TITLE" "password=$VALUE" >/dev/null
+          echo "created: $TITLE"
+        fi
+      args:
+        executable: /bin/bash
+      environment:
+        OP_SERVICE_ACCOUNT_TOKEN: "{{ su_token.stdout | trim }}"
+        CONTENT: "{{ item.content | b64decode }}"
+      loop: "{{ slurped.results }}"
+      loop_control:
+        label: "{{ item.item.title_suffix }}"
+      delegate_to: localhost
+      become: false  # run as operator on controller — op session is operator-owned
+      run_once: true
+      register: capture_result
+      changed_when: "'created:' in capture_result.stdout or 'updated:' in capture_result.stdout"
+      no_log: true  # content is cert/key/keyring material — don't echo via ansible logs
+
+    - name: Capture summary  # noqa: run-once[task]
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      loop: "{{ capture_result.results }}"
+      loop_control:
+        label: "{{ item.item.item.title_suffix }}"
+      run_once: true

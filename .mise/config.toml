@@ -7,6 +7,10 @@ restic = "0.18.0"
 gh = "2.25.0"
 "github:git-town/git-town" = "22.4.0"
 
+# Infrastructure tooling (added for tf/ and ansible/ subtrees)
+opentofu = "1.11.5"
+terragrunt = "0.99.4"
+
 [tasks.dev]
 description = "Start all services in development mode"
 depends = ["install:deps", "common:build", "docker:start"]
@@ -43,6 +47,31 @@ run = [{ tasks = ["lint", "*:check"] }, { task = "format" }, { task = "test" }]
 [tasks.fix]
 description = "Run all possible code fixes"
 run = [{ task = "*:fix" }, { task = "web:lingui" }]
+
+# ─── Infrastructure (tf + ansible) ──────────────────────────────────────────
+# All tf:* tasks wrap terragrunt with `op run --env-file=tf/.env` so the
+# OP_SERVICE_ACCOUNT_TOKEN is injected from 1Password at invocation time.
+# No literal secrets in the .env file — just op:// references.
+
+[tasks."tf:init"]
+description = "Terragrunt init for a given stack (default: deployment/dev/ceph)"
+run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} init"
+
+[tasks."tf:plan"]
+description = "Terragrunt plan for a given stack"
+run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} plan"
+
+[tasks."tf:apply"]
+description = "Terragrunt apply for a given stack"
+run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} apply"
+
+[tasks."tf:destroy"]
+description = "Terragrunt destroy for a given stack (use with care)"
+run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} destroy"
+
+[tasks."tf:fmt"]
+description = "Format terraform + terragrunt files recursively"
+run = "tofu fmt -recursive tf/ && terragrunt hcl format --working-dir tf/"
 
 [env]
 NODE_ENV = "development"

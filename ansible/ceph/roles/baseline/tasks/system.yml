@@ -1,0 +1,19 @@
+---
+# /etc/hosts, service enablement, timezone.
+# Convergeable: re-running corrects drift in hosts file and services.
+
+- name: Render /etc/hosts with cluster node entries
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+  when: baseline_manage_hosts | bool
+
+- name: Enable and start required services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ baseline_enable_services }}"

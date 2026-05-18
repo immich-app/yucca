@@ -1,0 +1,50 @@
+---
+# Distribute the current ansible-iac public key to every node in the cluster.
+#
+# Non-destructive — adds the key if absent, does NOT remove any others.
+# Run this after generating a new key in 1P to make it usable before you
+# rotate off the old one. Old keys are removed manually (or by a separate
+# cleanup playbook) once the new key is verified working.
+#
+# Usage:
+#   scripts/ansible-play.sh rotate-ssh-key.yml
+#
+# The current public key is sourced from:
+#   op://{{ cluster_secrets_vault }}/{{ cluster_name | upper }}_CEPH_ANSIBLE_IAC_SSH_KEY/public_key
+#
+# which for sietch is op://yucca_tf_dev/SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY/public_key
+# (cluster_secrets_vault + cluster_name both set per-cluster in group_vars/all/vars.yml).
+
+- name: Rotate ansible-iac SSH authorized_keys
+  hosts: ceph_nodes
+  become: false
+  gather_facts: false
+  strategy: linear  # run_once relies on linear (default) strategy
+
+  tasks:
+    - name: Fetch current ansible-iac public key from 1Password  # noqa: run-once[task]
+      ansible.builtin.command:
+        argv:
+          - op
+          - read
+          - "op://{{ cluster_secrets_vault }}/{{ cluster_name | upper }}_CEPH_ANSIBLE_IAC_SSH_KEY/public_key"
+      register: iac_pubkey
+      delegate_to: localhost
+      run_once: true  # play uses linear strategy (default); single op read suffices for all hosts
+      changed_when: false
+      check_mode: false  # always fetch, even in --check mode
+
+    - name: Assert fetched key looks like an ed25519 public key
+      ansible.builtin.assert:
+        that:
+          - iac_pubkey.stdout is match("^ssh-(ed25519|rsa) ")
+        fail_msg: >-
+          Fetched key does not look like an OpenSSH public key.
+          Got: {{ iac_pubkey.stdout | truncate(80) }}
+
+    - name: Ensure current pubkey is in ansible-iac authorized_keys (additive)
+      ansible.posix.authorized_key:
+        user: ansible-iac
+        key: "{{ iac_pubkey.stdout }}"
+        state: present
+        exclusive: false

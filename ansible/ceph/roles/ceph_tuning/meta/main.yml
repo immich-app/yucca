@@ -1,0 +1,10 @@
+---
+# Requires a running Ceph cluster — must run AFTER ceph_deploy.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: ceph_tuning
+  description: Post-deploy Ceph cluster tuning (recovery, scrub, telemetry, CRUSH)
+  min_ansible_version: "2.19"
