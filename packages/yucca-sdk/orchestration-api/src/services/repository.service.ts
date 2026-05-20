@@ -4,7 +4,6 @@ import { type WriteStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
-import { DEFAULT_RETENTION_POLICY, RetentionPolicy } from '../utils/restic';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
   InspectedLocalRepositoryDto,
@@ -38,6 +37,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
+import { DEFAULT_RETENTION_POLICY, RetentionPolicy } from '../utils/restic';
 import { BootstrapService } from './bootstrap.service';
 
 @Injectable()
