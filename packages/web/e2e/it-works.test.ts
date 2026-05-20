@@ -14,7 +14,9 @@ test('user can log in and see backups page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Authorize' })).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  await expect(page.getByText('Logged in as foo (foo@example.test)')).toBeVisible();
+  await expect(
+    page.getByText('Logged in as foo (foo@example.test)'),
+  ).toBeVisible();
   await page.getByRole('link', { name: 'Backups' }).click();
   await expect(page.getByText('Your Backups')).toBeVisible();
 });
