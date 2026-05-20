@@ -229,7 +229,9 @@ export class RepositoryService {
       repositories: repositories.map((repository, idx) => ({
         ...repository,
         snapshots:
-          snapshots[idx].status === 'fulfilled' ? snapshots[idx].value.map((snapshot) => this.mapSnapshot(snapshot)) : undefined,
+          snapshots[idx].status === 'fulfilled'
+            ? snapshots[idx].value.map((snapshot) => this.mapSnapshot(snapshot))
+            : undefined,
       })),
     };
   }

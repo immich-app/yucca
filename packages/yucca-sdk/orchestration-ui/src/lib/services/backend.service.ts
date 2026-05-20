@@ -70,7 +70,8 @@ export const handleSetupLocalStorage = (
 export const useCreateLocalBackend = () =>
   createMutation(
     () => ({
-      mutationFn: (dto: CreateLocalBackendRequestDto) => createLocalBackend(dto),
+      mutationFn: (dto: CreateLocalBackendRequestDto) =>
+        createLocalBackend(dto),
       onSuccess: () =>
         void queryClient.invalidateQueries({ queryKey: backendKeys.all }),
       onError: (error) => handleError(error, 'Failed to create local backend'),
