@@ -1,27 +1,66 @@
 import { Injectable } from '@nestjs/common';
-import { Insertable, Kysely, Updateable } from 'kysely';
+import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from '../schema';
-import { RepositoryTable } from '../schema/tables/repository.table';
+import { RetentionPolicy } from '../utils/restic';
+
+type RepositoryRow = {
+  id: string;
+  backendId: string;
+  retentionPolicy: RetentionPolicy | null;
+};
 
 @Injectable()
 export class RepositoryRepository {
   constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
 
-  create(repository: Insertable<RepositoryTable>) {
-    return this.db.insertInto('repositories').values(repository).returningAll().executeTakeFirstOrThrow();
+  async create(repository: RepositoryRow) {
+    await this.db
+      .insertInto('repositories')
+      .values({
+        id: repository.id,
+        backendId: repository.backendId,
+        retentionPolicy: repository.retentionPolicy === null ? null : JSON.stringify(repository.retentionPolicy),
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    return repository;
   }
 
-  update(id: string, patch: Updateable<RepositoryTable>) {
-    return this.db.updateTable('repositories').set(patch).where('id', '=', id).execute();
+  async update(id: string, patch: Partial<Pick<RepositoryRow, 'retentionPolicy'>>) {
+    await this.db
+      .updateTable('repositories')
+      .set({
+        ...('retentionPolicy' in patch && {
+          retentionPolicy: patch.retentionPolicy === null ? null : JSON.stringify(patch.retentionPolicy),
+        }),
+      })
+      .where('id', '=', id)
+      .execute();
   }
 
-  get(id: string) {
-    return this.db.selectFrom('repositories').selectAll('repositories').where('id', '=', id).executeTakeFirstOrThrow();
+  async get(id: string): Promise<RepositoryRow> {
+    const row = await this.db
+      .selectFrom('repositories')
+      .selectAll('repositories')
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+
+    return {
+      id: row.id,
+      backendId: row.backendId,
+      retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
+    };
   }
 
-  getAll() {
-    return this.db.selectFrom('repositories').selectAll('repositories').execute();
+  async getAll(): Promise<RepositoryRow[]> {
+    const rows = await this.db.selectFrom('repositories').selectAll('repositories').execute();
+    return rows.map((row) => ({
+      id: row.id,
+      backendId: row.backendId,
+      retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
+    }));
   }
 
   async delete(id: string) {

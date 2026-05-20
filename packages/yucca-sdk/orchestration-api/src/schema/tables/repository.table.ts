@@ -3,5 +3,5 @@ export class RepositoryTable {
 
   backendId!: string;
 
-  retentionPreset!: `default` | `off`;
+  retentionPolicy!: string | null;
 }

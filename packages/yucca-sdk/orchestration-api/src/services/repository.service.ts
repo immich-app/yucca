@@ -37,7 +37,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
-import { RetentionPolicy, retentionPolicyForPreset } from '../utils/restic';
+import { DEFAULT_RETENTION_POLICY, RetentionPolicy } from '../utils/restic';
 import { BootstrapService } from './bootstrap.service';
 
 @Injectable()
@@ -65,8 +65,8 @@ export class RepositoryService {
     metrics?: RepositoryMetricsDto,
   ): Promise<Pick<LocalRepositoryDto, 'configuration' | 'metrics'>> {
     if (!configuration) {
-      const [paths, { retentionPreset }] = await Promise.all([this.repositoryPath.get(id), this.repository.get(id)]);
-      configuration = { paths, retentionPreset };
+      const [paths, { retentionPolicy }] = await Promise.all([this.repositoryPath.get(id), this.repository.get(id)]);
+      configuration = { paths, retentionPolicy };
     }
 
     metrics ??= await this.repositoryLocalMetrics.get(id);
@@ -95,7 +95,7 @@ export class RepositoryService {
     await this.repository.create({
       id: remote.id,
       backendId,
-      retentionPreset: 'default',
+      retentionPolicy: DEFAULT_RETENTION_POLICY,
     });
 
     const paths = dto.paths ?? [];
@@ -104,7 +104,7 @@ export class RepositoryService {
     }
 
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(remote.id, { paths, retentionPreset: 'default' })),
+      ...(await this.getLocalRepository(remote.id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
       ...remote,
       backends: {
         primary: {
@@ -152,12 +152,12 @@ export class RepositoryService {
     const localPaths = await this.repositoryPath.getAll();
     const localMetrics = await this.repositoryLocalMetrics.getAll();
 
-    for (const { id, backendId, retentionPreset } of localRepositories) {
+    for (const { id, backendId, retentionPolicy } of localRepositories) {
       const remoteRepository = remoteRepositories[backendId][id];
 
       const configuration: RepositoryConfigurationDto = {
         paths: localPaths.filter((entry) => entry.id === id).map(({ path }) => path),
-        retentionPreset,
+        retentionPolicy,
       };
 
       const metrics = localMetrics.find((entry) => entry.id === id);
@@ -275,8 +275,8 @@ export class RepositoryService {
       }
     }
 
-    if (dto.retentionPreset) {
-      await this.repository.update(id, { retentionPreset: dto.retentionPreset });
+    if (dto.retentionPolicy !== undefined) {
+      await this.repository.update(id, { retentionPolicy: dto.retentionPolicy });
     }
 
     const metrics = await this.repositoryLocalMetrics.get(id);
@@ -424,8 +424,7 @@ export class RepositoryService {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
                 await this.restic.backup(endpoint, key, paths, log, taskSignal);
 
-                const { retentionPreset } = await this.repository.get(id);
-                const policy = retentionPolicyForPreset(retentionPreset);
+                const { retentionPolicy: policy } = await this.repository.get(id);
                 if (policy) {
                   await this.runForgetAndPrune(endpoint, key, policy, log, taskSignal);
                 }
@@ -508,8 +507,7 @@ export class RepositoryService {
       throw new BadRequestException('Task already running!');
     }
 
-    const { retentionPreset } = await this.repository.get(id);
-    const policy = retentionPolicyForPreset(retentionPreset);
+    const { retentionPolicy: policy } = await this.repository.get(id);
     if (!policy) {
       throw new BadRequestException('No retention policy configured for this repository');
     }
@@ -581,11 +579,11 @@ export class RepositoryService {
     await this.repository.create({
       id: remote.id,
       backendId,
-      retentionPreset: 'default',
+      retentionPolicy: DEFAULT_RETENTION_POLICY,
     });
 
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(id, { paths, retentionPreset: 'default' })),
+      ...(await this.getLocalRepository(id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
       ...remote,
       backends: {
         primary: {

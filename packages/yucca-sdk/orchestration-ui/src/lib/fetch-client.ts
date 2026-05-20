@@ -68,7 +68,13 @@ export type IntegrationsResponseDto = {
     immichState?: ImmichStateDto;
     immichIntegration?: ImmichIntegrationDto;
 };
-export type RetentionPreset = "default" | "off";
+export type RetentionPolicyDto = {
+    keepLast?: number;
+    keepWithin?: string;
+    keepWithinDaily?: string;
+    keepWithinWeekly?: string;
+    keepWithinMonthly?: string;
+};
 export type ConfigureImmichIntegrationRequestDto = {
     name: string;
     worm: boolean;
@@ -76,7 +82,7 @@ export type ConfigureImmichIntegrationRequestDto = {
     dataFolders: string[];
     backupConfiguration: boolean;
     libraries: "all" | string[];
-    retentionPreset: RetentionPreset;
+    retentionPolicy?: (RetentionPolicyDto) | null;
 };
 export type OnboardingStatusResponseDto = {
     hasOnboardedKey: boolean;
@@ -113,7 +119,7 @@ export type RepositoryBackendsDto = {
 };
 export type RepositoryConfigurationDto = {
     paths: string[];
-    retentionPreset: RetentionPreset;
+    retentionPolicy?: (RetentionPolicyDto) | null;
 };
 export type LocalRepositoryDto = {
     id: string;
@@ -158,7 +164,7 @@ export type RepositoryInspectResponseDto = {
 export type RepositoryUpdateRequestDto = {
     name?: string;
     paths?: string[];
-    retentionPreset?: RetentionPreset;
+    retentionPolicy?: (RetentionPolicyDto) | null;
 };
 export type RepositoryUpdateResponseDto = {
     repository: LocalRepositoryDto;

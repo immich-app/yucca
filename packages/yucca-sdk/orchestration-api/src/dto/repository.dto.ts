@@ -1,7 +1,30 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
 import { BackendType, TaskStatus, TaskType } from '../enum';
 import type { RunType } from '../schema/tables/runHistory.table';
+
+export class RetentionPolicyDto {
+  @ApiProperty({ type: Number, required: false })
+  keepLast?: number;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithin?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinHourly?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinDaily?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinWeekly?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinMonthly?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinYearly?: string;
+}
 
 export class RepositoryDto {
   @ApiProperty({ type: String })
@@ -56,8 +79,8 @@ export class RepositoryConfigurationDto {
   @ApiProperty({ type: [String] })
   paths!: string[];
 
-  @ApiProperty({ enumName: 'RetentionPreset', enum: ['default', 'off'] })
-  retentionPreset!: `default` | `off`;
+  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
+  retentionPolicy!: RetentionPolicyDto | null;
 }
 
 export class LocalRepositoryDto extends RepositoryWithMetricsDto {
@@ -104,10 +127,10 @@ export class RepositoryUpdateRequestDto {
   @IsString({ each: true })
   paths?: string[];
 
-  @ApiProperty({ enumName: 'RetentionPreset', enum: ['default', 'off'], required: false })
+  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
   @IsOptional()
-  @IsIn(['default', 'off'])
-  retentionPreset?: `default` | `off`;
+  @IsObject()
+  retentionPolicy?: RetentionPolicyDto | null;
 }
 
 export class RepositoryUpdateResponseDto {
