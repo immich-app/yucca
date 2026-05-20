@@ -1,5 +1,6 @@
 import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
+import { type WriteStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
@@ -36,7 +37,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
-import { retentionPolicyForPreset } from '../utils/restic';
+import { RetentionPolicy, retentionPolicyForPreset } from '../utils/restic';
 import { BootstrapService } from './bootstrap.service';
 
 @Injectable()
@@ -422,6 +423,12 @@ export class RepositoryService {
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
                 await this.restic.backup(endpoint, key, paths, log, taskSignal);
+
+                const { retentionPreset } = await this.repository.get(id);
+                const policy = retentionPolicyForPreset(retentionPreset);
+                if (policy) {
+                  await this.runForgetAndPrune(endpoint, key, policy, log, taskSignal);
+                }
               } finally {
                 this.tasks.endTask(id);
               }
@@ -432,14 +439,13 @@ export class RepositoryService {
               const lastBackupDuration = Date.now() - startTime;
 
               void this.updateLocalMetrics(id, {
+                resticParameters: { endpoint, key },
                 additionalMetrics: {
                   lastBackup,
                   lastSuccessfulBackup,
                   lastBackupDuration,
                 },
               });
-
-              void this.pruneRepository(id); // => calls updateLocalMetrics with endpoint
 
               if (error) {
                 fail(error);
@@ -456,6 +462,39 @@ export class RepositoryService {
 
       task.catch(() => {});
     });
+  }
+
+  private async runForgetAndPrune(
+    endpoint: string,
+    key: Uint8Array,
+    policy: RetentionPolicy,
+    log: WriteStream,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const events = await this.restic.forgetByPolicy(endpoint, key, policy, signal);
+
+    for (const { keep, remove, reasons } of events) {
+      if (keep) {
+        for (const { id, time } of keep) {
+          log.write(
+            JSON.stringify({
+              message_type: 'yucca_prune_kept',
+              id,
+              time,
+              matches: reasons?.find((reason) => reason.snapshot.id === id)?.matches,
+            }) + '\n',
+          );
+        }
+      }
+
+      if (remove) {
+        for (const { id, time } of remove) {
+          log.write(JSON.stringify({ message_type: 'yucca_prune_removed', id, time }) + '\n');
+        }
+      }
+    }
+
+    await this.restic.prune(endpoint, key, signal);
   }
 
   async pruneRepository(
@@ -485,31 +524,7 @@ export class RepositoryService {
             TaskType.Forget,
             async (log, logId) => {
               resolve({ task, logId });
-
-              const events = await this.restic.forgetByPolicy(endpoint, key, policy, signal);
-
-              for (const { keep, remove, reasons } of events) {
-                if (keep) {
-                  for (const { id, time } of keep) {
-                    log.write(
-                      JSON.stringify({
-                        message_type: 'yucca_prune_kept',
-                        id,
-                        time,
-                        matches: reasons?.find((reason) => reason.snapshot.id === id)?.matches,
-                      }) + '\n',
-                    );
-                  }
-                }
-
-                if (remove) {
-                  for (const { id, time } of remove) {
-                    log.write(JSON.stringify({ message_type: 'yucca_prune_removed', id, time }) + '\n');
-                  }
-                }
-              }
-
-              await this.restic.prune(endpoint, key, signal);
+              await this.runForgetAndPrune(endpoint, key, policy, log, signal);
             },
             (error) => {
               void this.updateLocalMetrics(id, {
