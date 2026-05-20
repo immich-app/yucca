@@ -18,10 +18,10 @@
   const { demoPadding } = options;
 </script>
 
-<main class="relative h-full">
+<main class="absolute inset-0">
   {#if title || actions.length > 0}
     <div
-      class="absolute flex h-16 w-full place-items-center justify-between border-b p-2 text-dark"
+      class="absolute top-0 left-0 flex h-16 w-full place-items-center justify-between border-b p-2 text-dark"
     >
       <div class="flex gap-2 items-center">
         {#if title}
@@ -58,7 +58,7 @@
   {/if}
 
   <div
-    class="absolute w-full overflow-y-auto {title || actions.length > 0
+    class="absolute left-0 w-full overflow-y-auto {title || actions.length > 0
       ? 'top-16 h-[calc(100%-4rem)]'
       : 'top-0 h-full'} {$demoPadding ? 'p-4' : ''}"
   >

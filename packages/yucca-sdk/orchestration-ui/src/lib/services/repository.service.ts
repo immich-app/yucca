@@ -183,4 +183,3 @@ export const handlePruneRepository = async (id: string) => {
     throw error;
   }
 };
-
