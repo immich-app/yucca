@@ -6,7 +6,6 @@ import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
-  InspectedLocalRepositoryDto,
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
   RepositoryCheckImportResponseDto,
@@ -227,13 +226,28 @@ export class RepositoryService {
     );
 
     return {
-      repositories: repositories.map(
-        (repository, idx) =>
-          ({
-            ...repository,
-            snapshots: snapshots[idx].status === 'fulfilled' ? snapshots[idx].value : undefined,
-          }) as InspectedLocalRepositoryDto,
-      ),
+      repositories: repositories.map((repository, idx) => ({
+        ...repository,
+        snapshots:
+          snapshots[idx].status === 'fulfilled' ? snapshots[idx].value.map((snapshot) => this.mapSnapshot(snapshot)) : undefined,
+      })),
+    };
+  }
+
+  private mapSnapshot({ summary, ...snapshot }: Awaited<ReturnType<ResticRepository['snapshots']>>[number]) {
+    return {
+      ...snapshot,
+      time: snapshot.time.toISOString(),
+      summary: summary
+        ? {
+            filesNew: summary.files_new,
+            filesChanged: summary.files_changed,
+            filesUnmodified: summary.files_unmodified,
+            totalFiles: summary.total_files_processed,
+            totalBytes: summary.total_bytes_processed,
+            dataAdded: summary.data_added,
+          }
+        : undefined,
     };
   }
 
@@ -610,20 +624,7 @@ export class RepositoryService {
     const snapshots = await this.restic.snapshots(endpoint, key);
 
     return {
-      snapshots: snapshots.map(({ summary, ...snapshot }) => ({
-        ...snapshot,
-        time: snapshot.time.toISOString(),
-        summary: summary
-          ? {
-              filesNew: summary.files_new,
-              filesChanged: summary.files_changed,
-              filesUnmodified: summary.files_unmodified,
-              totalFiles: summary.total_files_processed,
-              totalBytes: summary.total_bytes_processed,
-              dataAdded: summary.data_added,
-            }
-          : undefined,
-      })),
+      snapshots: snapshots.map((snapshot) => this.mapSnapshot(snapshot)),
     };
   }
 
