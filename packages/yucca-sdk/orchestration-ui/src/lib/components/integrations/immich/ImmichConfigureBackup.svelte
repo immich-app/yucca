@@ -135,6 +135,8 @@
 
   const onSubmit = async () => {
     try {
+      selectedFolders.add("backups");
+
       await sdk.configureImmichIntegration({
         name,
         worm,
@@ -210,12 +212,14 @@
         <Stack gap={2}>
           <Heading size="tiny">What to back up</Heading>
 
-          {#each [{ label: "Photos and videos", description: "Your media uploaded directly to Immich.", folders: ["upload", "profile", "library"], recommended: true }, { label: "Database backups", description: "Albums, faces, and metadata. You'll need this to restore.", folders: ["backups"], recommended: true }, { label: "Thumbnails and previews", description: "Generated photo previews, can be recreated later.", folders: ["thumbs"], regenerate: true }, { label: "Encoded videos", description: "Generated video previews, can be recreated later.", folders: ["encoded-video"], regenerate: true }] as item (item.label)}
+          {#each [{ label: "Photos and videos", description: "Your media uploaded directly to Immich.", folders: ["upload", "profile", "library"], recommended: true }, { label: "Database backups", description: "Albums, faces, and metadata. You'll need this to restore.", folders: ["backups"], required: true }, { label: "Thumbnails and previews", description: "Generated photo previews, can be recreated later.", folders: ["thumbs"], regenerate: true }, { label: "Encoded videos", description: "Generated video previews, can be recreated later.", folders: ["encoded-video"], regenerate: true }] as item (item.label)}
             <label class="select-none">
               <Stack direction="row">
                 <Checkbox
-                  checked={isItemChecked(item, immich!.dataFolders)}
+                  checked={item.required ||
+                    isItemChecked(item, immich!.dataFolders)}
                   onCheckedChange={() => toggleItem(item, immich!.dataFolders)}
+                  disabled={item.required}
                 />
                 <Stack gap={0}>
                   <Text>{item.label}</Text>
