@@ -1,6 +1,21 @@
 import { sdk } from '$lib';
 import type { ImportRecoveryKeyRequest } from '$lib/fetch-client';
+import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
+import { createQuery } from '@tanstack/svelte-query';
+
+export const recoveryKeyKeys = {
+  all: ['recovery-key'] as const,
+};
+
+export const useRecoveryKey = () =>
+  createQuery(
+    () => ({
+      queryKey: recoveryKeyKeys.all,
+      queryFn: () => sdk.currentRecoveryKey(),
+    }),
+    () => queryClient,
+  );
 
 export const handleOnboardingStatus = async () => {
   try {
