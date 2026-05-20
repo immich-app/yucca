@@ -4,7 +4,7 @@
   import type { RepositorySnapshotRestoreRequestDto } from "$lib/fetch-client";
   import {
     handleGetSnapshotListing,
-    handleRestoreSnapshot,
+    useRestoreSnapshot,
   } from "$lib/services/snapshot.service";
   import {
     FormModal,
@@ -30,7 +30,9 @@
   let target = $state("");
   let include = new SvelteSet<string>();
 
-  const onSubmit = async () => {
+  const mutation = useRestoreSnapshot();
+
+  const onSubmit = () => {
     const dto: RepositorySnapshotRestoreRequestDto = {
       include: [...include],
     };
@@ -39,18 +41,29 @@
       dto.target = target;
     }
 
-    const { logId } = await handleRestoreSnapshot(repository, snapshot, dto);
+    mutation.mutate(
+      { repositoryId: repository, snapshotId: snapshot, options: dto },
+      {
+        onSuccess: ({ logId }) => {
+          onClose();
 
-    onClose();
-
-    modalManager.open(ViewLogModal, {
-      logId,
-    });
+          modalManager.open(ViewLogModal, {
+            logId,
+          });
+        },
+      },
+    );
   };
 
 </script>
 
-<FormModal title="Restore Backup" submitText="Restore" {onSubmit} {onClose}>
+<FormModal
+  title="Restore Backup"
+  submitText="Restore"
+  disabled={mutation.isPending}
+  {onSubmit}
+  {onClose}
+>
   <Stack gap={5}>
     <PathListField
       paths={include}

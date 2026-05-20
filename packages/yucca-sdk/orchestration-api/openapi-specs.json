@@ -1253,6 +1253,9 @@
           "keepWithin": {
             "type": "string"
           },
+          "keepWithinHourly": {
+            "type": "string"
+          },
           "keepWithinDaily": {
             "type": "string"
           },
@@ -1260,6 +1263,9 @@
             "type": "string"
           },
           "keepWithinMonthly": {
+            "type": "string"
+          },
+          "keepWithinYearly": {
             "type": "string"
           }
         }

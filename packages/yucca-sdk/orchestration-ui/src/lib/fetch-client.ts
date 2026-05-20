@@ -71,9 +71,11 @@ export type IntegrationsResponseDto = {
 export type RetentionPolicyDto = {
     keepLast?: number;
     keepWithin?: string;
+    keepWithinHourly?: string;
     keepWithinDaily?: string;
     keepWithinWeekly?: string;
     keepWithinMonthly?: string;
+    keepWithinYearly?: string;
 };
 export type ConfigureImmichIntegrationRequestDto = {
     name: string;

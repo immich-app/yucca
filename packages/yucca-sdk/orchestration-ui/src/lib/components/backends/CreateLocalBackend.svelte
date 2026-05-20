@@ -1,6 +1,6 @@
 <script lang="ts">
   import PathPickerField from "$lib/components/ui/PathPickerField.svelte";
-  import { handleCreateLocalBackend } from "$lib/services/backend.service";
+  import { useCreateLocalBackend } from "$lib/services/backend.service";
   import { FormModal, Stack } from "@immich/ui";
 
   type Props = {
@@ -12,17 +12,24 @@
 
   let path = $state("");
 
-  const onSubmit = async () => {
-    const { backend } = await handleCreateLocalBackend({ path });
-    onCreate?.(backend.id);
-    onClose();
-  };
+  const mutation = useCreateLocalBackend();
+
+  const onSubmit = () =>
+    mutation.mutate(
+      { path },
+      {
+        onSuccess: ({ backend }) => {
+          onCreate?.(backend.id);
+          onClose();
+        },
+      },
+    );
 </script>
 
 <FormModal
   size="small"
   title="Create local backend"
-  disabled={path.length === 0}
+  disabled={path.length === 0 || mutation.isPending}
   {onSubmit}
   {onClose}
 >

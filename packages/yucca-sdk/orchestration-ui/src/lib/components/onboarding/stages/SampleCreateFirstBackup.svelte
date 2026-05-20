@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Checkbox, Field, FormModal, Input, Stack } from "@immich/ui";
-  import { handleCreateRepository } from "$lib/services/repository.service";
+  import { useCreateRepository } from "$lib/services/repository.service";
   import { SvelteSet } from "svelte/reactivity";
 
   interface Props {
@@ -14,20 +14,18 @@
   let worm = $state(false);
   let paths = new SvelteSet([]);
 
-  const onSubmit = async () => {
-    const { repository } = await handleCreateRepository({
-      name,
-      worm,
-      paths: [...paths],
-    });
+  const mutation = useCreateRepository();
 
-    onSkip();
-  };
+  const onSubmit = () =>
+    mutation.mutate(
+      { name, worm, paths: [...paths] },
+      { onSuccess: () => onSkip() },
+    );
 </script>
 
 <FormModal
   title="Create Your First Backup"
-  disabled={name.length === 0}
+  disabled={name.length === 0 || mutation.isPending}
   onClose={onSkip}
   {onSubmit}
 >

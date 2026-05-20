@@ -12,7 +12,7 @@ import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
 import { mdiBackupRestore, mdiDeleteOutline } from '@mdi/js';
-import { createQuery } from '@tanstack/svelte-query';
+import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const snapshotKeys = {
   byRepository: (id: string) => ['snapshots', id] as const,
@@ -68,13 +68,22 @@ export const handleGetSnapshots = async (repositoryId: string) => {
   }
 };
 
-export const handleRestoreSnapshot = async (
-  repositoryId: string,
-  snapshotId: string,
-  options: RepositorySnapshotRestoreRequestDto,
-) => {
-  return await sdk.restoreSnapshot(repositoryId, snapshotId, options);
-};
+export const useRestoreSnapshot = () =>
+  createMutation(
+    () => ({
+      mutationFn: ({
+        repositoryId,
+        snapshotId,
+        options,
+      }: {
+        repositoryId: string;
+        snapshotId: string;
+        options: RepositorySnapshotRestoreRequestDto;
+      }) => sdk.restoreSnapshot(repositoryId, snapshotId, options),
+      onError: (error) => handleError(error, 'Failed to start restore'),
+    }),
+    () => queryClient,
+  );
 
 export const handleRestoreFromPoint = async (
   repositoryId: string,

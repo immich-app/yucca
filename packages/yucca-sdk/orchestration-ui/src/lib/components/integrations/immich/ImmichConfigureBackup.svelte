@@ -1,10 +1,12 @@
 <script lang="ts">
   import Suspense from "$lib/components/util/Suspense.svelte";
   import * as sdk from "$lib/fetch-client";
-  import { useIntegrations } from "$lib/services/integrations.service";
+  import {
+    useConfigureImmichIntegration,
+    useIntegrations,
+  } from "$lib/services/integrations.service";
   import { useRepositories } from "$lib/services/repository.service";
   import { useSchedules } from "$lib/services/schedule.service";
-  import { handleError } from "$lib/utils/handle-error";
   import {
     Button,
     Checkbox,
@@ -133,11 +135,13 @@
     scheduleMode === "daily" ? `${scheduleMinute} ${scheduleHour} * * *` : cron,
   );
 
-  const onSubmit = async () => {
-    try {
-      selectedFolders.add("backups");
+  const mutation = useConfigureImmichIntegration();
 
-      await sdk.configureImmichIntegration({
+  const onSubmit = () => {
+    selectedFolders.add("backups");
+
+    mutation.mutate(
+      {
         name,
         worm,
         cron: effectiveCron,
@@ -153,13 +157,14 @@
           ? null
           : (retentionChoices.find((choice) => choice.key === retentionKey)
               ?.policy ?? null),
-      });
-
-      onFinish?.();
-      onClose?.();
-    } catch (error) {
-      handleError(error, "Failed to save backup settings");
-    }
+      },
+      {
+        onSuccess: () => {
+          onFinish?.();
+          onClose?.();
+        },
+      },
+    );
   };
 
   function applicableFolders(item: FolderItem, available: string[]): string[] {
@@ -195,7 +200,9 @@
 <FormModal
   title="Backup settings"
   size="large"
-  disabled={!validateCron(effectiveCron) || name.length === 0}
+  disabled={!validateCron(effectiveCron) ||
+    name.length === 0 ||
+    mutation.isPending}
   onClose={() => {
     onCancel?.();
     onClose?.();

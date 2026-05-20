@@ -2,7 +2,7 @@
   import type { ScheduleDto } from "$lib/fetch-client";
   import { Field, FormModal, Input, Stack } from "@immich/ui";
   import validate from "cron-validate";
-  import { handleUpdateSchedule } from "$lib/services/schedule.service";
+  import { useUpdateSchedule } from "$lib/services/schedule.service";
   import RepositoryPicker from "../RepositoryPicker.svelte";
 
   type Props = {
@@ -19,16 +19,19 @@
   // svelte-ignore state_referenced_locally
   let repositories = $state([...schedule.repositories]);
 
-  const onSubmit = async () => {
-    await handleUpdateSchedule(schedule.id, { name, cron, repositories });
-    onClose();
-  };
+  const mutation = useUpdateSchedule();
+
+  const onSubmit = () =>
+    mutation.mutate(
+      { id: schedule.id, dto: { name, cron, repositories } },
+      { onSuccess: () => onClose() },
+    );
 </script>
 
 <FormModal
   title={`Edit ${schedule.name}`}
   size="large"
-  disabled={name.length === 0 || validate(cron).isError()}
+  disabled={name.length === 0 || validate(cron).isError() || mutation.isPending}
   {onSubmit}
   {onClose}
 >

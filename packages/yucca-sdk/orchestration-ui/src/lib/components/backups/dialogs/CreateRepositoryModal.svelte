@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { handleCreateRepository } from "$lib/services/repository.service";
+  import { useCreateRepository } from "$lib/services/repository.service";
   import {
     Checkbox,
     Field,
@@ -19,23 +19,29 @@
   let name = $state("");
   let worm = $state(false);
 
-  const onSubmit = async () => {
-    const { repository } = await handleCreateRepository({ name, worm });
+  const mutation = useCreateRepository();
 
-    onClose();
+  const onSubmit = () =>
+    mutation.mutate(
+      { name, worm },
+      {
+        onSuccess: ({ repository }) => {
+          onClose();
 
-    modalManager.open(ConfigureRepositoryModal, {
-      repository: {
-        ...repository,
-        configuration: repository.configuration!,
+          modalManager.open(ConfigureRepositoryModal, {
+            repository: {
+              ...repository,
+              configuration: repository.configuration!,
+            },
+          });
+        },
       },
-    });
-  };
+    );
 </script>
 
 <FormModal
   title="Create A New Backup"
-  disabled={name.length === 0}
+  disabled={name.length === 0 || mutation.isPending}
   {onSubmit}
   {onClose}
 >

@@ -2,6 +2,7 @@ import { SocketEvent } from '$lib/events';
 import {
   configureImmichIntegration,
   getIntegrations,
+  type ConfigureImmichIntegrationRequestDto,
   type IntegrationsResponseDto,
 } from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
@@ -28,6 +29,18 @@ export const useIntegrationEventHandler = () => ({
     queryClient.setQueryData(integrationsKeys.all, event.data.integrations);
   },
 });
+
+export const useConfigureImmichIntegration = () =>
+  createMutation(
+    () => ({
+      mutationFn: (dto: ConfigureImmichIntegrationRequestDto) =>
+        configureImmichIntegration(dto),
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: integrationsKeys.all }),
+      onError: (error) => handleError(error, 'Failed to save backup settings'),
+    }),
+    () => queryClient,
+  );
 
 export const useConfigureImmichDefaults = () =>
   createMutation(

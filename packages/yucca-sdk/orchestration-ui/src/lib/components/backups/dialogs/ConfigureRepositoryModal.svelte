@@ -3,8 +3,8 @@
   import { type LocalRepositoryDto } from "$lib/fetch-client";
   import { options } from "$lib/options";
   import {
-    handleRemoveRepository,
-    handleUpdateRepository,
+    useRemoveRepository,
+    useUpdateRepository,
   } from "$lib/services/repository.service";
   import PathListField from "$lib/components/ui/PathListField.svelte";
   import {
@@ -31,15 +31,14 @@
 
   const local = $derived(typeof repository.configuration === "object");
 
-  const onSubmit = async () => {
-    await handleUpdateRepository(
-      repository.id,
-      { name, paths: [...paths] },
-      local,
-    );
+  const updateMutation = useUpdateRepository();
+  const removeMutation = useRemoveRepository();
 
-    onClose();
-  };
+  const onSubmit = () =>
+    updateMutation.mutate(
+      { id: repository.id, dto: { name, paths: [...paths] }, local },
+      { onSuccess: () => onClose() },
+    );
 
   const onRemove = async () => {
     const confirm = await modalManager.showDialog({
@@ -51,16 +50,20 @@
     });
 
     if (!confirm) return;
-    onClose();
 
-    await handleRemoveRepository(repository.id, local);
+    removeMutation.mutate(
+      { id: repository.id, local },
+      { onSuccess: () => onClose() },
+    );
   };
 
   const { advanced } = options;
 </script>
 
 <FormModal
-  disabled={name.length === 0}
+  disabled={name.length === 0 ||
+    updateMutation.isPending ||
+    removeMutation.isPending}
   title={`Configure ${name}`}
   size="large"
   {onSubmit}
@@ -86,7 +89,11 @@
       </PathListField>
     {/if}
 
-    <Button color="danger" onclick={onRemove}>Remove Repository</Button>
+    <Button
+      color="danger"
+      loading={removeMutation.isPending}
+      onclick={onRemove}>Remove Repository</Button
+    >
 
     {#if advanced}
       <BackendsList {repository} />
