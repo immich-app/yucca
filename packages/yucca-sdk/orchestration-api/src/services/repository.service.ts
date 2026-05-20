@@ -1,13 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Updateable } from 'kysely';
-import { cp, mkdtemp } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { type WriteStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
 import { Backend } from '../backends/backend';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
-  InspectedLocalRepositoryDto,
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
   RepositoryCheckImportResponseDto,
@@ -36,7 +34,10 @@ import { RepositoryPathRepository } from '../repositories/repositoryPath.reposit
 import { ResticRepository } from '../repositories/restic.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
+import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
+import { DEFAULT_RETENTION_POLICY, RetentionPolicy } from '../utils/restic';
+import { BootstrapService } from './bootstrap.service';
 
 @Injectable()
 export class RepositoryService {
@@ -52,6 +53,9 @@ export class RepositoryService {
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryLocalMetrics: RepositoryLocalMetricsRepository,
     private readonly moduleConfig: ModuleConfigRepository,
+    private readonly storage: StorageRepository,
+    @Inject(forwardRef(() => BootstrapService))
+    private readonly bootstrap: BootstrapService,
   ) {}
 
   private async getLocalRepository(
@@ -59,9 +63,11 @@ export class RepositoryService {
     configuration?: RepositoryConfigurationDto,
     metrics?: RepositoryMetricsDto,
   ): Promise<Pick<LocalRepositoryDto, 'configuration' | 'metrics'>> {
-    configuration ??= {
-      paths: await this.repositoryPath.get(id),
-    };
+    if (!configuration) {
+      const [paths, { retentionPolicy }] = await Promise.all([this.repositoryPath.get(id), this.repository.get(id)]);
+      configuration = { paths, retentionPolicy };
+    }
+
     metrics ??= await this.repositoryLocalMetrics.get(id);
 
     return {
@@ -88,6 +94,7 @@ export class RepositoryService {
     await this.repository.create({
       id: remote.id,
       backendId,
+      retentionPolicy: DEFAULT_RETENTION_POLICY,
     });
 
     const paths = dto.paths ?? [];
@@ -96,7 +103,7 @@ export class RepositoryService {
     }
 
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(remote.id, { paths })),
+      ...(await this.getLocalRepository(remote.id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
       ...remote,
       backends: {
         primary: {
@@ -144,11 +151,12 @@ export class RepositoryService {
     const localPaths = await this.repositoryPath.getAll();
     const localMetrics = await this.repositoryLocalMetrics.getAll();
 
-    for (const { id, backendId } of localRepositories) {
+    for (const { id, backendId, retentionPolicy } of localRepositories) {
       const remoteRepository = remoteRepositories[backendId][id];
 
       const configuration: RepositoryConfigurationDto = {
         paths: localPaths.filter((entry) => entry.id === id).map(({ path }) => path),
+        retentionPolicy,
       };
 
       const metrics = localMetrics.find((entry) => entry.id === id);
@@ -218,13 +226,30 @@ export class RepositoryService {
     );
 
     return {
-      repositories: repositories.map(
-        (repository, idx) =>
-          ({
-            ...repository,
-            snapshots: snapshots[idx].status === 'fulfilled' ? snapshots[idx].value : undefined,
-          }) as InspectedLocalRepositoryDto,
-      ),
+      repositories: repositories.map((repository, idx) => ({
+        ...repository,
+        snapshots:
+          snapshots[idx].status === 'fulfilled'
+            ? snapshots[idx].value.map((snapshot) => this.mapSnapshot(snapshot))
+            : undefined,
+      })),
+    };
+  }
+
+  private mapSnapshot({ summary, ...snapshot }: Awaited<ReturnType<ResticRepository['snapshots']>>[number]) {
+    return {
+      ...snapshot,
+      time: snapshot.time.toISOString(),
+      summary: summary
+        ? {
+            filesNew: summary.files_new,
+            filesChanged: summary.files_changed,
+            filesUnmodified: summary.files_unmodified,
+            totalFiles: summary.total_files_processed,
+            totalBytes: summary.total_bytes_processed,
+            dataAdded: summary.data_added,
+          }
+        : undefined,
     };
   }
 
@@ -266,6 +291,10 @@ export class RepositoryService {
       }
     }
 
+    if (dto.retentionPolicy !== undefined) {
+      await this.repository.update(id, { retentionPolicy: dto.retentionPolicy });
+    }
+
     const metrics = await this.repositoryLocalMetrics.get(id);
 
     const repository: LocalRepositoryDto = {
@@ -290,6 +319,15 @@ export class RepositoryService {
     return {
       repository,
     };
+  }
+
+  async deleteRepository(id: string): Promise<void> {
+    await this.repository.delete(id);
+
+    this.events.publish({
+      type: 'RepositoryDelete',
+      repositoryId: id,
+    });
   }
 
   private async getResticParameters(id: string, backendId?: string): Promise<{ endpoint: string; key: Uint8Array }> {
@@ -341,12 +379,27 @@ export class RepositoryService {
           metrics: updatedMetrics,
         },
       });
+
+      if (metrics.sizeBytes) {
+        const { backendId } = await this.repository.get(id);
+        const { configuration } = await this.backend.getBackend(backendId);
+        const backend = Backend.from(configuration, this.moduleConfig.get());
+
+        if (backend.isMetricsCapable()) {
+          await backend.submitMetricRepositorySize(id, metrics.sizeBytes);
+        }
+
+        // ... in the future, this should push to all mirrors too
+      }
     } catch {
       // no-op
     }
   }
 
-  async createBackup(id: string): Promise<{
+  async createBackup(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<{
     logId: string;
     task: Promise<void>;
   }> {
@@ -354,48 +407,56 @@ export class RepositoryService {
       throw new BadRequestException('Task already running!');
     }
 
+    const { backendId } = await this.repository.get(id);
+    const { configuration } = await this.backend.getBackend(backendId);
+    const backend = Backend.from(configuration, this.moduleConfig.get());
+
+    const { endpoint, key } = await this.getResticParameters(id);
+
     const paths = await this.repositoryPath.get(id);
     if (paths.length === 0) {
       throw new BadRequestException('Missing configuration paths');
     }
 
-    const { endpoint, key } = await this.getResticParameters(id);
-
     return new Promise((resolve) => {
-      let startTime: number;
+      const startTime = Date.now();
 
       const task = new Promise<void>(
         (complete, fail) =>
           void this.runHistory.createLog(
             id,
+            TaskType.Backup,
             async (log, logId) => {
               resolve({
                 task,
                 logId,
               });
 
-              startTime = Date.now();
+              if (backend.isMetricsCapable()) {
+                await backend.submitMetricBackupStart(id);
+              }
 
               try {
-                this.tasks.startTask(id, TaskType.Backup, logId);
-                await this.restic.backup(endpoint, key, paths, log);
+                const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
+                await this.restic.backup(endpoint, key, paths, log, taskSignal);
+
+                const { retentionPolicy: policy } = await this.repository.get(id);
+                if (policy) {
+                  await this.runForgetAndPrune(endpoint, key, policy, log, taskSignal);
+                }
               } finally {
                 this.tasks.endTask(id);
               }
             },
-            (error) => {
-              const lastBackup = new Date().toString();
-              let lastSuccessfulBackup;
-              const lastBackupDuration = startTime ? Date.now() - startTime : undefined;
-
-              if (!error) {
-                lastSuccessfulBackup = lastBackup;
-              }
+            async (error) => {
+              const lastBackup = new Date().toISOString();
+              const lastSuccessfulBackup = error ? undefined : lastBackup;
+              const lastBackupDuration = Date.now() - startTime;
 
               void this.updateLocalMetrics(id, {
                 resticParameters: { endpoint, key },
                 additionalMetrics: {
-                  lastBackup: new Date().toString(),
+                  lastBackup,
                   lastSuccessfulBackup,
                   lastBackupDuration,
                 },
@@ -406,9 +467,94 @@ export class RepositoryService {
               } else {
                 complete();
               }
+
+              if (backend.isMetricsCapable()) {
+                await backend.submitMetricBackupEnd(id, !error, lastBackupDuration);
+              }
             },
           ),
       );
+
+      task.catch(() => {});
+    });
+  }
+
+  private async runForgetAndPrune(
+    endpoint: string,
+    key: Uint8Array,
+    policy: RetentionPolicy,
+    log: WriteStream,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const events = await this.restic.forgetByPolicy(endpoint, key, policy, signal);
+
+    for (const { keep, remove, reasons } of events) {
+      if (keep) {
+        for (const { id, time } of keep) {
+          log.write(
+            JSON.stringify({
+              message_type: 'yucca_prune_kept',
+              id,
+              time,
+              matches: reasons?.find((reason) => reason.snapshot.id === id)?.matches,
+            }) + '\n',
+          );
+        }
+      }
+
+      if (remove) {
+        for (const { id, time } of remove) {
+          log.write(JSON.stringify({ message_type: 'yucca_prune_removed', id, time }) + '\n');
+        }
+      }
+    }
+
+    await this.restic.prune(endpoint, key, signal);
+  }
+
+  async pruneRepository(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<{
+    logId: string;
+    task: Promise<void>;
+  }> {
+    if (!this.tasks.canStart(id)) {
+      throw new BadRequestException('Task already running!');
+    }
+
+    const { retentionPolicy: policy } = await this.repository.get(id);
+    if (!policy) {
+      throw new BadRequestException('No retention policy configured for this repository');
+    }
+
+    const { endpoint, key } = await this.getResticParameters(id);
+
+    return new Promise((resolve) => {
+      const task = new Promise<void>(
+        (complete, fail) =>
+          void this.runHistory.createLog(
+            id,
+            TaskType.Forget,
+            async (log, logId) => {
+              resolve({ task, logId });
+              await this.runForgetAndPrune(endpoint, key, policy, log, signal);
+            },
+            (error) => {
+              void this.updateLocalMetrics(id, {
+                resticParameters: { endpoint, key },
+              });
+
+              if (error) {
+                fail(error);
+              } else {
+                complete();
+              }
+            },
+          ),
+      );
+
+      task.catch(() => {});
     });
   }
 
@@ -437,13 +583,23 @@ export class RepositoryService {
     const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
     await this.restic.keyList(endpoint, key);
 
+    let paths: string[] = [];
+    try {
+      const snapshots = await this.restic.snapshots(endpoint, key);
+      snapshots.sort((a, b) => +b.time - +a.time);
+      paths = snapshots[0].paths;
+    } catch {
+      // no-op
+    }
+
     await this.repository.create({
       id: remote.id,
       backendId,
+      retentionPolicy: DEFAULT_RETENTION_POLICY,
     });
 
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(id, { paths: [] })),
+      ...(await this.getLocalRepository(id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
       ...remote,
       backends: {
         primary: {
@@ -470,10 +626,7 @@ export class RepositoryService {
     const snapshots = await this.restic.snapshots(endpoint, key);
 
     return {
-      snapshots: snapshots.map((snapshot) => ({
-        ...snapshot,
-        time: snapshot.time.toISOString(),
-      })),
+      snapshots: snapshots.map((snapshot) => this.mapSnapshot(snapshot)),
     };
   }
 
@@ -490,6 +643,7 @@ export class RepositoryService {
         (complete, fail) =>
           void this.runHistory.createLog(
             id,
+            TaskType.Restore,
             async (log, logId) => {
               resolve({
                 task,
@@ -499,8 +653,8 @@ export class RepositoryService {
               const { endpoint, key } = await this.getResticParameters(id);
 
               try {
-                this.tasks.startTask(id, TaskType.Restore, logId);
-                await this.restic.restore(endpoint, key, snapshotId, dto, log);
+                const signal = this.tasks.startTask(id, TaskType.Restore, logId);
+                await this.restic.restore(endpoint, key, snapshotId, dto, log, signal);
               } finally {
                 this.tasks.endTask(id);
               }
@@ -514,6 +668,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 
@@ -539,22 +695,32 @@ export class RepositoryService {
               const { endpoint, key } = await this.getResticParameters(id, backendId);
 
               try {
-                this.tasks.startTask(id, TaskType.Restore, logId);
-                await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log);
+                const signal = this.tasks.startTask(id, TaskType.Restore, logId);
+                await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log, signal);
 
                 if (dto.yuccaConfig) {
-                  const target = await mkdtemp(join(tmpdir(), 'yucca'));
-                  await this.restic.restore(endpoint, key, snapshotId, { include: [dto.yuccaConfig], target }, log);
+                  const target = await this.storage.tempdir();
+
+                  await this.restic.restore(
+                    endpoint,
+                    key,
+                    snapshotId,
+                    { include: [dto.yuccaConfig], target },
+                    log,
+                    signal,
+                  );
 
                   const { statePath } = this.moduleConfig.get();
                   const restoredState = join(target, dto.yuccaConfig);
 
-                  await cp(restoredState, statePath, {
+                  await this.storage.cp(restoredState, statePath, {
                     recursive: true,
                     filter: (src) => !src.endsWith('.sqlite3'),
                   });
 
                   await this.database.restoreFrom(join(restoredState, 'state.sqlite3'));
+
+                  await this.bootstrap.onApplicationBootstrap();
                 }
               } finally {
                 this.tasks.endTask(id);
@@ -569,6 +735,8 @@ export class RepositoryService {
             },
           ),
       );
+
+      task.catch(() => {});
     });
   }
 
@@ -580,8 +748,8 @@ export class RepositoryService {
     const { endpoint, key } = await this.getResticParameters(id);
 
     try {
-      this.tasks.startTask(id, TaskType.Forget);
-      await this.restic.forget(endpoint, key, snapshotId);
+      const signal = this.tasks.startTask(id, TaskType.Forget);
+      await this.restic.forget(endpoint, key, snapshotId, true, signal);
     } finally {
       this.tasks.endTask(id);
     }

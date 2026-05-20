@@ -1,0 +1,117 @@
+---
+# provision-host — idempotent fresh-install provisioning for sietch-ceph nodes.
+#
+# Flow:
+#   1. detect.yml             — live image + UEFI assertions, SSD pre-flight
+#                               discovery and validation
+#   2. prerequisites_live.yml — rewrite apt sources off the live medium and
+#                               install debootstrap/mdadm/lvm2/etc on the live image
+#   3. disks.yml              — opportunistic remount + marker probe, otherwise
+#                               wipe, partition, mdraid, LVM, mount at /mnt
+#   4. install.yml            — debootstrap Bookworm into /mnt
+#   5. configure.yml          — templates for hostname/hosts/network/fstab/mdadm
+#   6. chroot_packages.yml    — probe-then-mount bind mounts, apt install,
+#                               machine-id, SSH host keys, enable services
+#   7. admin_user.yml         — create ansible-iac (key-only, uid 1000)
+#                               inside chroot. The ops user is NOT created
+#                               here — it's created post-boot by the baseline
+#                               role (ADR-003: split chroot work from
+#                               post-boot convergeable config).
+#   8. bootloader.yml         — initramfs, grub-install, efibootmgr fallback
+#   9. finalize.yml           — marker + ESP mirror, then unmount + reboot
+#                               (or stop short for skip-reboot canary mode)
+#  10. unmount.yml            — reverse-order best-effort cleanup, shared
+#                               between the successful finalize path and the
+#                               rescue block on failure
+#
+# Each phase has its own internal idempotency guards so the entire role
+# is safe to re-run after a partial failure. If a phase crashes, the
+# block/rescue unmounts /mnt so the next run starts from a clean state.
+#
+# Once the on-disk marker at /mnt/etc/ceph-provisioned.json is present
+# and matches inventory_hostname, chroot phases 4-8 plus the marker/ESP
+# block in phase 9 all short-circuit via `provisioning_done` and the role
+# goes straight to unmount + reboot. This is what makes the skip-reboot
+# canary path safe to commit on a follow-up run.
+#
+# To re-provision an already-installed host: reboot into the live image,
+# then re-run the playbook. If disks.yml can't find (or can't validate)
+# an existing marker it will wipe and start over.
+
+- name: Detect provisioning state
+  ansible.builtin.import_tasks: detect.yml
+
+- name: Refuse to run without confirm_wipe=true
+  ansible.builtin.fail:
+    msg: >-
+      REFUSING TO RUN. This role will destroy all data on the SSDs.
+      Pass -e confirm_wipe=true to proceed.
+  when: not (confirm_wipe | default(false) | bool)
+
+- name: Provisioning phases
+  block:
+    - name: Install live-image prerequisites
+      ansible.builtin.import_tasks: prerequisites_live.yml
+
+    - name: Prepare disks (partition, mdraid, LVM, mount)
+      ansible.builtin.import_tasks: disks.yml
+
+    # ----- Marker-driven resume gate -------------------------------------
+    #
+    # If the chroot at /mnt already contains the provisioning marker, the
+    # whole install/configure/chroot/admin/bootloader/finalize-marker
+    # sequence is a no-op — they all wrote their final state on a previous
+    # run. The only thing left to do is unmount + reboot. Skipping all the
+    # chroot phases on resume avoids:
+    #   - re-binding bind mounts that are already in place
+    #   - re-rotating SSH host keys (would break known_hosts)
+    #   - re-hashing the ops password with a fresh salt
+    #   - re-running grub-install/update-grub for no reason
+    #   - re-rendering the marker with a stale provisioned_at timestamp
+
+    - name: Check if provisioning marker is present in chroot
+      ansible.builtin.stat:
+        path: "{{ provision_mnt }}{{ provision_marker_path }}"
+      register: marker_stat
+
+    - name: Set provisioning_done fact
+      ansible.builtin.set_fact:
+        provisioning_done: "{{ marker_stat.stat.exists | bool }}"
+
+    - name: Announce marker-driven resume shortcut
+      ansible.builtin.debug:
+        msg: >-
+          Marker present at {{ provision_mnt }}{{ provision_marker_path }} —
+          all chroot phases will be skipped. Going straight to unmount + reboot.
+      when: provisioning_done
+
+    - name: Install base OS via debootstrap
+      ansible.builtin.import_tasks: install.yml
+      when: not provisioning_done
+
+    - name: Configure target system (templates + static files)
+      ansible.builtin.import_tasks: configure.yml
+      when: not provisioning_done
+
+    - name: Install packages inside chroot
+      ansible.builtin.import_tasks: chroot_packages.yml
+      when: not provisioning_done
+
+    - name: Create ansible-iac user inside chroot (ops created post-boot by baseline)
+      ansible.builtin.import_tasks: admin_user.yml
+      when: not provisioning_done
+
+    - name: Install bootloader
+      ansible.builtin.import_tasks: bootloader.yml
+      when: not provisioning_done
+
+    - name: Finalize (marker, ESP mirror, unmount, reboot)
+      ansible.builtin.import_tasks: finalize.yml
+  rescue:
+    - name: Unmount /mnt hierarchy on failure (best-effort cleanup)
+      ansible.builtin.include_tasks: unmount.yml
+    - name: Re-raise failure
+      ansible.builtin.fail:
+        msg: >-
+          Provisioning phase failed for {{ inventory_hostname }}.
+          /mnt has been unmounted where possible — safe to re-run.

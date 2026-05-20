@@ -1,6 +1,30 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
-import { BackendType, TaskStatus } from '../enum';
+import { IsArray, IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import { BackendType, TaskStatus, TaskType } from '../enum';
+import type { RunType } from '../schema/tables/runHistory.table';
+
+export class RetentionPolicyDto {
+  @ApiProperty({ type: Number, required: false })
+  keepLast?: number;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithin?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinHourly?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinDaily?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinWeekly?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinMonthly?: string;
+
+  @ApiProperty({ type: String, required: false })
+  keepWithinYearly?: string;
+}
 
 export class RepositoryDto {
   @ApiProperty({ type: String })
@@ -54,6 +78,9 @@ export class RepositoryBackendsDto {
 export class RepositoryConfigurationDto {
   @ApiProperty({ type: [String] })
   paths!: string[];
+
+  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
+  retentionPolicy!: RetentionPolicyDto | null;
 }
 
 export class LocalRepositoryDto extends RepositoryWithMetricsDto {
@@ -99,6 +126,11 @@ export class RepositoryUpdateRequestDto {
   @IsArray()
   @IsString({ each: true })
   paths?: string[];
+
+  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
+  @IsOptional()
+  @IsObject()
+  retentionPolicy?: RetentionPolicyDto | null;
 }
 
 export class RepositoryUpdateResponseDto {
@@ -121,6 +153,9 @@ export class RunDto {
   id!: string;
 
   @ApiProperty({ type: String })
+  repositoryId!: string;
+
+  @ApiProperty({ type: String })
   start!: string;
 
   @ApiProperty({ type: String })
@@ -131,11 +166,39 @@ export class RunDto {
 
   @ApiProperty({ enumName: 'RunStatus', enum: TaskStatus })
   status!: TaskStatus;
+
+  @ApiProperty({ enumName: 'RunType', enum: TaskType })
+  type!: RunType;
 }
 
 export class RunHistoryResponseDto {
   @ApiProperty({ type: [RunDto] })
   runs!: RunDto[];
+}
+
+export class RunResponseDto {
+  @ApiProperty({ type: RunDto })
+  run!: RunDto;
+}
+
+export class SnapshotSummaryDto {
+  @ApiProperty({ type: Number })
+  filesNew!: number;
+
+  @ApiProperty({ type: Number })
+  filesChanged!: number;
+
+  @ApiProperty({ type: Number })
+  filesUnmodified!: number;
+
+  @ApiProperty({ type: Number })
+  totalFiles!: number;
+
+  @ApiProperty({ type: Number })
+  totalBytes!: number;
+
+  @ApiProperty({ type: Number })
+  dataAdded!: number;
 }
 
 export class SnapshotDto {
@@ -147,6 +210,9 @@ export class SnapshotDto {
 
   @ApiProperty({ type: [String] })
   paths!: string[];
+
+  @ApiProperty({ type: SnapshotSummaryDto, required: false })
+  summary?: SnapshotSummaryDto;
 }
 
 export class ListSnapshotsResponseDto {

@@ -1,0 +1,106 @@
+---
+# Phase 3: Add nodes to cluster (from bootstrap node)
+#
+# Only attempts to add hosts that are in the current play (--limit aware).
+# This prevents failures when nodes are defined in inventory
+# but not yet available.
+
+- name: Build list of joinable hosts
+  ansible.builtin.set_fact:
+    joinable_hosts: >-
+      {{ groups['ceph_join'] | default([])
+         | intersect(ansible_play_hosts)
+         | list }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Verify cephadm SSH to join nodes
+  ansible.builtin.shell: |
+    set -euo pipefail
+    HOST="{{ hostvars[item]['hostname_short'] }}"
+    ADDR="{{ hostvars[item]['bond_ip'] }}"
+    echo "Testing SSH to $HOST ($ADDR)..."
+    ceph cephadm check-host "$HOST" "$ADDR" 2>&1 || {
+      echo "WARN: ceph cephadm check-host failed, testing raw SSH..."
+      cephadm shell -- ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+        "root@${ADDR}" "cephadm check-host --expect-hostname $HOST" 2>&1
+    }
+  args:
+    executable: /bin/bash
+  loop: "{{ joinable_hosts | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - joinable_hosts | default([]) | length > 0
+  loop_control:
+    label: "{{ hostvars[item]['hostname_short'] }}"
+  changed_when: false
+  failed_when: false
+  register: ssh_check_results
+
+- name: Show SSH check results
+  ansible.builtin.debug:
+    msg: "{{ item.stdout_lines | default([]) }}"
+  loop: "{{ ssh_check_results.results | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item.stdout is defined
+  loop_control:
+    label: "{{ item.item | default('unknown') }}"
+
+- name: Add remaining nodes to Ceph cluster
+  ansible.builtin.shell: |
+    set -o pipefail
+    # Check if host already added
+    if ceph orch host ls --format json |
+       grep -q '"{{ hostvars[item]['hostname_short'] }}"'; then
+      echo "Host {{ hostvars[item]['hostname_short'] }} already in cluster"
+    else
+      echo "Adding {{ hostvars[item]['hostname_short'] }} ({{ hostvars[item]['bond_ip'] }})"
+      ceph orch host add \
+        {{ hostvars[item]['hostname_short'] }} \
+        {{ hostvars[item]['bond_ip'] }} 2>&1
+    fi
+  args:
+    executable: /bin/bash
+  loop: "{{ joinable_hosts | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - joinable_hosts | default([]) | length > 0
+  register: host_add_results
+  changed_when: "'Adding' in (host_add_results.stdout | default(''))"
+
+- name: Show host add results
+  ansible.builtin.debug:
+    msg: "{{ item.stdout }}"
+  loop: "{{ host_add_results.results | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item.stdout is defined
+  loop_control:
+    label: "{{ item.item | default('unknown') }}"
+
+    # cephadm automatically syncs ceph.conf and admin keyring to managed
+    # hosts after `ceph orch host add`. No manual distribution needed.
+
+- name: Wait for new hosts to be online
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in $(seq 1 30); do
+      online=$(ceph orch host ls --format json | python3 -c "
+    import sys, json
+    hosts = json.load(sys.stdin)
+    print(len([h for h in hosts if h.get('status','') == '']))
+    " 2>/dev/null || echo 0)
+      expected={{ (joinable_hosts | default([]) | length) + 1 }}
+      echo "Hosts online: $online/$expected"
+      if [ "$online" -ge "$expected" ]; then
+        exit 0
+      fi
+      sleep 10
+    done
+    echo "WARNING: Not all hosts online yet"
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - joinable_hosts | default([]) | length > 0
+  changed_when: false

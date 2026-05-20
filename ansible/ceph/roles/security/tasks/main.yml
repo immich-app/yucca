@@ -1,0 +1,64 @@
+---
+# Security hardening for Ceph nodes.
+# Firewall (nftables) + SSH hardening.
+# Run AFTER ceph_deploy so cephadm orchestrator can freely deploy daemons.
+
+# --- nftables firewall ---
+
+- name: Install nftables
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+
+- name: Deploy nftables ruleset
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: "nft -c -f %s"
+  register: nftables_config
+  when: ceph_firewall_enabled | bool
+
+- name: Enable and start nftables
+  ansible.builtin.systemd:
+    name: nftables
+    enabled: true
+    state: "{{ 'restarted' if nftables_config is changed else 'started' }}"
+  when: ceph_firewall_enabled | bool
+
+- name: Show active nftables rules
+  ansible.builtin.command: nft list ruleset
+  register: nft_rules
+  changed_when: false
+  when: ceph_firewall_enabled | bool
+
+- name: Display firewall summary
+  ansible.builtin.debug:
+    msg: "{{ nft_rules.stdout_lines | default(['Firewall disabled']) }}"
+
+# --- SSH hardening ---
+
+- name: Deploy SSH hardening config
+  ansible.builtin.template:
+    src: sshd-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/50-hardening.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart sshd
+
+- name: Verify full SSH config is valid after drop-in
+  ansible.builtin.command: sshd -t
+  changed_when: false
+
+# --- Summary ---
+
+- name: Report security state
+  ansible.builtin.debug:
+    msg:
+      - "Firewall: {{ 'enabled' if ceph_firewall_enabled else 'disabled' }}"
+      - "Trusted networks: {{ ceph_firewall_trusted_networks | join(', ') }}"
+      - "SSH AllowUsers: {{ ceph_ssh_allowed_users }}"
+      - "SSH PermitRootLogin: {{ ceph_ssh_permit_root_login }}"

@@ -3,4 +3,4 @@
 #MISE depends=["yucca-sdk:orchestration-ui:build"]
 set -e
 
-pnpm --filter orchestration-ui preview --host
+pnpm --filter @futo-org/backups-orchestrator-ui preview --host

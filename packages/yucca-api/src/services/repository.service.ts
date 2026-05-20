@@ -1,5 +1,5 @@
 import { WideContextRepository } from '@common/server/otel';
-import { Injectable, Scope, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
@@ -15,64 +15,35 @@ export class RepositoryService {
     private readonly resticApi: ResticApiRepository,
   ) {}
 
-  async create(auth: AuthDto, dto: RepositoryCreateRequestDto) {
-    return {
-      ...(await this.repositoryRepository.create({
-        userId: auth.id,
-        ...dto,
-      })),
-      metrics: {
-        lastBackup: null,
-        lastSuccessfulBackup: null,
-        sizeBytes: 0,
-      },
-    };
+  create(auth: AuthDto, dto: RepositoryCreateRequestDto) {
+    return this.repositoryRepository.create({ userId: auth.id, ...dto });
   }
 
-  async get(id: string) {
-    return {
-      ...(await this.repositoryRepository.get(id)),
-      metrics: {
-        lastBackup: null,
-        lastSuccessfulBackup: null,
-        sizeBytes: 0,
-      },
-    };
-  }
-
-  async getAll(auth: AuthDto) {
-    const repositories = await this.repositoryRepository.getByUser(auth.id);
-
-    return {
-      repositories: repositories.map((repository) => ({
-        ...repository,
-        metrics: {
-          lastBackup: null,
-          lastSuccessfulBackup: null,
-          sizeBytes: 0,
-        },
-      })),
-    };
-  }
-
-  async update(id: string, dto: RepositoryUpdateRequestDto) {
-    return {
-      repository: {
-        ...(await this.repositoryRepository.update(id, dto)),
-        metrics: {
-          lastBackup: null,
-          lastSuccessfulBackup: null,
-          sizeBytes: 0,
-        },
-      },
-    };
-  }
-
-  async createUrl(auth: AuthDto, id: string) {
+  async get(auth: AuthDto, id: string) {
     const repository = await this.repositoryRepository.get(id);
     if (repository.userId !== auth.id) {
       throw new UnauthorizedException();
     }
+
+    return repository;
+  }
+
+  async getAll(auth: AuthDto) {
+    return { repositories: await this.repositoryRepository.getByUser(auth.id) };
+  }
+
+  async update(auth: AuthDto, id: string, dto: RepositoryUpdateRequestDto) {
+    const repository = await this.get(auth, id);
+
+    if (repository.worm && typeof dto.worm === 'boolean' && dto.worm !== repository.worm) {
+      throw new BadRequestException('Refusing to disable write-only on repository');
+    }
+
+    return { repository: await this.repositoryRepository.update(id, dto) };
+  }
+
+  async createUrl(auth: AuthDto, id: string) {
+    const repository = await this.get(auth, id);
 
     const token = await this.jwt.signAsync({
       user: auth.id,
@@ -88,5 +59,14 @@ export class RepositoryService {
     url.pathname = repository.id;
 
     return { url: `rest:${url.href}` };
+  }
+
+  async delete(auth: AuthDto, id: string) {
+    const repository = await this.get(auth, id);
+    if (repository.worm) {
+      throw new BadRequestException('Refusing to delete write-only repository');
+    }
+
+    await this.repositoryRepository.delete(id);
   }
 }

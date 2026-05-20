@@ -1,0 +1,58 @@
+---
+# Phase 7: Create ansible-iac user inside chroot
+#
+# This is the minimum viable user for Ansible to connect after reboot:
+#   - uid 1000, locked password (key-only SSH)
+#   - SSH pubkey from {{ provision_iac_ssh_key_path }}.pub
+#   - NOPASSWD sudo
+#
+# The ops user and all other post-boot config are handled by the
+# baseline role, which runs after provisioning via the normal pipeline.
+
+# === ansible-iac (uid 1000, locked password, key-only) ================
+
+- name: Check if ansible-iac user exists inside chroot
+  ansible.builtin.command: "chroot {{ provision_mnt }} id -u ansible-iac"
+  register: iac_user_check
+  changed_when: false
+  failed_when: false
+
+- name: Create ansible-iac user inside chroot
+  ansible.builtin.command: >-
+    chroot {{ provision_mnt }}
+    useradd -m -s /bin/bash -u 1000 -U -G sudo ansible-iac
+  when: iac_user_check.rc != 0
+  changed_when: true
+
+- name: Lock ansible-iac password (enforces key-only SSH)
+  ansible.builtin.command: "chroot {{ provision_mnt }} passwd -l ansible-iac"
+  when: iac_user_check.rc != 0
+  changed_when: true
+
+- name: Ensure ~ansible-iac/.ssh directory exists
+  ansible.builtin.file:
+    path: "{{ provision_mnt }}/home/ansible-iac/.ssh"
+    state: directory
+    mode: '0700'
+
+- name: Install authorized_keys for ansible-iac (from controller file)
+  ansible.builtin.copy:
+    content: "{{ lookup('file', (provision_iac_ssh_key_path | expanduser) ~ '.pub') }}\n"
+    dest: "{{ provision_mnt }}/home/ansible-iac/.ssh/authorized_keys"
+    mode: '0600'
+
+- name: Fix ownership of ansible-iac .ssh directory inside chroot
+  ansible.builtin.command: >-
+    chroot {{ provision_mnt }}
+    chown -R ansible-iac:ansible-iac /home/ansible-iac/.ssh
+  changed_when: true
+
+- name: Grant passwordless sudo to ansible-iac
+  ansible.builtin.copy:
+    content: "ansible-iac ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "{{ provision_mnt }}/etc/sudoers.d/ansible-iac"
+    mode: '0440'
+    validate: "visudo -cf %s"
+
+    # ops user is created post-boot by the baseline role, not in chroot.
+    # Only ansible-iac is needed for Ansible to connect after reboot.

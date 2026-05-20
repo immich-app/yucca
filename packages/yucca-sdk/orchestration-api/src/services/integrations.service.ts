@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { join } from 'node:path';
 import { ConfigureImmichIntegrationRequestDto, IntegrationsResponseDto } from '../dto/integrations.dto';
@@ -14,8 +14,6 @@ import { ScheduleService } from './schedule.service';
 
 @Injectable()
 export class IntegrationsService {
-  private readonly logger = new Logger(IntegrationsService.name);
-
   constructor(
     private readonly events: EventsGateway,
     private readonly moduleConfig: ModuleConfigRepository,
@@ -61,8 +59,11 @@ export class IntegrationsService {
     if (existing) {
       repositoryId = existing.id;
       scheduleId = existing.scheduleId;
-      await this.repositoryService.updateRepository(existing.id, { name: dto.name });
-      await this.scheduleService.updateSchedule(scheduleId, { cron: dto.cron });
+      await this.repositoryService.updateRepository(existing.id, {
+        name: dto.name,
+        retentionPolicy: dto.retentionPolicy,
+      });
+      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron });
     } else {
       ({
         repository: { id: repositoryId },
@@ -70,6 +71,12 @@ export class IntegrationsService {
         name: dto.name,
         worm: dto.worm,
       }));
+
+      if (dto.retentionPolicy !== undefined) {
+        await this.repositoryService.updateRepository(repositoryId, {
+          retentionPolicy: dto.retentionPolicy,
+        });
+      }
 
       ({
         schedule: { id: scheduleId },

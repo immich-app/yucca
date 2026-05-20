@@ -1,1 +1,5 @@
-{ "restic-api": "0.0.0" }
+{
+  "packages/yucca-api-client": "0.1.71",
+  "packages/yucca-sdk/orchestration-api": "0.1.71",
+  "packages/yucca-sdk/orchestration-ui": "0.1.71"
+}

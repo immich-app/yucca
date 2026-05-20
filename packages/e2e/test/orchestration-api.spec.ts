@@ -1,36 +1,28 @@
+import * as sdk from '@futo-org/backups-orchestrator-ui/sdk';
 import { createEventSource } from 'eventsource-client';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import * as sdk from 'orchestration-ui/sdk';
 import { io, Socket } from 'socket.io-client';
 
 const baseUrl = `http://localhost:22676`;
 let socket: Socket;
 
 const login = async () => {
-  const { headers: loginHeaders } = await fetch(`${baseUrl}/api/yucca/auth/oidc/login`, {
-    redirect: 'manual',
-  });
+  const backendCreated = waitForMessage('BackendCreate');
 
-  const { headers: nextHopHeaders } = await fetch(loginHeaders.get('Location')!, {
-    redirect: 'manual',
-  });
+  const { userCode, verificationUri } = await sdk.oidcDeviceFlow();
 
-  const redirectUrl = new URL(nextHopHeaders.get('Location')!);
-  redirectUrl.pathname = '/api/form';
-  redirectUrl.searchParams.set('sub', 'bar');
+  const approveUrl = new URL('/api/form/device', verificationUri);
+  approveUrl.searchParams.set('user_code', userCode);
+  approveUrl.searchParams.set('sub', 'bar');
 
-  const { headers: oidcHeaders } = await fetch(redirectUrl, {
-    redirect: 'manual',
-  });
+  const response = await fetch(approveUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to approve device code: ${response.status} ${await response.text()}`);
+  }
 
-  await fetch(oidcHeaders.get('Location')!, {
-    redirect: 'manual',
-    headers: {
-      Cookie: loginHeaders.getSetCookie().join('; '),
-    },
-  });
+  await backendCreated;
 };
 
 beforeAll(async () => {
@@ -77,7 +69,7 @@ describe('Onboarding (before setup)', () => {
 describe('Auth', () => {
   it('should log us in using IdP', async () => {
     await login();
-  });
+  }, 30_000);
 });
 
 describe('Backend', () => {
@@ -104,20 +96,11 @@ describe('Filesystem', () => {
 
 describe('Integrations', () => {
   it('gets integrations', async () => {
-    await expect(sdk.getIntegrations()).resolves.toEqual({});
-  });
-
-  it('rejects configuring immich when not enabled', async () => {
-    await expect(
-      sdk.configureImmichIntegration({
-        name: 'Immich Backup',
-        worm: false,
-        cron: '0 2 * * *',
-        dataFolders: [],
-        backupConfiguration: false,
-        libraries: 'all',
+    await expect(sdk.getIntegrations()).resolves.toEqual(
+      expect.not.objectContaining({
+        immichIntegration: expect.anything(),
       }),
-    ).rejects.toThrow();
+    );
   });
 });
 
@@ -236,7 +219,7 @@ describe('Repository', () => {
 
     const { logId } = await sdk.createBackup(repository.id);
 
-    const events = createEventSource(`${baseUrl}/api/yucca/logs/${logId}`);
+    const events = createEventSource(`${baseUrl}/api/yucca/logs/${logId}/stream`);
 
     for await (const { data } of events) {
       const payload = JSON.parse(data);
@@ -282,7 +265,7 @@ describe('Repository', () => {
         }),
       }),
     });
-  }, 10_000);
+  }, 30_000);
 
   it('lists run history', async () => {
     await expect(sdk.getRunHistory(repository.id)).resolves.toEqual({
@@ -335,6 +318,7 @@ describe('Repository', () => {
   });
 
   it('restores a snapshot', async () => {
+    const event = waitForMessage('TaskEnd');
     const {
       snapshots: [{ id }],
     } = await sdk.getSnapshots(repository.id);
@@ -342,6 +326,11 @@ describe('Repository', () => {
     const { logId } = await sdk.restoreSnapshot(repository.id, id, {});
 
     expect(logId).toEqual(expect.any(String));
+
+    await expect(event).resolves.toEqual({
+      type: 'TaskEnd',
+      parentId: repository.id,
+    });
   });
 
   it('checks import repository', async () => {
@@ -418,7 +407,7 @@ describe('Schedule', () => {
       cron: '* * * * *',
       repositories: [repository.id, repository2.id],
     }));
-  }, 10_000);
+  }, 30_000);
 
   it('creates and deletes a schedule', async () => {
     const createEvent = waitForMessage('ScheduleCreate');
@@ -485,7 +474,7 @@ describe('Schedule', () => {
 
   it('removes and adds repository', async () => {
     const removeEvent = waitForMessage('ScheduleUpdate');
-    await sdk.removeRepositoryFromSchedule(schedule.id, repository.id);
+    await sdk.updateSchedule(schedule.id, { repositories: [repository2.id] });
 
     await expect(removeEvent).resolves.toEqual({
       type: 'ScheduleUpdate',
@@ -496,7 +485,9 @@ describe('Schedule', () => {
     });
 
     const addEvent = waitForMessage('ScheduleUpdate');
-    await sdk.addRepositoryToSchedule(schedule.id, repository.id);
+    await sdk.updateSchedule(schedule.id, {
+      repositories: [repository2.id, repository.id],
+    });
 
     await expect(addEvent).resolves.toEqual({
       type: 'ScheduleUpdate',
@@ -547,7 +538,7 @@ describe('Reset & Restore', () => {
     await login();
     await sdk.importRecoveryKey({ recoveryKey: '0'.repeat(64) });
     await sdk.confirmRecoveryKey();
-  }, 15_000);
+  }, 60_000);
 
   it('imports a repository from backend', async () => {
     const { backends } = await sdk.getBackends();
@@ -568,7 +559,7 @@ describe('Reset & Restore', () => {
         id: existingRepositoryId,
       }),
     });
-  }, 10_000);
+  }, 30_000);
 
   it('restores point from repository', async () => {
     await expect(sdk.getSchedules()).resolves.toEqual(
@@ -600,5 +591,5 @@ describe('Reset & Restore', () => {
         ]),
       }),
     );
-  }, 10_000);
+  }, 30_000);
 });

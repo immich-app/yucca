@@ -2,4 +2,4 @@
 #MISE description="Run integration tests for orchestration-api"
 set -e
 
-pnpm --filter orchestration-api test:integration "$@"
+pnpm --filter @futo-org/backups-orchestrator-api test:integration "$@"

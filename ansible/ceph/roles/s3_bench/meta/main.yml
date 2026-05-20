@@ -1,0 +1,10 @@
+---
+# Requires a running Ceph cluster with RGW — must run AFTER ceph_deploy.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: s3_bench
+  description: S3 benchmark against Ceph RGW (parallel PUT/GET/DELETE)
+  min_ansible_version: "2.19"

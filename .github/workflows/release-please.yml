@@ -21,7 +21,7 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      release_created: ${{ steps.rp.outputs.release_created }}
+      releases_created: ${{ steps.rp.outputs.releases_created }}
     steps:
       - name: Generate a token
         id: generate-token
@@ -34,4 +34,30 @@ jobs:
         uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         with:
           config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
           token: ${{ steps.generate-token.outputs.token }}
+
+  publish:
+    name: Publish to npm
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+      - run: mise prepare
+
+      - name: Publish
+        run: |
+          pnpm -r \
+            --filter @futo-org/backups-api-client \
+            --filter @futo-org/backups-orchestrator-api \
+            --filter @futo-org/backups-orchestrator-ui \
+            publish --access public --provenance --no-git-checks

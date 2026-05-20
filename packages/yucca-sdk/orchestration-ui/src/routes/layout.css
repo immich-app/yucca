@@ -1,3 +1,8 @@
 @import "tailwindcss";
 @import "@immich/ui/theme/default.css";
 @source "../../node_modules/@immich/ui";
+
+body {
+  background-color: var(--color-light);
+  color: var(--color-dark);
+}

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run end-to-end tests for michael"
-set -e
-
-cd packages/michael && go test -tags integration ./... "$@"

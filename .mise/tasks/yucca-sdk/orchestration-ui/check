@@ -2,4 +2,4 @@
 #MISE description="Run Svelte checks for yucca-sdk/orchestration-ui"
 set -e
 
-pnpm --filter orchestration-ui check
+pnpm --filter @futo-org/backups-orchestrator-ui check

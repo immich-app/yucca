@@ -1,14 +1,14 @@
 <script lang="ts">
   import type { RepositoryListResponseDto } from "$lib/fetch-client";
-  import { Alert, Button, Heading, LoadingSpinner, modalManager } from "@immich/ui";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
-  import BackupItem from "./BackupItem.svelte";
-  import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
-  import OnEvents from "../util/OnEvents.svelte";
   import {
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
+  import { Button, Heading, modalManager } from "@immich/ui";
+  import OnEvents from "../util/OnEvents.svelte";
+  import Suspense from "../util/Suspense.svelte";
+  import BackupItem from "./BackupItem.svelte";
+  import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
 
   interface Props {
     local?: boolean;
@@ -20,7 +20,7 @@
   // svelte-ignore state_referenced_locally
   const query = useRepositories(initialData?.repositories);
 
-  const { onRepositoryCreate, onRepositoryUpdate } =
+  const { onRepositoryCreate, onRepositoryUpdate, onRepositoryDelete } =
     useRepositoryEventHandler();
 
   const localRepositories = $derived(
@@ -34,13 +34,9 @@
   const createNewBackup = () => modalManager.show(CreateRepositoryModal);
 </script>
 
-<OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
+<OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onRepositoryDelete} />
 
-{#if query.isLoading}
-  <LoadingSpinner />
-{:else if query.isError}
-  <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-{:else if query.isSuccess}
+<Suspense {query}>
   <div class="flex flex-col gap-4">
     {#if local}
       <div class="flex flex-col gap-2">
@@ -72,4 +68,4 @@
       {/each}
     </div>
   </div>
-{/if}
+</Suspense>

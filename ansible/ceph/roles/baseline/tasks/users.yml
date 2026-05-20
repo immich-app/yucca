@@ -1,0 +1,38 @@
+---
+# ops user — human-interactive account.
+# Convergeable: running this again fixes drift in password, sudo, shell.
+
+- name: Ensure ops user exists
+  ansible.builtin.user:
+    name: "{{ baseline_ops_user }}"
+    uid: "{{ baseline_ops_uid }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    state: present
+
+- name: Assert ops_password is defined and non-empty
+  ansible.builtin.assert:
+    that:
+      - ops_password is defined
+      - ops_password | length > 0
+    fail_msg: >-
+      ops_password is undefined or empty. Run the play via
+      scripts/ansible-play.sh (not bare ansible-playbook) so the cluster's
+      secrets.yml.tpl is resolved via op inject into --extra-vars. If that's
+      already what you did, verify vault_ops_password resolves:
+      `op read op://<vault>/<CLUSTER>_CEPH_OPS_PASSWORD/password`.
+
+- name: Set ops user password
+  ansible.builtin.user:
+    name: "{{ baseline_ops_user }}"
+    password: "{{ ops_password | password_hash('sha512') }}"
+  no_log: true
+
+- name: Configure ops sudo
+  ansible.builtin.copy:
+    content: "{{ baseline_ops_user }} ALL=(ALL) {{ baseline_ops_sudo }}\n"
+    dest: "/etc/sudoers.d/{{ baseline_ops_user }}"
+    mode: '0440'
+    validate: "visudo -cf %s"

@@ -1,19 +1,20 @@
 <script lang="ts">
+  import BackendsList from "$lib/components/backends/BackendsList.svelte";
+  import { type LocalRepositoryDto } from "$lib/fetch-client";
+  import { options } from "$lib/options";
+  import {
+    useRemoveRepository,
+    useUpdateRepository,
+  } from "$lib/services/repository.service";
+  import PathListField from "$lib/components/ui/PathListField.svelte";
   import {
     Button,
+    Field,
     FormModal,
-    HStack,
-    IconButton,
     Input,
     modalManager,
     Stack,
-    Text,
-    Field,
   } from "@immich/ui";
-  import { type LocalRepositoryDto } from "$lib/fetch-client";
-  import { mdiClose } from "@mdi/js";
-  import FileBrowserModal from "./FileBrowserModal.svelte";
-  import { handleUpdateRepository } from "$lib/services/repository.service";
   import { SvelteSet } from "svelte/reactivity";
 
   interface Props {
@@ -28,19 +29,41 @@
   // svelte-ignore state_referenced_locally
   let paths = new SvelteSet(repository.configuration?.paths ?? []);
 
-  const onSubmit = async () => {
-    await handleUpdateRepository(
-      repository.id,
-      { name, paths: [...paths] },
-      typeof repository.configuration === "object",
+  const local = $derived(typeof repository.configuration === "object");
+
+  const updateMutation = useUpdateRepository();
+  const removeMutation = useRemoveRepository();
+
+  const onSubmit = () =>
+    updateMutation.mutate(
+      { id: repository.id, dto: { name, paths: [...paths] }, local },
+      { onSuccess: () => onClose() },
     );
 
-    onClose();
+  const onRemove = async () => {
+    const confirm = await modalManager.showDialog({
+      confirmText: local ? "Remove" : "Delete",
+      title: local ? "Remove Repository" : "Delete Repository",
+      prompt: local
+        ? "Repository will be removed locally."
+        : "This repository will be removed.",
+    });
+
+    if (!confirm) return;
+
+    removeMutation.mutate(
+      { id: repository.id, local },
+      { onSuccess: () => onClose() },
+    );
   };
+
+  const { advanced } = options;
 </script>
 
 <FormModal
-  disabled={name.length === 0}
+  disabled={name.length === 0 ||
+    updateMutation.isPending ||
+    removeMutation.isPending}
   title={`Configure ${name}`}
   size="large"
   {onSubmit}
@@ -54,39 +77,26 @@
     </Stack>
 
     {#if repository.configuration}
-      <Stack gap={1}>
-        <Text size="small">Backup Paths</Text>
-        {#each paths as path (path)}
-          <HStack
-            gap={2}
-            class="items-center py-2 px-4 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
-          >
-            <Text class="grow" size="small">{path}</Text>
-            <IconButton
-              icon={mdiClose}
-              size="tiny"
-              color="danger"
-              aria-label="Remove"
-              onclick={() => paths.delete(path)}
-            />
-          </HStack>
-        {/each}
+      <PathListField
+        {paths}
+        addLabel="Add path"
+        manageLabel="Add first path"
+        pickerTitle="Backup Paths"
+        pickerDescription="Select files and folders to include in this backup."
+      >
+        {#snippet label()}Backup Paths{/snippet}
+        {#snippet empty()}No paths configured yet.{/snippet}
+      </PathListField>
+    {/if}
 
-        {#if paths.size === 0}
-          <Text color="secondary" size="small">No paths configured yet.</Text>
-        {/if}
+    <Button
+      color="danger"
+      loading={removeMutation.isPending}
+      onclick={onRemove}>Remove Repository</Button
+    >
 
-        <div class="w-fit">
-          <Button
-            size="small"
-            variant="outline"
-            onclick={() =>
-              modalManager.show(FileBrowserModal, {
-                onSelect: (path) => paths.add(path),
-              })}>Add path</Button
-          >
-        </div>
-      </Stack>
+    {#if advanced}
+      <BackendsList {repository} />
     {/if}
   </Stack>
 </FormModal>

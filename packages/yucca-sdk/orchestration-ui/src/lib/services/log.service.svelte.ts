@@ -1,8 +1,39 @@
 import { defaults } from '$lib/fetch-client';
 import debounce from 'lodash.debounce';
 
+type SummaryEvent = {
+  message_type: 'summary';
+  // backup
+  files_new?: number;
+  files_changed?: number;
+  files_unmodified?: number;
+  data_added?: number;
+  total_files_processed?: number;
+  total_bytes_processed?: number;
+  total_duration?: number;
+  snapshot_id?: string;
+  // restore
+  files_restored?: number;
+  files_skipped?: number;
+  files_deleted?: number;
+  total_files?: number;
+  bytes_restored?: number;
+  bytes_skipped?: number;
+  total_bytes?: number;
+  seconds_elapsed?: number;
+};
+
 type LogEvent =
-  | { message_type: 'summary' }
+  | SummaryEvent
+  | {
+      message_type: 'error';
+      error?: string | { message: string };
+      message?: string;
+      during?: string;
+      item?: string;
+    }
+  | { message_type: 'exit_error'; code: number; message: string }
+  | { message_type: 'raw'; message: string }
   | {
       message_type: 'status';
       percent_done: number;
@@ -10,22 +41,38 @@ type LogEvent =
       current_files?: string[];
     };
 
+const formatErrorEvent = (
+  event: LogEvent & { message_type: 'error' },
+): string => {
+  const text =
+    (typeof event.error === 'string' ? event.error : event.error?.message) ??
+    event.message ??
+    'Unknown error';
+  const context = [event.during, event.item].filter(Boolean).join(' ');
+  return context ? `${context}: ${text}` : text;
+};
+
 export type LogStatus = {
   progress: number;
   text: string;
   currentFiles: string[];
-  finished: boolean;
 };
 
 export function createLogObserver(logId: string) {
-  const state = $state<{ status: LogStatus; events: LogEvent[] }>({
+  const state = $state<{
+    status: LogStatus;
+    errors: string[];
+    events: LogEvent[];
+    summary: SummaryEvent | undefined;
+  }>({
     status: {
       progress: 0,
       text: '',
       currentFiles: [],
-      finished: false,
     },
+    errors: [],
     events: [],
+    summary: undefined,
   });
 
   const buffer: LogEvent[] = [];
@@ -33,6 +80,7 @@ export function createLogObserver(logId: string) {
   const flush = debounce(
     () => {
       state.status = { ...state.status };
+      state.errors = [...state.errors];
       state.events = buffer.slice();
     },
     50,
@@ -40,8 +88,10 @@ export function createLogObserver(logId: string) {
   );
 
   const onEvent = (event: LogEvent) => {
-    buffer.unshift(event);
-    buffer.splice(50);
+    if (event.message_type !== 'status') {
+      buffer.unshift(event);
+      buffer.splice(50);
+    }
 
     switch (event.message_type) {
       case 'status': {
@@ -51,27 +101,44 @@ export function createLogObserver(logId: string) {
             ? `${event.seconds_remaining} seconds remaining`
             : '',
           currentFiles: event.current_files ?? [],
-          finished: false,
         };
         flush();
         break;
       }
       case 'summary': {
+        state.summary = event;
         state.status = {
           progress: 1,
           text: '',
           currentFiles: [],
-          finished: true, // TODO: must wait for TaskEnd
         };
         flush();
         flush.flush();
+        break;
+      }
+      case 'error': {
+        state.errors.push(formatErrorEvent(event));
+        flush();
+        flush.flush();
+        break;
+      }
+      case 'exit_error': {
+        state.errors.push(
+          `restic exited with code ${event.code}: ${event.message}`,
+        );
+        flush();
+        flush.flush();
+        break;
+      }
+      default: {
+        flush();
         break;
       }
     }
   };
 
   const source = new EventSource(
-    new URL(`/api/yucca/logs/${logId}`, defaults.baseUrl),
+    new URL(`/api/yucca/logs/${logId}/stream`, defaults.baseUrl),
   );
   source.addEventListener('message', ({ data }) => onEvent(JSON.parse(data)));
 
@@ -79,8 +146,14 @@ export function createLogObserver(logId: string) {
     get status() {
       return state.status;
     },
+    get errors() {
+      return state.errors;
+    },
     get events() {
       return state.events;
+    },
+    get summary() {
+      return state.summary;
     },
     destroy() {
       flush.cancel();

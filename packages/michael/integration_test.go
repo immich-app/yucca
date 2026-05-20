@@ -4,6 +4,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -23,6 +26,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+var testPrivateKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+var testPublicKey = &testPrivateKey.PublicKey
+
 const (
 	testUser       = "00000000-0000-0000-0000-000000000001"
 	testRepository = "00000000-0000-0000-0000-000000000002"
@@ -31,7 +37,7 @@ const (
 func integrationConfig() config.Config {
 	return config.Config{
 		Port:             3010,
-		JWTSecret:        []byte(envOrDefault("JWT_SECRET", "cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1")),
+		JWTPublicKey:     testPublicKey,
 		S3AccessKeyID:    envOrDefault("S3_ACCESS_KEY_ID", "minio"),
 		S3SecretAccessKey: envOrDefault("S3_SECRET_ACCESS_KEY", "miniominio"),
 		S3Region:         envOrDefault("S3_REGION", "minio"),
@@ -47,15 +53,15 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-func integrationJWT(t *testing.T, cfg config.Config, repo string, writeOnce bool) string {
+func integrationJWT(t *testing.T, _ config.Config, repo string, writeOnce bool) string {
 	t.Helper()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
 		"user":       testUser,
 		"repository": repo,
 		"writeOnce":  writeOnce,
 		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	})
-	signed, err := token.SignedString(cfg.JWTSecret)
+	signed, err := token.SignedString(testPrivateKey)
 	if err != nil {
 		t.Fatalf("sign jwt: %v", err)
 	}
@@ -69,7 +75,7 @@ func integrationAuth(token string) string {
 func TestIntegration_FullWorkflow(t *testing.T) {
 	cfg := integrationConfig()
 	store := storage.NewS3Storage(cfg)
-	srv := handlers.NewServer(store, cfg.JWTSecret, nil)
+	srv := handlers.NewServer(store, cfg.JWTPublicKey, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -240,7 +246,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 func TestIntegration_WORM(t *testing.T) {
 	cfg := integrationConfig()
 	store := storage.NewS3Storage(cfg)
-	srv := handlers.NewServer(store, cfg.JWTSecret, nil)
+	srv := handlers.NewServer(store, cfg.JWTPublicKey, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 

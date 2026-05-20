@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BackupsList } from "orchestration-ui";
+  import { BackupsList } from "@futo-org/backups-orchestrator-ui";
 
   const { data } = $props();
 </script>

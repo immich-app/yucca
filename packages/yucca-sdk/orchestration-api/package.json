@@ -1,6 +1,6 @@
 {
-  "name": "orchestration-api",
-  "version": "0.1.49",
+  "name": "@futo-org/backups-orchestrator-api",
+  "version": "0.1.71",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -16,7 +16,7 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.28.1",
   "dependencies": {
-    "@futo-org/restic-wrapper": "1.1.2",
+    "@futo-org/restic-wrapper": "1.2.1",
     "@nestjs/common": "^11.1.13",
     "@nestjs/core": "^11.1.11",
     "@nestjs/event-emitter": "^3.0.1",
@@ -28,6 +28,7 @@
     "cookie": "^1.1.1",
     "cron": "^4.4.0",
     "event-iterator": "^2.0.0",
+    "eventsource-client": "^1.2.0",
     "express": "^5.2.1",
     "kysely": "0.28.2",
     "nestjs-kysely": "^3.1.2",
@@ -35,7 +36,7 @@
     "rxjs": "^7.8.2",
     "socket.io": "^4.8.3",
     "tail": "^2.2.6",
-    "yucca-api-client": "workspace:^"
+    "@futo-org/backups-api-client": "workspace:^"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.14",

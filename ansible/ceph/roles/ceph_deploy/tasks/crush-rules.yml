@@ -1,0 +1,36 @@
+---
+# Phase 5.5: Create CRUSH device-class rules
+# Ensures pools can target HDD-only or SSD-only OSDs
+
+- name: Check existing CRUSH rules
+  ansible.builtin.command: ceph osd crush rule ls
+  register: crush_rules
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Create replicated_hdd CRUSH rule
+  ansible.builtin.command: >
+    ceph osd crush rule create-replicated replicated_hdd default host hdd
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "'replicated_hdd' not in crush_rules.stdout"
+  changed_when: true
+
+- name: Create replicated_ssd CRUSH rule
+  ansible.builtin.command: >
+    ceph osd crush rule create-replicated replicated_ssd default host ssd
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - "'replicated_ssd' not in crush_rules.stdout"
+  changed_when: true
+
+- name: Show CRUSH rules
+  ansible.builtin.command: ceph osd crush rule ls
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  register: final_rules
+
+- name: Display CRUSH rules
+  ansible.builtin.debug:
+    msg: "{{ final_rules.stdout_lines }}"
+  when: inventory_hostname in groups['ceph_bootstrap']

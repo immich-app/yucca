@@ -22,9 +22,7 @@
   );
 
   const onCreate = () => {
-    modalManager.open(CreateScheduleModal, {
-      repositories: [],
-    });
+    modalManager.open(CreateScheduleModal, {});
   };
 </script>
 

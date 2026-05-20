@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+# Bond L3: {{ bond_ip }}/24 via {{ gateway }}
+
+[Match]
+Name={{ networkd_bond_name }}
+
+[Network]
+Address={{ bond_ip }}/24
+Gateway={{ gateway }}
+DNS={{ dns_server }}
+Domains={{ cluster_domain }}
+
+[Link]
+RequiredForOnline=routable

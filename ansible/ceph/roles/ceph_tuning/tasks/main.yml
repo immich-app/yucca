@@ -1,0 +1,214 @@
+---
+# Post-deploy Ceph cluster tuning.
+# Requires a running cluster — all tasks use ceph CLI commands.
+# Runs from the bootstrap node only.
+#
+# Every config-set task checks the current value first and only
+# applies changes when needed, so re-runs report accurate changed counts.
+
+# --- Telemetry ---
+
+- name: Check telemetry status
+  ansible.builtin.command: ceph telemetry status --format json
+  register: telemetry_status
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Disable telemetry phone-home
+  ansible.builtin.command: ceph telemetry off
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - not (ceph_telemetry_enabled | bool)
+    - (telemetry_status.stdout | from_json).enabled | default(true)
+  changed_when: true
+
+# --- OSD tuning (check-then-set pattern) ---
+
+- name: Read current OSD config values
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "recovery_max_active=$(ceph config get osd osd_recovery_max_active)"
+    echo "recovery_sleep_hdd=$(ceph config get osd osd_recovery_sleep_hdd)"
+    echo "max_backfills=$(ceph config get osd osd_max_backfills)"
+    echo "scrub_begin_hour=$(ceph config get osd osd_scrub_begin_hour)"
+    echo "scrub_end_hour=$(ceph config get osd osd_scrub_end_hour)"
+    echo "deep_scrub_interval=$(ceph config get osd osd_deep_scrub_interval)"
+    echo "bluestore_block_db_size=$(ceph config get osd bluestore_block_db_size)"
+    echo "mon_target_pg_per_osd=$(ceph config get mgr mon_target_pg_per_osd)"
+  args:
+    executable: /bin/bash
+  register: current_osd_config
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Parse current OSD config
+  ansible.builtin.set_fact:
+    osd_cfg: >-
+      {{ dict(current_osd_config.stdout_lines
+              | map('split', '=')
+              | map('list')) }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Apply Ceph config values
+  ansible.builtin.command: >
+    ceph config set {{ item.section }} {{ item.key }} {{ item.value }}
+  loop:
+    - section: osd
+      key: osd_recovery_max_active
+      value: "{{ ceph_osd_recovery_max_active }}"
+      current: "{{ osd_cfg.recovery_max_active | default('') | float }}"
+    - section: osd
+      key: osd_recovery_sleep_hdd
+      value: "{{ ceph_osd_recovery_sleep_hdd }}"
+      current: "{{ osd_cfg.recovery_sleep_hdd | default('') | float }}"
+    - section: osd
+      key: osd_max_backfills
+      value: "{{ ceph_osd_max_backfills }}"
+      current: "{{ osd_cfg.max_backfills | default('') | float }}"
+    - section: osd
+      key: osd_scrub_begin_hour
+      value: "{{ ceph_osd_scrub_begin_hour }}"
+      current: "{{ osd_cfg.scrub_begin_hour | default('') | float }}"
+    - section: osd
+      key: osd_scrub_end_hour
+      value: "{{ ceph_osd_scrub_end_hour }}"
+      current: "{{ osd_cfg.scrub_end_hour | default('') | float }}"
+    - section: osd
+      key: osd_deep_scrub_interval
+      value: "{{ ceph_osd_deep_scrub_interval }}"
+      current: "{{ osd_cfg.deep_scrub_interval | default('') | float }}"
+    - section: osd
+      key: bluestore_block_db_size
+      value: "{{ ceph_bluestore_block_db_size }}"
+      current: "{{ osd_cfg.bluestore_block_db_size | default('') | float }}"
+    - section: global
+      key: mon_target_pg_per_osd
+      value: "{{ ceph_mon_target_pg_per_osd }}"
+      current: "{{ osd_cfg.mon_target_pg_per_osd | default('') | float }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item.current | float != item.value | float
+  loop_control:
+    label: "{{ item.key }}"
+  changed_when: true
+
+# --- Crash daemon ---
+
+- name: Verify ceph-crash daemon is deployed
+  ansible.builtin.shell: |
+    set -o pipefail
+    ceph orch ls --service-type crash --format json | python3 -c "
+    import sys, json
+    svcs = json.load(sys.stdin)
+    running = sum(s.get('status', {}).get('running', 0) for s in svcs)
+    print(running)
+    "
+  args:
+    executable: /bin/bash
+  register: crash_daemon_count
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Deploy ceph-crash if not running
+  ansible.builtin.command: ceph orch apply crash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (crash_daemon_count.stdout | default('0') | int) == 0
+  changed_when: true
+
+# --- Log rotation ---
+
+- name: Check log rotation config exists
+  ansible.builtin.find:
+    paths: /etc/logrotate.d
+    patterns: "ceph-*"
+  register: logrotate_check
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Report log rotation status
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Log rotation configured: ' ~ logrotate_check.files[0].path
+         if logrotate_check.files | default([]) | length > 0
+         else 'WARNING: No Ceph logrotate config found' }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+# --- CRUSH tunables ---
+
+- name: Ensure CRUSH tunables are optimal
+  ansible.builtin.command: ceph osd crush tunables optimal
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Prometheus alerting rules ---
+# cephadm ships 89 built-in alert rules across 16 groups (OSD, MON, PG,
+# pool, MDS, hardware, network, etc.). No custom rules needed — verify
+# they're loaded.
+
+- name: Verify Prometheus alert rules are loaded
+  ansible.builtin.shell: |
+    set -o pipefail
+    GROUPS=$(curl -sf http://{{ bond_ip }}:{{ ceph_prometheus_port }}/api/v1/rules \
+      2>/dev/null \
+      | python3 -c "
+    import sys, json
+    print(len(json.load(sys.stdin).get('data', {}).get('groups', [])))
+    " 2>/dev/null || echo 0)
+    echo "Prometheus: $GROUPS alert rule groups"
+    if [ "$GROUPS" -lt 10 ]; then
+      echo "WARNING: expected 16+ rule groups, got $GROUPS"
+    fi
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Audit logging ---
+
+- name: Check audit logging state
+  ansible.builtin.command: >
+    ceph config get mgr mgr/cephadm/log_to_cluster
+  register: audit_state
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Enable Ceph audit logging
+  ansible.builtin.shell: |
+    ceph config set mgr mgr/cephadm/log_to_cluster true
+    ceph config set global log_to_cluster_level audit
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_audit_enabled | bool
+    - audit_state.stdout | default('') | trim != 'true'
+  changed_when: true
+
+# --- Summary ---
+
+- name: Show applied Ceph tuning
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "=== Recovery throttling ==="
+    ceph config get osd osd_recovery_max_active
+    ceph config get osd osd_max_backfills
+    echo "=== Scrub window ==="
+    ceph config get osd osd_scrub_begin_hour
+    ceph config get osd osd_scrub_end_hour
+    echo "=== PG autoscaler ==="
+    ceph config get global mon_target_pg_per_osd
+    echo "=== Crash daemons ==="
+    ceph orch ls --service-type crash
+    echo "=== Telemetry ==="
+    ceph telemetry status 2>&1 | head -3
+  args:
+    executable: /bin/bash
+  register: tuning_summary
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Display tuning summary
+  ansible.builtin.debug:
+    msg: "{{ tuning_summary.stdout_lines }}"
+  when: inventory_hostname in groups['ceph_bootstrap']

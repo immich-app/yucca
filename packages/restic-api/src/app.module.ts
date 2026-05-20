@@ -19,7 +19,8 @@ import { AuthService } from './services/auth.service';
 export const imports = [
   JwtModule.register({
     global: true,
-    secret: env.JWT_SECRET,
+    publicKey: env.JWT_PUBLIC_KEY,
+    verifyOptions: { algorithms: ['ES256'] },
   }),
 ];
 

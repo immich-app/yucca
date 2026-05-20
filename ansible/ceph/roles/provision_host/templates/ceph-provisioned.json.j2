@@ -1,0 +1,15 @@
+{{ {
+  "hostname": hostname_short,
+  "fqdn": hostname_short ~ '.' ~ cluster_domain,
+  "bond_ip": bond_ip,
+  "cluster_name": cluster_name,
+  "cluster_role": cluster_role,
+  "cluster_domain": cluster_domain,
+  "admin_user": admin_user,
+  "debian_release": provision_debian_release,
+  "ssd1_serial": ssd1_serial,
+  "ssd2_serial": ssd2_serial,
+  "provisioned_at": ansible_date_time.iso8601,
+  "provisioned_by": "ansible-role-provision-host",
+  "role_version": "1.0"
+} | to_nice_json }}

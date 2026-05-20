@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
+  import { handleCreateBackup } from "$lib/services/repository.service";
   import {
     Badge,
     Card,
@@ -11,11 +12,6 @@
     modalManager,
     Stack,
   } from "@immich/ui";
-  import { handleCreateBackup } from "$lib/services/repository.service";
-  import RunHistoryModal from "./dialogs/RunHistoryModal.svelte";
-  import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
-  import SnapshotsListModal from "./dialogs/SnapshotsListModal.svelte";
-  import ViewLogModal from "./dialogs/ViewLogModal.svelte";
   import {
     mdiCog,
     mdiFormatListBulletedType,
@@ -24,7 +20,10 @@
     mdiPlay,
   } from "@mdi/js";
   import RelativeTime from "../util/RelativeTime.svelte";
+  import ConfigureRepositoryModal from "./dialogs/ConfigureRepositoryModal.svelte";
   import ImportRepositoryModal from "./dialogs/ImportRepositoryModal.svelte";
+  import SnapshotsListModal from "./snapshots-list/SnapshotsListModal.svelte";
+  import RunHistoryModal from "./run-history/RunHistoryModal.svelte";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -32,10 +31,7 @@
 
   const { repository }: Props = $props();
 
-  const onBackupNow = async () => {
-    const { logId } = await handleCreateBackup(repository.id);
-    modalManager.open(ViewLogModal, { logId });
-  };
+  const onBackupNow = () => void handleCreateBackup(repository.id);
 
   const onViewHistory = () =>
     modalManager.open(RunHistoryModal, {
@@ -89,9 +85,15 @@
           <Badge size="tiny" color="secondary">
             <FormatBytes bytes={repository.metrics.sizeBytes} />
           </Badge>
-          {#if repository.metrics.lastBackup}
-            <Badge size="tiny" color={"success"}>
-              Successful <RelativeTime time={repository.metrics.lastBackup} />
+          {#if repository.metrics.lastBackup && (!repository.metrics.lastSuccessfulBackup || +new Date(repository.metrics.lastBackup) > +new Date(repository.metrics.lastSuccessfulBackup))}
+            <Badge size="tiny" color="danger">
+              Failed <RelativeTime time={repository.metrics.lastBackup} />
+            </Badge>
+          {:else if repository.metrics.lastSuccessfulBackup}
+            <Badge size="tiny" color="success">
+              Successful <RelativeTime
+                time={repository.metrics.lastSuccessfulBackup}
+              />
             </Badge>
           {:else}
             <Badge size="tiny" color="warning">Never backed up</Badge>

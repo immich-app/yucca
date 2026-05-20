@@ -1,0 +1,187 @@
+---
+# Phase 6: Install packages inside the chroot
+#
+# Sets up bind mounts for /dev, /dev/pts, /proc, /sys, and the EFI
+# variable store, then runs apt-get inside chroot to install the
+# baseline OS + diagnostic toolset. Also rotates the machine-id,
+# regenerates SSH host keys, and enables ssh + chrony services.
+#
+# Bind mounts use a probe-then-mount idempotency pattern (see the
+# comment block above the probe task) so crash-recovery re-runs don't
+# trip on binds that are already in place from a previous partial run.
+#
+# The bind mounts are NOT unmounted here — bootloader.yml needs them
+# for grub-install, and finalize.yml (via unmount.yml) will tear them
+# down at the end.
+
+# --- Bind mounts for chroot --------------------------------------------
+#
+# Probe-then-mount pattern: ansible.posix.mount with state=ephemeral
+# fails if the mountpoint is already mounted (even with the same source)
+# because it reads /proc/mounts and compares the resolved source string
+# rather than recognizing the existing bind. Probe with mountpoint(1)
+# first and skip the mount if already present, so a partial-failure
+# crash-recovery rerun doesn't trip on the binds that already existed.
+
+- name: Probe existing chroot bind mounts
+  ansible.builtin.command: "mountpoint -q {{ provision_mnt }}{{ item }}"
+  loop:
+    - /dev
+    - /dev/pts
+    - /proc
+    - /sys
+    - /sys/firmware/efi/efivars
+  register: chroot_bind_probe
+  changed_when: false
+  failed_when: false
+
+- name: Bind-mount /dev into chroot
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}/dev"
+    src: /dev
+    opts: bind
+    fstype: none
+    state: ephemeral
+  when: chroot_bind_probe.results[0].rc != 0
+
+- name: Bind-mount /dev/pts into chroot
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}/dev/pts"
+    src: /dev/pts
+    opts: bind
+    fstype: none
+    state: ephemeral
+  when: chroot_bind_probe.results[1].rc != 0
+
+- name: Bind-mount /proc into chroot
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}/proc"
+    src: /proc
+    opts: bind
+    fstype: none
+    state: ephemeral
+  when: chroot_bind_probe.results[2].rc != 0
+
+- name: Bind-mount /sys into chroot
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}/sys"
+    src: /sys
+    opts: bind
+    fstype: none
+    state: ephemeral
+  when: chroot_bind_probe.results[3].rc != 0
+
+# /mnt/sys/firmware/efi/efivars already exists as a sysfs directory once
+# /sys is bind-mounted above. Don't try to mkdir/chmod it — sysfs rejects
+# metadata operations with EPERM. The bind mount below doesn't need a
+# writable target directory; mount() only attaches a filesystem.
+- name: Bind-mount /sys/firmware/efi/efivars into chroot
+  ansible.posix.mount:
+    path: "{{ provision_mnt }}/sys/firmware/efi/efivars"
+    src: /sys/firmware/efi/efivars
+    opts: bind
+    fstype: none
+    state: ephemeral
+  when: chroot_bind_probe.results[4].rc != 0
+
+# --- apt update/install inside chroot ----------------------------------
+
+- name: Check which required packages are already present in chroot
+  ansible.builtin.shell: |
+    set -o pipefail
+    chroot {{ provision_mnt }} dpkg-query -W -f='${Package} ${Status}\n' \
+      {{ provision_chroot_packages | join(' ') }} 2>/dev/null \
+      | grep -c "install ok installed" || true
+  args:
+    executable: /bin/bash
+  register: chroot_pkg_count
+  changed_when: false
+
+- name: Note current package state
+  ansible.builtin.set_fact:
+    chroot_packages_installed: "{{ (chroot_pkg_count.stdout | int) == (provision_chroot_packages | length) }}"
+
+- name: Update apt cache inside chroot
+  ansible.builtin.command: "chroot {{ provision_mnt }} apt-get update"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: not chroot_packages_installed
+  changed_when: false
+
+- name: Install baseline packages inside chroot
+  ansible.builtin.command: >-
+    chroot {{ provision_mnt }} apt-get install -y --no-install-recommends
+    {{ provision_chroot_packages | join(' ') }}
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: not chroot_packages_installed
+  register: chroot_install
+  changed_when: "'0 upgraded, 0 newly installed' not in chroot_install.stdout | default('')"
+  async: 1800
+  poll: 15
+
+# --- machine-id ---------------------------------------------------------
+
+- name: Check for existing machine-id
+  ansible.builtin.stat:
+    path: "{{ provision_mnt }}/etc/machine-id"
+  register: machine_id_stat
+
+- name: Remove stale machine-id (empty or copied from live image)
+  ansible.builtin.file:
+    path: "{{ provision_mnt }}/etc/machine-id"
+    state: absent
+  when: not machine_id_stat.stat.exists or (machine_id_stat.stat.size | default(0)) == 0
+
+- name: Generate fresh machine-id inside chroot
+  ansible.builtin.command: "chroot {{ provision_mnt }} systemd-machine-id-setup"
+  args:
+    creates: "{{ provision_mnt }}/etc/machine-id"
+  changed_when: true
+
+# --- SSH host keys ------------------------------------------------------
+
+- name: Check for existing SSH host keys in chroot
+  ansible.builtin.find:
+    paths: "{{ provision_mnt }}/etc/ssh"
+    patterns: 'ssh_host_*_key'
+    file_type: file
+  register: existing_ssh_keys
+
+- name: Remove stale SSH host keys
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ existing_ssh_keys.files }}"
+  when: existing_ssh_keys.files | length > 0
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+- name: Remove stale SSH host pub keys
+  ansible.builtin.shell: "rm -f {{ provision_mnt }}/etc/ssh/ssh_host_*_key.pub"
+  when: existing_ssh_keys.files | length > 0
+  changed_when: true
+
+- name: Generate fresh SSH host keys inside chroot
+  ansible.builtin.command: "chroot {{ provision_mnt }} ssh-keygen -A"
+  changed_when: true
+
+# --- Enable services ----------------------------------------------------
+
+- name: Check enabled state of key services in chroot
+  ansible.builtin.command: "chroot {{ provision_mnt }} systemctl is-enabled {{ item }}"
+  loop:
+    - ssh.service
+    - chrony.service
+    - dbus.service
+  register: service_enabled
+  changed_when: false
+  failed_when: false
+
+- name: Enable ssh and chrony services in chroot
+  ansible.builtin.command: "chroot {{ provision_mnt }} systemctl enable {{ item.item }}"
+  loop: "{{ service_enabled.results }}"
+  when: (item.stdout | default('')) | trim != 'enabled'
+  loop_control:
+    label: "{{ item.item }}"
+  changed_when: true

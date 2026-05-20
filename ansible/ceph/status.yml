@@ -1,0 +1,81 @@
+---
+# Quick cluster health check — no changes, read-only.
+#
+# Usage:
+#   scripts/ansible-play.sh status.yml
+
+- name: Ceph cluster status
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Cluster health
+      ansible.builtin.command: ceph status
+      register: ceph_status
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Display status
+      ansible.builtin.debug:
+        msg: "{{ ceph_status.stdout_lines }}"
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: OSD summary
+      ansible.builtin.command: ceph osd stat
+      register: osd_stat
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Display OSD stat
+      ansible.builtin.debug:
+        msg: "{{ osd_stat.stdout }}"
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: Capacity
+      ansible.builtin.command: ceph df
+      register: ceph_df
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Display capacity
+      ansible.builtin.debug:
+        msg: "{{ ceph_df.stdout_lines }}"
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: Services
+      ansible.builtin.shell: |
+        set -o pipefail
+        ceph orch ls --format json 2>/dev/null \
+          | python3 -c "
+        import sys, json
+        for s in json.load(sys.stdin):
+            name = s.get('service_name', '?')
+            running = s.get('status', {}).get('running', 0)
+            size = s.get('status', {}).get('size', 0)
+            print(f'{name}: {running}/{size}')
+        "
+      args:
+        executable: /bin/bash
+      register: orch_services
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+
+    - name: Display services
+      ansible.builtin.debug:
+        msg: "{{ orch_services.stdout_lines }}"
+      when: inventory_hostname in groups['ceph_bootstrap']
+
+    - name: Alerts
+      ansible.builtin.command: ceph health detail
+      register: health_detail
+      when: inventory_hostname in groups['ceph_bootstrap']
+      changed_when: false
+      failed_when: false
+
+    - name: Display alerts
+      ansible.builtin.debug:
+        msg: "{{ health_detail.stdout_lines }}"
+      when:
+        - inventory_hostname in groups['ceph_bootstrap']
+        - health_detail.stdout != 'HEALTH_OK'

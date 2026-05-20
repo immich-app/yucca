@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run integration tests for michael"
+set -e
+
+cd packages/michael && go test -tags integration ./... "$@"

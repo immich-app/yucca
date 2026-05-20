@@ -1,0 +1,21 @@
+---
+# Post-boot OS baseline — ops user, packages, /etc/hosts, services.
+# Run after provisioning, before ceph_deploy.
+# Fully convergeable — re-running fixes any drift in user config,
+# packages, or host entries.
+#
+# Usage:
+#   scripts/ansible-play.sh baseline.yml
+#
+# Tags:
+#   --tags users       ops user only
+#   --tags packages    podman + diagnostics only
+#   --tags system      /etc/hosts + services only
+
+- name: OS baseline configuration
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  roles:
+    - baseline

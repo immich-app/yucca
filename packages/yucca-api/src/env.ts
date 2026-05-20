@@ -1,3 +1,4 @@
+import type { StringValue } from 'ms';
 import { z } from 'zod';
 
 const schema = z
@@ -6,7 +7,12 @@ const schema = z
 
     YUCCA_API_PORT: z.coerce.number().min(1000),
 
-    JWT_SECRET: z.string().min(32),
+    JWT_PRIVATE_KEY: z.string(),
+    JWT_EXPIRES_IN: z
+      .string()
+      .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "1d", "30m", "3600s"')
+      .default('1d')
+      .transform((value): StringValue => value as StringValue),
 
     POSTGRES_HOST: z.string(),
     POSTGRES_PORT: z.coerce.number().default(5432),
@@ -23,6 +29,11 @@ const schema = z
     OIDC_REDIRECT_URI: z.string(),
     OIDC_LOGOUT_REDIRECT_URI: z.string(),
     OIDC_SCOPE: z.string().default('openid profile email'),
+
+    OIDC_DEVICE_ISSUER: z.url().transform((url) => new URL(url)),
+    OIDC_DEVICE_CLIENT_ID: z.string(),
+    OIDC_DEVICE_ALLOW_INSECURE: z.coerce.boolean().default(false),
+    OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
 
     // temp.
     RESTIC_API_HOST: z.string().default('localhost'),

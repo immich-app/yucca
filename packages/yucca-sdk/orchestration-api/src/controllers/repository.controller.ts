@@ -54,6 +54,11 @@ export class RepositoryController {
     return this.service.updateRepository(id, dto, backendId);
   }
 
+  @Delete('/:id')
+  deleteRepository(@Param('id') id: string): Promise<void> {
+    return this.service.deleteRepository(id);
+  }
+
   @Post('/:id')
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ type: LogResponseDto })
@@ -88,6 +93,14 @@ export class RepositoryController {
   @ApiOkResponse({ type: ListSnapshotsResponseDto })
   getSnapshots(@Param('id') id: string): Promise<ListSnapshotsResponseDto> {
     return this.service.getSnapshots(id);
+  }
+
+  @Post('/:id/snapshots/prune')
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({ type: LogResponseDto })
+  async pruneRepository(@Param('id') id: string): Promise<LogResponseDto> {
+    const { logId } = await this.service.pruneRepository(id);
+    return { logId };
   }
 
   @Post('/:id/snapshots/:snapshot')

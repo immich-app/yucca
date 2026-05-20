@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { FileMigrationProvider, Kysely, Migrator, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
-import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DB } from '../schema';
+import { StorageRepository } from './storage.repository';
 
 @Injectable()
 export class DatabaseRepository {
-  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
+  constructor(
+    @InjectKysely('orchestrator') private db: Kysely<DB>,
+    private readonly storage: StorageRepository,
+  ) {}
 
   async runMigrations(): Promise<void> {
     const migrator = this.createMigrator();
@@ -61,7 +64,7 @@ export class DatabaseRepository {
       migrationTableName: 'kysely_migrations',
       provider: new FileMigrationProvider({
         fs: {
-          readdir,
+          readdir: this.storage.readdir,
         },
         path: { join },
         migrationFolder: join(__dirname, '..', 'schema/migrations'),

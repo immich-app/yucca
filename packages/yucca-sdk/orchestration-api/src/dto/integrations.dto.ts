@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsDefined, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsDefined, IsObject, IsOptional, IsString } from 'class-validator';
+import { RetentionPolicyDto } from './repository.dto';
 
 export class ImmichLibraryDto {
   @ApiProperty({ type: String })
@@ -91,4 +92,9 @@ export class ConfigureImmichIntegrationRequestDto {
   })
   @IsDefined()
   libraries!: 'all' | string[];
+
+  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
+  @IsOptional()
+  @IsObject()
+  retentionPolicy?: RetentionPolicyDto | null;
 }

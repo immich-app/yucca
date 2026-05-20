@@ -1,0 +1,91 @@
+---
+# Phase 4: Configure MON and MGR placement
+#
+# MON placement strategy:
+#   1. If ceph_mon group is defined and non-empty: use those hosts (explicit)
+#   2. Else if <=2 active hosts: 1 MON (bootstrap only, avoids 2-MON fragility)
+#   3. Else: MON on all active hosts
+#
+# MGR always deploys on all active hosts (standbys are harmless).
+
+- name: Determine active cluster hosts
+  ansible.builtin.shell: |
+    set -o pipefail
+    ceph orch host ls --format json | python3 -c "
+    import sys, json
+    hosts = json.load(sys.stdin)
+    print(','.join(h['hostname'] for h in hosts if h.get('status','') == ''))
+    "
+  args:
+    executable: /bin/bash
+  register: active_hosts
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+- name: Calculate MON placement
+  ansible.builtin.set_fact:
+    mon_hosts: >-
+      {%- if groups['ceph_mon'] | default([]) | length > 0 -%}
+      {{ groups['ceph_mon']
+         | map('extract', hostvars, 'hostname_short')
+         | join(',') -}}
+      {%- elif active_hosts.stdout.split(',') | length <= 2 -%}
+      {{ hostvars[groups['ceph_bootstrap'][0]]['hostname_short'] -}}
+      {%- else -%}
+      {{ active_hosts.stdout -}}
+      {%- endif -%}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - active_hosts.stdout | default('') | length > 0
+
+- name: Show placement decision
+  ansible.builtin.debug:
+    msg: >-
+      Active hosts: {{ active_hosts.stdout }}.
+      MON placement: {{ mon_hosts }}
+      ({{ 'explicit ceph_mon group'
+         if groups['ceph_mon'] | default([]) | length > 0
+         else ('single MON — avoids 2-mon quorum fragility'
+               if active_hosts.stdout.split(',') | length <= 2
+               else 'MON on all hosts') }}).
+      MGR placement: {{ active_hosts.stdout }} (all hosts).
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - mon_hosts is defined
+
+- name: Deploy MON on calculated hosts
+  ansible.builtin.command: >
+    ceph orch apply mon --placement="{{ mon_hosts }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - mon_hosts | default('') | length > 0
+  changed_when: false
+
+- name: Deploy MGR on all active hosts
+  ansible.builtin.command: >
+    ceph orch apply mgr --placement="{{ active_hosts.stdout }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - active_hosts.stdout | default('') | length > 0
+  changed_when: false
+
+- name: Wait for MONs to be ready
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in $(seq 1 30); do
+      mon_count=$(ceph mon stat --format json 2>/dev/null |
+        python3 -c "import sys,json; print(json.load(sys.stdin).get('num_mons',0))" \
+        2>/dev/null || echo 0)
+      expected={{ mon_hosts.split(',') | length }}
+      if [ "$mon_count" -ge "$expected" ]; then
+        echo "All MONs ready ($mon_count/$expected)"
+        exit 0
+      fi
+      echo "Waiting for MONs... ($mon_count/$expected)"
+      sleep 10
+    done
+    echo "WARNING: Not all MONs ready, continuing"
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false

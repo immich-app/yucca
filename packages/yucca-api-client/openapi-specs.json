@@ -49,14 +49,6 @@
             }
           },
           {
-            "name": "redirect_uri",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "state",
             "required": true,
             "in": "query",
@@ -86,6 +78,109 @@
         },
         "tags": [
           "Auth"
+        ]
+      }
+    },
+    "/api/auth/oidc/device": {
+      "get": {
+        "operationId": "oidcDeviceFlow",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/metrics/submit/{repositoryId}/backup/start": {
+      "post": {
+        "operationId": "submitMetricBackupStart",
+        "parameters": [
+          {
+            "name": "repositoryId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/metrics/submit/{repositoryId}/backup/end": {
+      "post": {
+        "operationId": "submitMetricBackupEnd",
+        "parameters": [
+          {
+            "name": "repositoryId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitBackupEndRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/metrics/submit/{repositoryId}/size": {
+      "patch": {
+        "operationId": "submitMetricRepositorySize",
+        "parameters": [
+          {
+            "name": "repositoryId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitUpdateSizeRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
         ]
       }
     },
@@ -205,6 +300,27 @@
         "tags": [
           "Repository"
         ]
+      },
+      "delete": {
+        "operationId": "deleteRepository",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
       }
     },
     "/api/repository/{id}/restic": {
@@ -273,6 +389,32 @@
           "name",
           "email",
           "sessionId"
+        ]
+      },
+      "SubmitBackupEndRequestDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "success",
+          "durationMs"
+        ]
+      },
+      "SubmitUpdateSizeRequestDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
         ]
       },
       "RepositoryCreateRequestDto": {
@@ -374,6 +516,9 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
           }
         }
       },

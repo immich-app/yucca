@@ -3,6 +3,9 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -20,7 +23,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var testSecret = []byte("cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1")
+var testPrivateKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+var testPublicKey = &testPrivateKey.PublicKey
 
 const (
 	testUser       = "00000000-0000-0000-0000-000000000001"
@@ -29,8 +33,8 @@ const (
 
 func makeJWT(t *testing.T, claims jwt.MapClaims) string {
 	t.Helper()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(testSecret)
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	signed, err := token.SignedString(testPrivateKey)
 	if err != nil {
 		t.Fatalf("failed to sign JWT: %v", err)
 	}
@@ -104,9 +108,9 @@ func (m *mockStorage) DeleteObject(ctx context.Context, bucket, key string) erro
 // newTestServer creates a Server with mock storage and returns it.
 func newTestServer(store *mockStorage) *Server {
 	return &Server{
-		Storage:   store,
-		JWTSecret: testSecret,
-		Metrics:   nil,
+		Storage:      store,
+		JWTPublicKey: testPublicKey,
+		Metrics:      nil,
 	}
 }
 

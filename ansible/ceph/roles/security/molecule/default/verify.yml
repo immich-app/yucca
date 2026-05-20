@@ -1,0 +1,52 @@
+---
+- name: Verify security template rendering
+  hosts: all
+  gather_facts: false
+
+  vars:
+    public_network: 10.10.10.0/24
+    ceph_rgw_port: 443
+    ceph_prometheus_port: 9095
+    ceph_grafana_port: 3000
+    ceph_alertmanager_port: 9093
+
+  tasks:
+    - name: Render nftables.conf.j2
+      ansible.builtin.template:
+        src: "../../templates/nftables.conf.j2"
+        dest: /tmp/molecule-nftables.conf
+        mode: '0644'
+
+    - name: Verify nftables has policy drop
+      ansible.builtin.command: grep -c 'policy drop' /tmp/molecule-nftables.conf
+      register: drop_check
+      failed_when: drop_check.stdout | int < 1
+      changed_when: false
+
+    - name: Verify SSH is open from any source
+      ansible.builtin.command: grep -c 'tcp dport 22 accept' /tmp/molecule-nftables.conf
+      register: ssh_check
+      failed_when: ssh_check.stdout | int < 1
+      changed_when: false
+
+    - name: Verify RGW is open from any source
+      ansible.builtin.command: grep -c 'tcp dport 443 accept' /tmp/molecule-nftables.conf
+      register: rgw_check
+      failed_when: rgw_check.stdout | int < 1
+      changed_when: false
+
+    - name: Render sshd-hardening.conf.j2
+      ansible.builtin.template:
+        src: "../../templates/sshd-hardening.conf.j2"
+        dest: /tmp/molecule-sshd.conf
+        mode: '0644'
+
+    - name: Verify PasswordAuthentication no
+      ansible.builtin.command: grep -c 'PasswordAuthentication no' /tmp/molecule-sshd.conf
+      register: pw_check
+      failed_when: pw_check.stdout | int < 1
+      changed_when: false
+
+    - name: Report success
+      ansible.builtin.debug:
+        msg: "Security templates validated successfully"
