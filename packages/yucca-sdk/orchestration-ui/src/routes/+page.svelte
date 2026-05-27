@@ -1,7 +1,7 @@
 <script lang="ts">
   import OnboardingGate from "$lib/components/onboarding/OnboardingGate.svelte";
-  import ImmichTestUi from "$lib/components/scraps/ImmichTestUi.svelte";
-  import TestUi from "$lib/components/scraps/TestUi.svelte";
+  import ImmichTestUi from "$lib/components/test/ImmichTestUi.svelte";
+  import TestUi from "$lib/components/test/TestUi.svelte";
   import { resetOrchestrator } from "$lib/fetch-client";
   import { options } from "$lib/options";
   import { Button, Checkbox, Heading, HStack, Stack, Text } from "@immich/ui";

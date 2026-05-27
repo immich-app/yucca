@@ -21,7 +21,7 @@
   } from "@mdi/js";
   import BackendsList from "../backends/BackendsList.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
-  import Dashboard from "../dashboard/Dashboard.svelte";
+  import Dashboard from "./dashboard/Dashboard.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
 
   const { mock }: { mock: boolean } = $props();

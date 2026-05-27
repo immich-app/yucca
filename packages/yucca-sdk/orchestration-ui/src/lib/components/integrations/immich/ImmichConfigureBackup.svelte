@@ -24,12 +24,12 @@
   import cronstrue from "cronstrue";
   import { SvelteSet } from "svelte/reactivity";
 
-  interface Props {
+  type Props = {
     onFinish?: () => void;
     onCancel?: () => void;
     onClose?: () => void;
     backendId?: string;
-  }
+  };
 
   let { onFinish, onCancel, onClose }: Props = $props();
 
@@ -168,22 +168,25 @@
   };
 
   function applicableFolders(item: FolderItem, available: string[]): string[] {
-    return item.folders.filter((f) => available.includes(f));
+    return item.folders.filter((folder) => available.includes(folder));
   }
 
   function isItemChecked(item: FolderItem, available: string[]): boolean {
     const folders = applicableFolders(item, available);
-    return folders.length > 0 && folders.every((f) => selectedFolders.has(f));
+    return (
+      folders.length > 0 &&
+      folders.every((folder) => selectedFolders.has(folder))
+    );
   }
 
   function toggleItem(item: FolderItem, available: string[]) {
     const folders = applicableFolders(item, available);
-    const allOn = folders.every((f) => selectedFolders.has(f));
-    for (const f of folders) {
+    const allOn = folders.every((folder) => selectedFolders.has(folder));
+    for (const folder of folders) {
       if (allOn) {
-        selectedFolders.delete(f);
+        selectedFolders.delete(folder);
       } else {
-        selectedFolders.add(f);
+        selectedFolders.add(folder);
       }
     }
   }
@@ -345,12 +348,12 @@
               <Input
                 type="time"
                 value={`${String(scheduleHour).padStart(2, "0")}:${String(scheduleMinute).padStart(2, "0")}`}
-                oninput={(e) => {
-                  const [h, m] = (
-                    e.currentTarget as HTMLInputElement
+                oninput={(event) => {
+                  const [hours, minutes] = (
+                    event.currentTarget as HTMLInputElement
                   ).value.split(":");
-                  scheduleHour = Number(h);
-                  scheduleMinute = Number(m);
+                  scheduleHour = Number(hours);
+                  scheduleMinute = Number(minutes);
                 }}
               />
             </Field>

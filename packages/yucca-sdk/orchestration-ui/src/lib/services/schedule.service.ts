@@ -1,4 +1,5 @@
 import { sdk } from '$lib';
+import ConfigureScheduleModal from '$lib/components/schedules/dialogs/ConfigureScheduleModal.svelte';
 import {
   getSchedules,
   type ScheduleCreateRequestDto,
@@ -6,7 +7,8 @@ import {
   type ScheduleUpdateRequestDto,
 } from '$lib/fetch-client';
 import { SocketEvent } from '$lib/events';
-import { toastManager } from '@immich/ui';
+import { modalManager, toastManager, type ActionItem } from '@immich/ui';
+import { mdiCog, mdiDelete, mdiPause, mdiPlay } from '@mdi/js';
 import { handleError } from '$lib/utils/handle-error';
 import { queryClient } from '$lib/query-client';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
@@ -131,4 +133,47 @@ export const handleRemoveSchedule = async (id: string, name: string) => {
     handleError(error, 'Failed to delete schedule');
     throw error;
   }
+};
+
+export const getScheduleActions = (schedule: ScheduleDto) => {
+  const Resume: ActionItem = {
+    title: 'Resume',
+    icon: mdiPlay,
+    onAction: () => void handleResumeSchedule(schedule.id, schedule.name),
+    $if: () => schedule.paused,
+  };
+
+  const Pause: ActionItem = {
+    title: 'Pause',
+    icon: mdiPause,
+    onAction: () => void handlePauseSchedule(schedule.id, schedule.name),
+    $if: () => !schedule.paused,
+  };
+
+  const Configure: ActionItem = {
+    title: 'Configure',
+    icon: mdiCog,
+    onAction: () => void modalManager.open(ConfigureScheduleModal, { schedule }),
+  };
+
+  const Delete: ActionItem = {
+    title: 'Delete',
+    icon: mdiDelete,
+    color: 'danger',
+    onAction: async () => {
+      const confirm = await modalManager.showDialog({
+        confirmText: 'Delete',
+        title: 'Delete Schedule',
+        prompt: 'This schedule will be removed.',
+      });
+
+      if (!confirm) {
+        return;
+      }
+
+      await handleRemoveSchedule(schedule.id, schedule.name);
+    },
+  };
+
+  return { Resume, Pause, Configure, Delete };
 };

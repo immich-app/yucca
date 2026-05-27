@@ -17,7 +17,7 @@
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
-  import OnEvents from "../util/OnEvents.svelte";
+  import OnEvents from "../../util/OnEvents.svelte";
   import ActiveJobs from "./ActiveJobs.svelte";
   import BackupHealth from "./BackupHealth.svelte";
   import BackupStats from "./BackupStats.svelte";

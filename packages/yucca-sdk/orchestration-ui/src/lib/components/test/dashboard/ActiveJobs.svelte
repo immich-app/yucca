@@ -1,9 +1,6 @@
 <script lang="ts">
   import type { SocketEvent } from "$lib/events";
-  import type {
-    RunningTaskDto,
-    ActiveScheduleItemDto,
-  } from "$lib/fetch-client";
+  import type { RunningTaskDto } from "$lib/fetch-client";
   import {
     handleCancelTask,
     handleGetRunningTasks,
@@ -35,9 +32,9 @@
   } from "@mdi/js";
   import { onDestroy, onMount } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
-  import OnEvents from "../util/OnEvents.svelte";
-  import RelativeTime from "../util/RelativeTime.svelte";
-  import ViewLogModal from "../backups/dialogs/ViewLogModal.svelte";
+  import OnEvents from "../../util/OnEvents.svelte";
+  import RelativeTime from "../../util/RelativeTime.svelte";
+  import ViewLogModal from "../../backups/dialogs/ViewLogModal.svelte";
 
   const LINGER_MS = 3000;
   const FADE_MS = 600;
@@ -57,9 +54,10 @@
   const timers = new Map<string, ReturnType<typeof setTimeout>[]>();
 
   const getRepoName = (id: string) =>
-    repositoriesQuery.data?.find((r) => r.id === id)?.name ?? id;
+    repositoriesQuery.data?.find((repository) => repository.id === id)?.name ??
+    id;
   const getScheduleName = (id: string) =>
-    schedulesQuery.data?.find((s) => s.id === id)?.name ?? id;
+    schedulesQuery.data?.find((schedule) => schedule.id === id)?.name ?? id;
 
   const ensureLogObserver = (logId: string) => {
     if (!logObservers.has(logId)) {
@@ -87,17 +85,6 @@
       ? getScheduleName(task.parentId)
       : getRepoName(task.parentId);
 
-  const taskVerb: Record<string, [string, string]> = {
-    schedule: ["Running schedule", "Finished schedule"],
-    forget: ["Pruning", "Finished pruning"],
-    backup: ["Backing up", "Finished backup"],
-  };
-
-  const taskLabel = (task: LiveTask) => {
-    const [active, finished] = taskVerb[task.type];
-    return task.completedAt ? finished : active;
-  };
-
   const hasFailedItems = (task: LiveTask) =>
     task.scheduleStatus?.some((item) => item.status === "failed") ?? false;
 
@@ -122,7 +109,7 @@
       observer.destroy();
     }
     for (const bucket of timers.values()) {
-      for (const t of bucket) clearTimeout(t);
+      for (const timer of bucket) clearTimeout(timer);
     }
   });
 
@@ -188,33 +175,6 @@
   };
 
   const onCancel = (parentId: string) => handleCancelTask(parentId);
-
-  const subItemIcon = (
-    item: ActiveScheduleItemDto,
-    subLog: LogStatus | undefined,
-  ) => {
-    if (item.status === "complete")
-      return { icon: mdiCheckCircleOutline, class: "text-green-500" };
-    if (item.status === "failed")
-      return { icon: mdiAlertCircleOutline, class: "text-danger-500" };
-    if (subLog && subLog.progress > 0)
-      return { icon: mdiLoading, class: "animate-spin opacity-60" };
-    return { icon: mdiClockOutline, class: "opacity-40" };
-  };
-
-  const subItemBadge = (
-    item: ActiveScheduleItemDto,
-    subLog: LogStatus | undefined,
-  ): { label: string; color?: "success" | "danger" | "warning" } => {
-    if (item.status === "complete") return { label: "Done", color: "success" };
-    if (item.status === "failed") return { label: "Failed", color: "danger" };
-    if (subLog && subLog.progress > 0)
-      return {
-        label: `${Math.round(subLog.progress * 100)}%`,
-        color: "warning",
-      };
-    return { label: "Queued" };
-  };
 </script>
 
 <OnEvents {onTaskStart} {onTaskUpdate} {onTaskEnd} />
@@ -235,22 +195,50 @@
         {@const subTask = compact ? undefined : tasks.get(item.repositoryId)}
         {@const subLog =
           !compact && subTask?.logId ? getLogStatus(subTask.logId) : undefined}
-        {@const iconInfo = subItemIcon(item, subLog)}
-        {@const badge = subItemBadge(item, subLog)}
-
         <div class="flex flex-col gap-1">
           <HStack class="items-center justify-between">
             <HStack class="items-center gap-2">
-              <Icon icon={iconInfo.icon} size="16" class={iconInfo.class} />
+              {#if item.status === "complete"}
+                <Icon
+                  icon={mdiCheckCircleOutline}
+                  size="16"
+                  class="text-green-500"
+                />
+              {:else if item.status === "failed"}
+                <Icon
+                  icon={mdiAlertCircleOutline}
+                  size="16"
+                  class="text-danger-500"
+                />
+              {:else if subLog && subLog.progress > 0}
+                <Icon
+                  icon={mdiLoading}
+                  size="16"
+                  class="animate-spin opacity-60"
+                />
+              {:else}
+                <Icon icon={mdiClockOutline} size="16" class="opacity-40" />
+              {/if}
               <Text
-                class="text-sm {item.status === 'incomplete' &&
+                size="small"
+                color={item.status === "incomplete" &&
                 !(subLog && subLog.progress > 0)
-                  ? 'opacity-60'
-                  : ''}"
+                  ? "secondary"
+                  : undefined}
               >
                 {getRepoName(item.repositoryId)}
               </Text>
-              <Badge size="tiny" color={badge.color}>{badge.label}</Badge>
+              {#if item.status === "complete"}
+                <Badge size="tiny" color="success">Done</Badge>
+              {:else if item.status === "failed"}
+                <Badge size="tiny" color="danger">Failed</Badge>
+              {:else if subLog && subLog.progress > 0}
+                <Badge size="tiny" color="warning"
+                  >{Math.round(subLog.progress * 100)}%</Badge
+                >
+              {:else}
+                <Badge size="tiny">Queued</Badge>
+              {/if}
             </HStack>
             {#if !compact}
               <HStack class="items-center gap-2">
@@ -305,7 +293,12 @@
                 />
               {/if}
               <Text>
-                {taskLabel(task)} — <strong>{taskName(task)}</strong>
+                {#if task.completedAt}
+                  {#if task.type === "schedule"}Finished schedule{:else if task.type === "forget"}Finished pruning{:else}Finished
+                    backup{/if}
+                {:else if task.type === "schedule"}Running schedule{:else if task.type === "forget"}Pruning{:else}Backing
+                  up{/if}
+                — <strong>{taskName(task)}</strong>
               </Text>
               {#if !task.completedAt && task.type === "backup"}
                 {@const log = getLogStatus(task.logId)}
@@ -317,7 +310,7 @@
               {/if}
             </HStack>
             <HStack class="items-center gap-2">
-              <Text color="secondary" class="text-xs">
+              <Text color="secondary" size="tiny">
                 {#if task.completedAt}
                   <RelativeTime time={task.completedAt} />
                 {:else}

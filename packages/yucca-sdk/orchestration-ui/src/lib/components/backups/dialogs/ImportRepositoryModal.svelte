@@ -8,10 +8,10 @@
   import { onMount } from "svelte";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
 
-  interface Props {
+  type Props = {
     onClose: () => void;
     repository: LocalRepositoryDto;
-  }
+  };
 
   let { onClose, repository }: Props = $props();
   let readable: boolean | undefined = $state();

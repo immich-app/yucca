@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { useRepositories } from "$lib/services/repository.service";
   import { HStack, IconButton, Stack, Text } from "@immich/ui";
   import { mdiArrowDown, mdiArrowUp, mdiClose, mdiPlus } from "@mdi/js";
-  import { useRepositories } from "$lib/services/repository.service";
+  import StackList from "../ui/StackList.svelte";
 
   type Props = {
     repositories: string[];
@@ -40,61 +41,65 @@
   };
 </script>
 
-<Stack gap={1}>
-  <Text size="small">Repositories</Text>
-  {#each repositories as id, index (id)}
-    <HStack
-      gap={2}
-      class="items-center py-2 px-4 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
-    >
-      <Text class="grow" size="small">{nameById[id] ?? id}</Text>
-      <IconButton
-        icon={mdiArrowUp}
-        size="tiny"
-        variant="ghost"
-        aria-label="Move up"
-        disabled={index === 0}
-        onclick={() => move(index, -1)}
-      />
-      <IconButton
-        icon={mdiArrowDown}
-        size="tiny"
-        variant="ghost"
-        aria-label="Move down"
-        disabled={index === repositories.length - 1}
-        onclick={() => move(index, 1)}
-      />
-      <IconButton
-        icon={mdiClose}
-        size="tiny"
-        color="danger"
-        aria-label="Remove"
-        onclick={() => remove(id)}
-      />
-    </HStack>
-  {/each}
+<Stack gap={4}>
+  <StackList>
+    {#snippet title()}Repositories{/snippet}
 
-  {#if repositories.length === 0}
-    <Text color="secondary" size="small">
-      No repositories in this schedule yet.
-    </Text>
-  {/if}
-
-  {#if available.length > 0}
-    <Text size="small" class="pt-3">Available</Text>
-    {#each available as repo (repo.id)}
-      <HStack
-        gap={2}
-        class="items-center py-2 px-4 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700"
-      >
-        <Text class="grow" size="small">{repo.name}</Text>
+    {#each repositories as id, index (id)}
+      <HStack gap={2} class="px-4 py-3">
+        <Text class="grow truncate" size="small">{nameById[id] ?? id}</Text>
         <IconButton
-          icon={mdiPlus}
+          icon={mdiArrowUp}
           size="tiny"
-          aria-label="Add"
-          onclick={() => add(repo.id)}
+          variant="ghost"
+          aria-label="Move up"
+          disabled={index === 0}
+          onclick={() => move(index, -1)}
+        />
+        <IconButton
+          icon={mdiArrowDown}
+          size="tiny"
+          variant="ghost"
+          aria-label="Move down"
+          disabled={index === repositories.length - 1}
+          onclick={() => move(index, 1)}
+        />
+        <IconButton
+          icon={mdiClose}
+          size="tiny"
+          color="danger"
+          variant="ghost"
+          aria-label="Remove"
+          onclick={() => remove(id)}
         />
       </HStack>
     {/each}
+
+    {#if repositories.length === 0}
+      <HStack class="px-4 py-3">
+        <Text color="secondary" size="small">
+          No repositories in this schedule yet.
+        </Text>
+      </HStack>
+    {/if}
+  </StackList>
+
+  {#if available.length > 0}
+    <StackList>
+      {#snippet title()}Available{/snippet}
+
+      {#each available as repo (repo.id)}
+        <HStack gap={2} class="px-4 py-3">
+          <Text class="grow truncate" size="small">{repo.name}</Text>
+          <IconButton
+            icon={mdiPlus}
+            size="tiny"
+            variant="ghost"
+            aria-label="Add"
+            onclick={() => add(repo.id)}
+          />
+        </HStack>
+      {/each}
+    </StackList>
   {/if}
 </Stack>

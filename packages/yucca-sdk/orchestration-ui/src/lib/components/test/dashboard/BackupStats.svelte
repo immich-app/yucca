@@ -15,17 +15,20 @@
   const durations = $derived(
     repositories
       .map((repo) => repo.metrics?.lastBackupDuration)
-      .filter((d): d is number => d != null),
+      .filter((duration): duration is number => duration != null),
   );
 
   const avgBackupTime = $derived(
     durations.length > 0
-      ? durations.reduce((sum, d) => sum + d, 0) / durations.length
+      ? durations.reduce((sum, duration) => sum + duration, 0) /
+          durations.length
       : undefined,
   );
 
   const dailyBackupTime = $derived(
-    durations.length > 0 ? durations.reduce((sum, d) => sum + d, 0) : undefined,
+    durations.length > 0
+      ? durations.reduce((sum, duration) => sum + duration, 0)
+      : undefined,
   );
 
   const totalStored = $derived(

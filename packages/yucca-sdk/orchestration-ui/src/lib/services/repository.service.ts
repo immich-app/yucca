@@ -1,5 +1,9 @@
 import { sdk } from '$lib';
+import ConfigureRepositoryModal from '$lib/components/backups/dialogs/ConfigureRepositoryModal.svelte';
+import ImportRepositoryModal from '$lib/components/backups/dialogs/ImportRepositoryModal.svelte';
 import ViewLogModal from '$lib/components/backups/dialogs/ViewLogModal.svelte';
+import RunHistoryModal from '$lib/components/backups/run-history/RunHistoryModal.svelte';
+import SnapshotsListModal from '$lib/components/backups/snapshots-list/SnapshotsListModal.svelte';
 import { SocketEvent } from '$lib/events';
 import {
   deleteRepository,
@@ -13,7 +17,14 @@ import {
 import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
-import { modalManager, toastManager } from '@immich/ui';
+import { modalManager, toastManager, type ActionItem } from '@immich/ui';
+import {
+  mdiCog,
+  mdiFormatListBulletedType,
+  mdiImport,
+  mdiListStatus,
+  mdiPlay,
+} from '@mdi/js';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
@@ -182,4 +193,51 @@ export const handlePruneRepository = async (id: string) => {
     handleError(error, 'Failed to start cleanup');
     throw error;
   }
+};
+
+export const getRepositoryActions = (repository: LocalRepositoryDto) => {
+  const online = Boolean(
+    repository.configuration && repository.backends?.primary.online,
+  );
+  const configured = Boolean(repository.configuration);
+
+  const BackupNow: ActionItem = {
+    title: 'Back up now',
+    icon: mdiPlay,
+    onAction: () => void handleCreateBackup(repository.id),
+    $if: () => online,
+  };
+
+  const Snapshots: ActionItem = {
+    title: 'Snapshots',
+    icon: mdiFormatListBulletedType,
+    onAction: () => void modalManager.open(SnapshotsListModal, { repository }),
+    $if: () => online,
+  };
+
+  const History: ActionItem = {
+    title: 'Logs',
+    icon: mdiListStatus,
+    onAction: () => void modalManager.open(RunHistoryModal, { repository }),
+    $if: () => configured,
+  };
+
+  const Configure: ActionItem = {
+    title: 'Configure',
+    icon: mdiCog,
+    onAction: () =>
+      void modalManager.open(ConfigureRepositoryModal, {
+        repository: { ...repository, configuration: repository.configuration! },
+      }),
+    $if: () => configured,
+  };
+
+  const Import: ActionItem = {
+    title: 'Import',
+    icon: mdiImport,
+    onAction: () => void modalManager.open(ImportRepositoryModal, { repository }),
+    $if: () => Boolean(repository.backends && !repository.configuration),
+  };
+
+  return { BackupNow, Snapshots, History, Configure, Import };
 };
