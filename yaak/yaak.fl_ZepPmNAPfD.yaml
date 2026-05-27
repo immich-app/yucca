@@ -1,0 +1,21 @@
+type: folder
+model: folder
+id: fl_ZepPmNAPfD
+createdAt: 2026-05-27T10:52:09.283525598
+updatedAt: 2026-05-27T11:28:00.886650947
+workspaceId: wk_sf38TckR4U
+folderId: null
+authentication: {}
+authenticationType: null
+description: ''
+headers:
+- enabled: true
+  name: Cookie
+  value: yucca-admin-access-token=x9XS91HThu1T7rqByvoFa0OiNsKwVa6eyGYhluzQnsC; yucca-admin-sub=admin
+  id: y90jtJ4YVI
+- enabled: true
+  name: ''
+  value: ''
+  id: B7BgB8A7nX
+name: Admin
+sortPriority: -1779879100000.0

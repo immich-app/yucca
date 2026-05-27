@@ -10,6 +10,9 @@ const schema = z.object({
 
   REDIRECT_URI: z.url().default('http://localhost:36033/api/auth/oidc/callback'),
   POST_LOGOUT_REDIRECT_URI: z.url().default('http://localhost:36033'),
+
+  ADMIN_REDIRECT_URI: z.url().default('http://localhost:3030/api/auth/oidc/callback'),
+  ADMIN_POST_LOGOUT_REDIRECT_URI: z.url().default('http://localhost:3030'),
 });
 
 export const env = schema.parse(process.env);

@@ -9,8 +9,8 @@ const configuration: Configuration = {
     {
       client_id: env.CLIENT_ID,
       client_secret: env.CLIENT_SECRET,
-      redirect_uris: [env.REDIRECT_URI],
-      post_logout_redirect_uris: [env.POST_LOGOUT_REDIRECT_URI],
+      redirect_uris: [env.REDIRECT_URI, env.ADMIN_REDIRECT_URI],
+      post_logout_redirect_uris: [env.POST_LOGOUT_REDIRECT_URI, env.ADMIN_POST_LOGOUT_REDIRECT_URI],
       grant_types: ['authorization_code'],
       response_types: ['code'],
       token_endpoint_auth_method: 'client_secret_basic',

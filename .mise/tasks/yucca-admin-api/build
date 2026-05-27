@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Build yucca-admin-api"
+#MISE depends=["common:build"]
+set -e
+
+NODE_ENV=production pnpm --filter yucca-admin-api build

@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_Y4im3VxxoL
+createdAt: 2026-05-27T11:55:03.457266681
+updatedAt: 2026-05-27T11:55:19.011353546
+workspaceId: wk_sf38TckR4U
+folderId: fl_kzC8MnKVou
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "disabled": true
+    }
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: b2BJhS2v3T
+method: DELETE
+name: Delete session
+sortPriority: 0.0
+url: http://localhost:3030/api/session/${[ response.body.path(request='rq_LLQ6ZXE2H8', path=b64'JC5bMF0uaWQ', behavior='smart') ]}
+urlParameters: []

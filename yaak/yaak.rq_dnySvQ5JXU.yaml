@@ -1,0 +1,23 @@
+type: http_request
+model: http_request
+id: rq_dnySvQ5JXU
+createdAt: 2026-05-27T11:50:21.212660239
+updatedAt: 2026-05-27T11:52:04.270075471
+workspaceId: wk_sf38TckR4U
+folderId: fl_SpbNeUZw3W
+authentication: {}
+authenticationType: null
+body:
+  text: ''
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: b2BJhS2v3T
+method: DELETE
+name: Delete repository
+sortPriority: 1000.002
+url: http://localhost:3030/api/repository/${[ response.body.path(request='rq_kQje8YLe97', path=b64'JC5bMF0uaWQ', behavior='smart') ]}
+urlParameters: []

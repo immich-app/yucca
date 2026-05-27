@@ -1,0 +1,31 @@
+type: http_request
+model: http_request
+id: rq_CnqMCQeftW
+createdAt: 2026-05-27T11:50:21.212840558
+updatedAt: 2026-05-27T11:51:41.972558832
+workspaceId: wk_sf38TckR4U
+folderId: fl_SpbNeUZw3W
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "name": "New Repository Name",
+      "worm": true
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: vjHVsgspSd
+- enabled: true
+  name: ''
+  value: ''
+  id: b2BJhS2v3T
+method: PATCH
+name: Edit repository
+sortPriority: 1000.001
+url: http://localhost:3030/api/repository/${[ response.body.path(request='rq_kQje8YLe97', path=b64'JC5bMF0uaWQ', behavior='smart') ]}
+urlParameters: []

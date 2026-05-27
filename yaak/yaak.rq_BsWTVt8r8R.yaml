@@ -1,0 +1,23 @@
+type: http_request
+model: http_request
+id: rq_BsWTVt8r8R
+createdAt: 2026-05-27T11:49:42.768682218
+updatedAt: 2026-05-27T11:56:01.232927157
+workspaceId: wk_sf38TckR4U
+folderId: fl_ei6idjq9Ei
+authentication: {}
+authenticationType: null
+body:
+  text: ''
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: b2BJhS2v3T
+method: DELETE
+name: Delete user
+sortPriority: 3000.0
+url: http://localhost:3030/api/user/${[ response.body.path(request='rq_f6NWDkr8sW', path=b64'JC5bMF0uaWQ', behavior='smart') ]}
+urlParameters: []
