@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Alert, Text } from "@immich/ui";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
-  import SegmentedBar from "./visualisations/SegmentedBar.svelte";
+  import { Alert, Text } from "@immich/ui";
+  import SegmentedBar from "../../ui/VisualisationSegmentedBar.svelte";
 
   type Props = {
     repositories: LocalRepositoryDto[];

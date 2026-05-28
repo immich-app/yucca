@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Card, CardBody, getByteUnitString, Icon, Stack } from "@immich/ui";
-  import { mdiArrowDown, mdiArrowUp } from "@mdi/js";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { formatDuration } from "$lib/utils/format";
-  import Gauge from "./visualisations/Gauge.svelte";
+  import { Card, CardBody, getByteUnitString, Icon, Stack } from "@immich/ui";
+  import { mdiArrowDown, mdiArrowUp } from "@mdi/js";
+  import Gauge from "../../ui/VisualisationGauge.svelte";
 
   type Props = {
     repositories: LocalRepositoryDto[];
@@ -34,8 +34,6 @@
   const totalStored = $derived(
     repositories.reduce((sum, repo) => sum + (repo.metrics?.sizeBytes ?? 0), 0),
   );
-
-
 </script>
 
 {#snippet costSubtitle()}
