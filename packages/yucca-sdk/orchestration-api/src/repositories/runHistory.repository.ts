@@ -201,8 +201,8 @@ export class RunHistoryRepository {
   async markIncompleteAsFailed() {
     await this.db
       .updateTable('runHistory')
-      .set('runHistory.status', TaskStatus.Failed)
-      .where('runHistory.status', '=', TaskStatus.Incomplete)
+      .set('status', TaskStatus.Failed)
+      .where('status', '=', TaskStatus.Incomplete)
       .execute();
   }
 }
