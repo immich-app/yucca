@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_jygywNzahd
+createdAt: 2026-05-27T10:32:12.880395723
+updatedAt: 2026-05-27T11:53:55.066774114
+workspaceId: wk_sf38TckR4U
+folderId: fl_ei6idjq9Ei
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "disabled": true
+    }
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: b2BJhS2v3T
+method: GET
+name: Get user
+sortPriority: 1000.0
+url: http://localhost:3030/api/user/${[ response.body.path(request='rq_f6NWDkr8sW', path=b64'JC5bMF0uaWQ', behavior='smart') ]}
+urlParameters: []

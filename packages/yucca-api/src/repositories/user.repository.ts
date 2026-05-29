@@ -13,7 +13,7 @@ export class UserRepository {
   }
 
   getBySub(sub: string) {
-    return this.db.selectFrom('users').select('id').where('sub', '=', sub).executeTakeFirst();
+    return this.db.selectFrom('users').select(['id', 'disabled']).where('sub', '=', sub).executeTakeFirst();
   }
 
   getByAccessToken(accessToken: string) {
@@ -21,8 +21,8 @@ export class UserRepository {
       .selectFrom('sessions')
       .where('accessToken', '=', accessToken)
       .innerJoin('users', 'users.id', 'sessions.userId')
-      .selectAll('users')
-      .select(['sessions.id as sessionId'])
+      .where('users.disabled', '=', false)
+      .select(['users.id', 'users.sub', 'users.name', 'users.email', 'sessions.id as sessionId'])
       .executeTakeFirst();
   }
 

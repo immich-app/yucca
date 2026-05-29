@@ -56,6 +56,15 @@ describe('AuthController (e2e)', () => {
           sessionId: session.id,
         });
     });
+
+    it('rejects a disabled user with an existing session', async () => {
+      await testUtils.disableUser(user.id);
+
+      await request(app.getHttpServer())
+        .get('/api/auth')
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(401);
+    });
   });
 
   describe('GET /auth/logout', () => {
@@ -178,6 +187,31 @@ describe('AuthController (e2e)', () => {
           id: user.id,
         }),
       );
+    });
+
+    it('refuses to log in a disabled user', async () => {
+      await testUtils.disableUser(user.id);
+
+      const { header } = await request(app.getHttpServer()).get('/api/auth/oidc/login').expect(302);
+      const cookies = parse((header['set-cookie'] as never as string[]).join('; '));
+
+      const redirectUrl = new URL(header.location);
+      redirectUrl.pathname = '/api/form';
+      redirectUrl.searchParams.set('sub', user.sub);
+
+      const { headers } = await fetch(redirectUrl, {
+        redirect: 'manual',
+      });
+
+      const callbackUrl = new URL(headers.get('location')!);
+
+      await request(app.getHttpServer())
+        .get(callbackUrl.pathname + callbackUrl.search)
+        .set('Cookie', [
+          `yucca-oidc-state=${cookies['yucca-oidc-state']}`,
+          `yucca-oidc-code-verifier=${cookies['yucca-oidc-code-verifier']}`,
+        ])
+        .expect(401);
     });
   });
 

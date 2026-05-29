@@ -13,4 +13,7 @@ export class UserTable {
 
   @Column({ unique: true })
   email!: string;
+
+  @Column({ type: 'boolean', default: () => 'false' })
+  disabled!: Generated<boolean>;
 }

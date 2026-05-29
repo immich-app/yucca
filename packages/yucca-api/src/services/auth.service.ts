@@ -115,6 +115,10 @@ export class AuthService {
     let user = await this.user.getBySub(claims.sub);
 
     if (user) {
+      if (user.disabled) {
+        throw new UnauthorizedException('Account is disabled');
+      }
+
       await this.user.update(user.id, {
         name: claims.name,
         email: claims.email,

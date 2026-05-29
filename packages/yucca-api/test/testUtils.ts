@@ -54,6 +54,11 @@ export const testUtils = {
     return userRepository.getBySub(sub);
   },
 
+  disableUser: async (id: string) => {
+    const db = getDb();
+    await db.updateTable('users').set({ disabled: true }).where('id', '=', id).execute();
+  },
+
   getUserByAccessToken: (accessToken: string) => {
     const db = getDb();
     const userRepository = new UserRepository(db);

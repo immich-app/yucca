@@ -1,0 +1,13 @@
+type: folder
+model: folder
+id: fl_SpbNeUZw3W
+createdAt: 2026-05-27T11:50:21.212315861
+updatedAt: 2026-05-27T11:54:58.664978366
+workspaceId: wk_sf38TckR4U
+folderId: fl_ZepPmNAPfD
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: Repository
+sortPriority: 2000.0

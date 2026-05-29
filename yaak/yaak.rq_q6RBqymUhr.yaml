@@ -1,0 +1,30 @@
+type: http_request
+model: http_request
+id: rq_q6RBqymUhr
+createdAt: 2026-05-27T11:48:03.948210070
+updatedAt: 2026-05-27T11:53:55.070042195
+workspaceId: wk_sf38TckR4U
+folderId: fl_ei6idjq9Ei
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "disabled": true
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: vjHVsgspSd
+- enabled: true
+  name: ''
+  value: ''
+  id: b2BJhS2v3T
+method: PATCH
+name: Edit user
+sortPriority: 2000.0
+url: http://localhost:3030/api/user/${[ response.body.path(request='rq_f6NWDkr8sW', path=b64'JC5bMF0uaWQ', behavior='smart') ]}
+urlParameters: []

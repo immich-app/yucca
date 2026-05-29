@@ -30,7 +30,7 @@ depends = ["*:test"]
 
 [tasks."test:integration"]
 description = "Run all integration tests"
-run = [{ task = "*:test:integration" }]
+run = "mise run '*:test:integration' --jobs 1"
 
 [tasks."test:e2e:web"]
 description = "Run all web e2e tests"

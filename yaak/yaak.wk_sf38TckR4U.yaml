@@ -1,0 +1,14 @@
+type: workspace
+model: workspace
+id: wk_sf38TckR4U
+createdAt: 2026-05-27T10:32:05.333579968
+updatedAt: 2026-05-27T11:49:28.861211875
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: Yucca
+encryptionKeyChallenge: null
+settingValidateCertificates: true
+settingFollowRedirects: true
+settingRequestTimeout: 0

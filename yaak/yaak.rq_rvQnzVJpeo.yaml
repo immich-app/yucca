@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_rvQnzVJpeo
+createdAt: 2026-05-27T11:50:21.213069068
+updatedAt: 2026-05-27T11:51:14.013760158
+workspaceId: wk_sf38TckR4U
+folderId: fl_SpbNeUZw3W
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "disabled": true
+    }
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: b2BJhS2v3T
+method: GET
+name: Get repository
+sortPriority: 1000.0
+url: http://localhost:3030/api/repository/${[ response.body.path(request='rq_kQje8YLe97', path=b64'JC5bMF0uaWQ', behavior='smart') ]}
+urlParameters: []

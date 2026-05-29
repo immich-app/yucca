@@ -1,0 +1,26 @@
+type: http_request
+model: http_request
+id: rq_kQje8YLe97
+createdAt: 2026-05-27T11:50:21.212948381
+updatedAt: 2026-05-27T11:50:41.998277619
+workspaceId: wk_sf38TckR4U
+folderId: fl_SpbNeUZw3W
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "disabled": true
+    }
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: 4MHREZ8vkQ
+method: GET
+name: List repositories
+sortPriority: 0.0
+url: http://localhost:3030/api/repository
+urlParameters: []

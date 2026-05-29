@@ -30,3 +30,6 @@ yarn.lock
 # task structure, so these subtrees are exempt from root prettier checks.
 ansible/
 tf/
+
+# auto-generated
+yaak/
