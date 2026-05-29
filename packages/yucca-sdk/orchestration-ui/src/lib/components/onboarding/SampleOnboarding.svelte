@@ -21,21 +21,24 @@
     onCancel: () => void;
   };
 
+  const { status, onFinish, onCancel }: Props = $props();
+
   let code = $state("");
 
-  const { status, onFinish, onCancel }: Props = $props();
-  const onNext = () => stage++;
-  const onBack = () => stage--;
-
   // svelte-ignore state_referenced_locally
-  let stage = $state(
-    status.hasOnboardedKey
-      ? status.hasBackend
-        ? status.hasBackup
-          ? 7
-          : 6
-        : 4
-      : 0,
+  let stage:
+    | "welcome"
+    | `key-${"intro" | "save" | "confirm" | "import"}`
+    | "backup-service"
+    | "backup-create"
+    | "schedule-create" = $state(
+    !status.hasOnboardedKey
+      ? "welcome"
+      : !status.hasBackend
+        ? "backup-service"
+        : !status.hasBackup
+          ? "backup-create"
+          : "schedule-create",
   );
 
   onMount(() => {
@@ -55,32 +58,41 @@
     if (status.hasBackend) {
       onFinish();
     } else {
-      onNext();
+      stage = "backup-service";
     }
   };
 </script>
 
-{#if stage === 0}
-  <Welcome {onNext} onImportKey={() => (stage = 5)} {onCancel} />
-{:else if stage === 1}
-  <KeyIntro {onNext} {onCancel} />
-{:else if stage === 2}
-  <SaveKey {code} {onNext} {onCancel} />
-{:else if stage === 3}
-  <ConfirmKey {code} {onConfirmKey} {onBack} {onCancel} />
-{:else if stage === 4}
-  <BackupOptions onNext={() => (stage = 6)} {onCancel} />
-{:else if stage === 5}
+{#if stage === "welcome"}
+  <Welcome
+    onNext={() => (stage = "key-intro")}
+    onImportKey={() => (stage = "key-import")}
+    {onCancel}
+  />
+{:else if stage === "key-intro"}
+  <KeyIntro onNext={() => (stage = "key-save")} {onCancel} />
+{:else if stage === "key-save"}
+  <SaveKey {code} onNext={() => (stage = "key-confirm")} {onCancel} />
+{:else if stage === "key-confirm"}
+  <ConfirmKey
+    {code}
+    {onConfirmKey}
+    onBack={() => (stage = "key-save")}
+    {onCancel}
+  />
+{:else if stage === "key-import"}
   <ImportKey
-    onStart={() => (stage = 0)}
+    onStart={() => (stage = "welcome")}
     onImported={(key) => {
       code = key;
-      stage = 2;
+      stage = "key-save";
     }}
     {onCancel}
   />
-{:else if stage === 6}
-  <CreateFirstBackup {onNext} {onSkip} />
-{:else if stage === 7}
+{:else if stage === "backup-service"}
+  <BackupOptions onNext={() => (stage = "backup-create")} {onCancel} />
+{:else if stage === "backup-create"}
+  <CreateFirstBackup onNext={() => (stage = "schedule-create")} {onSkip} />
+{:else if stage === "schedule-create"}
   <CreateFirstSchedule {onFinish} {onSkip} />
 {/if}

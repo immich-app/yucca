@@ -18,12 +18,12 @@
   import { mdiContentCopy } from "@mdi/js";
   import OnEvents from "../util/OnEvents.svelte";
 
-  interface Props {
+  type Props = {
     userCode: string;
     verificationUri: string;
     onCreate?: (backendId: string) => void;
     onClose: () => void;
-  }
+  };
 
   let { userCode, verificationUri, onCreate, onClose }: Props = $props();
 

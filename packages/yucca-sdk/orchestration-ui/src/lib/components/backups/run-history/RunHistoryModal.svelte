@@ -3,10 +3,10 @@
   import { Modal, ModalBody } from "@immich/ui";
   import RepositoryRunHistory from "./RepositoryRunHistory.svelte";
 
-  interface Props {
+  type Props = {
     repository: LocalRepositoryDto;
     onClose: () => void;
-  }
+  };
 
   let { repository, onClose }: Props = $props();
 </script>

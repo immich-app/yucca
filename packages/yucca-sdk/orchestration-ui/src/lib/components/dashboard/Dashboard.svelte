@@ -1,37 +1,30 @@
 <script lang="ts">
-  import { options } from "$lib/options";
-  import { getReadableErrorMessage } from "$lib/utils/handle-error";
-  import {
-    Alert,
-    Button,
-    Card,
-    CardBody,
-    Icon,
-    LoadingSpinner,
-    Stack,
-    Text,
-  } from "@immich/ui";
-  import { mdiBackupRestore } from "@mdi/js";
-
+  import type { RepositoryListResponseDto } from "$lib/fetch-client";
   import {
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
+  import { getReadableErrorMessage } from "$lib/utils/handle-error";
+  import { Alert, LoadingSpinner, Stack } from "@immich/ui";
   import OnEvents from "../util/OnEvents.svelte";
-  import ActiveJobs from "./ActiveJobs.svelte";
-  import BackupHealth from "./BackupHealth.svelte";
-  import BackupStats from "./BackupStats.svelte";
-  import RecentBackups from "./RecentBackups.svelte";
+  import DashboardAvgBackupTime from "./DashboardAvgBackupTime.svelte";
+  import DashboardBackupHealth from "./DashboardBackupHealth.svelte";
+  import DashboardCurrentUsage from "./DashboardCurrentUsage.svelte";
+  import DashboardDailyBackupTime from "./DashboardDailyBackupTime.svelte";
+  import DashboardInstall from "./DashboardInstall.svelte";
+  import DashboardRecentBackups from "./DashboardRecentBackups.svelte";
+  import DashboardTotalStored from "./DashboardTotalStored.svelte";
 
   type Props = {
+    local?: boolean;
+    initialData?: RepositoryListResponseDto;
     onNavigate?: (route: string) => void;
   };
 
-  const { advanced } = options;
+  const { local, initialData, onNavigate }: Props = $props();
 
-  const { onNavigate }: Props = $props();
-
-  const query = useRepositories();
+  // svelte-ignore state_referenced_locally
+  const query = useRepositories(initialData?.repositories);
   const { onRepositoryCreate, onRepositoryUpdate } =
     useRepositoryEventHandler();
 </script>
@@ -42,35 +35,18 @@
   <LoadingSpinner />
 {:else if query.isError}
   <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-{:else if query.isSuccess && query.data.length === 0}
-  <Card>
-    <CardBody>
-      <div class="flex flex-col items-center gap-4 py-8">
-        <Icon icon={mdiBackupRestore} size="48" color="muted" />
-        <Stack class="items-center gap-1">
-          <Text size="large">No backups configured yet</Text>
-          <Text color="secondary" class="text-center max-w-md"
-            >Once you set up a backup, this dashboard will show its health,
-            schedule, and storage usage at a glance.</Text
-          >
-        </Stack>
-        {#if onNavigate}
-          <Button color="primary" onclick={() => onNavigate("backups")}
-            >Set up your first backup</Button
-          >
-        {/if}
-      </div>
-    </CardBody>
-  </Card>
 {:else if query.isSuccess}
-  <BackupHealth repositories={query.data} />
-
-  <BackupStats repositories={query.data} />
-
-  <ActiveJobs />
-
-  <RecentBackups
-    repositories={query.data}
-    onNavigate={onNavigate ? () => onNavigate("backups") : undefined}
-  />
+  <Stack>
+    <Stack direction="row">
+      <DashboardBackupHealth repositories={query.data} {local} {onNavigate} />
+      <DashboardInstall />
+    </Stack>
+    <Stack direction="row">
+      <DashboardAvgBackupTime repositories={query.data} />
+      <DashboardDailyBackupTime repositories={query.data} />
+      <DashboardTotalStored repositories={query.data} />
+      <DashboardCurrentUsage />
+    </Stack>
+    <DashboardRecentBackups repositories={query.data} {local} />
+  </Stack>
 {/if}

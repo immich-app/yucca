@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Card, CardBody, getByteUnitString, Icon, Stack } from "@immich/ui";
-  import { mdiArrowDown, mdiArrowUp } from "@mdi/js";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { formatDuration } from "$lib/utils/format";
-  import Gauge from "./visualisations/Gauge.svelte";
+  import { Card, CardBody, getByteUnitString, Icon, Stack } from "@immich/ui";
+  import { mdiArrowDown, mdiArrowUp } from "@mdi/js";
+  import Gauge from "../../ui/VisualisationGauge.svelte";
 
   type Props = {
     repositories: LocalRepositoryDto[];
@@ -15,24 +15,25 @@
   const durations = $derived(
     repositories
       .map((repo) => repo.metrics?.lastBackupDuration)
-      .filter((d): d is number => d != null),
+      .filter((duration): duration is number => duration != null),
   );
 
   const avgBackupTime = $derived(
     durations.length > 0
-      ? durations.reduce((sum, d) => sum + d, 0) / durations.length
+      ? durations.reduce((sum, duration) => sum + duration, 0) /
+          durations.length
       : undefined,
   );
 
   const dailyBackupTime = $derived(
-    durations.length > 0 ? durations.reduce((sum, d) => sum + d, 0) : undefined,
+    durations.length > 0
+      ? durations.reduce((sum, duration) => sum + duration, 0)
+      : undefined,
   );
 
   const totalStored = $derived(
     repositories.reduce((sum, repo) => sum + (repo.metrics?.sizeBytes ?? 0), 0),
   );
-
-
 </script>
 
 {#snippet costSubtitle()}

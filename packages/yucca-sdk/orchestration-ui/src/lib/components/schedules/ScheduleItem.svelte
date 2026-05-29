@@ -1,24 +1,9 @@
 <script lang="ts">
+  import StackListItem from "$lib/components/ui/StackListItem.svelte";
+  import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import type { ScheduleDto } from "$lib/fetch-client";
-  import {
-    Badge,
-    Card,
-    CardBody,
-    Heading,
-    HStack,
-    IconButton,
-    modalManager,
-    Stack,
-    Text,
-  } from "@immich/ui";
-  import { mdiCog, mdiDelete, mdiPause, mdiPlay } from "@mdi/js";
-  import RelativeTime from "../util/RelativeTime.svelte";
-  import ConfigureScheduleModal from "./dialogs/ConfigureScheduleModal.svelte";
-  import {
-    handlePauseSchedule,
-    handleRemoveSchedule,
-    handleResumeSchedule,
-  } from "$lib/services/schedule.service";
+  import { getScheduleActions } from "$lib/services/schedule.service";
+  import { Badge, HStack, Stack, Text } from "@immich/ui";
 
   type Props = {
     schedule: ScheduleDto;
@@ -27,71 +12,36 @@
 
   const { schedule, repositoryNames }: Props = $props();
 
-  const onResume = () => handleResumeSchedule(schedule.id, schedule.name);
-  const onPause = () => handlePauseSchedule(schedule.id, schedule.name);
-
-  const onConfigure = () => {
-    modalManager.open(ConfigureScheduleModal, { schedule });
-  };
-
-  const onDelete = async () => {
-    const confirm = await modalManager.showDialog({
-      confirmText: "Delete",
-      title: "Delete Schedule",
-      prompt: "This schedule will be removed.",
-    });
-
-    if (!confirm) return;
-
-    await handleRemoveSchedule(schedule.id, schedule.name);
-  };
+  const { Resume, Pause, Configure, Delete } = $derived(
+    getScheduleActions(schedule),
+  );
 </script>
 
-<Card>
-  <CardBody>
-    <HStack>
-      <Stack>
-        <Heading size="small">{schedule.name}</Heading>
-        <HStack>
-          <Badge size="tiny" color="info">{schedule.cron}</Badge>
-          {#if schedule.paused}
-            <Badge size="tiny" color="warning">Paused</Badge>
-          {/if}
-          {#if schedule.lastRun}
-            <Badge size="tiny" color="success">
-              Ran <RelativeTime time={schedule.lastRun} />
-            </Badge>
-          {:else}
-            <Badge size="tiny" color="secondary">Never run</Badge>
-          {/if}
-        </HStack>
-      </Stack>
-
-      <HStack class="grow justify-end">
-        {#if schedule.paused}
-          <IconButton onclick={onResume} aria-label="Resume" icon={mdiPlay} />
-        {:else}
-          <IconButton onclick={onPause} aria-label="Pause" icon={mdiPause} />
-        {/if}
-        <IconButton
-          onclick={onConfigure}
-          aria-label="Configure"
-          icon={mdiCog}
-        />
-        <IconButton onclick={onDelete} aria-label="Delete" icon={mdiDelete} />
-      </HStack>
+<StackListItem actions={[Resume, Pause, Configure, Delete]}>
+  <Stack gap={0} class="min-w-0">
+    <HStack gap={1} class="items-baseline">
+      <Text>{schedule.name}</Text>
+      <Badge size="tiny" color="info">{schedule.cron}</Badge>
+      {#if schedule.paused}
+        <Badge size="tiny" color="warning">Paused</Badge>
+      {/if}
+      {#if schedule.lastRun}
+        <Badge size="tiny" color="success">
+          Ran <RelativeTime time={schedule.lastRun} />
+        </Badge>
+      {:else}
+        <Badge size="tiny" color="secondary">Never run</Badge>
+      {/if}
     </HStack>
 
-    <Stack class="pl-7 gap-3 pt-2">
-      {#if schedule.repositories.length > 0}
-        {#each schedule.repositories as repoId}
-          <Text>
-            {repositoryNames[repoId] ?? repoId}
-          </Text>
-        {/each}
-      {:else}
-        <Text color="secondary">No backups in this schedule.</Text>
-      {/if}
-    </Stack>
-  </CardBody>
-</Card>
+    {#if schedule.repositories.length > 0}
+      <Text size="small" color="secondary">
+        {schedule.repositories
+          .map((repositoryId) => repositoryNames[repositoryId] ?? repositoryId)
+          .join(", ")}
+      </Text>
+    {:else}
+      <Text size="small" color="secondary">No backups in this schedule.</Text>
+    {/if}
+  </Stack>
+</StackListItem>

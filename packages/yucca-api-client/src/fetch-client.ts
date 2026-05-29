@@ -27,6 +27,20 @@ export type SubmitBackupEndRequestDto = {
 export type SubmitUpdateSizeRequestDto = {
     sizeBytes: number;
 };
+export type RepositoryMetricsHistoryDto = {
+    id: string;
+    repositoryId: string;
+    createdAt: string;
+    sizeBytes?: number;
+    started?: string;
+    backup?: string;
+    successfulBackup?: string;
+    backupDuration?: number;
+};
+export type RepositoryMetricsHistoryListResponseDto = {
+    items: RepositoryMetricsHistoryDto[];
+    nextCursor?: string | null;
+};
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
@@ -112,6 +126,20 @@ export function submitMetricRepositorySize(repositoryId: string, submitUpdateSiz
         method: "PATCH",
         body: submitUpdateSizeRequestDto
     })));
+}
+export function listMetricsHistory(repositoryId: string, { cursor, limit }: {
+    cursor?: string;
+    limit?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryMetricsHistoryListResponseDto;
+    }>(`/api/metrics/${encodeURIComponent(repositoryId)}/history${QS.query(QS.explode({
+        cursor,
+        limit
+    }))}`, {
+        ...opts
+    }));
 }
 export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

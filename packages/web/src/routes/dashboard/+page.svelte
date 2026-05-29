@@ -1,5 +1,11 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import { Dashboard } from "@futo-org/backups-orchestrator-ui";
+
   const { data } = $props();
 </script>
 
-<span>Logged in as {data.user!.name} ({data.user!.email})</span>
+<Dashboard
+  initialData={data.initialData.repositories}
+  onNavigate={(route) => goto(`/dashboard/${route}`)}
+/>

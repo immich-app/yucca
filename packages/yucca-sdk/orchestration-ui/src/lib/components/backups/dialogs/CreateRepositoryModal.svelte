@@ -10,9 +10,9 @@
   } from "@immich/ui";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
 
-  interface Props {
+  type Props = {
     onClose: () => void;
-  }
+  };
 
   let { onClose }: Props = $props();
 

@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { Button, Heading, modalManager } from "@immich/ui";
+  import { useRepositories } from "$lib/services/repository.service";
+  import {
+    useScheduleEventHandler,
+    useSchedules,
+  } from "$lib/services/schedule.service";
+  import { Button, HStack, modalManager, Stack, Text } from "@immich/ui";
+  import StackList from "../ui/StackList.svelte";
+  import OnEvents from "../util/OnEvents.svelte";
   import CreateScheduleModal from "./dialogs/CreateScheduleModal.svelte";
   import ScheduleItem from "./ScheduleItem.svelte";
-  import OnEvents from "../util/OnEvents.svelte";
-  import {
-    useSchedules,
-    useScheduleEventHandler,
-  } from "$lib/services/schedule.service";
-  import { useRepositories } from "$lib/services/repository.service";
 
   const schedulesQuery = useSchedules();
   const repositoriesQuery = useRepositories();
@@ -17,26 +18,34 @@
 
   const repositoryNames = $derived(
     Object.fromEntries(
-      repositoriesQuery.data?.map((r) => [r.id, r.name]) ?? [],
+      repositoriesQuery.data?.map((repository) => [
+        repository.id,
+        repository.name,
+      ]) ?? [],
     ),
   );
 
-  const onCreate = () => {
-    modalManager.open(CreateScheduleModal, {});
-  };
+  const onCreate = () => modalManager.open(CreateScheduleModal, {});
 </script>
 
 <OnEvents {onScheduleCreate} {onScheduleUpdate} {onScheduleDelete} />
 
-<div class="flex flex-col gap-2">
-  <Heading
-    >Schedules <div class="inline-block">
-      <Button shape="round" size="tiny" variant="outline" onclick={onCreate}
-        >Create new schedule</Button
-      >
-    </div></Heading
-  >
-  {#each schedulesQuery.data ?? [] as schedule (schedule.id)}
-    <ScheduleItem {schedule} {repositoryNames} />
-  {/each}
-</div>
+<Stack gap={2}>
+  <StackList query={schedulesQuery}>
+    {#snippet title()}Schedules{/snippet}
+    {#snippet children(schedules)}
+      {#each schedules as schedule (schedule.id)}
+        <ScheduleItem {schedule} {repositoryNames} />
+      {/each}
+      {#if schedules.length === 0}
+        <Text class="text-center py-6" color="muted">No schedules yet.</Text>
+      {/if}
+    {/snippet}
+  </StackList>
+
+  <HStack>
+    <Button shape="round" size="tiny" variant="outline" onclick={onCreate}
+      >Create new schedule</Button
+    >
+  </HStack>
+</Stack>

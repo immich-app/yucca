@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Alert, Text } from "@immich/ui";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
-  import SegmentedBar from "./visualisations/SegmentedBar.svelte";
+  import { Alert, Text } from "@immich/ui";
+  import SegmentedBar from "../../ui/VisualisationSegmentedBar.svelte";
 
   type Props = {
     repositories: LocalRepositoryDto[];
@@ -11,28 +11,25 @@
 
   const total = $derived(repositories.length);
 
-  const status = $derived.by(() => {
-    let success = 0;
-    let offline = 0;
-    let failed = 0;
-    let neverRun = 0;
-
-    for (const repo of repositories) {
-      if (!repo.backends?.primary.online) {
-        offline++;
-      } else if (!repo.metrics?.lastBackup) {
-        neverRun++;
-      } else if (
-        repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup
-      ) {
-        success++;
-      } else {
-        failed++;
-      }
-    }
-
-    return { success, offline, failed, neverRun };
-  });
+  const status = $derived(
+    repositories.reduce(
+      (tally, repo) => {
+        if (!repo.backends?.primary.online) {
+          tally.offline++;
+        } else if (!repo.metrics?.lastBackup) {
+          tally.neverRun++;
+        } else if (
+          repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup
+        ) {
+          tally.success++;
+        } else {
+          tally.failed++;
+        }
+        return tally;
+      },
+      { success: 0, offline: 0, failed: 0, neverRun: 0 },
+    ),
+  );
 
   const hasFailures = $derived(status.offline > 0 || status.failed > 0);
   const allHealthy = $derived(

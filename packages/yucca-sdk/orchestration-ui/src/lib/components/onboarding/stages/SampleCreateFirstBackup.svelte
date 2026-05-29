@@ -3,10 +3,10 @@
   import { useCreateRepository } from "$lib/services/repository.service";
   import { SvelteSet } from "svelte/reactivity";
 
-  interface Props {
+  type Props = {
     onNext: () => void;
     onSkip: () => void;
-  }
+  };
 
   let { onNext, onSkip }: Props = $props();
 

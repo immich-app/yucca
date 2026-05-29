@@ -18,3 +18,37 @@ export class SubmitUpdateSizeRequestDto {
   @Min(0)
   sizeBytes!: number;
 }
+
+export class RepositoryMetricsHistoryDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  repositoryId!: string;
+
+  @ApiProperty({ type: 'string' })
+  createdAt!: Date;
+
+  @ApiProperty({ required: false })
+  sizeBytes?: number;
+
+  @ApiProperty({ type: 'string', required: false })
+  started?: Date;
+
+  @ApiProperty({ type: 'string', required: false })
+  backup?: Date;
+
+  @ApiProperty({ type: 'string', required: false })
+  successfulBackup?: Date;
+
+  @ApiProperty({ required: false })
+  backupDuration?: number;
+}
+
+export class RepositoryMetricsHistoryListResponseDto {
+  @ApiProperty({ type: [RepositoryMetricsHistoryDto] })
+  items!: RepositoryMetricsHistoryDto[];
+
+  @ApiProperty({ type: 'string', required: false, nullable: true })
+  nextCursor!: string | null;
+}

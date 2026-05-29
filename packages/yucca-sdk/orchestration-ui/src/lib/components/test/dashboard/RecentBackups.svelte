@@ -1,7 +1,7 @@
 <script lang="ts">
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
+  import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { formatDuration } from "$lib/utils/format";
-  import type { RepositoryWithMetricsDto } from "@futo-org/backups-api-client";
   import {
     Button,
     Card,
@@ -18,7 +18,7 @@
   } from "@mdi/js";
 
   type Props = {
-    repositories: RepositoryWithMetricsDto[];
+    repositories: LocalRepositoryDto[];
     onNavigate?: () => void;
   };
 
@@ -54,8 +54,8 @@
         </Text>
       {:else}
         <div>
-          {#each recentBackups as repo, i (repo.id)}
-            {#if i > 0}
+          {#each recentBackups as repo, index (repo.id)}
+            {#if index > 0}
               <hr
                 style="border: none; border-top: 1px solid var(--immich-ui-default-border);"
               />

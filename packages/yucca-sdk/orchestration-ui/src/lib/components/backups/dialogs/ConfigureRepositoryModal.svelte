@@ -17,10 +17,10 @@
   } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
 
-  interface Props {
+  type Props = {
     repository: LocalRepositoryDto;
     onClose: () => void;
-  }
+  };
 
   let { repository, onClose }: Props = $props();
 

@@ -4,16 +4,16 @@
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
-  import { Button, Heading, modalManager } from "@immich/ui";
+  import { Button, HStack, modalManager, Stack, Text } from "@immich/ui";
+  import StackList from "../ui/StackList.svelte";
   import OnEvents from "../util/OnEvents.svelte";
-  import Suspense from "../util/Suspense.svelte";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
 
-  interface Props {
+  type Props = {
     local?: boolean;
     initialData?: RepositoryListResponseDto;
-  }
+  };
 
   const { local, initialData }: Props = $props();
 
@@ -36,36 +36,47 @@
 
 <OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onRepositoryDelete} />
 
-<Suspense {query}>
-  <div class="flex flex-col gap-4">
-    {#if local}
-      <div class="flex flex-col gap-2">
-        <Heading
-          >Backups on this machine <div class="inline-block">
-            <Button
-              shape="round"
-              size="tiny"
-              variant="outline"
-              onclick={createNewBackup}>Create new backup</Button
-            >
-          </div></Heading
+<Stack gap={6}>
+  {#if local}
+    <Stack gap={2}>
+      <StackList {query}>
+        {#snippet title()}Backups on this machine{/snippet}
+        {#snippet children()}
+          {#each localRepositories as repository (repository.id)}
+            <BackupItem {repository} />
+          {/each}
+          {#if localRepositories.length === 0}
+            <Text class="text-center py-6" color="muted">
+              No backups on this machine yet.
+            </Text>
+          {/if}
+        {/snippet}
+      </StackList>
+
+      <HStack>
+        <Button
+          shape="round"
+          size="tiny"
+          variant="outline"
+          onclick={createNewBackup}>Create new backup</Button
         >
-        {#each localRepositories as repository (repository.id)}
-          <BackupItem {repository} />
-        {/each}
-      </div>
-    {/if}
+      </HStack>
+    </Stack>
+  {/if}
 
-    <div class="flex flex-col gap-2">
-      {#if local}
-        <Heading>Backups found elsewhere</Heading>
-      {:else}
-        <Heading>Your Backups</Heading>
-      {/if}
-
+  <StackList {query}>
+    {#snippet title()}
+      {local ? "Backups found elsewhere" : "Your Backups"}
+    {/snippet}
+    {#snippet children()}
       {#each remoteRepositories as repository (repository.id)}
         <BackupItem {repository} />
       {/each}
-    </div>
-  </div>
-</Suspense>
+      {#if remoteRepositories.length === 0}
+        <Text class="text-center py-6" color="muted">
+          {local ? "No other backups found." : "No backups yet."}
+        </Text>
+      {/if}
+    {/snippet}
+  </StackList>
+</Stack>
