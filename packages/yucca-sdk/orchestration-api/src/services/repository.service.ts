@@ -438,6 +438,7 @@ export class RepositoryService {
 
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
+                await this.restic.unlockAll(endpoint, key);
                 await this.restic.backup(endpoint, key, paths, log, taskSignal);
 
                 const { retentionPolicy: policy } = await this.repository.get(id);
@@ -538,6 +539,7 @@ export class RepositoryService {
             TaskType.Forget,
             async (log, logId) => {
               resolve({ task, logId });
+              await this.restic.unlockAll(endpoint, key);
               await this.runForgetAndPrune(endpoint, key, policy, log, signal);
             },
             (error) => {
@@ -749,6 +751,7 @@ export class RepositoryService {
 
     try {
       const signal = this.tasks.startTask(id, TaskType.Forget);
+      await this.restic.unlockAll(endpoint, key);
       await this.restic.forget(endpoint, key, snapshotId, true, signal);
     } finally {
       this.tasks.endTask(id);
