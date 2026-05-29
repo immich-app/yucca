@@ -153,7 +153,8 @@ export const getScheduleActions = (schedule: ScheduleDto) => {
   const Configure: ActionItem = {
     title: 'Configure',
     icon: mdiCog,
-    onAction: () => void modalManager.open(ConfigureScheduleModal, { schedule }),
+    onAction: () =>
+      void modalManager.open(ConfigureScheduleModal, { schedule }),
   };
 
   const Delete: ActionItem = {

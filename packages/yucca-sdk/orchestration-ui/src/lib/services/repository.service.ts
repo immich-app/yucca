@@ -237,7 +237,8 @@ export const getRepositoryActions = (repository: LocalRepositoryDto) => {
   const Import: ActionItem = {
     title: 'Import',
     icon: mdiImport,
-    onAction: () => void modalManager.open(ImportRepositoryModal, { repository }),
+    onAction: () =>
+      void modalManager.open(ImportRepositoryModal, { repository }),
     $if: () => Boolean(repository.backends && !repository.configuration),
   };
 

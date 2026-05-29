@@ -13,7 +13,9 @@ export async function up(db: Kysely<any>): Promise<void> {
   CONSTRAINT "repositoryMetricsHistory_repositoryId_fkey" FOREIGN KEY ("repositoryId") REFERENCES "repositories" ("id") ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT "repositoryMetricsHistory_pkey" PRIMARY KEY ("id")
 );`.execute(db);
-  await sql`CREATE INDEX "repositoryMetricsHistory_repositoryId_idx" ON "repositoryMetricsHistory" ("repositoryId");`.execute(db);
+  await sql`CREATE INDEX "repositoryMetricsHistory_repositoryId_idx" ON "repositoryMetricsHistory" ("repositoryId");`.execute(
+    db,
+  );
 }
 
 export async function down(db: Kysely<any>): Promise<void> {

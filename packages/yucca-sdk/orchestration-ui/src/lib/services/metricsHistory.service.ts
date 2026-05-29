@@ -3,7 +3,8 @@ import { createInfiniteQuery } from '@tanstack/svelte-query';
 import { queryClient } from '$lib/query-client';
 
 export const metricsHistoryKeys = {
-  byRepository: (repositoryId: string) => ['metricsHistory', repositoryId] as const,
+  byRepository: (repositoryId: string) =>
+    ['metricsHistory', repositoryId] as const,
 };
 
 export const useMetricsHistory = (repositoryId: string) =>

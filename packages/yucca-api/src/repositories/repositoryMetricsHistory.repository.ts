@@ -10,11 +10,7 @@ export class RepositoryMetricsHistoryRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
 
   create(entry: Insertable<RepositoryMetricsHistoryTable>) {
-    return this.db
-      .insertInto('repositoryMetricsHistory')
-      .values(entry)
-      .returningAll()
-      .executeTakeFirstOrThrow();
+    return this.db.insertInto('repositoryMetricsHistory').values(entry).returningAll().executeTakeFirstOrThrow();
   }
 
   async list({ repositoryId, cursor, limit }: { repositoryId: string; cursor?: string; limit: number }) {
