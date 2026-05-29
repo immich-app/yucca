@@ -1,4 +1,4 @@
-import { backup, forget, init, keyList, ls, prune, restore, snapshots, stats } from '@futo-org/restic-wrapper';
+import { backup, forget, init, keyList, ls, prune, restore, snapshots, stats, unlock } from '@futo-org/restic-wrapper';
 import { Injectable } from '@nestjs/common';
 import { Writable } from 'node:stream';
 import { RepositorySnapshotRestoreRequestDto } from '../dto/repository.dto';
@@ -95,5 +95,14 @@ export class ResticRepository {
 
   async keyList(repository: string, key: Uint8Array) {
     return await keyList().repository(repository).password(Buffer.from(key).toString('hex')).run();
+  }
+
+  async unlockAll(repository: string, key: Uint8Array) {
+    return await unlock()
+      // @ts-expect-error needs restic-wrapper-ts bump
+      .removeAll()
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .run();
   }
 }
