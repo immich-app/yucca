@@ -13,6 +13,7 @@ import { RepositoryRepository } from './repositories/repository.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { UserRepository } from './repositories/user.repository';
 import { AuthService } from './services/auth.service';
+import { DatabaseService } from './services/database.service';
 import { RepositoryService } from './services/repository.service';
 import { SessionService } from './services/session.service';
 import { UserService } from './services/user.service';
@@ -26,6 +27,7 @@ export const providers = [
   WideContextRepository,
   LoggerRepository,
   DatabaseRepository,
+  DatabaseService,
   OidcRepository,
   UserRepository,
   SessionRepository,

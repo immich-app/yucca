@@ -1,9 +1,10 @@
 import { LoggerRepository } from '@common/server/otel';
 import { Injectable } from '@nestjs/common';
-import { FileMigrationProvider, Kysely, Migrator } from 'kysely';
+import { FileMigrationProvider, Kysely, Migrator, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { DatabaseLock } from 'src/enum';
 import { env } from 'src/env';
 import { DB } from 'src/schema';
 
@@ -16,6 +17,29 @@ export class DatabaseRepository {
 
   async shutdown() {
     await this.db.destroy();
+  }
+
+  async withLock<R>(lock: DatabaseLock, callback: () => Promise<R>): Promise<R> {
+    let result;
+
+    await this.db.connection().execute(async (connection) => {
+      try {
+        await this.acquireLock(lock, connection);
+        result = await callback();
+      } finally {
+        await this.releaseLock(lock, connection);
+      }
+    });
+
+    return result as R;
+  }
+
+  private async acquireLock(lock: DatabaseLock, connection: Kysely<DB>): Promise<void> {
+    await sql`SELECT pg_advisory_lock(${lock})`.execute(connection);
+  }
+
+  private async releaseLock(lock: DatabaseLock, connection: Kysely<DB>): Promise<void> {
+    await sql`SELECT pg_advisory_unlock(${lock})`.execute(connection);
   }
 
   async runMigrations(): Promise<void> {

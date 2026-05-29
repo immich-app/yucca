@@ -8,3 +8,7 @@ export enum CookieName {
 export enum MetadataKey {
   Auth = 'AUTH',
 }
+
+export enum DatabaseLock {
+  Migrations = 67,
+}
