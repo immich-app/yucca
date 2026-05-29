@@ -197,4 +197,12 @@ export class RunHistoryRepository {
       }),
     );
   }
+
+  async markIncompleteAsFailed() {
+    await this.db
+      .updateTable('runHistory')
+      .set('runHistory.status', TaskStatus.Failed)
+      .where('runHistory.status', '=', TaskStatus.Incomplete)
+      .execute();
+  }
 }
