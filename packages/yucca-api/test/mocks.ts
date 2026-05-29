@@ -70,6 +70,7 @@ export const newJwtServiceMock = () => ({
 
 export const newMetricServiceMock = () => ({
   getCounter: jest.fn().mockReturnValue({ add: jest.fn() }),
+  getGauge: jest.fn().mockReturnValue({ record: jest.fn() }),
 });
 
 export const newMocks = () => {
