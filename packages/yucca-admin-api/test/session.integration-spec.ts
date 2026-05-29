@@ -75,10 +75,7 @@ describe('Sessions (e2e)', () => {
       await testUtils.createSession(user.id);
       await testUtils.createSession(user.id);
 
-      await request(app.getHttpServer())
-        .delete(`/api/user/${user.id}/session`)
-        .set('Cookie', authCookie)
-        .expect(204);
+      await request(app.getHttpServer()).delete(`/api/user/${user.id}/session`).set('Cookie', authCookie).expect(204);
 
       const { body } = await request(app.getHttpServer())
         .get(`/api/user/${user.id}/session`)

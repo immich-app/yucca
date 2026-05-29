@@ -16,9 +16,7 @@ describe(AuthService.name, () => {
 
   describe('authenticate', () => {
     it('should fail if missing sub cookie', async () => {
-      await expect(sut.authenticate({})).rejects.toThrowErrorMatchingInlineSnapshot(
-        `"Missing yucca-admin-sub cookie"`,
-      );
+      await expect(sut.authenticate({})).rejects.toThrowErrorMatchingInlineSnapshot(`"Missing yucca-admin-sub cookie"`);
     });
 
     it('should fail if missing access token cookie', async () => {

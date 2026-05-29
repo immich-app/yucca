@@ -80,10 +80,7 @@ describe('AuthController (e2e)', () => {
     it('clears the auth cookies and redirects to the IdP end-session endpoint', async () => {
       const { cookies } = await loginAs('admin-user');
 
-      const { header } = await request(app.getHttpServer())
-        .get('/api/auth/logout')
-        .set('Cookie', cookies)
-        .expect(302);
+      const { header } = await request(app.getHttpServer()).get('/api/auth/logout').set('Cookie', cookies).expect(302);
 
       expect(header['set-cookie']).toEqual(
         expect.arrayContaining([
