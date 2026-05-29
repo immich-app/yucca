@@ -13,6 +13,7 @@ import { DatabaseRepository } from './repositories/database.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryMetricsRepository } from './repositories/repositoryMetrics.repository';
+import { RepositoryMetricsHistoryRepository } from './repositories/repositoryMetricsHistory.repository';
 import { ResticApiRepository } from './repositories/resticApi.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { UserRepository } from './repositories/user.repository';
@@ -43,6 +44,7 @@ export const providers = [
   UserRepository,
   RepositoryRepository,
   RepositoryMetricsRepository,
+  RepositoryMetricsHistoryRepository,
   SessionRepository,
   DatabaseService,
   MetricsService,

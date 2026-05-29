@@ -11,12 +11,13 @@
 
   const { repository }: Props = $props();
 
-  const { BackupNow, Snapshots, History, Configure, Import } = $derived(
-    getRepositoryActions(repository),
-  );
+  const { BackupNow, Snapshots, History, Configure, Import, MetricsHistory } =
+    $derived(getRepositoryActions(repository));
 </script>
 
-<StackListItem actions={[BackupNow, Snapshots, History, Configure, Import]}>
+<StackListItem
+  actions={[BackupNow, Snapshots, History, Configure, Import, MetricsHistory]}
+>
   <Text>{repository.name}</Text>
 
   {#if repository.backends}

@@ -184,6 +184,53 @@
         ]
       }
     },
+    "/api/metrics/{repositoryId}/history": {
+      "get": {
+        "operationId": "listMetricsHistory",
+        "parameters": [
+          {
+            "name": "repositoryId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 50,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryMetricsHistoryListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/repository": {
       "post": {
         "operationId": "createRepository",
@@ -415,6 +462,58 @@
         },
         "required": [
           "sizeBytes"
+        ]
+      },
+      "RepositoryMetricsHistoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          },
+          "started": {
+            "type": "string"
+          },
+          "backup": {
+            "type": "string"
+          },
+          "successfulBackup": {
+            "type": "string"
+          },
+          "backupDuration": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "repositoryId",
+          "createdAt"
+        ]
+      },
+      "RepositoryMetricsHistoryListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RepositoryMetricsHistoryDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "RepositoryCreateRequestDto": {

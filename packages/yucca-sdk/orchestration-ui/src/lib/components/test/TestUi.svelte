@@ -21,7 +21,7 @@
   } from "@mdi/js";
   import BackendsList from "../backends/BackendsList.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
-  import Dashboard from "./dashboard/Dashboard.svelte";
+  import Dashboard from "../dashboard/Dashboard.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
 
   const { mock }: { mock: boolean } = $props();
@@ -118,11 +118,7 @@
 
   <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
     {#if route === "dashboard"}
-      <!-- <Heading>Dashboard (Live) Scrap</Heading>
-      <DashboardLive />
-      <Heading>Dashboard (Mock) Scrap</Heading>
-      <Dashboard /> -->
-      <Dashboard onNavigate={(target) => (route = target)} />
+      <Dashboard local onNavigate={(target) => (route = target)} />
     {:else if route === "backups"}
       <BackupsList local />
     {:else if route === "config"}

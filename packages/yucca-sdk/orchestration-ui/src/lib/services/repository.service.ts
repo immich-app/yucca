@@ -2,6 +2,7 @@ import { sdk } from '$lib';
 import ConfigureRepositoryModal from '$lib/components/backups/dialogs/ConfigureRepositoryModal.svelte';
 import ImportRepositoryModal from '$lib/components/backups/dialogs/ImportRepositoryModal.svelte';
 import ViewLogModal from '$lib/components/backups/dialogs/ViewLogModal.svelte';
+import MetricsHistoryModal from '$lib/components/backups/metrics-history/MetricsHistoryModal.svelte';
 import RunHistoryModal from '$lib/components/backups/run-history/RunHistoryModal.svelte';
 import SnapshotsListModal from '$lib/components/backups/snapshots-list/SnapshotsListModal.svelte';
 import { SocketEvent } from '$lib/events';
@@ -21,6 +22,7 @@ import { modalManager, toastManager, type ActionItem } from '@immich/ui';
 import {
   mdiCog,
   mdiFormatListBulletedType,
+  mdiHistory,
   mdiImport,
   mdiListStatus,
   mdiPlay,
@@ -239,5 +241,12 @@ export const getRepositoryActions = (repository: LocalRepositoryDto) => {
     $if: () => Boolean(repository.backends && !repository.configuration),
   };
 
-  return { BackupNow, Snapshots, History, Configure, Import };
+  const MetricsHistory: ActionItem = {
+    title: 'Metrics history',
+    icon: mdiHistory,
+    onAction: () => void modalManager.open(MetricsHistoryModal, { repository }),
+    $if: () => !repository.backends,
+  };
+
+  return { BackupNow, Snapshots, History, Configure, Import, MetricsHistory };
 };

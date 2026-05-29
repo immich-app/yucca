@@ -6,7 +6,7 @@ export { default as ImmichOnboardingRestoreFlow } from './components/integration
 export { default as ImmichOnboardingSetupFlow } from './components/integrations/immich/ImmichOnboardingSetupFlow.svelte';
 export { default as OnboardingGate } from './components/onboarding/OnboardingGate.svelte';
 export { default as ScheduleList } from './components/schedules/ScheduleList.svelte';
-export { default as Dashboard } from './components/test/dashboard/Dashboard.svelte';
+export { default as Dashboard } from './components/dashboard/Dashboard.svelte';
 export { default as VisualisationGauge } from './components/ui/VisualisationGauge.svelte';
 export { default as VisualisationSegmentedBar } from './components/ui/VisualisationSegmentedBar.svelte';
 export { default as OnEvents } from './components/util/OnEvents.svelte';
@@ -19,6 +19,7 @@ export * from './services/backend.service';
 export * from './services/filesystem.service';
 export * from './services/integrations.service';
 export * from './services/log.service.svelte';
+export * from './services/metricsHistory.service';
 export * from './services/onboarding.service';
 export * from './services/repository.service';
 export * from './services/runHistory.service';
