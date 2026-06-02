@@ -1,8 +1,9 @@
 import * as sdk from '@futo-org/backups-orchestrator-ui/sdk';
 import { createEventSource } from 'eventsource-client';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { io, Socket } from 'socket.io-client';
 
 const baseUrl = `http://localhost:22676`;
@@ -67,6 +68,13 @@ describe('Onboarding (before setup)', () => {
 });
 
 describe('Auth', () => {
+  it('provides an OIDC device flow code', async () => {
+    await expect(sdk.oidcDeviceFlow()).resolves.toEqual({
+      userCode: expect.any(String),
+      verificationUri: expect.any(String),
+    });
+  });
+
   it('should log us in using IdP', async () => {
     await login();
   }, 30_000);
@@ -89,8 +97,29 @@ describe('Backend', () => {
 });
 
 describe('Filesystem', () => {
-  it('works', async () => {
-    await sdk.getFileListing();
+  it('lists a directory with files and subdirectories', async () => {
+    const workingDir = await mkdtemp(join(tmpdir(), 'fs-'));
+    await writeFile(join(workingDir, 'a-file'), 'hi');
+    await mkdir(join(workingDir, 'a-dir'));
+
+    await expect(sdk.getFileListing({ path: workingDir })).resolves.toEqual({
+      parent: dirname(workingDir),
+      path: workingDir,
+      items: expect.arrayContaining([
+        { path: join(workingDir, 'a-file'), isDirectory: false },
+        { path: join(workingDir, 'a-dir'), isDirectory: true },
+      ]),
+    });
+  });
+
+  it('defaults to the home directory when no path is provided', async () => {
+    await expect(sdk.getFileListing()).resolves.toEqual(
+      expect.objectContaining({
+        path: homedir(),
+        parent: dirname(homedir()),
+        items: expect.any(Array),
+      }),
+    );
   });
 });
 
@@ -172,6 +201,25 @@ describe('Repository', () => {
           id: repository.id,
         }),
       ]),
+    });
+  });
+
+  it('updates a repository and emits an event', async () => {
+    const event = waitForMessage('RepositoryUpdate');
+
+    await expect(sdk.updateRepository(repository.id, { name: 'Renamed Repository' })).resolves.toEqual({
+      repository: expect.objectContaining({
+        id: repository.id,
+        name: 'Renamed Repository',
+      }),
+    });
+
+    await expect(event).resolves.toEqual({
+      type: 'RepositoryUpdate',
+      repositoryId: repository.id,
+      repository: expect.objectContaining({
+        name: 'Renamed Repository',
+      }),
     });
   });
 
@@ -278,6 +326,21 @@ describe('Repository', () => {
     });
   });
 
+  it('gets a single run by id', async () => {
+    const {
+      runs: [{ id }],
+    } = await sdk.getRunHistory(repository.id);
+
+    await expect(sdk.getRun(id)).resolves.toEqual({
+      run: expect.objectContaining({
+        id,
+        repositoryId: repository.id,
+        status: 'complete',
+        type: 'backup',
+      }),
+    });
+  });
+
   it('list snapshots', async () => {
     await expect(sdk.getSnapshots(repository.id)).resolves.toEqual({
       snapshots: expect.arrayContaining([
@@ -341,6 +404,15 @@ describe('Repository', () => {
     });
   });
 
+  it('reports a repository absent from a backend as unreadable', async () => {
+    const path = await mkdtemp(join(tmpdir(), 'empty-backend-'));
+    const { backend } = await sdk.createLocalBackend({ path });
+
+    await expect(sdk.checkImportRepository(repository.id, backend.id)).resolves.toEqual({
+      readable: false,
+    });
+  });
+
   it('restores from point', async () => {
     const event = waitForMessage('TaskEnd');
     const { backends } = await sdk.getBackends();
@@ -380,9 +452,77 @@ describe('Repository', () => {
   });
 });
 
+describe('Snapshot browsing and restore', () => {
+  let repository: sdk.LocalRepositoryDto;
+  let snapshotId: string;
+  let workingDir: string;
+
+  beforeAll(async () => {
+    workingDir = await mkdtemp(join(tmpdir(), 'browse-'));
+    await writeFile(join(workingDir, 'top-file'), 'top');
+    await mkdir(join(workingDir, 'nested'));
+    await writeFile(join(workingDir, 'nested', 'deep-file'), 'deep');
+
+    ({ repository } = await sdk.createRepository({
+      name: 'Browse Repository',
+      worm: false,
+      paths: [workingDir],
+    }));
+
+    const backupComplete = waitForMessage('TaskEnd');
+    await sdk.createBackup(repository.id);
+    await backupComplete;
+
+    ({
+      snapshots: [{ id: snapshotId }],
+    } = await sdk.getSnapshots(repository.id));
+  }, 30_000);
+
+  it('navigates into a subdirectory of a snapshot', async () => {
+    await expect(sdk.getSnapshotListing(repository.id, snapshotId, { path: workingDir })).resolves.toEqual({
+      parent: dirname(workingDir),
+      path: workingDir,
+      items: expect.arrayContaining([
+        { path: join(workingDir, 'top-file'), isDirectory: false },
+        { path: join(workingDir, 'nested'), isDirectory: true },
+      ]),
+    });
+
+    await expect(
+      sdk.getSnapshotListing(repository.id, snapshotId, { path: join(workingDir, 'nested') }),
+    ).resolves.toEqual({
+      parent: workingDir,
+      path: join(workingDir, 'nested'),
+      items: [{ path: join(workingDir, 'nested', 'deep-file'), isDirectory: false }],
+    });
+  });
+
+  it('restores a snapshot into a target directory with an include filter', async () => {
+    const target = await mkdtemp(join(tmpdir(), 'restore-target-'));
+    const event = waitForMessage('TaskEnd');
+
+    const { logId } = await sdk.restoreSnapshot(repository.id, snapshotId, {
+      target,
+      include: [join(workingDir, 'nested', 'deep-file')],
+    });
+
+    expect(logId).toEqual(expect.any(String));
+
+    await expect(event).resolves.toEqual({
+      type: 'TaskEnd',
+      parentId: repository.id,
+    });
+
+    await expect(readFile(join(target, workingDir, 'nested', 'deep-file'), 'utf8')).resolves.toEqual('deep');
+    await expect(readFile(join(target, workingDir, 'top-file'), 'utf8')).rejects.toThrow();
+  }, 30_000);
+});
+
 describe('Running Tasks', () => {
-  it('works', async () => {
-    await sdk.getRunningTasks();
+  it('returns the list of running tasks', async () => {
+    await expect(sdk.getRunningTasks()).resolves.toEqual({
+      tasks: expect.any(Array),
+    });
   });
 });
 
@@ -592,4 +732,190 @@ describe('Reset & Restore', () => {
       }),
     );
   }, 30_000);
+});
+
+describe('Repository deletion', () => {
+  it('deletes a repository', async () => {
+    const { repository } = await sdk.createRepository({
+      name: 'Disposable Repository',
+      worm: false,
+    });
+
+    const event = waitForMessage('RepositoryDelete');
+
+    await sdk.deleteRepository(repository.id);
+
+    await expect(event).resolves.toEqual({
+      type: 'RepositoryDelete',
+      repositoryId: repository.id,
+    });
+
+    const { repositories } = await sdk.getRepositories();
+    const localRepositories = repositories.filter((repo) => repo.configuration !== undefined);
+
+    expect(localRepositories).toEqual(expect.not.arrayContaining([expect.objectContaining({ id: repository.id })]));
+  });
+});
+
+describe('Repository pruning', () => {
+  let repository: sdk.LocalRepositoryDto;
+
+  beforeAll(async () => {
+    const workingDir = await mkdtemp(join(tmpdir(), 'prune-'));
+    await writeFile(join(workingDir, 'test-file'), 'hi');
+
+    ({ repository } = await sdk.createRepository({
+      name: 'Prune Repository',
+      worm: false,
+      paths: [workingDir],
+    }));
+
+    await sdk.updateRepository(repository.id, {
+      retentionPolicy: { keepLast: 1 },
+    });
+
+    const backupComplete = waitForMessage('TaskEnd');
+    await sdk.createBackup(repository.id);
+    await backupComplete;
+  }, 30_000);
+
+  it('prunes a repository according to its retention policy', async () => {
+    const event = waitForMessage('TaskEnd');
+
+    const { logId } = await sdk.pruneRepository(repository.id);
+
+    expect(logId).toEqual(expect.any(String));
+
+    await expect(event).resolves.toEqual({
+      type: 'TaskEnd',
+      parentId: repository.id,
+    });
+  }, 30_000);
+
+  it('rejects pruning a repository without a retention policy', async () => {
+    const { repository: unconfigured } = await sdk.createRepository({
+      name: 'No Retention Repository',
+      worm: false,
+    });
+
+    await sdk.updateRepository(unconfigured.id, { retentionPolicy: null });
+
+    await expect(sdk.pruneRepository(unconfigured.id)).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe('Running task cancellation', () => {
+  it('returns 404 when cancelling a task that is not running', async () => {
+    await expect(sdk.cancelTask('does-not-exist')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('lists an in-progress backup and cancels it', async () => {
+    const workingDir = await mkdtemp(join(tmpdir(), 'cancel-'));
+
+    await writeFile(join(workingDir, 'payload'), randomBytes(64 * 1024 * 1024));
+
+    const { repository } = await sdk.createRepository({
+      name: 'Cancellable Repository',
+      worm: false,
+      paths: [workingDir],
+    });
+
+    const started = waitForMessage('TaskStart');
+    const ended = waitForMessage('TaskEnd');
+
+    const { logId } = await sdk.createBackup(repository.id);
+    await started;
+
+    await expect(sdk.getRunningTasks()).resolves.toEqual({
+      tasks: expect.arrayContaining([
+        expect.objectContaining({
+          parentId: repository.id,
+          type: 'backup',
+          logId,
+        }),
+      ]),
+    });
+
+    await sdk.cancelTask(repository.id);
+
+    await expect(ended).resolves.toEqual({
+      type: 'TaskEnd',
+      parentId: repository.id,
+    });
+
+    await expect(sdk.getRunHistory(repository.id)).resolves.toEqual({
+      runs: expect.arrayContaining([
+        expect.objectContaining({
+          id: logId,
+          status: 'failed',
+        }),
+      ]),
+    });
+  }, 30_000);
+});
+
+describe('Immich integration', () => {
+  it('configures the immich integration', async () => {
+    const event = waitForMessage('IntegrationUpdate');
+
+    await sdk.configureImmichIntegration({
+      name: 'Immich Backup',
+      worm: false,
+      cron: '* * * * *',
+      dataFolders: ['upload'],
+      backupConfiguration: false,
+      libraries: 'all',
+    });
+
+    await expect(event).resolves.toEqual({
+      type: 'IntegrationUpdate',
+      integrations: expect.objectContaining({
+        immichIntegration: expect.objectContaining({
+          id: expect.any(String),
+          scheduleId: expect.any(String),
+          configuration: expect.objectContaining({
+            backupConfiguration: false,
+            libraries: 'all',
+          }),
+        }),
+      }),
+    });
+
+    await expect(sdk.getIntegrations()).resolves.toEqual(
+      expect.objectContaining({
+        immichIntegration: expect.objectContaining({
+          configuration: expect.objectContaining({ libraries: 'all' }),
+        }),
+      }),
+    );
+  });
+});
+
+describe('Local backend', () => {
+  it('creates a local backend', async () => {
+    const path = await mkdtemp(join(tmpdir(), 'backend-'));
+
+    const event = waitForMessage('BackendCreate');
+
+    const { backend } = await sdk.createLocalBackend({ path });
+
+    expect(backend).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        type: 'local',
+        isOnline: true,
+      }),
+    );
+
+    await expect(event).resolves.toEqual({
+      type: 'BackendCreate',
+      backend: expect.objectContaining({ id: backend.id, type: 'local' }),
+    });
+
+    await expect(sdk.getBackends()).resolves.toEqual(
+      expect.objectContaining({
+        backends: expect.arrayContaining([expect.objectContaining({ id: backend.id, type: 'local' })]),
+      }),
+    );
+  });
 });
