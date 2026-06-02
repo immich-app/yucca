@@ -43,7 +43,7 @@ catalog:
   '@opentelemetry/instrumentation-pino': ^0.57.0
   '@opentelemetry/propagator-b3': ^2.5.0
   '@opentelemetry/propagator-jaeger': ^2.5.0
-  '@opentelemetry/sdk-node': ^0.211.0
+  '@opentelemetry/sdk-node': ^0.217.0
   '@playwright/test': 1.59.1
   '@sveltejs/adapter-auto': ^7.0.0
   '@sveltejs/adapter-node': ^5.5.4
