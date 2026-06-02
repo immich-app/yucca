@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
 import { Updateable } from 'kysely';
@@ -23,6 +23,7 @@ import { RepositoryService } from './repository.service';
 @Injectable()
 export class ScheduleService {
   constructor(
+    @Inject(forwardRef(() => RepositoryService))
     private readonly repository: RepositoryService,
     private readonly events: EventsGateway,
     private readonly schedule: ScheduleRepository,
@@ -32,13 +33,22 @@ export class ScheduleService {
     private readonly integrationImmich: RepositoryIntegrationImmichRepository,
   ) {}
 
+  private readonly cronJobs = new Set<string>();
+
   async bootstrap() {
+    for (const id of this.cronJobs) {
+      this.schedulerRegistry.deleteCronJob(id);
+    }
+
+    this.cronJobs.clear();
+
     for (const schedule of await this.schedule.getAll()) {
       this.createCronJob(schedule.id, schedule.cron, schedule.paused);
     }
   }
 
   private createCronJob(id: string, cron: string, paused: boolean): void {
+    this.cronJobs.add(id);
     this.schedulerRegistry.addCronJob(
       id,
       new CronJob<null, null>(
@@ -227,6 +237,8 @@ export class ScheduleService {
     }
 
     await this.schedule.removeSchedule(scheduleId);
+    this.schedulerRegistry.deleteCronJob(scheduleId);
+    this.cronJobs.delete(scheduleId);
 
     this.events.publish({
       type: 'ScheduleDelete',

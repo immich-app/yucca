@@ -203,7 +203,7 @@
 <FormModal
   title="Backup settings"
   size="large"
-  disabled={!validateCron(effectiveCron) ||
+  disabled={!validateCron(effectiveCron).isError() ||
     name.length === 0 ||
     mutation.isPending}
   onClose={() => {

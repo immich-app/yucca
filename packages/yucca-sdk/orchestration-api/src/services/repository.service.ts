@@ -539,8 +539,14 @@ export class RepositoryService {
             TaskType.Forget,
             async (log, logId) => {
               resolve({ task, logId });
-              await this.restic.unlockAll(endpoint, key);
-              await this.runForgetAndPrune(endpoint, key, policy, log, signal);
+
+              try {
+                const taskSignal = this.tasks.startTask(id, TaskType.Forget, logId, signal);
+                await this.restic.unlockAll(endpoint, key);
+                await this.runForgetAndPrune(endpoint, key, policy, log, taskSignal);
+              } finally {
+                this.tasks.endTask(id);
+              }
             },
             (error) => {
               void this.updateLocalMetrics(id, {

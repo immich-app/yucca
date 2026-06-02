@@ -1,0 +1,16 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".integration-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "transformIgnorePatterns": ["/node_modules/.pnpm/(?!(openid-client|oauth4webapi|jose))"],
+  "moduleNameMapper": {
+    "^src/(.*)$": "<rootDir>/../src/$1",
+    "^@futo-org/backups-api-client$": "<rootDir>/mocks/yucca-api-client.ts",
+    "^@futo-org/restic-wrapper$": "<rootDir>/mocks/restic-wrapper.ts"
+  },
+  "forceExit": true
+}

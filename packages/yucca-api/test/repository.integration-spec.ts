@@ -33,7 +33,7 @@ describe('RepositoryController (e2e)', () => {
     repository = await testUtils.createRepository(user.id);
   });
 
-  describe('POST /auth/repository', () => {
+  describe('POST /repository', () => {
     it('creates a new repository', async () => {
       const { body } = await request(app.getHttpServer())
         .post('/api/repository')
@@ -56,7 +56,7 @@ describe('RepositoryController (e2e)', () => {
     });
   });
 
-  describe('GET /auth/repository/:id', () => {
+  describe('GET /repository/:id', () => {
     it('gets a repository by id', async () => {
       const { body } = await request(app.getHttpServer())
         .get(`/api/repository/${repository.id}`)
@@ -75,7 +75,7 @@ describe('RepositoryController (e2e)', () => {
     });
   });
 
-  describe('GET /auth/repository', () => {
+  describe('GET /repository', () => {
     it('gets all repositories', async () => {
       const { body } = await request(app.getHttpServer())
         .get('/api/repository')
@@ -92,7 +92,7 @@ describe('RepositoryController (e2e)', () => {
     });
   });
 
-  describe('PATCH /auth/repository/:id', () => {
+  describe('PATCH /repository/:id', () => {
     it('updates a repository name', async () => {
       const { body } = await request(app.getHttpServer())
         .patch(`/api/repository/${repository.id}`)
@@ -112,7 +112,7 @@ describe('RepositoryController (e2e)', () => {
     });
   });
 
-  describe('POST /auth/repository/:id/restic', () => {
+  describe('POST /repository/:id/restic', () => {
     it('generates restic URL for repository', async () => {
       const { body } = await request(app.getHttpServer())
         .post(`/api/repository/${repository.id}/restic`)
@@ -125,5 +125,9 @@ describe('RepositoryController (e2e)', () => {
         ),
       });
     });
+  });
+
+  describe('DELETE /repository/:id', () => {
+    it.todo('deletes a repository');
   });
 });

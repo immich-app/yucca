@@ -22,7 +22,8 @@
 
     {#if snapshot.summary}
       <Text color="secondary">
-        &middot; {snapshot.summary.totalFiles.toLocaleString()} files &middot;
+        &middot; {snapshot.summary.totalFiles.toLocaleString()}
+        {snapshot.summary.totalFiles > 1 ? "files" : "file"} &middot;
         <FormatBytes bytes={snapshot.summary.totalBytes} />
       </Text>
 

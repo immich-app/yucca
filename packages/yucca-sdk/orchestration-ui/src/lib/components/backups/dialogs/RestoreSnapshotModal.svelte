@@ -54,13 +54,12 @@
       },
     );
   };
-
 </script>
 
 <FormModal
   title="Restore Backup"
   submitText="Restore"
-  disabled={mutation.isPending}
+  disabled={(inPlace && !target.trim()) || mutation.isPending}
   {onSubmit}
   {onClose}
 >
