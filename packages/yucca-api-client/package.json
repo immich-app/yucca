@@ -1,6 +1,6 @@
 {
   "name": "@futo-org/backups-api-client",
-  "version": "0.1.71",
+  "version": "0.1.72",
   "description": "",
   "type": "module",
   "main": "dist/index.js",
@@ -14,13 +14,13 @@
   ],
   "keywords": [],
   "author": "",
-  "license": "UNLICENSED",
+  "license": "Source First License 1.1",
   "packageManager": "pnpm@10.27.0",
   "devDependencies": {
-    "oazapfts": "^7.0.1",
-    "typescript": "^5.9.3"
+    "oazapfts": "catalog:",
+    "typescript": "catalog:"
   },
   "dependencies": {
-    "@oazapfts/runtime": "^1.1.0"
+    "@oazapfts/runtime": "catalog:"
   }
 }
