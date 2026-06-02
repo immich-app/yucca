@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { useCreateSchedule } from "$lib/services/schedule.service";
   import { Field, FormModal, Input, Stack } from "@immich/ui";
   import validate from "cron-validate";
-  import { useCreateSchedule } from "$lib/services/schedule.service";
   import RepositoryPicker from "../RepositoryPicker.svelte";
 
   type Props = {
@@ -26,7 +26,10 @@
 <FormModal
   title="Create A New Schedule"
   size="large"
-  disabled={name.length === 0 || validate(cron).isError() || mutation.isPending}
+  disabled={name.length === 0 ||
+    validate(cron).isError() ||
+    repositories.length === 0 ||
+    mutation.isPending}
   {onSubmit}
   {onClose}
 >

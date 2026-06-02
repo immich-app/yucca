@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { ScheduleDto } from "$lib/fetch-client";
+  import { useUpdateSchedule } from "$lib/services/schedule.service";
   import { Field, FormModal, Input, Stack } from "@immich/ui";
   import validate from "cron-validate";
-  import { useUpdateSchedule } from "$lib/services/schedule.service";
   import RepositoryPicker from "../RepositoryPicker.svelte";
 
   type Props = {
@@ -31,7 +31,10 @@
 <FormModal
   title={`Edit ${schedule.name}`}
   size="large"
-  disabled={name.length === 0 || validate(cron).isError() || mutation.isPending}
+  disabled={name.length === 0 ||
+    validate(cron).isError() ||
+    repositories.length === 0 ||
+    mutation.isPending}
   {onSubmit}
   {onClose}
 >
