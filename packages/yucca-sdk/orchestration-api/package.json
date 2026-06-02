@@ -6,6 +6,7 @@
   "scripts": {
     "build": "nest build",
     "test": "jest",
+    "test:integration": "jest --config ./test/jest-integration.json --runInBand",
     "dev": "nodemon bin/server.ts",
     "start": "ts-node bin/server.ts",
     "sync:openapi": "ts-node bin/sync-openapi.ts"

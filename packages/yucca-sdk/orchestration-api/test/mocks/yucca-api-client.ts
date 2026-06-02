@@ -1,0 +1,10 @@
+export const createRepository = jest.fn();
+export const createResticUrl = jest.fn();
+export const deleteRepository = jest.fn();
+export const getAuth = jest.fn();
+export const getRepositories = jest.fn();
+export const getRepository = jest.fn();
+export const updateRepository = jest.fn();
+export const submitMetricBackupStart = jest.fn();
+export const submitMetricBackupEnd = jest.fn();
+export const submitMetricRepositorySize = jest.fn();

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
 import { Updateable } from 'kysely';
@@ -23,6 +23,7 @@ import { RepositoryService } from './repository.service';
 @Injectable()
 export class ScheduleService {
   constructor(
+    @Inject(forwardRef(() => RepositoryService))
     private readonly repository: RepositoryService,
     private readonly events: EventsGateway,
     private readonly schedule: ScheduleRepository,
