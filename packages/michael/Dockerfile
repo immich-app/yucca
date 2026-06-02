@@ -1,6 +1,6 @@
 # michael Docker image
 
-ARG ALPINE_VERSION=3.23
+ARG ALPINE_VERSION=3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
 
 FROM golang:1.25-alpine${ALPINE_VERSION} AS builder
 WORKDIR /app

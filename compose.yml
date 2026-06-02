@@ -2,7 +2,7 @@ name: yucca-devenv
 
 services:
   minio:
-    image: quay.io/minio/minio
+    image: quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     command: server --console-address ":9001" /data
     ports:
       - 9000:9000
@@ -13,7 +13,7 @@ services:
       _MINIO_DRIVE_ACTIVE_MONITORING: off
 
   database:
-    image: postgres:18
+    image: postgres:18@sha256:8ff36f3c66371cba71d20ceedccfc3de9669a68737607888c4ef0af93abe8e39
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
@@ -41,17 +41,17 @@ services:
       start_period: 5s
 
   victoria-metrics:
-    image: victoriametrics/victoria-metrics:latest
+    image: victoriametrics/victoria-metrics:latest@sha256:dc030542eb0cd262287c9ec32e5867f8dcccc0efd5906c10f7fc8176c53d34d7
     ports:
       - 8428:8428
 
   victoria-logs:
-    image: docker.io/victoriametrics/victoria-logs:v1.43.1
+    image: docker.io/victoriametrics/victoria-logs:v1.43.1@sha256:3db89651b2ffa0f4fe5a0f8805ede409701f41ca63ebdd64cfa4a3cb63976b43
     ports:
       - 9428:9428
     command: -storageDataPath=victoria-logs-data
 
   victoria-traces:
-    image: docker.io/victoriametrics/victoria-traces:latest
+    image: docker.io/victoriametrics/victoria-traces:latest@sha256:d42615c458b5698737c33411359012a1136c3f579e4c2516687db2ea7ed08362
     ports:
       - 10428:10428
