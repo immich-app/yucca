@@ -115,6 +115,12 @@ export class RepositoryCreateResponseDto {
   repository!: LocalRepositoryDto;
 }
 
+export class RepositoryPrimaryBackendReconfigureRequestDto {
+  @ApiProperty({ type: String, required: true })
+  @IsString()
+  backendId!: string;
+}
+
 export class RepositoryUpdateRequestDto {
   @ApiProperty({ type: String, required: false })
   @IsOptional()

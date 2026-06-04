@@ -9,6 +9,9 @@ export class BackendDto {
   @ApiProperty({ enumName: 'BackendType', enum: BackendType })
   type!: BackendType;
 
+  @ApiProperty({ type: String })
+  description!: string;
+
   @ApiProperty({ type: Boolean })
   isOnline!: boolean;
 

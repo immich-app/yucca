@@ -352,22 +352,6 @@ describe('Repository', () => {
     });
   });
 
-  it('inspects repositories', async () => {
-    await expect(sdk.inspectRepositories()).resolves.toEqual({
-      repositories: expect.arrayContaining([
-        expect.objectContaining({
-          id: repository.id,
-          snapshots: expect.arrayContaining([
-            expect.objectContaining({
-              id: expect.any(String),
-              time: expect.any(String),
-            }),
-          ]),
-        }),
-      ]),
-    });
-  }, 20_000);
-
   it('lists snapshot contents', async () => {
     const {
       snapshots: [{ id }],
@@ -387,40 +371,6 @@ describe('Repository', () => {
     } = await sdk.getSnapshots(repository.id);
 
     const { logId } = await sdk.restoreSnapshot(repository.id, id, {});
-
-    expect(logId).toEqual(expect.any(String));
-
-    await expect(event).resolves.toEqual({
-      type: 'TaskEnd',
-      parentId: repository.id,
-    });
-  });
-
-  it('checks import repository', async () => {
-    const { backends } = await sdk.getBackends();
-
-    await expect(sdk.checkImportRepository(repository.id, backends[0].id)).resolves.toEqual({
-      readable: true,
-    });
-  });
-
-  it('reports a repository absent from a backend as unreadable', async () => {
-    const path = await mkdtemp(join(tmpdir(), 'empty-backend-'));
-    const { backend } = await sdk.createLocalBackend({ path });
-
-    await expect(sdk.checkImportRepository(repository.id, backend.id)).resolves.toEqual({
-      readable: false,
-    });
-  });
-
-  it('restores from point', async () => {
-    const event = waitForMessage('TaskEnd');
-    const { backends } = await sdk.getBackends();
-    const {
-      snapshots: [{ id }],
-    } = await sdk.getSnapshots(repository.id);
-
-    const { logId } = await sdk.restoreFromPoint(repository.id, id, backends[0].id, {});
 
     expect(logId).toEqual(expect.any(String));
 
@@ -640,28 +590,16 @@ describe('Schedule', () => {
 });
 
 describe('Reset & Restore', () => {
-  let restoreRepositoryId: string;
-  let restoreSnapshotId: string;
-
-  let existingRepositoryId: string;
-  let existingScheduleId: string;
+  let backedUpScheduleNames: string[];
 
   beforeAll(async () => {
-    ({
-      repositories: [{ id: existingRepositoryId }],
-    } = await sdk.getRepositories());
-
-    ({
-      schedules: [{ id: existingScheduleId }],
-    } = await sdk.getSchedules());
-
-    ({
+    const {
       repository: { id: restoreRepositoryId },
     } = await sdk.createRepository({
       name: 'My Restore',
       worm: false,
       paths: [resolve(homedir(), '.yucca')],
-    }));
+    });
 
     const event = waitForMessage('TaskEnd');
     await sdk.createBackup(restoreRepositoryId);
@@ -670,9 +608,8 @@ describe('Reset & Restore', () => {
       parentId: restoreRepositoryId,
     });
 
-    ({
-      snapshots: [{ id: restoreSnapshotId }],
-    } = await sdk.getSnapshots(restoreRepositoryId));
+    const { schedules } = await sdk.getSchedules();
+    backedUpScheduleNames = schedules.map((schedule) => schedule.name);
 
     await sdk.resetOrchestrator();
     await login();
@@ -680,58 +617,83 @@ describe('Reset & Restore', () => {
     await sdk.confirmRecoveryKey();
   }, 60_000);
 
+  it('inspects un-imported repositories', async () => {
+    await expect(sdk.inspectRepositories()).resolves.toEqual({
+      repositories: expect.arrayContaining([
+        expect.objectContaining({
+          id: expect.any(String),
+          snapshots: expect.arrayContaining([
+            expect.objectContaining({
+              id: expect.any(String),
+              time: expect.any(String),
+            }),
+          ]),
+        }),
+      ]),
+    });
+  }, 20_000);
+
+  it('checks import repository', async () => {
+    const { repositories } = await sdk.getRepositories();
+    const [unimported] = repositories;
+
+    await expect(
+      sdk.checkImportRepository(unimported.id, unimported.backends!.primary.id),
+    ).resolves.toEqual({ readable: true });
+  });
+
+  it('reports a repository absent from a backend as unreadable', async () => {
+    const { repositories } = await sdk.getRepositories();
+    const [unimported] = repositories;
+    const path = await mkdtemp(join(tmpdir(), 'empty-backend-'));
+    const { backend } = await sdk.createLocalBackend({ path });
+
+    await expect(sdk.checkImportRepository(unimported.id, backend.id)).resolves.toEqual({
+      readable: false,
+    });
+  });
+
   it('imports a repository from backend', async () => {
-    const { backends } = await sdk.getBackends();
+    const { repositories } = await sdk.getRepositories();
+    const unimported = repositories.find((repository) => repository.name !== 'My Restore')!;
+
     const event = waitForMessage('RepositoryCreate');
+    const { repository } = await sdk.importRepository(unimported.id, unimported.backends!.primary.id);
 
-    const { repository } = await sdk.importRepository(existingRepositoryId, backends[0].id);
-
+    expect(repository.id).not.toEqual(unimported.id);
     expect(repository).toEqual(
       expect.objectContaining({
-        id: existingRepositoryId,
-        name: expect.any(String),
+        id: expect.any(String),
+        name: unimported.name,
       }),
     );
 
     await expect(event).resolves.toEqual({
       type: 'RepositoryCreate',
       repository: expect.objectContaining({
-        id: existingRepositoryId,
+        id: repository.id,
       }),
     });
   }, 30_000);
 
   it('restores point from repository', async () => {
-    await expect(sdk.getSchedules()).resolves.toEqual(
-      expect.objectContaining({
-        schedules: expect.not.arrayContaining([
-          expect.objectContaining({
-            id: existingScheduleId,
-          }),
-        ]),
-      }),
-    );
+    await expect(sdk.getSchedules()).resolves.toEqual(expect.objectContaining({ schedules: [] }));
+
+    const { repositories } = await sdk.inspectRepositories();
+    const restore = repositories.find((repository) => repository.name === 'My Restore')!;
+    const [{ id: snapshotId }] = restore.snapshots!;
 
     const event = waitForMessage('TaskEnd');
-    const { backends } = await sdk.getBackends();
-
-    await sdk.restoreFromPoint(restoreRepositoryId, restoreSnapshotId, backends[0].id, {});
+    await sdk.restoreFromPoint(restore.id, snapshotId, restore.backends!.primary.id, {});
 
     await expect(event).resolves.toEqual({
       type: 'TaskEnd',
-      parentId: restoreRepositoryId,
+      parentId: restore.id,
     });
 
-    await expect(sdk.getSchedules()).resolves.toEqual(
-      expect.objectContaining({
-        schedules: expect.arrayContaining([
-          expect.objectContaining({
-            id: existingScheduleId,
-          }),
-        ]),
-      }),
-    );
-  }, 30_000);
+    const { schedules } = await sdk.getSchedules();
+    expect(schedules.map((schedule) => schedule.name)).toEqual(expect.arrayContaining(backedUpScheduleNames));
+  }, 45_000);
 });
 
 describe('Repository deletion', () => {
