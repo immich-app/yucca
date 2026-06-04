@@ -35,6 +35,12 @@ const schema = z
     OIDC_DEVICE_ALLOW_INSECURE: z.coerce.boolean().default(false),
     OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
 
+    POLAR_HOST: z.enum(['sandbox', 'production']).default('sandbox'),
+    POLAR_ACCESS_TOKEN: z.string().optional(),
+    POLAR_PRODUCT_ID: z.string().default(''),
+    POLAR_APPLY_DISCOUNT_ID: z.string().optional(),
+    POLAR_STORAGE_EVENT_NAME: z.string().default('storage'),
+
     // temp.
     RESTIC_API_HOST: z.string().default('localhost'),
     RESTIC_API_PORT: z.coerce.number().min(1000),

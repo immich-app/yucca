@@ -12,8 +12,9 @@ export class WideContextRepository {
     Object.assign(this.context, object);
   }
 
-  setErrorCause(cause: any) {
-    this.context['error.cause'] = cause;
+  setErrorCause(cause: unknown) {
+    this.context['error.cause'] =
+      cause instanceof Error ? { type: cause.constructor.name, message: cause.message, stack: cause.stack } : cause;
   }
 
   applyContext(event: any) {

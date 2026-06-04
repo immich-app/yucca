@@ -95,6 +95,48 @@
         ]
       }
     },
+    "/api/billing/portal": {
+      "get": {
+        "operationId": "getCustomerBillingPortal",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCustomerPortalResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/subscribe": {
+      "post": {
+        "operationId": "startSubscription",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartSubscriptionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/metrics/submit/{repositoryId}/backup/start": {
       "post": {
         "operationId": "submitMetricBackupStart",
@@ -421,6 +463,9 @@
           "id": {
             "type": "string"
           },
+          "sub": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -433,9 +478,32 @@
         },
         "required": [
           "id",
+          "sub",
           "name",
           "email",
           "sessionId"
+        ]
+      },
+      "CreateCustomerPortalResponseDto": {
+        "type": "object",
+        "properties": {
+          "customerPortalUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerPortalUrl"
+        ]
+      },
+      "StartSubscriptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkoutUrl"
         ]
       },
       "SubmitBackupEndRequestDto": {

@@ -13,7 +13,11 @@ export class UserRepository {
   }
 
   getBySub(sub: string) {
-    return this.db.selectFrom('users').select(['id', 'disabled']).where('sub', '=', sub).executeTakeFirst();
+    return this.db
+      .selectFrom('users')
+      .select(['id', 'disabled', 'polarUserId', 'polarSubscriptionId'])
+      .where('sub', '=', sub)
+      .executeTakeFirst();
   }
 
   getByAccessToken(accessToken: string) {

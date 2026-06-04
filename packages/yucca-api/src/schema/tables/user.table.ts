@@ -16,4 +16,10 @@ export class UserTable {
 
   @Column({ type: 'boolean', default: () => 'false' })
   disabled!: Generated<boolean>;
+
+  @Column({ index: true, unique: true, nullable: true })
+  polarUserId?: string;
+
+  @Column({ index: true, unique: true, nullable: true })
+  polarSubscriptionId?: string;
 }
