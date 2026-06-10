@@ -7,6 +7,20 @@ restic = "0.18.0"
 gh = "2.25.0"
 "github:git-town/git-town" = "22.4.0"
 
+k3d = "5.8.3"
+kubectl = "1.32.2"
+helm = "3.17.0"
+tilt = "0.34.5"
+
+# Static validation of the k8s surface (mise run k8s:validate, used by CI).
+# flux-local runs via `uvx` (see .mise/tasks/k8s/validate): uv auto-fetches a
+# Python matching its requires-python, so the host's Python version (3.12 on
+# GitHub runners, 3.14 on dev machines) doesn't matter.
+kubeconform = "0.8.0"
+kustomize = "5.8.1"            # flux-local shells out to it
+flux2 = "2.7.5"                # ...and to the flux CLI
+uv = "0.9.18"
+
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
 opentofu = "1.11.5"
 terragrunt = "0.99.4"
@@ -30,7 +44,9 @@ depends = ["*:test"]
 
 [tasks."test:integration"]
 description = "Run all integration tests"
-run = "mise run '*:test:integration' --jobs 1"
+# NB: mise flags must precede the task pattern — anything after it is forwarded
+# to the tasks themselves (jest/go test choke on a stray --jobs).
+run = "mise run --jobs 1 '*:test:integration'"
 
 [tasks."test:e2e:web"]
 description = "Run all web e2e tests"

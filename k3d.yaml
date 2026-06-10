@@ -1,0 +1,27 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: yucca
+servers: 1
+agents: 0
+image: rancher/k3s:v1.32.2-k3s1
+registries:
+  create:
+    name: k3d-registry.localhost
+    host: '0.0.0.0'
+    hostPort: '5000'
+options:
+  k3d:
+    wait: true
+    timeout: '60s'
+  k3s:
+    extraArgs:
+      - arg: '--disable=traefik'
+        nodeFilters: ['server:*']
+      - arg: '--disable=servicelb'
+        nodeFilters: ['server:*']
+      - arg: '--disable=metrics-server'
+        nodeFilters: ['server:*']
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true

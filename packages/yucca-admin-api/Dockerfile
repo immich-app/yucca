@@ -1,4 +1,4 @@
-# yucca-api Docker image
+# yucca-admin-api Docker image
 # Built on/for Alpine Linux
 #
 # mise is used as a command runner only
@@ -12,7 +12,40 @@
 # https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md
 # https://pnpm.io/cli/deploy
 
-ARG ALPINE_VERSION=3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+ARG ALPINE_VERSION=3.23
+# Pinned alpine runtime base. NOTE: this digest is alpine:3.23's, so it must NOT
+# be appended to the node/golang base tags (which reuse ${ALPINE_VERSION}).
+ARG ALPINE_IMAGE=alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+
+# Manifest stage: strips everything except package.jsons + workspace files so
+# the pnpm-install layer below is cached on lockfile/manifest changes only.
+FROM ${ALPINE_IMAGE} AS manifests
+WORKDIR /src
+COPY . ./
+RUN find . -type d -name node_modules -prune -exec rm -rf {} + && \
+    find . -type f \
+      ! -name 'package.json' \
+      ! -name 'pnpm-lock.yaml' \
+      ! -name 'pnpm-workspace.yaml' \
+      ! -name '.npmrc' \
+      -delete && \
+    find . -type d -empty -delete
+
+FROM node:25-alpine${ALPINE_VERSION} AS dev
+WORKDIR /app
+RUN apk add --no-cache bash && npm install -g pnpm@10.28.1
+ENV NODE_ENV="development"
+
+# 1. Install deps — cached unless lockfile or any package.json changes
+COPY --from=manifests /src ./
+RUN pnpm install --frozen-lockfile
+
+# 2. Copy sources, build workspace libs yucca-admin-api imports at runtime
+COPY . ./
+RUN pnpm --filter @common/server build
+
+EXPOSE 3030
+CMD ["pnpm", "--filter", "yucca-admin-api", "start:dev"]
 
 FROM node:25-alpine${ALPINE_VERSION} AS builder
 WORKDIR /build-stage
@@ -33,10 +66,10 @@ RUN npm install -g pnpm@10.28.1
 RUN curl https://mise.run | sh
 RUN mise trust
 RUN pnpm i --frozen-lockfile
-RUN mise yucca-api:build
-RUN pnpm --filter yucca-api deploy /deploy --prod --legacy
+RUN mise yucca-admin-api:build
+RUN pnpm --filter yucca-admin-api deploy /deploy --prod --legacy
 
-FROM alpine:${ALPINE_VERSION}
+FROM ${ALPINE_IMAGE}
 
 WORKDIR /usr/src/app
 
@@ -51,5 +84,5 @@ USER node
 COPY --from=builder /deploy ./
 
 ENV NODE_ENV="production"
-EXPOSE 3020
+EXPOSE 3030
 CMD ["dumb-init", "node", "dist/main"]

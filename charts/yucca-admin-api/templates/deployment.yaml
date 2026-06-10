@@ -1,0 +1,12 @@
+{{- $_ := set .Values "env" (concat .Values.env (list
+  (dict "name" "OIDC_ADMIN_ISSUER" "value" .Values.oidcIssuer)
+  (dict "name" "OIDC_ADMIN_REDIRECT_URI" "value" .Values.oidcRedirectUri)
+  (dict "name" "OIDC_ADMIN_LOGOUT_REDIRECT_URI" "value" .Values.oidcLogoutRedirectUri)
+  (dict "name" "POSTGRES_HOST" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "host")))
+  (dict "name" "POSTGRES_PORT" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "port")))
+  (dict "name" "POSTGRES_DATABASE" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "dbname")))
+  (dict "name" "POSTGRES_USERNAME" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "username")))
+  (dict "name" "POSTGRES_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "password")))
+)) }}
+{{- $_ := set .Values "envFrom" (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .)))) }}
+{{- include "yucca-common.deployment" . }}

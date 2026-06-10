@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#MISE description="Create k3d cluster for local dev"
+set -euo pipefail
+
+CLUSTER_NAME="yucca"
+
+if k3d cluster get "${CLUSTER_NAME}" >/dev/null 2>&1; then
+  echo "Cluster ${CLUSTER_NAME} already exists"
+else
+  k3d cluster create --config k3d.yaml
+fi
+
+kubectl wait --for=condition=Ready nodes --all --timeout=120s
+echo ""
+echo "Cluster ready. Context: k3d-${CLUSTER_NAME}"
+echo "Registry:   k3d-registry.localhost:5000"

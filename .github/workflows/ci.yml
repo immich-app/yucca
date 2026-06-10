@@ -20,14 +20,19 @@ jobs:
 
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+        env:
+          # mise downloads tools from GitHub releases; anonymous requests hit
+          # API rate limits with four parallel jobs.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
       - name: Run checks
         run: mise check
 
-  integration:
-    name: Integration Tests
+  k8s-validate:
+    name: Validate Kubernetes Surface
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
@@ -35,17 +40,53 @@ jobs:
 
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+        env:
+          # mise downloads tools from GitHub releases; anonymous requests hit
+          # API rate limits with four parallel jobs.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # helm template + kubeconform per chart, then flux-local builds the whole
+      # kubernetes/ tree the way Flux would. No cluster involved.
+      - name: Validate charts + Flux tree
+        run: mise run k8s:validate
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+        env:
+          # mise downloads tools from GitHub releases; anonymous requests hit
+          # API rate limits with four parallel jobs.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
-      - name: Start services
+      # The stack (Ceph image, dev images, k3s) is heavy; the stock runner has
+      # ~14GB free, so drop the biggest unused toolchains up front.
+      - name: Free runner disk space
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
+
+      # Tests boot the apps on the runner; only the infra (CNPG postgres, Ceph
+      # RGW, mock-oidc, victoria) comes from the cluster — so skip the four
+      # heavy app images entirely.
+      - name: Stand up k3d infra
         run: |
-          mise docker:start
-      - name: Run integration tests
-        run: mise test:integration
+          mise k3d:up
+          mise tilt:ci-infra
+
+      - name: Run integration tests against the cluster
+        run: mise test:integration:k3d
 
   e2e:
     name: End-to-end Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
@@ -53,28 +94,26 @@ jobs:
 
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+        env:
+          # mise downloads tools from GitHub releases; anonymous requests hit
+          # API rate limits with four parallel jobs.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
-      - name: Start services & run end-to-end tests
+      - name: Free runner disk space
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
+
+      - name: Install Playwright browser
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      # Full stack on k3d, then the whole e2e surface — the jest suites
+      # (it-works, restic-api, yucca-api, orchestration-api) AND the web
+      # Playwright test — via the same runner developers use locally.
+      # orchestration-api runs as a separate host process by design.
+      - name: Stand up the full k3d stack
         run: |
-          mise docker:start
-          mise dev &
-          mise test:e2e
+          mise k3d:up
+          mise tilt:ci
 
-  e2e-web:
-    name: End-to-end (Web) Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-        with:
-          persist-credentials: false
-
-      - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
-      - run: mise prepare
-
-      - name: Start services & run end-to-end tests
-        run: |
-          mise docker:start
-          mise dev &
-          mise test:e2e:web
+      - name: Run end-to-end tests against the cluster
+        run: mise test:e2e:k3d

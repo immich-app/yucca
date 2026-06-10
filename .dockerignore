@@ -11,3 +11,12 @@ e2e
 **/.env*
 Dockerfile
 packages/**/build
+.dev
+.mise/data
+**/tmp
+**/.turbo
+**/.cache
+charts
+Tiltfile
+k3d.yaml
+compose.yml

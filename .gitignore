@@ -13,6 +13,16 @@ mise.local.toml
 dist/
 packages/michael/michael
 
+# k3d/Tilt dev stack — Helm builds subchart snapshots on the fly; the .dev/
+# directory holds persistent service data carried over from the compose flow.
+.dev/
+charts/**/charts/
+charts/**/tmpcharts-*/
+charts/**/Chart.lock
+
+# air (Go live-reload) temp build output in michael package
+packages/michael/tmp/
+
 # OpenTofu / Terraform
 # .terraform.lock.hcl IS committed for reproducibility
 **/.terraform/
