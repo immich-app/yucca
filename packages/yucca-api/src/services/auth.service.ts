@@ -133,25 +133,25 @@ export class AuthService {
       });
     }
 
-    if (!user.polarUserId) {
-      const customer = await this.polar.createOrFindCustomer(claims.sub, claims.email);
-      user.polarUserId = customer.id;
+    // if (!user.polarUserId) {
+    //   const customer = await this.polar.createOrFindCustomer(claims.sub, claims.email);
+    //   user.polarUserId = customer.id;
 
-      await this.user.update(user.id, {
-        polarUserId: customer.id,
-      });
-    }
+    //   await this.user.update(user.id, {
+    //     polarUserId: customer.id,
+    //   });
+    // }
 
-    if (!user.polarSubscriptionId) {
-      const subscription = await this.polar.findActiveSubscription(user.polarUserId!);
-      if (subscription) {
-        user.polarSubscriptionId = subscription.id;
+    // if (!user.polarSubscriptionId) {
+    //   const subscription = await this.polar.findActiveSubscription(user.polarUserId!);
+    //   if (subscription) {
+    //     user.polarSubscriptionId = subscription.id;
 
-        await this.user.update(user.id, {
-          polarSubscriptionId: subscription.id,
-        });
-      }
-    }
+    //     await this.user.update(user.id, {
+    //       polarSubscriptionId: subscription.id,
+    //     });
+    //   }
+    // }
 
     return user;
   }

@@ -10,7 +10,11 @@
     HStack,
     NavbarItem,
   } from "@immich/ui";
-  import { mdiBackupRestore, mdiViewDashboard } from "@mdi/js";
+  import {
+    mdiBackupRestore,
+    mdiCreditCardOutline,
+    mdiViewDashboard,
+  } from "@mdi/js";
   import {
     setProvider,
     yuccaApiProvider,
@@ -52,6 +56,12 @@
         href="/dashboard/backups"
         icon={mdiBackupRestore}
         active={page.url.pathname === "/dashboard/backups"}
+      />
+      <NavbarItem
+        title="Billing"
+        href="/dashboard/billing"
+        icon={mdiCreditCardOutline}
+        active={page.url.pathname === "/dashboard/billing"}
       />
     </div>
   </AppShellSidebar>

@@ -1,4 +1,5 @@
 import { Column, type Generated, Table } from '@immich/sql-tools';
+import { type SubscriptionStatus } from '@polar-sh/sdk/models/components/subscriptionstatus.js';
 
 @Table({ name: 'users' })
 export class UserTable {
@@ -22,4 +23,7 @@ export class UserTable {
 
   @Column({ index: true, unique: true, nullable: true })
   polarSubscriptionId?: string;
+
+  @Column({ type: 'text', nullable: true })
+  polarSubscriptionState?: SubscriptionStatus;
 }

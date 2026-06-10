@@ -1,8 +1,8 @@
-import { WideContextRepository } from '@common/server/otel';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Polar } from '@polar-sh/sdk';
 import { Customer } from '@polar-sh/sdk/models/components/customer.js';
 import { ResourceNotFound } from '@polar-sh/sdk/models/errors/resourcenotfound.js';
+import { validateEvent } from '@polar-sh/sdk/webhooks';
 import { env } from 'src/env';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class PolarRepository {
     accessToken: env.POLAR_ACCESS_TOKEN,
   });
 
-  constructor(private readonly wideContext: WideContextRepository) {}
+  constructor() {}
 
   async createOrFindCustomer(sub: string, email: string) {
     let customer: Customer;
@@ -23,20 +23,13 @@ export class PolarRepository {
       });
     } catch (error) {
       if (error instanceof ResourceNotFound) {
-        try {
-          customer = await this.polar.customers.create({
-            type: 'individual',
-            email,
-            externalId: sub,
-          });
-        } catch (error) {
-          this.wideContext.setErrorCause(error);
-          throw new InternalServerErrorException("Couldn't create billing customer");
-        }
+        customer = await this.polar.customers.create({
+          type: 'individual',
+          email,
+          externalId: sub,
+        });
       } else {
-        this.wideContext.setErrorCause(error);
-        console.info(error);
-        throw new InternalServerErrorException("Couldn't query for billing customer");
+        throw error;
       }
     }
 
@@ -48,26 +41,39 @@ export class PolarRepository {
       id: customerId,
     });
 
-    for (const subscription of state.activeSubscriptions) {
-      if (subscription.productId === env.POLAR_PRODUCT_ID) {
-        return subscription;
-      }
-    }
-
-    return undefined;
+    return state.activeSubscriptions.find((subscription) => subscription.productId === env.POLAR_PRODUCT_ID);
   }
 
-  createCheckout(customerId: string) {
+  createCheckout(customerId: string, successUrl?: string) {
     return this.polar.checkouts.create({
       customerId,
       products: [env.POLAR_PRODUCT_ID],
       discountId: env.POLAR_APPLY_DISCOUNT_ID,
+      successUrl,
     });
   }
 
   createCustomerSession(externalCustomerId: string) {
     return this.polar.customerSessions.create({
       externalCustomerId,
+    });
+  }
+
+  validateWebhook(body: string | Buffer, headers: Record<string, string>) {
+    return validateEvent(body, headers, env.POLAR_WEBHOOK_SECRET);
+  }
+
+  async mockIngest(customerId: string) {
+    await this.polar.events.ingest({
+      events: [
+        {
+          name: 'storage',
+          customerId,
+          metadata: {
+            bytes: 1200,
+          },
+        },
+      ],
     });
   }
 }

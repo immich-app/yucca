@@ -23,6 +23,7 @@ import { AuthService } from './services/auth.service';
 import { BillingService } from './services/billing.service';
 import { DatabaseService } from './services/database.service';
 import { MetricsService } from './services/metrics.service';
+import { MockPolarService } from './services/mockPolar.service';
 import { RepositoryService } from './services/repository.service';
 import { getKyselyConfig } from './utils/database';
 
@@ -55,6 +56,7 @@ export const providers = [
   RepositoryService,
   AuthService,
   BillingService,
+  MockPolarService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },
 ];

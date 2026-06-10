@@ -45,6 +45,7 @@
     "@immich/ui": "catalog:",
     "@lingui/core": "catalog:",
     "@mdi/js": "catalog:",
+    "@tanstack/svelte-query": "catalog:",
     "svelte-i18n-lingui": "catalog:"
   }
 }

@@ -21,6 +21,9 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
+export type CustomerBillingStateResponseDto = {
+    subscriptionActive: boolean;
+};
 export type CreateCustomerPortalResponseDto = {
     customerPortalUrl: string;
 };
@@ -114,6 +117,16 @@ export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function getBillingStatus(refresh: boolean, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: CustomerBillingStateResponseDto;
+    }>(`/api/billing${QS.query(QS.explode({
+        refresh
+    }))}`, {
+        ...opts
+    }));
+}
 export function getCustomerBillingPortal(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -127,6 +140,12 @@ export function startSubscription(opts?: Oazapfts.RequestOpts) {
         status: 200;
         data: StartSubscriptionResponseDto;
     }>("/api/billing/subscribe", {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function polarWebhook(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/billing/polar/webhook", {
         ...opts,
         method: "POST"
     }));

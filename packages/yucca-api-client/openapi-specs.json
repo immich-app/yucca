@@ -95,6 +95,36 @@
         ]
       }
     },
+    "/api/billing": {
+      "get": {
+        "operationId": "getBillingStatus",
+        "parameters": [
+          {
+            "name": "refresh",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerBillingStateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/billing/portal": {
       "get": {
         "operationId": "getCustomerBillingPortal",
@@ -130,6 +160,20 @@
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/polar/webhook": {
+      "post": {
+        "operationId": "polarWebhook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
           }
         },
         "tags": [
@@ -482,6 +526,17 @@
           "name",
           "email",
           "sessionId"
+        ]
+      },
+      "CustomerBillingStateResponseDto": {
+        "type": "object",
+        "properties": {
+          "subscriptionActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subscriptionActive"
         ]
       },
       "CreateCustomerPortalResponseDto": {

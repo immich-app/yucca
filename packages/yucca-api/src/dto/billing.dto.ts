@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
+
+export class CustomerBillingStateResponseDto {
+  @ApiProperty()
+  @IsBoolean()
+  subscriptionActive!: boolean;
+}
 
 export class CreateCustomerPortalResponseDto {
   @ApiProperty()
@@ -10,5 +16,6 @@ export class CreateCustomerPortalResponseDto {
 export class StartSubscriptionResponseDto {
   @ApiProperty()
   @IsString()
-  checkoutUrl!: string;
+  @IsOptional()
+  checkoutUrl?: string;
 }

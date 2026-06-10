@@ -36,6 +36,7 @@ const schema = z
     OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
 
     POLAR_HOST: z.enum(['sandbox', 'production']).default('sandbox'),
+    POLAR_WEBHOOK_SECRET: z.string().default(''),
     POLAR_ACCESS_TOKEN: z.string().optional(),
     POLAR_PRODUCT_ID: z.string().default(''),
     POLAR_APPLY_DISCOUNT_ID: z.string().optional(),
