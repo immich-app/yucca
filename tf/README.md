@@ -8,29 +8,43 @@ inventory artifacts Ansible consumes. Multi-env via terragrunt.
 ```
 tf/
 ├── .env                              ← op:// references (committed; no literal secrets)
+├── op-run.sh                         ← op-run wrapper used by the mise tf:* tasks
 ├── shared/
 │   └── modules/
-│       └── ceph-cluster/             ← per-cluster orchestration module
-│           ├── main.tf, variables.tf, outputs.tf, rendering.tf
-│           ├── wordlist.txt          ← 923 words for auto-picked hostnames
-│           └── templates/
-│               ├── inventory.ini.tftpl
-│               ├── inventory-destroy.ini.tftpl
-│               ├── inventory-provision-debian-live.ini.tftpl
-│               └── secrets.yml.tpl.tftpl
+│       ├── ceph-cluster/             ← per-cluster ceph orchestration module
+│       │   ├── main.tf, variables.tf, outputs.tf, rendering.tf
+│       │   ├── wordlist.txt          ← 923 words for auto-picked hostnames
+│       │   └── templates/
+│       │       ├── inventory.ini.tftpl
+│       │       ├── inventory-destroy.ini.tftpl
+│       │       ├── inventory-provision-debian-live.ini.tftpl
+│       │       └── secrets.yml.tpl.tftpl
+│       └── talos-cluster/            ← Talos K8s VMs on the ceph hypervisors
+│           ├── main.tf, variables.tf, outputs.tf
+│           └── modules/
+│               ├── inventory-renderer/  ← renders ansible/talos inventory + host_vars
+│               └── talos-bootstrap/     ← siderolabs/talos: config apply, bootstrap, kubeconfig
 └── deployment/
     ├── terragrunt.hcl                ← root: state backend, env/stack derived from path
     └── dev/
-        └── ceph/
-            ├── terragrunt.hcl        ← include root + stack-level inputs
-            ├── versions.tf, variables.tf, main.tf
-            ├── clusters.auto.tfvars  ← declarative cluster list (edit here to add/modify)
-            └── .terraform.lock.hcl
+        ├── ceph/
+        │   ├── terragrunt.hcl        ← include root + stack-level inputs
+        │   ├── versions.tf, variables.tf, main.tf
+        │   ├── clusters.auto.tfvars  ← declarative cluster list (edit here to add/modify)
+        │   └── .terraform.lock.hcl
+        └── talos/
+            ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
+            └── clusters.auto.tfvars  ← declarative Talos cluster list (nodes[], profile, VLANs)
 ```
 
 Future envs land as siblings: `deployment/staging/ceph/`, `deployment/prod/ceph/`.
-Future stacks land as siblings of `ceph/` within an env:
-`deployment/dev/talos/`, `deployment/dev/monitoring/`, etc.
+Additional stacks land as siblings within an env — `dev/talos/` is one;
+`dev/monitoring/` could be next.
+
+The talos stack is documented in `ansible/talos/README.md` and
+`ansible/talos/docs/runbooks/cluster-bring-up.md` (the TF + Ansible flow
+is interleaved — TF renders the inventory Ansible consumes, then
+bootstraps the VMs Ansible created).
 
 ## Conventions
 

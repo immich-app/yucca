@@ -1,0 +1,97 @@
+---
+# Install libvirt + qemu, enable libvirtd, define the Talos storage
+# pool. Idempotent on re-run; package installs are apt-cache-aware so
+# a recent run skips the index update.
+#
+# Pre-flight refuses to proceed if KVM isn't available — running qemu
+# under TCG (software emulation) is too slow for actual Talos workloads
+# and almost certainly indicates a misconfigured host (BIOS virt
+# extensions disabled, kernel module missing, or container with no
+# /dev/kvm passthrough).
+
+- name: Pre-flight — role enabled
+  ansible.builtin.assert:
+    that: libvirt_host_enabled | bool
+    fail_msg: >-
+      libvirt_host_enabled is false; nothing to do. Set it true in
+      group_vars or with -e libvirt_host_enabled=true to apply.
+    success_msg: "libvirt_host enabled — proceeding."
+  tags: [libvirt_host, preflight]
+
+- name: Pre-flight — /dev/kvm exists
+  ansible.builtin.stat:
+    path: /dev/kvm
+  register: _kvm_dev
+  tags: [libvirt_host, preflight]
+
+- name: Pre-flight — fail if /dev/kvm missing
+  ansible.builtin.assert:
+    that: _kvm_dev.stat.exists
+    fail_msg: >-
+      /dev/kvm not present on this host. Either KVM kernel modules
+      aren't loaded (modprobe kvm_intel / kvm_amd) or virtualization
+      extensions are disabled in BIOS/UEFI. Investigate before
+      re-running.
+  tags: [libvirt_host, preflight]
+
+- name: Install libvirt + qemu packages
+  ansible.builtin.apt:
+    name: "{{ libvirt_host_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [libvirt_host, packages]
+
+- name: Ensure libvirtd is enabled and running
+  ansible.builtin.systemd_service:
+    name: libvirtd
+    enabled: true
+    state: started
+  tags: [libvirt_host]
+
+# Storage pool — define, set autostart, activate. The community.libvirt
+# module is idempotent for each phase: define is a no-op if the pool
+# already exists with matching XML; autostart and active flips only
+# fire when the current state differs.
+
+- name: Define Talos storage pool
+  community.libvirt.virt_pool:
+    command: define
+    name: "{{ libvirt_host_pool_name }}"
+    xml: "{{ lookup('template', 'talos-pool.xml.j2') }}"
+  tags: [libvirt_host, pool]
+
+- name: Set Talos storage pool to autostart
+  community.libvirt.virt_pool:
+    autostart: true
+    name: "{{ libvirt_host_pool_name }}"
+  tags: [libvirt_host, pool]
+
+- name: Activate Talos storage pool
+  community.libvirt.virt_pool:
+    state: active
+    name: "{{ libvirt_host_pool_name }}"
+  tags: [libvirt_host, pool]
+
+# Default NAT network — keep defined (we're not in the business of
+# tearing down libvirt's defaults), but disable autostart so it's not
+# constantly bringing virbr0 + dnsmasq up at every libvirtd start.
+- name: Set default network autostart=no
+  community.libvirt.virt_net:
+    autostart: false
+    name: default
+  when:
+    - libvirt_host_disable_default_network_autostart | bool
+  failed_when: false  # default network may not exist on minimal installs
+  tags: [libvirt_host, network]
+
+- name: Verify libvirtd answers virsh queries (smoke check)
+  ansible.builtin.command: virsh version
+  register: _virsh_version
+  changed_when: false
+  tags: [libvirt_host, verify]
+
+- name: Show virsh version (operator visibility)
+  ansible.builtin.debug:
+    var: _virsh_version.stdout_lines
+  tags: [libvirt_host, verify]

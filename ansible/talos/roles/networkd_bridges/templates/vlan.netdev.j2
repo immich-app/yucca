@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# Tagged VLAN sub-interface on {{ networkd_bridges_parent }}.
+# Created by ansible role networkd_bridges; do not edit by hand.
+
+[NetDev]
+Name={{ networkd_bridges_parent }}.{{ item.id }}
+Kind=vlan
+
+[VLAN]
+Id={{ item.id }}

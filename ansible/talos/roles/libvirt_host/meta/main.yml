@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: FUTO
+  description: >
+    Install qemu-kvm + libvirt + ovmf on a Sietch hypervisor and
+    define the Talos storage pool. Idempotent. Targets Debian 12
+    Bookworm.
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+# networkd_bridges should run first so VMs have a place to attach;
+# this is documented but not enforced by meta dependencies (the
+# prepare-hypervisors playbook orders them explicitly).
+dependencies: []

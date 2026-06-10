@@ -1,0 +1,173 @@
+---
+# Create per-VM qcow2 overlays, render libvirt domain XML, define +
+# start each VM. Three phases (overlay, define, start) so progress
+# fans out across all VMs at each phase rather than fully provisioning
+# one VM before starting the next — easier to debug if a phase fails
+# for a single VM.
+#
+# Idempotency:
+#   - qcow2 overlays use `creates:` (qemu-img is not idempotent on its
+#     own; -F + creates: gives us the right semantics).
+#   - community.libvirt.virt define is a no-op if the active XML matches.
+#   - state=running is a no-op when the VM is already running.
+
+- name: Pre-flight — role enabled
+  ansible.builtin.assert:
+    that: talos_vms_enabled | bool
+    fail_msg: >-
+      talos_vms_enabled is false; nothing to do. Set it true in
+      group_vars or with -e talos_vms_enabled=true to apply.
+  tags: [talos_vms, preflight]
+
+- name: Pre-flight — profile is smoke or full
+  ansible.builtin.assert:
+    that: talos_vms_profile in ['smoke', 'full']
+    fail_msg: >-
+      Unknown talos_vms_profile '{{ talos_vms_profile }}'.
+      Expected one of: smoke, full.
+  tags: [talos_vms, preflight]
+
+- name: Pre-flight — host-vars defines a talos_vms list
+  ansible.builtin.assert:
+    that:
+      - talos_vms is defined
+      - talos_vms is iterable
+    fail_msg: >-
+      No talos_vms list defined for {{ inventory_hostname }}. host_vars
+      are TF-rendered from clusters.auto.tfvars nodes[] — run
+      `TF_STACK_DIR=tf/deployment/<env>/talos mise run tf:apply` from
+      the repo root to render them.
+  tags: [talos_vms, preflight]
+
+- name: Pre-flight — base image is staged
+  ansible.builtin.stat:
+    path: "{{ talos_base_image_path }}"
+  register: _base_img
+  tags: [talos_vms, preflight]
+
+- name: Pre-flight — fail if base image missing
+  ansible.builtin.assert:
+    that:
+      - _base_img.stat.exists
+      - _base_img.stat.size > 1048576
+    fail_msg: >-
+      Talos base image {{ talos_base_image_path }} not present (or
+      too small). Run the talos_image role first.
+  tags: [talos_vms, preflight]
+
+- name: Pre-flight — primary bridge exists on host
+  ansible.builtin.stat:
+    path: "/sys/class/net/{{ talos_vms_primary_bridge }}"
+  register: _bridge_stat
+  tags: [talos_vms, preflight]
+
+- name: Pre-flight — fail if bridge missing
+  ansible.builtin.assert:
+    that: _bridge_stat.stat.exists
+    fail_msg: >-
+      Bridge {{ talos_vms_primary_bridge }} not present. Run
+      networkd_bridges role first.
+  tags: [talos_vms, preflight]
+
+# ─── Profile filter ─────────────────────────────────────────────────
+# Build the filtered VM list with an explicit accumulator loop —
+# verbose but unambiguous and ansible-lint clean.
+
+- name: Reset filtered VM list
+  ansible.builtin.set_fact:
+    talos_vms_filtered: []
+  tags: [talos_vms]
+
+- name: Build profile-filtered VM list
+  ansible.builtin.set_fact:
+    talos_vms_filtered: "{{ talos_vms_filtered + [item] }}"
+  loop: "{{ talos_vms }}"
+  when: talos_vms_profile in (item.profiles | default([]))
+  loop_control:
+    label: "{{ item.name }} ({{ item.role }}, in profiles {{ item.profiles }})"
+  tags: [talos_vms]
+
+- name: Show filtered VM count for this host
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }}: {{ talos_vms_filtered | length }}
+      VM(s) selected for profile={{ talos_vms_profile }}.
+  tags: [talos_vms]
+
+# ─── Overlays: per-VM qcow2 ─────────────────────────────────────────
+
+- name: Create per-VM qcow2 overlay backed by the Talos base image
+  ansible.builtin.command:
+    cmd: >-
+      qemu-img create
+        -f qcow2
+        -b {{ talos_base_image_path }}
+        -F raw
+        {{ libvirt_storage_pool_path }}/{{ talos_vms_domain_prefix }}-{{ item.name }}.qcow2
+        {{ item.disk_gib }}G
+    creates: "{{ libvirt_storage_pool_path }}/{{ talos_vms_domain_prefix }}-{{ item.name }}.qcow2"
+  loop: "{{ talos_vms_filtered }}"
+  loop_control:
+    label: "{{ talos_vms_domain_prefix }}-{{ item.name }}.qcow2 ({{ item.disk_gib }} GiB)"
+  tags: [talos_vms, overlays]
+
+- name: Set ownership of per-VM overlays
+  ansible.builtin.file:
+    path: "{{ libvirt_storage_pool_path }}/{{ talos_vms_domain_prefix }}-{{ item.name }}.qcow2"
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    mode: "0640"
+  loop: "{{ talos_vms_filtered }}"
+  loop_control:
+    label: "{{ talos_vms_domain_prefix }}-{{ item.name }}.qcow2"
+  tags: [talos_vms, overlays]
+
+# ─── Define: libvirt domains ────────────────────────────────────────
+
+- name: Define libvirt domain for each VM
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'domain.xml.j2') }}"
+  loop: "{{ talos_vms_filtered }}"
+  loop_control:
+    label: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
+  tags: [talos_vms, define]
+
+# ─── Start: boot the VMs ────────────────────────────────────────────
+
+- name: Start each VM (idempotent — no-op when already running)
+  community.libvirt.virt:
+    name: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
+    state: running
+    autostart: true
+  loop: "{{ talos_vms_filtered }}"
+  loop_control:
+    label: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
+  tags: [talos_vms, start]
+
+# ─── Verify ─────────────────────────────────────────────────────────
+
+- name: Confirm each VM is in 'running' state
+  community.libvirt.virt:
+    name: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
+    command: status
+  register: _vm_status
+  failed_when: _vm_status.status != "running"
+  loop: "{{ talos_vms_filtered }}"
+  loop_control:
+    label: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
+  tags: [talos_vms, verify]
+
+# Show the MAC table so the operator can identify VMs at the switch /
+# bridge level (and correlate workers' VLAN-51 DHCP leases). Recomputes
+# the same MAC the template embedded.
+- name: Display VM MAC table for operator handoff
+  ansible.builtin.debug:
+    msg: >-
+      {{ talos_vms_domain_prefix }}-{{ item.name }}  ({{ item.role }})  →
+      MAC {{ talos_vm_mac_prefix }}:{{ (item.name | hash('sha1'))[0:2] }}:{{ (item.name | hash('sha1'))[2:4] }}
+      on {{ talos_vms_primary_bridge }}
+  loop: "{{ talos_vms_filtered }}"
+  loop_control:
+    label: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
+  tags: [talos_vms, verify]

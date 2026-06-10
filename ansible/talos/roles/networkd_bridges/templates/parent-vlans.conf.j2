@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+# Drop-in for {{ networkd_bridges_parent }}'s .network file. Without these
+# `VLAN=` directives in the parent's `[Network]` section, systemd-networkd
+# does not instantiate the VLAN sub-interfaces declared by our .netdev
+# files — `Kind=vlan` alone in a .netdev only registers the device type,
+# not its attachment to a parent.
+#
+# This file lives in `<parent>.network.d/` and is processed automatically
+# by networkd; the parent .network file (Ceph-owned) stays untouched.
+
+[Network]
+{% for v in networkd_bridges_list %}
+VLAN={{ networkd_bridges_parent }}.{{ v.id }}
+{% endfor %}

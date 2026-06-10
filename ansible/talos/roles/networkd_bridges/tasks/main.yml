@@ -1,0 +1,166 @@
+---
+# Create VLAN-tagged sub-interfaces on bond0 and L2 bridges for VM
+# attachment. Idempotent (template module compares content); the
+# `networkctl reload` handler fires only if any unit file actually
+# changed.
+#
+# Pre-conditions:
+#   - bond0 exists and is up (Ceph storage cluster brought it up)
+#   - systemd-networkd is the active link manager
+#   - VLANs 50/51 are tagged on the upstream switch port
+#
+# Failure modes intentionally NOT handled:
+#   - Switch not tagging VLANs → bridges come up but VMs see no
+#     traffic. Caught by post-deploy verification, not by this role.
+#   - bond0 missing → role refuses to render (pre-flight below).
+
+- name: Pre-flight — role enabled
+  ansible.builtin.assert:
+    that: networkd_bridges_enabled | bool
+    fail_msg: >-
+      networkd_bridges_enabled is false; nothing to do. Set it to true
+      in group_vars or with -e networkd_bridges_enabled=true to apply.
+    success_msg: "networkd_bridges enabled — proceeding."
+  tags: [networkd_bridges, preflight]
+
+- name: Pre-flight — systemd-networkd is active
+  ansible.builtin.systemd_service:
+    name: systemd-networkd
+  register: _networkd_status
+  changed_when: false
+  check_mode: false
+  tags: [networkd_bridges, preflight]
+
+- name: Pre-flight — fail if networkd not running
+  ansible.builtin.assert:
+    that: _networkd_status.status.ActiveState == "active"
+    fail_msg: >-
+      systemd-networkd is not active on this host
+      (state: {{ _networkd_status.status.ActiveState }}).
+      The Ceph baseline is expected to have it running; investigate
+      before re-running this role.
+  tags: [networkd_bridges, preflight]
+
+- name: Pre-flight — bond0 parent exists
+  ansible.builtin.stat:
+    path: "/sys/class/net/{{ networkd_bridges_parent }}"
+  register: _parent_link
+  tags: [networkd_bridges, preflight]
+
+- name: Pre-flight — fail if parent missing
+  ansible.builtin.assert:
+    that: _parent_link.stat.exists
+    fail_msg: >-
+      Parent link {{ networkd_bridges_parent }} not found in /sys/class/net.
+      VLAN sub-interfaces have nothing to attach to. Has the Ceph
+      networkd deployment finished on this host?
+  tags: [networkd_bridges, preflight]
+
+# Parent .network drop-in: declares VLAN= per sub-interface. Without
+# this, our .netdev files alone never instantiate kernel devices —
+# networkd only attaches VLAN sub-interfaces it sees declared on the
+# parent's [Network]. Drop-in path is parent-filename-prefix-sensitive;
+# default tracks the Ceph deployment's 20-bond0.network basename.
+- name: Ensure parent .network drop-in directory exists
+  ansible.builtin.file:
+    path: "{{ networkd_bridges_parent_dropin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [networkd_bridges]
+
+- name: Render parent .network drop-in (VLAN= per sub-interface)
+  ansible.builtin.template:
+    src: parent-vlans.conf.j2
+    dest: "{{ networkd_bridges_parent_dropin_dir }}/{{ networkd_bridges_parent_dropin_filename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Networkd reload
+  tags: [networkd_bridges]
+
+- name: Render VLAN .netdev (one per configured VLAN)
+  ansible.builtin.template:
+    src: vlan.netdev.j2
+    dest: "{{ networkd_bridges_config_dir }}/{{ networkd_bridges_prefix }}-{{ networkd_bridges_parent }}.{{ item.id }}.netdev"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ networkd_bridges_list }}"
+  loop_control:
+    label: "vlan {{ item.id }} ({{ item.name }})"
+  notify: Networkd reload
+  tags: [networkd_bridges]
+
+- name: Render VLAN .network (enslave VLAN device to its bridge)
+  ansible.builtin.template:
+    src: vlan.network.j2
+    dest: "{{ networkd_bridges_config_dir }}/{{ networkd_bridges_prefix }}-{{ networkd_bridges_parent }}.{{ item.id }}.network"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ networkd_bridges_list }}"
+  loop_control:
+    label: "vlan {{ item.id }} ({{ item.name }})"
+  notify: Networkd reload
+  tags: [networkd_bridges]
+
+- name: Render bridge .netdev (one per configured VLAN)
+  ansible.builtin.template:
+    src: bridge.netdev.j2
+    dest: "{{ networkd_bridges_config_dir }}/{{ networkd_bridges_prefix }}-{{ item.bridge }}.netdev"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ networkd_bridges_list }}"
+  loop_control:
+    label: "{{ item.bridge }}"
+  notify: Networkd reload
+  tags: [networkd_bridges]
+
+- name: Render bridge .network (L2-only, no host IP)
+  ansible.builtin.template:
+    src: bridge.network.j2
+    dest: "{{ networkd_bridges_config_dir }}/{{ networkd_bridges_prefix }}-{{ item.bridge }}.network"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ networkd_bridges_list }}"
+  loop_control:
+    label: "{{ item.bridge }}"
+  notify: Networkd reload
+  tags: [networkd_bridges]
+
+# Run handlers explicitly here (not after the play) so a downstream
+# role like libvirt_host can rely on bridges being up by the time it
+# tries to attach VMs to them.
+- name: Flush handlers — apply networkd reload now if files changed
+  ansible.builtin.meta: flush_handlers
+  tags: [networkd_bridges]
+
+- name: Verify VLAN device exists
+  ansible.builtin.stat:
+    path: "/sys/class/net/{{ networkd_bridges_parent }}.{{ item.id }}"
+  loop: "{{ networkd_bridges_list }}"
+  loop_control:
+    label: "vlan {{ item.id }}"
+  register: _vlan_stat
+  failed_when: not _vlan_stat.stat.exists
+  retries: 6
+  delay: 2
+  until: _vlan_stat.stat.exists
+  tags: [networkd_bridges, verify]
+
+- name: Verify bridge device exists
+  ansible.builtin.stat:
+    path: "/sys/class/net/{{ item.bridge }}"
+  loop: "{{ networkd_bridges_list }}"
+  loop_control:
+    label: "{{ item.bridge }}"
+  register: _br_stat
+  failed_when: not _br_stat.stat.exists
+  retries: 6
+  delay: 2
+  until: _br_stat.stat.exists
+  tags: [networkd_bridges, verify]

@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: FUTO
+  description: >
+    Add VLAN-tagged sub-interfaces and L2 bridges on bond0 for libvirt
+    VMs. Idempotent; non-disruptive when config is unchanged. Targets
+    Debian 12 with systemd-networkd already in use (set up by the
+    sietch Ceph deployment).
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+dependencies: []
