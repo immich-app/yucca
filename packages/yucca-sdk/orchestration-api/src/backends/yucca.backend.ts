@@ -10,6 +10,7 @@ import {
   submitMetricBackupEnd,
   submitMetricBackupStart,
   submitMetricRepositorySize,
+  submitStructuredLog,
   updateRepository,
 } from '@futo-org/backups-api-client';
 import { BackendType, CookieName } from '../enum';
@@ -84,5 +85,15 @@ export class YuccaBackend extends Backend {
 
   submitMetricRepositorySize(id: string, sizeBytes: number): Promise<void> {
     return submitMetricRepositorySize(id, { sizeBytes }, this.requestOptions);
+  }
+
+  submitStructuredLog(summary: string, data: object) {
+    void submitStructuredLog(
+      {
+        summary,
+        data,
+      },
+      this.requestOptions,
+    ).catch((error) => console.error('Failed to submit log', error));
   }
 }

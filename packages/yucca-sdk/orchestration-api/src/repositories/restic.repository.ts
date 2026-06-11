@@ -13,7 +13,7 @@ export class ResticRepository {
   async backup(repository: string, key: Uint8Array, paths: string[], logStream?: Writable, signal?: AbortSignal) {
     const write = createSampledLogWriter(logStream);
 
-    await backup()
+    return await backup()
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .addFile(...paths)
@@ -44,7 +44,7 @@ export class ResticRepository {
       command = command.include(...include);
     }
 
-    await command.run();
+    return await command.run();
   }
 
   async ls(repository: string, key: Uint8Array, snapshotId: string, path: string) {

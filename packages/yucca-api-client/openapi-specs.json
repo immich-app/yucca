@@ -184,6 +184,30 @@
         ]
       }
     },
+    "/api/metrics/submit/log": {
+      "post": {
+        "operationId": "submitStructuredLog",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitStructuredLogRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/metrics/{repositoryId}/history": {
       "get": {
         "operationId": "listMetricsHistory",
@@ -462,6 +486,21 @@
         },
         "required": [
           "sizeBytes"
+        ]
+      },
+      "SubmitStructuredLogRequestDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "summary",
+          "data"
         ]
       },
       "RepositoryMetricsHistoryDto": {

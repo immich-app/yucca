@@ -43,6 +43,7 @@ import { RepositoryService } from './services/repository.service';
 import { RunHistoryService } from './services/runHistory.service';
 import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
+import { TelemetryService } from './services/telemetry.service';
 
 export const controllers = [
   AuthController,
@@ -85,6 +86,7 @@ export const services = [
   RunHistoryService,
   RunningTasksService,
   ScheduleService,
+  TelemetryService,
 ];
 
 @Module({})

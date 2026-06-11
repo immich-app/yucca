@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsObject, IsString, Min } from 'class-validator';
 
 export class SubmitBackupEndRequestDto {
   @ApiProperty()
@@ -51,4 +51,14 @@ export class RepositoryMetricsHistoryListResponseDto {
 
   @ApiProperty({ type: 'string', required: false, nullable: true })
   nextCursor!: string | null;
+}
+
+export class SubmitStructuredLogRequestDto {
+  @ApiProperty()
+  @IsString()
+  summary!: string;
+
+  @ApiProperty()
+  @IsObject()
+  data!: object;
 }

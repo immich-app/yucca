@@ -38,6 +38,7 @@ import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
 import { DEFAULT_RETENTION_POLICY, RetentionPolicy } from '../utils/restic';
 import { BootstrapService } from './bootstrap.service';
+import { TelemetryService } from './telemetry.service';
 
 @Injectable()
 export class RepositoryService {
@@ -56,6 +57,7 @@ export class RepositoryService {
     private readonly storage: StorageRepository,
     @Inject(forwardRef(() => BootstrapService))
     private readonly bootstrap: BootstrapService,
+    private readonly telemetry: TelemetryService,
   ) {}
 
   private async getLocalRepository(
@@ -404,8 +406,16 @@ export class RepositoryService {
     task: Promise<void>;
   }> {
     if (!this.tasks.canStart(id)) {
+      this.telemetry.submitStructuredLog('Backup rejected, task already running', {
+        repositoryId: id,
+      });
+
       throw new BadRequestException('Task already running!');
     }
+
+    this.telemetry.submitStructuredLog('Running backup', {
+      repositoryId: id,
+    });
 
     const { backendId } = await this.repository.get(id);
     const { configuration } = await this.backend.getBackend(backendId);
@@ -439,11 +449,20 @@ export class RepositoryService {
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
                 await this.restic.unlockAll(endpoint, key);
-                await this.restic.backup(endpoint, key, paths, log, taskSignal);
+                const summary = await this.restic.backup(endpoint, key, paths, log, taskSignal);
+
+                this.telemetry.submitStructuredLog('Finished backup to primary backend', {
+                  repositoryId: id,
+                  summary,
+                });
 
                 const { retentionPolicy: policy } = await this.repository.get(id);
                 if (policy) {
                   await this.runForgetAndPrune(endpoint, key, policy, log, taskSignal);
+
+                  this.telemetry.submitStructuredLog('Finished prune on primary backend', {
+                    repositoryId: id,
+                  });
                 }
               } finally {
                 this.tasks.endTask(id);
@@ -461,6 +480,11 @@ export class RepositoryService {
                   lastSuccessfulBackup,
                   lastBackupDuration,
                 },
+              });
+
+              this.telemetry.submitStructuredLog('Backup finished', {
+                repositoryId: id,
+                error,
               });
 
               if (error) {
@@ -521,6 +545,10 @@ export class RepositoryService {
     task: Promise<void>;
   }> {
     if (!this.tasks.canStart(id)) {
+      this.telemetry.submitStructuredLog('Repository prune rejected, task already running', {
+        repositoryId: id,
+      });
+
       throw new BadRequestException('Task already running!');
     }
 
@@ -528,6 +556,11 @@ export class RepositoryService {
     if (!policy) {
       throw new BadRequestException('No retention policy configured for this repository');
     }
+
+    this.telemetry.submitStructuredLog('Running repository prune', {
+      repositoryId: id,
+      retentionPolicy: policy,
+    });
 
     const { endpoint, key } = await this.getResticParameters(id);
 
@@ -551,6 +584,11 @@ export class RepositoryService {
             (error) => {
               void this.updateLocalMetrics(id, {
                 resticParameters: { endpoint, key },
+              });
+
+              this.telemetry.submitStructuredLog('Finished repository prune', {
+                repositoryId: id,
+                error,
               });
 
               if (error) {
@@ -583,50 +621,70 @@ export class RepositoryService {
   }
 
   async importRepository(id: string, backendId: string): Promise<RepositoryCreateResponseDto> {
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
-    const { repository: remote } = await backend.getRepository(id);
-
-    const endpoint = await backend.getResticEndpoint(remote.id);
-    const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
-    await this.restic.keyList(endpoint, key);
-
-    let paths: string[] = [];
-    try {
-      const snapshots = await this.restic.snapshots(endpoint, key);
-      snapshots.sort((a, b) => +b.time - +a.time);
-      paths = snapshots[0].paths;
-    } catch {
-      // no-op
-    }
-
-    await this.repository.create({
-      id: remote.id,
+    this.telemetry.submitStructuredLog('Running repository import', {
+      repositoryId: id,
       backendId,
-      retentionPolicy: DEFAULT_RETENTION_POLICY,
     });
 
-    const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
-      ...remote,
-      backends: {
-        primary: {
-          id: backendId,
-          online: true,
-          type: configuration.type,
+    try {
+      const { configuration } = await this.backend.getBackend(backendId);
+      const backend = Backend.from(configuration, this.moduleConfig.get());
+      const { repository: remote } = await backend.getRepository(id);
+
+      const endpoint = await backend.getResticEndpoint(remote.id);
+      const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
+      await this.restic.keyList(endpoint, key);
+
+      let paths: string[] = [];
+      try {
+        const snapshots = await this.restic.snapshots(endpoint, key);
+        snapshots.sort((a, b) => +b.time - +a.time);
+        paths = snapshots[0].paths;
+      } catch {
+        // no-op
+      }
+
+      await this.repository.create({
+        id: remote.id,
+        backendId,
+        retentionPolicy: DEFAULT_RETENTION_POLICY,
+      });
+
+      const repository: LocalRepositoryDto = {
+        ...(await this.getLocalRepository(id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
+        ...remote,
+        backends: {
+          primary: {
+            id: backendId,
+            online: true,
+            type: configuration.type,
+          },
+          secondary: [],
         },
-        secondary: [],
-      },
-    };
+      };
 
-    this.events.publish({
-      type: 'RepositoryCreate',
-      repository,
-    });
+      this.telemetry.submitStructuredLog('Finished repository import', {
+        repositoryId: id,
+        backendId,
+      });
 
-    return {
-      repository,
-    };
+      this.events.publish({
+        type: 'RepositoryCreate',
+        repository,
+      });
+
+      return {
+        repository,
+      };
+    } catch (error) {
+      this.telemetry.submitStructuredLog('Finished repository import', {
+        repositoryId: id,
+        backendId,
+        error,
+      });
+
+      throw error;
+    }
   }
 
   async getSnapshots(id: string): Promise<ListSnapshotsResponseDto> {
@@ -646,7 +704,14 @@ export class RepositoryService {
     logId: string;
     task: Promise<void>;
   }> {
+    this.telemetry.submitStructuredLog('Running repository snapshot restore', {
+      repositoryId: id,
+      snapshotId,
+    });
+
     return new Promise((resolve) => {
+      let summary: unknown;
+
       const task = new Promise<void>(
         (complete, fail) =>
           void this.runHistory.createLog(
@@ -662,12 +727,19 @@ export class RepositoryService {
 
               try {
                 const signal = this.tasks.startTask(id, TaskType.Restore, logId);
-                await this.restic.restore(endpoint, key, snapshotId, dto, log, signal);
+                summary = await this.restic.restore(endpoint, key, snapshotId, dto, log, signal);
               } finally {
                 this.tasks.endTask(id);
               }
             },
             (error) => {
+              this.telemetry.submitStructuredLog('Finished repository snapshot restore', {
+                repositoryId: id,
+                snapshotId,
+                summary,
+                error,
+              });
+
               if (error) {
                 fail(error);
               } else {
@@ -690,7 +762,14 @@ export class RepositoryService {
     logId: string;
     task: Promise<void>;
   }> {
+    this.telemetry.submitStructuredLog('Running repository restore from point', {
+      repositoryId: id,
+      snapshotId,
+    });
+
     return new Promise((resolve) => {
+      let summary: unknown;
+
       const task = new Promise<void>(
         (complete, fail) =>
           void this.runHistory.createEphemeralLog(
@@ -704,7 +783,7 @@ export class RepositoryService {
 
               try {
                 const signal = this.tasks.startTask(id, TaskType.Restore, logId);
-                await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log, signal);
+                summary = await this.restic.restore(endpoint, key, snapshotId, { include: dto.include }, log, signal);
 
                 if (dto.yuccaConfig) {
                   const target = await this.storage.tempdir();
@@ -735,6 +814,13 @@ export class RepositoryService {
               }
             },
             (error) => {
+              this.telemetry.submitStructuredLog('Finished repository restore from point', {
+                repositoryId: id,
+                snapshotId,
+                summary,
+                error,
+              });
+
               if (error) {
                 fail(error);
               } else {
@@ -750,17 +836,40 @@ export class RepositoryService {
 
   async forgetSnapshot(id: string, snapshotId: string): Promise<void> {
     if (!this.tasks.canStart(id)) {
+      this.telemetry.submitStructuredLog('Repository snapshot forget rejected, task already running', {
+        repositoryId: id,
+        snapshotId,
+      });
+
       throw new BadRequestException('Task already running!');
     }
 
+    this.telemetry.submitStructuredLog('Running repository snapshot forget', {
+      repositoryId: id,
+      snapshotId,
+    });
+
     const { endpoint, key } = await this.getResticParameters(id);
 
+    let error;
     try {
       const signal = this.tasks.startTask(id, TaskType.Forget);
       await this.restic.unlockAll(endpoint, key);
       await this.restic.forget(endpoint, key, snapshotId, true, signal);
+    } catch (error_) {
+      error = error_;
     } finally {
       this.tasks.endTask(id);
+    }
+
+    this.telemetry.submitStructuredLog('Finished repository snapshot forget', {
+      repositoryId: id,
+      snapshotId,
+      error,
+    });
+
+    if (error) {
+      throw error;
     }
 
     await this.updateLocalMetrics(id, {
@@ -775,20 +884,30 @@ export class RepositoryService {
   ): Promise<FilesystemListingResponseDto> {
     const path = dto.path ?? '/';
 
-    const { endpoint, key } = await this.getResticParameters(id);
-    const files = await this.restic.ls(endpoint, key, snapshotId, path);
+    try {
+      const { endpoint, key } = await this.getResticParameters(id);
+      const files = await this.restic.ls(endpoint, key, snapshotId, path);
 
-    return {
-      parent: dirname(path),
-      path,
-      items: files
-        .filter((file) => file.message_type === 'node')
-        .filter((file) => file.path !== path)
-        .map((file) => ({
-          path: file.path,
-          isDirectory: file.type === 'dir',
-        })),
-    };
+      return {
+        parent: dirname(path),
+        path,
+        items: files
+          .filter((file) => file.message_type === 'node')
+          .filter((file) => file.path !== path)
+          .map((file) => ({
+            path: file.path,
+            isDirectory: file.type === 'dir',
+          })),
+      };
+    } catch (error) {
+      this.telemetry.submitStructuredLog('Failed to get repository snapshot listing', {
+        repositoryId: id,
+        snapshotId,
+        error,
+      });
+
+      throw error;
+    }
   }
 
   async getRunHistory(id: string): Promise<RunHistoryResponseDto> {
