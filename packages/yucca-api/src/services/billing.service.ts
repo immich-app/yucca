@@ -45,6 +45,8 @@ export class BillingService {
                   polarSubscriptionState: null!,
                 },
           );
+
+          user.polarSubscriptionId = subscriptionId;
         }
       } catch {
         // no-op
