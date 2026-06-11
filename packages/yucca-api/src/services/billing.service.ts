@@ -59,7 +59,15 @@ export class BillingService {
   }
 
   async createCustomerPortal(auth: AuthDto): Promise<CreateCustomerPortalResponseDto> {
-    const session = await this.polar.createCustomerSession(auth.sub);
+    const user = await this.user.getBySub(auth.sub);
+
+    if (!user) {
+      throw new InternalServerErrorException('User missing');
+    }
+
+    await this.ensurePolarCustomer(user);
+
+    const session = await this.polar.createCustomerSession(user.sub);
 
     return {
       customerPortalUrl: session.customerPortalUrl,
@@ -73,19 +81,7 @@ export class BillingService {
       throw new InternalServerErrorException('User missing');
     }
 
-    if (!user.polarUserId) {
-      try {
-        const customer = await this.polar.createOrFindCustomer(user.sub, user.email);
-        user.polarUserId = customer.id;
-
-        await this.user.update(user.id, {
-          polarUserId: customer.id,
-        });
-      } catch (error) {
-        this.wideContext.setErrorCause(error);
-        throw new InternalServerErrorException('Failed to create Polar customer');
-      }
-    }
+    const polarUserId = await this.ensurePolarCustomer(user);
 
     if (user.polarSubscriptionId) {
       throw new BadRequestException('Already subscribed');
@@ -93,7 +89,7 @@ export class BillingService {
 
     let activeSubscription: CustomerStateSubscription | undefined;
     try {
-      activeSubscription = await this.polar.findActiveSubscription(user.polarUserId);
+      activeSubscription = await this.polar.findActiveSubscription(polarUserId);
     } catch (error) {
       this.wideContext.setErrorCause(error);
       throw new InternalServerErrorException('Failed to create Polar customer');
@@ -111,11 +107,34 @@ export class BillingService {
     }
 
     const successUrl = new URL('/dashboard/billing', headers.origin);
-    const checkout = await this.polar.createCheckout(user.polarUserId, successUrl.href);
+    const checkout = await this.polar.createCheckout(polarUserId, successUrl.href);
 
     return {
       checkoutUrl: checkout.url,
     };
+  }
+
+  private async ensurePolarCustomer(user: {
+    id: string;
+    sub: string;
+    email: string;
+    polarUserId?: string;
+  }): Promise<string> {
+    if (!user.polarUserId) {
+      try {
+        const customer = await this.polar.createOrFindCustomer(user.sub, user.email);
+        user.polarUserId = customer.id;
+
+        await this.user.update(user.id, {
+          polarUserId: customer.id,
+        });
+      } catch (error) {
+        this.wideContext.setErrorCause(error);
+        throw new InternalServerErrorException('Failed to create Polar customer');
+      }
+    }
+
+    return user.polarUserId;
   }
 
   async polarWebhook(body: string | Buffer | null, headers: Record<string, string>) {
