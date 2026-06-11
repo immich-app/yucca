@@ -12,7 +12,7 @@ export class UserRepository {
   async list({ cursor, limit }: { cursor?: string; limit: number }) {
     const rows = await this.db
       .selectFrom('users')
-      .selectAll()
+      .select(['id', 'sub', 'name', 'email', 'disabled'])
       .orderBy('id', 'asc')
       .limit(limit + 1)
       .$if(cursor !== undefined, (qb) => qb.where('id', '>', cursor!))
@@ -22,7 +22,11 @@ export class UserRepository {
   }
 
   get(id: string) {
-    return this.db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+    return this.db
+      .selectFrom('users')
+      .select(['id', 'sub', 'name', 'email', 'disabled'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
   }
 
   update(id: string, user: Updateable<UserTable>) {
