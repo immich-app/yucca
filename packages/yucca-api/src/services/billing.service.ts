@@ -38,7 +38,7 @@ export class BillingService {
             subscriptionId
               ? {
                   polarSubscriptionId: subscriptionId,
-                  polarSubscriptionState: subscription.status,
+                  polarSubscriptionState: JSON.stringify(subscription),
                 }
               : {
                   polarSubscriptionId: null!,
@@ -98,7 +98,7 @@ export class BillingService {
     if (activeSubscription) {
       await this.user.update(auth.id, {
         polarSubscriptionId: activeSubscription.id,
-        polarSubscriptionState: activeSubscription.status,
+        polarSubscriptionState: JSON.stringify(activeSubscription),
       });
 
       return {
@@ -167,7 +167,7 @@ export class BillingService {
             activeSub
               ? {
                   polarSubscriptionId: activeSub.id,
-                  polarSubscriptionState: activeSub.status,
+                  polarSubscriptionState: JSON.stringify(activeSub),
                 }
               : {
                   polarSubscriptionId: null!,

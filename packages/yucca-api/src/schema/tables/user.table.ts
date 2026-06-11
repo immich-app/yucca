@@ -1,5 +1,6 @@
 import { Column, type Generated, Table } from '@immich/sql-tools';
-import { type SubscriptionStatus } from '@polar-sh/sdk/models/components/subscriptionstatus.js';
+import { type CustomerStateSubscription } from '@polar-sh/sdk/models/components/customerstatesubscription.js';
+import { type JSONColumnType } from 'kysely';
 
 @Table({ name: 'users' })
 export class UserTable {
@@ -24,6 +25,6 @@ export class UserTable {
   @Column({ index: true, unique: true, nullable: true })
   polarSubscriptionId?: string;
 
-  @Column({ type: 'text', nullable: true })
-  polarSubscriptionState?: SubscriptionStatus;
+  @Column({ type: 'jsonb', nullable: true })
+  polarSubscriptionState?: JSONColumnType<CustomerStateSubscription>;
 }
