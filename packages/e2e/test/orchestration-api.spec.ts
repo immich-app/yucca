@@ -637,9 +637,9 @@ describe('Reset & Restore', () => {
     const { repositories } = await sdk.getRepositories();
     const [unimported] = repositories;
 
-    await expect(
-      sdk.checkImportRepository(unimported.id, unimported.backends!.primary.id),
-    ).resolves.toEqual({ readable: true });
+    await expect(sdk.checkImportRepository(unimported.id, unimported.backends!.primary.id)).resolves.toEqual({
+      readable: true,
+    });
   });
 
   it('reports a repository absent from a backend as unreadable', async () => {
