@@ -35,6 +35,7 @@ const schema = z
     OIDC_DEVICE_ALLOW_INSECURE: z.coerce.boolean().default(false),
     OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
 
+    POLAR_MOCK: z.coerce.boolean().optional(),
     POLAR_HOST: z.enum(['sandbox', 'production']).default('sandbox'),
     POLAR_WEBHOOK_SECRET: z.string().default(''),
     POLAR_ACCESS_TOKEN: z.string().optional(),
@@ -47,8 +48,9 @@ const schema = z
     RESTIC_API_PORT: z.coerce.number().min(1000),
     RESTIC_ENDPOINT: z.string().optional(),
   })
-  .transform(({ RESTIC_ENDPOINT, ...options }) => ({
+  .transform(({ RESTIC_ENDPOINT, POLAR_MOCK, ...options }) => ({
     ...options,
+    POLAR_MOCK: POLAR_MOCK ?? options.NODE_ENV === 'development',
     RESTIC_ENDPOINT: RESTIC_ENDPOINT ?? `http://${options.RESTIC_API_HOST}:${options.RESTIC_API_PORT}`,
   }));
 

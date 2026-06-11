@@ -1,4 +1,5 @@
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { env } from 'src/env';
 import { PolarRepository } from 'src/repositories/polar.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 
@@ -10,6 +11,10 @@ export class MockPolarService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    if (!env.POLAR_MOCK) {
+      return;
+    }
+
     const users = await this.user.testGetAllUsers();
 
     for (const user of users) {
