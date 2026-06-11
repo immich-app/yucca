@@ -28,7 +28,7 @@
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
     "@opentelemetry/api": "catalog:",
-    "@polar-sh/sdk": "^0.47.1",
+    "@polar-sh/sdk": "catalog:",
     "class-validator": "catalog:",
     "cookie": "catalog:",
     "event-iterator": "catalog:",
