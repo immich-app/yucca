@@ -1,5 +1,5 @@
 import type { RawBodyRequest } from '@nestjs/common';
-import { Controller, Get, Headers, Post, Query, Req } from '@nestjs/common';
+import { Controller, Get, Headers, ParseBoolPipe, Post, Query, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import type { IncomingHttpHeaders } from 'node:http';
@@ -22,7 +22,7 @@ export class BillingController {
   @ApiOkResponse({ type: CustomerBillingStateResponseDto })
   getBillingStatus(
     @Auth() auth: AuthDto,
-    @Query('refresh') refresh?: boolean,
+    @Query('refresh', new ParseBoolPipe({ optional: true })) refresh?: boolean,
   ): Promise<CustomerBillingStateResponseDto> {
     return this.service.getBillingStatus(auth, refresh);
   }
