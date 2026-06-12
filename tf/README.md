@@ -32,14 +32,22 @@ tf/
         │   ├── versions.tf, variables.tf, main.tf
         │   ├── clusters.auto.tfvars  ← declarative cluster list (edit here to add/modify)
         │   └── .terraform.lock.hcl
-        └── talos/
+        ├── talos/
+        │   ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
+        │   └── clusters.auto.tfvars  ← declarative Talos cluster list (nodes[], profile, VLANs)
+        └── dns/
             ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
-            └── clusters.auto.tfvars  ← declarative Talos cluster list (nodes[], profile, VLANs)
+            └── records.auto.tfvars   ← declarative DNS records (Cloudflare, futo.cloud zone)
 ```
 
 Future envs land as siblings: `deployment/staging/ceph/`, `deployment/prod/ceph/`.
-Additional stacks land as siblings within an env — `dev/talos/` is one;
-`dev/monitoring/` could be next.
+Additional stacks land as siblings within an env — `dev/talos/` and
+`dev/dns/` are two; `dev/monitoring/` could be next.
+
+The dns stack manages infrastructure names in the futo.cloud Cloudflare
+zone (today: the Sietch RGW S3 endpoint + virtual-hosted wildcard).
+Records are declarative in `records.auto.tfvars`; the API token resolves
+from `op://yucca_tf_manual/CLOUDFLARE_API_TOKEN` via `tf/.env`.
 
 The talos stack is documented in `ansible/talos/README.md` and
 `ansible/talos/docs/runbooks/cluster-bring-up.md` (the TF + Ansible flow

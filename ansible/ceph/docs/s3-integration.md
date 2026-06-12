@@ -214,10 +214,13 @@ s3.dev.austin.int.futo.cloud.        A  10.10.10.92
 *.s3.dev.austin.int.futo.cloud.      A  10.10.10.92
 ```
 
-Round-robin A records across all three nodes. Without these records,
-use path-style addressing or connect directly via IP.
+Round-robin A records across all three nodes.
 
-Note: this repo does not manage DNS. Coordinate with the network/DNS team.
+These records are live and managed in this repo: `tf/deployment/dev/dns/`
+(Cloudflare, futo.cloud zone). They resolve publicly but point at the
+management VLAN, so they are only routable from networks that reach
+10.10.10.0/24. To change them, edit `records.auto.tfvars` and
+`TF_STACK_DIR=tf/deployment/dev/dns mise run tf:apply`.
 
 ## Performance characteristics
 
