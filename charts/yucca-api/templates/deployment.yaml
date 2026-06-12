@@ -8,5 +8,9 @@
   (dict "name" "POSTGRES_USERNAME" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "username")))
   (dict "name" "POSTGRES_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "password")))
 )) }}
-{{- $_ := set .Values "envFrom" (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .)))) }}
+{{- /* extraEnvFrom comes after the chart secret: for duplicate keys Kubernetes
+takes the LAST envFrom source, so these act as overrides. */}}
+{{- $_ := set .Values "envFrom" (concat
+  (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .))))
+  (.Values.extraEnvFrom | default (list))) }}
 {{- include "yucca-common.deployment" . }}

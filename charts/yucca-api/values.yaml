@@ -40,6 +40,14 @@ secretData:
   OIDC_CLIENT_ID: "client ID"
   OIDC_CLIENT_SECRET: "client secret"
 
+# Extra envFrom sources appended AFTER the chart's own secret — for duplicate
+# keys the last source wins, so this is the override hook. Tilt points it at
+# the yucca-dev-env Secret (built from a gitignored root .env, op:// refs
+# resolved via the 1Password CLI); prod can point it at an ExternalSecret.
+# NB: explicit `env` entries below always beat envFrom — env vars the chart
+# pins there (OIDC_ISSUER & co) are overridden via their Helm values instead.
+extraEnvFrom: []
+
 env:
   - name: NODE_ENV
     value: development

@@ -24,6 +24,55 @@ allow_k8s_contexts('k3d-yucca')
 namespace_create('yucca')
 
 # ---------------------------------------------------------------------------
+# Optional dev secrets: a gitignored .env at the repo root (KEY=VALUE; values
+# may be 1Password `op://` references, resolved here via `op read`). When
+# present it becomes the yucca-dev-env Secret, layered onto yucca-api as the
+# last envFrom source (last source wins for duplicate keys). read_file watches
+# the path, so creating/editing .env retriggers automatically. Absent .env
+# (CI, fresh clones) leaves the committed mock-oidc dev fixtures in charge.
+# ---------------------------------------------------------------------------
+
+# Env vars the chart pins as explicit container env — explicit env always
+# beats envFrom, so these .env keys must override through Helm values instead.
+DEV_ENV_VALUE_KEYS = {
+    'OIDC_ISSUER': 'oidcIssuer',
+    'OIDC_REDIRECT_URI': 'oidcRedirectUri',
+    'OIDC_LOGOUT_REDIRECT_URI': 'oidcLogoutRedirectUri',
+}
+
+def load_dev_env():
+    env = {}
+    for line in str(read_file('.env', default='')).splitlines():
+        line = line.strip()
+        if line.startswith('export '):
+            line = line[len('export '):].lstrip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, _, value = line.partition('=')
+        env[key.strip()] = value.strip().strip('"').strip("'")
+    # OP_ACCOUNT picks the 1Password account on multi-account machines. It's
+    # loader config, not app env, so it never reaches the cluster.
+    account = env.pop('OP_ACCOUNT', '')
+    for key in env.keys():
+        if env[key].startswith('op://'):
+            cmd = ['op', 'read', '--no-newline'] + (['--account', account] if account else []) + [env[key]]
+            # quiet/echo_off: keep resolved secrets out of the Tilt log. Fails
+            # loudly (aborting the Tiltfile) if op is missing or signed out.
+            env[key] = str(local(cmd, quiet=True, echo_off=True))
+    return env
+
+DEV_ENV = load_dev_env()
+
+if DEV_ENV:
+    k8s_yaml(encode_yaml({
+        'apiVersion': 'v1',
+        'kind': 'Secret',
+        'metadata': {'name': 'yucca-dev-env', 'namespace': 'yucca'},
+        'stringData': DEV_ENV,
+    }))
+    k8s_resource(objects=['yucca-dev-env:secret'], new_name='dev-env', labels=['helm'])
+
+# ---------------------------------------------------------------------------
 # Images. Built locally and injected into each app's Helm release via image_keys
 # (image.repository/image.tag). Edits are live-synced into the running pods.
 # ---------------------------------------------------------------------------
@@ -179,7 +228,8 @@ local_resource(
 # ---------------------------------------------------------------------------
 APP_WIRING = {
     # name (== HelmRelease metadata.name)  build image ref   resource_deps
-    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael']},
+    # dev_env: receives the .env override Secret (see load_dev_env above).
+    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael'], 'dev_env': True},
     'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc']},
     'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
     'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user']},
@@ -275,14 +325,22 @@ for app in REMOTE_APPS:
 for app in LOCAL_APPS:
     wiring = wiring_for(app)
     builds = [wiring['build']] if wiring['build'] else []
+    flags = ['--timeout=10m']
+    extra_deps = []
+    if DEV_ENV and wiring.get('dev_env'):
+        flags += ['--set-json', 'extraEnvFrom=[{"secretRef":{"name":"yucca-dev-env"}}]']
+        for key, value_path in DEV_ENV_VALUE_KEYS.items():
+            if key in DEV_ENV:
+                flags += ['--set-string', '%s=%s' % (value_path, DEV_ENV[key])]
+        extra_deps = ['dev-env']
     helm_resource(
         app.name,
         app.chart,
         namespace=app.namespace,
-        flags=['--timeout=10m'],
+        flags=flags,
         image_deps=builds,
         image_keys=[('image.repository', 'image.tag')] if builds else [],
-        resource_deps=['helm-deps'] + wiring['deps'],
+        resource_deps=['helm-deps'] + wiring['deps'] + extra_deps,
         labels=['app'],
         deps=[app.chart, 'charts/yucca-common'],
         pod_readiness=wiring.get('pod_readiness', ''),

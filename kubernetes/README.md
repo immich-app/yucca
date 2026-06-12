@@ -101,6 +101,34 @@ persistence, secrets) are where a future prod cluster overlay diverges. Notably:
   `ExternalSecret`s backed by the org's 1Password (External Secrets Operator)
   before prod.
 
+## Real OIDC credentials in dev (`.env` + 1Password)
+
+The k3d stack runs against mock-oidc out of the box. To point `yucca-api` at a
+real IdP, drop a (gitignored) `.env` at the repo root — values may be
+1Password `op://` references, resolved through the `op` CLI when the Tiltfile
+loads:
+
+```bash
+OP_ACCOUNT="team-futo.1password.com"   # only needed with multiple 1P accounts
+OIDC_ISSUER="https://external-dev-gkhk8b.us1.zitadel.cloud"
+OIDC_CLIENT_ID="op://yucca_tf_dev/CUSTOMER_ZITADEL_OAUTH_CLIENT_ID_DEV_TEST/password"
+OIDC_CLIENT_SECRET="op://yucca_tf_dev/CUSTOMER_ZITADEL_OAUTH_CLIENT_SECRET_DEV_TEST/password"
+```
+
+Tilt turns the resolved pairs into the `yucca-dev-env` Secret and layers it
+onto `yucca-api` as its last `envFrom` source (last source wins), so any key
+here overrides the committed dev fixtures. `OIDC_ISSUER`/`OIDC_REDIRECT_URI`/
+`OIDC_LOGOUT_REDIRECT_URI` are pinned by the chart as explicit env (which
+beats `envFrom`) and are mapped onto their Helm values instead — keep those
+three non-secret, as Helm flags are visible in the Tilt UI. Editing or
+deleting `.env` redeploys automatically; without it (CI, fresh clones)
+nothing changes.
+
+Caveats: the IdP must allow `http://localhost:5173/api/auth/oidc/callback` as
+a redirect URI; the device flow (`OIDC_DEVICE_*`) stays on mock-oidc; and the
+web e2e suite logs in via mock-oidc, so remove `.env` before
+`mise test:e2e:k3d`.
+
 ## Validate locally
 
 ```bash
