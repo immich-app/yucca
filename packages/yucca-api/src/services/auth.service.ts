@@ -11,7 +11,6 @@ import { CookieName } from 'src/enum';
 import { env } from 'src/env';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
-import { PolarRepository } from 'src/repositories/polar.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 
@@ -23,7 +22,6 @@ export class AuthService {
     private readonly user: UserRepository,
     private readonly crypto: CryptoRepository,
     private readonly session: SessionRepository,
-    private readonly polar: PolarRepository,
     private readonly wideContext: WideContextRepository,
   ) {}
 
@@ -132,26 +130,6 @@ export class AuthService {
         email: claims.email,
       });
     }
-
-    // if (!user.polarUserId) {
-    //   const customer = await this.polar.createOrFindCustomer(claims.sub, claims.email);
-    //   user.polarUserId = customer.id;
-
-    //   await this.user.update(user.id, {
-    //     polarUserId: customer.id,
-    //   });
-    // }
-
-    // if (!user.polarSubscriptionId) {
-    //   const subscription = await this.polar.findActiveSubscription(user.polarUserId!);
-    //   if (subscription) {
-    //     user.polarSubscriptionId = subscription.id;
-
-    //     await this.user.update(user.id, {
-    //       polarSubscriptionId: subscription.id,
-    //     });
-    //   }
-    // }
 
     return user;
   }
