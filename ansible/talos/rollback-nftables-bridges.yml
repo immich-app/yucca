@@ -1,0 +1,67 @@
+---
+# Rollback for the nftables_bridges role: restore the kernel defaults
+# for br_netfilter call-iptables/-ip6tables, remove the sysctl drop-in
+# file, leave br_netfilter loaded (it's harmless when the call-*
+# sysctls are 1, and removing the module would risk disrupting any
+# bridge in use). After this runs, bridge traffic is back under the
+# kernel default behavior — which means Ceph's inet filter forward
+# chain DROP applies, and Talos VM traffic on br-vlan50 will be
+# dropped again.
+#
+# Use after destroy-vms.yml when fully reverting the Talos lab,
+# OR if the operator decides to take a different approach to bridge
+# filtering (e.g. explicit allow rules in the Ceph security role).
+#
+# Usage: scripts/ansible-play.sh rollback-nftables-bridges.yml
+# Or:    mise run rollback-nftables-bridges
+
+- name: Pre-flight gate (imported)
+  ansible.builtin.import_playbook: preflight.yml
+
+- name: Rollback nftables_bridges sysctls to kernel defaults
+  hosts: hypervisors
+  become: true
+  gather_facts: false
+  tags: [rollback, nftables_bridges]
+
+  vars:
+    _sysctl_drop_in: /etc/sysctl.d/50-talos-bridges.conf
+    _kernel_defaults:
+      net.bridge.bridge-nf-call-iptables: "1"
+      net.bridge.bridge-nf-call-ip6tables: "1"
+
+  tasks:
+    - name: Restore kernel defaults (apply immediately + remove drop-in)
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_file: "{{ _sysctl_drop_in }}"
+        state: absent
+        reload: true
+      loop: "{{ _kernel_defaults | dict2items }}"
+      loop_control:
+        label: "{{ item.key }} -> {{ item.value }}"
+
+    - name: Ensure drop-in file is gone
+      ansible.builtin.file:
+        path: "{{ _sysctl_drop_in }}"
+        state: absent
+
+    - name: Verify rolled-back sysctls
+      ansible.builtin.command:
+        cmd: "sysctl -n {{ item.key }}"
+      register: _sysctl_check
+      changed_when: false
+      failed_when: _sysctl_check.stdout.strip() != item.value
+      loop: "{{ _kernel_defaults | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Rollback summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: br_netfilter call-iptables and
+          call-ip6tables restored to kernel default (1).
+          br_netfilter module left loaded (harmless when the call-*
+          sysctls are 1). Bridge VM traffic now subject to Ceph's
+          inet filter forward DROP again.

@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# Bridge network config — explicitly L2-only. ConfigureWithoutCarrier
+# lets networkd treat the bridge as configured even when no port is
+# yet attached, which keeps reload idempotent during VM lifecycle.
+
+[Match]
+Name={{ item.bridge }}
+
+[Network]
+ConfigureWithoutCarrier=yes
+LinkLocalAddressing=no
+IPv6AcceptRA=no

@@ -1,0 +1,10 @@
+<!-- {{ ansible_managed }} -->
+<!-- libvirt storage pool for Talos VMs (boot images + per-VM qcow2 overlays).
+     Type 'dir' = plain filesystem path on the host. Switch to 'rbd' once
+     the ceph-csi follow-up lands. -->
+<pool type='dir'>
+  <name>{{ libvirt_host_pool_name }}</name>
+  <target>
+    <path>{{ libvirt_host_pool_path }}</path>
+  </target>
+</pool>

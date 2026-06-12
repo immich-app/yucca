@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: FUTO
+  description: >
+    Disable br_netfilter call-iptables/-ip6tables on Sietch hypervisors
+    so bridge-forwarded VM traffic bypasses Ceph's inet filter table
+    (which has default-DROP forward). Idempotent. Targets Debian 12
+    Bookworm. Pairs with playbooks/rollback-nftables-bridges.yml.
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+dependencies: []

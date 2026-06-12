@@ -1,0 +1,98 @@
+{#- Libvirt domain XML for a single Talos VM. Rendered per item from
+    the talos_vms_filtered list. UEFI boot with explicitly pinned OVMF
+    loader/NVRAM paths (NOT the firmware='efi' shorthand — see the
+    comment in <os> below); host-passthrough CPU so Talos sees the same
+    instruction set the hypervisor has; virtio for disk + NIC.
+
+    MAC is deterministic: prefix (52:54:00:50) + 2 bytes from a
+    sha1(vm_name) so the same VM always gets the same MAC across
+    reprovisions — stable identity at the switch/bridge level, and
+    stable VLAN-51 DHCP leases on workers.
+-#}
+{%- set _mac_hash = item.name | hash('sha1') -%}
+{%- set _mac_b1 = _mac_hash[0:2] -%}
+{%- set _mac_b2 = _mac_hash[2:4] -%}
+{%- set _mac = talos_vm_mac_prefix + ':' + _mac_b1 + ':' + _mac_b2 -%}
+{%- set _mac_services = talos_vm_mac_prefix_services + ':' + _mac_b1 + ':' + _mac_b2 -%}
+<!-- {{ ansible_managed }} -->
+<domain type='kvm'>
+  <name>{{ talos_vms_domain_prefix }}-{{ item.name }}</name>
+  <description>Talos {{ item.role }} VM ({{ inventory_hostname }} hypervisor, profile={{ talos_vms_profile }})</description>
+  <memory unit='MiB'>{{ item.ram_mib }}</memory>
+  <currentMemory unit='MiB'>{{ item.ram_mib }}</currentMemory>
+  <vcpu placement='static'>{{ item.vcpus }}</vcpu>
+  <os>
+    <type arch='x86_64' machine='q35'>hvm</type>
+    <!-- Explicit UEFI paths (NOT firmware='efi' shorthand): the shorthand
+         expands at define-time into these same paths, but libvirt's
+         normalized stored XML then diverges from the template, causing
+         re-define on every provision-vms run. A re-define on a stopped
+         VM wipes per-VM NVRAM and breaks the next boot. Pinning the
+         paths explicitly keeps the template and stored XML in sync. -->
+    <loader readonly='yes' secure='no' type='pflash'>{{ talos_vms_ovmf_code_path }}</loader>
+    <nvram template='{{ talos_vms_ovmf_vars_template }}'>{{ talos_vms_nvram_dir }}/{{ talos_vms_domain_prefix }}-{{ item.name }}_VARS.fd</nvram>
+    <!-- Direct kernel boot: load the staged external kernel+initramfs (not
+         on-disk GRUB) so each VM gets a per-VM `ip=` for static first-boot
+         addressing. Format: ip=<addr>::<gw>:<mask>:<hostname>:<iface>:none.
+         The hostname here is the SOLE source — Talos v1.13 rejects a
+         duplicate in machine config. TF's per-node patches re-declare the
+         enp1s0 address (VIP-flush guard, siderolabs/talos#11887) and add
+         the VIP (CPs) + enp2s0 (workers); they never set hostname.
+         Upgrades: re-stage assets + reboot. -->
+    <kernel>{{ talos_kernel_path }}</kernel>
+    <initrd>{{ talos_initramfs_path }}</initrd>
+    <cmdline>talos.platform=metal console=tty0 console=ttyS0 init_on_alloc=1 slab_nomerge pti=on consoleblank=0 nvme_core.io_timeout=4294967295 printk.devkmsg=on ip={{ item.static_ip }}::{{ talos_vms_network_gateway }}:{{ talos_vms_network_mask }}:{{ talos_vms_domain_prefix }}-{{ item.name }}:{{ talos_vms_network_interface }}:none</cmdline>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode='host-passthrough' check='none' migratable='off'/>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2' discard='unmap'/>
+      <source file='{{ libvirt_storage_pool_path }}/{{ talos_vms_domain_prefix }}-{{ item.name }}.qcow2'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <interface type='bridge'>
+      <source bridge='{{ talos_vms_primary_bridge }}'/>
+      <model type='virtio'/>
+      <mac address='{{ _mac }}'/>
+    </interface>
+{%- if item.role == 'worker' %}
+    <interface type='bridge'>
+      <source bridge='{{ talos_vms_secondary_bridge }}'/>
+      <model type='virtio'/>
+      <mac address='{{ _mac_services }}'/>
+    </interface>
+{%- endif %}
+    <serial type='pty'>
+      <target type='isa-serial' port='0'>
+        <model name='isa-serial'/>
+      </target>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    {#- qemu-guest-agent channel — the factory schematic bakes
+        siderolabs/qemu-guest-agent, enabling graceful shutdown, IP
+        reporting, and fsfreeze via the guest agent. -#}
+    <channel type='unix'>
+      <source mode='bind'/>
+      <target type='virtio' name='org.qemu.guest_agent.0'/>
+    </channel>
+    <rng model='virtio'>
+      <backend model='random'>/dev/urandom</backend>
+    </rng>
+    <memballoon model='virtio'/>
+  </devices>
+</domain>

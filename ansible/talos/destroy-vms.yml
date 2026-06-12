@@ -1,0 +1,115 @@
+---
+# Tear down all Talos VMs and their qcow2 overlays for lab repeatability.
+# Does NOT touch:
+#   - networkd bridges (br-vlan50, br-vlan51) — reusable infrastructure
+#   - libvirt itself or the storage pool definition
+#   - the base raw image (re-fetching is slow; keep)
+#   - Ceph or its OSDs (entirely out of scope here)
+#
+# Filtering: matches VMs by regex `^(sietch-)?talos-` so we never touch
+# unrelated libvirt domains a host might host. The transitional regex
+# catches both the legacy `talos-cp1` shape (from pre-monorepo sietch-talos
+# stock VMs that need destroying once) AND the current `sietch-talos-cp1`
+# shape that this subtree produces. Drop the `(sietch-)?` once no legacy
+# names remain in the lab.
+#
+# Usage: scripts/ansible-play.sh destroy-vms.yml
+# Or:    mise run destroy-vms
+
+- name: Destroy Talos VMs (lab cleanup)
+  hosts: hypervisors
+  become: true
+  gather_facts: false
+  tags: [destroy]
+
+  tasks:
+    - name: List all libvirt domains (running + defined)
+      community.libvirt.virt:
+        command: list_vms
+      register: _all_running
+
+    - name: List all defined libvirt domains (any state)
+      community.libvirt.virt:
+        command: list_vms
+        state: shutdown
+      register: _all_shutdown
+      failed_when: false
+
+    - name: Build set of all known domains
+      ansible.builtin.set_fact:
+        # Note the outer parens: Jinja2 binds `|` tighter than `+`, so the
+        # naive form `A + B | unique` parses as `A + (B | unique)` and
+        # leaves duplicates in A. Wrap the concatenation explicitly.
+        _all_domains: >-
+          {{ ((_all_running.list_vms | default([])) +
+              (_all_shutdown.list_vms | default([]))) | unique }}
+
+    - name: Filter to (sietch-)?talos-* domains only
+      ansible.builtin.set_fact:
+        # Transitional: matches both legacy `talos-cp1` and current
+        # `sietch-talos-cp1` shapes. Tighten to `^sietch-talos-` once
+        # no legacy stock VMs remain in any sietch hypervisor.
+        _talos_domains: "{{ _all_domains | select('match', '^(sietch-)?talos-') | list }}"
+
+    - name: Show domains that will be destroyed
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: will destroy
+          {{ _talos_domains | length }} (sietch-)?talos-* domain(s):
+          {{ _talos_domains }}
+
+    - name: Force-stop running Talos VMs
+      community.libvirt.virt:
+        name: "{{ item }}"
+        command: destroy
+      loop: "{{ _talos_domains }}"
+      loop_control:
+        label: "{{ item }}"
+      failed_when: false  # already stopped is fine
+
+    - name: Undefine Talos VMs (with NVRAM cleanup)
+      ansible.builtin.command:
+        cmd: >-
+          virsh undefine {{ item }}
+            --nvram
+            --snapshots-metadata
+            --checkpoints-metadata
+      loop: "{{ _talos_domains }}"
+      loop_control:
+        label: "{{ item }}"
+      register: _undefine
+      changed_when: _undefine.rc == 0
+      failed_when:
+        - _undefine.rc != 0
+        - "'failed to get domain' not in (_undefine.stderr | default(''))"
+
+    - name: Locate Talos qcow2 overlays
+      ansible.builtin.find:
+        paths: "{{ libvirt_storage_pool_path }}"
+        # Two globs (comma-separated; `find` dedupes by path). A shell glob is
+        # left-anchored on the basename, so `talos-*.qcow2` matches
+        # `talos-cp1.qcow2` but NOT `sietch-talos-cp1.qcow2`. Drop the legacy
+        # `talos-*.qcow2` once no pre-rename overlays remain.
+        patterns: "talos-*.qcow2,sietch-talos-*.qcow2"
+      register: _talos_overlays
+
+    - name: Remove qcow2 overlays
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ _talos_overlays.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: Refresh storage pool so libvirt notices removed overlays
+      community.libvirt.virt_pool:
+        command: refresh
+        name: "{{ libvirt_storage_pool_name }}"
+
+    - name: Cleanup summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: removed
+          {{ _talos_domains | length }} domain(s) +
+          {{ _talos_overlays.files | length }} overlay(s).
+          Bridges, libvirt, and base image left intact.

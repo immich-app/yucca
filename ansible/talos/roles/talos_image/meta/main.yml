@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: FUTO
+  description: >
+    Fetch + checksum-verify + decompress the Talos metal-amd64 base
+    image into the libvirt storage pool. Idempotent (skips download
+    if .zst already verified; skips decompression if .raw exists).
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+dependencies: []

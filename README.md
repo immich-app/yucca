@@ -1,7 +1,7 @@
 # Yucca
 
 Application code lives under `packages/`. Infrastructure that operates Yucca
-(Ceph storage backend, future Talos K8s, deployment/state managed via
+(Ceph storage backend, Talos K8s, deployment/state managed via
 Terraform+1Password) lives at the top level in `ansible/`, `tf/`, and
 `kubernetes/`.
 
@@ -54,11 +54,12 @@ library + per-service charts). See [`kubernetes/README.md`](./kubernetes/README.
 
 ## Infrastructure
 
-| Start here                                           | Path            | Purpose                                                                                                                                                             |
-| ---------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`ansible/ceph/README.md`](./ansible/ceph/README.md) | `ansible/ceph/` | Ansible automation for Ceph clusters (sietch, painbox). Deploys + operates via cephadm on bare-metal and Hetzner.                                                   |
-| [`tf/README.md`](./tf/README.md)                     | `tf/`           | Terraform/OpenTofu authority for cluster identity, 1P secret items, rendered Ansible inventories. Terragrunt multi-env (`deployment/<env>/<stack>/`).               |
-| [`kubernetes/README.md`](./kubernetes/README.md)     | `kubernetes/`   | Flux GitOps surface (apps/components/flux/bootstrap) for the (future) Talos K8s cluster. Per-app HelmReleases over the in-repo `charts/`; mirrored locally by Tilt. |
+| Start here                                             | Path             | Purpose                                                                                                                                                    |
+| ------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`ansible/ceph/README.md`](./ansible/ceph/README.md)   | `ansible/ceph/`  | Ansible automation for Ceph clusters (sietch, painbox). Deploys + operates via cephadm on bare-metal and Hetzner.                                          |
+| [`ansible/talos/README.md`](./ansible/talos/README.md) | `ansible/talos/` | Talos K8s as libvirt VMs on the Ceph hypervisors. Ansible provisions the substrate + VMs; TF renders inventory and bootstraps the cluster.                 |
+| [`tf/README.md`](./tf/README.md)                       | `tf/`            | Terraform/OpenTofu authority for cluster identity, 1P secret items, rendered Ansible inventories. Terragrunt multi-env (`deployment/<env>/<stack>/`).      |
+| [`kubernetes/README.md`](./kubernetes/README.md)       | `kubernetes/`    | Flux GitOps surface (apps/components/flux/bootstrap) for the Talos K8s cluster. Per-app HelmReleases over the in-repo `charts/`; mirrored locally by Tilt. |
 
 **Secrets are managed via the `yucca_tf_*` 1Password vaults.** Runtime reads use a
 read-only service account; TF writes use a superuser service account. See

@@ -1,0 +1,166 @@
+---
+# Stage the Talos base image on each hypervisor. The base raw image
+# is immutable and shared by every VM — each VM gets a thin qcow2
+# overlay (talos_vms role) backed by this single file.
+#
+# Idempotency model:
+#   - .raw exists  → role is a no-op (no download, no decompress).
+#   - .raw missing, .zst exists with matching checksum → decompress only.
+#   - neither → download (checksum-verified) + decompress.
+#
+# Why pin the .zst checksum (not the .raw): verifying the compressed
+# artifact at download time fails fast (no wasted decompress CPU).
+# Image Factory publishes no checksum sidecar on the free tier —
+# compute it yourself: `curl -sL <talos_image_url> | sha256sum`.
+
+- name: Pre-flight — role enabled
+  ansible.builtin.assert:
+    that: talos_image_enabled | bool
+    fail_msg: >-
+      talos_image_enabled is false; nothing to do. Set it true in
+      group_vars or with -e talos_image_enabled=true to apply.
+    success_msg: "talos_image enabled — proceeding."
+  tags: [talos_image, preflight]
+
+- name: Pre-flight — checksum is pinned
+  ansible.builtin.assert:
+    that:
+      - talos_image_sha256 is defined
+      - talos_image_sha256 | length == 64
+    fail_msg: >-
+      talos_image_sha256 is empty or not 64 hex chars. This repo
+      requires explicit checksum pinning for reproducible rebuilds.
+      Image Factory's .sha256 sidecar is enterprise-only, so compute:
+        curl -sL {{ talos_image_url }} | sha256sum
+      and set talos_image_sha256 in group_vars/all/vars.yml.
+  tags: [talos_image, preflight]
+
+- name: Pre-flight — kernel + initramfs checksums are pinned
+  ansible.builtin.assert:
+    that:
+      - talos_kernel_sha256 is defined
+      - talos_kernel_sha256 | length == 64
+      - talos_initramfs_sha256 is defined
+      - talos_initramfs_sha256 | length == 64
+    fail_msg: >-
+      talos_kernel_sha256 / talos_initramfs_sha256 must be pinned (64 hex
+      chars each). Factory's .sha256 sidecar is enterprise-only, so compute:
+        curl -sL {{ talos_kernel_url }} | sha256sum
+        curl -sL {{ talos_initramfs_url }} | sha256sum
+      and set both in group_vars/all/vars.yml.
+  tags: [talos_image, preflight]
+
+- name: Pre-flight — libvirt storage pool path exists
+  ansible.builtin.stat:
+    path: "{{ talos_image_dir }}"
+  register: _pool_dir
+  tags: [talos_image, preflight]
+
+- name: Pre-flight — fail if pool path missing
+  ansible.builtin.assert:
+    that: _pool_dir.stat.exists and _pool_dir.stat.isdir
+    fail_msg: >-
+      Pool path {{ talos_image_dir }} not present (or not a directory).
+      libvirt_host role must run before talos_image to create the
+      storage pool.
+  tags: [talos_image, preflight]
+
+- name: Stat decompressed base image
+  ansible.builtin.stat:
+    path: "{{ talos_base_image_path }}"
+  register: _raw_image
+  tags: [talos_image]
+
+# zstd is in Debian Bookworm's base archive. Install only when we
+# actually need it (image not already present).
+- name: Install zstd (only if image not yet decompressed)
+  ansible.builtin.apt:
+    name: zstd
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: not _raw_image.stat.exists
+  tags: [talos_image, packages]
+
+- name: Fetch Talos metal image (checksum-verified)
+  ansible.builtin.get_url:
+    url: "{{ talos_image_url }}"
+    dest: "{{ talos_image_compressed_path }}"
+    checksum: "sha256:{{ talos_image_sha256 }}"
+    mode: "0644"
+    timeout: 300
+  when: not _raw_image.stat.exists
+  tags: [talos_image]
+
+- name: Decompress .zst → .raw
+  ansible.builtin.command:
+    cmd: "zstd -d --output-dir-flat {{ talos_image_dir }} -o {{ talos_base_image_path }} {{ talos_image_compressed_path }}"
+    creates: "{{ talos_base_image_path }}"
+  when: not _raw_image.stat.exists
+  tags: [talos_image]
+
+- name: Set ownership of decompressed raw image
+  ansible.builtin.file:
+    path: "{{ talos_base_image_path }}"
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    mode: "0644"
+  tags: [talos_image]
+
+- name: Optionally remove .zst after successful decompression
+  ansible.builtin.file:
+    path: "{{ talos_image_compressed_path }}"
+    state: absent
+  when: talos_image_delete_compressed | bool
+  # Reaching this task means decompression completed — either the
+  # creates:-guarded decompress ran successfully, or the .raw was
+  # already present (in which case the .zst probably doesn't exist
+  # either, and state=absent is a no-op).
+  tags: [talos_image]
+
+# ─── Boot assets for libvirt direct kernel boot ──────────────────────────
+# Kernel + initramfs referenced by the domain XML's <kernel>/<initrd>.
+# get_url is idempotent (skips when dest matches the checksum).
+
+- name: Fetch Talos kernel (checksum-verified)
+  ansible.builtin.get_url:
+    url: "{{ talos_kernel_url }}"
+    dest: "{{ talos_kernel_path }}"
+    checksum: "sha256:{{ talos_kernel_sha256 }}"
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    mode: "0644"
+    timeout: 300
+  tags: [talos_image]
+
+- name: Fetch Talos initramfs (checksum-verified)
+  ansible.builtin.get_url:
+    url: "{{ talos_initramfs_url }}"
+    dest: "{{ talos_initramfs_path }}"
+    checksum: "sha256:{{ talos_initramfs_sha256 }}"
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    mode: "0644"
+    timeout: 300
+  tags: [talos_image]
+
+- name: Refresh storage pool so libvirt sees the new image
+  community.libvirt.virt_pool:
+    command: refresh
+    name: "{{ libvirt_storage_pool_name }}"
+  tags: [talos_image]
+
+- name: Verify base image is present and non-empty
+  ansible.builtin.stat:
+    path: "{{ talos_base_image_path }}"
+  register: _raw_image_after
+  failed_when:
+    - not _raw_image_after.stat.exists or _raw_image_after.stat.size < 1048576
+  tags: [talos_image, verify]
+
+- name: Show staged image (operator visibility)
+  ansible.builtin.debug:
+    msg: >-
+      Talos v{{ talos_version }} base image at {{ talos_base_image_path }}
+      ({{ (_raw_image_after.stat.size / 1024 / 1024) | round(1) }} MiB).
+  tags: [talos_image, verify]
