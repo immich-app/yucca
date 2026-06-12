@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
 
+# Every job only reads the repo (checkout + tool downloads); nothing writes
+# back through the token.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
