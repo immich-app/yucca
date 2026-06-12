@@ -1,0 +1,93 @@
+replicas: 1
+
+# Stable in-cluster name, independent of the Helm release name. This keeps
+# service DNS identical whether rendered by Tilt (dev) or Flux (prod, per-app
+# release names).
+fullnameOverride: yucca-api
+
+image:
+  repository: k3d-registry.localhost:5000/yucca-api
+  tag: dev
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 3020
+
+service:
+  type: ClusterIP
+
+# CNPG-managed postgres Cluster name (see umbrella chart)
+postgresClusterName: yucca-db
+
+# OIDC provider in-cluster service
+oidcIssuer: http://yucca-mock-oidc:8092
+oidcRedirectUri: http://localhost:5173/api/auth/oidc/callback
+oidcLogoutRedirectUri: http://localhost:5173
+
+# DEV FIXTURES — not secrets. This is the project's well-known local-dev
+# keypair (the same one committed in .mise/tasks/*/env); yucca-api signs
+# device/restic JWTs with it and michael verifies with the matching public key.
+# It must never protect anything real. Prod replaces this whole block with
+# ExternalSecrets (1Password) — see kubernetes/README.md.
+secretData:
+  JWT_PRIVATE_KEY: |
+    -----BEGIN PRIVATE KEY-----
+    MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgCla79+Sip4o2hZ1K
+    nQJYp2xU/nsCJmRoZmvXjeX6cW+hRANCAASkubBRIE7Sns/VS8ZF5XEVO8CwJ+AZ
+    Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
+    -----END PRIVATE KEY-----
+  OIDC_CLIENT_ID: "client ID"
+  OIDC_CLIENT_SECRET: "client secret"
+
+# Extra envFrom sources appended AFTER the chart's own secret — for duplicate
+# keys the last source wins, so this is the override hook. Tilt points it at
+# the yucca-dev-env Secret (built from a gitignored root .env, op:// refs
+# resolved via the 1Password CLI); prod can point it at an ExternalSecret.
+# NB: explicit `env` entries below always beat envFrom — env vars the chart
+# pins there (OIDC_ISSUER & co) are overridden via their Helm values instead.
+extraEnvFrom: []
+
+env:
+  - name: NODE_ENV
+    value: development
+  - name: YUCCA_API_PORT
+    value: "3020"
+  - name: LOG_LEVEL
+    value: debug
+  - name: OIDC_ALLOW_INSECURE
+    value: "true"
+  # Device-flow OIDC (required by yucca-api env schema; points at mock-oidc's
+  # registered device client).
+  - name: OIDC_DEVICE_ISSUER
+    value: http://yucca-mock-oidc:8092
+  - name: OIDC_DEVICE_CLIENT_ID
+    value: "device client ID"
+  - name: OIDC_DEVICE_ALLOW_INSECURE
+    value: "true"
+  - name: RESTIC_API_HOST
+    value: yucca-michael
+  - name: RESTIC_API_PORT
+    value: "3010"
+  - name: OTLP_METRICS_ENDPOINT
+    value: victoria-metrics:8428
+  - name: OTLP_METRICS_URL_PATH
+    value: /opentelemetry/v1/metrics
+  - name: OTLP_LOGS_ENDPOINT
+    value: victoria-logs:9428
+  - name: OTLP_LOGS_URL_PATH
+    value: /insert/opentelemetry/v1/logs
+
+# Probes keep `tilt ci`/Flux honest: without them a crash-looping dev process
+# still counts as Ready (this masked two real bugs). The startupProbe budgets
+# for the dev watcher's first boot; no livenessProbe so dev never restart-loops.
+startupProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 5
+  failureThreshold: 60
+readinessProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 10
+
+migration:
+  enabled: false

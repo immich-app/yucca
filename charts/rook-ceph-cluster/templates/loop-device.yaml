@@ -1,0 +1,73 @@
+{{- if .Values.loopDevice.enabled }}
+# DEV ONLY. k3d nodes have no spare block device, and Rook OSDs need raw block
+# storage (k3d's local-path provisioner is filesystem-only). This privileged
+# DaemonSet creates a sparse image on the node and losetup-attaches it to a
+# FIXED loop device (storage.device / loopDevice.device) that the CephCluster
+# names explicitly. The container stays alive so the attachment persists.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Values.clusterName }}-loop-device
+  labels:
+    app.kubernetes.io/name: rook-ceph-loop-device
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rook-ceph-loop-device
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rook-ceph-loop-device
+    spec:
+      hostPID: true
+      containers:
+        - name: loop-device
+          image: {{ .Values.loopDevice.image }}
+          securityContext:
+            privileged: true
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              apk add --no-cache util-linux >/dev/null 2>&1 || true
+              IMG="{{ .Values.loopDevice.path }}"
+              DEV="{{ .Values.loopDevice.device }}"
+              mkdir -p "$(dirname "$IMG")"
+              [ -f "$IMG" ] || truncate -s {{ .Values.loopDevice.sizeGiB }}G "$IMG"
+              # Attach the image to the FIXED device the CephCluster references.
+              # Loop attachments live in the HOST kernel (shared by every k3d
+              # node), so they survive cluster re-creation: after a k3d:reset,
+              # DEV is typically still bound to the PREVIOUS cluster's now-
+              # deleted image — which also makes Rook skip it (stale bluestore
+              # signature). Clean all stale state before attaching:
+              if losetup "$DEV" >/dev/null 2>&1; then
+                back="$(losetup --noheadings --output BACK-FILE "$DEV" 2>/dev/null | xargs || true)"
+                # detach unless it's a live attachment of exactly our image
+                [ "$back" = "$IMG" ] || losetup -d "$DEV" || true
+              fi
+              # our image attached on some other device = corruption hazard
+              for d in $(losetup -j "$IMG" | cut -d: -f1); do
+                [ "$d" = "$DEV" ] || losetup -d "$d" || true
+              done
+              if ! losetup "$DEV" >/dev/null 2>&1; then
+                [ -e "$DEV" ] || mknod "$DEV" b 7 "${DEV#/dev/loop}"
+                losetup "$DEV" "$IMG"
+              fi
+              echo "loop device for Rook OSD: $(losetup -j "$IMG" | cut -d: -f1) ($IMG)"
+              # keep the container (and thus the loop attachment) alive
+              while true; do sleep 3600; done
+          volumeMounts:
+            - name: dev
+              mountPath: /dev
+              mountPropagation: Bidirectional
+            - name: rook-data
+              mountPath: {{ dir .Values.loopDevice.path }}
+      volumes:
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: rook-data
+          hostPath:
+            path: {{ dir .Values.loopDevice.path }}
+            type: DirectoryOrCreate
+{{- end }}

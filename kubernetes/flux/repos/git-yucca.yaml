@@ -1,0 +1,20 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: yucca
+  namespace: flux-system
+spec:
+  interval: 30m
+  url: https://github.com/immich-app/yucca
+  ref:
+    branch: main
+  # The repo is private: bootstrap creates this secret (a GitHub deploy key or
+  # fine-grained PAT) BEFORE applying this tree — see kubernetes/bootstrap/.
+  secretRef:
+    name: yucca-repo-auth
+  # Flux pulls only the GitOps manifests and the Helm charts they reference.
+  ignore: |
+    /*
+    !/kubernetes
+    !/charts
