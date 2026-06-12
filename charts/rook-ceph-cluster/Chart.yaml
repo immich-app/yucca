@@ -1,0 +1,9 @@
+apiVersion: v2
+name: rook-ceph-cluster
+description: >-
+  Minimal single-node Rook-Ceph cluster + S3 object store for LOCAL DEV ONLY.
+  Replaces the dev MinIO object store. Not for production — prod storage is a
+  completely separate Ceph (see ansible/ceph + tf/).
+type: application
+version: 0.1.0
+appVersion: "1.20.0"

@@ -1,0 +1,9 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/michael ."
+  bin = "./tmp/michael"
+  include_ext = ["go"]
+  exclude_dir = ["tmp"]
+  delay = 500

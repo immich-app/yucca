@@ -1,0 +1,7 @@
+# RGW user for michael. Rook writes a Secret named
+# "rook-ceph-object-user-<store>-<userName>" into THIS namespace with keys
+# AccessKey / SecretKey. michael (charts/michael) consumes them.
+userName: michael
+# CephObjectStore name + the namespace where the Rook cluster/objectstore lives.
+store: yucca
+clusterNamespace: rook-ceph

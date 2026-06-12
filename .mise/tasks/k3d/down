@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#MISE description="Delete k3d cluster"
+set -euo pipefail
+
+CLUSTER_NAME="yucca"
+
+if k3d cluster get "${CLUSTER_NAME}" >/dev/null 2>&1; then
+  k3d cluster delete "${CLUSTER_NAME}"
+else
+  echo "Cluster ${CLUSTER_NAME} does not exist"
+fi
+
+if k3d registry get k3d-registry.localhost >/dev/null 2>&1; then
+  k3d registry delete k3d-registry.localhost
+fi

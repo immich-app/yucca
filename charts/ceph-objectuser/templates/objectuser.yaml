@@ -1,0 +1,8 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: {{ .Values.userName }}
+spec:
+  store: {{ .Values.store }}
+  clusterNamespace: {{ .Values.clusterNamespace }}
+  displayName: {{ .Values.userName }}

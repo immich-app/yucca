@@ -14,7 +14,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: `http://localhost:${process.env.YUCCA_API_PORT}/`,
+        target:
+          process.env.YUCCA_API_URL ??
+          `http://localhost:${process.env.YUCCA_API_PORT}/`,
         secure: true,
         changeOrigin: true,
         ws: true,

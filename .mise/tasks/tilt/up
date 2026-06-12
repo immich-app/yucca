@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#MISE description="Start Tilt against the local k3d cluster"
+set -euo pipefail
+
+if ! kubectl config current-context | grep -q '^k3d-yucca$'; then
+  echo "Current kube context is not k3d-yucca. Run: mise k3d:up"
+  exit 1
+fi
+
+tilt up "$@"

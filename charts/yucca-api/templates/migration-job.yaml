@@ -1,0 +1,51 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "yucca-common.fullname" . }}-migrate
+  labels:
+    {{- include "yucca-common.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        {{- include "yucca-common.selectorLabels" . | nindent 8 }}
+        job: migrate
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-pg
+          image: postgres:18-alpine
+          command: ["sh", "-c"]
+          args:
+            - |
+              until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USERNAME"; do
+                echo "waiting for postgres..."; sleep 2;
+              done
+          env:
+            - { name: POSTGRES_HOST,     valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: host } } }
+            - { name: POSTGRES_PORT,     valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: port } } }
+            - { name: POSTGRES_USERNAME, valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: username } } }
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          workingDir: /app
+          command: ["sh", "-c"]
+          args:
+            - |
+              pnpm install --frozen-lockfile
+              cd packages/yucca-api
+              pnpm exec sql-tools -u "postgres://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}" migrate
+          env:
+            - { name: POSTGRES_HOST,     valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: host } } }
+            - { name: POSTGRES_PORT,     valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: port } } }
+            - { name: POSTGRES_DATABASE, valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: dbname } } }
+            - { name: POSTGRES_USERNAME, valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: username } } }
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: {{ printf "%s-app" .Values.postgresClusterName }}, key: password } } }
+{{- end }}

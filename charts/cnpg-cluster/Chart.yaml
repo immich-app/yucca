@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cnpg-cluster
+description: CloudNativePG Cluster for Yucca (consumes the cnpg operator's CRDs)
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

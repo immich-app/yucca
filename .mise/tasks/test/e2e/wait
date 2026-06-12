@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Wait for development environment to be ready"
+# Targets the compose/`mise dev` flow (the k3d flow has its own readiness
+# handling in packages/e2e/k3d/run.sh and does not use this task).
 set -e
 source "$(dirname "$0")/../../restic-api/env"
 source "$(dirname "$0")/../../yucca-api/env"
@@ -9,13 +11,15 @@ echo Ensure dev environment is running before invoking tests.
 wait_for_port() {
   local port="$1"
   local name="$2"
-  local deadline=$(( $(date +%s) + 30 ))
+  local timeout="${3:-60}"
+  local elapsed=0
   while ! nc -z localhost "$port" 2>/dev/null; do
-    if (( $(date +%s) >= deadline )); then
-      echo "Timed out waiting for $name (:$port)" >&2
-      exit 1
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "timed out waiting for $name (localhost:$port) after ${timeout}s" >&2
+      return 1
     fi
     sleep 0.5
+    elapsed=$((elapsed + 1))
   done
 }
 
@@ -23,4 +27,4 @@ wait_for_port 8092 mock-oidc-provider
 wait_for_port "$RESTIC_API_PORT" restic-api
 wait_for_port "$YUCCA_API_PORT" yucca-api
 wait_for_port 22676 orchestration-api
-wait_for_port 36033 web
+wait_for_port "${WEB_PORT:-36033}" web

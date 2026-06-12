@@ -1,0 +1,8 @@
+# CNPG Cluster. The name is the stable in-cluster identifier; yucca-api and
+# yucca-admin-api derive their POSTGRES_* env from the "<clusterName>-app" secret
+# that CNPG generates, so keep this consistent across dev and prod.
+clusterName: yucca-db
+instances: 1
+storage: 1Gi
+database: yucca
+owner: yucca

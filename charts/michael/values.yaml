@@ -1,0 +1,76 @@
+replicas: 1
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: yucca-michael
+
+image:
+  repository: k3d-registry.localhost:5000/michael
+  tag: dev
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 3010
+
+service:
+  type: ClusterIP
+
+# DEV FIXTURE — the public half of the project's well-known local-dev keypair
+# (see charts/yucca-api/values.yaml + .mise/tasks/*/env). Prod replaces this
+# with an ExternalSecret.
+secretData:
+  # michael (Go) verifies ES256 JWTs from yucca-api with this public key.
+  JWT_PUBLIC_KEY: |
+    -----BEGIN PUBLIC KEY-----
+    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpLmwUSBO0p7P1UvGReVxFTvAsCfg
+    GS7NQtJ3AnJkYaigO1MS5J59I4uRXCmpLtcwTocUGHMRVZrGLQMWdZY4DQ==
+    -----END PUBLIC KEY-----
+
+env:
+  - name: RESTIC_API_PORT
+    value: "3010"
+  - name: LOG_LEVEL
+    value: debug
+  # S3 object store = Rook-Ceph RGW. michael creates one bucket per restic
+  # repository, so it needs a full RGW user (CephObjectStoreUser via
+  # charts/ceph-objectuser), NOT a bucket-scoped ObjectBucketClaim. Rook writes
+  # the user's keys into this namespace as rook-ceph-object-user-<store>-<user>.
+  - name: S3_ENDPOINT
+    value: http://rook-ceph-rgw-yucca.rook-ceph.svc:80
+  - name: S3_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: rook-ceph-object-user-yucca-michael
+        key: AccessKey
+  - name: S3_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: rook-ceph-object-user-yucca-michael
+        key: SecretKey
+  - name: S3_REGION
+    value: us-east-1
+  - name: S3_FORCE_PATH_STYLE
+    value: "true"
+  - name: OTLP_METRICS_ENDPOINT
+    value: victoria-metrics:8428
+  - name: OTLP_METRICS_URL_PATH
+    value: /opentelemetry/v1/metrics
+  - name: OTLP_LOGS_ENDPOINT
+    value: victoria-logs:9428
+  - name: OTLP_LOGS_URL_PATH
+    value: /insert/opentelemetry/v1/logs
+
+envFrom:
+  - secretRef:
+      name: yucca-michael
+
+# Probes keep `tilt ci`/Flux honest: michael runs under air in dev, which keeps
+# the container "Running" even when the binary fatals on boot. The TCP probe
+# surfaces that as NotReady. No livenessProbe (air restarts are normal in dev).
+startupProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 2
+  failureThreshold: 90
+readinessProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 10

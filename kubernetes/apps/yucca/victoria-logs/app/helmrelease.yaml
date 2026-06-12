@@ -1,0 +1,29 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-victoria-logs
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: victoria-logs-single
+      version: 0.11.32
+      sourceRef:
+        kind: HelmRepository
+        name: victoriametrics
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    server:
+      fullnameOverride: victoria-logs
+      # Dev-mirror posture (Tilt installs these exact values).
+      # TODO(prod): enable + size persistence for the target cluster.
+      persistentVolume:
+        enabled: false
