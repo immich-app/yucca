@@ -110,6 +110,11 @@ export type RepositoryMetricsDto = {
     lastBackupDuration?: number;
     sizeBytes: number;
 };
+export type RepositoryMeterDto = {
+    sizeBytes: number;
+    objectCount: number;
+    lastUpdated?: string;
+};
 export type RepositoryBackendDto = {
     id: string;
     "type": BackendType;
@@ -128,6 +133,7 @@ export type LocalRepositoryDto = {
     worm: boolean;
     name: string;
     metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
     backends?: RepositoryBackendsDto;
     configuration?: RepositoryConfigurationDto;
 };
@@ -156,6 +162,7 @@ export type InspectedLocalRepositoryDto = {
     worm: boolean;
     name: string;
     metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
     backends?: RepositoryBackendsDto;
     configuration?: RepositoryConfigurationDto;
     snapshots: SnapshotDto[];

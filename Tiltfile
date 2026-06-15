@@ -175,6 +175,34 @@ docker_build(
     ],
 )
 
+docker_build(
+    'yucca-metrics-worker',
+    context='.',
+    dockerfile='packages/yucca-metrics-worker/Dockerfile',
+    target='dev',
+    only=[
+        './pnpm-workspace.yaml',
+        './pnpm-lock.yaml',
+        './package.json',
+        './.npmrc',
+        './packages',
+    ],
+    ignore=[
+        '**/node_modules',
+        '**/dist',
+        '**/.svelte-kit',
+        'packages/michael',
+        'packages/e2e',
+    ],
+    live_update=[
+        sync('./packages/yucca-metrics-worker', '/app/packages/yucca-metrics-worker'),
+        sync('./packages/common', '/app/packages/common'),
+        # yucca-metrics-worker/src/schema is a symlink into yucca-api; keep it synced.
+        sync('./packages/yucca-api', '/app/packages/yucca-api'),
+        run('cd /app && pnpm --filter @common/server build', trigger=['./packages/common/src']),
+    ],
+)
+
 # mock-oidc-provider has no dev target (config-only via env); a plain build is
 # enough — it rarely changes and is reconfigured through Helm values.
 docker_build(
@@ -200,10 +228,11 @@ docker_build(
 # ---------------------------------------------------------------------------
 local_resource(
     'helm-deps',
-    cmd='rm -rf charts/yucca-api/charts charts/yucca-admin-api/charts charts/web/charts charts/michael/charts charts/mock-oidc/charts && for d in charts/yucca-api charts/yucca-admin-api charts/web charts/michael charts/mock-oidc; do (cd $d && helm dependency build); done',
+    cmd='rm -rf charts/yucca-api/charts charts/yucca-admin-api/charts charts/yucca-metrics-worker/charts charts/web/charts charts/michael/charts charts/mock-oidc/charts && for d in charts/yucca-api charts/yucca-admin-api charts/yucca-metrics-worker charts/web charts/michael charts/mock-oidc; do (cd $d && helm dependency build); done',
     deps=[
         'charts/yucca-api',
         'charts/yucca-admin-api',
+        'charts/yucca-metrics-worker',
         'charts/web',
         'charts/michael',
         'charts/mock-oidc',
@@ -231,6 +260,7 @@ APP_WIRING = {
     # dev_env: receives the .env override Secret (see load_dev_env above).
     'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael'], 'dev_env': True},
     'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc']},
+    'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user'], 'dev_env': True},
     'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
     'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user']},
     'yucca-mock-oidc':        {'build': 'mock-oidc-provider', 'deps': []},
@@ -239,6 +269,10 @@ APP_WIRING = {
     # RGW user), so Tilt's pod tracking would hang at "pending". Mark ready on
     # apply; michael still waits on this resource for ordering.
     'yucca-object-user':      {'build': None,                 'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore'},
+    # Shares charts/ceph-objectuser with yucca-object-user; its userName/caps
+    # come from the HelmRelease values, so dev must apply them (dev_values) or
+    # both releases would default to userName=michael and collide.
+    'yucca-metrics-object-user': {'build': None,              'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore', 'dev_values': True},
     # Rook spins up transient mon/osd "canary" pods and deletes them; Tilt's
     # pod tracking misreads those deletions as failures. Ignore pod readiness
     # here — real convergence is still gated downstream (object-user -> michael
@@ -278,8 +312,10 @@ def discover_apps():
         namespace = hr['metadata'].get('namespace', 'yucca')
         if source.get('kind') == 'GitRepository' and chart.startswith('charts/'):
             # In-repo chart: dev renders it with its values.yaml defaults; the
-            # HelmRelease's .spec.values are the prod-side overrides.
-            local_apps.append(struct(name=name, namespace=namespace, chart=chart))
+            # HelmRelease's .spec.values are the prod-side overrides. Apps that
+            # opt in via dev_values (two releases sharing one chart, where the
+            # defaults aren't enough to tell them apart) get them in dev too.
+            local_apps.append(struct(name=name, namespace=namespace, chart=chart, values=hr['spec'].get('values', {})))
         elif source.get('kind') == 'HelmRepository':
             # Remote chart: dev installs the exact version + values Flux would.
             remote_apps.append(struct(
@@ -327,6 +363,9 @@ for app in LOCAL_APPS:
     builds = [wiring['build']] if wiring['build'] else []
     flags = ['--timeout=10m']
     extra_deps = []
+    if wiring.get('dev_values'):
+        for key in sorted(app.values.keys()):
+            flags += ['--set-json', '%s=%s' % (key, str(encode_json(app.values[key])).rstrip('\n'))]
     if DEV_ENV and wiring.get('dev_env'):
         flags += ['--set-json', 'extraEnvFrom=[{"secretRef":{"name":"yucca-dev-env"}}]']
         for key, value_path in DEV_ENV_VALUE_KEYS.items():

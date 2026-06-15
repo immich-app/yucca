@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
-  import { Card, CardBody, getByteUnitString } from "@immich/ui";
+  import { Badge, Card, CardBody, getByteUnitString } from "@immich/ui";
   import VisualisationGauge from "../ui/VisualisationGauge.svelte";
 
   type Props = {
@@ -10,10 +10,11 @@
   const { repositories }: Props = $props();
 
   const totalStored = $derived(
-    repositories.reduce(
-      (sum, repo) => sum + (repo.metrics?.sizeBytes ?? 0),
-      0,
-    ),
+    repositories.reduce((sum, repo) => sum + (repo.meter?.sizeBytes ?? 0), 0),
+  );
+
+  const estimatedStored = $derived(
+    repositories.reduce((sum, repo) => sum + (repo.metrics?.sizeBytes ?? 0), 0),
   );
 </script>
 
@@ -22,6 +23,11 @@
     <VisualisationGauge
       title="Total Stored"
       content={getByteUnitString(totalStored)}
-    />
+    >
+      {#snippet subtitle()}
+        <Badge size="tiny">Estimated {getByteUnitString(estimatedStored)}</Badge
+        >
+      {/snippet}
+    </VisualisationGauge>
   </CardBody>
 </Card>

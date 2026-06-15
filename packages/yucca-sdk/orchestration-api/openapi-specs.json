@@ -1415,6 +1415,24 @@
           "sizeBytes"
         ]
       },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
       "RepositoryBackendDto": {
         "type": "object",
         "properties": {
@@ -1492,6 +1510,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"
@@ -1602,6 +1623,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"
