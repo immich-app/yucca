@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { Kysely } from 'kysely';
+import { Kysely, Updateable } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from '../schema';
+import { RepositoryTable } from '../schema/tables/repository.table';
 import { RetentionPolicy } from '../utils/restic';
 
 type RepositoryRow = {
   id: string;
+  remoteId: string;
   backendId: string;
   retentionPolicy: RetentionPolicy | null;
 };
@@ -19,6 +21,7 @@ export class RepositoryRepository {
       .insertInto('repositories')
       .values({
         id: repository.id,
+        remoteId: repository.remoteId,
         backendId: repository.backendId,
         retentionPolicy: repository.retentionPolicy === null ? null : JSON.stringify(repository.retentionPolicy),
       })
@@ -28,16 +31,14 @@ export class RepositoryRepository {
     return repository;
   }
 
-  async update(id: string, patch: Partial<Pick<RepositoryRow, 'retentionPolicy'>>) {
-    await this.db
-      .updateTable('repositories')
-      .set({
-        ...('retentionPolicy' in patch && {
-          retentionPolicy: patch.retentionPolicy === null ? null : JSON.stringify(patch.retentionPolicy),
-        }),
-      })
-      .where('id', '=', id)
-      .execute();
+  async update(id: string, patch: Partial<Omit<RepositoryRow, 'id'>>) {
+    const { retentionPolicy, ...rest } = patch;
+    const set: Updateable<RepositoryTable> = { ...rest };
+    if ('retentionPolicy' in patch) {
+      set.retentionPolicy = retentionPolicy === null ? null : JSON.stringify(retentionPolicy);
+    }
+
+    await this.db.updateTable('repositories').set(set).where('id', '=', id).execute();
   }
 
   async get(id: string): Promise<RepositoryRow> {
@@ -49,6 +50,7 @@ export class RepositoryRepository {
 
     return {
       id: row.id,
+      remoteId: row.remoteId,
       backendId: row.backendId,
       retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
     };
@@ -58,6 +60,7 @@ export class RepositoryRepository {
     const rows = await this.db.selectFrom('repositories').selectAll('repositories').execute();
     return rows.map((row) => ({
       id: row.id,
+      remoteId: row.remoteId,
       backendId: row.backendId,
       retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
     }));

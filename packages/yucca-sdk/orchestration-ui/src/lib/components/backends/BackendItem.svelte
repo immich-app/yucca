@@ -2,6 +2,7 @@
   import type {
     BackendDto,
     BackendType,
+    LocalRepositoryDto,
     RepositoryBackendDto,
   } from "$lib/fetch-client";
   import { getBackendActions } from "$lib/services/backend.service";
@@ -10,11 +11,12 @@
   import StackListItem from "../ui/StackListItem.svelte";
 
   type Props = {
+    repository?: LocalRepositoryDto;
     backend: BackendDto;
     repositoryBackend?: RepositoryBackendDto & { primary?: boolean };
   };
 
-  const { backend, repositoryBackend }: Props = $props();
+  const { repository, backend, repositoryBackend }: Props = $props();
 
   const BackendIcons: Record<BackendType, string> = {
     yucca: mdiShieldCheckOutline,
@@ -28,10 +30,12 @@
     s3: "S3 Server",
   };
 
-  const { LoginAgain } = $derived(getBackendActions(backend));
+  const { LoginAgain, Reconfigure } = $derived(
+    getBackendActions(repository, backend, repositoryBackend),
+  );
 </script>
 
-<StackListItem actions={[LoginAgain]}>
+<StackListItem actions={[LoginAgain, Reconfigure]}>
   {#snippet icon()}
     <Icon icon={BackendIcons[backend.type]} />
   {/snippet}

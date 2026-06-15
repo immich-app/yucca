@@ -1,5 +1,6 @@
-import CreateLocalBackend from '$lib/components/backends/CreateLocalBackend.svelte';
-import OAuthDeviceFlow from '$lib/components/backends/OAuthDeviceFlow.svelte';
+import CreateLocalBackend from '$lib/components/backends/dialogs/CreateLocalBackendModal.svelte';
+import OAuthDeviceFlow from '$lib/components/backends/dialogs/OAuthDeviceFlowModal.svelte';
+import ReconfigureRepositoryBackendModal from '$lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte';
 import { SocketEvent } from '$lib/events';
 import {
   createLocalBackend,
@@ -7,6 +8,8 @@ import {
   oidcDeviceFlow,
   type BackendDto,
   type CreateLocalBackendRequestDto,
+  type LocalRepositoryDto,
+  type RepositoryBackendDto,
 } from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
@@ -72,14 +75,31 @@ export const useCreateLocalBackend = () =>
     () => ({
       mutationFn: (dto: CreateLocalBackendRequestDto) =>
         createLocalBackend(dto),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: backendKeys.all }),
       onError: (error) => handleError(error, 'Failed to create local backend'),
     }),
     () => queryClient,
   );
 
-export const getBackendActions = (backend: BackendDto) => {
+export const handleReconfigureRepositoryBackend = async (
+  repository: LocalRepositoryDto,
+) => {
+  await modalManager.show(ReconfigureRepositoryBackendModal, {
+    repository,
+  });
+};
+
+export const handleRemoveRepositoryBackend = (
+  _backend: BackendDto,
+  _repositoryBackend: RepositoryBackendDto,
+) => {
+  alert('TODO: implement me when multi-repository-backend support is added');
+};
+
+export const getBackendActions = (
+  repository: LocalRepositoryDto | undefined,
+  backend: BackendDto,
+  repositoryBackend?: RepositoryBackendDto & { primary?: boolean },
+) => {
   const LoginAgain: ActionItem = {
     icon: mdiLogin,
     title: 'Login again',
@@ -87,5 +107,30 @@ export const getBackendActions = (backend: BackendDto) => {
     $if: () => backend.type === 'yucca' && !backend.isOnline,
   };
 
-  return { LoginAgain };
+  const Reconfigure: ActionItem = {
+    icon: mdiLogin,
+    title: 'Reconfigure',
+    onAction: () => void handleReconfigureRepositoryBackend(repository!),
+    $if: () =>
+      repositoryBackend
+        ? backend.isOnline &&
+          !repositoryBackend.online &&
+          repositoryBackend.primary === true
+        : false,
+  };
+
+  const Remove: ActionItem = {
+    icon: mdiLogin,
+    title: 'Remove',
+    onAction: () =>
+      void handleRemoveRepositoryBackend(backend, repositoryBackend!),
+    $if: () =>
+      repositoryBackend
+        ? backend.isOnline &&
+          !repositoryBackend.online &&
+          repositoryBackend.primary === false
+        : false,
+  };
+
+  return { LoginAgain, Reconfigure, Remove };
 };

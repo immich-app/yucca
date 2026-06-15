@@ -31,6 +31,12 @@ export class BackendService {
       backends: backends.map((backend, idx) => ({
         id: backend.id,
         type: backend.configuration.type,
+        description:
+          backend.configuration.type === BackendType.Yucca
+            ? backend.configuration.url || 'FUTO Backups'
+            : backend.configuration.type === BackendType.Local
+              ? backend.configuration.path
+              : backend.configuration.endpoint,
         isOnline: error[idx] === undefined,
         error: error[idx],
       })),
@@ -46,6 +52,7 @@ export class BackendService {
     const backend = {
       type: BackendType.Local,
       id,
+      description: dto.path,
       isOnline: true,
     };
 

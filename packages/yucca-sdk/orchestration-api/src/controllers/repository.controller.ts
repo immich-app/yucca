@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
@@ -9,6 +9,7 @@ import {
   RepositoryCreateResponseDto,
   RepositoryInspectResponseDto,
   RepositoryListResponseDto,
+  RepositoryPrimaryBackendReconfigureRequestDto,
   RepositorySnapshotRestoreFromPointRequestDto,
   RepositorySnapshotRestoreRequestDto,
   RepositoryUpdateRequestDto,
@@ -38,9 +39,10 @@ export class RepositoryController {
   }
 
   @Get('/inspect')
+  @ApiQuery({ name: 'backend', type: String, required: false })
   @ApiOkResponse({ type: RepositoryInspectResponseDto })
-  inspectRepositories(): Promise<RepositoryInspectResponseDto> {
-    return this.service.inspectRepositories();
+  inspectRepositories(@Query('backend') backendId?: string): Promise<RepositoryInspectResponseDto> {
+    return this.service.inspectRepositories(backendId);
   }
 
   @Patch('/:id')
@@ -79,6 +81,15 @@ export class RepositoryController {
   @ApiOkResponse({ type: RepositoryCreateResponseDto })
   importRepository(@Param('id') id: string, @Query('backend') backend: string): Promise<RepositoryCreateResponseDto> {
     return this.service.importRepository(id, backend);
+  }
+
+  @Put('/:id/backend')
+  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  reconfigureRepositoryPrimaryBackend(
+    @Param('id') id: string,
+    @Body() dto: RepositoryPrimaryBackendReconfigureRequestDto,
+  ): Promise<RepositoryCreateResponseDto> {
+    return this.service.reconfigureRepositoryPrimaryBackend(id, dto);
   }
 
   @Get('/:id/runs')
