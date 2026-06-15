@@ -81,8 +81,6 @@ export const useCreateSchedule = () =>
   createMutation(
     () => ({
       mutationFn: (dto: ScheduleCreateRequestDto) => sdk.createSchedule(dto),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: scheduleKeys.all }),
       onError: (error) => handleError(error, 'Failed to create schedule'),
     }),
     () => queryClient,
@@ -98,8 +96,6 @@ export const useUpdateSchedule = () =>
         id: string;
         dto: ScheduleUpdateRequestDto;
       }) => sdk.updateSchedule(id, dto),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: scheduleKeys.all }),
       onError: (error) => handleError(error, 'Failed to update schedule'),
     }),
     () => queryClient,

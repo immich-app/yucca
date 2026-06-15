@@ -32,6 +32,7 @@ export class AuthService {
             backend: {
               id: YUCCA_PRODUCTION_UUID,
               type: BackendType.Yucca,
+              description: 'FUTO Backups',
               isOnline: true,
             },
           });

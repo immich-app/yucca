@@ -49,12 +49,13 @@
     {/snippet}
 
     {#each query.data as backend (backend.id)}
-      <BackendItem
-        {backend}
-        repositoryBackend={repositoryBackends.find(
-          ({ id }) => backend.id === id,
-        )}
-      />
+      {@const repositoryBackend = repositoryBackends.find(
+        ({ id }) => backend.id === id,
+      )}
+
+      {#if typeof repository === typeof repositoryBackend}
+        <BackendItem {repository} {backend} {repositoryBackend} />
+      {/if}
     {/each}
   </StackList>
 
