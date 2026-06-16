@@ -3,7 +3,6 @@ import { Updateable } from 'kysely';
 import { type WriteStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
-import { Backend } from '../backends/backend';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
   ListSnapshotsResponseDto,
@@ -82,9 +81,7 @@ export class RepositoryService {
       backendId = backends[0].id;
     }
 
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
-
+    const { backend, configuration } = await this.backend.getBackend(backendId);
     const { repository: remote } = await backend.createRepository(dto);
 
     const endpoint = await backend.getResticEndpoint(remote.id);
@@ -132,8 +129,7 @@ export class RepositoryService {
     const backendsById = Object.fromEntries(backends.map((backend) => [backend.id, backend]));
     const remoteRepositories: Record<string, Record<string, RepositoryWithMetricsDto>> = {};
 
-    for (const { id: backendId, configuration } of backends) {
-      const backend = Backend.from(configuration, this.moduleConfig.get());
+    for (const { id: backendId, backend } of backends) {
       remoteRepositories[backendId] = {};
 
       try {
@@ -263,14 +259,13 @@ export class RepositoryService {
       backendId = localRepository.backendId;
     }
 
-    const backend = await this.backend.getBackend(backendId);
-    const backendInstance = Backend.from(backend.configuration, this.moduleConfig.get());
+    const { backend, configuration } = await this.backend.getBackend(backendId);
 
     let remote;
     if (dto.name) {
-      ({ repository: remote } = await backendInstance.updateRepository(id, dto));
+      ({ repository: remote } = await backend.updateRepository(id, dto));
     } else {
-      ({ repository: remote } = await backendInstance.getRepository(id));
+      ({ repository: remote } = await backend.getRepository(id));
     }
 
     if (dto.paths) {
@@ -303,7 +298,7 @@ export class RepositoryService {
       backends: {
         primary: {
           id: backendId,
-          type: backend.configuration.type,
+          type: configuration.type,
           online: true,
         },
         secondary: [],
@@ -340,9 +335,8 @@ export class RepositoryService {
       backendId = localRepository.backendId;
     }
 
-    const backend = await this.backend.getBackend(backendId);
-    const backendInstance = Backend.from(backend.configuration, this.moduleConfig.get());
-    const endpoint = await backendInstance.getResticEndpoint(id);
+    const { backend } = await this.backend.getBackend(backendId);
+    const endpoint = await backend.getResticEndpoint(id);
 
     const key = await this.config.deriveEncryptionKey(`repository-${id}`);
 
@@ -382,8 +376,7 @@ export class RepositoryService {
 
       if (metrics.sizeBytes) {
         const { backendId } = await this.repository.get(id);
-        const { configuration } = await this.backend.getBackend(backendId);
-        const backend = Backend.from(configuration, this.moduleConfig.get());
+        const { backend } = await this.backend.getBackend(backendId);
 
         if (backend.isMetricsCapable()) {
           await backend.submitMetricRepositorySize(id, metrics.sizeBytes);
@@ -408,8 +401,7 @@ export class RepositoryService {
     }
 
     const { backendId } = await this.repository.get(id);
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
+    const { backend } = await this.backend.getBackend(backendId);
 
     const { endpoint, key } = await this.getResticParameters(id);
 
@@ -583,8 +575,7 @@ export class RepositoryService {
   }
 
   async importRepository(id: string, backendId: string): Promise<RepositoryCreateResponseDto> {
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
+    const { backend, configuration } = await this.backend.getBackend(backendId);
     const { repository: remote } = await backend.getRepository(id);
 
     const endpoint = await backend.getResticEndpoint(remote.id);
