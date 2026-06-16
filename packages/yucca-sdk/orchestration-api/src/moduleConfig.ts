@@ -13,7 +13,7 @@ export type ImmichIntegration = {
 
 export type ModuleConfig = {
   statePath: string;
-  yuccaProductionApi: string;
+  yuccaProductionApi?: string;
   externalBaseUrl?: string;
   requireWsAuth?: boolean;
   requireLock?: boolean;
