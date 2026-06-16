@@ -5,12 +5,10 @@ import { BackendResponseDto, BackendsResponseDto, CreateLocalBackendRequestDto }
 import { BackendType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
-import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
 @Injectable()
 export class BackendService {
   constructor(
-    private readonly moduleConfig: ModuleConfigRepository,
     private readonly repository: BackendRepository,
     private readonly events: EventsGateway,
   ) {}
@@ -20,7 +18,7 @@ export class BackendService {
 
     const error = await Promise.all(
       backends.map((backend) =>
-        Backend.from(backend.configuration, this.moduleConfig.get())
+        Backend.from(backend.configuration)
           .checkOnline()
           .then(() => void 0)
           .catch((error) => error),
