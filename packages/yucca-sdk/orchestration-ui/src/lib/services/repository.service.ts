@@ -9,6 +9,7 @@ import { SocketEvent } from '$lib/events';
 import {
   deleteRepository,
   inspectRepositories,
+  reconfigureRepositoryPrimaryBackend,
   updateRepository,
   type InspectedLocalRepositoryDto,
   type LocalRepositoryDto,
@@ -31,7 +32,10 @@ import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
   all: ['repositories'] as const,
-  inspectAll: ['repositories', 'inspect'] as const,
+  inspect: (backendId?: string) =>
+    ['repositories', 'inspect', backendId] as const,
+  checkImport: (id: string, backendId: string) =>
+    ['repositories', id, 'check-import', backendId] as const,
 };
 
 export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
@@ -48,13 +52,16 @@ export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
   );
 
 export const useInspectRepositories = (
+  backendId?: string,
   initialData?: InspectedLocalRepositoryDto[],
 ) =>
   createQuery(
     () => ({
-      queryKey: repositoryKeys.inspectAll,
+      queryKey: repositoryKeys.inspect(backendId),
       queryFn: () =>
-        inspectRepositories().then(({ repositories }) => repositories),
+        inspectRepositories({ backend: backendId }).then(
+          ({ repositories }) => repositories,
+        ),
       initialData,
     }),
     () => queryClient,
@@ -96,35 +103,30 @@ export const useRepositoryEventHandler = () => {
         },
       );
     },
-    onRepositoryDelete() {
-      queryClient
-        .invalidateQueries({
-          queryKey: repositoryKeys.all,
-        })
-        .catch(() => void 0);
+    onRepositoryDelete(event: SocketEvent<{ repositoryId: string }>) {
+      queryClient.setQueryData(
+        repositoryKeys.all,
+        (data: LocalRepositoryDto[] | undefined) =>
+          data?.filter((entry) => entry.id !== event.data.repositoryId),
+      );
     },
   };
 };
 
-export const handleCheckImportRepository = async (
-  id: string,
-  backendId: string,
-) => {
-  try {
-    return await sdk.checkImportRepository(id, backendId);
-  } catch (error) {
-    handleError(error, 'Failed to check repository');
-    throw error;
-  }
-};
+export const useCheckImportRepository = (id: string, backendId: string) =>
+  createQuery(
+    () => ({
+      queryKey: repositoryKeys.checkImport(id, backendId),
+      queryFn: () => sdk.checkImportRepository(id, backendId),
+    }),
+    () => queryClient,
+  );
 
 export const useCreateRepository = () =>
   createMutation(
     () => ({
       mutationFn: (dto: RepositoryCreateRequestDto) =>
         sdk.createRepository(dto),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
       onError: (error) => handleError(error, 'Failed to create repository'),
     }),
     () => queryClient,
@@ -135,8 +137,6 @@ export const useImportRepository = () =>
     () => ({
       mutationFn: ({ id, backendId }: { id: string; backendId: string }) =>
         sdk.importRepository(id, backendId),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
       onError: (error) => handleError(error, 'Failed to import repository'),
     }),
     () => queryClient,
@@ -154,9 +154,17 @@ export const useUpdateRepository = () =>
         dto: RepositoryUpdateRequestDto;
         local?: boolean;
       }) => (local ? sdk.updateRepository(id, dto) : updateRepository(id, dto)),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
       onError: (error) => handleError(error, 'Failed to update repository'),
+    }),
+    () => queryClient,
+  );
+
+export const useReconfigureRepositoryPrimaryBackend = () =>
+  createMutation(
+    () => ({
+      mutationFn: ({ id, backendId }: { id: string; backendId: string }) =>
+        reconfigureRepositoryPrimaryBackend(id, { backendId }),
+      onError: (error) => handleError(error, 'Failed to reconfigure backend'),
     }),
     () => queryClient,
   );
@@ -166,8 +174,6 @@ export const useRemoveRepository = () =>
     () => ({
       mutationFn: ({ id, local = false }: { id: string; local?: boolean }) =>
         local ? sdk.deleteRepository(id) : deleteRepository(id),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: repositoryKeys.all }),
       onError: (error) => handleError(error, 'Failed to delete repository'),
     }),
     () => queryClient,

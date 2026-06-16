@@ -34,6 +34,7 @@ export class AuthService {
             backend: {
               id: REPOSITORY_DEFAULT_CLOUD_UUID,
               type: BackendType.Yucca,
+              description: 'FUTO Backups',
               isOnline: true,
             },
           });
