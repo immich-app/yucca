@@ -141,6 +141,7 @@ describe('MetricsController (e2e)', () => {
             lastSuccessfulBackup: expect.any(String),
             lastBackupDuration: 1234,
           }),
+          meter: expect.any(Object),
         },
       });
     });
