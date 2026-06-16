@@ -1,21 +1,31 @@
-import { LoggerRepository } from '@common/server/otel';
+import { LoggerRepository, MetricService } from '@common/server/otel';
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Kysely } from 'kysely';
-import { InjectKysely } from 'nestjs-kysely';
+import { Gauge } from '@opentelemetry/api';
 import { env } from 'src/env';
 import { MeterRepository } from 'src/repositories/meter.repository';
+import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { RgwRepository } from 'src/repositories/rgw.repository';
-import { DB } from 'src/schema';
 
 @Injectable()
 export class MetricsService implements OnApplicationBootstrap {
+  private readonly repositorySizeBytes: Gauge;
+  private readonly repositoryObjectCount: Gauge;
+
   constructor(
-    @InjectKysely() private db: Kysely<DB>,
     private logger: LoggerRepository,
     private rgw: RgwRepository,
     private meter: MeterRepository,
-  ) {}
+    private repositories: RepositoryRepository,
+    metricService: MetricService,
+  ) {
+    this.repositorySizeBytes = metricService.getGauge('rgw_repository_size_bytes', {
+      description: 'Repository size in bytes',
+    });
+    this.repositoryObjectCount = metricService.getGauge('rgw_repository_object_count', {
+      description: 'Number of objects in the repository',
+    });
+  }
 
   async onApplicationBootstrap() {
     if (env.NODE_ENV === 'development') {
@@ -25,24 +35,29 @@ export class MetricsService implements OnApplicationBootstrap {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async sync() {
+    this.logger.info('Syncing from RadosGW...');
+
     try {
-      this.logger.info(`Syncing from RadosGW...`);
+      const repositories = await this.repositories.getAll();
+      const customerByRepository = new Map(repositories.map((repository) => [repository.id, repository.userId]));
 
-      const stats = await this.rgw.getBucketStats();
-      this.logger.info(`Fetched stats for ${stats.length} buckets`);
+      let count = 0;
+      for await (const { bucket: repositoryId, bytes, objects } of this.rgw.getBucketStatsStream()) {
+        count++;
 
-      const repositoryIds = new Set(
-        (await this.db.selectFrom('repositories').select('id').execute()).map((row) => row.id),
-      );
-
-      for (const { bucket, bytes, objects } of stats) {
-        if (!repositoryIds.has(bucket)) {
-          this.logger.warn(`RGW bucket "${bucket}" has no matching repository; skipping`);
+        const customerId = customerByRepository.get(repositoryId);
+        if (!customerId) {
+          this.logger.warn(`RGW bucket "${repositoryId}" has no matching repository; skipping`);
           continue;
         }
 
-        await this.meter.record(bucket, { sizeBytes: bytes, objectCount: objects });
+        await this.meter.record(repositoryId, { sizeBytes: bytes, objectCount: objects });
+
+        this.repositorySizeBytes.record(bytes, { repositoryId, customerId });
+        this.repositoryObjectCount.record(objects, { repositoryId, customerId });
       }
+
+      this.logger.info(`Synced stats for ${count} buckets`);
     } catch (error) {
       this.logger.error(error, 'Failed to sync metrics from RadosGW');
     }

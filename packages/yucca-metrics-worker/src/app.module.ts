@@ -4,6 +4,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { KyselyModule } from 'nestjs-kysely';
 import { MeterRepository } from './repositories/meter.repository';
+import { RepositoryRepository } from './repositories/repository.repository';
 import { RgwRepository } from './repositories/rgw.repository';
 import { MetricsService } from './services/metrics.service';
 import { getKyselyConfig } from './utils/database';
@@ -15,6 +16,7 @@ export const providers = [
   LoggerRepository,
   RgwRepository,
   MeterRepository,
+  RepositoryRepository,
   MetricsService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
 ];
