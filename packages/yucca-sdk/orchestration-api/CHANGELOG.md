@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1](https://github.com/immich-app/yucca/compare/v0.3.0...v0.3.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* add package metadata for provenance ([#130](https://github.com/immich-app/yucca/issues/130)) ([64b5fa7](https://github.com/immich-app/yucca/commit/64b5fa78970d38abc683bf63d8e79ed1087b7c81))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @futo-org/backups-api-client bumped to 0.3.1
+
 ## [0.3.0](https://github.com/immich-app/yucca/compare/v0.2.0...v0.3.0) (2026-06-17)
 
 
