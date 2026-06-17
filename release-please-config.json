@@ -3,12 +3,13 @@
   "release-type": "node",
   "prerelease": true,
   "separate-pull-requests": false,
-  "include-component-in-tag": true,
+  "include-component-in-tag": false,
   "plugins": [
     {
       "type": "linked-versions",
-      "groupName": "yucca-sdk",
+      "groupName": "yucca",
       "components": [
+        "yucca",
         "@futo-org/backups-api-client",
         "@futo-org/backups-orchestrator-api",
         "@futo-org/backups-orchestrator-ui"
@@ -17,6 +18,10 @@
     "node-workspace"
   ],
   "packages": {
+    ".": {
+      "package-name": "yucca",
+      "prerelease-type": "alpha"
+    },
     "packages/yucca-api-client": {
       "package-name": "@futo-org/backups-api-client",
       "prerelease-type": "alpha"
