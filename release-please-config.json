@@ -20,7 +20,12 @@
   "packages": {
     ".": {
       "package-name": "yucca",
-      "prerelease-type": "alpha"
+      "prerelease-type": "alpha",
+      "exclude-paths": [
+        "packages/yucca-api-client",
+        "packages/yucca-sdk/orchestration-api",
+        "packages/yucca-sdk/orchestration-ui"
+      ]
     },
     "packages/yucca-api-client": {
       "package-name": "@futo-org/backups-api-client",
