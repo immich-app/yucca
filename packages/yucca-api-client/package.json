@@ -1,7 +1,8 @@
 {
   "name": "@futo-org/backups-api-client",
+  "repository": "https://github.com/immich-app/yucca",
   "version": "0.3.0",
-  "description": "",
+  "description": "Auto-generated SDK for backups API",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

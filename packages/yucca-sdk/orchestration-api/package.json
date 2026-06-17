@@ -1,7 +1,8 @@
 {
   "name": "@futo-org/backups-orchestrator-api",
+  "repository": "https://github.com/immich-app/yucca",
   "version": "0.3.0",
-  "description": "",
+  "description": "Backups orchestrator (API)",
   "main": "index.js",
   "scripts": {
     "build": "nest build",
