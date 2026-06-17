@@ -33,25 +33,27 @@ describe('RgwRepository (integration)', () => {
     }
   });
 
-  it('lists bucket stats', async () => {
-    const stats = await repository.getBucketStats();
+  it('gets stats for every bucket', async () => {
+    const stats: BucketStats[] = [];
 
-    expect(Array.isArray(stats)).toBe(true);
-    expect(stats.map((stat) => stat.bucket)).toEqual(expect.arrayContaining(buckets));
-
-    for (const stat of stats) {
+    for await (const stat of repository.getBucketStats()) {
+      stats.push(stat);
       expect(typeof stat.bucket).toBe('string');
       expect(stat.bucket.length).toBeGreaterThan(0);
       expect(stat.objects).toBeGreaterThanOrEqual(0);
       expect(stat.bytes).toBeGreaterThanOrEqual(0);
     }
+
+    expect(stats.map((stat) => stat.bucket)).toEqual(expect.arrayContaining(buckets));
   });
 
-  it('streams bucket stats (& equivalent to list)', async () => {
-    const bulk = await repository.getBucketStats();
+  it('gets stats for every bucket with pagination', async () => {
+    const bulk: BucketStats[] = [];
+    for await (const stat of repository.getBucketStats()) {
+      bulk.push(stat);
+    }
 
     const streamed: BucketStats[] = [];
-
     for await (const stat of repository.getBucketStatsStream(1)) {
       streamed.push(stat);
       expect(stat.objects).toBeGreaterThanOrEqual(0);

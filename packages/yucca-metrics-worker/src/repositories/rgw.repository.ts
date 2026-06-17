@@ -16,14 +16,16 @@ export class RgwRepository {
     region: 'rgw',
   });
 
-  async getBucketStats(): Promise<BucketStats[]> {
+  async *getBucketStats(): AsyncGenerator<BucketStats> {
     const entries: RgwBucketEntry[] = await this.adminRequest('/admin/bucket', { format: 'json', stats: 'true' });
 
-    return entries.map((entry) => ({
-      bucket: entry.bucket,
-      objects: entry.usage?.['rgw.main']?.num_objects ?? 0,
-      bytes: entry.usage?.['rgw.main']?.size_actual ?? 0,
-    }));
+    for (const entry of entries) {
+      yield {
+        bucket: entry.bucket,
+        objects: entry.usage?.['rgw.main']?.num_objects ?? 0,
+        bytes: entry.usage?.['rgw.main']?.size_actual ?? 0,
+      };
+    }
   }
 
   async *getBucketStatsStream(pageSize = 1000): AsyncGenerator<BucketStats> {

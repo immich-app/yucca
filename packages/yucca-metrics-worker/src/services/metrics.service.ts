@@ -42,7 +42,7 @@ export class MetricsService implements OnApplicationBootstrap {
       const customerByRepository = new Map(repositories.map((repository) => [repository.id, repository.userId]));
 
       let count = 0;
-      for await (const { bucket: repositoryId, bytes, objects } of this.rgw.getBucketStatsStream()) {
+      for await (const { bucket: repositoryId, bytes, objects } of this.rgw.getBucketStats()) {
         count++;
 
         const customerId = customerByRepository.get(repositoryId);
