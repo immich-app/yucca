@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Build yucca-metrics-worker"
+#MISE depends=["common:build"]
+set -e
+
+NODE_ENV=production pnpm --filter yucca-metrics-worker build

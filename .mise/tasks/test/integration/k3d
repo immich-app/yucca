@@ -55,6 +55,15 @@ S3_REGION=us-east-1
 S3_FORCE_PATH_STYLE=true
 export S3_ENDPOINT S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_REGION S3_FORCE_PATH_STYLE
 
+if kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics >/dev/null 2>&1; then
+  RADOS_ENDPOINT=http://localhost:9000
+  RADOS_ACCESS_KEY_ID="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.AccessKey}' | base64 -d)"
+  RADOS_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.SecretKey}' | base64 -d)"
+  export RADOS_ENDPOINT RADOS_ACCESS_KEY_ID RADOS_SECRET_ACCESS_KEY
+else
+  echo "==> rook-ceph-object-user-yucca-metrics not found; RGW integration tests will skip"
+fi
+
 # The deployed mock-oidc advertises its in-cluster name as the issuer; the dns
 # preload resolves it to the port-forward for every node process (jest + the
 # apps it boots). Same split-horizon glue as the e2e runner.

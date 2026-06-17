@@ -6,3 +6,7 @@ spec:
   store: {{ .Values.store }}
   clusterNamespace: {{ .Values.clusterNamespace }}
   displayName: {{ .Values.userName }}
+  {{- with .Values.capabilities }}
+  capabilities:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

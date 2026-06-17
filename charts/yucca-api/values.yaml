@@ -69,14 +69,10 @@ env:
     value: yucca-michael
   - name: RESTIC_API_PORT
     value: "3010"
-  - name: OTLP_METRICS_ENDPOINT
-    value: victoria-metrics:8428
-  - name: OTLP_METRICS_URL_PATH
-    value: /opentelemetry/v1/metrics
-  - name: OTLP_LOGS_ENDPOINT
-    value: victoria-logs:9428
-  - name: OTLP_LOGS_URL_PATH
-    value: /insert/opentelemetry/v1/logs
+  - name: OTEL_METRICS
+    value: http://victoria-metrics:8428/opentelemetry/v1/metrics
+  - name: OTEL_LOGGING
+    value: http://victoria-logs:9428/insert/opentelemetry/v1/logs
 
 # Probes keep `tilt ci`/Flux honest: without them a crash-looping dev process
 # still counts as Ready (this masked two real bugs). The startupProbe budgets

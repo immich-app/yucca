@@ -1,0 +1,56 @@
+replicas: 1
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: yucca-metrics-worker
+
+image:
+  repository: k3d-registry.localhost:5000/yucca-metrics-worker
+  tag: dev
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 3040
+
+# CNPG-managed postgres Cluster name (shares yucca-api's database)
+postgresClusterName: yucca-db
+
+# Rook-Ceph RGW endpoint + the object-user Secret holding AccessKey/SecretKey.
+# A dedicated RGW user (charts/ceph-objectuser via the yucca-metrics-object-user
+# release) with admin read caps, so the worker can pull per-bucket stats from the
+# RGW admin API — michael is a plain S3 user without those caps.
+radosEndpoint: http://rook-ceph-rgw-yucca.rook-ceph.svc:80
+radosSecretName: rook-ceph-object-user-yucca-metrics
+
+# Static dev secrets (overridden in dev via the yucca-dev-env extraEnvFrom
+# layer, in prod via ExternalSecret)
+secretData:
+  POLAR_ACCESS_TOKEN: "polar access token"
+  POLAR_WEBHOOK_SECRET: "polar webhook secret"
+  POLAR_PRODUCT_ID: "polar product ID"
+  POLAR_APPLY_DISCOUNT_ID: "polar apply discount ID"
+
+extraEnvFrom: []
+
+env:
+  - name: NODE_ENV
+    value: development
+  - name: YUCCA_METRICS_WORKER_PORT
+    value: "3040"
+  - name: LOG_LEVEL
+    value: debug
+  - name: OTEL_METRICS
+    value: http://victoria-metrics:8428/opentelemetry/v1/metrics
+  - name: OTEL_LOGGING
+    value: http://victoria-logs:9428/insert/opentelemetry/v1/logs
+
+# Probes keep `tilt ci`/Flux honest: without them a crash-looping dev process
+# still counts as Ready. The startupProbe budgets for the dev watcher's first
+# boot; no livenessProbe so dev never restart-loops.
+startupProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 5
+  failureThreshold: 60
+readinessProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 10

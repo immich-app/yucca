@@ -51,11 +51,17 @@ export type RepositoryMetricsDto = {
     lastBackupDuration?: number;
     sizeBytes: number;
 };
+export type RepositoryMeterDto = {
+    sizeBytes: number;
+    objectCount: number;
+    lastUpdated?: string;
+};
 export type RepositoryWithMetricsDto = {
     id: string;
     worm: boolean;
     name: string;
     metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
 };
 export type RepositoryCreateResponseDto = {
     repository: RepositoryWithMetricsDto;

@@ -51,6 +51,7 @@ describe('RepositoryController (e2e)', () => {
           worm: false,
           name: 'My Repository',
           metrics: expect.any(Object),
+          meter: expect.any(Object),
         },
       });
     });
@@ -70,6 +71,7 @@ describe('RepositoryController (e2e)', () => {
           worm: false,
           name: expect.any(String),
           metrics: expect.any(Object),
+          meter: expect.any(Object),
         },
       });
     });
@@ -107,6 +109,7 @@ describe('RepositoryController (e2e)', () => {
           worm: false,
           name: 'Updated Name',
           metrics: expect.any(Object),
+          meter: expect.any(Object),
         },
       });
     });
