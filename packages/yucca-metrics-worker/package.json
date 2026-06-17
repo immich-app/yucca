@@ -12,7 +12,8 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "test": "jest",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "test:integration": "jest --config ./test/jest-integration.json --runInBand"
   },
   "files": [
     "dist"
