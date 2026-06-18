@@ -84,6 +84,14 @@ export class ConfigRepository {
     return this.set(ConfigurationKey.OnboardedKey, '1');
   }
 
+  async hasTelemetry() {
+    return this.has(ConfigurationKey.Telemetry);
+  }
+
+  async enableTelemetry() {
+    return this.set(ConfigurationKey.Telemetry, 'full');
+  }
+
   async hasSkippedExtraConfig() {
     return this.has(ConfigurationKey.SkippedOnboardingExtraConfig);
   }

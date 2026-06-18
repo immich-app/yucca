@@ -20,6 +20,7 @@ import { ScheduleController } from './controllers/schedule.controller';
 import { EventsGateway } from './events/events.gateway';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
+import { BootstrapRepository } from './repositories/bootstrap.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { ModuleConfigRepository } from './repositories/moduleConfig.repository';
@@ -60,6 +61,7 @@ export const controllers = [
 
 export const repositories = [
   BackendRepository,
+  BootstrapRepository,
   ConfigRepository,
   DatabaseRepository,
   ModuleConfigRepository,

@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { CurrentRecoveryKeyResponse, OnboardingStatusResponseDto } from '../dto/onboarding.dto';
+import { BootstrapStatus, TelemetryLevel } from '../enum';
 import { BackendRepository } from '../repositories/backend.repository';
+import { BootstrapRepository } from '../repositories/bootstrap.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { ScheduleRepository } from '../repositories/schedule.repository';
+import { TelemetryService } from './telemetry.service';
 
 @Injectable()
 export class OnboardingService {
@@ -12,14 +15,36 @@ export class OnboardingService {
     private readonly repository: RepositoryRepository,
     private readonly schedule: ScheduleRepository,
     private readonly config: ConfigRepository,
+    private readonly bootstrap: BootstrapRepository,
+    private readonly telemetry: TelemetryService,
   ) {}
 
   async onboardingStatus(): Promise<OnboardingStatusResponseDto> {
+    const status = this.bootstrap.getStatus();
+
+    if (status !== BootstrapStatus.Ready) {
+      let error = this.bootstrap.getError();
+      error = error ? `${error}` : undefined;
+
+      return {
+        status,
+        error,
+        hasTelemetry: TelemetryLevel.None,
+        hasOnboardedKey: false,
+        hasBackend: false,
+        hasBackup: false,
+        hasSchedule: false,
+        hasSkippedExtraConfig: false,
+      };
+    }
+
     const backends = await this.backend.getBackends();
     const repositories = await this.repository.getAll();
     const schedules = await this.schedule.getAll();
 
     return {
+      status: BootstrapStatus.Ready,
+      hasTelemetry: (await this.config.hasTelemetry()) ? TelemetryLevel.Full : TelemetryLevel.None,
       hasOnboardedKey: await this.config.hasOnboardedKey(),
       hasBackend: backends.length > 0,
       hasBackup: repositories.length > 0,
@@ -46,5 +71,19 @@ export class OnboardingService {
 
   async skipExtraConfig() {
     await this.config.skipExtraConfig();
+  }
+
+  async enableTelemetry() {
+    await this.config.enableTelemetry();
+  }
+
+  reportError() {
+    this.telemetry.submitStructuredLog(
+      'Bootstrap error',
+      {
+        error: this.bootstrap.getError(),
+      },
+      true,
+    );
   }
 }

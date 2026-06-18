@@ -10,6 +10,7 @@ export enum CookieName {
 export enum ConfigurationKey {
   EncryptionKey = 'encryption-key',
   OnboardedKey = 'onboarded-key',
+  Telemetry = 'telemetry',
   SkippedOnboardingExtraConfig = 'skipped-onboarding-extra-config',
 }
 
@@ -34,4 +35,15 @@ export enum TaskType {
 
 export enum InternalEvent {
   ModuleConfigUpdated = 'yucca.moduleConfig.updated',
+}
+
+export enum BootstrapStatus {
+  NotReady = 'not-ready',
+  Ready = 'ready',
+  Error = 'error',
+}
+
+export enum TelemetryLevel {
+  Full = 'full',
+  None = 'none',
 }
