@@ -8,3 +8,4 @@ export const updateRepository = jest.fn();
 export const submitMetricBackupStart = jest.fn();
 export const submitMetricBackupEnd = jest.fn();
 export const submitMetricRepositorySize = jest.fn();
+export const submitStructuredLog = jest.fn().mockResolvedValue(undefined);

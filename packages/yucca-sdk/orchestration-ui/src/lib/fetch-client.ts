@@ -87,7 +87,12 @@ export type ConfigureImmichIntegrationRequestDto = {
     libraries: "all" | string[];
     retentionPolicy?: (RetentionPolicyDto) | null;
 };
+export type BootstrapStatus = "not-ready" | "ready" | "error";
+export type TelemetryLevel = "full" | "none";
 export type OnboardingStatusResponseDto = {
+    status: BootstrapStatus;
+    error?: string;
+    hasTelemetry: TelemetryLevel;
     hasOnboardedKey: boolean;
     hasBackend: boolean;
     hasBackup: boolean;
@@ -350,6 +355,18 @@ export function confirmRecoveryKey(opts?: Oazapfts.RequestOpts) {
 }
 export function skipOnboardingExtraConfig(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/skip", {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function enableTelemetry(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/telemetry", {
+        ...opts,
+        method: "POST"
+    }));
+}
+export function reportError(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/onboarding/report-error", {
         ...opts,
         method: "POST"
     }));
