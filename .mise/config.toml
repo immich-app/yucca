@@ -7,6 +7,20 @@ restic = "0.18.0"
 gh = "2.25.0"
 "github:git-town/git-town" = "22.4.0"
 
+k3d = "5.8.3"
+kubectl = "1.32.2"
+helm = "3.17.0"
+tilt = "0.34.5"
+
+# Static validation of the k8s surface (mise run k8s:validate, used by CI).
+# flux-local runs via `uvx` (see .mise/tasks/k8s/validate): uv auto-fetches a
+# Python matching its requires-python, so the host's Python version (3.12 on
+# GitHub runners, 3.14 on dev machines) doesn't matter.
+kubeconform = "0.8.0"
+kustomize = "5.8.1"            # flux-local shells out to it
+flux2 = "2.7.5"                # ...and to the flux CLI
+uv = "0.9.18"
+
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
 opentofu = "1.11.5"
 terragrunt = "0.99.4"
@@ -30,7 +44,9 @@ depends = ["*:test"]
 
 [tasks."test:integration"]
 description = "Run all integration tests"
-run = "mise run '*:test:integration' --jobs 1"
+# NB: mise flags must precede the task pattern — anything after it is forwarded
+# to the tasks themselves (jest/go test choke on a stray --jobs).
+run = "mise run --jobs 1 '*:test:integration'"
 
 [tasks."test:e2e:web"]
 description = "Run all web e2e tests"
@@ -49,25 +65,26 @@ description = "Run all possible code fixes"
 run = [{ task = "*:fix" }, { task = "web:lingui" }]
 
 # ─── Infrastructure (tf + ansible) ──────────────────────────────────────────
-# All tf:* tasks wrap terragrunt with `op run --env-file=tf/.env` so the
-# OP_SERVICE_ACCOUNT_TOKEN is injected from 1Password at invocation time.
+# tf:* tasks wrap terragrunt with tf/op-run.sh, which injects secrets from
+# tf/.env via 1Password (op run) and appends a clear "unlock 1Password" hint
+# when op can't authorize, instead of letting terragrunt die on empty creds.
 # No literal secrets in the .env file — just op:// references.
 
 [tasks."tf:init"]
 description = "Terragrunt init for a given stack (default: deployment/dev/ceph)"
-run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} init"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} init"
 
 [tasks."tf:plan"]
 description = "Terragrunt plan for a given stack"
-run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} plan"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} plan"
 
 [tasks."tf:apply"]
 description = "Terragrunt apply for a given stack"
-run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} apply"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} apply"
 
 [tasks."tf:destroy"]
 description = "Terragrunt destroy for a given stack (use with care)"
-run = "op run --env-file=tf/.env -- terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} destroy"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/dev/ceph} destroy"
 
 [tasks."tf:fmt"]
 description = "Format terraform + terragrunt files recursively"

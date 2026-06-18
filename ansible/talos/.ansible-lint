@@ -1,0 +1,12 @@
+---
+# Shared variable prefixes within this stack:
+#   talos_*              — cluster-wide vars in group_vars
+#   networkd_bridges_*   — networkd_bridges role internals
+#   libvirt_host_*       — libvirt_host role internals
+#   nftables_bridges_*   — nftables_bridges role internals
+#   talos_image_*        — talos_image role internals
+#   talos_vms_*          — talos_vms role internals
+# Mixed scheme (cluster-shared + per-role prefix) doesn't fit ansible-lint's
+# default expectation of one prefix per role. Same posture as ansible/ceph.
+skip_list:
+  - var-naming[no-role-prefix]

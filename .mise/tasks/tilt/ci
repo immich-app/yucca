@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Build + deploy + wait for the k3d stack (tilt ci); optional resource subset"
+#MISE dir="{{config_root}}"
+set -euo pipefail
+
+if ! kubectl config current-context | grep -q '^k3d-yucca$'; then
+  echo "Current kube context is not k3d-yucca. Run: mise k3d:up" >&2
+  exit 1
+fi
+
+exec tilt ci --timeout 1800s "$@"

@@ -1,11 +1,11 @@
 <script lang="ts">
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import { type LocalRepositoryDto } from "$lib/fetch-client";
   import {
-    handleCheckImportRepository,
+    useCheckImportRepository,
     useImportRepository,
   } from "$lib/services/repository.service";
-  import { FormModal, LoadingSpinner, modalManager, Text } from "@immich/ui";
-  import { onMount } from "svelte";
+  import { FormModal, modalManager, Text } from "@immich/ui";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
 
   type Props = {
@@ -14,16 +14,12 @@
   };
 
   let { onClose, repository }: Props = $props();
-  let readable: boolean | undefined = $state();
 
-  onMount(async () => {
-    const check = await handleCheckImportRepository(
-      repository.id,
-      repository.backends!.primary.id,
-    );
-
-    readable = check.readable;
-  });
+  // svelte-ignore state_referenced_locally
+  const check = useCheckImportRepository(
+    repository.id,
+    repository.backends!.primary.id,
+  );
 
   const mutation = useImportRepository();
 
@@ -48,15 +44,15 @@
 <FormModal
   title={`Import ${repository.name}`}
   submitText="Import"
-  disabled={readable !== true || mutation.isPending}
+  disabled={check.data?.readable !== true || mutation.isPending}
   {onSubmit}
   {onClose}
 >
-  {#if readable === undefined}
-    <LoadingSpinner />
-  {:else if readable}
-    <Text>Repository is readable and accessible!</Text>
-  {:else}
-    <Text>Can't read repository.</Text>
-  {/if}
+  <Suspense query={check}>
+    {#if check.data?.readable}
+      <Text>Repository is readable and accessible!</Text>
+    {:else}
+      <Text>Can't read repository.</Text>
+    {/if}
+  </Suspense>
 </FormModal>

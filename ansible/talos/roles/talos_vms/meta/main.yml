@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  author: FUTO
+  description: >
+    Define + start Talos VMs on a hypervisor. Idempotent: qcow2
+    overlays are created via creates:, domain definitions are
+    managed via community.libvirt.virt (define is no-op when XML
+    matches), starts are no-op when already running. Per-VM list
+    comes from host_vars filtered by talos_profile.
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+dependencies: []

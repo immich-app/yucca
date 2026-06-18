@@ -1,0 +1,54 @@
+replicas: 1
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: yucca-admin-api
+
+image:
+  repository: k3d-registry.localhost:5000/yucca-admin-api
+  tag: dev
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 3030
+
+service:
+  type: ClusterIP
+
+# CNPG-managed postgres Cluster name (shares yucca-api's database)
+postgresClusterName: yucca-db
+
+# OIDC provider in-cluster service (must match the issuer mock-oidc advertises)
+oidcIssuer: http://yucca-mock-oidc:8092
+oidcRedirectUri: http://localhost:3030/api/auth/oidc/callback
+oidcLogoutRedirectUri: http://localhost:3030
+
+# Static dev secrets (overridden in prod via ExternalSecret)
+secretData:
+  OIDC_ADMIN_CLIENT_ID: "client ID"
+  OIDC_ADMIN_CLIENT_SECRET: "client secret"
+
+env:
+  - name: NODE_ENV
+    value: development
+  - name: YUCCA_ADMIN_API_PORT
+    value: "3030"
+  - name: LOG_LEVEL
+    value: debug
+  - name: OIDC_ADMIN_ALLOW_INSECURE
+    value: "true"
+  - name: OTEL_METRICS
+    value: http://victoria-metrics:8428/opentelemetry/v1/metrics
+  - name: OTEL_LOGGING
+    value: http://victoria-logs:9428/insert/opentelemetry/v1/logs
+
+# Probes keep `tilt ci`/Flux honest: without them a crash-looping dev process
+# still counts as Ready (this masked two real bugs). The startupProbe budgets
+# for the dev watcher's first boot; no livenessProbe so dev never restart-loops.
+startupProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 5
+  failureThreshold: 60
+readinessProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 10

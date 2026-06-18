@@ -1,0 +1,31 @@
+# Ansible
+ansible.log
+ansible.*.log
+*.retry
+.ansible/
+.ansible_facts_cache/
+
+# Transient outputs
+backups/
+exports/
+
+# TF-generated artifacts — do not commit; re-render with
+# `TF_STACK_DIR=tf/deployment/<env>/talos mise run tf:apply` from the repo root.
+inventories/*/inventory.ini
+inventories/*/secrets.yml.tpl
+
+# host_vars (per-host talos_vms) are TF-GENERATED from clusters.auto.tfvars
+# nodes[] — the single source of truth for topology. Do not commit; re-render
+# with tf:apply.
+inventories/*/host_vars/*.yml
+
+# Python virtualenv (mise setup) and bytecode
+.venv/
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*~

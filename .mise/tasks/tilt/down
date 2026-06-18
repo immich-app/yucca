@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Tear down Tilt resources"
+set -euo pipefail
+
+tilt down --delete-namespaces "$@"

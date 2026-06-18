@@ -1,0 +1,22 @@
+---
+# Master toggle — role is a no-op when false. Default false; opt-in only.
+nftables_bridges_enabled: false
+
+# Sysctl drop-in path. A dedicated file (not /etc/sysctl.conf) so
+# rollback is a clean `state: absent` on this single path. Numeric
+# prefix `50-` orders us after distro defaults.
+nftables_bridges_sysctl_file: /etc/sysctl.d/50-talos-bridges.conf
+
+# br_netfilter must be loaded for these sysctls to exist (the
+# /proc/sys/net/bridge/* keys only appear once the module is in).
+# We set persistent: present so a reboot re-loads it.
+nftables_bridges_module: br_netfilter
+
+# Sysctls managed by this role. Both default to 1 in stock kernels;
+# we set them to 0 so bridge-forwarded frames bypass the netfilter
+# IP layer entirely. This matters because Ceph's existing inet
+# filter table has a default-DROP forward chain — without bypass,
+# Talos VM↔VM traffic on br-vlan50 would be silently dropped.
+nftables_bridges_sysctls:
+  net.bridge.bridge-nf-call-iptables: "0"
+  net.bridge.bridge-nf-call-ip6tables: "0"

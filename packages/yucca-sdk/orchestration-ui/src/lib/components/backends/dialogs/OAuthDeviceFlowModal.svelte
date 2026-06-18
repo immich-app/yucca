@@ -16,7 +16,7 @@
     VStack,
   } from "@immich/ui";
   import { mdiContentCopy } from "@mdi/js";
-  import OnEvents from "../util/OnEvents.svelte";
+  import OnEvents from "../../util/OnEvents.svelte";
 
   type Props = {
     userCode: string;

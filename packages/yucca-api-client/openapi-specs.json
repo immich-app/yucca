@@ -590,6 +590,24 @@
           "sizeBytes"
         ]
       },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
       "RepositoryWithMetricsDto": {
         "type": "object",
         "properties": {
@@ -604,6 +622,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           }
         },
         "required": [

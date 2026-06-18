@@ -22,6 +22,7 @@ export type BackendType = "yucca" | "local" | "s3";
 export type BackendDto = {
     id: string;
     "type": BackendType;
+    description: string;
     isOnline: boolean;
     error?: string;
 };
@@ -115,6 +116,11 @@ export type RepositoryMetricsDto = {
     lastBackupDuration?: number;
     sizeBytes: number;
 };
+export type RepositoryMeterDto = {
+    sizeBytes: number;
+    objectCount: number;
+    lastUpdated?: string;
+};
 export type RepositoryBackendDto = {
     id: string;
     "type": BackendType;
@@ -133,6 +139,7 @@ export type LocalRepositoryDto = {
     worm: boolean;
     name: string;
     metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
     backends?: RepositoryBackendsDto;
     configuration?: RepositoryConfigurationDto;
 };
@@ -161,6 +168,7 @@ export type InspectedLocalRepositoryDto = {
     worm: boolean;
     name: string;
     metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
     backends?: RepositoryBackendsDto;
     configuration?: RepositoryConfigurationDto;
     snapshots: SnapshotDto[];
@@ -181,6 +189,9 @@ export type LogResponseDto = {
 };
 export type RepositoryCheckImportResponseDto = {
     readable: boolean;
+};
+export type RepositoryPrimaryBackendReconfigureRequestDto = {
+    backendId: string;
 };
 export type RunStatus = "incomplete" | "complete" | "failed";
 export type RunType = "schedule" | "restore" | "backup" | "forget";
@@ -382,11 +393,15 @@ export function getRepositories(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function inspectRepositories(opts?: Oazapfts.RequestOpts) {
+export function inspectRepositories({ backend }: {
+    backend?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryInspectResponseDto;
-    }>("/api/yucca/repository/inspect", {
+    }>(`/api/yucca/repository/inspect${QS.query(QS.explode({
+        backend
+    }))}`, {
         ...opts
     }));
 }
@@ -439,6 +454,16 @@ export function importRepository(id: string, backend: string, opts?: Oazapfts.Re
         ...opts,
         method: "POST"
     }));
+}
+export function reconfigureRepositoryPrimaryBackend(id: string, repositoryPrimaryBackendReconfigureRequestDto: RepositoryPrimaryBackendReconfigureRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RepositoryCreateResponseDto;
+    }>(`/api/yucca/repository/${encodeURIComponent(id)}/backend`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: repositoryPrimaryBackendReconfigureRequestDto
+    })));
 }
 export function getRunHistory(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

@@ -1,6 +1,8 @@
 {
   "name": "@futo-org/backups-orchestrator-ui",
-  "version": "0.1.72",
+  "repository": "https://github.com/immich-app/yucca",
+  "description": "Backups orchestrator (UI library)",
+  "version": "0.3.1",
   "license": "Source First License 1.1",
   "scripts": {
     "dev": "vite dev --port 5174",

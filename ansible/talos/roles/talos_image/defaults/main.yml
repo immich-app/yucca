@@ -1,0 +1,19 @@
+---
+# Master toggle — role is a no-op when false. Default false.
+talos_image_enabled: false
+
+# All other settings inherited from group_vars/all.yml:
+#   talos_version, talos_image_url, talos_image_sha256,
+#   talos_image_dir, talos_base_image_path,
+#   talos_kernel_url, talos_kernel_sha256, talos_kernel_path,
+#   talos_initramfs_url, talos_initramfs_sha256, talos_initramfs_path
+
+# Where the compressed image lands during fetch. Removed after
+# successful decompression to save disk on the operator's pool.
+talos_image_compressed_path: "{{ talos_base_image_path }}.zst"
+
+# Whether to delete the .zst after a successful decompression. Off
+# by default for re-fetch resilience — keeping the verified .zst
+# means we can re-decompress without a re-download if the .raw is
+# ever clobbered.
+talos_image_delete_compressed: false

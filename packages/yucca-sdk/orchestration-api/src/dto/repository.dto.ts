@@ -51,9 +51,23 @@ export class RepositoryMetricsDto {
   sizeBytes!: number;
 }
 
+export class RepositoryMeterDto {
+  @ApiProperty({ type: Number })
+  sizeBytes!: number;
+
+  @ApiProperty({ type: Number })
+  objectCount!: number;
+
+  @ApiProperty({ type: String, required: false })
+  lastUpdated?: string;
+}
+
 export class RepositoryWithMetricsDto extends RepositoryDto {
   @ApiProperty({ type: RepositoryMetricsDto })
   metrics!: RepositoryMetricsDto;
+
+  @ApiProperty({ type: RepositoryMeterDto, required: false })
+  meter?: RepositoryMeterDto;
 }
 
 export class RepositoryBackendDto {
@@ -113,6 +127,12 @@ export class RepositoryCreateRequestDto {
 export class RepositoryCreateResponseDto {
   @ApiProperty({ type: LocalRepositoryDto })
   repository!: LocalRepositoryDto;
+}
+
+export class RepositoryPrimaryBackendReconfigureRequestDto {
+  @ApiProperty({ type: String, required: true })
+  @IsString()
+  backendId!: string;
 }
 
 export class RepositoryUpdateRequestDto {

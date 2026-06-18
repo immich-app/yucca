@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#MISE description="Statically validate the k8s surface (charts + Flux tree)"
+#MISE dir="{{config_root}}"
+# Renders every chart (helm template + kubeconform) and builds the whole Flux
+# tree the way Flux would (flux-local --enable-helm). No cluster needed; this
+# is the CI gate for kubernetes/ and charts/ changes.
+#
+# NB: don't run this while Tilt is converging — Tilt's helm-deps resource
+# rebuilds charts/*/charts/ (rm -rf + dependency build) and races the renders.
+set -euo pipefail
+
+LIB_CONSUMERS=(yucca-api yucca-admin-api yucca-metrics-worker web michael mock-oidc)
+ALL_CHARTS=(yucca-api yucca-admin-api yucca-metrics-worker web michael mock-oidc cnpg-cluster ceph-objectuser rook-ceph-cluster)
+
+echo "==> helm dependency build (yucca-common consumers)"
+for c in "${LIB_CONSUMERS[@]}"; do
+  (cd "charts/$c" && helm dependency build >/dev/null)
+done
+
+echo "==> helm template + kubeconform"
+for c in "${ALL_CHARTS[@]}"; do
+  ns=yucca
+  [ "$c" = "rook-ceph-cluster" ] && ns=rook-ceph
+  # NB: release name must not be YAML-boolean-ish ("y"/"on"/...): it lands in
+  # labels and kubeconform reads it back as a bool.
+  helm template yucca "charts/$c" -n "$ns" \
+    | kubeconform -strict -ignore-missing-schemas - \
+    && echo "    OK  $c"
+done
+
+echo "==> kustomize build (Flux entrypoints)"
+kustomize build kubernetes/apps >/dev/null && echo "    OK  kubernetes/apps"
+kustomize build kubernetes/flux/repos >/dev/null && echo "    OK  kubernetes/flux/repos"
+kustomize build kubernetes/flux/cluster >/dev/null && echo "    OK  kubernetes/flux/cluster"
+
+echo "==> flux-local build (full tree, helm rendering as Flux would)"
+# Via uvx so uv supplies a Python matching flux-local's requires-python
+# (>=3.13) regardless of the host. One retry: flux-local fans out `flux build
+# ks` subprocesses which very rarely segfault under load.
+flux_local() { uvx --from "flux-local==8.2.0" flux-local "$@"; }
+flux_local build all kubernetes --enable-helm --no-enable-dns >/dev/null \
+  || flux_local build all kubernetes --enable-helm --no-enable-dns >/dev/null
+echo "    OK  flux-local"
+
+echo "k8s surface: ALL VALID"

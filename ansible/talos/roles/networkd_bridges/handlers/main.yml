@@ -1,0 +1,13 @@
+---
+# Handlers fire once at the end of the play, only if a notifying task
+# reported "changed". `networkctl reload` re-reads unit files without
+# tearing down working interfaces; this is the difference between a
+# safe reload and a disruptive `systemctl restart systemd-networkd`.
+
+- name: Networkd reload
+  ansible.builtin.command: networkctl reload
+  changed_when: true
+  # No tag — handlers run when notified regardless of which tags
+  # the parent task carried, but networkctl reload is read-only
+  # by design (idempotent, no service interruption for unchanged
+  # interfaces).

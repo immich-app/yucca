@@ -1,0 +1,13 @@
+# RGW user for michael. Rook writes a Secret named
+# "rook-ceph-object-user-<store>-<userName>" into THIS namespace with keys
+# AccessKey / SecretKey. michael (charts/michael) consumes them.
+userName: michael
+# CephObjectStore name + the namespace where the Rook cluster/objectstore lives.
+store: yucca
+clusterNamespace: rook-ceph
+
+# RGW admin capabilities (radosgw-admin caps). Empty = a plain S3 user that can
+# only manage its own buckets (michael's case). Grant read caps to a user that
+# needs the RGW admin API — e.g. the metrics worker reading per-bucket usage.
+# See https://rook.io/docs/rook/latest/CRDs/Object-Storage/ceph-object-store-user-crd/
+capabilities: {}

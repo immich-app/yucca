@@ -343,7 +343,16 @@
     "/api/yucca/repository/inspect": {
       "get": {
         "operationId": "inspectRepositories",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "backend",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -515,6 +524,46 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/yucca/repository/{id}/backend": {
+      "put": {
+        "operationId": "reconfigureRepositoryPrimaryBackend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryPrimaryBackendReconfigureRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -1067,6 +1116,9 @@
               }
             ]
           },
+          "description": {
+            "type": "string"
+          },
           "isOnline": {
             "type": "boolean"
           },
@@ -1077,6 +1129,7 @@
         "required": [
           "id",
           "type",
+          "description",
           "isOnline"
         ]
       },
@@ -1477,6 +1530,24 @@
           "sizeBytes"
         ]
       },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
       "RepositoryBackendDto": {
         "type": "object",
         "properties": {
@@ -1554,6 +1625,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"
@@ -1665,6 +1739,9 @@
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
           },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
+          },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"
           },
@@ -1753,6 +1830,17 @@
         },
         "required": [
           "readable"
+        ]
+      },
+      "RepositoryPrimaryBackendReconfigureRequestDto": {
+        "type": "object",
+        "properties": {
+          "backendId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "backendId"
         ]
       },
       "RunStatus": {

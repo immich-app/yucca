@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# Network attachment for VLAN {{ item.id }} sub-interface — enslaves it
+# to the bridge so tagged frames flow into/out of the bridge port.
+
+[Match]
+Name={{ networkd_bridges_parent }}.{{ item.id }}
+
+[Network]
+Bridge={{ item.bridge }}
+ConfigureWithoutCarrier=yes
+LinkLocalAddressing=no
+IPv6AcceptRA=no

@@ -1,0 +1,131 @@
+---
+# Read-only pre-flight. Verifies the hypervisors are ready to receive
+# Talos work. Touches no state. Refuses to greenlight if Ceph cluster
+# health degrades — cluster health is non-negotiable.
+#
+# Usage: scripts/ansible-play.sh preflight.yml
+# Or:    mise run preflight
+
+- name: Pre-flight — sietch-talos prerequisites (read-only)
+  hosts: hypervisors
+  become: true
+  gather_facts: true
+  tags: [preflight]
+
+  tasks:
+    # ─── Reachability ─────────────────────────────────────────────────
+    - name: Confirm SSH + sudo reachability
+      ansible.builtin.ping:
+      become: false  # ping doesn't need root; keep blast radius minimal
+
+    # ─── Ceph cluster health ──────────────────────────────────────────
+    # Runs on every host; redundant per node but surfaces per-host
+    # failures (ceph not callable on this node = node-local issue).
+    - name: Query Ceph cluster status
+      ansible.builtin.command: ceph -s --format=json
+      register: _ceph_status
+      changed_when: false
+      failed_when: false
+
+    - name: Parse Ceph health status
+      ansible.builtin.set_fact:
+        _ceph_health: >-
+          {{ (_ceph_status.stdout | from_json).health.status
+             if _ceph_status.rc == 0 else 'UNREACHABLE' }}
+
+    - name: Block Talos work unless Ceph is HEALTH_OK (HEALTH_WARN requires explicit override)
+      ansible.builtin.assert:
+        that:
+          - >-
+            _ceph_health == 'HEALTH_OK'
+            or (_ceph_health == 'HEALTH_WARN' and (allow_ceph_warn | default(false) | bool))
+        fail_msg: >-
+          Ceph status is {{ _ceph_health }} on {{ inventory_hostname }}.
+          Ceph HEALTH_OK is non-negotiable. If you have a
+          sanctioned reason to proceed under HEALTH_WARN (e.g., known
+          temporary clock skew, scrub in progress), re-run with
+          `-e allow_ceph_warn=true` to force a conscious override.
+        success_msg: >-
+          Ceph health: {{ _ceph_health }}{{
+            ' (HEALTH_WARN explicitly allowed via -e allow_ceph_warn=true)'
+            if _ceph_health == 'HEALTH_WARN' else '' }}
+
+    # ─── Network prerequisites ────────────────────────────────────────
+    - name: Confirm systemd-networkd is active
+      ansible.builtin.systemd_service:
+        name: systemd-networkd
+      register: _networkd
+      changed_when: false
+      check_mode: false
+
+    - name: Fail if networkd inactive
+      ansible.builtin.assert:
+        that: _networkd.status.ActiveState == 'active'
+        fail_msg: >-
+          systemd-networkd is not active on {{ inventory_hostname }}
+          (state: {{ _networkd.status.ActiveState }}).
+
+    - name: Confirm bond0 exists
+      ansible.builtin.stat:
+        path: /sys/class/net/bond0
+      register: _bond0
+      become: false  # /sys/class/net is world-readable
+
+    - name: Fail if bond0 missing
+      ansible.builtin.assert:
+        that: _bond0.stat.exists
+        fail_msg: >-
+          bond0 not present on {{ inventory_hostname }}.
+          The Ceph deployment is expected to bring it up.
+
+    # ─── Virtualization capability ────────────────────────────────────
+    - name: /dev/kvm exists
+      ansible.builtin.stat:
+        path: /dev/kvm
+      register: _kvm
+      become: false  # stat'ing the device node doesn't need root
+
+    - name: Fail if /dev/kvm missing (no hardware virt)
+      ansible.builtin.assert:
+        that: _kvm.stat.exists
+        fail_msg: >-
+          /dev/kvm not present on {{ inventory_hostname }}. KVM kernel
+          module not loaded or virtualization extensions disabled in
+          BIOS/UEFI. Cannot run Talos VMs on this host.
+
+    # ─── Optional state-of-deployment (informational) ─────────────────
+    # These pass through with debug output rather than asserting; on
+    # a fresh host they'll be missing. preflight is run BEFORE
+    # prepare-hypervisors, so absence is normal.
+    - name: Check if br-vlan50 already exists (informational)
+      ansible.builtin.stat:
+        path: "/sys/class/net/{{ vlan_compute_bridge }}"
+      register: _vlan50_br
+      changed_when: false
+      become: false  # /sys/class/net is world-readable
+
+    - name: Check if libvirtd is installed (informational)
+      ansible.builtin.stat:
+        path: /usr/sbin/libvirtd
+      register: _libvirtd_installed
+      changed_when: false
+      become: false  # /usr/sbin is world-readable
+
+    - name: Check if Talos base image staged (informational)
+      ansible.builtin.stat:
+        path: "{{ talos_base_image_path }}"
+      register: _talos_img
+      changed_when: false
+
+    # debug is local to the controller; no host-side privilege needed.
+    - name: Pre-flight summary
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "Ceph health: {{ _ceph_health }}"
+          - "bond0 present: {{ _bond0.stat.exists }}"
+          - "/dev/kvm present: {{ _kvm.stat.exists }}"
+          - "br-vlan50 present (deployed?): {{ _vlan50_br.stat.exists }}"
+          - "libvirtd installed (deployed?): {{ _libvirtd_installed.stat.exists }}"
+          - "Talos image staged (deployed?): {{ _talos_img.stat.exists }}"
+      become: false

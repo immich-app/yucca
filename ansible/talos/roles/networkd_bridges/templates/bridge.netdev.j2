@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# L2 bridge for VLAN {{ item.id }} ({{ item.name }}) — VM attachment
+# point. The hypervisor itself does not participate in this VLAN's
+# IP layer; bridge is L2-only.
+
+[NetDev]
+Name={{ item.bridge }}
+Kind=bridge
+
+[Bridge]
+STP={{ 'true' if networkd_bridges_stp else 'false' }}

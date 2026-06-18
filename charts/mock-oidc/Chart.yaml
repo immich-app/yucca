@@ -1,0 +1,10 @@
+apiVersion: v2
+name: mock-oidc
+description: Mock OIDC provider for local dev (homegrown packages/mock-oidc-provider)
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+dependencies:
+  - name: yucca-common
+    version: 0.1.0
+    repository: "file://../yucca-common"

@@ -10,6 +10,7 @@
     children: Snippet;
     trailing?: Snippet;
     actions?: ActionItem[];
+    disabled?: boolean;
     onclick?: () => void;
   };
 
@@ -19,6 +20,7 @@
     children,
     trailing,
     actions = [],
+    disabled = false,
     onclick,
   }: Props = $props();
 </script>
@@ -54,8 +56,9 @@
 {#if onclick}
   <button
     {onclick}
+    {disabled}
     type="button"
-    class="block w-full text-left rounded-lg hover:bg-subtle focus-visible:outline-2 focus-visible:outline-primary-500 cursor-pointer"
+    class="block w-full text-left rounded-lg hover:bg-subtle focus-visible:outline-2 focus-visible:outline-primary-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
   >
     {@render body()}
   </button>

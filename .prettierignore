@@ -31,5 +31,11 @@ yarn.lock
 ansible/
 tf/
 
+# Helm charts: templates are Go-templated YAML (not parseable by prettier),
+# and values/Chart files follow helm conventions. Validated by helm template
+# + kubeconform via `mise k8s:validate` instead.
+charts/
+
 # auto-generated
 yaak/
+CHANGELOG.md

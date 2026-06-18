@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Recreate k3d cluster"
+#MISE depends=["k3d:down", "k3d:up"]
+set -euo pipefail

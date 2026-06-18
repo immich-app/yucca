@@ -1,0 +1,38 @@
+replicas: 1
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: yucca-web
+
+image:
+  repository: k3d-registry.localhost:5000/web
+  tag: dev
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 5173
+
+service:
+  type: ClusterIP
+
+env:
+  - name: NODE_ENV
+    value: development
+  - name: PUBLIC_API_URL
+    value: http://yucca-api:3020
+  - name: YUCCA_API_URL
+    value: http://yucca-api:3020/
+
+# Probes keep `tilt ci`/Flux honest: vite binds the port even when SSR is
+# broken (a stale workspace lib once made every page a 500 while the pod looked
+# Ready), so probe with a real GET /. Generous timeouts — the first request
+# triggers vite's initial compile.
+startupProbe:
+  httpGet: { path: /, port: http }
+  periodSeconds: 5
+  timeoutSeconds: 10
+  failureThreshold: 60
+readinessProbe:
+  httpGet: { path: /, port: http }
+  periodSeconds: 15
+  timeoutSeconds: 10

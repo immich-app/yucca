@@ -1,0 +1,53 @@
+---
+# Idempotent hypervisor preparation. Order matters:
+#   0. preflight        — read-only Ceph + bond0 + /dev/kvm gate.
+#      Imported (not opted-in) so HEALTH_OK enforcement is automatic
+#      regardless of whether the operator remembered `mise run
+#      preflight` first. Bypass with `-e allow_ceph_warn=true` if
+#      HEALTH_WARN is sanctioned for this run.
+#   1. networkd_bridges — bridges in place before libvirt tries to
+#      attach VMs to them (handler is flushed inline by the role).
+#   2. libvirt_host     — qemu/libvirt installed before image fetch
+#      sets ownership to libvirt-qemu.
+#   3. talos_image      — base image staged before talos_vms makes
+#      overlays.
+#
+# Each role's enabled-flag is set true here. Defaults stay false so
+# accidental imports / unrelated playbooks don't reconfigure live state.
+#
+# Usage: scripts/ansible-play.sh prepare-hypervisors.yml
+# Or:    mise run prepare-hypervisors
+
+- name: Pre-flight gate (imported)
+  ansible.builtin.import_playbook: preflight.yml
+
+- name: Prepare Sietch hypervisors for Talos VMs
+  hosts: hypervisors
+  become: true
+  gather_facts: true
+  tags: [prepare]
+
+  roles:
+    - role: networkd_bridges
+      vars:
+        networkd_bridges_enabled: true
+      tags: [networkd_bridges]
+
+    - role: libvirt_host
+      vars:
+        libvirt_host_enabled: true
+      tags: [libvirt_host]
+
+    # Disables bridge-nf-call-iptables/-ip6tables so VM traffic on
+    # br-vlan50/51 bypasses Ceph's inet filter forward DROP. Runs
+    # before talos_image is fetched so the host is fully prepped
+    # for VM bring-up by the time provision-vms runs.
+    - role: nftables_bridges
+      vars:
+        nftables_bridges_enabled: true
+      tags: [nftables_bridges]
+
+    - role: talos_image
+      vars:
+        talos_image_enabled: true
+      tags: [talos_image]

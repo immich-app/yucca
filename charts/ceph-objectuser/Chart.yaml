@@ -1,0 +1,9 @@
+apiVersion: v2
+name: ceph-objectuser
+description: >-
+  CephObjectStoreUser for the dev Rook-Ceph object store. Creates a full RGW S3
+  user (can create/manage buckets) and writes its credentials Secret into this
+  namespace. michael uses it (one bucket per restic repository). DEV ONLY.
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

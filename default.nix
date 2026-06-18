@@ -26,6 +26,7 @@ in pkgs.mkShell {
     lsof
     pkg-config
     openssl.dev
+    python3
     (writeShellScriptBin "fish" ''
       exec ${pkgs.fish}/bin/fish -C 'mise activate fish | source' "$@"
     '')

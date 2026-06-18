@@ -1,0 +1,32 @@
+---
+# Provision Talos VMs per profile. Assumes prepare-hypervisors has
+# already run (bridges + libvirt + base image present on each host);
+# the talos_vms role's pre-flight will refuse otherwise.
+#
+# preflight.yml is imported (not opt-in) so the Ceph health gate is
+# enforced automatically. Bypass HEALTH_WARN block with
+# `-e allow_ceph_warn=true` if sanctioned.
+#
+# Usage: scripts/ansible-play.sh provision-vms.yml
+# Default is full (production: 3 CP + 3 workers, one CP + one worker per
+# hypervisor). For single-host validation, select smoke explicitly:
+#   scripts/ansible-play.sh provision-vms.yml -e profile=smoke
+
+- name: Pre-flight gate (imported)
+  ansible.builtin.import_playbook: preflight.yml
+
+- name: Provision Talos VMs
+  hosts: hypervisors
+  become: true
+  gather_facts: true
+  vars:
+    # Default to full (matches the TF-side default). A play var outranks
+    # group_vars, so set it explicitly here. Override with `-e profile=smoke`.
+    talos_profile: "{{ profile | default('full') }}"
+  tags: [provision]
+
+  roles:
+    - role: talos_vms
+      vars:
+        talos_vms_enabled: true
+      tags: [talos_vms]

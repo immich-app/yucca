@@ -15,6 +15,8 @@ function serializeErrors(data: object): object {
   );
 }
 
+import { version } from '../../package.json';
+
 @Injectable()
 export class TelemetryService {
   constructor(
@@ -35,7 +37,10 @@ export class TelemetryService {
       .getBackend(YUCCA_PRODUCTION_UUID)
       .then(({ configuration }) => {
         const backend = Backend.from(configuration, this.moduleConfig.get());
-        backend.submitStructuredLog(summary, serializeErrors(data));
+        backend.submitStructuredLog(summary, {
+          ...serializeErrors(data),
+          version,
+        });
       })
       .catch(() => console.warn('No production backend configured, skipping structured log.'));
   }

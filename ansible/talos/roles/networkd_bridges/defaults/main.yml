@@ -1,0 +1,44 @@
+---
+# Master toggle — role is a no-op when false. Default false so a loose
+# import or accidental include never reconfigures live network.
+networkd_bridges_enabled: false
+
+# Physical parent for the VLAN sub-interfaces. The existing bond0 (set
+# up by the Ceph deployment for the storage VLAN) is the only sane
+# choice on Sietch; any other value is a misconfiguration.
+networkd_bridges_parent: bond0
+
+# Where systemd-networkd reads its config. Must be a directory that
+# overrides /lib/systemd/network. Standard Debian/Arch path is /etc/.
+networkd_bridges_config_dir: /etc/systemd/network
+
+# Filename prefix. Numeric prefix orders unit-file processing —
+# parent bond0 is set up by the Ceph deployment with prefix 20-, so
+# 50- here lands AFTER bond0 exists, before any 70-* anyone may add.
+networkd_bridges_prefix: "50"
+
+# Drop-in directory for the parent (bond0) .network file. systemd-
+# networkd reads `<basename>.d/*.conf` automatically when present.
+# We render `<dropin_dir>/10-talos-vlans.conf` containing the
+# `[Network] VLAN=bond0.50 / VLAN=bond0.51` directives — without
+# these, networkd never instantiates the kernel sub-interfaces from
+# the .netdev files alone (a key gotcha). The default tracks the Ceph
+# deployment's `20-bond0.network` basename; override if the prefix
+# changes upstream.
+networkd_bridges_parent_dropin_dir: "/etc/systemd/network/20-bond0.network.d"
+networkd_bridges_parent_dropin_filename: "10-talos-vlans.conf"
+
+# STP on the L2-only bridges. Off by default — only one path exists
+# (bond0 → VLAN sub-interface → bridge → VMs); STP convergence churn
+# would just slow VM port-up without preventing any loop.
+networkd_bridges_stp: false
+
+# List of VLANs to configure as bridges. Built from group_vars so a
+# new VLAN added there shows up here without touching role code.
+networkd_bridges_list:
+  - id: "{{ vlan_compute_id }}"
+    name: "{{ vlan_compute_name }}"
+    bridge: "{{ vlan_compute_bridge }}"
+  - id: "{{ vlan_services_id }}"
+    name: "{{ vlan_services_name }}"
+    bridge: "{{ vlan_services_bridge }}"

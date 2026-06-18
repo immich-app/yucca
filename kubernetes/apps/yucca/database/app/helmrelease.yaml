@@ -1,0 +1,24 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-database
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/cnpg-cluster
+      sourceRef:
+        kind: GitRepository
+        name: yucca
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  # Dev-mirror posture: chart defaults (1 instance, 1Gi) keep this tree 1:1
+  # with the Tilt deployment. TODO(prod): a prod overlay raises instances/storage.
+  values: {}
