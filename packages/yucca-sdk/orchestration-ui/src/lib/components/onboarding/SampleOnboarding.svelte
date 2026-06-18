@@ -13,6 +13,7 @@
   import ImportKey from "./stages/OnboardingStageKeyImport.svelte";
   import KeyIntro from "./stages/OnboardingStageKeyIntro.svelte";
   import SaveKey from "./stages/OnboardingStageKeySave.svelte";
+  import Telemetry from "./stages/OnboardingStageTelemetry.svelte";
   import Welcome from "./stages/OnboardingStageWelcome.svelte";
 
   type Props = {
@@ -28,17 +29,20 @@
   // svelte-ignore state_referenced_locally
   let stage:
     | "welcome"
+    | "telemetry"
     | `key-${"intro" | "save" | "confirm" | "import"}`
     | "backup-service"
     | "backup-create"
     | "schedule-create" = $state(
     !status.hasOnboardedKey
       ? "welcome"
-      : !status.hasBackend
-        ? "backup-service"
-        : !status.hasBackup
-          ? "backup-create"
-          : "schedule-create",
+      : status.hasTelemetry === "none"
+        ? "telemetry"
+        : !status.hasBackend
+          ? "backup-service"
+          : !status.hasBackup
+            ? "backup-create"
+            : "schedule-create",
   );
 
   onMount(() => {
@@ -65,8 +69,20 @@
 
 {#if stage === "welcome"}
   <Welcome
-    onNext={() => (stage = "key-intro")}
+    onNext={() => (stage = status.hasTelemetry === "none" ? "telemetry" : "key-intro")}
     onImportKey={() => (stage = "key-import")}
+    {onCancel}
+  />
+{:else if stage === "telemetry"}
+  <Telemetry
+    onContinue={() =>
+      (stage = !status.hasOnboardedKey
+        ? "key-intro"
+        : !status.hasBackend
+          ? "backup-service"
+          : !status.hasBackup
+            ? "backup-create"
+            : "schedule-create")}
     {onCancel}
   />
 {:else if stage === "key-intro"}

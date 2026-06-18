@@ -10,6 +10,7 @@ import {
   submitMetricBackupEnd,
   submitMetricBackupStart,
   submitMetricRepositorySize,
+  submitStructuredLog,
   updateRepository,
 } from '@futo-org/backups-api-client';
 import { YUCCA_WELL_KNOWN } from '../const';
@@ -115,5 +116,15 @@ export class YuccaBackend extends Backend {
 
   async submitMetricRepositorySize(id: string, sizeBytes: number): Promise<void> {
     return await submitMetricRepositorySize(id, { sizeBytes }, await this.getRequestOptions());
+  }
+
+  submitStructuredLog(summary: string, data: object) {
+    void submitStructuredLog(
+      {
+        summary,
+        data,
+      },
+      this.requestOptions,
+    ).catch((error) => console.error('Failed to submit log', error));
   }
 }

@@ -52,7 +52,11 @@
       <Stack gap={0}>
         <Heading size="tiny">Your library</Heading>
         <Text>
-          <FormatBytes bytes={repository.metrics.sizeBytes} /> &middot;
+          {#if repository.meter}
+            Estimated <FormatBytes bytes={repository.meter.sizeBytes} />
+          {:else}
+            <FormatBytes bytes={repository.metrics.sizeBytes} />
+          {/if} &middot;
           <span class="lowercase"
             >{cronstrue.toString(schedule.cron, {
               verbose: true,

@@ -253,6 +253,34 @@
         ]
       }
     },
+    "/api/yucca/onboarding/telemetry": {
+      "post": {
+        "operationId": "enableTelemetry",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      }
+    },
+    "/api/yucca/onboarding/report-error": {
+      "post": {
+        "operationId": "reportError",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      }
+    },
     "/api/yucca/repository": {
       "post": {
         "operationId": "createRepository",
@@ -1378,9 +1406,41 @@
           "libraries"
         ]
       },
+      "BootstrapStatus": {
+        "type": "string",
+        "enum": [
+          "not-ready",
+          "ready",
+          "error"
+        ]
+      },
+      "TelemetryLevel": {
+        "type": "string",
+        "enum": [
+          "full",
+          "none"
+        ]
+      },
       "OnboardingStatusResponseDto": {
         "type": "object",
         "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BootstrapStatus"
+              }
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "hasTelemetry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TelemetryLevel"
+              }
+            ]
+          },
           "hasOnboardedKey": {
             "type": "boolean"
           },
@@ -1398,6 +1458,8 @@
           }
         },
         "required": [
+          "status",
+          "hasTelemetry",
           "hasOnboardedKey",
           "hasBackend",
           "hasBackup",
@@ -1466,6 +1528,24 @@
         },
         "required": [
           "sizeBytes"
+        ]
+      },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
         ]
       },
       "RepositoryBackendDto": {
@@ -1545,6 +1625,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"
@@ -1655,6 +1738,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"

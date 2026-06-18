@@ -2,7 +2,7 @@ import { sdk } from '$lib';
 import type { ImportRecoveryKeyRequest } from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
-import { createQuery } from '@tanstack/svelte-query';
+import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const recoveryKeyKeys = {
   all: ['recovery-key'] as const,
@@ -63,3 +63,21 @@ export const handleSkipOnboardingExtraConfig = async () => {
     throw error;
   }
 };
+
+export const useEnableTelemetry = () =>
+  createMutation(
+    () => ({
+      mutationFn: () => sdk.enableTelemetry(),
+      onError: (error) => handleError(error, 'Failed to save preferences'),
+    }),
+    () => queryClient,
+  );
+
+export const useReportError = () =>
+  createMutation(
+    () => ({
+      mutationFn: () => sdk.reportError(),
+      onError: (error) => handleError(error, 'Failed to report error'),
+    }),
+    () => queryClient,
+  );

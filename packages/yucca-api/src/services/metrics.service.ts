@@ -1,8 +1,12 @@
-import { MetricService } from '@common/server/otel';
+import { LoggerRepository, MetricService } from '@common/server/otel';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Gauge } from '@opentelemetry/api';
 import { AuthDto } from 'src/dto/auth.dto';
-import { SubmitBackupEndRequestDto, SubmitUpdateSizeRequestDto } from 'src/dto/metrics.dto';
+import {
+  SubmitBackupEndRequestDto,
+  SubmitStructuredLogRequestDto,
+  SubmitUpdateSizeRequestDto,
+} from 'src/dto/metrics.dto';
 import { CursorPaginationDto } from 'src/dto/pagination.dto';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { RepositoryMetricsRepository } from 'src/repositories/repositoryMetrics.repository';
@@ -20,6 +24,7 @@ export class MetricsService {
   private readonly userLastBackupDuration: Gauge;
 
   constructor(
+    private readonly logger: LoggerRepository,
     private readonly repositories: RepositoryRepository,
     private readonly metrics: RepositoryMetricsRepository,
     private readonly history: RepositoryMetricsHistoryRepository,
@@ -91,6 +96,14 @@ export class MetricsService {
     await this.history.create({ repositoryId, sizeBytes: dto.sizeBytes });
 
     this.userRepositorySize.record(dto.sizeBytes, { user_id: auth.id, repository_id: repositoryId });
+  }
+
+  submitStructuredLog(auth: AuthDto, dto: SubmitStructuredLogRequestDto) {
+    this.logger.info({
+      _msg: `[telemetry] ${dto.summary}`,
+      customerId: auth.id,
+      data: dto.data,
+    });
   }
 
   async listHistory(auth: AuthDto, repositoryId: string, query: CursorPaginationDto) {

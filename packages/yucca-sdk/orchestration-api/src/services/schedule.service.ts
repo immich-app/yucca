@@ -19,6 +19,7 @@ import { RunningTasksRepository } from '../repositories/runningTasks.repository'
 import { ScheduleRepository } from '../repositories/schedule.repository';
 import { ScheduleTable } from '../schema/tables/schedule.table';
 import { RepositoryService } from './repository.service';
+import { TelemetryService } from './telemetry.service';
 
 @Injectable()
 export class ScheduleService {
@@ -31,6 +32,7 @@ export class ScheduleService {
     private readonly runningTasks: RunningTasksRepository,
     private readonly moduleConfig: ModuleConfigRepository,
     private readonly integrationImmich: RepositoryIntegrationImmichRepository,
+    private readonly telemetry: TelemetryService,
   ) {}
 
   private readonly cronJobs = new Set<string>();
@@ -85,6 +87,12 @@ export class ScheduleService {
 
     const lastRun = new Date().toISOString();
 
+    this.telemetry.submitStructuredLog(`Running schedule for ${repositories.length} repositories`, {
+      scheduleId: id,
+      lastRun,
+      repositories,
+    });
+
     await this.schedule.updateSchedule(id, { lastRun });
 
     this.events.publish({
@@ -103,6 +111,7 @@ export class ScheduleService {
       repositoryId,
       status: TaskStatus.Incomplete,
     }));
+
     this.runningTasks.updateTask(id, { scheduleStatus });
 
     for (const [index, repositoryId] of repositories.entries()) {
@@ -127,6 +136,12 @@ export class ScheduleService {
     const lastFinished = new Date().toISOString();
 
     await this.schedule.updateSchedule(id, { lastFinished });
+
+    this.telemetry.submitStructuredLog(`Finished running schedule for ${repositories.length} repositories`, {
+      scheduleId: id,
+      lastFinished,
+      scheduleStatus,
+    });
 
     this.events.publish({
       type: 'ScheduleUpdate',
@@ -154,6 +169,11 @@ export class ScheduleService {
       paused: false,
       repositories,
     };
+
+    this.telemetry.submitStructuredLog(`Created schedule for ${repositories.length} repositories`, {
+      scheduleId: id,
+      repositories,
+    });
 
     this.events.publish({
       type: 'ScheduleCreate',
@@ -217,6 +237,10 @@ export class ScheduleService {
 
     const schedule = await this.schedule.get(scheduleId);
 
+    this.telemetry.submitStructuredLog('Updated schedule', {
+      scheduleId,
+    });
+
     this.events.publish({
       type: 'ScheduleUpdate',
       scheduleId,
@@ -239,6 +263,10 @@ export class ScheduleService {
     await this.schedule.removeSchedule(scheduleId);
     this.schedulerRegistry.deleteCronJob(scheduleId);
     this.cronJobs.delete(scheduleId);
+
+    this.telemetry.submitStructuredLog(`Deleted schedule`, {
+      scheduleId,
+    });
 
     this.events.publish({
       type: 'ScheduleDelete',

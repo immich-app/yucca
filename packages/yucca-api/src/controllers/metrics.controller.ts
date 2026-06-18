@@ -4,6 +4,7 @@ import { AuthDto } from 'src/dto/auth.dto';
 import {
   RepositoryMetricsHistoryListResponseDto,
   SubmitBackupEndRequestDto,
+  SubmitStructuredLogRequestDto,
   SubmitUpdateSizeRequestDto,
 } from 'src/dto/metrics.dto';
 import { CursorPaginationDto } from 'src/dto/pagination.dto';
@@ -42,6 +43,13 @@ export class MetricsController {
     @Body() dto: SubmitUpdateSizeRequestDto,
   ): Promise<void> {
     return this.metrics.submitRepositorySize(auth, repositoryId, dto);
+  }
+
+  @Post('/submit/log')
+  @AuthRoute()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  submitStructuredLog(@Auth() auth: AuthDto, @Body() dto: SubmitStructuredLogRequestDto) {
+    this.metrics.submitStructuredLog(auth, dto);
   }
 
   @Get('/:repositoryId/history')

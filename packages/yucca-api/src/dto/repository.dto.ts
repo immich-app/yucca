@@ -26,9 +26,23 @@ export class RepositoryMetricsDto {
   sizeBytes!: number;
 }
 
+export class RepositoryMeterDto {
+  @ApiProperty()
+  sizeBytes!: number;
+
+  @ApiProperty()
+  objectCount!: number;
+
+  @ApiProperty({ type: 'string', required: false })
+  lastUpdated!: Date | null;
+}
+
 export class RepositoryWithMetricsDto extends RepositoryDto {
   @ApiProperty()
   metrics!: RepositoryMetricsDto;
+
+  @ApiProperty({ type: RepositoryMeterDto, required: false })
+  meter?: RepositoryMeterDto;
 }
 
 export class RepositoryCreateRequestDto {

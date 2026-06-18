@@ -9,8 +9,8 @@
 # rebuilds charts/*/charts/ (rm -rf + dependency build) and races the renders.
 set -euo pipefail
 
-LIB_CONSUMERS=(yucca-api yucca-admin-api web michael mock-oidc)
-ALL_CHARTS=(yucca-api yucca-admin-api web michael mock-oidc cnpg-cluster ceph-objectuser rook-ceph-cluster)
+LIB_CONSUMERS=(yucca-api yucca-admin-api yucca-metrics-worker web michael mock-oidc)
+ALL_CHARTS=(yucca-api yucca-admin-api yucca-metrics-worker web michael mock-oidc cnpg-cluster ceph-objectuser rook-ceph-cluster)
 
 echo "==> helm dependency build (yucca-common consumers)"
 for c in "${LIB_CONSUMERS[@]}"; do

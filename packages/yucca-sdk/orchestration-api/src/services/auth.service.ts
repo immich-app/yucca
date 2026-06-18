@@ -7,6 +7,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { TelemetryService } from './telemetry.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
     readonly backend: BackendRepository,
     readonly moduleConfig: ModuleConfigRepository,
     readonly events: EventsGateway,
+    readonly telemetry: TelemetryService,
   ) {}
 
   private async waitForDeviceFlow(events: EventSourceClient, url?: string) {
@@ -27,6 +29,10 @@ export class AuthService {
             type: BackendType.Yucca,
             accessToken,
             url,
+          });
+
+          this.telemetry.submitStructuredLog('Connected FUTO Backups backend', {
+            backendId: YUCCA_PRODUCTION_UUID,
           });
 
           this.events.publish({
@@ -42,6 +48,8 @@ export class AuthService {
           break;
         }
         case 'FAILURE': {
+          this.telemetry.submitStructuredLog('Device flow authentication failed', {});
+
           this.events.publish({
             type: 'DeviceFlowFailure',
           });
