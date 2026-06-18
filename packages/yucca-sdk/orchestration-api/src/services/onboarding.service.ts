@@ -75,6 +75,8 @@ export class OnboardingService {
 
   async enableTelemetry() {
     await this.config.enableTelemetry();
+
+    this.telemetry.submitStructuredLog('Telemetry consent granted', {});
   }
 
   reportError() {

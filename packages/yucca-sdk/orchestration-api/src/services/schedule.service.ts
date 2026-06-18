@@ -237,6 +237,10 @@ export class ScheduleService {
 
     const schedule = await this.schedule.get(scheduleId);
 
+    this.telemetry.submitStructuredLog('Updated schedule', {
+      scheduleId,
+    });
+
     this.events.publish({
       type: 'ScheduleUpdate',
       scheduleId,

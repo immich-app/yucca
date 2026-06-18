@@ -11,6 +11,7 @@ import { RepositoryPathRepository } from '../repositories/repositoryPath.reposit
 import { ImmichRepositoryConfig } from '../schema/tables/repositoryIntegrationImmich.table';
 import { RepositoryService } from './repository.service';
 import { ScheduleService } from './schedule.service';
+import { TelemetryService } from './telemetry.service';
 
 @Injectable()
 export class IntegrationsService {
@@ -21,6 +22,7 @@ export class IntegrationsService {
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryService: RepositoryService,
     private readonly scheduleService: ScheduleService,
+    private readonly telemetry: TelemetryService,
   ) {}
 
   @OnEvent(InternalEvent.ModuleConfigUpdated)
@@ -95,6 +97,11 @@ export class IntegrationsService {
 
     await this.repositoryIntegrationImmich.upsert(repositoryId, scheduleId, configuration);
     await this.syncImmichRepositoryPaths(repositoryId, configuration, immichIntegration);
+
+    this.telemetry.submitStructuredLog('Configured Immich integration', {
+      repositoryId,
+      scheduleId,
+    });
 
     this.events.publish({
       type: 'IntegrationUpdate',

@@ -117,6 +117,11 @@ export class RepositoryService {
       },
     };
 
+    this.telemetry.submitStructuredLog('Created repository', {
+      repositoryId: remote.id,
+      backendId,
+    });
+
     this.events.publish({
       type: 'RepositoryCreate',
       repository,
@@ -312,6 +317,10 @@ export class RepositoryService {
       },
     };
 
+    this.telemetry.submitStructuredLog('Updated repository', {
+      repositoryId: id,
+    });
+
     this.events.publish({
       type: 'RepositoryUpdate',
       repositoryId: id,
@@ -325,6 +334,10 @@ export class RepositoryService {
 
   async deleteRepository(id: string): Promise<void> {
     await this.repository.delete(id);
+
+    this.telemetry.submitStructuredLog('Deleted repository', {
+      repositoryId: id,
+    });
 
     this.events.publish({
       type: 'RepositoryDelete',
