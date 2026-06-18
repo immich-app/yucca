@@ -58,6 +58,8 @@ const waitForMessage = (type: string) => {
 describe('Onboarding (before setup)', () => {
   it('should report onboarding has not been performed', async () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: false,
       hasOnboardedKey: false,
       hasBackup: false,
@@ -163,6 +165,8 @@ describe('Onboarding', () => {
     await sdk.confirmRecoveryKey();
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: false,
@@ -175,6 +179,8 @@ describe('Onboarding', () => {
     await sdk.skipOnboardingExtraConfig();
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: false,
@@ -245,6 +251,8 @@ describe('Repository', () => {
     });
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: true,
@@ -510,6 +518,8 @@ describe('Schedule', () => {
     });
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: true,
