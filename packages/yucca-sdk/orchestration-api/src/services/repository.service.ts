@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { type WriteStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
-import { Backend } from '../backends/backend';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
   ListSnapshotsResponseDto,
@@ -86,9 +85,7 @@ export class RepositoryService {
       backendId = backends[0].id;
     }
 
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
-
+    const { backend, configuration } = await this.backend.getBackend(backendId);
     const { repository: remote } = await backend.createRepository(dto);
     const id = randomUUID();
 
@@ -144,8 +141,7 @@ export class RepositoryService {
     const backendsById = Object.fromEntries(backends.map((backend) => [backend.id, backend]));
     const remoteRepositories: Record<string, Record<string, RepositoryWithMetricsDto>> = {};
 
-    for (const { id: backendId, configuration } of backends) {
-      const backend = Backend.from(configuration, this.moduleConfig.get());
+    for (const { id: backendId, backend } of backends) {
       remoteRepositories[backendId] = {};
 
       try {
@@ -289,14 +285,13 @@ export class RepositoryService {
       remoteId = localRepository.remoteId;
     }
 
-    const backend = await this.backend.getBackend(backendId);
-    const backendInstance = Backend.from(backend.configuration, this.moduleConfig.get());
+    const { backend, configuration } = await this.backend.getBackend(backendId);
 
     let remote;
     if (dto.name) {
-      ({ repository: remote } = await backendInstance.updateRepository(remoteId, dto));
+      ({ repository: remote } = await backend.updateRepository(remoteId, dto));
     } else {
-      ({ repository: remote } = await backendInstance.getRepository(remoteId));
+      ({ repository: remote } = await backend.getRepository(remoteId));
     }
 
     if (dto.paths) {
@@ -330,7 +325,7 @@ export class RepositoryService {
       backends: {
         primary: {
           id: backendId,
-          type: backend.configuration.type,
+          type: configuration.type,
           online: true,
         },
         secondary: [],
@@ -382,9 +377,8 @@ export class RepositoryService {
       ({ backendId, remoteId } = repository);
     }
 
-    const backend = await this.backend.getBackend(backendId);
-    const backendInstance = Backend.from(backend.configuration, this.moduleConfig.get());
-    const endpoint = await backendInstance.getResticEndpoint(remoteId);
+    const { backend } = await this.backend.getBackend(backendId);
+    const endpoint = await backend.getResticEndpoint(remoteId);
 
     const key = await this.config.deriveEncryptionKey(`repository-${remoteId}`);
 
@@ -424,8 +418,7 @@ export class RepositoryService {
 
       if (metrics.sizeBytes) {
         const { backendId, remoteId } = await this.repository.get(id);
-        const { configuration } = await this.backend.getBackend(backendId);
-        const backend = Backend.from(configuration, this.moduleConfig.get());
+        const { backend } = await this.backend.getBackend(backendId);
 
         if (backend.isMetricsCapable()) {
           await backend.submitMetricRepositorySize(remoteId, metrics.sizeBytes);
@@ -458,9 +451,7 @@ export class RepositoryService {
     });
 
     const { backendId, remoteId } = await this.repository.get(id);
-    const { configuration } = await this.backend.getBackend(backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
-
+    const { backend } = await this.backend.getBackend(backendId);
     const { endpoint, key } = await this.getResticParameters(id);
 
     const paths = await this.repositoryPath.get(id);
@@ -667,8 +658,7 @@ export class RepositoryService {
     });
 
     try {
-      const { configuration } = await this.backend.getBackend(backendId);
-      const backend = Backend.from(configuration, this.moduleConfig.get());
+      const { configuration, backend } = await this.backend.getBackend(backendId);
       const { repository: remote } = await backend.getRepository(id);
       const localId = randomUUID();
 
@@ -734,8 +724,7 @@ export class RepositoryService {
     id: string,
     dto: RepositoryPrimaryBackendReconfigureRequestDto,
   ): Promise<RepositoryCreateResponseDto> {
-    const { configuration } = await this.backend.getBackend(dto.backendId);
-    const backend = Backend.from(configuration, this.moduleConfig.get());
+    const { backend, configuration } = await this.backend.getBackend(dto.backendId);
 
     const { repository: remote } = await backend.createRepository({
       name: 'Restored Repository',

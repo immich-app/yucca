@@ -13,18 +13,49 @@ import {
   submitStructuredLog,
   updateRepository,
 } from '@futo-org/backups-api-client';
+import { YUCCA_WELL_KNOWN } from '../const';
 import { BackendType, CookieName } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
 
+type WellKnown = {
+  backends: Record<string, { displayName: string; api: string }>;
+  defaultBackend: string;
+};
+
+class YuccaWellKnown {
+  private data?: WellKnown;
+
+  async get() {
+    this.data ??= await fetch(YUCCA_WELL_KNOWN).then((response) => response.json());
+    return this.data! as WellKnown;
+  }
+
+  async getBaseUrlById(id: string) {
+    const { backends } = await this.get();
+    return backends[id].api;
+  }
+
+  async getBaseUrl() {
+    const { backends, defaultBackend } = await this.get();
+    return backends[defaultBackend].api;
+  }
+}
+
+export const yuccaWellKnown = new YuccaWellKnown();
+
 export class YuccaBackend extends Backend {
-  constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca; url: string }) {
+  constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca; url?: string }) {
     super(configuration);
   }
 
-  private get requestOptions() {
+  private async getRequestOptions() {
     return {
-      baseUrl: this.configuration.url,
+      baseUrl:
+        this.configuration.url ??
+        (this.configuration.uuid
+          ? await yuccaWellKnown.getBaseUrlById(this.configuration.uuid)
+          : await yuccaWellKnown.getBaseUrl()),
       headers: {
         cookie: `${CookieName.YuccaAccessToken}=${this.configuration.accessToken}`,
       },
@@ -40,60 +71,56 @@ export class YuccaBackend extends Backend {
   }
 
   async checkOnline() {
-    await getAuth(this.requestOptions);
+    await getAuth(await this.getRequestOptions());
   }
 
-  createRepository(dto: RepositoryCreateRequestDto) {
-    return createRepository(dto, this.requestOptions);
+  async createRepository(dto: RepositoryCreateRequestDto) {
+    return await createRepository(dto, await this.getRequestOptions());
   }
 
-  updateRepository(id: string, dto: RepositoryUpdateRequestDto) {
-    return updateRepository(id, dto, this.requestOptions);
+  async updateRepository(id: string, dto: RepositoryUpdateRequestDto) {
+    return await updateRepository(id, dto, await this.getRequestOptions());
   }
 
-  getRepository(id: string) {
-    return getRepository(id, this.requestOptions);
+  async getRepository(id: string) {
+    return await getRepository(id, await this.getRequestOptions());
   }
 
-  getRepositories() {
-    return getRepositories(this.requestOptions);
+  async getRepositories() {
+    return await getRepositories(await this.getRequestOptions());
   }
 
-  deleteRepository(id: string) {
-    return deleteRepository(id, this.requestOptions);
+  async deleteRepository(id: string) {
+    return await deleteRepository(id, await this.getRequestOptions());
   }
 
   async getResticEndpoint(id: string) {
-    const { url } = await createResticUrl(id, this.requestOptions);
+    const { url } = await createResticUrl(id, await this.getRequestOptions());
     return url;
   }
 
-  submitMetricBackupStart(id: string): Promise<void> {
-    return submitMetricBackupStart(id, this.requestOptions);
+  async submitMetricBackupStart(id: string): Promise<void> {
+    return await submitMetricBackupStart(id, await this.getRequestOptions());
   }
 
-  submitMetricBackupEnd(id: string, success: boolean, durationMs: number): Promise<void> {
-    return submitMetricBackupEnd(
+  async submitMetricBackupEnd(id: string, success: boolean, durationMs: number): Promise<void> {
+    return await submitMetricBackupEnd(
       id,
       {
         durationMs,
         success,
       },
-      this.requestOptions,
+      await this.getRequestOptions(),
     );
   }
 
-  submitMetricRepositorySize(id: string, sizeBytes: number): Promise<void> {
-    return submitMetricRepositorySize(id, { sizeBytes }, this.requestOptions);
+  async submitMetricRepositorySize(id: string, sizeBytes: number): Promise<void> {
+    return await submitMetricRepositorySize(id, { sizeBytes }, await this.getRequestOptions());
   }
 
   submitStructuredLog(summary: string, data: object) {
-    void submitStructuredLog(
-      {
-        summary,
-        data,
-      },
-      this.requestOptions,
-    ).catch((error) => console.error('Failed to submit log', error));
+    void this.getRequestOptions()
+      .then((requestOptions) => submitStructuredLog({ summary, data }, requestOptions))
+      .catch((error) => console.error('Failed to submit log', error));
   }
 }

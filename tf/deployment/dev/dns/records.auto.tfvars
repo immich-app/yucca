@@ -21,4 +21,11 @@ records = {
     values  = ["10.10.10.90", "10.10.10.91", "10.10.10.92"]
     comment = "Sietch RGW S3 virtual-hosted buckets (tf/deployment/dev/dns)"
   }
+  # move me to somewhere sensible!
+  "futo.cloud" = {
+    type    = "A"
+    values  = ["45.144.160.215"] # homelab
+    proxied = true
+    comment = "Website (just serving .well-known/yucca.json)"
+  }
 }

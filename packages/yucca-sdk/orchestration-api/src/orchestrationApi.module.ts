@@ -95,12 +95,8 @@ export const services = [
 
 @Module({})
 export class OrchestrationApiModule {
-  static forRoot(config: Partial<ModuleConfig> & Pick<ModuleConfig, 'yuccaProductionApi'>): DynamicModule {
+  static forRoot(config: Partial<ModuleConfig>): DynamicModule {
     config.statePath ??= resolve(homedir(), '.yucca');
-
-    if (!config.yuccaProductionApi) {
-      throw new Error('config.yuccaProductionApi is missing');
-    }
 
     return {
       module: OrchestrationApiModule,

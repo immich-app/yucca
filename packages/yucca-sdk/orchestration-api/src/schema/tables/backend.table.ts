@@ -11,6 +11,7 @@ export type BackendConfiguration =
        */
       type: BackendType.Yucca;
       url?: string;
+      uuid?: string;
       accessToken: string;
     }
   | {
