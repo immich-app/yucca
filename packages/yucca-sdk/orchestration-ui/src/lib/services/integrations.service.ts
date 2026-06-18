@@ -35,8 +35,6 @@ export const useConfigureImmichIntegration = () =>
     () => ({
       mutationFn: (dto: ConfigureImmichIntegrationRequestDto) =>
         configureImmichIntegration(dto),
-      onSuccess: () =>
-        void queryClient.invalidateQueries({ queryKey: integrationsKeys.all }),
       onError: (error) => handleError(error, 'Failed to save backup settings'),
     }),
     () => queryClient,
@@ -59,9 +57,6 @@ export const useConfigureImmichDefaults = () =>
           backupConfiguration: true,
           libraries: 'all',
         });
-      },
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: integrationsKeys.all });
       },
       onError: (error) => handleError(error, 'Failed to create backup'),
     }),

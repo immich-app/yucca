@@ -4,10 +4,12 @@ resources:
   - ./namespace.yaml
   - ./database/ks.yaml
   - ./object-user/ks.yaml
+  - ./metrics-object-user/ks.yaml
   - ./mock-oidc/ks.yaml
   - ./victoria-metrics/ks.yaml
   - ./victoria-logs/ks.yaml
   - ./michael/ks.yaml
+  - ./metrics-worker/ks.yaml
   - ./yucca-api/ks.yaml
   - ./yucca-admin-api/ks.yaml
   - ./web/ks.yaml

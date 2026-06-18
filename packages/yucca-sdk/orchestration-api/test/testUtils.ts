@@ -100,3 +100,13 @@ export function waitForEvent(gateway: EventsGateway, type: GatewayEvent['type'])
     gateway.on(onEvent);
   });
 }
+
+export async function waitFor(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) {
+      throw new Error('Timed out waiting for condition');
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}

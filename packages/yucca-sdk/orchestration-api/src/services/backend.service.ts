@@ -5,14 +5,14 @@ import { BackendResponseDto, BackendsResponseDto, CreateLocalBackendRequestDto }
 import { BackendType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
-import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { TelemetryService } from './telemetry.service';
 
 @Injectable()
 export class BackendService {
   constructor(
-    private readonly moduleConfig: ModuleConfigRepository,
     private readonly repository: BackendRepository,
     private readonly events: EventsGateway,
+    private readonly telemetry: TelemetryService,
   ) {}
 
   async getBackends(): Promise<BackendsResponseDto> {
@@ -20,7 +20,7 @@ export class BackendService {
 
     const error = await Promise.all(
       backends.map((backend) =>
-        Backend.from(backend.configuration, this.moduleConfig.get())
+        Backend.from(backend.configuration)
           .checkOnline()
           .then(() => void 0)
           .catch((error) => error),
@@ -31,6 +31,12 @@ export class BackendService {
       backends: backends.map((backend, idx) => ({
         id: backend.id,
         type: backend.configuration.type,
+        description:
+          backend.configuration.type === BackendType.Yucca
+            ? backend.configuration.url || 'FUTO Backups'
+            : backend.configuration.type === BackendType.Local
+              ? backend.configuration.path
+              : backend.configuration.endpoint,
         isOnline: error[idx] === undefined,
         error: error[idx],
       })),
@@ -46,8 +52,14 @@ export class BackendService {
     const backend = {
       type: BackendType.Local,
       id,
+      description: dto.path,
       isOnline: true,
     };
+
+    this.telemetry.submitStructuredLog('Created backend', {
+      backendId: id,
+      type: BackendType.Local,
+    });
 
     this.events.publish({
       type: 'BackendCreate',

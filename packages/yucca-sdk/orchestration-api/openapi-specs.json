@@ -253,6 +253,34 @@
         ]
       }
     },
+    "/api/yucca/onboarding/telemetry": {
+      "post": {
+        "operationId": "enableTelemetry",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      }
+    },
+    "/api/yucca/onboarding/report-error": {
+      "post": {
+        "operationId": "reportError",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Onboarding"
+        ]
+      }
+    },
     "/api/yucca/repository": {
       "post": {
         "operationId": "createRepository",
@@ -315,7 +343,16 @@
     "/api/yucca/repository/inspect": {
       "get": {
         "operationId": "inspectRepositories",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "backend",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -487,6 +524,46 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/yucca/repository/{id}/backend": {
+      "put": {
+        "operationId": "reconfigureRepositoryPrimaryBackend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryPrimaryBackendReconfigureRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -1039,6 +1116,9 @@
               }
             ]
           },
+          "description": {
+            "type": "string"
+          },
           "isOnline": {
             "type": "boolean"
           },
@@ -1049,6 +1129,7 @@
         "required": [
           "id",
           "type",
+          "description",
           "isOnline"
         ]
       },
@@ -1325,9 +1406,41 @@
           "libraries"
         ]
       },
+      "BootstrapStatus": {
+        "type": "string",
+        "enum": [
+          "not-ready",
+          "ready",
+          "error"
+        ]
+      },
+      "TelemetryLevel": {
+        "type": "string",
+        "enum": [
+          "full",
+          "none"
+        ]
+      },
       "OnboardingStatusResponseDto": {
         "type": "object",
         "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BootstrapStatus"
+              }
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "hasTelemetry": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TelemetryLevel"
+              }
+            ]
+          },
           "hasOnboardedKey": {
             "type": "boolean"
           },
@@ -1345,6 +1458,8 @@
           }
         },
         "required": [
+          "status",
+          "hasTelemetry",
           "hasOnboardedKey",
           "hasBackend",
           "hasBackup",
@@ -1413,6 +1528,24 @@
         },
         "required": [
           "sizeBytes"
+        ]
+      },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
         ]
       },
       "RepositoryBackendDto": {
@@ -1492,6 +1625,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"
@@ -1603,6 +1739,9 @@
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
           },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
+          },
           "backends": {
             "$ref": "#/components/schemas/RepositoryBackendsDto"
           },
@@ -1691,6 +1830,17 @@
         },
         "required": [
           "readable"
+        ]
+      },
+      "RepositoryPrimaryBackendReconfigureRequestDto": {
+        "type": "object",
+        "properties": {
+          "backendId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "backendId"
         ]
       },
       "RunStatus": {

@@ -184,6 +184,30 @@
         ]
       }
     },
+    "/api/metrics/submit/log": {
+      "post": {
+        "operationId": "submitStructuredLog",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitStructuredLogRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/metrics/{repositoryId}/history": {
       "get": {
         "operationId": "listMetricsHistory",
@@ -464,6 +488,21 @@
           "sizeBytes"
         ]
       },
+      "SubmitStructuredLogRequestDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "summary",
+          "data"
+        ]
+      },
       "RepositoryMetricsHistoryDto": {
         "type": "object",
         "properties": {
@@ -551,6 +590,24 @@
           "sizeBytes"
         ]
       },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
       "RepositoryWithMetricsDto": {
         "type": "object",
         "properties": {
@@ -565,6 +622,9 @@
           },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
           }
         },
         "required": [

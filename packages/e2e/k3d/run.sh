@@ -47,6 +47,9 @@ kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 >>/tmp/yucca-e2e-pf.
 # OIDC redirect_uri, which the OIDC callback follows).
 kubectl port-forward -n yucca svc/yucca-web      36033:5173 >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 kubectl port-forward -n yucca svc/yucca-web      5173:5173  >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
+# victoria-logs (:9428) so the telemetry e2e can read back structured logs that
+# yucca-api ships via OTLP.
+kubectl port-forward -n yucca svc/victoria-logs  9428:9428  >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 
 echo "==> e2e-only: yucca-api emits localhost restic URLs (restic runs on this host)"
 kubectl -n yucca set env deploy/yucca-api RESTIC_ENDPOINT="http://localhost:3010" >/dev/null

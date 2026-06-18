@@ -1,0 +1,33 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+      - run: mise prepare
+
+      - name: Publish
+        run: |
+          pnpm -r \
+            --filter @futo-org/backups-api-client \
+            --filter @futo-org/backups-orchestrator-api \
+            --filter @futo-org/backups-orchestrator-ui \
+            publish --access public --provenance --no-git-checks

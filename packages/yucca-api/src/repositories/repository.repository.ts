@@ -13,6 +13,13 @@ const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetri
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   }).as('metrics');
 
+const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
+  jsonBuildObject({
+    sizeBytes: eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)),
+    objectCount: eb.fn.coalesce('repositoryMeter.objectCount', eb.val(0)),
+    lastUpdated: eb.ref('repositoryMeter.timestamp'),
+  }).as('meter');
+
 @Injectable()
 export class RepositoryRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
@@ -26,9 +33,11 @@ export class RepositoryRepository {
     return this.db
       .selectFrom('repositories')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
+      .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
       .where('repositories.id', '=', id)
       .selectAll('repositories')
       .select(metricsJson)
+      .select(meterJson)
       .executeTakeFirstOrThrow();
   }
 
@@ -36,9 +45,11 @@ export class RepositoryRepository {
     return this.db
       .selectFrom('repositories')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
+      .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
       .where('userId', '=', userId)
       .selectAll('repositories')
       .select(metricsJson)
+      .select(meterJson)
       .execute();
   }
 

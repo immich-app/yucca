@@ -1,0 +1,74 @@
+{
+  "name": "yucca-metrics-worker",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:integration": "jest --config ./test/jest-integration.json --runInBand"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@common/server": "workspace:^",
+    "@immich/sql-tools": "catalog:",
+    "@nestjs/common": "catalog:",
+    "@nestjs/core": "catalog:",
+    "@nestjs/platform-express": "catalog:",
+    "@nestjs/schedule": "catalog:",
+    "@opentelemetry/api": "catalog:",
+    "aws4fetch": "catalog:",
+    "kysely": "catalog:",
+    "kysely-postgres-js": "catalog:",
+    "nestjs-kysely": "catalog:",
+    "postgres": "catalog:",
+    "reflect-metadata": "catalog:",
+    "rxjs": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "catalog:",
+    "@nestjs/schematics": "catalog:",
+    "@nestjs/testing": "catalog:",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
+    "globals": "catalog:",
+    "jest": "catalog:",
+    "source-map-support": "catalog:",
+    "ts-jest": "catalog:",
+    "ts-loader": "catalog:",
+    "ts-node": "catalog:",
+    "tsconfig-paths": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}
