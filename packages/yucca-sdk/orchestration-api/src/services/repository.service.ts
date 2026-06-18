@@ -658,8 +658,7 @@ export class RepositoryService {
     });
 
     try {
-      const { configuration } = await this.backend.getBackend(backendId);
-      const backend = Backend.from(configuration, this.moduleConfig.get());
+      const { configuration, backend } = await this.backend.getBackend(backendId);
       const { repository: remote } = await backend.getRepository(id);
       const localId = randomUUID();
 

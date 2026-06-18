@@ -119,12 +119,8 @@ export class YuccaBackend extends Backend {
   }
 
   submitStructuredLog(summary: string, data: object) {
-    void submitStructuredLog(
-      {
-        summary,
-        data,
-      },
-      this.requestOptions,
-    ).catch((error) => console.error('Failed to submit log', error));
+    void this.getRequestOptions()
+      .then((requestOptions) => submitStructuredLog({ summary, data }, requestOptions))
+      .catch((error) => console.error('Failed to submit log', error));
   }
 }

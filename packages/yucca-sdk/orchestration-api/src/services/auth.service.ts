@@ -32,7 +32,7 @@ export class AuthService {
           });
 
           this.telemetry.submitStructuredLog('Connected FUTO Backups backend', {
-            backendId: YUCCA_PRODUCTION_UUID,
+            backendId: REPOSITORY_DEFAULT_CLOUD_UUID,
           });
 
           this.events.publish({

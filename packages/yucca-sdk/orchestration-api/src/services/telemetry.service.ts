@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Backend } from '../backends/backend';
-import { YUCCA_PRODUCTION_UUID } from '../const';
+import { REPOSITORY_DEFAULT_CLOUD_UUID } from '../const';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
-import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 
 function serializeErrors(data: object): object {
   return Object.fromEntries(
@@ -22,7 +21,6 @@ export class TelemetryService {
   constructor(
     private readonly config: ConfigRepository,
     private readonly backend: BackendRepository,
-    private readonly moduleConfig: ModuleConfigRepository,
   ) {}
 
   private async submitStructuredLogImpl(summary: string, data: object, force: boolean) {
@@ -34,9 +32,9 @@ export class TelemetryService {
     }
 
     void this.backend
-      .getBackend(YUCCA_PRODUCTION_UUID)
+      .getBackend(REPOSITORY_DEFAULT_CLOUD_UUID)
       .then(({ configuration }) => {
-        const backend = Backend.from(configuration, this.moduleConfig.get());
+        const backend = Backend.from(configuration);
         backend.submitStructuredLog(summary, {
           ...serializeErrors(data),
           version,
