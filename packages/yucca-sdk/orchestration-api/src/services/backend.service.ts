@@ -5,7 +5,6 @@ import { BackendResponseDto, BackendsResponseDto, CreateLocalBackendRequestDto }
 import { BackendType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
-import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { TelemetryService } from './telemetry.service';
 
 @Injectable()
