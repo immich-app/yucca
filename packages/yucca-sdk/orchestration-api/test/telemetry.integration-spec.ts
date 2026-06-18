@@ -1,11 +1,11 @@
 import { submitStructuredLog } from '@futo-org/backups-api-client';
 import { setTimeout as delay } from 'node:timers/promises';
+import { version } from '../package.json';
 import { YUCCA_PRODUCTION_UUID } from '../src/const';
 import { BackendType } from '../src/enum';
 import { BackendRepository } from '../src/repositories/backend.repository';
 import { ConfigRepository } from '../src/repositories/config.repository';
 import { TelemetryService } from '../src/services/telemetry.service';
-import { version } from '../package.json';
 import { createTestingModule, TestContext, waitFor } from './testUtils';
 
 const apiSubmitStructuredLog = submitStructuredLog as jest.Mock;
