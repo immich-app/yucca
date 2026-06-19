@@ -98,11 +98,6 @@ export class ResticRepository {
   }
 
   async unlockAll(repository: string, key: Uint8Array) {
-    return await unlock()
-      // @ts-expect-error needs restic-wrapper-ts bump
-      .removeAll()
-      .repository(repository)
-      .password(Buffer.from(key).toString('hex'))
-      .run();
+    return await unlock().removeAll().repository(repository).password(Buffer.from(key).toString('hex')).run();
   }
 }
