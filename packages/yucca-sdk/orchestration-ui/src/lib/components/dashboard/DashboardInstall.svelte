@@ -7,7 +7,13 @@
     <CardTitle>Install FUTO Backups</CardTitle>
   </CardHeader>
   <CardBody>
-    <Button variant="outline" size="small">
+    <Button
+      variant="outline"
+      size="small"
+      href="https://my.immich.app/link?target=backups"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       <Logo variant="icon" size="tiny" />
       Setup on Immich
     </Button>
