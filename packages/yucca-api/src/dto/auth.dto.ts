@@ -5,6 +5,9 @@ export class AuthDto {
   id!: string;
 
   @ApiProperty()
+  sub!: string;
+
+  @ApiProperty()
   name!: string;
 
   @ApiProperty()

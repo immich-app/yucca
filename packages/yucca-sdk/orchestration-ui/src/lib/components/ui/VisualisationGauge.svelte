@@ -14,7 +14,7 @@
 
 <div>
   <Text color="secondary" class={compact ? "text-xs" : ""}>{title}</Text>
-  <Text class={`tabular-nums ${compact ? "text-xl" : "text-2xl"}`}>
+  <Text class={`tabular-nums ${compact ? "text-xl" : "text-3xl"}`}>
     {content}
   </Text>
   {#if subtitle}

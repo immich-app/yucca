@@ -108,6 +108,9 @@ catalogs:
     '@playwright/test':
       specifier: 1.59.1
       version: 1.59.1
+    '@polar-sh/sdk':
+      specifier: ^0.47.1
+      version: 0.47.1
     '@sveltejs/adapter-auto':
       specifier: ^7.0.0
       version: 7.0.0
@@ -638,6 +641,9 @@ importers:
       '@mdi/js':
         specifier: 'catalog:'
         version: 7.4.47
+      '@tanstack/svelte-query':
+        specifier: 'catalog:'
+        version: 6.1.3(svelte@5.55.7(@typescript-eslint/types@8.52.0))
       svelte-i18n-lingui:
         specifier: 'catalog:'
         version: 0.2.2(@lingui/cli@5.8.0(typescript@5.9.3))(@lingui/core@5.8.0(@lingui/babel-plugin-lingui-macro@5.8.0(typescript@5.9.3)))(svelte@5.55.7(@typescript-eslint/types@8.52.0))(typescript@5.9.3)
@@ -720,6 +726,9 @@ importers:
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
+      '@polar-sh/sdk':
+        specifier: 'catalog:'
+        version: 0.47.1
       class-validator:
         specifier: 'catalog:'
         version: 0.14.3
@@ -844,6 +853,9 @@ importers:
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
+      '@polar-sh/sdk':
+        specifier: 'catalog:'
+        version: 0.47.1
       class-validator:
         specifier: 'catalog:'
         version: 0.14.3
@@ -2838,6 +2850,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  '@polar-sh/sdk@0.47.1':
+    resolution: {integrity: sha512-fkz7wPLbqfuDmY9LxuXpE2uP2TAV6J0q/YN5hJ4UBxpjbkB0hKM6c4R35N89t83dfzMlG6EOlqOn+Rd1T6XrJQ==}
+
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
@@ -3269,6 +3284,9 @@ packages:
 
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
+
+  '@stablelib/base64@1.0.1':
+    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -4822,6 +4840,9 @@ packages:
 
   fast-safe-stringify@2.1.1:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
+
+  fast-sha256@1.3.0:
+    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
 
   fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
@@ -6474,6 +6495,9 @@ packages:
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
+
+  standardwebhooks@1.0.0:
+    resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
 
   statuses@1.5.0:
     resolution: {integrity: sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==}
@@ -9233,6 +9257,11 @@ snapshots:
     dependencies:
       playwright: 1.59.1
 
+  '@polar-sh/sdk@0.47.1':
+    dependencies:
+      standardwebhooks: 1.0.0
+      zod: 4.3.5
+
   '@polka/url@1.0.0-next.29': {}
 
   '@protobufjs/aspromise@1.1.2': {}
@@ -9724,6 +9753,8 @@ snapshots:
       tslib: 2.8.1
 
   '@socket.io/component-emitter@3.1.2': {}
+
+  '@stablelib/base64@1.0.1': {}
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -11427,6 +11458,8 @@ snapshots:
   fast-levenshtein@2.0.6: {}
 
   fast-safe-stringify@2.1.1: {}
+
+  fast-sha256@1.3.0: {}
 
   fast-uri@3.1.0: {}
 
@@ -13258,6 +13291,11 @@ snapshots:
       escape-string-regexp: 2.0.0
 
   stackback@0.0.2: {}
+
+  standardwebhooks@1.0.0:
+    dependencies:
+      '@stablelib/base64': 1.0.1
+      fast-sha256: 1.3.0
 
   statuses@1.5.0: {}
 

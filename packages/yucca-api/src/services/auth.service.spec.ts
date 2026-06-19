@@ -7,6 +7,7 @@ const mockAuth: AuthDto = {
   email: 'user@example.com',
   name: 'user',
   sessionId: 'session',
+  sub: 'user',
 };
 
 const mockUser = {

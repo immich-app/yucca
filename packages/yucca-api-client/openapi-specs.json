@@ -95,6 +95,92 @@
         ]
       }
     },
+    "/api/billing": {
+      "get": {
+        "operationId": "getBillingStatus",
+        "parameters": [
+          {
+            "name": "refresh",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerBillingStateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/portal": {
+      "get": {
+        "operationId": "getCustomerBillingPortal",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCustomerPortalResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/subscribe": {
+      "post": {
+        "operationId": "startSubscription",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartSubscriptionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/billing/polar/webhook": {
+      "post": {
+        "operationId": "polarWebhook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/metrics/submit/{repositoryId}/backup/start": {
       "post": {
         "operationId": "submitMetricBackupStart",
@@ -445,6 +531,9 @@
           "id": {
             "type": "string"
           },
+          "sub": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -457,9 +546,43 @@
         },
         "required": [
           "id",
+          "sub",
           "name",
           "email",
           "sessionId"
+        ]
+      },
+      "CustomerBillingStateResponseDto": {
+        "type": "object",
+        "properties": {
+          "subscriptionActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subscriptionActive"
+        ]
+      },
+      "CreateCustomerPortalResponseDto": {
+        "type": "object",
+        "properties": {
+          "customerPortalUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerPortalUrl"
+        ]
+      },
+      "StartSubscriptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkoutUrl"
         ]
       },
       "SubmitBackupEndRequestDto": {

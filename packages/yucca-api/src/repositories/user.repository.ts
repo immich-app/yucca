@@ -13,7 +13,15 @@ export class UserRepository {
   }
 
   getBySub(sub: string) {
-    return this.db.selectFrom('users').select(['id', 'disabled']).where('sub', '=', sub).executeTakeFirst();
+    return this.db
+      .selectFrom('users')
+      .select(['id', 'sub', 'email', 'disabled', 'polarUserId', 'polarSubscriptionId'])
+      .where('sub', '=', sub)
+      .executeTakeFirst();
+  }
+
+  getByPolarId(polarUserId: string) {
+    return this.db.selectFrom('users').select(['id']).where('polarUserId', '=', polarUserId).executeTakeFirst();
   }
 
   getByAccessToken(accessToken: string) {
@@ -33,5 +41,9 @@ export class UserRepository {
       .where('id', '=', sql<string>`${id}::uuid`)
       .returning('id')
       .executeTakeFirst();
+  }
+
+  testGetAllUsers() {
+    return this.db.selectFrom('users').selectAll().execute();
   }
 }
