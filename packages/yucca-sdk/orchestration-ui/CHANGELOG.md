@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/immich-app/yucca/compare/v0.3.1...v0.4.0) (2026-06-19)
+
+
+### Features
+
+* telemetry & start up error reporting / robustness ([#132](https://github.com/immich-app/yucca/issues/132)) ([27d1ac1](https://github.com/immich-app/yucca/commit/27d1ac10c296d1e2ad2d86f883058ce26a566086))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @futo-org/backups-api-client bumped to 0.4.0
+
 ## [0.3.1](https://github.com/immich-app/yucca/compare/v0.3.0...v0.3.1) (2026-06-17)
 
 
