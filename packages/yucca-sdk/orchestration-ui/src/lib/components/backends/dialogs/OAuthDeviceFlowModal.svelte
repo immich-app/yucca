@@ -13,6 +13,7 @@
     ModalFooter,
     Stack,
     Text,
+    toastManager,
     VStack,
   } from "@immich/ui";
   import { mdiContentCopy } from "@mdi/js";
@@ -35,6 +36,11 @@
     onClose();
   }
 
+  function onDeviceFlowFailure() {
+    toastManager.danger("Failed to log into FUTO Backups");
+    onClose();
+  }
+
   function onOpen() {
     window.open(verificationUri, "_blank");
   }
@@ -44,7 +50,7 @@
   }
 </script>
 
-<OnEvents {onBackendCreate} />
+<OnEvents {onBackendCreate} {onDeviceFlowFailure} />
 
 <Modal title="Logging into FUTO Backups" icon={false} {onClose}>
   <ModalBody>

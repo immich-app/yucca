@@ -3,12 +3,13 @@
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
   import {
     handleSetupLocalStorage,
-    handleYuccaLogin,
+    useYuccaLogin,
   } from "$lib/services/backend.service";
   import {
     Button,
     HStack,
     Icon,
+    LoadingSpinner,
     Modal,
     ModalBody,
     ModalFooter,
@@ -25,8 +26,10 @@
 
   const { restore = false, onNext, onCancel }: Props = $props();
 
+  const yuccaLogin = useYuccaLogin();
+
   function onFutoBackups() {
-    handleYuccaLogin(onNext);
+    yuccaLogin.mutate(onNext);
   }
 
   function onLocalBackups() {
@@ -44,7 +47,7 @@
 >
   <ModalBody>
     <StackList>
-      <StackListItem onclick={onFutoBackups}>
+      <StackListItem disabled={yuccaLogin.isPending} onclick={onFutoBackups}>
         {#snippet icon()}
           <Icon icon={mdiShieldCheck} size="36px" />
         {/snippet}
@@ -55,10 +58,14 @@
         </Stack>
 
         {#snippet trailing()}
-          <Icon icon={mdiChevronRight} />
+          {#if yuccaLogin.isPending}
+            <LoadingSpinner />
+          {:else}
+            <Icon icon={mdiChevronRight} />
+          {/if}
         {/snippet}
       </StackListItem>
-      <StackListItem onclick={onLocalBackups}>
+      <StackListItem disabled={yuccaLogin.isPending} onclick={onLocalBackups}>
         {#snippet icon()}
           <Icon icon={mdiHarddisk} size="36px" />
         {/snippet}

@@ -35,8 +35,14 @@ REPO_ROOT="$PWD"
 
 # ─── Configuration ──────────────────────────────────────────────────────────────
 
-API_PORT="${RESTIC_API_PORT:-3010}"
-API_HOST="${RESTIC_API_HOST:-localhost}"
+RESTIC_ENDPOINT="${RESTIC_ENDPOINT:-http://localhost:3010}"
+# bench spawns + port-manages the backend, so split the endpoint back into host/port
+_endpoint_hostport="${RESTIC_ENDPOINT#*://}"
+API_HOST="${_endpoint_hostport%%:*}"
+API_PORT="${_endpoint_hostport##*:}"
+API_PORT="${API_PORT%%/*}"
+# the restic-api / michael server bench launches binds RESTIC_API_PORT
+export RESTIC_API_PORT="$API_PORT"
 export JWT_SECRET="${JWT_SECRET:-cca13c34b450a77c1d4b9ecd25dff6aebc6d7417afdb31864f5943c59abd03a1}"
 
 BACKEND=""

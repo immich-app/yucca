@@ -71,10 +71,16 @@ export class AuthService {
       onDisconnect: () => events.close(),
     });
 
+    const connectTimeout = setTimeout(() => events.close(), 10_000);
+
     for await (const { data } of events) {
+      clearTimeout(connectTimeout);
       const { userCode, verificationUri } = JSON.parse(data);
 
-      void this.waitForDeviceFlow(events, overrideEndpoint).catch(() => {});
+      void this.waitForDeviceFlow(events, overrideEndpoint).catch((error) => {
+        this.telemetry.submitStructuredLog('Device flow authentication errored', { error });
+        this.events.publish({ type: 'DeviceFlowFailure' });
+      });
 
       return {
         userCode,

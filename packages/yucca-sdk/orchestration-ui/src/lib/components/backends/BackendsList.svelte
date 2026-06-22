@@ -3,9 +3,9 @@
   import { options } from "$lib/options";
   import {
     handleSetupLocalStorage,
-    handleYuccaLogin,
     useBackendEventHandler,
     useBackends,
+    useYuccaLogin,
   } from "$lib/services/backend.service";
   import { Button, HStack } from "@immich/ui";
   import StackList from "../ui/StackList.svelte";
@@ -21,6 +21,7 @@
 
   const { advanced } = options;
   const query = useBackends();
+  const yuccaLogin = useYuccaLogin();
   const { onBackendCreate } = useBackendEventHandler();
 
   const repositoryBackends = $derived(
@@ -61,8 +62,11 @@
 
   {#if $advanced}
     <HStack>
-      <Button size="small" variant="outline" onclick={() => handleYuccaLogin()}
-        >Login with FUTO Backups</Button
+      <Button
+        size="small"
+        variant="outline"
+        loading={yuccaLogin.isPending}
+        onclick={() => yuccaLogin.mutate(undefined)}>Login with FUTO Backups</Button
       >
       <Button
         size="small"
