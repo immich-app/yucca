@@ -5,7 +5,10 @@
     LocalRepositoryDto,
     RepositoryBackendDto,
   } from "$lib/fetch-client";
-  import { getBackendActions } from "$lib/services/backend.service";
+  import {
+    getBackendActions,
+    useYuccaLogin,
+  } from "$lib/services/backend.service";
   import { Badge, Icon, Text } from "@immich/ui";
   import { mdiCloudOutline, mdiHarddisk, mdiShieldCheckOutline } from "@mdi/js";
   import StackListItem from "../ui/StackListItem.svelte";
@@ -30,8 +33,12 @@
     s3: "S3 Server",
   };
 
+  const yuccaLogin = useYuccaLogin();
+
   const { LoginAgain, Reconfigure } = $derived(
-    getBackendActions(repository, backend, repositoryBackend),
+    getBackendActions(repository, backend, repositoryBackend, () =>
+      yuccaLogin.mutate(undefined),
+    ),
   );
 </script>
 

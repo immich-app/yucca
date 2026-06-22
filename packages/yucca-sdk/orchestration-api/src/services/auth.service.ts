@@ -71,7 +71,10 @@ export class AuthService {
       onDisconnect: () => events.close(),
     });
 
+    const connectTimeout = setTimeout(() => events.close(), 10_000);
+
     for await (const { data } of events) {
+      clearTimeout(connectTimeout);
       const { userCode, verificationUri } = JSON.parse(data);
 
       void this.waitForDeviceFlow(events, overrideEndpoint).catch((error) => {

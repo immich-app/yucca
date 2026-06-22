@@ -27,7 +27,10 @@ class YuccaWellKnown {
   private data?: WellKnown;
 
   async get() {
-    this.data ??= await fetch(YUCCA_WELL_KNOWN).then((response) => response.json());
+    this.data ??= await fetch(YUCCA_WELL_KNOWN, { signal: AbortSignal.timeout(8000) }).then((response) =>
+      response.json(),
+    );
+
     return this.data! as WellKnown;
   }
 
