@@ -1,22 +1,24 @@
 <script lang="ts">
-  import { Button } from "@immich/ui";
-  import { t } from "svelte-i18n-lingui";
   import { defaults } from "@futo-org/backups-api-client";
-
-  import { locale } from "svelte-i18n-lingui";
-
-  async function setLocale(lang: "en" | "ja") {
-    const { messages } = await import(`../locales/${lang}.ts`);
-    locale.set(lang, messages);
-  }
+  import { Button, Card, CardBody, Heading, VStack } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
 </script>
 
-<main class="p-4">
-  <Button
-    onclick={() => (location.href = defaults.baseUrl + "api/auth/oidc/login")}
-    >{$t`Login`}</Button
-  >
+<svelte:head><title>{$t`Login`} &middot; FUTO Backups</title></svelte:head>
 
-  <Button onclick={() => setLocale("en")}>Switch to English</Button>
-  <Button onclick={() => setLocale("ja")}>Switch to Test</Button>
+<main class="flex min-h-screen items-center justify-center p-4">
+  <VStack gap={6} class="w-full max-w-sm items-center">
+    <Card>
+      <CardBody>
+        <VStack>
+          <Heading>FUTO Backups</Heading>
+          <Button
+            onclick={() =>
+              (location.href = defaults.baseUrl + "api/auth/oidc/login")}
+            >{$t`Login`}</Button
+          >
+        </VStack>
+      </CardBody>
+    </Card>
+  </VStack>
 </main>

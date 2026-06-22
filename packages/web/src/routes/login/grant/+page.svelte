@@ -9,6 +9,8 @@
   } from "@immich/ui";
 </script>
 
+<svelte:head><title>Grant access &middot; FUTO Backups</title></svelte:head>
+
 <Card>
   <CardHeader>
     <CardTitle>Grant access to app?</CardTitle>

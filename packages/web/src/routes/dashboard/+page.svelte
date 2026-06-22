@@ -5,6 +5,8 @@
   const { data } = $props();
 </script>
 
+<svelte:head><title>Dashboard &middot; FUTO Backups</title></svelte:head>
+
 <Dashboard
   initialData={data.initialData.repositories}
   onNavigate={(route) => goto(`/dashboard/${route}`)}
