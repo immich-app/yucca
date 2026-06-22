@@ -74,7 +74,10 @@ export class AuthService {
     for await (const { data } of events) {
       const { userCode, verificationUri } = JSON.parse(data);
 
-      void this.waitForDeviceFlow(events, overrideEndpoint).catch(() => {});
+      void this.waitForDeviceFlow(events, overrideEndpoint).catch((error) => {
+        this.telemetry.submitStructuredLog('Device flow authentication errored', { error });
+        this.events.publish({ type: 'DeviceFlowFailure' });
+      });
 
       return {
         userCode,

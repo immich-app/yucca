@@ -426,8 +426,11 @@ export class RepositoryService {
 
         // ... in the future, this should push to all mirrors too
       }
-    } catch {
-      // no-op
+    } catch (error) {
+      this.telemetry.submitStructuredLog('Failed to update repository metrics', {
+        repositoryId: id,
+        error,
+      });
     }
   }
 
@@ -671,8 +674,12 @@ export class RepositoryService {
         const snapshots = await this.restic.snapshots(endpoint, key);
         snapshots.sort((a, b) => +b.time - +a.time);
         paths = snapshots[0].paths;
-      } catch {
-        // no-op
+      } catch (error) {
+        this.telemetry.submitStructuredLog('Failed to infer backup paths during import', {
+          repositoryId: id,
+          backendId,
+          error,
+        });
       }
 
       await this.repository.create({
