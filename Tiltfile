@@ -302,6 +302,11 @@ def discover_apps():
     for path in listdir('kubernetes/apps', recursive=True):
         if not path.endswith('/helmrelease.yaml'):
             continue
+        # The o11y-style GitOps tree (apps/base + apps/{staging,production}
+        # overlays) is reconciled by Flux on the real clusters — Tilt deploys
+        # only the local dev-mirror tree (apps/<namespace>/<app>/app/).
+        if '/apps/base/' in path or '/apps/staging/' in path or '/apps/production/' in path:
+            continue
         hr = read_yaml(path)
         if not hr or hr.get('kind') != 'HelmRelease':
             continue

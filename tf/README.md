@@ -19,25 +19,34 @@ tf/
 │       │       ├── inventory-destroy.ini.tftpl
 │       │       ├── inventory-provision-debian-live.ini.tftpl
 │       │       └── secrets.yml.tpl.tftpl
-│       └── talos-cluster/            ← Talos K8s VMs on the ceph hypervisors
+│       ├── talos-cluster/            ← Talos K8s VMs on the ceph hypervisors
+│       │   ├── main.tf, variables.tf, outputs.tf
+│       │   └── modules/
+│       │       ├── inventory-renderer/  ← renders ansible/talos inventory + host_vars
+│       │       └── talos-bootstrap/     ← siderolabs/talos: config apply, bootstrap, kubeconfig
+│       └── talos-baremetal/         ← Talos on bare-metal nodes already in maintenance mode
 │           ├── main.tf, variables.tf, outputs.tf
-│           └── modules/
-│               ├── inventory-renderer/  ← renders ansible/talos inventory + host_vars
-│               └── talos-bootstrap/     ← siderolabs/talos: config apply, bootstrap, kubeconfig
+│           └── firewall.tf              ← Talos host ingress firewall (default-deny + allow-lists)
 └── deployment/
     ├── terragrunt.hcl                ← root: state backend, env/stack derived from path
-    └── dev/
-        ├── ceph/
-        │   ├── terragrunt.hcl        ← include root + stack-level inputs
-        │   ├── versions.tf, variables.tf, main.tf
-        │   ├── clusters.auto.tfvars  ← declarative cluster list (edit here to add/modify)
-        │   └── .terraform.lock.hcl
-        ├── talos/
-        │   ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
-        │   └── clusters.auto.tfvars  ← declarative Talos cluster list (nodes[], profile, VLANs)
-        └── dns/
-            ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
-            └── records.auto.tfvars   ← declarative DNS records (Cloudflare, futo.cloud zone)
+    ├── dev/
+    │   ├── ceph/
+    │   │   ├── terragrunt.hcl        ← include root + stack-level inputs
+    │   │   ├── versions.tf, variables.tf, main.tf
+    │   │   ├── clusters.auto.tfvars  ← declarative cluster list (edit here to add/modify)
+    │   │   └── .terraform.lock.hcl
+    │   ├── talos/
+    │   │   ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
+    │   │   └── clusters.auto.tfvars  ← declarative Talos cluster list (nodes[], profile, VLANs)
+    │   └── dns/
+    │       ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
+    │       └── records.auto.tfvars   ← declarative DNS records (Cloudflare, futo.cloud zone)
+    └── staging/
+        └── talos/                    ← bare-metal Talos cluster (3× CP, Cilium CNI)
+            ├── terragrunt.hcl, versions.tf, variables.tf, main.tf, providers.tf
+            ├── helm.tf               ← Cilium install + post-CNI health gate
+            ├── cilium-values.yaml.tftpl
+            └── clusters.auto.tfvars  ← declarative node list (nodes[], bond, VIP, firewall)
 ```
 
 Future envs land as siblings: `deployment/staging/ceph/`, `deployment/prod/ceph/`.
@@ -176,6 +185,66 @@ On apply, the module:
    secrets are dormant — items are created via `op` CLI today and read
    by Ansible at play time. See [ADR-009](../ansible/ceph/docs/adr/009-tf-first-op-inject-over-vault-password-sh.md)
    for the re-enable plan.
+
+## The talos-baremetal module (staging/talos)
+
+Brings up Talos on **bare-metal nodes already running in maintenance mode** at
+known addresses — no Ansible, no hypervisors, no VLANs (contrast the VM-oriented
+`talos-cluster` module). It dials each node's maintenance IP, applies machine
+config (which installs to disk + reboots), bootstraps one CP, then emits
+kube/talosconfig and gates on cluster health.
+
+Declarative input in `deployment/staging/talos/clusters.auto.tfvars`:
+
+```hcl
+clusters = {
+  yucca-staging = {
+    talos_version      = "1.13.4"
+    kubernetes_version = "v1.36.1"
+    install_disk       = "/dev/sda"        # WIPED — the 240GB DELLBOSS; NVMe left raw
+    cluster_vip        = "10.10.10.15"     # L2 VIP, etcd-elected across CPs
+    gateway            = "10.10.10.1"
+    subnet_cidr        = "10.10.10.0/24"
+    cni                = "cilium"           # cni:none in Talos + Cilium via Helm
+    disable_kube_proxy = true               # Cilium kube-proxy replacement (KubePrism)
+    cilium_version     = "1.19.5"
+    hubble             = true
+    bond = { interfaces = ["eno1np0", "eno2np1"], mode = "active-backup" } # flip to 802.3ad after the switch is LACP'd
+    nodes = [
+      { name = "staging-cp1", address = "10.10.10.47" },
+      { name = "staging-cp2", address = "10.10.10.242" },
+      { name = "staging-cp3", address = "10.10.10.117" },
+    ]
+  }
+}
+```
+
+Notes:
+
+- **Static IP = maintenance IP.** Each node's `address` is pinned as the static
+  IP on `bond0`, so TF stays reachable across the install reboot.
+- **bond** comes up `active-backup` (no switch config needed). Migrate to
+  `802.3ad` later, node-by-node, after converting the switch ports to LACP
+  port-channels — LACP needs both ends configured at once, so a big-bang flip
+  drops connectivity until both sides agree.
+- **Ingress firewall** (`firewall.tf`): default-deny + per-service allow-lists
+  scoped to the subnet (+ pod CIDR on kubelet). apid + apiserver also trust the
+  Tailscale ranges (`trust_tailscale`). ⚠️ The host running `tf apply` must have
+  a source IP inside an allowed range or apid (50000) is blocked and bootstrap
+  hangs — add operator/jump subnets to `trusted_cidrs`.
+- **CNI is installed in the same apply.** With `cni:none` the nodes are NotReady
+  until Cilium lands, so the module's health gate runs `skip_kubernetes_checks`;
+  `helm.tf` installs Cilium, then a second (full) health gate enforces Ready.
+- **One cluster per stack.** The helm provider binds to a single cluster
+  (`one(...)`); add more clusters in their own stack.
+
+Run it (see "Running TF" below — needs 1Password unlocked + an on-LAN apply host):
+
+```bash
+TF_STACK_DIR=tf/deployment/staging/talos mise run tf:init
+TF_STACK_DIR=tf/deployment/staging/talos mise run tf:plan
+TF_STACK_DIR=tf/deployment/staging/talos mise run tf:apply   # WIPES /dev/sda, installs Talos
+```
 
 ## Where secrets actually live
 

@@ -1,0 +1,14 @@
+---
+# Per-environment, human-managed settings. Injected into every child
+# Kustomization via the cluster-apps postBuild.substituteFrom patch (see
+# apps.yaml), exactly like yucca-o11y. CI does NOT touch this file — see
+# image-versions.yaml for the CI-bumped image tag.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings
+  namespace: flux-system
+data:
+  CLUSTER_NAME: yucca-staging
+  # TODO: real staging ingress domain once envoy-gateway + DNS land.
+  APP_DOMAIN: staging.yucca.futo.cloud

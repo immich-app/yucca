@@ -1,0 +1,30 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-database
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/cnpg-cluster
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  # HA across the 3 control-planes: CNPG runs a primary + 2 streaming replicas
+  # and spreads them one-per-node via its default pod anti-affinity. This base
+  # is consumed only by the real clusters (staging/production) — local dev uses
+  # the separate dev-mirror tree, which keeps the chart's 1-instance default.
+  # TODO: point backups at object storage; consider synchronous replication.
+  values:
+    instances: 3
+    storage: 10Gi

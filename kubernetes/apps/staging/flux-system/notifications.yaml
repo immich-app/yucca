@@ -1,0 +1,29 @@
+---
+# notification-controller posts each Kustomization/HelmRelease reconcile result
+# as a GitHub commit status (✅/❌ on the deployed commit), so deploy outcome is
+# visible in GitHub without CI reaching into the cluster.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: github
+  namespace: flux-system
+spec:
+  type: github
+  address: https://github.com/immich-app/yucca
+  secretRef:
+    name: github-app
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: github-status
+  namespace: flux-system
+spec:
+  providerRef:
+    name: github
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: "*"
+    - kind: HelmRelease
+      name: "*"

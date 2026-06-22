@@ -1,0 +1,27 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-admin-api
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/yucca-admin-api
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/immich-app/yucca/yucca-admin-api
+      tag: ${YUCCA_IMAGE_TAG}
+    # TODO(prereq): real OIDC_ADMIN_* URLs + secrets via ExternalSecret.

@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-api
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/yucca-api
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/immich-app/yucca/yucca-api
+      # Substituted by Flux postBuild from the image-versions ConfigMap (CI-bumped).
+      tag: ${YUCCA_IMAGE_TAG}
+    # Migration Job assumes the dev image layout; dist-only prod image migrates
+    # at boot. Re-enable once the Job has a prod-compatible command.
+    migration:
+      enabled: false
+    # TODO(prereq): real OIDC issuer/redirect + JWT/OIDC secrets via
+    # ExternalSecret; ingress/probes/replicas for external access.

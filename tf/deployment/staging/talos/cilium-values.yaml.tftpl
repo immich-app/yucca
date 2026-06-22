@@ -1,0 +1,50 @@
+# Cilium Helm values for Talos. The securityContext capabilities + cgroup
+# settings below are MANDATORY on Talos (its read-only, minimal host) — without
+# them the agent can't mount BPF/cgroup or gather the caps it needs.
+# Ref: Talos docs "Deploying Cilium CNI".
+
+ipam:
+  mode: kubernetes
+
+# kube-proxy replacement (Talos sets cluster.proxy.disabled). KubePrism gives
+# the agent a stable apiserver endpoint with no kube-proxy / ClusterIP needed.
+kubeProxyReplacement: ${kube_proxy_replacement}
+%{ if kube_proxy_replacement ~}
+k8sServiceHost: localhost
+k8sServicePort: 7445
+%{ endif ~}
+
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+%{ if hubble ~}
+hubble:
+  relay:
+    enabled: true
+  ui:
+    enabled: false
+%{ else ~}
+hubble:
+  enabled: false
+%{ endif ~}
