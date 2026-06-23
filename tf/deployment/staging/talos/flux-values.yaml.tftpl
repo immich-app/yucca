@@ -1,0 +1,103 @@
+# flux-instance values — mirrors yucca-o11y's deployment/modules/kubernetes/helm
+# values.yaml (controller tuning), with the sync pointed at this repo's
+# per-environment cluster path. ${env} is templated by Terraform.
+instance:
+  cluster:
+    networkPolicy: false
+  components:
+    - source-controller
+    - kustomize-controller
+    - helm-controller
+    - notification-controller
+  sync:
+    kind: GitRepository
+    url: https://github.com/immich-app/yucca.git
+    ref: refs/heads/main
+    path: kubernetes/clusters/${env}
+    # 1m so a push to main (e.g. the gated prod pin) reconciles within ~a minute
+    # without a webhook. The cluster is LAN-only, so GitHub can't reach a Receiver.
+    interval: 1m
+    # No pullSecret: yucca is a public repo, so Flux reads it unauthenticated.
+  kustomize:
+    patches:
+      - # Increase the number of workers
+        patch: |
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --concurrent=10
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --requeue-dependency=5s
+        target:
+          kind: Deployment
+          name: (kustomize-controller|helm-controller|source-controller)
+      - # Increase the memory limits
+        patch: |
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: all
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: manager
+                    resources:
+                      limits:
+                        memory: 1Gi
+        target:
+          kind: Deployment
+          name: (kustomize-controller|helm-controller|source-controller)
+      - # Enable in-memory kustomize builds
+        patch: |
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --concurrent=20
+          - op: replace
+            path: /spec/template/spec/volumes/0
+            value:
+              name: temp
+              emptyDir:
+                medium: Memory
+        target:
+          kind: Deployment
+          name: kustomize-controller
+      - # Enable Helm repositories caching
+        patch: |
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --helm-cache-max-size=10
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --helm-cache-ttl=60m
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --helm-cache-purge-interval=5m
+        target:
+          kind: Deployment
+          name: source-controller
+      - # Flux near OOM detection for Helm
+        patch: |
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --feature-gates=OOMWatch=true
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --oom-watch-memory-threshold=95
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --oom-watch-interval=500ms
+        target:
+          kind: Deployment
+          name: helm-controller
+      - # Watch ConfigMaps/Secrets referenced by Kustomizations/HelmReleases, so
+        # a change to the RS-generated image-versions ConfigMap triggers an
+        # immediate reconcile (event-driven substitution) instead of waiting on
+        # each Kustomization's interval. Matches yucca-o11y.
+        patch: |-
+          - op: add
+            path: /spec/template/spec/containers/0/args/-
+            value: --watch-configs-label-selector=owner!=helm
+        target:
+          kind: Deployment
+          name: (helm-controller|kustomize-controller)

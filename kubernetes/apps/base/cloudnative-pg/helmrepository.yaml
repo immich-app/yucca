@@ -1,0 +1,11 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/source.toolkit.fluxcd.io/helmrepository_v1.json
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: cloudnative-pg
+  # No explicit namespace: the overlay's targetNamespace (cnpg-system) places
+  # this alongside the HelmRelease so the (namespace-less) sourceRef resolves.
+spec:
+  interval: 1h
+  url: https://cloudnative-pg.github.io/charts

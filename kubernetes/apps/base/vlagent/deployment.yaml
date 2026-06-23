@@ -1,0 +1,59 @@
+---
+# vlagent — VictoriaLogs' log-forwarding agent (the logs counterpart to vmagent).
+# Receives OTLP logs from the apps in-cluster (plaintext, no auth) and remote-
+# writes them to o11y's VictoriaLogs through vmauth, authenticating with the
+# shared bearer token. Native to the VM stack, so it speaks the same ingestion +
+# remote-write protocols as the rest of o11y.
+#
+# TODO(logs): o11y doesn't expose a VictoriaLogs ingest route on vmauth yet
+# (VLOGS_REMOTE_URL is a placeholder); wired ahead per design. Confirm the exact
+# vlagent flags + per-cluster stream field once that route lands.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vlagent
+  labels:
+    app.kubernetes.io/name: vlagent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vlagent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vlagent
+    spec:
+      containers:
+        - name: vlagent
+          image: victoriametrics/vlagent:v0.1.1
+          args:
+            - -httpListenAddr=:9428
+            # Egress to o11y VictoriaLogs via vmauth (bearer token from file).
+            - -remoteWrite.url=${VLOGS_REMOTE_URL}
+            - -remoteWrite.bearerTokenFile=/secrets/token
+            # Stamp the remote-cluster identity (matches vmagent's metric label).
+            - -remoteWrite.label=cluster=${METRICS_CLUSTER_LABEL}
+          ports:
+            - name: http
+              containerPort: 9428
+          volumeMounts:
+            - name: token
+              mountPath: /secrets
+              readOnly: true
+          readinessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 192Mi
+      volumes:
+        - name: token
+          secret:
+            secretName: vmagent-remote-write
+            items:
+              - key: token
+                path: token

@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vlagent
+  labels:
+    app.kubernetes.io/name: vlagent
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: vlagent
+  ports:
+    - name: http
+      port: 9428
+      targetPort: http

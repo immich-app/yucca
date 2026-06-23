@@ -29,7 +29,13 @@ for c in "${ALL_CHARTS[@]}"; do
 done
 
 echo "==> kustomize build (Flux entrypoints)"
-kustomize build kubernetes/apps >/dev/null && echo "    OK  kubernetes/apps"
+# o11y-style GitOps tree: per-env cluster entry points + app overlays.
+for env in staging production; do
+  kustomize build "kubernetes/clusters/$env" >/dev/null && echo "    OK  kubernetes/clusters/$env"
+  kustomize build "kubernetes/apps/$env" >/dev/null && echo "    OK  kubernetes/apps/$env"
+done
+# Dev-mirror tree (consumed by Tilt; kept validated too).
+kustomize build kubernetes/apps >/dev/null && echo "    OK  kubernetes/apps (dev tree)"
 kustomize build kubernetes/flux/repos >/dev/null && echo "    OK  kubernetes/flux/repos"
 kustomize build kubernetes/flux/cluster >/dev/null && echo "    OK  kubernetes/flux/cluster"
 
@@ -38,8 +44,12 @@ echo "==> flux-local build (full tree, helm rendering as Flux would)"
 # (>=3.13) regardless of the host. One retry: flux-local fans out `flux build
 # ks` subprocesses which very rarely segfault under load.
 flux_local() { uvx --from "flux-local==8.2.0" flux-local "$@"; }
-flux_local build all kubernetes --enable-helm --no-enable-dns >/dev/null \
-  || flux_local build all kubernetes --enable-helm --no-enable-dns >/dev/null
-echo "    OK  flux-local"
+# Per-cluster path: staging + production reuse the same Kustomization names
+# (flux-system ns), so flux-local must scope to one cluster at a time.
+for env in staging production; do
+  flux_local build all "kubernetes/clusters/$env" --enable-helm --no-enable-dns >/dev/null \
+    || flux_local build all "kubernetes/clusters/$env" --enable-helm --no-enable-dns >/dev/null
+  echo "    OK  flux-local ($env)"
+done
 
 echo "k8s surface: ALL VALID"

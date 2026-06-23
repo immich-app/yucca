@@ -29,6 +29,17 @@ packages/michael/tmp/
 **/terraform.tfstate
 **/terraform.tfstate.*
 **/*.tfvars.local
+
+# Secret material — never commit. App private keys + cluster credentials are
+# stored in 1Password and injected at runtime (TF_VAR / op run); these patterns
+# are a backstop so a downloaded key or fetched config can't be added by accident.
+*.pem
+*-private-key*.pem
+**/kubeconfig
+**/talosconfig
+*kubeconfig
+*talosconfig
+.private/
 # terragrunt-generated backend.tf contains absolute per-operator paths
 **/backend.tf
 

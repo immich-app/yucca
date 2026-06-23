@@ -1,0 +1,42 @@
+---
+# Pull-based image delivery (flux-operator). The input provider watches GHCR
+# for new monorepo build tags (0.0.<run_number>, pushed by CI); the ResourceSet
+# templates the `image-versions` ConfigMap from the latest tag. cluster-apps'
+# postBuild.substituteFrom then feeds ${YUCCA_IMAGE_TAG} into every app
+# HelmRelease. No CI cluster access, no per-deploy git commit — CI only builds+pushes.
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: yucca-image
+  namespace: flux-system
+spec:
+  type: OCIArtifactTag
+  # Poll GHCR every minute so a freshly-built image rolls out within ~a minute.
+  interval: 1m
+  # Any app repo works as the version oracle — all 5 ship at the same monorepo
+  # tag (release-please linked-versions).
+  url: oci://ghcr.io/immich-app/yucca/yucca-api
+  filter:
+    # CI build track: 0.0.<github.run_number>, monotonically increasing.
+    semver: ">=0.0.0"
+  # No secretRef: the app images are public, so the provider reads tags
+  # from GHCR unauthenticated.
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: yucca-image-tag
+  namespace: flux-system
+spec:
+  inputsFrom:
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: yucca-image
+  resources:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: image-versions
+        namespace: flux-system
+      data:
+        YUCCA_IMAGE_TAG: << inputs.tag | quote >>

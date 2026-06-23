@@ -1,0 +1,54 @@
+---
+# Per-environment, human-managed settings. Injected into every child
+# Kustomization via the cluster-apps postBuild.substituteFrom patch (see
+# apps.yaml), exactly like yucca-o11y. CI does NOT touch this file — see
+# image-versions.yaml for the CI-bumped image tag.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings
+  namespace: flux-system
+data:
+  CLUSTER_NAME: yucca-staging
+  # Per-service ingress hostnames (routed by the ingress layer to the in-cluster
+  # services; resolve to INGRESS_PUBLIC_IP publicly / INGRESS_INTERNAL_IP on-LAN).
+  APP_DOMAIN: staging.backups.futo.cloud  # web (apex)
+  API_HOST: api.staging.backups.futo.cloud  # yucca-api
+  ADMIN_HOST: admin.staging.backups.futo.cloud  # yucca-admin-api
+  GW_HOST: gw.staging.backups.futo.cloud  # michael (restic gateway)
+
+  # ─── OIDC (real IdP — no mock-oidc in staging) ───────────────────────
+  # Staging-specific issuer. Clients are registered out-of-band and their
+  # secrets live in 1P (TF-provisioned into the app Secrets). TODO: set the
+  # real staging issuer URL + device client ID.
+  OIDC_ISSUER: https://CHANGEME.zitadel.cloud
+  # Public (non-secret) client ID for the yucca-api device flow.
+  OIDC_DEVICE_CLIENT_ID: CHANGEME
+
+  # ─── Ingress entry point (yucca-staging) ─────────────────────────────
+  # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
+  # the 10.10.10.15 control-plane API VIP). Public IP is the NAT in front of it,
+  # which staging.yucca.futo.cloud resolves to publicly. Consumed by the ingress
+  # layer (envoy-gateway) + DNS once those land.
+  INGRESS_INTERNAL_IP: 10.10.10.16
+  INGRESS_PUBLIC_IP: 97.77.242.205
+  # ACME registration contact for Let's Encrypt. TODO: real ops address.
+  ACME_EMAIL: ops@futo.org
+
+  # ─── RGW (object storage via in-cluster HAProxy) ─────────────────────
+  # Pinned ClusterIP for the rgw-haproxy Service; michael pins a hostAlias
+  # (s3.dev.austin.int.futo.cloud -> this IP). MUST be inside the Service CIDR
+  # and otherwise unallocated. Talos default Service CIDR is 10.96.0.0/12.
+  RGW_HAPROXY_CLUSTER_IP: 10.96.0.253
+
+  # ─── Observability egress (apps -> agents -> o11y vmauth) ────────────
+  # Metric label stamped on everything vmagent ships (o11y convention: the
+  # remote-cluster identity is the `cluster` label).
+  METRICS_CLUSTER_LABEL: yucca_staging
+  # In-cluster OTLP receivers (host:port, no scheme — apps push plaintext).
+  # vmagent ingests metrics; vlagent ingests logs (both VM-native agents).
+  VMAGENT_OTLP: vmagent-yucca.observability.svc:8429
+  VLAGENT_OTLP: vlagent.observability.svc:9428
+  # VictoriaLogs ingest endpoint for vlagent's egress (behind vmauth).
+  # TODO(logs): placeholder — o11y doesn't expose a logs route on vmauth yet.
+  VLOGS_REMOTE_URL: https://vmauth.futostatus.com/insert/0/

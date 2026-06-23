@@ -1,0 +1,125 @@
+name: Infra (Terraform)
+
+# Applies the staging Terraform stacks from CI:
+#   - tf/deployment/staging/talos  (Talos config, Cilium, Flux bootstrap, secrets)
+#   - tf/deployment/staging/dns    (Cloudflare records for the ingress hosts)
+#
+# Plan runs on PRs touching tf/**; apply runs on merge to main behind the
+# `staging-infra` Environment gate (required reviewers). The Talos stack talks
+# to the nodes on the 10.10.10.0/24 management VLAN, which GitHub-hosted runners
+# can't reach — so the runner joins the tailnet (the cluster firewall trusts the
+# Tailscale CIDRs) and accepts the subnet route advertising that VLAN.
+#
+# Prerequisites (provisioned out-of-band):
+#   - Repo secrets: OP_TF_STAGING_ENV (the staging-scoped 1P service-account
+#     token — resolves tf/.env; dev/prod use OP_TF_DEV_ENV / OP_TF_PROD_ENV),
+#     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tagged tag:project-yucca).
+#   - A Tailscale subnet router advertising 10.10.10.0/24, and tag:project-yucca approved for
+#     those routes.
+#   - GitHub Environment `staging-infra` with required reviewers (the apply gate).
+
+on:
+  push:
+    branches: [main]
+    paths: ["tf/**"]
+  pull_request:
+    paths: ["tf/**"]
+  workflow_dispatch:
+
+# Serialize: the OVH S3 backend has no state locking (single-operator model),
+# so never let two infra runs apply concurrently.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Per-environment 1Password service-account token (least privilege vs. one
+  # shared superuser SA). This is the STAGING infra workflow, so it injects the
+  # staging SA; a dev/prod workflow uses OP_TF_DEV_ENV / OP_TF_PROD_ENV. `op run`
+  # reads OP_SERVICE_ACCOUNT_TOKEN from the env to resolve tf/.env's op:// refs,
+  # so the staging SA must have read on every vault tf/.env touches (yucca_tf,
+  # yucca_tf_manual, yucca_tf_dev, o11y_tf_prod) + read/write on yucca_tf_staging.
+  OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_STAGING_ENV }}
+
+jobs:
+  plan:
+    name: Plan ${{ matrix.stack }}
+    # Skip on fork PRs (no access to secrets / tailnet).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [talos, dns]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up mise (opentofu + terragrunt)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+
+      # The Talos stack refreshes state against the nodes; the DNS stack is pure
+      # Cloudflare API and needs no tailnet.
+      - name: Connect to Tailscale
+        if: matrix.stack == 'talos'
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:project-yucca
+          args: --accept-routes
+
+      - name: Terragrunt plan
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/${{ matrix.stack }}
+          --non-interactive plan
+
+  apply:
+    name: Apply (gated)
+    needs: plan
+    # Only on merge to main (or manual dispatch) — never on PRs.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    # The approval gate: `staging-infra` Environment with required reviewers.
+    environment: staging-infra
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up mise (opentofu + terragrunt)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:project-yucca
+          args: --accept-routes
+
+      # Cluster first (provisions secrets/CNI/Flux), then DNS.
+      - name: Apply staging/talos
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/talos
+          --non-interactive apply -auto-approve
+
+      - name: Apply staging/dns
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/dns
+          --non-interactive apply -auto-approve

@@ -1,0 +1,39 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.envoyproxy.io/envoyproxy_v1alpha1.json
+# Bare-metal exposure: the Envoy data-plane Service is a LoadBalancer pinned to
+# the internal ingress VIP via Cilium LB-IPAM (the public IP NATs to it). Unlike
+# o11y's cloud NodePort, this serves :443 directly.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: envoy
+spec:
+  logging:
+    level:
+      default: info
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        replicas: 2
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: envoy
+                  gateway.envoyproxy.io/owning-gateway-name: envoy
+      envoyService:
+        type: LoadBalancer
+        patch:
+          type: StrategicMerge
+          value:
+            metadata:
+              annotations:
+                # Cilium LB-IPAM assigns this specific VIP to the Service.
+                lbipam.cilium.io/ips: "${INGRESS_INTERNAL_IP}"
+  telemetry:
+    metrics:
+      prometheus: {}

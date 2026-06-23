@@ -1,0 +1,45 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-admin-api
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/yucca-admin-api
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/immich-app/yucca/yucca-admin-api
+      tag: ${YUCCA_IMAGE_TAG}
+    # secretData nulled: replaced by the TF-provisioned `yucca-admin-api` Secret
+    # (OIDC_ADMIN_CLIENT_ID/SECRET) via the chart's envFrom: secretRef.
+    secretData: null
+    # Real IdP, admin console on its own staging subdomain.
+    # TODO(ingress): confirm admin host once envoy-gateway + DNS land.
+    oidcIssuer: ${OIDC_ISSUER}
+    oidcRedirectUri: https://admin.${APP_DOMAIN}/api/auth/oidc/callback
+    oidcLogoutRedirectUri: https://admin.${APP_DOMAIN}
+    env:
+      - name: NODE_ENV
+        value: production
+      - name: YUCCA_ADMIN_API_PORT
+        value: "3030"
+      - name: LOG_LEVEL
+        value: info
+      - name: OTEL_METRICS
+        value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics
+      - name: OTEL_LOGGING
+        value: http://${VLAGENT_OTLP}/insert/opentelemetry/v1/logs

@@ -1,18 +1,66 @@
 # Kubernetes (Flux GitOps)
 
-Flux GitOps surface for the Yucca cluster, laid out in the
-[home-operations](https://github.com/onedr0p/cluster-template) convention:
+This directory holds **two parallel trees** with different consumers:
 
 ```
 kubernetes/
-├── bootstrap/     # one-time Flux install notes for a fresh cluster
-├── flux/          # Flux sources (GitRepository/HelmRepository) + cluster entrypoint
-├── components/    # reusable Kustomize components (cross-app concerns)
-└── apps/          # applications, grouped by namespace
-    ├── cnpg-system/   # CloudNativePG operator
-    ├── rook-ceph/     # Rook-Ceph operator + dev cluster (S3 object store)
-    └── yucca/         # the product stack + its dev infra
+├── clusters/             # ← real clusters (yucca-o11y-style GitOps; reconciled by Flux)
+│   ├── staging/          #   apps.yaml (cluster-apps entry) + cluster-settings (image-versions is RS-generated)
+│   └── production/       #   + image-versions (git pin, bumped by the gated promote job)
+├── apps/
+│   ├── base/             #   reusable HelmReleases (chart + image.repository); tag via ${YUCCA_IMAGE_TAG}
+│   ├── staging/          #   overlays + flux-system/ (RSIP+ResourceSet image automation, notification Provider/Alert)
+│   ├── production/       #   overlays + flux-system/ (notification Provider/Alert)
+│   │
+│   ├── cnpg-system/      # ← dev-mirror tree (consumed by Tilt/k3d for LOCAL dev only)
+│   ├── rook-ceph/        #   kept as-is; Tilt scans apps/<namespace>/ and skips base|staging|production
+│   └── yucca/            #   the product stack + its dev infra
+├── flux/                 #   dev-mirror Flux sources + entrypoint (Tilt reads flux/repos)
+├── bootstrap/  components/
 ```
+
+- **`clusters/` + `apps/{base,staging,production}/`** is the o11y-faithful GitOps
+  surface for the real Talos clusters. The flux-instance (installed by
+  `tf/deployment/staging/talos/flux.tf`) syncs `clusters/<env>`; merge→build→deploy
+  is driven by `.github/workflows/deploy.yml`. See **GitOps deploy** below.
+- **`apps/<namespace>/` + `flux/`** is the original dev-mirror tree the
+  [Tiltfile](../Tiltfile) consumes for local k3d dev. Untouched by the GitOps
+  tree (Tilt skips `base|staging|production`). Consolidating the two (Tilt
+  consuming `apps/base`) is future work, alongside porting the rest of the
+  platform (michael, metrics-worker, object storage, ingress, secrets) into
+  `apps/base`.
+
+## GitOps deploy (staging → production)
+
+Merging to `main` runs `.github/workflows/deploy.yml`:
+
+This is **pull-based** — CI only builds+pushes; the clusters pull. CI never holds
+a kubeconfig or joins the tailnet.
+
+1. **build** — matrix-builds every app image → `ghcr.io/immich-app/yucca/<app>:0.0.<run_number>`
+   (+ `:sha-<sha>` for traceability, `:main`). One monotonic monorepo tag for all apps.
+2. **staging (automatic, in-cluster)** — the flux-operator `ResourceSetInputProvider`
+   (`apps/staging/flux-system/image-automation.yaml`, type `OCIArtifactTag`) detects the
+   highest `0.0.<n>` tag in GHCR; a `ResourceSet` writes it into the `image-versions`
+   ConfigMap, which the `cluster-apps` `postBuild.substituteFrom` feeds into every app
+   HelmRelease as `${YUCCA_IMAGE_TAG}`. No GHA job, no git commit.
+3. **production (gated)** — the `promote-production` job runs only behind the
+   `production` GitHub Environment's **required-reviewers gate** (guarded by repo var
+   `PROD_CLUSTER_READY`). It pins `clusters/production/image-versions.yaml` to the
+   validated `0.0.<n>` and commits it (`promote-prod.sh`, `[skip ci]`); prod Flux pulls
+   and applies. Still no cluster access from CI.
+4. **visibility** — notification-controller's GitHub `Provider`/`Alert`
+   (`apps/<env>/flux-system/notifications.yaml`) posts each reconcile result as a
+   **commit status** (✅/❌ on the deployed commit). (Trade-off vs the old push model:
+   the rollout no longer streams in the Actions log — it surfaces as the commit status.)
+
+### Prerequisites (provisioned out-of-band)
+
+- **GitHub Environment** `production` with required reviewers; repo var `PROD_CLUSTER_READY=true` once prod exists. (No `staging` environment needed — staging is fully in-cluster.)
+- **CI secrets**: just `PUSH_O_MATIC_*` (already exist) for the prod-pin commit + `GITHUB_TOKEN` for the GHCR push. (Tailscale / `OP_*` cluster secrets are no longer needed.)
+- **Cluster secret (TF-provisioned from 1P)**: just the commit-status credential, via a **dedicated `yucca-flux` GitHub App** (no PAT) with only *Commit statuses: write* — `TF_VAR_flux_github_app_id`, `TF_VAR_flux_github_app_installation_id`, `TF_VAR_flux_github_app_private_key`. No git-sync or GHCR pull secret: yucca is a public repo with public images, so Flux reads both unauthenticated.
+- **Flux bootstrap**: `tf apply` the staging stack (`flux.tf`) with those `TF_VAR`s set, after these manifests are on `main`.
+- **zizmor**: SHA-pin the `# TODO: pin to SHA` actions in `deploy.yml` before merge.
 
 ## End-to-end tests against the local k3d stack
 

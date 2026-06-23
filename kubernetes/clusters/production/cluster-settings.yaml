@@ -1,0 +1,12 @@
+---
+# Production environment settings. Authored now; activates when the prod
+# cluster is built and its flux-instance syncs kubernetes/clusters/production.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings
+  namespace: flux-system
+data:
+  CLUSTER_NAME: yucca-production
+  # TODO: real production ingress domain.
+  APP_DOMAIN: yucca.futo.cloud

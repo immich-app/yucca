@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cert-manager.io/certificate_v1.json
+# Wildcard + apex for the staging domain — covers web (apex), api., gw. (and
+# admin. when it's exposed). cert-manager writes staging-backups-tls into this
+# namespace (envoy-system) for the Gateway to terminate with.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: staging-backups
+spec:
+  dnsNames:
+    - "${APP_DOMAIN}"
+    - "*.${APP_DOMAIN}"
+  duration: 2160h # 90d; cert-manager renews at 2/3 lifetime
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-production
+  secretName: staging-backups-tls

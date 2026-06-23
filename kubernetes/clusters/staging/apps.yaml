@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+---
+# cluster-apps entry point — the flux-instance sync (installed by the TF helm
+# module) points here (kubernetes/clusters/staging). Mirrors yucca-o11y: a
+# single Kustomization over kubernetes/apps/staging, plus one patch that gives
+# EVERY child Kustomization a postBuild.substituteFrom for the cluster-settings
+# (human) + image-versions (CI) ConfigMaps.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-apps
+  namespace: flux-system
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/staging
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false
+  patches:
+    - target:
+        group: kustomize.toolkit.fluxcd.io
+        kind: Kustomization
+      patch: |-
+        apiVersion: kustomize.toolkit.fluxcd.io/v1
+        kind: Kustomization
+        metadata:
+          name: _
+        spec:
+          postBuild:
+            substituteFrom:
+              - kind: ConfigMap
+                name: cluster-settings
+              - kind: ConfigMap
+                name: image-versions

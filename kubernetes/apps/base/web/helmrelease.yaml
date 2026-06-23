@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-web
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/web
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/immich-app/yucca/web
+      tag: ${YUCCA_IMAGE_TAG}
+    env:
+      - name: NODE_ENV
+        value: production
+      # Browser-facing API base (served at the staging ingress domain).
+      # TODO(ingress): finalize once envoy-gateway + DNS land.
+      - name: PUBLIC_API_URL
+        value: https://${APP_DOMAIN}
+      # Server-side (SSR) calls stay in-cluster.
+      - name: YUCCA_API_URL
+        value: http://yucca-api:3020/
