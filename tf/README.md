@@ -138,12 +138,16 @@ These wrap: `op run --env-file=tf/.env -- terragrunt --working-dir <stack> <cmd>
   (`tailscale/github-action`, `--accept-routes`) — the cluster firewall already
   trusts the Tailscale CIDRs. The DNS stack is pure Cloudflare API, no tailnet.
 - Secrets come from the same `op run --env-file=tf/.env` path; CI just supplies
-  `OP_SERVICE_ACCOUNT_TOKEN` (the rest resolves from 1P).
+  the per-env 1P service-account token (the rest resolves from 1P). The token is
+  injected as `OP_SERVICE_ACCOUNT_TOKEN` from the environment-specific secret —
+  `OP_TF_STAGING_ENV` here (dev/prod workflows use `OP_TF_DEV_ENV` /
+  `OP_TF_PROD_ENV`) — replacing a shared superuser SA with a scoped one.
 
-Prerequisites (out-of-band): repo secrets `OP_SERVICE_ACCOUNT_TOKEN`,
-`TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`; a Tailscale subnet router advertising
-`10.10.10.0/24` with `tag:ci` approved for it; and the `staging-infra`
-Environment with required reviewers.
+Prerequisites (out-of-band): repo secret `OP_TF_STAGING_ENV` (a staging 1P SA
+with read on `yucca_tf`, `yucca_tf_manual`, `yucca_tf_dev`, `o11y_tf_prod` +
+read/write on `yucca_tf_staging`), `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`; a
+Tailscale subnet router advertising `10.10.10.0/24` with `tag:ci` approved for
+it; and the `staging-infra` Environment with required reviewers.
 
 ### State backend
 
