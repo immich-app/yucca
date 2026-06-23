@@ -11,8 +11,8 @@ gateway: 10.10.10.1
 dns_server: 10.10.10.1
 bond_mode: active-backup
 bond_interfaces:
-  - eno1
-  - eno2
+  - eno1np0
+  - eno2np1
 networkd_enabled: true
 
 # === Ceph ===
