@@ -13,8 +13,8 @@ name: Infra (Terraform)
 # Prerequisites (provisioned out-of-band):
 #   - Repo secrets: OP_TF_STAGING_ENV (the staging-scoped 1P service-account
 #     token — resolves tf/.env; dev/prod use OP_TF_DEV_ENV / OP_TF_PROD_ENV),
-#     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tagged tag:ci).
-#   - A Tailscale subnet router advertising 10.10.10.0/24, and tag:ci approved for
+#     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tagged tag:project-yucca).
+#   - A Tailscale subnet router advertising 10.10.10.0/24, and tag:project-yucca approved for
 #     those routes.
 #   - GitHub Environment `staging-infra` with required reviewers (the apply gate).
 
@@ -74,7 +74,7 @@ jobs:
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
+          tags: tag:project-yucca
           args: --accept-routes
 
       - name: Terragrunt plan
@@ -108,7 +108,7 @@ jobs:
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
+          tags: tag:project-yucca
           args: --accept-routes
 
       # Cluster first (provisions secrets/CNI/Flux), then DNS.

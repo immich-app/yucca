@@ -146,7 +146,7 @@ These wrap: `op run --env-file=tf/.env -- terragrunt --working-dir <stack> <cmd>
 Prerequisites (out-of-band): repo secret `OP_TF_STAGING_ENV` (a staging 1P SA
 with read on `yucca_tf`, `yucca_tf_manual`, `yucca_tf_dev`, `o11y_tf_prod` +
 read/write on `yucca_tf_staging`), `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`; a
-Tailscale subnet router advertising `10.10.10.0/24` with `tag:ci` approved for
+Tailscale subnet router advertising `10.10.10.0/24` with `tag:project-yucca` approved for
 it; and the `staging-infra` Environment with required reviewers.
 
 ### State backend
