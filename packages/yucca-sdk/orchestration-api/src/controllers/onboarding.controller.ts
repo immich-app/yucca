@@ -38,4 +38,14 @@ export class OnboardingController {
   async skipOnboardingExtraConfig() {
     await this.service.skipExtraConfig();
   }
+
+  @Post('/telemetry')
+  async enableTelemetry() {
+    await this.service.enableTelemetry();
+  }
+
+  @Post('/report-error')
+  reportError() {
+    this.service.reportError();
+  }
 }

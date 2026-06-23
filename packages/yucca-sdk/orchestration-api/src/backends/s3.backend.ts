@@ -63,4 +63,8 @@ export class S3Backend extends Backend {
   submitMetricRepositorySize(): Promise<void> {
     throw new Error('not capable');
   }
+
+  submitStructuredLog(): void {
+    throw new Error('not capable');
+  }
 }

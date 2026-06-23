@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
+import { Backend } from '../backends/backend';
 import { DB } from '../schema';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 
@@ -22,10 +23,12 @@ export class BackendRepository {
 
   async getBackends() {
     const backends = await this.db.selectFrom('backends').selectAll('backends').execute();
-    return backends.map(({ id, configuration }) => ({
-      id,
-      configuration: JSON.parse(configuration) as BackendConfiguration,
-    }));
+    return backends
+      .map(({ id, configuration }) => ({
+        id,
+        configuration: JSON.parse(configuration) as BackendConfiguration,
+      }))
+      .map(({ id, configuration }) => ({ id, configuration, backend: Backend.from(configuration) }));
   }
 
   async getBackend(id: string) {
@@ -35,9 +38,12 @@ export class BackendRepository {
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
 
+    const configuration = JSON.parse(backend.configuration) as BackendConfiguration;
+
     return {
       id: backend.id,
-      configuration: JSON.parse(backend.configuration) as BackendConfiguration,
+      configuration,
+      backend: Backend.from(configuration),
     };
   }
 }

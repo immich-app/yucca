@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { io, Socket } from 'socket.io-client';
+import { waitForLog } from 'src/victoria-logs';
 
 const baseUrl = `http://localhost:22676`;
 let socket: Socket;
@@ -58,6 +59,8 @@ const waitForMessage = (type: string) => {
 describe('Onboarding (before setup)', () => {
   it('should report onboarding has not been performed', async () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: false,
       hasOnboardedKey: false,
       hasBackup: false,
@@ -163,6 +166,8 @@ describe('Onboarding', () => {
     await sdk.confirmRecoveryKey();
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: false,
@@ -175,6 +180,8 @@ describe('Onboarding', () => {
     await sdk.skipOnboardingExtraConfig();
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: false,
@@ -245,6 +252,8 @@ describe('Repository', () => {
     });
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: true,
@@ -510,6 +519,8 @@ describe('Schedule', () => {
     });
 
     await expect(sdk.onboardingStatus()).resolves.toEqual({
+      status: 'ready',
+      hasTelemetry: 'none',
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: true,
@@ -880,4 +891,37 @@ describe('Local backend', () => {
       }),
     );
   });
+});
+
+describe('Telemetry', () => {
+  let repository: sdk.LocalRepositoryDto;
+
+  beforeAll(async () => {
+    ({ repository } = await sdk.createRepository({
+      name: 'Telemetry Repository',
+      worm: false,
+    }));
+
+    const workingDir = await mkdtemp(join(tmpdir(), 'telemetry-'));
+    await writeFile(join(workingDir, 'test-file'), 'hi');
+    await sdk.updateRepository(repository.id, { paths: [workingDir] });
+
+    await sdk.enableTelemetry();
+  }, 30_000);
+
+  it('ships a structured backup log to VictoriaLogs', async () => {
+    const endEvent = waitForMessage('TaskEnd');
+
+    await sdk.createBackup(repository.id);
+    await endEvent;
+
+    const record = await waitForLog((entry: Record<string, unknown>) => {
+      const blob = JSON.stringify(entry);
+      return blob.includes('Running backup') && blob.includes(repository.id);
+    });
+
+    const blob = JSON.stringify(record);
+    expect(blob).toContain('Running backup');
+    expect(blob).toContain(repository.id);
+  }, 60_000);
 });

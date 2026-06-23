@@ -27,6 +27,10 @@ export type SubmitBackupEndRequestDto = {
 export type SubmitUpdateSizeRequestDto = {
     sizeBytes: number;
 };
+export type SubmitStructuredLogRequestDto = {
+    summary: string;
+    data: object;
+};
 export type RepositoryMetricsHistoryDto = {
     id: string;
     repositoryId: string;
@@ -131,6 +135,13 @@ export function submitMetricRepositorySize(repositoryId: string, submitUpdateSiz
         ...opts,
         method: "PATCH",
         body: submitUpdateSizeRequestDto
+    })));
+}
+export function submitStructuredLog(submitStructuredLogRequestDto: SubmitStructuredLogRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/metrics/submit/log", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: submitStructuredLogRequestDto
     })));
 }
 export function listMetricsHistory(repositoryId: string, { cursor, limit }: {

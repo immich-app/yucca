@@ -48,21 +48,24 @@ export const useBackendEventHandler = () => {
   };
 };
 
-export const handleYuccaLogin = async (
-  onCreate?: (backendId: string) => void,
-) => {
-  try {
-    const response = await oidcDeviceFlow();
-    void modalManager.show(OAuthDeviceFlow, {
-      ...response,
-      onCreate,
-    });
-    window.open(response.verificationUri, '_blank');
-  } catch (error) {
-    handleError(error, 'Failed to start login');
-    throw error;
-  }
+const startYuccaLogin = async (onCreate?: (backendId: string) => void) => {
+  const response = await oidcDeviceFlow();
+  void modalManager.show(OAuthDeviceFlow, {
+    ...response,
+    onCreate,
+  });
+  window.open(response.verificationUri, '_blank');
 };
+
+export const useYuccaLogin = () =>
+  createMutation(
+    () => ({
+      mutationFn: (onCreate?: (backendId: string) => void) =>
+        startYuccaLogin(onCreate),
+      onError: (error) => handleError(error, 'Failed to start login'),
+    }),
+    () => queryClient,
+  );
 
 export const handleSetupLocalStorage = (
   onCreate?: (backendId: string) => void,
@@ -99,11 +102,12 @@ export const getBackendActions = (
   repository: LocalRepositoryDto | undefined,
   backend: BackendDto,
   repositoryBackend?: RepositoryBackendDto & { primary?: boolean },
+  onLogin?: () => void,
 ) => {
   const LoginAgain: ActionItem = {
     icon: mdiLogin,
     title: 'Login again',
-    onAction: () => void handleYuccaLogin(),
+    onAction: () => onLogin?.(),
     $if: () => backend.type === 'yucca' && !backend.isOnline,
   };
 

@@ -11,7 +11,10 @@
   const { children } = $props();
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head>
+  <title>FUTO Backups</title>
+  <link rel="icon" href={favicon} />
+</svelte:head>
 <YuccaContext>
   {@render children()}
 </YuccaContext>

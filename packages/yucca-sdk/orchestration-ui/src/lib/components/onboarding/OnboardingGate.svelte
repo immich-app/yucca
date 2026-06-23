@@ -1,6 +1,7 @@
 <script lang="ts">
   import { LoadingSpinner } from "@immich/ui";
   import { onMount, type Snippet } from "svelte";
+  import OnboardingBootstrapError from "./OnboardingBootstrapError.svelte";
   import SampleOnboarding from "./SampleOnboarding.svelte";
   import type { OnboardingStatusResponseDto } from "$lib/fetch-client";
   import { handleOnboardingStatus } from "$lib/services/onboarding.service";
@@ -13,14 +14,16 @@
 
   const { onExit, onFinish, children }: Props = $props();
 
-  let status: OnboardingStatusResponseDto | undefined = $state();
+  let onboarding: OnboardingStatusResponseDto | undefined = $state();
 
   onMount(() => {
-    handleOnboardingStatus().then((data) => (status = data));
+    handleOnboardingStatus().then((data) => (onboarding = data));
   });
 
   function onSkip() {
-    status = {
+    onboarding = {
+      status: "ready",
+      hasTelemetry: "full",
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: true,
@@ -30,19 +33,19 @@
   }
 </script>
 
-{#if typeof status === "object"}
-  {#if !(status.hasBackend && status.hasOnboardedKey && (status.hasSkippedExtraConfig || (status.hasBackup && status.hasSchedule)))}
-    <SampleOnboarding
-      {status}
-      onFinish={() => (onFinish ? onFinish() : onSkip())}
-      onCancel={() => {
-        onSkip();
-        onExit();
-      }}
-    />
-  {:else}
-    {@render children()}
-  {/if}
-{:else}
+{#if onboarding === undefined || onboarding.status === "not-ready"}
   <LoadingSpinner />
+{:else if onboarding.status === "error"}
+  <OnboardingBootstrapError error={onboarding.error} onQuit={onExit} />
+{:else if onboarding.hasTelemetry === "none" || !(onboarding.hasBackend && onboarding.hasOnboardedKey && (onboarding.hasSkippedExtraConfig || (onboarding.hasBackup && onboarding.hasSchedule)))}
+  <SampleOnboarding
+    status={onboarding}
+    onFinish={() => (onFinish ? onFinish() : onSkip())}
+    onCancel={() => {
+      onSkip();
+      onExit();
+    }}
+  />
+{:else}
+  {@render children()}
 {/if}

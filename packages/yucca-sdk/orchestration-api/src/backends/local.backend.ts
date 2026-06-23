@@ -113,4 +113,8 @@ export class LocalBackend extends Backend {
   submitMetricRepositorySize(): Promise<void> {
     throw new Error('not capable');
   }
+
+  submitStructuredLog(): void {
+    throw new Error('not capable');
+  }
 }

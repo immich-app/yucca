@@ -1,4 +1,5 @@
 import { DynamicModule, Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import Database from 'better-sqlite3';
@@ -18,8 +19,10 @@ import { RunHistoryController } from './controllers/runHistory.controller';
 import { RunningTasksController } from './controllers/runningTasks.controller';
 import { ScheduleController } from './controllers/schedule.controller';
 import { EventsGateway } from './events/events.gateway';
+import { TelemetryErrorInterceptor } from './interceptors/telemetry-error.interceptor';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
+import { BootstrapRepository } from './repositories/bootstrap.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { ModuleConfigRepository } from './repositories/moduleConfig.repository';
@@ -43,6 +46,7 @@ import { RepositoryService } from './services/repository.service';
 import { RunHistoryService } from './services/runHistory.service';
 import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
+import { TelemetryService } from './services/telemetry.service';
 
 export const controllers = [
   AuthController,
@@ -59,6 +63,7 @@ export const controllers = [
 
 export const repositories = [
   BackendRepository,
+  BootstrapRepository,
   ConfigRepository,
   DatabaseRepository,
   ModuleConfigRepository,
@@ -85,16 +90,13 @@ export const services = [
   RunHistoryService,
   RunningTasksService,
   ScheduleService,
+  TelemetryService,
 ];
 
 @Module({})
 export class OrchestrationApiModule {
-  static forRoot(config: Partial<ModuleConfig> & Pick<ModuleConfig, 'yuccaProductionApi'>): DynamicModule {
+  static forRoot(config: Partial<ModuleConfig>): DynamicModule {
     config.statePath ??= resolve(homedir(), '.yucca');
-
-    if (!config.yuccaProductionApi) {
-      throw new Error('config.yuccaProductionApi is missing');
-    }
 
     return {
       module: OrchestrationApiModule,
@@ -118,7 +120,13 @@ export class OrchestrationApiModule {
         ScheduleModule.forRoot(),
       ],
       controllers,
-      providers: [{ provide: ModuleConfigProvider, useValue: config }, EventsGateway, ...repositories, ...services],
+      providers: [
+        { provide: ModuleConfigProvider, useValue: config },
+        { provide: APP_INTERCEPTOR, useClass: TelemetryErrorInterceptor },
+        EventsGateway,
+        ...repositories,
+        ...services,
+      ],
       exports: [EventsGateway, ModuleConfigRepository],
     };
   }
