@@ -1,0 +1,57 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: vmagent
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: victoria-metrics-k8s-stack
+  install:
+    crds: CreateReplace
+  interval: 1h
+  upgrade:
+    crds: CreateReplace
+    cleanupOnFail: true
+    remediation:
+      retries: 2
+  values:
+    # `vmagent-<name>` Service => vmagent-yucca (matches VMAGENT_OTLP). The
+    # k8s-stack chart bundles the VM operator, so this one release gives us the
+    # CRDs + operator + a VMAgent. yucca-staging is a METRICS REMOTE CLUSTER:
+    # only the agent runs here; storage/query/alerting live at o11y.
+    fullnameOverride: yucca
+    global:
+      clusterLabel: cluster
+    # Server-side components are disabled — they run in the o11y cluster.
+    vmcluster:
+      enabled: false
+    vmsingle:
+      enabled: false
+    vmalert:
+      enabled: false
+    alertmanager:
+      enabled: false
+    vmauth:
+      enabled: false
+    grafana:
+      enabled: false
+    defaultDashboards:
+      enabled: false
+    defaultRules:
+      create: false
+    vmagent:
+      enabled: true
+      spec:
+        # Stamp the remote-cluster identity on every series (o11y convention).
+        externalLabels:
+          cluster: ${METRICS_CLUSTER_LABEL}
+        # Ship to o11y's vmauth (the `remote-clusters` VMUser proxies
+        # /insert/0/.* -> vminsert), authenticating with the shared bearer token
+        # (TF-provisioned `vmagent-remote-write` Secret from o11y_tf_prod).
+        remoteWrite:
+          - url: https://vmauth.futostatus.com/insert/0/prometheus/api/v1/write
+            bearerTokenSecret:
+              name: vmagent-remote-write
+              key: token

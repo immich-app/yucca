@@ -24,5 +24,13 @@ spec:
     image:
       repository: ghcr.io/immich-app/yucca/web
       tag: ${YUCCA_IMAGE_TAG}
-    # YUCCA_API_URL/PUBLIC_API_URL default to the in-cluster yucca-api service.
-    # TODO(prereq): ingress for external access.
+    env:
+      - name: NODE_ENV
+        value: production
+      # Browser-facing API base (served at the staging ingress domain).
+      # TODO(ingress): finalize once envoy-gateway + DNS land.
+      - name: PUBLIC_API_URL
+        value: https://${APP_DOMAIN}
+      # Server-side (SSR) calls stay in-cluster.
+      - name: YUCCA_API_URL
+        value: http://yucca-api:3020/

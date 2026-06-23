@@ -1,0 +1,120 @@
+name: Infra (Terraform)
+
+# Applies the staging Terraform stacks from CI:
+#   - tf/deployment/staging/talos  (Talos config, Cilium, Flux bootstrap, secrets)
+#   - tf/deployment/staging/dns    (Cloudflare records for the ingress hosts)
+#
+# Plan runs on PRs touching tf/**; apply runs on merge to main behind the
+# `staging-infra` Environment gate (required reviewers). The Talos stack talks
+# to the nodes on the 10.10.10.0/24 management VLAN, which GitHub-hosted runners
+# can't reach — so the runner joins the tailnet (the cluster firewall trusts the
+# Tailscale CIDRs) and accepts the subnet route advertising that VLAN.
+#
+# Prerequisites (provisioned out-of-band):
+#   - Repo secrets: OP_SERVICE_ACCOUNT_TOKEN (1P superuser SA — resolves tf/.env),
+#     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tagged tag:ci).
+#   - A Tailscale subnet router advertising 10.10.10.0/24, and tag:ci approved for
+#     those routes.
+#   - GitHub Environment `staging-infra` with required reviewers (the apply gate).
+
+on:
+  push:
+    branches: [main]
+    paths: ["tf/**"]
+  pull_request:
+    paths: ["tf/**"]
+  workflow_dispatch:
+
+# Serialize: the OVH S3 backend has no state locking (single-operator model),
+# so never let two infra runs apply concurrently.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # The superuser SA token lets `op run` resolve every op:// ref in tf/.env
+  # (AWS state creds, Cloudflare, TF_VARs). No OP_ACCOUNT needed for an SA.
+  OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
+jobs:
+  plan:
+    name: Plan ${{ matrix.stack }}
+    # Skip on fork PRs (no access to secrets / tailnet).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [talos, dns]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up mise (opentofu + terragrunt)
+        uses: jdx/mise-action@v2 # TODO: pin to SHA (zizmor)
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v1 # TODO: pin to SHA (zizmor)
+
+      # The Talos stack refreshes state against the nodes; the DNS stack is pure
+      # Cloudflare API and needs no tailnet.
+      - name: Connect to Tailscale
+        if: matrix.stack == 'talos'
+        uses: tailscale/github-action@v3 # TODO: pin to SHA (zizmor)
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          args: --accept-routes
+
+      - name: Terragrunt plan
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/${{ matrix.stack }}
+          --non-interactive plan
+
+  apply:
+    name: Apply (gated)
+    needs: plan
+    # Only on merge to main (or manual dispatch) — never on PRs.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    # The approval gate: `staging-infra` Environment with required reviewers.
+    environment: staging-infra
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up mise (opentofu + terragrunt)
+        uses: jdx/mise-action@v2 # TODO: pin to SHA (zizmor)
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v1 # TODO: pin to SHA (zizmor)
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3 # TODO: pin to SHA (zizmor)
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          args: --accept-routes
+
+      # Cluster first (provisions secrets/CNI/Flux), then DNS.
+      - name: Apply staging/talos
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/talos
+          --non-interactive apply -auto-approve
+
+      - name: Apply staging/dns
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/dns
+          --non-interactive apply -auto-approve

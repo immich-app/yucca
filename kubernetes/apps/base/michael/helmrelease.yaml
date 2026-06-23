@@ -1,0 +1,59 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: michael
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/michael
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/immich-app/yucca/michael
+      tag: ${YUCCA_IMAGE_TAG}
+    # secretData nulled: the chart's dev JWT_PUBLIC_KEY fixture is replaced by
+    # the TF-provisioned `yucca-michael` Secret (JWT_PUBLIC_KEY + S3 creds),
+    # which the chart's `envFrom: secretRef: yucca-michael` picks up unchanged.
+    secretData: null
+    # Reach the bare-metal Ceph (sietch) RGW through the in-cluster HAProxy:
+    # michael signs with the real RGW hostname (in RGW's zonegroup list) but the
+    # name resolves to HAProxy, which TLS-terminates the self-signed backend.
+    hostAliases:
+      - ip: ${RGW_HAPROXY_CLUSTER_IP}
+        hostnames:
+          - s3.dev.austin.int.futo.cloud
+    # Full replacement of the chart's dev env: no Rook secretKeyRefs (S3 creds
+    # arrive via envFrom from the TF Secret), real RGW endpoint, OTLP to the
+    # in-cluster agents (vmagent metrics, Vector logs).
+    env:
+      - name: RESTIC_API_PORT
+        value: "3010"
+      - name: LOG_LEVEL
+        value: info
+      - name: S3_ENDPOINT
+        value: http://s3.dev.austin.int.futo.cloud
+      - name: S3_REGION
+        value: us-east-1
+      - name: S3_FORCE_PATH_STYLE
+        value: "true"
+      - name: OTLP_METRICS_ENDPOINT
+        value: ${VMAGENT_OTLP}
+      - name: OTLP_METRICS_URL_PATH
+        value: /opentelemetry/v1/metrics
+      - name: OTLP_LOGS_ENDPOINT
+        value: ${VLAGENT_OTLP}
+      - name: OTLP_LOGS_URL_PATH
+        value: /insert/opentelemetry/v1/logs

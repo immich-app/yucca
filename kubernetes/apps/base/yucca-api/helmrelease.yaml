@@ -29,5 +29,35 @@ spec:
     # at boot. Re-enable once the Job has a prod-compatible command.
     migration:
       enabled: false
-    # TODO(prereq): real OIDC issuer/redirect + JWT/OIDC secrets via
-    # ExternalSecret; ingress/probes/replicas for external access.
+    # secretData nulled: the chart's dev fixture (JWT + OIDC placeholders) is
+    # replaced by the TF-provisioned `yucca-api` Secret (JWT_PRIVATE_KEY +
+    # OIDC_CLIENT_ID/SECRET), picked up via the chart's envFrom: secretRef.
+    secretData: null
+    # Real IdP (no mock-oidc). Chart maps these onto explicit env (which beats
+    # envFrom). Redirects target the staging ingress domain.
+    # TODO(ingress): confirm callback host once envoy-gateway + DNS land.
+    oidcIssuer: ${OIDC_ISSUER}
+    oidcRedirectUri: https://${APP_DOMAIN}/api/auth/oidc/callback
+    oidcLogoutRedirectUri: https://${APP_DOMAIN}
+    # Full replacement of the chart's dev env: production mode, no
+    # *_ALLOW_INSECURE (real HTTPS issuer), OTLP to the in-cluster agents.
+    env:
+      - name: NODE_ENV
+        value: production
+      - name: YUCCA_API_PORT
+        value: "3020"
+      - name: LOG_LEVEL
+        value: info
+      # Device-flow OIDC against the real issuer (client ID is non-secret).
+      - name: OIDC_DEVICE_ISSUER
+        value: ${OIDC_ISSUER}
+      - name: OIDC_DEVICE_CLIENT_ID
+        value: ${OIDC_DEVICE_CLIENT_ID}
+      - name: RESTIC_API_HOST
+        value: yucca-michael
+      - name: RESTIC_API_PORT
+        value: "3010"
+      - name: OTEL_METRICS
+        value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics
+      - name: OTEL_LOGGING
+        value: http://${VLAGENT_OTLP}/insert/opentelemetry/v1/logs

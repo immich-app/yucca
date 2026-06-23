@@ -127,6 +127,24 @@ mise run tf:apply     # render artifacts + (future) create 1P items
 
 These wrap: `op run --env-file=tf/.env -- terragrunt --working-dir <stack> <cmd>`.
 
+### In CI (staging stacks)
+
+`.github/workflows/infra.yml` runs the staging stacks from GitHub Actions:
+
+- **Plan** on every PR touching `tf/**`; **apply** on merge to `main`, gated
+  behind the `staging-infra` Environment (required reviewers).
+- Applies `staging/talos` (cluster + Flux + secrets) then `staging/dns`.
+- The Talos stack reaches the `10.10.10.0/24` nodes by joining the **tailnet**
+  (`tailscale/github-action`, `--accept-routes`) — the cluster firewall already
+  trusts the Tailscale CIDRs. The DNS stack is pure Cloudflare API, no tailnet.
+- Secrets come from the same `op run --env-file=tf/.env` path; CI just supplies
+  `OP_SERVICE_ACCOUNT_TOKEN` (the rest resolves from 1P).
+
+Prerequisites (out-of-band): repo secrets `OP_SERVICE_ACCOUNT_TOKEN`,
+`TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`; a Tailscale subnet router advertising
+`10.10.10.0/24` with `tag:ci` approved for it; and the `staging-infra`
+Environment with required reviewers.
+
 ### State backend
 
 Remote: shared `yucca-tf-state` S3 bucket at OVH Paris

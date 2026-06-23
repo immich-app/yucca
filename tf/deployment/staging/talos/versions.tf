@@ -13,5 +13,16 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.38"
     }
+    # Generates the ES256 JWT keypair (yucca-api signs, michael verifies).
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+    # Writes the generated keypair into 1Password (yucca_tf_staging) as the
+    # source-of-truth record. Auth via OP_SERVICE_ACCOUNT_TOKEN (op run).
+    onepassword = {
+      source  = "1Password/onepassword"
+      version = "~> 2.1"
+    }
   }
 }

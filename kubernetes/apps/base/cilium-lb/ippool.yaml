@@ -1,0 +1,10 @@
+---
+# Single-address LB-IPAM pool for the ingress VIP. The envoy Service requests it
+# explicitly via the `lbipam.cilium.io/ips` annotation (see envoyproxy.yaml).
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: ingress
+spec:
+  blocks:
+    - cidr: ${INGRESS_INTERNAL_IP}/32

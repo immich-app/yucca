@@ -29,6 +29,81 @@ variable "flux_github_app_private_key" {
   default     = ""
 }
 
+# ─── App secrets (secrets.tf) ───────────────────────────────────────────
+#
+# Externally-issued / human-managed secrets. Live in 1P (yucca_tf_staging_manual
+# for app creds, o11y_tf_prod for the shared vmauth token) and are injected via
+# TF_VAR from op:// refs in tf/.env. Empty defaults keep `tofu validate` clean
+# and let the staging slice deploy before the real values are populated — the
+# apps come up, just without working OIDC / object storage / metrics egress.
+#
+# The JWT keypair is NOT here: TF generates it (tls_private_key in secrets.tf).
+
+# yucca-api OIDC client (registered out-of-band in the staging IdP).
+variable "yucca_oidc_client_id" {
+  description = "OIDC client ID for yucca-api (staging IdP). Injected via TF_VAR from 1P."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_oidc_client_secret" {
+  description = "OIDC client secret for yucca-api (staging IdP). Injected via TF_VAR from 1P."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# yucca-admin-api OIDC client (separate registration from yucca-api).
+variable "yucca_oidc_admin_client_id" {
+  description = "OIDC client ID for yucca-admin-api (staging IdP). Injected via TF_VAR from 1P."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_oidc_admin_client_secret" {
+  description = "OIDC client secret for yucca-admin-api (staging IdP). Injected via TF_VAR from 1P."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# michael S3 credentials — the `svc-yucca-restic` RGW user on the bare-metal
+# Ceph (sietch), already created by the ceph Ansible with predetermined keys in
+# 1P (op://yucca_tf_dev/SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_{ACCESS,SECRET}_KEY).
+# michael reaches the endpoint via the in-cluster HAProxy fronting
+# s3.dev.austin.int.futo.cloud. Not manual, not Rook-generated.
+variable "yucca_rgw_access_key_id" {
+  description = "RGW (S3) access key for michael (svc-yucca-restic). Injected via TF_VAR from 1P."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_rgw_secret_access_key" {
+  description = "RGW (S3) secret key for michael (svc-yucca-restic). Injected via TF_VAR from 1P."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
+# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the o11y_tf_prod vault (the
+# `remote-clusters` VMUser authenticates remote clusters with it).
+variable "vmauth_remote_write_password" {
+  description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (o11y_tf_prod/VICTORIAMETRICS_VMAUTH_PASSWORD)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Cloudflare API token for the cert-manager DNS-01 ClusterIssuer (futo.cloud
+# zone). Same 1P item the dns stack uses. Injected via TF_VAR from 1P.
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token (Zone:Read + DNS:Edit on futo.cloud) for cert-manager DNS-01. Injected via TF_VAR from 1P."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "clusters" {
   description = "Map of bare-metal Talos cluster specs keyed by short cluster name. Declarative: add/modify an entry in clusters.auto.tfvars + tf:apply."
   type = map(object({

@@ -4,4 +4,6 @@ kind: Kustomization
 resources:
   - ./flux-system
   - ./cnpg-system
+  - ./network
+  - ./observability
   - ./yucca
