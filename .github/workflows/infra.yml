@@ -56,16 +56,16 @@ jobs:
           persist-credentials: false
 
       - name: Set up mise (opentofu + terragrunt)
-        uses: jdx/mise-action@v2 # TODO: pin to SHA (zizmor)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
 
       - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v1 # TODO: pin to SHA (zizmor)
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
       # The Talos stack refreshes state against the nodes; the DNS stack is pure
       # Cloudflare API and needs no tailnet.
       - name: Connect to Tailscale
         if: matrix.stack == 'talos'
-        uses: tailscale/github-action@v3 # TODO: pin to SHA (zizmor)
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
@@ -93,13 +93,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up mise (opentofu + terragrunt)
-        uses: jdx/mise-action@v2 # TODO: pin to SHA (zizmor)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
 
       - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v1 # TODO: pin to SHA (zizmor)
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
       - name: Connect to Tailscale
-        uses: tailscale/github-action@v3 # TODO: pin to SHA (zizmor)
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
