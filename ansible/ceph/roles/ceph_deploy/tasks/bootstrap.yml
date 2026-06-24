@@ -68,3 +68,44 @@
     # cephadm automatically distributes ceph.conf, admin keyring, and
     # its SSH key to managed hosts during `ceph orch host add`. No
     # manual capture or distribution needed.
+
+# --- Idempotent dashboard password enforcement ---
+# The bootstrap task above only sets the dashboard password on the very first
+# `cephadm bootstrap` (guarded by `not ceph_conf.stat.exists`), and
+# `--dashboard-password-noupdate` means it is never re-applied afterwards. If a
+# cluster was ever bootstrapped out-of-band (or before this var existed),
+# cephadm generated a *random* admin password and no playbook run would ever
+# correct it — the vaulted password stays aspirational. These tasks reconcile
+# the running cluster to `ceph_dashboard_password` on every converge, so the
+# vault is the single source of truth for both initial set and rotation.
+- name: Write dashboard password to temp file (reconcile)
+  ansible.builtin.copy:
+    content: "{{ ceph_dashboard_password }}"
+    dest: /tmp/.ceph-dash-reconcile-pw
+    owner: root
+    group: root
+    mode: '0600'
+  when: inventory_hostname in groups['ceph_bootstrap']
+  no_log: true
+
+- name: Enforce dashboard admin password (idempotent)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ceph dashboard ac-user-set-password {{ ceph_dashboard_user }} \
+      -i /tmp/.ceph-dash-reconcile-pw --force-password-policy >/dev/null
+    rc=$?
+    shred -u /tmp/.ceph-dash-reconcile-pw 2>/dev/null || rm -f /tmp/.ceph-dash-reconcile-pw
+    exit $rc
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  # ac-user-set-password always re-hashes (random bcrypt salt), so we cannot
+  # cheaply detect a real change; treat enforcement as a converge, not a change.
+  changed_when: false
+  no_log: true
+
+- name: Ensure reconcile password temp file is gone
+  ansible.builtin.file:
+    path: /tmp/.ceph-dash-reconcile-pw
+    state: absent
+  when: inventory_hostname in groups['ceph_bootstrap']

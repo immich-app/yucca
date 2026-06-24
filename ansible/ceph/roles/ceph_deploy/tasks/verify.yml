@@ -42,3 +42,45 @@
   ansible.builtin.debug:
     msg: "{{ cluster_status.stdout_lines }}"
   when: inventory_hostname in groups['ceph_bootstrap']
+
+# --- Drift guard: assert the live dashboard credential matches the vault ---
+# Functional check (dependency-free: no bcrypt needed). We discover the
+# dashboard URL from `ceph mgr services` and attempt an API login with the
+# vaulted credential; HTTP 201 means the cluster password matches IaC. If the
+# bootstrap reconcile task is ever removed or fails, this fails the play loudly
+# instead of letting the credential silently drift.
+- name: Probe dashboard login with the vaulted credential
+  ansible.builtin.shell: |
+    set -o pipefail
+    url=$(ceph mgr services 2>/dev/null \
+      | python3 -c 'import sys,json; print(json.load(sys.stdin).get("dashboard","").rstrip("/"))')
+    if [ -z "$url" ]; then echo "no-dashboard-url"; exit 0; fi
+    # Password travels via env + stdin only — never on the process argv.
+    code=$(python3 -c 'import json,os; print(json.dumps({"username": os.environ["DASH_U"], "password": os.environ["DASH_P"]}))' \
+      | curl -sk -m 15 -o /dev/null -w '%{http_code}' \
+          -H 'Accept: application/vnd.ceph.api.v1.0+json' \
+          -H 'Content-Type: application/json' \
+          -X POST "$url/api/auth" --data-binary @-)
+    echo "$code"
+  args:
+    executable: /bin/bash
+  environment:
+    DASH_U: "{{ ceph_dashboard_user }}"
+    DASH_P: "{{ ceph_dashboard_password }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: dashboard_cred_probe
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Assert dashboard admin credential matches the vault
+  ansible.builtin.assert:
+    that:
+      - (dashboard_cred_probe.stdout_lines | default(['']) | last) == '201'
+    success_msg: "Dashboard admin login matches the vaulted password."
+    fail_msg: >-
+      Dashboard admin credential has DRIFTED from IaC (got HTTP
+      '{{ dashboard_cred_probe.stdout_lines | default(['']) | last }}', expected 201).
+      The running cluster's password does not match ceph_dashboard_password.
+      Re-run the ceph_deploy role to reconcile, or investigate an out-of-band change.
+  when: inventory_hostname in groups['ceph_bootstrap']
