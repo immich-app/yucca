@@ -143,10 +143,12 @@ These wrap: `op run --env-file=tf/.env -- terragrunt --working-dir <stack> <cmd>
   `OP_TF_YUCCA_STAGING_ENV` here (dev/prod workflows use `OP_TF_YUCCA_DEV_ENV` /
   `OP_TF_YUCCA_PROD_ENV`) — replacing a shared superuser SA with a scoped one.
 
-Prerequisites (out-of-band): repo secret `OP_TF_YUCCA_STAGING_ENV` (a staging 1P SA
-with read on `yucca_tf`, `yucca_tf_manual`, `yucca_tf_dev`, `o11y_tf_prod` +
-read/write on `yucca_tf_staging`), `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`; a
-Tailscale subnet router advertising `10.10.10.0/24` with `tag:project-yucca` approved for
+Prerequisites (out-of-band): repo secret `OP_TF_YUCCA_STAGING_ENV` — a **staging**
+1P service account mirroring the dev/prod ones, i.e. granted `shared_tf`,
+`shared_tf_staging`, `yucca_tf` (read) + `yucca_tf_staging` (read/write for the
+JWT-keypair item). Note: a copy of the *dev* SA token won't work — it can't read
+`yucca_tf_staging`. Also: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`; a Tailscale
+subnet router advertising `10.10.10.0/24` with `tag:project-yucca` approved for
 it; and the `staging-infra` Environment with required reviewers.
 
 ### State backend

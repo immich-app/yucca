@@ -68,9 +68,10 @@ variable "yucca_oidc_admin_client_secret" {
 }
 
 # michael S3 credentials — the `svc-yucca-restic` RGW user on the bare-metal
-# Ceph (sietch), already created by the ceph Ansible with predetermined keys in
-# 1P (op://yucca_tf_dev/SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_{ACCESS,SECRET}_KEY).
-# michael reaches the endpoint via the in-cluster HAProxy fronting
+# Ceph (sietch / dev Ceph), created by the ceph Ansible with predetermined keys;
+# duplicated into yucca_tf_staging (op://yucca_tf_staging/SIETCH_CEPH_S3_SVC_
+# YUCCA_RESTIC_{ACCESS,SECRET}_KEY) so the staging SA can read them. michael
+# reaches the endpoint via the in-cluster HAProxy fronting
 # s3.dev.austin.int.futo.cloud. Not manual, not Rook-generated.
 variable "yucca_rgw_access_key_id" {
   description = "RGW (S3) access key for michael (svc-yucca-restic). Injected via TF_VAR from 1P."
