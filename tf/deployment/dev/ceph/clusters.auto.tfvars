@@ -1,5 +1,10 @@
-# Declarative cluster inventory. Adding a cluster = add an entry here + `tofu apply`.
-# ansible_project_root is injected by terragrunt from the repo root.
+# Declarative cluster inventory. Adding a cluster = add an entry here, run
+# `terragrunt apply`, then `ansible/ceph/scripts/render-inventories.sh dev`.
+#
+# painbox is intentionally NOT managed here right now: it is in active use by
+# Zack for other purposes, so this stack must not render or reconcile it. Its
+# spec is kept as a reference in clusters.example.tfvars (not auto-loaded). Its
+# 1Password items are left untouched.
 
 clusters = {
   sietch = {
@@ -16,24 +21,6 @@ clusters = {
       { name = "laurel", bond_ip = "10.10.10.90", bootstrap = true },
       { name = "lawson", bond_ip = "10.10.10.91" },
       { name = "samara", bond_ip = "10.10.10.92" },
-    ]
-  }
-
-  painbox = {
-    domain           = "dev.hel.htz.futo.cloud"
-    environment      = "dev"
-    datacenter       = "hel"
-    provider_code    = "htz"
-    role_in_hostname = "ceph"
-    ansible_ssh_user = "root"
-    ansible_ssh_key  = "~/.ssh/id_ed25519_painbox"
-    vault            = "yucca_tf_dev"
-    # Painbox runs Ceph Tentacle on Bookworm (1× SX295, single-node).
-    # Reprovisioned end-to-end via Hetzner installimage; no provision_profile
-    # because Hetzner installimage handles partitioning + base OS install.
-    # Auto-picked wordlist name: "evelyn" → painbox-ceph-evelyn.
-    hosts = [
-      { bond_ip = "157.180.105.198", bootstrap = true },
     ]
   }
 }

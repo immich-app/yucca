@@ -18,7 +18,7 @@ set -euo pipefail
 
 if [ ! -f "$CEPH_ENV" ]; then
   echo "ansible-play.sh: inventory not found: $CEPH_ENV" >&2
-  echo "  Hint: has 'tofu apply' been run in tf/deployment/<env>/ceph/?" >&2
+  echo "  Hint: render it — 'terragrunt apply' in tf/deployment/<env>/ceph/, then scripts/render-inventories.sh <env>." >&2
   exit 1
 fi
 
@@ -27,7 +27,7 @@ TEMPLATE="$CEPH_ENV_DIR/secrets.yml.tpl"
 
 if [ ! -f "$TEMPLATE" ]; then
   echo "ansible-play.sh: secrets template not found: $TEMPLATE" >&2
-  echo "  Hint: has 'tofu apply' been run in tf/deployment/<env>/ceph/?" >&2
+  echo "  Hint: render it — 'terragrunt apply' in tf/deployment/<env>/ceph/, then scripts/render-inventories.sh <env>." >&2
   exit 1
 fi
 
