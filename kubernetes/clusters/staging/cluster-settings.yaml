@@ -15,13 +15,8 @@ data:
   APP_DOMAIN: staging.backups.futo.cloud  # web (apex; /api routes to yucca-api)
   GW_HOST: gw.staging.backups.futo.cloud  # michael (restic gateway)
 
-  # ─── OIDC (real IdP — no mock-oidc in staging) ───────────────────────
-  # Staging-specific issuer. Clients are registered out-of-band and their
-  # secrets live in 1P (TF-provisioned into the app Secrets). TODO: set the
-  # real staging issuer URL + device client ID.
-  OIDC_ISSUER: https://CHANGEME.zitadel.cloud
-  # Public (non-secret) client ID for the yucca-api device flow.
-  OIDC_DEVICE_CLIENT_ID: CHANGEME
+  OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
+  OIDC_DEVICE_CLIENT_ID: "369888220525192858"
 
   # ─── Ingress entry point (yucca-staging) ─────────────────────────────
   # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
