@@ -27,6 +27,9 @@ spec:
     env:
       - name: NODE_ENV
         value: production
+      # Prod server (adapter-node) defaults to :3000; pin to the chart's port.
+      - name: PORT
+        value: "5173"
       # Browser-facing API base (served at the staging ingress domain).
       # TODO(ingress): finalize once envoy-gateway + DNS land.
       - name: PUBLIC_API_URL
