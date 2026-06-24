@@ -46,13 +46,10 @@ resource "onepassword_item" "yucca_jwt" {
   title    = "YUCCA_JWT_KEYPAIR"
   category = "password"
 
+  password = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
+
   section {
     label = "keypair"
-    field {
-      label = "private_key"
-      type  = "CONCEALED"
-      value = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
-    }
     field {
       label = "public_key"
       type  = "STRING"
