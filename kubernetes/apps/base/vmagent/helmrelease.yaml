@@ -41,6 +41,10 @@ spec:
       enabled: false
     defaultRules:
       create: false
+    prometheus-node-exporter:
+      enabled: false
+    kube-state-metrics:
+      enabled: false
     vmagent:
       enabled: true
       spec:

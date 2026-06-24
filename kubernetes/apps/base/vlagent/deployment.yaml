@@ -29,11 +29,8 @@ spec:
           image: victoriametrics/vlagent:v1.51.0
           args:
             - -httpListenAddr=:9428
-            # Egress to o11y VictoriaLogs via vmauth (bearer token from file).
             - -remoteWrite.url=${VLOGS_REMOTE_URL}
             - -remoteWrite.bearerTokenFile=/secrets/token
-            # Stamp the remote-cluster identity (matches vmagent's metric label).
-            - -remoteWrite.label=cluster=${METRICS_CLUSTER_LABEL}
           ports:
             - name: http
               containerPort: 9428
