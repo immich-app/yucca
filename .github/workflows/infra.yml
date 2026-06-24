@@ -11,8 +11,8 @@ name: Infra (Terraform)
 # Tailscale CIDRs) and accepts the subnet route advertising that VLAN.
 #
 # Prerequisites (provisioned out-of-band):
-#   - Repo secrets: OP_TF_STAGING_ENV (the staging-scoped 1P service-account
-#     token — resolves tf/.env; dev/prod use OP_TF_DEV_ENV / OP_TF_PROD_ENV),
+#   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (the staging-scoped 1P service-account
+#     token — resolves tf/.env; dev/prod use OP_TF_YUCCA_DEV_ENV / OP_TF_YUCCA_PROD_ENV),
 #     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tagged tag:project-yucca).
 #   - A Tailscale subnet router advertising 10.10.10.0/24, and tag:project-yucca approved for
 #     those routes.
@@ -38,11 +38,11 @@ permissions:
 env:
   # Per-environment 1Password service-account token (least privilege vs. one
   # shared superuser SA). This is the STAGING infra workflow, so it injects the
-  # staging SA; a dev/prod workflow uses OP_TF_DEV_ENV / OP_TF_PROD_ENV. `op run`
+  # staging SA; a dev/prod workflow uses OP_TF_YUCCA_DEV_ENV / OP_TF_YUCCA_PROD_ENV. `op run`
   # reads OP_SERVICE_ACCOUNT_TOKEN from the env to resolve tf/.env's op:// refs,
   # so the staging SA must have read on every vault tf/.env touches (yucca_tf,
   # yucca_tf_manual, yucca_tf_dev, o11y_tf_prod) + read/write on yucca_tf_staging.
-  OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_STAGING_ENV }}
+  OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV }}
 
 jobs:
   plan:
@@ -75,7 +75,8 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:project-yucca
-          args: --accept-routes
+          # NB: the action already passes `--accept-routes` to `tailscale up`;
+          # passing it again here errors with "flag provided multiple times".
 
       - name: Terragrunt plan
         run: >-
@@ -109,7 +110,8 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:project-yucca
-          args: --accept-routes
+          # NB: the action already passes `--accept-routes` to `tailscale up`;
+          # passing it again here errors with "flag provided multiple times".
 
       # Cluster first (provisions secrets/CNI/Flux), then DNS.
       - name: Apply staging/talos
