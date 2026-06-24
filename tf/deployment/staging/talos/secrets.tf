@@ -58,6 +58,25 @@ resource "onepassword_item" "yucca_jwt" {
   }
 }
 
+# ─── Cluster access (recorded in 1P) ────────────────────────────────────
+# kubeconfig + talosconfig, so operators fetch them with `op read` instead of
+# pulling TF state.
+resource "onepassword_item" "kubeconfig" {
+  count    = local.provision_secrets ? 1 : 0
+  vault    = data.onepassword_vault.staging[0].uuid
+  title    = "YUCCA_STAGING_KUBECONFIG"
+  category = "password"
+  password = local.k8s.kubeconfig
+}
+
+resource "onepassword_item" "talosconfig" {
+  count    = local.provision_secrets ? 1 : 0
+  vault    = data.onepassword_vault.staging[0].uuid
+  title    = "YUCCA_STAGING_TALOSCONFIG"
+  category = "password"
+  password = local.k8s.talosconfig
+}
+
 # ─── Namespaces ─────────────────────────────────────────────────────────
 # Created here so the Secrets have a home at bootstrap, before Flux reconciles.
 # Flux's overlays also declare these Namespaces; a bare Namespace is safe under
