@@ -21,6 +21,9 @@ spec:
     remediation:
       retries: 2
   values:
+    # The pre-upgrade checker Job fails on Flux's GitOps upgrade path.
+    preUpgradeChecker:
+      jobEnabled: false
     defaultSettings:
       createDefaultDiskLabeledNodes: true
       defaultReplicaCount: 3
