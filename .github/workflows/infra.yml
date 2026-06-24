@@ -36,12 +36,7 @@ permissions:
   contents: read
 
 env:
-  # Per-environment 1Password service-account token (least privilege vs. one
-  # shared superuser SA). This is the STAGING infra workflow, so it injects the
-  # staging SA; a dev/prod workflow uses OP_TF_YUCCA_DEV_ENV / OP_TF_YUCCA_PROD_ENV. `op run`
-  # reads OP_SERVICE_ACCOUNT_TOKEN from the env to resolve tf/.env's op:// refs,
-  # so the staging SA must have read on every vault tf/.env touches (yucca_tf,
-  # yucca_tf_manual, yucca_tf_dev, o11y_tf_prod) + read/write on yucca_tf_staging.
+  # read-scoped SA for plan; apply overrides with the write SA
   OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV }}
 
 jobs:
@@ -92,6 +87,9 @@ jobs:
     runs-on: ubuntu-latest
     # The approval gate: `staging-infra` Environment with required reviewers.
     environment: staging-infra
+    env:
+      # write-capable SA (the onepassword provider creates the JWT item)
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV_WRITE }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
