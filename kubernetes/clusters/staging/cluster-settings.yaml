@@ -43,4 +43,4 @@ data:
   VLAGENT_OTLP: vlagent.observability.svc:9428
   # VictoriaLogs ingest endpoint for vlagent's egress (behind vmauth).
   # TODO(logs): placeholder — o11y doesn't expose a logs route on vmauth yet.
-  VLOGS_REMOTE_URL: https://vmauth.futostatus.com/insert/0/
+  VLOGS_REMOTE_URL: https://vmauth.futostat.us/insert/0/

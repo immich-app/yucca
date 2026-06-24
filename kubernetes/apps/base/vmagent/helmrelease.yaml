@@ -55,7 +55,7 @@ spec:
         # /insert/0/.* -> vminsert), authenticating with the shared bearer token
         # (TF-provisioned `vmagent-remote-write` Secret from o11y_tf_prod).
         remoteWrite:
-          - url: https://vmauth.futostatus.com/insert/0/prometheus/api/v1/write
+          - url: https://vmauth.futostat.us/insert/0/prometheus/api/v1/write
             bearerTokenSecret:
               name: vmagent-remote-write
               key: token
