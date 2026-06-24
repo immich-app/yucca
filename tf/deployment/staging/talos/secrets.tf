@@ -46,8 +46,6 @@ resource "onepassword_item" "yucca_jwt" {
   title    = "YUCCA_JWT_KEYPAIR"
   category = "password"
 
-  # A password-category item REQUIRES a top-level password value ("ps"), so the
-  # private key goes there; the public key is a companion field.
   password = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
 
   section {
