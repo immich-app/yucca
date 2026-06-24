@@ -12,6 +12,13 @@ spec:
   hostnames:
     - "${APP_DOMAIN}"
   rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: yucca-api
+          port: 3020
     - backendRefs:
         - name: yucca-web
           port: 5173

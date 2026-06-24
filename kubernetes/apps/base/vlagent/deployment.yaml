@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
         - name: vlagent
-          image: victoriametrics/vlagent:v0.1.1
+          image: victoriametrics/vlagent:v1.51.0
           args:
             - -httpListenAddr=:9428
             # Egress to o11y VictoriaLogs via vmauth (bearer token from file).

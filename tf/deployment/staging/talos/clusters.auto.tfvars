@@ -14,12 +14,40 @@ clusters = {
     # Image Factory schematic → metal installer with CPU microcode + tools:
     #   siderolabs/intel-ucode      (Intel Xeon microcode — these are GenuineIntel)
     #   siderolabs/util-linux-tools (fstrim et al.)
+    #   siderolabs/iscsi-tools      (Longhorn volume attachment)
     # Regenerate at https://factory.talos.dev if the extension set changes.
-    talos_schematic_id = "9a8175a3e290fca4844ba6953ebecbe575bc8a830dfb08f48039ab319bdc72e8"
+    # NB: adding iscsi-tools needs a node `talosctl upgrade`, not just a config apply.
+    talos_schematic_id = "29ffdc12246124c1428026e3935f3c6170d6ee867293484312c97540ab1171b5"
 
     # Install target — WIPED. /dev/sda is the 240GB DELLBOSS on these nodes;
-    # the two 1.6TB NVMe drives (nvme0n1/nvme1n1) are left untouched for data.
+    # the two 1.6TB NVMe drives (nvme0n1/nvme1n1) become Longhorn data disks.
     install_disk = "/dev/sda"
+
+    # Longhorn: mount both NVMe SSDs + declare them via node label + annotation.
+    config_patches = [<<-EOT
+    machine:
+      nodeLabels:
+        node.longhorn.io/create-default-disk: "config"
+      nodeAnnotations:
+        node.longhorn.io/default-disks-config: '[{"path":"/var/lib/longhorn/disk0","allowScheduling":true},{"path":"/var/lib/longhorn/disk1","allowScheduling":true}]'
+      kubelet:
+        extraMounts:
+          - destination: /var/lib/longhorn
+            type: bind
+            source: /var/lib/longhorn
+            options:
+              - bind
+              - rshared
+              - rw
+      disks:
+        - device: /dev/nvme0n1
+          partitions:
+            - mountpoint: /var/lib/longhorn/disk0
+        - device: /dev/nvme1n1
+          partitions:
+            - mountpoint: /var/lib/longhorn/disk1
+    EOT
+    ]
 
     # Compact 3-node cluster: every node is a control-plane and also runs
     # workloads (etcd HA quorum across all three).

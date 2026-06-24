@@ -27,11 +27,10 @@ spec:
     # secretData nulled: replaced by the TF-provisioned `yucca-admin-api` Secret
     # (OIDC_ADMIN_CLIENT_ID/SECRET) via the chart's envFrom: secretRef.
     secretData: null
-    # Real IdP, admin console on its own staging subdomain.
-    # TODO(ingress): confirm admin host once envoy-gateway + DNS land.
+    # Not publicly routed — exposed via Tailscale later; set redirect URIs then.
     oidcIssuer: ${OIDC_ISSUER}
-    oidcRedirectUri: https://admin.${APP_DOMAIN}/api/auth/oidc/callback
-    oidcLogoutRedirectUri: https://admin.${APP_DOMAIN}
+    oidcRedirectUri: https://CHANGEME/api/auth/oidc/callback
+    oidcLogoutRedirectUri: https://CHANGEME
     env:
       - name: NODE_ENV
         value: production

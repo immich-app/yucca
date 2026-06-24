@@ -28,3 +28,4 @@ spec:
   values:
     instances: 3
     storage: 10Gi
+    storageClass: longhorn

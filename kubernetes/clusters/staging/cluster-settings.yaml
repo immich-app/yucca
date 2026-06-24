@@ -12,9 +12,7 @@ data:
   CLUSTER_NAME: yucca-staging
   # Per-service ingress hostnames (routed by the ingress layer to the in-cluster
   # services; resolve to INGRESS_PUBLIC_IP publicly / INGRESS_INTERNAL_IP on-LAN).
-  APP_DOMAIN: staging.backups.futo.cloud  # web (apex)
-  API_HOST: api.staging.backups.futo.cloud  # yucca-api
-  ADMIN_HOST: admin.staging.backups.futo.cloud  # yucca-admin-api
+  APP_DOMAIN: staging.backups.futo.cloud  # web (apex; /api routes to yucca-api)
   GW_HOST: gw.staging.backups.futo.cloud  # michael (restic gateway)
 
   # ─── OIDC (real IdP — no mock-oidc in staging) ───────────────────────
@@ -33,7 +31,7 @@ data:
   INGRESS_INTERNAL_IP: 10.10.10.16
   INGRESS_PUBLIC_IP: 97.77.242.205
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
-  ACME_EMAIL: ops@futo.org
+  ACME_EMAIL: fubar-prod@futo.org
 
   # ─── RGW (object storage via in-cluster HAProxy) ─────────────────────
   # Pinned ClusterIP for the rgw-haproxy Service; michael pins a hostAlias
