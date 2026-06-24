@@ -573,12 +573,17 @@
   changed_when: true
   no_log: true
 
-# --- Step 15: Align existing S3 user keys with 1P (idempotent rotation) ---
+# --- Step 15: Converge S3 user keys to the 1P canonical key (gated rotation) ---
 #
-# For clusters that predate the TF+1P-predetermined-keys pattern, the user
-# exists but with cephadm-generated random keys. This task detects that
-# drift and realigns — destructive for the Yucca-app side, so gated by an
-# explicit flag.
+# For clusters that predate the predetermined-keys pattern, the user exists
+# with a cephadm-generated random key instead of the 1P one. When rotate_s3_keys
+# is set, converge to exactly the canonical 1P key: add it if missing, then
+# retire every other (stray) key so no undocumented credential is left valid.
+# Gated behind rotate_s3_keys because rotating a live S3 key is disruptive to
+# whatever already uses it. The canonical key is added before any stray is
+# removed, so the user is never left without a working key. (A stray with the
+# same access key but a different secret is not auto-corrected; that is rare and
+# would need a manual key create.)
 
 - name: Get current S3 user info
   ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_s3_user_uid }}"
@@ -586,18 +591,34 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
   no_log: true
+  tags: [s3_keys]
 
-- name: Detect S3 key drift (1P vs cluster)
+- name: Compute S3 access keys present on the user
   ansible.builtin.set_fact:
-    s3_key_drift: >-
-      {{
-        (s3_user_info.stdout | from_json)['keys'][0]['access_key']
-          != ceph_rgw_s3_user_access_key
-      }}
+    s3_access_keys: "{{ (s3_user_info.stdout | from_json)['keys'] | map(attribute='access_key') | list }}"
   when: inventory_hostname in groups['ceph_bootstrap']
   no_log: true
+  tags: [s3_keys]
 
-- name: Align S3 user keys with 1P values (only when rotate_s3_keys=true)
+- name: Derive S3 key convergence state vs 1P canonical
+  ansible.builtin.set_fact:
+    s3_canonical_missing: "{{ ceph_rgw_s3_user_access_key not in s3_access_keys }}"
+    s3_stray_keys: "{{ s3_access_keys | difference([ceph_rgw_s3_user_access_key]) }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+  no_log: true
+  tags: [s3_keys]
+
+- name: Report S3 key convergence state
+  ansible.builtin.debug:
+    msg: >-
+      {{ ceph_rgw_s3_user_uid }} keys:
+      canonical_present={{ not s3_canonical_missing }}
+      stray_count={{ s3_stray_keys | length }}
+      rotate_s3_keys={{ rotate_s3_keys | default(false) | bool }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+  tags: [s3_keys]
+
+- name: Add canonical S3 key from 1P (rotate_s3_keys=true, key missing)
   ansible.builtin.command: >
     radosgw-admin key create
     --uid={{ ceph_rgw_s3_user_uid }}
@@ -605,10 +626,25 @@
     --secret-key='{{ ceph_rgw_s3_user_secret_key }}'
   when:
     - inventory_hostname in groups['ceph_bootstrap']
-    - s3_key_drift | default(false)
+    - rotate_s3_keys | default(false) | bool
+    - s3_canonical_missing | default(false)
+  changed_when: true
+  no_log: true
+  tags: [s3_keys]
+
+- name: Retire non-canonical S3 keys (rotate_s3_keys=true)
+  ansible.builtin.command: >
+    radosgw-admin key rm
+    --uid={{ ceph_rgw_s3_user_uid }}
+    --access-key='{{ item }}'
+    --key-type=s3
+  loop: "{{ s3_stray_keys | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
     - rotate_s3_keys | default(false) | bool
   changed_when: true
   no_log: true
+  tags: [s3_keys]
 
 - name: S3 key drift notice (dry flag — no action taken)
   ansible.builtin.debug:
