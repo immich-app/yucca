@@ -23,6 +23,11 @@ ceph_firewall_alertmanager_port: "{{ ceph_alertmanager_port | default(9093) }}"
 ceph_firewall_node_exporter_port: 9100
 ceph_firewall_mgr_exporter_port: 9283
 ceph_firewall_ceph_exporter_port: 9926
+# cephadm service discovery (mgr). Prometheus fetches its scrape target list
+# from this endpoint on the active mgr via http_sd. If it is not reachable from
+# the Prometheus host, Prometheus discovers zero targets and Grafana shows no
+# data. The active mgr can be any node, so this must be open on all of them.
+ceph_firewall_service_discovery_port: 8765
 
 # --- Optional service gateways (disabled by default) ---
 
