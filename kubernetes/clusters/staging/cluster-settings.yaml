@@ -16,7 +16,6 @@ data:
   GW_HOST: gw.staging.backups.futo.cloud  # michael (restic gateway)
 
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
-  OIDC_DEVICE_CLIENT_ID: "369888220525192858"
 
   # ─── Ingress entry point (yucca-staging) ─────────────────────────────
   # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
