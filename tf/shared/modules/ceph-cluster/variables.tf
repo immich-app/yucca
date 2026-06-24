@@ -72,25 +72,10 @@ variable "hosts" {
   }
 }
 
-variable "ansible_inventory_path" {
-  description = "Absolute path to write the rendered inventory.ini."
-  type        = string
-}
-
-variable "ansible_destroy_inventory_path" {
-  description = "Absolute path to write the rendered inventory-destroy.ini."
-  type        = string
-}
-
-variable "ansible_provision_inventory_path" {
-  description = "Absolute path to write inventory-provision.ini. Only rendered when provision_profile is non-null."
-  type        = string
-}
-
-variable "ansible_secrets_template_path" {
-  description = "Absolute path to write the rendered secrets.yml.tpl (consumed by op inject at playbook time)."
-  type        = string
-}
+# Rendered-artifact destination paths used to live here (ansible_*_path). They
+# were removed: rendering no longer writes files via local_file (which leaked a
+# checkout-specific path into shared state). The module now only emits content
+# via the `rendered_files` output; scripts/render-inventories.sh writes it.
 
 variable "provision_profile" {
   description = <<-EOT

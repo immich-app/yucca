@@ -26,10 +26,12 @@ output "secrets" {
   value       = local.secrets
 }
 
-output "inventory_path" {
-  value = local_file.inventory.filename
+output "inventory_dirname" {
+  description = "Inventory directory name (<cluster>-ceph.<env>.<dc>.<provider>). The render wrapper writes files under ansible/ceph/inventories/<this>/."
+  value       = local.inventory_dirname
 }
 
-output "secrets_template_path" {
-  value = local_file.secrets_template.filename
+output "rendered_files" {
+  description = "Map of filename => rendered content (inventory.ini, inventory-destroy.ini, secrets.yml.tpl, plus inventory-provision.ini when a provision_profile is set). Written locally by scripts/render-inventories.sh — intentionally NOT a local_file, so no filesystem path enters shared state."
+  value       = local.rendered_files
 }

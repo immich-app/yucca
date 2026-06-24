@@ -1,8 +1,3 @@
-variable "ansible_project_root" {
-  description = "Absolute path to yucca/ansible/ceph/ where inventories/ live. Rendered inventories go under here."
-  type        = string
-}
-
 variable "clusters" {
   description = "Map of cluster spec keyed by short cluster name (sietch, painbox, ...)."
   type = map(object({

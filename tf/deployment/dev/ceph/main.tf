@@ -1,14 +1,3 @@
-locals {
-  # Directory naming: <cluster>-ceph.<env>.<dc>.<provider>
-  # Project-scoped ("ceph"), not hostname-role-scoped — mirrors the secret-prefix
-  # convention (<CLUSTER>_CEPH_*) so all ceph-project artifacts are grep-able
-  # under *-ceph.* regardless of whether hosts are named with ceph/osd/mon role.
-  inventory_dirs = {
-    for cname, c in var.clusters :
-    cname => "${var.ansible_project_root}/inventories/${cname}-ceph.${c.environment}.${c.datacenter}.${c.provider_code}"
-  }
-}
-
 module "cluster" {
   for_each = var.clusters
   source   = "../../../shared/modules/ceph-cluster"
@@ -23,11 +12,6 @@ module "cluster" {
   ansible_ssh_key  = each.value.ansible_ssh_key
   vault            = coalesce(each.value.vault, "Yucca")
   hosts            = each.value.hosts
-
-  ansible_inventory_path           = "${local.inventory_dirs[each.key]}/inventory.ini"
-  ansible_destroy_inventory_path   = "${local.inventory_dirs[each.key]}/inventory-destroy.ini"
-  ansible_provision_inventory_path = "${local.inventory_dirs[each.key]}/inventory-provision.ini"
-  ansible_secrets_template_path    = "${local.inventory_dirs[each.key]}/secrets.yml.tpl"
 
   provision_profile = each.value.provision_profile
 
@@ -44,9 +28,23 @@ output "cluster_summaries" {
       fqdn           = m.fqdn_cluster
       bootstrap_host = m.bootstrap_host.hostname_short
       host_count     = length(m.hosts)
-      inventory      = m.inventory_path
-      secrets_tpl    = m.secrets_template_path
+      inventory_dir  = m.inventory_dirname
       secrets        = m.secrets
+    }
+  }
+}
+
+# Consumed by ansible/ceph/scripts/render-inventories.sh: it reads this output
+# and writes each cluster's files under ansible/ceph/inventories/<dirname>/.
+# Rendered content lives in a TF OUTPUT (not in local_file resources), so the
+# shared remote state never records a checkout-specific filesystem path. See
+# the module's rendering.tf for the full rationale.
+output "render" {
+  description = "Per-cluster { dirname, files } for the local render wrapper."
+  value = {
+    for k, m in module.cluster : k => {
+      dirname = m.inventory_dirname
+      files   = m.rendered_files
     }
   }
 }
