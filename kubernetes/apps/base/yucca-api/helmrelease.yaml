@@ -52,7 +52,7 @@ spec:
       - name: OIDC_DEVICE_ISSUER
         value: ${OIDC_ISSUER}
       - name: OIDC_DEVICE_CLIENT_ID
-        value: ${OIDC_DEVICE_CLIENT_ID}
+        value: "${OIDC_DEVICE_CLIENT_ID}"
       - name: RESTIC_ENDPOINT
         value: https://${GW_HOST}
       - name: OTEL_METRICS
