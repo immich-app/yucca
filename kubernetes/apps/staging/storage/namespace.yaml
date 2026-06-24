@@ -1,0 +1,8 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longhorn-system
+  labels:
+    # Longhorn runs privileged manager/engine pods.
+    pod-security.kubernetes.io/enforce: privileged

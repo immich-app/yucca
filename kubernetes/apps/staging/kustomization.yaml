@@ -6,4 +6,5 @@ resources:
   - ./cnpg-system
   - ./network
   - ./observability
+  - ./storage
   - ./yucca

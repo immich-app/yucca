@@ -3,20 +3,19 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: envoy-proxy
+  name: cert-manager-issuer
   namespace: flux-system
 spec:
   dependsOn:
-    - name: envoy-gateway
-    - name: cert-manager-issuer
+    - name: cert-manager
   interval: 1h
   retryInterval: 2m
   timeout: 10m
-  path: ./kubernetes/apps/base/envoy-proxy
+  path: ./kubernetes/apps/base/cert-manager-issuer
   prune: true
   wait: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: envoy-system
+  targetNamespace: cert-manager

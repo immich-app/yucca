@@ -4,5 +4,6 @@
 clusterName: yucca-db
 instances: 1
 storage: 1Gi
+storageClass: ""
 database: yucca
 owner: yucca
