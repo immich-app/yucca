@@ -9,10 +9,11 @@ kind: ResourceSetInputProvider
 metadata:
   name: yucca-image
   namespace: flux-system
+  annotations:
+    # Poll GHCR every minute (flux-operator reconcile interval; default 10m).
+    fluxcd.controlplane.io/reconcileEvery: "1m"
 spec:
   type: OCIArtifactTag
-  # Poll GHCR every minute so a freshly-built image rolls out within ~a minute.
-  interval: 1m
   # Any app repo works as the version oracle — all 5 ship at the same monorepo
   # tag (release-please linked-versions).
   url: oci://ghcr.io/immich-app/yucca/yucca-api
