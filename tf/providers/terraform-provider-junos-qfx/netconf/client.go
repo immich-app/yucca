@@ -449,17 +449,17 @@ func (g *GoNCClient) readRawConfig() (string, error) {
 }
 
 // publicKeyFile parses an SSH private key file into an auth method.
-func publicKeyFile(file string) ssh.AuthMethod {
+func publicKeyFile(file string) (ssh.AuthMethod, error) {
 	buffer, err := os.ReadFile(file)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("reading SSH key %q: %w", file, err)
 	}
 
 	key, err := ssh.ParsePrivateKey(buffer)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("parsing SSH key %q (is it a valid private key?): %w", file, err)
 	}
-	return ssh.PublicKeys(key)
+	return ssh.PublicKeys(key), nil
 }
 
 // NewClient returns a NETCONF client backed by nemith/netconf.
@@ -474,7 +474,10 @@ func NewClient(username, password, sshKey, address string, port int) (Client, er
 	}
 
 	if sshKey != "" {
-		authMethod := publicKeyFile(sshKey)
+		authMethod, err := publicKeyFile(sshKey)
+		if err != nil {
+			return nil, err
+		}
 		cfg.Auth = []ssh.AuthMethod{authMethod}
 	} else {
 		cfg.Auth = []ssh.AuthMethod{ssh.Password(password)}
