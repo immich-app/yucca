@@ -68,6 +68,14 @@ spec:
         value: "true"
       - name: S3_PROBE_BUCKET
         value: michael-rgw-healthcheck
+      # Ejection / health tuning (these are michael's defaults, surfaced here so
+      # they're tunable per-env): eject a gateway after this many consecutive
+      # transport failures, and re-resolve DNS + probe every interval (also how
+      # fast an ejected gateway is reinstated).
+      - name: S3_EJECT_THRESHOLD
+        value: "3"
+      - name: S3_RECONCILE_INTERVAL_MS
+        value: "5000"
       - name: OTLP_METRICS_ENDPOINT
         value: ${VMAGENT_OTLP}
       - name: OTLP_METRICS_URL_PATH
