@@ -1,5 +1,5 @@
 output "site_id" {
-  value       = netbox_site.this.id
+  value       = data.netbox_site.this.id
   description = "The created NetBox site id."
 }
 

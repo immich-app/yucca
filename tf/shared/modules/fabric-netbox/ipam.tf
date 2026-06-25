@@ -1,5 +1,7 @@
 locals {
-  # Per-network rows (public/private of each cluster) for VLANs + prefixes + gateways.
+  site_id = data.netbox_site.this.id
+
+  # Per-cluster networks (public/private) for VLANs + prefixes + gateways.
   networks = merge([
     for cid, c in var.clusters : {
       "${cid}-public"  = { vid = c.public_vlan_id, role = "PUBLIC", prefix = c.public_cidr, gateway = c.public_gateway }
@@ -8,35 +10,45 @@ locals {
   ]...)
 }
 
-# ── Container prefixes ──────────────────────────────────────────────────────
+# ── Site container ──────────────────────────────────────────────────────────
 resource "netbox_prefix" "site" {
   prefix      = var.site_supernet
   status      = "container"
-  site_id     = netbox_site.this.id
+  site_id     = local.site_id
   description = "${var.site.code} site supernet"
 }
 
-resource "netbox_prefix" "mgmt" {
-  prefix      = var.mgmt_cidr
-  status      = "active"
-  site_id     = netbox_site.this.id
-  description = "${var.site.code} OOB/vme management"
+# ── Site-global VLANs (mgmt, api) + their prefixes ──────────────────────────
+resource "netbox_vlan" "global" {
+  for_each = var.global_vlans
+  name     = "${var.site.code}-${each.key}"
+  vid      = each.value.vid
+  site_id  = local.site_id
 }
 
+resource "netbox_prefix" "global" {
+  for_each    = var.global_vlans
+  prefix      = each.value.prefix
+  status      = "active"
+  vlan_id     = netbox_vlan.global[each.key].id
+  site_id     = local.site_id
+  description = "${var.site.code}-${each.key}"
+}
+
+# ── Per-cluster supernets, VLANs, network prefixes, gateway IPs ─────────────
 resource "netbox_prefix" "cluster_supernet" {
   for_each    = var.clusters
   prefix      = each.value.cluster_supernet
   status      = "container"
-  site_id     = netbox_site.this.id
+  site_id     = local.site_id
   description = "${var.site.code} cluster ${each.key} supernet"
 }
 
-# ── Cluster VLANs + their network prefixes + gateway IPs ────────────────────
 resource "netbox_vlan" "this" {
   for_each = local.networks
   name     = "${var.site.code}-C${split("-", each.key)[0]}-${each.value.role}"
   vid      = each.value.vid
-  site_id  = netbox_site.this.id
+  site_id  = local.site_id
 }
 
 resource "netbox_prefix" "network" {
@@ -44,7 +56,7 @@ resource "netbox_prefix" "network" {
   prefix      = each.value.prefix
   status      = "active"
   vlan_id     = netbox_vlan.this[each.key].id
-  site_id     = netbox_site.this.id
+  site_id     = local.site_id
   description = "${var.site.code}-C${split("-", each.key)[0]}-${each.value.role}"
 }
 

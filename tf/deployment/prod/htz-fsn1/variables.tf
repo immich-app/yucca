@@ -44,25 +44,6 @@ variable "netbox_site_slug" {
   description = "NetBox site slug; also the device-name prefix."
 }
 
-variable "fabric_users" {
-  description = "Login users (name -> rights + SSH public keys) applied to every VC."
-  type = map(object({
-    class            = string
-    uid              = optional(number)
-    full_name        = optional(string)
-    ssh_ed25519_keys = optional(list(string), [])
-    ssh_rsa_keys     = optional(list(string), [])
-  }))
-}
-
-variable "fabric_login_classes" {
-  description = "Optional custom login classes -> permissions."
-  type = map(object({
-    permissions = list(string)
-  }))
-  default = {}
-}
-
 variable "cls1_leaf_serials" {
   type        = list(string)
   description = "cls1 leaf VC member chassis serials (member 0, member 1)."

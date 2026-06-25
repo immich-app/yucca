@@ -57,3 +57,18 @@ output "leaf_mgmt_ip" {
   value       = local.leaf_mgmt_ip
   description = "Cluster leaf vme IP (cls1 -> 10.40.5.125, cls2 -> .135)."
 }
+
+output "mgmt_vlan_id" {
+  value       = local.mgmt_vlan_id
+  description = "Site-global management VLAN id (== third octet of mgmt_cidr, e.g. 5)."
+}
+
+output "api_cidr" {
+  value       = local.api_cidr
+  description = "Site-global API network (10.<site>.<api_octet>.0/24)."
+}
+
+output "api_vlan_id" {
+  value       = local.api_vlan_id
+  description = "Site-global API VLAN id (== api_octet, e.g. 10)."
+}

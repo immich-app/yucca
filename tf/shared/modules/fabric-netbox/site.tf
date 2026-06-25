@@ -9,11 +9,10 @@ locals {
   }
 }
 
-resource "netbox_site" "this" {
-  name        = var.site.name
-  slug        = var.site.slug
-  status      = var.site.status
-  description = var.site.description
+# The site is shared infra (it also holds non-fabric prefixes), so reference the
+# existing one rather than own/recreate it. Create it once out-of-band if missing.
+data "netbox_site" "this" {
+  slug = var.site.slug
 }
 
 resource "netbox_manufacturer" "this" {

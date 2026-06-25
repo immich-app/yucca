@@ -4,6 +4,13 @@ locals {
   mgmt_cidr     = "10.${var.site_id}.5.0/24"     # OOB / vme management net
   spine_mgmt_ip = cidrhost(local.mgmt_cidr, 115) # site core spine vme (10.40.5.115)
 
+  # Site-global infra VLANs (present on every cluster). VLAN id == third octet:
+  #   management  10.<site>.5.0/24            -> vlan 5
+  #   api         10.<site>.<api_octet>.0/24  -> vlan <api_octet> (default .10 -> vlan 10)
+  mgmt_vlan_id = tonumber(split(".", local.mgmt_cidr)[2]) # 5
+  api_cidr     = "10.${var.site_id}.${var.api_octet}.0/24"
+  api_vlan_id  = var.api_octet
+
   has_cluster = var.cluster_id != null
 
   # Cluster /20: net base = ordinal * 16 (cls1 -> 16 -> 10.40.16.0/20).

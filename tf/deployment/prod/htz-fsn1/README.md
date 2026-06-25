@@ -27,8 +27,12 @@ VLAN id == the network's third octet; gateway = `.1` (IRB on the leaf).
 - `modules/core-fabric` / `modules/cluster-fabric` — the spine / leaf config (one
   JTAF `junos-qfx` resource each), generated from the live config and parameterized
   on the addressing. **Secrets (`root-authentication`) are stripped.**
-- `modules/fabric-login` — login users + SSH keys + rights (public keys committed;
-  passwords via vars from 1Password).
+- `modules/identity` — the central user + group registry (single source of truth
+  for who has access and what they're a member of). Edit it to add people. Members
+  of fabric-mapped groups (e.g. `fabric-admins` → super-user) are synthesized into
+  login users here and applied to every VC. The same registry will drive servers.
+- `modules/fabric-login` — applies login users + SSH keys + rights to a VC (public
+  keys committed; passwords via vars from 1Password). Fed by `modules/identity`.
 - `modules/fabric-netbox` — mirrors the IP plan into NetBox (prefixes + VLANs).
 
 ## The provider

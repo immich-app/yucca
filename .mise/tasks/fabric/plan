@@ -14,4 +14,5 @@ op read "${ACCT[@]}" "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/
 export TF_VAR_netconf_ssh_key_path="$KEYF"
 export TF_CLI_CONFIG_FILE="$ROOT/tf/.terraformrc.fabric"
 SITE="${FABRIC_SITE:-htz-fsn1}"
-OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" plan "$@"
+# -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe (see apply).
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" plan -parallelism=1 "$@"

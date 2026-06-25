@@ -11,7 +11,12 @@ module "netbox" {
   }
 
   site_supernet = module.addr_site.site_supernet
-  mgmt_cidr     = module.addr_site.mgmt_cidr
+
+  # Site-global VLANs (present on every cluster).
+  global_vlans = {
+    MGMT = { vid = module.addr_site.mgmt_vlan_id, prefix = module.addr_site.mgmt_cidr }
+    API  = { vid = module.addr_site.api_vlan_id, prefix = module.addr_site.api_cidr }
+  }
 
   clusters = {
     "1" = {
