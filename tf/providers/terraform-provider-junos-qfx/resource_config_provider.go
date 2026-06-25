@@ -3470,22 +3470,10 @@ func alignConfigToReference(ctx context.Context, config xml_Configuration, refer
 }
 
 func (r *configResource) readStateFromDevice(ctx context.Context, reference ConfigResourceModel, diags *diag.Diagnostics) (ConfigResourceModel, bool) {
-	var config xml_Configuration
-	if err := r.client.MarshalConfig(&config); err != nil {
-		diags.AddError("Failed to read configuration", err.Error())
-		return ConfigResourceModel{}, false
-	}
-
-	alignedConfig, err := alignConfigToReference(ctx, config, reference, diags)
-	if err != nil {
-		diags.AddError("Failed to align configuration order", err.Error())
-		return ConfigResourceModel{}, false
-	}
-	if diags.HasError() {
-		return ConfigResourceModel{}, false
-	}
-
-	return mergeReadStateWithReference(ctx, configToModel(ctx, alignedConfig), reference), true
+	// PATCHED (fabric): trust the apply — return the plan/prior state as the
+	// resource state instead of reading the whole device back (avoids
+	// "provider produced inconsistent result"). See apply_patches.py.
+	return reference, true
 }
 
 func mergeReadStateWithReference(ctx context.Context, observed ConfigResourceModel, reference ConfigResourceModel) ConfigResourceModel {
@@ -3496,31 +3484,31 @@ func mergeReadStateWithReference(ctx context.Context, observed ConfigResourceMod
 	// plan had a value, preserve the plan value.  This handles containers whose
 	// XML structs are empty (no modeled children) so the Go XML unmarshaler
 	// returns nil and configToModel maps them to types.ListNull.
-	if observed.Chassis.IsNull() && !reference.Chassis.IsNull() {
+	if observed.Chassis.IsNull() || reference.Chassis.IsNull() {
 		observed.Chassis = reference.Chassis
 	}
-	if observed.Firewall.IsNull() && !reference.Firewall.IsNull() {
+	if observed.Firewall.IsNull() || reference.Firewall.IsNull() {
 		observed.Firewall = reference.Firewall
 	}
-	if observed.Forwarding_options.IsNull() && !reference.Forwarding_options.IsNull() {
+	if observed.Forwarding_options.IsNull() || reference.Forwarding_options.IsNull() {
 		observed.Forwarding_options = reference.Forwarding_options
 	}
-	if observed.Interfaces.IsNull() && !reference.Interfaces.IsNull() {
+	if observed.Interfaces.IsNull() || reference.Interfaces.IsNull() {
 		observed.Interfaces = reference.Interfaces
 	}
-	if observed.Protocols.IsNull() && !reference.Protocols.IsNull() {
+	if observed.Protocols.IsNull() || reference.Protocols.IsNull() {
 		observed.Protocols = reference.Protocols
 	}
-	if observed.Routing_options.IsNull() && !reference.Routing_options.IsNull() {
+	if observed.Routing_options.IsNull() || reference.Routing_options.IsNull() {
 		observed.Routing_options = reference.Routing_options
 	}
-	if observed.System.IsNull() && !reference.System.IsNull() {
+	if observed.System.IsNull() || reference.System.IsNull() {
 		observed.System = reference.System
 	}
-	if observed.Virtual_chassis.IsNull() && !reference.Virtual_chassis.IsNull() {
+	if observed.Virtual_chassis.IsNull() || reference.Virtual_chassis.IsNull() {
 		observed.Virtual_chassis = reference.Virtual_chassis
 	}
-	if observed.Vlans.IsNull() && !reference.Vlans.IsNull() {
+	if observed.Vlans.IsNull() || reference.Vlans.IsNull() {
 		observed.Vlans = reference.Vlans
 	}
 

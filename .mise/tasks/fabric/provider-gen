@@ -42,3 +42,7 @@ cp -R terraform-provider-junos-qfx "$ROOT/tf/providers/terraform-provider-junos-
 rm -f "$ROOT/tf/providers/terraform-provider-junos-qfx/__init__.py"
 echo "regenerated + vendored -> tf/providers/terraform-provider-junos-qfx"
 echo "next: mise run fabric:provider-build"
+
+# Re-apply local provider patches (overwritten by regeneration).
+python3 "$ROOT/tf/providers/apply_patches.py"
+echo "next: mise run fabric:provider-build"
