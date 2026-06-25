@@ -2,6 +2,10 @@
 hostname_short: sietch-ceph-samara
 bond_ip: 10.10.10.92
 
+# Dell service tag (PowerEdge R730xd chassis identity; chassis-asset-tag unset
+# in BIOS). Captured 2026-06-25; cross-check before a (re)image.
+dell_service_tag: 6YHQXK2
+
 # SAS expander base path (unique per chassis — different backplane address per node)
 sas_path_prefix: "pci-0000:02:00.0-sas-exp0x500056b3393ba1ff"
 
