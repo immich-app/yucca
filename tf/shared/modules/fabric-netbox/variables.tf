@@ -20,15 +20,19 @@ variable "site_supernet" {
   description = "Site /16 supernet (container prefix)."
 }
 
-variable "mgmt_cidr" {
-  type        = string
-  description = "Management /24 (vme)."
-}
-
 variable "mgmt_prefixlen" {
   type        = number
   default     = 24
   description = "Prefix length for vme management IPs."
+}
+
+variable "global_vlans" {
+  description = "Site-global VLANs present on every cluster (e.g. MGMT, API) -> vid + prefix."
+  type = map(object({
+    vid    = number
+    prefix = string
+  }))
+  default = {}
 }
 
 variable "clusters" {

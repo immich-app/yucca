@@ -37,3 +37,9 @@ variable "cluster_id" {
     error_message = "cluster_id must be between 1 and 15 (cluster /20s occupy net bases 16..240)."
   }
 }
+
+variable "api_octet" {
+  type        = number
+  default     = 10
+  description = "Third octet of the site-global API network (10.<site>.<api_octet>.0/24); also its VLAN id."
+}

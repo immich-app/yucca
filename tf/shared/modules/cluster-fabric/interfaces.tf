@@ -1,5 +1,7 @@
 locals {
-  trunk_members = [local.public_vlan_name, local.private_vlan_name]
+  # Every server bond + the uplink carry the cluster's public/private plus the
+  # site-global api/mgmt VLANs.
+  trunk_members = [local.public_vlan_name, local.private_vlan_name, local.api_vlan_name, local.mgmt_vlan_name]
 
   # ── Server bonds: ae<k> = et-0/0/<k-1> + et-1/0/<k-1>, LACP, pub/priv trunk ──
   server_lags = [

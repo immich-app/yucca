@@ -313,7 +313,7 @@ locals {
                         {
                           members = [
                             "vlan${var.public_vlan_id}",
-                            "vlan${var.private_vlan_id}"
+                            "vlan${var.private_vlan_id}", "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}"
                           ]
                         }
                       ]
@@ -372,7 +372,7 @@ locals {
                         {
                           members = [
                             "vlan${var.public_vlan_id}",
-                            "vlan${var.private_vlan_id}"
+                            "vlan${var.private_vlan_id}", "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}"
                           ]
                         }
                       ]

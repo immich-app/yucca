@@ -75,3 +75,13 @@ variable "aggregated_device_count" {
   default     = 64
   description = "chassis aggregated-devices ethernet device-count."
 }
+
+variable "api_vlan_id" {
+  type        = number
+  description = "Site-global API VLAN id (carried on every cluster)."
+}
+
+variable "mgmt_vlan_id" {
+  type        = number
+  description = "Site-global management VLAN id (carried on every cluster)."
+}

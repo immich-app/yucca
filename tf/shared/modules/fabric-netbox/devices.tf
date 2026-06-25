@@ -6,7 +6,7 @@ locals {
 resource "netbox_device" "this" {
   for_each       = var.devices
   name           = each.key
-  site_id        = netbox_site.this.id
+  site_id        = data.netbox_site.this.id
   role_id        = netbox_device_role.this[each.value.role].id
   device_type_id = netbox_device_type.this["${each.value.manufacturer}|${each.value.model}"].id
   serial         = each.value.serial
