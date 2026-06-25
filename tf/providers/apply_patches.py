@@ -15,6 +15,9 @@ Patches:
   2. publicKeyFile / NewClient — fail with a clear error on an unreadable/unparseable
      SSH key instead of returning a nil AuthMethod, which made the SSH handshake
      panic ("Plugin did not respond").
+  3. execute / netconfReplyError — surface NETCONF <rpc-error> (at any depth, incl.
+     nested under <commit-results>) as a real error. The generated client ignored
+     reply errors, so a rejected load/commit silently no-op'd while reporting success.
 """
 import sys
 import pathlib
@@ -58,8 +61,55 @@ def replace_once(src, old, new, label):
     print(f"  patched {label}")
 
 
+NETCONF_REPLY_ERROR_FN = '''
+
+// netconfReplyError returns a non-nil error if the rpc-reply contains any
+// error-severity <rpc-error> at ANY depth. Junos nests them under
+// <commit-results> (optionally per <routing-engine>) and
+// <load-configuration-results>, not just directly under <rpc-reply>.
+func netconfReplyError(raw []byte) error {
+	dec := xml.NewDecoder(bytes.NewReader(raw))
+	var msgs []string
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		se, ok := tok.(xml.StartElement)
+		if !ok || se.Name.Local != "rpc-error" {
+			continue
+		}
+		var e struct {
+			Severity string `xml:"error-severity"`
+			Message  string `xml:"error-message"`
+			Path     string `xml:"error-path"`
+		}
+		if dec.DecodeElement(&e, &se) != nil {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(e.Severity), "warning") {
+			continue
+		}
+		m := strings.TrimSpace(e.Message)
+		if p := strings.TrimSpace(e.Path); p != "" {
+			m = strings.TrimSpace(p) + ": " + m
+		}
+		if m != "" {
+			msgs = append(msgs, m)
+		}
+	}
+	if len(msgs) > 0 {
+		return fmt.Errorf("device rejected the change: %s", strings.Join(msgs, "; "))
+	}
+	return nil
+}
+'''
+
+
 def patch_client():
     src = root / "netconf" / "client.go"
+
+    # 1. SSH key: clear error instead of nil AuthMethod -> panic.
     replace_once(
         src,
         "func publicKeyFile(file string) ssh.AuthMethod {\n"
@@ -89,6 +139,28 @@ def patch_client():
         "\t} else {",
         "NewClient",
     )
+
+    # 2. Surface NETCONF rpc-error: bytes import, execute() check, helper fn.
+    replace_once(
+        src,
+        "import (\n\t\"context\"",
+        "import (\n\t\"bytes\"\n\t\"context\"",
+        "bytes import",
+    )
+    replace_once(
+        src,
+        "\tdebugRPC(\"rpc reply\", string(rawReply))\n\n\treply := struct {",
+        "\tdebugRPC(\"rpc reply\", string(rawReply))\n\n"
+        "\tif rerr := netconfReplyError(rawReply); rerr != nil {\n\t\treturn \"\", rerr\n\t}\n\n"
+        "\treply := struct {",
+        "execute rpc-error check",
+    )
+    t = src.read_text()
+    if "func netconfReplyError(" not in t:
+        src.write_text(t.rstrip() + "\n" + NETCONF_REPLY_ERROR_FN)
+        print("  appended netconfReplyError")
+    else:
+        print("  netconfReplyError already present")
 
 
 patch_readstate()

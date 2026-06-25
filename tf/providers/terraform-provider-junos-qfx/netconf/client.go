@@ -1,6 +1,7 @@
 package netconf
 
 import (
+	"bytes"
 	"context"
 	"encoding/xml"
 	"fmt"
@@ -161,6 +162,10 @@ func (g *GoNCClient) execute(ctx context.Context, operation string) (string, err
 	}
 	debugRPC("rpc reply", string(rawReply))
 
+	if rerr := netconfReplyError(rawReply); rerr != nil {
+		return "", rerr
+	}
+
 	reply := struct {
 		XMLName xml.Name `xml:"rpc-reply"`
 		Data    string   `xml:",innerxml"`
@@ -171,6 +176,48 @@ func (g *GoNCClient) execute(ctx context.Context, operation string) (string, err
 	}
 
 	return reply.Data, nil
+}
+
+// netconfReplyError returns a non-nil error if the rpc-reply contains any
+// error-severity <rpc-error> at ANY depth. Junos nests them under
+// <commit-results> (optionally per <routing-engine>) and
+// <load-configuration-results>, not just directly under <rpc-reply>, so we walk
+// every element rather than matching a fixed path.
+func netconfReplyError(raw []byte) error {
+	dec := xml.NewDecoder(bytes.NewReader(raw))
+	var msgs []string
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			break
+		}
+		se, ok := tok.(xml.StartElement)
+		if !ok || se.Name.Local != "rpc-error" {
+			continue
+		}
+		var e struct {
+			Severity string `xml:"error-severity"`
+			Message  string `xml:"error-message"`
+			Path     string `xml:"error-path"`
+		}
+		if dec.DecodeElement(&e, &se) != nil {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(e.Severity), "warning") {
+			continue
+		}
+		m := strings.TrimSpace(e.Message)
+		if p := strings.TrimSpace(e.Path); p != "" {
+			m = strings.TrimSpace(p) + ": " + m
+		}
+		if m != "" {
+			msgs = append(msgs, m)
+		}
+	}
+	if len(msgs) > 0 {
+		return fmt.Errorf("device rejected the change: %s", strings.Join(msgs, "; "))
+	}
+	return nil
 }
 
 // updateRawConfig replaces an existing apply-group payload and optionally commits.
