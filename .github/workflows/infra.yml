@@ -303,9 +303,17 @@ jobs:
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+      # On the tailnet so the playbook can reach hosts that have already joined
+      # (it prefers their Tailscale IP, falling back to the public IP otherwise).
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:project-yucca
       # Renders the inventory from TF (tf/render/ansible-mgmt) then converges the
-      # mgmt hosts over their public IP with the TF-generated provisioning key.
-      # No-op for sites without an ansible/mgmt inventory; requires the hosts to
-      # have been reprovisioned (provisioning key authorized).
+      # mgmt hosts — over Tailscale if they've joined, else their public IP (the
+      # TF-generated provisioning key authorizes root). No-op for sites without an
+      # ansible/mgmt inventory; requires the hosts to have been reprovisioned.
       - name: Ansible converge (mgmt hosts)
         run: mise run mgmt:ansible

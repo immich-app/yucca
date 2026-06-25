@@ -88,6 +88,19 @@ reprovisioned (provisioning key authorized).
 > group_vars so the key never has to be persisted to a committed path — it is
 > rendered to a temp file, used, and shredded.
 
+## Connection: public IP → Tailscale
+
+A freshly-reprovisioned host is only reachable over its **public IP**, so that's
+the bootstrap address (`mgmt_public_ip` in host_vars). The first play in
+`site.yml` probes the tailnet from the control node (`tailscale status --json`):
+if the host is an **online peer**, it switches `ansible_host` to the host's
+**Tailscale IP** for the rest of the run; otherwise it stays on the public IP.
+
+So the first run provisions over the public IP and brings the host onto the
+tailnet (the `tailscale` role); every subsequent run reconnects over Tailscale
+automatically. This needs the control node on the tailnet too — the CI
+`prod-ansible` job joins it; locally, just be connected to the tailnet.
+
 ## 25G fabric caveat
 
 The 25G fabric link (Intel E810, "ice" driver) is **currently physically

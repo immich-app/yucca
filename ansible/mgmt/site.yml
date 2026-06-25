@@ -2,20 +2,46 @@
 # Configure the Hetzner FSN1 management hosts after they are reprovisioned
 # to Debian 13 ("trixie") via Hetzner robot auto-install.
 #
-# Order: baseline -> users -> security -> networkd -> tailscale.
-# Fully convergeable — safe to re-run.
+# Connection: freshly-reprovisioned hosts are reached over their PUBLIC IP
+# (bootstrap); once a host has joined the tailnet (the tailscale role), later
+# runs reconnect over its Tailscale IP automatically — see the first play.
 #
-# Workflow:
-#   1. Reprovision both hosts to Debian 13 (robot auto-install)
-#   2. Render the TF provisioning SSH key from 1Password (see README)
-#   3. ansible-playbook -i inventories/htz-fsn1 site.yml \
-#        --private-key /tmp/htz-prov-key \
-#        --extra-vars "mgmt_tailscale_authkey=$(op read --account team-futo \
-#          'op://yucca_tf_prod/TAILSCALE_AUTHKEY/password')"
+# Canonical entrypoint is `mise run mgmt:ansible` (renders the inventory from
+# Terraform, then runs this). It passes the provisioning key + the tailscale
+# auth key (the OAuth client secret, op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET).
 #
 # NOTE: the networkd role (25G VLAN sub-interfaces) is gated on
 # mgmt_networkd_enabled (default false) because the 25G fabric link is
 # currently unreliable. Enable it once the fabric is up.
+
+# ── Prefer Tailscale, fall back to the public IP ─────────────────────────────
+# Runs entirely on the control node (no target connection), so it's safe before
+# a host is reachable at all. If the host is an online tailnet peer, switch the
+# connection to its Tailscale IP; otherwise keep the public IP (bootstrap).
+- name: Select connection address
+  hosts: mgmt
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Read the tailnet status from the control node
+      ansible.builtin.command: tailscale status --json
+      delegate_to: localhost
+      register: _ts_status
+      changed_when: false
+      failed_when: false
+
+    - name: Reconnect over Tailscale when the host is an online peer
+      vars:
+        _ts_ips: >-
+          {{ ((_ts_status.stdout | from_json).Peer | default({})) | dict2items | map(attribute='value')
+             | selectattr('HostName', 'equalto', inventory_hostname)
+             | selectattr('Online', 'defined') | selectattr('Online')
+             | map(attribute='TailscaleIPs') | select | map('first') | list }}
+      ansible.builtin.set_fact:
+        ansible_host: "{{ _ts_ips[0] if (_ts_ips | length > 0) else mgmt_public_ip }}"
+      when:
+        - _ts_status.rc == 0
+        - (_ts_status.stdout | trim | length) > 0
 
 - name: Configure management hosts
   hosts: mgmt
