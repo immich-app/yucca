@@ -6,20 +6,30 @@
 # with matching fingerprints.
 #
 # Prereq: `op` CLI signed in (desktop session unlocked or
-# OP_SERVICE_ACCOUNT_TOKEN set). Read-only access to yucca_tf_dev is enough.
+# OP_SERVICE_ACCOUNT_TOKEN set). Read-only access to the cluster's vault
+# (see VAULTS below) is enough.
 #
 # Usage:
 #   scripts/install-ssh-keys.sh                  # all keys
 #   scripts/install-ssh-keys.sh sietch           # one cluster
+#   OP_VAULT=yucca_tf_staging scripts/install-ssh-keys.sh sietch   # override vault
 set -euo pipefail
-
-VAULT="yucca_tf_dev"
 
 # Map: short cluster name -> target filename under ~/.ssh/
 declare -A KEYS=(
   [sietch]="id_ed25519_sietch"
   [painbox]="id_ed25519_painbox"
 )
+
+# Map: short cluster name -> 1P vault holding its
+# <CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY item. Per-cluster so clusters can live in
+# different env vaults (e.g. sietch moves to yucca_tf_staging on promotion).
+# Override any lookup with OP_VAULT=<vault>.
+declare -A VAULTS=(
+  [sietch]="yucca_tf_dev"
+  [painbox]="yucca_tf_dev"
+)
+DEFAULT_VAULT="yucca_tf_dev"
 
 if [ $# -eq 0 ]; then
   targets=(sietch painbox)
@@ -33,16 +43,17 @@ for cluster in "${targets[@]}"; do
     echo "unknown cluster: $cluster" >&2
     exit 1
   fi
+  vault="${OP_VAULT:-${VAULTS[$cluster]:-$DEFAULT_VAULT}}"
   priv="$HOME/.ssh/$key_name"
   pub="$priv.pub"
   item="$(echo "$cluster" | tr '[:lower:]' '[:upper:]')_CEPH_ANSIBLE_IAC_SSH_KEY"
 
-  echo "=== $cluster → $priv ==="
+  echo "=== $cluster → $priv (vault: $vault) ==="
 
   # Compare fingerprints if the key is already on disk
   if [ -f "$priv" ]; then
     disk_fp=$(ssh-keygen -l -f "$priv" 2>/dev/null | awk '{print $2}' || echo "?")
-    onep_fp=$(op read "op://$VAULT/$item/public_key" | ssh-keygen -l -f /dev/stdin 2>/dev/null | awk '{print $2}' || echo "?")
+    onep_fp=$(op read "op://$vault/$item/public_key" | ssh-keygen -l -f /dev/stdin 2>/dev/null | awk '{print $2}' || echo "?")
     if [ "$disk_fp" = "$onep_fp" ] && [ -n "$disk_fp" ]; then
       echo "  already present, fingerprint matches: $disk_fp"
       continue
@@ -57,8 +68,8 @@ for cluster in "${targets[@]}"; do
 
   # Write private + public side by side
   umask 077
-  op read "op://$VAULT/$item/private_key" > "$priv"
-  op read "op://$VAULT/$item/public_key"  > "$pub"
+  op read "op://$vault/$item/private_key" > "$priv"
+  op read "op://$vault/$item/public_key"  > "$pub"
   chmod 600 "$priv"
   chmod 644 "$pub"
   fp=$(ssh-keygen -l -f "$priv" | awk '{print $2}')
