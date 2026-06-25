@@ -1,0 +1,67 @@
+---
+# Install Tailscale from the official apt repo and bring the node up on the
+# tailnet. mgmt-1 additionally advertises the 10.40.5.0/24 subnet route.
+# Convergeable: `tailscale up` is idempotent for a given flag set.
+
+- name: Add Tailscale apt signing key
+  ansible.builtin.get_url:
+    url: "{{ mgmt_tailscale_repo_key_url }}"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Add Tailscale apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
+      {{ mgmt_tailscale_repo_url }} {{ ansible_distribution_release }} main
+    filename: tailscale
+    state: present
+    update_cache: true
+
+- name: Install tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+
+- name: Enable and start tailscaled
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Assert tailscale auth key is provided
+  ansible.builtin.assert:
+    that:
+      - mgmt_tailscale_authkey is defined
+      - mgmt_tailscale_authkey | length > 0
+    fail_msg: >-
+      mgmt_tailscale_authkey is empty. Pass it at run time, e.g.
+      --extra-vars "mgmt_tailscale_authkey=$(op read --account team-futo
+      'op://yucca_tf_prod/TAILSCALE_AUTHKEY/password')".
+
+# Subnet routing requires IP forwarding on the router node (mgmt-1).
+- name: Enable IP forwarding for subnet routing
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+  when: mgmt_tailscale_advertise_routes | length > 0
+
+- name: Bring node up on the tailnet
+  ansible.builtin.command:
+    cmd: >-
+      tailscale up
+      --authkey={{ mgmt_tailscale_authkey }}
+      --hostname={{ inventory_hostname }}
+      {% if mgmt_tailscale_tags | length > 0 %}--advertise-tags={{ mgmt_tailscale_tags }}{% endif %}
+      {% if mgmt_tailscale_advertise_routes | length > 0 %}--advertise-routes={{ mgmt_tailscale_advertise_routes }}{% endif %}
+  register: mgmt_tailscale_up
+  changed_when: "'Success' in mgmt_tailscale_up.stderr or mgmt_tailscale_up.rc == 0"
+  no_log: true

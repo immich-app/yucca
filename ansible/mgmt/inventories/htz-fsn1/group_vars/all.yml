@@ -1,0 +1,29 @@
+---
+# === Shared vars for all htz-fsn1 management hosts ===
+
+timezone: UTC
+mgmt_domain: fsn.htz.futo.cloud
+
+# === Login users ===
+# MIRRORS tf/shared/modules/identity (variable "users" / "groups"). These are
+# the members of `server`-mapped groups — today only server_admins, which has
+# server.sudo = "ALL". Keep this list in sync with the identity registry by
+# hand for now. FUTURE: TF could render this file so there's one source of
+# truth (the registry's public SSH keys are not secret and are committed).
+mgmt_users:
+  - name: nutgood            # Antoine
+    sudo: "ALL"
+    ssh_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOaH71qha6kLO2qRu+w6C5wPpWhkiBjEUeY1fAjAVApR"
+  - name: andy               # Andy
+    sudo: "ALL"
+    ssh_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO7XdW03gJKyABt5KCMxOLPb5sOGTXuZV0OHc1Ro46Nt andy@futo.org"
+
+# === Secrets ===
+# Tailscale auth. Use the project's OAuth client secret (same as CI) — it works
+# as an auth key but requires tags (mgmt_tailscale_tags, set in the role).
+# NOT hardcoded — pass at run time, e.g.:
+#   --extra-vars "mgmt_tailscale_authkey=$(op read --account team-futo \
+#     'op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET/password')"
+mgmt_tailscale_authkey: ""

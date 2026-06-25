@@ -1,0 +1,17 @@
+---
+# systemd-networkd VLAN sub-interfaces on the 25G fabric NIC.
+#
+# NOTE: applies once the 25G fabric links — the 25G link is currently
+# physically unreliable (see notes). Gated on mgmt_networkd_enabled
+# (default: false) so a normal site.yml run is a no-op until the fabric
+# is up and the operator opts in.
+#
+#   1. write parent .network (DHCP off on fabric, declares VLANs)
+#   2. write per-VLAN .netdev + .network (static addresses)
+#   3. reload networkd
+#
+# The primary public NIC keeps Hetzner's DHCP default — untouched here.
+
+- name: Deploy networkd configs
+  ansible.builtin.import_tasks: deploy.yml
+  when: mgmt_networkd_enabled | bool

@@ -1,0 +1,10 @@
+---
+# Creates login users from the identity registry mirror (mgmt_users).
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: users
+  description: Login users + SSH keys + sudo from the identity registry
+  min_ansible_version: "2.18"

@@ -1,0 +1,70 @@
+---
+# Security hardening for management hosts.
+# nftables firewall + SSH hardening + unattended-upgrades.
+
+# --- nftables firewall ---
+
+- name: Install nftables
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+
+- name: Deploy nftables ruleset
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: "nft -c -f %s"
+  register: nftables_config
+  when: mgmt_firewall_enabled | bool
+
+- name: Enable and start nftables
+  ansible.builtin.systemd:
+    name: nftables
+    enabled: true
+    state: "{{ 'restarted' if nftables_config is changed else 'started' }}"
+  when: mgmt_firewall_enabled | bool
+
+# --- SSH hardening ---
+
+- name: Deploy SSH hardening config
+  ansible.builtin.template:
+    src: sshd-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/50-hardening.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart sshd
+
+- name: Verify full SSH config is valid after drop-in
+  ansible.builtin.command: sshd -t
+  changed_when: false
+
+# --- unattended-upgrades ---
+
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+
+- name: Enable unattended-upgrades
+  ansible.builtin.copy:
+    src: 20auto-upgrades
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+
+# --- Summary ---
+
+- name: Report security state
+  ansible.builtin.debug:
+    msg:
+      - "Firewall: {{ 'enabled' if mgmt_firewall_enabled else 'disabled' }}"
+      - "Trusted networks: {{ mgmt_firewall_trusted_networks | join(', ') }}"
+      - "SSH AllowUsers: {{ mgmt_ssh_allowed_users }}"
+      - "SSH PermitRootLogin: {{ mgmt_ssh_permit_root_login }}"

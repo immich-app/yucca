@@ -35,25 +35,31 @@ VLAN id == the network's third octet; gateway = `.1` (IRB on the leaf).
   keys committed; passwords via vars from 1Password). Fed by `modules/identity`.
 - `modules/fabric-netbox` — mirrors the IP plan into NetBox (prefixes + VLANs).
 
-## The provider
+## The providers
 
-The `junos-qfx` provider is **JTAF-generated and vendored** in `tf/providers/` (not on
-any registry). It's built into a local filesystem mirror by `mise run fabric:provider-build`.
+This stack builds two providers locally (neither is on a registry) into a shared
+filesystem mirror via `mise run infra:providers`:
 
-- `mise run fabric:provider-gen` — regenerate from device YANG + live config (only
-  when adding new config hierarchies), then commit `tf/providers/`.
-- `mise run fabric:provider-build` — `go build` the vendored source into the mirror
-  and write `tf/.terraformrc.fabric` (consumed via `TF_CLI_CONFIG_FILE`).
+- `junos-qfx` — **JTAF-generated and vendored** in `tf/providers/` (the switch fabric).
+- `hetzner` (`zack/hetzner`) — the Hetzner Robot API, for mgmt-host reprovisioning
+  (`mgmt.tf`); cloned + built (pinned tag) by `mise run mgmt:provider-build`.
+
+- `mise run fabric:provider-gen` — regenerate the junos-qfx provider from device YANG
+  + live config (only when adding new config hierarchies), then commit `tf/providers/`.
+- `mise run infra:providers` — build both providers into the mirror and write
+  `tf/.terraformrc.local` (consumed via `TF_CLI_CONFIG_FILE`).
 
 ## Running
 
 ```sh
-mise run fabric:plan     # builds provider, renders the NETCONF key from 1Password, terragrunt plan
-mise run fabric:apply    # ... apply
+mise run infra:plan      # builds providers, renders creds from 1Password, terragrunt plan
+mise run infra:apply     # ... apply
 ```
 
-CI: `.github/workflows/fabric.yml` — plan on PR, gated apply on merge behind the
-site-scoped `prod-fabric-htz-fsn1` GitHub Environment (required reviewers).
+(`SITE` selects the stack; defaults to `htz-fsn1`.)
+
+CI: `.github/workflows/infra.yml` — plan on PR, gated apply on merge behind the
+site-scoped `prod-htz-fsn1` GitHub Environment (required reviewers).
 
 ## Adoption caveat (first run)
 

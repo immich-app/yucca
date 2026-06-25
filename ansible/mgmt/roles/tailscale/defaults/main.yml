@@ -1,0 +1,20 @@
+---
+# Tailscale defaults.
+
+# Official apt repo. Codename comes from ansible_distribution_release (trixie).
+mgmt_tailscale_repo_url: "https://pkgs.tailscale.com/stable/debian"
+mgmt_tailscale_repo_key_url: "https://pkgs.tailscale.com/stable/debian/trixie.noarmor.gpg"
+
+# Auth key — NEVER hardcoded. Passed at run time (op:// reference, see README).
+# Use the Tailscale OAuth client secret (same mechanism CI uses): it acts as an
+# auth key but REQUIRES --advertise-tags. Stored at
+# op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET/password.
+mgmt_tailscale_authkey: ""
+
+# Tags applied to the node (required when authenticating with an OAuth client
+# secret). Matches the project's tailnet ACL tag.
+mgmt_tailscale_tags: "tag:project-yucca"
+
+# Subnet routes to advertise (per-host). Empty = plain tailnet node; set for
+# the subnet router (mgmt-1 advertises 10.40.5.0/24 in its host_vars).
+mgmt_tailscale_advertise_routes: ""

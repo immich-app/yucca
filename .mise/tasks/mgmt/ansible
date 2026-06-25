@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#MISE description="Converge a site's management hosts with ansible/mgmt (root via the TF provisioning key from 1Password). SITE selects the inventory."
+set -euo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+SITE="${SITE:-htz-fsn1}"
+INV="$ROOT/ansible/mgmt/inventories/$SITE"
+
+# Per-site: only run where an inventory exists (keeps the prod matrix happy).
+if [ ! -d "$INV" ]; then
+  echo "mgmt:ansible: no ansible/mgmt inventory for site '$SITE' — skipping."
+  exit 0
+fi
+
+# op creds: CI provides a (read-scoped) SA token in OP_SERVICE_ACCOUNT_TOKEN;
+# locally we sign in to team-futo. Reads only — no write escalation needed.
+ACCT=(); [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && ACCT=(--account "${OP_ACCOUNT:-team-futo}")
+
+# Provisioning private key (root login) -> 0600 temp file. Item name is
+# site-derived: htz-fsn1 -> HTZ_FSN1_PROVISIONING_SSH_PRIVATE_KEY (set by mgmt.tf).
+KEY_ITEM="$(printf '%s' "$SITE" | tr 'a-z-' 'A-Z_')_PROVISIONING_SSH_PRIVATE_KEY"
+KEYF=$(mktemp); chmod 600 "$KEYF"; trap 'rm -f "$KEYF"' EXIT
+op read "${ACCT[@]}" "op://yucca_tf_prod/$KEY_ITEM/password" > "$KEYF"
+
+# Tailscale auth (the project OAuth client secret; the role adds --advertise-tags).
+TS_AUTHKEY=$(op read "${ACCT[@]}" "op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET/password")
+
+cd "$ROOT/ansible/mgmt"
+ansible-galaxy collection install -r requirements.yml >/dev/null
+ansible-playbook -i "inventories/$SITE" site.yml \
+  --private-key "$KEYF" \
+  --extra-vars "mgmt_tailscale_authkey=$TS_AUTHKEY" "$@"

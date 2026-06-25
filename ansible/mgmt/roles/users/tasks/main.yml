@@ -1,0 +1,37 @@
+---
+# Login users for members of the identity registry's `server`-mapped groups.
+# Sourced from mgmt_users (group_vars/all.yml). Convergeable: re-running fixes
+# drift in group membership, sudo, and authorized_keys.
+
+- name: Ensure login users exist
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    state: present
+  loop: "{{ mgmt_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Configure per-user sudo
+  ansible.builtin.copy:
+    content: "{{ item.name }} ALL=(ALL) {{ item.sudo }}\n"
+    dest: "/etc/sudoers.d/{{ item.name }}"
+    mode: '0440'
+    validate: "visudo -cf %s"
+  loop: "{{ mgmt_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# exclusive: true makes the registry the single source of truth — keys not
+# listed for the user are removed.
+- name: Authorize user SSH keys
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_keys | join('\n') }}"
+    exclusive: true
+  loop: "{{ mgmt_users }}"
+  loop_control:
+    label: "{{ item.name }}"

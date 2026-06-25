@@ -1,0 +1,11 @@
+---
+# 25G fabric VLAN sub-interfaces. Gated on mgmt_networkd_enabled (default
+# false) — applies once the 25G fabric links.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: networkd
+  description: systemd-networkd VLAN sub-interfaces on the 25G fabric NIC
+  min_ansible_version: "2.18"

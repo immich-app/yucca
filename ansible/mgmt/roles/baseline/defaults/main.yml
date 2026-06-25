@@ -1,0 +1,19 @@
+---
+# Post-reprovision OS baseline defaults.
+
+# --- Packages ---
+mgmt_base_packages:
+  - curl
+  - gnupg
+  - ca-certificates
+  - apt-transport-https
+  - ethtool
+  - jq
+  - htop
+  - tmux
+  - ncdu
+  - sysstat
+  - bsdmainutils
+
+# --- /etc/hosts ---
+mgmt_manage_hosts: true

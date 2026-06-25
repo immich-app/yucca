@@ -1,0 +1,14 @@
+---
+# systemd-networkd VLAN sub-interfaces on the 25G fabric NIC.
+#
+# Prerequisites:
+#   - systemd-networkd present (Debian 13 base)
+#   - mgmt_fabric_nic, mgmt_fabric_vlans defined in host_vars
+#
+# Master toggle. False by default because the 25G fabric link is currently
+# unreliable — flip to true (and confirm mgmt_fabric_nic via `ip link`) once
+# the fabric is up.
+mgmt_networkd_enabled: false
+
+# --- Paths ---
+mgmt_networkd_config_dir: /etc/systemd/network

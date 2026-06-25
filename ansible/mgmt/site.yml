@@ -1,0 +1,30 @@
+---
+# Configure the Hetzner FSN1 management hosts after they are reprovisioned
+# to Debian 13 ("trixie") via Hetzner robot auto-install.
+#
+# Order: baseline -> users -> security -> networkd -> tailscale.
+# Fully convergeable — safe to re-run.
+#
+# Workflow:
+#   1. Reprovision both hosts to Debian 13 (robot auto-install)
+#   2. Render the TF provisioning SSH key from 1Password (see README)
+#   3. ansible-playbook -i inventories/htz-fsn1 site.yml \
+#        --private-key /tmp/htz-prov-key \
+#        --extra-vars "mgmt_tailscale_authkey=$(op read --account team-futo \
+#          'op://yucca_tf_prod/TAILSCALE_AUTHKEY/password')"
+#
+# NOTE: the networkd role (25G VLAN sub-interfaces) is gated on
+# mgmt_networkd_enabled (default false) because the 25G fabric link is
+# currently unreliable. Enable it once the fabric is up.
+
+- name: Configure management hosts
+  hosts: mgmt
+  become: true
+  gather_facts: true
+
+  roles:
+    - baseline
+    - users
+    - security
+    - networkd
+    - tailscale

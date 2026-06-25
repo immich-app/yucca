@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# L3 on VLAN {{ vlan.id }} sub-interface: {{ vlan.address }} (gateway .1 on the leaf IRB).
+
+[Match]
+Name={{ mgmt_fabric_nic }}.{{ vlan.id }}
+
+[Network]
+Address={{ vlan.address }}
+
+[Link]
+RequiredForOnline=no

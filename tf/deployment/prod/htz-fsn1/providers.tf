@@ -23,3 +23,13 @@ provider "netbox" {
   server_url = var.netbox_url
   api_token  = var.netbox_token
 }
+
+# Hetzner Robot API — mgmt-host reprovisioning (mgmt.tf). Credentials come from
+# the env (HETZNER_ROBOT_USERNAME/PASSWORD), injected by op-run from tf/.env.prod;
+# no secrets in config.
+provider "hetzner" {}
+
+# 1Password — stores the TF-generated provisioning key (mgmt.tf) in the env vault.
+# Authenticates with OP_SERVICE_ACCOUNT_TOKEN (the `infra:apply` task escalates to
+# the write-capable SA pulled from the vault); no Connect host needed.
+provider "onepassword" {}

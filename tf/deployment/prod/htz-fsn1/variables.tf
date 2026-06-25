@@ -53,3 +53,26 @@ variable "spine_vc_serials" {
   type        = list(string)
   description = "Spine (corenetsw) VC member chassis serials (member 0, member 1)."
 }
+
+# ── mgmt-host reprovisioning (mgmt.tf) ───────────────────────────────────────
+variable "op_vault" {
+  type        = string
+  default     = "yucca_tf_prod"
+  description = "1Password vault (env-appropriate) the TF-generated provisioning key is written to."
+}
+
+variable "mgmt_dist" {
+  type        = string
+  default     = "Debian 13 base"
+  description = "Hetzner robot Linux auto-install image (must match an available `dist` exactly; see GET /boot/<n>/linux)."
+}
+
+variable "mgmt_reprovision_targets" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    mgmt host keys (see local.mgmt_hosts in mgmt.tf) to ARM for a fresh OS install
+    on next boot. DESTRUCTIVE once the host is rebooted. Keep empty except during a
+    planned reprovision; set to the host(s) being reprovisioned, apply, then reboot.
+  EOT
+}

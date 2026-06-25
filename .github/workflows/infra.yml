@@ -1,30 +1,41 @@
 name: Infra (Terraform)
 
-# Applies the staging Terraform stacks from CI:
-#   - tf/deployment/staging/ceph   (ceph cluster 1P password items; no node contact)
-#   - tf/deployment/staging/talos  (Talos config, Cilium, Flux bootstrap, secrets)
-#   - tf/deployment/staging/dns    (Cloudflare records for the ingress hosts)
+# Applies the Terraform stacks from CI, in two groups:
 #
-# Plan runs on PRs touching tf/**; apply runs on merge to main behind the
-# `staging-infra` Environment gate (required reviewers). The Talos stack talks
-# to the nodes on the 10.10.10.0/24 management VLAN, which GitHub-hosted runners
-# can't reach — so the runner joins the tailnet (the cluster firewall trusts the
-# Tailscale CIDRs) and accepts the subnet route advertising that VLAN.
+#   Staging (tf/deployment/staging/*): ceph, talos, dns. One staging-scoped SA,
+#     a single `staging-infra` Environment gate. The Talos stack talks to the
+#     nodes on the 10.10.10.0/24 management VLAN, which GitHub-hosted runners
+#     can't reach — the runner joins the tailnet and accepts that subnet route.
+#
+#   Prod (tf/deployment/prod/*): one deployment stack per site (the switch fabric
+#     + the mgmt hosts). Fans out over every prod site; plan on PRs, apply on
+#     merge behind a per-site `prod-<site>` Environment gate. These stacks build
+#     local providers (JTAF junos-qfx + the Hetzner robot provider) and reach the
+#     switch vme / mgmt hosts over the tailnet, so the prod jobs run the
+#     `infra:*` mise tasks (provider build + 1Password cred rendering) rather
+#     than bare terragrunt.
 #
 # Prerequisites (provisioned out-of-band):
-#   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (the staging-scoped 1P service-account
-#     token — resolves tf/.env; dev/prod use OP_TF_YUCCA_DEV_ENV / OP_TF_YUCCA_PROD_ENV),
-#     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tagged tag:project-yucca).
-#   - A Tailscale subnet router advertising 10.10.10.0/24, and tag:project-yucca approved for
-#     those routes.
-#   - GitHub Environment `staging-infra` with required reviewers (the apply gate).
+#   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (+ _WRITE) — staging SAs; and
+#     OP_TF_YUCCA_PROD_ENV — the prod *read* SA only (infra:apply escalates to the
+#     write SA, which is stored in the yucca_tf_prod vault, not as a GH secret);
+#     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tag:project-yucca).
+#   - A Tailscale subnet router for the staging mgmt VLAN (10.10.10.0/24) and for
+#     each prod site's switch/mgmt subnets, with tag:project-yucca route-approved.
+#   - 1P items: NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY (yucca_tf_prod),
+#     NETBOX_API_TOKEN (yucca_tf), HETZNER_WEBSERVICE_API_USER/PASSWORD (yucca_tf_prod).
+#   - GitHub Environments with required reviewers: `staging-infra`, and one
+#     `prod-<site>` per prod site (e.g. prod-htz-fsn1).
 
 on:
   push:
     branches: [main]
-    paths: ["tf/**"]
+    paths: &paths
+      - "tf/**"
+      - ".mise/tasks/**"
+      - ".github/workflows/infra.yml"
   pull_request:
-    paths: ["tf/**"]
+    paths: *paths
   workflow_dispatch:
 
 # Serialize: the OVH S3 backend has no state locking (single-operator model),
@@ -36,13 +47,10 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  # read-scoped SA for plan; apply overrides with the write SA
-  OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV }}
-
 jobs:
-  plan:
-    name: Plan ${{ matrix.stack }}
+  # ── Staging stacks ──────────────────────────────────────────────────────────
+  staging-plan:
+    name: Staging plan ${{ matrix.stack }}
     # Skip on fork PRs (no access to secrets / tailnet).
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -50,6 +58,8 @@ jobs:
       fail-fast: false
       matrix:
         stack: [talos, dns, ceph]
+    env:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -80,9 +90,9 @@ jobs:
           --working-dir tf/deployment/staging/${{ matrix.stack }}
           --non-interactive plan
 
-  apply:
-    name: Apply (gated)
-    needs: plan
+  staging-apply:
+    name: Staging apply (gated)
+    needs: staging-plan
     # Only on merge to main (or manual dispatch) — never on PRs.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -131,3 +141,85 @@ jobs:
           tf/op-run.sh terragrunt
           --working-dir tf/deployment/staging/dns
           --non-interactive apply -auto-approve
+
+  # ── Prod deployment stacks (one per site: switch fabric + mgmt hosts) ────────
+  prod-discover:
+    name: Discover prod sites
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sites.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - id: sites
+        name: List tf/deployment/prod/* sites
+        run: |
+          matrix=$(ls -d tf/deployment/prod/*/ | xargs -n1 basename | jq -R . | jq -cs '{site: .}')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix"
+
+  prod-plan:
+    name: Prod plan ${{ matrix.site }}
+    needs: prod-discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prod-discover.outputs.matrix) }}
+    env:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_PROD_ENV }}
+      SITE: ${{ matrix.site }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up mise (go + opentofu + terragrunt)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:project-yucca
+      - name: Deploy plan
+        run: mise run infra:plan -- --non-interactive
+
+  prod-apply:
+    name: Prod apply ${{ matrix.site }} (gated)
+    needs: [prod-discover, prod-plan]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prod-discover.outputs.matrix) }}
+    # Site-scoped gate: each site's prod stack has its own required reviewers.
+    environment:
+      name: prod-${{ matrix.site }}
+    env:
+      # Read-scoped token; infra:apply escalates to the write SA stored in the vault.
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_PROD_ENV }}
+      SITE: ${{ matrix.site }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up mise (go + opentofu + terragrunt + ansible)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:project-yucca
+      - name: Deploy apply
+        run: mise run infra:apply -- --non-interactive -auto-approve
+      # Converge the mgmt hosts (idempotent; reached over their public IP with the
+      # TF-generated provisioning key). No-op for sites without an ansible/mgmt
+      # inventory. Requires the hosts to have been reprovisioned (key authorized).
+      - name: Ansible converge (mgmt hosts)
+        run: mise run mgmt:ansible

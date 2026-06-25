@@ -1,0 +1,13 @@
+127.0.0.1	localhost
+127.0.1.1	{{ inventory_hostname }}.{{ mgmt_domain }}	{{ inventory_hostname }}
+
+# Management nodes (25G fabric VLAN 20 — cluster public)
+{% for host in groups['mgmt'] %}
+{% for vlan in hostvars[host]['mgmt_fabric_vlans'] | default([]) if vlan.id == 20 %}
+{{ vlan.address | regex_replace('/.*$', '') }}	{{ host }}.{{ mgmt_domain }}	{{ host }}
+{% endfor %}
+{% endfor %}
+
+::1		localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters

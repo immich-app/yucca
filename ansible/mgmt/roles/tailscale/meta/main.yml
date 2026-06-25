@@ -1,0 +1,10 @@
+---
+# Install Tailscale, join the tailnet, optionally advertise subnet routes.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: tailscale
+  description: Install Tailscale and bring the node up on the tailnet
+  min_ansible_version: "2.18"

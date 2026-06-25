@@ -1,0 +1,46 @@
+#!/usr/sbin/nft -f
+# Management host firewall — managed by Ansible (security role)
+# Allows SSH + established/related + ICMP. Drops everything else.
+
+flush ruleset
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Loopback
+        iifname "lo" accept
+
+        # Tailscale interface (mesh + subnet routing)
+        iifname "tailscale0" accept
+
+        # Established/related
+        ct state established,related accept
+
+        # ICMP (ping, MTU discovery)
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # SSH
+{% if mgmt_firewall_ssh_any_source | bool %}
+        tcp dport 22 accept
+{% else %}
+{% for net in mgmt_firewall_trusted_networks %}
+        ip saddr {{ net }} tcp dport 22 accept
+{% endfor %}
+{% endif %}
+
+        # Log + drop everything else
+        limit rate 5/minute log prefix "nftables-drop: " level warn
+        drop
+    }
+
+    chain forward {
+        # Tailscale subnet router forwards between tailnet and 10.40.5.0/24.
+        type filter hook forward priority 0; policy accept;
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}

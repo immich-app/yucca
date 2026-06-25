@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#MISE description="terragrunt apply for a prod deployment stack (builds providers, escalates to the write SA, renders creds from 1Password). SITE selects the stack."
+set -euo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+
+mise run infra:providers
+
+# Escalate to the write-capable service-account token, which is itself stored in
+# the vault: CI hands us a read-scoped token in OP_SERVICE_ACCOUNT_TOKEN (locally
+# we sign in to team-futo), and we use it to read the write SA, then run the apply
+# as that SA so the onepassword provider can create/update items. One GitHub
+# secret (the read token) is enough; the write privilege lives in 1Password.
+ACCT=(); [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && ACCT=(--account "${OP_ACCOUNT:-team-futo}")
+OP_SERVICE_ACCOUNT_TOKEN=$(op read "${ACCT[@]}" \
+  "op://yucca_tf_prod/yucca_futo_1pass_service_account_write/password")
+export OP_SERVICE_ACCOUNT_TOKEN
+
+# Render the NETCONF SSH key from 1Password to a 0600 temp file (op run can't
+# write files) — now via the escalated SA.
+KEYF=$(mktemp); chmod 600 "$KEYF"; trap 'rm -f "$KEYF"' EXIT
+op read "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/password" > "$KEYF"
+
+export TF_VAR_netconf_ssh_key_path="$KEYF"
+export TF_CLI_CONFIG_FILE="$ROOT/tf/.terraformrc.local"
+SITE="${SITE:-htz-fsn1}"
+# -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe — parallel
+# ApplyResourceChange calls across the VCs crash the plugin ("Plugin did not respond").
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" apply -parallelism=1 "$@"

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#MISE description="terragrunt plan for a prod deployment stack (builds providers, renders creds from 1Password). SITE selects the stack."
+set -euo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+
+mise run infra:providers
+
+# Resolve a (read-scoped) service-account token. CI provides one in
+# OP_SERVICE_ACCOUNT_TOKEN; locally we read it from the vault via an interactive
+# team-futo sign-in. Exporting it makes every downstream `op`/`op run` use that
+# SA (and the right account) — plan stays read-only, so no write escalation.
+if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
+  OP_SERVICE_ACCOUNT_TOKEN=$(op read --account "${OP_ACCOUNT:-team-futo}" \
+    "op://yucca_tf_prod/yucca_futo_1pass_service_account/password")
+  export OP_SERVICE_ACCOUNT_TOKEN
+fi
+
+# Render the NETCONF SSH key from 1Password to a 0600 temp file (op run can't
+# write files).
+KEYF=$(mktemp); chmod 600 "$KEYF"; trap 'rm -f "$KEYF"' EXIT
+op read "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/password" > "$KEYF"
+
+export TF_VAR_netconf_ssh_key_path="$KEYF"
+export TF_CLI_CONFIG_FILE="$ROOT/tf/.terraformrc.local"
+SITE="${SITE:-htz-fsn1}"
+# -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe (see apply).
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" plan -parallelism=1 "$@"

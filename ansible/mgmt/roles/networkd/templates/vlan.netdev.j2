@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# Tagged VLAN {{ vlan.id }} sub-interface on {{ mgmt_fabric_nic }}.
+
+[NetDev]
+Name={{ mgmt_fabric_nic }}.{{ vlan.id }}
+Kind=vlan
+
+[VLAN]
+Id={{ vlan.id }}

@@ -1,0 +1,10 @@
+# SSH hardening — managed by Ansible (security role)
+# Dropped into /etc/ssh/sshd_config.d/ to override defaults without
+# touching the main sshd_config.
+
+MaxAuthTries {{ mgmt_ssh_max_auth_tries }}
+PermitRootLogin {{ mgmt_ssh_permit_root_login }}
+AllowUsers {{ mgmt_ssh_allowed_users }}
+PasswordAuthentication no
+PermitEmptyPasswords no
+X11Forwarding no
