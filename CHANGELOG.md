@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.5.0](https://github.com/immich-app/yucca/compare/v0.4.0...v0.5.0) (2026-06-25)
+
+
+### Features
+
+* **ci:** add kubeconfig / talosconfig to op ([#145](https://github.com/immich-app/yucca/issues/145)) ([fad10fd](https://github.com/immich-app/yucca/commit/fad10fdae9693ae2757cb3ab671c64700e5b3250))
+* staging ([#135](https://github.com/immich-app/yucca/issues/135)) ([f700b18](https://github.com/immich-app/yucca/commit/f700b18cd6c9dd3a61fba59ff768b8fc1985da46))
+* **staging:** wire in oidc ([#148](https://github.com/immich-app/yucca/issues/148)) ([7d5af45](https://github.com/immich-app/yucca/commit/7d5af4559f8f7c658b6d153c422bf893f3aa9398))
+
+
+### Bug Fixes
+
+* package imports for orchestrator api ([#160](https://github.com/immich-app/yucca/issues/160)) ([4956b51](https://github.com/immich-app/yucca/commit/4956b5105bc55f79116af0edcc1136ce00b72e2b))
+* **ceph:** converge RGW S3 user to exactly the 1P key on rotation ([#159](https://github.com/immich-app/yucca/issues/159)) ([1cf742b](https://github.com/immich-app/yucca/commit/1cf742b0f4efa3cf7c9dc497c782cf2762ba0476))
+* **ceph:** enforce dashboard admin password on every converge ([#154](https://github.com/immich-app/yucca/issues/154)) ([94e7b99](https://github.com/immich-app/yucca/commit/94e7b993fdff05d2cea3821fcd0948d426118ba5))
+* **ceph:** enforce Grafana admin login password from the vault ([#157](https://github.com/immich-app/yucca/issues/157)) ([27ffe9d](https://github.com/immich-app/yucca/commit/27ffe9d1e7dab37b43a6eb7315c700abb45d2ad9))
+* **ceph:** open cephadm service discovery port 8765 in firewall ([#156](https://github.com/immich-app/yucca/issues/156)) ([7eaa9e2](https://github.com/immich-app/yucca/commit/7eaa9e2993c7e543e2ef4e7d5d0ef7d03fd915d2))
+* **ci:** adjust secret name ([#142](https://github.com/immich-app/yucca/issues/142)) ([a6eeb8b](https://github.com/immich-app/yucca/commit/a6eeb8bb67452e35b00d471da0ce0a645d08cbff))
+* **ci:** fix secret not having write access ([#144](https://github.com/immich-app/yucca/issues/144)) ([02dab5b](https://github.com/immich-app/yucca/commit/02dab5bcc369b58bd7bb9dc6135fa2823ec16336))
+* **ci:** op wrong secret field ([#143](https://github.com/immich-app/yucca/issues/143)) ([a4e1512](https://github.com/immich-app/yucca/commit/a4e15123be60ad868429647cbfe0b2d150fee25b))
+* **staging:** a lot ([#147](https://github.com/immich-app/yucca/issues/147)) ([df65da6](https://github.com/immich-app/yucca/commit/df65da6f9272b0fd4fa7188e8291e471a70e110b))
+* **staging:** correct vmauth url ([#153](https://github.com/immich-app/yucca/issues/153)) ([03e2802](https://github.com/immich-app/yucca/commit/03e2802c0647fa700da662f7c97c1a76f1e231f5))
+* **staging:** missing quotes ([#150](https://github.com/immich-app/yucca/issues/150)) ([b03327f](https://github.com/immich-app/yucca/commit/b03327f7c767d30f823351b6bb7554c8a038bf75))
+* **staging:** oidc unfun ([#151](https://github.com/immich-app/yucca/issues/151)) ([8f8be89](https://github.com/immich-app/yucca/commit/8f8be895926bb18193c22a58b69c7c40536dcabf))
+* **staging:** set web port ([#152](https://github.com/immich-app/yucca/issues/152)) ([1736b7c](https://github.com/immich-app/yucca/commit/1736b7cd3adddb02a6975076f7582186b4155ae7))
+* **staging:** something ([#149](https://github.com/immich-app/yucca/issues/149)) ([a92d39f](https://github.com/immich-app/yucca/commit/a92d39f4ec191375344420e7783689e0bb559ca5))
+* **staging:** typo ([#146](https://github.com/immich-app/yucca/issues/146)) ([ff995bc](https://github.com/immich-app/yucca/commit/ff995bc59c7abcce4f0819973657ace9c1d7f173))
+* **tf/ceph:** stop writing rendered inventories via local_file ([#155](https://github.com/immich-app/yucca/issues/155)) ([83dab28](https://github.com/immich-app/yucca/commit/83dab28c911fff05b5755097bba9bd8f0a73a42d))
+
 ## [0.4.0](https://github.com/immich-app/yucca/compare/v0.3.0...v0.4.0) (2026-06-19)
 
 
