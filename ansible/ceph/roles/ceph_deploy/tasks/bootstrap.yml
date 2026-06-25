@@ -92,7 +92,7 @@
   ansible.builtin.shell: |
     set -o pipefail
     ceph dashboard ac-user-set-password {{ ceph_dashboard_user }} \
-      -i /tmp/.ceph-dash-reconcile-pw --force-password-policy >/dev/null
+      -i /tmp/.ceph-dash-reconcile-pw --force-password >/dev/null
     rc=$?
     shred -u /tmp/.ceph-dash-reconcile-pw 2>/dev/null || rm -f /tmp/.ceph-dash-reconcile-pw
     exit $rc
