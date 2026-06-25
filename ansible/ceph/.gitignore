@@ -16,6 +16,7 @@ inventories/*/inventory.ini
 inventories/*/inventory-provision.ini
 inventories/*/inventory-destroy.ini
 inventories/*/secrets.yml.tpl
+inventories/*/group_vars/all/operators.yml
 
 # host_vars IS committed (per-node hardware facts — stable, part of the inventory
 # source of truth). Operator-local overrides use host_vars/*.local.yml if needed.

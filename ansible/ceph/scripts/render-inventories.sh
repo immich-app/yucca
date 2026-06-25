@@ -47,6 +47,7 @@ for cluster, spec in data.items():
     os.makedirs(d, exist_ok=True)
     for fname, content in spec["files"].items():
         p = os.path.join(d, fname)
+        os.makedirs(os.path.dirname(p), exist_ok=True)  # fname may include subdirs (e.g. group_vars/all/)
         with open(p, "w") as fh:
             fh.write(content)
         os.chmod(p, 0o644)

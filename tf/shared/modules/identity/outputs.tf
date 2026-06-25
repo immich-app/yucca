@@ -8,6 +8,14 @@ output "groups" {
   value       = var.groups
 }
 
+output "server_authorized_keys" {
+  description = "Union of SSH public keys (ed25519 + rsa) for members of any group with a `server` mapping. For populating a shared node ops account's authorized_keys."
+  value = sort(distinct(flatten([
+    for uname, u in var.users : concat(u.ssh_ed25519_keys, u.ssh_rsa_keys)
+    if length([for g in u.groups : g if try(var.groups[g].server, null) != null]) > 0
+  ])))
+}
+
 output "members_of" {
   description = "Group name -> sorted member usernames. Lets a consumer (e.g. servers) provision a group's people."
   value = {
