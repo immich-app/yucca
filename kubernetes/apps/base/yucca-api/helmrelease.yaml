@@ -56,5 +56,3 @@ spec:
         value: https://${GW_HOST}
       - name: OTEL_METRICS
         value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics
-      - name: OTEL_LOGGING
-        value: http://${VLAGENT_OTLP}/insert/opentelemetry/v1/logs

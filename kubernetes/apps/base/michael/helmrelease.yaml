@@ -36,8 +36,8 @@ spec:
         hostnames:
           - s3.dev.austin.int.futo.cloud
     # Full replacement of the chart's dev env: no Rook secretKeyRefs (S3 creds
-    # arrive via envFrom from the TF Secret), real RGW endpoint, OTLP to the
-    # in-cluster agents (vmagent metrics, Vector logs).
+    # arrive via envFrom from the TF Secret), real RGW endpoint, OTLP metrics to
+    # vmagent (logs are tailed from stdout by victoria-logs-collector).
     env:
       - name: RESTIC_API_PORT
         value: "3010"
@@ -53,7 +53,3 @@ spec:
         value: ${VMAGENT_OTLP}
       - name: OTLP_METRICS_URL_PATH
         value: /opentelemetry/v1/metrics
-      - name: OTLP_LOGS_ENDPOINT
-        value: ${VLAGENT_OTLP}
-      - name: OTLP_LOGS_URL_PATH
-        value: /insert/opentelemetry/v1/logs

@@ -19,7 +19,7 @@ spec:
   values:
     # `vmagent-<name>` Service => vmagent-yucca (matches VMAGENT_OTLP). The
     # k8s-stack chart bundles the VM operator, so this one release gives us the
-    # CRDs + operator + a VMAgent. yucca-staging is a METRICS REMOTE CLUSTER:
+    # CRDs + operator + a VMAgent. yucca_staging is a METRICS REMOTE CLUSTER:
     # only the agent runs here; storage/query/alerting live at o11y.
     fullnameOverride: yucca
     global:
@@ -48,14 +48,18 @@ spec:
     vmagent:
       enabled: true
       spec:
-        # Stamp the remote-cluster identity on every series (o11y convention).
-        externalLabels:
-          cluster: ${METRICS_CLUSTER_LABEL}
+        # Stamp the remote-cluster identity on EVERY series (o11y convention).
+        # Relabel (not externalLabels): externalLabels only tags scraped data,
+        # leaving OTLP-pushed app metrics untagged. This applies to all data
+        # (scraped + ingested) before remote-write.
+        inlineRelabelConfig:
+          - target_label: cluster
+            replacement: ${METRICS_CLUSTER_LABEL}
         # Ship to o11y's vmauth (the `remote-clusters` VMUser proxies
         # /insert/0/.* -> vminsert), authenticating with the shared bearer token
-        # (TF-provisioned `vmagent-remote-write` Secret from o11y_tf_prod).
+        # (TF-provisioned `vmagent-remote-write` Secret from o11y_tf_staging).
         remoteWrite:
-          - url: https://vmauth.futostat.us/insert/0/prometheus/api/v1/write
+          - url: https://vmauth.staging.futostatus.com/insert/0/prometheus/api/v1/write
             bearerTokenSecret:
               name: vmagent-remote-write
               key: token
