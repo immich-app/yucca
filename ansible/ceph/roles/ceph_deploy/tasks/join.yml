@@ -13,6 +13,27 @@
          | list }}
   when: inventory_hostname in groups['ceph_bootstrap']
 
+# cephadm adds hosts by SSHing to root@<addr> with the cluster key it generated
+# at bootstrap (/etc/ceph/ceph.pub). On a fresh install that key is not yet in
+# the join nodes' root authorized_keys, so `ceph orch host add` fails with
+# "Permission denied". Distribute it here (ansible connects as ansible-iac and
+# becomes root) before adding the hosts.
+- name: Get cephadm cluster SSH pubkey from the bootstrap node
+  ansible.builtin.command: ceph cephadm get-pub-key
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+  run_once: true
+  become: true
+  register: cephadm_cluster_pubkey
+  changed_when: false
+
+- name: Authorize the cephadm pubkey for root on the join nodes
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ cephadm_cluster_pubkey.stdout }}"
+    state: present
+  become: true
+  when: inventory_hostname in groups['ceph_join']
+
 - name: Verify cephadm SSH to join nodes
   ansible.builtin.shell: |
     set -euo pipefail
