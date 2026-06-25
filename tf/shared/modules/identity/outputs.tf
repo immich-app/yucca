@@ -16,6 +16,21 @@ output "server_authorized_keys" {
   ])))
 }
 
+output "server_login" {
+  description = "Server login users: members of any `server`-mapped group, with their SSH keys + effective sudo. Consumed by server provisioning (ansible/mgmt)."
+  value = [
+    for uname, u in var.users : {
+      name     = uname
+      ssh_keys = sort(distinct(concat(u.ssh_ed25519_keys, u.ssh_rsa_keys)))
+      sudo = try([
+        for g in u.groups : var.groups[g].server.sudo
+        if try(var.groups[g].server, null) != null
+      ][0], "ALL")
+    }
+    if length([for g in u.groups : g if try(var.groups[g].server, null) != null]) > 0
+  ]
+}
+
 output "members_of" {
   description = "Group name -> sorted member usernames. Lets a consumer (e.g. servers) provision a group's people."
   value = {

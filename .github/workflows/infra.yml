@@ -1,6 +1,8 @@
 name: Infra (Terraform)
 
-# Applies the Terraform stacks from CI, in two groups:
+# Applies the Terraform stacks from CI, path-scoped so each group only runs when
+# its own files change (a `changes` job emits per-area booleans that gate the
+# rest; workflow_dispatch overrides and runs everything):
 #
 #   Staging (tf/deployment/staging/*): ceph, talos, dns. One staging-scoped SA,
 #     a single `staging-infra` Environment gate. The Talos stack talks to the
@@ -12,8 +14,13 @@ name: Infra (Terraform)
 #     merge behind a per-site `prod-<site>` Environment gate. These stacks build
 #     local providers (JTAF junos-qfx + the Hetzner robot provider) and reach the
 #     switch vme / mgmt hosts over the tailnet, so the prod jobs run the
-#     `infra:*` mise tasks (provider build + 1Password cred rendering) rather
-#     than bare terragrunt.
+#     `infra:*` mise tasks (provider build + 1Password cred rendering).
+#
+#   Prod ansible: converges the mgmt hosts (ansible/mgmt). Its inventory is
+#     TF-generated at run time (tf/render/ansible-mgmt), so this job is gated on
+#     the ansible tree AND its Terraform sources (identity, fabric-addressing,
+#     mgmt-hosts.yaml). Runs after the TF apply, but also on ansible-only changes
+#     (when the apply job is skipped).
 #
 # Prerequisites (provisioned out-of-band):
 #   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (+ _WRITE) — staging SAs; and
@@ -23,7 +30,8 @@ name: Infra (Terraform)
 #   - A Tailscale subnet router for the staging mgmt VLAN (10.10.10.0/24) and for
 #     each prod site's switch/mgmt subnets, with tag:project-yucca route-approved.
 #   - 1P items: NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY (yucca_tf_prod),
-#     NETBOX_API_TOKEN (yucca_tf), HETZNER_WEBSERVICE_API_USER/PASSWORD (yucca_tf_prod).
+#     NETBOX_API_TOKEN (yucca_tf), HETZNER_WEBSERVICE_API_USER/PASSWORD (yucca_tf_prod),
+#     TAILSCALE_OAUTH_CLIENT_SECRET (yucca_tf).
 #   - GitHub Environments with required reviewers: `staging-infra`, and one
 #     `prod-<site>` per prod site (e.g. prod-htz-fsn1).
 
@@ -32,7 +40,9 @@ on:
     branches: [main]
     paths: &paths
       - "tf/**"
+      - "ansible/mgmt/**"
       - ".mise/tasks/**"
+      - ".mise/config.toml"
       - ".github/workflows/infra.yml"
   pull_request:
     paths: *paths
@@ -48,11 +58,53 @@ permissions:
   contents: read
 
 jobs:
+  # ── Which areas changed? Outputs gate every downstream job. ──────────────────
+  changes:
+    name: Detect changes
+    # Skip on fork PRs (no access to secrets / tailnet anyway).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      staging: ${{ steps.filter.outputs.staging }}
+      prod_tf: ${{ steps.filter.outputs.prod_tf }}
+      prod_ansible: ${{ steps.filter.outputs.prod_ansible }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: filter
+        with:
+          filters: |
+            staging:
+              - 'tf/deployment/staging/**'
+              - 'tf/shared/**'
+              - 'tf/op-run.sh'
+              - '.github/workflows/infra.yml'
+            prod_tf:
+              - 'tf/deployment/prod/**'
+              - 'tf/shared/**'
+              - 'tf/providers/**'
+              - '.mise/tasks/infra/**'
+              - '.mise/tasks/fabric/**'
+              - '.mise/tasks/mgmt/**'
+              - '.mise/config.toml'
+              - '.github/workflows/infra.yml'
+            prod_ansible:
+              - 'ansible/mgmt/**'
+              - 'tf/render/**'
+              - 'tf/shared/modules/identity/**'
+              - 'tf/shared/modules/fabric-addressing/**'
+              - 'tf/deployment/prod/*/mgmt-hosts.yaml'
+              - '.mise/tasks/mgmt/**'
+              - '.mise/config.toml'
+              - '.github/workflows/infra.yml'
+
   # ── Staging stacks ──────────────────────────────────────────────────────────
   staging-plan:
     name: Staging plan ${{ matrix.stack }}
-    # Skip on fork PRs (no access to secrets / tailnet).
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    if: needs.changes.outputs.staging == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -92,9 +144,9 @@ jobs:
 
   staging-apply:
     name: Staging apply (gated)
-    needs: staging-plan
+    needs: [changes, staging-plan]
     # Only on merge to main (or manual dispatch) — never on PRs.
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && needs.changes.outputs.staging == 'true') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # The approval gate: `staging-infra` Environment with required reviewers.
     environment: staging-infra
@@ -145,7 +197,9 @@ jobs:
   # ── Prod deployment stacks (one per site: switch fabric + mgmt hosts) ────────
   prod-discover:
     name: Discover prod sites
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    # Needed by both the TF and ansible prod jobs, so run if either area changed.
+    if: needs.changes.outputs.prod_tf == 'true' || needs.changes.outputs.prod_ansible == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.sites.outputs.matrix }}
@@ -162,7 +216,8 @@ jobs:
 
   prod-plan:
     name: Prod plan ${{ matrix.site }}
-    needs: prod-discover
+    needs: [changes, prod-discover]
+    if: needs.changes.outputs.prod_tf == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -189,8 +244,8 @@ jobs:
 
   prod-apply:
     name: Prod apply ${{ matrix.site }} (gated)
-    needs: [prod-discover, prod-plan]
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [changes, prod-discover, prod-plan]
+    if: (github.event_name == 'push' && needs.changes.outputs.prod_tf == 'true') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -206,7 +261,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Set up mise (go + opentofu + terragrunt + ansible)
+      - name: Set up mise (go + opentofu + terragrunt)
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
@@ -218,8 +273,39 @@ jobs:
           tags: tag:project-yucca
       - name: Deploy apply
         run: mise run infra:apply -- --non-interactive -auto-approve
-      # Converge the mgmt hosts (idempotent; reached over their public IP with the
-      # TF-generated provisioning key). No-op for sites without an ansible/mgmt
-      # inventory. Requires the hosts to have been reprovisioned (key authorized).
+
+  prod-ansible:
+    name: Prod ansible ${{ matrix.site }}
+    needs: [changes, prod-discover, prod-apply]
+    # Runs after the TF apply, but also on ansible-only changes (apply skipped).
+    # always() so a skipped prod-apply (TF unchanged) doesn't skip this; still
+    # bails if discover failed or the apply actually failed.
+    if: >-
+      always()
+      && needs.prod-discover.result == 'success'
+      && needs.prod-apply.result != 'failure'
+      && needs.prod-apply.result != 'cancelled'
+      && ((github.event_name == 'push' && needs.changes.outputs.prod_ansible == 'true') || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prod-discover.outputs.matrix) }}
+    # No environment gate: the prod-apply gate already approved this deploy, and
+    # ansible/mgmt only reads from 1Password (read-scoped repo secret).
+    env:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_PROD_ENV }}
+      SITE: ${{ matrix.site }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up mise (ansible + opentofu)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+      # Renders the inventory from TF (tf/render/ansible-mgmt) then converges the
+      # mgmt hosts over their public IP with the TF-generated provisioning key.
+      # No-op for sites without an ansible/mgmt inventory; requires the hosts to
+      # have been reprovisioned (provisioning key authorized).
       - name: Ansible converge (mgmt hosts)
         run: mise run mgmt:ansible

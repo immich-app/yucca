@@ -11,6 +11,9 @@ if [ ! -d "$INV" ]; then
   exit 0
 fi
 
+# Generate the inventory (hosts, host_vars, users) from Terraform's SoT.
+mise run mgmt:render-inventory
+
 # op creds: CI provides a (read-scoped) SA token in OP_SERVICE_ACCOUNT_TOKEN;
 # locally we sign in to team-futo. Reads only — no write escalation needed.
 ACCT=(); [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && ACCT=(--account "${OP_ACCOUNT:-team-futo}")

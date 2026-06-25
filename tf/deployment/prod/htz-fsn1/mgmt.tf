@@ -11,15 +11,24 @@
 # Only hosts listed in var.mgmt_reprovision_targets are armed, so a normal apply
 # does nothing to the mgmt hosts. Re-target deliberately for each reprovision.
 #
-# Server numbers are the Hetzner robot IDs (GET /server). AX41-NVMe, FSN1-DC24.
+# Host roster (server numbers = Hetzner robot IDs, GET /server) comes from the
+# shared mgmt-hosts.yaml — the same SoT the ansible inventory render reads.
 locals {
-  mgmt_hosts = {
-    "htz-fsn-mgmt-1" = { server_number = 3008208 } # 178.63.124.40
-    "htz-fsn-mgmt-2" = { server_number = 3008209 } # 178.63.124.41
-  }
+  mgmt_roster = yamldecode(file("${path.module}/mgmt-hosts.yaml"))
+  mgmt_hosts  = local.mgmt_roster.hosts
 
   site_prefix           = upper(replace(var.netbox_site_slug, "-", "_")) # HTZ_FSN1
   provisioning_key_item = "${local.site_prefix}_PROVISIONING_SSH_PRIVATE_KEY"
+}
+
+# Guard: the roster's site_id must match the stack's, or addressing diverges.
+resource "terraform_data" "mgmt_site_id_check" {
+  lifecycle {
+    precondition {
+      condition     = local.mgmt_roster.site_id == var.site_id
+      error_message = "mgmt-hosts.yaml site_id (${local.mgmt_roster.site_id}) != var.site_id (${var.site_id})."
+    }
+  }
 }
 
 # ── Provisioning keypair (TF-owned, recorded in 1Password) ───────────────────
