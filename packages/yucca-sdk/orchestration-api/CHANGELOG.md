@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/immich-app/yucca/compare/v0.4.0...v0.4.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* package imports for orchestrator api ([#160](https://github.com/immich-app/yucca/issues/160)) ([4956b51](https://github.com/immich-app/yucca/commit/4956b5105bc55f79116af0edcc1136ce00b72e2b))
+
 ## [0.4.0](https://github.com/immich-app/yucca/compare/v0.3.1...v0.4.0) (2026-06-19)
 
 
