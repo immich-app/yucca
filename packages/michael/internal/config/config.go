@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/pem"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -14,13 +15,27 @@ import (
 )
 
 type Config struct {
-	Port                int
-	JWTPublicKey        *ecdsa.PublicKey
-	S3AccessKeyID       string
-	S3SecretAccessKey   string
-	S3Region            string
-	S3Endpoint          string
-	S3ForcePathStyle    bool
+	Port              int
+	JWTPublicKey      *ecdsa.PublicKey
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3Region          string
+	S3Endpoint        string
+	S3ForcePathStyle  bool
+
+	// S3 load-balancing pool. When S3BackendSource is empty, michael talks to
+	// the single S3Endpoint (legacy behavior). When set to "file" or "dns", it
+	// balances across the resolved backend gateways instead.
+	S3BackendSource     string // "" | "file" | "dns"
+	S3BackendFile       string // path, for source=file
+	S3BackendDNSHost    string // hostname to resolve, for source=dns
+	S3BackendScheme     string // scheme to template around resolved IPs (default from S3Endpoint)
+	S3BackendPort       string // port to template around resolved IPs (default from S3Endpoint)
+	S3BackendPinHost    bool   // dial each resolved backend IP but sign/Host with S3Endpoint
+	S3TLSSkipVerify     bool   // skip TLS verification to backends (self-signed gateways)
+	S3ProbeBucket       string // sentinel bucket for active health probes
+	S3EjectThreshold    int    // consecutive transport failures before ejection
+	S3ReconcileInterval time.Duration
 	OTLPMetricsEndpoint string
 	OTLPMetricsURLPath  string
 	OTLPMetricsInterval time.Duration
@@ -72,6 +87,66 @@ func LoadConfig() Config {
 		}
 	}
 
+	backendSource := os.Getenv("S3_BACKEND_SOURCE")
+	backendFile := os.Getenv("S3_BACKEND_FILE")
+	backendDNSHost := os.Getenv("S3_BACKEND_DNS_HOST")
+
+	// Scheme/port default to those parsed from S3_ENDPOINT, so a DNS source only
+	// needs the hostname configured.
+	defScheme, defPort := schemeAndPort(s3Endpoint)
+	backendScheme := envOr("S3_BACKEND_SCHEME", defScheme)
+	backendPort := envOr("S3_BACKEND_PORT", defPort)
+
+	backendPinHost := false
+	if v := os.Getenv("S3_BACKEND_PIN_HOST"); v != "" {
+		backendPinHost, err = strconv.ParseBool(v)
+		if err != nil {
+			log.Fatal().Err(err).Msg("S3_BACKEND_PIN_HOST must be a boolean")
+		}
+	}
+
+	tlsSkipVerify := false
+	if v := os.Getenv("S3_TLS_SKIP_VERIFY"); v != "" {
+		tlsSkipVerify, err = strconv.ParseBool(v)
+		if err != nil {
+			log.Fatal().Err(err).Msg("S3_TLS_SKIP_VERIFY must be a boolean")
+		}
+	}
+
+	probeBucket := os.Getenv("S3_PROBE_BUCKET")
+
+	ejectThreshold := 3
+	if v := os.Getenv("S3_EJECT_THRESHOLD"); v != "" {
+		ejectThreshold, err = strconv.Atoi(v)
+		if err != nil || ejectThreshold < 1 {
+			log.Fatal().Msg("S3_EJECT_THRESHOLD must be a number >= 1")
+		}
+	}
+
+	reconcileInterval := 5 * time.Second
+	if v := os.Getenv("S3_RECONCILE_INTERVAL_MS"); v != "" {
+		ms, err := strconv.Atoi(v)
+		if err != nil || ms < 1 {
+			log.Fatal().Msg("S3_RECONCILE_INTERVAL_MS must be a number >= 1")
+		}
+		reconcileInterval = time.Duration(ms) * time.Millisecond
+	}
+
+	switch backendSource {
+	case "":
+		// single-endpoint mode
+	case "file":
+		if backendFile == "" {
+			log.Fatal().Msg("S3_BACKEND_FILE is required when S3_BACKEND_SOURCE=file")
+		}
+	case "dns":
+		if backendDNSHost == "" {
+			log.Fatal().Msg("S3_BACKEND_DNS_HOST is required when S3_BACKEND_SOURCE=dns")
+		}
+	default:
+		log.Fatal().Str("value", backendSource).Msg("S3_BACKEND_SOURCE must be '', 'file', or 'dns'")
+	}
+
 	otlpEndpoint := os.Getenv("OTLP_METRICS_ENDPOINT")
 	otlpURLPath := os.Getenv("OTLP_METRICS_URL_PATH")
 	otlpInterval := 1000 * time.Millisecond
@@ -113,6 +188,16 @@ func LoadConfig() Config {
 		S3Region:            s3Region,
 		S3Endpoint:          s3Endpoint,
 		S3ForcePathStyle:    s3ForcePathStyle,
+		S3BackendSource:     backendSource,
+		S3BackendFile:       backendFile,
+		S3BackendDNSHost:    backendDNSHost,
+		S3BackendScheme:     backendScheme,
+		S3BackendPort:       backendPort,
+		S3BackendPinHost:    backendPinHost,
+		S3TLSSkipVerify:     tlsSkipVerify,
+		S3ProbeBucket:       probeBucket,
+		S3EjectThreshold:    ejectThreshold,
+		S3ReconcileInterval: reconcileInterval,
 		OTLPMetricsEndpoint: otlpEndpoint,
 		OTLPMetricsURLPath:  otlpURLPath,
 		OTLPMetricsInterval: otlpInterval,
@@ -123,6 +208,33 @@ func LoadConfig() Config {
 		LogLevel:            logLevel,
 		LogPretty:           logPretty,
 	}
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// schemeAndPort extracts the scheme and port from an endpoint URL, used to
+// default the templating for DNS-resolved backends. Falls back to http and the
+// scheme's default port when unset.
+func schemeAndPort(endpoint string) (scheme, port string) {
+	scheme, port = "http", "80"
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return scheme, port
+	}
+	if u.Scheme != "" {
+		scheme = u.Scheme
+	}
+	if p := u.Port(); p != "" {
+		port = p
+	} else if scheme == "https" {
+		port = "443"
+	}
+	return scheme, port
 }
 
 func parseES256PublicKey(key string) *ecdsa.PublicKey {
