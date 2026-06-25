@@ -23,7 +23,7 @@ variable "users" {
     nutgood = {
       full_name = "Antoine"
       uid       = 3000
-      groups    = ["fabric_admins"]
+      groups    = ["fabric_admins", "server_admins"]
       ssh_ed25519_keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOaH71qha6kLO2qRu+w6C5wPpWhkiBjEUeY1fAjAVApR"
       ]
@@ -31,7 +31,7 @@ variable "users" {
     andy = {
       full_name = "Andy"
       uid       = 3001
-      groups    = ["fabric_viewer"]
+      groups    = ["fabric_viewer", "server_admins"]
       ssh_ed25519_keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO7XdW03gJKyABt5KCMxOLPb5sOGTXuZV0OHc1Ro46Nt andy@futo.org"
       ]
@@ -40,7 +40,7 @@ variable "users" {
 }
 
 variable "groups" {
-  description = "Groups keyed by name. A group carries per-system role mappings; `fabric` grants switch-fabric rights to its members. (A `server` mapping will be added when server provisioning is wired up.)"
+  description = "Groups keyed by name. A group carries per-system role mappings; `fabric` grants switch-fabric rights, `server` grants login access to provisioned servers (their members' SSH keys flow to the node ops account)."
   type = map(object({
     description = optional(string)
     # How membership manifests on the switch fabric. Set exactly one of:
@@ -49,6 +49,12 @@ variable "groups" {
     fabric = optional(object({
       class       = optional(string)
       permissions = optional(list(string))
+    }))
+    # How membership manifests on servers. Presence grants login access; today
+    # members' SSH keys populate the shared node ops account's authorized_keys.
+    # `sudo` is reserved for per-user accounts if/when those are wired up.
+    server = optional(object({
+      sudo = optional(string)
     }))
   }))
 
@@ -60,6 +66,10 @@ variable "groups" {
     fabric_viewer = {
       description = "Read-only access to the switch fabric."
       fabric      = { class = "read-only" }
+    }
+    server_admins = {
+      description = "Login access to provisioned servers (e.g. the ceph nodes)."
+      server      = { sudo = "ALL" }
     }
   }
 

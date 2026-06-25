@@ -36,3 +36,14 @@
     dest: "/etc/sudoers.d/{{ baseline_ops_user }}"
     mode: '0440'
     validate: "visudo -cf %s"
+
+# Operator SSH access to the shared ops account, sourced from the identity
+# registry (rendered into group_vars/all/operators.yml). exclusive: true makes
+# the registry the single source of truth -- keys not in it are removed. Skipped
+# when the list is empty so ops stays password-only rather than getting wiped.
+- name: Authorize operator SSH keys on the ops account
+  ansible.posix.authorized_key:
+    user: "{{ baseline_ops_user }}"
+    key: "{{ ops_authorized_keys | join('\n') }}"
+    exclusive: true
+  when: ops_authorized_keys | length > 0
