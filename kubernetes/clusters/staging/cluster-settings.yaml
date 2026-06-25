@@ -27,12 +27,6 @@ data:
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
 
-  # ─── RGW (object storage via in-cluster HAProxy) ─────────────────────
-  # Pinned ClusterIP for the rgw-haproxy Service; michael pins a hostAlias
-  # (s3.dev.austin.int.futo.cloud -> this IP). MUST be inside the Service CIDR
-  # and otherwise unallocated. Talos default Service CIDR is 10.96.0.0/12.
-  RGW_HAPROXY_CLUSTER_IP: 10.96.0.253
-
   # ─── Observability egress (apps -> agents -> o11y vmauth) ────────────
   # Metric label stamped on everything vmagent ships (o11y convention: the
   # remote-cluster identity is the `cluster` label).

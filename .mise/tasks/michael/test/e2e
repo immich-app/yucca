@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#MISE description="Run michael e2e tests against the local k3d Ceph RGW"
+#MISE dir="{{config_root}}/packages/michael"
+set -euo pipefail
+
+# Pinned to the LOCAL k3d cluster so this can never touch a remote context.
+CTX="${KUBE_CONTEXT:-k3d-yucca}"
+RGW_NS="rook-ceph"
+RGW_SVC="rook-ceph-rgw-yucca"
+MICHAEL_NS="yucca"
+CREDS_SECRET="rook-ceph-object-user-yucca-michael"
+LOCAL_PORT="${RGW_LOCAL_PORT:-19000}"
+
+if ! kubectl config get-contexts -o name | grep -qx "$CTX"; then
+  echo "kube context '$CTX' not found — is the k3d cluster up? (mise run k3d/up)" >&2
+  exit 1
+fi
+
+k() { kubectl --context "$CTX" "$@"; }
+
+echo "==> reading michael object-user credentials from $MICHAEL_NS/$CREDS_SECRET"
+S3_ACCESS_KEY_ID="$(k -n "$MICHAEL_NS" get secret "$CREDS_SECRET" -o jsonpath='{.data.AccessKey}' | base64 -d)"
+S3_SECRET_ACCESS_KEY="$(k -n "$MICHAEL_NS" get secret "$CREDS_SECRET" -o jsonpath='{.data.SecretKey}' | base64 -d)"
+export S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY
+export S3_REGION="${S3_REGION:-us-east-1}"
+export S3_ENDPOINT="http://localhost:${LOCAL_PORT}"
+export S3_FORCE_PATH_STYLE=true
+
+echo "==> port-forwarding svc/$RGW_SVC ($RGW_NS) -> localhost:${LOCAL_PORT}"
+k -n "$RGW_NS" port-forward "svc/$RGW_SVC" "${LOCAL_PORT}:80" >/tmp/michael-e2e-portforward.log 2>&1 &
+PF_PID=$!
+cleanup() { kill "$PF_PID" 2>/dev/null || true; }
+trap cleanup EXIT
+
+echo "==> waiting for RGW to be reachable"
+for _ in $(seq 1 40); do
+  if curl -fsS -o /dev/null "$S3_ENDPOINT" 2>/dev/null || curl -sS -o /dev/null "$S3_ENDPOINT" 2>/dev/null; then
+    break
+  fi
+  sleep 0.5
+done
+
+echo "==> running e2e tests"
+go test -tags e2e -run TestE2E -count=1 -v ./... "$@"
