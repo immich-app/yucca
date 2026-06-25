@@ -28,20 +28,6 @@ spec:
     # the TF-provisioned `yucca-michael` Secret (JWT_PUBLIC_KEY + S3 creds),
     # which the chart's `envFrom: secretRef: yucca-michael` picks up unchanged.
     secretData: null
-    # Full replacement of the chart's dev env: no Rook secretKeyRefs (S3 creds
-    # arrive via envFrom from the TF Secret), real RGW endpoint, OTLP to the
-    # in-cluster agents (vmagent metrics, Vector logs).
-    #
-    # michael now load-balances directly across the bare-metal Ceph (sietch) RGW
-    # daemons instead of going through HAProxy. It resolves the RGW hostname to
-    # its A records (S3_BACKEND_SOURCE=dns) and, with S3_BACKEND_PIN_HOST, dials
-    # each gateway IP while still signing/Host-ing as s3.dev.austin.int.futo.cloud
-    # (the name in RGW's zonegroup list, so signatures validate). S3_TLS_SKIP_VERIFY
-    # handles the self-signed wildcard cert that HAProxy used to terminate.
-    #
-    # PREREQUISITE: s3.dev.austin.int.futo.cloud must resolve, from inside the
-    # cluster, to the three RGW daemon IPs (10.10.10.90/91/92). If it does not,
-    # michael fails to find backends at startup and crash-loops.
     env:
       - name: RESTIC_API_PORT
         value: "3010"
@@ -80,7 +66,3 @@ spec:
         value: ${VMAGENT_OTLP}
       - name: OTLP_METRICS_URL_PATH
         value: /opentelemetry/v1/metrics
-      - name: OTLP_LOGS_ENDPOINT
-        value: ${VLAGENT_OTLP}
-      - name: OTLP_LOGS_URL_PATH
-        value: /insert/opentelemetry/v1/logs

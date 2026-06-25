@@ -56,6 +56,14 @@
     - name: Prepare disks (partition, mdraid, LVM, mount)
       ansible.builtin.import_tasks: disks.yml
 
+    # Optional: wipe the OSD data HDDs too (default off). Needed on a clean
+    # rebuild from the live image, where destroy-ceph.yml never ran to tear
+    # OSDs down -- otherwise cephadm skips the still-signed HDDs. Opt in with
+    # -e provision_wipe_osd_disks=true (alongside confirm_wipe=true).
+    - name: Wipe OSD data HDDs (opt-in)
+      ansible.builtin.import_tasks: wipe-osds.yml
+      when: provision_wipe_osd_disks | default(false) | bool
+
     # ----- Marker-driven resume gate -------------------------------------
     #
     # If the chroot at /mnt already contains the provisioning marker, the

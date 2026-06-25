@@ -7,6 +7,6 @@ metadata:
   name: cluster-settings
   namespace: flux-system
 data:
-  CLUSTER_NAME: yucca-production
+  CLUSTER_NAME: yucca_production
   # TODO: real production ingress domain.
   APP_DOMAIN: yucca.futo.cloud

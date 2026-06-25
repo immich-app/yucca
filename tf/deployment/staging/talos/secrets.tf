@@ -8,7 +8,7 @@
 #                    with the public one — they MUST be the same pair).
 #   • OIDC / RGW   — externally issued, human-managed in 1P; read via TF_VAR
 #                    (op:// refs in tf/.env) and written into the app Secrets.
-#   • vmauth token — shared o11y credential (o11y_tf_prod), for vmagent egress.
+#   • vmauth token — shared o11y credential (o11y_tf_staging), for vmagent egress.
 #
 # Each Secret is named after its chart's fullnameOverride so the chart's own
 # `secretData` fixture (nulled in the staging HelmRelease) cedes the name and

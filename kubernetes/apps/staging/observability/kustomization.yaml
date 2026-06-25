@@ -4,4 +4,4 @@ kind: Kustomization
 resources:
   - ./namespace.yaml
   - ./vmagent.yaml
-  - ./vlagent.yaml
+  - ./victoria-logs-collector.yaml
