@@ -26,14 +26,21 @@ locals {
   # Excluded from TF management here (see header).
   ceph_unmanaged_secret_roles = ["s3_restic_access", "s3_restic_secret"]
 
-  # Flatten (cluster, secret-role) -> { vault, title } across all clusters,
-  # dropping the out-of-band roles.
+  # Per-role generated-password length. ops is the break-glass account typed by
+  # hand at the KVM/console, so keep it short; dashboard/grafana are web logins
+  # (paste-friendly) and stay long. Roles not listed use the default.
+  ceph_password_length         = { ops = 16 }
+  ceph_password_default_length = 32
+
+  # Flatten (cluster, secret-role) -> { vault, title, length } across all
+  # clusters, dropping the out-of-band roles.
   ceph_secret_items = merge([
     for cname, c in var.clusters : {
       for role, title in module.cluster[cname].secrets :
       "${cname}.${role}" => {
-        vault = coalesce(c.vault, "Yucca")
-        title = title
+        vault  = coalesce(c.vault, "Yucca")
+        title  = title
+        length = lookup(local.ceph_password_length, role, local.ceph_password_default_length)
       }
       if !contains(local.ceph_unmanaged_secret_roles, role)
     }
@@ -53,15 +60,17 @@ resource "onepassword_item" "ceph_password" {
   category = "password"
 
   password_recipe {
-    length  = 32
+    length  = each.value.length
     letters = true
     digits  = true
     symbols = false
   }
 
   lifecycle {
-    # Rotating a value should be an explicit `terragrunt taint` + apply, not an
-    # incidental side effect of editing the recipe.
+    # Recipe applies only at creation. Rotating an existing value is an explicit
+    # `terragrunt taint` + apply (or `op item edit --generate-password`), not an
+    # incidental side effect of editing the recipe -- so changing a length here
+    # affects only freshly-created items, not ones already in the vault.
     ignore_changes = [password_recipe]
   }
 }
