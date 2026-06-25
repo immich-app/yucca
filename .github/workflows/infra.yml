@@ -1,6 +1,7 @@
 name: Infra (Terraform)
 
 # Applies the staging Terraform stacks from CI:
+#   - tf/deployment/staging/ceph   (ceph cluster 1P password items; no node contact)
 #   - tf/deployment/staging/talos  (Talos config, Cilium, Flux bootstrap, secrets)
 #   - tf/deployment/staging/dns    (Cloudflare records for the ingress hosts)
 #
@@ -48,7 +49,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stack: [talos, dns]
+        stack: [talos, dns, ceph]
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -61,8 +62,8 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
-      # The Talos stack refreshes state against the nodes; the DNS stack is pure
-      # Cloudflare API and needs no tailnet.
+      # The Talos stack refreshes state against the nodes; the DNS and ceph
+      # stacks are pure Cloudflare/1Password API and need no tailnet.
       - name: Connect to Tailscale
         if: matrix.stack == 'talos'
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
@@ -111,7 +112,14 @@ jobs:
           # NB: the action already passes `--accept-routes` to `tailscale up`;
           # passing it again here errors with "flag provided multiple times".
 
-      # Cluster first (provisions secrets/CNI/Flux), then DNS.
+      # Ceph 1P password items first (no node contact), then the Talos cluster
+      # (provisions secrets/CNI/Flux), then DNS.
+      - name: Apply staging/ceph
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/ceph
+          --non-interactive apply -auto-approve
+
       - name: Apply staging/talos
         run: >-
           tf/op-run.sh terragrunt
