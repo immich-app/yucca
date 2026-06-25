@@ -17,6 +17,12 @@ provision_marker_path: /etc/ceph-provisioned.json
 #   scripts/ansible-play.sh provision.yml -e confirm_wipe=true
 confirm_wipe: false
 
+# Opt-in: also zap the OSD data HDDs (wipe-osds.yml). Default off so a normal
+# re-provision (e.g. replacing an OS SSD) keeps OSD data. Set true for a clean
+# rebuild where the HDDs must be cleared so cephadm can recreate OSDs.
+#   ... provision.yml -e confirm_wipe=true -e provision_wipe_osd_disks=true
+provision_wipe_osd_disks: false
+
 # Canary / inspection gate — when true, the role completes everything
 # (wipe → install → configure → bootloader → marker → ESP mirror) but
 # stops short of unmounting /mnt and rebooting. Lets you `chroot /mnt`
