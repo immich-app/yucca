@@ -47,7 +47,7 @@
         argv:
           - op
           - read
-          - "op://yucca_tf_dev/yucca_futo_1pass_superuser_service_account/password"
+          - "op://{{ cluster_secrets_vault }}/yucca_futo_1pass_superuser_service_account/password"
       register: su_token
       delegate_to: localhost
       become: false  # run as operator on controller — root has no op session
@@ -65,11 +65,11 @@
         exec 0<&-
         TITLE="{{ cluster_name | upper }}_CEPH_{{ item.item.title_suffix }}"
         VALUE="$CONTENT"
-        if op item get "$TITLE" --vault yucca_tf_dev >/dev/null 2>&1; then
-          op item edit "$TITLE" --vault yucca_tf_dev "password=$VALUE" >/dev/null
+        if op item get "$TITLE" --vault {{ cluster_secrets_vault }} >/dev/null 2>&1; then
+          op item edit "$TITLE" --vault {{ cluster_secrets_vault }} "password=$VALUE" >/dev/null
           echo "updated: $TITLE"
         else
-          op item create --vault yucca_tf_dev --category password --title "$TITLE" "password=$VALUE" >/dev/null
+          op item create --vault {{ cluster_secrets_vault }} --category password --title "$TITLE" "password=$VALUE" >/dev/null
           echo "created: $TITLE"
         fi
       args:
