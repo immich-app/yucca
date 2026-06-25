@@ -12,6 +12,7 @@
 
 ### Bug Fixes
 
+* package imports for orchestrator api ([#160](https://github.com/immich-app/yucca/issues/160)) ([4956b51](https://github.com/immich-app/yucca/commit/4956b5105bc55f79116af0edcc1136ce00b72e2b))
 * **ceph:** converge RGW S3 user to exactly the 1P key on rotation ([#159](https://github.com/immich-app/yucca/issues/159)) ([1cf742b](https://github.com/immich-app/yucca/commit/1cf742b0f4efa3cf7c9dc497c782cf2762ba0476))
 * **ceph:** enforce dashboard admin password on every converge ([#154](https://github.com/immich-app/yucca/issues/154)) ([94e7b99](https://github.com/immich-app/yucca/commit/94e7b993fdff05d2cea3821fcd0948d426118ba5))
 * **ceph:** enforce Grafana admin login password from the vault ([#157](https://github.com/immich-app/yucca/issues/157)) ([27ffe9d](https://github.com/immich-app/yucca/commit/27ffe9d1e7dab37b43a6eb7315c700abb45d2ad9))
