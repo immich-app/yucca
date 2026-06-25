@@ -1,0 +1,1050 @@
+{
+  "root": {
+    "name": "root",
+    "type": "container",
+    "children": [
+      {
+        "name": "configuration",
+        "type": "container",
+        "children": [
+          {
+            "name": "chassis",
+            "type": "container",
+            "children": [
+              {
+                "name": "aggregated-devices",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "ethernet",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "device-count",
+                        "type": "leaf",
+                        "leaf-type": "union",
+                        "types": [
+                          {
+                            "type": "string",
+                            "patterns": [
+                              "<.*>|$.*"
+                            ],
+                            "path": "chassis/aggregated-devices/ethernet/device-count"
+                          },
+                          {
+                            "type": "uint32",
+                            "path": "chassis/aggregated-devices/ethernet/device-count"
+                          }
+                        ],
+                        "path": "chassis/aggregated-devices/ethernet"
+                      }
+                    ],
+                    "path": "chassis/aggregated-devices"
+                  }
+                ],
+                "path": "chassis"
+              },
+              {
+                "name": "fpc",
+                "type": "list",
+                "key": "name",
+                "children": [
+                  {
+                    "name": "name",
+                    "type": "leaf",
+                    "leaf-type": "union",
+                    "types": [
+                      {
+                        "type": "string",
+                        "patterns": [
+                          "<.*>|$.*"
+                        ],
+                        "path": "chassis/fpc/name"
+                      },
+                      {
+                        "type": "uint32",
+                        "path": "chassis/fpc/name"
+                      }
+                    ],
+                    "path": "chassis/fpc"
+                  },
+                  {
+                    "name": "pic",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "union",
+                        "types": [
+                          {
+                            "type": "string",
+                            "patterns": [
+                              "<.*>|$.*"
+                            ],
+                            "path": "chassis/fpc/pic/name"
+                          },
+                          {
+                            "type": "uint32",
+                            "path": "chassis/fpc/pic/name"
+                          }
+                        ],
+                        "path": "chassis/fpc/pic"
+                      },
+                      {
+                        "name": "port",
+                        "type": "list",
+                        "key": "name",
+                        "children": [
+                          {
+                            "name": "name",
+                            "type": "leaf",
+                            "leaf-type": "union",
+                            "types": [
+                              {
+                                "type": "string",
+                                "patterns": [
+                                  "<.*>|$.*"
+                                ],
+                                "path": "chassis/fpc/pic/port/name"
+                              },
+                              {
+                                "type": "uint32",
+                                "path": "chassis/fpc/pic/port/name"
+                              }
+                            ],
+                            "path": "chassis/fpc/pic/port"
+                          },
+                          {
+                            "name": "speed",
+                            "type": "leaf",
+                            "leaf-type": "enumeration",
+                            "enums": [
+                              {
+                                "id": "oc3-stm1",
+                                "value": 0,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "oc12-stm4",
+                                "value": 1,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "oc48-stm16",
+                                "value": 2,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "1G",
+                                "value": 3,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "10g",
+                                "value": 4,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "25g",
+                                "value": 5,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "40g",
+                                "value": 6,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "100g",
+                                "value": 7,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "50g",
+                                "value": 8,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "200g",
+                                "value": 9,
+                                "path": "chassis/fpc/pic/port/speed"
+                              },
+                              {
+                                "id": "400g",
+                                "value": 10,
+                                "path": "chassis/fpc/pic/port/speed"
+                              }
+                            ],
+                            "path": "chassis/fpc/pic/port"
+                          },
+                          {
+                            "name": "channel-speed",
+                            "type": "leaf",
+                            "leaf-type": "enumeration",
+                            "enums": [
+                              {
+                                "id": "10g",
+                                "value": 0,
+                                "path": "chassis/fpc/pic/port/channel-speed"
+                              },
+                              {
+                                "id": "25g",
+                                "value": 1,
+                                "path": "chassis/fpc/pic/port/channel-speed"
+                              },
+                              {
+                                "id": "50g",
+                                "value": 2,
+                                "path": "chassis/fpc/pic/port/channel-speed"
+                              },
+                              {
+                                "id": "disable-auto-speed-detection",
+                                "value": 3,
+                                "path": "chassis/fpc/pic/port/channel-speed"
+                              }
+                            ],
+                            "path": "chassis/fpc/pic/port"
+                          }
+                        ],
+                        "path": "chassis/fpc/pic"
+                      }
+                    ],
+                    "path": "chassis/fpc"
+                  }
+                ],
+                "path": "chassis"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "firewall",
+            "type": "container",
+            "children": [
+              {
+                "name": "family",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "inet",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "filter",
+                        "type": "list",
+                        "key": "name",
+                        "children": [
+                          {
+                            "name": "name",
+                            "type": "leaf",
+                            "leaf-type": "string",
+                            "path": "firewall/family/inet/filter"
+                          },
+                          {
+                            "name": "term",
+                            "type": "list",
+                            "key": "name",
+                            "children": [
+                              {
+                                "name": "name",
+                                "type": "leaf",
+                                "leaf-type": "string",
+                                "path": "firewall/family/inet/filter/term"
+                              },
+                              {
+                                "name": "from",
+                                "type": "container",
+                                "children": [
+                                  {
+                                    "name": "source-address",
+                                    "type": "list",
+                                    "key": "name",
+                                    "children": [
+                                      {
+                                        "name": "name",
+                                        "type": "leaf",
+                                        "leaf-type": "jt:ipv4prefix",
+                                        "base-type": "string",
+                                        "path": "firewall/family/inet/filter/term/from/source-address"
+                                      }
+                                    ],
+                                    "ordered-by": "user",
+                                    "path": "firewall/family/inet/filter/term/from"
+                                  },
+                                  {
+                                    "name": "destination-address",
+                                    "type": "list",
+                                    "key": "name",
+                                    "children": [
+                                      {
+                                        "name": "name",
+                                        "type": "leaf",
+                                        "leaf-type": "jt:ipv4prefix",
+                                        "base-type": "string",
+                                        "path": "firewall/family/inet/filter/term/from/destination-address"
+                                      }
+                                    ],
+                                    "ordered-by": "user",
+                                    "path": "firewall/family/inet/filter/term/from"
+                                  }
+                                ],
+                                "path": "firewall/family/inet/filter/term"
+                              },
+                              {
+                                "name": "then",
+                                "type": "container",
+                                "children": [
+                                  {
+                                    "name": "accept",
+                                    "type": "leaf",
+                                    "leaf-type": "empty",
+                                    "path": "firewall/family/inet/filter/term/then"
+                                  },
+                                  {
+                                    "name": "discard",
+                                    "type": "container",
+                                    "path": "firewall/family/inet/filter/term/then"
+                                  }
+                                ],
+                                "path": "firewall/family/inet/filter/term"
+                              }
+                            ],
+                            "ordered-by": "user",
+                            "path": "firewall/family/inet/filter"
+                          }
+                        ],
+                        "path": "firewall/family/inet"
+                      }
+                    ],
+                    "path": "firewall/family"
+                  }
+                ],
+                "path": "firewall"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "forwarding-options",
+            "type": "container",
+            "children": [
+              {
+                "name": "storm-control-profiles",
+                "type": "list",
+                "key": "name",
+                "children": [
+                  {
+                    "name": "name",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "lengths": [
+                      {
+                        "min": 1,
+                        "max": 127,
+                        "path": "forwarding-options/storm-control-profiles/name"
+                      }
+                    ],
+                    "path": "forwarding-options/storm-control-profiles"
+                  },
+                  {
+                    "name": "all",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "bandwidth-level",
+                        "type": "leaf",
+                        "leaf-type": "union",
+                        "types": [
+                          {
+                            "type": "string",
+                            "patterns": [
+                              "<.*>|$.*"
+                            ],
+                            "path": "forwarding-options/storm-control-profiles/all/bandwidth-level"
+                          },
+                          {
+                            "type": "uint32",
+                            "path": "forwarding-options/storm-control-profiles/all/bandwidth-level"
+                          }
+                        ],
+                        "units": "kbps",
+                        "path": "forwarding-options/storm-control-profiles/all"
+                      }
+                    ],
+                    "path": "forwarding-options/storm-control-profiles"
+                  }
+                ],
+                "path": "forwarding-options"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "interfaces",
+            "type": "container",
+            "children": [
+              {
+                "name": "interface",
+                "type": "list",
+                "key": "name",
+                "children": [
+                  {
+                    "name": "name",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "path": "interfaces/interface"
+                  },
+                  {
+                    "name": "mtu",
+                    "type": "leaf",
+                    "leaf-type": "union",
+                    "types": [
+                      {
+                        "type": "string",
+                        "patterns": [
+                          "<.*>|$.*"
+                        ],
+                        "path": "interfaces/interface/mtu"
+                      },
+                      {
+                        "type": "uint32",
+                        "path": "interfaces/interface/mtu"
+                      }
+                    ],
+                    "path": "interfaces/interface"
+                  },
+                  {
+                    "name": "ether-options",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "ieee-802.3ad",
+                        "type": "container",
+                        "children": [
+                          {
+                            "name": "bundle",
+                            "type": "leaf",
+                            "leaf-type": "union",
+                            "types": [
+                              {
+                                "type": "string",
+                                "path": "interfaces/interface/ether-options/ieee-802.3ad/bundle"
+                              },
+                              {
+                                "type": "string",
+                                "patterns": [
+                                  "<.*>|$.*"
+                                ],
+                                "path": "interfaces/interface/ether-options/ieee-802.3ad/bundle"
+                              }
+                            ],
+                            "path": "interfaces/interface/ether-options/ieee-802.3ad"
+                          }
+                        ],
+                        "path": "interfaces/interface/ether-options"
+                      }
+                    ],
+                    "path": "interfaces/interface"
+                  },
+                  {
+                    "name": "aggregated-ether-options",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "lacp",
+                        "type": "container",
+                        "children": [
+                          {
+                            "name": "active",
+                            "type": "leaf",
+                            "leaf-type": "empty",
+                            "path": "interfaces/interface/aggregated-ether-options/lacp"
+                          }
+                        ],
+                        "path": "interfaces/interface/aggregated-ether-options"
+                      }
+                    ],
+                    "path": "interfaces/interface"
+                  },
+                  {
+                    "name": "unit",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "interfaces/interface/unit"
+                      },
+                      {
+                        "name": "family",
+                        "type": "container",
+                        "children": [
+                          {
+                            "name": "inet",
+                            "type": "container",
+                            "children": [
+                              {
+                                "name": "filter",
+                                "type": "container",
+                                "children": [
+                                  {
+                                    "name": "input",
+                                    "type": "container",
+                                    "children": [
+                                      {
+                                        "name": "filter-name",
+                                        "type": "leaf",
+                                        "leaf-type": "string",
+                                        "path": "interfaces/interface/unit/family/inet/filter/input"
+                                      }
+                                    ],
+                                    "path": "interfaces/interface/unit/family/inet/filter"
+                                  }
+                                ],
+                                "path": "interfaces/interface/unit/family/inet"
+                              },
+                              {
+                                "name": "address",
+                                "type": "list",
+                                "key": "name",
+                                "children": [
+                                  {
+                                    "name": "name",
+                                    "type": "leaf",
+                                    "leaf-type": "jt:ipv4prefix",
+                                    "base-type": "string",
+                                    "path": "interfaces/interface/unit/family/inet/address"
+                                  }
+                                ],
+                                "ordered-by": "user",
+                                "path": "interfaces/interface/unit/family/inet"
+                              }
+                            ],
+                            "path": "interfaces/interface/unit/family"
+                          },
+                          {
+                            "name": "ethernet-switching",
+                            "type": "container",
+                            "children": [
+                              {
+                                "name": "interface-mode",
+                                "type": "leaf",
+                                "leaf-type": "enumeration",
+                                "enums": [
+                                  {
+                                    "id": "access",
+                                    "value": 0,
+                                    "path": "interfaces/interface/unit/family/ethernet-switching/interface-mode"
+                                  },
+                                  {
+                                    "id": "trunk",
+                                    "value": 1,
+                                    "path": "interfaces/interface/unit/family/ethernet-switching/interface-mode"
+                                  }
+                                ],
+                                "default": "access",
+                                "path": "interfaces/interface/unit/family/ethernet-switching"
+                              },
+                              {
+                                "name": "vlan",
+                                "type": "container",
+                                "children": [
+                                  {
+                                    "name": "members",
+                                    "type": "leaf-list",
+                                    "leaf-type": "string",
+                                    "ordered-by": "user",
+                                    "path": "interfaces/interface/unit/family/ethernet-switching/vlan"
+                                  }
+                                ],
+                                "path": "interfaces/interface/unit/family/ethernet-switching"
+                              },
+                              {
+                                "name": "storm-control",
+                                "type": "container",
+                                "children": [
+                                  {
+                                    "name": "profile-name",
+                                    "type": "leaf",
+                                    "leaf-type": "string",
+                                    "path": "interfaces/interface/unit/family/ethernet-switching/storm-control"
+                                  }
+                                ],
+                                "path": "interfaces/interface/unit/family/ethernet-switching"
+                              }
+                            ],
+                            "path": "interfaces/interface/unit/family"
+                          }
+                        ],
+                        "path": "interfaces/interface/unit"
+                      }
+                    ],
+                    "path": "interfaces/interface"
+                  }
+                ],
+                "path": "interfaces"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "protocols",
+            "type": "container",
+            "children": [
+              {
+                "name": "lldp",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "interface",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "protocols/lldp/interface"
+                      }
+                    ],
+                    "ordered-by": "user",
+                    "path": "protocols/lldp"
+                  }
+                ],
+                "path": "protocols"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "routing-options",
+            "type": "container",
+            "children": [
+              {
+                "name": "static",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "route",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "jt:ipprefix",
+                        "base-type": "string",
+                        "path": "routing-options/static/route"
+                      },
+                      {
+                        "name": "next-hop",
+                        "type": "leaf-list",
+                        "leaf-type": "union",
+                        "types": [
+                          {
+                            "type": "string",
+                            "path": "routing-options/static/route/next-hop"
+                          },
+                          {
+                            "type": "string",
+                            "patterns": [
+                              "<.*>|$.*"
+                            ],
+                            "path": "routing-options/static/route/next-hop"
+                          }
+                        ],
+                        "ordered-by": "user",
+                        "path": "routing-options/static/route"
+                      }
+                    ],
+                    "path": "routing-options/static"
+                  }
+                ],
+                "path": "routing-options"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "system",
+            "type": "container",
+            "children": [
+              {
+                "name": "host-name",
+                "type": "leaf",
+                "leaf-type": "string",
+                "lengths": [
+                  {
+                    "min": 1,
+                    "max": 255,
+                    "path": "system/host-name"
+                  }
+                ],
+                "path": "system"
+              },
+              {
+                "name": "root-authentication",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "encrypted-password",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "lengths": [
+                      {
+                        "min": 1,
+                        "max": 128,
+                        "path": "system/root-authentication/encrypted-password"
+                      }
+                    ],
+                    "path": "system/root-authentication"
+                  }
+                ],
+                "path": "system"
+              },
+              {
+                "name": "login",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "user",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "system/login/user"
+                      },
+                      {
+                        "name": "uid",
+                        "type": "leaf",
+                        "leaf-type": "union",
+                        "types": [
+                          {
+                            "type": "string",
+                            "patterns": [
+                              "<.*>|$.*"
+                            ],
+                            "path": "system/login/user/uid"
+                          },
+                          {
+                            "type": "uint32",
+                            "ranges": [
+                              {
+                                "min": 100,
+                                "max": 64000,
+                                "path": "system/login/user/uid"
+                              }
+                            ],
+                            "path": "system/login/user/uid"
+                          }
+                        ],
+                        "path": "system/login/user"
+                      },
+                      {
+                        "name": "class",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "system/login/user"
+                      },
+                      {
+                        "name": "authentication",
+                        "type": "container",
+                        "children": [
+                          {
+                            "name": "ssh-ed25519",
+                            "type": "list",
+                            "key": "name",
+                            "children": [
+                              {
+                                "name": "name",
+                                "type": "leaf",
+                                "leaf-type": "string",
+                                "path": "system/login/user/authentication/ssh-ed25519"
+                              }
+                            ],
+                            "ordered-by": "user",
+                            "path": "system/login/user/authentication"
+                          }
+                        ],
+                        "path": "system/login/user"
+                      }
+                    ],
+                    "path": "system/login"
+                  }
+                ],
+                "path": "system"
+              },
+              {
+                "name": "services",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "netconf",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "ssh",
+                        "type": "container",
+                        "path": "system/services/netconf"
+                      }
+                    ],
+                    "path": "system/services"
+                  },
+                  {
+                    "name": "ssh",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "root-login",
+                        "type": "leaf",
+                        "leaf-type": "enumeration",
+                        "enums": [
+                          {
+                            "id": "allow",
+                            "value": 0,
+                            "path": "system/services/ssh/root-login"
+                          },
+                          {
+                            "id": "deny",
+                            "value": 1,
+                            "path": "system/services/ssh/root-login"
+                          },
+                          {
+                            "id": "deny-password",
+                            "value": 2,
+                            "path": "system/services/ssh/root-login"
+                          }
+                        ],
+                        "path": "system/services/ssh"
+                      }
+                    ],
+                    "path": "system/services"
+                  }
+                ],
+                "path": "system"
+              },
+              {
+                "name": "time-zone",
+                "type": "leaf",
+                "leaf-type": "string",
+                "default": "UTC",
+                "units": "<continent>/<major-city> or <time-zone>",
+                "path": "system"
+              },
+              {
+                "name": "authentication-order",
+                "type": "leaf-list",
+                "leaf-type": "enumeration",
+                "enums": [
+                  {
+                    "id": "radius",
+                    "value": 0,
+                    "path": "system/authentication-order"
+                  },
+                  {
+                    "id": "tacplus",
+                    "value": 1,
+                    "path": "system/authentication-order"
+                  },
+                  {
+                    "id": "password",
+                    "value": 2,
+                    "path": "system/authentication-order"
+                  }
+                ],
+                "ordered-by": "user",
+                "path": "system"
+              },
+              {
+                "name": "ports",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "console",
+                    "type": "container",
+                    "children": [
+                      {
+                        "name": "log-out-on-disconnect",
+                        "type": "leaf",
+                        "leaf-type": "empty",
+                        "path": "system/ports/console"
+                      }
+                    ],
+                    "path": "system/ports"
+                  }
+                ],
+                "path": "system"
+              },
+              {
+                "name": "processes",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "daemon-process",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "system/processes/daemon-process"
+                      },
+                      {
+                        "name": "disable",
+                        "type": "leaf",
+                        "leaf-type": "empty",
+                        "path": "system/processes/daemon-process"
+                      }
+                    ],
+                    "ordered-by": "user",
+                    "path": "system/processes"
+                  }
+                ],
+                "path": "system"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "virtual-chassis",
+            "type": "container",
+            "children": [
+              {
+                "name": "preprovisioned",
+                "type": "leaf",
+                "leaf-type": "empty",
+                "path": "virtual-chassis"
+              },
+              {
+                "name": "member",
+                "type": "list",
+                "key": "name",
+                "children": [
+                  {
+                    "name": "name",
+                    "type": "leaf",
+                    "leaf-type": "union",
+                    "types": [
+                      {
+                        "type": "string",
+                        "patterns": [
+                          "<.*>|$.*"
+                        ],
+                        "path": "virtual-chassis/member/name"
+                      },
+                      {
+                        "type": "int32",
+                        "path": "virtual-chassis/member/name"
+                      }
+                    ],
+                    "path": "virtual-chassis/member"
+                  },
+                  {
+                    "name": "role",
+                    "type": "leaf",
+                    "leaf-type": "enumeration",
+                    "enums": [
+                      {
+                        "id": "routing-engine",
+                        "value": 0,
+                        "path": "virtual-chassis/member/role"
+                      },
+                      {
+                        "id": "line-card",
+                        "value": 1,
+                        "path": "virtual-chassis/member/role"
+                      }
+                    ],
+                    "default": "line-card",
+                    "path": "virtual-chassis/member"
+                  },
+                  {
+                    "name": "serial-number",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "lengths": [
+                      {
+                        "min": 1,
+                        "max": 12,
+                        "path": "virtual-chassis/member/serial-number"
+                      }
+                    ],
+                    "path": "virtual-chassis/member"
+                  }
+                ],
+                "ordered-by": "user",
+                "path": "virtual-chassis"
+              }
+            ],
+            "path": ""
+          },
+          {
+            "name": "vlans",
+            "type": "container",
+            "children": [
+              {
+                "name": "vlan",
+                "type": "list",
+                "key": "name",
+                "children": [
+                  {
+                    "name": "name",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "lengths": [
+                      {
+                        "min": 2,
+                        "max": 64,
+                        "path": "vlans/vlan/name"
+                      }
+                    ],
+                    "path": "vlans/vlan"
+                  },
+                  {
+                    "name": "vlan-id",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "path": "vlans/vlan"
+                  },
+                  {
+                    "name": "l3-interface",
+                    "type": "leaf",
+                    "leaf-type": "union",
+                    "types": [
+                      {
+                        "type": "string",
+                        "path": "vlans/vlan/l3-interface"
+                      },
+                      {
+                        "type": "string",
+                        "patterns": [
+                          "<.*>|$.*"
+                        ],
+                        "path": "vlans/vlan/l3-interface"
+                      }
+                    ],
+                    "path": "vlans/vlan"
+                  }
+                ],
+                "path": "vlans"
+              }
+            ],
+            "path": ""
+          }
+        ],
+        "config": "true",
+        "path": ""
+      }
+    ],
+    "path": ""
+  },
+  "path": ""
+}

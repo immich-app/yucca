@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#MISE description="Regenerate the vendored JTAF junos-qfx provider from device YANG + live config"
+# Run this only when adding new config hierarchies (the provider's resource
+# coverage is driven by the device XML). Then commit tf/providers/ and run
+# `mise run fabric:provider-build`.
+set -euo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+CACHE="${FABRIC_JTAF_CACHE:-$HOME/.cache/yucca-jtaf}"
+YREL="${FABRIC_JUNOS_YANG_RELEASE:-24.4/24.4R2}"
+KEY="${FABRIC_NETCONF_KEY:-$HOME/.ssh/yucca-junos-tf}"
+SPINE_IP="${FABRIC_SPINE_IP:-10.40.5.115}"
+LEAF_IP="${FABRIC_LEAF_IP:-10.40.5.125}"
+mkdir -p "$CACHE"
+
+# 1. JTAF tooling
+[ -d "$CACHE/junos-terraform" ] || git clone --depth 1 https://github.com/Juniper/junos-terraform "$CACHE/junos-terraform"
+cd "$CACHE/junos-terraform"
+[ -d venv ] || python3 -m venv venv
+./venv/bin/pip -q install -e . >/dev/null
+
+# 2. YANG (sparse: common + junos-qfx for the target release)
+if [ ! -d "$CACHE/yang/$YREL" ]; then
+  [ -d "$CACHE/yang/.git" ] || git clone --no-checkout --depth 1 --filter=blob:none https://github.com/Juniper/yang "$CACHE/yang"
+  ( cd "$CACHE/yang" && git sparse-checkout init --cone \
+      && git sparse-checkout set "$YREL/native/conf-and-rpcs/common" "$YREL/native/conf-and-rpcs/junos-qfx" \
+      && git checkout )
+fi
+Y="$CACHE/yang/$YREL/native/conf-and-rpcs"
+
+# 3. live device config XML (spine + leaf) via the dedicated terraform key
+SSHOPTS="-i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$CACHE/known_hosts -o ConnectTimeout=15"
+ssh $SSHOPTS terraform@"$SPINE_IP" "show configuration | display xml | no-more" > "$CACHE/spine.xml"
+ssh $SSHOPTS terraform@"$LEAF_IP"  "show configuration | display xml | no-more" > "$CACHE/leaf.xml"
+
+# 4. generate provider from both device types' config
+source venv/bin/activate
+jtaf-yang2go -p "$Y/common/models" "$Y"/junos-qfx/conf/models/*.yang -x "$CACHE/spine.xml" "$CACHE/leaf.xml" -t qfx
+
+# 5. vendor into the repo
+rm -rf "$ROOT/tf/providers/terraform-provider-junos-qfx"
+cp -R terraform-provider-junos-qfx "$ROOT/tf/providers/terraform-provider-junos-qfx"
+rm -f "$ROOT/tf/providers/terraform-provider-junos-qfx/__init__.py"
+echo "regenerated + vendored -> tf/providers/terraform-provider-junos-qfx"
+echo "next: mise run fabric:provider-build"
