@@ -1,0 +1,57 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: victoria-logs-collector
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: victoria-logs-collector
+  interval: 1h
+  rollback:
+    cleanupOnFail: true
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 2
+  values:
+    # DaemonSet that tails every pod's stdout node-side and forwards to o11y's
+    # VictoriaLogs. Replaces the OTLP-push vlagent: captures all pods (not just
+    # apps) and parses their JSON logs into fields.
+    fullnameOverride: victoria-logs-collector
+
+    # Ship to o11y's vmauth (native VictoriaLogs ingest -> vlinsert), authed with
+    # the shared bearer token (TF-provisioned `vmagent-remote-write` Secret).
+    remoteWrite:
+      - url: ${VLOGS_REMOTE_URL}
+        maxDiskUsagePerURL: 10GB
+    extraArgs:
+      remoteWrite.bearerTokenFile: /secrets/token
+    extraVolumes:
+      - name: token
+        secret:
+          secretName: vmagent-remote-write
+          items:
+            - key: token
+              path: token
+    extraVolumeMounts:
+      - name: token
+        mountPath: /secrets
+        readOnly: true
+
+    collector:
+      streamFields:
+        - kubernetes.pod_name
+        - kubernetes.pod_namespace
+        - kubernetes.container_name
+        - kubernetes.pod_labels.app.kubernetes.io/name
+      # Stamp the remote-cluster identity on every log line (o11y convention).
+      extraFields: '{"cluster":"${METRICS_CLUSTER_LABEL}"}'
+
+    # All staging nodes are control-plane; tolerate the taint so the DaemonSet
+    # lands everywhere.
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
