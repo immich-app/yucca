@@ -1,6 +1,6 @@
 ---
 # Pinned ClusterIP so michael's pod can pin a hostAlias
-# (s3.dev.austin.int.futo.cloud -> this IP) and keep signing with the real RGW
+# (s3.staging.austin.int.futo.cloud -> this IP) and keep signing with the real RGW
 # hostname. The value is set per-env in cluster-settings (RGW_HAPROXY_CLUSTER_IP)
 # and MUST fall inside the cluster's Service CIDR and be otherwise unallocated.
 apiVersion: v1

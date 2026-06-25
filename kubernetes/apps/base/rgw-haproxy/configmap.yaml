@@ -9,7 +9,7 @@
 #
 # Why the Host header is preserved: RGW validates the S3 signature against the
 # request Host and rejects any host not in its zonegroup hostnames list. michael
-# signs with `s3.dev.austin.int.futo.cloud` (which IS in that list) and reaches
+# signs with `s3.staging.austin.int.futo.cloud` (which IS in that list) and reaches
 # this proxy via a hostAlias (see the michael HelmRelease), so the original Host
 # flows through unchanged and signatures validate.
 apiVersion: v1

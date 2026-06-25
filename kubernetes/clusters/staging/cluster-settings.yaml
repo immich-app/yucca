@@ -29,7 +29,7 @@ data:
 
   # ─── RGW (object storage via in-cluster HAProxy) ─────────────────────
   # Pinned ClusterIP for the rgw-haproxy Service; michael pins a hostAlias
-  # (s3.dev.austin.int.futo.cloud -> this IP). MUST be inside the Service CIDR
+  # (s3.staging.austin.int.futo.cloud -> this IP). MUST be inside the Service CIDR
   # and otherwise unallocated. Talos default Service CIDR is 10.96.0.0/12.
   RGW_HAPROXY_CLUSTER_IP: 10.96.0.253
 
