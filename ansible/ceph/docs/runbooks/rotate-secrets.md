@@ -28,7 +28,7 @@ deploy` picks up the new value via `op inject`.
 
 Replace `<CLUSTER>` with `SIETCH` or `PAINBOX`. The active vault name is
 declared per-cluster in the `vault` field of the cluster's entry in
-`tf/deployment/dev/ceph/clusters.auto.tfvars` — `yucca_tf_dev` for dev,
+`tf/deployment/staging/ceph/clusters.auto.tfvars` — `yucca_tf_dev` for dev,
 future `yucca_tf_staging` / `yucca_tf` for staging/prod.
 
 ## 1. Rotate in 1Password
@@ -192,7 +192,7 @@ Once the sietch-ceph service account lands and `secrets.tf.disabled` is
 re-enabled, rotations become a `terraform taint` + `apply`:
 
 ```bash
-cd tf/deployment/dev/ceph
+cd tf/deployment/staging/ceph
 terragrunt taint 'module.cluster["sietch"].onepassword_item.secret["dashboard"]'
 terragrunt apply
 ```

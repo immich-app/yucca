@@ -113,16 +113,16 @@ The `mise run destroy` task (in `.mise.toml`) builds these arguments automatical
 
 ```bash
 # Standard deploy
-CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini \
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
   scripts/ansible-play.sh deploy-ceph.yml
 
 # Dry-run a role via tags
-CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini \
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
   scripts/ansible-play.sh site.yml --check --diff --tags baseline
 
 # CI / headless (SA token from env)
 OP_SERVICE_ACCOUNT_TOKEN="$(...)" \
-  CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini \
+  CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
   scripts/ansible-play.sh status.yml
 ```
 

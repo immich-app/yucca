@@ -104,7 +104,7 @@ verification disabled for self-signed certs).
 ## Certificate configuration
 
 The cert parameters are controlled by these variables in
-`inventories/sietch-ceph.dev.austin.int/group_vars/all/vars.yml`:
+`inventories/sietch-ceph.staging.austin.int/group_vars/all/vars.yml`:
 
 | Variable | Default | Purpose |
 |---|---|---|

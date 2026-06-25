@@ -66,7 +66,7 @@ roles + mise tasks work unchanged. The state backend key path, 1P vault
 selection, and inventory directory naming all derive from the env segment.
 
 `TF_STACK_DIR` is the operator-side override for `mise run tf:*` tasks; it
-defaults to `tf/deployment/dev/ceph` and points at any sibling stack directory.
+defaults to `tf/deployment/staging/ceph` and points at any sibling stack directory.
 `CEPH_ENV` is the matching override for Ansible — points at the rendered
 `inventory.ini` for the cluster you intend to operate on.
 
@@ -392,7 +392,7 @@ just those phases.
 
 ```
 inventories/
-  sietch-ceph.dev.austin.int/        Austin dev cluster
+  sietch-ceph.staging.austin.int/    Austin staging cluster
     inventory.ini                     TF-generated, gitignored
     inventory-destroy.ini             TF-generated, gitignored
     inventory-provision.ini           TF-generated, gitignored
@@ -492,10 +492,10 @@ env defaults.
 
 ```toml
 [env]
-CEPH_ENV = "inventories/sietch-ceph.dev.austin.int/inventory.ini"
+CEPH_ENV = "inventories/sietch-ceph.staging.austin.int/inventory.ini"
 ```
 
-`TF_STACK_DIR` defaults to `tf/deployment/dev/ceph` inside each `tf:*` task.
+`TF_STACK_DIR` defaults to `tf/deployment/staging/ceph` inside each `tf:*` task.
 Both are overridable per-invocation:
 
 ```bash
