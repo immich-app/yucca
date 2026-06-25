@@ -24,6 +24,17 @@ ceph_repo_key_url: "https://download.ceph.com/keys/release.asc"
 admin_user: ansible-iac
 timezone: UTC
 
+# Cluster-specific packages, merged with the baseline role's universal
+# baseline_diag_packages. These match sietch's hardware: Mellanox ConnectX 25G
+# NICs (eno1np0/eno2np1) and SAS-expander drive enclosures. A different cluster
+# declares its own set (or none).
+baseline_extra_packages:
+  - lldpd       # LLDP neighbor/switch discovery on the 25G fabric
+  - mstflint    # Mellanox ConnectX firmware query/update
+  - tcpdump     # packet capture for network debugging
+  - ledmon      # SAS enclosure drive-fault LEDs (ledctl)
+  - sg3-utils   # SCSI enclosure management (sg_ses)
+
 # Deploy keypair path on the controller. Both {path} and {path}.pub must
 # exist before running provision.yml (the preflight play in provision.yml
 # enforces this). ansible-iac's authorized_keys on every node is populated

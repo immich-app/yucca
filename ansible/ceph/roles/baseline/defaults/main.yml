@@ -42,6 +42,13 @@ baseline_diag_packages:
   - bsdmainutils
   - python3-boto3
 
+# Per-cluster hardware/site-specific packages, merged with baseline_diag_packages
+# at install time. Default empty so the role stays hardware-agnostic; each
+# cluster declares its own set in inventories/<cluster>/group_vars/all/vars.yml
+# (e.g. sietch's Mellanox + SAS-enclosure tools). A different cluster (spice,
+# ...) sets its own list or leaves it empty.
+baseline_extra_packages: []
+
 # --- Services ---
 baseline_enable_services:
   - dbus
