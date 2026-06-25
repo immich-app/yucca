@@ -7,6 +7,12 @@ baseline_ops_user: ops
 baseline_ops_uid: 1001
 baseline_ops_sudo: "ALL"      # "ALL" = password required; "NOPASSWD:ALL" for dev
 
+# Operator SSH public keys authorized on the ops account. Sourced from the
+# identity registry (tf/shared/modules/identity, members of a `server`-mapped
+# group) and rendered into group_vars/all/operators.yml by
+# render-inventories.sh. Default empty: with no keys, ops stays password-only.
+ops_authorized_keys: []
+
 # --- /etc/hosts ---
 # Rendered from the same cluster variables used by ceph_deploy/hosts.j2.
 # Keeps host entries converged even if ceph_deploy hasn't run yet.

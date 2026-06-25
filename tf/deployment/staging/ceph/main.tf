@@ -39,12 +39,25 @@ output "cluster_summaries" {
 # Rendered content lives in a TF OUTPUT (not in local_file resources), so the
 # shared remote state never records a checkout-specific filesystem path. See
 # the module's rendering.tf for the full rationale.
+# Canonical user/group registry. Used here only for server operator access:
+# members of a `server`-mapped group get their SSH keys into the node ops
+# account's authorized_keys (rendered as group_vars/all/operators.yml below).
+module "identity" {
+  source = "../../../shared/modules/identity"
+}
+
 output "render" {
   description = "Per-cluster { dirname, files } for the local render wrapper."
   value = {
     for k, m in module.cluster : k => {
       dirname = m.inventory_dirname
-      files   = m.rendered_files
+      files = merge(m.rendered_files, {
+        # Operator SSH keys for the shared ops account, from the identity
+        # registry. Public keys only; gitignored (rendered, not committed).
+        "group_vars/all/operators.yml" = yamlencode({
+          ops_authorized_keys = module.identity.server_authorized_keys
+        })
+      })
     }
   }
 }
