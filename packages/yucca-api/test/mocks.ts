@@ -24,9 +24,9 @@ export const newOidcRepositoryMock = (): jest.Mocked<RepositoryInterface<OidcRep
   return {
     authorize: jest.fn(),
     callback: jest.fn(),
+    deviceFlow: jest.fn(),
     logout: jest.fn(),
     onModuleInit: jest.fn(),
-    fetchUserInfo: jest.fn(),
   };
 };
 
