@@ -93,6 +93,15 @@ ceph_rgw_port: 443
 ceph_rgw_s3_user_uid: svc-yucca-restic
 ceph_rgw_s3_user_display_name: "yucca/restic service account"
 
+# Metrics-worker RGW admin (read-only). Keys TF-minted in 1P
+# (SIETCH_METRICS_WORKER_{ACCESS,SECRET}_KEY); the metrics worker scrapes RGW
+# usage/bucket/user stats via the admin ops API. Read-only admin caps only.
+ceph_rgw_metrics_user_uid: metrics-worker
+ceph_rgw_metrics_user_display_name: "yucca/metrics-worker RGW admin (read-only)"
+ceph_rgw_metrics_user_access_key: "{{ vault_metrics_worker_access_key }}"
+ceph_rgw_metrics_user_secret_key: "{{ vault_metrics_worker_secret_key }}"
+ceph_rgw_metrics_user_caps: "buckets=read;usage=read;metadata=read;users=read"
+
 # --- RGW DNS + TLS ---
 # Virtual-hosted S3 support: setting rgw_dns_name tells RGW to strip this
 # suffix from the Host header and treat the remainder as the bucket name.
