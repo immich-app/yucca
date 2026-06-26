@@ -44,10 +44,8 @@ spec:
         value: dns
       - name: S3_BACKEND_DNS_HOST
         value: s3.staging.austin.int.futo.cloud
-      - name: S3_BACKEND_SCHEME
-        value: https
-      - name: S3_BACKEND_PORT
-        value: "443"
+      # S3_BACKEND_SCHEME/PORT are intentionally omitted: michael derives them
+      # from S3_ENDPOINT (https -> 443), so a DNS source only needs the host.
       - name: S3_BACKEND_PIN_HOST
         value: "true"
       - name: S3_TLS_SKIP_VERIFY
