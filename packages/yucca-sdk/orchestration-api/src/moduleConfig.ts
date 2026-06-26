@@ -1,4 +1,5 @@
 import type { Socket } from 'socket.io';
+import { GatewayEvent } from './events/events.gateway';
 
 export const ModuleConfigProvider = Symbol('ModuleConfig');
 
@@ -25,6 +26,7 @@ export type ModuleConfig = {
   developmentMode?: boolean;
 
   authenticate?: AuthenticateFn;
+  onInternalEvent?: (event: GatewayEvent) => void;
 
   immichIntegration?: ImmichIntegration;
 };
