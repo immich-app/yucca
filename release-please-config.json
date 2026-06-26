@@ -2,42 +2,27 @@
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "release-type": "node",
   "prerelease": true,
-  "separate-pull-requests": false,
   "include-component-in-tag": false,
-  "plugins": [
-    {
-      "type": "linked-versions",
-      "groupName": "yucca",
-      "components": [
-        "yucca",
-        "@futo-org/backups-api-client",
-        "@futo-org/backups-orchestrator-api",
-        "@futo-org/backups-orchestrator-ui"
-      ]
-    },
-    "node-workspace"
-  ],
   "packages": {
     ".": {
-      "package-name": "yucca",
       "prerelease-type": "alpha",
-      "exclude-paths": [
-        "packages/yucca-api-client",
-        "packages/yucca-sdk/orchestration-api",
-        "packages/yucca-sdk/orchestration-ui"
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "packages/yucca-api-client/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/yucca-sdk/orchestration-api/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/yucca-sdk/orchestration-ui/package.json",
+          "jsonpath": "$.version"
+        }
       ]
-    },
-    "packages/yucca-api-client": {
-      "package-name": "@futo-org/backups-api-client",
-      "prerelease-type": "alpha"
-    },
-    "packages/yucca-sdk/orchestration-api": {
-      "package-name": "@futo-org/backups-orchestrator-api",
-      "prerelease-type": "alpha"
-    },
-    "packages/yucca-sdk/orchestration-ui": {
-      "package-name": "@futo-org/backups-orchestrator-ui",
-      "prerelease-type": "alpha"
     }
   }
 }

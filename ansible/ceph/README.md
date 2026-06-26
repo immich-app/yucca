@@ -10,7 +10,7 @@ scaffolding are provisioned from `yucca/tf/` (see `../../tf/`).
 | **sietch** | `dev.austin.int.futo.cloud` | Austin DC | Dell R730xd | 3 |
 | **painbox** | `dev.hel.htz.futo.cloud` | Hetzner Helsinki | SX295 | 1 |
 
-Clusters are declared in `yucca/tf/deployment/dev/ceph/clusters.auto.tfvars`;
+Clusters are declared in `yucca/tf/deployment/staging/ceph/clusters.auto.tfvars`;
 `tofu apply` renders `inventories/<cluster>/inventory.ini` and
 `secrets.yml.tpl` per cluster. The `CEPH_ENV` variable selects the active
 cluster for any `mise run` or direct ansible invocation.
@@ -47,7 +47,7 @@ data flow, and design rationale.
 
 ```bash
 # 1. Render cluster inventories + secrets templates (once, from yucca/tf/)
-(cd ../../tf/deployment/dev/ceph && tofu init && tofu apply)
+(cd ../../tf/deployment/staging/ceph && tofu init && tofu apply)
 
 # 2. Set up the ansible side
 mise trust && mise run setup          # bootstrap dev environment
@@ -55,7 +55,7 @@ mise trust && mise run setup          # bootstrap dev environment
 # 3. Run mise tasks against the target cluster. CEPH_ENV must be set
 #    inline (NOT via `export`) — see docs/scripts.md "Setting CEPH_ENV"
 #    for why mise's [env] block strips shell exports.
-CE=inventories/sietch-ceph.dev.austin.int/inventory.ini
+CE=inventories/sietch-ceph.staging.austin.int/inventory.ini
 CEPH_ENV=$CE mise run preflight       # TF artifacts + 1P + SSH + connectivity
 CEPH_ENV=$CE mise run status          # read-only cluster health check
 CEPH_ENV=$CE mise run drift           # configuration drift detection
@@ -120,7 +120,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | `bench-rados` | RADOS bench (raw cluster I/O) |
 
 Inventory scaffolding + secret-item provisioning live in `yucca/tf/` — run
-`tofu apply` in `tf/deployment/dev/ceph/` to (re-)render
+`tofu apply` in `tf/deployment/staging/ceph/` to (re-)render
 `inventories/<cluster>/inventory.ini` and `secrets.yml.tpl`.
 
 ## Documentation

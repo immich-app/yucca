@@ -6,9 +6,7 @@ metadata:
   name: michael
   namespace: flux-system
 spec:
-  # Needs the RGW proxy up (its ClusterIP backs michael's S3 hostAlias).
-  dependsOn:
-    - name: rgw-haproxy
+  # michael load-balances across the RGW daemons itself now (no HAProxy hop).
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

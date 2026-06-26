@@ -32,7 +32,7 @@ variable "flux_github_app_private_key" {
 # ─── App secrets (secrets.tf) ───────────────────────────────────────────
 #
 # Externally-issued / human-managed secrets. Live in 1P (yucca_tf_staging_manual
-# for app creds, o11y_tf_prod for the shared vmauth token) and are injected via
+# for app creds, o11y_tf_staging for the shared vmauth token) and are injected via
 # TF_VAR from op:// refs in tf/.env. Empty defaults keep `tofu validate` clean
 # and let the staging slice deploy before the real values are populated — the
 # apps come up, just without working OIDC / object storage / metrics egress.
@@ -94,10 +94,10 @@ variable "yucca_rgw_secret_access_key" {
 }
 
 # Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
-# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the o11y_tf_prod vault (the
+# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the o11y_tf_staging vault (the
 # `remote-clusters` VMUser authenticates remote clusters with it).
 variable "vmauth_remote_write_password" {
-  description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (o11y_tf_prod/VICTORIAMETRICS_VMAUTH_PASSWORD)."
+  description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (o11y_tf_staging/VICTORIAMETRICS_VMAUTH_PASSWORD)."
   type        = string
   sensitive   = true
   default     = ""

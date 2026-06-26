@@ -1,0 +1,49 @@
+---
+# Zap the OSD data HDDs so cephadm sees them as available on a clean rebuild.
+#
+# WHY: disks.yml wipes only the two OS/block.db SSDs. The OSD HDDs keep the
+# previous cluster LVM (ceph-<uuid> VGs) plus bluestore signatures. cephadm
+# `ceph orch apply osd` only consumes disks it considers AVAILABLE, so leftover
+# signatures make it skip the HDDs and the OSD wait loop times out. In the
+# live-image reimage path destroy-ceph.yml never ran to tear OSDs down
+# gracefully, so we clear them here.
+#
+# Gated by provision_wipe_osd_disks (default false) on top of the role
+# confirm_wipe gate -- both must be set, since this is irreversible OSD data
+# loss. Targets exactly the ceph_hdd_osds devices (phy0..N), never the SSDs
+# (which are phy12/phy13 and handled by disks.yml). sietch-shape only
+# (sas_path_prefix); painbox-shape hosts are out of scope here.
+
+- name: Zap OSD HDDs (remove LVM, wipe signatures, zero bluestore label)
+  ansible.builtin.shell: |
+    set -uo pipefail
+    bypath="/dev/disk/by-path/{{ sas_path_prefix }}-{{ item.path_phy }}-lun-0"
+    if [ ! -e "$bypath" ]; then
+      echo "skip-absent: $bypath"
+      exit 0
+    fi
+    dev=$(readlink -f "$bypath")
+    # Tear down any LVM VG backed by this disk (the ceph OSD VGs), in case the
+    # global vgremove in disks.yml did not run (resume path) or missed it.
+    for vg in $(pvs --noheadings -o vg_name "$dev" 2>/dev/null | awk 'NF'); do
+      vgchange -an "$vg" 2>/dev/null || true
+      vgremove -ff "$vg" 2>/dev/null || true
+    done
+    pvremove -ff -y "$dev" 2>/dev/null || true
+    wipefs -af "$dev" || { echo "wipefs-failed: $dev" >&2; exit 1; }
+    sgdisk -Z "$dev" 2>/dev/null || true
+    # bluestore stamps its label in the first block and wipefs does not know
+    # the format, so zero the first 10 MB of the disk directly.
+    dd if=/dev/zero of="$dev" bs=1M count=10 conv=fsync status=none || { echo "dd-failed: $dev" >&2; exit 1; }
+    echo "zapped: $bypath -> $dev"
+  args:
+    executable: /bin/bash
+  loop: "{{ ceph_hdd_osds | default([]) }}"
+  loop_control:
+    label: "{{ item.path_phy }}"
+  register: osd_zap
+  changed_when: "'zapped:' in osd_zap.stdout"
+
+- name: Summarize OSD zap
+  ansible.builtin.debug:
+    msg: "{{ osd_zap.results | map(attribute='stdout') | list }}"

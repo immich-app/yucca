@@ -3,10 +3,14 @@ package storage
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -52,18 +56,101 @@ type S3Storage struct {
 }
 
 func NewS3Storage(cfg config.Config) *S3Storage {
-	client := s3.New(s3.Options{
+	return NewS3StorageForEndpoint(cfg, cfg.S3Endpoint)
+}
+
+// S3Options describes how to build one backend's S3 client.
+type S3Options struct {
+	// Endpoint is the BaseEndpoint the SDK uses for routing, the Host header,
+	// and SigV4 signing. This is the address the backend gateway must accept in
+	// its zonegroup hostname list.
+	Endpoint string
+	// DialAddr, when set, pins the underlying TCP connection to this host:port
+	// regardless of Endpoint's host. This lets michael sign with a fixed
+	// hostname (Endpoint) while load-balancing across specific gateway IPs —
+	// the job HAProxy used to do. Empty means dial Endpoint's host normally.
+	DialAddr string
+	// TLSSkipVerify disables TLS certificate verification, for gateways behind a
+	// self-signed cert (matching HAProxy's `ssl verify none`).
+	TLSSkipVerify bool
+}
+
+// NewS3StorageForEndpoint builds an S3Storage bound to a specific endpoint,
+// reusing the credentials/region/path-style from cfg. The load-balancing pool
+// uses this to stamp out one client per backend gateway.
+func NewS3StorageForEndpoint(cfg config.Config, endpoint string) *S3Storage {
+	return NewS3StorageWithOptions(cfg, S3Options{
+		Endpoint:      endpoint,
+		TLSSkipVerify: cfg.S3TLSSkipVerify,
+	})
+}
+
+// NewS3StorageWithOptions builds an S3Storage with explicit per-backend options
+// (host-pinned dialing and/or TLS skip-verify) layered on the cfg credentials.
+func NewS3StorageWithOptions(cfg config.Config, opts S3Options) *S3Storage {
+	s3opts := s3.Options{
 		Region: cfg.S3Region,
 		Credentials: credentials.NewStaticCredentialsProvider(
 			cfg.S3AccessKeyID,
 			cfg.S3SecretAccessKey,
 			"",
 		),
-		BaseEndpoint: aws.String(cfg.S3Endpoint),
+		BaseEndpoint: aws.String(opts.Endpoint),
 		UsePathStyle: cfg.S3ForcePathStyle,
-	})
+	}
+	if hc := buildHTTPClient(opts); hc != nil {
+		s3opts.HTTPClient = hc
+	}
+	return &S3Storage{client: s3.New(s3opts)}
+}
 
-	return &S3Storage{client: client}
+// buildHTTPClient returns a custom HTTP client when the backend needs a pinned
+// dial address or relaxed TLS, or nil to use the SDK default.
+func buildHTTPClient(opts S3Options) *http.Client {
+	if opts.DialAddr == "" && !opts.TLSSkipVerify {
+		return nil
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+
+	if opts.TLSSkipVerify {
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{}
+		}
+		transport.TLSClientConfig.InsecureSkipVerify = true
+	}
+
+	if opts.DialAddr != "" {
+		base := transport.DialContext
+		if base == nil {
+			base = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
+		}
+		// Ignore the address the SDK derived from the URL host and dial the
+		// pinned backend instead. The URL host still drives the Host header,
+		// SNI, and signature, so the gateway sees the expected hostname.
+		transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return base(ctx, network, opts.DialAddr)
+		}
+	}
+
+	return &http.Client{Transport: transport}
+}
+
+// Probe performs a cheap liveness check against the backend gateway. It issues a
+// HeadBucket on a sentinel bucket: any HTTP response (even 404/403, meaning the
+// bucket is absent or access-denied) proves the gateway is serving, so only a
+// transport-level failure (dial refused, timeout, 5xx) is treated as unhealthy.
+func (s *S3Storage) Probe(ctx context.Context, bucket string) error {
+	// Single-shot: a probe must not be silently retried by the SDK, or a dead
+	// gateway would look slow-but-alive and add latency to every reconcile.
+	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{
+		Bucket: aws.String(bucket),
+	}, func(o *s3.Options) {
+		o.RetryMaxAttempts = 1
+	})
+	if err != nil && isBackendFailure(err) {
+		return err
+	}
+	return nil
 }
 
 func (s *S3Storage) CheckBucket(ctx context.Context, bucket string) (bool, error) {
@@ -248,4 +335,34 @@ func isPreconditionFailed(err error) bool {
 		return apiErr.HTTPStatusCode() == 412
 	}
 	return false
+}
+
+// isBackendFailure reports whether err indicates the S3 backend (gateway) is
+// unhealthy, as opposed to a normal application-level response. A 4xx status
+// (404 missing, 403 denied, 409 conflict, 412 precondition, …) means the
+// gateway responded correctly and is NOT a health failure. A 5xx status, or an
+// error carrying no HTTP status at all (dial refused, timeout, connection
+// reset, unexpected EOF), is a transport/backend failure.
+func isBackendFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	// A cancelled/expired context is the caller giving up (e.g. the restic
+	// client disconnected mid-stream), not a backend health signal — don't let
+	// it eject an otherwise-healthy gateway.
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var apiErr interface {
+		HTTPStatusCode() int
+	}
+	if errors.As(err, &apiErr) {
+		code := apiErr.HTTPStatusCode()
+		// A transport failure (dial refused, timeout, reset) is surfaced by the
+		// SDK as a ResponseError with StatusCode 0 — no response ever reached
+		// us, so treat it as a backend failure alongside real 5xx responses.
+		return code == 0 || code >= 500
+	}
+	// No HTTP status at all: the request never got a response from the gateway.
+	return true
 }

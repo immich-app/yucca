@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#MISE description="terragrunt apply for prod/htz-fsn1 fabric (builds provider, renders creds from 1Password)"
+set -euo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+
+mise run fabric:provider-build
+
+KEYF=$(mktemp); chmod 600 "$KEYF"; trap 'rm -f "$KEYF"' EXIT
+ACCT=(); [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && ACCT=(--account "${OP_ACCOUNT:-team-futo}")
+op read "${ACCT[@]}" "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/password" > "$KEYF"
+
+export TF_VAR_netconf_ssh_key_path="$KEYF"
+export TF_CLI_CONFIG_FILE="$ROOT/tf/.terraformrc.fabric"
+SITE="${FABRIC_SITE:-htz-fsn1}"
+# -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe — parallel
+# ApplyResourceChange calls across the VCs crash the plugin ("Plugin did not respond").
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" apply -parallelism=1 "$@"

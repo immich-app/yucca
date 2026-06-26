@@ -28,32 +28,41 @@ spec:
     # the TF-provisioned `yucca-michael` Secret (JWT_PUBLIC_KEY + S3 creds),
     # which the chart's `envFrom: secretRef: yucca-michael` picks up unchanged.
     secretData: null
-    # Reach the bare-metal Ceph (sietch) RGW through the in-cluster HAProxy:
-    # michael signs with the real RGW hostname (in RGW's zonegroup list) but the
-    # name resolves to HAProxy, which TLS-terminates the self-signed backend.
-    hostAliases:
-      - ip: ${RGW_HAPROXY_CLUSTER_IP}
-        hostnames:
-          - s3.dev.austin.int.futo.cloud
-    # Full replacement of the chart's dev env: no Rook secretKeyRefs (S3 creds
-    # arrive via envFrom from the TF Secret), real RGW endpoint, OTLP to the
-    # in-cluster agents (vmagent metrics, Vector logs).
     env:
       - name: RESTIC_API_PORT
         value: "3010"
       - name: LOG_LEVEL
         value: info
       - name: S3_ENDPOINT
-        value: http://s3.dev.austin.int.futo.cloud
+        value: https://s3.staging.austin.int.futo.cloud
       - name: S3_REGION
         value: us-east-1
       - name: S3_FORCE_PATH_STYLE
         value: "true"
+      # --- built-in RGW load balancing (replaces rgw-haproxy) ---
+      - name: S3_BACKEND_SOURCE
+        value: dns
+      - name: S3_BACKEND_DNS_HOST
+        value: s3.staging.austin.int.futo.cloud
+      - name: S3_BACKEND_SCHEME
+        value: https
+      - name: S3_BACKEND_PORT
+        value: "443"
+      - name: S3_BACKEND_PIN_HOST
+        value: "true"
+      - name: S3_TLS_SKIP_VERIFY
+        value: "true"
+      - name: S3_PROBE_BUCKET
+        value: michael-rgw-healthcheck
+      # Ejection / health tuning (these are michael's defaults, surfaced here so
+      # they're tunable per-env): eject a gateway after this many consecutive
+      # transport failures, and re-resolve DNS + probe every interval (also how
+      # fast an ejected gateway is reinstated).
+      - name: S3_EJECT_THRESHOLD
+        value: "3"
+      - name: S3_RECONCILE_INTERVAL_MS
+        value: "5000"
       - name: OTLP_METRICS_ENDPOINT
         value: ${VMAGENT_OTLP}
       - name: OTLP_METRICS_URL_PATH
         value: /opentelemetry/v1/metrics
-      - name: OTLP_LOGS_ENDPOINT
-        value: ${VLAGENT_OTLP}
-      - name: OTLP_LOGS_URL_PATH
-        value: /insert/opentelemetry/v1/logs

@@ -59,8 +59,8 @@ mise trust
 mise run setup
 
 # Render cluster inventories + secrets templates (run once, or after any
-# change to tf/deployment/dev/ceph/clusters.auto.tfvars)
-cd ../../tf/deployment/dev/ceph && tofu init && tofu apply && cd -
+# change to tf/deployment/staging/ceph/clusters.auto.tfvars)
+cd ../../tf/deployment/staging/ceph && tofu init && tofu apply && cd -
 ```
 
 This runs:
@@ -83,7 +83,7 @@ It points to an **inventory file** (not a directory):
 
 ```bash
 # Inline prefix — required for `mise run` invocations:
-CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini mise run preflight
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini mise run preflight
 CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini   mise run status
 ```
 
@@ -107,7 +107,7 @@ CEPH_ENV=$CE mise run deploy
 Calling scripts directly (e.g., `scripts/preflight.sh`) DOES respect
 shell `export` — it's only the `mise run` path that filters the env.
 
-Cluster identity is declared in `tf/deployment/dev/ceph/clusters.auto.tfvars`
+Cluster identity is declared in `tf/deployment/staging/ceph/clusters.auto.tfvars`
 (keyed by short cluster name). TF renders the directory name, inventory
 file, and secrets template from that entry. `CEPH_ENV` is just a pointer
 to the rendered inventory file; wrappers like `scripts/ansible-play.sh`
@@ -115,9 +115,9 @@ and the `destroy` mise task extract the cluster name from its path for
 convenience:
 
 ```
-CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini
                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                     inventory dir = sietch-ceph.dev.austin.int   (rendered by TF)
+                     inventory dir = sietch-ceph.staging.austin.int   (rendered by TF)
                      cluster name  = sietch                       (map key in clusters.auto.tfvars)
                      domain        = dev.austin.int.futo.cloud    (domain field in tfvars)
 ```
@@ -159,7 +159,7 @@ mise run tf:apply
 ```
 
 Re-renders `inventory.ini` and `secrets.yml.tpl` for every cluster declared
-in `tf/deployment/dev/ceph/clusters.auto.tfvars`. Required after any cluster-
+in `tf/deployment/staging/ceph/clusters.auto.tfvars`. Required after any cluster-
 spec edit.
 
 ### 5. Dry-run against real nodes
@@ -338,7 +338,7 @@ scripts/ansible-play.sh deploy-ceph.yml --tags bootstrap
 | `destroy` | `mise run destroy` | Destroy cluster (interactive confirmation) |
 
 Inventory rendering and secret-item management are TF responsibilities
-— `tofu apply` in `tf/deployment/dev/ceph/` renders `inventory.ini` and
+— `tofu apply` in `tf/deployment/staging/ceph/` renders `inventory.ini` and
 `secrets.yml.tpl` for every cluster declared in `clusters.auto.tfvars`.
 Cluster secrets live in `yucca_tf_dev` (see [docs/secrets.md](docs/secrets.md)).
 
@@ -348,7 +348,7 @@ Cluster secrets live in `yucca_tf_dev` (see [docs/secrets.md](docs/secrets.md)).
 yucca/
 ├── tf/                                 # Terraform state + secrets + rendering (authoritative)
 │   ├── shared/modules/ceph-cluster/    # Module: per-cluster orchestration + rendering
-│   └── deployment/dev/ceph/            # Cluster declarations + tofu apply target
+│   └── deployment/staging/ceph/            # Cluster declarations + tofu apply target
 └── ansible/ceph/                       # This directory
     ├── *.yml                           # Top-level playbooks (site.yml, deploy-ceph.yml, etc.)
     ├── inventories/

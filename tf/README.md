@@ -107,7 +107,7 @@ items this TF depends on."
 
 ### Stack override via `TF_STACK_DIR`
 
-The default `mise run tf:*` tasks target `tf/deployment/dev/ceph`. Point
+The default `mise run tf:*` tasks target `tf/deployment/staging/ceph`. Point
 them at another stack via the `TF_STACK_DIR` env var:
 
 ```bash

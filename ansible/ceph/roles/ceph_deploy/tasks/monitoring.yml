@@ -93,13 +93,49 @@
 
 # --- Step 4: Set Grafana admin credentials ---
 
+# The Grafana admin LOGIN password is seeded by cephadm only at first deploy,
+# and nothing reconciled it, so it drifted from the vault. That broke both
+# direct login at :3000 and the dashboard Grafana API calls below (which
+# authenticate as this same admin user). Enforce it from the vault on every
+# converge. reset-admin-password writes Grafana's sqlite DB on the host volume,
+# so the change persists across container restarts and redeploys.
+- name: Find Grafana container
+  ansible.builtin.shell: >
+    set -o pipefail;
+    podman ps --filter name=-grafana- {% raw %}--format '{{ .Names }}'{% endraw %} | head -1
+  args:
+    executable: /bin/bash
+  register: grafana_container
+  changed_when: false
+  when: inventory_hostname in groups['ceph_bootstrap']
+  tags: [grafana_admin_password]
+
+- name: Enforce Grafana admin login password
+  ansible.builtin.shell: |
+    set -o pipefail
+    printf '%s' "$GF_ADMIN_PW" \
+      | podman exec -i "$GF_CONTAINER" \
+          grafana cli --homepath /usr/share/grafana --config /etc/grafana/grafana.ini \
+          admin reset-admin-password --password-from-stdin
+  args:
+    executable: /bin/bash
+  environment:
+    GF_ADMIN_PW: "{{ ceph_grafana_admin_password }}"
+    GF_CONTAINER: "{{ grafana_container.stdout }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - grafana_container.stdout | default('') | length > 0
+  changed_when: false
+  no_log: true
+  tags: [grafana_admin_password]
+
 - name: Set Grafana admin user
   ansible.builtin.command: >
     ceph dashboard set-grafana-api-username {{ ceph_grafana_admin_user }}
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
-- name: Set Grafana admin password
+- name: Set dashboard Grafana API password
   ansible.builtin.shell: |
     set -o pipefail
     echo '{{ ceph_grafana_admin_password }}' \

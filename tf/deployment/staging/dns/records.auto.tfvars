@@ -18,4 +18,21 @@ records = {
     values  = ["97.77.242.205"]
     comment = "yucca-staging ingress: api./gw. (envoy Gateway)"
   }
+
+  # Sietch RGW S3 endpoint (staging): round-robin A across the 3 ceph nodes'
+  # bond IPs. RFC1918 (10.10.10.0/24 mgmt VLAN) -- resolvable anywhere, routable
+  # only from networks that reach the VLAN; proxied stays false (Cloudflare can't
+  # proxy private addresses). The wildcard serves S3 virtual-hosted buckets
+  # (<bucket>.s3.staging.austin.int.futo.cloud); the cluster's rgw_dns_name and
+  # TLS SANs expect it. See ansible/ceph/docs/s3-integration.md.
+  "s3.staging.austin.int.futo.cloud" = {
+    type    = "A"
+    values  = ["10.10.10.90", "10.10.10.91", "10.10.10.92"]
+    comment = "Sietch RGW S3 endpoint (tf/deployment/staging/dns)"
+  }
+  "*.s3.staging.austin.int.futo.cloud" = {
+    type    = "A"
+    values  = ["10.10.10.90", "10.10.10.91", "10.10.10.92"]
+    comment = "Sietch RGW S3 virtual-hosted buckets (tf/deployment/staging/dns)"
+  }
 }

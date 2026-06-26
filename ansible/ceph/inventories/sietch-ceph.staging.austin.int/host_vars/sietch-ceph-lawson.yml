@@ -1,0 +1,56 @@
+---
+hostname_short: sietch-ceph-lawson
+bond_ip: 10.10.10.91
+
+# Dell service tag (PowerEdge R730xd chassis identity; chassis-asset-tag unset
+# in BIOS). Captured 2026-06-25; cross-check before a (re)image.
+dell_service_tag: 4KBFJH2
+
+# SAS expander base path (unique per chassis — different backplane address per node)
+sas_path_prefix: "pci-0000:02:00.0-sas-exp0x500056b35be6b4ff"
+
+# SSD PHY positions (rear bays)
+ssd1_phy: 12    # serial 17321A07CF91
+ssd2_phy: 13    # serial 17251B44C4D8
+
+# LVM VGs on SSD partition 5
+ceph_db_vg1: ceph-db-rear12   # VG on SSD1 (phy12) partition 5
+ceph_db_vg2: ceph-db-rear13   # VG on SSD2 (phy13) partition 5
+ceph_ssd_vg1: ceph-ssd-rear12  # VG on SSD1 (phy12) partition 6 -- SSD OSD data
+ceph_ssd_vg2: ceph-ssd-rear13  # VG on SSD2 (phy13) partition 6 -- SSD OSD data
+
+# HDD OSD mappings: PHY slot -> block.db LV
+# PHY 0-5 -> SSD1 (ceph-db-rear12/db-slot0..5)
+# PHY 6-11 -> SSD2 (ceph-db-rear13/db-slot6..11)
+# by-path is slot-stable: replacing a drive in the same bay keeps the same path
+# 12 HDDs — all front bays populated
+ceph_hdd_osds:
+  - path_phy: phy0
+    db: ceph-db-rear12/db-slot0
+  - path_phy: phy1
+    db: ceph-db-rear12/db-slot1
+  - path_phy: phy2
+    db: ceph-db-rear12/db-slot2
+  - path_phy: phy3
+    db: ceph-db-rear12/db-slot3
+  - path_phy: phy4
+    db: ceph-db-rear12/db-slot4
+  - path_phy: phy5
+    db: ceph-db-rear12/db-slot5
+  - path_phy: phy6
+    db: ceph-db-rear13/db-slot6
+  - path_phy: phy7
+    db: ceph-db-rear13/db-slot7    # serial Z4D0GKJX (ST6000NKCLAR6000, added 2026-04-10)
+  - path_phy: phy8
+    db: ceph-db-rear13/db-slot8
+  - path_phy: phy9
+    db: ceph-db-rear13/db-slot9
+  - path_phy: phy10
+    db: ceph-db-rear13/db-slot10
+  - path_phy: phy11
+    db: ceph-db-rear13/db-slot11
+
+# SSD OSD partitions (partition 6 on each rear SSD, no separate block.db)
+ceph_ssd_osds:
+  - lv: ceph-ssd-rear12/osd-ssd   # SSD1 part6 (phy12) -> ceph_ssd_vg1
+  - lv: ceph-ssd-rear13/osd-ssd   # SSD2 part6 (phy13) -> ceph_ssd_vg2

@@ -51,6 +51,21 @@ env:
     value: us-east-1
   - name: S3_FORCE_PATH_STYLE
     value: "true"
+  # Built-in S3 load balancing. Dev has a single RGW behind a ClusterIP, so the
+  # DNS source resolves to one backend (kube-proxy still spreads behind the
+  # VIP) — this exercises the pool/health-probe/per-backend-metrics path in
+  # dev. Plain HTTP to Rook RGW, which accepts any signing host, so no
+  # host-pinning or TLS skip is needed (unlike staging's bare-metal RGW).
+  - name: S3_BACKEND_SOURCE
+    value: dns
+  - name: S3_BACKEND_DNS_HOST
+    value: rook-ceph-rgw-yucca.rook-ceph.svc
+  - name: S3_BACKEND_SCHEME
+    value: http
+  - name: S3_BACKEND_PORT
+    value: "80"
+  - name: S3_PROBE_BUCKET
+    value: michael-rgw-healthcheck
   - name: OTLP_METRICS_ENDPOINT
     value: victoria-metrics:8428
   - name: OTLP_METRICS_URL_PATH

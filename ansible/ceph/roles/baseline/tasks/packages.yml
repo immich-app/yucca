@@ -12,7 +12,7 @@
     name: "{{ baseline_podman_packages }}"
     state: present
 
-- name: Install diagnostic and ops packages
+- name: Install diagnostic and ops packages (universal + per-cluster)
   ansible.builtin.apt:
-    name: "{{ baseline_diag_packages }}"
+    name: "{{ baseline_diag_packages + baseline_extra_packages }}"
     state: present
