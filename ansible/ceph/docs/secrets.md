@@ -9,7 +9,7 @@ For how secrets fit into the broader architecture, see
 ```mermaid
 flowchart TB
     ONEP[("1Password<br/>yucca_tf · yucca_tf_dev · ...<br/><i>source of truth</i>")]
-    TF[Terraform / Tofu<br/>tf/deployment/dev/ceph/]
+    TF[Terraform / Tofu<br/>tf/deployment/staging/ceph/]
     REPO[/"inventories/&lt;cluster&gt;/<br/>inventory.ini (TF-gen, gitignored)<br/>secrets.yml.tpl (TF-gen, gitignored)"/]
     WRAP[scripts/ansible-play.sh<br/><i>mktemp + op inject → exec ansible-playbook --extra-vars @tmp</i>]
     ANS[ansible-playbook]

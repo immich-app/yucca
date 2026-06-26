@@ -119,7 +119,7 @@ resource "kubernetes_secret_v1" "yucca_api" {
     JWT_PRIVATE_KEY       = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
     OIDC_CLIENT_ID        = var.yucca_oidc_client_id
     OIDC_CLIENT_SECRET    = var.yucca_oidc_client_secret
-    OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_client_id
+    OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_device_client_id
   }
 }
 
@@ -148,6 +148,22 @@ resource "kubernetes_secret_v1" "yucca_michael" {
     JWT_PUBLIC_KEY       = tls_private_key.yucca_jwt[0].public_key_pem
     S3_ACCESS_KEY_ID     = var.yucca_rgw_access_key_id
     S3_SECRET_ACCESS_KEY = var.yucca_rgw_secret_access_key
+  }
+}
+
+# yucca-metrics-worker: a separate RGW user WITH admin caps, so the worker can
+# pull per-bucket usage from the sietch RGW admin API (michael's plain S3 user
+# can't). Keys are AccessKey/SecretKey to match the chart's radosSecretName
+# lookup. Injected via TF_VAR from 1P now; moves to the yucca_tf_staging vault.
+resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name      = "yucca-metrics-rgw"
+    namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
+  }
+  data = {
+    AccessKey = var.sietch_metrics_worker_access_key
+    SecretKey = var.sietch_metrics_worker_secret_key
   }
 }
 

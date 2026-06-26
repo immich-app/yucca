@@ -17,6 +17,14 @@ data:
 
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
+  # Bare-metal RGW (Ceph S3) gateway for the staging environment; self-signed
+  # cert, so consumers skip TLS verify. Consumed via Flux postBuild by
+  # yucca-metrics-worker (radosEndpoint) and michael (S3_ENDPOINT). S3_HOST is
+  # the same gateway without the scheme, for michael's DNS-based backend LB
+  # (S3_BACKEND_DNS_HOST).
+  S3_ENDPOINT: https://s3.staging.austin.int.futo.cloud
+  S3_HOST: s3.staging.austin.int.futo.cloud
+
   # ─── Ingress entry point (yucca_staging) ─────────────────────────────
   # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
   # the 10.10.10.15 control-plane API VIP). Public IP is the NAT in front of it,

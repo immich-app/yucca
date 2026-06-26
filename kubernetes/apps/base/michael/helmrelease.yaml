@@ -34,7 +34,7 @@ spec:
       - name: LOG_LEVEL
         value: info
       - name: S3_ENDPOINT
-        value: https://s3.dev.austin.int.futo.cloud
+        value: ${S3_ENDPOINT}
       - name: S3_REGION
         value: us-east-1
       - name: S3_FORCE_PATH_STYLE
@@ -43,11 +43,9 @@ spec:
       - name: S3_BACKEND_SOURCE
         value: dns
       - name: S3_BACKEND_DNS_HOST
-        value: s3.dev.austin.int.futo.cloud
-      - name: S3_BACKEND_SCHEME
-        value: https
-      - name: S3_BACKEND_PORT
-        value: "443"
+        value: ${S3_HOST}
+      # S3_BACKEND_SCHEME/PORT are intentionally omitted: michael derives them
+      # from S3_ENDPOINT (https -> 443), so a DNS source only needs the host.
       - name: S3_BACKEND_PIN_HOST
         value: "true"
       - name: S3_TLS_SKIP_VERIFY

@@ -63,7 +63,7 @@
         | map('length') | sum
     }}
     echo "Expecting $EXPECTED OSDs total across the cluster"
-    for i in $(seq 1 90); do
+    for i in $(seq 1 180); do
       ACTUAL=$(ceph osd stat --format json 2>/dev/null \
         | python3 -c "import sys, json; print(json.load(sys.stdin).get('num_osds', 0))" \
         2>/dev/null || echo 0)
@@ -74,19 +74,19 @@
       fi
       sleep 10
     done
-    echo "WARNING: only $ACTUAL of $EXPECTED OSDs provisioned after 15 minutes"
+    echo "WARNING: only $ACTUAL of $EXPECTED OSDs provisioned after 30 minutes"
     exit 1
   args:
     executable: /bin/bash
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
   run_once: true
   changed_when: false
-  timeout: 960
+  timeout: 1920
 
 - name: Wait for OSDs to come up
   ansible.builtin.shell: |
     set -o pipefail
-    for i in $(seq 1 90); do
+    for i in $(seq 1 180); do
       up=$(ceph osd stat --format json 2>/dev/null |
         python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('num_up_osds',0))" \
         2>/dev/null || echo 0)
@@ -99,14 +99,14 @@
       fi
       sleep 10
     done
-    echo "WARNING: Not all OSDs up after 15 minutes"
+    echo "WARNING: Not all OSDs up after 30 minutes"
     exit 1
   args:
     executable: /bin/bash
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
   run_once: true
   changed_when: false
-  timeout: 960
+  timeout: 1920
 
 # Safety net: if any OSD comes up with reweight=0 (rare with orch apply,
 # but possible if a noin flag was set externally before this run), fix it.
