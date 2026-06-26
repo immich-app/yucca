@@ -16,6 +16,8 @@ ssd2_phy: 13    # serial 17251B44C4D8
 # LVM VGs on SSD partition 5
 ceph_db_vg1: ceph-db-rear12   # VG on SSD1 (phy12) partition 5
 ceph_db_vg2: ceph-db-rear13   # VG on SSD2 (phy13) partition 5
+ceph_ssd_vg1: ceph-ssd-rear12  # VG on SSD1 (phy12) partition 6 -- SSD OSD data
+ceph_ssd_vg2: ceph-ssd-rear13  # VG on SSD2 (phy13) partition 6 -- SSD OSD data
 
 # HDD OSD mappings: PHY slot -> block.db LV
 # PHY 0-5 -> SSD1 (ceph-db-rear12/db-slot0..5)
@@ -50,7 +52,5 @@ ceph_hdd_osds:
 
 # SSD OSD partitions (partition 6 on each rear SSD, no separate block.db)
 ceph_ssd_osds:
-  - path_phy: phy12
-    partition: 6
-  - path_phy: phy13
-    partition: 6
+  - lv: ceph-ssd-rear12/osd-ssd   # SSD1 part6 (phy12) -> ceph_ssd_vg1
+  - lv: ceph-ssd-rear13/osd-ssd   # SSD2 part6 (phy13) -> ceph_ssd_vg2

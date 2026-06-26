@@ -26,7 +26,7 @@ declare -A KEYS=(
 # different env vaults (e.g. sietch moves to yucca_tf_staging on promotion).
 # Override any lookup with OP_VAULT=<vault>.
 declare -A VAULTS=(
-  [sietch]="yucca_tf_dev"
+  [sietch]="yucca_tf_staging"
   [painbox]="yucca_tf_dev"
 )
 DEFAULT_VAULT="yucca_tf_dev"
