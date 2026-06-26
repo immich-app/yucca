@@ -1,45 +1,53 @@
 name: Infra (Terraform)
 
-# Applies the staging Terraform stacks from CI, then converges the bare-metal
-# Ceph cluster with Ansible:
-#   - tf/deployment/staging/ceph   (ceph cluster 1P password items; no node contact)
-#   - tf/deployment/staging/talos  (Talos config, Cilium, Flux bootstrap, secrets)
-#   - tf/deployment/staging/dns    (Cloudflare records for the ingress hosts)
-#   - tf/deployment/staging/netbird (NetBird Cloud groups/policies/setup keys)
-#   - tf/deployment/prod/global + prod/htz-fsn1/netbird (prod NetBird, layered:
-#     a global layer + per-site layers — runs as its own gated jobs at the bottom
-#     of this file, on the prod 1P SA / tf/.env.prod)
-#   - ansible/ceph (deploy pipeline) (cephadm convergence: OSDs, RGW realm +
-#     S3/metrics-worker users, monitoring, tuning, hardening) — the TF stacks
-#     only MINT the RGW keys into 1P; this step is what actually creates the
-#     matching RGW users on the cluster, so the metrics worker can authenticate.
+# Applies the Terraform stacks from CI, path-scoped so each group only runs when
+# its own files change (a `changes` job emits per-area booleans that gate the
+# rest; workflow_dispatch overrides and runs everything). Connectivity to the
+# bare-metal/private nodes is over the NetBird overlay (Tailscale fully retired):
 #
-# Plan runs on PRs touching tf/** or ansible/ceph/**; apply runs on merge to main
-# behind the `staging-infra` Environment gate (required reviewers). Both the Talos
-# stack and the Ansible deploy talk to the nodes on the 10.10.10.0/24 management
-# VLAN, which GitHub-hosted runners can't reach — so the runner joins the NetBird
-# overlay as a `ci` peer (via the netbird-connect action + the minted CI setup
-# key) and the existing staging route advertises that VLAN. (The prod fabric
-# workflow still uses Tailscale; 10.40.5.0/24 isn't on NetBird yet.)
+#   Staging (tf/deployment/staging/*): ceph, talos, dns, netbird. One staging SA,
+#     a single `staging-infra` Environment gate. The netbird stack mints the CI
+#     setup key; the apply joins the overlay as a `ci` peer to reach the
+#     10.10.10.0/24 nodes, then converges the bare-metal Ceph cluster (ansible/ceph).
+#
+#   Prod fabric+mgmt (tf/deployment/prod/<site>): the switch fabric + mgmt hosts
+#     (junos-qfx + hetzner providers, built locally). Per-site `prod-<site>` gate.
+#     Reaches the switch vme / mgmt hosts over NetBird (the mgmt nodes are the
+#     route peers for 10.40.5.0/24 et al.); runs the `infra:*` / `mgmt:*` mise tasks.
+#
+#   Prod NetBird (tf/deployment/prod/global + prod/<site>/netbird): account-wide +
+#     site NetBird groups/keys/policies/routes. Pure api.netbird.io. `prod-infra` gate.
 #
 # Prerequisites (provisioned out-of-band):
-#   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (the staging-scoped 1P service-account
-#     token — resolves tf/.env; dev/prod use OP_TF_YUCCA_DEV_ENV / OP_TF_YUCCA_PROD_ENV).
-#   - BOOTSTRAP — the staging NetBird stack applied ONCE out-of-band, so the CI
-#     setup key (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY) exists
-#     before any talos plan tries to connect. CI can't mint it itself: the apply
-#     that mints it is gated behind the plan that needs it. Run once locally:
+#   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (+ _WRITE) — staging SAs; and
+#     OP_TF_YUCCA_PROD_ENV (read) / OP_TF_YUCCA_PROD_ENV_WRITE (netbird apply) — prod
+#     SAs. (The fabric apply escalates to the write SA stored in yucca_tf_prod.)
+#   - BOOTSTRAP — the netbird stacks applied ONCE out-of-band so the CI/mgmt setup
+#     keys exist in 1P before anything tries to connect (CI can't mint them itself:
+#     the apply that mints them is gated behind the plan that needs them). E.g.:
 #       OP_SERVICE_ACCOUNT_TOKEN=<staging write SA> \
 #         TF_STACK_DIR=tf/deployment/staging/netbird mise run tf:apply
-#     Also: a NetBird route advertising 10.10.10.0/24 that the `ci` group may reach.
-#   - GitHub Environment `staging-infra` with required reviewers (the apply gate).
+#     (staging: NETBIRD_YUCCA_STAGING_CI_SETUP_KEY; prod: NETBIRD_YUCCA_PROD_<SITE>_*).
+#     Also: NetBird routes advertising the node subnets (staging 10.10.10.0/24; prod
+#     the site subnets via the mgmt peers) that the `ci` group may reach.
+#   - 1P items: NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY (yucca_tf_prod),
+#     NETBOX_API_TOKEN (yucca_tf), HETZNER_WEBSERVICE_API_USER/PASSWORD (yucca_tf_prod).
+#   - GitHub Environments with required reviewers: `staging-infra`, `prod-infra`,
+#     and one `prod-<site>` per prod fabric site (e.g. prod-htz-fsn1).
 
 on:
   push:
     branches: [main]
-    paths: ["tf/**", "ansible/ceph/**"]
+    paths: &paths
+      - "tf/**"
+      - "ansible/mgmt/**"
+      - "ansible/ceph/**"
+      - ".mise/tasks/**"
+      - ".mise/config.toml"
+      - ".github/actions/netbird-connect/**"
+      - ".github/workflows/infra.yml"
   pull_request:
-    paths: ["tf/**", "ansible/ceph/**"]
+    paths: *paths
   workflow_dispatch:
 
 # Serialize: the OVH S3 backend has no state locking (single-operator model),
@@ -51,20 +59,75 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  # read-scoped SA for plan; apply overrides with the write SA
-  OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV }}
-
 jobs:
-  plan:
-    name: Plan ${{ matrix.stack }}
-    # Skip on fork PRs (no access to secrets / the NetBird overlay).
+  # ── Which areas changed? Outputs gate every downstream job. ──────────────────
+  changes:
+    name: Detect changes
+    # Skip on fork PRs (no access to secrets / the overlay anyway).
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      staging: ${{ steps.filter.outputs.staging }}
+      prod_tf: ${{ steps.filter.outputs.prod_tf }}
+      prod_ansible: ${{ steps.filter.outputs.prod_ansible }}
+      prod_netbird: ${{ steps.filter.outputs.prod_netbird }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: filter
+        with:
+          filters: |
+            staging:
+              - 'tf/deployment/staging/**'
+              - 'tf/shared/**'
+              - 'tf/op-run.sh'
+              - 'ansible/ceph/**'
+              - '.github/actions/netbird-connect/**'
+              - '.github/workflows/infra.yml'
+            prod_tf:
+              # Fabric/mgmt stacks. Netbird-only dirs are covered by prod_netbird;
+              # an overlap just means a (gated) extra fabric plan — harmless.
+              - 'tf/deployment/prod/**'
+              - '!tf/deployment/prod/global/**'
+              - '!tf/deployment/prod/*/netbird/**'
+              - 'tf/shared/**'
+              - 'tf/providers/**'
+              - '.mise/tasks/infra/**'
+              - '.mise/tasks/fabric/**'
+              - '.mise/tasks/mgmt/**'
+              - '.mise/config.toml'
+              - '.github/actions/netbird-connect/**'
+              - '.github/workflows/infra.yml'
+            prod_ansible:
+              - 'ansible/mgmt/**'
+              - 'tf/render/**'
+              - 'tf/shared/modules/identity/**'
+              - 'tf/shared/modules/fabric-addressing/**'
+              - 'tf/deployment/prod/*/mgmt-hosts.yaml'
+              - '.mise/tasks/mgmt/**'
+              - '.mise/config.toml'
+              - '.github/actions/netbird-connect/**'
+              - '.github/workflows/infra.yml'
+            prod_netbird:
+              - 'tf/deployment/prod/global/**'
+              - 'tf/deployment/prod/*/netbird/**'
+              - 'tf/shared/modules/netbird-env/**'
+              - '.github/workflows/infra.yml'
+
+  # ── Staging stacks ──────────────────────────────────────────────────────────
+  staging-plan:
+    name: Staging plan ${{ matrix.stack }}
+    needs: changes
+    if: needs.changes.outputs.staging == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         stack: [talos, dns, ceph, netbird]
+    env:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -98,11 +161,11 @@ jobs:
           --working-dir tf/deployment/staging/${{ matrix.stack }}
           --non-interactive plan
 
-  apply:
-    name: Apply (gated)
-    needs: plan
+  staging-apply:
+    name: Staging apply (gated)
+    needs: [changes, staging-plan]
     # Only on merge to main (or manual dispatch) — never on PRs.
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && needs.changes.outputs.staging == 'true') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # The approval gate: `staging-infra` Environment with required reviewers.
     environment: staging-infra
@@ -132,7 +195,7 @@ jobs:
 
       # Join the NetBird overlay as a `ci` peer so the node-touching stacks and
       # the Ansible deploy below reach 10.10.10.0/24 (the staging route advertises
-      # the LAN). Replaces the old Tailscale subnet-router path.
+      # the LAN).
       - name: Connect to NetBird
         uses: ./.github/actions/netbird-connect
         with:
@@ -165,7 +228,6 @@ jobs:
       # cluster. Runs after the TF apply so the inventory (rendered from the
       # ceph stack's `render` output) and the keys exist. Reuses the NetBird
       # overlay + 1Password session already established in this job.
-
       - name: Render Ansible inventory from the ceph TF state
         run: ansible/ceph/scripts/render-inventories.sh staging
 
@@ -192,22 +254,16 @@ jobs:
           CEPH_ENV: inventories/sietch-ceph.staging.austin.int/inventory.ini
         run: mise run deploy
 
-  # ── prod NetBird (global + site layers) ──────────────────────────────────────
-  # Prod is its own env (separate 1P SA + env file), so it can't ride the
-  # staging matrix above (that job's OP_SERVICE_ACCOUNT_TOKEN is the staging SA).
-  # NetBird is pure api.netbird.io — no nodes, no tailnet — so these are the only
-  # prod TF stacks CI touches today. Layered: prod/global (account-wide groups +
-  # operator setup keys) then prod/<site>/netbird (site groups/keys/policies that
-  # reference the global groups). Both select tf/.env.prod via OP_ENV_FILE.
-  #
-  # Additional prerequisites (out-of-band) beyond the staging ones above:
-  #   - Repo secrets OP_TF_YUCCA_PROD_ENV (read) / OP_TF_YUCCA_PROD_ENV_WRITE
-  #     (apply) — a prod-scoped 1P service account granted shared_tf (read, for
-  #     NETBIRD_TF_PAT) + yucca_tf_prod (read/write, for the minted setup keys).
-  #   - GitHub Environment `prod-infra` with required reviewers (the apply gate).
+  # ── Prod NetBird (global + site layers) — mints the CI/mgmt setup keys ────────
+  # Pure api.netbird.io (no nodes/overlay). Layered: prod/global (account-wide
+  # groups + the yucca→yucca_resource policy) then prod/<site>/netbird (site
+  # groups/keys/policies + the routed network). Runs before the fabric/mgmt jobs
+  # conceptually (it mints the keys they consume), but they're only loosely coupled
+  # — the keys persist in 1P across runs, so a fresh bootstrap applies this first.
   netbird-prod-plan:
     name: Plan prod/netbird
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    if: needs.changes.outputs.prod_netbird == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       OP_ENV_FILE: tf/.env.prod
@@ -241,8 +297,8 @@ jobs:
 
   netbird-prod-apply:
     name: Apply prod/netbird (gated)
-    needs: netbird-prod-plan
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [changes, netbird-prod-plan]
+    if: (github.event_name == 'push' && needs.changes.outputs.prod_netbird == 'true') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: prod-infra
     env:
@@ -273,3 +329,131 @@ jobs:
           tf/op-run.sh terragrunt
           --working-dir tf/deployment/prod/htz-fsn1/netbird
           --non-interactive apply -auto-approve
+
+  # ── Prod fabric + mgmt stacks (one per site) ─────────────────────────────────
+  prod-discover:
+    name: Discover prod fabric sites
+    needs: changes
+    # Needed by both the TF and ansible prod jobs, so run if either area changed.
+    if: needs.changes.outputs.prod_tf == 'true' || needs.changes.outputs.prod_ansible == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sites.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - id: sites
+        name: List fabric sites (dirs with a fabric.tf; excludes netbird-only dirs)
+        run: |
+          matrix=$(for d in tf/deployment/prod/*/; do [ -f "${d}fabric.tf" ] && basename "$d"; done | jq -R . | jq -cs '{site: .}')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix"
+
+  prod-plan:
+    name: Prod plan ${{ matrix.site }}
+    needs: [changes, prod-discover]
+    if: needs.changes.outputs.prod_tf == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prod-discover.outputs.matrix) }}
+    env:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_PROD_ENV }}
+      SITE: ${{ matrix.site }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up mise (go + opentofu + terragrunt)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+      # Reach the switch vme (routed via the mgmt NetBird peers) over the overlay.
+      - name: Resolve NetBird CI setup-key ref
+        run: echo "NB_CI_KEY_REF=op://yucca_tf_prod/NETBIRD_YUCCA_PROD_$(echo "$SITE" | tr 'a-z-' 'A-Z_')_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
+      - name: Connect to NetBird
+        uses: ./.github/actions/netbird-connect
+        with:
+          setup-key-ref: ${{ env.NB_CI_KEY_REF }}
+          hostname: gha-prod-plan-${{ matrix.site }}-${{ github.run_id }}
+      - name: Deploy plan
+        run: mise run infra:plan -- --non-interactive
+
+  prod-apply:
+    name: Prod apply ${{ matrix.site }} (gated)
+    needs: [changes, prod-discover, prod-plan]
+    if: (github.event_name == 'push' && needs.changes.outputs.prod_tf == 'true') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prod-discover.outputs.matrix) }}
+    # Site-scoped gate: each site's prod stack has its own required reviewers.
+    environment:
+      name: prod-${{ matrix.site }}
+    env:
+      # Read-scoped token; infra:apply escalates to the write SA stored in the vault.
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_PROD_ENV }}
+      SITE: ${{ matrix.site }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up mise (go + opentofu + terragrunt)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+      - name: Resolve NetBird CI setup-key ref
+        run: echo "NB_CI_KEY_REF=op://yucca_tf_prod/NETBIRD_YUCCA_PROD_$(echo "$SITE" | tr 'a-z-' 'A-Z_')_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
+      - name: Connect to NetBird
+        uses: ./.github/actions/netbird-connect
+        with:
+          setup-key-ref: ${{ env.NB_CI_KEY_REF }}
+          hostname: gha-prod-apply-${{ matrix.site }}-${{ github.run_id }}
+      - name: Deploy apply
+        run: mise run infra:apply -- --non-interactive -auto-approve
+
+  prod-ansible:
+    name: Prod ansible ${{ matrix.site }}
+    needs: [changes, prod-discover, prod-apply]
+    # Runs after the TF apply, but also on ansible-only changes (apply skipped).
+    # always() so a skipped prod-apply (TF unchanged) doesn't skip this; still
+    # bails if discover failed or the apply actually failed.
+    if: >-
+      always()
+      && needs.prod-discover.result == 'success'
+      && needs.prod-apply.result != 'failure'
+      && needs.prod-apply.result != 'cancelled'
+      && ((github.event_name == 'push' && needs.changes.outputs.prod_ansible == 'true') || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prod-discover.outputs.matrix) }}
+    # No environment gate: the prod-apply gate already approved this deploy, and
+    # ansible/mgmt only reads from 1Password (read-scoped repo secret).
+    env:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_PROD_ENV }}
+      SITE: ${{ matrix.site }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up mise (ansible + opentofu)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+      # On the overlay so the playbook can reach mgmt hosts that have joined NetBird
+      # (it prefers their NetBird IP, falling back to the public IP otherwise).
+      - name: Resolve NetBird CI setup-key ref
+        run: echo "NB_CI_KEY_REF=op://yucca_tf_prod/NETBIRD_YUCCA_PROD_$(echo "$SITE" | tr 'a-z-' 'A-Z_')_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
+      - name: Connect to NetBird
+        uses: ./.github/actions/netbird-connect
+        with:
+          setup-key-ref: ${{ env.NB_CI_KEY_REF }}
+          hostname: gha-prod-ansible-${{ matrix.site }}-${{ github.run_id }}
+      # Renders the inventory from TF (tf/render/ansible-mgmt) then converges the
+      # mgmt hosts — over NetBird if they've joined, else their public IP (the
+      # TF-generated provisioning key authorizes root). No-op for sites without an
+      # ansible/mgmt inventory; requires the hosts to have been reprovisioned.
+      - name: Ansible converge (mgmt hosts)
+        run: mise run mgmt:ansible

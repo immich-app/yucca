@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#MISE description="Clone + build the Hetzner robot provider (zack/hetzner) into the shared provider mirror"
+set -euo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+MIRROR="${PROVIDER_MIRROR:-$ROOT/.mise/.provider-mirror}"
+SRC="${HETZNER_PROVIDER_SRC:-$ROOT/.mise/.hetzner-provider-src}"
+REPO="${HETZNER_PROVIDER_REPO:-https://github.com/zackpollard/terraform-provider-hetzner.git}"
+REF="${HETZNER_PROVIDER_REF:-v0.1.0}"
+VER="${HETZNER_PROVIDER_VERSION:-0.1.0}"
+
+# Pinned shallow clone of the upstream provider (not vendored — it's stock).
+if [ ! -d "$SRC/.git" ]; then
+  git clone --depth 1 --branch "$REF" "$REPO" "$SRC"
+else
+  ( cd "$SRC" && git fetch --depth 1 origin "$REF" && git checkout -q FETCH_HEAD )
+fi
+
+# Build into the unpacked filesystem-mirror layout for both registry hosts
+# (OpenTofu defaults to registry.opentofu.org; Terraform to registry.terraform.io).
+# Provider address is registry.<host>/zack/hetzner (see its main.go).
+GOOS=$(go env GOOS); GOARCH=$(go env GOARCH)
+BIN="terraform-provider-hetzner_v${VER}"
+for HOST in registry.opentofu.org registry.terraform.io; do
+  DEST="$MIRROR/$HOST/zack/hetzner/$VER/${GOOS}_${GOARCH}"
+  mkdir -p "$DEST"
+  ( cd "$SRC" && go build -o "$DEST/$BIN" . )
+done
+echo "built hetzner v$VER (${GOOS}_${GOARCH}) -> $MIRROR"

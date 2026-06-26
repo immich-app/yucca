@@ -1,0 +1,20 @@
+---
+# Hostname, timezone, /etc/hosts.
+# Convergeable: re-running corrects drift.
+
+- name: Set hostname from inventory
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Render /etc/hosts with mgmt node entries
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+  when: mgmt_manage_hosts | bool

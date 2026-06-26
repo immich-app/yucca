@@ -1,0 +1,6 @@
+---
+# All roles share the mgmt_ variable prefix for consistency across the
+# stack. The var-naming[no-role-prefix] rule expects each role to use its
+# own prefix, which doesn't fit our single-product layout.
+skip_list:
+  - var-naming[no-role-prefix]

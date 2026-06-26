@@ -1,0 +1,56 @@
+---
+# Install NetBird and join the overlay. The mgmt nodes are the NetBird route
+# peers for the site subnets (the routed network is declared in TF, not here), so
+# enable IP forwarding. Convergeable: `netbird up` is skipped when already
+# connected.
+
+- name: Install NetBird (official script — adds the apt repo + installs)
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://pkgs.netbird.io/install.sh | sh
+    creates: /usr/bin/netbird
+  environment:
+    NETBIRD_SKIP_UP: "true" # don't auto-join during install; we run `up` below
+
+- name: Enable and start netbird
+  ansible.builtin.systemd:
+    name: netbird
+    enabled: true
+    state: started
+
+- name: Assert NetBird setup key is provided
+  ansible.builtin.assert:
+    that:
+      - mgmt_netbird_setup_key | length > 0
+    fail_msg: >-
+      mgmt_netbird_setup_key is empty. Pass it at run time (mgmt:ansible does this
+      from op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY).
+
+# mgmt nodes route the site subnets to the overlay.
+- name: Enable IP forwarding (NetBird route peer)
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+
+- name: Check NetBird connection status
+  ansible.builtin.command: netbird status
+  register: mgmt_netbird_status
+  changed_when: false
+  failed_when: false
+
+- name: Bring the node up on the overlay
+  ansible.builtin.command:
+    cmd: >-
+      netbird up
+      --setup-key {{ mgmt_netbird_setup_key }}
+      --management-url {{ mgmt_netbird_management_url }}
+      --hostname {{ inventory_hostname }}
+  register: mgmt_netbird_up
+  changed_when: mgmt_netbird_up.rc == 0
+  no_log: true
+  when: "'Management: Connected' not in mgmt_netbird_status.stdout"

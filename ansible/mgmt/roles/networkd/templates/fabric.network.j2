@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# 25G fabric parent NIC: {{ mgmt_fabric_nic }} (Intel E810, "ice").
+# No L3 on the parent itself — addresses live on the VLAN sub-interfaces.
+# The `VLAN=` directives below tell networkd to instantiate the sub-interfaces
+# declared by the .netdev files (Kind=vlan alone only registers the type).
+
+[Match]
+Name={{ mgmt_fabric_nic }}
+
+[Network]
+{% for vlan in mgmt_fabric_vlans %}
+VLAN={{ mgmt_fabric_nic }}.{{ vlan.id }}
+{% endfor %}
+LinkLocalAddressing=no
+IPv6AcceptRA=no

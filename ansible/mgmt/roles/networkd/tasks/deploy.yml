@@ -1,0 +1,38 @@
+---
+# Write systemd-networkd config files for the 25G fabric VLANs.
+# Safe to re-run.
+
+- name: Deploy fabric parent .network (declares VLANs, no L3 of its own)
+  ansible.builtin.template:
+    src: fabric.network.j2
+    dest: "{{ mgmt_networkd_config_dir }}/20-{{ mgmt_fabric_nic }}.network"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd for networkd
+
+- name: Deploy VLAN .netdev files
+  ansible.builtin.template:
+    src: vlan.netdev.j2
+    dest: "{{ mgmt_networkd_config_dir }}/30-{{ mgmt_fabric_nic }}.{{ vlan.id }}.netdev"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ mgmt_fabric_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "vlan {{ vlan.id }}"
+  notify: Reload systemd for networkd
+
+- name: Deploy VLAN .network files
+  ansible.builtin.template:
+    src: vlan.network.j2
+    dest: "{{ mgmt_networkd_config_dir }}/30-{{ mgmt_fabric_nic }}.{{ vlan.id }}.network"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ mgmt_fabric_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "vlan {{ vlan.id }}"
+  notify: Reload systemd for networkd

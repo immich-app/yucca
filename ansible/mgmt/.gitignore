@@ -1,0 +1,20 @@
+# Ansible
+ansible.log
+ansible.*.log
+*.retry
+.ansible/
+.ansible_facts_cache/
+
+# Operator-local host_vars overrides
+inventories/*/host_vars/*.local.yml
+
+# Python virtualenv and bytecode
+.venv/
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*~

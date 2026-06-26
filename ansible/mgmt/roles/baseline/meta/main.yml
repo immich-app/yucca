@@ -1,0 +1,10 @@
+---
+# First role in site.yml — runs on the freshly installed OS.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: baseline
+  description: Post-reprovision OS baseline — packages, hostname, timezone, hosts
+  min_ansible_version: "2.18"

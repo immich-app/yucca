@@ -1,0 +1,12 @@
+---
+# Post-reprovision OS baseline.
+# Runs as root over SSH on the freshly installed Debian 13 host.
+# Convergeable: re-running corrects drift in packages, hostname, hosts file.
+
+- name: Configure system packages
+  ansible.builtin.import_tasks: packages.yml
+  tags: [packages]
+
+- name: Configure hostname, timezone, /etc/hosts
+  ansible.builtin.import_tasks: system.yml
+  tags: [system]

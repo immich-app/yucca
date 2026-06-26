@@ -27,6 +27,22 @@ policies = {
       destinations = ["mgmt", "talos", "k8s_operator"]
     }]
   }
+
+  # CI also reaches the routed site subnets (switch vme 10.40.5.0/24 + api +
+  # cluster nets), so the fabric jobs can NETCONF the switches over the overlay
+  # (the switches are routed resources behind the mgmt peers, not peers
+  # themselves). yucca_resource is the shared tag on every routed resource,
+  # resolved from the global layer via external_groups.
+  ci-to-resources = {
+    description = "CI → routed site subnets (yucca_resource)."
+    rules = [{
+      name          = "ci-to-resources"
+      protocol      = "all"
+      bidirectional = false
+      sources       = ["ci"]
+      destinations  = ["yucca_resource"]
+    }]
+  }
 }
 
 # Site identifier (mirrors prod/htz-fsn1's site_id). Feeds the fabric-addressing

@@ -1,0 +1,4 @@
+---
+# Login users. The real list lives in group_vars/all.yml (mgmt_users),
+# mirrored from tf/shared/modules/identity. Default empty here.
+mgmt_users: []
