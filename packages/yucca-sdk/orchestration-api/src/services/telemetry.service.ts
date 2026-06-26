@@ -40,7 +40,7 @@ export class TelemetryService {
           version,
         });
       })
-      .catch(() => console.warn('No production backend configured, skipping structured log.'));
+      .catch(() => console.warn('No production backend configured, skipping structured log.', summary));
   }
 
   submitStructuredLog(summary: string, data: object, force = false) {

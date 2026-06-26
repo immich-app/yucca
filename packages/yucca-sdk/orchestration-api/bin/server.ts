@@ -4,21 +4,23 @@ import { ORCHESTRATION_PORT, OrchestrationApiModule } from '../src';
 
 async function bootstrap() {
   const app = await NestFactory.create(
-    OrchestrationApiModule.forRoot({
-      yuccaProductionApi: 'http://localhost:36033',
-      developmentMode: true,
-      immichIntegration: {
-        dataFolders: ['upload', 'profile', 'library', 'backups', 'thumbs', 'encoded-video'],
-        dataPath: '/immich_data',
-        libraries: [
-          {
-            id: 'my-library',
-            name: 'my library',
-            importPaths: ['/immich_library'],
-            exclusionPatterns: [],
-          },
-        ],
-      },
+    OrchestrationApiModule.forRootAsync({
+      useFactory: () => ({
+        yuccaProductionApi: 'http://localhost:36033',
+        developmentMode: true,
+        immichIntegration: {
+          dataFolders: ['upload', 'profile', 'library', 'backups', 'thumbs', 'encoded-video'],
+          dataPath: '/immich_data',
+          libraries: [
+            {
+              id: 'my-library',
+              name: 'my library',
+              importPaths: ['/immich_library'],
+              exclusionPatterns: [],
+            },
+          ],
+        },
+      }),
     }),
   );
 

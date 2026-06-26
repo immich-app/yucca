@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, FactoryProvider, Module, ModuleMetadata } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -93,22 +93,52 @@ export const services = [
   TelemetryService,
 ];
 
+export interface OrchestrationApiModuleAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
+  inject?: FactoryProvider['inject'];
+  useFactory: (...args: any[]) => Promise<Partial<ModuleConfig>> | Partial<ModuleConfig>;
+}
+
+@Module({})
+class OrchestrationConfigModule {
+  static forRootAsync(options: OrchestrationApiModuleAsyncOptions): DynamicModule {
+    return {
+      module: OrchestrationConfigModule,
+      imports: options.imports ?? [],
+      providers: [
+        {
+          provide: ModuleConfigProvider,
+          inject: options.inject ?? [],
+          useFactory: async (...args: any[]): Promise<ModuleConfig> => {
+            const config = await options.useFactory(...args);
+            config.statePath ??= resolve(homedir(), '.yucca');
+            return config as ModuleConfig;
+          },
+        },
+      ],
+      exports: [ModuleConfigProvider],
+    };
+  }
+}
+
 @Module({})
 export class OrchestrationApiModule {
-  static forRoot(config: Partial<ModuleConfig>): DynamicModule {
-    config.statePath ??= resolve(homedir(), '.yucca');
+  static forRootAsync(options: OrchestrationApiModuleAsyncOptions): DynamicModule {
+    const configModule = OrchestrationConfigModule.forRootAsync(options);
 
     return {
       module: OrchestrationApiModule,
       imports: [
+        configModule,
         KyselyModule.forRootAsync({
           namespace: 'orchestrator',
-          useFactory: () => {
-            if (!existsSync(config.statePath!)) {
-              mkdirSync(config.statePath!, { recursive: true });
+          imports: [configModule],
+          inject: [ModuleConfigProvider],
+          useFactory: (config: ModuleConfig) => {
+            if (!existsSync(config.statePath)) {
+              mkdirSync(config.statePath, { recursive: true });
             }
 
-            const database = new Database(resolve(config.statePath!, 'state.sqlite3'));
+            const database = new Database(resolve(config.statePath, 'state.sqlite3'));
             database.pragma('journal_mode = WAL');
 
             return {
@@ -121,7 +151,6 @@ export class OrchestrationApiModule {
       ],
       controllers,
       providers: [
-        { provide: ModuleConfigProvider, useValue: config },
         { provide: APP_INTERCEPTOR, useClass: TelemetryErrorInterceptor },
         EventsGateway,
         ...repositories,
