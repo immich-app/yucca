@@ -106,6 +106,14 @@ resource "kubernetes_namespace_v1" "cert_manager" {
   depends_on = [helm_release.cilium]
 }
 
+resource "kubernetes_namespace_v1" "netbird" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name = "netbird"
+  }
+  depends_on = [helm_release.cilium]
+}
+
 # ─── App Secrets (namespace: yucca) ─────────────────────────────────────
 
 # yucca-api: signs JWTs with the generated private key + its OIDC client creds.
@@ -191,5 +199,21 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
   }
   data = {
     api-token = var.cloudflare_api_token
+  }
+}
+
+# ─── NetBird operator Secret (namespace: netbird) ───────────────────────
+# Management API token (service user yucca-staging-k8s-operator) the operator
+# authenticates with. Key name NB_API_KEY matches the chart's default
+# netbirdAPI.keyFromSecret. Minted by the staging/netbird stack; read here via
+# TF_VAR from 1P. The operator HelmRelease (Flux) mounts this Secret.
+resource "kubernetes_secret_v1" "netbird_mgmt_api_key" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name      = "netbird-mgmt-api-key"
+    namespace = kubernetes_namespace_v1.netbird[0].metadata[0].name
+  }
+  data = {
+    NB_API_KEY = var.netbird_operator_api_token
   }
 }

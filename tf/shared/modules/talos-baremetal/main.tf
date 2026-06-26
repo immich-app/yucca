@@ -58,7 +58,27 @@ locals {
     }
   })
 
-  shared_patches = concat([local.install_patch], var.config_patches)
+  # NetBird node-level overlay: when a setup key is supplied, append an
+  # ExtensionServiceConfig document (a separate config doc, like the
+  # HostnameConfig multi-doc below) so the siderolabs/netbird extension reads
+  # NB_SETUP_KEY on boot and the node registers as a NetBird peer. Only takes
+  # effect once the node runs a schematic that includes siderolabs/netbird
+  # (talos_schematic_id + a `talosctl upgrade` to that installer image).
+  # NB_MANAGEMENT_URL is the NetBird Cloud default — set explicitly to mirror the
+  # ansible mgmt role.
+  netbird_patches = var.netbird_setup_key != "" ? [
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "ExtensionServiceConfig"
+      name       = "netbird"
+      environment = [
+        "NB_SETUP_KEY=${var.netbird_setup_key}",
+        "NB_MANAGEMENT_URL=https://api.netbird.io",
+      ]
+    })
+  ] : []
+
+  shared_patches = concat([local.install_patch], local.netbird_patches, var.config_patches)
 
   # Control-plane cluster-level config: compact-cluster scheduling toggle +
   # apiserver cert SANs (VIP for in-cluster traffic, direct CP IPs for

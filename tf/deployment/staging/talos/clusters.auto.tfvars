@@ -15,9 +15,14 @@ clusters = {
     #   siderolabs/intel-ucode      (Intel Xeon microcode — these are GenuineIntel)
     #   siderolabs/util-linux-tools (fstrim et al.)
     #   siderolabs/iscsi-tools      (Longhorn volume attachment)
+    #   siderolabs/netbird          (node-level NetBird overlay; configured via the
+    #                                ExtensionServiceConfig the module appends when
+    #                                netbird_talos_setup_key is set — see main.tf)
     # Regenerate at https://factory.talos.dev if the extension set changes.
-    # NB: adding iscsi-tools needs a node `talosctl upgrade`, not just a config apply.
-    talos_schematic_id = "29ffdc12246124c1428026e3935f3c6170d6ee867293484312c97540ab1171b5"
+    # NB: adding an extension (iscsi-tools, netbird, …) needs a node `talosctl
+    # upgrade --image factory.talos.dev/metal-installer/<id>:v<ver>`, not just a
+    # config apply. Runbook: ansible/talos/docs/runbooks/netbird-extension-upgrade.md
+    talos_schematic_id = "f141fc2a08d5a459a80d871faa48d7dc92bc354e4faf6cdbafe1cc0fac717991"
 
     # Install target — WIPED. /dev/sda is the 240GB DELLBOSS on these nodes;
     # the two 1.6TB NVMe drives (nvme0n1/nvme1n1) become Longhorn data disks.

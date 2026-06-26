@@ -9,3 +9,4 @@ resources:
   - ./envoy-gateway.yaml
   - ./envoy-proxy.yaml
   - ./httproutes.yaml
+  - ./netbird-operator.yaml
