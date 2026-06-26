@@ -28,6 +28,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { DatabaseRepository } from '../repositories/database.repository';
+import { LoggingRepository } from '../repositories/logging.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { RepositoryLocalMetricsRepository } from '../repositories/repositoryLocalMetrics.repository';
@@ -59,7 +60,10 @@ export class RepositoryService {
     @Inject(forwardRef(() => BootstrapService))
     private readonly bootstrap: BootstrapService,
     private readonly telemetry: TelemetryService,
-  ) {}
+    private readonly logger: LoggingRepository,
+  ) {
+    this.logger.setContext(RepositoryService.name);
+  }
 
   private async getLocalRepository(
     id: string,
@@ -151,7 +155,7 @@ export class RepositoryService {
           remoteRepositories[backendId][repository.id] = repository;
         }
       } catch (error) {
-        console.error('Backend', backendId, 'threw', error);
+        this.logger.error(`Backend ${backendId} threw`, error);
       }
     }
 
