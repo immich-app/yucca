@@ -26,9 +26,12 @@ The inventory is **TF-generated** at run time (see "Generated inventory").
    `tf/shared/modules/identity` (see "Generated inventory" below).
 3. **security** — nftables firewall, SSH hardening (no password auth,
    `PermitRootLogin prohibit-password`), unattended-upgrades.
-4. **networkd** — systemd-networkd VLAN sub-interfaces on the 25G fabric NIC.
-   **Gated on `mgmt_networkd_enabled` (default false)** — see the 25G caveat
-   below.
+4. **networkd** — the host L3 that lets these nodes *forward* the NetBird-routed
+   site subnets: the OOB 1G NIC on `10.40.5.0/24` (the switch vme) + the 25G
+   fabric VLAN sub-interfaces (public/private/api). Enabled by default
+   (`mgmt_networkd_enabled: true`); only the OOB + fabric NICs are matched, so the
+   primary public NIC is untouched. The OOB path is reliable; the 25G VLANs are
+   written but stay carrier-down until that link is up — see the 25G caveat below.
 5. **netbird** — install NetBird, `netbird up` with the `mgmt` setup key, enable
    IP forwarding (the mgmt nodes are the NetBird route peers for the site subnets;
    the routed network itself is declared in TF).
@@ -104,27 +107,28 @@ automatically. This needs the control node on the overlay too — the CI
 For the very first run after a reinstall, pass `-e mgmt_bootstrap=true` to force
 the public IP (skips any stale peer entry for the host).
 
-## 25G fabric caveat
+## Host L3 / routing & the 25G caveat
 
-The 25G fabric link (Intel E810, "ice" driver) is **currently physically
-unreliable**. The `networkd` role that configures its VLAN sub-interfaces is
-gated off by default (`mgmt_networkd_enabled: false`), so a normal `site.yml`
-run is a no-op for networking. Once the fabric links:
+These nodes are the NetBird route peers for the site, so they need L3 paths to
+the routed subnets in order to **forward** to them. The `networkd` role
+(enabled by default) configures, per the TF-rendered host_vars:
 
-1. Confirm the NIC name on each host with `ip link` (prior name:
-   `enp33s0f0np0`) and correct `mgmt_fabric_nic` in the host_vars if it
-   differs.
-2. Set `mgmt_networkd_enabled: true` (e.g. `--extra-vars` or group_vars).
+| Path | Network | mgmt-1 | mgmt-2 | NIC |
+|------|---------|--------|--------|-----|
+| OOB management (switch vme) | `10.40.5.0/24` | `10.40.5.50` | `10.40.5.51` | `enp37s0` (1G) |
+| VLAN 120 (cluster public) | `10.40.20.0/23` | `10.40.20.2` | `10.40.20.3` | `enp33s0f0np0` (25G) |
+| VLAN 122 (cluster private) | `10.40.22.0/23` | `10.40.22.2` | `10.40.22.3` | `enp33s0f0np0` (25G) |
+| VLAN 10 (api) | `10.40.10.0/24` | `10.40.10.2` | `10.40.10.3` | `enp33s0f0np0` (25G) |
 
-VLAN layout (gateways are `.1` on the leaf IRB):
+The **OOB path is 1G and reliable** — that's what carries the switch traffic.
+The **25G fabric link (Intel E810, "ice") is currently physically unreliable**;
+its VLAN sub-interfaces are written but stay carrier-down (`RequiredForOnline=no`,
+so they never block boot) until the link is up — harmless until then.
 
-| VLAN | Network | mgmt-1 | mgmt-2 |
-|------|---------|--------|--------|
-| 20 (cluster public) | `10.40.20.0/23` | `10.40.20.2` | `10.40.20.3` |
-| 22 (cluster private) | `10.40.22.0/23` | `10.40.22.2` | `10.40.22.3` |
-
-The primary public NIC keeps Hetzner's DHCP default — this tree does not touch
-it.
+After a reinstall, confirm both NIC names with `ip link` and correct
+`oob_nic` / `fabric_nic` in `tf/deployment/prod/htz-fsn1/mgmt-hosts.yaml` if they
+differ (predictable names can change). Only these NICs are matched; the primary
+public NIC keeps Hetzner's DHCP default — this tree does not touch it.
 
 ## Setup
 
