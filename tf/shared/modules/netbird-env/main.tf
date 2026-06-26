@@ -1,5 +1,5 @@
 # Per-environment NetBird (Cloud) objects. One NetBird Cloud account backs every
-# env/site; objects are namespaced "<name_prefix>_<key>" (all underscores) so they
+# env/site; objects are namespaced "<NAME_PREFIX>_<KEY>" (UPPER_SNAKE) so they
 # coexist. Groups are created first; setup keys, policies, and networks resolve
 # their logical group keys to NetBird-assigned group IDs.
 #
@@ -7,11 +7,14 @@
 # module only declares the dependency in versions.tf).
 
 locals {
-  # Names are normalized to underscores (no hyphens) per the repo convention,
-  # e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" → "yucca_prod_htz_fsn1_mgmt".
-  # An explicit `name` override on a group is respected verbatim.
+  # All generated NetBird names are normalized to UPPER_SNAKE: uppercased, with
+  # hyphens → underscores. e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" →
+  # "YUCCA_PROD_HTZ_FSN1_MGMT"; an explicit group `name` override is normalized
+  # the same way (so "yucca_resource" → "YUCCA_RESOURCE"). The one exception is a
+  # network's display name (see netbird_network below), which keeps its casing/
+  # hyphens so labels like "HTZ-FSN1" survive.
   group_names = {
-    for k, g in var.groups : k => coalesce(g.name, replace("${var.name_prefix}_${k}", "-", "_"))
+    for k, g in var.groups : k => upper(replace(coalesce(g.name, "${var.name_prefix}_${k}"), "-", "_"))
   }
 
   # Logical key → NetBird group ID, covering both the groups this layer owns and
@@ -31,7 +34,7 @@ locals {
         description = r.description
         groups      = r.groups
         enabled     = r.enabled
-        name        = coalesce(r.name, replace("${nk}_${rk}", "-", "_"))
+        name        = upper(replace(coalesce(r.name, "${nk}_${rk}"), "-", "_"))
       }
     }
   ]...)
@@ -46,7 +49,7 @@ resource "netbird_group" "this" {
 resource "netbird_setup_key" "this" {
   for_each = var.setup_keys
 
-  name                   = replace("${var.name_prefix}_${each.key}", "-", "_")
+  name                   = upper(replace("${var.name_prefix}_${each.key}", "-", "_"))
   type                   = each.value.type
   expiry_seconds         = each.value.expiry_seconds
   usage_limit            = each.value.usage_limit
@@ -59,14 +62,14 @@ resource "netbird_setup_key" "this" {
 resource "netbird_policy" "this" {
   for_each = var.policies
 
-  name        = replace("${var.name_prefix}_${each.key}", "-", "_")
+  name        = upper(replace("${var.name_prefix}_${each.key}", "-", "_"))
   description = each.value.description
   enabled     = each.value.enabled
 
   dynamic "rule" {
     for_each = each.value.rules
     content {
-      name          = rule.value.name
+      name          = upper(replace(rule.value.name, "-", "_"))
       action        = rule.value.action
       protocol      = rule.value.protocol
       bidirectional = rule.value.bidirectional
@@ -83,11 +86,11 @@ resource "netbird_policy" "this" {
 # A Network groups one or more resources (subnets/hosts) reachable through a set
 # of routing peers (router.peer_groups — e.g. a site's mgmt nodes). resources[*]
 # .groups controls which peers may reach that subnet. The Network's display name
-# is the map key (or `name` override) verbatim — NOT underscore-normalized — so
-# human labels like "HTZ-FSN1" survive.
+# is the map key (or `name` override), uppercased but NOT underscore-normalized —
+# so human labels like "HTZ-FSN1" survive (hyphen kept).
 resource "netbird_network" "this" {
   for_each    = var.networks
-  name        = coalesce(each.value.name, each.key)
+  name        = upper(coalesce(each.value.name, each.key))
   description = each.value.description
 }
 
@@ -123,10 +126,10 @@ resource "onepassword_item" "setup_key" {
   for_each = var.setup_keys
 
   vault = data.onepassword_vault.env.uuid
-  # Title derived from the namespaced setup-key name so multiple sites writing to
-  # the SAME vault (prod: global + every site → yucca_tf_prod) never collide, e.g.
-  # "yucca_prod_htz_fsn1_mgmt" → NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY.
-  title    = "NETBIRD_${upper(netbird_setup_key.this[each.key].name)}_SETUP_KEY"
+  # Title derived from the (already UPPER_SNAKE) setup-key name so multiple sites
+  # writing to the SAME vault (prod: global + every site → yucca_tf_prod) never
+  # collide, e.g. "YUCCA_PROD_HTZ_FSN1_MGMT" → NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY.
+  title    = "NETBIRD_${netbird_setup_key.this[each.key].name}_SETUP_KEY"
   category = "password"
   password = netbird_setup_key.this[each.key].key
 
