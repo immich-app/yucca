@@ -1,14 +1,20 @@
 ---
-# systemd-networkd VLAN sub-interfaces on the 25G fabric NIC.
+# systemd-networkd L3 so the node forwards the NetBird-routed site subnets:
+#   - OOB 1G NIC on the management LAN (mgmt_oob: 10.40.5.0/24 — switch vme)
+#   - tagged VLAN sub-interfaces on the 25G fabric NIC (mgmt_fabric_vlans)
 #
-# Prerequisites:
-#   - systemd-networkd present (Debian 13 base)
-#   - mgmt_fabric_nic, mgmt_fabric_vlans defined in host_vars
+# Prerequisites (from host_vars, TF-rendered): mgmt_oob, mgmt_fabric_nic,
+# mgmt_fabric_vlans. networkd only Matches these NICs — the primary public NIC
+# (Hetzner's default) is never matched, so it stays under its own management.
 #
-# Master toggle. False by default because the 25G fabric link is currently
-# unreliable — flip to true (and confirm mgmt_fabric_nic via `ip link`) once
-# the fabric is up.
-mgmt_networkd_enabled: false
+# Enabled by default: the OOB path (1G, reliable) is what lets the node reach the
+# switches. The 25G VLANs are written too but stay carrier-down until that link
+# is up (RequiredForOnline=no, so they never block) — harmless until then.
+# NICs are verified per host in mgmt-hosts.yaml; correct there if `ip link` differs.
+mgmt_networkd_enabled: true
+
+# OOB management interface { nic, address } — empty disables just the OOB part.
+mgmt_oob: {}
 
 # --- Paths ---
 mgmt_networkd_config_dir: /etc/systemd/network

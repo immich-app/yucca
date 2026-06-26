@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# OOB management LAN: {{ mgmt_oob.nic }} -> {{ mgmt_oob.address }}.
+# The switch vme (e.g. 10.40.5.115/125) lives on this L2. No gateway here — the
+# default route stays on the primary public NIC; this is a directly-attached
+# subnet. IP forwarding (enabled by the netbird role) lets this node route the
+# NetBird overlay's traffic to the switches.
+
+[Match]
+Name={{ mgmt_oob.nic }}
+
+[Network]
+Address={{ mgmt_oob.address }}
+IPv6AcceptRA=no
+
+[Link]
+RequiredForOnline=no

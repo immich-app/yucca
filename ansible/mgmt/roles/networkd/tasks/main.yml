@@ -1,16 +1,12 @@
 ---
-# systemd-networkd VLAN sub-interfaces on the 25G fabric NIC.
+# systemd-networkd L3 so the node forwards the NetBird-routed site subnets:
+#   - OOB 1G NIC on the management LAN (mgmt_oob: 10.40.5.0/24 — switch vme)
+#   - tagged VLAN sub-interfaces on the 25G fabric NIC (public/private/api)
 #
-# NOTE: applies once the 25G fabric links — the 25G link is currently
-# physically unreliable (see notes). Gated on mgmt_networkd_enabled
-# (default: false) so a normal site.yml run is a no-op until the fabric
-# is up and the operator opts in.
-#
-#   1. write parent .network (DHCP off on fabric, declares VLANs)
-#   2. write per-VLAN .netdev + .network (static addresses)
-#   3. reload networkd
-#
-# The primary public NIC keeps Hetzner's DHCP default — untouched here.
+# Gated on mgmt_networkd_enabled (default true). The OOB path is 1G/reliable;
+# the 25G VLANs are written but stay carrier-down (RequiredForOnline=no) until
+# that link is up — harmless until then. Only the OOB + fabric NICs are Matched,
+# so the primary public NIC (Hetzner's default) is left untouched.
 
 - name: Deploy networkd configs
   ansible.builtin.import_tasks: deploy.yml
