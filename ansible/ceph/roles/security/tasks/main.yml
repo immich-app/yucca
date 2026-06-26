@@ -18,14 +18,47 @@
     group: root
     mode: '0644'
     validate: "nft -c -f %s"
-  register: nftables_config
   when: ceph_firewall_enabled | bool
 
-- name: Enable and start nftables
+# Reload the firewall only when the LIVE kernel ruleset actually differs from
+# the desired one -- not merely when the rendered file changed. A
+# `systemctl restart nftables` flushes and reloads atomically; on a busy cluster
+# that momentary flush can briefly stall OSD peering, so it must not fire on
+# no-op converges (the harden step runs on every gated CI apply). The desired
+# ruleset is normalized by loading it into a throwaway network namespace --
+# fully isolated, it never touches the live firewall -- then compared to
+# `nft list ruleset`. Both sides go through nft's own output formatting, so the
+# match is on effective rules, not file text. Anything inconclusive falls back
+# to applying (DIFF), so the firewall is never left stale or drifted.
+- name: Compare the live nftables ruleset against the desired one
+  ansible.builtin.shell: |
+    set -o pipefail
+    norm() { grep -vE '^[[:space:]]*#' | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ +$//' | grep -v '^$'; }
+    live="$(nft list ruleset | norm)"
+    ns="nft-cmp-$$"
+    ip netns add "$ns"
+    if ip netns exec "$ns" nft -f /etc/nftables.conf 2>/dev/null; then
+      desired="$(ip netns exec "$ns" nft list ruleset | norm)"
+      [ "$live" = "$desired" ] && echo SAME || echo DIFF
+    else
+      echo DIFF
+    fi
+    ip netns del "$ns" 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  register: nft_ruleset_cmp
+  changed_when: false
+  check_mode: false
+  when: ceph_firewall_enabled | bool
+
+- name: Enable nftables and reload only when the live ruleset differs
   ansible.builtin.systemd:
     name: nftables
     enabled: true
-    state: "{{ 'restarted' if nftables_config is changed else 'started' }}"
+    state: >-
+      {{ 'restarted'
+         if (nft_ruleset_cmp.stdout | default('DIFF') | trim) == 'DIFF'
+         else 'started' }}
   when: ceph_firewall_enabled | bool
 
 - name: Show active nftables rules
