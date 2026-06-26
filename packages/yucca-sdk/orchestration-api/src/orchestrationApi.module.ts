@@ -48,6 +48,7 @@ import { RunHistoryService } from './services/runHistory.service';
 import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
 import { TelemetryService } from './services/telemetry.service';
+import { YuccaService } from './services/yucca.service';
 
 export const controllers = [
   AuthController,
@@ -93,6 +94,7 @@ export const services = [
   RunningTasksService,
   ScheduleService,
   TelemetryService,
+  YuccaService,
 ];
 
 export interface OrchestrationApiModuleAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
@@ -158,7 +160,7 @@ export class OrchestrationApiModule {
         ...repositories,
         ...services,
       ],
-      exports: [EventsGateway, ModuleConfigRepository],
+      exports: [YuccaService],
     };
   }
 }
