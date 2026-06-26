@@ -34,6 +34,10 @@ module "cluster" {
   bond           = each.value.bond
   nodes          = each.value.nodes
   config_patches = each.value.config_patches
+
+  # Node-level NetBird overlay: append the ExtensionServiceConfig for the
+  # siderolabs/netbird extension (no-op when the key is empty).
+  netbird_setup_key = var.netbird_talos_setup_key
 }
 
 output "cluster_summaries" {

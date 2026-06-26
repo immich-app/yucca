@@ -129,6 +129,30 @@ variable "cloudflare_api_token" {
   default     = ""
 }
 
+# ─── NetBird ────────────────────────────────────────────────────────────
+#
+# Setup key for the node-level siderolabs/netbird system extension (Part A) and
+# the API token for the in-cluster NetBird operator (Part B). Both are minted by
+# the staging/netbird stack and stored in the yucca_tf_staging vault; injected
+# here via TF_VAR from op:// refs in tf/.env. Empty defaults keep `tofu validate`
+# clean and let the slice deploy before the netbird stack has been applied.
+
+# Per-node overlay: each Talos node joins NetBird via the extension's NB_SETUP_KEY.
+variable "netbird_talos_setup_key" {
+  description = "NetBird setup key for the node-level siderolabs/netbird extension (group YUCCA_STAGING_TALOS). Injected via TF_VAR from 1P (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_TALOS_SETUP_KEY)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# In-cluster operator: NetBird Management API personal access token (service user).
+variable "netbird_operator_api_token" {
+  description = "NetBird API token for the in-cluster kubernetes operator (service user yucca-staging-k8s-operator). Bootstrapped into the netbird-mgmt-api-key Secret. Injected via TF_VAR from 1P (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_K8S_OPERATOR_API_TOKEN)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "clusters" {
   description = "Map of bare-metal Talos cluster specs keyed by short cluster name. Declarative: add/modify an entry in clusters.auto.tfvars + tf:apply."
   type = map(object({

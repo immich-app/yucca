@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: netbird-operator
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: netbird-operator
+  interval: 1h
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+    cleanupOnFail: true
+    remediation:
+      retries: 2
+  rollback:
+    cleanupOnFail: true
+  values:
+    # Webhook certs via cert-manager (deployed in this env; the Flux
+    # Kustomization dependsOn it). The operator's admission webhooks validate
+    # SetupKey/SidecarProfile/NetworkResource resources.
+    webhook:
+      enableCertManager: true
+    # NetBird-side naming for networks/resources the operator creates.
+    cluster:
+      name: yucca-staging
+    # Management API auth: the netbird-mgmt-api-key Secret (key NB_API_KEY) is
+    # bootstrapped by the staging/talos Terraform stack. These are the chart
+    # defaults, set explicitly so the contract is visible here.
+    netbirdAPI:
+      keyFromSecret:
+        name: netbird-mgmt-api-key
+        key: NB_API_KEY
+    # Gateway API exposure is off for now (envoy-gateway is present; can enable
+    # later to route Services onto the overlay via the operator).
+    gatewayAPI:
+      enabled: false

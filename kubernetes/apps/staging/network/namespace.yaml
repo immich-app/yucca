@@ -8,3 +8,11 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: envoy-system
+---
+# Also created by the staging/talos TF stack (it bootstraps the
+# netbird-mgmt-api-key Secret here before Flux reconciles). A bare Namespace is
+# safe under dual ownership — server-side apply ensures-exists either way.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netbird
