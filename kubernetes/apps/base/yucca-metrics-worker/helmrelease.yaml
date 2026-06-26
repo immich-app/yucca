@@ -28,13 +28,15 @@ spec:
     # Shares yucca-api's CNPG database; the chart reads creds from the
     # <cluster>-app Secret (yucca-db-app), which CNPG manages.
     postgresClusterName: yucca-db
-    # Per-bucket usage comes from the bare-metal sietch RGW admin API — the same
-    # gateway michael targets. It serves HTTPS behind a self-signed cert, so the
-    # worker skips TLS verification (NODE_TLS_REJECT_UNAUTHORIZED below), mirroring
-    # michael's S3_TLS_SKIP_VERIFY. The admin credentials (AccessKey/SecretKey)
-    # are TF-provisioned into the yucca-metrics-rgw Secret (tf .../secrets.tf),
-    # like yucca-michael — not managed in this repo.
-    radosEndpoint: https://s3.dev.austin.int.futo.cloud
+    # Per-bucket usage comes from the bare-metal RGW admin API — the same gateway
+    # michael targets, so the endpoint is env-specific (staging → sietch/dev Ceph;
+    # prod → its own separate Ceph) and comes from cluster-settings via Flux
+    # postBuild, NOT hardcoded here. It serves HTTPS behind a self-signed cert, so
+    # the worker skips TLS verification (NODE_TLS_REJECT_UNAUTHORIZED below),
+    # mirroring michael's S3_TLS_SKIP_VERIFY. The admin credentials
+    # (AccessKey/SecretKey) are TF-provisioned into the yucca-metrics-rgw Secret
+    # (tf .../secrets.tf), like yucca-michael — not managed in this repo.
+    radosEndpoint: ${S3_ENDPOINT}
     radosSecretName: yucca-metrics-rgw
     # Full replacement of the chart's dev env: production mode, OTLP metrics to
     # the in-cluster vmagent. Logs are collected node-side by
