@@ -23,20 +23,20 @@ manage.
 
 ### SSH setup
 
-The `ansible-iac` SSH keys live in `yucca_tf_dev` as items
-`SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` and `PAINBOX_CEPH_ANSIBLE_IAC_SSH_KEY`
+The `ansible-iac` SSH keys live in `yucca_tf_dev` as items like
+`SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY`
 (see [ADR-010](docs/adr/010-ssh-keys-in-1password.md) for rationale).
 
 **First-time workstation setup:**
 
 ```bash
 cd yucca/ansible/ceph
-scripts/install-ssh-keys.sh    # op read → ~/.ssh/id_ed25519_{sietch,painbox}
+scripts/install-ssh-keys.sh    # op read → ~/.ssh/id_ed25519_sietch
 ```
 
 The script is idempotent and refuses to overwrite an existing key whose
-fingerprint doesn't match 1P. Keys land as `~/.ssh/id_ed25519_sietch` +
-`~/.ssh/id_ed25519_painbox` (private + `.pub` both 0600/0644).
+fingerprint doesn't match 1P. Keys land as `~/.ssh/id_ed25519_sietch`
+(private + `.pub` both 0600/0644).
 
 **Jump hosts / proxies** belong in your personal `~/.ssh/config`, not in
 this repo.
@@ -84,7 +84,6 @@ It points to an **inventory file** (not a directory):
 ```bash
 # Inline prefix — required for `mise run` invocations:
 CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini mise run preflight
-CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini   mise run status
 ```
 
 **`export CEPH_ENV=...` does NOT work with `mise run`.** mise's `[env]`
@@ -98,7 +97,7 @@ For multiple commands against the same cluster, set a local (non-exported)
 shell variable and inline-prefix each invocation:
 
 ```bash
-CE=inventories/painbox-ceph.dev.hel.htz/inventory.ini
+CE=inventories/sietch-ceph.staging.austin.int/inventory.ini
 CEPH_ENV=$CE mise run preflight
 CEPH_ENV=$CE mise run status
 CEPH_ENV=$CE mise run deploy

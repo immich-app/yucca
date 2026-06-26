@@ -510,10 +510,9 @@ ceph_rgw_dns_name: s3.{{ cluster_domain }}
 ```
 
 This derives the DNS name from `cluster_domain` (e.g.
-`s3.dev.hel.htz.futo.cloud`). Sietch defines this explicitly; painbox
-was missing it before its first deploy. Future clusters should include
-it from the start — see [docs/adding-a-cluster.md](adding-a-cluster.md)
-group_vars template.
+`s3.dev.austin.int.futo.cloud`). Sietch defines this explicitly. New
+clusters should include it from the start — see
+[docs/adding-a-cluster.md](adding-a-cluster.md) group_vars template.
 
 ---
 

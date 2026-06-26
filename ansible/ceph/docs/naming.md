@@ -32,14 +32,14 @@ OSD might set `role_in_hostname = "osd"` (yielding hostnames like
 
 | Component | Example                         | Source (per-cluster tfvars field)    |
 |-----------|---------------------------------|--------------------------------------|
-| cluster   | `sietch`, `painbox`             | top-level map key                    |
+| cluster   | `sietch`                        | top-level map key                    |
 | role      | `ceph` (small clusters), `osd`  | `role_in_hostname` (default `ceph`)  |
 | name      | `laurel`, `evelyn`              | `hosts[].name`, or TF-picked         |
 | env       | `dev`, `staging`, `prod`        | `environment`                        |
 | dc        | `austin`, `hel`, `fsn`          | `datacenter`                         |
 | provider  | `int`, `htz`                    | `provider_code`                      |
 
-Current `role_in_hostname` values: both sietch and painbox use `ceph`
+Current `role_in_hostname` values: sietch uses `ceph`
 (mixed-role, all-nodes-are-everything). Dedicated-role hostnames (`osd`,
 `mon`) are supported but not used today.
 
@@ -53,9 +53,8 @@ a deliberate, one-time decision.
 bootstrap. Renaming after deployment is expensive (see "Cost of renaming"
 below).
 
-**Convention (unenforced):** Dune-themed. Existing clusters are `sietch`
-(an underground Fremen community) and `painbox` (the Bene Gesserit
-gom-jabbar test apparatus). Dune candidates not yet used, and that fit
+**Convention (unenforced):** Dune-themed. The existing cluster is `sietch`
+(an underground Fremen community). Dune candidates not yet used, and that fit
 the hard constraints below: `arrakis`, `caladan`, `giedi`, `ixian`,
 `kwisatz`, `muaddib`, `fremen`, `chani`, `leto`, `jessica`. Nothing in
 the code enforces Dune specifically — mixed themes or theme breaks are
@@ -151,8 +150,9 @@ hosts = [
 ]
 ```
 
-Painbox uses this path — `hosts[0]` has no name, and TF picked `evelyn`
-on first apply, yielding `painbox-ceph-evelyn`.
+A single-host cluster commonly uses this path — `hosts[0]` has no name,
+so TF picks a stable word (e.g. `evelyn`) on first apply, yielding
+`<cluster>-ceph-evelyn`.
 
 Operator-declared names are excluded from the available pool to prevent
 collisions within the cluster.
@@ -173,7 +173,7 @@ collisions within the cluster.
   auto-picked host at `hosts[2]` could get a different name even if
   nothing about its own entry changed. The safe patterns:
   1. All-operator-declared within a cluster (sietch's model), or
-  2. All-auto-picked within a cluster (painbox's model).
+  2. All-auto-picked within a cluster.
   Mixed works for initial setup but complicates later add/remove.
 - **Converting between paths after deploy** (e.g., adding `name = "evelyn"`
   to a host that previously auto-picked `evelyn`) **does not preserve the
@@ -233,7 +233,7 @@ The operator-side private key path is derived from the cluster name:
 ~/.ssh/id_ed25519_<cluster>
 ```
 
-Examples: `~/.ssh/id_ed25519_sietch`, `~/.ssh/id_ed25519_painbox`. Per
+Example: `~/.ssh/id_ed25519_sietch`. Per
 [ADR-010](adr/010-ssh-keys-in-1password.md), the keypair lives in
 `<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` in 1P and is installed via
 `scripts/install-ssh-keys.sh <cluster>`.

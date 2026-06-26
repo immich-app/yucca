@@ -79,7 +79,7 @@ that existing auto-name indices shifted.
 
 ```bash
 mise run tf:plan
-# Plan shows: ~inventory.ini content with hostname change from painbox-ceph-evelyn to painbox-ceph-<other>
+# Plan shows: ~inventory.ini content with hostname change from <cluster>-ceph-evelyn to <cluster>-ceph-<other>
 ```
 
 **Do NOT apply** — renaming a deployed host cascades into SSH known_hosts,

@@ -36,7 +36,6 @@ of datacenter or environment.
 
 Existing examples:
 - `sietch-ceph.dev.austin.int/` — Austin DC, internal network, dev
-- `painbox-ceph.dev.hel.htz/` — Hetzner Helsinki, dev
 
 Future environments land as siblings: `*-ceph.staging.<dc>.<provider>/`,
 `*-ceph.prod.<dc>.<provider>/`.
@@ -48,7 +47,7 @@ Future environments land as siblings: `*-ceph.staging.<dc>.<provider>/`,
 The engineer adding the cluster picks the name. Conventions and constraints
 live in [docs/naming.md](naming.md#cluster-naming). Quick summary:
 
-- **Convention:** Dune-themed (existing: `sietch`, `painbox`). Not enforced.
+- **Convention:** Dune-themed (existing: `sietch`). Not enforced.
 - **Constraints:** lowercase, short (6–10 chars ideal), no dashes or dots,
   unique within the `yucca_tf_*` item namespace, not already a key in
   `clusters.auto.tfvars`.
@@ -66,7 +65,6 @@ Working example for a hypothetical `mesa` cluster at Hetzner Falkenstein:
 ```hcl
 clusters = {
   sietch  = { ... }
-  painbox = { ... }
 
   mesa = {
     domain            = "dev.fsn.htz.futo.cloud"
@@ -126,10 +124,11 @@ Hand-maintained, committed. Copy the closer existing analogue as a starting
 point:
 
 - **Bare-metal cluster:** copy from `sietch-ceph.dev.austin.int/group_vars/all/vars.yml`
-- **Hetzner/single-NIC cluster:** copy from `painbox-ceph.dev.hel.htz/group_vars/all/vars.yml`
+- **Hetzner/single-NIC cluster:** start from the sietch vars and adjust for
+  the NVMe-RAID shape (public /32, no bond/ProxyJump, installimage-owned LVM).
 
 ```bash
-cp inventories/painbox-ceph.dev.hel.htz/group_vars/all/vars.yml \
+cp inventories/sietch-ceph.dev.austin.int/group_vars/all/vars.yml \
    inventories/mesa-ceph.dev.fsn.htz/group_vars/all/vars.yml
 ```
 
@@ -280,8 +279,8 @@ the template, SSH reachable, Python 3 on targets.
 ### 9. Deploy
 
 For Hetzner installimage clusters, run the installimage flow first
-(out-of-band; see [runbooks/painbox-reprovision.md](runbooks/painbox-reprovision.md)
-for the pattern). For Austin bare-metal clusters, run `provision.yml`
+(out-of-band: reboot into rescue mode, run `installimage/autosetup` plus
+the op-injected `post-install.sh`). For Austin bare-metal clusters, run `provision.yml`
 first (boot into the live image, then `scripts/ansible-play.sh
 provision.yml -e confirm_wipe=true` with
 `CEPH_ENV=.../inventory-provision.ini`). Then:
@@ -323,7 +322,7 @@ CEPH_ENV=inventories/mesa-ceph.dev.fsn.htz/
 Default is set in `.mise.toml` (`sietch` in dev). Override per-command:
 
 ```bash
-CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini mise run status
+CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini mise run status
 ```
 
 `scripts/ansible-play.sh` derives the secrets template path from `CEPH_ENV`
@@ -375,4 +374,3 @@ trap-cleaned on exit.
 - [scripts.md](scripts.md) — wrapper reference
 - [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md) — why TF is authoritative
 - [ADR-010](adr/010-ssh-keys-in-1password.md) — why SSH keys live in 1P
-- [runbooks/painbox-reprovision.md](runbooks/painbox-reprovision.md) — Hetzner-specific reprovisioning pattern

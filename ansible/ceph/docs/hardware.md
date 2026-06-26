@@ -9,14 +9,16 @@ For where this fits in the tool mesh, see [architecture.md](architecture.md).
 
 ## Network topology
 
-Both clusters use a **single-network** design today — public and cluster
+Clusters use a **single-network** design today — public and cluster
 traffic share one subnet. Production will separate them; see
 [security-model.md](security-model.md) for the threat-model implications.
 
 | Cluster  | Subnet            | Connection                                                             |
 |----------|-------------------|------------------------------------------------------------------------|
 | sietch   | `10.10.10.0/24`   | 2× 10GbE bonded active-backup (eno1 + eno2) per node; private switch   |
-| painbox  | public /32        | Single 1GbE, direct SSH (no bond, no ProxyJump)                        |
+
+A Hetzner NVMe-RAID host would attach over a public /32 with a single NIC
+and direct SSH (no bond, no ProxyJump).
 
 Per-node connection IPs (`bond_ip`) are declared in
 `tf/deployment/staging/ceph/clusters.auto.tfvars` and rendered by TF into the
@@ -52,34 +54,14 @@ resolution, dashboard URL construction).
 | 5 | ~1.4 TB | Ceph block.db LVs (LVM VG) |
 | 6 | ~2 TB | SSD OSD data (ceph-volume) |
 
-## painbox -- Hetzner SX295 (Helsinki)
+## Hetzner NVMe-RAID shape (e.g. SX295)
 
-| Component | Spec |
-|-----------|------|
-| Chassis | Hetzner SX295 storage server |
-| CPU | AMD EPYC 7502P (32C/64T) |
-| RAM | 128 GB DDR4 ECC |
-| Boot NVMe | 2x Samsung 7.68TB (installimage RAID-1, vg0) |
-| HDD OSDs | 14x Seagate Exos X22 22TB SATA |
-| SSD OSD | 1x ~4.4TB LV on vg0 (NVMe remainder) |
-| Block.db | 14x 128GB LVs on vg0 |
-| SATA | 3 onboard controllers (8+2+4 ports = 14 total) |
-| Network | Single 1GbE, direct SSH (no bond, no ProxyJump) |
-| Boot | BIOS (Hetzner standard) |
-| OS | Debian 12 Bookworm (Hetzner installimage) |
-| Provisioning | Rescue mode → `installimage/autosetup` + `post-install.sh` |
-
-### NVMe layout (vg0 on md1)
-
-| LV | Size | Use |
-|----|------|-----|
-| swap | 32 GB | Swap |
-| root | 100 GB | / |
-| var | 200 GB | /var |
-| varlog | 50 GB | /var/log |
-| db-slot0..13 | 14x 128 GB | Block.db per HDD OSD |
-| ssd-osd | ~4.4 TB | SSD OSD data |
-| (reserve) | ~512 GB | Future expansion |
+The roles also support a Hetzner-style single-box shape for future
+hosting-provider clusters: NVMe boot drives in installimage RAID-1
+(`vg0`), HDD OSDs over onboard SATA with per-HDD block.db LVs on the NVMe
+VG, and a single LV-backed SSD OSD carved from the NVMe remainder.
+Provisioning is rescue mode → `installimage/autosetup` + `post-install.sh`,
+booting Debian 12 Bookworm.
 
 > **Why Bookworm and not Trixie:** upstream Ceph Tentacle's Debian
 > repository at `download.ceph.com/debian-tentacle/dists/` publishes only
@@ -87,24 +69,12 @@ resolution, dashboard URL construction).
 > autosetup `IMAGE` line MUST select a Bookworm tarball until upstream
 > ships Trixie packages.
 
-## Comparison
-
-| | sietch (per node) | painbox (single node) |
-|---|---|---|
-| HDD OSD count | 8-12 | 14 |
-| SSD OSD count | 2 | 1 |
-| block.db per HDD | 240 GB | 128 GB |
-| Total raw HDD | 48-72 TB | 308 TB |
-| Device path format | `/dev/disk/by-path/sas-exp*-phy*-lun-0` | `/dev/disk/by-path/pci-*-ata-*` |
-| EC profile | 8+3 (failure domain: OSD) | 8+3 (failure domain: OSD) |
-| Replicated pool size | 2 (min_size 1) | 2 (min_size 1) |
-
 ## host_vars schema by hardware shape
 
-The two clusters have fundamentally different storage topologies, which
-shows up in their `host_vars/<host>.yml` schemas. When adding a new cluster,
-operators must pick the schema matching the hardware — not just copy from
-either existing cluster blindly.
+Storage topologies differ across hardware shapes, which shows up in the
+`host_vars/<host>.yml` schema. When adding a new cluster, operators must
+pick the schema matching the hardware — not just copy from an existing
+cluster blindly.
 
 ### sietch-shape (SAS expander + dual-SSD-VG)
 
@@ -130,7 +100,7 @@ The role composes full disk paths as
 `-part<N>` suffix (SSD partitions). `roles/ceph_deploy/tasks/lvm-setup.yml`
 runs this shape's VG/LV recovery path.
 
-### painbox-shape (NVMe-RAID + single VG + LV-backed SSD OSD)
+### NVMe-RAID shape (single VG + LV-backed SSD OSD)
 
 ```yaml
 hostname_short: <cluster>-ceph-<name>
@@ -155,7 +125,7 @@ LVM is owned by the Hetzner installimage post-install script.
 - **Has a SAS expander** (PERC HBA, mpt3sas, etc.) and **dedicated boot SSDs
   partitioned for both block.db and OS** → sietch-shape.
 - **Single VG covering boot + block.db + SSD OSD** (typical for
-  hosting-provider servers with NVMe RAID-1) → painbox-shape.
+  hosting-provider servers with NVMe RAID-1) → NVMe-RAID shape.
 - **Other shapes** (e.g., dedicated NVMe block.db drives) require either
   a new shape branch in `roles/ceph_deploy/tasks/osds.yml`'s template or
   a fresh decision — see [ADR-011](adr/011-cephadm-osd-service-specs.md)
