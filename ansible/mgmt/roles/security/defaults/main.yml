@@ -5,11 +5,14 @@
 mgmt_firewall_enabled: true
 
 # Trusted source networks allowed to reach management services beyond SSH.
-# RFC1918 + NetBird/CGNAT (100.64.0.0/10). Loopback is always allowed via "lo".
+# RFC1918 + the NetBird overlay range (this tailnet uses 10.254.0.0/15) + CGNAT.
+# Loopback is always allowed via "lo"; overlay traffic is also accepted by iface
+# (iifname "wt0") in the nftables template — this list is the belt-and-braces.
 mgmt_firewall_trusted_networks:
   - 10.0.0.0/8
   - 172.16.0.0/12
   - 192.168.0.0/16
+  - 10.254.0.0/15
   - 100.64.0.0/10
 
 # Allow SSH from any source (true) or restrict to trusted networks (false).
