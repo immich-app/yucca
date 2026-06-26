@@ -2,13 +2,19 @@
 # BOTH the reprovision stack (mgmt.tf, uses server_number) and the ansible
 # inventory render (tf/render/ansible-mgmt, uses everything else).
 #
-#   site_id        — drives addressing (must match the stack's var.site_id).
-#   cluster_id     — the cluster whose public/private VLANs these hosts sit on.
-#   host_index     — host's offset within each VLAN /23 (gateway is .1 on the leaf);
-#                    .2/.3 here -> 10.40.20.2/.3 (public), 10.40.22.2/.3 (private).
-#   fabric_nic     — 25G NIC carrying the tagged VLAN sub-interfaces (verify after
-#                    reprovision; predictable name may differ on fresh Debian 13).
-#   subnet_router  — advertises the mgmt /24 over Tailscale (exactly one host).
+#   site_id      — drives addressing (must match the stack's var.site_id).
+#   cluster_id   — the cluster whose public/private VLANs these hosts sit on.
+#   host_index   — host's offset within each fabric VLAN (gateway is .1 on the leaf);
+#                  .2/.3 here -> 10.40.20.2/.3 (public), 10.40.22.2/.3 (private),
+#                  10.40.10.2/.3 (api).
+#   fabric_nic   — 25G NIC carrying the tagged cluster/api VLAN sub-interfaces.
+#   oob_nic      — 1G NIC on the OOB management LAN (10.40.5.0/24, the switch vme).
+#   oob_host     — host octet on the OOB LAN (mgmt-1 .50, mgmt-2 .51).
+#
+# These hosts are the NetBird route peers for the site (see prod/htz-fsn1/netbird);
+# the L3 paths configured from this roster (ansible networkd role) are what let
+# them actually forward to the routed subnets. VERIFY both NIC names with
+# `ip link` after a reinstall — predictable names can differ on fresh Debian 13.
 site_id: 40
 cluster_id: 1
 
@@ -18,10 +24,12 @@ hosts:
     public_ip: 178.63.124.40
     host_index: 2
     fabric_nic: enp33s0f0np0
-    subnet_router: true
+    oob_nic: enp37s0
+    oob_host: 50
   htz-fsn-mgmt-2:
     server_number: 3008209
     public_ip: 178.63.124.41
     host_index: 3
     fabric_nic: enp33s0f0np0
-    subnet_router: false
+    oob_nic: enp37s0
+    oob_host: 51
