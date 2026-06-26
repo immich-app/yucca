@@ -6,24 +6,28 @@ variable "flux_operator_version" {
   default     = "0.50.0"
 }
 
-# Commit-status Provider auth via a DEDICATED GitHub App (no PAT) — "yucca-flux"
-# with only "Commit statuses: write". notification-controller mints + rotates
-# installation tokens from these. yucca is a public repo with public images, so
-# NO git-sync or GHCR pull secret is needed.
+# Commit-status Provider auth via a GitHub App (no PAT). notification-controller
+# mints + rotates installation tokens from these. yucca is a public repo with
+# public images, so NO git-sync or GHCR pull secret is needed.
+#
+# TEMPORARY: fed from the SHARED `push-o-matic` app (op://shared_tf/
+# GITHUB_APP_IMMICH_PUSH_O_MATIC) — see tf/.env. The dedicated least-privilege
+# "yucca-flux" app ("Commit statuses: write" only) isn't created yet; repoint
+# the tf/.env refs to it when it is.
 variable "flux_github_app_id" {
-  description = "GitHub App ID (numeric) for the commit-status Provider. Injected via TF_VAR from 1P."
+  description = "GitHub App ID (numeric) for the commit-status Provider. Injected via TF_VAR from 1P (push-o-matic, op://shared_tf)."
   type        = string
   default     = ""
 }
 
 variable "flux_github_app_installation_id" {
-  description = "GitHub App installation ID on the immich-app org/repo. Injected via TF_VAR from 1P."
+  description = "GitHub App installation ID on the immich-app org. Injected via TF_VAR from 1P (push-o-matic, op://shared_tf)."
   type        = string
   default     = ""
 }
 
 variable "flux_github_app_private_key" {
-  description = "GitHub App private key (raw PEM). Injected via TF_VAR from 1P; empty default keeps `tofu validate` clean."
+  description = "GitHub App private key (raw PEM). Injected via TF_VAR from 1P (push-o-matic, op://shared_tf); empty default keeps `tofu validate` clean."
   type        = string
   sensitive   = true
   default     = ""
@@ -32,7 +36,7 @@ variable "flux_github_app_private_key" {
 # ─── App secrets (secrets.tf) ───────────────────────────────────────────
 #
 # Externally-issued / human-managed secrets. Live in 1P (yucca_tf_staging_manual
-# for app creds, o11y_tf_staging for the shared vmauth token) and are injected via
+# for app creds, shared_tf_staging for the shared vmauth token) and are injected via
 # TF_VAR from op:// refs in tf/.env. Empty defaults keep `tofu validate` clean
 # and let the staging slice deploy before the real values are populated — the
 # apps come up, just without working OIDC / object storage / metrics egress.
@@ -50,6 +54,13 @@ variable "yucca_oidc_client_secret" {
   description = "OIDC client secret for yucca-api (staging IdP). Injected via TF_VAR from 1P."
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+# Device-flow client: separate PUBLIC client (no secret), DEVICE_CODE grant.
+variable "yucca_oidc_device_client_id" {
+  description = "Public OIDC client ID for yucca-api's device flow. Injected via TF_VAR from 1P."
+  type        = string
   default     = ""
 }
 
@@ -87,10 +98,10 @@ variable "yucca_rgw_secret_access_key" {
 }
 
 # Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
-# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the o11y_tf_staging vault (the
+# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the shared_tf_staging vault (the
 # `remote-clusters` VMUser authenticates remote clusters with it).
 variable "vmauth_remote_write_password" {
-  description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (o11y_tf_staging/VICTORIAMETRICS_VMAUTH_PASSWORD)."
+  description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (shared_tf_staging/VICTORIAMETRICS_VMAUTH_PASSWORD)."
   type        = string
   sensitive   = true
   default     = ""

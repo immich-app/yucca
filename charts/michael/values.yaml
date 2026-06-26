@@ -60,10 +60,8 @@ env:
     value: dns
   - name: S3_BACKEND_DNS_HOST
     value: rook-ceph-rgw-yucca.rook-ceph.svc
-  - name: S3_BACKEND_SCHEME
-    value: http
-  - name: S3_BACKEND_PORT
-    value: "80"
+  # S3_BACKEND_SCHEME/PORT are intentionally omitted: michael derives them from
+  # S3_ENDPOINT (http -> 80), so a DNS source only needs the host configured.
   - name: S3_PROBE_BUCKET
     value: michael-rgw-healthcheck
   - name: OTLP_METRICS_ENDPOINT
