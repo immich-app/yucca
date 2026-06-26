@@ -70,15 +70,12 @@ export type GatewayEvent =
       type: 'DeviceFlowFailure';
     };
 
-type AuthFn = (client: Socket) => Promise<{ user: { isAdmin: boolean } }>;
-
 @WebSocketGateway({
   cors: false,
   path: '/api/yucca/socket.io',
   transports: ['websocket'],
 })
 export class EventsGateway implements OnGatewayConnection {
-  private authFn?: AuthFn;
   private emitter = new EventEmitter();
 
   constructor(private readonly moduleConfig: ModuleConfigRepository) {}
@@ -114,13 +111,11 @@ export class EventsGateway implements OnGatewayConnection {
     }
   }
 
-  setAuthFn(fn: (client: Socket) => Promise<{ user: { isAdmin: boolean } }>) {
-    this.authFn = fn;
-  }
-
   private async authenticate(client: Socket) {
-    if (!this.authFn) {
-      if (this.moduleConfig.get().requireWsAuth) {
+    const { authenticate, requireWsAuth } = this.moduleConfig.get();
+
+    if (!authenticate) {
+      if (requireWsAuth) {
         throw new Error('Auth function not set');
       }
 
@@ -131,6 +126,6 @@ export class EventsGateway implements OnGatewayConnection {
       };
     }
 
-    return this.authFn(client);
+    return authenticate(client);
   }
 }

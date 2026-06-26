@@ -3,6 +3,7 @@ import { FileMigrationProvider, Kysely, Migrator, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { join } from 'node:path';
 import { DB } from '../schema';
+import { LoggingRepository } from './logging.repository';
 import { StorageRepository } from './storage.repository';
 
 @Injectable()
@@ -10,7 +11,10 @@ export class DatabaseRepository {
   constructor(
     @InjectKysely('orchestrator') private db: Kysely<DB>,
     private readonly storage: StorageRepository,
-  ) {}
+    private readonly logger: LoggingRepository,
+  ) {
+    this.logger.setContext(DatabaseRepository.name);
+  }
 
   async runMigrations(): Promise<void> {
     const migrator = this.createMigrator();
@@ -18,20 +22,20 @@ export class DatabaseRepository {
 
     for (const result of results ?? []) {
       if (result.status === 'Success') {
-        console.debug(`Migration "${result.migrationName}" succeeded`);
+        this.logger.debug(`Migration "${result.migrationName}" succeeded`);
       }
 
       if (result.status === 'Error') {
-        console.error(`Migration "${result.migrationName}" failed`);
+        this.logger.error(`Migration "${result.migrationName}" failed`);
       }
     }
 
     if (error) {
-      console.error(`Migrations failed: ${error}`);
+      this.logger.error(`Migrations failed: ${error}`);
       throw new Error('Migrations failed.');
     }
 
-    console.info('Finished running migrations');
+    this.logger.log('Finished running migrations');
   }
 
   async restoreFrom(path: string): Promise<void> {

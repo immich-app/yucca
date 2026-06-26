@@ -15,6 +15,7 @@ import {
 } from '@futo-org/backups-api-client';
 import { YUCCA_WELL_KNOWN } from '../const';
 import { BackendType, CookieName } from '../enum';
+import { LoggingRepository } from '../repositories/logging.repository';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { Backend } from './backend';
 
@@ -48,6 +49,8 @@ class YuccaWellKnown {
 export const yuccaWellKnown = new YuccaWellKnown();
 
 export class YuccaBackend extends Backend {
+  private readonly logger = LoggingRepository.create(YuccaBackend.name);
+
   constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca; url?: string }) {
     super(configuration);
   }
@@ -124,6 +127,6 @@ export class YuccaBackend extends Backend {
   submitStructuredLog(summary: string, data: object) {
     void this.getRequestOptions()
       .then((requestOptions) => submitStructuredLog({ summary, data }, requestOptions))
-      .catch((error) => console.error('Failed to submit log', error));
+      .catch((error) => this.logger.error('Failed to submit log', error));
   }
 }

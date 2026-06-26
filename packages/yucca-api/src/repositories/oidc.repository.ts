@@ -58,11 +58,22 @@ export class OidcRepository implements OnModuleInit {
       expectedState,
     });
 
-    return tokens.claims();
+    return this.resolveClaims(this.config, tokens);
   }
 
-  async fetchUserInfo(accessToken: string, sub: string): Promise<client.UserInfoResponse | undefined> {
-    return await client.fetchUserInfo(this.config, accessToken, sub);
+  private async resolveClaims(
+    config: client.Configuration,
+    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
+  ): Promise<client.IDToken | undefined> {
+    const claims = tokens.claims();
+
+    if (!claims || (typeof claims.name === 'string' && typeof claims.email === 'string')) {
+      return claims;
+    }
+
+    const userInfo = await client.fetchUserInfo(config, tokens.access_token, claims.sub);
+
+    return { ...claims, ...userInfo };
   }
 
   logout(): URL | void {
@@ -79,7 +90,7 @@ export class OidcRepository implements OnModuleInit {
   async deviceFlow(): Promise<{
     userCode: string;
     verificationUri: string;
-    tokens: Promise<client.TokenEndpointResponse & client.TokenEndpointResponseHelpers>;
+    claims: Promise<client.IDToken | undefined>;
   }> {
     const response = await client.initiateDeviceAuthorization(this.deviceConfig, {
       scope: env.OIDC_SCOPE,
@@ -88,7 +99,9 @@ export class OidcRepository implements OnModuleInit {
     return {
       userCode: (response.user_code as string) ?? response.userCode,
       verificationUri: (response.verification_uri_complete as string) ?? response.verification_uri,
-      tokens: client.pollDeviceAuthorizationGrant(this.deviceConfig, response),
+      claims: client
+        .pollDeviceAuthorizationGrant(this.deviceConfig, response)
+        .then((tokens) => this.resolveClaims(this.deviceConfig, tokens)),
     };
   }
 }

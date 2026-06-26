@@ -137,12 +137,11 @@ export class AuthService {
   async oidcDeviceFlow(
     callback: (data: { userCode: string; verificationUri: string }) => void,
   ): Promise<{ accessToken: string }> {
-    const { userCode, verificationUri, tokens } = await this.oidc.deviceFlow();
+    const { userCode, verificationUri, claims: pendingClaims } = await this.oidc.deviceFlow();
 
     callback({ userCode, verificationUri });
 
-    const token = await tokens;
-    const claims = token.claims();
+    const claims = await pendingClaims;
 
     if (!claims) {
       throw new InternalServerErrorException('no id token received');

@@ -1,4 +1,9 @@
+import type { Socket } from 'socket.io';
+
 export const ModuleConfigProvider = Symbol('ModuleConfig');
+
+export type AuthenticatedUser = { user: { isAdmin: boolean } };
+export type AuthenticateFn = (client: Socket) => Promise<AuthenticatedUser>;
 
 export type ImmichIntegration = {
   dataPath: string;
@@ -18,6 +23,8 @@ export type ModuleConfig = {
   requireWsAuth?: boolean;
   requireLock?: boolean;
   developmentMode?: boolean;
+
+  authenticate?: AuthenticateFn;
 
   immichIntegration?: ImmichIntegration;
 };
