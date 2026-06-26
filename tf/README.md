@@ -52,8 +52,8 @@ tf/
 Future envs land as siblings: `deployment/staging/ceph/`, `deployment/prod/ceph/`.
 Additional stacks land as siblings within an env — `dev/talos/` and
 `dev/dns/` are two; `dev/monitoring/` could be next. NetBird Cloud access
-control lives in `dev/netbird/` and `staging/netbird/` (flat), and for prod is
-layered: `prod/global/` (account-wide) above per-site `prod/<site>/netbird/`
+control lives in `staging/netbird/` (flat), and for prod is layered:
+`prod/global/` (account-wide) above per-site `prod/<site>/netbird/`
 (e.g. `prod/htz-fsn1/netbird/`). See "The netbird-env module" below.
 
 The dns stack manages infrastructure names in the futo.cloud Cloudflare
@@ -299,12 +299,11 @@ cross-env CI plane. `k8s` is split into `talos` (the nodes) and `k8s_operator`
 
 | stack | env / scope | state key |
 |---|---|---|
-| `deployment/dev/netbird` | dev (flat) | `ceph/dev/netbird/…` |
 | `deployment/staging/netbird` | staging (flat) | `ceph/staging/netbird/…` |
 | `deployment/prod/global` | prod, **account-wide** (cross-site; empty today) | `ceph/prod/global/…` |
 | `deployment/prod/htz-fsn1/netbird` | prod, **site** htz-fsn1 | `ceph/prod/htz-fsn1/netbird/…` |
 
-dev/staging are single-layer. **Prod is layered**: a `global` layer (reserved for
+Staging is single-layer. **Prod is layered**: a `global` layer (reserved for
 cross-site groups/policies) above per-site layers. Site groups are site-scoped
 (`yucca_prod_<site>_<role>`) so a network router's peers are unambiguously *that
 site's* mgmt nodes. A site layer can consume a global group via a terragrunt
