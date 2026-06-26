@@ -22,8 +22,14 @@ name: Infra (Terraform)
 #   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (+ _WRITE) — staging SAs; and
 #     OP_TF_YUCCA_PROD_ENV (read) / OP_TF_YUCCA_PROD_ENV_WRITE (netbird apply) — prod
 #     SAs. (The fabric apply escalates to the write SA stored in yucca_tf_prod.)
-#   - The netbird stacks applied at least once so the CI/mgmt setup keys exist in 1P
+#   - BOOTSTRAP — the netbird stacks applied ONCE out-of-band so the CI/mgmt setup
+#     keys exist in 1P before anything tries to connect (CI can't mint them itself:
+#     the apply that mints them is gated behind the plan that needs them). E.g.:
+#       OP_SERVICE_ACCOUNT_TOKEN=<staging write SA> \
+#         TF_STACK_DIR=tf/deployment/staging/netbird mise run tf:apply
 #     (staging: NETBIRD_YUCCA_STAGING_CI_SETUP_KEY; prod: NETBIRD_YUCCA_PROD_<SITE>_*).
+#     Also: NetBird routes advertising the node subnets (staging 10.10.10.0/24; prod
+#     the site subnets via the mgmt peers) that the `ci` group may reach.
 #   - 1P items: NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY (yucca_tf_prod),
 #     NETBOX_API_TOKEN (yucca_tf), HETZNER_WEBSERVICE_API_USER/PASSWORD (yucca_tf_prod).
 #   - GitHub Environments with required reviewers: `staging-infra`, `prod-infra`,
@@ -134,19 +140,26 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
-      # Plan does NOT join the NetBird overlay. The talos plan would otherwise
-      # refresh against the 10.10.10.0/24 nodes (reachable only over NetBird),
-      # whose CI setup key is itself minted by the apply below — and the apply is
-      # gated on this plan. To avoid that bootstrap deadlock, CI plans talos with
-      # `-refresh=false` (config-vs-state only, no node contact); the apply job
-      # does the full refresh + apply over the overlay. The cloud-API stacks
-      # (dns/ceph/netbird) refresh normally — they need no overlay.
+      # The talos plan reads `data.talos_cluster_health` (and the post-CNI gate),
+      # which dial the cluster over the 10.10.10.0/24 overlay — so the talos plan
+      # MUST join NetBird (data sources are read on plan and -refresh=false doesn't
+      # skip them; the cloud-API stacks need no overlay). The CI setup key must
+      # already exist in 1P: it's minted by the netbird apply, so a fresh repo is
+      # bootstrapped by applying staging/netbird ONCE out-of-band (see header) —
+      # after that every plan/apply just reads it, the same way the old Tailscale
+      # OAuth was an out-of-band prerequisite.
+      - name: Connect to NetBird
+        if: matrix.stack == 'talos'
+        uses: ./.github/actions/netbird-connect
+        with:
+          setup-key-ref: op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password
+          hostname: gha-staging-plan-${{ github.run_id }}
+
       - name: Terragrunt plan
         run: >-
           tf/op-run.sh terragrunt
           --working-dir tf/deployment/staging/${{ matrix.stack }}
           --non-interactive plan
-          ${{ matrix.stack == 'talos' && '-refresh=false' || '' }}
 
   staging-apply:
     name: Staging apply (gated)
