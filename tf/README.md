@@ -413,9 +413,17 @@ replaced the Tailscale subnet-router path). The `.github/actions/netbird-connect
 composite action installs the client and runs `netbird up` with the **`ci` setup
 key** read from 1P (`op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY`);
 the runner joins as a `ci` peer and the existing staging route advertises the LAN.
-The apply job applies `staging/netbird` **first** (minting that key) before
-connecting, so a fresh bootstrap is self-contained. The prod **fabric** workflow
-(`fabric.yml`) still uses Tailscale — `10.40.5.0/24` isn't on NetBird yet.
+The **talos plan** connects too — it reads `data.talos_cluster_health`, which
+dials the cluster over the overlay (a data source, so `-refresh=false` can't skip
+it).
+
+**One-time bootstrap.** The CI key is minted by the netbird apply, but the talos
+plan needs it, and the apply is gated behind that plan — so a fresh repo can't
+mint it from CI. Apply `staging/netbird` **once out-of-band** to seed the key
+(`TF_STACK_DIR=tf/deployment/staging/netbird mise run tf:apply`); after that every
+plan/apply just reads it, like the old Tailscale OAuth prerequisite. The prod
+**fabric** workflow (`fabric.yml`) still uses Tailscale — `10.40.5.0/24` isn't on
+NetBird yet.
 
 ## Where secrets actually live
 
