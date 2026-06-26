@@ -3,6 +3,13 @@
 set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
 
+# OpenTofu's Go binary doesn't read the macOS keychain, so the OVH S3 backend's
+# cert fails to verify locally ("unknown authority"). Point it at the system CA
+# bundle on macOS; Linux/CI reads its trust store fine and is left alone.
+if [ -z "${SSL_CERT_FILE:-}" ] && [ "$(uname -s)" = "Darwin" ] && [ -f /etc/ssl/cert.pem ]; then
+  export SSL_CERT_FILE=/etc/ssl/cert.pem AWS_CA_BUNDLE=/etc/ssl/cert.pem
+fi
+
 mise run infra:providers
 
 # Resolve a (read-scoped) service-account token. CI provides one in
@@ -23,5 +30,8 @@ op read "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/password" > "
 export TF_VAR_netconf_ssh_key_path="$KEYF"
 export TF_CLI_CONFIG_FILE="$ROOT/tf/.terraformrc.local"
 SITE="${SITE:-htz-fsn1}"
+# With a service-account token in the env, drop OP_ACCOUNT — the onepassword
+# provider rejects having both set ("service_account_token and account are set").
+unset OP_ACCOUNT
 # -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe (see apply).
 OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" plan -parallelism=1 "$@"
