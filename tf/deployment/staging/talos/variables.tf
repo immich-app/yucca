@@ -57,6 +57,13 @@ variable "yucca_oidc_client_secret" {
   default     = ""
 }
 
+# Device-flow client: separate PUBLIC client (no secret), DEVICE_CODE grant.
+variable "yucca_oidc_device_client_id" {
+  description = "Public OIDC client ID for yucca-api's device flow. Injected via TF_VAR from 1P."
+  type        = string
+  default     = ""
+}
+
 # yucca-admin-api OIDC client (separate registration from yucca-api).
 variable "yucca_oidc_admin_client_id" {
   description = "OIDC client ID for yucca-admin-api (staging IdP). Injected via TF_VAR from 1P."

@@ -119,7 +119,7 @@ resource "kubernetes_secret_v1" "yucca_api" {
     JWT_PRIVATE_KEY       = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
     OIDC_CLIENT_ID        = var.yucca_oidc_client_id
     OIDC_CLIENT_SECRET    = var.yucca_oidc_client_secret
-    OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_client_id
+    OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_device_client_id
   }
 }
 
