@@ -18,7 +18,6 @@ set -euo pipefail
 # Map: short cluster name -> target filename under ~/.ssh/
 declare -A KEYS=(
   [sietch]="id_ed25519_sietch"
-  [painbox]="id_ed25519_painbox"
 )
 
 # Map: short cluster name -> 1P vault holding its
@@ -27,12 +26,11 @@ declare -A KEYS=(
 # Override any lookup with OP_VAULT=<vault>.
 declare -A VAULTS=(
   [sietch]="yucca_tf_staging"
-  [painbox]="yucca_tf_dev"
 )
 DEFAULT_VAULT="yucca_tf_dev"
 
 if [ $# -eq 0 ]; then
-  targets=(sietch painbox)
+  targets=(sietch)
 else
   targets=("$@")
 fi
