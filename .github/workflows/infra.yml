@@ -1,15 +1,21 @@
 name: Infra (Terraform)
 
-# Applies the staging Terraform stacks from CI:
+# Applies the staging Terraform stacks from CI, then converges the bare-metal
+# Ceph cluster with Ansible:
 #   - tf/deployment/staging/ceph   (ceph cluster 1P password items; no node contact)
 #   - tf/deployment/staging/talos  (Talos config, Cilium, Flux bootstrap, secrets)
 #   - tf/deployment/staging/dns    (Cloudflare records for the ingress hosts)
+#   - ansible/ceph (deploy pipeline) (cephadm convergence: OSDs, RGW realm +
+#     S3/metrics-worker users, monitoring, tuning, hardening) — the TF stacks
+#     only MINT the RGW keys into 1P; this step is what actually creates the
+#     matching RGW users on the cluster, so the metrics worker can authenticate.
 #
-# Plan runs on PRs touching tf/**; apply runs on merge to main behind the
-# `staging-infra` Environment gate (required reviewers). The Talos stack talks
-# to the nodes on the 10.10.10.0/24 management VLAN, which GitHub-hosted runners
-# can't reach — so the runner joins the tailnet (the cluster firewall trusts the
-# Tailscale CIDRs) and accepts the subnet route advertising that VLAN.
+# Plan runs on PRs touching tf/** or ansible/ceph/**; apply runs on merge to main
+# behind the `staging-infra` Environment gate (required reviewers). Both the Talos
+# stack and the Ansible deploy talk to the nodes on the 10.10.10.0/24 management
+# VLAN, which GitHub-hosted runners can't reach — so the runner joins the tailnet
+# (the cluster firewall trusts the Tailscale CIDRs) and accepts the subnet route
+# advertising that VLAN.
 #
 # Prerequisites (provisioned out-of-band):
 #   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (the staging-scoped 1P service-account
@@ -22,9 +28,9 @@ name: Infra (Terraform)
 on:
   push:
     branches: [main]
-    paths: ["tf/**"]
+    paths: ["tf/**", "ansible/ceph/**"]
   pull_request:
-    paths: ["tf/**"]
+    paths: ["tf/**", "ansible/ceph/**"]
   workflow_dispatch:
 
 # Serialize: the OVH S3 backend has no state locking (single-operator model),
@@ -131,3 +137,36 @@ jobs:
           tf/op-run.sh terragrunt
           --working-dir tf/deployment/staging/dns
           --non-interactive apply -auto-approve
+
+      # ── Ceph convergence (Ansible) ──────────────────────────────────────
+      # The TF stacks above only minted the RGW keys into 1P + the cluster
+      # Secret; this is what creates the matching RGW users on the bare-metal
+      # cluster. Runs after the TF apply so the inventory (rendered from the
+      # ceph stack's `render` output) and the keys exist. Reuses the tailnet +
+      # 1Password session already established in this job.
+
+      - name: Render Ansible inventory from the ceph TF state
+        run: ansible/ceph/scripts/render-inventories.sh staging
+
+      - name: Install the ansible-iac SSH key from 1Password
+        # Pulls op://yucca_tf_staging/SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY to
+        # ~/.ssh/id_ed25519_sietch — the path the rendered inventory references.
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          OP_VAULT=yucca_tf_staging ansible/ceph/scripts/install-ssh-keys.sh sietch
+
+      - name: Provision the ceph Ansible toolchain (venv + collections)
+        working-directory: ansible/ceph
+        run: |
+          mise trust
+          mise install
+          mise run setup
+
+      - name: Deploy Ceph (full pipeline — baseline → tune → deploy → harden)
+        working-directory: ansible/ceph
+        # CI runner has no known_hosts for the bare-metal nodes; first contact is
+        # over the tailnet, so disable strict host-key checking for this run.
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "false"
+          CEPH_ENV: inventories/sietch-ceph.staging.austin.int/inventory.ini
+        run: mise run deploy
