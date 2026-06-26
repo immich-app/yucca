@@ -73,5 +73,10 @@ locals {
     grafana          = "${local.secret_prefix}_GRAFANA_PASSWORD"
     s3_restic_access = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_ACCESS_KEY"
     s3_restic_secret = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_SECRET_KEY"
+    # RGW admin (read-only) keys for the metrics worker. Titled <CLUSTER>_
+    # METRICS_WORKER_* (no _CEPH infix) to match the metrics-worker consumer's
+    # 1P contract, which is named by cluster, not by the ceph subsystem.
+    metrics_worker_access = "${upper(var.cluster_name)}_METRICS_WORKER_ACCESS_KEY"
+    metrics_worker_secret = "${upper(var.cluster_name)}_METRICS_WORKER_SECRET_KEY"
   }
 }

@@ -51,7 +51,7 @@ least-privilege principle.
 
 ```bash
 cd ~/yucca/ansible/ceph
-export CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini
+export CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini
 mise run status         # read-only smoke test
 mise run deploy         # or any other task
 ```

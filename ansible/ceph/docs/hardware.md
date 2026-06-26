@@ -19,7 +19,7 @@ traffic share one subnet. Production will separate them; see
 | painbox  | public /32        | Single 1GbE, direct SSH (no bond, no ProxyJump)                        |
 
 Per-node connection IPs (`bond_ip`) are declared in
-`tf/deployment/dev/ceph/clusters.auto.tfvars` and rendered by TF into the
+`tf/deployment/staging/ceph/clusters.auto.tfvars` and rendered by TF into the
 cluster's `inventory.ini`. They're also mirrored into `host_vars/` for use
 by roles that need the IP as a variable (e.g., cephadm public-network
 resolution, dashboard URL construction).

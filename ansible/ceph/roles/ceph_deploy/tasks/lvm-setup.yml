@@ -100,6 +100,68 @@
       register: vg2_lv_results
       changed_when: "'already exists' not in (vg2_lv_results.stdout | default(''))"
 
+    # --- SSD OSD data LVs (partition 6) ---
+    # part6 of each SSD is the SSD-class OSD data device. cephadm cannot deploy
+    # an OSD on a bare partition (only a whole disk or an LV), so wrap each
+    # part6 in its own VG + a 100%FREE LV that ceph_ssd_osds references as
+    # `<vg>/osd-ssd`. Gated on ceph_ssd_vg1/2: clusters that want no SSD tier
+    # simply omit those vars and these tasks no-op.
+    - name: Check if SSD OSD VG1 exists
+      ansible.builtin.shell: vgs {{ ceph_ssd_vg1 }} 2>/dev/null
+      register: ssd_vg1_check
+      changed_when: false
+      failed_when: false
+      when: ceph_ssd_vg1 is defined
+
+    - name: Check if SSD OSD VG2 exists
+      ansible.builtin.shell: vgs {{ ceph_ssd_vg2 }} 2>/dev/null
+      register: ssd_vg2_check
+      changed_when: false
+      failed_when: false
+      when: ceph_ssd_vg2 is defined
+
+    - name: Create PV and VG on SSD1 partition 6 (SSD OSD)
+      ansible.builtin.shell: |
+        PART="{{ ssd1_dev.stdout }}6"
+        wipefs -af "$PART"
+        pvcreate -f "$PART" && vgcreate {{ ceph_ssd_vg1 }} "$PART"
+      when:
+        - ceph_ssd_vg1 is defined
+        - ssd_vg1_check.rc | default(1) != 0
+      changed_when: true
+
+    - name: Create PV and VG on SSD2 partition 6 (SSD OSD)
+      ansible.builtin.shell: |
+        PART="{{ ssd2_dev.stdout }}6"
+        wipefs -af "$PART"
+        pvcreate -f "$PART" && vgcreate {{ ceph_ssd_vg2 }} "$PART"
+      when:
+        - ceph_ssd_vg2 is defined
+        - ssd_vg2_check.rc | default(1) != 0
+      changed_when: true
+
+    - name: Create SSD OSD LV on VG1 (100%FREE)
+      ansible.builtin.shell: |
+        if lvs {{ ceph_ssd_vg1 }}/osd-ssd 2>/dev/null; then
+          echo "osd-ssd already exists"
+        else
+          lvcreate --yes -Wy -l 100%FREE -n osd-ssd {{ ceph_ssd_vg1 }}
+        fi
+      register: ssd_lv1_result
+      changed_when: "'already exists' not in (ssd_lv1_result.stdout | default(''))"
+      when: ceph_ssd_vg1 is defined
+
+    - name: Create SSD OSD LV on VG2 (100%FREE)
+      ansible.builtin.shell: |
+        if lvs {{ ceph_ssd_vg2 }}/osd-ssd 2>/dev/null; then
+          echo "osd-ssd already exists"
+        else
+          lvcreate --yes -Wy -l 100%FREE -n osd-ssd {{ ceph_ssd_vg2 }}
+        fi
+      register: ssd_lv2_result
+      changed_when: "'already exists' not in (ssd_lv2_result.stdout | default(''))"
+      when: ceph_ssd_vg2 is defined
+
     - name: Verify LVM setup
       ansible.builtin.command: lvs -o lv_name,vg_name,lv_size --noheadings
       register: lvm_state

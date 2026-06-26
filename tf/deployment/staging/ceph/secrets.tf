@@ -28,8 +28,14 @@ locals {
 
   # Per-role generated-password length. ops is the break-glass account typed by
   # hand at the KVM/console, so keep it short; dashboard/grafana are web logins
-  # (paste-friendly) and stay long. Roles not listed use the default.
-  ceph_password_length         = { ops = 16 }
+  # (paste-friendly) and stay long. The metrics-worker RGW keys follow the
+  # AWS/RGW key shape (20-char access id, 40-char secret). Roles not listed use
+  # the default.
+  ceph_password_length = {
+    ops                   = 16
+    metrics_worker_access = 20
+    metrics_worker_secret = 40
+  }
   ceph_password_default_length = 32
 
   # Flatten (cluster, secret-role) -> { vault, title, length } across all

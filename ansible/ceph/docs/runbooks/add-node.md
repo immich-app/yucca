@@ -15,7 +15,7 @@
 
 Pick an unused name, or omit `name` to let TF auto-pick from the
 923-word list seeded per-cluster (see [docs/naming.md](../naming.md)).
-Edit `tf/deployment/dev/ceph/clusters.auto.tfvars` and append to the
+Edit `tf/deployment/staging/ceph/clusters.auto.tfvars` and append to the
 target cluster's `hosts` list:
 
 ```hcl
@@ -45,7 +45,7 @@ their positions.
 ## 2. Create host_vars
 
 ```bash
-cd inventories/sietch-ceph.dev.austin.int
+cd inventories/sietch-ceph.staging.austin.int
 cp host_vars/example.yml host_vars/sietch-ceph-<name>.yml
 ```
 
@@ -67,7 +67,7 @@ hardware:
 After `tofu apply` in step 1, inspect the rendered inventory:
 
 ```bash
-cat inventories/sietch-ceph.dev.austin.int/inventory.ini
+cat inventories/sietch-ceph.staging.austin.int/inventory.ini
 ```
 
 The new host should appear in:
@@ -86,7 +86,7 @@ Bootstrap host is unchanged. TF never moves an existing bootstrap assignment.
 3. Run provisioning:
 
 ```bash
-CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory-provision.ini \
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory-provision.ini \
   scripts/ansible-play.sh provision.yml \
   -e confirm_wipe=true \
   --limit sietch-ceph-<name>

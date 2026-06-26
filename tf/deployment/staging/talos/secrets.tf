@@ -8,7 +8,7 @@
 #                    with the public one — they MUST be the same pair).
 #   • OIDC / RGW   — externally issued, human-managed in 1P; read via TF_VAR
 #                    (op:// refs in tf/.env) and written into the app Secrets.
-#   • vmauth token — shared o11y credential (o11y_tf_staging), for vmagent egress.
+#   • vmauth token — shared o11y credential (shared_tf_staging), for vmagent egress.
 #
 # Each Secret is named after its chart's fullnameOverride so the chart's own
 # `secretData` fixture (nulled in the staging HelmRelease) cedes the name and
@@ -119,7 +119,7 @@ resource "kubernetes_secret_v1" "yucca_api" {
     JWT_PRIVATE_KEY       = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
     OIDC_CLIENT_ID        = var.yucca_oidc_client_id
     OIDC_CLIENT_SECRET    = var.yucca_oidc_client_secret
-    OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_client_id
+    OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_device_client_id
   }
 }
 
