@@ -1,12 +1,12 @@
-# htz-fsn1 site NetBird objects (auto-prefixed "yucca_prod_htz_fsn1_").
-# Setup-key plaintext → the yucca_tf_prod vault. NetBird is default-deny: a peer
-# gets only the access its groups' policies grant.
+# htz-fsn1 site NetBird objects (rendered UPPER_SNAKE, auto-prefixed
+# "YUCCA_PROD_HTZ_FSN1_"). Setup-key plaintext → the yucca_tf_prod vault. NetBird
+# is default-deny: a peer gets only the access its groups' policies grant.
 
 groups = {
-  ci           = {} # ephemeral CI runners → yucca_prod_htz_fsn1_ci
+  ci           = {} # ephemeral CI runners → YUCCA_PROD_HTZ_FSN1_CI
   mgmt         = {} # management nodes (configured via ansible); also the route peers
-  talos        = {} # Talos cluster nodes → yucca_prod_htz_fsn1_talos
-  k8s_operator = {} # in-cluster kubernetes operator → yucca_prod_htz_fsn1_k8s_operator
+  talos        = {} # Talos cluster nodes → YUCCA_PROD_HTZ_FSN1_TALOS
+  k8s_operator = {} # in-cluster kubernetes operator → YUCCA_PROD_HTZ_FSN1_K8S_OPERATOR
 }
 
 setup_keys = {

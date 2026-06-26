@@ -9,9 +9,10 @@
 
 # The shared resource tag. Site layers tag every routed network resource into
 # this group (via a terragrunt dependency on this stack), so one account-wide
-# policy governs access to all of them. Explicit name → not prefixed "yucca_prod_".
+# policy governs access to all of them. Explicit name → the unprefixed shared tag
+# (without it the module would render "YUCCA_PROD_YUCCA_RESOURCE").
 groups = {
-  yucca_resource = { name = "yucca_resource" }
+  yucca_resource = { name = "YUCCA_RESOURCE" }
 }
 
 setup_keys = {}

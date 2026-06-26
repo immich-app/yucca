@@ -286,14 +286,16 @@ Per env (and per prod site), the baseline groups are:
 
 | group | who | rendered (staging / prod htz-fsn1) |
 |---|---|---|
-| `ci` | ephemeral CI runners | `yucca_staging_ci` / `yucca_prod_htz_fsn1_ci` |
-| `mgmt` | management nodes (configured via Ansible; also the route peers) | `yucca_staging_mgmt` / … |
-| `talos` | Talos cluster nodes | `yucca_staging_talos` / … |
-| `k8s_operator` | in-cluster kubernetes operator | `yucca_staging_k8s_operator` / … |
+| `ci` | ephemeral CI runners | `YUCCA_STAGING_CI` / `YUCCA_PROD_HTZ_FSN1_CI` |
+| `mgmt` | management nodes (configured via Ansible; also the route peers) | `YUCCA_STAGING_MGMT` / … |
+| `talos` | Talos cluster nodes | `YUCCA_STAGING_TALOS` / … |
+| `k8s_operator` | in-cluster kubernetes operator | `YUCCA_STAGING_K8S_OPERATOR` / … |
 
-CI is **per-env** (`yucca_<env>_ci`, reaching only that env's groups) — no
-cross-env CI plane. `k8s` is split into `talos` (the nodes) and `k8s_operator`
-(the operator identity) so they can carry different policies.
+Logical keys (the tfvars map keys, e.g. `ci`) stay lowercase; **rendered NetBird
+names are UPPER_SNAKE** (uppercased, hyphens → underscores). CI is **per-env**
+(`ci`, reaching only that env's groups) — no cross-env CI plane. `k8s` is split
+into `talos` (the nodes) and `k8s_operator` (the operator identity) so they can
+carry different policies.
 
 ### Stacks & layering
 
@@ -305,8 +307,8 @@ cross-env CI plane. `k8s` is split into `talos` (the nodes) and `k8s_operator`
 
 Staging is single-layer. **Prod is layered**: a `global` layer (account-wide
 groups + policies) above per-site layers. The global layer owns the
-**`yucca_resource`** tag group and the account-wide **`yucca → yucca_resource`**
-policy (see below). Site groups are site-scoped (`yucca_prod_<site>_<role>`) so a
+**`YUCCA_RESOURCE`** tag group and the account-wide **`yucca → yucca_resource`**
+policy (see below). Site groups are site-scoped (`YUCCA_PROD_<SITE>_<ROLE>`) so a
 network router's peers are unambiguously *that site's* mgmt nodes. A site layer
 consumes a global group via a terragrunt `dependency` on `prod/global` → the
 module's `external_groups` input (htz-fsn1 does this for `yucca_resource`). The
@@ -315,12 +317,13 @@ gets its own state key without colliding with the `prod/htz-fsn1` fabric stack.
 
 ### The `yucca` / `yucca_resource` access model
 
-Two pre-existing-or-managed groups drive account-wide access to routed subnets:
+Two groups drive account-wide access to routed subnets (rendered names in caps):
 
-- **`yucca`** — the existing **users** group (people). External (looked up by
-  name); never managed here.
-- **`yucca_resource`** — the shared **resource tag**, managed in `prod/global`.
-  Every routed `netbird_network_resource` (across sites) is tagged into it.
+- **`yucca`** — the existing **users** group (people). External (looked up by its
+  actual name `yucca`); never managed here.
+- **`YUCCA_RESOURCE`** — the shared **resource tag**, managed in `prod/global`
+  (logical key `yucca_resource`). Every routed `netbird_network_resource` (across
+  sites) is tagged into it.
 
 One global policy in `prod/global` — `yucca → yucca_resource`, `bidirectional =
 false` — lets users reach every tagged resource. Because `yucca_resource` is only

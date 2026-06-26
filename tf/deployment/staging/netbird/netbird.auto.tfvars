@@ -1,15 +1,15 @@
-# NetBird Cloud objects for yucca-staging. Names are auto-prefixed "yucca_staging_"
-# (all underscores); setup-key plaintext is written to the yucca_tf_staging vault.
+# NetBird Cloud objects for yucca-staging. Names render UPPER_SNAKE, auto-prefixed
+# "YUCCA_STAGING_"; setup-key plaintext is written to the yucca_tf_staging vault.
 #
 # Groups start empty — a peer joins a group by registering with a setup key whose
 # auto_groups include it. NetBird is default-deny: a peer gets only the access its
 # groups' policies grant.
 
 groups = {
-  ci           = {} # ephemeral CI runners → yucca_staging_ci
-  mgmt         = {} # management nodes (configured via ansible) → yucca_staging_mgmt
-  talos        = {} # Talos cluster nodes → yucca_staging_talos
-  k8s_operator = {} # in-cluster kubernetes operator → yucca_staging_k8s_operator
+  ci           = {} # ephemeral CI runners → YUCCA_STAGING_CI
+  mgmt         = {} # management nodes (configured via ansible) → YUCCA_STAGING_MGMT
+  talos        = {} # Talos cluster nodes → YUCCA_STAGING_TALOS
+  k8s_operator = {} # in-cluster kubernetes operator → YUCCA_STAGING_K8S_OPERATOR
 }
 
 setup_keys = {

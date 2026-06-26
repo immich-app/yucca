@@ -73,24 +73,19 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
-      # The Talos stack refreshes state against the nodes; the DNS, ceph and
-      # netbird stacks are pure Cloudflare/1Password/NetBird-API and need no
-      # overlay. CI reaches the 10.10.10.0/24 nodes over NetBird: the runner joins
-      # as a `ci` peer via the minted setup key, and the existing staging route
-      # advertises the LAN. The key must already exist in 1P (minted by a prior
-      # netbird apply) — true for every PR after the first bootstrap apply.
-      - name: Connect to NetBird
-        if: matrix.stack == 'talos'
-        uses: ./.github/actions/netbird-connect
-        with:
-          setup-key-ref: op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password
-          hostname: gha-staging-plan-${{ github.run_id }}
-
+      # Plan does NOT join the NetBird overlay. The talos plan would otherwise
+      # refresh against the 10.10.10.0/24 nodes (reachable only over NetBird),
+      # whose CI setup key is itself minted by the apply below — and the apply is
+      # gated on this plan. To avoid that bootstrap deadlock, CI plans talos with
+      # `-refresh=false` (config-vs-state only, no node contact); the apply job
+      # does the full refresh + apply over the overlay. The cloud-API stacks
+      # (dns/ceph/netbird) refresh normally — they need no overlay.
       - name: Terragrunt plan
         run: >-
           tf/op-run.sh terragrunt
           --working-dir tf/deployment/staging/${{ matrix.stack }}
           --non-interactive plan
+          ${{ matrix.stack == 'talos' && '-refresh=false' || '' }}
 
   apply:
     name: Apply (gated)

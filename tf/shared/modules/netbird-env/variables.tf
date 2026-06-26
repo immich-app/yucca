@@ -9,7 +9,7 @@ variable "env" {
 }
 
 variable "name_prefix" {
-  description = "Prefix for every NetBird object name so all envs/sites coexist in one NetBird Cloud account (e.g. \"yucca_staging\" → group \"yucca_staging_mgmt\"; \"yucca_prod_htz-fsn1\" → \"yucca_prod_htz_fsn1_mgmt\"). Hyphens in the prefix are normalized to underscores."
+  description = "Prefix for every NetBird object name so all envs/sites coexist in one NetBird Cloud account. Names render UPPER_SNAKE (uppercased, hyphens → underscores): e.g. \"yucca_staging\" → group \"YUCCA_STAGING_MGMT\"; \"yucca_prod_htz-fsn1\" → \"YUCCA_PROD_HTZ_FSN1_MGMT\"."
   type        = string
 }
 
@@ -19,7 +19,7 @@ variable "vault" {
 }
 
 variable "groups" {
-  description = "NetBird groups keyed by logical name. Groups start empty — membership comes from setup keys' auto_groups as peers register. Set `name` only to override the derived \"<name_prefix>_<key>\"."
+  description = "NetBird groups keyed by logical name. Groups start empty — membership comes from setup keys' auto_groups as peers register. Set `name` only to override the derived \"<NAME_PREFIX>_<KEY>\" (an override is normalized to UPPER_SNAKE too)."
   type = map(object({
     name = optional(string)
   }))
