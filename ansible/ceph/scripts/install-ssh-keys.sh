@@ -64,9 +64,14 @@ for cluster in "${targets[@]}"; do
     fi
   fi
 
-  # Write private + public side by side
+  # Write private + public side by side.
+  # ?ssh-format=openssh is REQUIRED: the 1P item is an SSH_KEY whose private-key
+  # field otherwise reads back as PKCS#8 (-----BEGIN PRIVATE KEY-----), which
+  # macOS ssh tolerates for ed25519 but Ubuntu's OpenSSH (e.g. CI runners)
+  # rejects with "Load key: invalid format". OpenSSH format is accepted
+  # everywhere.
   umask 077
-  op read "op://$vault/$item/private_key" > "$priv"
+  op read "op://$vault/$item/private_key?ssh-format=openssh" > "$priv"
   op read "op://$vault/$item/public_key"  > "$pub"
   chmod 600 "$priv"
   chmod 644 "$pub"
