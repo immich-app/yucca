@@ -153,3 +153,10 @@ variable "config_patches" {
   type        = list(string)
   default     = []
 }
+
+variable "netbird_setup_key" {
+  description = "NetBird setup key for the node-level siderolabs/netbird system extension. When non-empty, an ExtensionServiceConfig document is appended to every machine config so each node joins the NetBird overlay on boot. The schematic (talos_schematic_id) must include siderolabs/netbird and the node must be upgraded to that schematic for the extension to install. Empty = extension left unconfigured. Sensitive."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
