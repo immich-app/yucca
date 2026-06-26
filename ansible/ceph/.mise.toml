@@ -9,7 +9,6 @@ PATH = "{{config_root}}/.venv/bin:{{env.PATH}}"
 # overrides shell-exported values, which silently sends operators to the
 # wrong cluster. Operators must export CEPH_ENV once per shell session:
 #   export CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini
-#   export CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini
 # Inventory files are TF-generated — `mise run tf:apply` (from yucca root) if missing.
 
 [tasks.setup]

@@ -1,5 +1,5 @@
 variable "cluster_name" {
-  description = "Short cluster identifier (e.g., sietch, painbox). Used as hostname prefix and 1P item prefix."
+  description = "Short cluster identifier (e.g., sietch). Used as hostname prefix and 1P item prefix."
   type        = string
 }
 

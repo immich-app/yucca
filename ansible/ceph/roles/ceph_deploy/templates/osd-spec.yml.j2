@@ -4,11 +4,11 @@
 # One document per host because per-host disk paths differ:
 #   - sietch nodes: each has a unique sas_path_prefix (different SAS expander
 #     address per chassis), so explicit data_devices.paths can't be shared.
-#   - painbox: single host, single spec.
+#   - NVMe-RAID shape: single host, single spec.
 #
 # Hardware-shape independence: when sas_path_prefix is defined the host is
 # sietch-shape (SAS expander, dual-SSD-VG block.db); otherwise the host is
-# painbox-shape (PCI-ATA disks, single NVMe-RAID VG, SSD OSD as an LV).
+# NVMe-RAID shape (PCI-ATA disks, single NVMe-RAID VG, SSD OSD as an LV).
 #
 # Idempotent: cephadm no-ops when the spec matches what's deployed. New
 # disks (e.g. populating an empty bay) are picked up automatically on apply.

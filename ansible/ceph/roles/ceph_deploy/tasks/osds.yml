@@ -7,13 +7,13 @@
 # CRUSH placement internally — the role no longer iterates disks.
 #
 # Hardware-shape independence: the template's Jinja conditionals handle
-# both sietch (SAS expander + dual-SSD-VG) and painbox (PCI-ATA + single
+# both sietch (SAS expander + dual-SSD-VG) and NVMe-RAID hosts (PCI-ATA + single
 # NVMe-RAID VG + LV-backed SSD OSD) without per-shape branching here.
 #
 # Required host_vars (per host, in inventories/<cluster>/host_vars/<host>.yml):
 #   ceph_hdd_osds   — list of {path_phy, db} mappings per HDD
-#   ceph_ssd_osds   — list of {path_phy + partition} (sietch) or {lv} (painbox)
-#   sas_path_prefix — REQUIRED for sietch; OMITTED for painbox-shape hosts
+#   ceph_ssd_osds   — list of {path_phy + partition} (SAS shape) or {lv} (NVMe-RAID shape)
+#   sas_path_prefix — REQUIRED for sietch; OMITTED for NVMe-RAID-shape hosts
 #
 # Idempotent: re-applying the same spec is a no-op when OSDs match. New
 # disks (e.g. populating an empty bay later) are picked up automatically.
