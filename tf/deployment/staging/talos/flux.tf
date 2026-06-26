@@ -27,9 +27,12 @@ resource "helm_release" "flux_operator" {
 # GitHub App credentials for notification-controller's `github` Provider, which
 # posts deploy results as commit statuses. App auth (no PAT): notification-
 # controller mints short-lived installation tokens from these and auto-rotates.
-# Uses a DEDICATED least-privilege app ("yucca-flux") with only
-# "Commit statuses: write" — the app ID/installation ID + PEM private key come
-# from 1P via op run.
+#
+# TEMPORARY: sources the SHARED `push-o-matic` app (op://shared_tf/
+# GITHUB_APP_IMMICH_PUSH_O_MATIC, via TF_VARs in tf/.env) — the dedicated
+# least-privilege "yucca-flux" app (only "Commit statuses: write") doesn't exist
+# yet. push-o-matic is broader than we'd like but already provisioned; repoint
+# the tf/.env refs to yucca-flux once it's created (nothing here changes).
 #
 # (No git-sync or GHCR pull secret: yucca is a public repo with public images,
 # so Flux reads the repo and pulls images unauthenticated.)
