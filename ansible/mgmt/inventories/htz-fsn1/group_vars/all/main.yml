@@ -9,7 +9,6 @@
 timezone: UTC
 mgmt_domain: fsn.htz.futo.cloud
 
-# Tailscale auth — the project OAuth client secret (requires tags; the role sets
-# --advertise-tags). NOT hardcoded; passed at run time by `mise run mgmt:ansible`:
-#   op read 'op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET/password'
-mgmt_tailscale_authkey: ""
+# NetBird "mgmt" setup key — NOT hardcoded; passed at run time by
+# `mise run mgmt:ansible` from op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY.
+mgmt_netbird_setup_key: ""

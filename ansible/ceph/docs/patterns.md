@@ -302,9 +302,9 @@ Ansible output is committed to `ansible.log` and displayed to operators
 service in Ansible and run `cephadm` per item." This couples the role
 tightly to per-host hardware shape (path composition, partition layout,
 LV vs disk topology) and breaks on any new cluster shape — the original
-sietch-shape `osds.yml` failed on painbox's PCI-ATA + LV-backed SSD OSD
-topology because `sas_path_prefix` was hardcoded into the path
-composition.
+sietch-shape `osds.yml` failed on the NVMe-RAID shape's PCI-ATA +
+LV-backed SSD OSD topology because `sas_path_prefix` was hardcoded into
+the path composition.
 
 **Pattern:** for any cephadm-managed surface (OSDs, RGW, MON/MGR
 placement, monitoring), render a **declarative service spec** and apply
@@ -320,7 +320,7 @@ template's Jinja conditional, not the role logic.
 - `templates/osd-spec.yml.j2` + `tasks/osds.yml`'s
   `ceph orch apply osd -i` task — OSD service spec; per-host documents
   in a multi-doc YAML; Jinja conditional handles sietch-shape vs
-  painbox-shape path composition.
+  NVMe-RAID-shape path composition.
 
 **Template skeleton:**
 

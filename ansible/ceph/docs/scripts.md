@@ -22,13 +22,13 @@ it inline, never via `export`:**
 
 ```bash
 # Correct — inline prefix, applies to one mise/script invocation
-CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini mise run preflight
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini mise run preflight
 
 # WRONG — mise's [env] machinery silently strips shell-exported vars
 # when launching tasks; CEPH_ENV reaches an empty environment and the
 # wrapper exits with "CEPH_ENV must be set". Confusing because your shell
 # clearly has it set.
-export CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini
+export CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini
 mise run preflight  # fails
 ```
 
@@ -145,7 +145,7 @@ scripts/install-ssh-keys.sh [cluster...]
 ```
 
 If no cluster arguments are given, installs keys for every known cluster
-(`sietch`, `painbox`).
+(`sietch`).
 
 ### What it does
 
@@ -173,7 +173,7 @@ For each target cluster:
 
 ### Arguments
 
-Zero or more cluster short names (`sietch`, `painbox`). With no args, all
+Zero or more cluster short names (`sietch`). With no args, all
 known clusters are installed.
 
 ### Exit codes
@@ -262,8 +262,8 @@ Warnings (non-blocking) are reported in the summary but don't affect exit.
 # Via mise (recommended)
 mise run preflight
 
-# Direct, against painbox
-CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini \
+# Direct, against sietch
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
   scripts/preflight.sh
 ```
 

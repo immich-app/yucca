@@ -26,7 +26,7 @@ deploy` picks up the new value via `op inject`.
 | S3 service-user access    | `<CLUSTER>_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY` | `yucca_tf_dev` | RGW S3 user `yucca-restic` access key       |
 | S3 service-user secret    | `<CLUSTER>_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY` | `yucca_tf_dev` | RGW S3 user `yucca-restic` secret key       |
 
-Replace `<CLUSTER>` with `SIETCH` or `PAINBOX`. The active vault name is
+Replace `<CLUSTER>` with the cluster short name (e.g. `SIETCH`). The active vault name is
 declared per-cluster in the `vault` field of the cluster's entry in
 `tf/deployment/staging/ceph/clusters.auto.tfvars` — `yucca_tf_dev` for dev,
 future `yucca_tf_staging` / `yucca_tf` for staging/prod.

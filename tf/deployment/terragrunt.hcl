@@ -15,11 +15,19 @@
 
 locals {
   # Parse env and stack from the directory structure.
-  # e.g., tf/deployment/dev/ceph → env=dev, stack=ceph
+  #   tf/deployment/dev/ceph            → env=dev,  stack=ceph
+  #   tf/deployment/prod/htz-fsn1       → env=prod, stack=htz-fsn1
+  #   tf/deployment/prod/htz-fsn1/netbird → env=prod, stack=htz-fsn1/netbird
+  # `stack` is EVERY segment after env, joined — so a site can nest sub-stacks
+  # (e.g. prod/<site>/netbird) with their own state key, distinct from the site's
+  # top-level stack. Single-segment stacks are unchanged (slice of [1:1] = the
+  # one element), so existing state keys are preserved.
   relative_path = path_relative_to_include()
   path_segments = split("/", local.relative_path)
   env           = length(local.path_segments) > 0 ? local.path_segments[0] : "unknown"
-  stack         = length(local.path_segments) > 1 ? local.path_segments[1] : "unknown"
+  stack = length(local.path_segments) > 1 ? join("/", slice(
+    local.path_segments, 1, length(local.path_segments)
+  )) : "unknown"
 }
 
 remote_state {

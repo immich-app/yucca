@@ -1,5 +1,4 @@
 import { OnGatewayConnection, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
-import { EventEmitter } from 'node:events';
 import { Server, Socket } from 'socket.io';
 import { BackendDto } from '../dto/backend.dto';
 import { IntegrationsResponseDto } from '../dto/integrations.dto';
@@ -70,17 +69,12 @@ export type GatewayEvent =
       type: 'DeviceFlowFailure';
     };
 
-type AuthFn = (client: Socket) => Promise<{ user: { isAdmin: boolean } }>;
-
 @WebSocketGateway({
   cors: false,
   path: '/api/yucca/socket.io',
   transports: ['websocket'],
 })
 export class EventsGateway implements OnGatewayConnection {
-  private authFn?: AuthFn;
-  private emitter = new EventEmitter();
-
   constructor(private readonly moduleConfig: ModuleConfigRepository) {}
 
   @WebSocketServer()
@@ -88,19 +82,11 @@ export class EventsGateway implements OnGatewayConnection {
 
   publish(event: GatewayEvent) {
     this.server?.emit(JSON.stringify(event));
-    this.emitter.emit('event', event);
+    this.moduleConfig.get().onInternalEvent?.(event);
   }
 
   emit(event: GatewayEvent) {
     this.server?.emit(JSON.stringify(event));
-  }
-
-  on(listener: (event: GatewayEvent) => void) {
-    this.emitter.on('event', listener);
-  }
-
-  off(listener: (event: GatewayEvent) => void) {
-    this.emitter.off('event', listener);
   }
 
   async handleConnection(client: Socket) {
@@ -114,13 +100,11 @@ export class EventsGateway implements OnGatewayConnection {
     }
   }
 
-  setAuthFn(fn: (client: Socket) => Promise<{ user: { isAdmin: boolean } }>) {
-    this.authFn = fn;
-  }
-
   private async authenticate(client: Socket) {
-    if (!this.authFn) {
-      if (this.moduleConfig.get().requireWsAuth) {
+    const { authenticate, requireWsAuth } = this.moduleConfig.get();
+
+    if (!authenticate) {
+      if (requireWsAuth) {
         throw new Error('Auth function not set');
       }
 
@@ -131,6 +115,6 @@ export class EventsGateway implements OnGatewayConnection {
       };
     }
 
-    return this.authFn(client);
+    return authenticate(client);
   }
 }

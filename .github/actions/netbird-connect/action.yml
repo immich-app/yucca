@@ -1,0 +1,63 @@
+name: Connect to NetBird
+description: >-
+  Install the NetBird client and join the NetBird Cloud overlay using a setup key
+  read from 1Password. Requires the 1Password CLI on PATH and
+  OP_SERVICE_ACCOUNT_TOKEN in the environment (the infra jobs provide both). The
+  setup key must already exist in 1Password — it is minted by the matching
+  netbird stack (deployment/<env>/netbird or prod/<site>/netbird), so apply that
+  stack before this action runs on a fresh bootstrap.
+
+inputs:
+  setup-key-ref:
+    description: 1Password op:// reference to the NetBird setup key (the plaintext key).
+    required: true
+  management-url:
+    description: NetBird management URL.
+    required: false
+    default: https://api.netbird.io
+  hostname:
+    description: Optional peer hostname to register the runner as.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install NetBird client
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -fsSL https://pkgs.netbird.io/install.sh | sh
+        netbird version
+
+    - name: Connect to NetBird
+      shell: bash
+      env:
+        OP_SETUP_KEY_REF: ${{ inputs.setup-key-ref }}
+        NB_MANAGEMENT_URL: ${{ inputs.management-url }}
+        NB_HOSTNAME: ${{ inputs.hostname }}
+      run: |
+        set -euo pipefail
+        key="$(op read "$OP_SETUP_KEY_REF")"
+        echo "::add-mask::$key"
+        args=(--setup-key "$key" --management-url "$NB_MANAGEMENT_URL")
+        if [ -n "$NB_HOSTNAME" ]; then
+          args+=(--hostname "$NB_HOSTNAME")
+        fi
+        sudo netbird up "${args[@]}"
+
+    - name: Wait for NetBird connection
+      shell: bash
+      run: |
+        set -euo pipefail
+        for _ in $(seq 1 30); do
+          if sudo netbird status 2>/dev/null | grep -qE "Management:[[:space:]]+Connected"; then
+            sudo netbird status --detail || true
+            echo "NetBird connected."
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "NetBird did not reach the Connected state in time." >&2
+        sudo netbird status --detail || true
+        exit 1

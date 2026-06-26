@@ -19,13 +19,11 @@ flowchart LR
     ONEP[("1Password org<br/>yucca_tf · yucca_tf_dev · ...")]
     S3[("OVH S3<br/>yucca-tf-state bucket")]
     SIETCH["Sietch · Austin DC<br/>3× Dell R730xd"]
-    PAINBOX["Painbox · Hetzner Helsinki<br/>1× SX295"]
 
     OP -->|edits| YUCCA
     OP -->|reads/writes secrets| ONEP
     OP -->|TF state I/O| S3
     OP -->|SSH ansible-iac| SIETCH
-    OP -->|SSH ansible-iac| PAINBOX
 ```
 
 The yucca monorepo is the single source of truth for cluster identity and
@@ -40,8 +38,8 @@ External dependencies are minimal and explicit:
 - **OVH S3** — `yucca-tf-state` bucket at `s3.eu-west-par.io.cloud.ovh.net`.
   Project-keyed (`ceph/<env>/<stack>/terraform.tfstate`) so multiple stacks
   share the bucket without collision.
-- **Hardware** — Austin colo for sietch (Dell R730xd × 3, single 10G bond);
-  Hetzner Helsinki for painbox (SX295 × 1). Detail in [hardware.md](hardware.md).
+- **Hardware** — Austin colo for sietch (Dell R730xd × 3, single 10G bond).
+  Detail in [hardware.md](hardware.md).
 
 ---
 
@@ -59,7 +57,7 @@ its environment from the same source — directory layout — so dev / staging
 | Ansible inv  | `inventories/<cluster>-ceph.dev.<dc>.<provider>/`              | `inventories/<cluster>-ceph.staging.<dc>.<provider>/`   | `inventories/<cluster>-ceph.prod.<dc>.<provider>/`   |
 | mise default | `CEPH_ENV=...sietch-ceph.dev.austin.int/inventory.ini`         | overridden via env at invocation                        | overridden via env at invocation                     |
 
-Today the only deployed environment is dev (sietch + painbox). Adding
+Today the only deployed environment is dev (sietch). Adding
 staging/prod is purely additive: create the matching `tf/deployment/<env>/ceph/`
 directory, populate `clusters.auto.tfvars`, and the same module + Ansible
 roles + mise tasks work unchanged. The state backend key path, 1P vault
@@ -196,8 +194,8 @@ Operator-declared names are excluded from the pool to prevent collisions
 within a cluster. Adding hosts at the tail is safe — existing positions
 keep their names across applies.
 
-Painbox today demonstrates this: its single host has no `name`, so TF
-auto-picked `evelyn` → hostname `painbox-ceph-evelyn`.
+A host declared with no `name` demonstrates this: TF auto-picks a stable
+word (e.g. `evelyn`) → hostname `<cluster>-ceph-evelyn`.
 
 ### Rendered artifacts (gitignored)
 
@@ -269,7 +267,7 @@ Rotation procedure: [docs/runbooks/rotate-sa-token.md](runbooks/rotate-sa-token.
 ### Item categories and naming
 
 Per cluster, the following items live in the cluster's `vault` (currently
-`yucca_tf_dev` for both sietch and painbox):
+`yucca_tf_dev` for sietch):
 
 | Category   | Item title pattern                                      | Field consumed       |
 |------------|---------------------------------------------------------|----------------------|
@@ -374,7 +372,7 @@ flowchart TB
     P2["Phase 2 · bootstrap.yml<br/><i>cephadm bootstrap on first node</i>"]
     P3["Phase 3 · join.yml<br/><i>ceph orch host add for remaining nodes</i>"]
     P4["Phase 4 · placement.yml<br/><i>MON/MGR placement calculation</i>"]
-    P45["Phase 4.5 · lvm-setup.yml<br/><i>ensure block.db VGs/LVs exist (sietch-shape only;<br/>painbox skips — LVM owned by installimage post-install)</i>"]
+    P45["Phase 4.5 · lvm-setup.yml<br/><i>ensure block.db VGs/LVs exist (sietch-shape only;<br/>NVMe-RAID shape skips — LVM owned by installimage post-install)</i>"]
     P5["Phase 5 · osds.yml<br/><i>render osd-spec.yml.j2 → ceph orch apply osd<br/>(cephadm provisions LUKS + LVM internally)</i>"]
     P55["Phase 5.5 · crush-rules.yml<br/><i>replicated_hdd / replicated_ssd rules</i>"]
     P575["Phase 5.75 · rgw.yml<br/><i>EC pools, realm/zone, TLS, S3 user</i>"]
@@ -403,15 +401,11 @@ inventories/
       sietch-ceph-lawson.yml
       sietch-ceph-samara.yml
     installimage/                     Hetzner installimage assets (sietch n/a)
-
-  painbox-ceph.dev.hel.htz/          Hetzner dev cluster
-    inventory.ini                     TF-generated, gitignored
-    inventory-destroy.ini             TF-generated, gitignored
-    secrets.yml.tpl                   TF-generated, gitignored
-    group_vars/all/vars.yml           committed
-    host_vars/painbox-ceph-evelyn.yml committed
-    installimage/                     post-install.sh.tpl (op-injected)
 ```
+
+Hetzner NVMe-RAID clusters follow the same layout, adding an
+`installimage/` directory with a `post-install.sh.tpl` (op-injected) that
+owns LVM setup.
 
 `host_vars/*.yml` is committed because per-node hardware facts (bond_ip, SAS
 expander paths, SSD PHY positions, HDD-to-block.db mappings) are stable
@@ -500,7 +494,7 @@ Both are overridable per-invocation:
 
 ```bash
 TF_STACK_DIR=tf/deployment/staging/ceph mise run tf:plan
-CEPH_ENV=inventories/painbox-ceph.dev.hel.htz/inventory.ini mise run status
+CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini mise run status
 ```
 
 ---
@@ -639,7 +633,7 @@ sequenceDiagram
 ```mermaid
 flowchart TB
     SIETCH["Sietch prep:<br/>provision_host/disks.yml partitions SSDs<br/>then ceph_deploy/lvm-setup.yml<br/><i>creates VG + db-slot LVs on each SSD's partition 5</i>"]
-    PAINBOX["Painbox prep:<br/>installimage post-install.sh<br/><i>NVMe RAID-1 → vg0 → db-slot0..13 + ssd-osd LVs</i>"]
+    NVMERAID["NVMe-RAID prep:<br/>installimage post-install.sh<br/><i>NVMe RAID-1 → vg0 → db-slot0..13 + ssd-osd LVs</i>"]
     SPEC["ceph_deploy/osds.yml renders<br/>templates/osd-spec.yml.j2 → /etc/ceph/osd-spec.yml<br/><i>one document per host; paths from host_vars</i>"]
     APPLY["ceph orch apply osd -i /etc/ceph/osd-spec.yml<br/><i>cephadm: discover disks, LUKS-format, LVM, deploy daemons</i>"]
     POLL["Wait for cephadm to provision<br/><i>poll num_osds until expected count reached</i>"]
@@ -648,7 +642,7 @@ flowchart TB
     REWEIGHT["Safety net: fix any reweight=0 OSDs"]
 
     SIETCH --> SPEC
-    PAINBOX --> SPEC
+    NVMERAID --> SPEC
     SPEC --> APPLY --> POLL --> UP --> UNSET --> REWEIGHT
 ```
 
@@ -657,7 +651,8 @@ flowchart TB
 Earlier versions of this role iterated `cephadm ceph-volume lvm create`
 per disk and composed `/dev/disk/by-path/...` paths from host_vars
 (`sas_path_prefix` + `path_phy`). That assumed sietch's SAS expander
-topology and broke on painbox's PCI-ATA disks plus LV-backed SSD OSD.
+topology and broke on the NVMe-RAID shape's PCI-ATA disks plus LV-backed
+SSD OSD.
 
 The current flow renders a cephadm OSD service spec from per-host data
 and applies it via `ceph orch apply osd -i`. Cephadm handles device
@@ -675,7 +670,7 @@ with two shape branches:
 - **Sietch** (`sas_path_prefix` defined): data path =
   `/dev/disk/by-path/{{ sas_path_prefix }}-{{ path_phy }}-lun-0`; SSD
   OSD = partition on the SAS-attached SSD via `path_phy + partition`.
-- **Painbox** (`sas_path_prefix` undefined): data path =
+- **NVMe-RAID shape** (`sas_path_prefix` undefined): data path =
   `/dev/disk/by-path/{{ path_phy }}` (operator authors the full PCI-ATA
   identifier in host_vars); SSD OSD = LV via the `lv` field
   (`/dev/{{ lv }}`).
@@ -773,7 +768,7 @@ This prevents:
 - Overwriting the marker with a stale `provisioned_at` timestamp
 
 The marker filename (`ceph-provisioned.json`) is project-scoped, not
-cluster-scoped — every Ceph cluster (sietch, painbox, future) writes the
+cluster-scoped — every Ceph cluster (sietch, future) writes the
 same filename. The marker's *contents* identify which cluster + host the
 machine belongs to.
 

@@ -11,6 +11,7 @@ import { TaskStatus } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { DB } from '../schema';
 import { type RunType } from '../schema/tables/runHistory.table';
+import { LoggingRepository } from './logging.repository';
 import { ModuleConfigRepository } from './moduleConfig.repository';
 import { StorageRepository } from './storage.repository';
 
@@ -21,7 +22,10 @@ export class RunHistoryRepository {
     private readonly moduleConfig: ModuleConfigRepository,
     private readonly storage: StorageRepository,
     private readonly events: EventsGateway,
-  ) {}
+    private readonly logger: LoggingRepository,
+  ) {
+    this.logger.setContext(RunHistoryRepository.name);
+  }
 
   private writeError(log: WriteStream, error: unknown) {
     const events = Array.isArray((error as { error?: unknown })?.error)
@@ -175,7 +179,7 @@ export class RunHistoryRepository {
 
           tail.on('line', (data) => queue.push({ data } as MessageEvent));
           tail.on('error', (error) => {
-            console.warn(`tail ${logFilePath} stopped:`, error);
+            this.logger.warn(`tail ${logFilePath} stopped:`, error);
             tail?.unwatch();
           });
         };

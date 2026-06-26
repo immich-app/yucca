@@ -12,7 +12,7 @@
 # confirm_wipe gate -- both must be set, since this is irreversible OSD data
 # loss. Targets exactly the ceph_hdd_osds devices (phy0..N), never the SSDs
 # (which are phy12/phy13 and handled by disks.yml). sietch-shape only
-# (sas_path_prefix); painbox-shape hosts are out of scope here.
+# (sas_path_prefix); NVMe-RAID-shape hosts are out of scope here.
 
 - name: Zap OSD HDDs (remove LVM, wipe signatures, zero bluestore label)
   ansible.builtin.shell: |

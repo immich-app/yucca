@@ -7,12 +7,12 @@ systemd-networkd templating).
 
 | Host | Public IP | Role |
 |------|-----------|------|
-| `htz-fsn-mgmt-1` | `178.63.124.40` | Tailscale subnet router (advertises `10.40.5.0/24`) |
-| `htz-fsn-mgmt-2` | `178.63.124.41` | — |
+| `htz-fsn-mgmt-1` | `178.63.124.40` | NetBird route peer (routes `10.40.5.0/24` et al.) |
+| `htz-fsn-mgmt-2` | `178.63.124.41` | NetBird route peer |
 
-Both are AX41-NVMe. The inventory is committed (these are two static hosts,
-not TF-rendered like ceph's clusters) at
-`inventories/htz-fsn1/hosts.yml`.
+Both are AX41-NVMe, both join the NetBird `mgmt` group and route the site
+subnets (the routed network is declared in TF, `tf/deployment/prod/htz-fsn1/netbird`).
+The inventory is **TF-generated** at run time (see "Generated inventory").
 
 ## What it does
 
@@ -29,8 +29,9 @@ not TF-rendered like ceph's clusters) at
 4. **networkd** — systemd-networkd VLAN sub-interfaces on the 25G fabric NIC.
    **Gated on `mgmt_networkd_enabled` (default false)** — see the 25G caveat
    below.
-5. **tailscale** — install Tailscale, `tailscale up`; mgmt-1 additionally
-   advertises `10.40.5.0/24`.
+5. **netbird** — install NetBird, `netbird up` with the `mgmt` setup key, enable
+   IP forwarding (the mgmt nodes are the NetBird route peers for the site subnets;
+   the routed network itself is declared in TF).
 
 ## Generated inventory
 
@@ -64,11 +65,11 @@ op read --account team-futo \
   > /tmp/htz-fsn1-prov-key
 chmod 600 /tmp/htz-fsn1-prov-key
 
-# Run the playbook (root, provisioning key, tailscale auth key from 1P)
+# Run the playbook (root, provisioning key, NetBird mgmt setup key from 1P)
 ansible-playbook -i inventories/htz-fsn1 site.yml \
   --private-key /tmp/htz-fsn1-prov-key \
-  --extra-vars "mgmt_tailscale_authkey=$(op read --account team-futo \
-    'op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET/password')"
+  --extra-vars "mgmt_netbird_setup_key=$(op read --account team-futo \
+    'op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY/password')"
 
 # Clean up
 shred -u /tmp/htz-fsn1-prov-key
@@ -88,18 +89,20 @@ reprovisioned (provisioning key authorized).
 > group_vars so the key never has to be persisted to a committed path — it is
 > rendered to a temp file, used, and shredded.
 
-## Connection: public IP → Tailscale
+## Connection: public IP → NetBird
 
 A freshly-reprovisioned host is only reachable over its **public IP**, so that's
 the bootstrap address (`mgmt_public_ip` in host_vars). The first play in
-`site.yml` probes the tailnet from the control node (`tailscale status --json`):
-if the host is an **online peer**, it switches `ansible_host` to the host's
-**Tailscale IP** for the rest of the run; otherwise it stays on the public IP.
+`site.yml` probes the overlay from the control node (`netbird status --json`):
+if the host is a **connected peer**, it switches `ansible_host` to the host's
+**NetBird IP** for the rest of the run; otherwise it stays on the public IP.
 
 So the first run provisions over the public IP and brings the host onto the
-tailnet (the `tailscale` role); every subsequent run reconnects over Tailscale
-automatically. This needs the control node on the tailnet too — the CI
-`prod-ansible` job joins it; locally, just be connected to the tailnet.
+overlay (the `netbird` role); every subsequent run reconnects over NetBird
+automatically. This needs the control node on the overlay too — the CI
+`prod-ansible` job joins via the `ci` setup key; locally, be connected to NetBird.
+For the very first run after a reinstall, pass `-e mgmt_bootstrap=true` to force
+the public IP (skips any stale peer entry for the host).
 
 ## 25G fabric caveat
 
@@ -132,9 +135,9 @@ ansible-playbook -i inventories/htz-fsn1 --syntax-check site.yml
 
 ## Secrets
 
-Nothing secret is committed. SSH public keys are public data and live in
-`group_vars/all.yml`. Runtime secrets are passed via `op read`:
+Nothing secret is committed. SSH public keys are public data and are TF-generated
+into `group_vars/all/users.generated.yml`. Runtime secrets are passed via `op read`:
 
 - Provisioning private key: `op://yucca_tf_prod/HTZ_FSN1_PROVISIONING_SSH_PRIVATE_KEY/password`
-- Tailscale auth: `op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET/password` (OAuth
-  client secret, same as CI; requires `--advertise-tags`, set by the role)
+- NetBird mgmt setup key: `op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY/password`
+  (the site's reusable `mgmt` key, `auto_groups=["mgmt"]`; minted by the prod netbird stack)

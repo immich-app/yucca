@@ -5,7 +5,7 @@
 mgmt_firewall_enabled: true
 
 # Trusted source networks allowed to reach management services beyond SSH.
-# RFC1918 + Tailscale CGNAT. Loopback is always allowed via iifname "lo".
+# RFC1918 + NetBird/CGNAT (100.64.0.0/10). Loopback is always allowed via "lo".
 mgmt_firewall_trusted_networks:
   - 10.0.0.0/8
   - 172.16.0.0/12
@@ -14,7 +14,7 @@ mgmt_firewall_trusted_networks:
 
 # Allow SSH from any source (true) or restrict to trusted networks (false).
 # Default true: these hosts are reached over the public IP for bootstrapping
-# and Tailscale admin. Tighten once Tailscale access is confirmed.
+# and NetBird admin. Tighten once NetBird access is confirmed.
 mgmt_firewall_ssh_any_source: true
 
 # --- SSH hardening ---

@@ -47,9 +47,6 @@ playbook time):
 | `SIETCH_CEPH_OPS_PASSWORD` | `password` | `vault_ops_password` |
 | `SIETCH_CEPH_DASHBOARD_PASSWORD` | `password` | `vault_ceph_dashboard_password` |
 | `SIETCH_CEPH_GRAFANA_PASSWORD` | `password` | `vault_grafana_admin_password` |
-| `PAINBOX_CEPH_OPS_PASSWORD` | `password` | `vault_ops_password` |
-| `PAINBOX_CEPH_DASHBOARD_PASSWORD` | `password` | `vault_ceph_dashboard_password` |
-| `PAINBOX_CEPH_GRAFANA_PASSWORD` | `password` | `vault_grafana_admin_password` |
 
 **SSH Key items** (category `SSH Key`, consumed via
 `scripts/install-ssh-keys.sh` on operator workstations and
@@ -59,8 +56,6 @@ playbook time):
 |---|---|---|
 | `SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` | `private_key` | `~/.ssh/id_ed25519_sietch` on operator workstation |
 | `SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` | `public_key` | sietch nodes' `ansible-iac@:~/.ssh/authorized_keys` |
-| `PAINBOX_CEPH_ANSIBLE_IAC_SSH_KEY` | `private_key` | `~/.ssh/id_ed25519_painbox` on operator workstation |
-| `PAINBOX_CEPH_ANSIBLE_IAC_SSH_KEY` | `public_key` | painbox nodes' `ansible-iac@:~/.ssh/authorized_keys` |
 
 **S3 service-user items** (predetermined keys passed to
 `radosgw-admin user create --access-key=X --secret-key=Y` at deploy
@@ -71,8 +66,6 @@ credentials without waiting for post-bootstrap capture):
 |---|---|---|
 | `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY` | `password` | `vault_s3_restic_access_key` → `ceph_rgw_s3_user_access_key` |
 | `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY` | `password` | `vault_s3_restic_secret_key` → `ceph_rgw_s3_user_secret_key` |
-| `PAINBOX_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY` | `password` | same, painbox |
-| `PAINBOX_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY` | `password` | same, painbox |
 
 **Disaster-recovery items** (populated by `mise run capture` after
 deploy — stored in 1P for recovery if the bootstrap node's filesystem

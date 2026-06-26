@@ -8,8 +8,6 @@ disk layouts see [hardware.md](hardware.md); this doc is the sizing math.
 | Cluster | Nodes | HDD × size | Raw HDD | EC-usable (8+3) | 70%-full target |
 |---|---|---|---|---|---|
 | sietch (Austin) | 3 × Dell R730xd | 30 × 6 TB | ~164 TiB | ~119 TiB | ~83 TiB |
-| painbox (Hetzner Helsinki) | 1 × SX295 | 14 × 22 TB | ~280 TiB | ~204 TiB | ~143 TiB |
-| **Combined** | | | **~444 TiB** | **~323 TiB** | **~226 TiB** |
 
 Each cluster also contributes ~1 TiB of SSD OSD on the boot SSDs (minor;
 ignored in the math above).

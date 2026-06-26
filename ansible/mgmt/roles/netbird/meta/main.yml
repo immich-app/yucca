@@ -1,0 +1,10 @@
+---
+# Install NetBird and join the overlay (mgmt nodes are the site route peers).
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: netbird
+  description: Install NetBird and bring the node up on the overlay
+  min_ansible_version: "2.18"

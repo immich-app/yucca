@@ -3,48 +3,49 @@
 # to Debian 13 ("trixie") via Hetzner robot auto-install.
 #
 # Connection: freshly-reprovisioned hosts are reached over their PUBLIC IP
-# (bootstrap); once a host has joined the tailnet (the tailscale role), later
-# runs reconnect over its Tailscale IP automatically — see the first play.
+# (bootstrap); once a host has joined the NetBird overlay (the netbird role),
+# later runs reconnect over its NetBird IP automatically — see the first play.
 #
 # Canonical entrypoint is `mise run mgmt:ansible` (renders the inventory from
-# Terraform, then runs this). It passes the provisioning key + the tailscale
-# auth key (the OAuth client secret, op://yucca_tf/TAILSCALE_OAUTH_CLIENT_SECRET).
+# Terraform, then runs this). It passes the provisioning key + the NetBird
+# "mgmt" setup key (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY).
 #
 # NOTE: the networkd role (25G VLAN sub-interfaces) is gated on
 # mgmt_networkd_enabled (default false) because the 25G fabric link is
 # currently unreliable. Enable it once the fabric is up.
 
-# ── Prefer Tailscale, fall back to the public IP ─────────────────────────────
+# ── Prefer NetBird, fall back to the public IP ───────────────────────────────
 # Runs entirely on the control node (no target connection), so it's safe before
-# a host is reachable at all. If the host is an online tailnet peer, switch the
-# connection to its Tailscale IP; otherwise keep the public IP (bootstrap).
+# a host is reachable at all. If the host is a connected NetBird peer, switch the
+# connection to its NetBird IP; otherwise keep the public IP (bootstrap).
 - name: Select connection address
   hosts: mgmt
   gather_facts: false
   become: false
   tasks:
-    - name: Read the tailnet status from the control node
-      ansible.builtin.command: tailscale status --json
+    - name: Read the NetBird overlay status from the control node
+      ansible.builtin.command: netbird status --json
       delegate_to: localhost
-      register: _ts_status
+      register: _nb_status
       changed_when: false
       failed_when: false
 
-    - name: Reconnect over Tailscale when the host is an online peer
+    - name: Reconnect over NetBird when the host is a connected peer
       vars:
-        _ts_ips: >-
-          {{ ((_ts_status.stdout | from_json).Peer | default({})) | dict2items | map(attribute='value')
-             | selectattr('HostName', 'equalto', inventory_hostname)
-             | selectattr('Online', 'defined') | selectattr('Online')
-             | map(attribute='TailscaleIPs') | select | map('first') | list }}
+        _nb_ips: >-
+          {{ ((_nb_status.stdout | from_json).peers.details | default([]))
+             | selectattr('fqdn', 'defined')
+             | selectattr('fqdn', 'match', '^' ~ inventory_hostname ~ '([.]|$)')
+             | selectattr('status', 'equalto', 'Connected')
+             | map(attribute='netbirdIp') | select | list }}
       ansible.builtin.set_fact:
-        ansible_host: "{{ _ts_ips[0] if (_ts_ips | length > 0) else mgmt_public_ip }}"
+        ansible_host: "{{ _nb_ips[0] if (_nb_ips | length > 0) else mgmt_public_ip }}"
       when:
         # `-e mgmt_bootstrap=true` forces the public IP — use it for the first run
-        # after a reinstall, when the host's OLD tailnet peer may still show online.
+        # after a reinstall, when a stale OLD peer for this host may still show up.
         - not (mgmt_bootstrap | default(false) | bool)
-        - _ts_status.rc == 0
-        - (_ts_status.stdout | trim | length) > 0
+        - _nb_status.rc == 0
+        - (_nb_status.stdout | trim | length) > 0
 
 - name: Configure management hosts
   hosts: mgmt
@@ -56,4 +57,4 @@
     - users
     - security
     - networkd
-    - tailscale
+    - netbird

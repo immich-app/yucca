@@ -52,8 +52,8 @@ CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory-provision.ini \
   --limit sietch-ceph-<name>
 ```
 
-**Hetzner (painbox)**: reboot into rescue, run installimage + post-install
-scripts from `inventories/painbox-ceph.dev.hel.htz/installimage/`.
+**Hetzner (NVMe-RAID host)**: reboot into rescue, run installimage +
+post-install scripts from the cluster's `inventories/<cluster>/installimage/`.
 
 ### 4. Clear the old host's Ceph state
 

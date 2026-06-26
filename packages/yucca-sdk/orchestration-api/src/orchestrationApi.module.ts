@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, FactoryProvider, Module, ModuleMetadata } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -25,6 +25,7 @@ import { BackendRepository } from './repositories/backend.repository';
 import { BootstrapRepository } from './repositories/bootstrap.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { LoggingRepository } from './repositories/logging.repository';
 import { ModuleConfigRepository } from './repositories/moduleConfig.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryIntegrationImmichRepository } from './repositories/repositoryIntegrationImmich.repository';
@@ -47,6 +48,7 @@ import { RunHistoryService } from './services/runHistory.service';
 import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
 import { TelemetryService } from './services/telemetry.service';
+import { YuccaService } from './services/yucca.service';
 
 export const controllers = [
   AuthController,
@@ -66,6 +68,7 @@ export const repositories = [
   BootstrapRepository,
   ConfigRepository,
   DatabaseRepository,
+  LoggingRepository,
   ModuleConfigRepository,
   RepositoryRepository,
   RepositoryIntegrationImmichRepository,
@@ -91,24 +94,55 @@ export const services = [
   RunningTasksService,
   ScheduleService,
   TelemetryService,
+  YuccaService,
 ];
+
+export interface OrchestrationApiModuleAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
+  inject?: FactoryProvider['inject'];
+  useFactory: (...args: any[]) => Promise<Partial<ModuleConfig>> | Partial<ModuleConfig>;
+}
+
+@Module({})
+class OrchestrationConfigModule {
+  static forRootAsync(options: OrchestrationApiModuleAsyncOptions): DynamicModule {
+    return {
+      module: OrchestrationConfigModule,
+      imports: options.imports ?? [],
+      providers: [
+        {
+          provide: ModuleConfigProvider,
+          inject: options.inject ?? [],
+          useFactory: async (...args: any[]): Promise<ModuleConfig> => {
+            const config = await options.useFactory(...args);
+            config.statePath ??= resolve(homedir(), '.yucca');
+            return config as ModuleConfig;
+          },
+        },
+      ],
+      exports: [ModuleConfigProvider],
+    };
+  }
+}
 
 @Module({})
 export class OrchestrationApiModule {
-  static forRoot(config: Partial<ModuleConfig>): DynamicModule {
-    config.statePath ??= resolve(homedir(), '.yucca');
+  static forRootAsync(options: OrchestrationApiModuleAsyncOptions): DynamicModule {
+    const configModule = OrchestrationConfigModule.forRootAsync(options);
 
     return {
       module: OrchestrationApiModule,
       imports: [
+        configModule,
         KyselyModule.forRootAsync({
           namespace: 'orchestrator',
-          useFactory: () => {
-            if (!existsSync(config.statePath!)) {
-              mkdirSync(config.statePath!, { recursive: true });
+          imports: [configModule],
+          inject: [ModuleConfigProvider],
+          useFactory: (config: ModuleConfig) => {
+            if (!existsSync(config.statePath)) {
+              mkdirSync(config.statePath, { recursive: true });
             }
 
-            const database = new Database(resolve(config.statePath!, 'state.sqlite3'));
+            const database = new Database(resolve(config.statePath, 'state.sqlite3'));
             database.pragma('journal_mode = WAL');
 
             return {
@@ -121,13 +155,12 @@ export class OrchestrationApiModule {
       ],
       controllers,
       providers: [
-        { provide: ModuleConfigProvider, useValue: config },
         { provide: APP_INTERCEPTOR, useClass: TelemetryErrorInterceptor },
         EventsGateway,
         ...repositories,
         ...services,
       ],
-      exports: [EventsGateway, ModuleConfigRepository],
+      exports: [YuccaService],
     };
   }
 }

@@ -32,7 +32,7 @@ locals {
   }
 
   # filename => rendered content. inventory-provision.ini is only produced when
-  # a provision_profile is set (e.g., sietch's debian-live; painbox is null).
+  # a provision_profile is set (e.g., sietch's debian-live; installimage-provisioned clusters are null).
   rendered_files = merge(
     {
       "inventory.ini"         = templatefile("${path.module}/templates/inventory.ini.tftpl", local._inventory_template_vars)

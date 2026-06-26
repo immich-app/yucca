@@ -1,5 +1,5 @@
 variable "clusters" {
-  description = "Map of cluster spec keyed by short cluster name (sietch, painbox, ...)."
+  description = "Map of cluster spec keyed by short cluster name (sietch, ...)."
   type = map(object({
     domain            = string
     environment       = string

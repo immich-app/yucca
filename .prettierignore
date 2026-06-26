@@ -28,6 +28,7 @@ yarn.lock
 # ansible-lint inside ansible/ceph/; tofu fmt inside tf/). Prettier on
 # ansible YAML is opinionated in ways that conflict with Jinja2 + ansible
 # task structure, so these subtrees are exempt from root prettier checks.
+kubernetes/
 ansible/
 tf/
 

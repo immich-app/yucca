@@ -8,7 +8,6 @@ scaffolding are provisioned from `yucca/tf/` (see `../../tf/`).
 | Cluster | Domain | Location | Hardware | Nodes |
 |---------|--------|----------|----------|-------|
 | **sietch** | `dev.austin.int.futo.cloud` | Austin DC | Dell R730xd | 3 |
-| **painbox** | `dev.hel.htz.futo.cloud` | Hetzner Helsinki | SX295 | 1 |
 
 Clusters are declared in `yucca/tf/deployment/staging/ceph/clusters.auto.tfvars`;
 `tofu apply` renders `inventories/<cluster>/inventory.ini` and
@@ -30,14 +29,9 @@ graph TB
         S[samara<br/>MON+MGR+OSD+RGW]
     end
 
-    subgraph "Hetzner Helsinki"
-        P[painbox-ceph-evelyn<br/>MON+MGR+OSD+RGW]
-    end
-
     A -->|SSH| L
     A -->|SSH| W
     A -->|SSH| S
-    A -->|SSH| P
 ```
 
 See [docs/architecture.md](docs/architecture.md) for role dependencies,
@@ -134,12 +128,12 @@ Inventory scaffolding + secret-item provisioning live in `yucca/tf/` — run
 | [docs/adding-a-cluster.md](docs/adding-a-cluster.md) | Developers -- inventory setup, secrets |
 | [docs/secrets.md](docs/secrets.md) | Developers/ops -- 1Password integration |
 | [docs/naming.md](docs/naming.md) | Everyone -- hostname and inventory naming |
-| [docs/hardware.md](docs/hardware.md) | Ops/procurement -- R730xd vs SX295 specs |
+| [docs/hardware.md](docs/hardware.md) | Ops/procurement -- node specs and hardware shapes |
 | [docs/s3-integration.md](docs/s3-integration.md) | App developers -- endpoints, boto3, certs |
 | [docs/security-model.md](docs/security-model.md) | InfoSec -- encryption, users, firewall |
 | [docs/capacity-planning.md](docs/capacity-planning.md) | Managers -- costs, formulas, growth |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | SRE/on-call -- symptom/diagnosis/fix |
-| [docs/runbooks/](docs/runbooks/) | Ops -- add/replace node, replace disk, rotate certs/secrets/SSH/SA token, remote hands, painbox reprovision, bad-tofu-apply recovery, backup/restore |
+| [docs/runbooks/](docs/runbooks/) | Ops -- add/replace node, replace disk, rotate certs/secrets/SSH/SA token, remote hands, bad-tofu-apply recovery, backup/restore |
 | [docs/adr/](docs/adr/) | Everyone -- architecture decision records |
 
 ## Known Limitations

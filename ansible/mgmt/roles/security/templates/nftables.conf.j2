@@ -11,8 +11,8 @@ table inet filter {
         # Loopback
         iifname "lo" accept
 
-        # Tailscale interface (mesh + subnet routing)
-        iifname "tailscale0" accept
+        # NetBird overlay interface (mesh + subnet routing)
+        iifname "wt0" accept
 
         # Established/related
         ct state established,related accept
@@ -36,7 +36,8 @@ table inet filter {
     }
 
     chain forward {
-        # Tailscale subnet router forwards between tailnet and 10.40.5.0/24.
+        # NetBird route peer forwards between the overlay and the site subnets
+        # (10.40.5.0/24 et al.).
         type filter hook forward priority 0; policy accept;
     }
 

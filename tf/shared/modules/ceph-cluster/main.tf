@@ -18,7 +18,7 @@ terraform {
 locals {
   # Wordlist for auto-assigning host names. Names are unique within a cluster
   # (not globally) — sietch-ceph-laurel and a hypothetical future
-  # painbox-ceph-laurel could coexist, disambiguated by FQDN.
+  # a second cluster's *-ceph-laurel could coexist, disambiguated by FQDN.
   wordlist = compact(split("\n", file("${path.module}/wordlist.txt")))
 
   # Operator-declared names are reserved — strip them from the pool so

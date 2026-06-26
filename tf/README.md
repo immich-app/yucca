@@ -51,7 +51,10 @@ tf/
 
 Future envs land as siblings: `deployment/staging/ceph/`, `deployment/prod/ceph/`.
 Additional stacks land as siblings within an env — `dev/talos/` and
-`dev/dns/` are two; `dev/monitoring/` could be next.
+`dev/dns/` are two; `dev/monitoring/` could be next. NetBird Cloud access
+control lives in `staging/netbird/` (flat), and for prod is layered:
+`prod/global/` (account-wide) above per-site `prod/<site>/netbird/`
+(e.g. `prod/htz-fsn1/netbird/`). See "The netbird-env module" below.
 
 The dns stack manages infrastructure names in the futo.cloud Cloudflare
 zone (today: the Sietch RGW S3 endpoint + virtual-hosted wildcard).
@@ -269,6 +272,150 @@ TF_STACK_DIR=tf/deployment/staging/talos mise run tf:init
 TF_STACK_DIR=tf/deployment/staging/talos mise run tf:plan
 TF_STACK_DIR=tf/deployment/staging/talos mise run tf:apply   # WIPES /dev/sda, installs Talos
 ```
+
+## The netbird-env module (NetBird Cloud access control)
+
+Manages one layer's [NetBird](https://netbird.io) Cloud footprint: **groups**,
+**access policies**, **device auth (setup) keys**, and routed **networks**. One
+NetBird Cloud account (`api.netbird.io`) backs everything — the module namespaces
+every object `<name_prefix>_<key>` (all underscores) so all envs/sites coexist.
+
+### Group model
+
+Per env (and per prod site), the baseline groups are:
+
+| group | who | rendered (staging / prod htz-fsn1) |
+|---|---|---|
+| `ci` | ephemeral CI runners | `YUCCA_STAGING_CI` / `YUCCA_PROD_HTZ_FSN1_CI` |
+| `mgmt` | management nodes (configured via Ansible; also the route peers) | `YUCCA_STAGING_MGMT` / … |
+| `talos` | Talos cluster nodes | `YUCCA_STAGING_TALOS` / … |
+| `k8s_operator` | in-cluster kubernetes operator | `YUCCA_STAGING_K8S_OPERATOR` / … |
+
+Logical keys (the tfvars map keys, e.g. `ci`) stay lowercase; **rendered NetBird
+names are UPPER_SNAKE** (uppercased, hyphens → underscores). CI is **per-env**
+(`ci`, reaching only that env's groups) — no cross-env CI plane. `k8s` is split
+into `talos` (the nodes) and `k8s_operator` (the operator identity) so they can
+carry different policies.
+
+### Stacks & layering
+
+| stack | env / scope | state key |
+|---|---|---|
+| `deployment/staging/netbird` | staging (flat) | `ceph/staging/netbird/…` |
+| `deployment/prod/global` | prod, **account-wide** (cross-site) | `ceph/prod/global/…` |
+| `deployment/prod/htz-fsn1/netbird` | prod, **site** htz-fsn1 | `ceph/prod/htz-fsn1/netbird/…` |
+
+Staging is single-layer. **Prod is layered**: a `global` layer (account-wide
+groups + policies) above per-site layers. The global layer owns the
+**`YUCCA_RESOURCE`** tag group and the account-wide **`yucca → yucca_resource`**
+policy (see below). Site groups are site-scoped (`YUCCA_PROD_<SITE>_<ROLE>`) so a
+network router's peers are unambiguously *that site's* mgmt nodes. A site layer
+consumes a global group via a terragrunt `dependency` on `prod/global` → the
+module's `external_groups` input (htz-fsn1 does this for `yucca_resource`). The
+root terragrunt derives `stack` from the full sub-path, so `prod/htz-fsn1/netbird`
+gets its own state key without colliding with the `prod/htz-fsn1` fabric stack.
+
+### The `yucca` / `yucca_resource` access model
+
+Two groups drive account-wide access to routed subnets (rendered names in caps):
+
+- **`yucca`** — the existing **users** group (people). External (looked up by its
+  actual name `yucca`); never managed here.
+- **`YUCCA_RESOURCE`** — the shared **resource tag**, managed in `prod/global`
+  (logical key `yucca_resource`). Every routed `netbird_network_resource` (across
+  sites) is tagged into it.
+
+One global policy in `prod/global` — `yucca → yucca_resource`, `bidirectional =
+false` — lets users reach every tagged resource. Because `yucca_resource` is only
+ever a policy *destination*, the tagged resources can't reach each other (or call
+back to users). Site layers don't reference `yucca` at all; they just tag their
+resources into `yucca_resource` (pulled from `prod/global` via the dependency),
+so the link is the shared tag, not a cross-stack group reference.
+
+Staging additionally grants its `ci` group access to the existing **Liberty
+Park** infra groups (where the staging nodes live today) — those are external
+groups resolved by name in `staging/netbird/main.tf`.
+
+### Declarative input (`netbird.auto.tfvars`)
+
+Groups, setup keys, policies and networks reference groups by **logical key**,
+never opaque NetBird IDs:
+
+```hcl
+groups = { ci = {}, mgmt = {}, talos = {}, k8s_operator = {} }
+
+setup_keys = {
+  ci           = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
+  mgmt         = { type = "reusable", auto_groups = ["mgmt"] }
+  talos        = { type = "reusable", auto_groups = ["talos"] }
+  k8s_operator = { type = "reusable", auto_groups = ["k8s_operator"] }
+}
+
+policies = {
+  ci-to-all = {                       # CI reaches every node group in this env
+    rules = [{ name = "ci-to-all", protocol = "all"
+               sources = ["ci"], destinations = ["mgmt", "talos", "k8s_operator"] }]
+  }
+}
+```
+
+NetBird is **default-deny** — a peer gets only the access its groups' policies
+grant; an empty `policies` map means total isolation.
+
+### Networks (prod htz-fsn1) — CIDRs propagated, not hardcoded
+
+The htz-fsn1 site layer exposes a NetBird **Network** named `HTZ-FSN1`: the
+`mgmt` group are the routing peers, and each routed subnet is a
+`netbird_network_resource`. The **CIDRs are derived from the same
+`fabric-addressing` module the fabric stack uses** (re-instantiated in the
+layer's `addressing.tf` — a pure, stateless module, so no duplication and no
+cross-stack coupling). Every resource is tagged into `yucca_resource`, so access
+is the one global `yucca → yucca_resource` policy. The only per-site input is the
+site id (the CIDRs flow from it):
+
+```hcl
+site_id = 40   # mirrors prod/htz-fsn1; feeds fabric-addressing → the routed CIDRs
+               #   mgmt 10.40.5.0/24 · api 10.40.10.0/24
+               #   cls1_public 10.40.20.0/23 · cls1_private 10.40.22.0/23
+```
+
+**Setup-key plaintext → 1Password.** Each setup key's secret `key` is written to
+the per-env vault (`yucca_tf_<env>`) as item
+`NETBIRD_<UPPERCASED_NAMESPACED_NAME>_SETUP_KEY` (`onepassword_item`, same "TF
+mints secrets into 1P" pattern as the JWT keypair). The namespaced title keeps
+multiple prod sites writing to the one `yucca_tf_prod` vault from colliding.
+
+**Auth.** Two providers, both fed by `op run --env-file=tf/.env[.prod]`:
+
+- `netbird` — admin PAT from `NB_PAT` (`op://shared_tf/NETBIRD_TF_PAT`, shared
+  across all envs; `management_url` defaults to NetBird Cloud).
+- `onepassword` — `OP_SERVICE_ACCOUNT_TOKEN` (same session), writes the keys.
+
+Run it (pure cloud API — no tailnet, no node contact):
+
+```bash
+TF_STACK_DIR=tf/deployment/staging/netbird mise run tf:init   # then tf:plan / tf:apply
+# prod — global layer first, then each site layer (uses the prod env file + SA):
+OP_ENV_FILE=tf/.env.prod TF_STACK_DIR=tf/deployment/prod/global         mise run tf:apply
+OP_ENV_FILE=tf/.env.prod TF_STACK_DIR=tf/deployment/prod/htz-fsn1/netbird mise run tf:apply
+```
+
+CI (`.github/workflows/infra.yml`) applies `staging/netbird` in the staging
+matrix, and the prod layers (`prod/global` then `prod/htz-fsn1/netbird`) as gated
+`prod-infra` jobs on the prod 1P SA / `tf/.env.prod`. Prod CI needs the
+`OP_TF_YUCCA_PROD_ENV[_WRITE]` repo secrets + a `prod-infra` Environment — see
+the workflow header.
+
+### CI connects over NetBird
+
+CI reaches the staging `10.10.10.0/24` nodes over the NetBird overlay (this
+replaced the Tailscale subnet-router path). The `.github/actions/netbird-connect`
+composite action installs the client and runs `netbird up` with the **`ci` setup
+key** read from 1P (`op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY`);
+the runner joins as a `ci` peer and the existing staging route advertises the LAN.
+The apply job applies `staging/netbird` **first** (minting that key) before
+connecting, so a fresh bootstrap is self-contained. The prod **fabric** workflow
+(`fabric.yml`) still uses Tailscale — `10.40.5.0/24` isn't on NetBird yet.
 
 ## Where secrets actually live
 

@@ -48,14 +48,15 @@ resource "local_file" "host_vars" {
   for_each = local.hosts
   filename = "${local.inv_dir}/host_vars/${each.key}.yml"
   content = "${local.header}${yamlencode({
-    # Bootstrap address — site.yml reconnects over Tailscale once the host joins.
+    # Bootstrap address — site.yml reconnects over NetBird once the host joins.
+    # (NetBird routes the site subnets via the mgmt peer group; that's declared in
+    # tf/deployment/prod/<site>/netbird, so there's no per-host advertise flag.)
     mgmt_public_ip  = each.value.public_ip
     mgmt_fabric_nic = each.value.fabric_nic
     mgmt_fabric_vlans = [
       { id = module.addressing.public_vlan_id, address = "${cidrhost(module.addressing.public_cidr, each.value.host_index)}/${local.pub_mask}" },
       { id = module.addressing.private_vlan_id, address = "${cidrhost(module.addressing.private_cidr, each.value.host_index)}/${local.priv_mask}" },
     ]
-    mgmt_tailscale_advertise_routes = each.value.subnet_router ? module.addressing.mgmt_cidr : ""
   })}"
 }
 
