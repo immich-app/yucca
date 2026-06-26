@@ -41,7 +41,7 @@ least-privilege principle.
    ```bash
    scripts/install-ssh-keys.sh
    ```
-   Lands `~/.ssh/id_ed25519_sietch` and `~/.ssh/id_ed25519_painbox` (0600).
+   Lands `~/.ssh/id_ed25519_sietch` (0600).
 6. **Verify**:
    ```bash
    mise run preflight  # should pass; no desktop 1P required
