@@ -6,24 +6,28 @@ variable "flux_operator_version" {
   default     = "0.50.0"
 }
 
-# Commit-status Provider auth via a DEDICATED GitHub App (no PAT) — "yucca-flux"
-# with only "Commit statuses: write". notification-controller mints + rotates
-# installation tokens from these. yucca is a public repo with public images, so
-# NO git-sync or GHCR pull secret is needed.
+# Commit-status Provider auth via a GitHub App (no PAT). notification-controller
+# mints + rotates installation tokens from these. yucca is a public repo with
+# public images, so NO git-sync or GHCR pull secret is needed.
+#
+# TEMPORARY: fed from the SHARED `push-o-matic` app (op://shared_tf/
+# GITHUB_APP_IMMICH_PUSH_O_MATIC) — see tf/.env. The dedicated least-privilege
+# "yucca-flux" app ("Commit statuses: write" only) isn't created yet; repoint
+# the tf/.env refs to it when it is.
 variable "flux_github_app_id" {
-  description = "GitHub App ID (numeric) for the commit-status Provider. Injected via TF_VAR from 1P."
+  description = "GitHub App ID (numeric) for the commit-status Provider. Injected via TF_VAR from 1P (push-o-matic, op://shared_tf)."
   type        = string
   default     = ""
 }
 
 variable "flux_github_app_installation_id" {
-  description = "GitHub App installation ID on the immich-app org/repo. Injected via TF_VAR from 1P."
+  description = "GitHub App installation ID on the immich-app org. Injected via TF_VAR from 1P (push-o-matic, op://shared_tf)."
   type        = string
   default     = ""
 }
 
 variable "flux_github_app_private_key" {
-  description = "GitHub App private key (raw PEM). Injected via TF_VAR from 1P; empty default keeps `tofu validate` clean."
+  description = "GitHub App private key (raw PEM). Injected via TF_VAR from 1P (push-o-matic, op://shared_tf); empty default keeps `tofu validate` clean."
   type        = string
   sensitive   = true
   default     = ""
