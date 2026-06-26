@@ -151,6 +151,22 @@ resource "kubernetes_secret_v1" "yucca_michael" {
   }
 }
 
+# yucca-metrics-worker: a separate RGW user WITH admin caps, so the worker can
+# pull per-bucket usage from the sietch RGW admin API (michael's plain S3 user
+# can't). Keys are AccessKey/SecretKey to match the chart's radosSecretName
+# lookup. Injected via TF_VAR from 1P now; moves to the yucca_tf_staging vault.
+resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name      = "yucca-metrics-rgw"
+    namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
+  }
+  data = {
+    AccessKey = var.sietch_metrics_worker_access_key
+    SecretKey = var.sietch_metrics_worker_secret_key
+  }
+}
+
 # ─── Observability Secret (namespace: observability) ────────────────────
 # Bearer token vmagent + vlagent present to o11y's vmauth for remote-write.
 resource "kubernetes_secret_v1" "vmagent_remote_write" {

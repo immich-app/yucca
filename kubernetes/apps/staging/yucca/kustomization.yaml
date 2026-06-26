@@ -8,3 +8,4 @@ resources:
   - ./yucca-admin-api.yaml
   - ./web.yaml
   - ./michael.yaml
+  - ./yucca-metrics-worker.yaml

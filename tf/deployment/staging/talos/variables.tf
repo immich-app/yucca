@@ -97,6 +97,19 @@ variable "yucca_rgw_secret_access_key" {
   default     = ""
 }
 
+variable "sietch_metrics_worker_access_key" {
+  description = "Sietch RGW admin access key for yucca-metrics-worker (per-bucket usage via the RGW admin API). Injected via TF_VAR from 1P; moves to the yucca_tf_staging vault."
+  type        = string
+  default     = ""
+}
+
+variable "sietch_metrics_worker_secret_key" {
+  description = "Sietch RGW admin secret key for yucca-metrics-worker. Injected via TF_VAR from 1P; moves to the yucca_tf_staging vault."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
 # the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the shared_tf_staging vault (the
 # `remote-clusters` VMUser authenticates remote clusters with it).
