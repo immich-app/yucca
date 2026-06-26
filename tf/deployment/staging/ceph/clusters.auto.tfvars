@@ -1,6 +1,7 @@
-# Declarative cluster inventory. Adding a cluster = add an entry here, let the
-# infra.yml apply run (or `terragrunt apply`), then
-# `ansible/ceph/scripts/render-inventories.sh staging`.
+# Declarative cluster inventory. Adding a cluster = add an entry here and let the
+# infra.yml apply run: it applies this stack, renders the inventory, and runs the
+# ansible/ceph deploy against the cluster (or do it by hand — `terragrunt apply`,
+# then `ansible/ceph/scripts/render-inventories.sh staging` + `mise run deploy`).
 #
 # sietch is the Austin cluster, promoted from dev to staging (same physical
 # nodes, clean rebuild). Secrets live in yucca_tf_staging and are TF-managed
