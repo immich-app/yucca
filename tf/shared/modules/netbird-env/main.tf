@@ -7,14 +7,15 @@
 # module only declares the dependency in versions.tf).
 
 locals {
-  # All generated NetBird names are normalized to UPPER_SNAKE: uppercased, with
-  # hyphens → underscores. e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" →
-  # "YUCCA_PROD_HTZ_FSN1_MGMT"; an explicit group `name` override is normalized
-  # the same way (so "yucca_resource" → "YUCCA_RESOURCE"). The one exception is a
-  # network's display name (see netbird_network below), which keeps its casing/
-  # hyphens so labels like "HTZ-FSN1" survive.
+  # DERIVED names are normalized to UPPER_SNAKE: uppercased, hyphens → underscores.
+  # e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" → "YUCCA_PROD_HTZ_FSN1_MGMT".
+  # An explicit `name` override is taken VERBATIM (not uppercased) — the NetBird
+  # provider (v0.0.9) can't update a group that has network resources tagged into
+  # it (it crashes converting the API's resource objects), so a shared tag group
+  # like "yucca_resource" must keep the exact name it was created with; renaming
+  # it is impossible in-place. Network display names are likewise verbatim.
   group_names = {
-    for k, g in var.groups : k => upper(replace(coalesce(g.name, "${var.name_prefix}_${k}"), "-", "_"))
+    for k, g in var.groups : k => coalesce(g.name, upper(replace("${var.name_prefix}_${k}", "-", "_")))
   }
 
   # Logical key → NetBird group ID, covering both the groups this layer owns and
@@ -90,7 +91,7 @@ resource "netbird_policy" "this" {
 # so human labels like "HTZ-FSN1" survive (hyphen kept).
 resource "netbird_network" "this" {
   for_each    = var.networks
-  name        = upper(coalesce(each.value.name, each.key))
+  name        = coalesce(each.value.name, each.key)
   description = each.value.description
 }
 
