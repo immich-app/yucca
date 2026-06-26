@@ -11,8 +11,11 @@
 # this group (via a terragrunt dependency on this stack), so one account-wide
 # policy governs access to all of them. Explicit name → the unprefixed shared tag
 # (without it the module would render "YUCCA_PROD_YUCCA_RESOURCE").
+# NOTE: name kept lowercase (verbatim, not UPPER_SNAKE). This group carries the
+# site network resources tagged into it, and the NetBird provider can't update a
+# group that has resources — so it must keep the exact name it was created with.
 groups = {
-  yucca_resource = { name = "YUCCA_RESOURCE" }
+  yucca_resource = { name = "yucca_resource" }
 }
 
 setup_keys = {}
