@@ -17,16 +17,17 @@ name: Infra (Terraform)
 # Plan runs on PRs touching tf/** or ansible/ceph/**; apply runs on merge to main
 # behind the `staging-infra` Environment gate (required reviewers). Both the Talos
 # stack and the Ansible deploy talk to the nodes on the 10.10.10.0/24 management
-# VLAN, which GitHub-hosted runners can't reach — so the runner joins the tailnet
-# (the cluster firewall trusts the Tailscale CIDRs) and accepts the subnet route
-# advertising that VLAN.
+# VLAN, which GitHub-hosted runners can't reach — so the runner joins the NetBird
+# overlay as a `ci` peer (via the netbird-connect action + the minted CI setup
+# key) and the existing staging route advertises that VLAN. (The prod fabric
+# workflow still uses Tailscale; 10.40.5.0/24 isn't on NetBird yet.)
 #
 # Prerequisites (provisioned out-of-band):
 #   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (the staging-scoped 1P service-account
-#     token — resolves tf/.env; dev/prod use OP_TF_YUCCA_DEV_ENV / OP_TF_YUCCA_PROD_ENV),
-#     TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET (Tailscale OAuth client, tagged tag:project-yucca).
-#   - A Tailscale subnet router advertising 10.10.10.0/24, and tag:project-yucca approved for
-#     those routes.
+#     token — resolves tf/.env; dev/prod use OP_TF_YUCCA_DEV_ENV / OP_TF_YUCCA_PROD_ENV).
+#   - The staging NetBird stack applied at least once, so the CI setup key item
+#     (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY) exists, plus a
+#     NetBird route advertising 10.10.10.0/24 that the `ci` group may reach.
 #   - GitHub Environment `staging-infra` with required reviewers (the apply gate).
 
 on:
@@ -53,7 +54,7 @@ env:
 jobs:
   plan:
     name: Plan ${{ matrix.stack }}
-    # Skip on fork PRs (no access to secrets / tailnet).
+    # Skip on fork PRs (no access to secrets / the NetBird overlay).
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     strategy:
@@ -72,17 +73,18 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
-      # The Talos stack refreshes state against the nodes; the DNS and ceph
-      # stacks are pure Cloudflare/1Password API and need no tailnet.
-      - name: Connect to Tailscale
+      # The Talos stack refreshes state against the nodes; the DNS, ceph and
+      # netbird stacks are pure Cloudflare/1Password/NetBird-API and need no
+      # overlay. CI reaches the 10.10.10.0/24 nodes over NetBird: the runner joins
+      # as a `ci` peer via the minted setup key, and the existing staging route
+      # advertises the LAN. The key must already exist in 1P (minted by a prior
+      # netbird apply) — true for every PR after the first bootstrap apply.
+      - name: Connect to NetBird
         if: matrix.stack == 'talos'
-        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        uses: ./.github/actions/netbird-connect
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:project-yucca
-          # NB: the action already passes `--accept-routes` to `tailscale up`;
-          # passing it again here errors with "flag provided multiple times".
+          setup-key-ref: op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password
+          hostname: gha-staging-plan-${{ github.run_id }}
 
       - name: Terragrunt plan
         run: >-
@@ -113,16 +115,25 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:project-yucca
-          # NB: the action already passes `--accept-routes` to `tailscale up`;
-          # passing it again here errors with "flag provided multiple times".
+      # NetBird stack FIRST — pure api.netbird.io (no overlay needed), and it
+      # mints the CI setup key into 1P that the connect step below reads. On a
+      # fresh bootstrap this is what makes the key exist before anything joins.
+      - name: Apply staging/netbird
+        run: >-
+          tf/op-run.sh terragrunt
+          --working-dir tf/deployment/staging/netbird
+          --non-interactive apply -auto-approve
 
-      # Ceph 1P password items first (no node contact), then the Talos cluster
+      # Join the NetBird overlay as a `ci` peer so the node-touching stacks and
+      # the Ansible deploy below reach 10.10.10.0/24 (the staging route advertises
+      # the LAN). Replaces the old Tailscale subnet-router path.
+      - name: Connect to NetBird
+        uses: ./.github/actions/netbird-connect
+        with:
+          setup-key-ref: op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password
+          hostname: gha-staging-apply-${{ github.run_id }}
+
+      # Ceph 1P password items (no node contact), then the Talos cluster
       # (provisions secrets/CNI/Flux), then DNS.
       - name: Apply staging/ceph
         run: >-
@@ -142,20 +153,12 @@ jobs:
           --working-dir tf/deployment/staging/dns
           --non-interactive apply -auto-approve
 
-      # NetBird Cloud groups/policies/setup keys (pure api.netbird.io; no node
-      # contact, no tailnet). Writes the minted setup keys into yucca_tf_staging.
-      - name: Apply staging/netbird
-        run: >-
-          tf/op-run.sh terragrunt
-          --working-dir tf/deployment/staging/netbird
-          --non-interactive apply -auto-approve
-
       # ── Ceph convergence (Ansible) ──────────────────────────────────────
       # The TF stacks above only minted the RGW keys into 1P + the cluster
       # Secret; this is what creates the matching RGW users on the bare-metal
       # cluster. Runs after the TF apply so the inventory (rendered from the
-      # ceph stack's `render` output) and the keys exist. Reuses the tailnet +
-      # 1Password session already established in this job.
+      # ceph stack's `render` output) and the keys exist. Reuses the NetBird
+      # overlay + 1Password session already established in this job.
 
       - name: Render Ansible inventory from the ceph TF state
         run: ansible/ceph/scripts/render-inventories.sh staging
@@ -177,7 +180,7 @@ jobs:
       - name: Deploy Ceph (full pipeline — baseline → tune → deploy → harden)
         working-directory: ansible/ceph
         # CI runner has no known_hosts for the bare-metal nodes; first contact is
-        # over the tailnet, so disable strict host-key checking for this run.
+        # over the NetBird overlay, so disable strict host-key checking for this run.
         env:
           ANSIBLE_HOST_KEY_CHECKING: "false"
           CEPH_ENV: inventories/sietch-ceph.staging.austin.int/inventory.ini

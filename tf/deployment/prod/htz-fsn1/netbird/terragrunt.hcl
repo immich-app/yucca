@@ -12,9 +12,23 @@ include "root" {
 # fabric stack (state key: ceph/prod/htz-fsn1/netbird/terraform.tfstate, via the
 # root's full-sub-path stack derivation).
 #
-# Self-contained today (site-scoped ci/mgmt/talos/k8s_operator groups + the
-# HTZ-FSN1 routed network). If a cross-site/global group is ever needed, add a
-# `dependency "global" { config_path = "../../global" }` and pass its output into
-# this stack's `external_groups` input.
-#
 # netbird.auto.tfvars is loaded automatically; `env` is injected by the root.
+
+# Depends on the global layer for the shared "yucca_resource" tag — this site's
+# routed network resources are tagged into it so the account-wide yucca→
+# yucca_resource policy (prod/global) governs their access. prod/global must
+# apply before this stack; mock_outputs cover validate/plan before that.
+dependency "global" {
+  config_path = "../../global"
+
+  mock_outputs = {
+    group_ids = { yucca_resource = "mock-yucca-resource-group-id" }
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+inputs = {
+  external_groups = {
+    yucca_resource = dependency.global.outputs.group_ids.yucca_resource
+  }
+}

@@ -59,9 +59,3 @@ variable "site_id" {
   type        = number
   default     = 40
 }
-
-variable "network_access" {
-  description = "Per routed-network access: resource key → logical group keys allowed to reach that subnet. The CIDRs themselves are propagated from fabric-addressing (addressing.tf), not declared here. Keys: mgmt, api, cls1_public, cls1_private."
-  type        = map(list(string))
-  default     = {}
-}

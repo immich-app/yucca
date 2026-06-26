@@ -11,6 +11,14 @@
 provider "netbird" {}
 provider "onepassword" {}
 
+# The existing account-wide "yucca" users group. Account-global access policies
+# reference it by the logical key `yucca` (handed to the module as an external
+# group). Any NetBird resource tagged into this group (see the site layers'
+# network resources) is then reachable by yucca users via the yucca→yucca policy.
+data "netbird_group" "yucca" {
+  name = "yucca"
+}
+
 module "netbird" {
   source = "../../../shared/modules/netbird-env"
 
@@ -21,6 +29,10 @@ module "netbird" {
   groups     = var.groups
   setup_keys = var.setup_keys
   policies   = var.policies
+
+  external_groups = {
+    yucca = data.netbird_group.yucca.id
+  }
 }
 
 output "group_ids" {

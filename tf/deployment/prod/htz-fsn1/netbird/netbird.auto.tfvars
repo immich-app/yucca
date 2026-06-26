@@ -31,16 +31,9 @@ policies = {
 
 # Site identifier (mirrors prod/htz-fsn1's site_id). Feeds the fabric-addressing
 # plan in addressing.tf; the routed-network CIDRs derive from it.
+#
+# The "HTZ-FSN1" Network (built in netbird.tf) routes the site subnets — CIDRs
+# propagated from the fabric-addressing plan — and tags every resource into the
+# shared "yucca_resource" group, so access is governed by the account-wide
+# yucca→yucca_resource policy (prod/global). Nothing to declare here per subnet.
 site_id = 40
-
-# The "HTZ-FSN1" Network: the mgmt nodes (router peers) expose the site's
-# underlying subnets to the overlay. The CIDRs are PROPAGATED from the
-# fabric-addressing plan (addressing.tf) — only the access (which groups may
-# reach each subnet) is declared here. Keys match the resource names built in
-# netbird.tf (mgmt, api, cls1_public, cls1_private).
-network_access = {
-  mgmt         = ["ci", "mgmt", "k8s_operator"]
-  api          = ["ci", "k8s_operator"]
-  cls1_public  = ["ci", "talos", "k8s_operator"]
-  cls1_private = ["ci", "talos", "k8s_operator"]
-}

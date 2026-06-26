@@ -300,17 +300,38 @@ cross-env CI plane. `k8s` is split into `talos` (the nodes) and `k8s_operator`
 | stack | env / scope | state key |
 |---|---|---|
 | `deployment/staging/netbird` | staging (flat) | `ceph/staging/netbird/…` |
-| `deployment/prod/global` | prod, **account-wide** (cross-site; empty today) | `ceph/prod/global/…` |
+| `deployment/prod/global` | prod, **account-wide** (cross-site) | `ceph/prod/global/…` |
 | `deployment/prod/htz-fsn1/netbird` | prod, **site** htz-fsn1 | `ceph/prod/htz-fsn1/netbird/…` |
 
-Staging is single-layer. **Prod is layered**: a `global` layer (reserved for
-cross-site groups/policies) above per-site layers. Site groups are site-scoped
-(`yucca_prod_<site>_<role>`) so a network router's peers are unambiguously *that
-site's* mgmt nodes. A site layer can consume a global group via a terragrunt
-`dependency` on `prod/global` → the module's `external_groups` input (unused
-today; the global layer is currently empty). The root terragrunt derives `stack`
-from the full sub-path, so `prod/htz-fsn1/netbird` gets its own state key without
-colliding with the `prod/htz-fsn1` fabric stack.
+Staging is single-layer. **Prod is layered**: a `global` layer (account-wide
+groups + policies) above per-site layers. The global layer owns the
+**`yucca_resource`** tag group and the account-wide **`yucca → yucca_resource`**
+policy (see below). Site groups are site-scoped (`yucca_prod_<site>_<role>`) so a
+network router's peers are unambiguously *that site's* mgmt nodes. A site layer
+consumes a global group via a terragrunt `dependency` on `prod/global` → the
+module's `external_groups` input (htz-fsn1 does this for `yucca_resource`). The
+root terragrunt derives `stack` from the full sub-path, so `prod/htz-fsn1/netbird`
+gets its own state key without colliding with the `prod/htz-fsn1` fabric stack.
+
+### The `yucca` / `yucca_resource` access model
+
+Two pre-existing-or-managed groups drive account-wide access to routed subnets:
+
+- **`yucca`** — the existing **users** group (people). External (looked up by
+  name); never managed here.
+- **`yucca_resource`** — the shared **resource tag**, managed in `prod/global`.
+  Every routed `netbird_network_resource` (across sites) is tagged into it.
+
+One global policy in `prod/global` — `yucca → yucca_resource`, `bidirectional =
+false` — lets users reach every tagged resource. Because `yucca_resource` is only
+ever a policy *destination*, the tagged resources can't reach each other (or call
+back to users). Site layers don't reference `yucca` at all; they just tag their
+resources into `yucca_resource` (pulled from `prod/global` via the dependency),
+so the link is the shared tag, not a cross-stack group reference.
+
+Staging additionally grants its `ci` group access to the existing **Liberty
+Park** infra groups (where the staging nodes live today) — those are external
+groups resolved by name in `staging/netbird/main.tf`.
 
 ### Declarative input (`netbird.auto.tfvars`)
 
@@ -345,17 +366,14 @@ The htz-fsn1 site layer exposes a NetBird **Network** named `HTZ-FSN1`: the
 `netbird_network_resource`. The **CIDRs are derived from the same
 `fabric-addressing` module the fabric stack uses** (re-instantiated in the
 layer's `addressing.tf` — a pure, stateless module, so no duplication and no
-cross-stack coupling). The tfvars declare only *which groups may reach each
-subnet*:
+cross-stack coupling). Every resource is tagged into `yucca_resource`, so access
+is the one global `yucca → yucca_resource` policy. The only per-site input is the
+site id (the CIDRs flow from it):
 
 ```hcl
-site_id = 40                          # mirrors prod/htz-fsn1; feeds fabric-addressing
-network_access = {                    # CIDRs come from addressing.tf, access from here
-  mgmt         = ["ci", "mgmt", "k8s_operator"]   # 10.40.5.0/24
-  api          = ["ci", "k8s_operator"]           # 10.40.10.0/24
-  cls1_public  = ["ci", "talos", "k8s_operator"]  # 10.40.20.0/23
-  cls1_private = ["ci", "talos", "k8s_operator"]  # 10.40.22.0/23
-}
+site_id = 40   # mirrors prod/htz-fsn1; feeds fabric-addressing → the routed CIDRs
+               #   mgmt 10.40.5.0/24 · api 10.40.10.0/24
+               #   cls1_public 10.40.20.0/23 · cls1_private 10.40.22.0/23
 ```
 
 **Setup-key plaintext → 1Password.** Each setup key's secret `key` is written to
@@ -384,6 +402,17 @@ matrix, and the prod layers (`prod/global` then `prod/htz-fsn1/netbird`) as gate
 `prod-infra` jobs on the prod 1P SA / `tf/.env.prod`. Prod CI needs the
 `OP_TF_YUCCA_PROD_ENV[_WRITE]` repo secrets + a `prod-infra` Environment — see
 the workflow header.
+
+### CI connects over NetBird
+
+CI reaches the staging `10.10.10.0/24` nodes over the NetBird overlay (this
+replaced the Tailscale subnet-router path). The `.github/actions/netbird-connect`
+composite action installs the client and runs `netbird up` with the **`ci` setup
+key** read from 1P (`op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY`);
+the runner joins as a `ci` peer and the existing staging route advertises the LAN.
+The apply job applies `staging/netbird` **first** (minting that key) before
+connecting, so a fresh bootstrap is self-contained. The prod **fabric** workflow
+(`fabric.yml`) still uses Tailscale — `10.40.5.0/24` isn't on NetBird yet.
 
 ## Where secrets actually live
 

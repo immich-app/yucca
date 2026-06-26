@@ -30,4 +30,17 @@ policies = {
       destinations = ["mgmt", "talos", "k8s_operator"]
     }]
   }
+
+  # CI reaches the existing Liberty Park infra groups where the staging nodes
+  # live today (the targets CI talks to over the overlay). lp_* are external
+  # groups resolved by name in main.tf.
+  ci-to-liberty-park = {
+    description = "Staging CI → Liberty Park infra groups."
+    rules = [{
+      name         = "ci-to-liberty-park"
+      protocol     = "all"
+      sources      = ["ci"]
+      destinations = ["lp_compute", "lp_server_monitoring", "lp_servers", "lp_services"]
+    }]
+  }
 }
