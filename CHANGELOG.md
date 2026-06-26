@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/immich-app/yucca/compare/v0.9.0...v0.9.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **ceph:** reload nftables only when the live ruleset differs ([#206](https://github.com/immich-app/yucca/issues/206)) ([f0dd618](https://github.com/immich-app/yucca/commit/f0dd618119333ef83366dbcecf1abe164b4ba5ce))
+
 ## [0.9.0](https://github.com/immich-app/yucca/compare/v0.8.0...v0.9.0) (2026-06-26)
 
 
