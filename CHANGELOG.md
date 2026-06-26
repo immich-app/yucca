@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/immich-app/yucca/compare/v0.9.1...v0.10.0) (2026-06-26)
+
+
+### Features
+
+* **netbird:** wire this sweetie up ([#209](https://github.com/immich-app/yucca/issues/209)) ([031974a](https://github.com/immich-app/yucca/commit/031974a32b442b5f515014683406eafadbdeedaa))
+
+
+### Bug Fixes
+
+* invert restore snapshot disabled check ([#211](https://github.com/immich-app/yucca/issues/211)) ([a6146e9](https://github.com/immich-app/yucca/commit/a6146e9b73dd42168f829062af28fd705165a9ff))
+
 ## [0.9.1](https://github.com/immich-app/yucca/compare/v0.9.0...v0.9.1) (2026-06-26)
 
 
