@@ -40,6 +40,9 @@
       ansible.builtin.set_fact:
         ansible_host: "{{ _ts_ips[0] if (_ts_ips | length > 0) else mgmt_public_ip }}"
       when:
+        # `-e mgmt_bootstrap=true` forces the public IP — use it for the first run
+        # after a reinstall, when the host's OLD tailnet peer may still show online.
+        - not (mgmt_bootstrap | default(false) | bool)
         - _ts_status.rc == 0
         - (_ts_status.stdout | trim | length) > 0
 
