@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.0](https://github.com/immich-app/yucca/compare/v0.8.0...v0.9.0) (2026-06-26)
+
+
+### Features
+
+* **ansible:** change ([#202](https://github.com/immich-app/yucca/issues/202)) ([f49cf82](https://github.com/immich-app/yucca/commit/f49cf82079f26d9c76e6ee71e8c580d842488f0e))
+* **ansible:** make it go brrr in ci ([#200](https://github.com/immich-app/yucca/issues/200)) ([97b4514](https://github.com/immich-app/yucca/commit/97b451464498a22a78270317b680fdc1697e6082))
+* **ceph:** add read-only metrics-worker RGW admin user + keys ([#188](https://github.com/immich-app/yucca/issues/188)) ([983e061](https://github.com/immich-app/yucca/commit/983e061d01cb051c7fd4cf0c3359b7ef6d257cee))
+* **k8s:** wire in flux notifications-controller for commit statuses ([#195](https://github.com/immich-app/yucca/issues/195)) ([82f8f44](https://github.com/immich-app/yucca/commit/82f8f44a97b73051f7350813dedb008f09d77802))
+* **staging:** wire in metrics-worker ([#181](https://github.com/immich-app/yucca/issues/181)) ([5d97a0f](https://github.com/immich-app/yucca/commit/5d97a0fd04aa79cad588abf2ecb6fee7eb21f89f))
+
+
+### Bug Fixes
+
+* **ansible:** add missing deps ([#204](https://github.com/immich-app/yucca/issues/204)) ([05bb52e](https://github.com/immich-app/yucca/commit/05bb52e7506289e9a61623598f99d887fba16f24))
+* device code flow maybe ([#158](https://github.com/immich-app/yucca/issues/158)) ([ec75076](https://github.com/immich-app/yucca/commit/ec750767a34a378433319282d8ce81ae14c5f573))
+* **michael:** remove duplicate s3 env vars ([#194](https://github.com/immich-app/yucca/issues/194)) ([fa1683c](https://github.com/immich-app/yucca/commit/fa1683c9c6c7881259170b4140476b28f3ee9555))
+* **yucca-api:** good secret name ([#198](https://github.com/immich-app/yucca/issues/198)) ([deed0ba](https://github.com/immich-app/yucca/commit/deed0ba505796e1279282d9cf9bc76c54b3adff5))
+* **yucca:** correct vault for vmwauth ([9f7b94b](https://github.com/immich-app/yucca/commit/9f7b94b5fb25d92fff10c3ff6c1fab29b7b41416))
+
 ## [0.8.0](https://github.com/immich-app/yucca/compare/v0.7.0...v0.8.0) (2026-06-26)
 
 
