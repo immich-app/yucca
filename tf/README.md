@@ -51,7 +51,10 @@ tf/
 
 Future envs land as siblings: `deployment/staging/ceph/`, `deployment/prod/ceph/`.
 Additional stacks land as siblings within an env — `dev/talos/` and
-`dev/dns/` are two; `dev/monitoring/` could be next.
+`dev/dns/` are two; `dev/monitoring/` could be next. NetBird Cloud access
+control lives in `dev/netbird/` and `staging/netbird/` (flat), and for prod is
+layered: `prod/global/` (account-wide) above per-site `prod/<site>/netbird/`
+(e.g. `prod/htz-fsn1/netbird/`). See "The netbird-env module" below.
 
 The dns stack manages infrastructure names in the futo.cloud Cloudflare
 zone (today: the Sietch RGW S3 endpoint + virtual-hosted wildcard).
@@ -269,6 +272,119 @@ TF_STACK_DIR=tf/deployment/staging/talos mise run tf:init
 TF_STACK_DIR=tf/deployment/staging/talos mise run tf:plan
 TF_STACK_DIR=tf/deployment/staging/talos mise run tf:apply   # WIPES /dev/sda, installs Talos
 ```
+
+## The netbird-env module (NetBird Cloud access control)
+
+Manages one layer's [NetBird](https://netbird.io) Cloud footprint: **groups**,
+**access policies**, **device auth (setup) keys**, and routed **networks**. One
+NetBird Cloud account (`api.netbird.io`) backs everything — the module namespaces
+every object `<name_prefix>_<key>` (all underscores) so all envs/sites coexist.
+
+### Group model
+
+Per env (and per prod site), the baseline groups are:
+
+| group | who | rendered (staging / prod htz-fsn1) |
+|---|---|---|
+| `ci` | ephemeral CI runners | `yucca_staging_ci` / `yucca_prod_htz_fsn1_ci` |
+| `mgmt` | management nodes (configured via Ansible; also the route peers) | `yucca_staging_mgmt` / … |
+| `talos` | Talos cluster nodes | `yucca_staging_talos` / … |
+| `k8s_operator` | in-cluster kubernetes operator | `yucca_staging_k8s_operator` / … |
+
+CI is **per-env** (`yucca_<env>_ci`, reaching only that env's groups) — no
+cross-env CI plane. `k8s` is split into `talos` (the nodes) and `k8s_operator`
+(the operator identity) so they can carry different policies.
+
+### Stacks & layering
+
+| stack | env / scope | state key |
+|---|---|---|
+| `deployment/dev/netbird` | dev (flat) | `ceph/dev/netbird/…` |
+| `deployment/staging/netbird` | staging (flat) | `ceph/staging/netbird/…` |
+| `deployment/prod/global` | prod, **account-wide** (cross-site; empty today) | `ceph/prod/global/…` |
+| `deployment/prod/htz-fsn1/netbird` | prod, **site** htz-fsn1 | `ceph/prod/htz-fsn1/netbird/…` |
+
+dev/staging are single-layer. **Prod is layered**: a `global` layer (reserved for
+cross-site groups/policies) above per-site layers. Site groups are site-scoped
+(`yucca_prod_<site>_<role>`) so a network router's peers are unambiguously *that
+site's* mgmt nodes. A site layer can consume a global group via a terragrunt
+`dependency` on `prod/global` → the module's `external_groups` input (unused
+today; the global layer is currently empty). The root terragrunt derives `stack`
+from the full sub-path, so `prod/htz-fsn1/netbird` gets its own state key without
+colliding with the `prod/htz-fsn1` fabric stack.
+
+### Declarative input (`netbird.auto.tfvars`)
+
+Groups, setup keys, policies and networks reference groups by **logical key**,
+never opaque NetBird IDs:
+
+```hcl
+groups = { ci = {}, mgmt = {}, talos = {}, k8s_operator = {} }
+
+setup_keys = {
+  ci           = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
+  mgmt         = { type = "reusable", auto_groups = ["mgmt"] }
+  talos        = { type = "reusable", auto_groups = ["talos"] }
+  k8s_operator = { type = "reusable", auto_groups = ["k8s_operator"] }
+}
+
+policies = {
+  ci-to-all = {                       # CI reaches every node group in this env
+    rules = [{ name = "ci-to-all", protocol = "all"
+               sources = ["ci"], destinations = ["mgmt", "talos", "k8s_operator"] }]
+  }
+}
+```
+
+NetBird is **default-deny** — a peer gets only the access its groups' policies
+grant; an empty `policies` map means total isolation.
+
+### Networks (prod htz-fsn1) — CIDRs propagated, not hardcoded
+
+The htz-fsn1 site layer exposes a NetBird **Network** named `HTZ-FSN1`: the
+`mgmt` group are the routing peers, and each routed subnet is a
+`netbird_network_resource`. The **CIDRs are derived from the same
+`fabric-addressing` module the fabric stack uses** (re-instantiated in the
+layer's `addressing.tf` — a pure, stateless module, so no duplication and no
+cross-stack coupling). The tfvars declare only *which groups may reach each
+subnet*:
+
+```hcl
+site_id = 40                          # mirrors prod/htz-fsn1; feeds fabric-addressing
+network_access = {                    # CIDRs come from addressing.tf, access from here
+  mgmt         = ["ci", "mgmt", "k8s_operator"]   # 10.40.5.0/24
+  api          = ["ci", "k8s_operator"]           # 10.40.10.0/24
+  cls1_public  = ["ci", "talos", "k8s_operator"]  # 10.40.20.0/23
+  cls1_private = ["ci", "talos", "k8s_operator"]  # 10.40.22.0/23
+}
+```
+
+**Setup-key plaintext → 1Password.** Each setup key's secret `key` is written to
+the per-env vault (`yucca_tf_<env>`) as item
+`NETBIRD_<UPPERCASED_NAMESPACED_NAME>_SETUP_KEY` (`onepassword_item`, same "TF
+mints secrets into 1P" pattern as the JWT keypair). The namespaced title keeps
+multiple prod sites writing to the one `yucca_tf_prod` vault from colliding.
+
+**Auth.** Two providers, both fed by `op run --env-file=tf/.env[.prod]`:
+
+- `netbird` — admin PAT from `NB_PAT` (`op://shared_tf/NETBIRD_TF_PAT`, shared
+  across all envs; `management_url` defaults to NetBird Cloud).
+- `onepassword` — `OP_SERVICE_ACCOUNT_TOKEN` (same session), writes the keys.
+
+Run it (pure cloud API — no tailnet, no node contact):
+
+```bash
+TF_STACK_DIR=tf/deployment/staging/netbird mise run tf:init   # then tf:plan / tf:apply
+# prod — global layer first, then each site layer (uses the prod env file + SA):
+OP_ENV_FILE=tf/.env.prod TF_STACK_DIR=tf/deployment/prod/global         mise run tf:apply
+OP_ENV_FILE=tf/.env.prod TF_STACK_DIR=tf/deployment/prod/htz-fsn1/netbird mise run tf:apply
+```
+
+CI (`.github/workflows/infra.yml`) applies `staging/netbird` in the staging
+matrix, and the prod layers (`prod/global` then `prod/htz-fsn1/netbird`) as gated
+`prod-infra` jobs on the prod 1P SA / `tf/.env.prod`. Prod CI needs the
+`OP_TF_YUCCA_PROD_ENV[_WRITE]` repo secrets + a `prod-infra` Environment — see
+the workflow header.
 
 ## Where secrets actually live
 
