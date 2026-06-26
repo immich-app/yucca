@@ -1,5 +1,11 @@
+# Include the deployment root DIRECTLY. This unit nests under prod/htz-fsn1/,
+# which already has its own terragrunt.hcl (the fabric stack) — so the usual
+# `find_in_parent_folders("terragrunt.hcl")` would resolve to THAT (the nearest
+# ancestor), and since it also includes the root, terragrunt would see a
+# two-level include chain ("only one level of includes is allowed"). Point at the
+# root explicitly to skip the intervening fabric config.
 include "root" {
-  path = find_in_parent_folders("terragrunt.hcl")
+  path = "${get_repo_root()}/tf/deployment/terragrunt.hcl"
 }
 
 # Site NetBird layer for htz-fsn1 — its own state, decoupled from the htz-fsn1
