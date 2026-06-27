@@ -14,15 +14,21 @@
 # reflects the current cluster spec). This script is read-only against state.
 #
 # Usage (from anywhere):
-#   ansible/ceph/scripts/render-inventories.sh [env]     # env defaults to dev
+#   ansible/ceph/scripts/render-inventories.sh [partition] [region]
+#     # partition defaults to staging, region defaults to austin (sietch's home)
+#
+# The TF `render` output carries each cluster's own `dirname` (region-scoped,
+# friendly-cluster leaf — e.g. `staging-austin/sietch`), so this wrapper does
+# not derive the inventory layout; it only locates the partition/region stack.
 set -euo pipefail
 
-ENVIRONMENT="${1:-dev}"
+PARTITION="${1:-staging}"
+REGION="${2:-austin}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANSIBLE_CEPH="$(cd "$SCRIPT_DIR/.." && pwd)"   # ansible/ceph
 REPO_ROOT="$(cd "$ANSIBLE_CEPH/../.." && pwd)" # repo root of THIS checkout
-STACK_DIR="$REPO_ROOT/tf/deployment/${ENVIRONMENT}/ceph"
+STACK_DIR="$REPO_ROOT/tf/deployment/${PARTITION}/${REGION}/ceph"
 INV_ROOT="$ANSIBLE_CEPH/inventories"
 
 [ -d "$STACK_DIR" ] || {
@@ -54,4 +60,4 @@ for cluster, spec in data.items():
         print(f"wrote {p}")
 PY
 
-echo "render-inventories: done (${ENVIRONMENT})."
+echo "render-inventories: done (${PARTITION}/${REGION})."

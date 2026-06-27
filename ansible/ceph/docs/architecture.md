@@ -51,20 +51,20 @@ its environment from the same source — directory layout — so dev / staging
 
 | Layer        | dev (today)                                                    | staging (planned)                                       | prod (planned)                                       |
 |--------------|----------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------|
-| TF stack dir | `tf/deployment/dev/ceph/`                                      | `tf/deployment/staging/ceph/`                           | `tf/deployment/prod/ceph/`                           |
+| TF stack dir | `tf/deployment/dev/ceph/`                                      | `tf/deployment/staging/austin/ceph/`                           | `tf/deployment/prod/ceph/`                           |
 | TF state key | `ceph/dev/ceph/terraform.tfstate`                              | `ceph/staging/ceph/terraform.tfstate`                   | `ceph/prod/ceph/terraform.tfstate`                   |
 | 1P vaults    | `yucca_tf_dev` (live) · `yucca_tf_dev_manual` (human-fillable) | `yucca_tf_staging` · `yucca_tf_staging_manual`          | `yucca_tf` (live) · `yucca_tf_prod_manual`           |
 | Ansible inv  | `inventories/<cluster>-ceph.dev.<dc>.<provider>/`              | `inventories/<cluster>-ceph.staging.<dc>.<provider>/`   | `inventories/<cluster>-ceph.prod.<dc>.<provider>/`   |
-| mise default | `CEPH_ENV=...sietch-ceph.dev.austin.int/inventory.ini`         | overridden via env at invocation                        | overridden via env at invocation                     |
+| mise default | `CEPH_ENV=...staging-austin/sietch/inventory.ini`         | overridden via env at invocation                        | overridden via env at invocation                     |
 
 Today the only deployed environment is dev (sietch). Adding
-staging/prod is purely additive: create the matching `tf/deployment/<env>/ceph/`
+staging/prod is purely additive: create the matching `tf/deployment/<partition>/<region>/ceph/`
 directory, populate `clusters.auto.tfvars`, and the same module + Ansible
 roles + mise tasks work unchanged. The state backend key path, 1P vault
 selection, and inventory directory naming all derive from the env segment.
 
 `TF_STACK_DIR` is the operator-side override for `mise run tf:*` tasks; it
-defaults to `tf/deployment/staging/ceph` and points at any sibling stack directory.
+defaults to `tf/deployment/staging/austin/ceph` and points at any sibling stack directory.
 `CEPH_ENV` is the matching override for Ansible — points at the rendered
 `inventory.ini` for the cluster you intend to operate on.
 
@@ -164,7 +164,7 @@ Each top-level key becomes a cluster:
 
 ```hcl
 sietch = {
-  domain            = "dev.austin.int.futo.cloud"
+  domain            = "staging.austin.int.futo.cloud"
   environment       = "dev"
   datacenter        = "austin"
   provider_code     = "int"
@@ -390,7 +390,7 @@ just those phases.
 
 ```
 inventories/
-  sietch-ceph.staging.austin.int/    Austin staging cluster
+  staging-austin/sietch/    Austin staging cluster
     inventory.ini                     TF-generated, gitignored
     inventory-destroy.ini             TF-generated, gitignored
     inventory-provision.ini           TF-generated, gitignored
@@ -486,15 +486,15 @@ env defaults.
 
 ```toml
 [env]
-CEPH_ENV = "inventories/sietch-ceph.staging.austin.int/inventory.ini"
+CEPH_ENV = "inventories/staging-austin/sietch/inventory.ini"
 ```
 
-`TF_STACK_DIR` defaults to `tf/deployment/staging/ceph` inside each `tf:*` task.
+`TF_STACK_DIR` defaults to `tf/deployment/staging/austin/ceph` inside each `tf:*` task.
 Both are overridable per-invocation:
 
 ```bash
-TF_STACK_DIR=tf/deployment/staging/ceph mise run tf:plan
-CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini mise run status
+TF_STACK_DIR=tf/deployment/staging/austin/ceph mise run tf:plan
+CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run status
 ```
 
 ---

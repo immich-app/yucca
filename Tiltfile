@@ -7,7 +7,7 @@
 #     locally-built images.
 #   - HelmRepository-sourced HelmReleases (cnpg, rook, victoria-*) -> installed
 #     at the exact chart version + values pinned in the HelmRelease, from the
-#     HelmRepositories declared in kubernetes/flux/repos/.
+#     HelmRepositories declared in kubernetes/apps/dev/local/repos/.
 # APP_WIRING below carries only the dev-specific concerns Flux doesn't have:
 # which locally-built image to inject, deploy ordering, and pod-readiness quirks.
 #
@@ -228,15 +228,15 @@ docker_build(
 # ---------------------------------------------------------------------------
 local_resource(
     'helm-deps',
-    cmd='rm -rf charts/yucca-api/charts charts/yucca-admin-api/charts charts/yucca-metrics-worker/charts charts/web/charts charts/michael/charts charts/mock-oidc/charts && for d in charts/yucca-api charts/yucca-admin-api charts/yucca-metrics-worker charts/web charts/michael charts/mock-oidc; do (cd $d && helm dependency build); done',
+    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/michael/charts charts/dev/mock-oidc/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/michael charts/dev/mock-oidc; do (cd $d && helm dependency build); done',
     deps=[
-        'charts/yucca-api',
-        'charts/yucca-admin-api',
-        'charts/yucca-metrics-worker',
-        'charts/web',
-        'charts/michael',
-        'charts/mock-oidc',
-        'charts/yucca-common',
+        'charts/apps/yucca-api',
+        'charts/apps/yucca-admin-api',
+        'charts/apps/yucca-metrics-worker',
+        'charts/apps/web',
+        'charts/apps/michael',
+        'charts/dev/mock-oidc',
+        'charts/lib/yucca-common',
     ],
     # `helm dependency build` rewrites these; if Tilt watches them we re-enter
     # an infinite rebuild loop.
@@ -269,7 +269,7 @@ APP_WIRING = {
     # RGW user), so Tilt's pod tracking would hang at "pending". Mark ready on
     # apply; michael still waits on this resource for ordering.
     'yucca-object-user':      {'build': None,                 'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore'},
-    # Shares charts/ceph-objectuser with yucca-object-user; its userName/caps
+    # Shares charts/platform/ceph-objectuser with yucca-object-user; its userName/caps
     # come from the HelmRelease values, so dev must apply them (dev_values) or
     # both releases would default to userName=michael and collide.
     'yucca-metrics-object-user': {'build': None,              'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore', 'dev_values': True},
@@ -286,9 +286,9 @@ APP_WIRING = {
 }
 
 def discover_helm_repos():
-    """HelmRepository name -> URL, from kubernetes/flux/repos/."""
+    """HelmRepository name -> URL, from kubernetes/apps/dev/local/repos/."""
     repos = {}
-    for path in listdir('kubernetes/flux/repos'):
+    for path in listdir('kubernetes/apps/dev/local/repos'):
         if not path.endswith('.yaml'):
             continue
         doc = read_yaml(path)
@@ -302,10 +302,10 @@ def discover_apps():
     for path in listdir('kubernetes/apps', recursive=True):
         if not path.endswith('/helmrelease.yaml'):
             continue
-        # The o11y-style GitOps tree (apps/base + apps/{staging,production}
-        # overlays) is reconciled by Flux on the real clusters — Tilt deploys
-        # only the local dev-mirror tree (apps/<namespace>/<app>/app/).
-        if '/apps/base/' in path or '/apps/staging/' in path or '/apps/production/' in path:
+        # The o11y-style GitOps tree (apps/base + the real-cluster overlays
+        # apps/<partition>/<region>) is reconciled by Flux on the real clusters —
+        # Tilt deploys only the local dev-mirror tree under apps/dev/local/.
+        if '/apps/dev/local/' not in path:
             continue
         hr = read_yaml(path)
         if not hr or hr.get('kind') != 'HelmRelease':
@@ -340,6 +340,11 @@ def wiring_for(app):
     return wiring
 
 LOCAL_APPS, REMOTE_APPS = discover_apps()
+# Guard against a silently-empty deploy: if the dev-mirror allow-list path ever
+# moves again, discover_apps() would return nothing and Tilt would come up empty
+# instead of failing loudly here.
+if not LOCAL_APPS and not REMOTE_APPS:
+    fail("discover_apps() found no HelmReleases under kubernetes/apps/dev/local/ — has the dev-mirror tree moved?")
 HELM_REPOS = discover_helm_repos()
 
 for repo_name, url in HELM_REPOS.items():
@@ -386,7 +391,7 @@ for app in LOCAL_APPS:
         image_keys=[('image.repository', 'image.tag')] if builds else [],
         resource_deps=['helm-deps'] + wiring['deps'] + extra_deps,
         labels=['app'],
-        deps=[app.chart, 'charts/yucca-common'],
+        deps=[app.chart, 'charts/lib/yucca-common'],
         pod_readiness=wiring.get('pod_readiness', ''),
     )
 

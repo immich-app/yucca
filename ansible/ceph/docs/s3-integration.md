@@ -9,8 +9,8 @@ wildcard TLS certificate on **port 443**.
 
 | Style | URL |
 |---|---|
-| Path-style | `https://s3.dev.austin.int.futo.cloud/<bucket>/<key>` |
-| Virtual-hosted | `https://<bucket>.s3.dev.austin.int.futo.cloud/<key>` |
+| Path-style | `https://s3.staging.austin.int.futo.cloud/<bucket>/<key>` |
+| Virtual-hosted | `https://<bucket>.s3.staging.austin.int.futo.cloud/<key>` |
 | Direct (per-node) | `https://10.10.10.90:443`, `https://10.10.10.91:443`, `https://10.10.10.92:443` |
 
 Region: **us-east-1**
@@ -81,7 +81,7 @@ aws_secret_access_key = YOUR_SECRET_KEY
 ```ini
 [profile sietch]
 region = us-east-1
-endpoint_url = https://s3.dev.austin.int.futo.cloud
+endpoint_url = https://s3.staging.austin.int.futo.cloud
 s3 =
     signature_version = s3v4
     addressing_style = path
@@ -121,7 +121,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 s3 = boto3.client(
     "s3",
-    endpoint_url="https://s3.dev.austin.int.futo.cloud",
+    endpoint_url="https://s3.staging.austin.int.futo.cloud",
     aws_access_key_id="YOUR_ACCESS_KEY",
     aws_secret_access_key="YOUR_SECRET_KEY",
     region_name="us-east-1",
@@ -153,7 +153,7 @@ To use the CA bundle instead of disabling verification:
 ```python
 s3 = boto3.client(
     "s3",
-    endpoint_url="https://s3.dev.austin.int.futo.cloud",
+    endpoint_url="https://s3.staging.austin.int.futo.cloud",
     aws_access_key_id="YOUR_ACCESS_KEY",
     aws_secret_access_key="YOUR_SECRET_KEY",
     region_name="us-east-1",
@@ -170,7 +170,7 @@ s3 = boto3.client(
 ```bash
 export AWS_ACCESS_KEY_ID="YOUR_ACCESS_KEY"
 export AWS_SECRET_ACCESS_KEY="YOUR_SECRET_KEY"
-export RESTIC_REPOSITORY="s3:https://s3.dev.austin.int.futo.cloud/restic-backups"
+export RESTIC_REPOSITORY="s3:https://s3.staging.austin.int.futo.cloud/restic-backups"
 
 # Init (first time)
 restic init --option s3.region=us-east-1
@@ -202,16 +202,16 @@ needed from the application side.
 
 ## DNS setup for virtual-hosted buckets
 
-Virtual-hosted bucket addressing (e.g., `https://my-bucket.s3.dev.austin.int.futo.cloud`)
+Virtual-hosted bucket addressing (e.g., `https://my-bucket.s3.staging.austin.int.futo.cloud`)
 requires two DNS records:
 
 ```
-s3.dev.austin.int.futo.cloud.        A  10.10.10.90
-s3.dev.austin.int.futo.cloud.        A  10.10.10.91
-s3.dev.austin.int.futo.cloud.        A  10.10.10.92
-*.s3.dev.austin.int.futo.cloud.      A  10.10.10.90
-*.s3.dev.austin.int.futo.cloud.      A  10.10.10.91
-*.s3.dev.austin.int.futo.cloud.      A  10.10.10.92
+s3.staging.austin.int.futo.cloud.        A  10.10.10.90
+s3.staging.austin.int.futo.cloud.        A  10.10.10.91
+s3.staging.austin.int.futo.cloud.        A  10.10.10.92
+*.s3.staging.austin.int.futo.cloud.      A  10.10.10.90
+*.s3.staging.austin.int.futo.cloud.      A  10.10.10.91
+*.s3.staging.austin.int.futo.cloud.      A  10.10.10.92
 ```
 
 Round-robin A records across all three nodes.

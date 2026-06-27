@@ -4,8 +4,9 @@ description: >-
   read from 1Password. Requires the 1Password CLI on PATH and
   OP_SERVICE_ACCOUNT_TOKEN in the environment (the infra jobs provide both). The
   setup key must already exist in 1Password — it is minted by the matching
-  netbird stack (deployment/<env>/netbird or prod/<site>/netbird), so apply that
-  stack before this action runs on a fresh bootstrap.
+  netbird stack (deployment/<partition>/global/netbird for the account/partition
+  key, or deployment/<partition>/<region>/netbird for a per-site key), so apply
+  that stack before this action runs on a fresh bootstrap.
 
 inputs:
   setup-key-ref:

@@ -5,7 +5,7 @@
 #
 # Target inventory + secrets template are located via CEPH_ENV (path to
 # the TF-rendered inventory file — TF is the authoritative source of
-# cluster identity, declared in tf/deployment/<env>/ceph/clusters.auto.tfvars).
+# cluster identity, declared in tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars).
 set -euo pipefail
 
 : "${CEPH_ENV:?CEPH_ENV must be set to the target cluster inventory.ini}"

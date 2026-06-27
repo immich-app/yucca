@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build yuctl"
+set -e
+
+cd packages/yuctl && go build -o ../../dist/yuctl .

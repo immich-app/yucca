@@ -4,31 +4,32 @@ This directory holds **two parallel trees** with different consumers:
 
 ```
 kubernetes/
-├── clusters/             # ← real clusters (yucca-o11y-style GitOps; reconciled by Flux)
-│   ├── staging/          #   apps.yaml (cluster-apps entry) + cluster-settings (image-versions is RS-generated)
-│   └── production/       #   + image-versions (git pin, bumped by the gated promote job)
+├── clusters/                 # ← real clusters (partition/region GitOps; reconciled by Flux)
+│   ├── staging/austin/       #   cluster-settings(.generated) + apps.yaml (cluster-apps entry)
+│   ├── prod/htz-fsn1/         #   + image-versions (git pin, bumped by the gated promote job)
+│   └── dev/local/            #   ← dev-mirror entry point (repos.yaml + apps.yaml; consumed by Tilt)
 ├── apps/
-│   ├── base/             #   reusable HelmReleases (chart + image.repository); tag via ${YUCCA_IMAGE_TAG}
-│   ├── staging/          #   overlays + flux-system/ (RSIP+ResourceSet image automation, notification Provider/Alert)
-│   ├── production/       #   overlays + flux-system/ (notification Provider/Alert)
-│   │
-│   ├── cnpg-system/      # ← dev-mirror tree (consumed by Tilt/k3d for LOCAL dev only)
-│   ├── rook-ceph/        #   kept as-is; Tilt scans apps/<namespace>/ and skips base|staging|production
-│   └── yucca/            #   the product stack + its dev infra
-├── flux/                 #   dev-mirror Flux sources + entrypoint (Tilt reads flux/repos)
-├── bootstrap/  components/
+│   ├── base/                 #   reusable HelmReleases (chart + image.repository); tag via ${YUCCA_IMAGE_TAG}
+│   ├── staging/austin/       #   overlay: components [infra, roles/primary] + flux-system/ (image automation, notifications)
+│   ├── prod/htz-fsn1/         #   overlay: components [infra, roles/primary] + flux-system/ (notifications)
+│   └── dev/local/            #   ← dev-mirror tree (Tilt/k3d only): yucca/ rook-ceph/ cnpg-system/ repos/
+├── components/               #   apps/<app>.yaml (single-source Flux Ks), infra/ (platform layers),
+│   │                         #   roles/{primary,secondary}/ (Kustomize Components: per-role app sets)
+├── bootstrap/
 ```
 
-- **`clusters/` + `apps/{base,staging,production}/`** is the o11y-faithful GitOps
-  surface for the real Talos clusters. The flux-instance (installed by
-  `tf/deployment/staging/talos/flux.tf`) syncs `clusters/<env>`; merge→build→deploy
-  is driven by `.github/workflows/deploy.yml`. See **GitOps deploy** below.
-- **`apps/<namespace>/` + `flux/`** is the original dev-mirror tree the
-  [Tiltfile](../Tiltfile) consumes for local k3d dev. Untouched by the GitOps
-  tree (Tilt skips `base|staging|production`). Consolidating the two (Tilt
-  consuming `apps/base`) is future work, alongside porting the rest of the
-  platform (michael, metrics-worker, object storage, ingress, secrets) into
-  `apps/base`.
+- **`clusters/<partition>/<region>/` + `apps/{base,<partition>/<region>}/` + `components/`**
+  is the GitOps surface for the real Talos clusters. The flux-instance (installed
+  by `tf/deployment/staging/austin/talos/flux.tf`) syncs `clusters/<partition>/<region>`;
+  merge→build→deploy is driven by `.github/workflows/deploy.yml`. Each cluster
+  overlay picks its app set by composing two Kustomize Components: `infra`
+  (role-independent platform layers) and `roles/<role>` (the role's app set).
+  See **GitOps deploy** below.
+- **`apps/dev/local/` + `clusters/dev/local/`** is the dev-mirror tree the
+  [Tiltfile](../Tiltfile) consumes for local k3d dev. Tilt scans only
+  `apps/dev/local/` (allow-list) and reads HelmRepository sources from
+  `apps/dev/local/repos/`. It keeps its own literal-valued HelmReleases (Tilt
+  can't resolve Flux `${...}` substitutions).
 
 ## GitOps deploy (staging → production)
 
@@ -40,17 +41,17 @@ a kubeconfig or joins the tailnet.
 1. **build** — matrix-builds every app image → `ghcr.io/immich-app/yucca/<app>:0.0.<run_number>`
    (+ `:sha-<sha>` for traceability, `:main`). One monotonic monorepo tag for all apps.
 2. **staging (automatic, in-cluster)** — the flux-operator `ResourceSetInputProvider`
-   (`apps/staging/flux-system/image-automation.yaml`, type `OCIArtifactTag`) detects the
+   (`apps/staging/austin/flux-system/image-automation.yaml`, type `OCIArtifactTag`) detects the
    highest `0.0.<n>` tag in GHCR; a `ResourceSet` writes it into the `image-versions`
    ConfigMap, which the `cluster-apps` `postBuild.substituteFrom` feeds into every app
    HelmRelease as `${YUCCA_IMAGE_TAG}`. No GHA job, no git commit.
 3. **production (gated)** — the `promote-production` job runs only behind the
    `production` GitHub Environment's **required-reviewers gate** (guarded by repo var
-   `PROD_CLUSTER_READY`). It pins `clusters/production/image-versions.yaml` to the
+   `PROD_CLUSTER_READY`). It pins `clusters/prod/htz-fsn1/image-versions.yaml` to the
    validated `0.0.<n>` and commits it (`promote-prod.sh`, `[skip ci]`); prod Flux pulls
    and applies. Still no cluster access from CI.
 4. **visibility** — notification-controller's GitHub `Provider`/`Alert`
-   (`apps/<env>/flux-system/notifications.yaml`) posts each reconcile result as a
+   (`apps/<partition>/<region>/flux-system/notifications.yaml`) posts each reconcile result as a
    **commit status** (✅/❌ on the deployed commit). (Trade-off vs the old push model:
    the rollout no longer streams in the Actions log — it surfaces as the commit status.)
 
@@ -87,24 +88,28 @@ mise test:e2e:k3d               # runs all e2e against the cluster
 
 Note: michael creates **one S3 bucket per restic repository** (the bucket name
 comes from the client JWT's `repository` claim; the S3 credentials are a static
-RGW user). That's why it uses a full `CephObjectStoreUser` (charts/ceph-objectuser)
+RGW user). That's why it uses a full `CephObjectStoreUser` (charts/platform/ceph-objectuser)
 rather than a bucket-scoped ObjectBucketClaim.
 
 ## How it reconciles
 
-Flux applies `kubernetes/flux/cluster` first (`cluster-repos` → `cluster-apps`).
-`cluster-apps` builds `kubernetes/apps`, which aggregates one Flux `Kustomization`
-(`ks.yaml`) per app. Each `ks.yaml` reconciles its `app/` directory, whose
-`kustomization.yaml` applies a single `HelmRelease`. Ordering is expressed with
-`dependsOn` (operator → database → apps).
+In dev, Flux applies `kubernetes/clusters/dev/local` first (`cluster-repos` →
+`cluster-apps`). `cluster-apps` builds `kubernetes/apps/dev/local`, which
+aggregates one Flux `Kustomization` (`ks.yaml`) per app. Each `ks.yaml`
+reconciles its `app/` directory, whose `kustomization.yaml` applies a single
+`HelmRelease`. Ordering is expressed with `dependsOn` (operator → database → apps).
 
 ```
-apps/yucca/<app>/
+apps/dev/local/yucca/<app>/
 ├── ks.yaml              # Flux Kustomization → ./app  (+ dependsOn)
 └── app/
     ├── kustomization.yaml
     └── helmrelease.yaml # chart ref + values
 ```
+
+(On the real clusters the equivalent single-source Flux `Kustomization`s live in
+`components/apps/<app>.yaml`, selected per cluster by the `roles/<role>`
+Component.)
 
 ## Single source of truth: this tree
 
@@ -112,12 +117,12 @@ The [Tiltfile](../Tiltfile) derives **everything it deploys** from the
 HelmReleases here — first-party apps _and_ the remote-chart operators:
 
 - First-party `HelmRelease`s reference the in-repo Helm charts via the `yucca`
-  `GitRepository` source (`chart: charts/<svc>`), so **no OCI publishing is
+  `GitRepository` source (`chart: charts/apps/<svc>`), so **no OCI publishing is
   required**. Tilt renders the same charts with their dev defaults and injects
   the locally-built, live-updated images.
 - Remote `HelmRelease`s (cnpg, rook, victoria-\*) pin a chart version + values;
   Tilt installs **exactly those**, from the `HelmRepository` sources declared in
-  `flux/repos/`. Bump a version or value once, in the HelmRelease — there is no
+  `apps/dev/local/repos/`. Bump a version or value once, in the HelmRelease — there is no
   second copy to drift.
 
 Service names are pinned with `fullnameOverride` in each chart's `values.yaml`,
@@ -140,9 +145,9 @@ persistence, secrets) are where a future prod cluster overlay diverges. Notably:
   in [`ansible/ceph`](../ansible/ceph) / [`tf/`](../tf)) — not this Rook cluster.
 - The Rook-Ceph dev cluster is single-node/single-replica and synthesizes a
   loopback block device (k3d has no spare disk). See
-  [`charts/rook-ceph-cluster`](../charts/rook-ceph-cluster). `michael`'s S3
+  [`charts/platform/rook-ceph-cluster`](../charts/platform/rook-ceph-cluster). `michael`'s S3
   credentials come from a full RGW user
-  ([`charts/ceph-objectuser`](../charts/ceph-objectuser)) whose Secret Rook
+  ([`charts/platform/ceph-objectuser`](../charts/platform/ceph-objectuser)) whose Secret Rook
   writes into the `yucca` namespace.
 - The dev keypair/secrets committed in chart `secretData` are **well-known
   fixtures** (the same keypair lives in `.mise/tasks/*/env`); they must become
@@ -180,9 +185,11 @@ web e2e suite logs in via mock-oidc, so remove `.env` before
 ## Validate locally
 
 ```bash
-# render the kustomize graph
-kubectl kustomize kubernetes/apps
-# build the whole tree (Kustomizations + HelmReleases) the way Flux would
+# the full CI gate (charts + every cluster's Flux tree)
+mise run k8s:validate
+# or, ad hoc: render one dev overlay's kustomize graph
+kubectl kustomize kubernetes/apps/dev/local
+# build one cluster's whole tree (Kustomizations + HelmReleases) as Flux would
 # (https://github.com/allenporter/flux-local)
-flux-local build all kubernetes --enable-helm --no-enable-dns
+flux-local build all kubernetes/clusters/dev/local --enable-helm --no-enable-dns
 ```

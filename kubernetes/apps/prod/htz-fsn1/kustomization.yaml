@@ -1,0 +1,13 @@
+---
+# prod@htz-fsn1 cluster overlay. Authored ahead of the cluster (the prod
+# Talos/flux stack isn't built yet — tf/deployment/prod/htz-fsn1 is fabric-only);
+# activates once that stack provisions flux and it syncs clusters/prod/htz-fsn1.
+# htz-fsn1 is the prod partition's primary (and currently only) region, so it
+# composes `infra` + `roles/primary` (the full app set).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./flux-system
+components:
+  - ../../../components/infra
+  - ../../../components/roles/primary

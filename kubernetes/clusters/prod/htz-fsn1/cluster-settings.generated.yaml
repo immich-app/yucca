@@ -1,0 +1,31 @@
+---
+# TF-RENDERED — do not hand-edit. Authored ahead of the cluster (prod's
+# Talos/flux stack isn't built yet — tf/deployment/prod/htz-fsn1 is fabric-only),
+# to a valid value matching what TF will regenerate once that stack lands. Keys
+# are DISJOINT from the human cluster-settings + CI image-versions ConfigMaps.
+# TODO(prod): real RGW endpoint + observability vmauth host when the cluster is
+# provisioned.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings-generated
+  namespace: flux-system
+data:
+  # Cluster identity (derived: yucca_<partition>_<region>).
+  CLUSTER_NAME: yucca_prod_htz_fsn1
+  CLUSTER_ROLE: primary
+  METRICS_CLUSTER_LABEL: yucca_prod_htz_fsn1
+
+  # TODO: real production ingress domain + restic-gateway host.
+  APP_DOMAIN: yucca.futo.cloud
+  GW_HOST: gw.yucca.futo.cloud
+
+  # Bare-metal RGW (Ceph S3) gateway. Prod uses a COMPLETELY SEPARATE Ceph from
+  # staging's sietch cluster. S3_HOST is the same gateway without the scheme
+  # (michael's S3_BACKEND_DNS_HOST). TODO: real production RGW endpoint.
+  S3_ENDPOINT: https://s3.prod.futo.cloud
+  S3_HOST: s3.prod.futo.cloud
+
+  # Observability egress. TODO: real prod vmauth host.
+  VMAGENT_OTLP: vmagent-yucca.observability.svc:8429
+  VLOGS_REMOTE_URL: https://vmauth.prod.futostatus.com/insert/native

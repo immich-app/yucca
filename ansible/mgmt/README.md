@@ -45,9 +45,9 @@ truth and writes these **gitignored** files:
 
 | file | generated from |
 |---|---|
-| `inventories/<site>/hosts.yml` | `mgmt-hosts.yaml` (host names + public IPs) |
-| `inventories/<site>/host_vars/*.yml` | `mgmt-hosts.yaml` (NIC) + `fabric-addressing` (VLAN ids/addresses, subnet route) |
-| `inventories/<site>/group_vars/all/users.generated.yml` | `tf/shared/modules/identity` (`server`-mapped users) |
+| `inventories/<region>/hosts.yml` | `mgmt-hosts.yaml` (host names + public IPs) |
+| `inventories/<region>/host_vars/*.yml` | `mgmt-hosts.yaml` (NIC) + `fabric-addressing` (VLAN ids/addresses, subnet route) |
+| `inventories/<region>/group_vars/all/users.generated.yml` | `tf/shared/modules/identity` (`server`-mapped users) |
 
 Only `group_vars/all/main.yml` (static config) and `roles/**` are committed. To
 change hosts, addresses, or users, edit the Terraform sources — never the
@@ -82,7 +82,7 @@ shred -u /tmp/htz-fsn1-prov-key
 optional. The inventory connects as `ansible_user: root`.
 
 The whole render-key + run flow above is wrapped by `mise run mgmt:ansible`
-(`SITE` selects the inventory; defaults to `htz-fsn1`), which CI also runs on
+(`REGION` selects the inventory; defaults to `htz-fsn1`), which CI also runs on
 every **prod** apply — the `Ansible converge (mgmt hosts)` step of
 `.github/workflows/infra.yml`, right after the Terraform apply. It's idempotent
 and reaches the hosts over their public IP, so it requires them to already be
@@ -143,5 +143,5 @@ Nothing secret is committed. SSH public keys are public data and are TF-generate
 into `group_vars/all/users.generated.yml`. Runtime secrets are passed via `op read`:
 
 - Provisioning private key: `op://yucca_tf_prod/HTZ_FSN1_PROVISIONING_SSH_PRIVATE_KEY/password`
-- NetBird mgmt setup key: `op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY/password`
+- NetBird mgmt setup key: `op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<REGION>_MGMT_SETUP_KEY/password`
   (the site's reusable `mgmt` key, `auto_groups=["mgmt"]`; minted by the prod netbird stack)

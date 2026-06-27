@@ -8,7 +8,7 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: charts/cnpg-cluster
+      chart: charts/platform/cnpg-cluster
       sourceRef:
         kind: GitRepository
         name: flux-system

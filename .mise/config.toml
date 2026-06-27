@@ -73,20 +73,20 @@ run = [{ task = "*:fix" }, { task = "web:lingui" }]
 # No literal secrets in the .env file — just op:// references.
 
 [tasks."tf:init"]
-description = "Terragrunt init for a given stack (default: deployment/staging/ceph)"
-run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/ceph} init"
+description = "Terragrunt init for a given stack (default: deployment/staging/austin/ceph)"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/austin/ceph} init"
 
 [tasks."tf:plan"]
 description = "Terragrunt plan for a given stack"
-run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/ceph} plan"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/austin/ceph} plan"
 
 [tasks."tf:apply"]
 description = "Terragrunt apply for a given stack"
-run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/ceph} apply"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/austin/ceph} apply"
 
 [tasks."tf:destroy"]
 description = "Terragrunt destroy for a given stack (use with care)"
-run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/ceph} destroy"
+run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/staging/austin/ceph} destroy"
 
 [tasks."tf:fmt"]
 description = "Format terraform + terragrunt files recursively"

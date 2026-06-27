@@ -46,7 +46,7 @@ the same bond IP via the same DHCP reservation / static config.
 # Boot the new box from the Debian 12 live image (same procedure as first
 # provision — see docs/runbooks/add-node.md for iDRAC steps).
 
-CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory-provision.ini \
+CEPH_ENV=inventories/staging-austin/sietch/inventory-provision.ini \
   scripts/ansible-play.sh provision.yml \
   -e confirm_wipe=true \
   --limit sietch-ceph-<name>

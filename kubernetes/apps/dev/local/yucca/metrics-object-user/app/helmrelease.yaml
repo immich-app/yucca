@@ -1,0 +1,30 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-metrics-object-user
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/platform/ceph-objectuser
+      sourceRef:
+        kind: GitRepository
+        name: yucca
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # Dedicated RGW user for the metrics worker. michael is a plain S3 user with
+    # no admin caps, so it can't read per-bucket stats via the RGW admin API.
+    # Rook writes this user's keys to rook-ceph-object-user-yucca-metrics.
+    userName: metrics
+    capabilities:
+      bucket: read
+      usage: read
+      metadata: read

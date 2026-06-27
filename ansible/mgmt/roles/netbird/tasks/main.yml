@@ -23,7 +23,7 @@
       - mgmt_netbird_setup_key | length > 0
     fail_msg: >-
       mgmt_netbird_setup_key is empty. Pass it at run time (mgmt:ansible does this
-      from op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY).
+      from op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<REGION>_MGMT_SETUP_KEY).
 
 # mgmt nodes route the site subnets to the overlay.
 - name: Enable IP forwarding (NetBird route peer)

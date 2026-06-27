@@ -21,11 +21,11 @@ sudo openssl x509 -in /etc/ceph/rgw-ssl.crt -noout -subject -dates -ext subjectA
 Output shows:
 
 ```
-subject=C = US, ST = Texas, L = Austin, O = FUTO, CN = s3.dev.austin.int.futo.cloud
+subject=C = US, ST = Texas, L = Austin, O = FUTO, CN = s3.staging.austin.int.futo.cloud
 notBefore=...
 notAfter=...
 X509v3 Subject Alternative Name:
-    DNS:s3.dev.austin.int.futo.cloud, DNS:*.s3.dev.austin.int.futo.cloud, ...
+    DNS:s3.staging.austin.int.futo.cloud, DNS:*.s3.staging.austin.int.futo.cloud, ...
 ```
 
 ## 2. Run the rotation playbook
@@ -75,7 +75,7 @@ sudo openssl x509 -in /etc/ceph/rgw-ssl.crt -noout -subject -dates -ext subjectA
 
 ```bash
 # From a node in the cluster (self-signed cert)
-curl -k https://s3.dev.austin.int.futo.cloud:443/
+curl -k https://s3.staging.austin.int.futo.cloud:443/
 ```
 
 Expected: XML response with `ListAllMyBucketsResult` or `AccessDenied`
@@ -104,7 +104,7 @@ verification disabled for self-signed certs).
 ## Certificate configuration
 
 The cert parameters are controlled by these variables in
-`inventories/sietch-ceph.staging.austin.int/group_vars/all/vars.yml`:
+`inventories/staging-austin/sietch/group_vars/all/vars.yml`:
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -115,7 +115,7 @@ The cert parameters are controlled by these variables in
 | `ceph_rgw_ssl_cert_subject_l` | `Austin` | Locality |
 | `ceph_rgw_ssl_cert_subject_o` | `FUTO` | Organization |
 | `ceph_rgw_ssl_cert_email` | `yucca@futo.org` | Contact email |
-| `ceph_rgw_dns_name` | `s3.dev.austin.int.futo.cloud` | CN and primary SAN |
+| `ceph_rgw_dns_name` | `s3.staging.austin.int.futo.cloud` | CN and primary SAN |
 
 SANs are auto-generated from inventory: per-node FQDNs and bond IPs are
 included so direct-host access validates.

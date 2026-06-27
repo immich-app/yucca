@@ -1,0 +1,10 @@
+apiVersion: v2
+name: michael
+description: Yucca backup/restore service (Go)
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+dependencies:
+  - name: yucca-common
+    version: 0.1.0
+    repository: "file://../../lib/yucca-common"

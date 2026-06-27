@@ -211,9 +211,9 @@ inventory file. Cluster identity is authoritative in
 `clusters.auto.tfvars`; `CEPH_ENV` is the runtime pointer.
 
 ```
-CEPH_ENV = inventories/sietch-ceph.staging.austin.int/inventory.ini
+CEPH_ENV = inventories/staging-austin/sietch/inventory.ini
            |
-           dirname ->  inventories/sietch-ceph.staging.austin.int
+           dirname ->  inventories/staging-austin/sietch
                        |
                        + "/secrets.yml.tpl"  -> op inject input
 ```
@@ -225,8 +225,9 @@ is missing. See [scripts.md](scripts.md) for the full contract.
 **Destroy task** in `.mise.toml` extracts the domain for the safety gate:
 
 ```bash
-CLUSTER_ID=$(basename "$CEPH_ENV_DIR")        # sietch-ceph.staging.austin.int
-DOMAIN=${CLUSTER_ID#*-ceph.}.futo.cloud       # staging.austin.int.futo.cloud
+CEPH_ENV_DIR=$(dirname "$CEPH_ENV")                  # inventories/staging-austin/sietch
+REGION_SLUG=$(basename "$(dirname "$CEPH_ENV_DIR")") # staging-austin (<partition>-<region>)
+DOMAIN="${REGION_SLUG/-/.}.int.futo.cloud"           # staging.austin.int.futo.cloud
 ```
 
 ---

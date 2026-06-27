@@ -2,7 +2,7 @@
 
 Every name derivable in this project — hostname, inventory directory, 1P
 item title, SSH key filename — traces back to one entry per cluster in
-`tf/deployment/<env>/ceph/clusters.auto.tfvars`. TF's `ceph-cluster` module
+`tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars`. TF's `ceph-cluster` module
 assembles the rest.
 
 For how naming fits the broader system see
@@ -195,7 +195,7 @@ The `-ceph` segment is hardcoded in the ceph-cluster module regardless of
 as `*-ceph.*` — even a hypothetical cluster with `role_in_hostname = "osd"`
 (hostnames `mesa-osd-*`) still renders `mesa-ceph.prod.fsn.htz/`.
 
-Defined in `tf/deployment/<env>/ceph/main.tf` (`local.inventory_dirs`).
+Defined in `tf/deployment/<partition>/<region>/ceph/main.tf` (`local.inventory_dirs`).
 
 ## 1Password item naming
 

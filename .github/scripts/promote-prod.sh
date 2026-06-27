@@ -9,7 +9,7 @@
 set -euo pipefail
 
 TAG="${1:?usage: promote-prod.sh <tag>}"
-FILE="kubernetes/clusters/production/image-versions.yaml"
+FILE="kubernetes/clusters/prod/htz-fsn1/image-versions.yaml"
 
 # Set data.YUCCA_IMAGE_TAG (yq if present, else portable sed on the one line).
 if command -v yq >/dev/null 2>&1; then

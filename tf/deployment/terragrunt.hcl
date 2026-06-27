@@ -4,30 +4,57 @@
 # which merges this config into the child.
 #
 # Responsibilities:
-#   - Derive env + stack from directory path.
-#   - State backend config (S3 against the shared yucca-tf-state bucket
-#     at OVH Paris; key path is project-scoped to ceph/<env>/<stack>/).
+#   - Derive partition + region + stack (+ slug) from the directory path.
+#   - Merge per-region metadata (role + FQDN parts) from the nearest region.hcl.
+#   - State backend config (S3 against the shared yucca-tf-state bucket at OVH
+#     Paris; key path yucca/<partition>/<region>/<stack>/).
 #   - Common inputs.
 #
 # Providers are declared per-stack in their versions.tf — different stacks
-# may need different provider sets (e.g., ceph uses 1P+local+random; a future
-# Hetzner-dns stack might add the hetzner provider).
+# may need different provider sets (e.g., ceph uses 1P+local+random; the dns
+# stack adds the cloudflare provider).
 
 locals {
-  # Parse env and stack from the directory structure.
-  #   tf/deployment/dev/ceph            → env=dev,  stack=ceph
-  #   tf/deployment/prod/htz-fsn1       → env=prod, stack=htz-fsn1
-  #   tf/deployment/prod/htz-fsn1/netbird → env=prod, stack=htz-fsn1/netbird
-  # `stack` is EVERY segment after env, joined — so a site can nest sub-stacks
-  # (e.g. prod/<site>/netbird) with their own state key, distinct from the site's
-  # top-level stack. Single-segment stacks are unchanged (slice of [1:1] = the
-  # one element), so existing state keys are preserved.
+  # ── Partition / region / stack, parsed from the directory structure ──────
+  #   tf/deployment/staging/austin/ceph        → partition=staging, region=austin,   stack=ceph
+  #   tf/deployment/staging/global/dns         → partition=staging, region=global,   stack=dns
+  #   tf/deployment/prod/htz-fsn1/fabric        → partition=prod,    region=htz-fsn1, stack=fabric
+  #   tf/deployment/prod/htz-fsn1/netbird       → partition=prod,    region=htz-fsn1, stack=netbird
+  #   tf/deployment/prod/global                 → partition=prod,    region=global,   stack=global  (n==2 fallback)
+  #
+  # `stack` is every segment after the region, joined — so a region can nest
+  # sub-stacks (e.g. prod/htz-fsn1/netbird) each with their own state key. The
+  # canonical slug `<partition>-<region>` derives names on other surfaces.
   relative_path = path_relative_to_include()
-  path_segments = split("/", local.relative_path)
-  env           = length(local.path_segments) > 0 ? local.path_segments[0] : "unknown"
-  stack = length(local.path_segments) > 1 ? join("/", slice(
-    local.path_segments, 1, length(local.path_segments)
-  )) : "unknown"
+  segs          = split("/", local.relative_path)
+  n             = length(local.segs)
+
+  partition = local.n > 0 ? local.segs[0] : "unknown"
+  region    = local.n > 1 ? local.segs[1] : "unknown"
+
+  # stack = join(segs[2:]). n==2 fallback (region IS the stack) is a transition
+  # guard for region-root stacks (prod/global) and pre-cutover flat layouts;
+  # dead once every stack sits at 3 segments.
+  stack = local.n > 2 ? join("/", slice(local.segs, 2, local.n)) : local.region
+
+  slug = "${local.partition}-${local.region}"
+
+  # State key. For n>=3, the full partition/region/stack path. For n==2 the
+  # region already names the stack, so collapse to partition/region to avoid a
+  # doubled `.../global/global/...` key.
+  state_key = local.n > 2 ? "yucca/${local.partition}/${local.region}/${local.stack}/terraform.tfstate" : "yucca/${local.partition}/${local.region}/terraform.tfstate"
+
+  # ── Per-region metadata (role + FQDN parts) from the nearest region.hcl ──
+  # find_in_parent_folders with a fallback "" returns "" when no region.hcl is
+  # present (transition guard) — then every field defaults to null.
+  region_hcl_path = find_in_parent_folders("region.hcl", "")
+  region_meta     = local.region_hcl_path != "" ? read_terragrunt_config(local.region_hcl_path).locals : {}
+
+  role          = lookup(local.region_meta, "role", null)
+  site_id       = lookup(local.region_meta, "site_id", null)
+  datacenter    = lookup(local.region_meta, "datacenter", null)
+  provider_code = lookup(local.region_meta, "provider_code", null)
+  domain        = lookup(local.region_meta, "domain", null)
 }
 
 remote_state {
@@ -38,7 +65,7 @@ remote_state {
   }
   config = {
     bucket = "yucca-tf-state"
-    key    = "ceph/${local.env}/${local.stack}/terraform.tfstate"
+    key    = local.state_key
     region = "eu-west-par"
 
     # OVH S3-compatible object storage (not AWS) — skip AWS-specific checks
@@ -63,6 +90,15 @@ remote_state {
 }
 
 inputs = {
-  env   = local.env
-  stack = local.stack
+  partition = local.partition
+  region    = local.region
+  stack     = local.stack
+  slug      = local.slug
+
+  # Region metadata (null in global regions / when no region.hcl exists yet).
+  role          = local.role
+  site_id       = local.site_id
+  datacenter    = local.datacenter
+  provider_code = local.provider_code
+  domain        = local.domain
 }

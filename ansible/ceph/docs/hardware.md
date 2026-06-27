@@ -21,7 +21,7 @@ A Hetzner NVMe-RAID host would attach over a public /32 with a single NIC
 and direct SSH (no bond, no ProxyJump).
 
 Per-node connection IPs (`bond_ip`) are declared in
-`tf/deployment/staging/ceph/clusters.auto.tfvars` and rendered by TF into the
+`tf/deployment/staging/austin/ceph/clusters.auto.tfvars` and rendered by TF into the
 cluster's `inventory.ini`. They're also mirrored into `host_vars/` for use
 by roles that need the IP as a variable (e.g., cephadm public-network
 resolution, dashboard URL construction).

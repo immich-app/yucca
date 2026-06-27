@@ -8,7 +8,7 @@
 #
 # Canonical entrypoint is `mise run mgmt:ansible` (renders the inventory from
 # Terraform, then runs this). It passes the provisioning key + the NetBird
-# "mgmt" setup key (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY).
+# "mgmt" setup key (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<REGION>_MGMT_SETUP_KEY).
 #
 # NOTE: the networkd role (25G VLAN sub-interfaces) is gated on
 # mgmt_networkd_enabled (default false) because the 25G fabric link is

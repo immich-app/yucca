@@ -8,7 +8,7 @@ PATH = "{{config_root}}/.venv/bin:{{env.PATH}}"
 # Note: CEPH_ENV is intentionally NOT declared here. mise's [env] block
 # overrides shell-exported values, which silently sends operators to the
 # wrong cluster. Operators must export CEPH_ENV once per shell session:
-#   export CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini
+#   export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
 # Inventory files are TF-generated — `mise run tf:apply` (from yucca root) if missing.
 
 [tasks.setup]
@@ -63,7 +63,7 @@ run = """
 set -euo pipefail
 # Syntax-check only parses YAML — any valid inventory works. Default to
 # sietch when CEPH_ENV isn't inline-prefixed; the parse is identical.
-CEPH_ENV="${CEPH_ENV:-inventories/sietch-ceph.staging.austin.int/inventory.ini}"
+CEPH_ENV="${CEPH_ENV:-inventories/staging-austin/sietch/inventory.ini}"
 for pb in *.yml; do
   case "$pb" in
     requirements.yml|ansible-navigator.yml) continue ;;
@@ -123,9 +123,9 @@ description = "Destroy Ceph cluster (requires confirmation)"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
-CEPH_ENV_DIR=$(dirname "$CEPH_ENV")
-CLUSTER_ID=$(basename "$CEPH_ENV_DIR")           # e.g., sietch-ceph.staging.austin.int
-DOMAIN=${CLUSTER_ID#*-ceph.}.futo.cloud          # e.g., dev.austin.int.futo.cloud
+CEPH_ENV_DIR=$(dirname "$CEPH_ENV")              # e.g., inventories/staging-austin/sietch
+REGION_SLUG=$(basename "$(dirname "$CEPH_ENV_DIR")")  # e.g., staging-austin (<partition>-<region>)
+DOMAIN="${REGION_SLUG/-/.}.int.futo.cloud"        # e.g., staging.austin.int.futo.cloud
 DESTROY_INV="$CEPH_ENV_DIR/inventory-destroy.ini"
 echo "Usage: scripts/ansible-play.sh destroy-ceph.yml \\"
 echo "  -e yes_destroy_ceph=true -e destroy_target_domain=$DOMAIN"

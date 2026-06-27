@@ -3,8 +3,8 @@
 # module resolves to the NetBird-assigned group ID — so the tfvars never carry
 # opaque IDs.
 
-variable "env" {
-  description = "Environment slug (dev|staging|prod). Labels the minted 1Password setup-key items."
+variable "partition" {
+  description = "Partition slug (dev|staging|prod). Labels the minted 1Password setup-key items."
   type        = string
 }
 

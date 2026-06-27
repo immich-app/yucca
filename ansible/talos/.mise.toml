@@ -8,8 +8,8 @@ PATH = "{{config_root}}/.venv/bin:{{env.PATH}}"
 # Note: TALOS_ENV is intentionally NOT declared here. mise's [env] block
 # overrides shell-exported values, which silently sends operators to the
 # wrong cluster. Operators must export TALOS_ENV once per shell session:
-#   export TALOS_ENV=inventories/sietch-talos.dev.austin.int/inventory.ini
-# Inventory file is TF-rendered — `TF_STACK_DIR=tf/deployment/dev/talos mise run tf:apply`
+#   export TALOS_ENV=inventories/staging-austin/inventory.ini
+# Inventory file is TF-rendered — `TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply`
 # (from yucca root) if missing.
 
 [tasks.setup]
@@ -35,7 +35,7 @@ yamllint --version
 
 echo ""
 echo "Environment ready. Run 'mise trust' if prompted."
-echo "Next: 'TF_STACK_DIR=tf/deployment/dev/talos mise run tf:apply' from yucca root to render inventory."
+echo "Next: 'TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply' from yucca root to render inventory."
 """
 
 [tasks.lint]
@@ -64,7 +64,7 @@ run = """
 set -euo pipefail
 # Syntax-check only parses YAML — any valid inventory works. Default to
 # sietch-talos when TALOS_ENV isn't inline-prefixed; the parse is identical.
-TALOS_ENV="${TALOS_ENV:-inventories/sietch-talos.dev.austin.int/inventory.ini}"
+TALOS_ENV="${TALOS_ENV:-inventories/staging-austin/inventory.ini}"
 # Fall back to inventory.example.ini before tf:apply has rendered the runtime one.
 if [ ! -f "$TALOS_ENV" ]; then
   EXAMPLE="$(dirname "$TALOS_ENV")/inventory.example.ini"
