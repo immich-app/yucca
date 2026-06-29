@@ -13,7 +13,7 @@
 ## Model
 
 1Password is the sole source of truth. Rotation = edit the item's `password`
-field, done — no re-encrypt, no commit, no sync step. The next `mise run
+field, done -- no re-encrypt, no commit, no sync step. The next `mise run
 deploy` picks up the new value via `op inject`.
 
 ## Secrets managed by this cluster
@@ -28,7 +28,7 @@ deploy` picks up the new value via `op inject`.
 
 Replace `<CLUSTER>` with the cluster short name (e.g. `SIETCH`). The active vault name is
 declared per-cluster in the `vault` field of the cluster's entry in
-`tf/deployment/staging/austin/ceph/clusters.auto.tfvars` — sietch uses
+`tf/deployment/staging/austin/ceph/clusters.auto.tfvars` -- sietch uses
 `yucca_tf_staging`; dev and prod clusters use `yucca_tf_dev` / `yucca_tf_prod`.
 
 ## 1. Rotate in 1Password
@@ -88,13 +88,13 @@ scripts/ansible-play.sh deploy-ceph.yml --tags monitoring
 
 | Check | Command / action |
 |---|---|
-| ops login | `ssh ops@sietch-ceph-laurel` — new password prompts and works |
+| ops login | `ssh ops@sietch-ceph-laurel` -- new password prompts and works |
 | Dashboard | browse `https://<bootstrap-ip>:8443`, log in as `admin` with new password |
 | Grafana | browse `https://<bootstrap-ip>:3000`, log in as `admin` with new password |
 
 ## 4. Clean up
 
-No cleanup needed on the secrets side — old values are gone from 1Password
+No cleanup needed on the secrets side -- old values are gone from 1Password
 the moment you save the new ones. No vault.yml re-encryption, no git commit
 required for rotation.
 
@@ -104,7 +104,7 @@ required for rotation.
 
 SSH keys for `ansible-iac` live in `yucca_tf_staging` as category `SSH Key`
 items titled `<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY`. Rotation is
-forward-only — generate a new key in 1P, distribute the new pubkey,
+forward-only -- generate a new key in 1P, distribute the new pubkey,
 retire the old key after confidence.
 
 ### Steps (sietch example; same pattern for any cluster)
@@ -131,7 +131,7 @@ retire the old key after confidence.
 
 2. **Install the new private key on your workstation**
    (`scripts/install-ssh-keys.sh` refuses to overwrite mismatched
-   fingerprints — move the old file aside first):
+   fingerprints -- move the old file aside first):
 
    ```bash
    mv ~/.ssh/id_ed25519_sietch ~/.ssh/id_ed25519_sietch.retired-$(date +%Y%m%d)
@@ -153,7 +153,7 @@ retire the old key after confidence.
    ```
 
 5. **Remove the old key from authorized_keys** once confident (manual
-   — no playbook for this yet). On each node:
+   -- no playbook for this yet). On each node:
 
    ```bash
    ssh ansible-iac@sietch-ceph-laurel \

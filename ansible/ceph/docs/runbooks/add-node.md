@@ -37,7 +37,7 @@ mise run tf:apply
 ```
 
 This re-renders `inventory.ini` with the new host in `[ceph_nodes]`,
-`[ceph_mon]`, and `[ceph_join]`. Bootstrap assignment doesn't change —
+`[ceph_mon]`, and `[ceph_join]`. Bootstrap assignment doesn't change --
 still pinned to the first/explicitly-declared bootstrap host. Add new
 hosts at the **tail** of the list so existing auto-picked names keep
 their positions.
@@ -71,9 +71,9 @@ cat inventories/staging-austin/sietch/inventory.ini
 ```
 
 The new host should appear in:
-- `[ceph_nodes]` — all cluster members
-- `[ceph_mon]` — MON/MGR placement
-- `[ceph_join]` — everything except the bootstrap host
+- `[ceph_nodes]` -- all cluster members
+- `[ceph_mon]` -- MON/MGR placement
+- `[ceph_join]` -- everything except the bootstrap host
 
 Bootstrap host is unchanged. TF never moves an existing bootstrap assignment.
 

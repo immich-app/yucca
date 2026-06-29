@@ -35,9 +35,9 @@ op run --env-file=tf/.env -- \
 mise run tf:init
 
 # If the object is missing: state was never created or was deleted. You
-# can recover by re-applying — TF recreates local_file resources
+# can recover by re-applying -- TF recreates local_file resources
 # (idempotent, same content; no 1P items are harmed because the module's
-# onepassword_item resources are currently dormant — items are created via
+# onepassword_item resources are currently dormant -- items are created via
 # the op CLI today, and the TF-managed path in secrets.tf.disabled is only
 # re-enabled once a dedicated ceph-scoped service account replaces the
 # org-wide superuser SA).
@@ -61,7 +61,7 @@ mise run tf:plan   # TF shows drift
 mise run tf:apply  # TF overwrites with correct content
 ```
 
-All TF-rendered files are gitignored — the single source of truth is
+All TF-rendered files are gitignored -- the single source of truth is
 `clusters.auto.tfvars`. Hand-edits are ephemeral.
 
 ### Wrong vault referenced in rendered secrets.yml.tpl
@@ -71,7 +71,7 @@ vault you don't have access to.
 
 **Fix:** Fix the tfvars entry, `mise run tf:apply`. `scripts/ansible-play.sh`
 will fail loudly on the next run (op inject exits non-zero on unresolvable
-references — the secrets flow fails closed: `ansible-play.sh` aborts rather
+references -- the secrets flow fails closed: `ansible-play.sh` aborts rather
 than running with empty or dummy values).
 
 ### Wordlist auto-pick renamed a deployed host
@@ -86,7 +86,7 @@ mise run tf:plan
 # Plan shows: ~inventory.ini content with hostname change from <cluster>-ceph-evelyn to <cluster>-ceph-<other>
 ```
 
-**Do NOT apply** — renaming a deployed host cascades into SSH known_hosts,
+**Do NOT apply** -- renaming a deployed host cascades into SSH known_hosts,
 cephadm host registration, certs, 1P item names, DNS.
 
 **Fix:** pin the existing name by adding `name = "evelyn"` to the host
@@ -101,7 +101,7 @@ delete-on-destroy run removed an item the Ansible side depends on.
 **Symptom:** `op inject -f -i secrets.yml.tpl` fails with "item not found".
 
 **Fix:** re-create the item under an unlocked 1Password desktop session (your
-Futo membership has write access — no service-account token needed):
+Futo membership has write access -- no service-account token needed):
 
 ```bash
 op item create \
@@ -119,11 +119,11 @@ backup and set the item via `op item edit password=...`.
 ### TF state object corrupted or lost
 
 The state lives in S3 (`yucca-tf-state` bucket, key
-`yucca/<partition>/<region>/<stack>/terraform.tfstate` — e.g.
+`yucca/<partition>/<region>/<stack>/terraform.tfstate` -- e.g.
 `yucca/staging/austin/ceph/...`). Recovery options in order of
 preference:
 
-**Option A — roll back via S3 versioning.** The bucket has versioning
+**Option A -- roll back via S3 versioning.** The bucket has versioning
 enabled; list prior versions and restore the last-known-good:
 
 ```bash
@@ -142,10 +142,10 @@ op run --env-file=tf/.env -- \
       --key yucca/staging/austin/ceph/terraform.tfstate
 ```
 
-**Option B — re-apply from clean state.** Delete the state object and
+**Option B -- re-apply from clean state.** Delete the state object and
 re-init + re-apply. TF recreates the `local_file` resources (idempotent,
 same content). Safe today because `onepassword_item` resources are
-dormant — items are created via the op CLI, not TF-owned yet.
+dormant -- items are created via the op CLI, not TF-owned yet.
 
 ```bash
 op run --env-file=tf/.env -- \
@@ -157,12 +157,12 @@ mise run tf:apply
 ```
 
 Once the TF-managed 1P items land (`secrets.tf.disabled` re-enabled under
-the dedicated ceph-scoped SA), Option B becomes destructive — recovery will
+the dedicated ceph-scoped SA), Option B becomes destructive -- recovery will
 require `terraform import` of each item against the new state. Document that
 path when re-enabling.
 
 ## References
 
-- `secrets.md` — the fail-closed secrets model (TF-first, op inject)
-- `tf/README.md` §"State backend" — bucket, endpoint, key path rationale
-- `architecture.md` §4 — what TF owns vs renders
+- `secrets.md` -- the fail-closed secrets model (TF-first, op inject)
+- `tf/README.md` section "State backend" -- bucket, endpoint, key path rationale
+- `architecture.md` section 4 -- what TF owns vs renders

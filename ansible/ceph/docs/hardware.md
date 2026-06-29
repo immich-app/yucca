@@ -3,20 +3,20 @@
 Audience: Ops, procurement, capacity planning. Per-node hardware facts that
 differ across clusters live in
 `ansible/ceph/inventories/<partition>-<region>/<cluster>/host_vars/`
-(bond_ip, SAS path prefix, SSD PHY positions, HDD-to-block.db mappings) —
+(bond_ip, SAS path prefix, SSD PHY positions, HDD-to-block.db mappings) --
 those files are committed and are authoritative for physical topology.
 
 For where this fits in the tool mesh, see [architecture.md](architecture.md).
 
 ## Network topology
 
-Clusters use a **single-network** design today — public and cluster
+Clusters use a **single-network** design today -- public and cluster
 traffic share one subnet. Production will separate them; see
 [security-model.md](security-model.md) for the threat-model implications.
 
 | Cluster  | Subnet            | Connection                                                             |
 |----------|-------------------|------------------------------------------------------------------------|
-| sietch   | `10.10.10.0/24`   | 2× 10GbE bonded active-backup (eno1 + eno2) per node; private switch   |
+| sietch   | `10.10.10.0/24`   | 2x 10GbE bonded active-backup (eno1 + eno2) per node; private switch   |
 
 A Hetzner NVMe-RAID host would attach over a public /32 with a single NIC
 and direct SSH (no bond, no ProxyJump).
@@ -42,7 +42,7 @@ resolution, dashboard URL construction).
 | Network | 2x 10GbE bonded active-backup (eno1 + eno2) |
 | Boot | UEFI, dual ESP (one per SSD, rsync-mirrored) |
 | OS | Debian 12 Bookworm (debootstrap provisioned) |
-| Provisioning | Live image → `provision.yml` → debootstrap |
+| Provisioning | Live image -> `provision.yml` -> debootstrap |
 
 ### SSD partition layout (per SSD)
 
@@ -61,7 +61,7 @@ The roles also support a Hetzner-style single-box shape for future
 hosting-provider clusters: NVMe boot drives in installimage RAID-1
 (`vg0`), HDD OSDs over onboard SATA with per-HDD block.db LVs on the NVMe
 VG, and a single LV-backed SSD OSD carved from the NVMe remainder.
-Provisioning is rescue mode → `installimage/autosetup` + `post-install.sh`,
+Provisioning is rescue mode -> `installimage/autosetup` + `post-install.sh`,
 booting Debian 12 Bookworm.
 
 > **Why Bookworm and not Trixie:** upstream Ceph Tentacle's Debian
@@ -74,7 +74,7 @@ booting Debian 12 Bookworm.
 
 Storage topologies differ across hardware shapes, which shows up in the
 `host_vars/<host>.yml` schema. When adding a new cluster, operators must
-pick the schema matching the hardware — not just copy from an existing
+pick the schema matching the hardware -- not just copy from an existing
 cluster blindly.
 
 ### sietch-shape (SAS expander + dual-SSD-VG)
@@ -82,12 +82,12 @@ cluster blindly.
 ```yaml
 hostname_short: <cluster>-ceph-<name>
 bond_ip: 10.10.X.Y
-sas_path_prefix: "pci-XXXX:XX:XX.X-sas-exp0xXXXX..."  # REQUIRED — disambiguates SAS topology
+sas_path_prefix: "pci-XXXX:XX:XX.X-sas-exp0xXXXX..."  # REQUIRED -- disambiguates SAS topology
 ssd1_phy: 12        # PHY slot of boot SSD #1
 ssd2_phy: 13        # PHY slot of boot SSD #2
 ceph_db_vg1: ceph-db-rear12   # VG on SSD1 partition 5
 ceph_db_vg2: ceph-db-rear13   # VG on SSD2 partition 5
-ceph_db_lvs_per_ssd: 6        # 6 db-slot LVs per VG → 12 total
+ceph_db_lvs_per_ssd: 6        # 6 db-slot LVs per VG -> 12 total
 ceph_hdd_osds:
   - { path_phy: phy0, db: ceph-db-rear12/db-slot0 }
   - ...
@@ -116,20 +116,20 @@ ceph_ssd_osds:
 ```
 
 The role uses `path_phy` directly as the by-path identifier (no composition
-needed — operator authors the full string). For SSD OSDs, `lv` field is
+needed -- operator authors the full string). For SSD OSDs, `lv` field is
 used (`/dev/<lv>`) instead of `path_phy + partition`. `lvm-setup.yml` is
-**skipped** on this shape (gated `when: sas_path_prefix is defined`) —
+**skipped** on this shape (gated `when: sas_path_prefix is defined`) --
 LVM is owned by the Hetzner installimage post-install script.
 
 ### Decision rule for new clusters
 
 - **Has a SAS expander** (PERC HBA, mpt3sas, etc.) and **dedicated boot SSDs
-  partitioned for both block.db and OS** → sietch-shape.
+  partitioned for both block.db and OS** -> sietch-shape.
 - **Single VG covering boot + block.db + SSD OSD** (typical for
-  hosting-provider servers with NVMe RAID-1) → NVMe-RAID shape.
+  hosting-provider servers with NVMe RAID-1) -> NVMe-RAID shape.
 - **Other shapes** (e.g., dedicated NVMe block.db drives) require a new
   shape branch in the cephadm OSD service-spec template
   (`roles/ceph_deploy/templates/osd-spec.yml.j2`). Hardware-shape branching
-  lives in that template's Jinja conditional, not in role logic — a new
+  lives in that template's Jinja conditional, not in role logic -- a new
   shape adds a branch there plus its own host_vars, and the rest of the
   role is untouched.

@@ -1,12 +1,12 @@
 # Naming
 
-Every name derivable in this project — hostname, inventory directory, 1P
-item title, SSH key filename — traces back to one entry per cluster in
+Every name derivable in this project -- hostname, inventory directory, 1P
+item title, SSH key filename -- traces back to one entry per cluster in
 `tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars`. TF's `ceph-cluster` module
 assembles the rest.
 
 For how naming fits the broader system see
-[architecture.md §4 (Terraform)](architecture.md); for the per-item 1P
+[architecture.md section 4 (Terraform)](architecture.md); for the per-item 1P
 catalog and the SSH-key lifecycle see [secrets.md](secrets.md).
 
 ## The three name layers
@@ -14,7 +14,7 @@ catalog and the SSH-key lifecycle see [secrets.md](secrets.md).
 Three parallel naming surfaces derive from the same tfvars entry, but
 **only the hostname carries the `role_in_hostname` segment**. The 1P item
 prefix is hardcoded to `CEPH` in the ceph-cluster module, and the inventory
-directory is keyed by `<partition>-<region>` — both are project-scoped, not
+directory is keyed by `<partition>-<region>` -- both are project-scoped, not
 role-scoped.
 
 | Surface                | Pattern                                           | Role source                     |
@@ -40,7 +40,7 @@ live under the same `<partition>-<region>/` region tree.
 
 The FQDN suffix is the region's `domain`, set once per region in
 `region.hcl` as `<partition>.<region>.<provider_code>.futo.cloud` and passed
-into the ceph-cluster module whole — the cluster's tfvars entry only
+into the ceph-cluster module whole -- the cluster's tfvars entry only
 supplies cluster, role, and name.
 
 Current `role_in_hostname` values: sietch uses `ceph`
@@ -50,7 +50,7 @@ Current `role_in_hostname` values: sietch uses `ceph`
 ## Cluster naming
 
 **Who chooses:** the engineer adding the cluster picks the name at the
-moment they add the entry to `clusters.auto.tfvars`. No automation — it's
+moment they add the entry to `clusters.auto.tfvars`. No automation -- it's
 a deliberate, one-time decision.
 
 **When:** before any `mise run tf:apply`, any 1P item creation, any cluster
@@ -61,18 +61,18 @@ below).
 (an underground Fremen community). Dune candidates not yet used, and that fit
 the hard constraints below: `arrakis`, `caladan`, `giedi`, `ixian`,
 `kwisatz`, `muaddib`, `fremen`, `chani`, `leto`, `jessica`. Nothing in
-the code enforces Dune specifically — mixed themes or theme breaks are
+the code enforces Dune specifically -- mixed themes or theme breaks are
 acceptable when they communicate intent better (e.g., a cluster named
 after its datacenter for a production tier).
 
 **Hard constraints:**
 
-- **lowercase alphanumeric** — becomes the HCL map key, the cluster
+- **lowercase alphanumeric** -- becomes the HCL map key, the cluster
   segment of the inventory directory (`<partition>-<region>/<name>/`), the
   hostname prefix, and (uppercased) the 1P item prefix (`<NAME>_CEPH_*`).
-- **Short** — appears in every hostname and every 1P item title. Aim for
-  6–10 characters; 15 is the realistic ceiling.
-- **Unique within the `yucca_tf_*` 1P item namespace** — other Futo
+- **Short** -- appears in every hostname and every 1P item title. Aim for
+  6-10 characters; 15 is the realistic ceiling.
+- **Unique within the `yucca_tf_*` 1P item namespace** -- other Futo
   consumers (o11y, future stacks) write items to the same vault set.
   Before committing, check:
   ```bash
@@ -80,18 +80,18 @@ after its datacenter for a production tier).
     | jq -r '.[] | .title' | grep -i "^<PROPOSED_NAME>_"
   ```
   Must return empty (repeat for the other `yucca_tf_*` vaults if in doubt).
-- **Not already a `clusters.auto.tfvars` key** — TF enforces this with
+- **Not already a `clusters.auto.tfvars` key** -- TF enforces this with
   a plan-time error.
-- **No dashes, dots, or underscores in the cluster name itself** — those
+- **No dashes, dots, or underscores in the cluster name itself** -- those
   are segment separators in inventory directories and hostnames. A cluster
   name `my-cluster` would produce `my-cluster-ceph-laurel` which parses
   ambiguously. Use `mycluster` instead.
 
 **Soft guidance:**
 
-- Memorable — operators will say it out loud in incidents.
+- Memorable -- operators will say it out loud in incidents.
 - Distinct from existing clusters' first 3 letters (grep-friendly in logs).
-- Doesn't encode partition or region — those live in `region.hcl` and the
+- Doesn't encode partition or region -- those live in `region.hcl` and the
   domain. The cluster name is project identity, not location.
 
 ### Cost of renaming after deployment
@@ -101,7 +101,7 @@ A rename touches all of:
 1. `clusters.auto.tfvars` map key
 2. Inventory directory name
 3. Every hostname (short + FQDN) and every SSH `known_hosts` entry for every operator
-4. 1P item titles (`<OLD>_CEPH_*` → `<NEW>_CEPH_*`) including the SSH Key item
+4. 1P item titles (`<OLD>_CEPH_*` -> `<NEW>_CEPH_*`) including the SSH Key item
 5. cephadm cluster identity (requires cluster rebuild in the common case)
 6. `ansible_ssh_key` path in the tfvars (`~/.ssh/id_ed25519_<cluster>`) and
    the mapping in `scripts/install-ssh-keys.sh`
@@ -109,7 +109,7 @@ A rename touches all of:
 
 Expect hours-to-days of work, cluster downtime, and coordination with
 every consumer of the cluster's S3/dashboards/etc. A rename is only cheap
-on an idle cluster nothing consumes yet — a running production Ceph cluster
+on an idle cluster nothing consumes yet -- a running production Ceph cluster
 makes this a multi-week project.
 
 **Pick once. Pick deliberately.**
@@ -123,7 +123,7 @@ different clusters use different paths based on operator preference.
 ### Operator-declared
 
 Declare the name explicitly in the tfvars. Used when the operator has a
-specific name in mind — typically because it's been spoken during
+specific name in mind -- typically because it's been spoken during
 planning and the team already uses it.
 
 ```hcl
@@ -137,7 +137,7 @@ hosts = [
 Sietch uses this path.
 
 Names must be unique **within a cluster**, not globally. A future
-`mesa-ceph-laurel` can coexist with `sietch-ceph-laurel` — the FQDN
+`mesa-ceph-laurel` can coexist with `sietch-ceph-laurel` -- the FQDN
 disambiguates.
 
 ### Auto-picked from wordlist
@@ -153,7 +153,7 @@ hosts = [
 ]
 ```
 
-A single-host cluster commonly uses this path — `hosts[0]` has no name,
+A single-host cluster commonly uses this path -- `hosts[0]` has no name,
 so TF picks a stable word (e.g. `evelyn`) on first apply, yielding
 `<cluster>-ceph-evelyn`.
 
@@ -163,14 +163,14 @@ collisions within the cluster.
 ### Stability rules (either path, or mixed)
 
 - **Add new hosts at the tail of the list.** Auto-picked names are
-  positional — `hosts[0]` gets `random_shuffle.result[0]`, `hosts[1]`
+  positional -- `hosts[0]` gets `random_shuffle.result[0]`, `hosts[1]`
   gets `result[1]`, and so on. Inserting a new entry at position 0 would
   shift every subsequent host's result-index. Always append.
 - **Never bump `name_seed` once a cluster has deployed hosts.** Bumping
   re-rolls every auto-picked name in the cluster, which cascades into
   certs, SSH `known_hosts`, 1P items, DNS, cephadm identity.
 - **Mixing paths has a non-obvious side effect.** Auto-picked names are
-  drawn from `available_words = wordlist − explicit_names`. Adding or
+  drawn from `available_words = wordlist - explicit_names`. Adding or
   removing an *operator-declared* host changes `explicit_names`, which
   changes the shuffle input length, which re-permutes the result. An
   auto-picked host at `hosts[2]` could get a different name even if
@@ -180,7 +180,7 @@ collisions within the cluster.
   Mixed works for initial setup but complicates later add/remove.
 - **Converting between paths after deploy** (e.g., adding `name = "evelyn"`
   to a host that previously auto-picked `evelyn`) **does not preserve the
-  name** despite appearing to match — it rewrites `available_words` and
+  name** despite appearing to match -- it rewrites `available_words` and
   re-rolls every other auto-pick. Only do this if you're prepared to pin
   every auto-named host in the same apply, or accept the cluster-wide
   rename.
@@ -194,7 +194,7 @@ inventories/<partition>-<region>/<cluster>/
 ```
 
 The `<partition>-<region>` slug (e.g. `staging-austin`) groups every cluster
-in a region under one tree, regardless of `role_in_hostname` — a
+in a region under one tree, regardless of `role_in_hostname` -- a
 hypothetical cluster with `role_in_hostname = "osd"` (hostnames `mesa-osd-*`)
 still renders under `prod-htz-fsn1/mesa/`.
 
@@ -206,7 +206,7 @@ output and consumed by the deployment stack + `scripts/render-inventories.sh`.
 
 Items are titled `<CLUSTER>_CEPH_<specifier>` (SHOUTY_SNAKE_CASE). The
 `<CLUSTER>_CEPH_*` prefix is hardcoded in
-`tf/shared/modules/ceph-cluster/main.tf` (`local.secret_prefix`) — same
+`tf/shared/modules/ceph-cluster/main.tf` (`local.secret_prefix`) -- same
 project-scoping rationale as the inventory directory.
 
 Per cluster, the expected item set:

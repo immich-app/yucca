@@ -1,8 +1,8 @@
 # Adding a cluster
 
 Clusters are declared in `tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars`.
-Every cluster-scoped concern — inventory file, hostname, 1P item names, SSH
-key path, secrets template — is derived from that one entry. Most of what
+Every cluster-scoped concern -- inventory file, hostname, 1P item names, SSH
+key path, secrets template -- is derived from that one entry. Most of what
 this walkthrough describes is editing that file and running
 `mise run tf:apply`; the rest is creating the 1P items TF expects to read
 at playbook time.
@@ -21,7 +21,7 @@ naming rules see [docs/naming.md](naming.md).
 | Computes hostnames, FQDNs, 1P item titles, inventory directory path     | Run `scripts/install-ssh-keys.sh <cluster>` on your workstation    |
 | (Future) Creates `onepassword_item` resources for passwords             | Run `mise run preflight` + `mise run deploy`                       |
 
-Every operator doing a cluster add follows the same steps — nothing in
+Every operator doing a cluster add follows the same steps -- nothing in
 this walkthrough is machine- or operator-specific.
 
 ## Inventory directory naming
@@ -35,7 +35,7 @@ in a region under one tree; the cluster's role lives only in the hostname,
 not the inventory path.
 
 Existing examples:
-- `staging-austin/sietch/` — Austin DC, internal network, staging
+- `staging-austin/sietch/` -- Austin DC, internal network, staging
 
 Future regions land as siblings: `prod-htz-fsn1/<cluster>/`,
 `dev-local/<cluster>/`.
@@ -48,14 +48,14 @@ The engineer adding the cluster picks the name. Conventions and constraints
 live in [docs/naming.md](naming.md#cluster-naming). Quick summary:
 
 - **Convention:** Dune-themed (existing: `sietch`). Not enforced.
-- **Constraints:** lowercase, short (6–10 chars ideal), no dashes or dots,
+- **Constraints:** lowercase, short (6-10 chars ideal), no dashes or dots,
   unique within the `yucca_tf_*` item namespace, not already a key in
   `clusters.auto.tfvars`.
 - **Cost of renaming later:** expensive (touches hostnames, 1P items,
   cephadm identity, SSH keys, DNS). Pick deliberately.
 
 Host names within a cluster can be operator-declared in the TFvars or
-auto-picked from the 923-word wordlist — see [docs/naming.md](naming.md#host-naming).
+auto-picked from the 923-word wordlist -- see [docs/naming.md](naming.md#host-naming).
 
 ### 2. Declare the cluster in TF
 
@@ -87,13 +87,13 @@ clusters = {
 Notes:
 
 - `vault` declares which 1Password vault TF rendering writes into the
-  `secrets.yml.tpl` — the cluster's partition vault (`yucca_tf_staging` for
+  `secrets.yml.tpl` -- the cluster's partition vault (`yucca_tf_staging` for
   sietch; `yucca_tf_dev` / `yucca_tf_prod` for the dev / prod partitions).
 - `provision_profile = "debian-live"` enables bare-metal provisioning via
   `provision.yml` (rendered `inventory-provision.ini`). Leave null for
-  Hetzner installimage workflows — the post-install script uses its own
+  Hetzner installimage workflows -- the post-install script uses its own
   path (`inventories/<partition>-<region>/<cluster>/installimage/post-install.sh.tpl`).
-- Host `name = null` (omitted) → TF picks a stable wordlist name seeded
+- Host `name = null` (omitted) -> TF picks a stable wordlist name seeded
   per-cluster. Auto-picks don't change on subsequent applies.
 
 ### 3. Render the inventory + secrets template
@@ -115,7 +115,7 @@ This creates (per the module's `rendering.tf`):
 - `.../secrets.yml.tpl`
 - `.../inventory-provision.ini` (only when `provision_profile` is set)
 
-All of these are gitignored — re-run `mise run tf:apply` after any
+All of these are gitignored -- re-run `mise run tf:apply` after any
 `clusters.auto.tfvars` change.
 
 ### 4. Create `group_vars/all/vars.yml`
@@ -144,7 +144,7 @@ cluster_domain: prod.htz-fsn1.htz.futo.cloud
 # === Network ===
 public_network: <subnet or public /32>
 cluster_network: <same as public for single-network topology>
-# Bonds / gateway / DNS — omit or customize per hardware
+# Bonds / gateway / DNS -- omit or customize per hardware
 
 # === Ceph ===
 ceph_release: tentacle
@@ -182,12 +182,12 @@ ssd_model_pattern: "Micron_5100"      # match your SSD model
 ### 5. Create `host_vars/<hostname>.yml` per node
 
 Host files are committed (per-cluster hardware topology is stable inventory
-truth — not operator preference). Use `<cluster>/host_vars/example.yml` as
+truth -- not operator preference). Use `<cluster>/host_vars/example.yml` as
 a template.
 
 ```bash
 CLUSTER_DIR=inventories/prod-htz-fsn1/mesa
-# Look up the hostname TF picked (or declared) — visible in the rendered inventory.ini
+# Look up the hostname TF picked (or declared) -- visible in the rendered inventory.ini
 TF_OUTPUT=$(cat "$CLUSTER_DIR/inventory.ini")
 # Create one host_vars file per hostname_short shown in the [ceph_nodes] section
 cp "$CLUSTER_DIR/host_vars/example.yml" "$CLUSTER_DIR/host_vars/<hostname_short>.yml"
@@ -198,7 +198,7 @@ prefix, SSD PHY positions, HDD-to-block.db-LV mappings. See
 [docs/hardware.md](hardware.md) for the shape.
 
 Operator-local overrides (e.g., testing a workaround on one node) can go
-in `<hostname_short>.local.yml` — that suffix is gitignored.
+in `<hostname_short>.local.yml` -- that suffix is gitignored.
 
 ### 6. Create 1Password items
 
@@ -208,21 +208,21 @@ For the target vault declared in the cluster's TFvars entry:
 VAULT=yucca_tf_prod    # match the vault field in clusters.auto.tfvars
 CLUSTER=MESA           # uppercase cluster_name
 
-# Password items — 3 ending in _PASSWORD
+# Password items -- 3 ending in _PASSWORD
 for role in OPS DASHBOARD GRAFANA; do
   op item create --vault "$VAULT" --category password \
     --title "${CLUSTER}_CEPH_${role}_PASSWORD" \
     --generate-password='letters,digits,32'
 done
 
-# S3 service-user keys — 2 items; names already end in _KEY
+# S3 service-user keys -- 2 items; names already end in _KEY
 for suffix in S3_SVC_YUCCA_RESTIC_ACCESS_KEY S3_SVC_YUCCA_RESTIC_SECRET_KEY; do
   op item create --vault "$VAULT" --category password \
     --title "${CLUSTER}_CEPH_${suffix}" \
     --generate-password='letters,digits,32'
 done
 
-# SSH Key item — one keypair per cluster. op CLI GENERATES the key inside 1P;
+# SSH Key item -- one keypair per cluster. op CLI GENERATES the key inside 1P;
 # the private key never touches operator disk at creation.
 op item create --vault "$VAULT" \
   --category "SSH Key" \
@@ -239,7 +239,7 @@ head -5 /tmp/test-secrets.yml && rm /tmp/test-secrets.yml
 ```
 
 Disaster-recovery items (`<CLUSTER>_CEPH_RGW_TLS_CERT`, `_RGW_TLS_KEY`,
-`_CLIENT_ADMIN_KEYRING`) are **not** created here — they're populated by
+`_CLIENT_ADMIN_KEYRING`) are **not** created here -- they're populated by
 `mise run capture` after the first successful deploy. Skipping that step
 is the most common gotcha.
 
@@ -251,7 +251,7 @@ scripts/install-ssh-keys.sh mesa
 
 The wrapper reads `private_key` and `public_key` from
 `${CLUSTER}_CEPH_ANSIBLE_IAC_SSH_KEY` and writes `~/.ssh/id_ed25519_mesa`
-(0600) + `.pub` (0644). Idempotent — re-running is safe. Every operator
+(0600) + `.pub` (0644). Idempotent -- re-running is safe. Every operator
 who will run plays against this cluster runs this command once on their
 workstation (or any time they wipe `~/.ssh/`).
 
@@ -269,7 +269,7 @@ export CEPH_ENV=inventories/prod-htz-fsn1/mesa/inventory.ini
 mise run preflight
 ```
 
-(Export once per shell or inline-prefix a single call — both work; `CEPH_ENV`
+(Export once per shell or inline-prefix a single call -- both work; `CEPH_ENV`
 is deliberately kept out of mise's `[env]` block so your shell value passes
 through. See [docs/scripts.md "Setting CEPH_ENV"](scripts.md).)
 
@@ -305,7 +305,7 @@ This reads `/etc/ceph/rgw-ssl.crt`, `/etc/ceph/rgw-ssl.key`, and
 `/etc/ceph/ceph.client.admin.keyring` from the bootstrap node and upserts
 them as Document items in the cluster's vault
 (`<CLUSTER>_CEPH_RGW_TLS_CERT`, `_RGW_TLS_KEY`, `_CLIENT_ADMIN_KEYRING`). Safe
-to re-run — updates in place on content drift.
+to re-run -- updates in place on content drift.
 
 ## How `CEPH_ENV` works
 
@@ -315,7 +315,7 @@ to re-run — updates in place on content drift.
 # Correct
 CEPH_ENV=inventories/prod-htz-fsn1/mesa/inventory.ini
 
-# Wrong — directory mode loads every .ini including destroy inventory
+# Wrong -- directory mode loads every .ini including destroy inventory
 CEPH_ENV=inventories/prod-htz-fsn1/mesa/
 ```
 
@@ -345,32 +345,32 @@ trap-cleaned on exit.
 
 ## Common gotchas
 
-- **Forgot step 10 (`mise run capture`)** — DR items are missing in 1P.
+- **Forgot step 10 (`mise run capture`)** -- DR items are missing in 1P.
   Running `capture` after the fact works; it just needs the bootstrap
   node's filesystem intact.
 - **`ansible_ssh_key` path mismatch** between `clusters.auto.tfvars` and
-  `install-ssh-keys.sh` — key installed under a different name than what
+  `install-ssh-keys.sh` -- key installed under a different name than what
   the inventory expects. Keep them aligned.
-- **Fingerprint mismatch on `install-ssh-keys.sh`** — happens after a
+- **Fingerprint mismatch on `install-ssh-keys.sh`** -- happens after a
   key rotation if you haven't moved the old key aside. Follow the
   `mv ~/.ssh/id_ed25519_<cluster>{,.$(date +%Y%m%d).bak}` path in the
   wrapper's error message.
 - **`host_vars/` out of date after `tofu apply` re-picks a wordlist
-  name** — auto-names are stable across applies, but if you add hosts
+  name** -- auto-names are stable across applies, but if you add hosts
   at positions other than the tail, shuffled names may shift. Add new
   hosts at the end of the `hosts = [...]` list to keep existing
   hostnames stable.
-- **Hetzner installimage clusters and `provision_profile`** — leave
+- **Hetzner installimage clusters and `provision_profile`** -- leave
   `provision_profile = null` so TF doesn't render the debian-live
   inventory. The Hetzner installimage flow has its own post-install
   script under `installimage/`, not Ansible-driven.
 
 ## See also
 
-- [architecture.md §4 (Terraform)](architecture.md) — what TF owns
-- [secrets.md](secrets.md) — per-item catalog + vault selection
-- [naming.md](naming.md) — cluster + host naming conventions
-- [hardware.md](hardware.md) — `host_vars/` shape, network topology
-- [scripts.md](scripts.md) — wrapper reference
-- [architecture.md](architecture.md) — why TF is authoritative for cluster identity + secrets
-- [secrets.md](secrets.md) — why passwords and SSH keys live in 1P
+- [architecture.md section 4 (Terraform)](architecture.md) -- what TF owns
+- [secrets.md](secrets.md) -- per-item catalog + vault selection
+- [naming.md](naming.md) -- cluster + host naming conventions
+- [hardware.md](hardware.md) -- `host_vars/` shape, network topology
+- [scripts.md](scripts.md) -- wrapper reference
+- [architecture.md](architecture.md) -- why TF is authoritative for cluster identity + secrets
+- [secrets.md](secrets.md) -- why passwords and SSH keys live in 1P

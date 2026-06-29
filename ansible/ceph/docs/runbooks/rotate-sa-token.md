@@ -40,9 +40,9 @@ has no CI service account.
    and new coexist briefly.
 3. **Update the GitHub repo secret** for the affected partition/role
    (`OP_TF_YUCCA_<PARTITION>_ENV` and/or `..._ENV_WRITE`) with the new token
-   value. (Settings → Secrets and variables → Actions.)
+   value. (Settings -> Secrets and variables -> Actions.)
 4. **Test**:
-   - CI: re-run `Infra (Terraform)` — `plan` exercises the read token, a gated
+   - CI: re-run `Infra (Terraform)` -- `plan` exercises the read token, a gated
      `apply` exercises the write token.
    - Local: `OP_SERVICE_ACCOUNT_TOKEN=<new token> tf/op-run.sh terragrunt
      --working-dir tf/deployment/<partition>/<region>/ceph plan`.
@@ -55,11 +55,11 @@ has no CI service account.
 - CI still failing after the secret update: confirm you updated the right
   partition's secret (`OP_TF_YUCCA_<PARTITION>_ENV` vs `..._ENV_WRITE`) and
   re-ran the workflow so it re-reads the secret.
-- Roll back: set the GitHub secret back to the old token value — the old SA
+- Roll back: set the GitHub secret back to the old token value -- the old SA
   stays valid until you explicitly revoke it in the console.
 
 ## References
 
-- `.github/workflows/infra.yml` — injects `OP_SERVICE_ACCOUNT_TOKEN` per job
+- `.github/workflows/infra.yml` -- injects `OP_SERVICE_ACCOUNT_TOKEN` per job
   from these secrets (read for plan, write for apply).
-- `tf/README.md` §"Where secrets actually live" — describes the SA scopes.
+- `tf/README.md` section "Where secrets actually live" -- describes the SA scopes.

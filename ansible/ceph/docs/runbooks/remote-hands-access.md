@@ -16,16 +16,16 @@ their shell environment. `scripts/ansible-play.sh` picks it up automatically
 and uses it to resolve `secrets.yml.tpl`.
 
 Which SA: the partition's **read** service account (for sietch, the staging
-read SA — the same token CI uses as `OP_TF_YUCCA_STAGING_ENV`). Remote hands
-get read, never write — least-privilege principle.
+read SA -- the same token CI uses as `OP_TF_YUCCA_STAGING_ENV`). Remote hands
+get read, never write -- least-privilege principle.
 
 ## One-time setup (per operator)
 
-1. **Grant the operator access to the Immich 1P group** — the group's
+1. **Grant the operator access to the Immich 1P group** -- the group's
    1P admin does this. Gives them read on `yucca_tf_staging` (enough to
    resolve the cluster's SSH key + secret items).
 2. **Operator obtains the read SA token** from the 1Password service-account
-   console (or the team lead) — it's the same value held in the
+   console (or the team lead) -- it's the same value held in the
    `OP_TF_YUCCA_STAGING_ENV` GitHub secret.
 3. **Operator sets it in their shell profile** (`~/.bashrc` or equivalent):
    ```bash
@@ -55,7 +55,7 @@ mise run status         # read-only smoke test
 mise run deploy         # or any other task
 ```
 
-No auth prompts — the SA token in env gets picked up by `op inject` inside
+No auth prompts -- the SA token in env gets picked up by `op inject` inside
 `scripts/ansible-play.sh`.
 
 ## What remote hands CAN'T do
@@ -75,5 +75,5 @@ token but it's invalidated in 1P; the next command fails loudly.
 
 ## References
 
-- `tf/README.md` §"Where secrets actually live" — SA scopes
-- `docs/secrets.md` — full secrets model
+- `tf/README.md` section "Where secrets actually live" -- SA scopes
+- `docs/secrets.md` -- full secrets model

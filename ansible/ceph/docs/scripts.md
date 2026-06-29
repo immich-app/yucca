@@ -3,21 +3,21 @@
 The scripts under `ansible/ceph/scripts/` sit between `mise` tasks and the
 underlying CLIs (`ansible-playbook`, `op`, `ssh`). They exist to:
 
-- Keep secrets **out of argv** — `op inject` writes to a file; the file is
+- Keep secrets **out of argv** -- `op inject` writes to a file; the file is
   passed as `--extra-vars @<path>`, never expanded inline.
-- **Fail closed** — if 1Password is unreachable or the inventory is missing,
+- **Fail closed** -- if 1Password is unreachable or the inventory is missing,
   the wrappers exit before invoking ansible. The raw tools' error messages
   degrade silently in these cases.
-- Offer **better error messages** — "inventory not found at `<path>` — has
+- Offer **better error messages** -- "inventory not found at `<path>` -- has
   `tofu apply` been run?" beats "No inventory was parsed".
 
 For the architectural role these scripts play, see
-[architecture.md §8](architecture.md).
+[architecture.md section 8](architecture.md).
 
 ## Setting `CEPH_ENV`
 
 Two of the three wrappers (`ansible-play.sh`, `preflight.sh`) need `CEPH_ENV`
-pointing at the target cluster's `inventory.ini`. Set it however suits you —
+pointing at the target cluster's `inventory.ini`. Set it however suits you --
 export it once per shell, or prefix a single invocation:
 
 ```bash
@@ -36,7 +36,7 @@ your shell's value and silently pin every task to the default cluster. By
 leaving it out, your exported (or inline-prefixed) value passes straight
 through, and each `mise run` task falls back to sietch
 (`inventories/staging-austin/sietch/inventory.ini`) only when `CEPH_ENV` is
-unset. Calling the scripts directly behaves the same — the wrapper reads
+unset. Calling the scripts directly behaves the same -- the wrapper reads
 `CEPH_ENV` from the environment.
 
 ## Quick reference
@@ -73,7 +73,7 @@ CEPH_ENV=inventories/<partition>-<region>/<cluster>/inventory.ini \
    reference can't be resolved.
 6. `exec`s `ansible-playbook -i $CEPH_ENV --extra-vars @<tmpfile> <args>`.
 
-The `exec` means the wrapper process is replaced — the trap still fires via
+The `exec` means the wrapper process is replaced -- the trap still fires via
 the shell's EXIT handler on the child's termination.
 
 ### Environment
@@ -95,10 +95,10 @@ scripts/ansible-play.sh destroy-ceph.yml -e yes_destroy_ceph=true -e destroy_tar
 ```
 
 The destroy playbook requires both safety gates:
-- `yes_destroy_ceph=true` — explicit confirmation (otherwise the play refuses to run)
-- `destroy_target_domain=<cluster domain>` — must match the inventory's `cluster_domain`. Mismatch aborts the play, guarding against running destroy with the wrong `CEPH_ENV`.
+- `yes_destroy_ceph=true` -- explicit confirmation (otherwise the play refuses to run)
+- `destroy_target_domain=<cluster domain>` -- must match the inventory's `cluster_domain`. Mismatch aborts the play, guarding against running destroy with the wrong `CEPH_ENV`.
 
-The `mise run destroy` task (in `.mise.toml`) builds these arguments automatically from `CEPH_ENV` and adds an interactive `[y/N]` prompt — prefer it over invoking the wrapper directly.
+The `mise run destroy` task (in `.mise.toml`) builds these arguments automatically from `CEPH_ENV` and adds an interactive `[y/N]` prompt -- prefer it over invoking the wrapper directly.
 
 ### Exit codes
 
@@ -108,7 +108,7 @@ The `mise run destroy` task (in `.mise.toml`) builds these arguments automatical
 | 1    | Inventory file missing or secrets template missing                |
 | 2    | 1Password session unavailable (`op account get` failed)           |
 | 3    | `op inject` failed (bad `op://` reference, missing item, etc.)    |
-| ≥4   | ansible-playbook's own exit code (unreachable hosts, failed tasks) |
+| >=4   | ansible-playbook's own exit code (unreachable hosts, failed tasks) |
 
 ### Examples
 
@@ -129,8 +129,8 @@ OP_SERVICE_ACCOUNT_TOKEN="$(...)" \
 
 ### Related
 
-- [architecture.md §9.2](architecture.md) — deploy data flow
-- [secrets.md](secrets.md) — what's in `secrets.yml.tpl`
+- [architecture.md section 9.2](architecture.md) -- deploy data flow
+- [secrets.md](secrets.md) -- what's in `secrets.yml.tpl`
 
 ---
 
@@ -157,13 +157,13 @@ For each target cluster:
 2. Resolves the target filename: `~/.ssh/id_ed25519_<cluster>`.
 3. If the key already exists on disk:
    - Compares fingerprints (local vs 1P).
-   - **Match** → skip (idempotent re-run).
-   - **Mismatch** → refuse to overwrite. Prints the `mv` command the
+   - **Match** -> skip (idempotent re-run).
+   - **Mismatch** -> refuse to overwrite. Prints the `mv` command the
      operator should run manually. Exit 2.
 4. If the key is missing:
    - `umask 077`.
-   - Writes `private_key` → `~/.ssh/id_ed25519_<cluster>` (`chmod 600`).
-   - Writes `public_key` → `~/.ssh/id_ed25519_<cluster>.pub` (`chmod 644`).
+   - Writes `private_key` -> `~/.ssh/id_ed25519_<cluster>` (`chmod 600`).
+   - Writes `public_key` -> `~/.ssh/id_ed25519_<cluster>.pub` (`chmod 644`).
    - Prints the installed key's fingerprint.
 
 ### Environment
@@ -183,7 +183,7 @@ known clusters are installed.
 |------|------------------------------------------------------------------|
 | 0    | All requested keys installed (or already present and matching)   |
 | 1    | Unknown cluster name                                             |
-| 2    | Fingerprint mismatch — refused to overwrite existing key on disk |
+| 2    | Fingerprint mismatch -- refused to overwrite existing key on disk |
 
 ### Examples
 
@@ -202,14 +202,14 @@ scripts/install-ssh-keys.sh sietch
 
 ### Related
 
-- [runbooks/rotate-ssh-key.md](runbooks/rotate-ssh-key.md) — the full rotation flow
-- [secrets.md](secrets.md) — why SSH keys live in 1P (durable, auditable, one `op://` model)
+- [runbooks/rotate-ssh-key.md](runbooks/rotate-ssh-key.md) -- the full rotation flow
+- [secrets.md](secrets.md) -- why SSH keys live in 1P (durable, auditable, one `op://` model)
 
 ---
 
 ## `preflight.sh`
 
-Read-only smoke test — verifies the controller environment is ready to run
+Read-only smoke test -- verifies the controller environment is ready to run
 destructive playbooks against the target cluster. Surfaced via
 `mise run preflight`.
 
@@ -253,7 +253,7 @@ CEPH_ENV=inventories/<partition>-<region>/<cluster>/inventory.ini scripts/prefli
 | Code | Meaning                                                                      |
 |------|------------------------------------------------------------------------------|
 | 0    | All checks passed                                                            |
-| 1    | One or more checks failed — summary printed, unsafe to proceed               |
+| 1    | One or more checks failed -- summary printed, unsafe to proceed               |
 
 Warnings (non-blocking) are reported in the summary but don't affect exit.
 
@@ -270,7 +270,7 @@ CEPH_ENV=inventories/staging-austin/sietch/inventory.ini \
 
 ### Related
 
-- [architecture.md §8](architecture.md) — where the wrappers fit in the system mesh
+- [architecture.md section 8](architecture.md) -- where the wrappers fit in the system mesh
 
 ---
 
@@ -278,16 +278,16 @@ CEPH_ENV=inventories/staging-austin/sietch/inventory.ini \
 
 Follow these conventions:
 
-1. **Fail closed** — `set -euo pipefail` at the top. Any uncaught error
+1. **Fail closed** -- `set -euo pipefail` at the top. Any uncaught error
    aborts the script.
-2. **Validate inputs early** — check required env vars (`: "${CEPH_ENV:?...}"`),
+2. **Validate inputs early** -- check required env vars (`: "${CEPH_ENV:?...}"`),
    then check that referenced files exist, before doing any real work.
-3. **Never interpolate secrets into argv** — write them to a `mktemp`'d
+3. **Never interpolate secrets into argv** -- write them to a `mktemp`'d
    file (`chmod 600`) and pass the path. Always `trap 'rm -f "$TMP"' EXIT INT TERM`.
-4. **Distinct exit codes** — the caller (mise task or another script) should
+4. **Distinct exit codes** -- the caller (mise task or another script) should
    be able to tell "inventory missing" from "1P unreachable" from "ansible
    failed" without parsing stderr.
-5. **Idempotent where plausible** — re-running the script should not make
+5. **Idempotent where plausible** -- re-running the script should not make
    things worse. Prefer skip-if-already-correct over unconditional overwrite.
-6. **Cross-reference from [architecture.md §8](architecture.md)** and add a
+6. **Cross-reference from [architecture.md section 8](architecture.md)** and add a
    section to this file with the same shape as the ones above.

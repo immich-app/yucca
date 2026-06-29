@@ -86,9 +86,9 @@ Three user accounts exist on every node:
 
 - **ansible-iac key**: The keypair is stored in 1Password as an SSH Key item
   (`<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` in `yucca_tf_staging`). Operator
-  workstations install it via `scripts/install-ssh-keys.sh` →
+  workstations install it via `scripts/install-ssh-keys.sh` ->
   `~/.ssh/id_ed25519_<cluster>`. Rotation is forward-only (additive) via
-  `rotate-ssh-key.yml` — new pubkey distributed to `authorized_keys` with
+  `rotate-ssh-key.yml` -- new pubkey distributed to `authorized_keys` with
   `exclusive: false`, old keys pruned out-of-band. Keys are generated
   natively in 1Password, so the private half never touches operator disk at
   creation and a lost laptop is a non-event.
@@ -148,10 +148,10 @@ forensic review.
 
 ### 1Password + op inject
 
-All deployment secrets live in 1Password in the cluster's partition vault —
+All deployment secrets live in 1Password in the cluster's partition vault --
 `yucca_tf_staging` for sietch today; dev and prod use the sibling
 `yucca_tf_dev` / `yucca_tf_prod` vaults. Items are named
-`<CLUSTER>_CEPH_<ROLE>_*` — see [docs/secrets.md](secrets.md) for the full
+`<CLUSTER>_CEPH_<ROLE>_*` -- see [docs/secrets.md](secrets.md) for the full
 catalog.
 
 At playbook time, `scripts/ansible-play.sh` invokes `op inject` on the
@@ -181,19 +181,19 @@ secrets, injected as `OP_SERVICE_ACCOUNT_TOKEN` per job:
 `plan` jobs get the read token; `apply` jobs get the write token, gated behind
 a per-region GitHub Environment with required reviewers. The `ansible-play.sh`
 wrapper, run from an operator workstation, uses whichever 1Password session is
-active (typically desktop unlock under the operator's own Futo membership) —
+active (typically desktop unlock under the operator's own Futo membership) --
 not a service-account token.
 
 Rotation procedure: [runbooks/rotate-sa-token.md](runbooks/rotate-sa-token.md).
 
 ### What is NOT in 1Password
 
-- dm-crypt OSD encryption keys — stored in the MON config-key database.
+- dm-crypt OSD encryption keys -- stored in the MON config-key database.
   Deferred to 1P as a future belt-and-suspenders item (see yucca memory
   `project_luks_keys_in_1pass.md`).
-- cephadm bootstrap SSH key — generated at bootstrap, distributed by
+- cephadm bootstrap SSH key -- generated at bootstrap, distributed by
   cephadm's orchestrator. Not needed outside the cluster.
-- ops user SSH keys — distributed out-of-band after initial deployment.
+- ops user SSH keys -- distributed out-of-band after initial deployment.
   See "ops user keys" in Key management above.
 
 ## Audit logging

@@ -1,7 +1,7 @@
 # Patterns
 
 Project-specific Ansible idioms. This doc skips generic Ansible hygiene
-(FQCN, `set -o pipefail`, etc. — those are table stakes) and focuses on
+(FQCN, `set -o pipefail`, etc. -- those are table stakes) and focuses on
 patterns that are non-obvious or specific to how this Ceph automation is
 built.
 
@@ -17,10 +17,10 @@ see [adding-a-role.md](adding-a-role.md).
 unconditionally makes every play dirty and obscures real drift.
 
 **Pattern:** read the current value, compare to the expected value, apply
-only if different. The comparison is the key — raw `ceph config set` with
+only if different. The comparison is the key -- raw `ceph config set` with
 `changed_when: true` is a lie.
 
-Canonical example — `roles/ceph_tuning/tasks/main.yml`:
+Canonical example -- `roles/ceph_tuning/tasks/main.yml`:
 
 ```yaml
 - name: Read current OSD config values
@@ -63,14 +63,14 @@ to handle a completely fresh node.
 **Pattern:** write a JSON marker at the end of provisioning. On
 subsequent runs, check for the marker and skip completed phases.
 
-The marker filename (`/etc/ceph-provisioned.json`) is project-scoped —
+The marker filename (`/etc/ceph-provisioned.json`) is project-scoped --
 every Ceph cluster writes the same filename. The marker's *contents*
 identify which cluster + host the machine belongs to (hostname, fqdn,
 bond_ip, cluster_name, SSD serials, provisioned_at timestamp).
 
 **Template:** `roles/provision_host/templates/ceph-provisioned.json.j2`.
 
-**Resume gate** — `roles/provision_host/tasks/main.yml`:
+**Resume gate** -- `roles/provision_host/tasks/main.yml`:
 
 ```yaml
 - name: Check if provisioning marker is present in chroot
@@ -86,7 +86,7 @@ bond_ip, cluster_name, SSD serials, provisioned_at timestamp).
 Then every chroot phase is gated on `when: not provisioning_done`.
 
 `disks.yml` additionally handles the "md array already assembled but
-nothing mounted" case — mounts, reads the marker, validates the hostname
+nothing mounted" case -- mounts, reads the marker, validates the hostname
 matches `inventory_hostname`, and either resumes (marker matches) or
 unmounts and re-wipes (marker missing or wrong host).
 
@@ -122,7 +122,7 @@ then re-raises the failure.
         msg: "Provisioning phase failed for {{ inventory_hostname }}."
 ```
 
-The unmount tasks use `failed_when: false` — if a path isn't mounted, we
+The unmount tasks use `failed_when: false` -- if a path isn't mounted, we
 just want to keep going.
 
 ---
@@ -169,7 +169,7 @@ truthy.
 `drift.yml` is a read-only play that compares expected state against
 live cluster. Three steps:
 
-1. **Load all role defaults** via `vars_files` — gives drift detection
+1. **Load all role defaults** via `vars_files` -- gives drift detection
    access to expected values without depending on any role's execution:
 
    ```yaml
@@ -253,11 +253,11 @@ run MON on all nodes.
       {%- endif -%}
 ```
 
-Three branches: (1) explicit `ceph_mon` inventory group → use those;
-(2) ≤ 2 active hosts → single MON (bootstrap only, avoids 2-MON
-quorum fragility); (3) 3+ active hosts → MON on all active hosts.
+Three branches: (1) explicit `ceph_mon` inventory group -> use those;
+(2) <= 2 active hosts -> single MON (bootstrap only, avoids 2-MON
+quorum fragility); (3) 3+ active hosts -> MON on all active hosts.
 
-MGR always deploys on all active hosts — standby MGRs are harmless and
+MGR always deploys on all active hosts -- standby MGRs are harmless and
 provide fast failover.
 
 ---
@@ -269,7 +269,7 @@ lint-clean failures:
 
 1. **`changed_when: false`** for read-only commands (checks, queries,
    status).
-2. **`changed_when: true`** only when guarded by `when:` — the task only
+2. **`changed_when: true`** only when guarded by `when:` -- the task only
    runs when something needs to change. Unguarded `changed_when: true`
    reports "changed" on every run; ansible-lint catches this.
 3. **Output-based `changed_when`** for shell tasks that may or may not
@@ -288,12 +288,12 @@ lint-clean failures:
      - "'is not >= current' not in pg_data_result.stderr | default('')"
    ```
 
-Every `shell`/`command` task in this codebase sets one of these — no bare
+Every `shell`/`command` task in this codebase sets one of these -- no bare
 `command:` without a `changed_when`. Lint enforces it.
 
 `no_log: true` on every task handling passwords, keys, or credentials.
 Ansible output is committed to `ansible.log` and displayed to operators
-— secrets must never land there.
+-- secrets must never land there.
 
 ---
 
@@ -302,7 +302,7 @@ Ansible output is committed to `ansible.log` and displayed to operators
 **Problem:** the role's first instinct is "iterate every disk / daemon /
 service in Ansible and run `cephadm` per item." This couples the role
 tightly to per-host hardware shape (path composition, partition layout,
-LV vs disk topology) and breaks on any new cluster shape — the original
+LV vs disk topology) and breaks on any new cluster shape -- the original
 sietch-shape `osds.yml` failed on the NVMe-RAID shape's PCI-ATA +
 LV-backed SSD OSD topology because `sas_path_prefix` was hardcoded into
 the path composition.
@@ -317,9 +317,9 @@ template's Jinja conditional, not the role logic.
 **Examples in this codebase:**
 
 - `templates/rgw-spec.yaml.j2` + `tasks/rgw.yml`'s `ceph orch apply -i`
-  task — RGW daemon placement spec.
+  task -- RGW daemon placement spec.
 - `templates/osd-spec.yml.j2` + `tasks/osds.yml`'s
-  `ceph orch apply osd -i` task — OSD service spec; per-host documents
+  `ceph orch apply osd -i` task -- OSD service spec; per-host documents
   in a multi-doc YAML; Jinja conditional handles sietch-shape vs
   NVMe-RAID-shape path composition.
 
@@ -361,11 +361,11 @@ service type (`host`, `mon`, `mgr`, `osd`, `rgw`, `mds`, `nfs`,
 `prometheus`, `grafana`, `alertmanager`, `node-exporter`,
 `ceph-exporter`, etc.). Don't use for surfaces cephadm doesn't manage
 declaratively (CRUSH rules, pools, ceph config tunables, RGW realm/zone
-setup, S3 user creation) — those still need imperative `ceph` /
+setup, S3 user creation) -- those still need imperative `ceph` /
 `radosgw-admin` calls.
 
 **Trade-off vs imperative loops:** debugging "why isn't this disk
-becoming an OSD?" is harder — there's no per-disk log line. Check
+becoming an OSD?" is harder -- there's no per-disk log line. Check
 `ceph orch ls` / `ceph orch ps` / `ceph cephadm osd activate <host>
 --dry-run` instead. Worth the trade-off because the role becomes
 hardware-shape-agnostic.
@@ -384,11 +384,11 @@ auto-discovery.
 ### `changed_when: true` without a `when` guard
 
 ```yaml
-# BAD — reports changed on every run even when idempotent
+# BAD -- reports changed on every run even when idempotent
 - ansible.builtin.command: ceph config set osd foo bar
   changed_when: true
 
-# GOOD — only runs when needed, so changed_when: true is accurate
+# GOOD -- only runs when needed, so changed_when: true is accurate
 - ansible.builtin.command: ceph config set osd foo bar
   when: current_foo != 'bar'
   changed_when: true
@@ -397,10 +397,10 @@ auto-discovery.
 ### Shell without pipefail
 
 ```yaml
-# BAD — if `ceph osd dump` fails, grep runs on empty input and task succeeds
+# BAD -- if `ceph osd dump` fails, grep runs on empty input and task succeeds
 - ansible.builtin.shell: ceph osd dump | grep noin
 
-# GOOD — pipefail propagates the ceph failure
+# GOOD -- pipefail propagates the ceph failure
 - ansible.builtin.shell: |
     set -o pipefail
     ceph osd dump | grep noin
@@ -411,10 +411,10 @@ auto-discovery.
 ### Hardcoded site-specific values in roles
 
 ```yaml
-# BAD — in a role's tasks/main.yml
+# BAD -- in a role's tasks/main.yml
 - ansible.builtin.command: ceph config set osd osd_recovery_max_active 1
 
-# GOOD — value comes from defaults, overridable via group_vars
+# GOOD -- value comes from defaults, overridable via group_vars
 - ansible.builtin.command: >
     ceph config set osd osd_recovery_max_active
     {{ ceph_osd_recovery_max_active }}
@@ -426,7 +426,7 @@ in `inventories/<partition>-<region>/<cluster>/group_vars/all/vars.yml`.
 ### Using `ansible_play_batch` / `ansible_play_hosts` for placement specs
 
 ```yaml
-# BAD — --limit shrinks play_batch, cephadm removes daemons from omitted hosts
+# BAD -- --limit shrinks play_batch, cephadm removes daemons from omitted hosts
 - ansible.builtin.command:
     ceph orch apply rgw --placement="{{ ansible_play_batch | join(',') }}"
 ```
@@ -441,6 +441,6 @@ inventory group) for placement specs, never `ansible_play_batch` or
 
 Every playbook in this project consumes op-injected secrets. Running
 `ansible-playbook foo.yml` directly skips the wrapper, `op inject` never
-runs, and `vault_*` variables are empty — tasks that need them fail with
+runs, and `vault_*` variables are empty -- tasks that need them fail with
 confusing errors. Always `scripts/ansible-play.sh <playbook.yml>`. See
 [scripts.md](scripts.md) for the full contract.

@@ -1,4 +1,4 @@
-# ceph — Ceph Tentacle on Bare Metal
+# ceph -- Ceph Tentacle on Bare Metal
 
 Ansible automation for provisioning, deploying, tuning, hardening, and
 operating Ceph Tentacle (v20) clusters on bare-metal hardware via cephadm.
@@ -48,7 +48,7 @@ mise trust && mise run setup          # bootstrap dev environment
 
 # 3. Run mise tasks against the target cluster. Export CEPH_ENV once per
 #    shell (or prefix it inline). It is deliberately NOT in mise's [env]
-#    block — that would override your shell value and silently target the
+#    block -- that would override your shell value and silently target the
 #    wrong cluster; see docs/scripts.md "Setting CEPH_ENV".
 export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
 mise run preflight       # TF artifacts + 1P + SSH + connectivity
@@ -119,7 +119,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | `hardware-inventory` | Capture hardware facts to JSON |
 | `migrate-networkd` | One-shot networkd/bridge migration (rolling, noout-gated) |
 
-Inventory + secrets-template scaffolding live in `yucca/tf/` — run
+Inventory + secrets-template scaffolding live in `yucca/tf/` -- run
 `tofu apply` in `tf/deployment/staging/austin/ceph/` to (re-)render
 `inventories/<partition>-<region>/<cluster>/inventory.ini` and `secrets.yml.tpl`.
 

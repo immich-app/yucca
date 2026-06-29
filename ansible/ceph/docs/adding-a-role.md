@@ -1,24 +1,24 @@
 # Adding a role
 
 How to create a new Ansible role in this project. The heavy lifting is in
-the existing roles — this doc is the skeleton + wiring + pre-submit
+the existing roles -- this doc is the skeleton + wiring + pre-submit
 checklist; copy an exemplar for idioms.
 
 For code-level patterns (idempotency, `changed_when`, handlers, secrets
 handling, shell conventions), see [patterns.md](patterns.md). For how roles
 compose into the overall pipeline, see
-[architecture.md §6](architecture.md).
+[architecture.md section 6](architecture.md).
 
 ## Skeleton
 
 ```
 roles/<role_name>/
-├── defaults/main.yml     required — every variable with a default + comment
-├── meta/main.yml         required — author, license, Ansible version
-├── tasks/main.yml        required — imports sub-task files, tagged
-├── handlers/main.yml     if the role restarts/reloads services
-├── templates/*.j2        Jinja2 templates
-└── molecule/default/     optional — test scenario
+|-- defaults/main.yml     required -- every variable with a default + comment
+|-- meta/main.yml         required -- author, license, Ansible version
+|-- tasks/main.yml        required -- imports sub-task files, tagged
+|-- handlers/main.yml     if the role restarts/reloads services
+|-- templates/*.j2        Jinja2 templates
+`-- molecule/default/     optional -- test scenario
 ```
 
 Role names use `snake_case` (`ceph_deploy`, `os_tuning`).
@@ -27,7 +27,7 @@ Role names use `snake_case` (`ceph_deploy`, `os_tuning`).
 `group_vars/all/vars.yml`). **Role-internal variables** use the
 `<role_name>_` prefix. The `.ansible-lint` config skips
 `var-naming[no-role-prefix]` because all roles share the `ceph_` prefix
-for cluster-level settings — this is intentional.
+for cluster-level settings -- this is intentional.
 
 ## Exemplars to copy from
 
@@ -41,7 +41,7 @@ for cluster-level settings — this is intentional.
 | Ceph CLI shell tasks with `changed_when` patterns | `ceph_tuning` |
 
 Every existing role has a header comment block at the top of
-`defaults/main.yml` explaining its scope — open one and mirror the shape.
+`defaults/main.yml` explaining its scope -- open one and mirror the shape.
 
 ## Wiring into the pipeline
 
@@ -67,7 +67,7 @@ Insert in the correct dependency position in `site.yml`:
 - import_playbook: my-feature.yml
 ```
 
-Order matters — see [architecture.md §6 "Why this order matters"](architecture.md).
+Order matters -- see [architecture.md section 6 "Why this order matters"](architecture.md).
 
 ### 3. `mise run deploy` (if part of full deploy)
 
@@ -94,7 +94,7 @@ See [scripts.md](scripts.md) for the wrapper reference.
 
 ## Molecule test (optional)
 
-Not every role needs one — the `ceph_deploy` role is the only one with
+Not every role needs one -- the `ceph_deploy` role is the only one with
 a full scenario today. If you're writing something non-trivial, copy
 `roles/ceph_deploy/molecule/default/` as a starting point.
 
@@ -113,4 +113,4 @@ Before opening a PR, verify:
 - [ ] Tags on `import_tasks` in `main.yml`
 - [ ] Playbook wrapper exists at `ansible/ceph/` root
 - [ ] Role is added to `site.yml` in the correct position (if part of full deploy)
-- [ ] Anti-patterns in [patterns.md §Anti-patterns](patterns.md) not violated
+- [ ] Anti-patterns in [patterns.md section Anti-patterns](patterns.md) not violated
