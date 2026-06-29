@@ -20,6 +20,27 @@ module "core" {
   mgmt_vlan_id    = module.addr_site.mgmt_vlan_id
 
   vc_member_serials = var.spine_vc_serials
+
+  # Default DNS resolvers (Cloudflare + Quad9, dual-stack).
+  name_servers = ["1.1.1.1", "9.9.9.9", "2606:4700:4700::1111", "2620:fe::fe"]
+
+  # Upstream IP-transit. Today: one transit (Core-Backbone), primary/default
+  # (prepend 0). Add a second entry with prepend>0 + a lower local_pref to
+  # multi-home (the prepended one is the backup; see core-fabric/transit.tf —
+  # prepend/local_pref need a provider regen to apply).
+  local_as = 402421
+  transits = {
+    core-backbone = {
+      interface = "et-0/0/27"
+      local_v4  = "5.56.17.225/31"
+      local_v6  = "2a01:4a0:1338:226::2/64"
+      peer_v4   = "5.56.17.224"
+      peer_v6   = "2a01:4a0:1338:226::1"
+      peer_as   = 33891
+      advertise = "69.48.224.0/24"
+      loopback  = "69.48.224.254/32"
+    }
+  }
 }
 
 module "cluster_cls1" {
