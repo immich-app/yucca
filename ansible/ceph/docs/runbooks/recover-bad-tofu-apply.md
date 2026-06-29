@@ -5,6 +5,15 @@ or TF destroyed an item/file that shouldn't have been touched.
 
 **Time estimate:** 5-30 minutes depending on severity.
 
+> **Where applies happen now:** the routine path is CI -- `.github/workflows/infra.yml`
+> runs `terragrunt apply` on merge to main, with the partition's write SA
+> (`OP_TF_YUCCA_<PARTITION>_ENV_WRITE`). So the bad apply you're recovering from
+> is usually a failed or half-completed CI run, not a local one. CI does not
+> self-heal: recovery is operator-run from a workstation, using your own
+> 1Password desktop session (or, if you need the SA, the same write token CI
+> uses). The commands below assume `op` is authenticated and `TF_STACK_DIR`
+> points at the affected stack (default `tf/deployment/staging/austin/ceph`).
+
 ---
 
 ## Common failure modes and their fixes
