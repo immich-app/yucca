@@ -9,8 +9,11 @@
 # rebuilds charts/*/charts/ (rm -rf + dependency build) and races the renders.
 set -euo pipefail
 
-LIB_CONSUMERS=(yucca-api yucca-admin-api yucca-metrics-worker web michael mock-oidc)
-ALL_CHARTS=(yucca-api yucca-admin-api yucca-metrics-worker web michael mock-oidc cnpg-cluster ceph-objectuser rook-ceph-cluster)
+# Charts are role-grouped: apps/* (services), platform/* (operators/CRs),
+# lib/yucca-common (shared library), dev/mock-oidc (dev-only). Paths below are
+# relative to charts/.
+LIB_CONSUMERS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/web apps/michael dev/mock-oidc)
+ALL_CHARTS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/web apps/michael dev/mock-oidc platform/cnpg-cluster platform/ceph-objectuser platform/rook-ceph-cluster)
 
 echo "==> helm dependency build (yucca-common consumers)"
 for c in "${LIB_CONSUMERS[@]}"; do
@@ -20,7 +23,7 @@ done
 echo "==> helm template + kubeconform"
 for c in "${ALL_CHARTS[@]}"; do
   ns=yucca
-  [ "$c" = "rook-ceph-cluster" ] && ns=rook-ceph
+  [ "$c" = "platform/rook-ceph-cluster" ] && ns=rook-ceph
   # NB: release name must not be YAML-boolean-ish ("y"/"on"/...): it lands in
   # labels and kubeconform reads it back as a bool.
   helm template yucca "charts/$c" -n "$ns" \
@@ -29,27 +32,33 @@ for c in "${ALL_CHARTS[@]}"; do
 done
 
 echo "==> kustomize build (Flux entrypoints)"
-# o11y-style GitOps tree: per-env cluster entry points + app overlays.
-for env in staging production; do
-  kustomize build "kubernetes/clusters/$env" >/dev/null && echo "    OK  kubernetes/clusters/$env"
-  kustomize build "kubernetes/apps/$env" >/dev/null && echo "    OK  kubernetes/apps/$env"
+# partition/region GitOps tree: per-cluster entry points (clusters/<p>/<r>) +
+# app overlays (apps/<p>/<r>, which compose components/{infra,roles/<role>}).
+# LoadRestrictionsNone mirrors how Flux's kustomize-controller builds within a
+# single git artifact: the role Components reference ../../apps/<app>.yaml
+# (a sibling subtree under components/), which the CLI's default RootOnly
+# restrictor would reject even though Flux allows it.
+kb() { kustomize build --load-restrictor=LoadRestrictionsNone "$@"; }
+CLUSTERS=(staging/austin prod/htz-fsn1 dev/local)
+for c in "${CLUSTERS[@]}"; do
+  kb "kubernetes/clusters/$c" >/dev/null && echo "    OK  kubernetes/clusters/$c"
+  kb "kubernetes/apps/$c" >/dev/null && echo "    OK  kubernetes/apps/$c"
 done
-# Dev-mirror tree (consumed by Tilt; kept validated too).
-kustomize build kubernetes/apps >/dev/null && echo "    OK  kubernetes/apps (dev tree)"
-kustomize build kubernetes/flux/repos >/dev/null && echo "    OK  kubernetes/flux/repos"
-kustomize build kubernetes/flux/cluster >/dev/null && echo "    OK  kubernetes/flux/cluster"
+# Dev-mirror HelmRepository sources (consumed by Tilt + the dev cluster-repos
+# Kustomization; kept validated too).
+kb kubernetes/apps/dev/local/repos >/dev/null && echo "    OK  kubernetes/apps/dev/local/repos"
 
 echo "==> flux-local build (full tree, helm rendering as Flux would)"
 # Via uvx so uv supplies a Python matching flux-local's requires-python
 # (>=3.13) regardless of the host. One retry: flux-local fans out `flux build
 # ks` subprocesses which very rarely segfault under load.
 flux_local() { uvx --from "flux-local==8.2.0" flux-local "$@"; }
-# Per-cluster path: staging + production reuse the same Kustomization names
-# (flux-system ns), so flux-local must scope to one cluster at a time.
-for env in staging production; do
-  flux_local build all "kubernetes/clusters/$env" --enable-helm --no-enable-dns >/dev/null \
-    || flux_local build all "kubernetes/clusters/$env" --enable-helm --no-enable-dns >/dev/null
-  echo "    OK  flux-local ($env)"
+# Per-cluster path: clusters reuse the same Kustomization names (cluster-apps,
+# flux-system ns), so flux-local must scope to one cluster at a time.
+for c in "${CLUSTERS[@]}"; do
+  flux_local build all "kubernetes/clusters/$c" --enable-helm --no-enable-dns >/dev/null \
+    || flux_local build all "kubernetes/clusters/$c" --enable-helm --no-enable-dns >/dev/null
+  echo "    OK  flux-local ($c)"
 done
 
 echo "k8s surface: ALL VALID"

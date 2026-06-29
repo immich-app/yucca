@@ -17,7 +17,7 @@ Provisioning split across the monorepo:
 | Subtree | Owns |
 |---|---|
 | `ansible/talos/` (this) | Hypervisor substrate: bridges, libvirt, image, VM definitions. Stops at "VMs ready"; Terraform owns bootstrap (the subtree README explains why the boundary sits here). |
-| `tf/shared/modules/talos-cluster/modules/inventory-renderer/` | Renders the Ansible inventory + (future) `secrets.yml.tpl` from `tf/deployment/dev/talos/clusters.auto.tfvars`. Parity with the ceph-cluster module. |
+| `tf/shared/modules/talos-cluster/modules/inventory-renderer/` | Renders the Ansible inventory + (future) `secrets.yml.tpl` from `tf/deployment/staging/austin/talos/clusters.auto.tfvars`. Parity with the ceph-cluster module. |
 | `tf/shared/modules/talos-cluster/modules/talos-bootstrap/` | `siderolabs/talos` provider — machine_secrets, configuration_apply per node, bootstrap, kubeconfig. Drives the talosctl sequence so operators don't run it by hand. |
 
 ## Physical layout
@@ -77,7 +77,7 @@ tailnet/VPN subnet route, or being directly on the VLAN) before
 ## Naming scheme
 
 Monorepo FQDN: `<cluster>-<role>-<name>.<domain>` —
-e.g. `sietch-talos-cp1.dev.austin.int.futo.cloud`. The
+e.g. `sietch-talos-cp1.staging.austin.int.futo.cloud`. The
 `<cluster>-<role>` prefix (`sietch-talos`) is the
 `talos_domain_prefix` group_vars value; `<name>` is the entry in
 each host's `host_vars/*.yml` talos_vms list.
@@ -167,8 +167,8 @@ pulls). The TF bootstrap sets
 `machine.network.nameservers: [1.1.1.1, 8.8.8.8]` on Talos VMs for
 upstream image-registry resolution. Kubeconfig uses
 the CP VIP IP directly (`https://10.50.0.10:6443`). DNS records
-under `*.compute.dev.austin.int.futo.cloud` and
-`*.services.dev.austin.int.futo.cloud` land with the DNS-layer
+under `*.compute.staging.austin.int.futo.cloud` and
+`*.services.staging.austin.int.futo.cloud` land with the DNS-layer
 follow-up (LB → ingress → external-dns).
 
 ## Out of scope

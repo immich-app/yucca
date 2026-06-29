@@ -6,7 +6,7 @@ on:
     # The gated prod promotion commits the pin back to main; ignore that path
     # so it can't retrigger the workflow (it's also marked [skip ci]).
     paths-ignore:
-      - kubernetes/clusters/production/image-versions.yaml
+      - kubernetes/clusters/prod/htz-fsn1/image-versions.yaml
   workflow_dispatch:
 
 concurrency:

@@ -1,7 +1,27 @@
 # yucca/tf
 
 Terraform/OpenTofu authority for cluster identity, 1P secret items, and the
-inventory artifacts Ansible consumes. Multi-env via terragrunt.
+inventory artifacts Ansible consumes. Multi-partition / multi-region via
+terragrunt.
+
+## The partition / region model
+
+Everything is keyed on a single first-class topology:
+
+**partition → region → { exactly one K8s cluster, one-or-more Ceph clusters }**
+
+- **Partition** = `prod` | `staging` | `dev` (formerly `env`).
+- **Region** = a site: `htz-fsn1`, `austin`, `local` (formerly `site`/`datacenter`).
+  Plus a reserved **`global`** pseudo-region for partition-wide stacks (DNS, the
+  account-wide NetBird layer) — `global` is not a physical site, so its
+  `role`/FQDN metadata is null.
+- The human form is `partition@region` (`prod@htz-fsn1`); the canonical slug is
+  `partition-region` (`prod-htz-fsn1`), which derives names on every surface.
+
+Every stack sits at **three path segments**:
+`deployment/<partition>/<region>/<stack>`. The account-wide prod layer is
+`prod/global/netbird` (a stack under the `global` region), so there is no
+two-segment special case.
 
 ## Layout
 
@@ -28,33 +48,41 @@ tf/
 │           ├── main.tf, variables.tf, outputs.tf
 │           └── firewall.tf              ← Talos host ingress firewall (default-deny + allow-lists)
 └── deployment/
-    ├── terragrunt.hcl                ← root: state backend, env/stack derived from path
+    ├── terragrunt.hcl                ← root: state backend + partition/region/stack from path
+    ├── staging/
+    │   ├── austin/
+    │   │   ├── region.hcl            ← role + FQDN parts for staging@austin
+    │   │   ├── ceph/                 ← sietch ceph cluster (clusters.auto.tfvars)
+    │   │   └── talos/                ← bare-metal Talos cluster (3× CP, Cilium CNI)
+    │   └── global/
+    │       ├── region.hcl            ← role=null (pseudo-region)
+    │       ├── dns/                  ← Cloudflare records (futo.cloud)
+    │       └── netbird/              ← NetBird Cloud access control (staging)
     ├── dev/
-    │   ├── ceph/
-    │   │   ├── terragrunt.hcl        ← include root + stack-level inputs
-    │   │   ├── versions.tf, variables.tf, main.tf
-    │   │   ├── clusters.auto.tfvars  ← declarative cluster list (edit here to add/modify)
-    │   │   └── .terraform.lock.hcl
-    │   ├── talos/
-    │   │   ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
-    │   │   └── clusters.auto.tfvars  ← declarative Talos cluster list (nodes[], profile, VLANs)
-    │   └── dns/
-    │       ├── terragrunt.hcl, versions.tf, variables.tf, main.tf
-    │       └── records.auto.tfvars   ← declarative DNS records (Cloudflare, futo.cloud zone)
-    └── staging/
-        └── talos/                    ← bare-metal Talos cluster (3× CP, Cilium CNI)
-            ├── terragrunt.hcl, versions.tf, variables.tf, main.tf, providers.tf
-            ├── helm.tf               ← Cilium install + post-CNI health gate
-            ├── cilium-values.yaml.tftpl
-            └── clusters.auto.tfvars  ← declarative node list (nodes[], bond, VIP, firewall)
+    │   ├── local/
+    │   │   ├── region.hcl
+    │   │   └── talos/                ← Talos VMs on the sietch hypervisors
+    │   └── global/
+    │       ├── region.hcl
+    │       └── dns/
+    └── prod/
+        ├── htz-fsn1/
+        │   ├── region.hcl           ← role + FQDN parts; site_id=40
+        │   ├── mgmt-hosts.yaml      ← mgmt-host roster (region root; fabric + render read it)
+        │   ├── fabric/              ← Junos switch fabric + NetBox + mgmt reprovision
+        │   └── netbird/             ← htz-fsn1 site NetBird layer (routed HTZ-FSN1 network)
+        └── global/
+            ├── region.hcl
+            ├── terragrunt.hcl       ← account-wide prod NetBird (two-segment region-root stack)
+            └── netbird.tf
 ```
 
-Future envs land as siblings: `deployment/staging/ceph/`, `deployment/prod/ceph/`.
-Additional stacks land as siblings within an env — `dev/talos/` and
-`dev/dns/` are two; `dev/monitoring/` could be next. NetBird Cloud access
-control lives in `staging/netbird/` (flat), and for prod is layered:
-`prod/global/` (account-wide) above per-site `prod/<site>/netbird/`
-(e.g. `prod/htz-fsn1/netbird/`). See "The netbird-env module" below.
+Add a region: create `deployment/<partition>/<region>/region.hcl` + stacks under
+it. Add a stack: a new sibling dir under a region (`<region>/monitoring/` …).
+NetBird Cloud access control lives in `staging/global/netbird/`, and for prod is
+layered: `prod/global/` (account-wide) above per-region
+`prod/<region>/netbird/` (e.g. `prod/htz-fsn1/netbird/`). See "The netbird-env
+module" below.
 
 The dns stack manages infrastructure names in the futo.cloud Cloudflare
 zone (today: the Sietch RGW S3 endpoint + virtual-hosted wildcard).
@@ -68,21 +96,44 @@ bootstraps the VMs Ansible created).
 
 ## Conventions
 
-### Env and stack are derived from the directory path
+### Partition, region, and stack are derived from the directory path
 
-`deployment/terragrunt.hcl` parses the child's relative path to extract
-`env` and `stack`:
+`deployment/terragrunt.hcl` parses the child's relative path:
+`partition = segs[0]`, `region = segs[1]`, `stack = join(segs[2:])`, and
+`slug = "<partition>-<region>"`.
 
 ```
-deployment/dev/ceph     → env = dev,     stack = ceph
-deployment/staging/ceph → env = staging, stack = ceph
-deployment/prod/talos   → env = prod,    stack = talos
+deployment/staging/austin/ceph     → partition=staging, region=austin,   stack=ceph
+deployment/staging/global/dns      → partition=staging, region=global,   stack=dns
+deployment/prod/htz-fsn1/fabric    → partition=prod,    region=htz-fsn1, stack=fabric
+deployment/prod/htz-fsn1/netbird   → partition=prod,    region=htz-fsn1, stack=netbird
+deployment/prod/global/netbird     → partition=prod,    region=global,   stack=netbird
 ```
 
-The state backend key is derived from these values:
-`ceph/${env}/${stack}/terraform.tfstate` in the shared `yucca-tf-state` S3
-bucket. Project-scoped so ceph state doesn't collide with o11y or future
-stacks in the same bucket.
+The state backend key is derived from these:
+`yucca/${partition}/${region}/${stack}/terraform.tfstate` in the shared
+`yucca-tf-state` S3 bucket. (The legacy `ceph/` project prefix is dropped —
+talos/dns/netbird/fabric all share the bucket now.) Every stack is three
+segments — the account-wide prod layer is `prod/global/netbird` (not a bare
+`prod/global`), so `region.hcl` at `prod/global/` is found by
+`find_in_parent_folders` from the stack dir, exactly like `staging/global`. The
+`n==2` branch in `terragrunt.hcl` is now dead and can be removed.
+
+### Per-region metadata + role (`region.hcl`)
+
+Each region dir carries a `deployment/<partition>/<region>/region.hcl` holding
+`role` (`primary` | `secondary`), `site_id`, `datacenter`, `provider_code`, and
+`domain`. The root terragrunt finds it via
+`find_in_parent_folders("region.hcl", "")` (with a not-found guard) and merges
+its `locals` into every stack's inputs — so every stack in a region inherits the
+metadata without per-tfvars duplication. `global` pseudo-regions set `role = null`
+(and null FQDN parts). Each stack declares matching `variable` blocks with null
+defaults.
+
+`role` encodes the product invariant: when a partition spans multiple regions,
+**yucca-api + the database run only in the `primary` region**; secondary regions
+run the storage-local subset. It is authoritative here in TF state
+(`discovery.role`) and consumed downstream (Flux role components, yuctl).
 
 ### The `op run --env-file=tf/.env --` pattern
 
@@ -110,12 +161,12 @@ items this TF depends on."
 
 ### Stack override via `TF_STACK_DIR`
 
-The default `mise run tf:*` tasks target `tf/deployment/staging/ceph`. Point
-them at another stack via the `TF_STACK_DIR` env var:
+The default `mise run tf:*` tasks target `tf/deployment/staging/austin/ceph`.
+Point them at another stack via the `TF_STACK_DIR` env var:
 
 ```bash
-TF_STACK_DIR=tf/deployment/staging/ceph mise run tf:plan
-TF_STACK_DIR=tf/deployment/dev/talos    mise run tf:apply
+TF_STACK_DIR=tf/deployment/staging/austin/ceph  mise run tf:plan
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply
 ```
 
 ## Running TF
@@ -136,7 +187,7 @@ These wrap: `op run --env-file=tf/.env -- terragrunt --working-dir <stack> <cmd>
 
 - **Plan** on every PR touching `tf/**`; **apply** on merge to `main`, gated
   behind the `staging-infra` Environment (required reviewers).
-- Applies `staging/talos` (cluster + Flux + secrets) then `staging/dns`.
+- Applies `staging/austin/talos` (cluster + Flux + secrets) then `staging/global/dns`.
 - The Talos stack reaches the `10.10.10.0/24` nodes by joining the **tailnet**
   (`tailscale/github-action`, `--accept-routes`) — the cluster firewall already
   trusts the Tailscale CIDRs. The DNS stack is pure Cloudflare API, no tailnet.
@@ -158,8 +209,9 @@ it; and the `staging-infra` Environment with required reviewers.
 
 Remote: shared `yucca-tf-state` S3 bucket at OVH Paris
 (`https://s3.eu-west-par.io.cloud.ovh.net/`). Key path:
-`ceph/${env}/${stack}/terraform.tfstate` — project-scoped so ceph state
-doesn't collide with o11y or future stacks in the same bucket.
+`yucca/${partition}/${region}/${stack}/terraform.tfstate` (region-root stacks:
+`yucca/${partition}/${region}/...`). All yucca stacks live under the `yucca/`
+prefix in the shared bucket.
 
 Credentials are AWS-compatible env vars (`AWS_ACCESS_KEY_ID` /
 `AWS_SECRET_ACCESS_KEY`), injected via `op run --env-file=tf/.env` from
@@ -174,6 +226,65 @@ against a fresh backend fails with 404 before it can create one. Enable
 it once the concern is concurrent applies (multiple operators working the
 same stack simultaneously). Single operator today → low risk.
 
+## Discovery outputs contract
+
+Every stack emits a single non-sensitive top-level **`discovery`** output (plus
+`discovery_schema_version`). It is the machine-readable description of the
+topology that `yuctl` consumes — it reads the state object straight from S3 and
+parses `.outputs.discovery.value`, so no checkout, init, or provider is needed.
+
+**Secrets are always `op://` references, never values.** The in-stack sensitive
+`kubeconfig`/`talosconfig` outputs stay for in-stack use; discovery only carries
+the *reference* (`op://<vault>/<title>/password`).
+
+Common **envelope** (every stack):
+
+```
+{
+  schema_version, partition, region, slug, role, stack, stack_type,
+  region_meta: { site_id, datacenter, provider_code, domain }
+}
+```
+
+Per `stack_type` **payload**:
+
+| stack_type | stacks | payload key + fields |
+|---|---|---|
+| `region-k8s` | `*/talos` | `kubernetes: { cluster_name, api_endpoint, operator_endpoint, cp_node_ips, kubeconfig_ref, talosconfig_ref }` |
+| `ceph` | `*/ceph` | `ceph_clusters: { <name> => { cluster_name, fqdn, rgw_s3_endpoint, health_cred_ref, s3_admin_cred_refs, secret_item_titles, bootstrap_host } }` |
+| `dns` | `*/dns` | `dns: { provider, zone, record_fqdns, api_token_ref }` |
+| `netbird` | `*/netbird`, `prod/global` | `netbird: { name_prefix, vault, group_ids, policy_ids, network_ids, setup_key_item_titles }` |
+| `fabric` | `prod/htz-fsn1/fabric` | `fabric: { site_id, api_cidr, mgmt_cidr, cluster_cidrs }` |
+
+The talos stacks persist their kube/talosconfig into 1Password
+(`onepassword_item`, mirroring the JWT-keypair / netbird-setup-key pattern) so
+the `*_ref` fields resolve — staging writes `YUCCA_STAGING_{KUBE,TALOS}CONFIG`;
+dev writes `YUCCA_DEV_<CLUSTER>_{KUBE,TALOS}CONFIG`.
+
+## Migrating an existing stack to the new layout
+
+The dir moves + terragrunt rewrite change the **state key** (`ceph/<env>/...` →
+`yucca/<partition>/<region>/...`), so a live stack's remote state must be
+re-pointed — reversibly, no destroy/recreate. Per stack (single-operator window;
+no state locking):
+
+1. Pre-flight `terragrunt plan` on the OLD layout → confirm **no-op**; back up
+   the old state object.
+2. Land the terragrunt.hcl rewrite + dir moves + renames (no apply yet).
+3. **Server-side S3 copy** old key → new `yucca/...` key (old object stays as a
+   rollback anchor).
+4. Delete the stale generated `backend.tf`; `terragrunt init` in the new dir
+   (decline the state-copy prompt; `-reconfigure` if needed).
+5. `terragrunt plan` → **must be no-op** (the gate; a non-empty plan = a
+   rename/source-path mismatch, not a state problem — STOP + roll back).
+6. `terragrunt output discovery` → confirm the contract resolves.
+7. After **all** stacks are green, `aws s3 rm` the legacy `ceph/*` objects.
+
+Order: staging first, then prod (`global` → region → fabric — `prod/global`
+before `prod/htz-fsn1/netbird`, which has a real terragrunt `dependency` on it).
+`dev` is dir-move only (no remote state). The NetBird plans must show **no
+resource renames** — the rendered names are byte-identical across the rename.
+
 ## The ceph-cluster module
 
 Declarative input in `clusters.auto.tfvars`:
@@ -181,9 +292,9 @@ Declarative input in `clusters.auto.tfvars`:
 ```hcl
 clusters = {
   sietch = {
-    domain            = "dev.austin.int.futo.cloud"
-    environment       = "dev"
-    datacenter        = "austin"
+    domain            = "staging.austin.int.futo.cloud"
+    partition         = "staging"
+    region            = "austin"
     provider_code     = "int"
     role_in_hostname  = "ceph"
     ansible_ssh_user  = "ansible-iac"
@@ -213,7 +324,7 @@ On apply, the module:
    by Ansible at play time. See [ADR-009](../ansible/ceph/docs/adr/009-tf-first-op-inject-over-vault-password-sh.md)
    for the re-enable plan.
 
-## The talos-baremetal module (staging/talos)
+## The talos-baremetal module (staging/austin/talos)
 
 Brings up Talos on **bare-metal nodes already running in maintenance mode** at
 known addresses — no Ansible, no hypervisors, no VLANs (contrast the VM-oriented
@@ -221,7 +332,7 @@ known addresses — no Ansible, no hypervisors, no VLANs (contrast the VM-orient
 config (which installs to disk + reboots), bootstraps one CP, then emits
 kube/talosconfig and gates on cluster health.
 
-Declarative input in `deployment/staging/talos/clusters.auto.tfvars`:
+Declarative input in `deployment/staging/austin/talos/clusters.auto.tfvars`:
 
 ```hcl
 clusters = {
@@ -268,9 +379,9 @@ Notes:
 Run it (see "Running TF" below — needs 1Password unlocked + an on-LAN apply host):
 
 ```bash
-TF_STACK_DIR=tf/deployment/staging/talos mise run tf:init
-TF_STACK_DIR=tf/deployment/staging/talos mise run tf:plan
-TF_STACK_DIR=tf/deployment/staging/talos mise run tf:apply   # WIPES /dev/sda, installs Talos
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:init
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:plan
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply   # WIPES /dev/sda, installs Talos
 ```
 
 ## The netbird-env module (NetBird Cloud access control)
@@ -299,21 +410,27 @@ carry different policies.
 
 ### Stacks & layering
 
-| stack | env / scope | state key |
+| stack | partition / scope | state key |
 |---|---|---|
-| `deployment/staging/netbird` | staging (flat) | `ceph/staging/netbird/…` |
-| `deployment/prod/global` | prod, **account-wide** (cross-site) | `ceph/prod/global/…` |
-| `deployment/prod/htz-fsn1/netbird` | prod, **site** htz-fsn1 | `ceph/prod/htz-fsn1/netbird/…` |
+| `deployment/staging/global/netbird` | staging (global region) | `yucca/staging/global/netbird/…` |
+| `deployment/prod/global/netbird` | prod, **account-wide** (cross-region) | `yucca/prod/global/netbird/…` |
+| `deployment/prod/htz-fsn1/netbird` | prod, **region** htz-fsn1 | `yucca/prod/htz-fsn1/netbird/…` |
 
 Staging is single-layer. **Prod is layered**: a `global` layer (account-wide
-groups + policies) above per-site layers. The global layer owns the
+groups + policies) above per-region layers. The global layer owns the
 **`YUCCA_RESOURCE`** tag group and the account-wide **`yucca → yucca_resource`**
-policy (see below). Site groups are site-scoped (`YUCCA_PROD_<SITE>_<ROLE>`) so a
-network router's peers are unambiguously *that site's* mgmt nodes. A site layer
-consumes a global group via a terragrunt `dependency` on `prod/global` → the
-module's `external_groups` input (htz-fsn1 does this for `yucca_resource`). The
-root terragrunt derives `stack` from the full sub-path, so `prod/htz-fsn1/netbird`
-gets its own state key without colliding with the `prod/htz-fsn1` fabric stack.
+policy (see below). Region groups are region-scoped (`YUCCA_PROD_<REGION>_<ROLE>`)
+so a network router's peers are unambiguously *that region's* mgmt nodes. A
+region layer consumes a global group via a terragrunt `dependency` on
+`prod/global` → the module's `external_groups` input (htz-fsn1 does this for
+`yucca_resource`). The root terragrunt derives `stack` from the full sub-path,
+so `prod/htz-fsn1/netbird` gets its own state key. (Now that the fabric stack
+lives in its own `prod/htz-fsn1/fabric/` sub-stack, the region root carries no
+terragrunt.hcl, so `prod/htz-fsn1/netbird` uses a normal
+`find_in_parent_folders` include — the old direct-root-include workaround is
+gone.) Rendered NetBird object names and 1P item titles are unchanged by the
+rename (`YUCCA_STAGING_*`, `NETBIRD_YUCCA_PROD_HTZ_FSN1_*`): the `env`→`partition`
+/ `site`→`region` swap keeps the same string values.
 
 ### The `yucca` / `yucca_resource` access model
 
@@ -334,7 +451,7 @@ so the link is the shared tag, not a cross-stack group reference.
 
 Staging additionally grants its `ci` group access to the existing **Liberty
 Park** infra groups (where the staging nodes live today) — those are external
-groups resolved by name in `staging/netbird/main.tf`.
+groups resolved by name in `staging/global/netbird/main.tf`.
 
 ### Declarative input (`netbird.auto.tfvars`)
 
@@ -394,13 +511,13 @@ multiple prod sites writing to the one `yucca_tf_prod` vault from colliding.
 Run it (pure cloud API — no tailnet, no node contact):
 
 ```bash
-TF_STACK_DIR=tf/deployment/staging/netbird mise run tf:init   # then tf:plan / tf:apply
-# prod — global layer first, then each site layer (uses the prod env file + SA):
-OP_ENV_FILE=tf/.env.prod TF_STACK_DIR=tf/deployment/prod/global         mise run tf:apply
+TF_STACK_DIR=tf/deployment/staging/global/netbird mise run tf:init   # then tf:plan / tf:apply
+# prod — global layer first, then each region layer (uses the prod env file + SA):
+OP_ENV_FILE=tf/.env.prod TF_STACK_DIR=tf/deployment/prod/global/netbird   mise run tf:apply
 OP_ENV_FILE=tf/.env.prod TF_STACK_DIR=tf/deployment/prod/htz-fsn1/netbird mise run tf:apply
 ```
 
-CI (`.github/workflows/infra.yml`) applies `staging/netbird` in the staging
+CI (`.github/workflows/infra.yml`) applies `staging/global/netbird` in the staging
 matrix, and the prod layers (`prod/global` then `prod/htz-fsn1/netbird`) as gated
 `prod-infra` jobs on the prod 1P SA / `tf/.env.prod`. Prod CI needs the
 `OP_TF_YUCCA_PROD_ENV[_WRITE]` repo secrets + a `prod-infra` Environment — see
@@ -413,7 +530,7 @@ replaced the Tailscale subnet-router path). The `.github/actions/netbird-connect
 composite action installs the client and runs `netbird up` with the **`ci` setup
 key** read from 1P (`op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY`);
 the runner joins as a `ci` peer and the existing staging route advertises the LAN.
-The apply job applies `staging/netbird` **first** (minting that key) before
+The apply job applies `staging/global/netbird` **first** (minting that key) before
 connecting, so a fresh bootstrap is self-contained. The prod **fabric** workflow
 (`fabric.yml`) still uses Tailscale — `10.40.5.0/24` isn't on NetBird yet.
 

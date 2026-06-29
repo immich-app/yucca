@@ -8,7 +8,7 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: charts/yucca-admin-api
+      chart: charts/apps/yucca-admin-api
       sourceRef:
         kind: GitRepository
         name: flux-system

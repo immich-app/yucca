@@ -15,11 +15,10 @@
 # filesystem paths from shared state entirely.
 
 locals {
-  # Inventory directory name: <cluster>-ceph.<env>.<dc>.<provider>.
-  # Project-scoped ("ceph"), not hostname-role-scoped — mirrors the secret
-  # prefix (<CLUSTER>_CEPH_*) so all ceph-project artifacts are grep-able under
-  # *-ceph.* regardless of whether hosts are named with a ceph/osd/mon role.
-  inventory_dirname = "${var.cluster_name}-ceph.${var.environment}.${var.datacenter}.${var.provider_code}"
+  # Inventory directory name: <partition>-<region>/<cluster> (e.g. staging-austin/sietch).
+  # Region-scoped dir + friendly cluster leaf — matches the committed Ansible
+  # inventory layout (ansible/ceph/inventories/<partition>-<region>/<cluster>/).
+  inventory_dirname = "${var.partition}-${var.region}/${var.cluster_name}"
 
   _inventory_template_vars = {
     cluster_name     = var.cluster_name

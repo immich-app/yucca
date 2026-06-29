@@ -1,0 +1,39 @@
+---
+# TF-RENDERED — do not hand-edit. The staging/austin talos stack renders this
+# file (templatefile + local_file) from the derived partition/region topology
+# and commits it, so the tree is always kustomize-buildable even though prod has
+# no flux stack yet. Hand-authored here to a valid value that matches what TF
+# will regenerate (CLUSTER_NAME=yucca_<partition>_<region>, etc.). These keys are
+# DISJOINT from the human cluster-settings + CI image-versions ConfigMaps; the
+# cluster-apps postBuild merges all three.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings-generated
+  namespace: flux-system
+data:
+  # Cluster identity (derived: yucca_<partition>_<region>).
+  CLUSTER_NAME: yucca_staging_austin
+  # Role of this region within its partition (authoritative in TF discovery.role;
+  # mirrored compile-time by the components/roles/<role> the overlay composes).
+  CLUSTER_ROLE: primary
+  # Metric label stamped on everything vmagent ships (o11y `cluster` identity).
+  METRICS_CLUSTER_LABEL: yucca_staging_austin
+
+  # Per-service ingress hostnames (routed by the ingress layer to in-cluster
+  # services; resolve to INGRESS_PUBLIC_IP publicly / INGRESS_INTERNAL_IP on-LAN).
+  APP_DOMAIN: staging.backups.futo.cloud  # web (apex; /api routes to yucca-api)
+  GW_HOST: gw.staging.backups.futo.cloud  # michael (restic gateway)
+
+  # Bare-metal RGW (Ceph S3) gateway for the staging/austin region; self-signed
+  # cert, so consumers skip TLS verify. Consumed by yucca-metrics-worker
+  # (radosEndpoint) and michael (S3_ENDPOINT). S3_HOST is the same gateway
+  # without the scheme, for michael's DNS-based backend LB (S3_BACKEND_DNS_HOST).
+  S3_ENDPOINT: https://s3.staging.austin.int.futo.cloud
+  S3_HOST: s3.staging.austin.int.futo.cloud
+
+  # Observability egress (apps -> agents -> o11y vmauth). In-cluster OTLP
+  # receiver for metrics (host:port, no scheme); VictoriaLogs native ingest URL
+  # for the collector's egress.
+  VMAGENT_OTLP: vmagent-yucca.observability.svc:8429
+  VLOGS_REMOTE_URL: https://vmauth.staging.futostatus.com/insert/native

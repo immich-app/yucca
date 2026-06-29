@@ -22,13 +22,13 @@ it inline, never via `export`:**
 
 ```bash
 # Correct — inline prefix, applies to one mise/script invocation
-CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini mise run preflight
+CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run preflight
 
 # WRONG — mise's [env] machinery silently strips shell-exported vars
 # when launching tasks; CEPH_ENV reaches an empty environment and the
 # wrapper exits with "CEPH_ENV must be set". Confusing because your shell
 # clearly has it set.
-export CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini
+export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
 mise run preflight  # fails
 ```
 
@@ -90,7 +90,7 @@ Common patterns:
 ```bash
 scripts/ansible-play.sh baseline.yml --check --diff
 scripts/ansible-play.sh deploy-ceph.yml --tags rgw,monitoring
-scripts/ansible-play.sh destroy-ceph.yml -e yes_destroy_ceph=true -e destroy_target_domain=dev.austin.int.futo.cloud
+scripts/ansible-play.sh destroy-ceph.yml -e yes_destroy_ceph=true -e destroy_target_domain=staging.austin.int.futo.cloud
 ```
 
 The destroy playbook requires both safety gates:
@@ -113,16 +113,16 @@ The `mise run destroy` task (in `.mise.toml`) builds these arguments automatical
 
 ```bash
 # Standard deploy
-CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
+CEPH_ENV=inventories/staging-austin/sietch/inventory.ini \
   scripts/ansible-play.sh deploy-ceph.yml
 
 # Dry-run a role via tags
-CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
+CEPH_ENV=inventories/staging-austin/sietch/inventory.ini \
   scripts/ansible-play.sh site.yml --check --diff --tags baseline
 
 # CI / headless (SA token from env)
 OP_SERVICE_ACCOUNT_TOKEN="$(...)" \
-  CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
+  CEPH_ENV=inventories/staging-austin/sietch/inventory.ini \
   scripts/ansible-play.sh status.yml
 ```
 
@@ -263,7 +263,7 @@ Warnings (non-blocking) are reported in the summary but don't affect exit.
 mise run preflight
 
 # Direct, against sietch
-CEPH_ENV=inventories/sietch-ceph.staging.austin.int/inventory.ini \
+CEPH_ENV=inventories/staging-austin/sietch/inventory.ini \
   scripts/preflight.sh
 ```
 

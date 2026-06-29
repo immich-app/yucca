@@ -34,4 +34,4 @@ SITE="${SITE:-htz-fsn1}"
 # provider rejects having both set ("service_account_token and account are set").
 unset OP_ACCOUNT
 # -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe (see apply).
-OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" plan -parallelism=1 "$@"
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE/fabric" plan -parallelism=1 "$@"

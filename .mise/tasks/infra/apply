@@ -35,4 +35,4 @@ SITE="${SITE:-htz-fsn1}"
 unset OP_ACCOUNT
 # -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe — parallel
 # ApplyResourceChange calls across the VCs crash the plugin ("Plugin did not respond").
-OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE" apply -parallelism=1 "$@"
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE/fabric" apply -parallelism=1 "$@"

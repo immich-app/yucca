@@ -1,6 +1,6 @@
 # Adding a cluster
 
-Clusters are declared in `tf/deployment/<env>/ceph/clusters.auto.tfvars`.
+Clusters are declared in `tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars`.
 Every cluster-scoped concern — inventory file, hostname, 1P item names, SSH
 key path, secrets template — is derived from that one entry. Most of what
 this walkthrough describes is editing that file and running
@@ -35,7 +35,7 @@ to `ceph`). Every Ceph-project inventory grep-matches `*-ceph.*` regardless
 of datacenter or environment.
 
 Existing examples:
-- `sietch-ceph.dev.austin.int/` — Austin DC, internal network, dev
+- `staging-austin/sietch/` — Austin DC, internal network, dev
 
 Future environments land as siblings: `*-ceph.staging.<dc>.<provider>/`,
 `*-ceph.prod.<dc>.<provider>/`.
@@ -59,7 +59,7 @@ auto-picked from the 923-word wordlist — see [docs/naming.md](naming.md#host-n
 
 ### 2. Declare the cluster in TF
 
-Edit `tf/deployment/<env>/ceph/clusters.auto.tfvars` and add an entry.
+Edit `tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars` and add an entry.
 Working example for a hypothetical `mesa` cluster at Hetzner Falkenstein:
 
 ```hcl
@@ -105,7 +105,7 @@ mise run tf:apply
 Or, for a non-default stack:
 
 ```bash
-TF_STACK_DIR=tf/deployment/<env>/ceph mise run tf:apply
+TF_STACK_DIR=tf/deployment/<partition>/<region>/ceph mise run tf:apply
 ```
 
 This creates (per the module's `rendering.tf`):
@@ -123,12 +123,12 @@ All of these are gitignored — re-run `mise run tf:apply` after any
 Hand-maintained, committed. Copy the closer existing analogue as a starting
 point:
 
-- **Bare-metal cluster:** copy from `sietch-ceph.dev.austin.int/group_vars/all/vars.yml`
+- **Bare-metal cluster:** copy from `staging-austin/sietch/group_vars/all/vars.yml`
 - **Hetzner/single-NIC cluster:** start from the sietch vars and adjust for
   the NVMe-RAID shape (public /32, no bond/ProxyJump, installimage-owned LVM).
 
 ```bash
-cp inventories/sietch-ceph.dev.austin.int/group_vars/all/vars.yml \
+cp inventories/staging-austin/sietch/group_vars/all/vars.yml \
    inventories/mesa-ceph.dev.fsn.htz/group_vars/all/vars.yml
 ```
 
@@ -322,7 +322,7 @@ CEPH_ENV=inventories/mesa-ceph.dev.fsn.htz/
 Default is set in `.mise.toml` (`sietch` in dev). Override per-command:
 
 ```bash
-CEPH_ENV=inventories/sietch-ceph.dev.austin.int/inventory.ini mise run status
+CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run status
 ```
 
 `scripts/ansible-play.sh` derives the secrets template path from `CEPH_ENV`

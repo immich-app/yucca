@@ -8,7 +8,7 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: charts/web
+      chart: charts/apps/web
       sourceRef:
         kind: GitRepository
         name: flux-system

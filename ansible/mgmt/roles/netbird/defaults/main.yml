@@ -5,5 +5,5 @@ mgmt_netbird_management_url: "https://api.netbird.io"
 # Setup key — NEVER hardcoded. Passed at run time (op:// ref, see README). The
 # site's reusable "mgmt" key (auto_groups=["mgmt"]) so the node joins the mgmt
 # group and becomes a route peer for the site subnets (10.40.5.0/24, api, cluster
-# nets — the routed network is defined in TF: tf/deployment/prod/<site>/netbird).
+# nets — the routed network is defined in TF: tf/deployment/prod/<region>/netbird).
 mgmt_netbird_setup_key: ""

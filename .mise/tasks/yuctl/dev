@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run yuctl from source (forwards args)"
+set -e
+
+cd packages/yuctl && go run . "$@"

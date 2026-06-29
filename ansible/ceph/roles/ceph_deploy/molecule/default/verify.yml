@@ -7,7 +7,7 @@
   gather_facts: false
 
   vars:
-    cluster_domain: dev.austin.int.futo.cloud
+    cluster_domain: staging.austin.int.futo.cloud
     public_network: 10.10.10.0/24
     cluster_network: 10.10.10.0/24
     ceph_rgw_realm: sietch
@@ -15,7 +15,7 @@
     ceph_rgw_port: 443
     ceph_rgw_ssl: true
     rgw_ssl_cert_combined_pem: "MOCK_CERT_CONTENT"
-    ceph_rgw_dns_name: s3.dev.austin.int.futo.cloud
+    ceph_rgw_dns_name: s3.staging.austin.int.futo.cloud
 
   tasks:
     - name: Render hosts.j2

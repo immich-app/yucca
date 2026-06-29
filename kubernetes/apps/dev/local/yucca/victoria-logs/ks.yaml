@@ -1,0 +1,20 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: yucca-victoria-logs
+  namespace: flux-system
+spec:
+  targetNamespace: yucca
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: yucca-victoria-logs
+  path: ./kubernetes/apps/dev/local/yucca/victoria-logs/app
+  prune: true
+  wait: true
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
+  sourceRef:
+    kind: GitRepository
+    name: yucca

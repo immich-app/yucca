@@ -44,7 +44,7 @@ mise run tf:apply
 ### Rendered file on disk doesn't match tfvars
 
 ```bash
-cat ansible/ceph/inventories/sietch-ceph.staging.austin.int/inventory.ini
+cat ansible/ceph/inventories/staging-austin/sietch/inventory.ini
 # says ansible_user=root but tfvars says ansible-iac
 ```
 

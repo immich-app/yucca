@@ -8,13 +8,13 @@ variable "domain" {
   type        = string
 }
 
-variable "environment" {
-  description = "Environment segment of the FQDN (dev, lab, staging, prod)."
+variable "partition" {
+  description = "Partition segment of the FQDN (dev, lab, staging, prod)."
   type        = string
 }
 
-variable "datacenter" {
-  description = "Datacenter segment of the FQDN (austin, hel, etc.)."
+variable "region" {
+  description = "Region segment of the FQDN (austin, fsn1, etc.)."
   type        = string
 }
 

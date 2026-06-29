@@ -40,8 +40,8 @@ lsblk --output NAME,TYPE,MOUNTPOINT | grep crypt
 |---|---|
 | Protocol | HTTPS (TLS 1.2+) on port 443 |
 | Certificate | Self-signed RSA 4096-bit, 10-year validity |
-| CN | `s3.dev.austin.int.futo.cloud` |
-| SANs | `s3.dev.austin.int.futo.cloud`, `*.s3.dev.austin.int.futo.cloud`, per-node FQDNs, per-node bond IPs |
+| CN | `s3.staging.austin.int.futo.cloud` |
+| SANs | `s3.staging.austin.int.futo.cloud`, `*.s3.staging.austin.int.futo.cloud`, per-node FQDNs, per-node bond IPs |
 | Issuer | Self-signed (O=FUTO, L=Austin, ST=Texas, C=US) |
 | Cert location | `/etc/ceph/rgw-ssl.crt` + `/etc/ceph/rgw-ssl.key` on bootstrap node |
 | Distribution | cephadm distributes combined PEM to all RGW daemon containers |

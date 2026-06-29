@@ -5,7 +5,7 @@ talos_vms_enabled: false
 # Libvirt domain + qcow2 + NVRAM file name prefix.
 # Default scopes to "sietch-talos" so VMs end up as sietch-talos-cp1,
 # sietch-talos-worker1, etc. — aligns with the monorepo FQDN scheme
-# `<cluster>-<role>-<name>.<domain>` (e.g. sietch-talos-cp1.dev.austin.int.futo.cloud)
+# `<cluster>-<role>-<name>.<domain>` (e.g. sietch-talos-cp1.staging.austin.int.futo.cloud)
 # and matches the *_TALOS_* 1P secret-prefix convention. Read from
 # group_vars `talos_domain_prefix` when present so a future second
 # cluster can override without role edits.

@@ -11,19 +11,20 @@ hardware/
 backups/
 exports/
 
-# TF-generated artifacts — do not commit; re-render with `tofu apply` in tf/deployment/<env>/ceph/
-inventories/*/inventory.ini
-inventories/*/inventory-provision.ini
-inventories/*/inventory-destroy.ini
-inventories/*/secrets.yml.tpl
-inventories/*/group_vars/all/operators.yml
+# TF-generated artifacts — do not commit; re-render with `tofu apply` in tf/deployment/<partition>/<region>/ceph/
+# Inventories are region-scoped with a friendly cluster leaf: inventories/<partition>-<region>/<cluster>/
+inventories/*/*/inventory.ini
+inventories/*/*/inventory-provision.ini
+inventories/*/*/inventory-destroy.ini
+inventories/*/*/secrets.yml.tpl
+inventories/*/*/group_vars/all/operators.yml
 
 # host_vars IS committed (per-node hardware facts — stable, part of the inventory
 # source of truth). Operator-local overrides use host_vars/*.local.yml if needed.
-inventories/*/host_vars/*.local.yml
+inventories/*/*/host_vars/*.local.yml
 
 # Rendered installimage scripts (source of truth is the .tpl file).
-inventories/*/installimage/post-install.sh
+inventories/*/*/installimage/post-install.sh
 
 # Python virtualenv (mise setup) and bytecode
 .venv/

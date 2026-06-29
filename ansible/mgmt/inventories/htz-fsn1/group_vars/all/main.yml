@@ -10,5 +10,5 @@ timezone: UTC
 mgmt_domain: fsn.htz.futo.cloud
 
 # NetBird "mgmt" setup key — NOT hardcoded; passed at run time by
-# `mise run mgmt:ansible` from op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<SITE>_MGMT_SETUP_KEY.
+# `mise run mgmt:ansible` from op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<REGION>_MGMT_SETUP_KEY.
 mgmt_netbird_setup_key: ""

@@ -8,7 +8,7 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: charts/yucca-metrics-worker
+      chart: charts/apps/yucca-metrics-worker
       sourceRef:
         kind: GitRepository
         name: flux-system

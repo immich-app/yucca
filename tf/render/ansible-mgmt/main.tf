@@ -8,9 +8,9 @@
 # Outputs are gitignored — TF is the single source of truth, not the rendered files.
 
 locals {
-  cfg     = yamldecode(file("${path.module}/../../deployment/prod/${var.site}/mgmt-hosts.yaml"))
+  cfg     = yamldecode(file("${path.module}/../../deployment/${var.partition}/${var.region}/mgmt-hosts.yaml"))
   hosts   = local.cfg.hosts
-  inv_dir = "${path.module}/../../../ansible/mgmt/inventories/${var.site}"
+  inv_dir = "${path.module}/../../../ansible/mgmt/inventories/${var.region}"
 
   pub_mask  = split("/", module.addressing.public_cidr)[1]
   priv_mask = split("/", module.addressing.private_cidr)[1]

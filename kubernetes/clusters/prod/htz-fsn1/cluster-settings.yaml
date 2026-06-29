@@ -1,0 +1,21 @@
+---
+# Per-cluster, HUMAN-managed settings for prod@htz-fsn1. Authored ahead of the
+# cluster; activates once the prod flux stack syncs this path. Neither CI nor TF
+# touch this file. Keys here are disjoint from cluster-settings.generated.yaml
+# (TF) and image-versions.yaml (CI). TODO(prod): real ingress VIPs + ops contact.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings
+  namespace: flux-system
+data:
+  # TODO: real production OIDC issuer (Zitadel prod instance).
+  OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
+
+  # ─── Ingress entry point ─────────────────────────────────────────────
+  # TODO: real prod ingress VIPs once the htz-fsn1 cluster is provisioned.
+  INGRESS_INTERNAL_IP: 10.10.10.16
+  INGRESS_PUBLIC_IP: 0.0.0.0
+
+  # ACME registration contact for Let's Encrypt. TODO: real ops address.
+  ACME_EMAIL: fubar-prod@futo.org

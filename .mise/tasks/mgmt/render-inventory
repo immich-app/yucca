@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-#MISE description="Render a site's ansible/mgmt inventory from Terraform (tf/render/ansible-mgmt: addressing + identity + mgmt-hosts.yaml). SITE selects the site."
+#MISE description="Render a region's ansible/mgmt inventory from Terraform (tf/render/ansible-mgmt: addressing + identity + mgmt-hosts.yaml). REGION selects the region."
 set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
-SITE="${SITE:-htz-fsn1}"
+REGION="${REGION:-htz-fsn1}"
 
 cd "$ROOT/tf/render/ansible-mgmt"
 tofu init -input=false >/dev/null
-tofu apply -input=false -auto-approve -var "site=$SITE" >/dev/null
-echo "rendered ansible/mgmt/inventories/$SITE/ (hosts.yml, host_vars/, group_vars/all/users.generated.yml)"
+tofu apply -input=false -auto-approve -var "region=$REGION" >/dev/null
+echo "rendered ansible/mgmt/inventories/$REGION/ (hosts.yml, host_vars/, group_vars/all/users.generated.yml)"

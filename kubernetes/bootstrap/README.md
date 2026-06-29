@@ -12,7 +12,7 @@ flux install   # or the flux-operator, once we adopt it
 
 ## 2. Git auth (the repo is private)
 
-`kubernetes/flux/repos/git-yucca.yaml` references `secretRef: yucca-repo-auth`.
+`kubernetes/apps/dev/local/repos/git-yucca.yaml` references `secretRef: yucca-repo-auth`.
 Create it before applying anything, using a read-only deploy key (preferred)
 or a fine-grained PAT:
 
@@ -38,12 +38,12 @@ GitRepository — which doesn't exist until something applies it. Break the
 chicken-and-egg from your checkout:
 
 ```bash
-kubectl apply -k kubernetes/flux/repos     # GitRepository + HelmRepositories
-kubectl apply -k kubernetes/flux/cluster   # cluster-repos -> cluster-apps
+kubectl apply -k kubernetes/apps/dev/local/repos   # GitRepository + HelmRepositories
+kubectl apply -k kubernetes/clusters/dev/local     # cluster-repos -> cluster-apps
 ```
 
-From here Flux owns the tree: it reconciles `kubernetes/flux/repos` (including
-any future source changes) and `kubernetes/apps`.
+From here Flux owns the tree: it reconciles `kubernetes/apps/dev/local/repos`
+(including any future source changes) and `kubernetes/apps/dev/local`.
 
 ## 4. Watch it converge
 

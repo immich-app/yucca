@@ -33,7 +33,7 @@ set `profile = "smoke"` in `clusters.auto.tfvars` before `tf:apply`:
 mise run provision -- -e profile=smoke
 
 # TF bootstrap — set profile = "smoke" in clusters.auto.tfvars first
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:apply
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply
 ```
 
 Everything else (static `ip=` addressing, factory image, direct kernel
@@ -50,7 +50,7 @@ laurel, so the limit costs nothing.
 
 ```bash
 cd ansible/talos
-export TALOS_ENV=inventories/sietch-talos.dev.austin.int/inventory.ini
+export TALOS_ENV=inventories/staging-austin/inventory.ini
 
 # A. preflight only — read-only, zero state change
 scripts/ansible-play.sh preflight.yml --limit sietch-ceph-laurel

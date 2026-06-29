@@ -9,7 +9,7 @@ For how secrets fit into the broader architecture, see
 ```mermaid
 flowchart TB
     ONEP[("1Password<br/>yucca_tf · yucca_tf_dev · ...<br/><i>source of truth</i>")]
-    TF[Terraform / Tofu<br/>tf/deployment/staging/ceph/]
+    TF[Terraform / Tofu<br/>tf/deployment/staging/austin/ceph/]
     REPO[/"inventories/&lt;cluster&gt;/<br/>inventory.ini (TF-gen, gitignored)<br/>secrets.yml.tpl (TF-gen, gitignored)"/]
     WRAP[scripts/ansible-play.sh<br/><i>mktemp + op inject → exec ansible-playbook --extra-vars @tmp</i>]
     ANS[ansible-playbook]
@@ -31,7 +31,7 @@ flowchart TB
 
 Future environments land as siblings: `yucca_tf_staging(_manual)`,
 `yucca_tf_prod_manual`. The vault a given cluster reads from is declared
-per-cluster in `tf/deployment/<env>/ceph/clusters.auto.tfvars` (field
+per-cluster in `tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars` (field
 `vault`). TF derives item paths from that field at render time; changing
 it + `tofu apply` re-renders `secrets.yml.tpl` with the new vault path.
 

@@ -1,0 +1,28 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-web
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/apps/web
+      sourceRef:
+        kind: GitRepository
+        name: yucca
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/immich-app/yucca/web # TODO: confirm prod registry
+      tag: 0.0.1
+    # YUCCA_API_URL/PUBLIC_API_URL default to the in-cluster yucca-api service,
+    # which is correct in prod too. TODO(prod): add ingress for external access.

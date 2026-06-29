@@ -1,12 +1,48 @@
-variable "env" {
-  description = "Environment slug, injected by terragrunt from the path (prod)."
+variable "partition" {
+  description = "Partition slug, injected by terragrunt from the path (prod)."
   type        = string
 }
 
-variable "site" {
-  description = "Site slug; namespaces this layer's NetBird objects as yucca-<env>-<site>-*."
+variable "region" {
+  description = "Region slug; namespaces this layer's NetBird objects as yucca-<partition>-<region>-*. Injected by terragrunt from the path (htz-fsn1)."
   type        = string
   default     = "htz-fsn1"
+}
+
+variable "stack" {
+  description = "Stack name (netbird)."
+  type        = string
+  default     = null
+}
+
+variable "slug" {
+  description = "Canonical <partition>-<region> slug (prod-htz-fsn1)."
+  type        = string
+  default     = null
+}
+
+variable "role" {
+  description = "Region role: primary|secondary."
+  type        = string
+  default     = null
+}
+
+variable "datacenter" {
+  description = "Datacenter segment of the region FQDN (fsn1)."
+  type        = string
+  default     = null
+}
+
+variable "provider_code" {
+  description = "Provider segment of the region FQDN (htz)."
+  type        = string
+  default     = null
+}
+
+variable "domain" {
+  description = "Region FQDN suffix."
+  type        = string
+  default     = null
 }
 
 variable "external_groups" {

@@ -27,7 +27,7 @@ output "secrets" {
 }
 
 output "inventory_dirname" {
-  description = "Inventory directory name (<cluster>-ceph.<env>.<dc>.<provider>). The render wrapper writes files under ansible/ceph/inventories/<this>/."
+  description = "Inventory directory name (<cluster>-ceph.<partition>.<region>.<provider>). The render wrapper writes files under ansible/ceph/inventories/<this>/."
   value       = local.inventory_dirname
 }
 

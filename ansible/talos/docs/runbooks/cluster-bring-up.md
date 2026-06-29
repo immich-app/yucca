@@ -22,12 +22,12 @@ Sietch hypervisors. The TF stack owns this flow;
 
 ```bash
 cd <yucca>
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:init    # first time
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:apply
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:init    # first time
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply
 ```
 
 What lands:
-- `inventories/sietch-talos.dev.austin.int/inventory.ini` and per-host
+- `inventories/staging-austin/inventory.ini` and per-host
   `host_vars/*.yml` (the `talos_vms` lists), both rendered from
   `clusters.auto.tfvars` — `nodes[]` is the single source of truth for
   topology, so never hand-edit `host_vars`.
@@ -51,7 +51,7 @@ re-run the apply in step 3.
 
 ```bash
 cd <yucca>/ansible/talos
-export TALOS_ENV=inventories/sietch-talos.dev.austin.int/inventory.ini
+export TALOS_ENV=inventories/staging-austin/inventory.ini
 
 # Optional first time: bootstrap python venv + ansible collections
 mise run setup
@@ -106,7 +106,7 @@ the desktop app (or `OP_SERVICE_ACCOUNT_TOKEN` if set).
 ip route get 10.50.0.10
 
 cd <yucca>
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:apply
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply
 # Watch for:
 #   - module.cluster["sietch"].module.talos_bootstrap.talos_machine_configuration_apply.controlplane["cp1"]: Creating...
 #   - ... .talos_machine_bootstrap.this: Creating...
@@ -124,10 +124,10 @@ mkdir -p ~/.kube ~/.talos
 # Use `output -json` alone — `-raw -json` are mutually exclusive and
 # yield an empty file. op-run.sh resolves the S3 state creds.
 tf/op-run.sh terragrunt \
-  --working-dir tf/deployment/dev/talos output -json kubeconfigs \
+  --working-dir tf/deployment/staging/austin/talos output -json kubeconfigs \
   | jq -r .sietch > ~/.kube/sietch-talos.config
 tf/op-run.sh terragrunt \
-  --working-dir tf/deployment/dev/talos output -json talosconfigs \
+  --working-dir tf/deployment/staging/austin/talos output -json talosconfigs \
   | jq -r .sietch > ~/.talos/sietch-talos.config
 
 export KUBECONFIG=~/.kube/sietch-talos.config
@@ -171,7 +171,7 @@ talosctl reset --graceful --reboot \
 # deletes the rendered inventory.ini this play needs. (If you ran them in
 # the wrong order: cp inventory.example.ini inventory.ini and re-run.)
 cd <yucca>/ansible/talos
-export TALOS_ENV=inventories/sietch-talos.dev.austin.int/inventory.ini
+export TALOS_ENV=inventories/staging-austin/inventory.ini
 mise run destroy-vms
 
 # Destroy TF cluster state, LAST (kubeconfig/talosconfig outputs blanked,
@@ -180,7 +180,7 @@ mise run destroy-vms
 # wiped/destroyed nodes and aborts with "cluster health check failed".
 # (Destroying the talos resources is state-only — nothing is un-applied.)
 cd <yucca>
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:destroy -- -refresh=false
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:destroy -- -refresh=false
 ```
 
 To redeploy from clean: repeat steps 1 → 2 → 3 → 4. Static IPs are
@@ -196,7 +196,7 @@ production topology:
 # 1. Restore the production profile in TF input — if you ran smoke, the
 #    tfvars still says `profile = "smoke"` and the TF re-apply would
 #    bootstrap nothing new:
-#    tf/deployment/dev/talos/clusters.auto.tfvars → profile = "full"
+#    tf/deployment/staging/austin/talos/clusters.auto.tfvars → profile = "full"
 
 # 2. Provision the remaining VMs on lawson + samara (cp2/worker2,
 #    cp3/worker3). Existing cp1/worker1 are a no-op.
@@ -206,7 +206,7 @@ mise run provision   # profile=full is the default
 # 3. Re-apply TF for the 4 new node bootstraps (cp2/cp3 join etcd,
 #    worker2/worker3 join the cluster)
 cd ../..
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:apply
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply
 ```
 
 NOTE: going from 1 CP (smoke) to 3 CP (full) grows the etcd quorum.

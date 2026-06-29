@@ -8,7 +8,7 @@ hardware.
 This subtree is the **Ansible substrate**: it provisions the VLAN 50/51
 bridges, the libvirt/KVM stack, and stages the Talos VMs — stopping when
 the VMs are running and ready for `talosctl`. The Terraform half in
-[tf/deployment/dev/talos/](../../tf/deployment/dev/talos/) renders the
+[tf/deployment/staging/austin/talos/](../../tf/deployment/staging/austin/talos/) renders the
 Ansible inventory and drives cluster bring-up (machine config, bootstrap,
 kubeconfig).
 
@@ -31,7 +31,7 @@ cluster secrets out of Ansible's fact cache keeps the blast radius small.
 
 - `talosctl gen config / apply-config / bootstrap` — the Terraform
   `siderolabs/talos` provider owns these
-  ([tf/deployment/dev/talos/](../../tf/deployment/dev/talos/));
+  ([tf/deployment/staging/austin/talos/](../../tf/deployment/staging/austin/talos/));
   `docs/operator-handoff.md` keeps the manual sequence for recovery.
 - Persistent storage for VMs (RBD-backed boot disks, ceph-csi). Boot
   disks are local qcow2 today; RBD lands in a follow-up.
@@ -54,19 +54,19 @@ validation tool, selected explicitly with `-e profile=smoke`.
 
 ## Operator workflow
 
-Inventory is **TF-rendered** from `tf/deployment/dev/talos/`. Run TF first
+Inventory is **TF-rendered** from `tf/deployment/staging/austin/talos/`. Run TF first
 (from the repo root):
 
 ```bash
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:init    # first time only
-TF_STACK_DIR=tf/deployment/dev/talos mise run tf:apply   # renders inventory + host_vars
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:init    # first time only
+TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply   # renders inventory + host_vars
 ```
 
 Then point at the rendered inventory and use the talos-subtree tasks:
 
 ```bash
 cd ansible/talos/
-export TALOS_ENV=inventories/sietch-talos.dev.austin.int/inventory.ini
+export TALOS_ENV=inventories/staging-austin/inventory.ini
 
 mise run setup       # first time only: python venv + ansible collections
 mise run lint        # yamllint + ansible-lint + shellcheck

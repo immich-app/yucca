@@ -41,9 +41,9 @@ locals {
 module "netbird" {
   source = "../../../../shared/modules/netbird-env"
 
-  env         = var.env
-  name_prefix = "yucca_${var.env}_${var.site}" # yucca_prod_htz_fsn1 (slug normalized in the module)
-  vault       = "yucca_tf_${var.env}"          # yucca_tf_prod
+  partition   = var.partition
+  name_prefix = "yucca_${var.partition}_${var.region}" # yucca_prod_htz_fsn1 (slug normalized in the module)
+  vault       = "yucca_tf_${var.partition}"            # yucca_tf_prod
 
   groups     = var.groups
   setup_keys = var.setup_keys

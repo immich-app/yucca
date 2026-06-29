@@ -1,6 +1,9 @@
 node_modules
 *.tsbuildinfo
 
+# Claude Code local state — per-operator settings + agent worktrees; never commit.
+.claude/
+
 .env.local
 .env
 
@@ -49,6 +52,9 @@ ansible/*/ansible.*.log
 ansible/*/.ansible/
 ansible/*/.ansible_facts_cache/
 ansible/*/.venv/
+
+# Working notes for the partition/region/ceph-cluster rework — local scratch.
+notes.md
 
 # Lens / decision-support artifacts are controller-local notes, not repo code.
 # Per-project: kept outside the repo (e.g., ~/Projects/immich/yucca-ceph-import/analysis/
