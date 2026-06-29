@@ -248,9 +248,11 @@ jobs:
         run: mise run infra:plan -- --non-interactive
       - name: Terragrunt plan
         if: matrix.stack != 'fabric'
+        env:
+          STACK_DIR: ${{ matrix.dir }}
         run: >-
           tf/op-run.sh terragrunt
-          --working-dir tf/deployment/${{ matrix.dir }}
+          --working-dir "tf/deployment/$STACK_DIR"
           --non-interactive plan
 
   # ── Apply (gated, ordered) ───────────────────────────────────────────────────
@@ -315,9 +317,11 @@ jobs:
       # Everything else: direct terragrunt apply with the partition's write SA.
       - name: Terragrunt apply
         if: matrix.stack != 'fabric'
+        env:
+          STACK_DIR: ${{ matrix.dir }}
         run: >-
           tf/op-run.sh terragrunt
-          --working-dir tf/deployment/${{ matrix.dir }}
+          --working-dir "tf/deployment/$STACK_DIR"
           --non-interactive apply -auto-approve
 
       # ── Ceph convergence (Ansible) — only on the ceph stack ──────────────────
@@ -326,14 +330,18 @@ jobs:
       # NetBird overlay + 1Password session already established in this entry.
       - name: Render Ansible inventory from the ceph TF state
         if: matrix.stack == 'ceph'
-        run: ansible/ceph/scripts/render-inventories.sh ${{ matrix.partition }}
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: ansible/ceph/scripts/render-inventories.sh "$PARTITION"
       - name: Install the ansible-iac SSH key from 1Password
         if: matrix.stack == 'ceph'
         # Pulls op://yucca_tf_<partition>/SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY to
         # ~/.ssh/id_ed25519_sietch — the path the rendered inventory references.
+        env:
+          PARTITION: ${{ matrix.partition }}
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          OP_VAULT=yucca_tf_${{ matrix.partition }} ansible/ceph/scripts/install-ssh-keys.sh sietch
+          OP_VAULT="yucca_tf_$PARTITION" ansible/ceph/scripts/install-ssh-keys.sh sietch
       - name: Provision the ceph Ansible toolchain (venv + collections)
         if: matrix.stack == 'ceph'
         working-directory: ansible/ceph
