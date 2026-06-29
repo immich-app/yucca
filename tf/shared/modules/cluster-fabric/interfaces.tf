@@ -15,10 +15,14 @@ locals {
   )
 }
 
-# Physical members → their aggregate.
+# Physical members → their aggregate. Ports named in var.disabled_ports are
+# admin-downed (no carrier) — e.g. to force hosts onto their 1G WAN for PXE rescue.
+# The ae0 spine-uplink legs are never disabled here, so the upstream path can't be
+# cut by a fat-fingered list.
 resource "junos_interface_physical" "member" {
   for_each = local.member_bundles
   name     = each.key
+  disable  = contains(var.disabled_ports, each.key) && each.value != "ae0"
   ether_opts {
     ae_8023ad = each.value
   }

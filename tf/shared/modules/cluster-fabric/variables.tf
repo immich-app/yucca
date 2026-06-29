@@ -55,6 +55,18 @@ variable "uplink_ports" {
   description = "100G ports bonded into ae0 (the spine uplink)."
 }
 
+variable "disabled_ports" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    Physical member ports to admin-down (no carrier), by Junos name (e.g.
+    "et-0/0/0", "et-1/0/0"). Used to drop the hosts' 25G NICs so nodes fall back to
+    their 1G WAN for PXE/rescue. ae0 spine-uplink legs are protected — listing one
+    is a no-op. Empty (default) = all ports up. LAG membership, ae<k> aggregates,
+    and VLANs are unchanged, so reverting (drop the port from the list) restores it.
+  EOT
+}
+
 variable "vc_member_serials" {
   type        = list(string)
   description = "The leaf VC member chassis serials (member 0, member 1), for preprovisioned VC."
