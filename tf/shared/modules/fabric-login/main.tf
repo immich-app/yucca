@@ -32,9 +32,13 @@ resource "terraform-provider-junos-qfx" "login" {
   resource_name = var.resource_name
   provider      = junos-qfx
 
+  # This resource owns the whole `system` container slice: login + name-servers.
+  # Splitting `system` children across resources makes each one delete the other's
+  # (the provider diffs its managed slice against the live device).
   system = [
-    {
-      login = local.login
-    }
+    merge(
+      { login = local.login },
+      length(var.name_servers) == 0 ? {} : { name_server = [for ns in var.name_servers : { name = ns }] },
+    )
   ]
 }

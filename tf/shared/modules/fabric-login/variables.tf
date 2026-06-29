@@ -27,3 +27,9 @@ variable "resource_name" {
   default     = "login"
   description = "JTAF resource/apply-group name for this login slice."
 }
+
+variable "name_servers" {
+  type        = list(string)
+  default     = []
+  description = "Default DNS resolvers (system name-server). Empty = unset. Lives here (not core-fabric) so the whole `system` container is owned by one resource."
+}
