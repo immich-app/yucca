@@ -53,13 +53,13 @@ on:
   push:
     branches: [main]
     paths: &paths
-      - "tf/**"
-      - "ansible/mgmt/**"
-      - "ansible/ceph/**"
-      - ".mise/tasks/**"
-      - ".mise/config.toml"
-      - ".github/actions/netbird-connect/**"
-      - ".github/workflows/infra.yml"
+      - 'tf/**'
+      - 'ansible/mgmt/**'
+      - 'ansible/ceph/**'
+      - '.mise/tasks/**'
+      - '.mise/config.toml'
+      - '.github/actions/netbird-connect/**'
+      - '.github/workflows/infra.yml'
   pull_request:
     paths: *paths
   workflow_dispatch:
@@ -358,7 +358,7 @@ jobs:
         # CI runner has no known_hosts for the bare-metal nodes; first contact is
         # over the NetBird overlay, so disable strict host-key checking for this run.
         env:
-          ANSIBLE_HOST_KEY_CHECKING: "false"
+          ANSIBLE_HOST_KEY_CHECKING: 'false'
           CEPH_ENV: inventories/${{ matrix.partition }}-${{ matrix.region }}/sietch/inventory.ini
         run: mise run deploy
 
