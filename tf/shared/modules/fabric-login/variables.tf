@@ -1,7 +1,7 @@
 # fabric-login — declaratively manage Junos login users + their SSH keys and
 # rights on a switch VC. Public keys are NOT secret and live in version control;
 # any passwords come from variables sourced from 1Password (never committed).
-# Instantiated once per VC with that VC's aliased junos-qfx provider.
+# Instantiated once per VC with that VC's aliased junos provider.
 
 variable "users" {
   description = "Login users keyed by username. Public SSH keys are committed; rights via `class`."
@@ -20,12 +20,6 @@ variable "classes" {
     permissions = list(string)
   }))
   default = {}
-}
-
-variable "resource_name" {
-  type        = string
-  default     = "login"
-  description = "JTAF resource/apply-group name for this login slice."
 }
 
 variable "name_servers" {

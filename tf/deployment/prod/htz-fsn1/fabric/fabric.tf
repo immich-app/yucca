@@ -67,18 +67,16 @@ module "login_spine" {
   source    = "../../../../shared/modules/fabric-login"
   providers = { junos = junos.spine }
 
-  resource_name = "login"
-  users         = module.identity.fabric_login.users
-  classes       = module.identity.fabric_login.classes
-  name_servers  = local.fabric_name_servers
+  users        = module.identity.fabric_login.users
+  classes      = module.identity.fabric_login.classes
+  name_servers = local.fabric_name_servers
 }
 
 module "login_leaf_cls1" {
   source    = "../../../../shared/modules/fabric-login"
   providers = { junos = junos.leaf_cls1 }
 
-  resource_name = "login"
-  users         = module.identity.fabric_login.users
-  classes       = module.identity.fabric_login.classes
-  name_servers  = local.fabric_name_servers
+  users        = module.identity.fabric_login.users
+  classes      = module.identity.fabric_login.classes
+  name_servers = local.fabric_name_servers
 }

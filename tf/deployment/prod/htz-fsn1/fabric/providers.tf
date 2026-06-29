@@ -1,4 +1,4 @@
-# One junos-qfx provider instance per switch VC, host derived from the addressing
+# One junos provider instance per switch VC, host derived from the addressing
 # module (spine = site .115; each cluster leaf = .125 + (n-1)*10). Auth is the
 # dedicated `terraform` NETCONF user with an SSH key (path from var; rendered from
 # 1Password by the mise/CI runner — never committed).

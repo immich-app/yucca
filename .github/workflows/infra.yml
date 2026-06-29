@@ -298,8 +298,8 @@ jobs:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
           hostname: gha-plan-${{ matrix.partition }}-${{ matrix.region }}-${{ matrix.stack }}-${{ github.run_id }}
 
-      # Prod fabric goes through the mise task (builds the junos-qfx/hetzner
-      # providers, renders the NETCONF key, -parallelism=1). Every other stack is a
+      # Prod fabric goes through the mise task (builds the hetzner provider, renders
+      # the NETCONF key; junos comes from the registry). Every other stack is a
       # plain registry-provider terragrunt plan.
       - name: Terragrunt plan (fabric)
         if: matrix.stack == 'fabric'

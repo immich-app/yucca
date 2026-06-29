@@ -11,8 +11,8 @@ terraform {
       version = "~> 4.0"
     }
     # Hetzner Robot (dedicated-server) API — mgmt-host reprovisioning (mgmt.tf).
-    # Built locally + supplied via the same filesystem_mirror as junos-qfx
-    # (mise `mgmt:provider-build`, invoked by `infra:providers`).
+    # The only non-registry provider: built locally + supplied via a filesystem
+    # mirror (mise `mgmt:provider-build`, invoked by `infra:providers`).
     hetzner = {
       source = "zack/hetzner"
     }
