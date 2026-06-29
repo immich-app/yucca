@@ -16,8 +16,8 @@
 #     and must keep stable values -- the rebuilt RGW is seeded from the same
 #     items, so recreating them here would collide and churn a live contract.
 #   - SSH Key item (<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY): generated via op CLI
-#     `--ssh-generate-key` per ADR-010 (provider can't generate inline; import
-#     would put the private key in state).
+#     `--ssh-generate-key` (provider can't generate inline; import would put
+#     the private key in state).
 #   - DR Document items (RGW TLS cert/key, admin keyring): captured post-deploy
 #     by `mise run capture`.
 
