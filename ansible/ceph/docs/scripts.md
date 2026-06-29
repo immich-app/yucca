@@ -202,7 +202,7 @@ scripts/install-ssh-keys.sh sietch
 
 ### Related
 
-- [runbooks/rotate-ssh-key.md](runbooks/rotate-ssh-key.md) -- the full rotation flow
+- [runbooks/rotate-secrets.md](runbooks/rotate-secrets.md#rotating-ssh-keys) -- the full SSH-key rotation flow
 - [secrets.md](secrets.md) -- why SSH keys live in 1P (durable, auditable, one `op://` model)
 
 ---
