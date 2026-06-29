@@ -105,7 +105,7 @@ required for rotation.
 SSH keys for `ansible-iac` live in `yucca_tf_staging` as category `SSH Key`
 items titled `<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY`. Rotation is
 forward-only -- generate a new key in 1P, distribute the new pubkey,
-retire the old key after confidence.
+retire the old key once you have confirmed the new one works.
 
 ### Steps (sietch example; same pattern for any cluster)
 

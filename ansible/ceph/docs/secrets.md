@@ -11,7 +11,7 @@ flowchart TB
     ONEP[("1Password<br/>yucca_tf, yucca_tf_staging, ...<br/><i>source of truth</i>")]
     TF[Terraform / Tofu<br/>tf/deployment/staging/austin/ceph/]
     REPO[/"inventories/&lt;partition&gt;-&lt;region&gt;/&lt;cluster&gt;/<br/>inventory.ini (TF-gen, gitignored)<br/>secrets.yml.tpl (TF-gen, gitignored)"/]
-    WRAP[scripts/ansible-play.sh<br/><i>mktemp + op inject -> exec ansible-playbook --extra-vars @tmp</i>]
+    WRAP[scripts/ansible-play.sh<br/><i>mktemp + op inject -> run ansible-playbook --extra-vars @tmp</i>]
     ANS[ansible-playbook]
 
     TF -.->|reads via op run --env-file| ONEP
@@ -52,11 +52,11 @@ playbook time):
 
 **SSH Key items** (category `SSH Key`, consumed via
 `scripts/install-ssh-keys.sh` on operator workstations and
-`rotate-ssh-key.yml` on cluster nodes). SSH keys use the same storage model
-as the passwords: generated natively in 1Password
-(`--ssh-generate-key=ed25519`, so the private key never touches operator disk
-at creation), durable across a lost laptop, and rotated forward-only --
-generate a new key, distribute the public half, retire the old one:
+`rotate-ssh-key.yml` on cluster nodes). SSH keys use the same storage model as
+the passwords. They are generated natively in 1Password
+(`--ssh-generate-key=ed25519`), so the private key never touches operator disk
+at creation. Rotation is forward-only: generate a new key, distribute the
+public half, retire the old one.
 
 | Item | Field | Consumed as |
 |---|---|---|
@@ -83,8 +83,8 @@ is lost):
 | `<CLUSTER>_CEPH_RGW_TLS_KEY` | `password` (concealed) | `/etc/ceph/rgw-ssl.key` on bootstrap |
 | `<CLUSTER>_CEPH_CLIENT_ADMIN_KEYRING` | `password` (concealed) | `/etc/ceph/ceph.client.admin.keyring` on bootstrap |
 
-Items get created on first `mise run capture`; subsequent runs update
-in place on content drift.
+Items are created on the first `mise run capture`; later runs overwrite them
+only if the content changed.
 
 Item names are derived in `tf/shared/modules/ceph-cluster/main.tf`
 (`local.secret_prefix`). Hardcoded `CEPH` (not `role_in_hostname`) so every
@@ -109,7 +109,7 @@ The op CLI is invoked in three distinct patterns across this project:
 2. `mktemp` a `0600` tmpfile with `trap` cleanup on `EXIT` / `INT` / `TERM`.
 3. `op inject -f -i <cluster>/secrets.yml.tpl -o $tmpfile` -- resolves every
    `op://` reference. Exit non-zero if any reference can't be resolved.
-4. `exec ansible-playbook --extra-vars @$tmpfile ...`.
+4. Runs `ansible-playbook --extra-vars @$tmpfile ...`.
 
 Ansible task references stay unchanged -- `vault_ops_password` etc. are
 regular variables populated from extra-vars (highest precedence).

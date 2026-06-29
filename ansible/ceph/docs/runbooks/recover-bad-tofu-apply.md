@@ -35,14 +35,17 @@ op run --env-file=tf/.env -- \
 mise run tf:init
 
 # If the object is missing: state was never created or was deleted. You
-# can recover by re-applying -- TF recreates local_file resources
-# (idempotent, same content; no 1P items are harmed because the module's
-# onepassword_item resources are currently dormant -- items are created via
-# the op CLI today, and the TF-managed path in secrets.tf.disabled is only
-# re-enabled once a dedicated ceph-scoped service account replaces the
-# org-wide superuser SA).
+# can recover by re-applying -- TF recreates the local_file resources
+# (idempotent, same content). No 1P items are touched: the module's
+# onepassword_item resources are dormant (see the note below).
 mise run tf:apply
 ```
+
+> **Dormant 1P items:** the module's `onepassword_item` resources live in
+> `secrets.tf.disabled` and are not applied today -- items are created via the
+> `op` CLI. They get re-enabled once a dedicated ceph-scoped service account
+> replaces the org-wide superuser SA. Until then, `tofu apply` never creates
+> or deletes 1P items, so re-applying state is safe.
 
 ### Rendered file on disk doesn't match tfvars
 
@@ -52,7 +55,7 @@ cat ansible/ceph/inventories/staging-austin/sietch/inventory.ini
 ```
 
 **Cause:** someone hand-edited the rendered file; TF state shows it
-unchanged; operator is surprised.
+unchanged.
 
 **Fix:**
 
@@ -144,8 +147,8 @@ op run --env-file=tf/.env -- \
 
 **Option B -- re-apply from clean state.** Delete the state object and
 re-init + re-apply. TF recreates the `local_file` resources (idempotent,
-same content). Safe today because `onepassword_item` resources are
-dormant -- items are created via the op CLI, not TF-owned yet.
+same content). Safe today while the 1P items stay dormant (see the note
+above).
 
 ```bash
 op run --env-file=tf/.env -- \

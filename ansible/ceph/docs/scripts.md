@@ -30,7 +30,7 @@ scripts/ansible-play.sh status.yml
 CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run preflight
 ```
 
-Both forms work, by design. `CEPH_ENV` is deliberately **not** declared in
+Both forms work. `CEPH_ENV` is deliberately **not** declared in
 the `ansible/ceph/.mise.toml` `[env]` block: a value there would override
 your shell's value and silently pin every task to the default cluster. By
 leaving it out, your exported (or inline-prefixed) value passes straight
@@ -68,13 +68,13 @@ CEPH_ENV=inventories/<partition>-<region>/<cluster>/inventory.ini \
 3. Verifies `op account get` succeeds (1P desktop session or
    `OP_SERVICE_ACCOUNT_TOKEN`). Fails fast if unavailable.
 4. `mktemp`s a tmpfile, `chmod 600`, registers a `trap` to delete it on
-   `EXIT INT TERM` (including operator Ctrl-C or SIGKILL'd parents).
+   `EXIT INT TERM` (covers a clean exit and operator Ctrl-C / TERM).
 5. Runs `op inject -f -i <template> -o <tmpfile>`. Fails if any `op://`
    reference can't be resolved.
-6. `exec`s `ansible-playbook -i $CEPH_ENV --extra-vars @<tmpfile> <args>`.
+6. Runs `ansible-playbook -i $CEPH_ENV --extra-vars @<tmpfile> <args>`.
 
-The `exec` means the wrapper process is replaced -- the trap still fires via
-the shell's EXIT handler on the child's termination.
+The wrapper stays the parent process (no `exec`), so the `trap` removes the
+tmpfile when the play finishes or is interrupted.
 
 ### Environment
 
@@ -270,7 +270,7 @@ CEPH_ENV=inventories/staging-austin/sietch/inventory.ini \
 
 ### Related
 
-- [architecture.md section 8](architecture.md) -- where the wrappers fit in the system mesh
+- [architecture.md section 8](architecture.md) -- where the wrappers fit
 
 ---
 

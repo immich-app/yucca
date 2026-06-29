@@ -17,7 +17,7 @@ and uses it to resolve `secrets.yml.tpl`.
 
 Which SA: the partition's **read** service account (for sietch, the staging
 read SA -- the same token CI uses as `OP_TF_YUCCA_STAGING_ENV`). Remote hands
-get read, never write -- least-privilege principle.
+get read, never write.
 
 ## One-time setup (per operator)
 
@@ -29,7 +29,7 @@ get read, never write -- least-privilege principle.
    `OP_TF_YUCCA_STAGING_ENV` GitHub secret.
 3. **Operator sets it in their shell profile** (`~/.bashrc` or equivalent):
    ```bash
-   export OP_SERVICE_ACCOUNT_TOKEN="ops_eyJ...."  # 862-char token
+   export OP_SERVICE_ACCOUNT_TOKEN="ops_eyJ...."  # the read SA token
    ```
 4. **Operator clones yucca**, installs mise tooling, runs:
    ```bash

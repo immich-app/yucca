@@ -25,7 +25,7 @@ satisfies auth. No ansible-vault password to manage.
 
 The `ansible-iac` SSH keys live in `yucca_tf_staging` as items like
 `SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` -- native 1Password SSH Key items, same
-storage model as the cluster passwords, so a lost laptop is a non-event.
+storage model as the cluster passwords, so losing a laptop leaks nothing.
 
 **First-time workstation setup:**
 
@@ -92,7 +92,7 @@ mise run deploy
 CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run preflight
 ```
 
-Both forms work, by design. `CEPH_ENV` is deliberately **not** declared in
+Both forms work. `CEPH_ENV` is deliberately **not** declared in
 mise's `[env]` block -- if it were, mise would override your shell value and
 silently send every task to the default cluster. By leaving it out, your
 exported (or inline-prefixed) value passes straight through, and each task
@@ -326,7 +326,7 @@ scripts/ansible-play.sh deploy-ceph.yml --tags bootstrap
 | `drift` | `mise run drift` | Detect configuration drift (via ansible-play.sh) |
 | `deploy` | `mise run deploy` | Full deploy pipeline (via ansible-play.sh) |
 | `backup` | `mise run backup` | Export cluster config for DR (via ansible-play.sh) |
-| `capture` | `mise run capture` | Snapshot RGW TLS + admin keyring to 1P (DR belt) |
+| `capture` | `mise run capture` | Snapshot RGW TLS + admin keyring to 1P for disaster recovery |
 | `bench` | `mise run bench` | S3 benchmark (RGW round-trip) |
 | `bench-rados` | `mise run bench-rados` | RADOS bench (raw cluster I/O) |
 | `rotate-certs` | `mise run rotate-certs` | RGW TLS certificate rotation |

@@ -100,7 +100,7 @@ flowchart TB
 
     WRAP -->|reads inventory + secrets.yml.tpl| REPO
     WRAP -->|op inject / op read| OP
-    WRAP -->|exec| ANS
+    WRAP -->|runs| ANS
     ANS -->|SSH ansible-iac| NODES
 
     OP <-->|item CRUD| ONEP
@@ -130,7 +130,7 @@ flowchart TB
    pointers, never literal secrets).
 3. **Ansible <-> op CLI** -- `scripts/ansible-play.sh` reads the cluster's
    `secrets.yml.tpl`, runs `op inject -f` to resolve `op://` references into
-   a `mktemp`'d tmpfile (chmod 600, trap-cleaned), then execs
+   a `mktemp`'d tmpfile (chmod 600, trap-cleaned), then runs
    `ansible-playbook --extra-vars @<tmpfile>`. The tmpfile lives only for
    the duration of the play.
 4. **mise -> wrappers** -- `mise run deploy` invokes
@@ -323,9 +323,9 @@ No custom password-script (no `vault-password.sh`); no
 `ansible-vault`-encrypted file in git. Lint and syntax-check tasks don't
 invoke op at all -- they don't need secrets, so "1P unavailable" never
 silently degrades them. This replaced an earlier `vault-password.sh` +
-`ansible-vault` setup whose 1P-unavailable fallback to a dummy password
-masked real auth failures until a downstream task blew up -- the current
-flow fails closed instead.
+`ansible-vault` setup. That setup fell back to a dummy password when 1P was
+unavailable, which masked real auth failures until a downstream task blew up.
+The current flow fails closed instead.
 
 ---
 
@@ -361,17 +361,18 @@ flowchart TB
 `site.yml` starts at `baseline` -- `provision_host` runs only on first
 install via `provision.yml`. (The roles above are imported as per-role
 playbooks: `baseline.yml`, `tune-os.yml`, `tune-hardware.yml`,
-`deploy-ceph.yml`, `tune-ceph.yml`, `harden.yml`.) The split is deliberate:
-`provision_host` does
-the minimum inside the live-image chroot (just the `ansible-iac` user, so
-Ansible can connect after reboot) because chroot work is fragile; the ops
-user, packages, and `/etc/hosts` move to the convergeable `baseline` role,
-which re-runs against a live node to fix drift without reprovisioning. The
-OS itself is installed with `debootstrap` from the live image rather than a
-preseed/autoinstall, because the disk layout (mdraid-1 across two SSDs,
-partitions reserved for ceph block.db and SSD OSDs) needs scripted
-partitioning and pre-flight hardware validation that preseed's `partman`
-recipes can't express.
+`deploy-ceph.yml`, `tune-ceph.yml`, `harden.yml`.)
+
+The split is deliberate. `provision_host` does the minimum inside the
+live-image chroot -- just the `ansible-iac` user, so Ansible can connect after
+reboot -- because chroot work is fragile. The ops user, packages, and
+`/etc/hosts` move to the convergeable `baseline` role, which re-runs against a
+live node to fix drift without reprovisioning.
+
+The OS is installed with `debootstrap` from the live image rather than a
+preseed/autoinstall. The disk layout (mdraid-1 across two SSDs, partitions
+reserved for ceph block.db and SSD OSDs) needs scripted partitioning and
+pre-flight hardware validation that preseed's `partman` recipes can't express.
 
 ### Why this order matters
 
@@ -550,7 +551,7 @@ when 1P is unreachable, and give better error messages than the raw tools.
 
 | Script                  | Purpose                                                                          |
 |-------------------------|----------------------------------------------------------------------------------|
-| `ansible-play.sh`       | Render secrets via `op inject -f` to a `mktemp`'d file (chmod 600, trap-cleaned), then exec `ansible-playbook --extra-vars @<tmpfile>` |
+| `ansible-play.sh`       | Render secrets via `op inject -f` to a `mktemp`'d file (chmod 600, trap-cleaned), then run `ansible-playbook --extra-vars @<tmpfile>` |
 | `install-ssh-keys.sh`   | Idempotent `op read` -> `~/.ssh/id_ed25519_<cluster>` installer; refuses overwrite on fingerprint mismatch                                |
 | `preflight.sh`          | Verifies TF artifacts present, 1P session live, SSH reachable, Python on targets -- surfaced via `mise run preflight`                    |
 
@@ -607,7 +608,7 @@ sequenceDiagram
     OPCLI->>ONEP: resolve op://yucca_tf_staging/SIETCH_CEPH_*/password
     ONEP-->>OPCLI: secret values
     OPCLI->>TMP: write resolved YAML
-    WRAP->>ANS: exec --extra-vars @TMP
+    WRAP->>ANS: run --extra-vars @TMP
     loop phases 1..6
         ANS->>NODES: SSH ansible-iac@<bond_ip><br/>via id_ed25519_<cluster>
     end

@@ -18,7 +18,7 @@ traffic share one subnet. Production will separate them; see
 |----------|-------------------|------------------------------------------------------------------------|
 | sietch   | `10.10.10.0/24`   | 2x 10GbE bonded active-backup (eno1 + eno2) per node; private switch   |
 
-A Hetzner NVMe-RAID host would attach over a public /32 with a single NIC
+A Hetzner NVMe-RAID host attaches over a public /32 with a single NIC
 and direct SSH (no bond, no ProxyJump).
 
 Per-node connection IPs (`bond_ip`) are declared in
@@ -72,10 +72,9 @@ booting Debian 12 Bookworm.
 
 ## host_vars schema by hardware shape
 
-Storage topologies differ across hardware shapes, which shows up in the
-`host_vars/<host>.yml` schema. When adding a new cluster, operators must
-pick the schema matching the hardware -- not just copy from an existing
-cluster blindly.
+Storage topologies differ across hardware shapes, and so does the
+`host_vars/<host>.yml` schema. When adding a new cluster, pick the schema
+that matches the hardware -- don't copy an existing cluster's.
 
 ### sietch-shape (SAS expander + dual-SSD-VG)
 

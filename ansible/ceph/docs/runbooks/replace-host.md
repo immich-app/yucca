@@ -8,7 +8,7 @@ hostname, same IP, same Ceph OSD identities.
 
 ---
 
-## Preserving name = preserving trust
+## Why preserve the name
 
 Keeping the old hostname avoids:
 - Re-issuing the ansible-iac SSH key to a new hostname

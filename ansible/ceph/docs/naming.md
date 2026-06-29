@@ -44,7 +44,7 @@ into the ceph-cluster module whole -- the cluster's tfvars entry only
 supplies cluster, role, and name.
 
 Current `role_in_hostname` values: sietch uses `ceph`
-(mixed-role, all-nodes-are-everything). Dedicated-role hostnames (`osd`,
+(mixed-role: every node runs every daemon). Dedicated-role hostnames (`osd`,
 `mon`) are supported but not used today.
 
 ## Cluster naming
@@ -57,9 +57,9 @@ a deliberate, one-time decision.
 bootstrap. Renaming after deployment is expensive (see "Cost of renaming"
 below).
 
-**Convention (unenforced):** Dune-themed. The existing cluster is `sietch`
-(an underground Fremen community). Dune candidates not yet used, and that fit
-the hard constraints below: `arrakis`, `caladan`, `giedi`, `ixian`,
+**Convention (unenforced):** Dune-themed. The existing cluster is `sietch`.
+Unused Dune candidates that fit the hard constraints below: `arrakis`,
+`caladan`, `giedi`, `ixian`,
 `kwisatz`, `muaddib`, `fremen`, `chani`, `leto`, `jessica`. Nothing in
 the code enforces Dune specifically -- mixed themes or theme breaks are
 acceptable when they communicate intent better (e.g., a cluster named
@@ -109,7 +109,7 @@ A rename touches all of:
 
 Expect hours-to-days of work, cluster downtime, and coordination with
 every consumer of the cluster's S3/dashboards/etc. A rename is only cheap
-on an idle cluster nothing consumes yet -- a running production Ceph cluster
+on an idle cluster that nothing consumes yet -- a running production Ceph cluster
 makes this a multi-week project.
 
 **Pick once. Pick deliberately.**
@@ -169,7 +169,7 @@ collisions within the cluster.
 - **Never bump `name_seed` once a cluster has deployed hosts.** Bumping
   re-rolls every auto-picked name in the cluster, which cascades into
   certs, SSH `known_hosts`, 1P items, DNS, cephadm identity.
-- **Mixing paths has a non-obvious side effect.** Auto-picked names are
+- **Mixing paths has a hidden side effect.** Auto-picked names are
   drawn from `available_words = wordlist - explicit_names`. Adding or
   removing an *operator-declared* host changes `explicit_names`, which
   changes the shuffle input length, which re-permutes the result. An

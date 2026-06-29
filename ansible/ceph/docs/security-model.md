@@ -91,7 +91,7 @@ Three user accounts exist on every node:
   `rotate-ssh-key.yml` -- new pubkey distributed to `authorized_keys` with
   `exclusive: false`, old keys pruned out-of-band. Keys are generated
   natively in 1Password, so the private half never touches operator disk at
-  creation and a lost laptop is a non-event.
+  creation, and losing a laptop leaks nothing.
 - **ops user keys**: Distributed out-of-band after initial deployment.
   No keys are provisioned at deploy time.
 - **cephadm key**: Generated during `cephadm bootstrap`, distributed to all
@@ -157,7 +157,7 @@ catalog.
 At playbook time, `scripts/ansible-play.sh` invokes `op inject` on the
 TF-rendered `secrets.yml.tpl`, writes the resolved values to a `0600`
 tmpfile, and passes it as `--extra-vars @tmpfile`. Tmpfile is `trap`-cleaned
-on `EXIT`/`INT`/`TERM`. No at-rest encrypted file in git.
+on `EXIT`/`INT`/`TERM`. Nothing encrypted-at-rest is committed to git.
 
 | Secret                           | Variable                          |
 |----------------------------------|-----------------------------------|
@@ -204,7 +204,7 @@ Rotation procedure: [runbooks/rotate-sa-token.md](runbooks/rotate-sa-token.md).
 | Ceph manager log | `mgr/cephadm/log_to_cluster true` |
 | View audit log | `ceph log last -W audit` |
 | Firewall logging | Dropped packets logged at 5/min with `nftables-drop:` prefix |
-| Prometheus alerts | 16+ alert rule groups (89 built-in rules) covering OSD, MON, PG, pool, MDS, hardware, network |
+| Prometheus alerts | 89 built-in rules across 16 groups covering OSD, MON, PG, pool, MDS, hardware, network |
 
 The audit channel records all `ceph` admin commands executed against the
 cluster, including the authenticated user, timestamp, and command arguments.

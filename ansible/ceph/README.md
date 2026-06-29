@@ -91,7 +91,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | `bench.yml` | S3 benchmark (RGW round-trip) |
 | `rados-bench.yml` | RADOS bench (raw cluster I/O, bypasses RGW) |
 | `backup-config.yml` | Export cluster config for DR |
-| `post-deploy-capture.yml` | Snapshot RGW TLS + admin keyring to 1P (DR belt) |
+| `post-deploy-capture.yml` | Snapshot RGW TLS + admin keyring to 1P for disaster recovery |
 | `rotate-certs.yml` | RGW TLS certificate rotation |
 | `rotate-ssh-key.yml` | Distribute current ansible-iac pubkey from 1P to nodes |
 | `migrate-networkd.yml` | One-shot networkd/bridge migration (rolling, noout-gated) |
@@ -111,7 +111,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | `deploy` | Full pipeline |
 | `destroy` | Cluster teardown (interactive) |
 | `backup` | Export cluster config for DR |
-| `capture` | Snapshot RGW TLS + admin keyring to 1P (DR belt) |
+| `capture` | Snapshot RGW TLS + admin keyring to 1P for disaster recovery |
 | `bench` | S3 benchmark (RGW round-trip) |
 | `bench-rados` | RADOS bench (raw cluster I/O) |
 | `rotate-certs` | RGW TLS certificate rotation |
@@ -145,5 +145,5 @@ Inventory + secrets-template scaffolding live in `yucca/tf/` -- run
 
 - **Single-network topology**: public = cluster network on sietch.
 - **Self-signed TLS**: RGW clients need `--no-verify-ssl`. Production needs real certs.
-- **`ops` user is password-only**: no SSH keys installed; password sourced from 1P. Intended as an interactive console / recovery account, not for automation.
+- **`ops` user is password-only**: no SSH keys installed; password sourced from 1P. Intended as an interactive console or recovery account, not for automation.
 - **DNS not managed**: `s3.<domain>` and `*.s3.<domain>` records must exist externally.

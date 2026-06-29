@@ -303,9 +303,8 @@ Ansible output is committed to `ansible.log` and displayed to operators
 service in Ansible and run `cephadm` per item." This couples the role
 tightly to per-host hardware shape (path composition, partition layout,
 LV vs disk topology) and breaks on any new cluster shape -- the original
-sietch-shape `osds.yml` failed on the NVMe-RAID shape's PCI-ATA +
-LV-backed SSD OSD topology because `sas_path_prefix` was hardcoded into
-the path composition.
+`osds.yml` hardcoded `sas_path_prefix`, so it broke on the NVMe-RAID node's
+different disk layout.
 
 **Pattern:** for any cephadm-managed surface (OSDs, RGW, MON/MGR
 placement, monitoring), render a **declarative service spec** and apply
@@ -370,12 +369,9 @@ becoming an OSD?" is harder -- there's no per-disk log line. Check
 --dry-run` instead. Worth the trade-off because the role becomes
 hardware-shape-agnostic.
 
-The OSD path moved to this pattern when a second hardware shape (NVMe-RAID
-with an LV-backed SSD OSD) broke the old per-disk shell loop, whose path
-composition had baked in sietch's SAS-expander layout. The spec lists device
-paths explicitly rather than using cephadm's `rotational` filter, so empty
-bays stay empty and OS / block.db partitions are never claimed by
-auto-discovery.
+The spec lists device paths explicitly rather than using cephadm's
+`rotational` filter, so empty bays stay empty and OS / block.db partitions are
+never claimed by auto-discovery.
 
 ---
 

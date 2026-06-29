@@ -187,9 +187,9 @@ a template.
 
 ```bash
 CLUSTER_DIR=inventories/prod-htz-fsn1/mesa
-# Look up the hostname TF picked (or declared) -- visible in the rendered inventory.ini
-TF_OUTPUT=$(cat "$CLUSTER_DIR/inventory.ini")
-# Create one host_vars file per hostname_short shown in the [ceph_nodes] section
+# Look up the hostname TF picked (or declared) in the rendered inventory:
+grep -A99 '\[ceph_nodes\]' "$CLUSTER_DIR/inventory.ini"
+# Create one host_vars file per hostname_short shown there
 cp "$CLUSTER_DIR/host_vars/example.yml" "$CLUSTER_DIR/host_vars/<hostname_short>.yml"
 ```
 
@@ -293,7 +293,7 @@ Every task invocation goes through `scripts/ansible-play.sh`, which
 `op inject`s the secrets template into a short-lived tmpfile and passes
 it as `--extra-vars @<tmpfile>`.
 
-### 10. Capture the DR belt-and-suspenders items
+### 10. Capture the disaster-recovery items
 
 After the first successful deploy:
 
