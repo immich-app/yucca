@@ -54,12 +54,6 @@ variable "mgmt_vlan_id" {
   description = "Site-global management VLAN id to stretch."
 }
 
-variable "name_servers" {
-  type        = list(string)
-  default     = []
-  description = "Default DNS resolvers (system name-server). Empty = unset."
-}
-
 variable "mgmt_trusted_sources" {
   type        = list(string)
   default     = ["10.40.5.0/24", "10.254.0.0/15", "100.64.0.0/10", "127.0.0.0/8"]

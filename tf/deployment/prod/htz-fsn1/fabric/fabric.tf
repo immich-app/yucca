@@ -21,9 +21,6 @@ module "core" {
 
   vc_member_serials = var.spine_vc_serials
 
-  # Default DNS resolvers (Cloudflare + Quad9, dual-stack).
-  name_servers = ["1.1.1.1", "9.9.9.9", "2606:4700:4700::1111", "2620:fe::fe"]
-
   # Upstream IP-transit. Today: one transit (Core-Backbone), primary/default
   # (prepend 0). Add a second entry with prepend>0 + a lower local_pref to
   # multi-home (the prepended one is the backup; see core-fabric/transit.tf —
@@ -60,6 +57,12 @@ module "cluster_cls1" {
   vc_member_serials = var.cls1_leaf_serials
 }
 
+# Default DNS resolvers (Cloudflare + Quad9, dual-stack). Set here, not on core,
+# so a single resource owns the whole `system` container per switch.
+locals {
+  fabric_name_servers = ["1.1.1.1", "9.9.9.9", "2606:4700:4700::1111", "2620:fe::fe"]
+}
+
 module "login_spine" {
   source    = "../../../../shared/modules/fabric-login"
   providers = { junos-qfx = junos-qfx.spine }
@@ -67,6 +70,7 @@ module "login_spine" {
   resource_name = "login"
   users         = module.identity.fabric_login.users
   classes       = module.identity.fabric_login.classes
+  name_servers  = local.fabric_name_servers
 }
 
 module "login_leaf_cls1" {
@@ -76,4 +80,5 @@ module "login_leaf_cls1" {
   resource_name = "login"
   users         = module.identity.fabric_login.users
   classes       = module.identity.fabric_login.classes
+  name_servers  = local.fabric_name_servers
 }

@@ -45,12 +45,4 @@ locals {
       }
     ]
   }]
-
-  # system name-servers (default resolvers). Merged into `system` — only this
-  # slice; fabric-login owns `system login` via its own resource. Empty = unset.
-  system_block = length(var.name_servers) == 0 ? [] : [
-    {
-      name_server = [for ns in var.name_servers : { name = ns }]
-    }
-  ]
 }
