@@ -14,22 +14,10 @@ locals {
     }
   ]
 
-  routing_options_block = [
-    {
-      static = [
-        {
-          route = [
-            {
-              name = "0.0.0.0/0"
-              next_hop = [
-                "10.40.5.1"
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  ]
+  # Routing-options come from the transit uplink (autonomous-system + the
+  # originated discard prefix). The old static OOB default was removed at cutover
+  # — the spine's default is now the eBGP default. Empty when no transit.
+  routing_options_block = local.transit_routing_options
 
   protocols_block = [
     {
@@ -42,6 +30,8 @@ locals {
           ]
         }
       ]
+      # eBGP transit group (v4 + v6), or null when no transit configured.
+      bgp = local.transit_bgp
     }
   ]
 
@@ -55,4 +45,12 @@ locals {
       }
     ]
   }]
+
+  # system name-servers (default resolvers). Merged into `system` — only this
+  # slice; fabric-login owns `system login` via its own resource. Empty = unset.
+  system_block = length(var.name_servers) == 0 ? [] : [
+    {
+      name_server = [for ns in var.name_servers : { name = ns }]
+    }
+  ]
 }

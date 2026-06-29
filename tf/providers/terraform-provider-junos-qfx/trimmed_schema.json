@@ -527,6 +527,29 @@
                             "path": "interfaces/interface/unit/family"
                           },
                           {
+                            "name": "inet6",
+                            "type": "container",
+                            "children": [
+                              {
+                                "name": "address",
+                                "type": "list",
+                                "key": "name",
+                                "children": [
+                                  {
+                                    "name": "name",
+                                    "type": "leaf",
+                                    "leaf-type": "jt:ipv6prefix",
+                                    "base-type": "string",
+                                    "path": "interfaces/interface/unit/family/inet6/address"
+                                  }
+                                ],
+                                "ordered-by": "user",
+                                "path": "interfaces/interface/unit/family/inet6"
+                              }
+                            ],
+                            "path": "interfaces/interface/unit/family"
+                          },
+                          {
                             "name": "ethernet-switching",
                             "type": "container",
                             "children": [
@@ -592,9 +615,202 @@
             "path": ""
           },
           {
+            "name": "policy-options",
+            "type": "container",
+            "children": [
+              {
+                "name": "policy-statement",
+                "type": "list",
+                "key": "name",
+                "children": [
+                  {
+                    "name": "name",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "path": "policy-options/policy-statement"
+                  },
+                  {
+                    "name": "term",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "policy-options/policy-statement/term"
+                      },
+                      {
+                        "name": "from",
+                        "type": "container",
+                        "children": [
+                          {
+                            "name": "route-filter",
+                            "type": "list",
+                            "key": "address choice-ident choice-value",
+                            "children": [
+                              {
+                                "name": "address",
+                                "type": "leaf",
+                                "leaf-type": "jt:ipprefix",
+                                "base-type": "string",
+                                "path": "policy-options/policy-statement/term/from/route-filter"
+                              },
+                              {
+                                "name": "exact",
+                                "type": "leaf",
+                                "leaf-type": "string",
+                                "path": "policy-options/policy-statement/term/from/route-filter"
+                              }
+                            ],
+                            "ordered-by": "user",
+                            "path": "policy-options/policy-statement/term/from"
+                          }
+                        ],
+                        "path": "policy-options/policy-statement/term"
+                      },
+                      {
+                        "name": "then",
+                        "type": "container",
+                        "children": [
+                          {
+                            "name": "accept",
+                            "type": "leaf",
+                            "leaf-type": "empty",
+                            "path": "policy-options/policy-statement/term/then"
+                          },
+                          {
+                            "name": "reject",
+                            "type": "leaf",
+                            "leaf-type": "empty",
+                            "path": "policy-options/policy-statement/term/then"
+                          }
+                        ],
+                        "path": "policy-options/policy-statement/term"
+                      }
+                    ],
+                    "ordered-by": "user",
+                    "path": "policy-options/policy-statement"
+                  }
+                ],
+                "path": "policy-options"
+              }
+            ],
+            "path": ""
+          },
+          {
             "name": "protocols",
             "type": "container",
             "children": [
+              {
+                "name": "bgp",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "group",
+                    "type": "list",
+                    "key": "name",
+                    "children": [
+                      {
+                        "name": "name",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "protocols/bgp/group"
+                      },
+                      {
+                        "name": "type",
+                        "type": "leaf",
+                        "leaf-type": "enumeration",
+                        "enums": [
+                          {
+                            "id": "internal",
+                            "value": 0,
+                            "path": "protocols/bgp/group/type"
+                          },
+                          {
+                            "id": "external",
+                            "value": 1,
+                            "path": "protocols/bgp/group/type"
+                          }
+                        ],
+                        "path": "protocols/bgp/group"
+                      },
+                      {
+                        "name": "peer-as",
+                        "type": "leaf",
+                        "leaf-type": "string",
+                        "path": "protocols/bgp/group"
+                      },
+                      {
+                        "name": "neighbor",
+                        "type": "list",
+                        "key": "name",
+                        "children": [
+                          {
+                            "name": "name",
+                            "type": "leaf",
+                            "leaf-type": "jt:ipaddr-scoped",
+                            "base-type": "string",
+                            "path": "protocols/bgp/group/neighbor"
+                          },
+                          {
+                            "name": "import",
+                            "type": "leaf-list",
+                            "leaf-type": "jt:policy-algebra",
+                            "base-type": "string",
+                            "ordered-by": "user",
+                            "path": "protocols/bgp/group/neighbor"
+                          },
+                          {
+                            "name": "family",
+                            "type": "container",
+                            "children": [
+                              {
+                                "name": "inet",
+                                "type": "container",
+                                "children": [
+                                  {
+                                    "name": "unicast",
+                                    "type": "container",
+                                    "path": "protocols/bgp/group/neighbor/family/inet"
+                                  }
+                                ],
+                                "path": "protocols/bgp/group/neighbor/family"
+                              },
+                              {
+                                "name": "inet6",
+                                "type": "container",
+                                "children": [
+                                  {
+                                    "name": "unicast",
+                                    "type": "container",
+                                    "path": "protocols/bgp/group/neighbor/family/inet6"
+                                  }
+                                ],
+                                "path": "protocols/bgp/group/neighbor/family"
+                              }
+                            ],
+                            "path": "protocols/bgp/group/neighbor"
+                          },
+                          {
+                            "name": "export",
+                            "type": "leaf-list",
+                            "leaf-type": "jt:policy-algebra",
+                            "base-type": "string",
+                            "ordered-by": "user",
+                            "path": "protocols/bgp/group/neighbor"
+                          }
+                        ],
+                        "ordered-by": "user",
+                        "path": "protocols/bgp/group"
+                      }
+                    ],
+                    "ordered-by": "user",
+                    "path": "protocols/bgp"
+                  }
+                ],
+                "path": "protocols"
+              },
               {
                 "name": "lldp",
                 "type": "container",
@@ -625,6 +841,19 @@
             "type": "container",
             "children": [
               {
+                "name": "autonomous-system",
+                "type": "container",
+                "children": [
+                  {
+                    "name": "as-number",
+                    "type": "leaf",
+                    "leaf-type": "string",
+                    "path": "routing-options/autonomous-system"
+                  }
+                ],
+                "path": "routing-options"
+              },
+              {
                 "name": "static",
                 "type": "container",
                 "children": [
@@ -641,23 +870,9 @@
                         "path": "routing-options/static/route"
                       },
                       {
-                        "name": "next-hop",
-                        "type": "leaf-list",
-                        "leaf-type": "union",
-                        "types": [
-                          {
-                            "type": "string",
-                            "path": "routing-options/static/route/next-hop"
-                          },
-                          {
-                            "type": "string",
-                            "patterns": [
-                              "<.*>|$.*"
-                            ],
-                            "path": "routing-options/static/route/next-hop"
-                          }
-                        ],
-                        "ordered-by": "user",
+                        "name": "discard",
+                        "type": "leaf",
+                        "leaf-type": "empty",
                         "path": "routing-options/static/route"
                       }
                     ],
@@ -880,6 +1095,22 @@
                     "path": "system/ports"
                   }
                 ],
+                "path": "system"
+              },
+              {
+                "name": "name-server",
+                "type": "list",
+                "key": "name",
+                "children": [
+                  {
+                    "name": "name",
+                    "type": "leaf",
+                    "leaf-type": "jt:ipaddr",
+                    "base-type": "string",
+                    "path": "system/name-server"
+                  }
+                ],
+                "ordered-by": "user",
                 "path": "system"
               },
               {

@@ -538,6 +538,29 @@ var TrimmedSchemaJSON = `{
                           {
                             "children": [
                               {
+                                "children": [
+                                  {
+                                    "base-type": "string",
+                                    "leaf-type": "jt:ipv6prefix",
+                                    "name": "name",
+                                    "path": "interfaces/interface/unit/family/inet6/address",
+                                    "type": "leaf"
+                                  }
+                                ],
+                                "key": "name",
+                                "name": "address",
+                                "ordered-by": "user",
+                                "path": "interfaces/interface/unit/family/inet6",
+                                "type": "list"
+                              }
+                            ],
+                            "name": "inet6",
+                            "path": "interfaces/interface/unit/family",
+                            "type": "container"
+                          },
+                          {
+                            "children": [
+                              {
                                 "default": "access",
                                 "enums": [
                                   {
@@ -615,6 +638,199 @@ var TrimmedSchemaJSON = `{
               {
                 "children": [
                   {
+                    "leaf-type": "string",
+                    "name": "name",
+                    "path": "policy-options/policy-statement",
+                    "type": "leaf"
+                  },
+                  {
+                    "children": [
+                      {
+                        "leaf-type": "string",
+                        "name": "name",
+                        "path": "policy-options/policy-statement/term",
+                        "type": "leaf"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "base-type": "string",
+                                "leaf-type": "jt:ipprefix",
+                                "name": "address",
+                                "path": "policy-options/policy-statement/term/from/route-filter",
+                                "type": "leaf"
+                              },
+                              {
+                                "leaf-type": "string",
+                                "name": "exact",
+                                "path": "policy-options/policy-statement/term/from/route-filter",
+                                "type": "leaf"
+                              }
+                            ],
+                            "key": "address choice-ident choice-value",
+                            "name": "route-filter",
+                            "ordered-by": "user",
+                            "path": "policy-options/policy-statement/term/from",
+                            "type": "list"
+                          }
+                        ],
+                        "name": "from",
+                        "path": "policy-options/policy-statement/term",
+                        "type": "container"
+                      },
+                      {
+                        "children": [
+                          {
+                            "leaf-type": "empty",
+                            "name": "accept",
+                            "path": "policy-options/policy-statement/term/then",
+                            "type": "leaf"
+                          },
+                          {
+                            "leaf-type": "empty",
+                            "name": "reject",
+                            "path": "policy-options/policy-statement/term/then",
+                            "type": "leaf"
+                          }
+                        ],
+                        "name": "then",
+                        "path": "policy-options/policy-statement/term",
+                        "type": "container"
+                      }
+                    ],
+                    "key": "name",
+                    "name": "term",
+                    "ordered-by": "user",
+                    "path": "policy-options/policy-statement",
+                    "type": "list"
+                  }
+                ],
+                "key": "name",
+                "name": "policy-statement",
+                "path": "policy-options",
+                "type": "list"
+              }
+            ],
+            "name": "policy-options",
+            "path": "",
+            "type": "container"
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "leaf-type": "string",
+                        "name": "name",
+                        "path": "protocols/bgp/group",
+                        "type": "leaf"
+                      },
+                      {
+                        "enums": [
+                          {
+                            "id": "internal",
+                            "path": "protocols/bgp/group/type",
+                            "value": 0
+                          },
+                          {
+                            "id": "external",
+                            "path": "protocols/bgp/group/type",
+                            "value": 1
+                          }
+                        ],
+                        "leaf-type": "enumeration",
+                        "name": "type",
+                        "path": "protocols/bgp/group",
+                        "type": "leaf"
+                      },
+                      {
+                        "leaf-type": "string",
+                        "name": "peer-as",
+                        "path": "protocols/bgp/group",
+                        "type": "leaf"
+                      },
+                      {
+                        "children": [
+                          {
+                            "base-type": "string",
+                            "leaf-type": "jt:ipaddr-scoped",
+                            "name": "name",
+                            "path": "protocols/bgp/group/neighbor",
+                            "type": "leaf"
+                          },
+                          {
+                            "base-type": "string",
+                            "leaf-type": "jt:policy-algebra",
+                            "name": "import",
+                            "ordered-by": "user",
+                            "path": "protocols/bgp/group/neighbor",
+                            "type": "leaf-list"
+                          },
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "name": "unicast",
+                                    "path": "protocols/bgp/group/neighbor/family/inet",
+                                    "type": "container"
+                                  }
+                                ],
+                                "name": "inet",
+                                "path": "protocols/bgp/group/neighbor/family",
+                                "type": "container"
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "name": "unicast",
+                                    "path": "protocols/bgp/group/neighbor/family/inet6",
+                                    "type": "container"
+                                  }
+                                ],
+                                "name": "inet6",
+                                "path": "protocols/bgp/group/neighbor/family",
+                                "type": "container"
+                              }
+                            ],
+                            "name": "family",
+                            "path": "protocols/bgp/group/neighbor",
+                            "type": "container"
+                          },
+                          {
+                            "base-type": "string",
+                            "leaf-type": "jt:policy-algebra",
+                            "name": "export",
+                            "ordered-by": "user",
+                            "path": "protocols/bgp/group/neighbor",
+                            "type": "leaf-list"
+                          }
+                        ],
+                        "key": "name",
+                        "name": "neighbor",
+                        "ordered-by": "user",
+                        "path": "protocols/bgp/group",
+                        "type": "list"
+                      }
+                    ],
+                    "key": "name",
+                    "name": "group",
+                    "ordered-by": "user",
+                    "path": "protocols/bgp",
+                    "type": "list"
+                  }
+                ],
+                "name": "bgp",
+                "path": "protocols",
+                "type": "container"
+              },
+              {
+                "children": [
+                  {
                     "children": [
                       {
                         "leaf-type": "string",
@@ -644,6 +860,19 @@ var TrimmedSchemaJSON = `{
               {
                 "children": [
                   {
+                    "leaf-type": "string",
+                    "name": "as-number",
+                    "path": "routing-options/autonomous-system",
+                    "type": "leaf"
+                  }
+                ],
+                "name": "autonomous-system",
+                "path": "routing-options",
+                "type": "container"
+              },
+              {
+                "children": [
+                  {
                     "children": [
                       {
                         "base-type": "string",
@@ -653,24 +882,10 @@ var TrimmedSchemaJSON = `{
                         "type": "leaf"
                       },
                       {
-                        "leaf-type": "union",
-                        "name": "next-hop",
-                        "ordered-by": "user",
+                        "leaf-type": "empty",
+                        "name": "discard",
                         "path": "routing-options/static/route",
-                        "type": "leaf-list",
-                        "types": [
-                          {
-                            "path": "routing-options/static/route/next-hop",
-                            "type": "string"
-                          },
-                          {
-                            "path": "routing-options/static/route/next-hop",
-                            "patterns": [
-                              "\u003c.*\u003e|$.*"
-                            ],
-                            "type": "string"
-                          }
-                        ]
+                        "type": "leaf"
                       }
                     ],
                     "key": "name",
@@ -902,6 +1117,22 @@ var TrimmedSchemaJSON = `{
               {
                 "children": [
                   {
+                    "base-type": "string",
+                    "leaf-type": "jt:ipaddr",
+                    "name": "name",
+                    "path": "system/name-server",
+                    "type": "leaf"
+                  }
+                ],
+                "key": "name",
+                "name": "name-server",
+                "ordered-by": "user",
+                "path": "system",
+                "type": "list"
+              },
+              {
+                "children": [
+                  {
                     "children": [
                       {
                         "leaf-type": "string",
@@ -1077,6 +1308,7 @@ type xml_Configuration struct {
 	Firewall []xml_Firewall `xml:"firewall,omitempty"`
 	Forwarding_options []xml_Forwarding_options `xml:"forwarding-options,omitempty"`
 	Interfaces []xml_Interfaces `xml:"interfaces,omitempty"`
+	Policy_options []xml_Policy_options `xml:"policy-options,omitempty"`
 	Protocols []xml_Protocols `xml:"protocols,omitempty"`
 	Routing_options []xml_Routing_options `xml:"routing-options,omitempty"`
 	System []xml_System `xml:"system,omitempty"`
@@ -1104,13 +1336,20 @@ type xml_Interfaces struct {
 	Interface []xml_Interfaces_Interface `xml:"interface,omitempty"`
 }
 
+type xml_Policy_options struct {
+	XMLName xml.Name `xml:"policy-options"`
+	Policy_statement []xml_Policy_options_Policy_statement `xml:"policy-statement,omitempty"`
+}
+
 type xml_Protocols struct {
 	XMLName xml.Name `xml:"protocols"`
+	Bgp []xml_Protocols_Bgp `xml:"bgp,omitempty"`
 	Lldp []xml_Protocols_Lldp `xml:"lldp,omitempty"`
 }
 
 type xml_Routing_options struct {
 	XMLName xml.Name `xml:"routing-options"`
+	Autonomous_system []xml_Routing_options_Autonomous_system `xml:"autonomous-system,omitempty"`
 	Static []xml_Routing_options_Static `xml:"static,omitempty"`
 }
 
@@ -1123,6 +1362,7 @@ type xml_System struct {
 	Time_zone         *string  `xml:"time-zone,omitempty"`
 	Authentication_order         []*string  `xml:"authentication-order,omitempty"`
 	Ports []xml_System_Ports `xml:"ports,omitempty"`
+	Name_server []xml_System_Name_server `xml:"name-server,omitempty"`
 	Processes []xml_System_Processes `xml:"processes,omitempty"`
 }
 
@@ -1164,9 +1404,22 @@ type xml_Interfaces_Interface struct {
 	Aggregated_ether_options []xml_Interfaces_Interface_Aggregated_ether_options `xml:"aggregated-ether-options,omitempty"`
 	Unit []xml_Interfaces_Interface_Unit `xml:"unit,omitempty"`
 }
+type xml_Policy_options_Policy_statement struct {
+	XMLName xml.Name `xml:"policy-statement"`
+	Name         *string  `xml:"name,omitempty"`
+	Term []xml_Policy_options_Policy_statement_Term `xml:"term,omitempty"`
+}
+type xml_Protocols_Bgp struct {
+	XMLName xml.Name `xml:"bgp"`
+	Group []xml_Protocols_Bgp_Group `xml:"group,omitempty"`
+}
 type xml_Protocols_Lldp struct {
 	XMLName xml.Name `xml:"lldp"`
 	Interface []xml_Protocols_Lldp_Interface `xml:"interface,omitempty"`
+}
+type xml_Routing_options_Autonomous_system struct {
+	XMLName xml.Name `xml:"autonomous-system"`
+	As_number         *string  `xml:"as-number,omitempty"`
 }
 type xml_Routing_options_Static struct {
 	XMLName xml.Name `xml:"static"`
@@ -1188,6 +1441,10 @@ type xml_System_Services struct {
 type xml_System_Ports struct {
 	XMLName xml.Name `xml:"ports"`
 	Console []xml_System_Ports_Console `xml:"console,omitempty"`
+}
+type xml_System_Name_server struct {
+	XMLName xml.Name `xml:"name-server"`
+	Name         *string  `xml:"name,omitempty"`
 }
 type xml_System_Processes struct {
 	XMLName xml.Name `xml:"processes"`
@@ -1236,6 +1493,19 @@ type xml_Interfaces_Interface_Unit struct {
 	Name         *string  `xml:"name,omitempty"`
 	Family []xml_Interfaces_Interface_Unit_Family `xml:"family,omitempty"`
 }
+type xml_Policy_options_Policy_statement_Term struct {
+	XMLName xml.Name `xml:"term"`
+	Name         *string  `xml:"name,omitempty"`
+	From []xml_Policy_options_Policy_statement_Term_From `xml:"from,omitempty"`
+	Then []xml_Policy_options_Policy_statement_Term_Then `xml:"then,omitempty"`
+}
+type xml_Protocols_Bgp_Group struct {
+	XMLName xml.Name `xml:"group"`
+	Name         *string  `xml:"name,omitempty"`
+	Type         *string  `xml:"type,omitempty"`
+	Peer_as         *string  `xml:"peer-as,omitempty"`
+	Neighbor []xml_Protocols_Bgp_Group_Neighbor `xml:"neighbor,omitempty"`
+}
 type xml_Protocols_Lldp_Interface struct {
 	XMLName xml.Name `xml:"interface"`
 	Name         *string  `xml:"name,omitempty"`
@@ -1243,7 +1513,7 @@ type xml_Protocols_Lldp_Interface struct {
 type xml_Routing_options_Static_Route struct {
 	XMLName xml.Name `xml:"route"`
 	Name         *string  `xml:"name,omitempty"`
-	Next_hop         []*string  `xml:"next-hop,omitempty"`
+	Discard         *string  `xml:"discard,omitempty"`
 }
 type xml_System_Login_User struct {
 	XMLName xml.Name `xml:"user"`
@@ -1292,7 +1562,24 @@ type xml_Interfaces_Interface_Aggregated_ether_options_Lacp struct {
 type xml_Interfaces_Interface_Unit_Family struct {
 	XMLName xml.Name `xml:"family"`
 	Inet []xml_Interfaces_Interface_Unit_Family_Inet `xml:"inet,omitempty"`
+	Inet6 []xml_Interfaces_Interface_Unit_Family_Inet6 `xml:"inet6,omitempty"`
 	Ethernet_switching []xml_Interfaces_Interface_Unit_Family_Ethernet_switching `xml:"ethernet-switching,omitempty"`
+}
+type xml_Policy_options_Policy_statement_Term_From struct {
+	XMLName xml.Name `xml:"from"`
+	Route_filter []xml_Policy_options_Policy_statement_Term_From_Route_filter `xml:"route-filter,omitempty"`
+}
+type xml_Policy_options_Policy_statement_Term_Then struct {
+	XMLName xml.Name `xml:"then"`
+	Accept         *string  `xml:"accept,omitempty"`
+	Reject         *string  `xml:"reject,omitempty"`
+}
+type xml_Protocols_Bgp_Group_Neighbor struct {
+	XMLName xml.Name `xml:"neighbor"`
+	Name         *string  `xml:"name,omitempty"`
+	Import         []*string  `xml:"import,omitempty"`
+	Family []xml_Protocols_Bgp_Group_Neighbor_Family `xml:"family,omitempty"`
+	Export         []*string  `xml:"export,omitempty"`
 }
 type xml_System_Login_User_Authentication struct {
 	XMLName xml.Name `xml:"authentication"`
@@ -1313,11 +1600,25 @@ type xml_Interfaces_Interface_Unit_Family_Inet struct {
 	Filter []xml_Interfaces_Interface_Unit_Family_Inet_Filter `xml:"filter,omitempty"`
 	Address []xml_Interfaces_Interface_Unit_Family_Inet_Address `xml:"address,omitempty"`
 }
+type xml_Interfaces_Interface_Unit_Family_Inet6 struct {
+	XMLName xml.Name `xml:"inet6"`
+	Address []xml_Interfaces_Interface_Unit_Family_Inet6_Address `xml:"address,omitempty"`
+}
 type xml_Interfaces_Interface_Unit_Family_Ethernet_switching struct {
 	XMLName xml.Name `xml:"ethernet-switching"`
 	Interface_mode         *string  `xml:"interface-mode,omitempty"`
 	Vlan []xml_Interfaces_Interface_Unit_Family_Ethernet_switching_Vlan `xml:"vlan,omitempty"`
 	Storm_control []xml_Interfaces_Interface_Unit_Family_Ethernet_switching_Storm_control `xml:"storm-control,omitempty"`
+}
+type xml_Policy_options_Policy_statement_Term_From_Route_filter struct {
+	XMLName xml.Name `xml:"route-filter"`
+	Address         *string  `xml:"address,omitempty"`
+	Exact         *string  `xml:"exact,omitempty"`
+}
+type xml_Protocols_Bgp_Group_Neighbor_Family struct {
+	XMLName xml.Name `xml:"family"`
+	Inet []xml_Protocols_Bgp_Group_Neighbor_Family_Inet `xml:"inet,omitempty"`
+	Inet6 []xml_Protocols_Bgp_Group_Neighbor_Family_Inet6 `xml:"inet6,omitempty"`
 }
 type xml_System_Login_User_Authentication_Ssh_ed25519 struct {
 	XMLName xml.Name `xml:"ssh-ed25519"`
@@ -1342,6 +1643,10 @@ type xml_Interfaces_Interface_Unit_Family_Inet_Address struct {
 	XMLName xml.Name `xml:"address"`
 	Name         *string  `xml:"name,omitempty"`
 }
+type xml_Interfaces_Interface_Unit_Family_Inet6_Address struct {
+	XMLName xml.Name `xml:"address"`
+	Name         *string  `xml:"name,omitempty"`
+}
 type xml_Interfaces_Interface_Unit_Family_Ethernet_switching_Vlan struct {
 	XMLName xml.Name `xml:"vlan"`
 	Members         []*string  `xml:"members,omitempty"`
@@ -1349,6 +1654,14 @@ type xml_Interfaces_Interface_Unit_Family_Ethernet_switching_Vlan struct {
 type xml_Interfaces_Interface_Unit_Family_Ethernet_switching_Storm_control struct {
 	XMLName xml.Name `xml:"storm-control"`
 	Profile_name         *string  `xml:"profile-name,omitempty"`
+}
+type xml_Protocols_Bgp_Group_Neighbor_Family_Inet struct {
+	XMLName xml.Name `xml:"inet"`
+	Unicast []xml_Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast `xml:"unicast,omitempty"`
+}
+type xml_Protocols_Bgp_Group_Neighbor_Family_Inet6 struct {
+	XMLName xml.Name `xml:"inet6"`
+	Unicast []xml_Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast `xml:"unicast,omitempty"`
 }
 
 type xml_Firewall_Family_Inet_Filter_Term_From_Source_address struct {
@@ -1366,6 +1679,12 @@ type xml_Interfaces_Interface_Unit_Family_Inet_Filter_Input struct {
 	XMLName xml.Name `xml:"input"`
 	Filter_name         *string  `xml:"filter-name,omitempty"`
 }
+type xml_Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast struct {
+	XMLName xml.Name `xml:"unicast"`
+}
+type xml_Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast struct {
+	XMLName xml.Name `xml:"unicast"`
+}
 
 
 
@@ -1377,6 +1696,7 @@ type ConfigResourceModel struct {
 	Firewall types.List `tfsdk:"firewall"`
 	Forwarding_options types.List `tfsdk:"forwarding_options"`
 	Interfaces types.List `tfsdk:"interfaces"`
+	Policy_options types.List `tfsdk:"policy_options"`
 	Protocols types.List `tfsdk:"protocols"`
 	Routing_options types.List `tfsdk:"routing_options"`
 	System types.List `tfsdk:"system"`
@@ -1390,6 +1710,7 @@ func (o ConfigResourceModel) AttrTypes() map[string]attr.Type {
 		"firewall": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Model{}.AttrTypes()}},
 		"forwarding_options": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Forwarding_options_Model{}.AttrTypes()}},
 		"interfaces": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Model{}.AttrTypes()}},
+		"policy_options": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Policy_options_Model{}.AttrTypes()}},
 		"protocols": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Model{}.AttrTypes()}},
 		"routing_options": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Routing_options_Model{}.AttrTypes()}},
 		"system": 	types.ListType{ElemType: types.ObjectType{AttrTypes: System_Model{}.AttrTypes()}},
@@ -1425,6 +1746,12 @@ func (o ConfigResourceModel) Attributes() map[string]schema.Attribute {
 			Optional: true,
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: Interfaces_Model{}.Attributes(),
+			},
+		},
+		"policy_options": schema.ListNestedAttribute{
+			Optional: true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: Policy_options_Model{}.Attributes(),
 			},
 		},
 		"protocols": schema.ListNestedAttribute{
@@ -1539,16 +1866,42 @@ func (o Interfaces_Model) Attributes() map[string]schema.Attribute {
 		},
 	}
 }
+type Policy_options_Model struct {
+	Policy_statement	types.List `tfsdk:"policy_statement"`
+}
+func (o Policy_options_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"policy_statement": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Policy_options_Policy_statement_Model{}.AttrTypes()}},
+	}
+}
+func (o Policy_options_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"policy_statement": schema.ListNestedAttribute{
+			Optional: true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: Policy_options_Policy_statement_Model{}.Attributes(),
+			},
+		},
+	}
+}
 type Protocols_Model struct {
+	Bgp	types.List `tfsdk:"bgp"`
 	Lldp	types.List `tfsdk:"lldp"`
 }
 func (o Protocols_Model) AttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
+		"bgp": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Model{}.AttrTypes()}},
 		"lldp": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Lldp_Model{}.AttrTypes()}},
 	}
 }
 func (o Protocols_Model) Attributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
+		"bgp": schema.ListNestedAttribute{
+			Optional: true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: Protocols_Bgp_Model{}.Attributes(),
+			},
+		},
 		"lldp": schema.ListNestedAttribute{
 			Optional: true,
 			NestedObject: schema.NestedAttributeObject{
@@ -1558,15 +1911,23 @@ func (o Protocols_Model) Attributes() map[string]schema.Attribute {
 	}
 }
 type Routing_options_Model struct {
+	Autonomous_system	types.List `tfsdk:"autonomous_system"`
 	Static	types.List `tfsdk:"static"`
 }
 func (o Routing_options_Model) AttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
+		"autonomous_system": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Routing_options_Autonomous_system_Model{}.AttrTypes()}},
 		"static": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Routing_options_Static_Model{}.AttrTypes()}},
 	}
 }
 func (o Routing_options_Model) Attributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
+		"autonomous_system": schema.ListNestedAttribute{
+			Optional: true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: Routing_options_Autonomous_system_Model{}.Attributes(),
+			},
+		},
 		"static": schema.ListNestedAttribute{
 			Optional: true,
 			NestedObject: schema.NestedAttributeObject{
@@ -1583,6 +1944,7 @@ type System_Model struct {
 	Time_zone	types.String `tfsdk:"time_zone"`
 	Authentication_order	types.List `tfsdk:"authentication_order"`
 	Ports	types.List `tfsdk:"ports"`
+	Name_server	types.List `tfsdk:"name_server"`
 	Processes	types.List `tfsdk:"processes"`
 }
 func (o System_Model) AttrTypes() map[string]attr.Type {
@@ -1594,6 +1956,7 @@ func (o System_Model) AttrTypes() map[string]attr.Type {
 		"time_zone": 	types.StringType,
 		"authentication_order": 	types.ListType{ElemType: types.StringType},
 		"ports": 	types.ListType{ElemType: types.ObjectType{AttrTypes: System_Ports_Model{}.AttrTypes()}},
+		"name_server": 	types.ListType{ElemType: types.ObjectType{AttrTypes: System_Name_server_Model{}.AttrTypes()}},
 		"processes": 	types.ListType{ElemType: types.ObjectType{AttrTypes: System_Processes_Model{}.AttrTypes()}},
 	}
 }
@@ -1634,6 +1997,12 @@ func (o System_Model) Attributes() map[string]schema.Attribute {
 			Optional: true,
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: System_Ports_Model{}.Attributes(),
+			},
+		},
+		"name_server": schema.ListNestedAttribute{
+			Optional: true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: System_Name_server_Model{}.Attributes(),
 			},
 		},
 		"processes": schema.ListNestedAttribute{
@@ -1817,6 +2186,48 @@ func (o Interfaces_Interface_Model) Attributes() map[string]schema.Attribute {
         },
     }
 }
+type Policy_options_Policy_statement_Model struct {
+	Name	types.String `tfsdk:"name"`
+	Term	types.List `tfsdk:"term"`
+}
+func (o Policy_options_Policy_statement_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+	    "term": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_Model{}.AttrTypes()}},
+	}
+}
+func (o Policy_options_Policy_statement_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Policy_statement`",
+	    },
+	    "term": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Policy_options_Policy_statement_Term_Model{}.Attributes(),
+	        },
+        },
+    }
+}
+type Protocols_Bgp_Model struct {
+	Group	types.List `tfsdk:"group"`
+}
+func (o Protocols_Bgp_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "group": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Group_Model{}.AttrTypes()}},
+	}
+}
+func (o Protocols_Bgp_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "group": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Protocols_Bgp_Group_Model{}.Attributes(),
+	        },
+        },
+    }
+}
 type Protocols_Lldp_Model struct {
 	Interface	types.List `tfsdk:"interface"`
 }
@@ -1833,6 +2244,22 @@ func (o Protocols_Lldp_Model) Attributes() map[string]schema.Attribute {
 			    Attributes: Protocols_Lldp_Interface_Model{}.Attributes(),
 	        },
         },
+    }
+}
+type Routing_options_Autonomous_system_Model struct {
+	As_number	types.String `tfsdk:"as_number"`
+}
+func (o Routing_options_Autonomous_system_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "as_number": 	types.StringType,
+	}
+}
+func (o Routing_options_Autonomous_system_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "as_number": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.As-number.Autonomous_system`",
+	    },
     }
 }
 type Routing_options_Static_Model struct {
@@ -1929,6 +2356,22 @@ func (o System_Ports_Model) Attributes() map[string]schema.Attribute {
 			    Attributes: System_Ports_Console_Model{}.Attributes(),
 	        },
         },
+    }
+}
+type System_Name_server_Model struct {
+	Name	types.String `tfsdk:"name"`
+}
+func (o System_Name_server_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+	}
+}
+func (o System_Name_server_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Name_server`",
+	    },
     }
 }
 type System_Processes_Model struct {
@@ -2140,6 +2583,74 @@ func (o Interfaces_Interface_Unit_Model) Attributes() map[string]schema.Attribut
         },
     }
 }
+type Policy_options_Policy_statement_Term_Model struct {
+	Name	types.String `tfsdk:"name"`
+	From	types.List `tfsdk:"from"`
+	Then	types.List `tfsdk:"then"`
+}
+func (o Policy_options_Policy_statement_Term_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+	    "from": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_From_Model{}.AttrTypes()}},
+	    "then": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_Then_Model{}.AttrTypes()}},
+	}
+}
+func (o Policy_options_Policy_statement_Term_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Term`",
+	    },
+	    "from": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Policy_options_Policy_statement_Term_From_Model{}.Attributes(),
+	        },
+        },
+	    "then": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Policy_options_Policy_statement_Term_Then_Model{}.Attributes(),
+	        },
+        },
+    }
+}
+type Protocols_Bgp_Group_Model struct {
+	Name	types.String `tfsdk:"name"`
+	Type	types.String `tfsdk:"type"`
+	Peer_as	types.String `tfsdk:"peer_as"`
+	Neighbor	types.List `tfsdk:"neighbor"`
+}
+func (o Protocols_Bgp_Group_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+	    "type": 	types.StringType,
+	    "peer_as": 	types.StringType,
+	    "neighbor": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Model{}.AttrTypes()}},
+	}
+}
+func (o Protocols_Bgp_Group_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Group`",
+	    },
+	    "type": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Type.Group`",
+	    },
+	    "peer_as": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Peer-as.Group`",
+	    },
+	    "neighbor": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Protocols_Bgp_Group_Neighbor_Model{}.Attributes(),
+	        },
+        },
+    }
+}
 type Protocols_Lldp_Interface_Model struct {
 	Name	types.String `tfsdk:"name"`
 }
@@ -2158,12 +2669,12 @@ func (o Protocols_Lldp_Interface_Model) Attributes() map[string]schema.Attribute
 }
 type Routing_options_Static_Route_Model struct {
 	Name	types.String `tfsdk:"name"`
-	Next_hop	types.List `tfsdk:"next_hop"`
+	Discard	types.String `tfsdk:"discard"`
 }
 func (o Routing_options_Static_Route_Model) AttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 	    "name": 	types.StringType,
-		"next_hop": 	types.ListType{ElemType: types.StringType},
+	    "discard": 	types.StringType,
 	}
 }
 func (o Routing_options_Static_Route_Model) Attributes() map[string]schema.Attribute {
@@ -2172,11 +2683,10 @@ func (o Routing_options_Static_Route_Model) Attributes() map[string]schema.Attri
 		    Optional: true,
 		    MarkdownDescription: "xpath is `config.Name.Route`",
 	    },
-		"next_hop": schema.ListAttribute{
-			ElementType:         types.StringType,
-			Optional:            true,
-			MarkdownDescription: "xpath is `config.Next-hop.Route`",
-		},
+	    "discard": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Discard.Route`",
+	    },
     }
 }
 type System_Login_User_Model struct {
@@ -2374,11 +2884,13 @@ func (o Interfaces_Interface_Aggregated_ether_options_Lacp_Model) Attributes() m
 }
 type Interfaces_Interface_Unit_Family_Model struct {
 	Inet	types.List `tfsdk:"inet"`
+	Inet6	types.List `tfsdk:"inet6"`
 	Ethernet_switching	types.List `tfsdk:"ethernet_switching"`
 }
 func (o Interfaces_Interface_Unit_Family_Model) AttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 	    "inet": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet_Model{}.AttrTypes()}},
+	    "inet6": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Model{}.AttrTypes()}},
 	    "ethernet_switching": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Ethernet_switching_Model{}.AttrTypes()}},
 	}
 }
@@ -2390,12 +2902,96 @@ func (o Interfaces_Interface_Unit_Family_Model) Attributes() map[string]schema.A
 			    Attributes: Interfaces_Interface_Unit_Family_Inet_Model{}.Attributes(),
 	        },
         },
+	    "inet6": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Interfaces_Interface_Unit_Family_Inet6_Model{}.Attributes(),
+	        },
+        },
 	    "ethernet_switching": schema.ListNestedAttribute{
 		    Optional: true,
 		    NestedObject: schema.NestedAttributeObject{
 			    Attributes: Interfaces_Interface_Unit_Family_Ethernet_switching_Model{}.Attributes(),
 	        },
         },
+    }
+}
+type Policy_options_Policy_statement_Term_From_Model struct {
+	Route_filter	types.List `tfsdk:"route_filter"`
+}
+func (o Policy_options_Policy_statement_Term_From_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "route_filter": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_From_Route_filter_Model{}.AttrTypes()}},
+	}
+}
+func (o Policy_options_Policy_statement_Term_From_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "route_filter": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Policy_options_Policy_statement_Term_From_Route_filter_Model{}.Attributes(),
+	        },
+        },
+    }
+}
+type Policy_options_Policy_statement_Term_Then_Model struct {
+	Accept	types.String `tfsdk:"accept"`
+	Reject	types.String `tfsdk:"reject"`
+}
+func (o Policy_options_Policy_statement_Term_Then_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "accept": 	types.StringType,
+	    "reject": 	types.StringType,
+	}
+}
+func (o Policy_options_Policy_statement_Term_Then_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "accept": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Accept.Then`",
+	    },
+	    "reject": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Reject.Then`",
+	    },
+    }
+}
+type Protocols_Bgp_Group_Neighbor_Model struct {
+	Name	types.String `tfsdk:"name"`
+	Import	types.List `tfsdk:"import"`
+	Family	types.List `tfsdk:"family"`
+	Export	types.List `tfsdk:"export"`
+}
+func (o Protocols_Bgp_Group_Neighbor_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+		"import": 	types.ListType{ElemType: types.StringType},
+	    "family": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Model{}.AttrTypes()}},
+		"export": 	types.ListType{ElemType: types.StringType},
+	}
+}
+func (o Protocols_Bgp_Group_Neighbor_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Neighbor`",
+	    },
+		"import": schema.ListAttribute{
+			ElementType:         types.StringType,
+			Optional:            true,
+			MarkdownDescription: "xpath is `config.Import.Neighbor`",
+		},
+	    "family": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Protocols_Bgp_Group_Neighbor_Family_Model{}.Attributes(),
+	        },
+        },
+		"export": schema.ListAttribute{
+			ElementType:         types.StringType,
+			Optional:            true,
+			MarkdownDescription: "xpath is `config.Export.Neighbor`",
+		},
     }
 }
 type System_Login_User_Authentication_Model struct {
@@ -2485,6 +3081,24 @@ func (o Interfaces_Interface_Unit_Family_Inet_Model) Attributes() map[string]sch
         },
     }
 }
+type Interfaces_Interface_Unit_Family_Inet6_Model struct {
+	Address	types.List `tfsdk:"address"`
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "address": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Address_Model{}.AttrTypes()}},
+	}
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "address": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Interfaces_Interface_Unit_Family_Inet6_Address_Model{}.Attributes(),
+	        },
+        },
+    }
+}
 type Interfaces_Interface_Unit_Family_Ethernet_switching_Model struct {
 	Interface_mode	types.String `tfsdk:"interface_mode"`
 	Vlan	types.List `tfsdk:"vlan"`
@@ -2513,6 +3127,54 @@ func (o Interfaces_Interface_Unit_Family_Ethernet_switching_Model) Attributes() 
 		    Optional: true,
 		    NestedObject: schema.NestedAttributeObject{
 			    Attributes: Interfaces_Interface_Unit_Family_Ethernet_switching_Storm_control_Model{}.Attributes(),
+	        },
+        },
+    }
+}
+type Policy_options_Policy_statement_Term_From_Route_filter_Model struct {
+	Address	types.String `tfsdk:"address"`
+	Exact	types.String `tfsdk:"exact"`
+}
+func (o Policy_options_Policy_statement_Term_From_Route_filter_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "address": 	types.StringType,
+	    "exact": 	types.StringType,
+	}
+}
+func (o Policy_options_Policy_statement_Term_From_Route_filter_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "address": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Address.Route_filter`",
+	    },
+	    "exact": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Exact.Route_filter`",
+	    },
+    }
+}
+type Protocols_Bgp_Group_Neighbor_Family_Model struct {
+	Inet	types.List `tfsdk:"inet"`
+	Inet6	types.List `tfsdk:"inet6"`
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "inet": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet_Model{}.AttrTypes()}},
+	    "inet6": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Model{}.AttrTypes()}},
+	}
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "inet": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Protocols_Bgp_Group_Neighbor_Family_Inet_Model{}.Attributes(),
+	        },
+        },
+	    "inet6": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Model{}.Attributes(),
 	        },
         },
     }
@@ -2618,6 +3280,22 @@ func (o Interfaces_Interface_Unit_Family_Inet_Address_Model) Attributes() map[st
 	    },
     }
 }
+type Interfaces_Interface_Unit_Family_Inet6_Address_Model struct {
+	Name	types.String `tfsdk:"name"`
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Address_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+	}
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Address_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Address`",
+	    },
+    }
+}
 type Interfaces_Interface_Unit_Family_Ethernet_switching_Vlan_Model struct {
 	Members	types.List `tfsdk:"members"`
 }
@@ -2649,6 +3327,42 @@ func (o Interfaces_Interface_Unit_Family_Ethernet_switching_Storm_control_Model)
 		    Optional: true,
 		    MarkdownDescription: "xpath is `config.Profile-name.Storm_control`",
 	    },
+    }
+}
+type Protocols_Bgp_Group_Neighbor_Family_Inet_Model struct {
+	Unicast	types.List `tfsdk:"unicast"`
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "unicast": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model{}.AttrTypes()}},
+	}
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "unicast": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model{}.Attributes(),
+	        },
+        },
+    }
+}
+type Protocols_Bgp_Group_Neighbor_Family_Inet6_Model struct {
+	Unicast	types.List `tfsdk:"unicast"`
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet6_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "unicast": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model{}.AttrTypes()}},
+	}
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet6_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "unicast": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model{}.Attributes(),
+	        },
+        },
     }
 }
 
@@ -2710,6 +3424,26 @@ func (o Interfaces_Interface_Unit_Family_Inet_Filter_Input_Model) Attributes() m
 	    },
     }
 }
+type Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model struct {
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	}
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+    }
+}
+type Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model struct {
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	}
+}
+func (o Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+    }
+}
 
 
 
@@ -2758,6 +3492,12 @@ func (r *configResource) Schema(_ context.Context, req resource.SchemaRequest, r
 				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: Interfaces_Model{}.Attributes(),
+				},
+			},
+			"policy_options": schema.ListNestedAttribute{
+				Optional: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: Policy_options_Model{}.Attributes(),
 				},
 			},
 			"protocols": schema.ListNestedAttribute{
@@ -3106,6 +3846,25 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 			cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet[i_interfaces_interface_unit_family_inet].Address[i_interfaces_interface_unit_family_inet_address].Name = v_interfaces_interface_unit_family_inet_address.Name.ValueStringPointer()
 		}
 		}
+			var var_interfaces_interface_unit_family_inet6 []Interfaces_Interface_Unit_Family_Inet6_Model
+			diags.Append(v_interfaces_interface_unit_family.Inet6.ElementsAs(ctx, &var_interfaces_interface_unit_family_inet6, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet6 = make([]xml_Interfaces_Interface_Unit_Family_Inet6, len(var_interfaces_interface_unit_family_inet6))
+		
+		for i_interfaces_interface_unit_family_inet6, v_interfaces_interface_unit_family_inet6 := range var_interfaces_interface_unit_family_inet6 {
+			var var_interfaces_interface_unit_family_inet6_address []Interfaces_Interface_Unit_Family_Inet6_Address_Model
+			diags.Append(v_interfaces_interface_unit_family_inet6.Address.ElementsAs(ctx, &var_interfaces_interface_unit_family_inet6_address, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet6[i_interfaces_interface_unit_family_inet6].Address = make([]xml_Interfaces_Interface_Unit_Family_Inet6_Address, len(var_interfaces_interface_unit_family_inet6_address))
+		
+		for i_interfaces_interface_unit_family_inet6_address, v_interfaces_interface_unit_family_inet6_address := range var_interfaces_interface_unit_family_inet6_address {
+			cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet6[i_interfaces_interface_unit_family_inet6].Address[i_interfaces_interface_unit_family_inet6_address].Name = v_interfaces_interface_unit_family_inet6_address.Name.ValueStringPointer()
+		}
+		}
 			var var_interfaces_interface_unit_family_ethernet_switching []Interfaces_Interface_Unit_Family_Ethernet_switching_Model
 			diags.Append(v_interfaces_interface_unit_family.Ethernet_switching.ElementsAs(ctx, &var_interfaces_interface_unit_family_ethernet_switching, false)...)
 			if diags.HasError() {
@@ -3148,6 +3907,70 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 		}
 	}
 	
+	var var_policy_options []Policy_options_Model
+	if model.Policy_options.IsNull() {
+		var_policy_options = []Policy_options_Model{}
+	} else {
+		diags.Append(model.Policy_options.ElementsAs(ctx, &var_policy_options, false)...)
+		if diags.HasError() {
+			return cfg
+		}
+	}
+	cfg.Policy_options = make([]xml_Policy_options, len(var_policy_options))
+	for i_policy_options, v_policy_options := range var_policy_options {
+		var var_policy_options_policy_statement []Policy_options_Policy_statement_Model
+		diags.Append(v_policy_options.Policy_statement.ElementsAs(ctx, &var_policy_options_policy_statement, false)...)
+		if diags.HasError() {
+			return cfg
+		}
+	    cfg.Policy_options[i_policy_options].Policy_statement = make([]xml_Policy_options_Policy_statement, len(var_policy_options_policy_statement))
+		
+		for i_policy_options_policy_statement, v_policy_options_policy_statement := range var_policy_options_policy_statement {
+			cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Name = v_policy_options_policy_statement.Name.ValueStringPointer()
+			var var_policy_options_policy_statement_term []Policy_options_Policy_statement_Term_Model
+			diags.Append(v_policy_options_policy_statement.Term.ElementsAs(ctx, &var_policy_options_policy_statement_term, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term = make([]xml_Policy_options_Policy_statement_Term, len(var_policy_options_policy_statement_term))
+		
+		for i_policy_options_policy_statement_term, v_policy_options_policy_statement_term := range var_policy_options_policy_statement_term {
+			cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].Name = v_policy_options_policy_statement_term.Name.ValueStringPointer()
+			var var_policy_options_policy_statement_term_from []Policy_options_Policy_statement_Term_From_Model
+			diags.Append(v_policy_options_policy_statement_term.From.ElementsAs(ctx, &var_policy_options_policy_statement_term_from, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].From = make([]xml_Policy_options_Policy_statement_Term_From, len(var_policy_options_policy_statement_term_from))
+		
+		for i_policy_options_policy_statement_term_from, v_policy_options_policy_statement_term_from := range var_policy_options_policy_statement_term_from {
+			var var_policy_options_policy_statement_term_from_route_filter []Policy_options_Policy_statement_Term_From_Route_filter_Model
+			diags.Append(v_policy_options_policy_statement_term_from.Route_filter.ElementsAs(ctx, &var_policy_options_policy_statement_term_from_route_filter, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].From[i_policy_options_policy_statement_term_from].Route_filter = make([]xml_Policy_options_Policy_statement_Term_From_Route_filter, len(var_policy_options_policy_statement_term_from_route_filter))
+		
+		for i_policy_options_policy_statement_term_from_route_filter, v_policy_options_policy_statement_term_from_route_filter := range var_policy_options_policy_statement_term_from_route_filter {
+			cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].From[i_policy_options_policy_statement_term_from].Route_filter[i_policy_options_policy_statement_term_from_route_filter].Address = v_policy_options_policy_statement_term_from_route_filter.Address.ValueStringPointer()
+			cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].From[i_policy_options_policy_statement_term_from].Route_filter[i_policy_options_policy_statement_term_from_route_filter].Exact = v_policy_options_policy_statement_term_from_route_filter.Exact.ValueStringPointer()
+		}
+		}
+			var var_policy_options_policy_statement_term_then []Policy_options_Policy_statement_Term_Then_Model
+			diags.Append(v_policy_options_policy_statement_term.Then.ElementsAs(ctx, &var_policy_options_policy_statement_term_then, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].Then = make([]xml_Policy_options_Policy_statement_Term_Then, len(var_policy_options_policy_statement_term_then))
+		
+		for i_policy_options_policy_statement_term_then, v_policy_options_policy_statement_term_then := range var_policy_options_policy_statement_term_then {
+			cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].Then[i_policy_options_policy_statement_term_then].Accept = v_policy_options_policy_statement_term_then.Accept.ValueStringPointer()
+			cfg.Policy_options[i_policy_options].Policy_statement[i_policy_options_policy_statement].Term[i_policy_options_policy_statement_term].Then[i_policy_options_policy_statement_term_then].Reject = v_policy_options_policy_statement_term_then.Reject.ValueStringPointer()
+		}
+		}
+		}
+	}
+	
 	var var_protocols []Protocols_Model
 	if model.Protocols.IsNull() {
 		var_protocols = []Protocols_Model{}
@@ -3159,6 +3982,94 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 	}
 	cfg.Protocols = make([]xml_Protocols, len(var_protocols))
 	for i_protocols, v_protocols := range var_protocols {
+		var var_protocols_bgp []Protocols_Bgp_Model
+		diags.Append(v_protocols.Bgp.ElementsAs(ctx, &var_protocols_bgp, false)...)
+		if diags.HasError() {
+			return cfg
+		}
+	    cfg.Protocols[i_protocols].Bgp = make([]xml_Protocols_Bgp, len(var_protocols_bgp))
+		
+		for i_protocols_bgp, v_protocols_bgp := range var_protocols_bgp {
+			var var_protocols_bgp_group []Protocols_Bgp_Group_Model
+			diags.Append(v_protocols_bgp.Group.ElementsAs(ctx, &var_protocols_bgp_group, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group = make([]xml_Protocols_Bgp_Group, len(var_protocols_bgp_group))
+		
+		for i_protocols_bgp_group, v_protocols_bgp_group := range var_protocols_bgp_group {
+			cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Name = v_protocols_bgp_group.Name.ValueStringPointer()
+			cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Type = v_protocols_bgp_group.Type.ValueStringPointer()
+			cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Peer_as = v_protocols_bgp_group.Peer_as.ValueStringPointer()
+			var var_protocols_bgp_group_neighbor []Protocols_Bgp_Group_Neighbor_Model
+			diags.Append(v_protocols_bgp_group.Neighbor.ElementsAs(ctx, &var_protocols_bgp_group_neighbor, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor = make([]xml_Protocols_Bgp_Group_Neighbor, len(var_protocols_bgp_group_neighbor))
+		
+		for i_protocols_bgp_group_neighbor, v_protocols_bgp_group_neighbor := range var_protocols_bgp_group_neighbor {
+			cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Name = v_protocols_bgp_group_neighbor.Name.ValueStringPointer()
+			var var_protocols_bgp_group_neighbor_import []string
+			diags.Append(v_protocols_bgp_group_neighbor.Import.ElementsAs(ctx, &var_protocols_bgp_group_neighbor_import, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+			for _, v_protocols_bgp_group_neighbor_import := range var_protocols_bgp_group_neighbor_import {
+				cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Import = append(cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Import, &v_protocols_bgp_group_neighbor_import)
+			}
+			var var_protocols_bgp_group_neighbor_family []Protocols_Bgp_Group_Neighbor_Family_Model
+			diags.Append(v_protocols_bgp_group_neighbor.Family.ElementsAs(ctx, &var_protocols_bgp_group_neighbor_family, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Family = make([]xml_Protocols_Bgp_Group_Neighbor_Family, len(var_protocols_bgp_group_neighbor_family))
+		
+		for i_protocols_bgp_group_neighbor_family, v_protocols_bgp_group_neighbor_family := range var_protocols_bgp_group_neighbor_family {
+			var var_protocols_bgp_group_neighbor_family_inet []Protocols_Bgp_Group_Neighbor_Family_Inet_Model
+			diags.Append(v_protocols_bgp_group_neighbor_family.Inet.ElementsAs(ctx, &var_protocols_bgp_group_neighbor_family_inet, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Family[i_protocols_bgp_group_neighbor_family].Inet = make([]xml_Protocols_Bgp_Group_Neighbor_Family_Inet, len(var_protocols_bgp_group_neighbor_family_inet))
+		
+		for i_protocols_bgp_group_neighbor_family_inet, v_protocols_bgp_group_neighbor_family_inet := range var_protocols_bgp_group_neighbor_family_inet {
+			var var_protocols_bgp_group_neighbor_family_inet_unicast []Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model
+			diags.Append(v_protocols_bgp_group_neighbor_family_inet.Unicast.ElementsAs(ctx, &var_protocols_bgp_group_neighbor_family_inet_unicast, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Family[i_protocols_bgp_group_neighbor_family].Inet[i_protocols_bgp_group_neighbor_family_inet].Unicast = make([]xml_Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast, len(var_protocols_bgp_group_neighbor_family_inet_unicast))
+		
+		}
+			var var_protocols_bgp_group_neighbor_family_inet6 []Protocols_Bgp_Group_Neighbor_Family_Inet6_Model
+			diags.Append(v_protocols_bgp_group_neighbor_family.Inet6.ElementsAs(ctx, &var_protocols_bgp_group_neighbor_family_inet6, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Family[i_protocols_bgp_group_neighbor_family].Inet6 = make([]xml_Protocols_Bgp_Group_Neighbor_Family_Inet6, len(var_protocols_bgp_group_neighbor_family_inet6))
+		
+		for i_protocols_bgp_group_neighbor_family_inet6, v_protocols_bgp_group_neighbor_family_inet6 := range var_protocols_bgp_group_neighbor_family_inet6 {
+			var var_protocols_bgp_group_neighbor_family_inet6_unicast []Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model
+			diags.Append(v_protocols_bgp_group_neighbor_family_inet6.Unicast.ElementsAs(ctx, &var_protocols_bgp_group_neighbor_family_inet6_unicast, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Family[i_protocols_bgp_group_neighbor_family].Inet6[i_protocols_bgp_group_neighbor_family_inet6].Unicast = make([]xml_Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast, len(var_protocols_bgp_group_neighbor_family_inet6_unicast))
+		
+		}
+		}
+			var var_protocols_bgp_group_neighbor_export []string
+			diags.Append(v_protocols_bgp_group_neighbor.Export.ElementsAs(ctx, &var_protocols_bgp_group_neighbor_export, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+			for _, v_protocols_bgp_group_neighbor_export := range var_protocols_bgp_group_neighbor_export {
+				cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Export = append(cfg.Protocols[i_protocols].Bgp[i_protocols_bgp].Group[i_protocols_bgp_group].Neighbor[i_protocols_bgp_group_neighbor].Export, &v_protocols_bgp_group_neighbor_export)
+			}
+		}
+		}
+		}
 		var var_protocols_lldp []Protocols_Lldp_Model
 		diags.Append(v_protocols.Lldp.ElementsAs(ctx, &var_protocols_lldp, false)...)
 		if diags.HasError() {
@@ -3191,6 +4102,16 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 	}
 	cfg.Routing_options = make([]xml_Routing_options, len(var_routing_options))
 	for i_routing_options, v_routing_options := range var_routing_options {
+		var var_routing_options_autonomous_system []Routing_options_Autonomous_system_Model
+		diags.Append(v_routing_options.Autonomous_system.ElementsAs(ctx, &var_routing_options_autonomous_system, false)...)
+		if diags.HasError() {
+			return cfg
+		}
+	    cfg.Routing_options[i_routing_options].Autonomous_system = make([]xml_Routing_options_Autonomous_system, len(var_routing_options_autonomous_system))
+		
+		for i_routing_options_autonomous_system, v_routing_options_autonomous_system := range var_routing_options_autonomous_system {
+			cfg.Routing_options[i_routing_options].Autonomous_system[i_routing_options_autonomous_system].As_number = v_routing_options_autonomous_system.As_number.ValueStringPointer()
+		}
 		var var_routing_options_static []Routing_options_Static_Model
 		diags.Append(v_routing_options.Static.ElementsAs(ctx, &var_routing_options_static, false)...)
 		if diags.HasError() {
@@ -3208,14 +4129,7 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 		
 		for i_routing_options_static_route, v_routing_options_static_route := range var_routing_options_static_route {
 			cfg.Routing_options[i_routing_options].Static[i_routing_options_static].Route[i_routing_options_static_route].Name = v_routing_options_static_route.Name.ValueStringPointer()
-			var var_routing_options_static_route_next_hop []string
-			diags.Append(v_routing_options_static_route.Next_hop.ElementsAs(ctx, &var_routing_options_static_route_next_hop, false)...)
-			if diags.HasError() {
-				return cfg
-			}
-			for _, v_routing_options_static_route_next_hop := range var_routing_options_static_route_next_hop {
-				cfg.Routing_options[i_routing_options].Static[i_routing_options_static].Route[i_routing_options_static_route].Next_hop = append(cfg.Routing_options[i_routing_options].Static[i_routing_options_static].Route[i_routing_options_static_route].Next_hop, &v_routing_options_static_route_next_hop)
-			}
+			cfg.Routing_options[i_routing_options].Static[i_routing_options_static].Route[i_routing_options_static_route].Discard = v_routing_options_static_route.Discard.ValueStringPointer()
 		}
 		}
 	}
@@ -3344,6 +4258,16 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 		for i_system_ports_console, v_system_ports_console := range var_system_ports_console {
 			cfg.System[i_system].Ports[i_system_ports].Console[i_system_ports_console].Log_out_on_disconnect = v_system_ports_console.Log_out_on_disconnect.ValueStringPointer()
 		}
+		}
+		var var_system_name_server []System_Name_server_Model
+		diags.Append(v_system.Name_server.ElementsAs(ctx, &var_system_name_server, false)...)
+		if diags.HasError() {
+			return cfg
+		}
+	    cfg.System[i_system].Name_server = make([]xml_System_Name_server, len(var_system_name_server))
+		
+		for i_system_name_server, v_system_name_server := range var_system_name_server {
+			cfg.System[i_system].Name_server[i_system_name_server].Name = v_system_name_server.Name.ValueStringPointer()
 		}
 		var var_system_processes []System_Processes_Model
 		diags.Append(v_system.Processes.ElementsAs(ctx, &var_system_processes, false)...)
@@ -3484,31 +4408,34 @@ func mergeReadStateWithReference(ctx context.Context, observed ConfigResourceMod
 	// plan had a value, preserve the plan value.  This handles containers whose
 	// XML structs are empty (no modeled children) so the Go XML unmarshaler
 	// returns nil and configToModel maps them to types.ListNull.
-	if observed.Chassis.IsNull() || reference.Chassis.IsNull() {
+	if observed.Chassis.IsNull() && !reference.Chassis.IsNull() {
 		observed.Chassis = reference.Chassis
 	}
-	if observed.Firewall.IsNull() || reference.Firewall.IsNull() {
+	if observed.Firewall.IsNull() && !reference.Firewall.IsNull() {
 		observed.Firewall = reference.Firewall
 	}
-	if observed.Forwarding_options.IsNull() || reference.Forwarding_options.IsNull() {
+	if observed.Forwarding_options.IsNull() && !reference.Forwarding_options.IsNull() {
 		observed.Forwarding_options = reference.Forwarding_options
 	}
-	if observed.Interfaces.IsNull() || reference.Interfaces.IsNull() {
+	if observed.Interfaces.IsNull() && !reference.Interfaces.IsNull() {
 		observed.Interfaces = reference.Interfaces
 	}
-	if observed.Protocols.IsNull() || reference.Protocols.IsNull() {
+	if observed.Policy_options.IsNull() && !reference.Policy_options.IsNull() {
+		observed.Policy_options = reference.Policy_options
+	}
+	if observed.Protocols.IsNull() && !reference.Protocols.IsNull() {
 		observed.Protocols = reference.Protocols
 	}
-	if observed.Routing_options.IsNull() || reference.Routing_options.IsNull() {
+	if observed.Routing_options.IsNull() && !reference.Routing_options.IsNull() {
 		observed.Routing_options = reference.Routing_options
 	}
-	if observed.System.IsNull() || reference.System.IsNull() {
+	if observed.System.IsNull() && !reference.System.IsNull() {
 		observed.System = reference.System
 	}
-	if observed.Virtual_chassis.IsNull() || reference.Virtual_chassis.IsNull() {
+	if observed.Virtual_chassis.IsNull() && !reference.Virtual_chassis.IsNull() {
 		observed.Virtual_chassis = reference.Virtual_chassis
 	}
-	if observed.Vlans.IsNull() || reference.Vlans.IsNull() {
+	if observed.Vlans.IsNull() && !reference.Vlans.IsNull() {
 		observed.Vlans = reference.Vlans
 	}
 
@@ -4446,6 +5373,65 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
             interfaces_interface_unit_family_List[i_interfaces_interface_unit_family] =
                 interfaces_interface_unit_family_model
                 
+        // Build inet6 list
+        interfaces_interface_unit_family_inet6_List := make([]Interfaces_Interface_Unit_Family_Inet6_Model, len(v_interfaces_interface_unit_family.Inet6))
+
+        
+		for i_interfaces_interface_unit_family_inet6, v_interfaces_interface_unit_family_inet6 := range v_interfaces_interface_unit_family.Inet6 {
+            var interfaces_interface_unit_family_inet6_model Interfaces_Interface_Unit_Family_Inet6_Model
+
+            interfaces_interface_unit_family_inet6_List[i_interfaces_interface_unit_family_inet6] =
+                interfaces_interface_unit_family_inet6_model
+                
+        // Build address list
+        interfaces_interface_unit_family_inet6_address_List := make([]Interfaces_Interface_Unit_Family_Inet6_Address_Model, len(v_interfaces_interface_unit_family_inet6.Address))
+
+        
+		for i_interfaces_interface_unit_family_inet6_address, v_interfaces_interface_unit_family_inet6_address := range v_interfaces_interface_unit_family_inet6.Address {
+            var interfaces_interface_unit_family_inet6_address_model Interfaces_Interface_Unit_Family_Inet6_Address_Model
+            // leaf
+            if v_interfaces_interface_unit_family_inet6_address.Name == nil {
+                interfaces_interface_unit_family_inet6_address_model.Name =
+                    types.StringNull()
+            } else {
+				interfaces_interface_unit_family_inet6_address_model.Name =
+                types.StringPointerValue(v_interfaces_interface_unit_family_inet6_address.Name)
+			}
+
+            interfaces_interface_unit_family_inet6_address_List[i_interfaces_interface_unit_family_inet6_address] =
+                interfaces_interface_unit_family_inet6_address_model
+        }
+
+        // Write address field as Null when empty, else concrete list
+        if len(interfaces_interface_unit_family_inet6_address_List) == 0 {
+            interfaces_interface_unit_family_inet6_model.Address =
+                types.ListNull(types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Address_Model{}.AttrTypes()})
+        } else {
+            interfaces_interface_unit_family_inet6_model.Address, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Address_Model{}.AttrTypes()},
+                    interfaces_interface_unit_family_inet6_address_List,
+                )
+        }
+        interfaces_interface_unit_family_inet6_List[i_interfaces_interface_unit_family_inet6] = interfaces_interface_unit_family_inet6_model
+        }
+
+        // Write inet6 field as Null when empty, else concrete list
+        if len(interfaces_interface_unit_family_inet6_List) == 0 {
+            interfaces_interface_unit_family_model.Inet6 =
+                types.ListNull(types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Model{}.AttrTypes()})
+        } else {
+            interfaces_interface_unit_family_model.Inet6, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Model{}.AttrTypes()},
+                    interfaces_interface_unit_family_inet6_List,
+                )
+        }
+        interfaces_interface_unit_family_List[i_interfaces_interface_unit_family] = interfaces_interface_unit_family_model
+
+            interfaces_interface_unit_family_List[i_interfaces_interface_unit_family] =
+                interfaces_interface_unit_family_model
+                
         // Build ethernet-switching list
         interfaces_interface_unit_family_ethernet_switching_List := make([]Interfaces_Interface_Unit_Family_Ethernet_switching_Model, len(v_interfaces_interface_unit_family.Ethernet_switching))
 
@@ -4609,6 +5595,213 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
                 interfaces_List,
             )
     }
+    // Initialize policy-options as Null; only materialize when we have elements
+    state.Policy_options =
+        types.ListNull(types.ObjectType{AttrTypes: Policy_options_Model{}.AttrTypes()})
+
+    // Build list from device
+    policy_options_List := make([]Policy_options_Model,
+        len(config.Policy_options))
+    for i_policy_options, v_policy_options := range config.Policy_options {
+        var policy_options_model Policy_options_Model
+            
+        // Build policy-statement list
+        policy_options_policy_statement_List := make([]Policy_options_Policy_statement_Model, len(v_policy_options.Policy_statement))
+
+        
+		for i_policy_options_policy_statement, v_policy_options_policy_statement := range v_policy_options.Policy_statement {
+            var policy_options_policy_statement_model Policy_options_Policy_statement_Model
+            // leaf
+            if v_policy_options_policy_statement.Name == nil {
+                policy_options_policy_statement_model.Name =
+                    types.StringNull()
+            } else {
+				policy_options_policy_statement_model.Name =
+                types.StringPointerValue(v_policy_options_policy_statement.Name)
+			}
+
+            policy_options_policy_statement_List[i_policy_options_policy_statement] =
+                policy_options_policy_statement_model
+
+            policy_options_policy_statement_List[i_policy_options_policy_statement] =
+                policy_options_policy_statement_model
+                
+        // Build term list
+        policy_options_policy_statement_term_List := make([]Policy_options_Policy_statement_Term_Model, len(v_policy_options_policy_statement.Term))
+
+        
+		for i_policy_options_policy_statement_term, v_policy_options_policy_statement_term := range v_policy_options_policy_statement.Term {
+            var policy_options_policy_statement_term_model Policy_options_Policy_statement_Term_Model
+            // leaf
+            if v_policy_options_policy_statement_term.Name == nil {
+                policy_options_policy_statement_term_model.Name =
+                    types.StringNull()
+            } else {
+				policy_options_policy_statement_term_model.Name =
+                types.StringPointerValue(v_policy_options_policy_statement_term.Name)
+			}
+
+            policy_options_policy_statement_term_List[i_policy_options_policy_statement_term] =
+                policy_options_policy_statement_term_model
+
+            policy_options_policy_statement_term_List[i_policy_options_policy_statement_term] =
+                policy_options_policy_statement_term_model
+                
+        // Build from list
+        policy_options_policy_statement_term_from_List := make([]Policy_options_Policy_statement_Term_From_Model, len(v_policy_options_policy_statement_term.From))
+
+        
+		for i_policy_options_policy_statement_term_from, v_policy_options_policy_statement_term_from := range v_policy_options_policy_statement_term.From {
+            var policy_options_policy_statement_term_from_model Policy_options_Policy_statement_Term_From_Model
+
+            policy_options_policy_statement_term_from_List[i_policy_options_policy_statement_term_from] =
+                policy_options_policy_statement_term_from_model
+                
+        // Build route-filter list
+        policy_options_policy_statement_term_from_route_filter_List := make([]Policy_options_Policy_statement_Term_From_Route_filter_Model, len(v_policy_options_policy_statement_term_from.Route_filter))
+
+        
+		for i_policy_options_policy_statement_term_from_route_filter, v_policy_options_policy_statement_term_from_route_filter := range v_policy_options_policy_statement_term_from.Route_filter {
+            var policy_options_policy_statement_term_from_route_filter_model Policy_options_Policy_statement_Term_From_Route_filter_Model
+            // leaf
+            if v_policy_options_policy_statement_term_from_route_filter.Address == nil {
+                policy_options_policy_statement_term_from_route_filter_model.Address =
+                    types.StringNull()
+            } else {
+				policy_options_policy_statement_term_from_route_filter_model.Address =
+                types.StringPointerValue(v_policy_options_policy_statement_term_from_route_filter.Address)
+			}
+
+            policy_options_policy_statement_term_from_route_filter_List[i_policy_options_policy_statement_term_from_route_filter] =
+                policy_options_policy_statement_term_from_route_filter_model
+            // leaf
+            if v_policy_options_policy_statement_term_from_route_filter.Exact == nil {
+                policy_options_policy_statement_term_from_route_filter_model.Exact =
+                    types.StringNull()
+            } else {
+				policy_options_policy_statement_term_from_route_filter_model.Exact =
+                types.StringPointerValue(v_policy_options_policy_statement_term_from_route_filter.Exact)
+			}
+
+            policy_options_policy_statement_term_from_route_filter_List[i_policy_options_policy_statement_term_from_route_filter] =
+                policy_options_policy_statement_term_from_route_filter_model
+        }
+
+        // Write route-filter field as Null when empty, else concrete list
+        if len(policy_options_policy_statement_term_from_route_filter_List) == 0 {
+            policy_options_policy_statement_term_from_model.Route_filter =
+                types.ListNull(types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_From_Route_filter_Model{}.AttrTypes()})
+        } else {
+            policy_options_policy_statement_term_from_model.Route_filter, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_From_Route_filter_Model{}.AttrTypes()},
+                    policy_options_policy_statement_term_from_route_filter_List,
+                )
+        }
+        policy_options_policy_statement_term_from_List[i_policy_options_policy_statement_term_from] = policy_options_policy_statement_term_from_model
+        }
+
+        // Write from field as Null when empty, else concrete list
+        if len(policy_options_policy_statement_term_from_List) == 0 {
+            policy_options_policy_statement_term_model.From =
+                types.ListNull(types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_From_Model{}.AttrTypes()})
+        } else {
+            policy_options_policy_statement_term_model.From, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_From_Model{}.AttrTypes()},
+                    policy_options_policy_statement_term_from_List,
+                )
+        }
+        policy_options_policy_statement_term_List[i_policy_options_policy_statement_term] = policy_options_policy_statement_term_model
+
+            policy_options_policy_statement_term_List[i_policy_options_policy_statement_term] =
+                policy_options_policy_statement_term_model
+                
+        // Build then list
+        policy_options_policy_statement_term_then_List := make([]Policy_options_Policy_statement_Term_Then_Model, len(v_policy_options_policy_statement_term.Then))
+
+        
+		for i_policy_options_policy_statement_term_then, v_policy_options_policy_statement_term_then := range v_policy_options_policy_statement_term.Then {
+            var policy_options_policy_statement_term_then_model Policy_options_Policy_statement_Term_Then_Model
+            // leaf
+            if v_policy_options_policy_statement_term_then.Accept == nil {
+                policy_options_policy_statement_term_then_model.Accept =
+                    types.StringNull()
+            } else {
+				policy_options_policy_statement_term_then_model.Accept =
+                types.StringPointerValue(v_policy_options_policy_statement_term_then.Accept)
+			}
+
+            policy_options_policy_statement_term_then_List[i_policy_options_policy_statement_term_then] =
+                policy_options_policy_statement_term_then_model
+            // leaf
+            if v_policy_options_policy_statement_term_then.Reject == nil {
+                policy_options_policy_statement_term_then_model.Reject =
+                    types.StringNull()
+            } else {
+				policy_options_policy_statement_term_then_model.Reject =
+                types.StringPointerValue(v_policy_options_policy_statement_term_then.Reject)
+			}
+
+            policy_options_policy_statement_term_then_List[i_policy_options_policy_statement_term_then] =
+                policy_options_policy_statement_term_then_model
+        }
+
+        // Write then field as Null when empty, else concrete list
+        if len(policy_options_policy_statement_term_then_List) == 0 {
+            policy_options_policy_statement_term_model.Then =
+                types.ListNull(types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_Then_Model{}.AttrTypes()})
+        } else {
+            policy_options_policy_statement_term_model.Then, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_Then_Model{}.AttrTypes()},
+                    policy_options_policy_statement_term_then_List,
+                )
+        }
+        policy_options_policy_statement_term_List[i_policy_options_policy_statement_term] = policy_options_policy_statement_term_model
+        }
+
+        // Write term field as Null when empty, else concrete list
+        if len(policy_options_policy_statement_term_List) == 0 {
+            policy_options_policy_statement_model.Term =
+                types.ListNull(types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_Model{}.AttrTypes()})
+        } else {
+            policy_options_policy_statement_model.Term, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Policy_options_Policy_statement_Term_Model{}.AttrTypes()},
+                    policy_options_policy_statement_term_List,
+                )
+        }
+        policy_options_policy_statement_List[i_policy_options_policy_statement] = policy_options_policy_statement_model
+        }
+
+        // Write policy-statement field as Null when empty, else concrete list
+        if len(policy_options_policy_statement_List) == 0 {
+            policy_options_model.Policy_statement =
+                types.ListNull(types.ObjectType{AttrTypes: Policy_options_Policy_statement_Model{}.AttrTypes()})
+        } else {
+            policy_options_model.Policy_statement, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Policy_options_Policy_statement_Model{}.AttrTypes()},
+                    policy_options_policy_statement_List,
+                )
+        }
+        policy_options_List[i_policy_options] = policy_options_model
+
+        policy_options_List[i_policy_options] = policy_options_model
+    }
+
+    // Write parent list as Null when empty
+    if len(policy_options_List) == 0 {
+        state.Policy_options =
+            types.ListNull(types.ObjectType{AttrTypes: Policy_options_Model{}.AttrTypes()})
+    } else {
+        state.Policy_options, _ =
+            types.ListValueFrom(ctx,
+                types.ObjectType{AttrTypes: Policy_options_Model{}.AttrTypes()},
+                policy_options_List,
+            )
+    }
     // Initialize protocols as Null; only materialize when we have elements
     state.Protocols =
         types.ListNull(types.ObjectType{AttrTypes: Protocols_Model{}.AttrTypes()})
@@ -4618,6 +5811,265 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
         len(config.Protocols))
     for i_protocols, v_protocols := range config.Protocols {
         var protocols_model Protocols_Model
+            
+        // Build bgp list
+        protocols_bgp_List := make([]Protocols_Bgp_Model, len(v_protocols.Bgp))
+
+        
+		for i_protocols_bgp, v_protocols_bgp := range v_protocols.Bgp {
+            var protocols_bgp_model Protocols_Bgp_Model
+
+            protocols_bgp_List[i_protocols_bgp] =
+                protocols_bgp_model
+                
+        // Build group list
+        protocols_bgp_group_List := make([]Protocols_Bgp_Group_Model, len(v_protocols_bgp.Group))
+
+        
+		for i_protocols_bgp_group, v_protocols_bgp_group := range v_protocols_bgp.Group {
+            var protocols_bgp_group_model Protocols_Bgp_Group_Model
+            // leaf
+            if v_protocols_bgp_group.Name == nil {
+                protocols_bgp_group_model.Name =
+                    types.StringNull()
+            } else {
+				protocols_bgp_group_model.Name =
+                types.StringPointerValue(v_protocols_bgp_group.Name)
+			}
+
+            protocols_bgp_group_List[i_protocols_bgp_group] =
+                protocols_bgp_group_model
+            // leaf
+            if v_protocols_bgp_group.Type == nil {
+                protocols_bgp_group_model.Type =
+                    types.StringNull()
+            } else {
+				protocols_bgp_group_model.Type =
+                types.StringPointerValue(v_protocols_bgp_group.Type)
+			}
+
+            protocols_bgp_group_List[i_protocols_bgp_group] =
+                protocols_bgp_group_model
+            // leaf
+            if v_protocols_bgp_group.Peer_as == nil {
+                protocols_bgp_group_model.Peer_as =
+                    types.StringNull()
+            } else {
+				protocols_bgp_group_model.Peer_as =
+                types.StringPointerValue(v_protocols_bgp_group.Peer_as)
+			}
+
+            protocols_bgp_group_List[i_protocols_bgp_group] =
+                protocols_bgp_group_model
+
+            protocols_bgp_group_List[i_protocols_bgp_group] =
+                protocols_bgp_group_model
+                
+        // Build neighbor list
+        protocols_bgp_group_neighbor_List := make([]Protocols_Bgp_Group_Neighbor_Model, len(v_protocols_bgp_group.Neighbor))
+
+        
+		for i_protocols_bgp_group_neighbor, v_protocols_bgp_group_neighbor := range v_protocols_bgp_group.Neighbor {
+            var protocols_bgp_group_neighbor_model Protocols_Bgp_Group_Neighbor_Model
+            // leaf
+            if v_protocols_bgp_group_neighbor.Name == nil {
+                protocols_bgp_group_neighbor_model.Name =
+                    types.StringNull()
+            } else {
+				protocols_bgp_group_neighbor_model.Name =
+                types.StringPointerValue(v_protocols_bgp_group_neighbor.Name)
+			}
+
+            protocols_bgp_group_neighbor_List[i_protocols_bgp_group_neighbor] =
+                protocols_bgp_group_neighbor_model
+            // leaf-list
+            if v_protocols_bgp_group_neighbor.Import == nil ||
+               len(v_protocols_bgp_group_neighbor.Import) == 0 {
+                protocols_bgp_group_neighbor_model.Import =
+                    types.ListNull(types.StringType)
+            } else {
+                src_protocols_bgp_group_import :=
+                    v_protocols_bgp_group_neighbor.Import
+                vals_protocols_bgp_group_import := make([]*string, len(src_protocols_bgp_group_import))
+                copy(vals_protocols_bgp_group_import, src_protocols_bgp_group_import)
+                protocols_bgp_group_neighbor_model.Import, _ =
+                    types.ListValueFrom(ctx, types.StringType, vals_protocols_bgp_group_import)
+            }
+
+            protocols_bgp_group_neighbor_List[i_protocols_bgp_group_neighbor] =
+                protocols_bgp_group_neighbor_model
+
+            protocols_bgp_group_neighbor_List[i_protocols_bgp_group_neighbor] =
+                protocols_bgp_group_neighbor_model
+                
+        // Build family list
+        protocols_bgp_group_neighbor_family_List := make([]Protocols_Bgp_Group_Neighbor_Family_Model, len(v_protocols_bgp_group_neighbor.Family))
+
+        
+		for i_protocols_bgp_group_neighbor_family, v_protocols_bgp_group_neighbor_family := range v_protocols_bgp_group_neighbor.Family {
+            var protocols_bgp_group_neighbor_family_model Protocols_Bgp_Group_Neighbor_Family_Model
+
+            protocols_bgp_group_neighbor_family_List[i_protocols_bgp_group_neighbor_family] =
+                protocols_bgp_group_neighbor_family_model
+                
+        // Build inet list
+        protocols_bgp_group_neighbor_family_inet_List := make([]Protocols_Bgp_Group_Neighbor_Family_Inet_Model, len(v_protocols_bgp_group_neighbor_family.Inet))
+
+        
+		for i_protocols_bgp_group_neighbor_family_inet, v_protocols_bgp_group_neighbor_family_inet := range v_protocols_bgp_group_neighbor_family.Inet {
+            var protocols_bgp_group_neighbor_family_inet_model Protocols_Bgp_Group_Neighbor_Family_Inet_Model
+
+            protocols_bgp_group_neighbor_family_inet_List[i_protocols_bgp_group_neighbor_family_inet] =
+                protocols_bgp_group_neighbor_family_inet_model
+                
+        // Build unicast list
+        protocols_bgp_group_neighbor_family_inet_unicast_List := make([]Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model, len(v_protocols_bgp_group_neighbor_family_inet.Unicast))
+
+        
+
+        // Write unicast field as Null when empty, else concrete list
+        if len(protocols_bgp_group_neighbor_family_inet_unicast_List) == 0 {
+            protocols_bgp_group_neighbor_family_inet_model.Unicast =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model{}.AttrTypes()})
+        } else {
+            protocols_bgp_group_neighbor_family_inet_model.Unicast, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet_Unicast_Model{}.AttrTypes()},
+                    protocols_bgp_group_neighbor_family_inet_unicast_List,
+                )
+        }
+        protocols_bgp_group_neighbor_family_inet_List[i_protocols_bgp_group_neighbor_family_inet] = protocols_bgp_group_neighbor_family_inet_model
+        }
+
+        // Write inet field as Null when empty, else concrete list
+        if len(protocols_bgp_group_neighbor_family_inet_List) == 0 {
+            protocols_bgp_group_neighbor_family_model.Inet =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet_Model{}.AttrTypes()})
+        } else {
+            protocols_bgp_group_neighbor_family_model.Inet, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet_Model{}.AttrTypes()},
+                    protocols_bgp_group_neighbor_family_inet_List,
+                )
+        }
+        protocols_bgp_group_neighbor_family_List[i_protocols_bgp_group_neighbor_family] = protocols_bgp_group_neighbor_family_model
+
+            protocols_bgp_group_neighbor_family_List[i_protocols_bgp_group_neighbor_family] =
+                protocols_bgp_group_neighbor_family_model
+                
+        // Build inet6 list
+        protocols_bgp_group_neighbor_family_inet6_List := make([]Protocols_Bgp_Group_Neighbor_Family_Inet6_Model, len(v_protocols_bgp_group_neighbor_family.Inet6))
+
+        
+		for i_protocols_bgp_group_neighbor_family_inet6, v_protocols_bgp_group_neighbor_family_inet6 := range v_protocols_bgp_group_neighbor_family.Inet6 {
+            var protocols_bgp_group_neighbor_family_inet6_model Protocols_Bgp_Group_Neighbor_Family_Inet6_Model
+
+            protocols_bgp_group_neighbor_family_inet6_List[i_protocols_bgp_group_neighbor_family_inet6] =
+                protocols_bgp_group_neighbor_family_inet6_model
+                
+        // Build unicast list
+        protocols_bgp_group_neighbor_family_inet6_unicast_List := make([]Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model, len(v_protocols_bgp_group_neighbor_family_inet6.Unicast))
+
+        
+
+        // Write unicast field as Null when empty, else concrete list
+        if len(protocols_bgp_group_neighbor_family_inet6_unicast_List) == 0 {
+            protocols_bgp_group_neighbor_family_inet6_model.Unicast =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model{}.AttrTypes()})
+        } else {
+            protocols_bgp_group_neighbor_family_inet6_model.Unicast, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Unicast_Model{}.AttrTypes()},
+                    protocols_bgp_group_neighbor_family_inet6_unicast_List,
+                )
+        }
+        protocols_bgp_group_neighbor_family_inet6_List[i_protocols_bgp_group_neighbor_family_inet6] = protocols_bgp_group_neighbor_family_inet6_model
+        }
+
+        // Write inet6 field as Null when empty, else concrete list
+        if len(protocols_bgp_group_neighbor_family_inet6_List) == 0 {
+            protocols_bgp_group_neighbor_family_model.Inet6 =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Model{}.AttrTypes()})
+        } else {
+            protocols_bgp_group_neighbor_family_model.Inet6, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Inet6_Model{}.AttrTypes()},
+                    protocols_bgp_group_neighbor_family_inet6_List,
+                )
+        }
+        protocols_bgp_group_neighbor_family_List[i_protocols_bgp_group_neighbor_family] = protocols_bgp_group_neighbor_family_model
+        }
+
+        // Write family field as Null when empty, else concrete list
+        if len(protocols_bgp_group_neighbor_family_List) == 0 {
+            protocols_bgp_group_neighbor_model.Family =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Model{}.AttrTypes()})
+        } else {
+            protocols_bgp_group_neighbor_model.Family, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Family_Model{}.AttrTypes()},
+                    protocols_bgp_group_neighbor_family_List,
+                )
+        }
+        protocols_bgp_group_neighbor_List[i_protocols_bgp_group_neighbor] = protocols_bgp_group_neighbor_model
+            // leaf-list
+            if v_protocols_bgp_group_neighbor.Export == nil ||
+               len(v_protocols_bgp_group_neighbor.Export) == 0 {
+                protocols_bgp_group_neighbor_model.Export =
+                    types.ListNull(types.StringType)
+            } else {
+                src_protocols_bgp_group_export :=
+                    v_protocols_bgp_group_neighbor.Export
+                vals_protocols_bgp_group_export := make([]*string, len(src_protocols_bgp_group_export))
+                copy(vals_protocols_bgp_group_export, src_protocols_bgp_group_export)
+                protocols_bgp_group_neighbor_model.Export, _ =
+                    types.ListValueFrom(ctx, types.StringType, vals_protocols_bgp_group_export)
+            }
+
+            protocols_bgp_group_neighbor_List[i_protocols_bgp_group_neighbor] =
+                protocols_bgp_group_neighbor_model
+        }
+
+        // Write neighbor field as Null when empty, else concrete list
+        if len(protocols_bgp_group_neighbor_List) == 0 {
+            protocols_bgp_group_model.Neighbor =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Model{}.AttrTypes()})
+        } else {
+            protocols_bgp_group_model.Neighbor, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Group_Neighbor_Model{}.AttrTypes()},
+                    protocols_bgp_group_neighbor_List,
+                )
+        }
+        protocols_bgp_group_List[i_protocols_bgp_group] = protocols_bgp_group_model
+        }
+
+        // Write group field as Null when empty, else concrete list
+        if len(protocols_bgp_group_List) == 0 {
+            protocols_bgp_model.Group =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Group_Model{}.AttrTypes()})
+        } else {
+            protocols_bgp_model.Group, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Group_Model{}.AttrTypes()},
+                    protocols_bgp_group_List,
+                )
+        }
+        protocols_bgp_List[i_protocols_bgp] = protocols_bgp_model
+        }
+
+        // Write bgp field as Null when empty, else concrete list
+        if len(protocols_bgp_List) == 0 {
+            protocols_model.Bgp =
+                types.ListNull(types.ObjectType{AttrTypes: Protocols_Bgp_Model{}.AttrTypes()})
+        } else {
+            protocols_model.Bgp, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Protocols_Bgp_Model{}.AttrTypes()},
+                    protocols_bgp_List,
+                )
+        }
+        protocols_List[i_protocols] = protocols_model
             
         // Build lldp list
         protocols_lldp_List := make([]Protocols_Lldp_Model, len(v_protocols.Lldp))
@@ -4699,6 +6151,38 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
     for i_routing_options, v_routing_options := range config.Routing_options {
         var routing_options_model Routing_options_Model
             
+        // Build autonomous-system list
+        routing_options_autonomous_system_List := make([]Routing_options_Autonomous_system_Model, len(v_routing_options.Autonomous_system))
+
+        
+		for i_routing_options_autonomous_system, v_routing_options_autonomous_system := range v_routing_options.Autonomous_system {
+            var routing_options_autonomous_system_model Routing_options_Autonomous_system_Model
+            // leaf
+            if v_routing_options_autonomous_system.As_number == nil {
+                routing_options_autonomous_system_model.As_number =
+                    types.StringNull()
+            } else {
+				routing_options_autonomous_system_model.As_number =
+                types.StringPointerValue(v_routing_options_autonomous_system.As_number)
+			}
+
+            routing_options_autonomous_system_List[i_routing_options_autonomous_system] =
+                routing_options_autonomous_system_model
+        }
+
+        // Write autonomous-system field as Null when empty, else concrete list
+        if len(routing_options_autonomous_system_List) == 0 {
+            routing_options_model.Autonomous_system =
+                types.ListNull(types.ObjectType{AttrTypes: Routing_options_Autonomous_system_Model{}.AttrTypes()})
+        } else {
+            routing_options_model.Autonomous_system, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Routing_options_Autonomous_system_Model{}.AttrTypes()},
+                    routing_options_autonomous_system_List,
+                )
+        }
+        routing_options_List[i_routing_options] = routing_options_model
+            
         // Build static list
         routing_options_static_List := make([]Routing_options_Static_Model, len(v_routing_options.Static))
 
@@ -4726,19 +6210,14 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
 
             routing_options_static_route_List[i_routing_options_static_route] =
                 routing_options_static_route_model
-            // leaf-list
-            if v_routing_options_static_route.Next_hop == nil ||
-               len(v_routing_options_static_route.Next_hop) == 0 {
-                routing_options_static_route_model.Next_hop =
-                    types.ListNull(types.StringType)
+            // leaf
+            if v_routing_options_static_route.Discard == nil {
+                routing_options_static_route_model.Discard =
+                    types.StringNull()
             } else {
-                src_routing_options_static_next_hop :=
-                    v_routing_options_static_route.Next_hop
-                vals_routing_options_static_next_hop := make([]*string, len(src_routing_options_static_next_hop))
-                copy(vals_routing_options_static_next_hop, src_routing_options_static_next_hop)
-                routing_options_static_route_model.Next_hop, _ =
-                    types.ListValueFrom(ctx, types.StringType, vals_routing_options_static_next_hop)
-            }
+				routing_options_static_route_model.Discard =
+                types.StringPointerValue(v_routing_options_static_route.Discard)
+			}
 
             routing_options_static_route_List[i_routing_options_static_route] =
                 routing_options_static_route_model
@@ -5141,6 +6620,38 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
                 types.ListValueFrom(ctx,
                     types.ObjectType{AttrTypes: System_Ports_Model{}.AttrTypes()},
                     system_ports_List,
+                )
+        }
+        system_List[i_system] = system_model
+            
+        // Build name-server list
+        system_name_server_List := make([]System_Name_server_Model, len(v_system.Name_server))
+
+        
+		for i_system_name_server, v_system_name_server := range v_system.Name_server {
+            var system_name_server_model System_Name_server_Model
+            // leaf
+            if v_system_name_server.Name == nil {
+                system_name_server_model.Name =
+                    types.StringNull()
+            } else {
+				system_name_server_model.Name =
+                types.StringPointerValue(v_system_name_server.Name)
+			}
+
+            system_name_server_List[i_system_name_server] =
+                system_name_server_model
+        }
+
+        // Write name-server field as Null when empty, else concrete list
+        if len(system_name_server_List) == 0 {
+            system_model.Name_server =
+                types.ListNull(types.ObjectType{AttrTypes: System_Name_server_Model{}.AttrTypes()})
+        } else {
+            system_model.Name_server, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: System_Name_server_Model{}.AttrTypes()},
+                    system_name_server_List,
                 )
         }
         system_List[i_system] = system_model

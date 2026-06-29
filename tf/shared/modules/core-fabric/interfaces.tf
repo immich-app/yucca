@@ -4,7 +4,7 @@
 locals {
   interfaces_block = [
     {
-      interface = [
+      interface = concat([
         {
           name = "et-0/0/0"
           mtu  = 9216
@@ -409,7 +409,7 @@ locals {
             }
           ]
         }
-      ]
+      ], local.transit_interfaces)
     }
   ]
 }
