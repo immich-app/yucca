@@ -142,15 +142,15 @@ cookies and never an `Authorization` header.
 
 ## Environment variables
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | state-bucket creds (skip op) | resolved via op |
-| `YUCTL_TF_STATE_ACCESS_KEY_REF` / `…_SECRET_KEY_REF` | op refs for state creds | `op://yucca_tf/TF_STATE_S3_{ACCESS,SECRET}_KEY/password` |
-| `YUCTL_TF_DEPLOYMENT_DIR` | force the local stack-enumeration dir | walk up for `tf/deployment` |
-| `OP_BIN` | 1Password CLI binary | `op` |
-| `OIDC_ADMIN_ISSUER` | admin OIDC issuer (`users list`) | — (flag `--issuer`) |
-| `OIDC_ADMIN_DEVICE_CLIENT_ID` | public device client id (`users list`) | — (flag `--client-id`) |
-| `YUCTL_ADMIN_API_URL` | admin-api base URL (`users list`) | derived from region domain |
+| Variable                                             | Purpose                                | Default                                                  |
+| ---------------------------------------------------- | -------------------------------------- | -------------------------------------------------------- |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`        | state-bucket creds (skip op)           | resolved via op                                          |
+| `YUCTL_TF_STATE_ACCESS_KEY_REF` / `…_SECRET_KEY_REF` | op refs for state creds                | `op://yucca_tf/TF_STATE_S3_{ACCESS,SECRET}_KEY/password` |
+| `YUCTL_TF_DEPLOYMENT_DIR`                            | force the local stack-enumeration dir  | walk up for `tf/deployment`                              |
+| `OP_BIN`                                             | 1Password CLI binary                   | `op`                                                     |
+| `OIDC_ADMIN_ISSUER`                                  | admin OIDC issuer (`users list`)       | — (flag `--issuer`)                                      |
+| `OIDC_ADMIN_DEVICE_CLIENT_ID`                        | public device client id (`users list`) | — (flag `--client-id`)                                   |
+| `YUCTL_ADMIN_API_URL`                                | admin-api base URL (`users list`)      | derived from region domain                               |
 
 ## Tests
 

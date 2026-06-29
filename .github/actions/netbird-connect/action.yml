@@ -19,7 +19,7 @@ inputs:
   hostname:
     description: Optional peer hostname to register the runner as.
     required: false
-    default: ""
+    default: ''
 
 runs:
   using: composite
