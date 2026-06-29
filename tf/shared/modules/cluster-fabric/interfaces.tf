@@ -22,7 +22,7 @@ locals {
 resource "junos_interface_physical" "member" {
   for_each = local.member_bundles
   name     = each.key
-  disable  = each.value != "ae0" && (var.disable_all_server_ports || contains(var.disabled_ports, each.key))
+  disable  = (each.value != "ae0" && (var.disable_all_server_ports || contains(var.disabled_ports, each.key))) ? true : null
   ether_opts {
     ae_8023ad = each.value
   }
