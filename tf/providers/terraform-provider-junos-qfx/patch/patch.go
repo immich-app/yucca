@@ -104,7 +104,7 @@ func CreateDiffPatchWithSchema(diffMap map[string]Change, groupName string, idx 
 		if p.keyName == "pos" {
 			switch p.change.Op {
 			case Create:
-				leaf := &Node{Tag: p.tag, Parent: p.parent, Operation: "create", Text: p.change.NewVal}
+				leaf := &Node{Tag: p.tag, Parent: p.parent, Operation: "merge", Text: p.change.NewVal}
 				p.parent.Children = append(p.parent.Children, leaf)
 			case Delete:
 				leaf := &Node{Tag: p.tag, Parent: p.parent, Operation: "delete", Text: p.change.OldVal}
@@ -113,7 +113,7 @@ func CreateDiffPatchWithSchema(diffMap map[string]Change, groupName string, idx 
 				// Reorder: delete old value, create new value
 				del := &Node{Tag: p.tag, Parent: p.parent, Operation: "delete", Text: p.change.OldVal}
 				p.parent.Children = append(p.parent.Children, del)
-				cre := &Node{Tag: p.tag, Parent: p.parent, Operation: "create", Text: p.change.NewVal}
+				cre := &Node{Tag: p.tag, Parent: p.parent, Operation: "merge", Text: p.change.NewVal}
 				p.parent.Children = append(p.parent.Children, cre)
 			}
 			continue
@@ -126,7 +126,9 @@ func CreateDiffPatchWithSchema(diffMap map[string]Change, groupName string, idx 
 
 		switch p.change.Op {
 		case Create:
-			leaf.Operation = "create"
+			// merge, not create: idempotent over pre-existing device config
+			// (brownfield/empty-state applies), consistent with default-operation=merge.
+			leaf.Operation = "merge"
 			leaf.Text = p.change.NewVal
 		case Replace:
 			leaf.Operation = "replace"
@@ -178,7 +180,8 @@ func applyKeyedListEntryOperation(parent *Node, parentSegments []string, leafSeg
 
 	switch change.Op {
 	case Create:
-		parent.Operation = "create"
+		// merge (see Create case above): idempotent over existing config.
+		parent.Operation = "merge"
 	case Replace:
 		parent.Operation = "replace"
 	case Delete:

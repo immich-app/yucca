@@ -312,7 +312,7 @@ func TestCC2_EmptyLeafCreate(t *testing.T) {
 	if !strings.Contains(output, "disable") {
 		t.Error("expected disable in patch output")
 	}
-	if !strings.Contains(output, `nc:operation="create"`) {
+	if !strings.Contains(output, `nc:operation="merge"`) {
 		t.Error("expected create operation for disable")
 	}
 }
@@ -693,7 +693,7 @@ func TestCC4_NestedListEntryCreation(t *testing.T) {
 		t.Error("expected description new-link in output")
 	}
 	// Verify the new entry has the create operation
-	if !strings.Contains(output, "create") {
+	if !strings.Contains(output, "merge") {
 		t.Error("expected create operation for new list entry")
 	}
 	// Existing interface should NOT appear (unchanged)
