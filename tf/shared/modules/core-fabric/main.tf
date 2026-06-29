@@ -6,6 +6,7 @@ resource "terraform-provider-junos-qfx" "core" {
   provider      = junos-qfx
 
   chassis            = local.chassis_block
+  firewall           = local.firewall_block
   interfaces         = local.interfaces_block
   forwarding_options = local.forwarding_options_block
   routing_options    = local.routing_options_block

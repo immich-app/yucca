@@ -409,7 +409,7 @@ locals {
             }
           ]
         }
-      ], local.transit_interfaces)
+      ], local.transit_interfaces, local.lo0_block)
     }
   ]
 }

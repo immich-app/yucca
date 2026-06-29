@@ -60,6 +60,12 @@ variable "name_servers" {
   description = "Default DNS resolvers (system name-server). Empty = unset."
 }
 
+variable "mgmt_trusted_sources" {
+  type        = list(string)
+  default     = ["10.40.5.0/24", "10.254.0.0/15", "100.64.0.0/10", "127.0.0.0/8"]
+  description = "Source prefixes allowed to reach SSH/NETCONF on the RE (lo0 PROTECT-RE filter, applied when transit exists). OOB + NetBird + Tailscale + loopback."
+}
+
 variable "local_as" {
   type        = number
   default     = null
@@ -82,6 +88,7 @@ variable "transits" {
     peer_v6    = string              # provider v6 (e.g. 2a01:4a0:1338:226::1)
     peer_as    = number              # provider ASN (e.g. 33891)
     advertise  = string              # prefix to originate + advertise
+    loopback   = optional(string)    # lo0 host in the advertised space (e.g. 69.48.224.254/32)
     prepend    = optional(number, 0) # times to prepend our AS on export (backups)
     local_pref = optional(number)    # local-pref on the received default (primary highest)
   }))

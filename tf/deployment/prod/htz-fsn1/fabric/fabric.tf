@@ -38,6 +38,7 @@ module "core" {
       peer_v6   = "2a01:4a0:1338:226::1"
       peer_as   = 33891
       advertise = "69.48.224.0/24"
+      loopback  = "69.48.224.254/32"
     }
   }
 }

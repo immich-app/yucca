@@ -293,6 +293,20 @@ var TrimmedSchemaJSON = `{
                                     "ordered-by": "user",
                                     "path": "firewall/family/inet/filter/term/from",
                                     "type": "list"
+                                  },
+                                  {
+                                    "leaf-type": "string",
+                                    "name": "protocol",
+                                    "ordered-by": "user",
+                                    "path": "firewall/family/inet/filter/term/from",
+                                    "type": "leaf-list"
+                                  },
+                                  {
+                                    "leaf-type": "string",
+                                    "name": "destination-port",
+                                    "ordered-by": "user",
+                                    "path": "firewall/family/inet/filter/term/from",
+                                    "type": "leaf-list"
                                   }
                                 ],
                                 "name": "from",
@@ -332,6 +346,82 @@ var TrimmedSchemaJSON = `{
                       }
                     ],
                     "name": "inet",
+                    "path": "firewall/family",
+                    "type": "container"
+                  },
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "leaf-type": "string",
+                            "name": "name",
+                            "path": "firewall/family/inet6/filter",
+                            "type": "leaf"
+                          },
+                          {
+                            "children": [
+                              {
+                                "leaf-type": "string",
+                                "name": "name",
+                                "path": "firewall/family/inet6/filter/term",
+                                "type": "leaf"
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "leaf-type": "string",
+                                    "name": "next-header",
+                                    "ordered-by": "user",
+                                    "path": "firewall/family/inet6/filter/term/from",
+                                    "type": "leaf-list"
+                                  },
+                                  {
+                                    "leaf-type": "string",
+                                    "name": "destination-port",
+                                    "ordered-by": "user",
+                                    "path": "firewall/family/inet6/filter/term/from",
+                                    "type": "leaf-list"
+                                  }
+                                ],
+                                "name": "from",
+                                "path": "firewall/family/inet6/filter/term",
+                                "type": "container"
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "leaf-type": "empty",
+                                    "name": "accept",
+                                    "path": "firewall/family/inet6/filter/term/then",
+                                    "type": "leaf"
+                                  },
+                                  {
+                                    "leaf-type": "empty",
+                                    "name": "discard",
+                                    "path": "firewall/family/inet6/filter/term/then",
+                                    "type": "leaf"
+                                  }
+                                ],
+                                "name": "then",
+                                "path": "firewall/family/inet6/filter/term",
+                                "type": "container"
+                              }
+                            ],
+                            "key": "name",
+                            "name": "term",
+                            "ordered-by": "user",
+                            "path": "firewall/family/inet6/filter",
+                            "type": "list"
+                          }
+                        ],
+                        "key": "name",
+                        "name": "filter",
+                        "path": "firewall/family/inet6",
+                        "type": "list"
+                      }
+                    ],
+                    "name": "inet6",
                     "path": "firewall/family",
                     "type": "container"
                   }
@@ -537,6 +627,26 @@ var TrimmedSchemaJSON = `{
                           },
                           {
                             "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "leaf-type": "string",
+                                        "name": "filter-name",
+                                        "path": "interfaces/interface/unit/family/inet6/filter/input",
+                                        "type": "leaf"
+                                      }
+                                    ],
+                                    "name": "input",
+                                    "path": "interfaces/interface/unit/family/inet6/filter",
+                                    "type": "container"
+                                  }
+                                ],
+                                "name": "filter",
+                                "path": "interfaces/interface/unit/family/inet6",
+                                "type": "container"
+                              },
                               {
                                 "children": [
                                   {
@@ -1390,6 +1500,7 @@ type xml_Chassis_Fpc struct {
 type xml_Firewall_Family struct {
 	XMLName xml.Name `xml:"family"`
 	Inet []xml_Firewall_Family_Inet `xml:"inet,omitempty"`
+	Inet6 []xml_Firewall_Family_Inet6 `xml:"inet6,omitempty"`
 }
 type xml_Forwarding_options_Storm_control_profiles struct {
 	XMLName xml.Name `xml:"storm-control-profiles"`
@@ -1476,6 +1587,10 @@ type xml_Firewall_Family_Inet struct {
 	XMLName xml.Name `xml:"inet"`
 	Filter []xml_Firewall_Family_Inet_Filter `xml:"filter,omitempty"`
 }
+type xml_Firewall_Family_Inet6 struct {
+	XMLName xml.Name `xml:"inet6"`
+	Filter []xml_Firewall_Family_Inet6_Filter `xml:"filter,omitempty"`
+}
 type xml_Forwarding_options_Storm_control_profiles_All struct {
 	XMLName xml.Name `xml:"all"`
 	Bandwidth_level         *string  `xml:"bandwidth-level,omitempty"`
@@ -1551,6 +1666,11 @@ type xml_Firewall_Family_Inet_Filter struct {
 	Name         *string  `xml:"name,omitempty"`
 	Term []xml_Firewall_Family_Inet_Filter_Term `xml:"term,omitempty"`
 }
+type xml_Firewall_Family_Inet6_Filter struct {
+	XMLName xml.Name `xml:"filter"`
+	Name         *string  `xml:"name,omitempty"`
+	Term []xml_Firewall_Family_Inet6_Filter_Term `xml:"term,omitempty"`
+}
 type xml_Interfaces_Interface_Ether_options_Ieee_802_3ad struct {
 	XMLName xml.Name `xml:"ieee-802.3ad"`
 	Bundle         *string  `xml:"bundle,omitempty"`
@@ -1595,6 +1715,12 @@ type xml_Firewall_Family_Inet_Filter_Term struct {
 	From []xml_Firewall_Family_Inet_Filter_Term_From `xml:"from,omitempty"`
 	Then []xml_Firewall_Family_Inet_Filter_Term_Then `xml:"then,omitempty"`
 }
+type xml_Firewall_Family_Inet6_Filter_Term struct {
+	XMLName xml.Name `xml:"term"`
+	Name         *string  `xml:"name,omitempty"`
+	From []xml_Firewall_Family_Inet6_Filter_Term_From `xml:"from,omitempty"`
+	Then []xml_Firewall_Family_Inet6_Filter_Term_Then `xml:"then,omitempty"`
+}
 type xml_Interfaces_Interface_Unit_Family_Inet struct {
 	XMLName xml.Name `xml:"inet"`
 	Filter []xml_Interfaces_Interface_Unit_Family_Inet_Filter `xml:"filter,omitempty"`
@@ -1602,6 +1728,7 @@ type xml_Interfaces_Interface_Unit_Family_Inet struct {
 }
 type xml_Interfaces_Interface_Unit_Family_Inet6 struct {
 	XMLName xml.Name `xml:"inet6"`
+	Filter []xml_Interfaces_Interface_Unit_Family_Inet6_Filter `xml:"filter,omitempty"`
 	Address []xml_Interfaces_Interface_Unit_Family_Inet6_Address `xml:"address,omitempty"`
 }
 type xml_Interfaces_Interface_Unit_Family_Ethernet_switching struct {
@@ -1629,11 +1756,23 @@ type xml_Firewall_Family_Inet_Filter_Term_From struct {
 	XMLName xml.Name `xml:"from"`
 	Source_address []xml_Firewall_Family_Inet_Filter_Term_From_Source_address `xml:"source-address,omitempty"`
 	Destination_address []xml_Firewall_Family_Inet_Filter_Term_From_Destination_address `xml:"destination-address,omitempty"`
+	Protocol         []*string  `xml:"protocol,omitempty"`
+	Destination_port         []*string  `xml:"destination-port,omitempty"`
 }
 type xml_Firewall_Family_Inet_Filter_Term_Then struct {
 	XMLName xml.Name `xml:"then"`
 	Accept         *string  `xml:"accept,omitempty"`
 	Discard []xml_Firewall_Family_Inet_Filter_Term_Then_Discard `xml:"discard,omitempty"`
+}
+type xml_Firewall_Family_Inet6_Filter_Term_From struct {
+	XMLName xml.Name `xml:"from"`
+	Next_header         []*string  `xml:"next-header,omitempty"`
+	Destination_port         []*string  `xml:"destination-port,omitempty"`
+}
+type xml_Firewall_Family_Inet6_Filter_Term_Then struct {
+	XMLName xml.Name `xml:"then"`
+	Accept         *string  `xml:"accept,omitempty"`
+	Discard         *string  `xml:"discard,omitempty"`
 }
 type xml_Interfaces_Interface_Unit_Family_Inet_Filter struct {
 	XMLName xml.Name `xml:"filter"`
@@ -1642,6 +1781,10 @@ type xml_Interfaces_Interface_Unit_Family_Inet_Filter struct {
 type xml_Interfaces_Interface_Unit_Family_Inet_Address struct {
 	XMLName xml.Name `xml:"address"`
 	Name         *string  `xml:"name,omitempty"`
+}
+type xml_Interfaces_Interface_Unit_Family_Inet6_Filter struct {
+	XMLName xml.Name `xml:"filter"`
+	Input []xml_Interfaces_Interface_Unit_Family_Inet6_Filter_Input `xml:"input,omitempty"`
 }
 type xml_Interfaces_Interface_Unit_Family_Inet6_Address struct {
 	XMLName xml.Name `xml:"address"`
@@ -1676,6 +1819,10 @@ type xml_Firewall_Family_Inet_Filter_Term_Then_Discard struct {
 	XMLName xml.Name `xml:"discard"`
 }
 type xml_Interfaces_Interface_Unit_Family_Inet_Filter_Input struct {
+	XMLName xml.Name `xml:"input"`
+	Filter_name         *string  `xml:"filter-name,omitempty"`
+}
+type xml_Interfaces_Interface_Unit_Family_Inet6_Filter_Input struct {
 	XMLName xml.Name `xml:"input"`
 	Filter_name         *string  `xml:"filter-name,omitempty"`
 }
@@ -2100,10 +2247,12 @@ func (o Chassis_Fpc_Model) Attributes() map[string]schema.Attribute {
 }
 type Firewall_Family_Model struct {
 	Inet	types.List `tfsdk:"inet"`
+	Inet6	types.List `tfsdk:"inet6"`
 }
 func (o Firewall_Family_Model) AttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 	    "inet": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet_Model{}.AttrTypes()}},
+	    "inet6": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet6_Model{}.AttrTypes()}},
 	}
 }
 func (o Firewall_Family_Model) Attributes() map[string]schema.Attribute {
@@ -2112,6 +2261,12 @@ func (o Firewall_Family_Model) Attributes() map[string]schema.Attribute {
 		    Optional: true,
 		    NestedObject: schema.NestedAttributeObject{
 			    Attributes: Firewall_Family_Inet_Model{}.Attributes(),
+	        },
+        },
+	    "inet6": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Firewall_Family_Inet6_Model{}.Attributes(),
 	        },
         },
     }
@@ -2507,6 +2662,24 @@ func (o Firewall_Family_Inet_Model) Attributes() map[string]schema.Attribute {
         },
     }
 }
+type Firewall_Family_Inet6_Model struct {
+	Filter	types.List `tfsdk:"filter"`
+}
+func (o Firewall_Family_Inet6_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "filter": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Model{}.AttrTypes()}},
+	}
+}
+func (o Firewall_Family_Inet6_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "filter": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Firewall_Family_Inet6_Filter_Model{}.Attributes(),
+	        },
+        },
+    }
+}
 type Forwarding_options_Storm_control_profiles_All_Model struct {
 	Bandwidth_level	types.String `tfsdk:"bandwidth_level"`
 }
@@ -2850,6 +3023,30 @@ func (o Firewall_Family_Inet_Filter_Model) Attributes() map[string]schema.Attrib
         },
     }
 }
+type Firewall_Family_Inet6_Filter_Model struct {
+	Name	types.String `tfsdk:"name"`
+	Term	types.List `tfsdk:"term"`
+}
+func (o Firewall_Family_Inet6_Filter_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+	    "term": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_Model{}.AttrTypes()}},
+	}
+}
+func (o Firewall_Family_Inet6_Filter_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Filter`",
+	    },
+	    "term": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Firewall_Family_Inet6_Filter_Term_Model{}.Attributes(),
+	        },
+        },
+    }
+}
 type Interfaces_Interface_Ether_options_Ieee_802_3ad_Model struct {
 	Bundle	types.String `tfsdk:"bundle"`
 }
@@ -3055,6 +3252,38 @@ func (o Firewall_Family_Inet_Filter_Term_Model) Attributes() map[string]schema.A
         },
     }
 }
+type Firewall_Family_Inet6_Filter_Term_Model struct {
+	Name	types.String `tfsdk:"name"`
+	From	types.List `tfsdk:"from"`
+	Then	types.List `tfsdk:"then"`
+}
+func (o Firewall_Family_Inet6_Filter_Term_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "name": 	types.StringType,
+	    "from": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_From_Model{}.AttrTypes()}},
+	    "then": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_Then_Model{}.AttrTypes()}},
+	}
+}
+func (o Firewall_Family_Inet6_Filter_Term_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Name.Term`",
+	    },
+	    "from": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Firewall_Family_Inet6_Filter_Term_From_Model{}.Attributes(),
+	        },
+        },
+	    "then": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Firewall_Family_Inet6_Filter_Term_Then_Model{}.Attributes(),
+	        },
+        },
+    }
+}
 type Interfaces_Interface_Unit_Family_Inet_Model struct {
 	Filter	types.List `tfsdk:"filter"`
 	Address	types.List `tfsdk:"address"`
@@ -3082,15 +3311,23 @@ func (o Interfaces_Interface_Unit_Family_Inet_Model) Attributes() map[string]sch
     }
 }
 type Interfaces_Interface_Unit_Family_Inet6_Model struct {
+	Filter	types.List `tfsdk:"filter"`
 	Address	types.List `tfsdk:"address"`
 }
 func (o Interfaces_Interface_Unit_Family_Inet6_Model) AttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
+	    "filter": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Filter_Model{}.AttrTypes()}},
 	    "address": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Address_Model{}.AttrTypes()}},
 	}
 }
 func (o Interfaces_Interface_Unit_Family_Inet6_Model) Attributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
+	    "filter": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Interfaces_Interface_Unit_Family_Inet6_Filter_Model{}.Attributes(),
+	        },
+        },
 	    "address": schema.ListNestedAttribute{
 		    Optional: true,
 		    NestedObject: schema.NestedAttributeObject{
@@ -3199,11 +3436,15 @@ func (o System_Login_User_Authentication_Ssh_ed25519_Model) Attributes() map[str
 type Firewall_Family_Inet_Filter_Term_From_Model struct {
 	Source_address	types.List `tfsdk:"source_address"`
 	Destination_address	types.List `tfsdk:"destination_address"`
+	Protocol	types.List `tfsdk:"protocol"`
+	Destination_port	types.List `tfsdk:"destination_port"`
 }
 func (o Firewall_Family_Inet_Filter_Term_From_Model) AttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 	    "source_address": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet_Filter_Term_From_Source_address_Model{}.AttrTypes()}},
 	    "destination_address": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Firewall_Family_Inet_Filter_Term_From_Destination_address_Model{}.AttrTypes()}},
+		"protocol": 	types.ListType{ElemType: types.StringType},
+		"destination_port": 	types.ListType{ElemType: types.StringType},
 	}
 }
 func (o Firewall_Family_Inet_Filter_Term_From_Model) Attributes() map[string]schema.Attribute {
@@ -3220,6 +3461,16 @@ func (o Firewall_Family_Inet_Filter_Term_From_Model) Attributes() map[string]sch
 			    Attributes: Firewall_Family_Inet_Filter_Term_From_Destination_address_Model{}.Attributes(),
 	        },
         },
+		"protocol": schema.ListAttribute{
+			ElementType:         types.StringType,
+			Optional:            true,
+			MarkdownDescription: "xpath is `config.Protocol.From`",
+		},
+		"destination_port": schema.ListAttribute{
+			ElementType:         types.StringType,
+			Optional:            true,
+			MarkdownDescription: "xpath is `config.Destination-port.From`",
+		},
     }
 }
 type Firewall_Family_Inet_Filter_Term_Then_Model struct {
@@ -3244,6 +3495,52 @@ func (o Firewall_Family_Inet_Filter_Term_Then_Model) Attributes() map[string]sch
 			    Attributes: Firewall_Family_Inet_Filter_Term_Then_Discard_Model{}.Attributes(),
 	        },
         },
+    }
+}
+type Firewall_Family_Inet6_Filter_Term_From_Model struct {
+	Next_header	types.List `tfsdk:"next_header"`
+	Destination_port	types.List `tfsdk:"destination_port"`
+}
+func (o Firewall_Family_Inet6_Filter_Term_From_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"next_header": 	types.ListType{ElemType: types.StringType},
+		"destination_port": 	types.ListType{ElemType: types.StringType},
+	}
+}
+func (o Firewall_Family_Inet6_Filter_Term_From_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"next_header": schema.ListAttribute{
+			ElementType:         types.StringType,
+			Optional:            true,
+			MarkdownDescription: "xpath is `config.Next-header.From`",
+		},
+		"destination_port": schema.ListAttribute{
+			ElementType:         types.StringType,
+			Optional:            true,
+			MarkdownDescription: "xpath is `config.Destination-port.From`",
+		},
+    }
+}
+type Firewall_Family_Inet6_Filter_Term_Then_Model struct {
+	Accept	types.String `tfsdk:"accept"`
+	Discard	types.String `tfsdk:"discard"`
+}
+func (o Firewall_Family_Inet6_Filter_Term_Then_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "accept": 	types.StringType,
+	    "discard": 	types.StringType,
+	}
+}
+func (o Firewall_Family_Inet6_Filter_Term_Then_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "accept": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Accept.Then`",
+	    },
+	    "discard": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Discard.Then`",
+	    },
     }
 }
 type Interfaces_Interface_Unit_Family_Inet_Filter_Model struct {
@@ -3278,6 +3575,24 @@ func (o Interfaces_Interface_Unit_Family_Inet_Address_Model) Attributes() map[st
 		    Optional: true,
 		    MarkdownDescription: "xpath is `config.Name.Address`",
 	    },
+    }
+}
+type Interfaces_Interface_Unit_Family_Inet6_Filter_Model struct {
+	Input	types.List `tfsdk:"input"`
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Filter_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "input": 	types.ListType{ElemType: types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model{}.AttrTypes()}},
+	}
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Filter_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "input": schema.ListNestedAttribute{
+		    Optional: true,
+		    NestedObject: schema.NestedAttributeObject{
+			    Attributes: Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model{}.Attributes(),
+	        },
+        },
     }
 }
 type Interfaces_Interface_Unit_Family_Inet6_Address_Model struct {
@@ -3417,6 +3732,22 @@ func (o Interfaces_Interface_Unit_Family_Inet_Filter_Input_Model) AttrTypes() ma
 	}
 }
 func (o Interfaces_Interface_Unit_Family_Inet_Filter_Input_Model) Attributes() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+	    "filter_name": schema.StringAttribute{
+		    Optional: true,
+		    MarkdownDescription: "xpath is `config.Filter-name.Input`",
+	    },
+    }
+}
+type Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model struct {
+	Filter_name	types.String `tfsdk:"filter_name"`
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model) AttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+	    "filter_name": 	types.StringType,
+	}
+}
+func (o Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model) Attributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 	    "filter_name": schema.StringAttribute{
 		    Optional: true,
@@ -3675,6 +4006,22 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 		for i_firewall_family_inet_filter_term_from_destination_address, v_firewall_family_inet_filter_term_from_destination_address := range var_firewall_family_inet_filter_term_from_destination_address {
 			cfg.Firewall[i_firewall].Family[i_firewall_family].Inet[i_firewall_family_inet].Filter[i_firewall_family_inet_filter].Term[i_firewall_family_inet_filter_term].From[i_firewall_family_inet_filter_term_from].Destination_address[i_firewall_family_inet_filter_term_from_destination_address].Name = v_firewall_family_inet_filter_term_from_destination_address.Name.ValueStringPointer()
 		}
+			var var_firewall_family_inet_filter_term_from_protocol []string
+			diags.Append(v_firewall_family_inet_filter_term_from.Protocol.ElementsAs(ctx, &var_firewall_family_inet_filter_term_from_protocol, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+			for _, v_firewall_family_inet_filter_term_from_protocol := range var_firewall_family_inet_filter_term_from_protocol {
+				cfg.Firewall[i_firewall].Family[i_firewall_family].Inet[i_firewall_family_inet].Filter[i_firewall_family_inet_filter].Term[i_firewall_family_inet_filter_term].From[i_firewall_family_inet_filter_term_from].Protocol = append(cfg.Firewall[i_firewall].Family[i_firewall_family].Inet[i_firewall_family_inet].Filter[i_firewall_family_inet_filter].Term[i_firewall_family_inet_filter_term].From[i_firewall_family_inet_filter_term_from].Protocol, &v_firewall_family_inet_filter_term_from_protocol)
+			}
+			var var_firewall_family_inet_filter_term_from_destination_port []string
+			diags.Append(v_firewall_family_inet_filter_term_from.Destination_port.ElementsAs(ctx, &var_firewall_family_inet_filter_term_from_destination_port, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+			for _, v_firewall_family_inet_filter_term_from_destination_port := range var_firewall_family_inet_filter_term_from_destination_port {
+				cfg.Firewall[i_firewall].Family[i_firewall_family].Inet[i_firewall_family_inet].Filter[i_firewall_family_inet_filter].Term[i_firewall_family_inet_filter_term].From[i_firewall_family_inet_filter_term_from].Destination_port = append(cfg.Firewall[i_firewall].Family[i_firewall_family].Inet[i_firewall_family_inet].Filter[i_firewall_family_inet_filter].Term[i_firewall_family_inet_filter_term].From[i_firewall_family_inet_filter_term_from].Destination_port, &v_firewall_family_inet_filter_term_from_destination_port)
+			}
 		}
 			var var_firewall_family_inet_filter_term_then []Firewall_Family_Inet_Filter_Term_Then_Model
 			diags.Append(v_firewall_family_inet_filter_term.Then.ElementsAs(ctx, &var_firewall_family_inet_filter_term_then, false)...)
@@ -3692,6 +4039,71 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 			}
 	    cfg.Firewall[i_firewall].Family[i_firewall_family].Inet[i_firewall_family_inet].Filter[i_firewall_family_inet_filter].Term[i_firewall_family_inet_filter_term].Then[i_firewall_family_inet_filter_term_then].Discard = make([]xml_Firewall_Family_Inet_Filter_Term_Then_Discard, len(var_firewall_family_inet_filter_term_then_discard))
 		
+		}
+		}
+		}
+		}
+			var var_firewall_family_inet6 []Firewall_Family_Inet6_Model
+			diags.Append(v_firewall_family.Inet6.ElementsAs(ctx, &var_firewall_family_inet6, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6 = make([]xml_Firewall_Family_Inet6, len(var_firewall_family_inet6))
+		
+		for i_firewall_family_inet6, v_firewall_family_inet6 := range var_firewall_family_inet6 {
+			var var_firewall_family_inet6_filter []Firewall_Family_Inet6_Filter_Model
+			diags.Append(v_firewall_family_inet6.Filter.ElementsAs(ctx, &var_firewall_family_inet6_filter, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter = make([]xml_Firewall_Family_Inet6_Filter, len(var_firewall_family_inet6_filter))
+		
+		for i_firewall_family_inet6_filter, v_firewall_family_inet6_filter := range var_firewall_family_inet6_filter {
+			cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Name = v_firewall_family_inet6_filter.Name.ValueStringPointer()
+			var var_firewall_family_inet6_filter_term []Firewall_Family_Inet6_Filter_Term_Model
+			diags.Append(v_firewall_family_inet6_filter.Term.ElementsAs(ctx, &var_firewall_family_inet6_filter_term, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term = make([]xml_Firewall_Family_Inet6_Filter_Term, len(var_firewall_family_inet6_filter_term))
+		
+		for i_firewall_family_inet6_filter_term, v_firewall_family_inet6_filter_term := range var_firewall_family_inet6_filter_term {
+			cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].Name = v_firewall_family_inet6_filter_term.Name.ValueStringPointer()
+			var var_firewall_family_inet6_filter_term_from []Firewall_Family_Inet6_Filter_Term_From_Model
+			diags.Append(v_firewall_family_inet6_filter_term.From.ElementsAs(ctx, &var_firewall_family_inet6_filter_term_from, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].From = make([]xml_Firewall_Family_Inet6_Filter_Term_From, len(var_firewall_family_inet6_filter_term_from))
+		
+		for i_firewall_family_inet6_filter_term_from, v_firewall_family_inet6_filter_term_from := range var_firewall_family_inet6_filter_term_from {
+			var var_firewall_family_inet6_filter_term_from_next_header []string
+			diags.Append(v_firewall_family_inet6_filter_term_from.Next_header.ElementsAs(ctx, &var_firewall_family_inet6_filter_term_from_next_header, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+			for _, v_firewall_family_inet6_filter_term_from_next_header := range var_firewall_family_inet6_filter_term_from_next_header {
+				cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].From[i_firewall_family_inet6_filter_term_from].Next_header = append(cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].From[i_firewall_family_inet6_filter_term_from].Next_header, &v_firewall_family_inet6_filter_term_from_next_header)
+			}
+			var var_firewall_family_inet6_filter_term_from_destination_port []string
+			diags.Append(v_firewall_family_inet6_filter_term_from.Destination_port.ElementsAs(ctx, &var_firewall_family_inet6_filter_term_from_destination_port, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+			for _, v_firewall_family_inet6_filter_term_from_destination_port := range var_firewall_family_inet6_filter_term_from_destination_port {
+				cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].From[i_firewall_family_inet6_filter_term_from].Destination_port = append(cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].From[i_firewall_family_inet6_filter_term_from].Destination_port, &v_firewall_family_inet6_filter_term_from_destination_port)
+			}
+		}
+			var var_firewall_family_inet6_filter_term_then []Firewall_Family_Inet6_Filter_Term_Then_Model
+			diags.Append(v_firewall_family_inet6_filter_term.Then.ElementsAs(ctx, &var_firewall_family_inet6_filter_term_then, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].Then = make([]xml_Firewall_Family_Inet6_Filter_Term_Then, len(var_firewall_family_inet6_filter_term_then))
+		
+		for i_firewall_family_inet6_filter_term_then, v_firewall_family_inet6_filter_term_then := range var_firewall_family_inet6_filter_term_then {
+			cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].Then[i_firewall_family_inet6_filter_term_then].Accept = v_firewall_family_inet6_filter_term_then.Accept.ValueStringPointer()
+			cfg.Firewall[i_firewall].Family[i_firewall_family].Inet6[i_firewall_family_inet6].Filter[i_firewall_family_inet6_filter].Term[i_firewall_family_inet6_filter_term].Then[i_firewall_family_inet6_filter_term_then].Discard = v_firewall_family_inet6_filter_term_then.Discard.ValueStringPointer()
 		}
 		}
 		}
@@ -3854,6 +4266,25 @@ func modelToConfig(ctx context.Context, model ConfigResourceModel, diags *diag.D
 	    cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet6 = make([]xml_Interfaces_Interface_Unit_Family_Inet6, len(var_interfaces_interface_unit_family_inet6))
 		
 		for i_interfaces_interface_unit_family_inet6, v_interfaces_interface_unit_family_inet6 := range var_interfaces_interface_unit_family_inet6 {
+			var var_interfaces_interface_unit_family_inet6_filter []Interfaces_Interface_Unit_Family_Inet6_Filter_Model
+			diags.Append(v_interfaces_interface_unit_family_inet6.Filter.ElementsAs(ctx, &var_interfaces_interface_unit_family_inet6_filter, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet6[i_interfaces_interface_unit_family_inet6].Filter = make([]xml_Interfaces_Interface_Unit_Family_Inet6_Filter, len(var_interfaces_interface_unit_family_inet6_filter))
+		
+		for i_interfaces_interface_unit_family_inet6_filter, v_interfaces_interface_unit_family_inet6_filter := range var_interfaces_interface_unit_family_inet6_filter {
+			var var_interfaces_interface_unit_family_inet6_filter_input []Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model
+			diags.Append(v_interfaces_interface_unit_family_inet6_filter.Input.ElementsAs(ctx, &var_interfaces_interface_unit_family_inet6_filter_input, false)...)
+			if diags.HasError() {
+				return cfg
+			}
+	    cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet6[i_interfaces_interface_unit_family_inet6].Filter[i_interfaces_interface_unit_family_inet6_filter].Input = make([]xml_Interfaces_Interface_Unit_Family_Inet6_Filter_Input, len(var_interfaces_interface_unit_family_inet6_filter_input))
+		
+		for i_interfaces_interface_unit_family_inet6_filter_input, v_interfaces_interface_unit_family_inet6_filter_input := range var_interfaces_interface_unit_family_inet6_filter_input {
+			cfg.Interfaces[i_interfaces].Interface[i_interfaces_interface].Unit[i_interfaces_interface_unit].Family[i_interfaces_interface_unit_family].Inet6[i_interfaces_interface_unit_family_inet6].Filter[i_interfaces_interface_unit_family_inet6_filter].Input[i_interfaces_interface_unit_family_inet6_filter_input].Filter_name = v_interfaces_interface_unit_family_inet6_filter_input.Filter_name.ValueStringPointer()
+		}
+		}
 			var var_interfaces_interface_unit_family_inet6_address []Interfaces_Interface_Unit_Family_Inet6_Address_Model
 			diags.Append(v_interfaces_interface_unit_family_inet6.Address.ElementsAs(ctx, &var_interfaces_interface_unit_family_inet6_address, false)...)
 			if diags.HasError() {
@@ -4832,6 +5263,38 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
                 )
         }
         firewall_family_inet_filter_term_from_List[i_firewall_family_inet_filter_term_from] = firewall_family_inet_filter_term_from_model
+            // leaf-list
+            if v_firewall_family_inet_filter_term_from.Protocol == nil ||
+               len(v_firewall_family_inet_filter_term_from.Protocol) == 0 {
+                firewall_family_inet_filter_term_from_model.Protocol =
+                    types.ListNull(types.StringType)
+            } else {
+                src_firewall_family_inet_filter_term_protocol :=
+                    v_firewall_family_inet_filter_term_from.Protocol
+                vals_firewall_family_inet_filter_term_protocol := make([]*string, len(src_firewall_family_inet_filter_term_protocol))
+                copy(vals_firewall_family_inet_filter_term_protocol, src_firewall_family_inet_filter_term_protocol)
+                firewall_family_inet_filter_term_from_model.Protocol, _ =
+                    types.ListValueFrom(ctx, types.StringType, vals_firewall_family_inet_filter_term_protocol)
+            }
+
+            firewall_family_inet_filter_term_from_List[i_firewall_family_inet_filter_term_from] =
+                firewall_family_inet_filter_term_from_model
+            // leaf-list
+            if v_firewall_family_inet_filter_term_from.Destination_port == nil ||
+               len(v_firewall_family_inet_filter_term_from.Destination_port) == 0 {
+                firewall_family_inet_filter_term_from_model.Destination_port =
+                    types.ListNull(types.StringType)
+            } else {
+                src_firewall_family_inet_filter_term_destination_port :=
+                    v_firewall_family_inet_filter_term_from.Destination_port
+                vals_firewall_family_inet_filter_term_destination_port := make([]*string, len(src_firewall_family_inet_filter_term_destination_port))
+                copy(vals_firewall_family_inet_filter_term_destination_port, src_firewall_family_inet_filter_term_destination_port)
+                firewall_family_inet_filter_term_from_model.Destination_port, _ =
+                    types.ListValueFrom(ctx, types.StringType, vals_firewall_family_inet_filter_term_destination_port)
+            }
+
+            firewall_family_inet_filter_term_from_List[i_firewall_family_inet_filter_term_from] =
+                firewall_family_inet_filter_term_from_model
         }
 
         // Write from field as Null when empty, else concrete list
@@ -4941,6 +5404,202 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
                 types.ListValueFrom(ctx,
                     types.ObjectType{AttrTypes: Firewall_Family_Inet_Model{}.AttrTypes()},
                     firewall_family_inet_List,
+                )
+        }
+        firewall_family_List[i_firewall_family] = firewall_family_model
+
+            firewall_family_List[i_firewall_family] =
+                firewall_family_model
+                
+        // Build inet6 list
+        firewall_family_inet6_List := make([]Firewall_Family_Inet6_Model, len(v_firewall_family.Inet6))
+
+        
+		for i_firewall_family_inet6, v_firewall_family_inet6 := range v_firewall_family.Inet6 {
+            var firewall_family_inet6_model Firewall_Family_Inet6_Model
+
+            firewall_family_inet6_List[i_firewall_family_inet6] =
+                firewall_family_inet6_model
+                
+        // Build filter list
+        firewall_family_inet6_filter_List := make([]Firewall_Family_Inet6_Filter_Model, len(v_firewall_family_inet6.Filter))
+
+        
+		for i_firewall_family_inet6_filter, v_firewall_family_inet6_filter := range v_firewall_family_inet6.Filter {
+            var firewall_family_inet6_filter_model Firewall_Family_Inet6_Filter_Model
+            // leaf
+            if v_firewall_family_inet6_filter.Name == nil {
+                firewall_family_inet6_filter_model.Name =
+                    types.StringNull()
+            } else {
+				firewall_family_inet6_filter_model.Name =
+                types.StringPointerValue(v_firewall_family_inet6_filter.Name)
+			}
+
+            firewall_family_inet6_filter_List[i_firewall_family_inet6_filter] =
+                firewall_family_inet6_filter_model
+
+            firewall_family_inet6_filter_List[i_firewall_family_inet6_filter] =
+                firewall_family_inet6_filter_model
+                
+        // Build term list
+        firewall_family_inet6_filter_term_List := make([]Firewall_Family_Inet6_Filter_Term_Model, len(v_firewall_family_inet6_filter.Term))
+
+        
+		for i_firewall_family_inet6_filter_term, v_firewall_family_inet6_filter_term := range v_firewall_family_inet6_filter.Term {
+            var firewall_family_inet6_filter_term_model Firewall_Family_Inet6_Filter_Term_Model
+            // leaf
+            if v_firewall_family_inet6_filter_term.Name == nil {
+                firewall_family_inet6_filter_term_model.Name =
+                    types.StringNull()
+            } else {
+				firewall_family_inet6_filter_term_model.Name =
+                types.StringPointerValue(v_firewall_family_inet6_filter_term.Name)
+			}
+
+            firewall_family_inet6_filter_term_List[i_firewall_family_inet6_filter_term] =
+                firewall_family_inet6_filter_term_model
+
+            firewall_family_inet6_filter_term_List[i_firewall_family_inet6_filter_term] =
+                firewall_family_inet6_filter_term_model
+                
+        // Build from list
+        firewall_family_inet6_filter_term_from_List := make([]Firewall_Family_Inet6_Filter_Term_From_Model, len(v_firewall_family_inet6_filter_term.From))
+
+        
+		for i_firewall_family_inet6_filter_term_from, v_firewall_family_inet6_filter_term_from := range v_firewall_family_inet6_filter_term.From {
+            var firewall_family_inet6_filter_term_from_model Firewall_Family_Inet6_Filter_Term_From_Model
+            // leaf-list
+            if v_firewall_family_inet6_filter_term_from.Next_header == nil ||
+               len(v_firewall_family_inet6_filter_term_from.Next_header) == 0 {
+                firewall_family_inet6_filter_term_from_model.Next_header =
+                    types.ListNull(types.StringType)
+            } else {
+                src_firewall_family_inet6_filter_term_next_header :=
+                    v_firewall_family_inet6_filter_term_from.Next_header
+                vals_firewall_family_inet6_filter_term_next_header := make([]*string, len(src_firewall_family_inet6_filter_term_next_header))
+                copy(vals_firewall_family_inet6_filter_term_next_header, src_firewall_family_inet6_filter_term_next_header)
+                firewall_family_inet6_filter_term_from_model.Next_header, _ =
+                    types.ListValueFrom(ctx, types.StringType, vals_firewall_family_inet6_filter_term_next_header)
+            }
+
+            firewall_family_inet6_filter_term_from_List[i_firewall_family_inet6_filter_term_from] =
+                firewall_family_inet6_filter_term_from_model
+            // leaf-list
+            if v_firewall_family_inet6_filter_term_from.Destination_port == nil ||
+               len(v_firewall_family_inet6_filter_term_from.Destination_port) == 0 {
+                firewall_family_inet6_filter_term_from_model.Destination_port =
+                    types.ListNull(types.StringType)
+            } else {
+                src_firewall_family_inet6_filter_term_destination_port :=
+                    v_firewall_family_inet6_filter_term_from.Destination_port
+                vals_firewall_family_inet6_filter_term_destination_port := make([]*string, len(src_firewall_family_inet6_filter_term_destination_port))
+                copy(vals_firewall_family_inet6_filter_term_destination_port, src_firewall_family_inet6_filter_term_destination_port)
+                firewall_family_inet6_filter_term_from_model.Destination_port, _ =
+                    types.ListValueFrom(ctx, types.StringType, vals_firewall_family_inet6_filter_term_destination_port)
+            }
+
+            firewall_family_inet6_filter_term_from_List[i_firewall_family_inet6_filter_term_from] =
+                firewall_family_inet6_filter_term_from_model
+        }
+
+        // Write from field as Null when empty, else concrete list
+        if len(firewall_family_inet6_filter_term_from_List) == 0 {
+            firewall_family_inet6_filter_term_model.From =
+                types.ListNull(types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_From_Model{}.AttrTypes()})
+        } else {
+            firewall_family_inet6_filter_term_model.From, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_From_Model{}.AttrTypes()},
+                    firewall_family_inet6_filter_term_from_List,
+                )
+        }
+        firewall_family_inet6_filter_term_List[i_firewall_family_inet6_filter_term] = firewall_family_inet6_filter_term_model
+
+            firewall_family_inet6_filter_term_List[i_firewall_family_inet6_filter_term] =
+                firewall_family_inet6_filter_term_model
+                
+        // Build then list
+        firewall_family_inet6_filter_term_then_List := make([]Firewall_Family_Inet6_Filter_Term_Then_Model, len(v_firewall_family_inet6_filter_term.Then))
+
+        
+		for i_firewall_family_inet6_filter_term_then, v_firewall_family_inet6_filter_term_then := range v_firewall_family_inet6_filter_term.Then {
+            var firewall_family_inet6_filter_term_then_model Firewall_Family_Inet6_Filter_Term_Then_Model
+            // leaf
+            if v_firewall_family_inet6_filter_term_then.Accept == nil {
+                firewall_family_inet6_filter_term_then_model.Accept =
+                    types.StringNull()
+            } else {
+				firewall_family_inet6_filter_term_then_model.Accept =
+                types.StringPointerValue(v_firewall_family_inet6_filter_term_then.Accept)
+			}
+
+            firewall_family_inet6_filter_term_then_List[i_firewall_family_inet6_filter_term_then] =
+                firewall_family_inet6_filter_term_then_model
+            // leaf
+            if v_firewall_family_inet6_filter_term_then.Discard == nil {
+                firewall_family_inet6_filter_term_then_model.Discard =
+                    types.StringNull()
+            } else {
+				firewall_family_inet6_filter_term_then_model.Discard =
+                types.StringPointerValue(v_firewall_family_inet6_filter_term_then.Discard)
+			}
+
+            firewall_family_inet6_filter_term_then_List[i_firewall_family_inet6_filter_term_then] =
+                firewall_family_inet6_filter_term_then_model
+        }
+
+        // Write then field as Null when empty, else concrete list
+        if len(firewall_family_inet6_filter_term_then_List) == 0 {
+            firewall_family_inet6_filter_term_model.Then =
+                types.ListNull(types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_Then_Model{}.AttrTypes()})
+        } else {
+            firewall_family_inet6_filter_term_model.Then, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_Then_Model{}.AttrTypes()},
+                    firewall_family_inet6_filter_term_then_List,
+                )
+        }
+        firewall_family_inet6_filter_term_List[i_firewall_family_inet6_filter_term] = firewall_family_inet6_filter_term_model
+        }
+
+        // Write term field as Null when empty, else concrete list
+        if len(firewall_family_inet6_filter_term_List) == 0 {
+            firewall_family_inet6_filter_model.Term =
+                types.ListNull(types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_Model{}.AttrTypes()})
+        } else {
+            firewall_family_inet6_filter_model.Term, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Term_Model{}.AttrTypes()},
+                    firewall_family_inet6_filter_term_List,
+                )
+        }
+        firewall_family_inet6_filter_List[i_firewall_family_inet6_filter] = firewall_family_inet6_filter_model
+        }
+
+        // Write filter field as Null when empty, else concrete list
+        if len(firewall_family_inet6_filter_List) == 0 {
+            firewall_family_inet6_model.Filter =
+                types.ListNull(types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Model{}.AttrTypes()})
+        } else {
+            firewall_family_inet6_model.Filter, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Firewall_Family_Inet6_Filter_Model{}.AttrTypes()},
+                    firewall_family_inet6_filter_List,
+                )
+        }
+        firewall_family_inet6_List[i_firewall_family_inet6] = firewall_family_inet6_model
+        }
+
+        // Write inet6 field as Null when empty, else concrete list
+        if len(firewall_family_inet6_List) == 0 {
+            firewall_family_model.Inet6 =
+                types.ListNull(types.ObjectType{AttrTypes: Firewall_Family_Inet6_Model{}.AttrTypes()})
+        } else {
+            firewall_family_model.Inet6, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Firewall_Family_Inet6_Model{}.AttrTypes()},
+                    firewall_family_inet6_List,
                 )
         }
         firewall_family_List[i_firewall_family] = firewall_family_model
@@ -5379,6 +6038,65 @@ func configToModel(ctx context.Context, config xml_Configuration) ConfigResource
         
 		for i_interfaces_interface_unit_family_inet6, v_interfaces_interface_unit_family_inet6 := range v_interfaces_interface_unit_family.Inet6 {
             var interfaces_interface_unit_family_inet6_model Interfaces_Interface_Unit_Family_Inet6_Model
+
+            interfaces_interface_unit_family_inet6_List[i_interfaces_interface_unit_family_inet6] =
+                interfaces_interface_unit_family_inet6_model
+                
+        // Build filter list
+        interfaces_interface_unit_family_inet6_filter_List := make([]Interfaces_Interface_Unit_Family_Inet6_Filter_Model, len(v_interfaces_interface_unit_family_inet6.Filter))
+
+        
+		for i_interfaces_interface_unit_family_inet6_filter, v_interfaces_interface_unit_family_inet6_filter := range v_interfaces_interface_unit_family_inet6.Filter {
+            var interfaces_interface_unit_family_inet6_filter_model Interfaces_Interface_Unit_Family_Inet6_Filter_Model
+
+            interfaces_interface_unit_family_inet6_filter_List[i_interfaces_interface_unit_family_inet6_filter] =
+                interfaces_interface_unit_family_inet6_filter_model
+                
+        // Build input list
+        interfaces_interface_unit_family_inet6_filter_input_List := make([]Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model, len(v_interfaces_interface_unit_family_inet6_filter.Input))
+
+        
+		for i_interfaces_interface_unit_family_inet6_filter_input, v_interfaces_interface_unit_family_inet6_filter_input := range v_interfaces_interface_unit_family_inet6_filter.Input {
+            var interfaces_interface_unit_family_inet6_filter_input_model Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model
+            // leaf
+            if v_interfaces_interface_unit_family_inet6_filter_input.Filter_name == nil {
+                interfaces_interface_unit_family_inet6_filter_input_model.Filter_name =
+                    types.StringNull()
+            } else {
+				interfaces_interface_unit_family_inet6_filter_input_model.Filter_name =
+                types.StringPointerValue(v_interfaces_interface_unit_family_inet6_filter_input.Filter_name)
+			}
+
+            interfaces_interface_unit_family_inet6_filter_input_List[i_interfaces_interface_unit_family_inet6_filter_input] =
+                interfaces_interface_unit_family_inet6_filter_input_model
+        }
+
+        // Write input field as Null when empty, else concrete list
+        if len(interfaces_interface_unit_family_inet6_filter_input_List) == 0 {
+            interfaces_interface_unit_family_inet6_filter_model.Input =
+                types.ListNull(types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model{}.AttrTypes()})
+        } else {
+            interfaces_interface_unit_family_inet6_filter_model.Input, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Filter_Input_Model{}.AttrTypes()},
+                    interfaces_interface_unit_family_inet6_filter_input_List,
+                )
+        }
+        interfaces_interface_unit_family_inet6_filter_List[i_interfaces_interface_unit_family_inet6_filter] = interfaces_interface_unit_family_inet6_filter_model
+        }
+
+        // Write filter field as Null when empty, else concrete list
+        if len(interfaces_interface_unit_family_inet6_filter_List) == 0 {
+            interfaces_interface_unit_family_inet6_model.Filter =
+                types.ListNull(types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Filter_Model{}.AttrTypes()})
+        } else {
+            interfaces_interface_unit_family_inet6_model.Filter, _ =
+                types.ListValueFrom(ctx,
+                    types.ObjectType{AttrTypes: Interfaces_Interface_Unit_Family_Inet6_Filter_Model{}.AttrTypes()},
+                    interfaces_interface_unit_family_inet6_filter_List,
+                )
+        }
+        interfaces_interface_unit_family_inet6_List[i_interfaces_interface_unit_family_inet6] = interfaces_interface_unit_family_inet6_model
 
             interfaces_interface_unit_family_inet6_List[i_interfaces_interface_unit_family_inet6] =
                 interfaces_interface_unit_family_inet6_model
