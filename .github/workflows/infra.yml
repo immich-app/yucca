@@ -28,6 +28,14 @@ name: Infra (Terraform)
 # advertises the node subnets the overlay-joining jobs reach; prod/global must
 # precede prod/htz-fsn1/netbird (a real terragrunt dependency).
 #
+# The two post-apply Ansible converges (ceph RGW users on the ceph stack; mgmt
+# hosts on the fabric stack) are gated independently of their TF apply: on push
+# they run only when their own surface changed (ceph: ansible/ceph/**; mgmt:
+# ansible/mgmt/** + tf/render/ansible-mgmt/** + .mise/tasks/mgmt/**), and on
+# workflow_dispatch only when the run_ceph_ansible / run_mgmt_ansible toggles are
+# set (both default off). A pure-Terraform change to either stack thus applies
+# without reconverging the nodes — and the ceph overlay join is skipped with it.
+#
 # Environment gates rekey to <partition>-<region> (one per stack's region):
 # staging-austin, staging-global, prod-global, prod-htz-fsn1. Each matrix apply
 # entry references its own gate, so an unprovisioned Environment hangs the apply.
@@ -63,6 +71,15 @@ on:
   pull_request:
     paths: *paths
   workflow_dispatch:
+    inputs:
+      run_ceph_ansible:
+        description: 'Run the Ceph Ansible converge (RGW users) after the ceph apply'
+        type: boolean
+        default: false
+      run_mgmt_ansible:
+        description: 'Run the mgmt Ansible converge after the fabric apply'
+        type: boolean
+        default: false
 
 # Serialize: the OVH S3 backend has no state locking (single-operator model),
 # so never let two infra runs apply concurrently.
@@ -85,6 +102,10 @@ jobs:
       prod: ${{ steps.filter.outputs.prod }}
       dev: ${{ steps.filter.outputs.dev }}
       shared: ${{ steps.filter.outputs.shared }}
+      # Ansible-converge gates: isolate the Ansible surfaces so a pure-Terraform
+      # change to the ceph/fabric stack applies without reconverging the nodes.
+      ansible_ceph: ${{ steps.filter.outputs.ansible_ceph }}
+      ansible_mgmt: ${{ steps.filter.outputs.ansible_mgmt }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -115,6 +136,15 @@ jobs:
               - '.mise/config.toml'
               - '.github/actions/netbird-connect/**'
               - '.github/workflows/infra.yml'
+            # ── Ansible-converge gates (stack-step level, not partition level) ──
+            # These don't open/close a partition's matrix; the apply job uses them
+            # to decide whether to run the post-apply Ansible converge for its stack.
+            ansible_ceph:
+              - 'ansible/ceph/**'
+            ansible_mgmt:
+              - 'ansible/mgmt/**'
+              - 'tf/render/ansible-mgmt/**'
+              - '.mise/tasks/mgmt/**'
 
   # ── Discover the stack matrix from the deployment tree ───────────────────────
   discover:
@@ -289,12 +319,34 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
+      # Decide whether each post-apply Ansible converge runs. On push, gate on the
+      # paths-filter (did the Ansible surface change?); on manual dispatch, gate on
+      # the run_*_ansible toggles (default off) since there's no diff to detect.
+      - name: Resolve Ansible-converge gates
+        id: ansible_gate
+        env:
+          DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          DISPATCH_CEPH: ${{ inputs.run_ceph_ansible }}
+          DISPATCH_MGMT: ${{ inputs.run_mgmt_ansible }}
+          CHANGED_CEPH: ${{ needs.changes.outputs.ansible_ceph }}
+          CHANGED_MGMT: ${{ needs.changes.outputs.ansible_mgmt }}
+        run: |
+          set -euo pipefail
+          if [ "$DISPATCH" = "true" ]; then
+            ceph=$DISPATCH_CEPH; mgmt=$DISPATCH_MGMT
+          else
+            ceph=$CHANGED_CEPH; mgmt=$CHANGED_MGMT
+          fi
+          echo "ceph=${ceph:-false}" >> "$GITHUB_OUTPUT"
+          echo "mgmt=${mgmt:-false}" >> "$GITHUB_OUTPUT"
+          echo "Ansible converge gates → ceph=${ceph:-false} mgmt=${mgmt:-false}"
+
       # Node-touching stacks join the overlay: talos (provisions over the LAN),
       # ceph (the Ansible convergence below), fabric (the switch vme + the mgmt
       # converge below). NetBird stacks themselves are pure api.netbird.io. The
       # key was minted by an earlier (lower-order) netbird apply in this same run.
       - name: Resolve NetBird CI setup-key ref
-        if: matrix.stack == 'talos' || matrix.stack == 'ceph' || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || matrix.stack == 'fabric'
         run: |
           set -euo pipefail
           if [ "$PARTITION" = "prod" ]; then
@@ -304,7 +356,7 @@ jobs:
             echo "NB_CI_KEY_REF=op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
           fi
       - name: Connect to NetBird
-        if: matrix.stack == 'talos' || matrix.stack == 'ceph' || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || matrix.stack == 'fabric'
         uses: ./.github/actions/netbird-connect
         with:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
@@ -324,17 +376,19 @@ jobs:
           --working-dir "tf/deployment/$STACK_DIR"
           --non-interactive apply -auto-approve
 
-      # ── Ceph convergence (Ansible) — only on the ceph stack ──────────────────
+      # ── Ceph convergence (Ansible) — ceph stack, gated on the converge gate ──
       # The TF apply above only minted the RGW keys into 1P + the cluster Secret;
       # this creates the matching RGW users on the bare-metal cluster. Reuses the
       # NetBird overlay + 1Password session already established in this entry.
+      # Skipped (along with the overlay join above) when ansible/ceph/** is
+      # unchanged on push, or when run_ceph_ansible is off on manual dispatch.
       - name: Render Ansible inventory from the ceph TF state
-        if: matrix.stack == 'ceph'
+        if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         env:
           PARTITION: ${{ matrix.partition }}
         run: ansible/ceph/scripts/render-inventories.sh "$PARTITION"
       - name: Install the ansible-iac SSH key from 1Password
-        if: matrix.stack == 'ceph'
+        if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         # Pulls op://yucca_tf_<partition>/SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY to
         # ~/.ssh/id_ed25519_sietch — the path the rendered inventory references.
         env:
@@ -343,14 +397,14 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           OP_VAULT="yucca_tf_$PARTITION" ansible/ceph/scripts/install-ssh-keys.sh sietch
       - name: Provision the ceph Ansible toolchain (venv + collections)
-        if: matrix.stack == 'ceph'
+        if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         working-directory: ansible/ceph
         run: |
           mise trust
           mise install
           mise run setup
       - name: Deploy Ceph (full pipeline — baseline → tune → deploy → harden)
-        if: matrix.stack == 'ceph'
+        if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         # Run from ansible/ceph so mise loads ansible/ceph/.mise.toml (where the
         # `deploy` task + CEPH_ENV-relative inventory paths live); the root config
         # has no `deploy` task.
@@ -362,10 +416,13 @@ jobs:
           CEPH_ENV: inventories/${{ matrix.partition }}-${{ matrix.region }}/sietch/inventory.ini
         run: mise run deploy
 
-      # ── Mgmt convergence (Ansible) — only on the fabric stack ────────────────
+      # ── Mgmt convergence (Ansible) — fabric stack, gated on the converge gate ─
       # Renders the mgmt inventory from TF (tf/render/ansible-mgmt) then converges
       # the mgmt hosts over the overlay. No-op for regions without an ansible/mgmt
       # inventory. Runs under the same (already-approved) gate as the fabric apply.
+      # Skipped when ansible/mgmt/** (+ feeders) is unchanged on push, or when
+      # run_mgmt_ansible is off on manual dispatch. The fabric apply keeps its
+      # overlay join regardless (it touches the switch vme directly).
       - name: Ansible converge (mgmt hosts)
-        if: matrix.stack == 'fabric'
+        if: matrix.stack == 'fabric' && steps.ansible_gate.outputs.mgmt == 'true'
         run: mise run mgmt:ansible
