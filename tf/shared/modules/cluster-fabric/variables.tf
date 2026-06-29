@@ -55,15 +55,26 @@ variable "uplink_ports" {
   description = "100G ports bonded into ae0 (the spine uplink)."
 }
 
+variable "disable_all_server_ports" {
+  type        = bool
+  default     = false
+  description = <<-EOT
+    Admin-down every server LAG member port (no carrier) without naming any — the
+    set is taken directly from the module's own LAG membership (all members except
+    the ae0 spine uplink), so it can't drift from the configured ports. Used to drop
+    the hosts' 25G NICs so nodes fall back to their 1G WAN for PXE/rescue. Reverting
+    to false brings them back; LAG/aggregates/VLANs are unchanged throughout.
+  EOT
+}
+
 variable "disabled_ports" {
   type        = list(string)
   default     = []
   description = <<-EOT
-    Physical member ports to admin-down (no carrier), by Junos name (e.g.
-    "et-0/0/0", "et-1/0/0"). Used to drop the hosts' 25G NICs so nodes fall back to
-    their 1G WAN for PXE/rescue. ae0 spine-uplink legs are protected — listing one
-    is a no-op. Empty (default) = all ports up. LAG membership, ae<k> aggregates,
-    and VLANs are unchanged, so reverting (drop the port from the list) restores it.
+    Specific physical member ports to admin-down (no carrier), by Junos name (e.g.
+    "et-0/0/0", "et-1/0/0"); use for a subset when disable_all_server_ports is too
+    broad. ae0 spine-uplink legs are protected — listing one is a no-op. Empty
+    (default) = none. Combined with disable_all_server_ports (union).
   EOT
 }
 

@@ -40,17 +40,6 @@ module "core" {
   }
 }
 
-# TEMP: 25G server legs to admin-down (no carrier) so the SX295 nodes PXE into
-# rescue over their 1G WAN. Currently all 48 bonds (both VC members); trim to the
-# specific ports you want (e.g. ["et-0/0/0", "et-1/0/0"]) or set [] to bring them
-# all back. ae0 spine-uplink legs are protected by the module regardless.
-locals {
-  cls1_disabled_ports = concat(
-    [for k in range(48) : "et-0/0/${k}"],
-    [for k in range(48) : "et-1/0/${k}"],
-  )
-}
-
 module "cluster_cls1" {
   source    = "../../../../shared/modules/cluster-fabric"
   providers = { junos = junos.leaf_cls1 }
@@ -67,7 +56,10 @@ module "cluster_cls1" {
 
   vc_member_serials = var.cls1_leaf_serials
 
-  disabled_ports = local.cls1_disabled_ports
+  # TEMP: admin-down all 25G server legs (no carrier) so the SX295 nodes PXE into
+  # rescue over their 1G WAN. The set comes from the module's own LAG membership,
+  # not a port range. Remove this line to bring the fabric ports back.
+  disable_all_server_ports = true
 }
 
 # Default DNS resolvers (Cloudflare + Quad9, dual-stack). Set here, not on core,
