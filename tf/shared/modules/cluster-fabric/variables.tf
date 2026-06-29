@@ -70,12 +70,6 @@ variable "jumbo_mtu" {
   description = "MTU for the spine uplink (ae0)."
 }
 
-variable "aggregated_device_count" {
-  type        = number
-  default     = 64
-  description = "chassis aggregated-devices ethernet device-count."
-}
-
 variable "api_vlan_id" {
   type        = number
   description = "Site-global API VLAN id (carried on every cluster)."

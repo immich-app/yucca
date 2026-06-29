@@ -23,6 +23,12 @@ Patches:
      (brownfield / empty-state diffs, e.g. after a state-key change re-pushes the
      whole config). replace/delete unchanged. Consistent with the edit-config
      default-operation=merge envelope and patch #1 (trust-the-apply).
+  5. Update — diff the plan against the PRIOR TF STATE, not the live device. The
+     generated Update read the WHOLE device (MarshalConfig) as the diff baseline, so
+     every Update emitted a DELETE for all in-schema config outside this resource's
+     slice — fatal when multiple slice-resources (core/login/cluster) share a device.
+     Create (pushes its slice) and Delete (diffs its state-slice) are already
+     state-based; this makes Update match. Mirrors patch #1.
 """
 import sys
 import pathlib
@@ -204,9 +210,40 @@ def patch_diff_merge():
     )
 
 
+def patch_update_diff():
+    src = root / "resource_config_provider.go"
+    replace_once(
+        src,
+        "\tvar stateConfig xml_Configuration\n"
+        "\terr := r.client.MarshalConfig(&stateConfig)\n"
+        "\tif err != nil {\n"
+        "\t\tresp.Diagnostics.AddError(\"Failed while reading current configuration\", err.Error())\n"
+        "\t\treturn\n"
+        "\t}\n\n"
+        "\tplanXML, err := marshalConfigXML(planConfig)",
+        "\t// PATCHED (fabric): diff against PRIOR TF STATE, not the live device. This\n"
+        "\t// resource manages only a slice; diffing the plan against the whole device made\n"
+        "\t// every Update emit a DELETE for all in-schema config outside this slice\n"
+        "\t// (another resource's `system login`, firewall, lo0/ae0/irb, ...). Mirrors\n"
+        "\t// patch #1 (Read trusts the state) and Delete (already state-based).\n"
+        "\tvar priorState ConfigResourceModel\n"
+        "\tresp.Diagnostics.Append(req.State.Get(ctx, &priorState)...)\n"
+        "\tif resp.Diagnostics.HasError() {\n"
+        "\t\treturn\n"
+        "\t}\n"
+        "\tstateConfig := modelToConfig(ctx, priorState, &resp.Diagnostics)\n"
+        "\tif resp.Diagnostics.HasError() {\n"
+        "\t\treturn\n"
+        "\t}\n\n"
+        "\tplanXML, err := marshalConfigXML(planConfig)",
+        "Update diff vs prior state",
+    )
+
+
 patch_readstate()
 patch_client()
 patch_diff_merge()
+patch_update_diff()
 
 if errors:
     print("apply_patches: FAILED:\n  - " + "\n  - ".join(errors), file=sys.stderr)

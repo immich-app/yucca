@@ -1,10 +1,10 @@
 terraform {
   required_version = "~> 1.11"
   required_providers {
-    # JTAF-generated, vendored in tf/providers/terraform-provider-junos-qfx and
-    # supplied via dev_overrides (built by `infra:providers`; supplied via TF_CLI_CONFIG_FILE).
-    junos-qfx = {
-      source = "hashicorp/junos-qfx"
+    # Community Junos provider (typed per-resource CRUD) from the registry.
+    junos = {
+      source  = "jeremmfr/junos"
+      version = "~> 2.19"
     }
     netbox = {
       source  = "e-breuninger/netbox"

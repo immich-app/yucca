@@ -38,12 +38,6 @@ variable "breakout_speed" {
   description = "Per-channel speed for the breakout ports."
 }
 
-variable "aggregated_device_count" {
-  type        = number
-  default     = 16
-  description = "chassis aggregated-devices ethernet device-count."
-}
-
 variable "api_vlan_id" {
   type        = number
   description = "Site-global API VLAN id to stretch (carried on all clusters)."

@@ -7653,10 +7653,18 @@ func (r *configResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	var stateConfig xml_Configuration
-	err := r.client.MarshalConfig(&stateConfig)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed while reading current configuration", err.Error())
+	// PATCHED (fabric): diff against PRIOR TF STATE, not the live device. This
+	// resource manages only a slice; diffing the plan against the whole device made
+	// every Update emit a DELETE for all in-schema config outside this slice
+	// (another resource's `system login`, firewall, lo0/ae0/irb, ...). Mirrors
+	// patch #1 (Read trusts the state) and Delete (already state-based).
+	var priorState ConfigResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &priorState)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	stateConfig := modelToConfig(ctx, priorState, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 

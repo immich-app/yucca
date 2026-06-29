@@ -33,6 +33,31 @@ SITE="${SITE:-htz-fsn1}"
 # With a service-account token in the env, drop OP_ACCOUNT — the onepassword
 # provider rejects having both set ("service_account_token and account are set").
 unset OP_ACCOUNT
-# -parallelism=1: the JTAF junos-qfx provider isn't concurrency-safe — parallel
-# ApplyResourceChange calls across the VCs crash the plugin ("Plugin did not respond").
-OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE/fabric" apply -parallelism=1 "$@"
+STACK_DIR="tf/deployment/prod/$SITE/fabric"
+# jeremmfr/junos is concurrency-safe (per-resource CRUD); reads/refresh run in
+# parallel and commits serialize on the per-device config lock (handled by the
+# provider). The device NETCONF connection-limit is raised to 250.
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "$STACK_DIR" apply -parallelism=4 "$@"
+
+# Confirm the dangling `commit confirmed` jeremmfr leaves on the last commit per
+# device: its per-resource "confirm" is `commit check`, which does NOT cancel the
+# rollback on our Junos, so without this the last change auto-reverts. A plain
+# `commit` confirms it. This runs ONLY after a successful apply (set -e): a
+# mgmt-breaking apply errors above and skips this, so the dangling commit rolls
+# back and restores management. Nothing pending → `commit` is a harmless no-op.
+echo "==> confirming commit-confirmed on managed switches"
+IPS=$(OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "$STACK_DIR" output -json switch_mgmt_ips | tr -d '[]" ' | tr ',' '\n')
+KH=$(mktemp); trap 'rm -f "$KEYF" "$KH"' EXIT
+for ip in $IPS; do
+  [ -n "$ip" ] || continue
+  ok=
+  for attempt in 1 2 3; do
+    if ssh -i "$KEYF" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+         -o UserKnownHostsFile="$KH" -o ConnectTimeout=15 -o NumberOfPasswordPrompts=0 \
+         -o BatchMode=yes "terraform@$ip" "configure; commit; exit" >/dev/null 2>&1; then
+      ok=1; echo "    confirmed $ip"; break
+    fi
+    echo "    confirm attempt $attempt failed on $ip; retrying..."; sleep 5
+  done
+  [ -n "$ok" ] || { echo "ERROR: could not confirm commit on $ip — its last change will roll back (commit_confirmed). Investigate." >&2; exit 1; }
+done
