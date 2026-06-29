@@ -53,7 +53,7 @@ CEPH_ENV=inventories/staging-austin/sietch/inventory-provision.ini \
 ```
 
 **Hetzner (NVMe-RAID host)**: reboot into rescue, run installimage +
-post-install scripts from the cluster's `inventories/<cluster>/installimage/`.
+post-install scripts from the cluster's `inventories/<partition>-<region>/<cluster>/installimage/`.
 
 ### 4. Clear the old host's Ceph state
 

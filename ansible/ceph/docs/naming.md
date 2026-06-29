@@ -76,10 +76,10 @@ after its datacenter for a production tier).
   consumers (o11y, future stacks) write items to the same vault set.
   Before committing, check:
   ```bash
-  op item list --vault yucca_tf_dev --format=json \
+  op item list --vault yucca_tf_staging --format=json \
     | jq -r '.[] | .title' | grep -i "^<PROPOSED_NAME>_"
   ```
-  Must return empty.
+  Must return empty (repeat for the other `yucca_tf_*` vaults if in doubt).
 - **Not already a `clusters.auto.tfvars` key** — TF enforces this with
   a plan-time error.
 - **No dashes, dots, or underscores in the cluster name itself** — those
@@ -91,8 +91,8 @@ after its datacenter for a production tier).
 
 - Memorable — operators will say it out loud in incidents.
 - Distinct from existing clusters' first 3 letters (grep-friendly in logs).
-- Doesn't encode environment or datacenter — those live in separate
-  segments. The cluster name is project identity, not location.
+- Doesn't encode partition or region — those live in `region.hcl` and the
+  domain. The cluster name is project identity, not location.
 
 ### Cost of renaming after deployment
 

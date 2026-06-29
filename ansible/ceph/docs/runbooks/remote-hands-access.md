@@ -15,19 +15,18 @@ via a scoped service-account token, set as `OP_SERVICE_ACCOUNT_TOKEN` in
 their shell environment. `scripts/ansible-play.sh` picks it up automatically
 and uses it to resolve `secrets.yml.tpl`.
 
-Which SA: the **read-only** `yucca_futo_1pass_service_account` in
-`yucca_tf_dev`. Remote hands shouldn't have write access to 1P items —
-least-privilege principle.
+Which SA: the partition's **read** service account (for sietch, the staging
+read SA — the same token CI uses as `OP_TF_YUCCA_STAGING_ENV`). Remote hands
+get read, never write — least-privilege principle.
 
 ## One-time setup (per operator)
 
 1. **Grant the operator access to the Immich 1P group** — the group's
-   1P admin does this. Gives them read on `yucca_tf_dev` (enough to read
-   the SA token and SSH key items).
-2. **Operator retrieves the SA token**:
-   ```bash
-   op read "op://yucca_tf_dev/yucca_futo_1pass_service_account/password"
-   ```
+   1P admin does this. Gives them read on `yucca_tf_staging` (enough to
+   resolve the cluster's SSH key + secret items).
+2. **Operator obtains the read SA token** from the 1Password service-account
+   console (or the team lead) — it's the same value held in the
+   `OP_TF_YUCCA_STAGING_ENV` GitHub secret.
 3. **Operator sets it in their shell profile** (`~/.bashrc` or equivalent):
    ```bash
    export OP_SERVICE_ACCOUNT_TOKEN="ops_eyJ...."  # 862-char token

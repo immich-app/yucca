@@ -16,27 +16,28 @@ For the architectural role these scripts play, see
 
 ## Setting `CEPH_ENV`
 
-Two of the three wrappers (`ansible-play.sh`, `preflight.sh`) require
-`CEPH_ENV` to point at the target cluster's `inventory.ini`. **Always set
-it inline, never via `export`:**
+Two of the three wrappers (`ansible-play.sh`, `preflight.sh`) need `CEPH_ENV`
+pointing at the target cluster's `inventory.ini`. Set it however suits you —
+export it once per shell, or prefix a single invocation:
 
 ```bash
-# Correct — inline prefix, applies to one mise/script invocation
-CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run preflight
-
-# WRONG — mise's [env] machinery silently strips shell-exported vars
-# when launching tasks; CEPH_ENV reaches an empty environment and the
-# wrapper exits with "CEPH_ENV must be set". Confusing because your shell
-# clearly has it set.
+# Export once per shell (recommended for a working session):
 export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
-mise run preflight  # fails
+mise run preflight
+scripts/ansible-play.sh status.yml
+
+# Or prefix a single invocation:
+CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run preflight
 ```
 
-The `ansible/ceph/.mise.toml` `[env]` block intentionally does NOT declare
-a `CEPH_ENV` default — silent default-cluster behavior is more dangerous
-than requiring an explicit choice. If you call the scripts directly
-(bypassing `mise run`), shell `export` works normally because mise isn't
-in the path.
+Both forms work, by design. `CEPH_ENV` is deliberately **not** declared in
+the `ansible/ceph/.mise.toml` `[env]` block: a value there would override
+your shell's value and silently pin every task to the default cluster. By
+leaving it out, your exported (or inline-prefixed) value passes straight
+through, and each `mise run` task falls back to sietch
+(`inventories/staging-austin/sietch/inventory.ini`) only when `CEPH_ENV` is
+unset. Calling the scripts directly behaves the same — the wrapper reads
+`CEPH_ENV` from the environment.
 
 ## Quick reference
 
@@ -56,7 +57,7 @@ Wrapper around `ansible-playbook` that resolves TF-rendered secrets via
 ### Synopsis
 
 ```
-CEPH_ENV=inventories/<cluster>/inventory.ini \
+CEPH_ENV=inventories/<partition>-<region>/<cluster>/inventory.ini \
   scripts/ansible-play.sh <playbook.yml> [ansible-playbook args...]
 ```
 
@@ -151,8 +152,8 @@ If no cluster arguments are given, installs keys for every known cluster
 
 For each target cluster:
 
-1. Resolves the 1P item name: `<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` in
-   `yucca_tf_dev`.
+1. Resolves the 1P item name: `<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` in the
+   cluster's vault (`yucca_tf_staging` for sietch).
 2. Resolves the target filename: `~/.ssh/id_ed25519_<cluster>`.
 3. If the key already exists on disk:
    - Compares fingerprints (local vs 1P).
@@ -169,7 +170,7 @@ For each target cluster:
 
 | Variable                    | Required | Purpose                                                 |
 |-----------------------------|----------|---------------------------------------------------------|
-| `OP_SERVICE_ACCOUNT_TOKEN`  | no       | CI headless auth. Read-only scope on `yucca_tf_dev` is enough. |
+| `OP_SERVICE_ACCOUNT_TOKEN`  | no       | CI headless auth. Read-only scope on the cluster's `yucca_tf_*` vault is enough. |
 
 ### Arguments
 
@@ -215,7 +216,7 @@ destructive playbooks against the target cluster. Surfaced via
 ### Synopsis
 
 ```
-CEPH_ENV=inventories/<cluster>/inventory.ini scripts/preflight.sh
+CEPH_ENV=inventories/<partition>-<region>/<cluster>/inventory.ini scripts/preflight.sh
 ```
 
 ### What it checks

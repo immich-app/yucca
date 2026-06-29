@@ -8,9 +8,9 @@ For how secrets fit into the broader architecture, see
 
 ```mermaid
 flowchart TB
-    ONEP[("1Password<br/>yucca_tf · yucca_tf_dev · ...<br/><i>source of truth</i>")]
+    ONEP[("1Password<br/>yucca_tf · yucca_tf_staging · ...<br/><i>source of truth</i>")]
     TF[Terraform / Tofu<br/>tf/deployment/staging/austin/ceph/]
-    REPO[/"inventories/&lt;cluster&gt;/<br/>inventory.ini (TF-gen, gitignored)<br/>secrets.yml.tpl (TF-gen, gitignored)"/]
+    REPO[/"inventories/&lt;partition&gt;-&lt;region&gt;/&lt;cluster&gt;/<br/>inventory.ini (TF-gen, gitignored)<br/>secrets.yml.tpl (TF-gen, gitignored)"/]
     WRAP[scripts/ansible-play.sh<br/><i>mktemp + op inject → exec ansible-playbook --extra-vars @tmp</i>]
     ANS[ansible-playbook]
 
@@ -23,17 +23,19 @@ flowchart TB
 
 ## What lives where
 
-| Vault                              | Purpose                                                                                   | Who writes                                                      |
-|------------------------------------|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
-| `yucca_tf` (team-shared)           | Cross-env shared state: TF state S3 credentials                                           | Operator (manual)                                               |
-| `yucca_tf_dev` (team-shared)       | Live values for the `dev` environment — `<CLUSTER>_CEPH_*` items                          | Superuser service account (TF) + operator via `op` CLI          |
-| `yucca_tf_dev_manual` (team-shared)| Human-fillable dev placeholders (3rd-party API tokens, OAuth client secrets) — not yet used by ceph-cluster | Operator (manual)                         |
+| Vault                                  | Purpose                                                                                   | Who writes                                                      |
+|----------------------------------------|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| `yucca_tf` (team-shared)               | Cross-partition shared state: TF state S3 credentials                                     | Operator (manual)                                               |
+| `yucca_tf_staging` (team-shared)       | Live values for the `staging` partition (sietch today) — `<CLUSTER>_CEPH_*` items         | Superuser service account (TF) + operator via `op` CLI          |
+| `yucca_tf_staging_manual` (team-shared)| Human-fillable staging placeholders (3rd-party API tokens, OAuth client secrets) — not yet used by ceph-cluster | Operator (manual)                    |
 
-Future environments land as siblings: `yucca_tf_staging(_manual)`,
-`yucca_tf_prod_manual`. The vault a given cluster reads from is declared
-per-cluster in `tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars` (field
-`vault`). TF derives item paths from that field at render time; changing
-it + `tofu apply` re-renders `secrets.yml.tpl` with the new vault path.
+Each partition has the same pair; the dev and prod analogues
+(`yucca_tf_dev(_manual)`, `yucca_tf_prod_manual`) land as siblings. The vault
+a given cluster reads from is declared per-cluster in
+`tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars` (field `vault`)
+— sietch points at `yucca_tf_staging`. TF derives item paths from that field
+at render time; changing it + `tofu apply` re-renders `secrets.yml.tpl` with
+the new vault path.
 
 ## Item naming
 
@@ -116,10 +118,12 @@ Full wrapper reference: [scripts.md](scripts.md).
 
 ## CI / headless
 
-Set `OP_SERVICE_ACCOUNT_TOKEN` (from a service-account item) in the CI
-environment. `op inject` uses it automatically. The cutover PR must
-demonstrate green `lint` and `check` with **zero** op credentials — those
-tasks do not require secrets.
+`.github/workflows/infra.yml` sets `OP_SERVICE_ACCOUNT_TOKEN` per job from
+the partition's service-account GitHub secrets — `OP_TF_YUCCA_<PARTITION>_ENV`
+(read, for `plan`) and `OP_TF_YUCCA_<PARTITION>_ENV_WRITE` (write, for
+`apply`). `op inject` / `op run` pick it up automatically. `lint` and `check`
+need **zero** op credentials — they don't touch secrets — so they run on every
+PR regardless.
 
 ## Rotating secrets
 
@@ -132,7 +136,7 @@ See [docs/runbooks/rotate-secrets.md](runbooks/rotate-secrets.md).
 2. Add the matching line to the secrets template
    (`templates/secrets.yml.tpl.tftpl`).
 3. Add the ansible variable alias in each cluster's
-   `inventories/<cluster>/group_vars/all/vars.yml`.
+   `inventories/<partition>-<region>/<cluster>/group_vars/all/vars.yml`.
 4. Create the item manually in the target vault (or let TF do it post
    service account): `op item create --vault <vault> --category password
    --title NEW_SECRET_NAME --generate-password=letters,digits,32`.

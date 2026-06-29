@@ -85,7 +85,7 @@ Three user accounts exist on every node:
 ### Key management
 
 - **ansible-iac key**: The keypair is stored in 1Password as an SSH Key item
-  (`<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` in `yucca_tf_dev`). Operator
+  (`<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` in `yucca_tf_staging`). Operator
   workstations install it via `scripts/install-ssh-keys.sh` →
   `~/.ssh/id_ed25519_<cluster>`. Rotation is forward-only (additive) via
   `rotate-ssh-key.yml` — new pubkey distributed to `authorized_keys` with
@@ -106,14 +106,15 @@ templated from `roles/security/templates/nftables.conf.j2`.
 
 | Port | Service |
 |---|---|
-| 22/tcp | SSH (configurable: `ceph_firewall_ssh_any_source` defaults to true for dev) |
+| 22/tcp | SSH (configurable: `ceph_firewall_ssh_any_source` defaults to true; production should set it false) |
 | 443/tcp | RGW / S3 endpoint |
 | ICMP | Ping and MTU discovery |
 
 ### Restricted to trusted networks only
 
 Trusted networks: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
-`100.64.0.0/10` (Tailscale CGNAT).
+`100.64.0.0/10` (legacy Tailscale CGNAT; yucca connectivity is now the
+NetBird overlay, whose addresses fall under the `10.0.0.0/8` entry).
 
 | Port(s) | Service |
 |---|---|
@@ -147,10 +148,11 @@ forensic review.
 
 ### 1Password + op inject
 
-All deployment secrets live in 1Password in the `yucca_tf_dev` vault (dev
-environment; staging/prod land as sibling `yucca_tf_staging` /
-`yucca_tf_prod` vaults). Items are named `<CLUSTER>_CEPH_<ROLE>_*` — see
-[docs/secrets.md](secrets.md) for the full catalog.
+All deployment secrets live in 1Password in the cluster's partition vault —
+`yucca_tf_staging` for sietch today; dev and prod use the sibling
+`yucca_tf_dev` / `yucca_tf_prod` vaults. Items are named
+`<CLUSTER>_CEPH_<ROLE>_*` — see [docs/secrets.md](secrets.md) for the full
+catalog.
 
 At playbook time, `scripts/ansible-play.sh` invokes `op inject` on the
 TF-rendered `secrets.yml.tpl`, writes the resolved values to a `0600`
@@ -167,16 +169,20 @@ on `EXIT`/`INT`/`TERM`. No at-rest encrypted file in git.
 
 ### Trust boundaries
 
-Two service accounts separate write authority from runtime consumption:
+Each partition has a **read** and a **write** 1Password service account,
+separating drift-detection from mutation. CI consumes them as GitHub repo
+secrets, injected as `OP_SERVICE_ACCOUNT_TOKEN` per job:
 
-| Service account                               | Scope                                      | Used by                                |
-|-----------------------------------------------|--------------------------------------------|----------------------------------------|
-| `yucca_futo_1pass_superuser_service_account`  | Read + write all `yucca_tf_*` vaults       | TF (`tf/.env`) + interactive `op` CLI  |
-| `yucca_futo_1pass_service_account`            | Read-only on `yucca_tf` and `yucca_tf_dev` | Ansible runtime / future CI            |
+| Partition | Read SA (plan)            | Write SA (apply)                |
+|-----------|---------------------------|---------------------------------|
+| staging   | `OP_TF_YUCCA_STAGING_ENV` | `OP_TF_YUCCA_STAGING_ENV_WRITE` |
+| prod      | `OP_TF_YUCCA_PROD_ENV`    | `OP_TF_YUCCA_PROD_ENV_WRITE`    |
 
-The ansible-play.sh wrapper runs with whichever session is active on the
-operator workstation (typically desktop unlock → superuser SA via 1Password
-desktop). CI will use the read-only SA via `OP_SERVICE_ACCOUNT_TOKEN`.
+`plan` jobs get the read token; `apply` jobs get the write token, gated behind
+a per-region GitHub Environment with required reviewers. The `ansible-play.sh`
+wrapper, run from an operator workstation, uses whichever 1Password session is
+active (typically desktop unlock under the operator's own Futo membership) —
+not a service-account token.
 
 Rotation procedure: [runbooks/rotate-sa-token.md](runbooks/rotate-sa-token.md).
 
@@ -229,9 +235,9 @@ routable from the public internet.
 | Gap | Risk | Mitigation |
 |---|---|---|
 | Self-signed TLS cert | Clients must disable verification or trust the CA manually. MITM possible if cert is not pinned. | Cert has 10-year validity with specific SANs. Production (Yucca) will use cert-manager + real CA behind haproxy. |
-| Single network (public = cluster) | Cluster rebalancing traffic is visible on the client network. A compromised client could sniff inter-OSD traffic. | Trusted network firewall restricts cluster ports to RFC1918 + Tailscale. Production will separate public and cluster networks. |
+| Single network (public = cluster) | Cluster rebalancing traffic is visible on the client network. A compromised client could sniff inter-OSD traffic. | Trusted network firewall restricts cluster ports to RFC1918 + the NetBird overlay. Production will separate public and cluster networks. |
 | `msgr2` wire encryption not forced | Intra-cluster traffic is authenticated (cephx) but not encrypted on the wire by default. | All traffic stays within 10.10.10.0/24 on a private switch. Can be enabled via `ceph config set global ms_cluster_mode secure` if needed. |
-| SSH open to all sources (dev default) | SSH is reachable from any IP that can route to the nodes. | On a private network (not internet-exposed). `MaxAuthTries=3`, `AllowUsers` whitelist. Production should set `ceph_firewall_ssh_any_source: false`. |
-| `ops` password auth | Password-based SSH is not disabled. | Password is vault-encrypted, rotated via Ansible. Interactive use only -- automation uses key-only `ansible-iac`. |
-| Operator SSH keys distributed out-of-band | No automated key lifecycle for `ops` user. | Acceptable for dev. Production should use centralized key management (e.g., Teleport, Vault SSH CA). |
+| SSH open to all sources (default) | SSH is reachable from any IP that can route to the nodes. | On a private network (not internet-exposed). `MaxAuthTries=3`, `AllowUsers` whitelist. Production should set `ceph_firewall_ssh_any_source: false`. |
+| `ops` password auth | Password-based SSH is not disabled. | Password is stored in 1Password, rotated via Ansible. Interactive use only -- automation uses key-only `ansible-iac`. |
+| Operator SSH keys distributed out-of-band | No automated key lifecycle for `ops` user. | Acceptable for non-production. Production should use centralized key management (e.g., Teleport, Vault SSH CA). |
 | RGW S3 credentials static | No automatic rotation of S3 access/secret keys. | Keys stored in 1Password with access control. `radosgw-admin key create/rm` available for manual rotation. |

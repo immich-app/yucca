@@ -503,7 +503,7 @@ task (cached deploy state), `apt update` manually then re-run deploy.
 `ceph_rgw_dns_name` declaration. RGW zonegroup creation needs it for
 the `--endpoints` and master zonegroup hostname.
 
-**Fix:** add to `inventories/<cluster>/group_vars/all/vars.yml`:
+**Fix:** add to `inventories/<partition>-<region>/<cluster>/group_vars/all/vars.yml`:
 
 ```yaml
 ceph_rgw_dns_name: s3.{{ cluster_domain }}

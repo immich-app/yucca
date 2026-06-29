@@ -15,15 +15,15 @@ this before making changes.
 
 ### 1Password access
 
-You need read access to the **`yucca_tf_dev`** 1Password vault (Futo team
-membership grants this). The `scripts/ansible-play.sh` wrapper uses `op
-inject` to resolve secrets at playbook time — desktop session unlock or
-`OP_SERVICE_ACCOUNT_TOKEN` satisfies auth. No ansible-vault password to
-manage.
+You need read access to the **`yucca_tf_staging`** 1Password vault (Futo team
+membership grants this) — that's where sietch's items live. The
+`scripts/ansible-play.sh` wrapper uses `op inject` to resolve secrets at
+playbook time — desktop session unlock or `OP_SERVICE_ACCOUNT_TOKEN`
+satisfies auth. No ansible-vault password to manage.
 
 ### SSH setup
 
-The `ansible-iac` SSH keys live in `yucca_tf_dev` as items like
+The `ansible-iac` SSH keys live in `yucca_tf_staging` as items like
 `SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` — native 1Password SSH Key items, same
 storage model as the cluster passwords, so a lost laptop is a non-event.
 
@@ -82,29 +82,22 @@ All tooling uses the `CEPH_ENV` variable to select the target cluster.
 It points to an **inventory file** (not a directory):
 
 ```bash
-# Inline prefix — required for `mise run` invocations:
+# Export once per shell (recommended):
+export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
+mise run preflight
+mise run status
+mise run deploy
+
+# Or prefix a single invocation inline:
 CEPH_ENV=inventories/staging-austin/sietch/inventory.ini mise run preflight
 ```
 
-**`export CEPH_ENV=...` does NOT work with `mise run`.** mise's `[env]`
-block strips shell-exported vars when launching tasks; the wrapper exits
-with `CEPH_ENV must be set` even though your shell clearly has it set.
-The inline-prefix form passes the var directly into mise's invocation
-env where it's preserved. See [docs/scripts.md "Setting CEPH_ENV"](docs/scripts.md)
-for the full explanation.
-
-For multiple commands against the same cluster, set a local (non-exported)
-shell variable and inline-prefix each invocation:
-
-```bash
-CE=inventories/staging-austin/sietch/inventory.ini
-CEPH_ENV=$CE mise run preflight
-CEPH_ENV=$CE mise run status
-CEPH_ENV=$CE mise run deploy
-```
-
-Calling scripts directly (e.g., `scripts/preflight.sh`) DOES respect
-shell `export` — it's only the `mise run` path that filters the env.
+Both forms work, by design. `CEPH_ENV` is deliberately **not** declared in
+mise's `[env]` block — if it were, mise would override your shell value and
+silently send every task to the default cluster. By leaving it out, your
+exported (or inline-prefixed) value passes straight through, and each task
+falls back to sietch only when `CEPH_ENV` is unset. See
+[docs/scripts.md "Setting CEPH_ENV"](docs/scripts.md) for the full explanation.
 
 Cluster identity is declared in `tf/deployment/staging/austin/ceph/clusters.auto.tfvars`
 (keyed by short cluster name). TF renders the directory name, inventory
@@ -121,8 +114,9 @@ CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
                      domain        = staging.austin.int.futo.cloud (domain field in tfvars)
 ```
 
-Running `mise run tf:apply` regenerates `inventories/<cluster>/inventory.ini`
-and `secrets.yml.tpl` any time the tfvars entry changes.
+Running `mise run tf:apply` regenerates
+`inventories/<partition>-<region>/<cluster>/inventory.ini` and
+`secrets.yml.tpl` any time the tfvars entry changes.
 
 ## Development workflow
 
@@ -333,13 +327,18 @@ scripts/ansible-play.sh deploy-ceph.yml --tags bootstrap
 | `deploy` | `mise run deploy` | Full deploy pipeline (via ansible-play.sh) |
 | `backup` | `mise run backup` | Export cluster config for DR (via ansible-play.sh) |
 | `capture` | `mise run capture` | Snapshot RGW TLS + admin keyring to 1P (DR belt) |
+| `bench` | `mise run bench` | S3 benchmark (RGW round-trip) |
 | `bench-rados` | `mise run bench-rados` | RADOS bench (raw cluster I/O) |
+| `rotate-certs` | `mise run rotate-certs` | RGW TLS certificate rotation |
+| `rotate-ssh-key` | `mise run rotate-ssh-key` | Distribute current ansible-iac pubkey from 1P to nodes |
+| `hardware-inventory` | `mise run hardware-inventory` | Capture hardware facts to JSON |
+| `migrate-networkd` | `mise run migrate-networkd` | One-shot networkd/bridge migration (rolling, noout-gated) |
 | `destroy` | `mise run destroy` | Destroy cluster (interactive confirmation) |
 
-Inventory rendering and secret-item management are TF responsibilities
-— `tofu apply` in `tf/deployment/staging/austin/ceph/` renders `inventory.ini` and
+Inventory and secrets-template rendering are TF responsibilities — `tofu
+apply` in `tf/deployment/staging/austin/ceph/` renders `inventory.ini` and
 `secrets.yml.tpl` for every cluster declared in `clusters.auto.tfvars`.
-Cluster secrets live in `yucca_tf_dev` (see [docs/secrets.md](docs/secrets.md)).
+Cluster secrets live in `yucca_tf_staging` (see [docs/secrets.md](docs/secrets.md)).
 
 ## File organization
 
@@ -394,8 +393,8 @@ yucca/
 
 ## Commit messages
 
-Use [conventional commits](https://www.conventionalcommits.org/) for future CI
-compatibility:
+Use [conventional commits](https://www.conventionalcommits.org/) — CI and
+release automation depend on them:
 
 ```
 feat(ceph_deploy): add RGW virtual-hosted bucket support

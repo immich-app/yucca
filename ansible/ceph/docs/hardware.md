@@ -1,7 +1,8 @@
 # Hardware Reference
 
 Audience: Ops, procurement, capacity planning. Per-node hardware facts that
-differ across clusters live in `ansible/ceph/inventories/<cluster>/host_vars/`
+differ across clusters live in
+`ansible/ceph/inventories/<partition>-<region>/<cluster>/host_vars/`
 (bond_ip, SAS path prefix, SSD PHY positions, HDD-to-block.db mappings) —
 those files are committed and are authoritative for physical topology.
 

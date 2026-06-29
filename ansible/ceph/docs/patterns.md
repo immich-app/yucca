@@ -421,7 +421,7 @@ auto-discovery.
 ```
 
 Roles use `defaults/main.yml` for all tunables. Site-specific values live
-in `inventories/<cluster>/group_vars/all/vars.yml`.
+in `inventories/<partition>-<region>/<cluster>/group_vars/all/vars.yml`.
 
 ### Using `ansible_play_batch` / `ansible_play_hosts` for placement specs
 

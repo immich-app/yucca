@@ -69,8 +69,8 @@ Rule of thumb: block.db ≈ 4% of OSD data size.
 - **Austin (6 TB HDDs):** 240 GiB LV per HDD matches the rule; 6 LVs
   consume 1,440 GiB of each SSD's partition 5 (see hardware.md).
 - **Hetzner (22 TB HDDs):** 128 GiB LV is undersized against the 4% rule
-  (would want 256–512 GiB). Acceptable for dev/benchmark use; production
-  deployments with 22 TB HDDs should target larger block.db.
+  (would want 256–512 GiB). Acceptable for non-production/benchmark use;
+  production deployments with 22 TB HDDs should target larger block.db.
 
 If block.db fills up, BlueStore spills metadata to the HDD data partition
 — OSD keeps working but small-object operations slow down. Fix: grow the

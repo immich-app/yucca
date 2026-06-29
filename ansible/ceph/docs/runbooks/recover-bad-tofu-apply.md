@@ -93,24 +93,22 @@ cephadm host registration, certs, 1P item names, DNS.
 entry in `clusters.auto.tfvars`, then apply. The pinned name takes
 precedence over the shuffle output.
 
-### Item disappeared from yucca_tf_dev
+### Item disappeared from the cluster vault
 
-**Cause:** an operator, another consumer of `yucca_tf_dev`, or a TF
+**Cause:** an operator, another consumer of `yucca_tf_staging`, or a TF
 delete-on-destroy run removed an item the Ansible side depends on.
 
 **Symptom:** `op inject -f -i secrets.yml.tpl` fails with "item not found".
 
-**Fix:**
+**Fix:** re-create the item under an unlocked 1Password desktop session (your
+Futo membership has write access — no service-account token needed):
 
 ```bash
-# Re-create the item manually via superuser SA
-SU_TOKEN=$(op read "op://yucca_tf_dev/yucca_futo_1pass_superuser_service_account/password")
-OP_SERVICE_ACCOUNT_TOKEN="$SU_TOKEN" op item create \
-  --vault yucca_tf_dev \
+op item create \
+  --vault yucca_tf_staging \
   --category password \
   --title SIETCH_CEPH_OPS_PASSWORD \
   --generate-password='letters,digits,32'
-unset SU_TOKEN
 ```
 
 Then either (a) run `mise run deploy` to push the new password to the
