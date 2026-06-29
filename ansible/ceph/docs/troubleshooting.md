@@ -472,13 +472,13 @@ ceph mgr services
 
 ## Deploy Issues
 
-### Symptom: `mise run deploy` fails — `no available installation candidate for cephadm=20.2.*`
+### Symptom: `mise run deploy` fails -- `no available installation candidate for cephadm=20.2.*`
 
 **Cause:** apt cache is stale. `prerequisites.yml` adds the Ceph Tentacle
 repo (`download.ceph.com/debian-tentacle`) and then runs `apt update`.
 On a freshly-installed OS (Hetzner installimage runs apt internally),
 the cache is "fresh" enough that an `apt update` with `cache_valid_time`
-set will skip the refresh — apt never sees the Ceph repo's Packages file
+set will skip the refresh -- apt never sees the Ceph repo's Packages file
 and only knows about Debian's older `cephadm 16.2.x`.
 
 **Diagnose:** SSH to the target node and run:
@@ -497,13 +497,13 @@ task (cached deploy state), `apt update` manually then re-run deploy.
 
 ---
 
-### Symptom: `mise run deploy` fails — `'ceph_rgw_dns_name' is undefined`
+### Symptom: `mise run deploy` fails -- `'ceph_rgw_dns_name' is undefined`
 
 **Cause:** the per-cluster `group_vars/all/vars.yml` is missing the
 `ceph_rgw_dns_name` declaration. RGW zonegroup creation needs it for
 the `--endpoints` and master zonegroup hostname.
 
-**Fix:** add to `inventories/<cluster>/group_vars/all/vars.yml`:
+**Fix:** add to `inventories/<partition>-<region>/<cluster>/group_vars/all/vars.yml`:
 
 ```yaml
 ceph_rgw_dns_name: s3.{{ cluster_domain }}
@@ -511,7 +511,7 @@ ceph_rgw_dns_name: s3.{{ cluster_domain }}
 
 This derives the DNS name from `cluster_domain` (e.g.
 `s3.staging.austin.int.futo.cloud`). Sietch defines this explicitly. New
-clusters should include it from the start — see
+clusters should include it from the start -- see
 [docs/adding-a-cluster.md](adding-a-cluster.md) group_vars template.
 
 ---
@@ -525,7 +525,7 @@ and includes a defensive unset task at the tail of `osds.yml`, but the
 flag can persist if the deploy never reached that tail (e.g., a failure
 in an earlier phase).
 
-**Fix:** clear it manually, or just re-run `mise run deploy` — the
+**Fix:** clear it manually, or just re-run `mise run deploy` -- the
 defensive task at the end of `tasks/osds.yml` unsets `noin`
 unconditionally (idempotent no-op when already unset):
 

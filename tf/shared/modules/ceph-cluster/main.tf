@@ -10,8 +10,8 @@ terraform {
       version = "~> 3.6"
     }
     # onepassword provider re-enabled once a dedicated ceph-scoped 1P service
-    # account replaces the org-wide superuser SA (per ADR-009). See
-    # secrets.tf.disabled for the currently-dormant resource declarations.
+    # account replaces the org-wide superuser SA. See secrets.tf.disabled for
+    # the currently-dormant resource declarations.
   }
 }
 

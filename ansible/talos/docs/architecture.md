@@ -1,5 +1,7 @@
 # Architecture: hyper-converged Talos on Sietch (converged)
 
+> **Second-class, not actively used** -- see [README](../README.md). Informational; may lag the live stacks.
+
 ## High-level
 
 Three Sietch hosts already run Ceph OSDs (production HEALTH_OK).

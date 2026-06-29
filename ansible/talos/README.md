@@ -1,5 +1,10 @@
 # yucca/ansible/talos
 
+> **Status: second-class, not actively used.** This converged/libvirt Talos
+> substrate is maintained at low priority and is not part of the actively-run
+> deployment. Treat the docs in this subtree as informational -- they may lag
+> the live stacks; validate against current code before relying on any step.
+
 Hyper-converged Talos K8s on the 3-node Sietch Ceph cluster. Those hosts
 have idle CPU + memory headroom (Ceph spends its budget on disk and
 network I/O), so the Talos VMs run there instead of on dedicated K8s

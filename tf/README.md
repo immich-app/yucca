@@ -299,7 +299,7 @@ clusters = {
     role_in_hostname  = "ceph"
     ansible_ssh_user  = "ansible-iac"
     ansible_ssh_key   = "~/.ssh/id_ed25519_sietch"
-    vault             = "yucca_tf_dev"
+    vault             = "yucca_tf_staging"
     provision_profile = "debian-live"   # null for Hetzner-installimage clusters
     hosts = [
       { name = "laurel", bond_ip = "10.10.10.90", bootstrap = true },
@@ -317,12 +317,12 @@ On apply, the module:
    prevent collisions).
 2. Renders `inventory.ini` (normal ops), `inventory-destroy.ini` (explicit
    destroy flag), `secrets.yml.tpl` (op:// references to
-   `yucca_tf_dev/<CLUSTER>_CEPH_*_PASSWORD/password`). Optionally renders
+   `yucca_tf_staging/<CLUSTER>_CEPH_*_PASSWORD/password`). Optionally renders
    `inventory-provision.ini` when `provision_profile != null`.
 3. **(Not yet TF-managed)** `onepassword_item` resources for cluster
    secrets are dormant — items are created via `op` CLI today and read
-   by Ansible at play time. See [ADR-009](../ansible/ceph/docs/adr/009-tf-first-op-inject-over-vault-password-sh.md)
-   for the re-enable plan.
+   by Ansible at play time. See `ansible/ceph/docs/secrets.md` for the
+   re-enable plan.
 
 ## The talos-baremetal module (staging/austin/talos)
 
@@ -577,5 +577,5 @@ for the coordination procedure.
 
 ## Related
 
-- ADR-009 (TF-first + op inject): `ansible/ceph/docs/adr/009-tf-first-op-inject-over-vault-password-sh.md`
+- TF-first + op inject model: `ansible/ceph/docs/secrets.md`
 - Immich devtools (upstream pattern): <https://github.com/immich-app/devtools/tree/main/tf>

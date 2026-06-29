@@ -6,16 +6,28 @@
 
 **Prerequisites:**
 - Cluster is healthy (`ceph health` returns `HEALTH_OK` or understood warnings)
-- `op` session live (desktop unlocked or `OP_SERVICE_ACCOUNT_TOKEN` set)
+- `op` session live (desktop unlocked or `OP_SERVICE_ACCOUNT_TOKEN` set) for the
+  manual provisioning step
 - SSH access to existing cluster nodes working
 
 ---
 
-## 1. Declare the new host in TF
+## What you do vs what CI does
 
-Pick an unused name, or omit `name` to let TF auto-pick from the
-923-word list seeded per-cluster (see [docs/naming.md](../naming.md)).
-Edit `tf/deployment/staging/austin/ceph/clusters.auto.tfvars` and append to the
+CI (`.github/workflows/infra.yml`) owns the apply + convergence: on merge to
+main it applies the ceph TF stack (renders the inventory, mints RGW keys) and
+runs the full Ansible pipeline (baseline -> tune -> deploy -> harden) against
+the cluster over the NetBird overlay. CI cannot boot a server to a live image,
+so the **physical provisioning is the manual part**.
+
+The flow is therefore: open a PR with the TF + host_vars changes, physically
+provision the box, then merge -- CI converges it.
+
+## 1. Declare the new host in TF (PR)
+
+Pick an unused name, or omit `name` to let TF auto-pick from the 923-word list
+seeded per-cluster (see [docs/naming.md](../naming.md)). Edit
+`tf/deployment/staging/austin/ceph/clusters.auto.tfvars` and append to the
 target cluster's `hosts` list:
 
 ```hcl
@@ -30,19 +42,11 @@ sietch = {
 }
 ```
 
-Apply:
+Add new hosts at the **tail** of the list so existing auto-picked names keep
+their positions. Bootstrap assignment never moves -- it stays pinned to the
+first/explicitly-declared bootstrap host.
 
-```bash
-mise run tf:apply
-```
-
-This re-renders `inventory.ini` with the new host in `[ceph_nodes]`,
-`[ceph_mon]`, and `[ceph_join]`. Bootstrap assignment doesn't change —
-still pinned to the first/explicitly-declared bootstrap host. Add new
-hosts at the **tail** of the list so existing auto-picked names keep
-their positions.
-
-## 2. Create host_vars
+## 2. Create host_vars (PR)
 
 ```bash
 cd inventories/staging-austin/sietch
@@ -62,28 +66,19 @@ hardware:
 | `ceph_hdd_osds` | Map each populated HDD bay to its PHY and corresponding db-slot LV |
 | `ceph_ssd_osds` | SSD partition 6 on each SSD (no separate block.db) |
 
-## 3. Confirm inventory regenerated correctly
+`host_vars` is committed -- it rides the same PR as the tfvars change.
 
-After `tofu apply` in step 1, inspect the rendered inventory:
+## 3. Provision the OS (manual -- CI can't do this)
 
-```bash
-cat inventories/staging-austin/sietch/inventory.ini
-```
-
-The new host should appear in:
-- `[ceph_nodes]` — all cluster members
-- `[ceph_mon]` — MON/MGR placement
-- `[ceph_join]` — everything except the bootstrap host
-
-Bootstrap host is unchanged. TF never moves an existing bootstrap assignment.
-
-## 4. Provision the OS
+This is the step that needs a human: it boots the box to a live image, which
+CI cannot do. Get the node provisioned and reachable on its bond IP before
+merging, so CI's convergence can SSH it over the NetBird overlay.
 
 ### Austin (physical servers)
 
-1. Boot the server to the Debian 12 live image via iDRAC virtual console
-2. Verify the live image is reachable on the node's bond IP
-3. Run provisioning:
+1. Boot the server to the Debian 12 live image via the iDRAC virtual console.
+2. Verify the live image is reachable on the node's bond IP.
+3. Run provisioning (from your workstation):
 
 ```bash
 CEPH_ENV=inventories/staging-austin/sietch/inventory-provision.ini \
@@ -102,107 +97,60 @@ Expected output: `sietch-ceph-<name>.staging.austin.int.futo.cloud`
 
 ### Hetzner (remote servers)
 
-1. Boot into rescue mode via Hetzner Robot panel
-2. SSH into rescue system as root
-3. Run installimage for Debian 12 Bookworm
-4. Run the post-install script to configure networking and partitioning
-5. Reboot into installed OS
-6. Verify SSH access
+1. Boot into rescue mode via the Hetzner Robot panel.
+2. SSH into the rescue system as root.
+3. Run installimage for Debian 12 Bookworm.
+4. Run the post-install script to configure networking and partitioning.
+5. Reboot into the installed OS.
+6. Verify SSH access.
 
-## 5. Run baseline
+## 4. Merge the PR -- CI converges the node
 
-Installs podman, diagnostic tools, creates the ops user, renders /etc/hosts,
-enables dbus/chrony/podman.socket:
+Merge to main. `infra.yml` applies the ceph stack and runs the full pipeline
+(baseline -> tune-os -> tune-hardware -> deploy-ceph -> tune-ceph -> harden)
+against the cluster, which joins the new host, sets up its LVM, creates its
+OSDs, and places services. Watch the `Apply staging@austin/ceph` job; the
+apply is gated behind the `staging-austin` environment's required reviewers.
 
-```bash
-scripts/ansible-play.sh baseline.yml --limit sietch-ceph-<name>
-```
+### Manual fallback (CI unavailable, or converging one node out-of-band)
 
-## 6. Apply tuning
-
-OS-level sysctl, hardware I/O schedulers, CPU governor:
-
-```bash
-scripts/ansible-play.sh tune-os.yml --limit sietch-ceph-<name>
-scripts/ansible-play.sh tune-hardware.yml --limit sietch-ceph-<name>
-```
-
-## 7. Join node to Ceph cluster
-
-This runs all deploy phases. For an existing cluster, bootstrap is skipped
-(ceph.conf already exists on the bootstrap node). The node gets joined,
-LVM is set up, OSDs are created, and services are placed:
+The same convergence by hand, scoped to the new node plus the bootstrap host
+(join/placement/OSD activation all run from bootstrap):
 
 ```bash
-scripts/ansible-play.sh deploy-ceph.yml \
-  --limit sietch-ceph-<name>,sietch-ceph-laurel
+scripts/ansible-play.sh baseline.yml        --limit sietch-ceph-<name>
+scripts/ansible-play.sh tune-os.yml         --limit sietch-ceph-<name>
+scripts/ansible-play.sh tune-hardware.yml   --limit sietch-ceph-<name>
+scripts/ansible-play.sh deploy-ceph.yml     --limit sietch-ceph-<name>,sietch-ceph-laurel
+scripts/ansible-play.sh tune-ceph.yml       --limit sietch-ceph-laurel
+scripts/ansible-play.sh harden.yml          --limit sietch-ceph-<name>
 ```
 
-**Important:** You must include the bootstrap node (`sietch-ceph-laurel`)
-in `--limit` because join, placement, OSD activation, and RGW service spec
-updates all run from the bootstrap node.
+## 5. Verify
 
-## 8. Apply Ceph tuning and security hardening
-
-```bash
-scripts/ansible-play.sh tune-ceph.yml --limit sietch-ceph-laurel
-scripts/ansible-play.sh harden.yml --limit sietch-ceph-<name>
-```
-
-## 9. Verify
-
-### Check the node appears in the cluster
+Check the CI job logs, or from the bootstrap node:
 
 ```bash
 ssh ansible-iac@sietch-ceph-laurel
 
-ceph orch host ls
+ceph orch host ls                  # new host listed, status blank (meaning online)
+ceph osd tree                      # new host bucket, OSDs up
+ceph status                        # HEALTH_OK, or HEALTH_WARN with only backfill warnings
+ceph orch ls --service-type rgw    # running count incremented by 1
 ```
 
-Expected: new hostname listed with status empty (= online).
-
-### Check OSDs are up
-
-```bash
-ceph osd tree
-```
-
-Expected: new node appears as a host bucket with its OSDs in `up` state.
-
-### Check overall health
-
-```bash
-ceph status
-```
-
-Expected: `HEALTH_OK` or `HEALTH_WARN` with only backfill-related warnings
-(which clear as data rebalances).
-
-### Check RGW is running on new node
-
-```bash
-ceph orch ls --service-type rgw
-```
-
-Expected: running count incremented by 1.
-
-### Run drift detection
-
-```bash
-mise run drift
-```
-
-Expected: no drift on the new node.
+Then `mise run drift` should report no drift on the new node.
 
 ## Rollback
 
 If the node needs to be removed:
 
 ```bash
-# From bootstrap node
+# From the bootstrap node
 ceph orch host drain sietch-ceph-<name> --force
 # Wait for daemons to migrate (~5 min)
 ceph orch host rm sietch-ceph-<name> --force
 ```
 
-Then remove the node from `inventory.ini` and delete its `host_vars` file.
+Then drop the host from `clusters.auto.tfvars`, delete its `host_vars` file,
+and merge -- CI re-renders the inventory without it.
