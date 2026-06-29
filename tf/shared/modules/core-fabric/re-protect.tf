@@ -68,10 +68,10 @@ locals {
         name = 0
         family = [{
           inet = [{
-            filter  = [{ input = ["PROTECT-RE"] }]
+            filter  = [{ input = [{ filter_name = "PROTECT-RE" }] }]
             address = [for lb in local._loopbacks : { name = lb }]
           }]
-          inet6 = [{ filter = [{ input = ["PROTECT-RE6"] }] }]
+          inet6 = [{ filter = [{ input = [{ filter_name = "PROTECT-RE6" }] }] }]
         }]
       }]
     }
