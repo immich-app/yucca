@@ -24,8 +24,8 @@ manage.
 ### SSH setup
 
 The `ansible-iac` SSH keys live in `yucca_tf_dev` as items like
-`SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY`
-(see [ADR-010](docs/adr/010-ssh-keys-in-1password.md) for rationale).
+`SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` — native 1Password SSH Key items, same
+storage model as the cluster passwords, so a lost laptop is a non-event.
 
 **First-time workstation setup:**
 

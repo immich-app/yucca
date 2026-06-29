@@ -7,37 +7,41 @@ assembles the rest.
 
 For how naming fits the broader system see
 [architecture.md §4 (Terraform)](architecture.md); for the per-item 1P
-catalog see [secrets.md](secrets.md); for the SSH-key lifecycle see
-[ADR-010](adr/010-ssh-keys-in-1password.md).
+catalog and the SSH-key lifecycle see [secrets.md](secrets.md).
 
 ## The three name layers
 
 Three parallel naming surfaces derive from the same tfvars entry, but
-**only the hostname carries the `role_in_hostname` segment**. Inventory
-directory and 1P item prefix are both hardcoded to `ceph` / `CEPH` in the
-ceph-cluster module — they're project-scoped, not role-scoped.
+**only the hostname carries the `role_in_hostname` segment**. The 1P item
+prefix is hardcoded to `CEPH` in the ceph-cluster module, and the inventory
+directory is keyed by `<partition>-<region>` — both are project-scoped, not
+role-scoped.
 
 | Surface                | Pattern                                           | Role source                     |
 |------------------------|---------------------------------------------------|---------------------------------|
-| Hostname (short + FQDN)| `<cluster>-<role>-<name>[.<env>.<dc>.<provider>.futo.cloud]` | `role_in_hostname` tfvar |
-| Inventory directory    | `inventories/<cluster>-ceph.<env>.<dc>.<provider>/` | always `ceph` (module-hardcoded) |
+| Hostname (short + FQDN)| `<cluster>-<role>-<name>[.<domain>]`              | `role_in_hostname` tfvar |
+| Inventory directory    | `inventories/<partition>-<region>/<cluster>/`     | `<partition>-<region>` from `region.hcl` |
 | 1P item prefix         | `<CLUSTER>_CEPH_*`                                  | always `CEPH` (module-hardcoded) |
 
 This split is deliberate. A future cluster where every node is a dedicated
 OSD might set `role_in_hostname = "osd"` (yielding hostnames like
-`mesa-osd-willow`) but its inventory dir and 1P items would still grep-match
-`*-ceph.*` and `*_CEPH_*` alongside every other Ceph-project cluster.
+`mesa-osd-willow`) but its 1P items would still grep-match `*_CEPH_*`
+alongside every other Ceph-project cluster, and its inventory would still
+live under the same `<partition>-<region>/` region tree.
 
 ### Hostname segments
 
-| Component | Example                         | Source (per-cluster tfvars field)    |
-|-----------|---------------------------------|--------------------------------------|
-| cluster   | `sietch`                        | top-level map key                    |
-| role      | `ceph` (small clusters), `osd`  | `role_in_hostname` (default `ceph`)  |
-| name      | `laurel`, `evelyn`              | `hosts[].name`, or TF-picked         |
-| env       | `dev`, `staging`, `prod`        | `environment`                        |
-| dc        | `austin`, `hel`, `fsn`          | `datacenter`                         |
-| provider  | `int`, `htz`                    | `provider_code`                      |
+| Component | Example                         | Source                                |
+|-----------|---------------------------------|---------------------------------------|
+| cluster   | `sietch`                        | top-level map key (per-cluster tfvars)|
+| role      | `ceph` (small clusters), `osd`  | `role_in_hostname` (default `ceph`)   |
+| name      | `laurel`, `evelyn`              | `hosts[].name`, or TF-picked          |
+| domain    | `staging.austin.int.futo.cloud` | the region's `domain` in `region.hcl` |
+
+The FQDN suffix is the region's `domain`, set once per region in
+`region.hcl` as `<partition>.<region>.<provider_code>.futo.cloud` and passed
+into the ceph-cluster module whole — the cluster's tfvars entry only
+supplies cluster, role, and name.
 
 Current `role_in_hostname` values: sietch uses `ceph`
 (mixed-role, all-nodes-are-everything). Dedicated-role hostnames (`osd`,
@@ -63,9 +67,9 @@ after its datacenter for a production tier).
 
 **Hard constraints:**
 
-- **lowercase alphanumeric** — becomes the HCL map key, the inventory
-  directory segment (`<name>-ceph.<env>...`), the hostname prefix, and
-  (uppercased) the 1P item prefix (`<NAME>_CEPH_*`).
+- **lowercase alphanumeric** — becomes the HCL map key, the cluster
+  segment of the inventory directory (`<partition>-<region>/<name>/`), the
+  hostname prefix, and (uppercased) the 1P item prefix (`<NAME>_CEPH_*`).
 - **Short** — appears in every hostname and every 1P item title. Aim for
   6–10 characters; 15 is the realistic ceiling.
 - **Unique within the `yucca_tf_*` 1P item namespace** — other Futo
@@ -104,9 +108,8 @@ A rename touches all of:
 7. Any DNS records and external systems that reference the hostnames
 
 Expect hours-to-days of work, cluster downtime, and coordination with
-every consumer of the cluster's S3/dashboards/etc. Painbox's rename
-(from `painbox-osd-5c3cac.lab.*` to `painbox-ceph-evelyn.dev.*`) was
-cheap only because painbox is idle — a running production Ceph cluster
+every consumer of the cluster's S3/dashboards/etc. A rename is only cheap
+on an idle cluster nothing consumes yet — a running production Ceph cluster
 makes this a multi-week project.
 
 **Pick once. Pick deliberately.**
@@ -187,15 +190,17 @@ collisions within the cluster.
 TF renders inventory directories as:
 
 ```
-inventories/<cluster>-ceph.<env>.<dc>.<provider>/
+inventories/<partition>-<region>/<cluster>/
 ```
 
-The `-ceph` segment is hardcoded in the ceph-cluster module regardless of
-`role_in_hostname`. Keeps all Ceph-project inventory paths grep-matchable
-as `*-ceph.*` — even a hypothetical cluster with `role_in_hostname = "osd"`
-(hostnames `mesa-osd-*`) still renders `mesa-ceph.prod.fsn.htz/`.
+The `<partition>-<region>` slug (e.g. `staging-austin`) groups every cluster
+in a region under one tree, regardless of `role_in_hostname` — a
+hypothetical cluster with `role_in_hostname = "osd"` (hostnames `mesa-osd-*`)
+still renders under `prod-htz-fsn1/mesa/`.
 
-Defined in `tf/deployment/<partition>/<region>/ceph/main.tf` (`local.inventory_dirs`).
+Built in `tf/shared/modules/ceph-cluster/rendering.tf`
+(`local.inventory_dirname`), surfaced via the module's `inventory_dirname`
+output and consumed by the deployment stack + `scripts/render-inventories.sh`.
 
 ## 1Password item naming
 
@@ -233,9 +238,9 @@ The operator-side private key path is derived from the cluster name:
 ~/.ssh/id_ed25519_<cluster>
 ```
 
-Example: `~/.ssh/id_ed25519_sietch`. Per
-[ADR-010](adr/010-ssh-keys-in-1password.md), the keypair lives in
-`<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` in 1P and is installed via
+Example: `~/.ssh/id_ed25519_sietch`. The keypair lives in 1Password as
+`<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY` (a native SSH Key item, same storage
+model as the password items) and is installed onto the workstation via
 `scripts/install-ssh-keys.sh <cluster>`.
 
 The `ansible_ssh_key` field in the cluster's tfvars entry must match this

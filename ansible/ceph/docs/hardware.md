@@ -126,7 +126,9 @@ LVM is owned by the Hetzner installimage post-install script.
   partitioned for both block.db and OS** → sietch-shape.
 - **Single VG covering boot + block.db + SSD OSD** (typical for
   hosting-provider servers with NVMe RAID-1) → NVMe-RAID shape.
-- **Other shapes** (e.g., dedicated NVMe block.db drives) require either
-  a new shape branch in `roles/ceph_deploy/tasks/osds.yml`'s template or
-  a fresh decision — see [ADR-011](adr/011-cephadm-osd-service-specs.md)
-  for how cephadm OSD service specs handle hardware-shape independence.
+- **Other shapes** (e.g., dedicated NVMe block.db drives) require a new
+  shape branch in the cephadm OSD service-spec template
+  (`roles/ceph_deploy/templates/osd-spec.yml.j2`). Hardware-shape branching
+  lives in that template's Jinja conditional, not in role logic — a new
+  shape adds a branch there plus its own host_vars, and the rest of the
+  role is untouched.

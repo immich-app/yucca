@@ -15,8 +15,8 @@
 #   7. admin_user.yml         — create ansible-iac (key-only, uid 1000)
 #                               inside chroot. The ops user is NOT created
 #                               here — it's created post-boot by the baseline
-#                               role (ADR-003: split chroot work from
-#                               post-boot convergeable config).
+#                               role (keeps fragile chroot work minimal,
+#                               separate from post-boot convergeable config).
 #   8. bootloader.yml         — initramfs, grub-install, efibootmgr fallback
 #   9. finalize.yml           — marker + ESP mirror, then unmount + reboot
 #                               (or stop short for skip-reboot canary mode)

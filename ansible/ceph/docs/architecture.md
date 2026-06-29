@@ -36,32 +36,34 @@ External dependencies are minimal and explicit:
 - **1Password org** — organization-scoped vaults shared with other Futo infra
   (Immich, o11y). Authoritative store for live secret values.
 - **OVH S3** — `yucca-tf-state` bucket at `s3.eu-west-par.io.cloud.ovh.net`.
-  Project-keyed (`ceph/<env>/<stack>/terraform.tfstate`) so multiple stacks
-  share the bucket without collision.
+  Keyed by `yucca/<partition>/<region>/<stack>/terraform.tfstate` so multiple
+  stacks share the bucket without collision.
 - **Hardware** — Austin colo for sietch (Dell R730xd × 3, single 10G bond).
   Detail in [hardware.md](hardware.md).
 
 ---
 
-## 2. Environments
+## 2. Partitions and regions
 
-Environments are a first-class concern: every tool in the mesh derives
-its environment from the same source — directory layout — so dev / staging
-/ prod isolation is structural, not flag-driven.
+Partition (dev / staging / prod) and region are first-class concerns: every
+tool in the mesh derives both from the same source — directory layout
+(`tf/deployment/<partition>/<region>/<stack>`) — so isolation is structural,
+not flag-driven.
 
-| Layer        | dev (today)                                                    | staging (planned)                                       | prod (planned)                                       |
-|--------------|----------------------------------------------------------------|---------------------------------------------------------|------------------------------------------------------|
-| TF stack dir | `tf/deployment/dev/ceph/`                                      | `tf/deployment/staging/austin/ceph/`                           | `tf/deployment/prod/ceph/`                           |
-| TF state key | `ceph/dev/ceph/terraform.tfstate`                              | `ceph/staging/ceph/terraform.tfstate`                   | `ceph/prod/ceph/terraform.tfstate`                   |
-| 1P vaults    | `yucca_tf_dev` (live) · `yucca_tf_dev_manual` (human-fillable) | `yucca_tf_staging` · `yucca_tf_staging_manual`          | `yucca_tf` (live) · `yucca_tf_prod_manual`           |
-| Ansible inv  | `inventories/<cluster>-ceph.dev.<dc>.<provider>/`              | `inventories/<cluster>-ceph.staging.<dc>.<provider>/`   | `inventories/<cluster>-ceph.prod.<dc>.<provider>/`   |
-| mise default | `CEPH_ENV=...staging-austin/sietch/inventory.ini`         | overridden via env at invocation                        | overridden via env at invocation                     |
+| Layer        | staging / austin (today)                                | dev / local (planned)                          | prod / htz-fsn1 (planned)                      |
+|--------------|---------------------------------------------------------|------------------------------------------------|------------------------------------------------|
+| TF stack dir | `tf/deployment/staging/austin/ceph/`                    | `tf/deployment/dev/local/ceph/`                | `tf/deployment/prod/htz-fsn1/ceph/`            |
+| TF state key | `yucca/staging/austin/ceph/terraform.tfstate`           | `yucca/dev/local/ceph/terraform.tfstate`       | `yucca/prod/htz-fsn1/ceph/terraform.tfstate`   |
+| 1P vaults    | `yucca_tf_staging` · `yucca_tf_staging_manual`          | `yucca_tf_dev` · `yucca_tf_dev_manual`         | `yucca_tf` (live) · `yucca_tf_prod_manual`     |
+| Ansible inv  | `inventories/staging-austin/<cluster>/`                 | `inventories/dev-local/<cluster>/`             | `inventories/prod-htz-fsn1/<cluster>/`         |
+| mise default | `CEPH_ENV=...staging-austin/sietch/inventory.ini`       | overridden via env at invocation               | overridden via env at invocation               |
 
-Today the only deployed environment is dev (sietch). Adding
-staging/prod is purely additive: create the matching `tf/deployment/<partition>/<region>/ceph/`
-directory, populate `clusters.auto.tfvars`, and the same module + Ansible
-roles + mise tasks work unchanged. The state backend key path, 1P vault
-selection, and inventory directory naming all derive from the env segment.
+Today the only deployed cluster is sietch (staging / austin). Adding another
+region or partition is purely additive: create the matching
+`tf/deployment/<partition>/<region>/ceph/` directory, populate
+`clusters.auto.tfvars`, and the same module + Ansible roles + mise tasks work
+unchanged. The state backend key path, 1P vault selection, and inventory
+directory naming all derive from the partition + region segments.
 
 `TF_STACK_DIR` is the operator-side override for `mise run tf:*` tasks; it
 defaults to `tf/deployment/staging/austin/ceph` and points at any sibling stack directory.
@@ -150,8 +152,8 @@ tf/
 │   ├── wordlist.txt                  923 words for auto-picked hostnames
 │   └── templates/                    inventory + secrets.yml.tpl templates
 └── deployment/
-    ├── terragrunt.hcl                root: state backend, env/stack derived from path
-    └── dev/ceph/
+    ├── terragrunt.hcl                root: state backend, partition/region/stack derived from path
+    └── staging/austin/ceph/
         ├── terragrunt.hcl            includes root, sets ansible_project_root
         ├── main.tf · variables.tf · versions.tf
         └── clusters.auto.tfvars      declarative cluster list
@@ -184,7 +186,7 @@ sietch = {
 The module computes everything else: hostname (`<cluster>-<role>-<name>`),
 FQDN (`<hostname>.<domain>`), 1P item names
 (`<CLUSTER>_CEPH_<ROLE>_PASSWORD`), inventory directory path
-(`inventories/<cluster>-<role>.<env>.<dc>.<provider>/`).
+(`inventories/<partition>-<region>/<cluster>/`).
 
 ### Auto-naming via wordlist
 
@@ -218,8 +220,8 @@ S3 backend in `tf/deployment/terragrunt.hcl`:
 - Bucket: `yucca-tf-state` (shared with o11y and other Futo stacks)
 - Region: `eu-west-par` (OVH Paris)
 - Endpoint: `https://s3.eu-west-par.io.cloud.ovh.net/`
-- Key: `ceph/${env}/${stack}/terraform.tfstate` — derived from
-  the child stack's path under `deployment/`
+- Key: `yucca/${partition}/${region}/${stack}/terraform.tfstate` — derived
+  from the child stack's path under `deployment/`
 - Skip AWS-specific validation; use path-style URLs (OVH compatibility)
 
 State locking is **not enabled today**. OVH has no DynamoDB equivalent.
@@ -232,10 +234,9 @@ likely. See `deployment/terragrunt.hcl` for the inline rationale.
 
 `onepassword_item` resources are **dormant** (`tf/.../secrets.tf.disabled`).
 1P items are created today via the `op` CLI (operator runs `op item create`
-once per cluster). Re-enabling them is tracked in
-[ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md) — the gate
-is the dedicated `sietch-ceph` service account that lets us split write
-authority from the org-wide superuser SA.
+once per cluster). The gate to re-enabling them is the dedicated
+`sietch-ceph` service account that lets us split write authority from the
+org-wide superuser SA.
 
 ---
 
@@ -309,7 +310,10 @@ serves a different shape of secret consumption:
 No custom password-script (no `vault-password.sh`); no
 `ansible-vault`-encrypted file in git. Lint and syntax-check tasks don't
 invoke op at all — they don't need secrets, so "1P unavailable" never
-silently degrades them. See [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md).
+silently degrades them. This replaced an earlier `vault-password.sh` +
+`ansible-vault` setup whose 1P-unavailable fallback to a dummy password
+masked real auth failures until a downstream task blew up — the current
+flow fails closed instead.
 
 ---
 
@@ -343,7 +347,16 @@ flowchart TB
 ```
 
 `site.yml` starts at `baseline` — `provision_host` runs only on first
-install via `provision.yml`.
+install via `provision.yml`. The split is deliberate: `provision_host` does
+the minimum inside the live-image chroot (just the `ansible-iac` user, so
+Ansible can connect after reboot) because chroot work is fragile; the ops
+user, packages, and `/etc/hosts` move to the convergeable `baseline` role,
+which re-runs against a live node to fix drift without reprovisioning. The
+OS itself is installed with `debootstrap` from the live image rather than a
+preseed/autoinstall, because the disk layout (mdraid-1 across two SSDs,
+partitions reserved for ceph block.db and SSD OSDs) needs scripted
+partitioning and pre-flight hardware validation that preseed's `partman`
+recipes can't express.
 
 ### Why this order matters
 
@@ -535,7 +548,7 @@ sequenceDiagram
     OPCLI->>ONEP: resolve op:// references
     ONEP-->>OPCLI: SA token + AWS keys
     OPCLI->>TG: exec child process<br/>with env vars injected
-    TG->>S3: read tfstate<br/>(ceph/<env>/<stack>/terraform.tfstate)
+    TG->>S3: read tfstate<br/>(yucca/<partition>/<region>/<stack>/terraform.tfstate)
     S3-->>TG: current state
     TG->>TG: plan + apply
     TG->>S3: write updated tfstate
@@ -658,8 +671,9 @@ The current flow renders a cephadm OSD service spec from per-host data
 and applies it via `ceph orch apply osd -i`. Cephadm handles device
 path resolution, LUKS encryption (`encrypted: true`), LVM provisioning,
 and daemon deployment. The role is hardware-shape-agnostic — the only
-shape-aware logic is the template's Jinja conditional. See
-[ADR-011](adr/011-cephadm-osd-service-specs.md) for the decision record.
+shape-aware logic is the template's Jinja conditional. Device paths are
+listed explicitly rather than filtered by `rotational`, so cephadm never
+auto-discovers and claims an OS or block.db partition.
 
 ### Hardware-shape independence in the template
 
@@ -745,7 +759,7 @@ flowchart TB
     P4["install.yml<br/><i>debootstrap Bookworm into /mnt</i>"]
     P5["configure.yml<br/><i>hostname, hosts, network, fstab, mdadm templates</i>"]
     P6["chroot_packages.yml<br/><i>bind mounts, apt install, machine-id, SSH keys</i>"]
-    P7["admin_user.yml<br/><i>ansible-iac (key-only) inside chroot;<br/>ops user is created post-boot by baseline (ADR-003)</i>"]
+    P7["admin_user.yml<br/><i>ansible-iac (key-only) inside chroot;<br/>ops user is created post-boot by the baseline role</i>"]
     P8["bootloader.yml<br/><i>initramfs, grub-install, efibootmgr</i>"]
     P9["finalize.yml<br/><i>marker, ESP mirror, unmount, reboot</i>"]
     P10["unmount.yml<br/><i>reverse-order cleanup (shared with rescue)</i>"]
@@ -788,14 +802,13 @@ state.
   consume) already enables it. Read-only SA in CI runs `mise run lint`,
   `mise run check`, `mise run test`, `mise run preflight` against every PR.
   Superuser SA only runs `mise run tf:plan` (never `apply`) to detect drift.
-- **Talos K8s as a sibling stack** — `tf/deployment/<env>/talos/` would
-  share the same terragrunt root config and S3 backend, with its own state
-  key (`ceph/<env>/talos/terraform.tfstate`). Deployment plan lives
-  outside this repo until Phase A begins; a per-stack README lands
-  alongside the code when it's implemented.
+- **Talos K8s as a sibling stack** — `tf/deployment/<partition>/<region>/talos/`
+  shares the same terragrunt root config and S3 backend, with its own state
+  key (`yucca/<partition>/<region>/talos/terraform.tfstate`); a per-stack
+  README lands alongside the code when it's implemented.
 - **TF-managed `onepassword_item` resources** — re-enable the dormant
   resources in `secrets.tf.disabled` once the dedicated ceph service
-  account lands. Tracked in [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md).
+  account lands, so 1P items are TF-owned rather than created by hand.
 - **OSD LUKS keys in 1P** — store dm-crypt keys for DR. Deferred until
   the hybrid is stable.
 
@@ -812,9 +825,3 @@ state.
 | Hardware specs + network topology  | [docs/hardware.md](hardware.md)                                                |
 | Coding idioms and anti-patterns    | [docs/patterns.md](patterns.md)                                                |
 | Adding a new cluster (walkthrough) | [docs/adding-a-cluster.md](adding-a-cluster.md)                                |
-| TF-first + op inject decision      | [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md)                |
-| SSH keys in 1P decision            | [ADR-010](adr/010-ssh-keys-in-1password.md)                                    |
-| Cephadm OSD service spec decision  | [ADR-011](adr/011-cephadm-osd-service-specs.md)                                |
-| Why explicit OSD-to-disk mapping   | [ADR-002](adr/002-explicit-osd-mapping.md)                                     |
-| Why baseline is split from provision | [ADR-003](adr/003-baseline-split-from-provision.md)                          |
-| Why debootstrap (not preseed) for sietch | [ADR-008](adr/008-debootstrap-over-preseed.md)                           |

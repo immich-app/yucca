@@ -29,7 +29,7 @@ op run --env-file=tf/.env -- env | grep AWS_
 # Verify the state object exists in the bucket
 op run --env-file=tf/.env -- \
   aws --endpoint-url=https://s3.eu-west-par.io.cloud.ovh.net/ \
-      s3 ls s3://yucca-tf-state/ceph/dev/ceph/
+      s3 ls s3://yucca-tf-state/yucca/staging/austin/ceph/
 
 # If present: re-init should pick it up
 mise run tf:init
@@ -37,7 +37,10 @@ mise run tf:init
 # If the object is missing: state was never created or was deleted. You
 # can recover by re-applying — TF recreates local_file resources
 # (idempotent, same content; no 1P items are harmed because the module's
-# onepassword_item resources are currently dormant — see ADR-009 §2).
+# onepassword_item resources are currently dormant — items are created via
+# the op CLI today, and the TF-managed path in secrets.tf.disabled is only
+# re-enabled once a dedicated ceph-scoped service account replaces the
+# org-wide superuser SA).
 mise run tf:apply
 ```
 
@@ -68,7 +71,8 @@ vault you don't have access to.
 
 **Fix:** Fix the tfvars entry, `mise run tf:apply`. `scripts/ansible-play.sh`
 will fail loudly on the next run (op inject exits non-zero on unresolvable
-references — per ADR-009 fail-closed principle).
+references — the secrets flow fails closed: `ansible-play.sh` aborts rather
+than running with empty or dummy values).
 
 ### Wordlist auto-pick renamed a deployed host
 
@@ -117,7 +121,8 @@ backup and set the item via `op item edit password=...`.
 ### TF state object corrupted or lost
 
 The state lives in S3 (`yucca-tf-state` bucket, key
-`ceph/${env}/${stack}/terraform.tfstate`). Recovery options in order of
+`yucca/<partition>/<region>/<stack>/terraform.tfstate` — e.g.
+`yucca/staging/austin/ceph/...`). Recovery options in order of
 preference:
 
 **Option A — roll back via S3 versioning.** The bucket has versioning
@@ -128,37 +133,38 @@ op run --env-file=tf/.env -- \
   aws --endpoint-url=https://s3.eu-west-par.io.cloud.ovh.net/ \
       s3api list-object-versions \
       --bucket yucca-tf-state \
-      --prefix ceph/dev/ceph/terraform.tfstate
+      --prefix yucca/staging/austin/ceph/terraform.tfstate
 
 # Identify the VersionId of a good snapshot, then:
 op run --env-file=tf/.env -- \
   aws --endpoint-url=https://s3.eu-west-par.io.cloud.ovh.net/ \
       s3api copy-object \
       --bucket yucca-tf-state \
-      --copy-source 'yucca-tf-state/ceph/dev/ceph/terraform.tfstate?versionId=<VID>' \
-      --key ceph/dev/ceph/terraform.tfstate
+      --copy-source 'yucca-tf-state/yucca/staging/austin/ceph/terraform.tfstate?versionId=<VID>' \
+      --key yucca/staging/austin/ceph/terraform.tfstate
 ```
 
 **Option B — re-apply from clean state.** Delete the state object and
 re-init + re-apply. TF recreates the `local_file` resources (idempotent,
 same content). Safe today because `onepassword_item` resources are
-dormant (see ADR-009 §2).
+dormant — items are created via the op CLI, not TF-owned yet.
 
 ```bash
 op run --env-file=tf/.env -- \
   aws --endpoint-url=https://s3.eu-west-par.io.cloud.ovh.net/ \
-      s3 rm s3://yucca-tf-state/ceph/dev/ceph/terraform.tfstate
+      s3 rm s3://yucca-tf-state/yucca/staging/austin/ceph/terraform.tfstate
 
 mise run tf:init
 mise run tf:apply
 ```
 
-Once ADR-009 §2 ships and 1P items are TF-owned, Option B becomes
-destructive — recovery will require `terraform import` of each item
-against the new state. Document that path when re-enabling.
+Once the TF-managed 1P items land (`secrets.tf.disabled` re-enabled under
+the dedicated ceph-scoped SA), Option B becomes destructive — recovery will
+require `terraform import` of each item against the new state. Document that
+path when re-enabling.
 
 ## References
 
-- ADR-009 — fail-closed principle
+- `secrets.md` — the fail-closed secrets model (TF-first, op inject)
 - `tf/README.md` §"State backend" — bucket, endpoint, key path rationale
 - `architecture.md` §4 — what TF owns vs renders

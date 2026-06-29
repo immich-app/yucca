@@ -27,18 +27,18 @@ this walkthrough is machine- or operator-specific.
 ## Inventory directory naming
 
 ```
-inventories/<cluster>-<role>.<env>.<datacenter>.<provider>/
+inventories/<partition>-<region>/<cluster>/
 ```
 
-The `<role>` segment comes from `role_in_hostname` in the TFvars (defaults
-to `ceph`). Every Ceph-project inventory grep-matches `*-ceph.*` regardless
-of datacenter or environment.
+The `<partition>-<region>` slug (e.g. `staging-austin`) groups every cluster
+in a region under one tree; the cluster's role lives only in the hostname,
+not the inventory path.
 
 Existing examples:
-- `staging-austin/sietch/` — Austin DC, internal network, dev
+- `staging-austin/sietch/` — Austin DC, internal network, staging
 
-Future environments land as siblings: `*-ceph.staging.<dc>.<provider>/`,
-`*-ceph.prod.<dc>.<provider>/`.
+Future regions land as siblings: `prod-htz-fsn1/<cluster>/`,
+`dev-local/<cluster>/`.
 
 ## Step-by-step
 
@@ -110,7 +110,7 @@ TF_STACK_DIR=tf/deployment/<partition>/<region>/ceph mise run tf:apply
 
 This creates (per the module's `rendering.tf`):
 
-- `ansible/ceph/inventories/<cluster>-ceph.<env>.<dc>.<provider>/inventory.ini`
+- `ansible/ceph/inventories/<partition>-<region>/<cluster>/inventory.ini`
 - `.../inventory-destroy.ini`
 - `.../secrets.yml.tpl`
 - `.../inventory-provision-<profile>.ini` (only when `provision_profile` is set)
@@ -223,7 +223,7 @@ for suffix in S3_SVC_YUCCA_RESTIC_ACCESS_KEY S3_SVC_YUCCA_RESTIC_SECRET_KEY; do
 done
 
 # SSH Key item — one keypair per cluster. op CLI GENERATES the key inside 1P;
-# we never create the private key on disk first (see ADR-010).
+# the private key never touches operator disk at creation.
 op item create --vault "$VAULT" \
   --category "SSH Key" \
   --title "${CLUSTER}_CEPH_ANSIBLE_IAC_SSH_KEY" \
@@ -260,8 +260,7 @@ The `ansible_ssh_key` path in `clusters.auto.tfvars` must match what
 update both together (or update the mapping in `install-ssh-keys.sh`).
 
 See [docs/scripts.md](scripts.md#install-ssh-keyssh) for the script
-reference and [ADR-010](adr/010-ssh-keys-in-1password.md) for the
-rationale.
+reference and [secrets.md](secrets.md) for the SSH-key storage model.
 
 ### 8. Preflight
 
@@ -372,5 +371,5 @@ trap-cleaned on exit.
 - [naming.md](naming.md) — cluster + host naming conventions
 - [hardware.md](hardware.md) — `host_vars/` shape, network topology
 - [scripts.md](scripts.md) — wrapper reference
-- [ADR-009](adr/009-tf-first-op-inject-over-vault-password-sh.md) — why TF is authoritative
-- [ADR-010](adr/010-ssh-keys-in-1password.md) — why SSH keys live in 1P
+- [architecture.md](architecture.md) — why TF is authoritative for cluster identity + secrets
+- [secrets.md](secrets.md) — why passwords and SSH keys live in 1P

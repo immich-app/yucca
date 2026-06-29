@@ -13,7 +13,7 @@ OSD's BlueStore volume in a dm-crypt/LUKS layer.
 
 | Property | Detail |
 |---|---|
-| Encryption layer | dm-crypt (LUKS) via cephadm OSD service spec (`encrypted: true`); see [ADR-011](adr/011-cephadm-osd-service-specs.md) |
+| Encryption layer | dm-crypt (LUKS) via cephadm OSD service spec (`encrypted: true`) |
 | Scope | Every OSD data volume and every OSD block.db volume |
 | Key storage | MON config-key database (`config-key dump` shows dm-crypt entries) |
 | Key distribution | MONs hand keys to OSD daemons at startup via the Ceph auth subsystem |
@@ -89,8 +89,9 @@ Three user accounts exist on every node:
   workstations install it via `scripts/install-ssh-keys.sh` →
   `~/.ssh/id_ed25519_<cluster>`. Rotation is forward-only (additive) via
   `rotate-ssh-key.yml` — new pubkey distributed to `authorized_keys` with
-  `exclusive: false`, old keys pruned out-of-band. See
-  [ADR-010](adr/010-ssh-keys-in-1password.md).
+  `exclusive: false`, old keys pruned out-of-band. Keys are generated
+  natively in 1Password, so the private half never touches operator disk at
+  creation and a lost laptop is a non-event.
 - **ops user keys**: Distributed out-of-band after initial deployment.
   No keys are provisioned at deploy time.
 - **cephadm key**: Generated during `cephadm bootstrap`, distributed to all

@@ -370,8 +370,12 @@ becoming an OSD?" is harder — there's no per-disk log line. Check
 --dry-run` instead. Worth the trade-off because the role becomes
 hardware-shape-agnostic.
 
-See [ADR-011](adr/011-cephadm-osd-service-specs.md) for the full
-decision record on the OSD-path migration.
+The OSD path moved to this pattern when a second hardware shape (NVMe-RAID
+with an LV-backed SSD OSD) broke the old per-disk shell loop, whose path
+composition had baked in sietch's SAS-expander layout. The spec lists device
+paths explicitly rather than using cephadm's `rotational` filter, so empty
+bays stay empty and OS / block.db partitions are never claimed by
+auto-discovery.
 
 ---
 

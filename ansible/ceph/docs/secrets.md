@@ -50,7 +50,11 @@ playbook time):
 
 **SSH Key items** (category `SSH Key`, consumed via
 `scripts/install-ssh-keys.sh` on operator workstations and
-`rotate-ssh-key.yml` on cluster nodes — see [ADR-010](adr/010-ssh-keys-in-1password.md)):
+`rotate-ssh-key.yml` on cluster nodes). SSH keys use the same storage model
+as the passwords: generated natively in 1Password
+(`--ssh-generate-key=ed25519`, so the private key never touches operator disk
+at creation), durable across a lost laptop, and rotated forward-only —
+generate a new key, distribute the public half, retire the old one:
 
 | Item | Field | Consumed as |
 |---|---|---|
