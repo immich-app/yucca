@@ -2348,13 +2348,13 @@ func TestCreateDiffPatch_KeyedListRenameWithDescendantsUsesEntryOperations(t *te
         <class/>
         <uid/>
       </user>
-      <user nc:operation="create">
+      <user nc:operation="merge">
         <name>vinay</name>
         <authentication>
-          <encrypted-password nc:operation="create">$1$kPU..$w.4FGRAGanJ8U4Yq6sbj7.</encrypted-password>
+          <encrypted-password nc:operation="merge">$1$kPU..$w.4FGRAGanJ8U4Yq6sbj7.</encrypted-password>
         </authentication>
-        <class nc:operation="create">superuser</class>
-        <uid nc:operation="create">928</uid>
+        <class nc:operation="merge">superuser</class>
+        <uid nc:operation="merge">928</uid>
       </user>
     </login>
   </system>
@@ -2391,7 +2391,7 @@ func TestCreateDiffPatch_StructuralKeyRenameUsesEntryOperations(t *testing.T) {
       <file nc:operation="delete">
         <name>security</name>
       </file>
-      <file nc:operation="create">
+      <file nc:operation="merge">
         <name>vinay</name>
       </file>
     </syslog>

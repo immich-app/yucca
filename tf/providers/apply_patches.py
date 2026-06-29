@@ -18,6 +18,11 @@ Patches:
   3. execute / netconfReplyError — surface NETCONF <rpc-error> (at any depth, incl.
      nested under <commit-results>) as a real error. The generated client ignored
      reply errors, so a rejected load/commit silently no-op'd while reporting success.
+  4. patch/CreateDiffPatch — emit nc:operation="merge" instead of "create" for
+     ADDED nodes, so applies are idempotent over pre-existing device config
+     (brownfield / empty-state diffs, e.g. after a state-key change re-pushes the
+     whole config). replace/delete unchanged. Consistent with the edit-config
+     default-operation=merge envelope and patch #1 (trust-the-apply).
 """
 import sys
 import pathlib
@@ -163,8 +168,45 @@ def patch_client():
         print("  netconfReplyError already present")
 
 
+def patch_diff_merge():
+    src = root / "patch" / "patch.go"
+    # Positional leaf-list adds (ordered Create + Replace-reorder's new value).
+    replace_once(
+        src,
+        '\t\t\t\tleaf := &Node{Tag: p.tag, Parent: p.parent, Operation: "create", Text: p.change.NewVal}',
+        '\t\t\t\tleaf := &Node{Tag: p.tag, Parent: p.parent, Operation: "merge", Text: p.change.NewVal}',
+        "diff positional create (leaf)",
+    )
+    replace_once(
+        src,
+        '\t\t\t\tcre := &Node{Tag: p.tag, Parent: p.parent, Operation: "create", Text: p.change.NewVal}',
+        '\t\t\t\tcre := &Node{Tag: p.tag, Parent: p.parent, Operation: "merge", Text: p.change.NewVal}',
+        "diff positional create (cre)",
+    )
+    # Regular leaf add.
+    replace_once(
+        src,
+        '\t\tcase Create:\n\t\t\tleaf.Operation = "create"\n\t\t\tleaf.Text = p.change.NewVal',
+        '\t\tcase Create:\n'
+        '\t\t\t// merge, not create: idempotent over pre-existing device config\n'
+        '\t\t\t// (brownfield/empty-state applies), consistent with default-operation=merge.\n'
+        '\t\t\tleaf.Operation = "merge"\n\t\t\tleaf.Text = p.change.NewVal',
+        "diff leaf create->merge",
+    )
+    # Keyed-list entry parent add.
+    replace_once(
+        src,
+        '\tswitch change.Op {\n\tcase Create:\n\t\tparent.Operation = "create"',
+        '\tswitch change.Op {\n\tcase Create:\n'
+        '\t\t// merge (see Create case above): idempotent over existing config.\n'
+        '\t\tparent.Operation = "merge"',
+        "diff keyed-entry create->merge",
+    )
+
+
 patch_readstate()
 patch_client()
+patch_diff_merge()
 
 if errors:
     print("apply_patches: FAILED:\n  - " + "\n  - ".join(errors), file=sys.stderr)

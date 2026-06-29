@@ -240,7 +240,7 @@ func TestL1_CreateLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 	patchStr := string(patch)
-	if !strings.Contains(patchStr, `nc:operation="create"`) {
+	if !strings.Contains(patchStr, `nc:operation="merge"`) {
 		t.Fatalf("patch missing create operation:\n%s", patchStr)
 	}
 	if !strings.Contains(patchStr, ">router1<") {
@@ -406,7 +406,7 @@ func TestLL1_AddLeafListEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	patchStr := string(patch)
-	if !strings.Contains(patchStr, `nc:operation="create"`) {
+	if !strings.Contains(patchStr, `nc:operation="merge"`) {
 		t.Errorf("patch missing create operation:\n%s", patchStr)
 	}
 	if !strings.Contains(patchStr, "target:65000:200") {
@@ -556,7 +556,7 @@ func TestK1_AddListEntry(t *testing.T) {
 	}
 	patchStr := string(patch)
 	// The key leaf create should promote nc:operation to the parent <interface>
-	if !strings.Contains(patchStr, `interface nc:operation="create"`) {
+	if !strings.Contains(patchStr, `interface nc:operation="merge"`) {
 		t.Fatalf("expected nc:operation on interface entry, got:\n%s", patchStr)
 	}
 }
@@ -874,7 +874,7 @@ func TestM1_MixedOperations(t *testing.T) {
 
 	deleteIdx := strings.Index(patchStr, `"delete"`)
 	replaceIdx := strings.Index(patchStr, `"replace"`)
-	createIdx := strings.Index(patchStr, `"create"`)
+	createIdx := strings.Index(patchStr, `"merge"`)
 
 	if deleteIdx < 0 || replaceIdx < 0 || createIdx < 0 {
 		t.Fatalf("patch missing expected operations:\n%s", patchStr)
