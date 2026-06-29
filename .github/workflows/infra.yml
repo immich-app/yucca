@@ -351,6 +351,10 @@ jobs:
           mise run setup
       - name: Deploy Ceph (full pipeline — baseline → tune → deploy → harden)
         if: matrix.stack == 'ceph'
+        # Run from ansible/ceph so mise loads ansible/ceph/.mise.toml (where the
+        # `deploy` task + CEPH_ENV-relative inventory paths live); the root config
+        # has no `deploy` task.
+        working-directory: ansible/ceph
         # CI runner has no known_hosts for the bare-metal nodes; first contact is
         # over the NetBird overlay, so disable strict host-key checking for this run.
         env:
