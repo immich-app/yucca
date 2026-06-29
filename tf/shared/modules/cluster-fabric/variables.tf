@@ -1,9 +1,9 @@
 # cluster-fabric — the per-cluster leaf VC (a pair of leaves). Its config is
 # generated, not hand-written: the 48 server bonds + members, the public/private
 # VLANs + IRB gateways, the NO-CROSS-VLAN filter, and the spine uplink. Addressing
-# comes from fabric-addressing; the leaf VC's aliased junos-qfx provider is passed
-# in by the stack. Config split across vlans.tf / interfaces.tf / firewall.tf /
-# chassis.tf / system.tf; main.tf assembles the single junos-qfx resource.
+# comes from fabric-addressing; the leaf VC's aliased junos provider (jeremmfr) is
+# passed in by the stack. Config is split across vlans.tf / interfaces.tf /
+# firewall.tf / chassis.tf / system.tf as typed junos_* resources.
 
 # ── Addressing (from fabric-addressing) ─────────────────────────────────────
 variable "public_cidr" {
@@ -68,12 +68,6 @@ variable "jumbo_mtu" {
   type        = number
   default     = 9216
   description = "MTU for the spine uplink (ae0)."
-}
-
-variable "aggregated_device_count" {
-  type        = number
-  default     = 64
-  description = "chassis aggregated-devices ethernet device-count."
 }
 
 variable "api_vlan_id" {

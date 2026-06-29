@@ -1,415 +1,87 @@
-# Spine interfaces are bespoke (breakout legs, spine<->leaf ae0, VCP, the mgmt-1
-# port et-1/0/3:0) — not a uniform pattern, so kept faithful here. VLAN members
-# reference the generated vlan names.
 locals {
-  interfaces_block = [
-    {
-      interface = concat([
-        {
-          name = "et-0/0/0"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/1"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/2"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/3"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/4"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/5"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/6"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/7"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/8"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/9"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/10"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/11"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/12"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/13"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/14"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/15"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/16"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/17"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/18"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/19"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/20"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/21"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/22"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/23"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/24"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/25"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/26"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/27"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/28"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/29"
-          mtu  = 9216
-          unit = [
-            {
-              name = 0
-            }
-          ]
-        },
-        {
-          name = "et-0/0/30"
-          ether_options = [
-            {
-              ieee_802_3ad = [
-                {
-                  bundle = "ae0"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          name = "et-0/0/31"
-          ether_options = [
-            {
-              ieee_802_3ad = [
-                {
-                  bundle = "ae0"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          name = "et-1/0/3:0"
-          unit = [
-            {
-              name = 0
-              family = [
-                {
-                  ethernet_switching = [
-                    {
-                      interface_mode = "trunk"
-                      vlan = [
-                        {
-                          members = [
-                            "vlan${var.public_vlan_id}",
-                            "vlan${var.private_vlan_id}", "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}"
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          name = "et-1/0/30"
-          ether_options = [
-            {
-              ieee_802_3ad = [
-                {
-                  bundle = "ae0"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          name = "et-1/0/31"
-          ether_options = [
-            {
-              ieee_802_3ad = [
-                {
-                  bundle = "ae0"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          name = "ae0"
-          mtu  = 9216
-          aggregated_ether_options = [
-            {
-              lacp = [
-                {
-                  active = ""
-                }
-              ]
-            }
-          ]
-          unit = [
-            {
-              name = 0
-              family = [
-                {
-                  ethernet_switching = [
-                    {
-                      interface_mode = "trunk"
-                      vlan = [
-                        {
-                          members = [
-                            "vlan${var.public_vlan_id}",
-                            "vlan${var.private_vlan_id}", "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}"
-                          ]
-                        }
-                      ]
-                      storm_control = [
-                        {
-                          profile_name = "default"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          name = "vme"
-          unit = [
-            {
-              name = 0
-              family = [
-                {
-                  inet = [
-                    {
-                      address = [
-                        {
-                          name = "10.40.5.115/24"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ], local.transit_interfaces, local.lo0_block)
-    }
+  trunk_members = [
+    "vlan${var.public_vlan_id}", "vlan${var.private_vlan_id}",
+    "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}",
   ]
+
+  # Pre-staged jumbo access ports et-0/0/0..29 (physical mtu only; their empty
+  # unit 0, if any, is left untouched by the per-resource provider).
+  access_ports = toset([for i in range(30) : "et-0/0/${i}"])
+
+  # ae0 = spine<->leaf LAG members, two per VC member.
+  ae0_members = toset(["et-0/0/30", "et-0/0/31", "et-1/0/30", "et-1/0/31"])
+}
+
+resource "junos_interface_physical" "access" {
+  for_each = local.access_ports
+  name     = each.value
+  mtu      = 9216
+}
+
+resource "junos_interface_physical" "ae0_member" {
+  for_each = local.ae0_members
+  name     = each.value
+  ether_opts {
+    ae_8023ad = "ae0"
+  }
+}
+
+resource "junos_interface_physical" "ae0" {
+  name = "ae0"
+  mtu  = 9216
+  parent_ether_opts {
+    lacp {
+      mode = "active"
+    }
+  }
+  trunk         = true
+  vlan_members  = local.trunk_members
+  storm_control = "default"
+}
+
+# mgmt-1 server port (channelized leg), trunk of the same VLANs.
+resource "junos_interface_physical" "mgmt1_port" {
+  name         = "et-1/0/3:0"
+  trunk        = true
+  vlan_members = local.trunk_members
+}
+
+# NOTE: vme (the mgmt IP / NETCONF lifeline) is deliberately NOT managed here —
+# it's left untouched on the device, like the leaf's vme, so no apply can break the
+# management path.
+
+# Transit uplink unit(s) — routed v4/v6 toward each upstream (et-0/0/27 etc.).
+# The physical port's mtu comes from the access-port set above (et-0/0/0..29).
+resource "junos_interface_logical" "transit" {
+  for_each = var.transits
+  name     = "${each.value.interface}.0"
+  family_inet {
+    address {
+      cidr_ip = each.value.local_v4
+    }
+  }
+  family_inet6 {
+    address {
+      cidr_ip = each.value.local_v6
+    }
+  }
+}
+
+# lo0: the advertised-space loopback host(s) + the RE-protection input filters.
+# Only when transit is configured (the spine then has Internet adjacency).
+resource "junos_interface_logical" "lo0" {
+  count = length(var.transits) > 0 ? 1 : 0
+  name  = "lo0.0"
+  family_inet {
+    dynamic "address" {
+      for_each = [for name, t in var.transits : t.loopback if t.loopback != null]
+      content {
+        cidr_ip = address.value
+      }
+    }
+    filter_input = "PROTECT-RE"
+  }
+  family_inet6 {
+    filter_input = "PROTECT-RE6"
+  }
 }

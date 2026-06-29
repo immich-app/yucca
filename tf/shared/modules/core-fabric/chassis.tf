@@ -1,12 +1,26 @@
-locals {
-  # 100G->4x25G breakout on the server-facing ports of both VC members.
-  chassis_block = [{
-    aggregated_devices = [{ ethernet = [{ device_count = var.aggregated_device_count }] }]
-    fpc = [
-      for fpc in [0, 1] : {
-        name = fpc
-        pic  = [{ name = 0, port = [for p in var.breakout_ports : { name = p, channel_speed = var.breakout_speed }] }]
-      }
+# Preprovisioned spine VC + the 100G->4x25G breakout. Breakout (channel-speed)
+# has no typed jeremmfr resource, so it's pushed as raw set-config. The
+# `aggregated-devices ethernet device-count` line is auto-managed by
+# junos_interface_physical (computed from the ae interfaces) — not set here.
+resource "junos_virtual_chassis" "spine" {
+  preprovisioned = true
+
+  dynamic "member" {
+    for_each = var.vc_member_serials
+    content {
+      id            = member.key
+      role          = "routing-engine"
+      serial_number = member.value
+    }
+  }
+}
+
+resource "junos_null_load_config" "breakout" {
+  action = "set"
+  config = join("\n", flatten([
+    for fpc in [0, 1] : [
+      for p in var.breakout_ports :
+      "set chassis fpc ${fpc} pic 0 port ${p} channel-speed ${var.breakout_speed}"
     ]
-  }]
+  ]))
 }

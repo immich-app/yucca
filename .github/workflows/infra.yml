@@ -36,6 +36,13 @@ name: Infra (Terraform)
 # set (both default off). A pure-Terraform change to either stack thus applies
 # without reconverging the nodes — and the ceph overlay join is skipped with it.
 #
+# The fabric (switch) apply is gated the same way: on push it applies only when the
+# fabric surface changed (tf/deployment/prod/htz-fsn1/fabric/**, the fabric shared
+# modules, tf/providers/**, .mise/tasks/{fabric,infra}/**), and on workflow_dispatch
+# only when the run_fabric toggle is set (default off). So an unrelated prod change
+# (or a bare dispatch) no longer re-applies the switches; its overlay join is skipped
+# too unless the mgmt converge needs it.
+#
 # Environment gates rekey to <partition>-<region> (one per stack's region):
 # staging-austin, staging-global, prod-global, prod-htz-fsn1. Each matrix apply
 # entry references its own gate, so an unprovisioned Environment hangs the apply.
@@ -80,6 +87,10 @@ on:
         description: 'Run the mgmt Ansible converge after the fabric apply'
         type: boolean
         default: false
+      run_fabric:
+        description: 'Apply the fabric (switch) stack'
+        type: boolean
+        default: false
 
 # Serialize: the OVH S3 backend has no state locking (single-operator model),
 # so never let two infra runs apply concurrently.
@@ -106,6 +117,9 @@ jobs:
       # change to the ceph/fabric stack applies without reconverging the nodes.
       ansible_ceph: ${{ steps.filter.outputs.ansible_ceph }}
       ansible_mgmt: ${{ steps.filter.outputs.ansible_mgmt }}
+      # Fabric-apply gate: the fabric (switch) stack applies only when its own
+      # surface changed — not on every prod change.
+      fabric: ${{ steps.filter.outputs.fabric }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -145,6 +159,20 @@ jobs:
               - 'ansible/mgmt/**'
               - 'tf/render/ansible-mgmt/**'
               - '.mise/tasks/mgmt/**'
+            # ── Fabric-apply gate (stack-step level) ──
+            # The fabric stack + the shared modules/providers/tasks it consumes.
+            # A hit means the switch config (or its plumbing) changed → apply it.
+            fabric:
+              - 'tf/deployment/prod/htz-fsn1/fabric/**'
+              - 'tf/shared/modules/core-fabric/**'
+              - 'tf/shared/modules/cluster-fabric/**'
+              - 'tf/shared/modules/fabric-login/**'
+              - 'tf/shared/modules/fabric-addressing/**'
+              - 'tf/shared/modules/fabric-netbox/**'
+              - 'tf/shared/modules/identity/**'
+              - 'tf/providers/**'
+              - '.mise/tasks/fabric/**'
+              - '.mise/tasks/infra/**'
 
   # ── Discover the stack matrix from the deployment tree ───────────────────────
   discover:
@@ -270,8 +298,8 @@ jobs:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
           hostname: gha-plan-${{ matrix.partition }}-${{ matrix.region }}-${{ matrix.stack }}-${{ github.run_id }}
 
-      # Prod fabric goes through the mise task (builds the junos-qfx/hetzner
-      # providers, renders the NETCONF key, -parallelism=1). Every other stack is a
+      # Prod fabric goes through the mise task (builds the hetzner provider, renders
+      # the NETCONF key; junos comes from the registry). Every other stack is a
       # plain registry-provider terragrunt plan.
       - name: Terragrunt plan (fabric)
         if: matrix.stack == 'fabric'
@@ -341,12 +369,28 @@ jobs:
           echo "mgmt=${mgmt:-false}" >> "$GITHUB_OUTPUT"
           echo "Ansible converge gates → ceph=${ceph:-false} mgmt=${mgmt:-false}"
 
+      # Decide whether the fabric (switch) apply runs. Same model as the Ansible
+      # gates: on push, gate on the paths-filter (did the fabric surface change?);
+      # on manual dispatch, gate on the run_fabric toggle (default off).
+      - name: Resolve fabric-apply gate
+        id: fabric_gate
+        if: matrix.stack == 'fabric'
+        env:
+          DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          DISPATCH_FABRIC: ${{ inputs.run_fabric }}
+          CHANGED_FABRIC: ${{ needs.changes.outputs.fabric }}
+        run: |
+          set -euo pipefail
+          if [ "$DISPATCH" = "true" ]; then run=$DISPATCH_FABRIC; else run=$CHANGED_FABRIC; fi
+          echo "run=${run:-false}" >> "$GITHUB_OUTPUT"
+          echo "fabric apply gate → ${run:-false}"
+
       # Node-touching stacks join the overlay: talos (provisions over the LAN),
       # ceph (the Ansible convergence below), fabric (the switch vme + the mgmt
       # converge below). NetBird stacks themselves are pure api.netbird.io. The
       # key was minted by an earlier (lower-order) netbird apply in this same run.
       - name: Resolve NetBird CI setup-key ref
-        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
         run: |
           set -euo pipefail
           if [ "$PARTITION" = "prod" ]; then
@@ -356,15 +400,16 @@ jobs:
             echo "NB_CI_KEY_REF=op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
           fi
       - name: Connect to NetBird
-        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
         uses: ./.github/actions/netbird-connect
         with:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
           hostname: gha-apply-${{ matrix.partition }}-${{ matrix.region }}-${{ matrix.stack }}-${{ github.run_id }}
 
       # Prod fabric: mise task escalates to the write SA + builds providers.
+      # Gated: only when the fabric surface changed (push) or run_fabric (dispatch).
       - name: Terragrunt apply (fabric)
-        if: matrix.stack == 'fabric'
+        if: matrix.stack == 'fabric' && steps.fabric_gate.outputs.run == 'true'
         run: mise run infra:apply -- --non-interactive -auto-approve
       # Everything else: direct terragrunt apply with the partition's write SA.
       - name: Terragrunt apply

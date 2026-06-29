@@ -12,7 +12,7 @@ module "identity" {
 
 module "core" {
   source    = "../../../../shared/modules/core-fabric"
-  providers = { junos-qfx = junos-qfx.spine }
+  providers = { junos = junos.spine }
 
   public_vlan_id  = module.addr_cls1.public_vlan_id
   private_vlan_id = module.addr_cls1.private_vlan_id
@@ -42,7 +42,7 @@ module "core" {
 
 module "cluster_cls1" {
   source    = "../../../../shared/modules/cluster-fabric"
-  providers = { junos-qfx = junos-qfx.leaf_cls1 }
+  providers = { junos = junos.leaf_cls1 }
 
   public_cidr     = module.addr_cls1.public_cidr
   private_cidr    = module.addr_cls1.private_cidr
@@ -65,20 +65,18 @@ locals {
 
 module "login_spine" {
   source    = "../../../../shared/modules/fabric-login"
-  providers = { junos-qfx = junos-qfx.spine }
+  providers = { junos = junos.spine }
 
-  resource_name = "login"
-  users         = module.identity.fabric_login.users
-  classes       = module.identity.fabric_login.classes
-  name_servers  = local.fabric_name_servers
+  users        = module.identity.fabric_login.users
+  classes      = module.identity.fabric_login.classes
+  name_servers = local.fabric_name_servers
 }
 
 module "login_leaf_cls1" {
   source    = "../../../../shared/modules/fabric-login"
-  providers = { junos-qfx = junos-qfx.leaf_cls1 }
+  providers = { junos = junos.leaf_cls1 }
 
-  resource_name = "login"
-  users         = module.identity.fabric_login.users
-  classes       = module.identity.fabric_login.classes
-  name_servers  = local.fabric_name_servers
+  users        = module.identity.fabric_login.users
+  classes      = module.identity.fabric_login.classes
+  name_servers = local.fabric_name_servers
 }

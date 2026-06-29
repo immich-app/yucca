@@ -1,4 +1,4 @@
-# htz-fsn1 — production switch fabric (Junos via JTAF + NetBox)
+# htz-fsn1 — production switch fabric (Junos via jeremmfr/junos + NetBox)
 
 Manages the Falkenstein (site 40) switch fabric as code:
 
@@ -24,9 +24,10 @@ VLAN id == the network's third octet; gateway = `.1` (IRB on the leaf).
 ## Layout
 
 - `modules/fabric-addressing` — IDs → CIDRs/VLANs/gateways (single source of truth).
-- `modules/core-fabric` / `modules/cluster-fabric` — the spine / leaf config (one
-  JTAF `junos-qfx` resource each), generated from the live config and parameterized
-  on the addressing. **Secrets (`root-authentication`) are stripped.**
+- `modules/core-fabric` / `modules/cluster-fabric` — the spine / leaf config as typed
+  `junos_*` resources (interfaces, vlans, bgp, firewall, policy, …), parameterized on
+  the addressing. `system services` + `root-authentication` + `vme` are deliberately
+  NOT managed, so no apply can break the management path.
 - `modules/identity` — the central user + group registry (single source of truth
   for who has access and what they're a member of). Edit it to add people. Members
   of fabric-mapped groups (e.g. `fabric-admins` → super-user) are synthesized into
@@ -37,16 +38,15 @@ VLAN id == the network's third octet; gateway = `.1` (IRB on the leaf).
 
 ## The providers
 
-This stack builds two providers locally (neither is on a registry) into a shared
-filesystem mirror via `mise run infra:providers`:
-
-- `junos-qfx` — **JTAF-generated and vendored** in `tf/providers/` (the switch fabric).
+- `junos` (`jeremmfr/junos`) — the switch fabric: a typed, per-resource provider from
+  the registry (pinned in `versions.tf`). It drives each VC over NETCONF (port 830) as
+  the `terraform` user; commits are `commit confirmed` (auto-rollback) and
+  `infra:apply` confirms each switch after a successful apply.
 - `hetzner` (`zack/hetzner`) — the Hetzner Robot API, for mgmt-host reprovisioning
-  (`mgmt.tf`); cloned + built (pinned tag) by `mise run mgmt:provider-build`.
+  (`mgmt.tf`); the one provider not on a registry, cloned + built (pinned tag) into a
+  filesystem mirror by `mise run mgmt:provider-build`.
 
-- `mise run fabric:provider-gen` — regenerate the junos-qfx provider from device YANG
-  + live config (only when adding new config hierarchies), then commit `tf/providers/`.
-- `mise run infra:providers` — build both providers into the mirror and write
+- `mise run infra:providers` — build the hetzner provider into the mirror and write
   `tf/.terraformrc.local` (consumed via `TF_CLI_CONFIG_FILE`).
 
 ## Running
@@ -61,10 +61,11 @@ mise run infra:apply     # ... apply
 CI: `.github/workflows/infra.yml` — plan on PR, gated apply on merge behind the
 site-scoped `prod-htz-fsn1` GitHub Environment (required reviewers).
 
-## Adoption caveat (first run)
+## Adopting existing config
 
-The JTAF provider has **no `terraform import`** and pushes config with `action="merge"`
-(additive). NetBox objects + the existing direct switch config already exist (manually
-seeded), so the first `apply` *asserts* matching config (idempotent on the switches)
-and **NetBox prefixes/VLANs must be `import`ed** first or they'll clash. Run a `plan`
-and review before the first `apply`.
+`jeremmfr/junos` supports `terraform import`. To bring config that already exists on a
+switch under management (a new resource, or a new VC against pre-seeded config), add an
+`import {}` block — id = the config name, e.g. `et-0/0/0`, `lo0.0`, `PROTECT-RE_-_inet`,
+`<dest>_-_<ri>` (static route), `<ip>_-_<ri>_-_<group>` (bgp neighbor) — run `plan`,
+review (**expect 0 destroys**), `apply`, then remove the block. NetBox prefixes/VLANs
+likewise import before first apply or they clash. The whole fabric was adopted this way.

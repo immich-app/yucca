@@ -1,79 +1,73 @@
 locals {
-  # Every server bond + the uplink carry the cluster's public/private plus the
-  # site-global api/mgmt VLANs.
-  trunk_members = [local.public_vlan_name, local.private_vlan_name, local.api_vlan_name, local.mgmt_vlan_name]
-
-  # ── Server bonds: ae<k> = et-0/0/<k-1> + et-1/0/<k-1>, LACP, pub/priv trunk ──
-  server_lags = [
-    for k in range(1, var.server_lag_count + 1) : {
-      name                     = "ae${k}"
-      aggregated_ether_options = [{ lacp = [{ active = "" }] }]
-      unit = [{
-        name   = 0
-        family = [{ ethernet_switching = [{ interface_mode = "trunk", vlan = [{ members = local.trunk_members }] }] }]
-      }]
-    }
+  trunk_members = [
+    "vlan${var.public_vlan_id}", "vlan${var.private_vlan_id}",
+    "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}",
   ]
 
-  # Each bond's two physical members, one per VC member (fpc 0 and fpc 1).
-  server_members = flatten([
-    for fpc in [0, 1] : [
-      for p in range(var.server_lag_count) : {
-        name          = "et-${fpc}/0/${p}"
-        ether_options = [{ ieee_802_3ad = [{ bundle = "ae${p + 1}" }] }]
-      }
-    ]
-  ])
+  # Server bonds ae1..aeN, each a trunk of the cluster + site VLANs.
+  server_lag_names = toset([for k in range(1, var.server_lag_count + 1) : "ae${k}"])
 
-  # ── Spine uplink bond ae0 (4x100G) ──────────────────────────────────────────
-  uplink_members = [
-    for name in var.uplink_ports : {
-      name          = name
-      ether_options = [{ ieee_802_3ad = [{ bundle = "ae0" }] }]
+  # Each bond's two members (one per VC member: fpc 0 and fpc 1) + the uplink's.
+  member_bundles = merge(
+    { for k in range(1, var.server_lag_count + 1) : "et-0/0/${k - 1}" => "ae${k}" },
+    { for k in range(1, var.server_lag_count + 1) : "et-1/0/${k - 1}" => "ae${k}" },
+    { for p in var.uplink_ports : p => "ae0" },
+  )
+}
+
+# Physical members → their aggregate.
+resource "junos_interface_physical" "member" {
+  for_each = local.member_bundles
+  name     = each.key
+  ether_opts {
+    ae_8023ad = each.value
+  }
+}
+
+# Server bonds (LACP trunks).
+resource "junos_interface_physical" "server_lag" {
+  for_each = local.server_lag_names
+  name     = each.value
+  parent_ether_opts {
+    lacp {
+      mode = "active"
     }
-  ]
-
-  uplink_lag = {
-    name                     = "ae0"
-    mtu                      = var.jumbo_mtu
-    aggregated_ether_options = [{ lacp = [{ active = "" }] }]
-    unit = [{
-      name = 0
-      family = [{ ethernet_switching = [{
-        interface_mode = "trunk"
-        vlan           = [{ members = local.trunk_members }]
-        storm_control  = [{ profile_name = "default" }]
-      }] }]
-    }]
   }
+  trunk        = true
+  vlan_members = local.trunk_members
+}
 
-  # ── IRB gateways for the cluster networks (inter-VLAN filter applied) ────────
-  irb = {
-    name = "irb"
-    unit = [
-      {
-        name = var.public_vlan_id
-        family = [{ inet = [{
-          filter  = [{ input = [{ filter_name = "NO-CROSS-VLAN" }] }]
-          address = [{ name = "${var.public_gateway}/${var.prefixlen}" }]
-        }] }]
-      },
-      {
-        name = var.private_vlan_id
-        family = [{ inet = [{
-          filter  = [{ input = [{ filter_name = "NO-CROSS-VLAN" }] }]
-          address = [{ name = "${var.private_gateway}/${var.prefixlen}" }]
-        }] }]
-      },
-    ]
+# Spine uplink bond (jumbo, storm-controlled).
+resource "junos_interface_physical" "ae0" {
+  name = "ae0"
+  mtu  = var.jumbo_mtu
+  parent_ether_opts {
+    lacp {
+      mode = "active"
+    }
   }
+  trunk         = true
+  vlan_members  = local.trunk_members
+  storm_control = "default"
+}
 
-  interfaces_block = [{
-    interface = concat(
-      local.server_members,
-      local.uplink_members,
-      [local.irb, local.uplink_lag],
-      local.server_lags,
-    )
-  }]
+# IRB gateways for the cluster networks (inter-VLAN filter applied inbound).
+resource "junos_interface_logical" "irb_public" {
+  name = "irb.${var.public_vlan_id}"
+  family_inet {
+    address {
+      cidr_ip = "${var.public_gateway}/${var.prefixlen}"
+    }
+    filter_input = "NO-CROSS-VLAN"
+  }
+}
+
+resource "junos_interface_logical" "irb_private" {
+  name = "irb.${var.private_vlan_id}"
+  family_inet {
+    address {
+      cidr_ip = "${var.private_gateway}/${var.prefixlen}"
+    }
+    filter_input = "NO-CROSS-VLAN"
+  }
 }

@@ -5,7 +5,7 @@
 # NOTE: the spine is shared across all clusters. Today it carries cluster 1's
 # VLANs; as clusters are added, extend the vlans/trunk membership here (the
 # vlan ids below are wired to cluster 1's addressing). The configured (aliased)
-# junos-qfx provider for the spine VC is passed in by the stack.
+# junos provider for the spine VC is passed in by the stack.
 
 variable "public_vlan_id" {
   type        = number
@@ -38,12 +38,6 @@ variable "breakout_speed" {
   description = "Per-channel speed for the breakout ports."
 }
 
-variable "aggregated_device_count" {
-  type        = number
-  default     = 16
-  description = "chassis aggregated-devices ethernet device-count."
-}
-
 variable "api_vlan_id" {
   type        = number
   description = "Site-global API VLAN id to stretch (carried on all clusters)."
@@ -72,7 +66,7 @@ variable "transits" {
     name; policies derive as <UPPER>-OUT/-IN). Multi-home by adding entries:
     `prepend` (0 = primary) AS-path-prepends our advertisement on backups;
     `local_pref` (highest = the outbound default route). Import is default-only.
-    See transit.tf — prepend/local_pref need a provider regen (JTAF) to apply.
+    See transit.tf — prepend maps to as_path_prepend, local_pref to local_preference.
   EOT
   type = map(object({
     interface  = string              # uplink port (e.g. et-0/0/27)

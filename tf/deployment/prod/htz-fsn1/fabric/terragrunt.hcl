@@ -3,6 +3,7 @@ include "root" {
 }
 
 # State key derives from the path: yucca/prod/htz-fsn1/fabric/terraform.tfstate
-# Providers come from versions.tf; the junos-qfx provider is supplied via
-# dev_overrides (TF_CLI_CONFIG_FILE), set by the `fabric:*` mise tasks and CI.
+# Providers come from versions.tf (junos = jeremmfr/junos from the registry); the
+# hetzner provider is supplied via a filesystem mirror (TF_CLI_CONFIG_FILE), set
+# by the `infra:*` mise tasks and CI.
 # terraform.auto.tfvars is loaded automatically.
