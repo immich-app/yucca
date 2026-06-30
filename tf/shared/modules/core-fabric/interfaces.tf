@@ -2,6 +2,7 @@ locals {
   trunk_members = [
     "vlan${var.public_vlan_id}", "vlan${var.private_vlan_id}",
     "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}",
+    "vlan${var.host_mgmt_vlan_id}",
   ]
 
   # Pre-staged jumbo access ports et-0/0/0..29 (physical mtu only; their empty
@@ -39,11 +40,19 @@ resource "junos_interface_physical" "ae0" {
   storm_control = "default"
 }
 
-# mgmt-1 server port (channelized leg), trunk of the same VLANs.
-resource "junos_interface_physical" "mgmt1_port" {
-  name         = "et-1/0/3:0"
+# Management-node ports (mgmt-1, mgmt-2) — one channelized port-3 leg per VC member,
+# each a single-port trunk of the stretched VLANs. Identical config per node.
+resource "junos_interface_physical" "mgmt_node" {
+  for_each     = toset(var.mgmt_node_ports)
+  name         = each.value
   trunk        = true
   vlan_members = local.trunk_members
+}
+
+# Preserve the previously-single mgmt-1 port resource (don't destroy/recreate it).
+moved {
+  from = junos_interface_physical.mgmt1_port
+  to   = junos_interface_physical.mgmt_node["et-1/0/3:0"]
 }
 
 # NOTE: vme (the mgmt IP / NETCONF lifeline) is deliberately NOT managed here —

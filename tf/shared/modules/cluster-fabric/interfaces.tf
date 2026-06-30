@@ -1,6 +1,7 @@
 locals {
   trunk_members = [
     "vlan${var.public_vlan_id}", "vlan${var.private_vlan_id}",
+    "vlan${var.host_mgmt_vlan_id}",
     "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}",
   ]
 
@@ -67,6 +68,18 @@ resource "junos_interface_logical" "irb_private" {
   family_inet {
     address {
       cidr_ip = "${var.private_gateway}/${var.prefixlen}"
+    }
+    filter_input = "NO-CROSS-VLAN"
+  }
+}
+
+# Host-management gateway. Isolated from the data nets by NO-CROSS-VLAN (the mgmt
+# nodes + hosts reach each other intra-VLAN, so SSH is unaffected by the block).
+resource "junos_interface_logical" "irb_host_mgmt" {
+  name = "irb.${var.host_mgmt_vlan_id}"
+  family_inet {
+    address {
+      cidr_ip = "${var.host_mgmt_gateway}/${split("/", var.host_mgmt_cidr)[1]}"
     }
     filter_input = "NO-CROSS-VLAN"
   }

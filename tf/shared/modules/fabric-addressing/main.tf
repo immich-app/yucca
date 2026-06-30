@@ -28,9 +28,17 @@ locals {
   public_vlan_id  = local.has_cluster ? var.cluster_id * 100 + 20 : null
   private_vlan_id = local.has_cluster ? var.cluster_id * 100 + 22 : null
 
+  # Host-management network: a /24 within the cluster /20 at block idx 8 (octet
+  # base+8 -> 10.40.24.0/24 for cls1). Dedicated SSH/management plane for the
+  # cluster's hosts + the mgmt nodes, isolated from the public/private data nets.
+  #   vlan id = cluster_id*100 + 24 (cls1 -> 124); octet 24 == role suffix.
+  host_mgmt_cidr    = local.has_cluster ? cidrsubnet(local.cluster_supernet, 4, 8) : null
+  host_mgmt_vlan_id = local.has_cluster ? var.cluster_id * 100 + 24 : null
+
   # First usable host (.1) is the IRB gateway, which lives on the cluster leaf.
-  public_gateway  = local.has_cluster ? cidrhost(local.public_cidr, 1) : null
-  private_gateway = local.has_cluster ? cidrhost(local.private_cidr, 1) : null
+  public_gateway    = local.has_cluster ? cidrhost(local.public_cidr, 1) : null
+  private_gateway   = local.has_cluster ? cidrhost(local.private_cidr, 1) : null
+  host_mgmt_gateway = local.has_cluster ? cidrhost(local.host_mgmt_cidr, 1) : null
 
   # Leaf vme: 125 for cluster 1, +10 per subsequent cluster.
   leaf_mgmt_host = local.has_cluster ? 125 + (var.cluster_id - 1) * 10 : null

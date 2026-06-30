@@ -38,6 +38,21 @@ output "private_vlan_id" {
   description = "Private VLAN id = cluster_id*100 + 22 (cls1 -> 122). Name = vlan<id>."
 }
 
+output "host_mgmt_cidr" {
+  value       = local.host_mgmt_cidr
+  description = "Cluster host-management network (e.g. cls1 -> 10.40.24.0/24)."
+}
+
+output "host_mgmt_vlan_id" {
+  value       = local.host_mgmt_vlan_id
+  description = "Host-mgmt VLAN id = cluster_id*100 + 24 (cls1 -> 124). Name = vlan<id>."
+}
+
+output "host_mgmt_gateway" {
+  value       = local.host_mgmt_gateway
+  description = "IRB gateway (.1) for the host-management network."
+}
+
 output "public_gateway" {
   value       = local.public_gateway
   description = "IRB gateway (.1) for the public network."

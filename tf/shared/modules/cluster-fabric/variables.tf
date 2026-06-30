@@ -36,6 +36,21 @@ variable "private_vlan_id" {
   description = "Private VLAN id (e.g. 122). VLAN name + IRB unit derive from it."
 }
 
+variable "host_mgmt_cidr" {
+  type        = string
+  description = "Cluster host-management network, e.g. 10.40.24.0/24."
+}
+
+variable "host_mgmt_gateway" {
+  type        = string
+  description = "IRB gateway host (.1) for the host-management network."
+}
+
+variable "host_mgmt_vlan_id" {
+  type        = number
+  description = "Host-management VLAN id (e.g. 124). VLAN name + IRB unit derive from it."
+}
+
 variable "prefixlen" {
   type        = number
   default     = 23

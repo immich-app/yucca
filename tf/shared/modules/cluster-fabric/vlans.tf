@@ -1,10 +1,11 @@
 locals {
   # Per-cluster networks carry an IRB gateway on the leaf; site-global are L2 only.
   cluster_vlans = {
-    "vlan${var.public_vlan_id}"  = { id = var.public_vlan_id, l3 = "irb.${var.public_vlan_id}" }
-    "vlan${var.private_vlan_id}" = { id = var.private_vlan_id, l3 = "irb.${var.private_vlan_id}" }
-    "vlan${var.api_vlan_id}"     = { id = var.api_vlan_id, l3 = null }
-    "vlan${var.mgmt_vlan_id}"    = { id = var.mgmt_vlan_id, l3 = null }
+    "vlan${var.public_vlan_id}"    = { id = var.public_vlan_id, l3 = "irb.${var.public_vlan_id}" }
+    "vlan${var.private_vlan_id}"   = { id = var.private_vlan_id, l3 = "irb.${var.private_vlan_id}" }
+    "vlan${var.host_mgmt_vlan_id}" = { id = var.host_mgmt_vlan_id, l3 = "irb.${var.host_mgmt_vlan_id}" }
+    "vlan${var.api_vlan_id}"       = { id = var.api_vlan_id, l3 = null }
+    "vlan${var.mgmt_vlan_id}"      = { id = var.mgmt_vlan_id, l3 = null }
   }
 }
 

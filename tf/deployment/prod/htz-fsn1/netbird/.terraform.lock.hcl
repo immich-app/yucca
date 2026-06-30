@@ -29,9 +29,6 @@ provider "registry.terraform.io/futo-org/netbird" {
   constraints = "~> 1.0"
   hashes = [
     "h1:/7jw47nsJ3huM4DjtEwAd486NDpOg+YEkfBfLh1ZPGU=",
-    "h1:FGhKWXOOHG+3K5i2LIFh3vjoeAV+AngSwwTPSHwMskQ=",
-    "h1:GAirg4Iu5grhEXBFrN8BGCuDN0jy1TyIjL6uBIHT9Rs=",
-    "h1:o6ixZi6QxtL7o3SkChsiINUXHkHiaJEYII2dnM81f08=",
     "zh:10c5908178a89532eb0c8213f9b4e614accd95bdd863ecaada181bd3dcfb2fc4",
     "zh:142301b60f38044d341474cddc7a3fe4b21896103783d80d17b9d3ae8bbaf358",
     "zh:1703d7e0829af459927237ce7154fd9c161aed062bf3a5cc4f43676727be3222",

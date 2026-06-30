@@ -20,13 +20,16 @@ module "netbox" {
 
   clusters = {
     "1" = {
-      cluster_supernet = module.addr_cls1.cluster_supernet
-      public_cidr      = module.addr_cls1.public_cidr
-      private_cidr     = module.addr_cls1.private_cidr
-      public_vlan_id   = module.addr_cls1.public_vlan_id
-      private_vlan_id  = module.addr_cls1.private_vlan_id
-      public_gateway   = module.addr_cls1.public_gateway
-      private_gateway  = module.addr_cls1.private_gateway
+      cluster_supernet  = module.addr_cls1.cluster_supernet
+      public_cidr       = module.addr_cls1.public_cidr
+      private_cidr      = module.addr_cls1.private_cidr
+      host_mgmt_cidr    = module.addr_cls1.host_mgmt_cidr
+      public_vlan_id    = module.addr_cls1.public_vlan_id
+      private_vlan_id   = module.addr_cls1.private_vlan_id
+      host_mgmt_vlan_id = module.addr_cls1.host_mgmt_vlan_id
+      public_gateway    = module.addr_cls1.public_gateway
+      private_gateway   = module.addr_cls1.private_gateway
+      host_mgmt_gateway = module.addr_cls1.host_mgmt_gateway
     }
   }
 
