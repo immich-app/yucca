@@ -1,0 +1,77 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: openebs
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: openebs
+  install:
+    crds: CreateReplace
+  interval: 1h
+  rollback:
+    cleanupOnFail: true
+  upgrade:
+    cleanupOnFail: true
+    crds: CreateReplace
+    strategy:
+      name: RemediateOnFailure
+    remediation:
+      remediateLastFailure: true
+      retries: 2
+  # OpenEBS LocalPV hostpath — node-local disk, no replicated block storage
+  # (mirrors yucca-o11y). Persistent workloads (CNPG) replicate at the app
+  # layer instead. Only the local-hostpath engine is kept; everything else
+  # (lvm/zfs/mayastor/loki/alloy/minio) is disabled.
+  values:
+    preUpgradeHook:
+      enabled: false
+    localpv-provisioner:
+      analytics:
+        enabled: false
+      localpv:
+        image:
+          registry: quay.io/
+        # Fallback basePath for the chart's default class. We disable that class
+        # below (the 240GB BOSS install disk holds no PVs), so this is unused —
+        # all PVs land on the NVMe StorageClasses (storageclass-spare-disk*.yaml),
+        # which set their own BasePath. Kept pointing at a UserVolume mount to
+        # avoid any drift onto EPHEMERAL.
+        basePath: /var/mnt/hostpath
+      # No openebs-system-disk default class: unlike o11y's large system disks,
+      # these nodes install to a small 240GB DELLBOSS. Persistent storage lives
+      # on the two 1.6TB NVMes via openebs-spare-disk / -2 (one of which is the
+      # cluster-default class). Disabling this stops PVs landing on the BOSS.
+      hostpathClass:
+        enabled: false
+      helperPod:
+        image:
+          registry: quay.io/
+    openebs-crds:
+      csi:
+        volumeSnapshots:
+          enabled: false
+          keep: false
+    zfs-localpv:
+      enabled: false
+    lvm-localpv:
+      enabled: false
+    mayastor:
+      enabled: false
+    engines:
+      local:
+        lvm:
+          enabled: false
+        zfs:
+          enabled: false
+      replicated:
+        mayastor:
+          enabled: false
+    loki:
+      enabled: false
+    alloy:
+      enabled: false
+    minio:
+      enabled: false

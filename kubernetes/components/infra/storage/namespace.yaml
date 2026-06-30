@@ -2,7 +2,9 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: longhorn-system
+  name: openebs-system
   labels:
-    # Longhorn runs privileged manager/engine pods.
+    # OpenEBS localpv provisioner + helper pods run privileged (hostpath).
     pod-security.kubernetes.io/enforce: privileged
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled

@@ -25,33 +25,41 @@ clusters = {
     talos_schematic_id = "f141fc2a08d5a459a80d871faa48d7dc92bc354e4faf6cdbafe1cc0fac717991"
 
     # Install target — WIPED. /dev/sda is the 240GB DELLBOSS on these nodes;
-    # the two 1.6TB NVMe drives (nvme0n1/nvme1n1) become Longhorn data disks.
+    # the two 1.6TB NVMe drives (nvme0n1/nvme1n1) back the OpenEBS LocalPV
+    # StorageClasses (openebs-spare-disk / -2) via the Talos UserVolumes below.
     install_disk = "/dev/sda"
 
-    # Longhorn: mount both NVMe SSDs + declare them via node label + annotation.
-    config_patches = [<<-EOT
-    machine:
-      nodeLabels:
-        node.longhorn.io/create-default-disk: "config"
-      nodeAnnotations:
-        node.longhorn.io/default-disks-config: '[{"path":"/var/lib/longhorn/disk0","allowScheduling":true},{"path":"/var/lib/longhorn/disk1","allowScheduling":true}]'
-      kubelet:
-        extraMounts:
-          - destination: /var/lib/longhorn
-            type: bind
-            source: /var/lib/longhorn
-            options:
-              - bind
-              - rshared
-              - rw
-      disks:
-        - device: /dev/nvme0n1
-          partitions:
-            - mountpoint: /var/lib/longhorn/disk0
-        - device: /dev/nvme1n1
-          partitions:
-            - mountpoint: /var/lib/longhorn/disk1
-    EOT
+    # OpenEBS LocalPV hostpath backing storage (replaces Longhorn). One Talos
+    # UserVolume per spare NVMe, each auto-mounted at /var/mnt/<name> — matching
+    # the BasePath of the openebs-spare-disk / -2 StorageClasses
+    # (kubernetes/apps/base/openebs). OpenEBS is node-local: no node labels, no
+    # iscsi, no replicated block layer (CNPG replicates at the app layer).
+    # NB: the schematic still ships siderolabs/iscsi-tools (vestigial now that
+    #     Longhorn is gone) — drop it on the next schematic regen + node upgrade.
+    # NB: the NVMes currently hold Longhorn partitions; wipe them (talosctl wipe
+    #     disk nvme0n1/nvme1n1, or a node reset) before this applies cleanly.
+    config_patches = [
+      <<-EOT
+      apiVersion: v1alpha1
+      kind: UserVolumeConfig
+      name: local-hostpath
+      provisioning:
+        diskSelector:
+          match: disk.dev_path == '/dev/nvme0n1'
+        minSize: 100GB
+        grow: true
+      EOT
+      ,
+      <<-EOT
+      apiVersion: v1alpha1
+      kind: UserVolumeConfig
+      name: local-hostpath-2
+      provisioning:
+        diskSelector:
+          match: disk.dev_path == '/dev/nvme1n1'
+        minSize: 100GB
+        grow: true
+      EOT
     ]
 
     # Compact 3-node cluster: every node is a control-plane and also runs
