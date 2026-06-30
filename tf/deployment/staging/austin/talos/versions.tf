@@ -5,6 +5,11 @@ terraform {
       source  = "siderolabs/talos"
       version = "~> 0.11"
     }
+    # Hostname picks for the talos nodes (node-names module → random_shuffle).
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
     helm = {
       source  = "hashicorp/helm"
       version = "~> 3.1"
