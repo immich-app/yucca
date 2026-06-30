@@ -14,4 +14,12 @@ resource "junos_vlan" "this" {
   name         = each.key
   vlan_id      = tostring(each.value.id)
   l3_interface = each.value.l3
+
+  # jeremmfr commits per-resource: an l3_interface vlan is rejected if its IRB
+  # unit isn't on the box yet, so create the IRBs first.
+  depends_on = [
+    junos_interface_logical.irb_public,
+    junos_interface_logical.irb_private,
+    junos_interface_logical.irb_host_mgmt,
+  ]
 }
