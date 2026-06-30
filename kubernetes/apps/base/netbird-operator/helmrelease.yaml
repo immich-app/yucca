@@ -38,3 +38,32 @@ spec:
     # later to route Services onto the overlay via the operator).
     gatewayAPI:
       enabled: false
+  # The chart ships the pod-mutator webhook (mpod-v1.netbird.io) with
+  # failurePolicy: Fail and an EMPTY namespaceSelector, so it gates *every* pod
+  # CREATE cluster-wide. When the operator pod is unreachable that blocks all
+  # pod scheduling — once this cascaded into a cluster-wide outage (cilium agents
+  # couldn't be recreated, which broke pod routing, which broke flux/cnpg…).
+  # Keep failurePolicy: Fail (app pods still get guaranteed netbird injection)
+  # but exclude the control-plane/infra namespaces so core self-healing can never
+  # be gated by this webhook. The chart exposes no knob for this, so patch the
+  # rendered MutatingWebhookConfiguration via a postRenderer.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: MutatingWebhookConfiguration
+              name: netbird-operator-mpod-webhook
+            patch: |
+              - op: add
+                path: /webhooks/0/namespaceSelector
+                value:
+                  matchExpressions:
+                    - key: kubernetes.io/metadata.name
+                      operator: NotIn
+                      values:
+                        - kube-system
+                        - flux-system
+                        - cnpg-system
+                        - openebs-system
+                        - cert-manager
+                        - netbird
