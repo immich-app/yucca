@@ -78,3 +78,4 @@ ansible/mgmt/inventories/*/group_vars/all/users.generated.yml
 tf/render/*/.terraform/
 tf/render/*/.terraform.lock.hcl
 tf/render/*/terraform.tfstate*
+.DS_Store
