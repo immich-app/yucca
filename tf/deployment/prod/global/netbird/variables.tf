@@ -53,7 +53,8 @@ variable "domain" {
 
 variable "groups" {
   type = map(object({
-    name = optional(string)
+    name     = optional(string)
+    resource = optional(bool, false)
   }))
   default = {}
 }

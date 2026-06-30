@@ -1,8 +1,9 @@
 # ─── Global prod NetBird layer ───────────────────────────────────────────────
-# Account-wide groups, cross-site policies, and operator setup keys shared by
-# every prod site. Site layers (prod/<site>/netbird) build on this — they pull
-# this stack's `group_ids` output via a terragrunt dependency and grant the
-# global `admins` group access to their site-local servers.
+# Reserved for ACCOUNT-WIDE / cross-site prod NetBird objects (groups or policies
+# that span every prod site). Empty today — with per-site resource groups and the
+# module-generated yucca→resources policy (see netbird-env), all current prod
+# objects live in the site layers (prod/<site>/netbird). A cross-site group would
+# be created here and consumed by site layers via their `external_groups` input.
 #
 # One NetBird Cloud account backs all envs; objects here are namespaced
 # "yucca-prod-*". Auth (both injected by `op run --env-file=tf/.env.prod`):
@@ -10,14 +11,6 @@
 #   • onepassword — OP_SERVICE_ACCOUNT_TOKEN; writes setup keys to yucca_tf_prod.
 provider "netbird" {}
 provider "onepassword" {}
-
-# The existing account-wide "yucca" users group. Account-global access policies
-# reference it by the logical key `yucca` (handed to the module as an external
-# group). Any NetBird resource tagged into this group (see the site layers'
-# network resources) is then reachable by yucca users via the yucca→yucca policy.
-data "netbird_group" "yucca" {
-  name = "yucca"
-}
 
 module "netbird" {
   source = "../../../../shared/modules/netbird-env"
@@ -29,10 +22,6 @@ module "netbird" {
   groups     = var.groups
   setup_keys = var.setup_keys
   policies   = var.policies
-
-  external_groups = {
-    yucca = data.netbird_group.yucca.id
-  }
 }
 
 output "group_ids" {

@@ -2,8 +2,8 @@ terraform {
   required_version = "~> 1.11"
   required_providers {
     netbird = {
-      source  = "netbirdio/netbird"
-      version = "~> 0.0.9"
+      source  = "registry.terraform.io/futo-org/netbird"
+      version = "~> 1.0"
     }
     onepassword = {
       source  = "1Password/onepassword"

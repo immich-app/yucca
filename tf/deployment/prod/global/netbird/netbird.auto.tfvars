@@ -7,36 +7,15 @@
 # stack exists as the layer those site layers build on (a cross-site policy, or a
 # shared group consumed via the site layer's `external_groups`, would land here).
 
-# The shared resource tag. Site layers tag every routed network resource into
-# this group (via a terragrunt dependency on this stack), so one account-wide
-# policy governs access to all of them. Explicit name → the unprefixed shared tag
-# (without it the module would render "YUCCA_PROD_YUCCA_RESOURCE").
-# NOTE: name kept lowercase (verbatim, not UPPER_SNAKE). This group carries the
-# site network resources tagged into it, and the NetBird provider can't update a
-# group that has resources — so it must keep the exact name it was created with.
-groups = {
-  yucca_resource = { name = "yucca_resource" }
-}
+# No cross-site groups today. The former shared "yucca_resource" tag was retired
+# (#yucca_resource deprecation): each site layer now owns its OWN resource
+# group(s) flagged `resource = true`, and the shared netbird-env module
+# auto-generates that site's "<PREFIX>_YUCCA_TO_RESOURCES" policy from them — so
+# yucca users reach every resource group we create without an account-wide tag or
+# a hand-maintained destination list. An account-spanning group would still land
+# here (created in this layer, consumed by sites via `external_groups`).
+groups = {}
 
 setup_keys = {}
 
-policies = {
-  # Account-wide: members of the existing "yucca" users group reach every NetBird
-  # resource tagged into "yucca_resource". One global policy covers all such
-  # resources across every env/site. `yucca` is an external group resolved by name
-  # in netbird.tf; `yucca_resource` is the group created above.
-  #
-  # bidirectional = false → only yucca users INITIATE to resources. yucca_resource
-  # is never a source, so the tagged resources can't reach each other (or back to
-  # users) — just be reached.
-  yucca-to-resources = {
-    description = "yucca users → all yucca_resource-tagged resources (account-wide)."
-    rules = [{
-      name          = "yucca-to-resources"
-      protocol      = "all"
-      bidirectional = false
-      sources       = ["yucca"]
-      destinations  = ["yucca_resource"]
-    }]
-  }
-}
+policies = {}

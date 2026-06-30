@@ -19,11 +19,18 @@ variable "vault" {
 }
 
 variable "groups" {
-  description = "NetBird groups keyed by logical name. Groups start empty — membership comes from setup keys' auto_groups as peers register. Set `name` only to override the derived \"<NAME_PREFIX>_<KEY>\" (an override is normalized to UPPER_SNAKE too)."
+  description = "NetBird groups keyed by logical name. Groups start empty — membership comes from setup keys' auto_groups as peers register. Set `name` only to override the derived \"<NAME_PREFIX>_<KEY>\" (an override is normalized to UPPER_SNAKE too). Set `resource = true` to mark a group as a yucca *resource* group: every such group is auto-added as a destination of the generated yucca→resources policy (see var.yucca_users_group), so new resource groups are covered without editing a policy."
   type = map(object({
-    name = optional(string)
+    name     = optional(string)
+    resource = optional(bool, false)
   }))
   default = {}
+}
+
+variable "yucca_users_group" {
+  description = "Name of the pre-existing NetBird *users* group granted access to every group flagged `resource = true` in this layer. The module looks it up by name and generates a single `<NAME_PREFIX>_YUCCA_TO_RESOURCES` policy (bidirectional = false: yucca users only initiate to resources; resources can't reach back or each other), with destinations derived from all resource groups. Set null to not manage this policy. No-op when the layer owns no resource groups."
+  type        = string
+  default     = "yucca"
 }
 
 variable "external_groups" {

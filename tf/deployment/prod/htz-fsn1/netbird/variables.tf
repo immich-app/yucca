@@ -45,15 +45,10 @@ variable "domain" {
   default     = null
 }
 
-variable "external_groups" {
-  description = "Groups owned by the global prod layer, injected by the terragrunt dependency (logical key → NetBird group ID). Today: { admins = <global admins id> }."
-  type        = map(string)
-  default     = {}
-}
-
 variable "groups" {
   type = map(object({
-    name = optional(string)
+    name     = optional(string)
+    resource = optional(bool, false)
   }))
   default = {}
 }
