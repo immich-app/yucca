@@ -12,22 +12,9 @@ include "root" {
 #
 # netbird.auto.tfvars is loaded automatically; partition/region are injected by
 # the root.
-
-# Depends on the global layer for the shared "yucca_resource" tag — this site's
-# routed network resources are tagged into it so the account-wide yucca→
-# yucca_resource policy (prod/global) governs their access. prod/global must
-# apply before this stack; mock_outputs cover validate/plan before that.
-dependency "global" {
-  config_path = "../../global/netbird"
-
-  mock_outputs = {
-    group_ids = { yucca_resource = "mock-yucca-resource-group-id" }
-  }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
-}
-
-inputs = {
-  external_groups = {
-    yucca_resource = dependency.global.outputs.group_ids.yucca_resource
-  }
-}
+#
+# This site owns its own resource group (the `resources` group in
+# netbird.auto.tfvars, flagged `resource = true`): the netbird-env module tags
+# the routed subnets into it and auto-generates the site's
+# YUCCA_PROD_HTZ_FSN1_YUCCA_TO_RESOURCES policy. No dependency on prod/global —
+# the former shared "yucca_resource" tag was retired.

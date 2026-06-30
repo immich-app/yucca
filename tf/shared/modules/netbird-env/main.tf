@@ -9,11 +9,9 @@
 locals {
   # DERIVED names are normalized to UPPER_SNAKE: uppercased, hyphens → underscores.
   # e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" → "YUCCA_PROD_HTZ_FSN1_MGMT".
-  # An explicit `name` override is taken VERBATIM (not uppercased) — the NetBird
-  # provider (v0.0.9) can't update a group that has network resources tagged into
-  # it (it crashes converting the API's resource objects), so a shared tag group
-  # like "yucca_resource" must keep the exact name it was created with; renaming
-  # it is impossible in-place. Network display names are likewise verbatim.
+  # An explicit `name` override is taken VERBATIM (not uppercased), for groups that
+  # must keep an exact pre-existing name (e.g. one created outside this module).
+  # Network display names are likewise verbatim.
   group_names = {
     for k, g in var.groups : k => coalesce(g.name, upper(replace("${var.name_prefix}_${k}", "-", "_")))
   }
@@ -39,6 +37,16 @@ locals {
       }
     }
   ]...)
+
+  # Groups this layer owns that are flagged `resource = true`: the destinations of
+  # the auto-generated yucca→resources policy. New resource groups are picked up
+  # here automatically — nothing to wire into a policy by hand.
+  resource_group_keys = [for k, g in var.groups : k if g.resource]
+  resource_group_ids  = [for k in local.resource_group_keys : netbird_group.this[k].id]
+
+  # Manage the yucca→resources policy only when this layer owns ≥1 resource group
+  # and a users group is configured (var.yucca_users_group != null).
+  manage_resource_policy = var.yucca_users_group != null && length(local.resource_group_keys) > 0
 }
 
 resource "netbird_group" "this" {
@@ -80,6 +88,36 @@ resource "netbird_policy" "this" {
       destinations  = [for g in rule.value.destinations : local.group_ids[g]]
       ports         = rule.value.ports
     }
+  }
+}
+
+# ─── yucca users → every resource group (auto-derived) ───────────────────
+# Members of the account-wide `yucca` users group reach every group flagged
+# `resource = true` in this layer. Destinations are derived from those groups
+# (local.resource_group_ids), so any new resource group is covered without
+# touching a policy. bidirectional = false → yucca users only INITIATE; the
+# resource groups are never a source, so resources can't reach back or each
+# other. The users group is looked up by name (it lives outside this stack).
+data "netbird_group" "yucca_users" {
+  count = local.manage_resource_policy ? 1 : 0
+  name  = var.yucca_users_group
+}
+
+resource "netbird_policy" "yucca_to_resources" {
+  count = local.manage_resource_policy ? 1 : 0
+
+  name        = upper(replace("${var.name_prefix}_yucca_to_resources", "-", "_"))
+  description = "${var.yucca_users_group} users → every resource=true group in this layer (auto-derived)."
+  enabled     = true
+
+  rule {
+    name          = upper(replace("${var.name_prefix}_yucca_to_resources", "-", "_"))
+    action        = "accept"
+    protocol      = "all"
+    bidirectional = false
+    enabled       = true
+    sources       = [data.netbird_group.yucca_users[0].id]
+    destinations  = local.resource_group_ids
   }
 }
 

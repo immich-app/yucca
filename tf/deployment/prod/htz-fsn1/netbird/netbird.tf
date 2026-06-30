@@ -12,10 +12,10 @@ locals {
   # Routed subnets for the HTZ-FSN1 Network. The mgmt nodes (router peers) expose
   # these to the overlay. ADDRESSES ARE PROPAGATED from the fabric-addressing plan
   # (addressing.tf) — not hardcoded — so the cluster definition stays the single
-  # source of truth. Every resource is tagged into the shared "yucca_resource"
-  # group (from the global layer, via var.external_groups), so the account-wide
-  # yucca→yucca_resource policy (prod/global) governs access — and resources
-  # never appear as a policy source, so they can't reach each other.
+  # source of truth. Every resource is tagged into this site's own "resources"
+  # group (flagged `resource = true` in netbird.auto.tfvars), so the module-
+  # generated yucca→resources policy governs access — and resources never appear
+  # as a policy source, so they can't reach each other.
   routed = {
     mgmt         = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
     api          = { address = module.addr_site.api_cidr, description = "Site-global API network" }
@@ -31,7 +31,7 @@ locals {
         for name, r in local.routed : name => {
           address     = r.address
           description = r.description
-          groups      = ["yucca_resource"]
+          groups      = ["resources"]
         }
       }
     }
@@ -49,10 +49,6 @@ module "netbird" {
   setup_keys = var.setup_keys
   policies   = var.policies
   networks   = local.netbird_networks
-
-  # yucca_resource comes from the global layer via the terragrunt dependency
-  # (see terragrunt.hcl → external_groups input).
-  external_groups = var.external_groups
 }
 
 output "group_ids" {

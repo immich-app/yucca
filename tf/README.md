@@ -416,14 +416,14 @@ carry different policies.
 | `deployment/prod/global/netbird` | prod, **account-wide** (cross-region) | `yucca/prod/global/netbird/…` |
 | `deployment/prod/htz-fsn1/netbird` | prod, **region** htz-fsn1 | `yucca/prod/htz-fsn1/netbird/…` |
 
-Staging is single-layer. **Prod is layered**: a `global` layer (account-wide
-groups + policies) above per-region layers. The global layer owns the
-**`YUCCA_RESOURCE`** tag group and the account-wide **`yucca → yucca_resource`**
-policy (see below). Region groups are region-scoped (`YUCCA_PROD_<REGION>_<ROLE>`)
-so a network router's peers are unambiguously *that region's* mgmt nodes. A
-region layer consumes a global group via a terragrunt `dependency` on
-`prod/global` → the module's `external_groups` input (htz-fsn1 does this for
-`yucca_resource`). The root terragrunt derives `stack` from the full sub-path,
+Staging is single-layer. **Prod is layered**: a `global` layer (reserved for
+account-wide / cross-region groups + policies) above per-region layers. The
+global layer is empty today — each region owns its own resource group and the
+`yucca → resources` policy is module-generated per layer (see below). Region
+groups are region-scoped (`YUCCA_PROD_<REGION>_<ROLE>`) so a network router's
+peers are unambiguously *that region's* mgmt nodes. A region layer can still
+consume a global group via a terragrunt `dependency` on `prod/global` → the
+module's `external_groups` input, but none do today. The root terragrunt derives `stack` from the full sub-path,
 so `prod/htz-fsn1/netbird` gets its own state key. (Now that the fabric stack
 lives in its own `prod/htz-fsn1/fabric/` sub-stack, the region root carries no
 terragrunt.hcl, so `prod/htz-fsn1/netbird` uses a normal
@@ -432,22 +432,31 @@ gone.) Rendered NetBird object names and 1P item titles are unchanged by the
 rename (`YUCCA_STAGING_*`, `NETBIRD_YUCCA_PROD_HTZ_FSN1_*`): the `env`→`partition`
 / `site`→`region` swap keeps the same string values.
 
-### The `yucca` / `yucca_resource` access model
+### The `yucca` → resource-groups access model
 
-Two groups drive account-wide access to routed subnets (rendered names in caps):
+Users reach routed subnets through two kinds of group (rendered names in caps):
 
 - **`yucca`** — the existing **users** group (people). External (looked up by its
   actual name `yucca`); never managed here.
-- **`YUCCA_RESOURCE`** — the shared **resource tag**, managed in `prod/global`
-  (logical key `yucca_resource`). Every routed `netbird_network_resource` (across
-  sites) is tagged into it.
+- **resource groups** — any group flagged **`resource = true`** in a layer's
+  `groups`. Each layer owns its own (e.g. htz-fsn1's `resources` →
+  `YUCCA_PROD_HTZ_FSN1_RESOURCES`); every routed `netbird_network_resource` is
+  tagged into one.
 
-One global policy in `prod/global` — `yucca → yucca_resource`, `bidirectional =
-false` — lets users reach every tagged resource. Because `yucca_resource` is only
-ever a policy *destination*, the tagged resources can't reach each other (or call
-back to users). Site layers don't reference `yucca` at all; they just tag their
-resources into `yucca_resource` (pulled from `prod/global` via the dependency),
-so the link is the shared tag, not a cross-stack group reference.
+For each layer that owns ≥1 resource group, the `netbird-env` module
+**auto-generates** a `<PREFIX>_YUCCA_TO_RESOURCES` policy (`bidirectional =
+false`) whose destinations are *all* of that layer's resource groups — so adding
+a resource group automatically grants `yucca` users access to it, with no policy
+to edit. The source is `var.yucca_users_group` (default `yucca`, looked up by
+name; set null to opt a layer out). Because resource groups are only ever policy
+*destinations*, the tagged resources can't reach each other (or call back to
+users). The union of these per-layer policies is the account-wide "yucca reaches
+every resource group we create" guarantee.
+
+> The former single shared **`yucca_resource`** tag in `prod/global` (one
+> account-wide `yucca → yucca_resource` policy, consumed by sites via a terragrunt
+> dependency) was **retired** in favour of this per-layer model — no cross-stack
+> group reference, and the destination list is derived, not hand-maintained.
 
 Staging additionally grants its `ci` group access to the existing **Liberty
 Park** infra groups (where the staging nodes live today) — those are external
@@ -459,7 +468,8 @@ Groups, setup keys, policies and networks reference groups by **logical key**,
 never opaque NetBird IDs:
 
 ```hcl
-groups = { ci = {}, mgmt = {}, talos = {}, k8s_operator = {} }
+groups = { ci = {}, mgmt = {}, talos = {}, k8s_operator = {},
+           resources = { resource = true } } # resource group → auto yucca→resources policy
 
 setup_keys = {
   ci           = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
@@ -477,7 +487,9 @@ policies = {
 ```
 
 NetBird is **default-deny** — a peer gets only the access its groups' policies
-grant; an empty `policies` map means total isolation.
+grant; an empty `policies` map means total isolation. The `yucca →` resource
+policy is *not* declared here: the module generates it from every group flagged
+`resource = true` (see the access model above).
 
 ### Networks (prod htz-fsn1) — CIDRs propagated, not hardcoded
 
@@ -486,9 +498,9 @@ The htz-fsn1 site layer exposes a NetBird **Network** named `HTZ-FSN1`: the
 `netbird_network_resource`. The **CIDRs are derived from the same
 `fabric-addressing` module the fabric stack uses** (re-instantiated in the
 layer's `addressing.tf` — a pure, stateless module, so no duplication and no
-cross-stack coupling). Every resource is tagged into `yucca_resource`, so access
-is the one global `yucca → yucca_resource` policy. The only per-site input is the
-site id (the CIDRs flow from it):
+cross-stack coupling). Every resource is tagged into the site's own `resources`
+group, so access is the module-generated `YUCCA_PROD_HTZ_FSN1_YUCCA_TO_RESOURCES`
+policy. The only per-site input is the site id (the CIDRs flow from it):
 
 ```hcl
 site_id = 40   # mirrors prod/htz-fsn1; feeds fabric-addressing → the routed CIDRs
