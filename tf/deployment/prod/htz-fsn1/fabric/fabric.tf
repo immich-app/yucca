@@ -14,10 +14,11 @@ module "core" {
   source    = "../../../../shared/modules/core-fabric"
   providers = { junos = junos.spine }
 
-  public_vlan_id  = module.addr_cls1.public_vlan_id
-  private_vlan_id = module.addr_cls1.private_vlan_id
-  api_vlan_id     = module.addr_site.api_vlan_id
-  mgmt_vlan_id    = module.addr_site.mgmt_vlan_id
+  public_vlan_id    = module.addr_cls1.public_vlan_id
+  private_vlan_id   = module.addr_cls1.private_vlan_id
+  host_mgmt_vlan_id = module.addr_cls1.host_mgmt_vlan_id
+  api_vlan_id       = module.addr_site.api_vlan_id
+  mgmt_vlan_id      = module.addr_site.mgmt_vlan_id
 
   vc_member_serials = var.spine_vc_serials
 
@@ -44,15 +45,18 @@ module "cluster_cls1" {
   source    = "../../../../shared/modules/cluster-fabric"
   providers = { junos = junos.leaf_cls1 }
 
-  public_cidr     = module.addr_cls1.public_cidr
-  private_cidr    = module.addr_cls1.private_cidr
-  public_gateway  = module.addr_cls1.public_gateway
-  private_gateway = module.addr_cls1.private_gateway
-  public_vlan_id  = module.addr_cls1.public_vlan_id
-  private_vlan_id = module.addr_cls1.private_vlan_id
-  api_vlan_id     = module.addr_site.api_vlan_id
-  mgmt_vlan_id    = module.addr_site.mgmt_vlan_id
-  prefixlen       = module.addr_cls1.prefixlen
+  public_cidr       = module.addr_cls1.public_cidr
+  private_cidr      = module.addr_cls1.private_cidr
+  host_mgmt_cidr    = module.addr_cls1.host_mgmt_cidr
+  public_gateway    = module.addr_cls1.public_gateway
+  private_gateway   = module.addr_cls1.private_gateway
+  host_mgmt_gateway = module.addr_cls1.host_mgmt_gateway
+  public_vlan_id    = module.addr_cls1.public_vlan_id
+  private_vlan_id   = module.addr_cls1.private_vlan_id
+  host_mgmt_vlan_id = module.addr_cls1.host_mgmt_vlan_id
+  api_vlan_id       = module.addr_site.api_vlan_id
+  mgmt_vlan_id      = module.addr_site.mgmt_vlan_id
+  prefixlen         = module.addr_cls1.prefixlen
 
   vc_member_serials = var.cls1_leaf_serials
 }

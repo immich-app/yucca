@@ -17,10 +17,11 @@ locals {
   # generated yucca→resources policy governs access — and resources never appear
   # as a policy source, so they can't reach each other.
   routed = {
-    mgmt         = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
-    api          = { address = module.addr_site.api_cidr, description = "Site-global API network" }
-    cls1_public  = { address = module.addr_cls1.public_cidr, description = "cls1 public cluster network" }
-    cls1_private = { address = module.addr_cls1.private_cidr, description = "cls1 private cluster network" }
+    mgmt           = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
+    api            = { address = module.addr_site.api_cidr, description = "Site-global API network" }
+    cls1_public    = { address = module.addr_cls1.public_cidr, description = "cls1 public cluster network" }
+    cls1_private   = { address = module.addr_cls1.private_cidr, description = "cls1 private cluster network" }
+    cls1_host_mgmt = { address = module.addr_cls1.host_mgmt_cidr, description = "cls1 host-management network" }
   }
 
   netbird_networks = {

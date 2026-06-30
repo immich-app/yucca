@@ -1,11 +1,12 @@
 locals {
   site_id = data.netbox_site.this.id
 
-  # Per-cluster networks (public/private) for VLANs + prefixes + gateways.
+  # Per-cluster networks (public/private/host-mgmt) for VLANs + prefixes + gateways.
   networks = merge([
     for cid, c in var.clusters : {
-      "${cid}-public"  = { vid = c.public_vlan_id, role = "PUBLIC", prefix = c.public_cidr, gateway = c.public_gateway }
-      "${cid}-private" = { vid = c.private_vlan_id, role = "PRIVATE", prefix = c.private_cidr, gateway = c.private_gateway }
+      "${cid}-public"    = { vid = c.public_vlan_id, role = "PUBLIC", prefix = c.public_cidr, gateway = c.public_gateway }
+      "${cid}-private"   = { vid = c.private_vlan_id, role = "PRIVATE", prefix = c.private_cidr, gateway = c.private_gateway }
+      "${cid}-host_mgmt" = { vid = c.host_mgmt_vlan_id, role = "HOST-MGMT", prefix = c.host_mgmt_cidr, gateway = c.host_mgmt_gateway }
     }
   ]...)
 }

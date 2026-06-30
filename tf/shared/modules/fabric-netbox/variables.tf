@@ -38,13 +38,16 @@ variable "global_vlans" {
 variable "clusters" {
   description = "Per-cluster networks (keyed by cluster ordinal as string)."
   type = map(object({
-    cluster_supernet = string
-    public_cidr      = string
-    private_cidr     = string
-    public_vlan_id   = number
-    private_vlan_id  = number
-    public_gateway   = string
-    private_gateway  = string
+    cluster_supernet  = string
+    public_cidr       = string
+    private_cidr      = string
+    host_mgmt_cidr    = string
+    public_vlan_id    = number
+    private_vlan_id   = number
+    host_mgmt_vlan_id = number
+    public_gateway    = string
+    private_gateway   = string
+    host_mgmt_gateway = string
   }))
 }
 

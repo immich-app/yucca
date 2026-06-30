@@ -48,6 +48,17 @@ variable "mgmt_vlan_id" {
   description = "Site-global management VLAN id to stretch."
 }
 
+variable "host_mgmt_vlan_id" {
+  type        = number
+  description = "Per-cluster host-management VLAN id to stretch (cls1 -> 124)."
+}
+
+variable "mgmt_node_ports" {
+  type        = list(string)
+  default     = ["et-1/0/3:0", "et-0/0/3:0"]
+  description = "Spine ports the management nodes attach to (mgmt-1, mgmt-2), each a single-port trunk of the stretched VLANs. One channelized port-3 leg per VC member."
+}
+
 variable "mgmt_trusted_sources" {
   type        = list(string)
   default     = ["10.40.5.0/24", "10.254.0.0/15", "100.64.0.0/10", "127.0.0.0/8"]
