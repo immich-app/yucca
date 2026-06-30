@@ -54,6 +54,7 @@ locals {
   site_id       = lookup(local.region_meta, "site_id", null)
   datacenter    = lookup(local.region_meta, "datacenter", null)
   provider_code = lookup(local.region_meta, "provider_code", null)
+  region_code   = lookup(local.region_meta, "region_code", null)
   domain        = lookup(local.region_meta, "domain", null)
 }
 
@@ -100,5 +101,6 @@ inputs = {
   site_id       = local.site_id
   datacenter    = local.datacenter
   provider_code = local.provider_code
+  region_code   = local.region_code
   domain        = local.domain
 }

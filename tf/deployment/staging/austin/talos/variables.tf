@@ -154,7 +154,7 @@ variable "netbird_operator_api_token" {
 }
 
 variable "clusters" {
-  description = "Map of bare-metal Talos cluster specs keyed by short cluster name. Declarative: add/modify an entry in clusters.auto.tfvars + tf:apply."
+  description = "Map of bare-metal Talos cluster specs keyed by themed cluster name (Star Wars; e.g. 'luke'). Declarative: add/modify an entry in clusters.auto.tfvars + tf:apply."
   type = map(object({
     talos_version      = string
     kubernetes_version = optional(string)

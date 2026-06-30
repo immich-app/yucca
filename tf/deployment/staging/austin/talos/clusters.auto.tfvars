@@ -7,7 +7,9 @@
 # reachable across the install reboot.
 
 clusters = {
-  yucca-staging = {
+  # Star Wars-themed cluster name (staging = luke). Node hostnames derive as
+  # yucca-int-aus-luke-k8s-<name> (name auto-picked from the shared inventory).
+  luke = {
     talos_version      = "1.13.4" # latest stable (v1.13.4); default k8s = 1.36.1
     kubernetes_version = "v1.36.1"
 
@@ -105,9 +107,9 @@ clusters = {
     }
 
     nodes = [
-      { name = "staging-cp1", role = "control-plane", address = "10.10.10.47" },
-      { name = "staging-cp2", role = "control-plane", address = "10.10.10.242" },
-      { name = "staging-cp3", role = "control-plane", address = "10.10.10.117" },
+      { role = "control-plane", address = "10.10.10.47" },
+      { role = "control-plane", address = "10.10.10.242" },
+      { role = "control-plane", address = "10.10.10.117" },
     ]
   }
 }

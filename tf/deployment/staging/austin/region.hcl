@@ -7,6 +7,7 @@ locals {
   role          = "primary"
   site_id       = null # austin is not a fabric-managed site (no switch fabric)
   datacenter    = "austin"
-  provider_code = "int"
+  provider_code = "int" # 3-letter provider segment of node hostnames
+  region_code   = "aus" # 3-letter region segment of node hostnames
   domain        = "staging.austin.int.futo.cloud"
 }

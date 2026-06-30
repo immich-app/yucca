@@ -1,6 +1,37 @@
 variable "cluster_name" {
-  description = "Short cluster identifier (e.g., yucca-staging). Drives the Talos cluster name + node hostname prefix is supplied per-node in `nodes`."
+  description = "Themed cluster name (Star Wars for k8s, e.g. 'luke'/'father'). Used as the Talos cluster name + the <clustername> segment of each node hostname."
   type        = string
+}
+
+# Node hostname convention: <product>-<provider>-<region>-<clustername>-<role>-<nodename>
+#   e.g. yucca-int-aus-luke-k8s-<random>. provider/region are the 3-letter codes
+#   from the region's region.hcl; <nodename> auto-derives from the shared inventory.
+variable "product" {
+  description = "Product segment of node hostnames."
+  type        = string
+  default     = "yucca"
+}
+
+variable "provider_code" {
+  description = "3-letter provider segment of node hostnames (region.hcl provider_code, e.g. 'int' / 'htz')."
+  type        = string
+}
+
+variable "region_code" {
+  description = "3-letter region segment of node hostnames (region.hcl region_code, e.g. 'aus' / 'fsn')."
+  type        = string
+}
+
+variable "role_in_hostname" {
+  description = "Workload-role segment of node hostnames ('k8s' for Talos clusters). Distinct from the per-node control-plane/worker role."
+  type        = string
+  default     = "k8s"
+}
+
+variable "name_seed" {
+  description = "Seed for the per-node random name pick (shared node-names inventory). Do NOT change once nodes are deployed (renames every auto-named node)."
+  type        = string
+  default     = "v1"
 }
 
 variable "talos_version" {
@@ -79,7 +110,7 @@ variable "nodes" {
     and Terraform stays reachable across the install reboot).
   EOT
   type = list(object({
-    name    = string
+    name    = optional(string) # explicit hostname override; null = auto-pick from the shared inventory
     role    = optional(string, "control-plane")
     address = string
   }))

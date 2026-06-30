@@ -187,3 +187,19 @@ highest tag to staging → production is gated behind a reviewed `promote-produc
   trailing commas, width 120.
 - Generated files are eslint-ignored: `**/fetch-client.ts`, `packages/web/src/locales`, `dist`,
   `build`, `.svelte-kit`.
+
+### Naming
+
+- **Cluster names are themed by workload.** Kubernetes clusters → **Star Wars** (`luke` =
+  staging, `father` = the soon-to-be prod). Ceph clusters → **Dune** (`sietch`, `spice`, …).
+  Choose the next themed name when standing up a cluster; it's the Talos/Ceph cluster name +
+  the `<clustername>` hostname segment.
+- **Node hostnames** follow `<product>-<provider>-<region>-<clustername>-<role>-<nodename>` —
+  e.g. a staging Talos node is `yucca-int-aus-luke-k8s-<word>`:
+  - `product` = `yucca`; `role` = the workload segment (`k8s` for Talos nodes, `ceph` for Ceph).
+  - `provider` / `region` = the **3-letter** `provider_code` / `region_code` from the region's
+    `region.hcl` (austin = `int`/`aus`, htz-fsn1 = `htz`/`fsn`).
+  - `<clustername>` = the themed cluster name (above).
+  - `<nodename>` = auto-picked from the shared name inventory
+    (`tf/shared/modules/node-names/wordlist.txt`) — deterministic per cluster, unique within it;
+    pass an explicit node `name` to override.

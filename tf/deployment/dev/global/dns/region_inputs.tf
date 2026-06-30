@@ -51,6 +51,12 @@ variable "provider_code" {
   default     = null
 }
 
+variable "region_code" {
+  description = "3-letter region segment of node hostnames (null for global)."
+  type        = string
+  default     = null
+}
+
 variable "domain" {
   description = "Region FQDN suffix (null for global)."
   type        = string

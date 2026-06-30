@@ -3,6 +3,8 @@ module "cluster" {
   source   = "../../../../shared/modules/talos-baremetal"
 
   cluster_name       = each.key
+  provider_code      = var.provider_code
+  region_code        = var.region_code
   talos_version      = each.value.talos_version
   kubernetes_version = each.value.kubernetes_version
   talos_schematic_id = each.value.talos_schematic_id

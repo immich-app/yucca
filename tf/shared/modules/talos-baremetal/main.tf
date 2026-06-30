@@ -11,17 +11,35 @@
 # kernel `ip=` cmdline. Nodes are dialed directly at their maintenance IP,
 # which is also pinned as the post-install static IP on the bond.
 
+# Per-node names from the shared inventory (operator override per node, else auto).
+module "names" {
+  source       = "../node-names"
+  cluster_name = var.cluster_name
+  name_seed    = var.name_seed
+  names        = [for n in var.nodes : n.name]
+}
+
 locals {
   cluster_endpoint = coalesce(var.cluster_endpoint, "https://${var.cluster_vip}:6443")
 
   # Prefix length from the subnet CIDR (e.g. "24" from "10.10.10.0/24").
   netmask = split("/", var.subnet_cidr)[1]
 
-  # Stable per-name maps (TF map iteration is alphabetical by key, so plan
+  # Each node's hostname per the fleet convention:
+  #   <product>-<provider>-<region>-<clustername>-<role>-<nodename>
+  #   e.g. yucca-int-aus-luke-k8s-<word>. <nodename> = nodes[i].name or auto-picked.
+  nodes_named = [
+    for i, n in var.nodes : merge(n, {
+      role     = coalesce(n.role, "control-plane")
+      hostname = "${var.product}-${var.provider_code}-${var.region_code}-${var.cluster_name}-${var.role_in_hostname}-${module.names.resolved[i]}"
+    })
+  ]
+
+  # Stable per-hostname maps (TF map iteration is alphabetical by key, so plan
   # ordering is deterministic across runs).
-  node_map        = { for n in var.nodes : n.name => n }
-  cp_node_map     = { for k, n in local.node_map : k => n if coalesce(n.role, "control-plane") == "control-plane" }
-  worker_node_map = { for k, n in local.node_map : k => n if coalesce(n.role, "control-plane") == "worker" }
+  node_map        = { for n in local.nodes_named : n.hostname => n }
+  cp_node_map     = { for k, n in local.node_map : k => n if n.role == "control-plane" }
+  worker_node_map = { for k, n in local.node_map : k => n if n.role == "worker" }
 
   cp_addresses = [for k, n in local.cp_node_map : n.address]
 
@@ -158,7 +176,7 @@ locals {
         apiVersion = "v1alpha1"
         kind       = "HostnameConfig"
         auto       = "off"
-        hostname   = n.name
+        hostname   = n.hostname
       }),
     ]
   }
