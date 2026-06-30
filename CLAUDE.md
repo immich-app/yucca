@@ -84,6 +84,22 @@ mise mgmt:render-inventory / mgmt:ansible        # render + converge management 
 
 `tf:*` wrap terragrunt in `tf/op-run.sh` (injects the 1P superuser token from `tf/.env`).
 
+> **CI owns terraform applies.** Do **not** run `mise tf:apply` (or `infra:apply`) by
+> hand — `terraform`/`terragrunt` applies are run by CI (`.github/workflows/infra.yml`)
+> on merge to main. Locally you may `tf:plan` to preview, but never apply. (Also: the
+> `tf:*` tasks inherit a stray `AWS_CA_BUNDLE=~/.config/homelab/root-ca.crt` from the
+> shell that breaks the OVH S3 state backend — unset it if you plan locally.)
+>
+> **NetBird futo-org provider — `netbird_group` resources bug (fixed in 1.0.2):**
+> `registry.terraform.io/futo-org/netbird` **≤ 1.0.1** could not UPDATE/DELETE a
+> `netbird_group` that had network resources tagged into it — the TF→API path decoded
+> the `resources` list of `{id,type}` objects into `[]map[string]string` ("cannot
+> reflect tftypes.Object … into a map"), so a resource-tag group (e.g. htz-fsn1
+> `resources`) couldn't be renamed in place. **Fixed in 1.0.2** — we own the provider
+> (`../terraform-provider-netbird`); stacks pin `version = "1.0.2"`. Renaming a setup
+> key still **forces replacement** (the NetBird API can't rename keys), regenerating
+> its value.
+
 ## Application architecture
 
 **Backend services are NestJS 11 + TypeScript**, sharing patterns: controllers → services →
@@ -171,3 +187,19 @@ highest tag to staging → production is gated behind a reviewed `promote-produc
   trailing commas, width 120.
 - Generated files are eslint-ignored: `**/fetch-client.ts`, `packages/web/src/locales`, `dist`,
   `build`, `.svelte-kit`.
+
+### Naming
+
+- **Cluster names are themed by workload.** Kubernetes clusters → **Star Wars** (`luke` =
+  staging, `father` = the soon-to-be prod). Ceph clusters → **Dune** (`sietch`, `spice`, …).
+  Choose the next themed name when standing up a cluster; it's the Talos/Ceph cluster name +
+  the `<clustername>` hostname segment.
+- **Node hostnames** follow `<product>-<provider>-<region>-<clustername>-<role>-<nodename>` —
+  e.g. a staging Talos node is `yucca-int-aus-luke-k8s-<word>`:
+  - `product` = `yucca`; `role` = the workload segment (`k8s` for Talos nodes, `ceph` for Ceph).
+  - `provider` / `region` = the **3-letter** `provider_code` / `region_code` from the region's
+    `region.hcl` (austin = `int`/`aus`, htz-fsn1 = `htz`/`fsn`).
+  - `<clustername>` = the themed cluster name (above).
+  - `<nodename>` = auto-picked from the shared name inventory
+    (`tf/shared/modules/node-names/wordlist.txt`) — deterministic per cluster, unique within it;
+    pass an explicit node `name` to override.
