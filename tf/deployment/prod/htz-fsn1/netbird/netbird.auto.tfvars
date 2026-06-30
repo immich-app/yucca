@@ -10,11 +10,11 @@
 # routed-subnet tag the site Network resources (netbird.tf) are tagged into;
 # it replaced the retired shared "yucca_resource" tag.
 groups = {
-  ci           = { resource = true } # ephemeral CI runners → YUCCA_PROD_HTZ_FSN1_CI
+  ci           = { resource = true } # ephemeral CI runners → yucca-prod-htz-fsn1-ci
   mgmt         = { resource = true } # management nodes (ansible); also the route peers
-  talos        = { resource = true } # Talos cluster nodes → YUCCA_PROD_HTZ_FSN1_TALOS
+  talos        = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
   k8s_operator = { resource = true } # in-cluster kubernetes operator
-  resources    = { resource = true } # routed-subnet tag → YUCCA_PROD_HTZ_FSN1_RESOURCES
+  resources    = { resource = true } # routed-subnet tag → yucca-prod-htz-fsn1-resources (Network resources tag in)
 }
 
 setup_keys = {

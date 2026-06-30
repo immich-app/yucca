@@ -84,6 +84,22 @@ mise mgmt:render-inventory / mgmt:ansible        # render + converge management 
 
 `tf:*` wrap terragrunt in `tf/op-run.sh` (injects the 1P superuser token from `tf/.env`).
 
+> **CI owns terraform applies.** Do **not** run `mise tf:apply` (or `infra:apply`) by
+> hand — `terraform`/`terragrunt` applies are run by CI (`.github/workflows/infra.yml`)
+> on merge to main. Locally you may `tf:plan` to preview, but never apply. (Also: the
+> `tf:*` tasks inherit a stray `AWS_CA_BUNDLE=~/.config/homelab/root-ca.crt` from the
+> shell that breaks the OVH S3 state backend — unset it if you plan locally.)
+>
+> **NetBird futo-org provider — `netbird_group` resources bug (fixed in 1.0.2):**
+> `registry.terraform.io/futo-org/netbird` **≤ 1.0.1** could not UPDATE/DELETE a
+> `netbird_group` that had network resources tagged into it — the TF→API path decoded
+> the `resources` list of `{id,type}` objects into `[]map[string]string` ("cannot
+> reflect tftypes.Object … into a map"), so a resource-tag group (e.g. htz-fsn1
+> `resources`) couldn't be renamed in place. **Fixed in 1.0.2** — we own the provider
+> (`../terraform-provider-netbird`); stacks pin `version = "1.0.2"`. Renaming a setup
+> key still **forces replacement** (the NetBird API can't rename keys), regenerating
+> its value.
+
 ## Application architecture
 
 **Backend services are NestJS 11 + TypeScript**, sharing patterns: controllers → services →

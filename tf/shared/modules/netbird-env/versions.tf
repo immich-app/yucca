@@ -9,7 +9,7 @@ terraform {
       # Only published to the Terraform registry, so the source is fully
       # qualified — OpenTofu would otherwise look it up on registry.opentofu.org.
       source  = "registry.terraform.io/futo-org/netbird"
-      version = "~> 1.0"
+      version = "1.0.2" # pinned: 1.0.2 fixes the group resources TF→API decode (rename of groups with tagged resources)
     }
     # Writes minted setup keys into the per-env yucca_tf_<env> vault as the
     # source-of-truth record. Auth via OP_SERVICE_ACCOUNT_TOKEN (op run).

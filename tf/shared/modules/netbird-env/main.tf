@@ -7,13 +7,23 @@
 # module only declares the dependency in versions.tf).
 
 locals {
-  # DERIVED names are normalized to UPPER_SNAKE: uppercased, hyphens → underscores.
-  # e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" → "YUCCA_PROD_HTZ_FSN1_MGMT".
-  # An explicit `name` override is taken VERBATIM (not uppercased), for groups that
-  # must keep an exact pre-existing name (e.g. one created outside this module).
-  # Network display names are likewise verbatim.
+  # DERIVED NetBird object names are normalized to lowercase-kebab: lowercased,
+  # underscores → hyphens. e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" →
+  # "yucca-prod-htz-fsn1-mgmt"; key "k8s_operator" → "yucca-prod-htz-fsn1-k8s-operator".
+  # An explicit `name` override is taken VERBATIM, for objects that must keep an
+  # exact pre-existing name (e.g. one created outside this module).
+  # NB: the 1Password setup-key item TITLES are deliberately NOT kebab — they stay
+  # UPPER_SNAKE (see setup_key_op_titles below) because CI / ansible / the talos
+  # stack read them by string via op:// refs.
   group_names = {
-    for k, g in var.groups : k => coalesce(g.name, upper(replace("${var.name_prefix}_${k}", "-", "_")))
+    for k, g in var.groups : k => coalesce(g.name, lower(replace("${var.name_prefix}_${k}", "_", "-")))
+  }
+
+  # UPPER_SNAKE 1Password item titles for the minted setup keys, kept stable
+  # (decoupled from the now-kebab NetBird object name) so external op:// consumers
+  # keep resolving. e.g. key "mgmt" → "NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY".
+  setup_key_op_titles = {
+    for k, s in var.setup_keys : k => "NETBIRD_${upper(replace("${var.name_prefix}_${k}", "-", "_"))}_SETUP_KEY"
   }
 
   # Logical key → NetBird group ID, covering both the groups this layer owns and
@@ -33,7 +43,7 @@ locals {
         description = r.description
         groups      = r.groups
         enabled     = r.enabled
-        name        = upper(replace(coalesce(r.name, "${nk}_${rk}"), "-", "_"))
+        name        = lower(replace(coalesce(r.name, "${nk}_${rk}"), "_", "-"))
       }
     }
   ]...)
@@ -59,7 +69,7 @@ resource "netbird_group" "this" {
 resource "netbird_setup_key" "this" {
   for_each = var.setup_keys
 
-  name                   = upper(replace("${var.name_prefix}_${each.key}", "-", "_"))
+  name                   = lower(replace("${var.name_prefix}_${each.key}", "_", "-"))
   type                   = each.value.type
   expiry_seconds         = each.value.expiry_seconds
   usage_limit            = each.value.usage_limit
@@ -72,14 +82,14 @@ resource "netbird_setup_key" "this" {
 resource "netbird_policy" "this" {
   for_each = var.policies
 
-  name        = upper(replace("${var.name_prefix}_${each.key}", "-", "_"))
+  name        = lower(replace("${var.name_prefix}_${each.key}", "_", "-"))
   description = each.value.description
   enabled     = each.value.enabled
 
   dynamic "rule" {
     for_each = each.value.rules
     content {
-      name          = upper(replace(rule.value.name, "-", "_"))
+      name          = lower(replace(rule.value.name, "_", "-"))
       action        = rule.value.action
       protocol      = rule.value.protocol
       bidirectional = rule.value.bidirectional
@@ -108,7 +118,7 @@ data "netbird_group" "yucca_users" {
 resource "netbird_policy" "yucca_to_resources" {
   count = local.manage_resource_policy ? 1 : 0
 
-  name        = upper(replace("${var.name_prefix}_yucca_to_resources", "-", "_"))
+  name        = lower(replace("${var.name_prefix}_yucca_to_resources", "_", "-"))
   description = "${var.yucca_users_group} users → every yucca-tagged (resource=true) group in this layer: peers + tagged resources (auto-derived)."
   enabled     = true
 
@@ -127,11 +137,11 @@ resource "netbird_policy" "yucca_to_resources" {
 # A Network groups one or more resources (subnets/hosts) reachable through a set
 # of routing peers (router.peer_groups — e.g. a site's mgmt nodes). resources[*]
 # .groups controls which peers may reach that subnet. The Network's display name
-# is the map key (or `name` override), uppercased but NOT underscore-normalized —
-# so human labels like "HTZ-FSN1" survive (hyphen kept).
+# is the lowercase-kebab map key (or `name` override) — e.g. key "HTZ-FSN1" →
+# "htz-fsn1". The map key itself is unchanged (resources address by network_id).
 resource "netbird_network" "this" {
   for_each    = var.networks
-  name        = coalesce(each.value.name, each.key)
+  name        = coalesce(each.value.name, lower(replace(each.key, "_", "-")))
   description = each.value.description
 }
 
@@ -167,10 +177,11 @@ resource "onepassword_item" "setup_key" {
   for_each = var.setup_keys
 
   vault = data.onepassword_vault.env.uuid
-  # Title derived from the (already UPPER_SNAKE) setup-key name so multiple sites
-  # writing to the SAME vault (prod: global + every site → yucca_tf_prod) never
-  # collide, e.g. "YUCCA_PROD_HTZ_FSN1_MGMT" → NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY.
-  title    = "NETBIRD_${netbird_setup_key.this[each.key].name}_SETUP_KEY"
+  # Title stays UPPER_SNAKE (decoupled from the now-kebab NetBird setup-key name)
+  # so external op:// consumers (CI, ansible, talos) keep resolving, and so multiple
+  # sites writing to the SAME vault (prod: global + every site → yucca_tf_prod)
+  # never collide. e.g. key "mgmt" → NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY.
+  title    = local.setup_key_op_titles[each.key]
   category = "password"
   password = netbird_setup_key.this[each.key].key
 

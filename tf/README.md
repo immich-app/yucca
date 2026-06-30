@@ -70,7 +70,7 @@ tf/
         │   ├── region.hcl           ← role + FQDN parts; site_id=40
         │   ├── mgmt-hosts.yaml      ← mgmt-host roster (region root; fabric + render read it)
         │   ├── fabric/              ← Junos switch fabric + NetBox + mgmt reprovision
-        │   └── netbird/             ← htz-fsn1 site NetBird layer (routed HTZ-FSN1 network)
+        │   └── netbird/             ← htz-fsn1 site NetBird layer (routed htz-fsn1 network)
         └── global/
             ├── region.hcl
             ├── terragrunt.hcl       ← account-wide prod NetBird (two-segment region-root stack)
@@ -397,10 +397,10 @@ Per env (and per prod site), the baseline groups are:
 
 | group | who | rendered (staging / prod htz-fsn1) |
 |---|---|---|
-| `ci` | ephemeral CI runners | `YUCCA_STAGING_CI` / `YUCCA_PROD_HTZ_FSN1_CI` |
-| `mgmt` | management nodes (configured via Ansible; also the route peers) | `YUCCA_STAGING_MGMT` / … |
-| `talos` | Talos cluster nodes | `YUCCA_STAGING_TALOS` / … |
-| `k8s_operator` | in-cluster kubernetes operator | `YUCCA_STAGING_K8S_OPERATOR` / … |
+| `ci` | ephemeral CI runners | `yucca-staging-ci` / `yucca-prod-htz-fsn1-ci` |
+| `mgmt` | management nodes (configured via Ansible; also the route peers) | `yucca-staging-mgmt` / … |
+| `talos` | Talos cluster nodes | `yucca-staging-talos` / … |
+| `k8s_operator` | in-cluster kubernetes operator | `yucca-staging-k8s-operator` / … |
 
 Logical keys (the tfvars map keys, e.g. `ci`) stay lowercase; **rendered NetBird
 names are UPPER_SNAKE** (uppercased, hyphens → underscores). CI is **per-env**
@@ -420,7 +420,7 @@ Staging is single-layer. **Prod is layered**: a `global` layer (reserved for
 account-wide / cross-region groups + policies) above per-region layers. The
 global layer is empty today — each region owns its own resource group and the
 `yucca → resources` policy is module-generated per layer (see below). Region
-groups are region-scoped (`YUCCA_PROD_<REGION>_<ROLE>`) so a network router's
+groups are region-scoped (`yucca-prod-<region>-<role>`) so a network router's
 peers are unambiguously *that region's* mgmt nodes. A region layer can still
 consume a global group via a terragrunt `dependency` on `prod/global` → the
 module's `external_groups` input, but none do today. The root terragrunt derives `stack` from the full sub-path,
@@ -434,19 +434,21 @@ rename (`YUCCA_STAGING_*`, `NETBIRD_YUCCA_PROD_HTZ_FSN1_*`): the `env`→`partit
 
 ### The `yucca` → yucca-tags access model
 
-`yucca` members reach everything tagged as a **yucca tag** (rendered names in caps):
+`yucca` members reach everything tagged as a **yucca tag** (NetBird object names are
+lowercase-kebab — e.g. `yucca-prod-htz-fsn1-mgmt`; the 1Password setup-key item
+titles stay UPPER_SNAKE, since CI/ansible/talos read them by `op://` string):
 
 - **`yucca`** — the existing **users** group (people). External (looked up by its
   actual name `yucca`); never managed here.
 - **yucca tags** — any group flagged **`resource = true`** in a layer's `groups`.
   This marks the group **yucca-reachable**; it applies to **peer/node groups**
-  (so a yucca member can SSH `YUCCA_PROD_HTZ_FSN1_MGMT`, the mgmt nodes) as well
-  as routed-subnet tags (`YUCCA_PROD_HTZ_FSN1_RESOURCES`, which the site's
+  (so a yucca member can SSH `yucca-prod-htz-fsn1-mgmt`, the mgmt nodes) as well
+  as routed-subnet tags (`yucca-prod-htz-fsn1-resources`, which the site's
   `netbird_network_resource`s are tagged into). Today every group a layer owns is
   flagged.
 
 For each layer that owns ≥1 yucca tag, the `netbird-env` module **auto-generates**
-a `<PREFIX>_YUCCA_TO_RESOURCES` policy (`bidirectional = false`) whose
+a `<prefix>-yucca-to-resources` policy (`bidirectional = false`) whose
 destinations are *all* of that layer's flagged groups — so flagging a group grants
 `yucca` users access to it (its peers and any tagged resources) with no policy to
 edit. The source is `var.yucca_users_group` (default `yucca`, looked up by name;
@@ -498,13 +500,13 @@ policy is *not* declared here: the module generates it from every group flagged
 
 ### Networks (prod htz-fsn1) — CIDRs propagated, not hardcoded
 
-The htz-fsn1 site layer exposes a NetBird **Network** named `HTZ-FSN1`: the
+The htz-fsn1 site layer exposes a NetBird **Network** named `htz-fsn1`: the
 `mgmt` group are the routing peers, and each routed subnet is a
 `netbird_network_resource`. The **CIDRs are derived from the same
 `fabric-addressing` module the fabric stack uses** (re-instantiated in the
 layer's `addressing.tf` — a pure, stateless module, so no duplication and no
 cross-stack coupling). Every resource is tagged into the site's own `resources`
-group, so access is the module-generated `YUCCA_PROD_HTZ_FSN1_YUCCA_TO_RESOURCES`
+group, so access is the module-generated `yucca-prod-htz-fsn1-yucca-to-resources`
 policy. The only per-site input is the site id (the CIDRs flow from it):
 
 ```hcl
