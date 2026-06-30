@@ -8,7 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: cnpg-operator
-    - name: longhorn
+    - name: openebs
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

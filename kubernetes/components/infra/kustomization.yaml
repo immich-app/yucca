@@ -1,7 +1,7 @@
 # Role-INDEPENDENT per-cluster infrastructure. Every cluster overlay pulls this
 # in via `components: [../../../components/infra, ...]`, regardless of whether
 # the region is primary or secondary. These are the platform layers the apps sit
-# on: the CNPG operator, block storage (longhorn), the network/ingress stack
+# on: the CNPG operator, node-local storage (OpenEBS LocalPV), the network/ingress stack
 # (cert-manager, cilium-lb, envoy gateway/proxy, httproutes, netbird-operator),
 # and observability agents (vmagent, victoria-logs-collector).
 #

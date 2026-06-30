@@ -1,0 +1,20 @@
+---
+# Spare-NVMe StorageClass (nvme0n1) — backs the Talos UserVolumeConfig
+# `local-hostpath` at /var/mnt/local-hostpath (staging/austin clusters.auto.tfvars).
+# This is the cluster-default class: the only persistent consumer (yucca-database
+# CNPG) and any future stateful workload land here on local NVMe.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-spare-disk
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+    openebs.io/cas-type: local
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: hostpath
+      - name: BasePath
+        value: /var/mnt/local-hostpath
+provisioner: openebs.io/local
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer

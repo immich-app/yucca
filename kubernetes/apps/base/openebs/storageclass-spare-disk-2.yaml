@@ -1,0 +1,18 @@
+---
+# Second spare-NVMe StorageClass (nvme1n1) — backs the Talos UserVolumeConfig
+# `local-hostpath-2` at /var/mnt/local-hostpath-2. Reserved for workloads that
+# want I/O isolation from the spare-disk pool; not the default class.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-spare-disk-2
+  annotations:
+    openebs.io/cas-type: local
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: hostpath
+      - name: BasePath
+        value: /var/mnt/local-hostpath-2
+provisioner: openebs.io/local
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer

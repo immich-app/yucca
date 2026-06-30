@@ -28,4 +28,8 @@ spec:
   values:
     instances: 3
     storage: 10Gi
-    storageClass: longhorn
+    # Node-local NVMe via OpenEBS LocalPV hostpath (no replicated block storage).
+    # CNPG provides HA at the app layer: primary + 2 streaming replicas, spread
+    # one-per-node by its default anti-affinity, each binding a local PV on its
+    # node (WaitForFirstConsumer).
+    storageClass: openebs-spare-disk
