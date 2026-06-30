@@ -1,3 +1,12 @@
+# Cluster renamed yucca-staging → luke (Star Wars theme). Move the existing module
+# instance to the new for_each key so it's a state rename, NOT a destroy+recreate —
+# preserving machine-secrets/kubeconfig so the kubernetes/helm providers keep working
+# (cluster_name + node hostnames still update as a rolling config change).
+moved {
+  from = module.cluster["yucca-staging"]
+  to   = module.cluster["luke"]
+}
+
 module "cluster" {
   for_each = var.clusters
   source   = "../../../../shared/modules/talos-baremetal"

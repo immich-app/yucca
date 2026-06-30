@@ -196,7 +196,7 @@ variable "clusters" {
     })
 
     nodes = list(object({
-      name    = string
+      name    = optional(string) # explicit hostname override; null = auto-pick from the shared inventory
       role    = optional(string, "control-plane")
       address = string
     }))
