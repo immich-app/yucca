@@ -19,7 +19,7 @@ variable "vault" {
 }
 
 variable "groups" {
-  description = "NetBird groups keyed by logical name. Groups start empty — membership comes from setup keys' auto_groups as peers register. Set `name` only to override the derived \"<NAME_PREFIX>_<KEY>\" (an override is normalized to UPPER_SNAKE too). Set `resource = true` to mark a group as a yucca *resource* group: every such group is auto-added as a destination of the generated yucca→resources policy (see var.yucca_users_group), so new resource groups are covered without editing a policy."
+  description = "NetBird groups keyed by logical name. Groups start empty — membership comes from setup keys' auto_groups as peers register. Set `name` only to override the derived \"<NAME_PREFIX>_<KEY>\" (an override is normalized to UPPER_SNAKE too). Set `resource = true` to mark a group as **yucca-reachable** (a \"yucca tag\"): yucca users are granted access to it — its peers (e.g. SSH to the mgmt/talos nodes) AND any network resources tagged into it — via the auto-generated yucca→resources policy (see var.yucca_users_group). Applies to peer/node groups, not just routed-subnet tags; flagging a group is all that's needed, no policy edit."
   type = map(object({
     name     = optional(string)
     resource = optional(bool, false)

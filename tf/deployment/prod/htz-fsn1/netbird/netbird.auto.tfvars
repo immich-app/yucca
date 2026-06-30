@@ -2,18 +2,19 @@
 # "YUCCA_PROD_HTZ_FSN1_"). Setup-key plaintext → the yucca_tf_prod vault. NetBird
 # is default-deny: a peer gets only the access its groups' policies grant.
 
+# Every group is a "yucca tag" (`resource = true`): the netbird-env module makes
+# yucca users able to reach each one — its peers (SSH to the nodes) and any network
+# resources tagged into it — via the auto-generated
+# YUCCA_PROD_HTZ_FSN1_YUCCA_TO_RESOURCES policy. (`resource = true` means
+# yucca-reachable here, not strictly a network-resource tag.) `resources` is the
+# routed-subnet tag the site Network resources (netbird.tf) are tagged into;
+# it replaced the retired shared "yucca_resource" tag.
 groups = {
-  ci           = {} # ephemeral CI runners → YUCCA_PROD_HTZ_FSN1_CI
-  mgmt         = {} # management nodes (configured via ansible); also the route peers
-  talos        = {} # Talos cluster nodes → YUCCA_PROD_HTZ_FSN1_TALOS
-  k8s_operator = {} # in-cluster kubernetes operator → YUCCA_PROD_HTZ_FSN1_K8S_OPERATOR
-
-  # Site resource tag → YUCCA_PROD_HTZ_FSN1_RESOURCES. The routed network resources
-  # (netbird.tf) are tagged into it. `resource = true` makes the netbird-env module
-  # auto-add it to the generated YUCCA_PROD_HTZ_FSN1_YUCCA_TO_RESOURCES policy, so
-  # yucca users reach every routed subnet. (Replaces the retired shared
-  # "yucca_resource" tag — each site now owns its resource group.)
-  resources = { resource = true }
+  ci           = { resource = true } # ephemeral CI runners → YUCCA_PROD_HTZ_FSN1_CI
+  mgmt         = { resource = true } # management nodes (ansible); also the route peers
+  talos        = { resource = true } # Talos cluster nodes → YUCCA_PROD_HTZ_FSN1_TALOS
+  k8s_operator = { resource = true } # in-cluster kubernetes operator
+  resources    = { resource = true } # routed-subnet tag → YUCCA_PROD_HTZ_FSN1_RESOURCES
 }
 
 setup_keys = {

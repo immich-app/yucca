@@ -38,9 +38,10 @@ locals {
     }
   ]...)
 
-  # Groups this layer owns that are flagged `resource = true`: the destinations of
-  # the auto-generated yucca→resources policy. New resource groups are picked up
-  # here automatically — nothing to wire into a policy by hand.
+  # Groups this layer owns that are flagged `resource = true` ("yucca tags"): the
+  # destinations of the auto-generated yucca→resources policy. `resource = true`
+  # means yucca-reachable — a peer/node group (its peers) or a network-resource
+  # tag (its routed resources). Flagged groups are picked up here automatically.
   resource_group_keys = [for k, g in var.groups : k if g.resource]
   resource_group_ids  = [for k in local.resource_group_keys : netbird_group.this[k].id]
 
@@ -91,13 +92,14 @@ resource "netbird_policy" "this" {
   }
 }
 
-# ─── yucca users → every resource group (auto-derived) ───────────────────
+# ─── yucca users → every yucca-tagged group (auto-derived) ───────────────
 # Members of the account-wide `yucca` users group reach every group flagged
-# `resource = true` in this layer. Destinations are derived from those groups
-# (local.resource_group_ids), so any new resource group is covered without
-# touching a policy. bidirectional = false → yucca users only INITIATE; the
-# resource groups are never a source, so resources can't reach back or each
-# other. The users group is looked up by name (it lives outside this stack).
+# `resource = true` in this layer — its peers (e.g. SSH to the mgmt/talos nodes)
+# AND any network resources tagged into it. Destinations are derived from those
+# groups (local.resource_group_ids), so flagging a new group covers it without
+# touching a policy. bidirectional = false → yucca users only INITIATE the
+# connection (this policy never makes the tagged groups a source). The users
+# group is looked up by name (it lives outside this stack).
 data "netbird_group" "yucca_users" {
   count = local.manage_resource_policy ? 1 : 0
   name  = var.yucca_users_group
@@ -107,7 +109,7 @@ resource "netbird_policy" "yucca_to_resources" {
   count = local.manage_resource_policy ? 1 : 0
 
   name        = upper(replace("${var.name_prefix}_yucca_to_resources", "-", "_"))
-  description = "${var.yucca_users_group} users → every resource=true group in this layer (auto-derived)."
+  description = "${var.yucca_users_group} users → every yucca-tagged (resource=true) group in this layer: peers + tagged resources (auto-derived)."
   enabled     = true
 
   rule {
