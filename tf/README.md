@@ -432,26 +432,28 @@ gone.) Rendered NetBird object names and 1P item titles are unchanged by the
 rename (`YUCCA_STAGING_*`, `NETBIRD_YUCCA_PROD_HTZ_FSN1_*`): the `env`→`partition`
 / `site`→`region` swap keeps the same string values.
 
-### The `yucca` → resource-groups access model
+### The `yucca` → yucca-tags access model
 
-Users reach routed subnets through two kinds of group (rendered names in caps):
+`yucca` members reach everything tagged as a **yucca tag** (rendered names in caps):
 
 - **`yucca`** — the existing **users** group (people). External (looked up by its
   actual name `yucca`); never managed here.
-- **resource groups** — any group flagged **`resource = true`** in a layer's
-  `groups`. Each layer owns its own (e.g. htz-fsn1's `resources` →
-  `YUCCA_PROD_HTZ_FSN1_RESOURCES`); every routed `netbird_network_resource` is
-  tagged into one.
+- **yucca tags** — any group flagged **`resource = true`** in a layer's `groups`.
+  This marks the group **yucca-reachable**; it applies to **peer/node groups**
+  (so a yucca member can SSH `YUCCA_PROD_HTZ_FSN1_MGMT`, the mgmt nodes) as well
+  as routed-subnet tags (`YUCCA_PROD_HTZ_FSN1_RESOURCES`, which the site's
+  `netbird_network_resource`s are tagged into). Today every group a layer owns is
+  flagged.
 
-For each layer that owns ≥1 resource group, the `netbird-env` module
-**auto-generates** a `<PREFIX>_YUCCA_TO_RESOURCES` policy (`bidirectional =
-false`) whose destinations are *all* of that layer's resource groups — so adding
-a resource group automatically grants `yucca` users access to it, with no policy
-to edit. The source is `var.yucca_users_group` (default `yucca`, looked up by
-name; set null to opt a layer out). Because resource groups are only ever policy
-*destinations*, the tagged resources can't reach each other (or call back to
-users). The union of these per-layer policies is the account-wide "yucca reaches
-every resource group we create" guarantee.
+For each layer that owns ≥1 yucca tag, the `netbird-env` module **auto-generates**
+a `<PREFIX>_YUCCA_TO_RESOURCES` policy (`bidirectional = false`) whose
+destinations are *all* of that layer's flagged groups — so flagging a group grants
+`yucca` users access to it (its peers and any tagged resources) with no policy to
+edit. The source is `var.yucca_users_group` (default `yucca`, looked up by name;
+set null to opt a layer out). `bidirectional = false` means yucca users only
+*initiate* — this policy never makes a tagged group a source. The union of these
+per-layer policies is the account-wide "yucca reaches every yucca tag we create"
+guarantee.
 
 > The former single shared **`yucca_resource`** tag in `prod/global` (one
 > account-wide `yucca → yucca_resource` policy, consumed by sites via a terragrunt
@@ -468,8 +470,11 @@ Groups, setup keys, policies and networks reference groups by **logical key**,
 never opaque NetBird IDs:
 
 ```hcl
-groups = { ci = {}, mgmt = {}, talos = {}, k8s_operator = {},
-           resources = { resource = true } } # resource group → auto yucca→resources policy
+# resource = true ⇒ yucca-reachable ("yucca tag"); here every group is flagged,
+# so yucca users reach all of them (SSH the nodes + the routed subnets)
+groups = { ci = { resource = true }, mgmt = { resource = true },
+           talos = { resource = true }, k8s_operator = { resource = true },
+           resources = { resource = true } }
 
 setup_keys = {
   ci           = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
