@@ -38,6 +38,10 @@ resource "junos_interface_physical" "ae0" {
   trunk         = true
   vlan_members  = local.trunk_members
   storm_control = "default"
+
+  # jeremmfr commits per-resource: a trunk member is rejected if the VLAN isn't
+  # on the box yet, so create the VLANs first.
+  depends_on = [junos_vlan.this]
 }
 
 # Management-node ports (mgmt-1, mgmt-2) — one channelized port-3 leg per VC member,
@@ -47,6 +51,8 @@ resource "junos_interface_physical" "mgmt_node" {
   name         = each.value
   trunk        = true
   vlan_members = local.trunk_members
+
+  depends_on = [junos_vlan.this]
 }
 
 # Preserve the previously-single mgmt-1 port resource (don't destroy/recreate it).
