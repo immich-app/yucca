@@ -254,7 +254,7 @@ Per `stack_type` **payload**:
 | `ceph` | `*/ceph` | `ceph_clusters: { <name> => { cluster_name, fqdn, rgw_s3_endpoint, health_cred_ref, s3_admin_cred_refs, secret_item_titles, bootstrap_host } }` |
 | `dns` | `*/dns` | `dns: { provider, zone, record_fqdns, api_token_ref }` |
 | `netbird` | `*/netbird`, `prod/global` | `netbird: { name_prefix, vault, group_ids, policy_ids, network_ids, setup_key_item_titles }` |
-| `fabric` | `prod/htz-fsn1/fabric` | `fabric: { site_id, api_cidr, mgmt_cidr, cluster_cidrs }` |
+| `fabric` | `prod/htz-fsn1/fabric` | `fabric: { site_id, kube_cidr, mgmt_cidr, cluster_cidrs }` |
 
 The talos stacks persist their kube/talosconfig into 1Password
 (`onepassword_item`, mirroring the JWT-keypair / netbird-setup-key pattern) so

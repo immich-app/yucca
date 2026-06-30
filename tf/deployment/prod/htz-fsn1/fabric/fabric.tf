@@ -17,7 +17,7 @@ module "core" {
   public_vlan_id    = module.addr_cls1.public_vlan_id
   private_vlan_id   = module.addr_cls1.private_vlan_id
   host_mgmt_vlan_id = module.addr_cls1.host_mgmt_vlan_id
-  api_vlan_id       = module.addr_site.api_vlan_id
+  kube_vlan_id      = module.addr_site.kube_vlan_id
   mgmt_vlan_id      = module.addr_site.mgmt_vlan_id
 
   vc_member_serials = var.spine_vc_serials
@@ -54,7 +54,7 @@ module "cluster_cls1" {
   public_vlan_id    = module.addr_cls1.public_vlan_id
   private_vlan_id   = module.addr_cls1.private_vlan_id
   host_mgmt_vlan_id = module.addr_cls1.host_mgmt_vlan_id
-  api_vlan_id       = module.addr_site.api_vlan_id
+  kube_vlan_id      = module.addr_site.kube_vlan_id
   mgmt_vlan_id      = module.addr_site.mgmt_vlan_id
   prefixlen         = module.addr_cls1.prefixlen
 

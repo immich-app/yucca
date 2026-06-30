@@ -78,12 +78,22 @@ output "mgmt_vlan_id" {
   description = "Site-global management VLAN id (== third octet of mgmt_cidr, e.g. 5)."
 }
 
-output "api_cidr" {
-  value       = local.api_cidr
-  description = "Site-global API network (10.<site>.<api_octet>.0/24)."
+output "kube_cidr" {
+  value       = local.kube_cidr
+  description = "Site-global Kubernetes node network 'kube' (10.<site>.<kube_octet>.0/24), a fabric VLAN."
 }
 
-output "api_vlan_id" {
-  value       = local.api_vlan_id
-  description = "Site-global API VLAN id (== api_octet, e.g. 10)."
+output "kube_vlan_id" {
+  value       = local.kube_vlan_id
+  description = "Site-global kube VLAN id (== kube_octet, e.g. 10)."
+}
+
+output "kube_cp_cidr" {
+  value       = local.kube_cp_cidr
+  description = "Site-global Kubernetes control-plane subnet 'kube-cp' (10.<site>.<kube_cp_octet>.0/24) — an isolated Hetzner Cloud private subnet for the CP VMs (etcd) + the API LB. NOT a fabric VLAN."
+}
+
+output "kube_cp_gateway" {
+  value       = local.kube_cp_gateway
+  description = "Hetzner Cloud Gateway (.1) for the kube-cp subnet."
 }

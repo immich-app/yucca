@@ -15,7 +15,7 @@ module "netbox" {
   # Site-global VLANs (present on every cluster).
   global_vlans = {
     MGMT = { vid = module.addr_site.mgmt_vlan_id, prefix = module.addr_site.mgmt_cidr }
-    API  = { vid = module.addr_site.api_vlan_id, prefix = module.addr_site.api_cidr }
+    KUBE = { vid = module.addr_site.kube_vlan_id, prefix = module.addr_site.kube_cidr }
   }
 
   clusters = {

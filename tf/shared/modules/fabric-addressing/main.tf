@@ -5,11 +5,22 @@ locals {
   spine_mgmt_ip = cidrhost(local.mgmt_cidr, 115) # site core spine vme (10.40.5.115)
 
   # Site-global infra VLANs (present on every cluster). VLAN id == third octet:
-  #   management  10.<site>.5.0/24            -> vlan 5
-  #   api         10.<site>.<api_octet>.0/24  -> vlan <api_octet> (default .10 -> vlan 10)
+  #   management  10.<site>.5.0/24             -> vlan 5
+  #   kube        10.<site>.<kube_octet>.0/24  -> vlan <kube_octet> (default .10 -> vlan 10)
   mgmt_vlan_id = tonumber(split(".", local.mgmt_cidr)[2]) # 5
-  api_cidr     = "10.${var.site_id}.${var.api_octet}.0/24"
-  api_vlan_id  = var.api_octet
+  kube_cidr    = "10.${var.site_id}.${var.kube_octet}.0/24"
+  kube_vlan_id = var.kube_octet
+
+  # Site-global Kubernetes control-plane subnet ("kube-cp"). NOT a Juniper fabric
+  # VLAN — it's a small, isolated Hetzner Cloud private subnet holding ONLY the
+  # cloud control-plane VMs (for etcd CP↔CP) + the Kubernetes API LB's private IP.
+  # The workers do NOT join it: CP↔worker control + worker→API ride the NetBird
+  # WireGuard mesh (node IPs are NetBird addresses), and worker↔worker east-west
+  # rides the `kube` fabric net at 50G. Carved from the site supernet only for
+  # collision-free IPAM; it is NEVER configured on the Junos switches.
+  #   kube-cp  10.<site>.<kube_cp_octet>.0/24  (Hetzner Cloud subnet, gw .1)
+  kube_cp_cidr    = "10.${var.site_id}.${var.kube_cp_octet}.0/24"
+  kube_cp_gateway = cidrhost(local.kube_cp_cidr, 1) # .1 — Hetzner Cloud Gateway
 
   has_cluster = var.cluster_id != null
 

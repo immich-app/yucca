@@ -1,0 +1,74 @@
+# Cilium for the hybrid prod cluster. Talos sets cni:none + proxy:disabled, so
+# nodes stay NotReady until this lands the datapath.
+#
+# Native routing + autoDirectNodeRoutes: all WORKERS share the kube VLAN-10 L2
+# (10.40.10.0/24), so Cilium installs a direct route to each peer's podCIDR via the
+# peer's fabric nodeIP — pod east-west rides the 50G fabric with NO overlay and NO
+# BGP. CPs run no workloads (no pod east-west), so the mixed CP nodeIP (hcloud
+# private) is harmless.
+#
+# securityContext + cgroup blocks are MANDATORY on Talos. Ref: Talos "Deploying Cilium".
+
+ipam:
+  mode: kubernetes
+
+routingMode: native
+ipv4NativeRoutingCIDR: ${pod_cidr}
+autoDirectNodeRoutes: true
+# Masquerade pod traffic leaving the native-routing CIDR (e.g. to the internet).
+enableIPv4Masquerade: true
+
+# No LoadBalancer service exposure yet (ingress comes with Flux later) — keep L2
+# announcements off so Cilium doesn't ARP for VIPs it shouldn't.
+l2announcements:
+  enabled: false
+
+# NORTH-SOUTH (future): the fabric leaf already speaks BGP (transit). When ingress
+# lands, enable the BGP control plane here and add CiliumBGPClusterConfig peering
+# the leaf IRB (10.40.10.1) to advertise LoadBalancer/ingress VIPs into the fabric
+# — no L2 announcements needed. East-west stays on autoDirectNodeRoutes above.
+# bgpControlPlane:
+#   enabled: true
+
+# kube-proxy replacement → Talos KubePrism (localhost:7445), stable apiserver
+# endpoint with no kube-proxy.
+kubeProxyReplacement: ${kube_proxy_replacement}
+%{ if kube_proxy_replacement ~}
+k8sServiceHost: localhost
+k8sServicePort: 7445
+%{ endif ~}
+
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+%{ if hubble ~}
+hubble:
+  relay:
+    enabled: true
+  ui:
+    enabled: false
+%{ else ~}
+hubble:
+  enabled: false
+%{ endif ~}

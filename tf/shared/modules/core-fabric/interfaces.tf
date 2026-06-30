@@ -1,7 +1,7 @@
 locals {
   trunk_members = [
     "vlan${var.public_vlan_id}", "vlan${var.private_vlan_id}",
-    "vlan${var.api_vlan_id}", "vlan${var.mgmt_vlan_id}",
+    "vlan${var.kube_vlan_id}", "vlan${var.mgmt_vlan_id}",
     "vlan${var.host_mgmt_vlan_id}",
   ]
 

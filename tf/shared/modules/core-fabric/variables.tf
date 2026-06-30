@@ -38,9 +38,9 @@ variable "breakout_speed" {
   description = "Per-channel speed for the breakout ports."
 }
 
-variable "api_vlan_id" {
+variable "kube_vlan_id" {
   type        = number
-  description = "Site-global API VLAN id to stretch (carried on all clusters)."
+  description = "Site-global kube VLAN id to stretch (carried on all clusters)."
 }
 
 variable "mgmt_vlan_id" {

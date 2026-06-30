@@ -16,9 +16,16 @@ locals {
   # group (flagged `resource = true` in netbird.auto.tfvars), so the module-
   # generated yucca→resources policy governs access — and resources never appear
   # as a policy source, so they can't reach each other.
+  # NB: the `kube-cp` network (the routed Hetzner Cloud Network for the cloud
+  # control-plane VMs) is deliberately NOT advertised here. The router peers are the
+  # mgmt nodes, which sit on the Juniper fabric and cannot reach the hcloud subnets.
+  # The CP plane is reached out-of-band via hcloud public IPs + the API LB's public
+  # frontend (both firewalled to the NetBird/operator ranges) — see the talos stack.
+  # TODO(prod): for a fully-private control plane, attach the mgmt nodes to the
+  # kube-cp vSwitch and add module.addr_site.kube_cp_cidr to this map.
   routed = {
     mgmt           = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
-    api            = { address = module.addr_site.api_cidr, description = "Site-global API network" }
+    kube           = { address = module.addr_site.kube_cidr, description = "Site-global kube node network (fabric)" }
     cls1_public    = { address = module.addr_cls1.public_cidr, description = "cls1 public cluster network" }
     cls1_private   = { address = module.addr_cls1.private_cidr, description = "cls1 private cluster network" }
     cls1_host_mgmt = { address = module.addr_cls1.host_mgmt_cidr, description = "cls1 host-management network" }
@@ -32,6 +39,22 @@ locals {
         for name, r in local.routed : name => {
           address     = r.address
           description = r.description
+          groups      = ["resources"]
+        }
+      }
+    }
+
+    # father's cloud control-plane subnet (kube-cp), routed via the CP nodes
+    # themselves (talos group) — they're the only peers on that hcloud subnet. This
+    # is how NetBird peers (operators) reach the private API LB (10.40.11.5) + the
+    # CPs. masquerade so return traffic is SNAT'd to the CP's kube-cp address.
+    "yucca-fsn-father-kube-cp" = {
+      description = "father control-plane subnet (kube-cp), routed via the CP nodes."
+      router      = { peer_groups = ["talos"], masquerade = true }
+      resources = {
+        kube_cp = {
+          address     = module.addr_site.kube_cp_cidr
+          description = "kube-cp: CP VMs (etcd) + the private API LB (10.40.11.5)."
           groups      = ["resources"]
         }
       }

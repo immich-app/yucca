@@ -36,7 +36,7 @@ policies = {
     }]
   }
 
-  # CI also reaches the routed site subnets (switch vme 10.40.5.0/24 + api +
+  # CI also reaches the routed site subnets (switch vme 10.40.5.0/24 + kube +
   # cluster nets), so the fabric jobs can NETCONF the switches over the overlay
   # (the switches are routed resources behind the mgmt peers, not peers
   # themselves). `resources` is this site's resource group — every routed
@@ -48,6 +48,33 @@ policies = {
       protocol      = "all"
       bidirectional = false
       sources       = ["ci"]
+      destinations  = ["resources"]
+    }]
+  }
+
+  # Cluster nodes talk to each other over the mesh (CP↔CP control; any node-level
+  # peer-to-peer). NetBird is default-deny, so without this talos peers can't reach
+  # one another even though they share the group.
+  talos-mesh = {
+    description = "Talos cluster nodes ↔ each other over the NetBird mesh."
+    rules = [{
+      name         = "talos-mesh"
+      protocol     = "all"
+      sources      = ["talos"]
+      destinations = ["talos"]
+    }]
+  }
+
+  # Talos nodes reach the routed site subnets (esp. the kube fabric net 10.40.10/24)
+  # via the mgmt route peers — this is how the cloud CPs' apiserver reaches the
+  # bare-metal worker kubelets.
+  talos-to-resources = {
+    description = "Talos nodes → routed site subnets (kube fabric etc.)."
+    rules = [{
+      name          = "talos-to-resources"
+      protocol      = "all"
+      bidirectional = false
+      sources       = ["talos"]
       destinations  = ["resources"]
     }]
   }
