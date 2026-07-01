@@ -105,13 +105,15 @@ locals {
   # CP node extras:
   #  • ip_forward — the CPs are the NetBird route peers for the kube-cp subnet
   #    (yucca-fsn-father-kube-cp), so they must forward overlay↔subnet traffic.
-  #  • extraHostEntries — resolve api_dns_name to the PRIVATE LB IP on the CPs (no
-  #    public DNS). api_dns_name is in the cert SANs, so the control-plane endpoint
-  #    stays fully private and the StaticEndpointController "no such host" churn stops.
+  #  • extraHostEntries — on the CPs, resolve api_dns_name to the LOCAL apiserver
+  #    (127.0.0.1, in the cert SANs). The CPs are targets of the hcloud LB and
+  #    hcloud forbids a target reaching the LB VIP (hairpin) — so CPs must NOT point
+  #    the endpoint at the LB. Off-node peers (workers/operators) resolve api_dns_name
+  #    via the NetBird yucca.internal zone → the private LB IP instead.
   cp_extras_patch = yamlencode({
     machine = {
       sysctls = { "net.ipv4.ip_forward" = "1" }
-      network = { extraHostEntries = [{ ip = local.lb_private_ip, aliases = [local.api_dns_name] }] }
+      network = { extraHostEntries = [{ ip = "127.0.0.1", aliases = [local.api_dns_name] }] }
     }
   })
 
