@@ -12,11 +12,27 @@
 ipam:
   mode: kubernetes
 
-routingMode: native
-ipv4NativeRoutingCIDR: ${pod_cidr}
-autoDirectNodeRoutes: true
-# Masquerade pod traffic leaving the native-routing CIDR (e.g. to the internet).
+# Tunnel (geneve) routing. The cluster spans two L2 domains — CPs on the kube-cp
+# hcloud net, workers on the fabric VLAN — bridged only by NetBird. Native routing
+# can't span that; a geneve overlay carries pod↔pod over whatever host-to-host path
+# exists (the 50G fabric for worker↔worker, NetBird for CP↔worker). East-west still
+# rides the fabric, just encapsulated (~50B overhead, negligible at 50G).
+routingMode: tunnel
+tunnelProtocol: geneve
+
+# Masquerade pod traffic to non-pod destinations (internet, node IPs); pod↔pod is
+# tunnelled so it isn't masqueraded. ip-masq-agent excludes only the pod CIDR, so the
+# geneve underlay + node-IP traffic egressing wt0 is SNAT'd to the node's NetBird
+# address (which WireGuard accepts). Requires BPF masquerade on.
 enableIPv4Masquerade: true
+bpf:
+  masquerade: true
+ipMasqAgent:
+  enabled: true
+  config:
+    nonMasqueradeCIDRs:
+      - ${pod_cidr}
+    masqLinkLocal: false
 
 # No LoadBalancer service exposure yet (ingress comes with Flux later) — keep L2
 # announcements off so Cilium doesn't ARP for VIPs it shouldn't.

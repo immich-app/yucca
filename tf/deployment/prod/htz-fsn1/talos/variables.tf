@@ -30,18 +30,25 @@ variable "cluster" {
     lb_ip_offset   = number # API LB private IP = cidrhost(kube_cp, offset)
     lb_public      = bool   # also expose a public frontend (operators/workers reach it)
 
-    # ── Bare-metal workers (Hetzner Robot, already in Talos maintenance mode) ──
-    # fabric_ip is BOTH the apid endpoint (reachable via NetBird→mgmt→fabric) AND
-    # the post-install kube (VLAN 10) address used for worker east-west + Cilium BGP.
+    # ── Bare-metal workers (Hetzner Robot) ────────────────────────────────────
+    # maint_ip = the Hetzner public IP the node comes up on in Talos maintenance
+    # mode (DHCP) — the endpoint for the one-time config apply. fabric_ip = the
+    # post-install kube (VLAN 10) address (nodeIP + worker east-west); the apiserver
+    # reaches the kubelet there via NetBird→mgmt, and the node reaches the apiserver
+    # over its own NetBird peer.
     workers = list(object({
       name      = optional(string) # hostname override; null = auto-pick
       fabric_ip = string           # 10.40.10.x on the kube fabric VLAN
+      maint_ip  = string           # Hetzner public IP (maintenance-mode apid endpoint)
       robot_id  = number           # Hetzner Robot server number (provisioning/doc)
     }))
-    # 2×25G NIC names enslaved into bond0 (carries the tagged kube VLAN).
-    worker_bond_interfaces = list(string)
+    # Fabric bond members. Prefer worker_bond_driver (a Talos deviceSelector by NIC
+    # driver, e.g. "bnxt_en") — robust across per-node PCI naming. worker_bond_interfaces
+    # (explicit Talos names) is the fallback when a driver match is ambiguous.
+    worker_bond_driver     = optional(string)
+    worker_bond_interfaces = optional(list(string), [])
     # Worker default route (egress for image pulls + NetBird): via the kube fabric
-    # IRB gateway (fabric transit) when true, else configure per-worker uplink.
+    # IRB gateway (fabric transit) when true, else the Hetzner public NIC (DHCP).
     worker_default_route_via_fabric = optional(bool, true)
   })
 }

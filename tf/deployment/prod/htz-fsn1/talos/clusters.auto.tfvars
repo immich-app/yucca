@@ -14,7 +14,7 @@ cluster = {
 
   # The node extension set lives in schematic.yaml (managed via
   # talos_image_factory_schematic in image.tf) — no schematic id to paste here.
-  install_disk = "/dev/sda" # worker install target (CP VMs boot from the snapshot)
+  install_disk = "/dev/nvme0n1" # worker install target (AX162-R: 2× NVMe; CP VMs boot from the snapshot)
 
   cilium_version = "1.19.5"
   hubble         = true
@@ -33,17 +33,20 @@ cluster = {
 
   # ── Bare-metal workers (Hetzner Robot dedicated; sequential after mgmt-1/2) ──
   workers = [
-    { fabric_ip = "10.40.10.11", robot_id = 3008210 },
-    { fabric_ip = "10.40.10.12", robot_id = 3008211 },
-    { fabric_ip = "10.40.10.13", robot_id = 3008212 },
+    { fabric_ip = "10.40.10.11", maint_ip = "178.63.124.38", robot_id = 3008210 },
+    { fabric_ip = "10.40.10.12", maint_ip = "178.63.124.37", robot_id = 3008211 },
+    { fabric_ip = "10.40.10.13", maint_ip = "178.63.124.39", robot_id = 3008212 },
   ]
-  # 2×25G NICs enslaved into bond0 (tagged kube VLAN 10 rides this). VERIFY names
-  # with `ip link` on the workers — predictable names differ across hardware.
-  worker_bond_interfaces          = ["enp33s0f0np0", "enp33s0f1np1"]
-  worker_default_route_via_fabric = true
+  # 2×25G Broadcom NICs (enp193s0f0np0/f1np1) enslaved into bond0 (tagged kube VLAN 10).
+  # Selected by driver — robust across per-node PCI naming. eth0 (ixgbe 10G) stays the
+  # DHCP public/egress NIC (default route + NetBird endpoint).
+  worker_bond_driver              = "bnxt_en"
+  worker_default_route_via_fabric = false
 }
 
 # Operator/CI sources allowed on the Talos host firewall (apid 50000 + apiserver
-# 6443), on top of the node planes. The apply host's public egress (so bootstrap
-# can reach the CP public IPs) + the NetBird peer range (operator access).
-trusted_cidrs = ["70.29.233.75/32", "10.254.0.0/15"]
+# 6443), on top of the node planes. NetBird peer range ONLY — no public IPs (the
+# hcloud firewall also blocks public apiserver/apid; see hcloud-firewall.tf). A
+# re-bootstrap dials apid on a CP public IP, so temporarily re-add the operator's
+# /32 here (and open 50000 on the hcloud firewall) for that one step.
+trusted_cidrs = ["10.254.0.0/15"]

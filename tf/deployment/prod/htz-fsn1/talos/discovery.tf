@@ -32,7 +32,7 @@ output "discovery" {
       cluster_name      = var.cluster.name
       api_endpoint      = local.cluster_endpoint  # https://<api_dns_name>:6443 (LB)
       operator_endpoint = local.operator_endpoint # direct bootstrap-CP apiserver
-      cp_node_ips       = local.cp_public_ips
+      cp_node_ips       = local.cp_private_ips    # kube-cp IPs; operators/yuctl reach via NetBird
       worker_node_ips   = [for w in var.cluster.workers : w.fabric_ip]
       kubeconfig_ref    = "op://${local._disc_vault}/${local._kubeconfig_title}/password"
       talosconfig_ref   = "op://${local._disc_vault}/${local._talosconfig_title}/password"

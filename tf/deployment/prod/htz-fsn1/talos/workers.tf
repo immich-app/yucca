@@ -24,12 +24,17 @@ locals {
           interfaces = [{
             interface = "bond0"
             dhcp      = false
+            # Bond members selected by NIC driver (worker_bond_driver, e.g. bnxt_en) —
+            # robust across per-node PCI naming; falls back to explicit Talos names.
             bond = {
-              interfaces     = var.cluster.worker_bond_interfaces
               mode           = "802.3ad"
               lacpRate       = "fast"
               xmitHashPolicy = "layer3+4"
               miimon         = 100
+              deviceSelectors = var.cluster.worker_bond_driver != null ? [{
+                driver = var.cluster.worker_bond_driver
+              }] : null
+              interfaces = var.cluster.worker_bond_driver != null ? null : var.cluster.worker_bond_interfaces
             }
             vlans = [{
               vlanId    = module.addr_site.kube_vlan_id # 10
@@ -51,10 +56,13 @@ resource "talos_machine_configuration_apply" "worker" {
 
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.worker.machine_configuration
-  node                        = var.cluster.workers[count.index].fabric_ip
-  endpoint                    = var.cluster.workers[count.index].fabric_ip
-  config_patches              = local.worker_node_patches[count.index]
-  apply_mode                  = "auto"
+  # One-time apply targets the maintenance-mode node at its Hetzner public IP (DHCP);
+  # the config then brings up bond0.10 at fabric_ip + joins NetBird, and the node
+  # reboots into the cluster. Post-join reconfig would target fabric_ip over NetBird.
+  node           = var.cluster.workers[count.index].maint_ip
+  endpoint       = var.cluster.workers[count.index].maint_ip
+  config_patches = local.worker_node_patches[count.index]
+  apply_mode     = "auto"
 
   on_destroy = {
     reboot   = true

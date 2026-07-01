@@ -22,9 +22,12 @@ module "names" {
 }
 
 locals {
-  c            = var.cluster
-  pod_cidr     = "10.244.0.0/16"
-  service_cidr = "10.96.0.0/12"
+  c = var.cluster
+  # Cluster addressing — clear of the node planes (kube 10.40.10/24, kube-cp
+  # 10.40.11/24, NetBird 10.254/15). Split of 10.250.0.0/16: pods low half, services
+  # high half. Fixed at bootstrap — changing requires a re-bootstrap.
+  pod_cidr     = "10.250.0.0/17"   # 10.250.0.0 – 10.250.127.255
+  service_cidr = "10.250.128.0/17" # 10.250.128.0 – 10.250.255.255
 
   # Factory metal installer (keeps the schematic's extensions). Used by workers on
   # install; CPs boot the hcloud snapshot and only consult this on a reinstall.
@@ -83,8 +86,12 @@ locals {
   cp_nodeip_patch     = yamlencode({ machine = { kubelet = { nodeIP = { validSubnets = [local.kube_cp_cidr] } } } })
   worker_nodeip_patch = yamlencode({ machine = { kubelet = { nodeIP = { validSubnets = [local.kube_cidr] } } } })
 
-  cp_base_patches     = compact([local.install_patch, local.netbird_patch, local.cp_nodeip_patch])
-  worker_base_patches = compact([local.install_patch, local.worker_nodeip_patch])
+  cp_base_patches = compact([local.install_patch, local.netbird_patch, local.cp_nodeip_patch])
+  # Workers ARE NetBird peers: the apiserver lives on the kube-cp hcloud net, only
+  # reachable over the mesh, and workers resolve the API endpoint via the yucca.internal
+  # NetBird DNS zone. nodeIP stays on the fabric (worker_nodeip_patch) so pod east-west
+  # rides VLAN 10; only the API control path uses NetBird.
+  worker_base_patches = compact([local.install_patch, local.netbird_patch, local.worker_nodeip_patch])
 
   # ── Control-plane cluster config (same on every CP) ──────────────────────
   cp_cluster_patch = yamlencode({
@@ -105,31 +112,34 @@ locals {
   # CP node extras:
   #  • ip_forward — the CPs are the NetBird route peers for the kube-cp subnet
   #    (yucca-fsn-father-kube-cp), so they must forward overlay↔subnet traffic.
-  #  • extraHostEntries — on the CPs, resolve api_dns_name to the LOCAL apiserver
-  #    (127.0.0.1, in the cert SANs). The CPs are targets of the hcloud LB and
-  #    hcloud forbids a target reaching the LB VIP (hairpin) — so CPs must NOT point
-  #    the endpoint at the LB. Off-node peers (workers/operators) resolve api_dns_name
-  #    via the NetBird yucca.internal zone → the private LB IP instead.
+  #  • extraHostEntries — on the CPs, resolve api_dns_name to the 3 CP private IPs
+  #    (round-robin, all in the cert SANs). NOT the LB VIP (CPs are LB targets →
+  #    hcloud hairpin), and NOT 127.0.0.1 (a joining CP must reach a WORKING
+  #    apiserver — a peer's — to register its etcd membership; its own apiserver
+  #    isn't up until etcd joins). Off-node peers resolve api_dns_name via the
+  #    NetBird yucca.internal zone.
   cp_extras_patch = yamlencode({
     machine = {
       sysctls = { "net.ipv4.ip_forward" = "1" }
-      network = { extraHostEntries = [{ ip = "127.0.0.1", aliases = [local.api_dns_name] }] }
+      network = { extraHostEntries = [for ip in local.cp_private_ips : { ip = ip, aliases = [local.api_dns_name] }] }
     }
   })
 
   # ── Per-CP patches (hostname + hcloud private NIC for etcd) ───────────────
-  # eth0 = hcloud public (DHCP, default route); eth1 = hcloud private (etcd),
-  # static to the assigned IP at MTU 1450. VERIFY eth1 is the private NIC on the
-  # snapshot (Talos may name it differently — use a deviceSelector if so).
+  # eth0 = hcloud public (DHCP, default route); eth1 = hcloud private (etcd).
+  # eth1 MUST be DHCP: hcloud private networks are SDN, not L2 — servers reach each
+  # other via the network gateway, and hcloud's DHCP is what installs the private
+  # IP (the one pinned in the hcloud_server network block) + the gateway route. A
+  # static /24 here makes the node try direct same-subnet ARP, which the SDN doesn't
+  # answer → the CPs can't reach each other → etcd never forms. VERIFY eth1 is the
+  # private NIC on the snapshot (else use a deviceSelector).
   cp_node_patches = [for i in range(local.c.cp_count) : [
     yamlencode({
       machine = {
         network = {
           interfaces = [{
             interface = "eth1"
-            dhcp      = false
-            addresses = ["${local.cp_private_ips[i]}/${local.kube_cp_prefix}"]
-            mtu       = 1450
+            dhcp      = true
           }]
         }
       }
@@ -177,9 +187,14 @@ data "talos_machine_configuration" "worker" {
 
 # ── Bootstrap / kubeconfig / health (dial CP public IPs) ──────────────────────
 locals {
-  cp_public_ips      = hcloud_server.control_plane[*].ipv4_address
-  bootstrap_endpoint = local.cp_public_ips[0]
-  operator_endpoint  = "https://${local.bootstrap_endpoint}:6443"
+  cp_public_ips = hcloud_server.control_plane[*].ipv4_address
+  # Everything the talos provider dials — bootstrap, kubeconfig, talosconfig, health,
+  # and the helm/kubernetes providers — uses the PRIVATE kube-cp IPs, reachable from
+  # the apply host over the NetBird kube-cp route (and in the cert SANs). No public
+  # access is required to bring the cluster up (the CPs keep public IPs only for
+  # NetBird NAT traversal + egress; apid/apiserver are firewalled off the internet).
+  bootstrap_endpoint = local.cp_private_ips[0]
+  operator_endpoint  = "https://${local.cp_private_ips[0]}:6443"
 }
 
 # One-shot bootstrap against the first CP. Re-running rolls cluster identity.
@@ -199,13 +214,12 @@ resource "talos_cluster_kubeconfig" "this" {
   depends_on           = [talos_machine_bootstrap.this]
 }
 
-# talosconfig endpoints = CP public IPs (recovery path; the LB/mesh may be down
-# exactly when you need talosctl).
+# talosconfig endpoints = CP private kube-cp IPs (reached over NetBird; no public).
 data "talos_client_configuration" "this" {
   cluster_name         = local.c.name
   client_configuration = talos_machine_secrets.this.client_configuration
-  endpoints            = local.cp_public_ips
-  nodes                = concat(local.cp_public_ips, [for w in local.c.workers : w.fabric_ip])
+  endpoints            = local.cp_private_ips
+  nodes                = concat(local.cp_private_ips, [for w in local.c.workers : w.fabric_ip])
 }
 
 locals {
@@ -216,9 +230,9 @@ locals {
 # after, in cilium.tf).
 data "talos_cluster_health" "this" {
   client_configuration   = talos_machine_secrets.this.client_configuration
-  control_plane_nodes    = local.cp_public_ips
+  control_plane_nodes    = local.cp_private_ips
   worker_nodes           = [for w in local.c.workers : w.fabric_ip]
-  endpoints              = local.cp_public_ips
+  endpoints              = local.cp_private_ips
   skip_kubernetes_checks = true
   timeouts               = { read = "10m" }
 

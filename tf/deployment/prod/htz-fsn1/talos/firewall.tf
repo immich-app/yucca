@@ -31,12 +31,22 @@ locals {
       portSelector = { ports = [10250], protocol = "tcp" }
       ingress      = [for c in local.kubelet_allow : { subnet = c }]
     }),
-    # Cilium health probes (native routing — no VXLAN port needed).
+    # Cilium health probes.
     yamlencode({
       apiVersion   = "v1alpha1"
       kind         = "NetworkRuleConfig"
       name         = "cilium-health"
       portSelector = { ports = [4240], protocol = "tcp" }
+      ingress      = [for c in local.firewall_allow : { subnet = c }]
+    }),
+    # Cilium geneve overlay (tunnel routing): pod↔pod is encapsulated node-to-node
+    # (UDP 6081). Required across BOTH L2 domains — worker↔worker over the fabric and
+    # CP↔worker over the mesh — or pod-to-pod traffic is silently dropped.
+    yamlencode({
+      apiVersion   = "v1alpha1"
+      kind         = "NetworkRuleConfig"
+      name         = "cilium-geneve"
+      portSelector = { ports = [6081], protocol = "udp" }
       ingress      = [for c in local.firewall_allow : { subnet = c }]
     }),
     ], local.c.hubble ? [
