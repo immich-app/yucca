@@ -22,6 +22,16 @@ module "core" {
 
   vc_member_serials = var.spine_vc_serials
 
+  # father's bare-metal kube workers hang off the core (channelized 25G breakouts of
+  # port 2, one leg per VC member). Each ae bundles the two ports cabled to one node
+  # (pairs derived from LLDP — consecutive MACs on the node's dual-port Broadcom NIC):
+  #   ae1 = ...46:a1:3a/3b   ae2 = ...47:05:c4/c5   ae3 = ...4e:86:c5/c6
+  node_lags = {
+    ae1 = ["et-0/0/2:2", "et-1/0/2:3"]
+    ae2 = ["et-0/0/2:3", "et-1/0/2:2"]
+    ae3 = ["et-0/0/2:1", "et-1/0/2:1"]
+  }
+
   # Upstream IP-transit. Today: one transit (Core-Backbone), primary/default
   # (prepend 0). Add a second entry with prepend>0 + a lower local_pref to
   # multi-home (the prepended one is the backup; see core-fabric/transit.tf —

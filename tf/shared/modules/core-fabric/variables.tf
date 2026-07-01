@@ -59,6 +59,19 @@ variable "mgmt_node_ports" {
   description = "Spine ports the management nodes attach to (mgmt-1, mgmt-2), each a single-port trunk of the stretched VLANs. One channelized port-3 leg per VC member."
 }
 
+variable "node_lags" {
+  type        = map(list(string))
+  default     = {}
+  description = <<-EOT
+    Bare-metal node LACP bonds terminated directly on the core (channelized 25G
+    breakout ports). Key = ae name (ae1, ae2, …); value = the two member sub-ports,
+    one per VC member, e.g. ["et-0/0/2:2", "et-1/0/2:3"]. Each ae is an LACP-active
+    trunk carrying the kube VLAN (the nodes tag their fabric IP onto it). The two
+    members MUST be the ports cabled to the SAME node — LACP won't aggregate ports
+    facing different partners.
+  EOT
+}
+
 variable "mgmt_trusted_sources" {
   type        = list(string)
   default     = ["10.40.5.0/24", "10.254.0.0/15", "100.64.0.0/10", "127.0.0.0/8"]

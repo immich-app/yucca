@@ -40,6 +40,36 @@ resource "junos_interface_physical" "ae0" {
   storm_control = "default"
 }
 
+# Bare-metal node LACP bonds (kube workers) terminated on the core. Each ae bundles
+# the two channelized 25G ports cabled to one node (one per VC member) into an
+# LACP-active trunk carrying the kube VLAN. Mirrors the ae0 pattern; the members'
+# ether_opts point them at their ae, the ae holds LACP + the trunk. device-count is
+# auto-managed by the provider from the ae interfaces.
+locals {
+  node_lag_members = merge([for ae, ports in var.node_lags : { for p in ports : p => ae }]...)
+}
+
+resource "junos_interface_physical" "node_lag_member" {
+  for_each = local.node_lag_members
+  name     = each.key
+  ether_opts {
+    ae_8023ad = each.value
+  }
+}
+
+resource "junos_interface_physical" "node_lag" {
+  for_each = var.node_lags
+  name     = each.key
+  mtu      = 9216
+  parent_ether_opts {
+    lacp {
+      mode = "active"
+    }
+  }
+  trunk        = true
+  vlan_members = ["vlan${var.kube_vlan_id}"]
+}
+
 # Management-node ports (mgmt-1, mgmt-2) — one channelized port-3 leg per VC member,
 # each a single-port trunk of the stretched VLANs. Identical config per node.
 resource "junos_interface_physical" "mgmt_node" {
