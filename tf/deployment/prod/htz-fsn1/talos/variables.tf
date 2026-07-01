@@ -57,7 +57,14 @@ variable "cluster" {
 # both join the same site network). Injected via TF_VAR from 1P (op run); the
 # netbird stack mints it (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_..._KEY).
 variable "netbird_talos_setup_key" {
-  description = "NetBird setup key joining every node to the prod htz-fsn1 NetBird network. Sensitive."
+  description = "NetBird setup key for the WORKERS (group: talos). Sensitive."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "netbird_talos_cp_setup_key" {
+  description = "NetBird setup key for the CONTROL PLANES (groups: talos + talos_cp, the kube-cp router group). Sensitive."
   type        = string
   sensitive   = true
   default     = ""

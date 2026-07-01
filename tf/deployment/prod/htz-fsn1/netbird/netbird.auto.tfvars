@@ -28,7 +28,8 @@ groups = {
 setup_keys = {
   ci           = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
   mgmt         = { type = "reusable", auto_groups = ["mgmt"] }
-  talos        = { type = "reusable", auto_groups = ["talos"] }
+  talos        = { type = "reusable", auto_groups = ["talos"] }             # WORKERS
+  talos_cp     = { type = "reusable", auto_groups = ["talos", "talos_cp"] } # CONTROL PLANES (also the kube-cp router group)
   k8s_operator = { type = "reusable", auto_groups = ["k8s_operator"] }
 }
 

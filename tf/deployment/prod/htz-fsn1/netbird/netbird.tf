@@ -52,10 +52,9 @@ locals {
     # their pods couldn't reach the apiserver). This is how NetBird peers (operators +
     # workers) reach the private API LB (10.40.11.5) + the CPs. masquerade so return
     # traffic is SNAT'd to the CP's kube-cp address.
-    # FOLLOW-UP: the CPs are in talos_cp via direct peer assignment (done live); to make
-    # it survive CP re-provisioning, mint a talos_cp setup key (auto_groups=[talos,
-    # talos_cp]) here and have the talos stack use it for the CP user_data (workers keep
-    # the plain `talos` key).
+    # CP membership comes from the talos_cp setup key (netbird.auto.tfvars, auto_groups
+    # [talos, talos_cp]); the talos stack joins CPs with it and workers with the plain
+    # `talos` key, so re-provisioning keeps the split.
     "yucca-fsn-father-kube-cp" = {
       description = "father control-plane subnet (kube-cp), routed via the CPs (talos_cp)."
       router      = { peer_groups = ["talos_cp"], masquerade = true }

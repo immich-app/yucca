@@ -63,18 +63,23 @@ locals {
     machine = { install = { disk = local.c.install_disk, image = local.install_image } }
   })
 
-  # NetBird node-level overlay — applied to the CPs ONLY. It gives each CP a route
-  # to the `kube` fabric net (10.40.10.0/24, advertised via the mgmt NetBird
-  # routers) so apiserver→worker-kubelet works without a vSwitch. Workers are NOT
-  # NetBird peers: they live on the fabric and reach the apiserver via the LB.
-  netbird_patch = var.netbird_talos_setup_key != "" ? yamlencode({
-    apiVersion = "v1alpha1"
-    kind       = "ExtensionServiceConfig"
-    name       = "netbird"
-    environment = [
-      "NB_SETUP_KEY=${var.netbird_talos_setup_key}",
-      "NB_MANAGEMENT_URL=https://api.netbird.io",
-    ]
+  # NetBird node-level overlay. CPs and workers join with DIFFERENT setup keys so they
+  # land in different groups: CPs → [talos, talos_cp], workers → [talos]. talos_cp is
+  # the CP-only router group for the kube-cp network — the workers must NOT be in it, or
+  # NetBird treats them as kube-cp routers and they never install the client route (their
+  # pods can't reach the apiserver). See the netbird stack for the group/router wiring.
+  netbird_env = ["NB_MANAGEMENT_URL=https://api.netbird.io"]
+  cp_netbird_patch = var.netbird_talos_cp_setup_key != "" ? yamlencode({
+    apiVersion  = "v1alpha1"
+    kind        = "ExtensionServiceConfig"
+    name        = "netbird"
+    environment = concat(["NB_SETUP_KEY=${var.netbird_talos_cp_setup_key}"], local.netbird_env)
+  }) : ""
+  worker_netbird_patch = var.netbird_talos_setup_key != "" ? yamlencode({
+    apiVersion  = "v1alpha1"
+    kind        = "ExtensionServiceConfig"
+    name        = "netbird"
+    environment = concat(["NB_SETUP_KEY=${var.netbird_talos_setup_key}"], local.netbird_env)
   }) : ""
 
   # nodeIP selection:
@@ -86,12 +91,12 @@ locals {
   cp_nodeip_patch     = yamlencode({ machine = { kubelet = { nodeIP = { validSubnets = [local.kube_cp_cidr] } } } })
   worker_nodeip_patch = yamlencode({ machine = { kubelet = { nodeIP = { validSubnets = [local.kube_cidr] } } } })
 
-  cp_base_patches = compact([local.install_patch, local.netbird_patch, local.cp_nodeip_patch])
+  cp_base_patches = compact([local.install_patch, local.cp_netbird_patch, local.cp_nodeip_patch])
   # Workers ARE NetBird peers: the apiserver lives on the kube-cp hcloud net, only
   # reachable over the mesh, and workers resolve the API endpoint via the yucca.internal
   # NetBird DNS zone. nodeIP stays on the fabric (worker_nodeip_patch) so pod east-west
   # rides VLAN 10; only the API control path uses NetBird.
-  worker_base_patches = compact([local.install_patch, local.netbird_patch, local.worker_nodeip_patch])
+  worker_base_patches = compact([local.install_patch, local.worker_netbird_patch, local.worker_nodeip_patch])
 
   # ── Control-plane cluster config (same on every CP) ──────────────────────
   cp_cluster_patch = yamlencode({
