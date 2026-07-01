@@ -15,6 +15,14 @@ groups = {
   talos        = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
   k8s_operator = { resource = true } # in-cluster kubernetes operator
   resources    = { resource = true } # routed-subnet tag → yucca-prod-htz-fsn1-resources (Network resources tag in)
+  # CP-only subset of `talos` — the ROUTER peer group for the kube-cp network. Only
+  # the cloud CPs sit on the kube-cp hcloud subnet, so only they can route it; if the
+  # router were the whole `talos` group the bare-metal WORKERS (also `talos`) would be
+  # treated as routers and never install the client route to kube-cp. resource = false:
+  # it's a routing peer group, not a yucca-reachable tag (the CPs are already reachable
+  # via `talos`). CP membership is assigned to peers directly (not via a setup key yet
+  # — see the follow-up in netbird.tf).
+  talos_cp = { resource = false }
 }
 
 setup_keys = {

@@ -44,13 +44,21 @@ locals {
       }
     }
 
-    # father's cloud control-plane subnet (kube-cp), routed via the CP nodes
-    # themselves (talos group) — they're the only peers on that hcloud subnet. This
-    # is how NetBird peers (operators) reach the private API LB (10.40.11.5) + the
-    # CPs. masquerade so return traffic is SNAT'd to the CP's kube-cp address.
+    # father's cloud control-plane subnet (kube-cp), routed via the CPs ONLY (the
+    # talos_cp group — the CP-only subset of talos). They're the only peers on that
+    # hcloud subnet. Router must NOT be the whole `talos` group: the bare-metal workers
+    # are also `talos`, and a routing peer doesn't install a client route for its own
+    # network — so if the workers were routers they'd never get the kube-cp route (and
+    # their pods couldn't reach the apiserver). This is how NetBird peers (operators +
+    # workers) reach the private API LB (10.40.11.5) + the CPs. masquerade so return
+    # traffic is SNAT'd to the CP's kube-cp address.
+    # FOLLOW-UP: the CPs are in talos_cp via direct peer assignment (done live); to make
+    # it survive CP re-provisioning, mint a talos_cp setup key (auto_groups=[talos,
+    # talos_cp]) here and have the talos stack use it for the CP user_data (workers keep
+    # the plain `talos` key).
     "yucca-fsn-father-kube-cp" = {
-      description = "father control-plane subnet (kube-cp), routed via the CP nodes."
-      router      = { peer_groups = ["talos"], masquerade = true }
+      description = "father control-plane subnet (kube-cp), routed via the CPs (talos_cp)."
+      router      = { peer_groups = ["talos_cp"], masquerade = true }
       resources = {
         kube_cp = {
           address     = module.addr_site.kube_cp_cidr
