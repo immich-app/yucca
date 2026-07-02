@@ -37,11 +37,15 @@ variable "cluster" {
     # reaches the kubelet there via NetBird→mgmt, and the node reaches the apiserver
     # over its own NetBird peer.
     workers = list(object({
-      name        = optional(string)     # hostname override; null = auto-pick
-      fabric_ip   = string               # 10.40.10.x on the kube fabric VLAN
-      maint_ip    = string               # Hetzner public IP (maintenance-mode apid endpoint)
-      robot_id    = number               # Hetzner Robot server number (provisioning/doc)
-      provisioned = optional(bool, true) # false ONLY while first-provisioning: config
+      name = optional(string) # hostname override; null = auto-pick
+      # Install-disk NVMe serial — NOT a device name: nvme0/nvme1 enumeration is
+      # not stable across boots (observed swapping), and a name-based install
+      # target could point an upgrade at the DATA disk.
+      install_serial = string
+      fabric_ip      = string               # 10.40.10.x on the kube fabric VLAN
+      maint_ip       = string               # Hetzner public IP (maintenance-mode apid endpoint)
+      robot_id       = number               # Hetzner Robot server number (provisioning/doc)
+      provisioned    = optional(bool, true) # false ONLY while first-provisioning: config
       # applies then target maint_ip (maintenance mode); true = target fabric_ip (live).
     }))
     # Fabric bond members. Prefer worker_bond_driver (a Talos deviceSelector by NIC
@@ -114,6 +118,24 @@ variable "flux_github_app_installation_id" {
 }
 
 variable "flux_github_app_private_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+# The talos_cluster_health data sources are BOOTSTRAP sequencing gates. Post-
+# bootstrap they re-run on every plan/apply and any transient (an apiserver cert
+# rotation, a worker mid-reboot, a runner-side mesh blip) fails the whole run —
+# they blocked several day-2 applies. Enable only for greenfield bring-up.
+variable "bootstrap_health_gate" {
+  description = "Run the cluster-health gates (greenfield bootstrap only)."
+  type        = bool
+  default     = false
+}
+
+# Cloudflare API token for cert-manager's Let's Encrypt DNS-01 solver (the
+# futo.network zone). op://shared_tf/CLOUDFLARE_API_TOKEN via tf/.env.prod.
+variable "cloudflare_api_token" {
   type      = string
   sensitive = true
   default   = ""

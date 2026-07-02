@@ -34,8 +34,12 @@ output "discovery" {
       operator_endpoint = local.operator_endpoint # direct bootstrap-CP apiserver
       cp_node_ips       = local.cp_private_ips    # kube-cp IPs; operators/yuctl reach via NetBird
       worker_node_ips   = [for w in var.cluster.workers : w.fabric_ip]
-      kubeconfig_ref    = "op://${local._disc_vault}/${local._kubeconfig_title}/password"
-      talosconfig_ref   = "op://${local._disc_vault}/${local._talosconfig_title}/password"
+      # Node NAME → IP maps (short wordlist names). Consumed by the netbird stack
+      # (yucca.futo.network records) instead of hardcoding names in two stacks.
+      cp_nodes        = { for i in range(var.cluster.cp_count) : module.names.resolved[i] => local.cp_private_ips[i] }
+      worker_nodes    = { for j, w in var.cluster.workers : module.names.resolved[var.cluster.cp_count + j] => w.fabric_ip }
+      kubeconfig_ref  = "op://${local._disc_vault}/${local._kubeconfig_title}/password"
+      talosconfig_ref = "op://${local._disc_vault}/${local._talosconfig_title}/password"
     }
   }
 }

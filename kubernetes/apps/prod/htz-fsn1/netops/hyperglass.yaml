@@ -1,6 +1,6 @@
 # hyperglass — looking glass for the fabric (BGP route lookups, ping, traceroute
 # from the switches' vantage point). Internal VIP:
-# http://lg.father.fsn.htz.yucca.internal
+# http://lg.father.fsn.htz.yucca.futo.network
 #
 # devices.yaml is NOT here: it embeds the netops password (netmiko can't key-auth
 # through hyperglass config), so it's a Secret rendered at deploy time from
@@ -65,7 +65,7 @@ metadata:
   labels:
     lb: internal
   annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.11 # = lg.father...yucca.internal (dns.tf)
+    io.cilium/lb-ipam-ips: 10.40.12.11 # = lg.father...yucca.futo.network (dns.tf)
 spec:
   type: LoadBalancer
   selector: { app: hyperglass }

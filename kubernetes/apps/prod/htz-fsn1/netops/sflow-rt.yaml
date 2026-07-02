@@ -2,7 +2,7 @@
 # counter samples (5s) + 1:2048 packet samples to the VIP (UDP 6343); sflow-rt's
 # prometheus app exposes per-port rates that vmagent scrapes every 5s — the
 # seconds-granularity bandwidth source (junos_exporter stays for device health).
-# UI (top talkers, flow browser): http://sflow.father.fsn.htz.yucca.internal
+# UI (top talkers, flow browser): http://sflow.father.fsn.htz.yucca.futo.network
 # Image: sflow/prometheus = sflow-rt with the prometheus + browse-metrics apps.
 apiVersion: apps/v1
 kind: Deployment
@@ -39,7 +39,7 @@ metadata:
   labels:
     lb: internal
   annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.14 # = sflow.father...yucca.internal (dns.tf)
+    io.cilium/lb-ipam-ips: 10.40.12.14 # = sflow.father...yucca.futo.network (dns.tf)
 spec:
   type: LoadBalancer
   selector: { app: sflow-rt }

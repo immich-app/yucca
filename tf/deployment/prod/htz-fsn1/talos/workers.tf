@@ -18,6 +18,13 @@ locals {
   kube_prefix = split("/", local.kube_cidr)[1] # 24
 
   worker_node_patches = [for j, w in var.cluster.workers : [
+    # Install disk by SERIAL (never by name — enumeration swaps across boots).
+    yamlencode({
+      machine = { install = {
+        diskSelector = { serial = w.install_serial }
+        image        = local.worker_install_image
+      } }
+    }),
     yamlencode({
       machine = {
         network = {

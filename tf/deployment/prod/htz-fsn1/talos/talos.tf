@@ -36,12 +36,16 @@ locals {
   worker_install_image = "factory.talos.dev/metal-installer/${local.talos_worker_schematic_id}:v${local.c.talos_version}"
 
   # Private API endpoint: a NetBird DNS-zone name resolving to the PRIVATE LB IP
-  # (10.40.11.5). Name = kube.<cluster>.<region>.<provider>.yucca.internal (e.g.
-  # kube.father.fsn.htz.yucca.internal). It's in the cert SANs + on each CP as a
-  # host-entry; NetBird peers resolve it via the yucca.internal zone (netbird stack)
-  # and reach the LB over the kube-cp route (CPs are the route peers).
-  api_dns_name     = "kube.${local.c.name}.${var.region_code}.${var.provider_code}.yucca.internal"
-  cluster_endpoint = "https://${local.api_dns_name}:6443"
+  # (10.40.11.5). Name = kube.<cluster>.<region>.<provider>.yucca.futo.network. It's
+  # in the cert SANs + on each CP as a host-entry; NetBird peers resolve it via the
+  # yucca.futo.network zone (netbird stack) and reach the LB over the kube-cp route
+  # (CPs are the route peers). Node-side traffic never resolves it: kubelets dial
+  # KubePrism (127.0.0.1:7445), which load-balances to the CP IPs directly.
+  # legacy_api_dns_name (the old yucca.internal name) stays in the SANs + host
+  # entries so pre-migration kubeconfigs keep verifying — drop it once rotated.
+  api_dns_name        = "kube.${local.c.name}.${var.region_code}.${var.provider_code}.yucca.futo.network"
+  legacy_api_dns_name = "kube.${local.c.name}.${var.region_code}.${var.provider_code}.yucca.internal"
+  cluster_endpoint    = "https://${local.api_dns_name}:6443"
 
   kube_cp_prefix = split("/", local.kube_cp_cidr)[1] # 24
 
@@ -55,7 +59,7 @@ locals {
   # apiserver cert SANs — the names/IPs clients dial. NOT the CP public IPs (those
   # don't exist until the servers are created from this very config).
   apiserver_cert_sans = concat(
-    [local.api_dns_name, local.lb_private_ip],
+    [local.api_dns_name, local.legacy_api_dns_name, local.lb_private_ip],
     local.cp_private_ips,
     ["127.0.0.1", "localhost"],
   )
@@ -64,9 +68,7 @@ locals {
   cp_install_patch = yamlencode({
     machine = { install = { disk = local.c.install_disk, image = local.cp_install_image } }
   })
-  worker_install_patch = yamlencode({
-    machine = { install = { disk = local.c.install_disk, image = local.worker_install_image } }
-  })
+
 
   # Talos's default forwards coredns's upstream queries to the host DNS on a link-local
   # address (169.254.116.108) — unreachable from pods under Cilium's eBPF datapath
@@ -81,7 +83,12 @@ locals {
   # the CP-only router group for the kube-cp network — the workers must NOT be in it, or
   # NetBird treats them as kube-cp routers and they never install the client route (their
   # pods can't reach the apiserver). See the netbird stack for the group/router wiring.
-  netbird_env = ["NB_MANAGEMENT_URL=https://api.netbird.io"]
+  # NB_USE_LEGACY_ROUTING: newer netbird installs client routes into a policy
+  # table (7120) reached via ip rules — host traffic follows them, but Cilium's
+  # BPF fib lookup only consults the MAIN table, so POD traffic to routed subnets
+  # (e.g. pod→apiserver via kube-cp) gets ICMP no-route. Legacy mode puts routes
+  # in main where the datapath can see them.
+  netbird_env = ["NB_MANAGEMENT_URL=https://api.netbird.io", "NB_USE_LEGACY_ROUTING=true"]
   cp_netbird_patch = var.netbird_talos_cp_setup_key != "" ? yamlencode({
     apiVersion  = "v1alpha1"
     kind        = "ExtensionServiceConfig"
@@ -113,13 +120,48 @@ locals {
   worker_nodeip_patch = yamlencode({ machine = { kubelet = {
     clusterDNS = local.kubelet_cluster_dns
     nodeIP     = { validSubnets = [local.kube_cidr] }
+    # rbind (NOT bind): the u-localpv xfs partition mounts under /var/mnt AFTER
+    # kubelet starts — a plain bind hides it and pods silently write to the
+    # underlying system-disk directory instead of the data partition.
     extraMounts = [{
       destination = "/var/mnt"
       type        = "bind"
       source      = "/var/mnt"
-      options     = ["bind", "rshared", "rw"]
+      options     = ["rbind", "rshared", "rw"]
     }]
   } } })
+
+  # nvme1n1 (the non-install NVMe, 1.92TB) split 50/50 per worker:
+  #   u-localpv   890GiB xfs at /var/mnt/localpv — OpenEBS LocalPV (openebs-hostpath):
+  #               CNPG's node-local PG volumes; replication is Postgres-level (CNPG),
+  #               deliberately NOT block-level.
+  #   r-mayastor  890GiB raw partition — the Mayastor DiskPool (openebs-replicated,
+  #               repl=2 block replication) for everything that must survive a node
+  #               loss (VictoriaMetrics today).
+  # diskSelector: the system disk is nvme0n1, so !system_disk && nvme == nvme1n1.
+  worker_volumes_patch = join("\n---\n", [
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "UserVolumeConfig"
+      name       = "localpv"
+      provisioning = {
+        diskSelector = { match = "!system_disk && disk.transport == 'nvme'" }
+        minSize      = "890GiB"
+        maxSize      = "890GiB"
+      }
+      filesystem = { type = "xfs" }
+    }),
+    yamlencode({
+      apiVersion = "v1alpha1"
+      kind       = "RawVolumeConfig"
+      name       = "mayastor"
+      provisioning = {
+        diskSelector = { match = "!system_disk && disk.transport == 'nvme'" }
+        minSize      = "890GiB"
+        maxSize      = "890GiB"
+      }
+    }),
+  ])
 
   # OpenEBS Mayastor prereqs (workers): 2MiB hugepages for the io-engine's SPDK
   # data plane (1024 pages = 2GiB), the nvme-tcp initiator module (replicated
@@ -138,7 +180,8 @@ locals {
   # reachable over the mesh, and workers resolve the API endpoint via the yucca.internal
   # NetBird DNS zone. nodeIP stays on the fabric (worker_nodeip_patch) so pod east-west
   # rides VLAN 10; only the API control path uses NetBird.
-  worker_base_patches = compact([local.worker_install_patch, local.hostdns_patch, local.worker_mayastor_patch, local.worker_netbird_patch, local.worker_nodeip_patch])
+  # (install patch is PER-WORKER — by disk serial — appended in workers.tf)
+  worker_base_patches = compact([local.hostdns_patch, local.worker_mayastor_patch, local.worker_volumes_patch, local.worker_netbird_patch, local.worker_nodeip_patch])
 
   # ── Control-plane cluster config (same on every CP) ──────────────────────
   cp_cluster_patch = yamlencode({
@@ -166,6 +209,11 @@ locals {
         # always-on tunnels the kubelets already use to reach the apiserver. The CP
         # hostnames resolve via hcloud DNS to their kube-cp IPs, unchanged.
         extraArgs = { "kubelet-preferred-address-types" = "Hostname,InternalIP,ExternalIP" }
+        # hostNetwork pods get /etc/hosts COPIED at sandbox creation — a host-level
+        # extraHostEntries refresh never reaches the RUNNING apiserver. Stamping the
+        # entry-set hash into the pod spec forces kubelet to recreate the pod (fresh
+        # /etc/hosts) whenever a worker's mesh IP changes (e.g. re-provision).
+        env = { MESH_HOSTS_REVISION = substr(sha256(jsonencode(local.cp_host_entries)), 0, 12) }
       }
       # Pin etcd to the kube-cp hcloud subnet so CP↔CP etcd stays off the mesh.
       etcd = { advertisedSubnets = [local.kube_cp_cidr] }
@@ -188,7 +236,7 @@ locals {
   #    host-dns can't resolve NetBird DNS zones, hence /etc/hosts, which the
   #    hostNetwork apiserver inherits.
   cp_host_entries = concat(
-    [for ip in local.cp_private_ips : { ip = ip, aliases = [local.api_dns_name] }],
+    [for ip in local.cp_private_ips : { ip = ip, aliases = [local.api_dns_name, local.legacy_api_dns_name] }],
     [for i, ip in local.cp_private_ips : { ip = ip, aliases = [local.cp_hostnames[i]] }],
     [for i, p in data.netbird_peer.worker : { ip = p.ip, aliases = [local.worker_hostnames[i]] }],
   )
@@ -314,6 +362,8 @@ locals {
 # Talos/etcd health after workers are applied; k8s-Ready is skipped (Cilium lands
 # after, in cilium.tf).
 data "talos_cluster_health" "this" {
+  count = var.bootstrap_health_gate ? 1 : 0
+
   client_configuration   = talos_machine_secrets.this.client_configuration
   control_plane_nodes    = local.cp_private_ips
   worker_nodes           = [for w in local.c.workers : w.fabric_ip]

@@ -33,9 +33,9 @@ cluster = {
 
   # ── Bare-metal workers (Hetzner Robot dedicated; sequential after mgmt-1/2) ──
   workers = [
-    { fabric_ip = "10.40.10.11", maint_ip = "178.63.124.38", robot_id = 3008210 },
-    { fabric_ip = "10.40.10.12", maint_ip = "178.63.124.37", robot_id = 3008211 },
-    { fabric_ip = "10.40.10.13", maint_ip = "178.63.124.39", robot_id = 3008212 },
+    { fabric_ip = "10.40.10.11", maint_ip = "178.63.124.38", robot_id = 3008210, install_serial = "S64GNNFX503099" },
+    { fabric_ip = "10.40.10.12", maint_ip = "178.63.124.37", robot_id = 3008211, install_serial = "S64GNJ0WC25870" },
+    { fabric_ip = "10.40.10.13", maint_ip = "178.63.124.39", robot_id = 3008212, install_serial = "S64GNNFX500881" },
   ]
   # 2×25G Broadcom NICs (enp193s0f0np0/f1np1) enslaved into bond0 (tagged kube VLAN 10).
   # Selected by driver — robust across per-node PCI naming. eth0 (ixgbe 10G) stays the

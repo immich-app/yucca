@@ -33,6 +33,24 @@ module "netbox" {
     }
   }
 
+  # Everything that is NOT a fabric VLAN but is real, routed address space.
+  # Pod/service CIDRs mirror the talos stack (talos.tf locals); the public carves
+  # mirror the Cilium LB pools + node-egress + transit config in this stack.
+  extra_prefixes = {
+    kube_cp     = { prefix = module.addr_site.kube_cp_cidr, description = "Hetzner Cloud kube-cp: father CP VMs (etcd) + private API LB — not a fabric VLAN" }
+    lb_internal = { prefix = module.addr_site.lb_internal_cidr, description = "father internal (NetBird-only) LoadBalancer VIPs — Cilium lb-internal pool, iBGP /32s to the spine" }
+    pods        = { prefix = "10.250.0.0/17", description = "father pod CIDR (Cilium, geneve over the kube VLAN)", status = "container" }
+    services    = { prefix = "10.250.128.0/17", description = "father service CIDR (ClusterIPs; kube-dns at .128.10)", status = "container" }
+    netbird     = { prefix = "10.254.0.0/15", description = "NetBird mesh peer range (node plane CP<->worker, operators)", status = "container" }
+
+    public         = { prefix = "69.48.224.0/24", description = "FUTO PI space announced from the spine (AS402421 via Core-Backbone)", status = "container" }
+    lb_public_a    = { prefix = "69.48.224.0/26", description = "Cilium LoadBalancer pool lb-public-a (father)" }
+    lb_public_b    = { prefix = "69.48.224.64/26", description = "Cilium LoadBalancer pool lb-public-b (father)" }
+    worker_egress  = { prefix = "69.48.224.240/29", description = "father worker fabric-egress SNAT IPs (.241 jeanne, .242 sheron, .243 dianna)" }
+    spine_loopback = { prefix = "69.48.224.254/32", description = "spine lo0 (sFlow agent-id, LG source)" }
+    transit_p2p    = { prefix = "5.56.17.224/31", description = "Core-Backbone transit /31 (spine et-0/0/27)" }
+  }
+
   devices = {
     # Spine VC (shared site core) — member 0 carries the vme.
     "${var.netbox_site_slug}-corenetsw-1" = {

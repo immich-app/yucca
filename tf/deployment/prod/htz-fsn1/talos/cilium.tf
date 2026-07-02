@@ -24,6 +24,8 @@ resource "helm_release" "cilium" {
 
 # Full health gate AFTER the CNI is in — now node-Ready is achievable.
 data "talos_cluster_health" "post_cni" {
+  count = var.bootstrap_health_gate ? 1 : 0
+
   client_configuration = talos_machine_secrets.this.client_configuration
   control_plane_nodes  = local.cp_private_ips
   worker_nodes         = [for w in var.cluster.workers : w.fabric_ip]

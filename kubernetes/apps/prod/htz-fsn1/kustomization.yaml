@@ -19,6 +19,7 @@ resources:
   - ./cilium-bgp.yaml
   - ./lb-return-route.yaml
   - ./hubble-ui-internal.yaml
+  - ./cert-manager.yaml
   - ./openebs
   - ./netops
 # components:

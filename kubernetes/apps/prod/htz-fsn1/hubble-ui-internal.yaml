@@ -1,4 +1,4 @@
-# Hubble UI on an INTERNAL (NetBird-only) VIP: http://hubble.father.fsn.htz.yucca.internal
+# Hubble UI on an INTERNAL (NetBird-only) VIP: http://hubble.father.fsn.htz.yucca.futo.network
 # The deployment itself is managed by the cilium Helm release (talos stack,
 # hubble.ui.enabled); this just fronts it on the lb-internal pool.
 apiVersion: v1
@@ -9,7 +9,7 @@ metadata:
   labels:
     lb: internal
   annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.15 # = hubble.father...yucca.internal (dns.tf)
+    io.cilium/lb-ipam-ips: 10.40.12.15 # = hubble.father...yucca.futo.network (dns.tf)
 spec:
   type: LoadBalancer
   selector:

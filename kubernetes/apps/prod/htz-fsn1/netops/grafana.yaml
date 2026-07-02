@@ -1,5 +1,5 @@
 # Grafana — the netops pane of glass, on an INTERNAL VIP only (lb-internal pool,
-# NetBird-reachable): http://grafana.father.fsn.htz.yucca.internal
+# NetBird-reachable): http://grafana.father.fsn.htz.yucca.futo.network
 # Admin password: 1Password item op://yucca_tf_prod/FATHER_GRAFANA_ADMIN/password —
 # the `grafana-admin` Secret is created from it (op read), never from git.
 # Datasource + dashboards are fully provisioned (no clicking): the in-cluster
@@ -59,7 +59,7 @@ spec:
               valueFrom:
                 secretKeyRef: { name: grafana-admin, key: password }
             - name: GF_SERVER_ROOT_URL
-              value: http://grafana.father.fsn.htz.yucca.internal
+              value: http://grafana.father.fsn.htz.yucca.futo.network
             - name: GF_ANALYTICS_REPORTING_ENABLED
               value: "false"
           ports:
@@ -93,7 +93,7 @@ metadata:
   labels:
     lb: internal
   annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.10 # = grafana.father...yucca.internal (dns.tf)
+    io.cilium/lb-ipam-ips: 10.40.12.10 # = grafana.father...yucca.futo.network (dns.tf)
 spec:
   type: LoadBalancer
   selector: { app: grafana }

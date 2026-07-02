@@ -1,6 +1,6 @@
 # oxidized — switch config backup (versioned): pulls `show configuration` from every
 # VC over SSH (the read-only netops login + key) into a local git repo on the
-# hostPath. Web UI (config diffs/history): http://oxidized.father.fsn.htz.yucca.internal
+# hostPath. Web UI (config diffs/history): http://oxidized.father.fsn.htz.yucca.futo.network
 # TODO: point the git output at a real remote once one exists.
 apiVersion: v1
 kind: ConfigMap
@@ -27,7 +27,7 @@ data:
       default: git
       git:
         user: oxidized
-        email: oxidized@father.fsn.htz.yucca.internal
+        email: oxidized@father.fsn.htz.yucca.futo.network
         repo: /data/fabric-configs.git
     source:
       default: csv
@@ -103,7 +103,7 @@ metadata:
   labels:
     lb: internal
   annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.13 # = oxidized.father...yucca.internal (dns.tf)
+    io.cilium/lb-ipam-ips: 10.40.12.13 # = oxidized.father...yucca.futo.network (dns.tf)
 spec:
   type: LoadBalancer
   selector: { app: oxidized }

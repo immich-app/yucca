@@ -19,3 +19,11 @@ data:
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
+
+  # ─── OpenEBS (shared apps/base/openebs, see the father openebs wrapper) ──
+  # Mayastor ON: openebs-replicated (repl=2) on the r-mayastor partitions.
+  # LocalPV on the u-localpv xfs partition (node-local; CNPG replicates itself).
+  OPENEBS_MAYASTOR_ENABLED: "true"
+  OPENEBS_HOSTPATH_CLASS_ENABLED: "true"
+  OPENEBS_LOCALPV_BASEPATH: /var/mnt/localpv/hostpath
+  OPENEBS_MAYASTOR_ETCD_BASEPATH: /var/mnt/openebs/etcd

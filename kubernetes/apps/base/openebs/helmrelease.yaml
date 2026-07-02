@@ -21,10 +21,17 @@ spec:
     remediation:
       remediateLastFailure: true
       retries: 2
-  # OpenEBS LocalPV hostpath — node-local disk, no replicated block storage
-  # (mirrors yucca-o11y). Persistent workloads (CNPG) replicate at the app
-  # layer instead. Only the local-hostpath engine is kept; everything else
-  # (lvm/zfs/mayastor/loki/alloy/minio) is disabled.
+  # OpenEBS LocalPV hostpath + (optionally) Mayastor replicated block storage.
+  # Shared by every cluster via postBuild substitutions (cluster-settings):
+  #   OPENEBS_MAYASTOR_ENABLED        default false (staging: PG replicates at the
+  #                                   app layer; father: true — VictoriaMetrics
+  #                                   rides repl=2 volumes on the DiskPools)
+  #   OPENEBS_LOCALPV_BASEPATH        default /var/mnt/hostpath (a UserVolume)
+  #   OPENEBS_HOSTPATH_CLASS_ENABLED  default false (staging uses per-disk SCs in
+  #                                   its overlay; father uses the chart class)
+  #   OPENEBS_MAYASTOR_ETCD_BASEPATH  mayastor's own etcd (localpv) — only read
+  #                                   when mayastor is enabled
+  # lvm/zfs/loki/alloy/minio stay off everywhere.
   values:
     preUpgradeHook:
       enabled: false
@@ -39,13 +46,13 @@ spec:
         # all PVs land on the NVMe StorageClasses (storageclass-spare-disk*.yaml),
         # which set their own BasePath. Kept pointing at a UserVolume mount to
         # avoid any drift onto EPHEMERAL.
-        basePath: /var/mnt/hostpath
+        basePath: ${OPENEBS_LOCALPV_BASEPATH:=/var/mnt/hostpath}
       # No openebs-system-disk default class: unlike o11y's large system disks,
       # these nodes install to a small 240GB DELLBOSS. Persistent storage lives
       # on the two 1.6TB NVMes via openebs-spare-disk / -2 (one of which is the
       # cluster-default class). Disabling this stops PVs landing on the BOSS.
       hostpathClass:
-        enabled: false
+        enabled: ${OPENEBS_HOSTPATH_CLASS_ENABLED:=false}
       helperPod:
         image:
           registry: quay.io/
@@ -59,7 +66,10 @@ spec:
     lvm-localpv:
       enabled: false
     mayastor:
-      enabled: false
+      enabled: ${OPENEBS_MAYASTOR_ENABLED:=false}
+      etcd:
+        localpvScConfig:
+          basePath: ${OPENEBS_MAYASTOR_ETCD_BASEPATH:=/var/mnt/hostpath/mayastor-etcd}
     engines:
       local:
         lvm:
@@ -68,7 +78,7 @@ spec:
           enabled: false
       replicated:
         mayastor:
-          enabled: false
+          enabled: ${OPENEBS_MAYASTOR_ENABLED:=false}
     loki:
       enabled: false
     alloy:

@@ -17,3 +17,23 @@ resource "onepassword_item" "talosconfig" {
   category = "password"
   password = data.talos_client_configuration.this.talos_config
 }
+
+# ─── cert-manager Secret (namespace: cert-manager) ───────────────────────────
+# Cloudflare API token for the Let's Encrypt DNS-01 ClusterIssuer (futo.network;
+# op://shared_tf/CLOUDFLARE_API_TOKEN). The cert-manager workload itself is Flux
+# (apps/base/cert-manager via the prod overlay); only the secret is TF-provisioned.
+resource "kubernetes_namespace_v1" "cert_manager" {
+  metadata {
+    name = "cert-manager"
+  }
+}
+
+resource "kubernetes_secret_v1" "cloudflare_api_token" {
+  metadata {
+    name      = "cloudflare-api-token"
+    namespace = kubernetes_namespace_v1.cert_manager.metadata[0].name
+  }
+  data = {
+    api-token = var.cloudflare_api_token
+  }
+}

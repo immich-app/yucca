@@ -1,6 +1,6 @@
 # smokeping — latency/loss history for the paths that matter: the fabric switches,
 # the spine gateway, the workers, the mgmt hosts, the transit next-hop, and the
-# internet. Internal VIP: http://smokeping.father.fsn.htz.yucca.internal
+# internet. Internal VIP: http://smokeping.father.fsn.htz.yucca.futo.network
 # (linuxserver image seeds /config from /defaults on first boot — our Targets is
 # mounted over /defaults so a fresh /config always picks it up.)
 apiVersion: v1
@@ -101,7 +101,10 @@ spec:
           ports:
             - containerPort: 80
           volumeMounts:
-            - { name: targets, mountPath: /defaults/Targets, subPath: Targets }
+            # Mounted straight over /config/Targets: the linuxserver image only
+            # seeds /config on first boot and never re-reads /defaults, so a
+            # /defaults mount silently serves the stock targets forever.
+            - { name: targets, mountPath: /config/Targets, subPath: Targets }
             - { name: config, mountPath: /config }
             - { name: data, mountPath: /data }
           resources:
@@ -123,7 +126,7 @@ metadata:
   labels:
     lb: internal
   annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.12 # = smokeping.father...yucca.internal (dns.tf)
+    io.cilium/lb-ipam-ips: 10.40.12.12 # = smokeping.father...yucca.futo.network (dns.tf)
 spec:
   type: LoadBalancer
   selector: { app: smokeping }
