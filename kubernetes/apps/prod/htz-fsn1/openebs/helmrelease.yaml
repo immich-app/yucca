@@ -30,6 +30,13 @@ metadata:
   namespace: openebs
 spec:
   interval: 30m
+  # io-engine uses an OnDelete updateStrategy (SPDK owns hugepages/cores — pods
+  # must be rolled by hand, one node at a time, waiting for volume rebuilds).
+  # The generous timeout + retries keep a chart bump from wedging on it.
+  timeout: 10m
+  upgrade:
+    remediation:
+      retries: 2
   chart:
     spec:
       chart: openebs

@@ -18,6 +18,7 @@ resources:
   - ./coredns.yaml
   - ./cilium-bgp.yaml
   - ./lb-return-route.yaml
+  - ./hubble-ui-internal.yaml
   - ./openebs
   - ./netops
 # components:

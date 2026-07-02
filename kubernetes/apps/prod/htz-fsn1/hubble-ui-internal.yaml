@@ -1,0 +1,18 @@
+# Hubble UI on an INTERNAL (NetBird-only) VIP: http://hubble.father.fsn.htz.yucca.internal
+# The deployment itself is managed by the cilium Helm release (talos stack,
+# hubble.ui.enabled); this just fronts it on the lb-internal pool.
+apiVersion: v1
+kind: Service
+metadata:
+  name: hubble-ui-internal
+  namespace: kube-system
+  labels:
+    lb: internal
+  annotations:
+    io.cilium/lb-ipam-ips: 10.40.12.15 # = hubble.father...yucca.internal (dns.tf)
+spec:
+  type: LoadBalancer
+  selector:
+    k8s-app: hubble-ui
+  ports:
+    - { name: http, port: 80, targetPort: 8081 }

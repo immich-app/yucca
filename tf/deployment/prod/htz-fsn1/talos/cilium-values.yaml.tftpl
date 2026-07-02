@@ -84,7 +84,7 @@ hubble:
   relay:
     enabled: true
   ui:
-    enabled: false
+    enabled: true # exposed NetBird-only via the hubble-ui-internal LB Service (flux tree)
 %{ else ~}
 hubble:
   enabled: false

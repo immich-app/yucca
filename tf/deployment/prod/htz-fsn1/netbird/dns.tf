@@ -59,6 +59,7 @@ locals {
     smokeping = cidrhost(module.addr_site.lb_internal_cidr, 12)
     oxidized  = cidrhost(module.addr_site.lb_internal_cidr, 13)
     sflow     = cidrhost(module.addr_site.lb_internal_cidr, 14)
+    hubble    = cidrhost(module.addr_site.lb_internal_cidr, 15)
   }
 }
 
