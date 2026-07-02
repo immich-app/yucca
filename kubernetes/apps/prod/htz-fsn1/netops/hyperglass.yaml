@@ -62,12 +62,7 @@ kind: Service
 metadata:
   name: hyperglass
   namespace: netops
-  labels:
-    lb: internal
-  annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.11 # = lg.father...yucca.futo.network (dns.tf)
 spec:
-  type: LoadBalancer
   selector: { app: hyperglass }
   ports:
     - { name: http, port: 80, targetPort: 8001 }

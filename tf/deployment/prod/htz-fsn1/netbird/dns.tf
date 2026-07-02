@@ -49,13 +49,16 @@ resource "netbird_dns_record" "father_cp" {
 # pinned via the io.cilium/lb-ipam-ips annotation in kubernetes/apps/prod/htz-fsn1/
 # netops/, which must agree with these).
 locals {
+  # Every netops name resolves to the TLS proxy VIP (netops/tls-proxy.yaml —
+  # wildcard cert, Host-routed). The per-service VIPs (.10-.15) still exist for
+  # direct plain-HTTP access/debugging but are not in DNS.
   father_netops = {
-    grafana   = cidrhost(module.addr_site.lb_internal_cidr, 10)
-    lg        = cidrhost(module.addr_site.lb_internal_cidr, 11)
-    smokeping = cidrhost(module.addr_site.lb_internal_cidr, 12)
-    oxidized  = cidrhost(module.addr_site.lb_internal_cidr, 13)
-    sflow     = cidrhost(module.addr_site.lb_internal_cidr, 14)
-    hubble    = cidrhost(module.addr_site.lb_internal_cidr, 15)
+    grafana   = cidrhost(module.addr_site.lb_internal_cidr, 16)
+    lg        = cidrhost(module.addr_site.lb_internal_cidr, 16)
+    smokeping = cidrhost(module.addr_site.lb_internal_cidr, 16)
+    oxidized  = cidrhost(module.addr_site.lb_internal_cidr, 16)
+    sflow     = cidrhost(module.addr_site.lb_internal_cidr, 16)
+    hubble    = cidrhost(module.addr_site.lb_internal_cidr, 16)
   }
 }
 

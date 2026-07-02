@@ -31,6 +31,10 @@ spec:
           type: StrategicMerge
           value:
             metadata:
+              labels:
+                # Pools with a serviceSelector (e.g. father's lb-internal) require
+                # this; ignored where the pool matches by IP annotation (staging).
+                lb: internal
               annotations:
                 # Cilium LB-IPAM assigns this specific VIP to the Service.
                 lbipam.cilium.io/ips: "${INGRESS_INTERNAL_IP}"

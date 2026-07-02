@@ -36,12 +36,7 @@ kind: Service
 metadata:
   name: sflow-rt
   namespace: netops
-  labels:
-    lb: internal
-  annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.14 # = sflow.father...yucca.futo.network (dns.tf)
 spec:
-  type: LoadBalancer
   selector: { app: sflow-rt }
   ports:
     - { name: sflow, port: 6343, targetPort: 6343, protocol: UDP }

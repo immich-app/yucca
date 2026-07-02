@@ -59,7 +59,7 @@ spec:
               valueFrom:
                 secretKeyRef: { name: grafana-admin, key: password }
             - name: GF_SERVER_ROOT_URL
-              value: http://grafana.father.fsn.htz.yucca.futo.network
+              value: https://grafana.father.fsn.htz.yucca.futo.network
             - name: GF_ANALYTICS_REPORTING_ENABLED
               value: "false"
           ports:
@@ -90,12 +90,7 @@ kind: Service
 metadata:
   name: grafana
   namespace: netops
-  labels:
-    lb: internal
-  annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.10 # = grafana.father...yucca.futo.network (dns.tf)
 spec:
-  type: LoadBalancer
   selector: { app: grafana }
   ports:
     - { name: http, port: 80, targetPort: 3000 }

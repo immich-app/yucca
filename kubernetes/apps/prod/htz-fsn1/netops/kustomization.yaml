@@ -16,3 +16,5 @@ resources:
   - ./oxidized.yaml
   - ./hyperglass.yaml
   - ./certificate.yaml
+  - ./gateway.yaml
+  - ./httproutes.yaml

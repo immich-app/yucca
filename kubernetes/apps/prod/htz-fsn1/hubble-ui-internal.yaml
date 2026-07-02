@@ -6,12 +6,7 @@ kind: Service
 metadata:
   name: hubble-ui-internal
   namespace: kube-system
-  labels:
-    lb: internal
-  annotations:
-    io.cilium/lb-ipam-ips: 10.40.12.15 # = hubble.father...yucca.futo.network (dns.tf)
 spec:
-  type: LoadBalancer
   selector:
     k8s-app: hubble-ui
   ports:

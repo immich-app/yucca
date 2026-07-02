@@ -20,6 +20,7 @@ resources:
   - ./lb-return-route.yaml
   - ./hubble-ui-internal.yaml
   - ./cert-manager.yaml
+  - ./envoy.yaml
   - ./openebs
   - ./netops
 # components:

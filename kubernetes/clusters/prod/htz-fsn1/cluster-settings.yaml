@@ -13,8 +13,9 @@ data:
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
   # ─── Ingress entry point ─────────────────────────────────────────────
-  # TODO: real prod ingress VIPs once the htz-fsn1 cluster is provisioned.
-  INGRESS_INTERNAL_IP: 10.10.10.16
+  # App gateway VIP (lb_internal range; the netops gateway pins .16 itself).
+  # TODO: INGRESS_PUBLIC_IP once the public app frontend is wired (lb-public pool).
+  INGRESS_INTERNAL_IP: 10.40.12.20
   INGRESS_PUBLIC_IP: 0.0.0.0
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
