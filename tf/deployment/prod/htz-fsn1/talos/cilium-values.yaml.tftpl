@@ -34,17 +34,18 @@ ipMasqAgent:
       - ${pod_cidr}
     masqLinkLocal: false
 
-# No LoadBalancer service exposure yet (ingress comes with Flux later) — keep L2
+# LoadBalancer VIPs are advertised into the fabric via BGP (below), not L2 — keep L2
 # announcements off so Cilium doesn't ARP for VIPs it shouldn't.
 l2announcements:
   enabled: false
 
-# NORTH-SOUTH (future): the fabric leaf already speaks BGP (transit). When ingress
-# lands, enable the BGP control plane here and add CiliumBGPClusterConfig peering
-# the leaf IRB (10.40.10.1) to advertise LoadBalancer/ingress VIPs into the fabric
-# — no L2 announcements needed. East-west stays on autoDirectNodeRoutes above.
-# bgpControlPlane:
-#   enabled: true
+# NORTH-SOUTH — the worker BGP speakers peer the spine's VLAN-10 IRB (10.40.10.1, iBGP
+# AS 402421) and advertise LoadBalancer /32s from the public pools; the core reaches
+# each VIP via its /32 and they're covered by the transit 69.48.224.0/24 advertisement.
+# The CiliumBGPClusterConfig / PeerConfig / Advertisement + LoadBalancerIPPools are
+# applied as CRs (bgp/*.yaml), not templated here. Peering is on the fabric — worker-only.
+bgpControlPlane:
+  enabled: true
 
 # kube-proxy replacement → Talos KubePrism (localhost:7445), stable apiserver
 # endpoint with no kube-proxy.

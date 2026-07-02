@@ -37,10 +37,12 @@ variable "cluster" {
     # reaches the kubelet there via NetBird→mgmt, and the node reaches the apiserver
     # over its own NetBird peer.
     workers = list(object({
-      name      = optional(string) # hostname override; null = auto-pick
-      fabric_ip = string           # 10.40.10.x on the kube fabric VLAN
-      maint_ip  = string           # Hetzner public IP (maintenance-mode apid endpoint)
-      robot_id  = number           # Hetzner Robot server number (provisioning/doc)
+      name        = optional(string)     # hostname override; null = auto-pick
+      fabric_ip   = string               # 10.40.10.x on the kube fabric VLAN
+      maint_ip    = string               # Hetzner public IP (maintenance-mode apid endpoint)
+      robot_id    = number               # Hetzner Robot server number (provisioning/doc)
+      provisioned = optional(bool, true) # false ONLY while first-provisioning: config
+      # applies then target maint_ip (maintenance mode); true = target fabric_ip (live).
     }))
     # Fabric bond members. Prefer worker_bond_driver (a Talos deviceSelector by NIC
     # driver, e.g. "bnxt_en") — robust across per-node PCI naming. worker_bond_interfaces
@@ -50,6 +52,13 @@ variable "cluster" {
     # Worker default route (egress for image pulls + NetBird): via the kube fabric
     # IRB gateway (fabric transit) when true, else the Hetzner public NIC (DHCP).
     worker_default_route_via_fabric = optional(bool, true)
+
+    # apiserver→kubelet rides the mesh peer-to-peer: the CPs get /etc/hosts entries
+    # mapping each worker hostname to its NetBird IP (data.netbird_peer lookups) and
+    # the apiserver prefers the Hostname node address. Requires the workers to BE
+    # NetBird peers — set false for a greenfield bootstrap (no peers to look up yet),
+    # flip true once the workers have joined. See cp_extras_patch in talos.tf.
+    worker_mesh_kubelet = optional(bool, true)
   })
 }
 

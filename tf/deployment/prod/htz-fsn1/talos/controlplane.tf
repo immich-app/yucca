@@ -41,6 +41,23 @@ resource "hcloud_server" "control_plane" {
   }
 }
 
+# Live CP config sync — user_data only configures a CP at CREATION (and is
+# ignore_changes above), so config edits never reached running CPs; today they were
+# hand-patched via talosctl. This applies the current rendered config to each live CP
+# on every apply (mode auto: no reboot for the config we manage). Notably it keeps the
+# worker /etc/hosts entries fresh: a re-provisioned worker gets a new NetBird IP, and
+# without this the apiserver keeps dialing the dead one.
+resource "talos_machine_configuration_apply" "cp" {
+  count = var.cluster.cp_count
+
+  client_configuration        = talos_machine_secrets.this.client_configuration
+  machine_configuration_input = data.talos_machine_configuration.cp[count.index].machine_configuration
+  node                        = local.cp_private_ips[count.index]
+  endpoint                    = local.cp_private_ips[count.index]
+
+  depends_on = [hcloud_server.control_plane]
+}
+
 # ── API load balancer ────────────────────────────────────────────────────────
 # Fronts the 3 CPs on 6443. Private IP (kube-cp) is the in-cluster target; the
 # public frontend (lb_public) is what operators + workers dial via api_dns_name.

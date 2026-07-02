@@ -11,6 +11,9 @@ variable "users" {
     full_name        = optional(string)
     ssh_ed25519_keys = optional(list(string), []) # full "ssh-ed25519 AAAA... comment" strings
     ssh_rsa_keys     = optional(list(string), []) # full "ssh-rsa AAAA... comment" strings
+    # sha512-crypt ($6$...) hash, for tools that can't key-auth (e.g. the looking
+    # glass). Source it from 1Password via a TF var — never commit even the hash.
+    encrypted_password = optional(string)
   }))
 }
 

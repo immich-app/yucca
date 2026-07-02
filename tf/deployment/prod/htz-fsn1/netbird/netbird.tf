@@ -24,7 +24,11 @@ locals {
   # TODO(prod): for a fully-private control plane, attach the mgmt nodes to the
   # kube-cp vSwitch and add module.addr_site.kube_cp_cidr to this map.
   routed = {
-    mgmt           = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
+    mgmt = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
+    # Internal LB VIPs (Grafana + netops UIs): NetBird peer -> mgmt router -> spine
+    # (iBGP /32 from the workers) -> worker. The mgmt hosts carry a static route for
+    # this range via the spine IRB (10.40.10.1).
+    lb_internal    = { address = module.addr_site.lb_internal_cidr, description = "father internal LoadBalancer VIPs (netops UIs)" }
     kube           = { address = module.addr_site.kube_cidr, description = "Site-global kube node network (fabric)" }
     cls1_public    = { address = module.addr_cls1.public_cidr, description = "cls1 public cluster network" }
     cls1_private   = { address = module.addr_cls1.private_cidr, description = "cls1 private cluster network" }

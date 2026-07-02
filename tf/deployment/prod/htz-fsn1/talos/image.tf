@@ -6,10 +6,16 @@ resource "talos_image_factory_schematic" "this" {
   schematic = file("${path.module}/schematic.yaml")
 }
 
+# Worker (bare-metal) schematic — same set minus qemu-guest-agent (see the file).
+resource "talos_image_factory_schematic" "worker" {
+  schematic = file("${path.module}/schematic-worker.yaml")
+}
+
 locals {
-  talos_schematic_id     = talos_image_factory_schematic.this.id
-  talos_hcloud_image_url = "https://factory.talos.dev/image/${local.talos_schematic_id}/v${var.cluster.talos_version}/hcloud-amd64.raw.xz"
-  talos_metal_image_url  = "https://factory.talos.dev/image/${local.talos_schematic_id}/v${var.cluster.talos_version}/metal-amd64.raw.xz"
+  talos_schematic_id        = talos_image_factory_schematic.this.id
+  talos_worker_schematic_id = talos_image_factory_schematic.worker.id
+  talos_hcloud_image_url    = "https://factory.talos.dev/image/${local.talos_schematic_id}/v${var.cluster.talos_version}/hcloud-amd64.raw.xz"
+  talos_metal_image_url     = "https://factory.talos.dev/image/${local.talos_worker_schematic_id}/v${var.cluster.talos_version}/metal-amd64.raw.xz"
 }
 
 # Talos amd64 image as an hcloud snapshot. hcloud can't boot the Talos ISO, so the

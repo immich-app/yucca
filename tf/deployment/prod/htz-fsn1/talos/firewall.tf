@@ -49,6 +49,33 @@ locals {
       portSelector = { ports = [6081], protocol = "udp" }
       ingress      = [for c in local.firewall_allow : { subnet = c }]
     }),
+    # OpenEBS Mayastor: the control plane dials each io-engine's gRPC (10124) and
+    # each csi-node's gRPC (10199, hostPort) on the node IP, and replicated volumes
+    # attach + replicate over NVMe-oF/TCP (8420 target, 4421 nexus) node-to-node.
+    yamlencode({
+      apiVersion   = "v1alpha1"
+      kind         = "NetworkRuleConfig"
+      name         = "mayastor-grpc"
+      portSelector = { ports = [10124, 10199], protocol = "tcp" }
+      ingress      = [for c in local.kubelet_allow : { subnet = c }]
+    }),
+    yamlencode({
+      apiVersion   = "v1alpha1"
+      kind         = "NetworkRuleConfig"
+      name         = "mayastor-nvmf"
+      portSelector = { ports = [8420, 4421], protocol = "tcp" }
+      ingress      = [for c in local.kubelet_allow : { subnet = c }]
+    }),
+    # Cilium BGP (workers ↔ the spine IRB on VLAN 10): the node BGP speakers advertise
+    # LoadBalancer /32s to the core. Peer is 10.40.10.1 (kube net), so allow TCP 179
+    # from the fabric.
+    yamlencode({
+      apiVersion   = "v1alpha1"
+      kind         = "NetworkRuleConfig"
+      name         = "cilium-bgp"
+      portSelector = { ports = [179], protocol = "tcp" }
+      ingress      = [{ subnet = local.kube_cidr }]
+    }),
     ], local.c.hubble ? [
     yamlencode({
       apiVersion   = "v1alpha1"

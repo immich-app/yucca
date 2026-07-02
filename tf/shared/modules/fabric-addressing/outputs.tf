@@ -97,3 +97,8 @@ output "kube_cp_gateway" {
   value       = local.kube_cp_gateway
   description = "Hetzner Cloud Gateway (.1) for the kube-cp subnet."
 }
+
+output "lb_internal_cidr" {
+  description = "Internal (NetBird-only) LoadBalancer VIP range (10.<site>.12.0/24)."
+  value       = local.lb_internal_cidr
+}

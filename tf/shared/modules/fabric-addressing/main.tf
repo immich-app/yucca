@@ -22,6 +22,14 @@ locals {
   kube_cp_cidr    = "10.${var.site_id}.${var.kube_cp_octet}.0/24"
   kube_cp_gateway = cidrhost(local.kube_cp_cidr, 1) # .1 — Hetzner Cloud Gateway
 
+  # Internal (NetBird-only) Kubernetes LoadBalancer VIP range. Like kube-cp it is
+  # NEVER a switch VLAN: Cilium assigns VIPs from it and the workers advertise the
+  # /32s to the spine over iBGP; NetBird peers reach them via the mgmt route peers
+  # (routed resource) -> spine -> worker. Carved from the site supernet for
+  # collision-free IPAM only.
+  #   lb-internal  10.<site>.12.0/24
+  lb_internal_cidr = "10.${var.site_id}.12.0/24"
+
   has_cluster = var.cluster_id != null
 
   # Cluster /20: net base = ordinal * 16 (cls1 -> 16 -> 10.40.16.0/20).

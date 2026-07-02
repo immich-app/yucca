@@ -33,5 +33,11 @@ terraform {
       source  = "1Password/onepassword"
       version = "~> 2.1"
     }
+    # Worker NetBird peer lookups — the mesh addresses the CP apiserver dials for
+    # worker kubelets (see cp_extras_patch). Auth via NB_PAT (op run).
+    netbird = {
+      source  = "registry.terraform.io/futo-org/netbird"
+      version = "1.0.2"
+    }
   }
 }

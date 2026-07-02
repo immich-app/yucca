@@ -25,3 +25,8 @@ provider "kubernetes" {
 # 1Password — persists the kube/talosconfig into yucca_tf_prod (secrets.tf). Auth
 # via OP_SERVICE_ACCOUNT_TOKEN (op run).
 provider "onepassword" {}
+
+# netbird — read-only worker peer lookups: their mesh IPs feed the CPs'
+# extraHostEntries so the apiserver dials worker kubelets peer-to-peer over the
+# mesh (no mgmt route in the path). PAT via NB_PAT (op run).
+provider "netbird" {}

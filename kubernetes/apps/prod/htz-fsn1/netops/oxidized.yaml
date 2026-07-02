@@ -1,0 +1,111 @@
+# oxidized — switch config backup (versioned): pulls `show configuration` from every
+# VC over SSH (the read-only netops login + key) into a local git repo on the
+# hostPath. Web UI (config diffs/history): http://oxidized.father.fsn.htz.yucca.internal
+# TODO: point the git output at a real remote once one exists.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oxidized-config
+  namespace: netops
+data:
+  config: |
+    ---
+    username: netops
+    model: junos
+    interval: 3600
+    use_syslog: false
+    debug: false
+    threads: 4
+    timeout: 60
+    retries: 2
+    rest: 0.0.0.0:8888
+    input:
+      default: ssh
+      ssh:
+        secure: false
+    output:
+      default: git
+      git:
+        user: oxidized
+        email: oxidized@father.fsn.htz.yucca.internal
+        repo: /data/fabric-configs.git
+    source:
+      default: csv
+      csv:
+        file: /config/router.db
+        delimiter: !ruby/regexp /:/
+        map:
+          name: 0
+          ip: 1
+          model: 2
+    model_map:
+      juniper: junos
+    vars:
+      ssh_keys: "/keys/id_ed25519"
+  router.db: |
+    htz-fsn1-corenetsw:10.40.5.115:junos
+    htz-fsn1-cls1netsw:10.40.5.125:junos
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oxidized
+  namespace: netops
+spec:
+  replicas: 1
+  strategy: { type: Recreate } # hostPath git repo: single writer
+  selector:
+    matchLabels: { app: oxidized }
+  template:
+    metadata:
+      labels: { app: oxidized }
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: yucca-htz-fsn-father-k8s-jeanne
+      # hostPath dirs are root-owned and fsGroup does not apply to hostPath —
+      # hand the repo dir to the oxidized uid before it starts.
+      initContainers:
+        - name: chown-data
+          image: busybox:1.36
+          command: ["sh", "-c", "chown -R 30000:30000 /data"]
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      containers:
+        - name: oxidized
+          image: oxidized/oxidized:latest
+          ports:
+            - containerPort: 8888
+          volumeMounts:
+            - { name: config, mountPath: /home/oxidized/.config/oxidized/config, subPath: config }
+            - { name: config, mountPath: /config/router.db, subPath: router.db }
+            - { name: keys, mountPath: /keys, readOnly: true }
+            - { name: data, mountPath: /data }
+          resources:
+            requests: { cpu: 20m, memory: 128Mi }
+            limits: { memory: 384Mi }
+      volumes:
+        - name: config
+          configMap: { name: oxidized-config }
+        - name: keys
+          secret:
+            secretName: netops-ssh
+            defaultMode: 0444 # oxidized runs non-root; the mount is pod-scoped
+        - name: data
+          hostPath:
+            path: /var/mnt/oxidized
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oxidized
+  namespace: netops
+  labels:
+    lb: internal
+  annotations:
+    io.cilium/lb-ipam-ips: 10.40.12.13 # = oxidized.father...yucca.internal (dns.tf)
+spec:
+  type: LoadBalancer
+  selector: { app: oxidized }
+  ports:
+    - { name: http, port: 80, targetPort: 8888 }

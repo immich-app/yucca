@@ -1,0 +1,75 @@
+# junos_exporter — NETCONF/SSH scraper for the fabric switches (interface octets,
+# BGP sessions, environment, optics). Auth: the read-only `netops` Junos login
+# (fabric.tf netops_users) with the key from the `netops-ssh` Secret (created
+# imperatively; never in git). Pods reach the switch vme IPs (10.40.5.x) over the
+# mesh via the talos→resources NetBird policy.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: junos-exporter-config
+  namespace: netops
+data:
+  config.yml: |
+    devices:
+      - host: 10.40.5.115
+        username: netops
+        key_file: /ssh/id_ed25519
+      - host: 10.40.5.125
+        username: netops
+        key_file: /ssh/id_ed25519
+    # Feature set is latency-tuned: `routes` (route-table summaries) is DISABLED —
+    # the spine carries a full transit table (>1M routes) and the collector pushed
+    # a scrape past 20s; queues likewise. Interfaces/BGP/optics cover the dashboard.
+    features:
+      alarm: true
+      environment: true
+      bgp: true
+      interfaces: true
+      interface_diagnostics: true
+      route_engine: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junos-exporter
+  namespace: netops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: junos-exporter }
+  template:
+    metadata:
+      labels: { app: junos-exporter }
+    spec:
+      containers:
+        - name: exporter
+          image: czerwonk/junos_exporter:latest
+          command: ["/app/junos_exporter"] # image has no entrypoint
+          args:
+            - -config.file=/config/config.yml
+            - -web.listen-address=:9326
+          ports:
+            - containerPort: 9326
+          volumeMounts:
+            - { name: config, mountPath: /config }
+            - { name: ssh, mountPath: /ssh, readOnly: true }
+          resources:
+            requests: { cpu: 20m, memory: 48Mi }
+            limits: { memory: 128Mi }
+      volumes:
+        - name: config
+          configMap: { name: junos-exporter-config }
+        - name: ssh
+          secret:
+            secretName: netops-ssh
+            defaultMode: 0400
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junos-exporter
+  namespace: netops
+spec:
+  selector: { app: junos-exporter }
+  ports:
+    - { name: metrics, port: 9326, targetPort: 9326 }

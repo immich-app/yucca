@@ -1,0 +1,98 @@
+# Cilium BGP (north-south LoadBalancer VIPs). The worker speakers iBGP-peer the spine's
+# kube-VLAN IRB (10.40.10.1, AS 402421) and advertise LoadBalancer /32s from the two
+# public pools; the core reaches each VIP via its /32 and it's covered by the transit
+# 69.48.224.0/24 advertisement. Fabric side: tf/.../core-fabric/bgp-nodes.tf.
+# NOTE: applied to the father cluster directly for now; to be adopted into the Flux tree
+# once GitOps is bootstrapped on prod.
+---
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lb-public-a
+spec:
+  # Skip the network/broadcast addresses — .0 is dropped by upstream routers.
+  allowFirstLastIPs: "No"
+  # Public pools take every LB service EXCEPT ones labeled lb=internal (those get
+  # a NetBird-only VIP from lb-internal below and must never draw a public IP).
+  serviceSelector:
+    matchExpressions:
+      - { key: lb, operator: NotIn, values: ["internal"] }
+  blocks:
+    - cidr: 69.48.224.0/26
+---
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lb-public-b
+spec:
+  allowFirstLastIPs: "No"
+  serviceSelector:
+    matchExpressions:
+      - { key: lb, operator: NotIn, values: ["internal"] }
+  blocks:
+    - cidr: 69.48.224.64/26
+---
+# Internal (NetBird-only) VIPs — 10.40.12.0/24 (fabric-addressing lb_internal).
+# Advertised to the spine over the same iBGP (CILIUM-NODES-IN accepts the range)
+# but NOT covered by the transit advertisement, so unreachable from the internet;
+# NetBird peers reach it via the mgmt route (netbird stack lb_internal resource).
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lb-internal
+spec:
+  allowFirstLastIPs: "No"
+  serviceSelector:
+    matchLabels:
+      lb: internal
+  blocks:
+    - cidr: 10.40.12.0/24
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: loadbalancer-ips
+  labels:
+    advertise: bgp
+spec:
+  advertisements:
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      # Match every service (opt a service out with the label bgp=disabled).
+      selector:
+        matchExpressions:
+          - { key: bgp, operator: NotIn, values: ["disabled"] }
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: core-spine
+spec:
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: bgp
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: father
+spec:
+  # Workers only — the CPs live on the hcloud net, not the fabric, so they can't peer.
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+  bgpInstances:
+    - name: instance-402421
+      localASN: 402421
+      peers:
+        - name: core-spine
+          peerASN: 402421
+          peerAddress: 10.40.10.1
+          peerConfigRef:
+            name: core-spine

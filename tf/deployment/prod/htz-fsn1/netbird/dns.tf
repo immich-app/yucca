@@ -48,6 +48,53 @@ resource "netbird_dns_record" "father_cp" {
   ttl      = 300
 }
 
+# Netops service records — <svc>.father.<region>.<provider>.yucca.internal → the
+# service's INTERNAL LoadBalancer VIP (lb_internal range, NetBird-only; VIPs are
+# pinned via the io.cilium/lb-ipam-ips annotation in kubernetes/apps/prod/htz-fsn1/
+# netops/, which must agree with these).
+locals {
+  father_netops = {
+    grafana   = cidrhost(module.addr_site.lb_internal_cidr, 10)
+    lg        = cidrhost(module.addr_site.lb_internal_cidr, 11)
+    smokeping = cidrhost(module.addr_site.lb_internal_cidr, 12)
+    oxidized  = cidrhost(module.addr_site.lb_internal_cidr, 13)
+    sflow     = cidrhost(module.addr_site.lb_internal_cidr, 14)
+  }
+}
+
+resource "netbird_dns_record" "father_netops" {
+  for_each = local.father_netops
+  zone_id  = netbird_dns_zone.yucca_internal.id
+  name     = "${each.key}.father.${var.region_code}.${var.provider_code}.yucca.internal"
+  type     = "A"
+  content  = each.value
+  ttl      = 300
+}
+
+# father worker node records: <node>.k8s.father.<region>.<provider>.yucca.internal →
+# the worker's NetBird (mesh) IP — the address peers dial it on directly (the
+# fabric IPs are only reachable via the mgmt route). Node names are the
+# deterministic wordlist picks, like father_cps above. IPs are looked up live
+# (data.netbird_peer; one live peer per node); a re-provisioned worker gets a new
+# mesh IP, refreshed here on the next apply.
+locals {
+  father_workers = ["dianna", "jeanne", "sheron"]
+}
+
+data "netbird_peer" "father_worker" {
+  for_each = toset(local.father_workers)
+  name     = "yucca-${var.provider_code}-${var.region_code}-father-k8s-${each.key}"
+}
+
+resource "netbird_dns_record" "father_worker" {
+  for_each = data.netbird_peer.father_worker
+  zone_id  = netbird_dns_zone.yucca_internal.id
+  name     = "${each.key}.k8s.father.${var.region_code}.${var.provider_code}.yucca.internal"
+  type     = "A"
+  content  = each.value.ip
+  ttl      = 300
+}
+
 # API endpoint — round-robin over the 3 CP IPs. NOT the LB: hcloud LBs refuse
 # traffic from their own targets (the CPs), so the endpoint resolves straight to
 # the CPs (reachable over the yucca-fsn-father-kube-cp route).

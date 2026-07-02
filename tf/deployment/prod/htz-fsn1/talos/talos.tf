@@ -29,9 +29,11 @@ locals {
   pod_cidr     = "10.250.0.0/17"   # 10.250.0.0 – 10.250.127.255
   service_cidr = "10.250.128.0/17" # 10.250.128.0 – 10.250.255.255
 
-  # Factory metal installer (keeps the schematic's extensions). Used by workers on
-  # install; CPs boot the hcloud snapshot and only consult this on a reinstall.
-  install_image = "factory.talos.dev/metal-installer/${local.talos_schematic_id}:v${local.c.talos_version}"
+  # Factory installers (keep each schematic's extensions). Workers consult theirs on
+  # install/upgrade; CPs boot the hcloud snapshot and only consult this on a reinstall.
+  # SPLIT per role: the worker schematic drops qemu-guest-agent (blocks metal boot).
+  cp_install_image     = "factory.talos.dev/metal-installer/${local.talos_schematic_id}:v${local.c.talos_version}"
+  worker_install_image = "factory.talos.dev/metal-installer/${local.talos_worker_schematic_id}:v${local.c.talos_version}"
 
   # Private API endpoint: a NetBird DNS-zone name resolving to the PRIVATE LB IP
   # (10.40.11.5). Name = kube.<cluster>.<region>.<provider>.yucca.internal (e.g.
@@ -59,8 +61,19 @@ locals {
   )
 
   # ── Shared patches (every node) ──────────────────────────────────────────
-  install_patch = yamlencode({
-    machine = { install = { disk = local.c.install_disk, image = local.install_image } }
+  cp_install_patch = yamlencode({
+    machine = { install = { disk = local.c.install_disk, image = local.cp_install_image } }
+  })
+  worker_install_patch = yamlencode({
+    machine = { install = { disk = local.c.install_disk, image = local.worker_install_image } }
+  })
+
+  # Talos's default forwards coredns's upstream queries to the host DNS on a link-local
+  # address (169.254.116.108) — unreachable from pods under Cilium's eBPF datapath
+  # (bpf.masquerade), so every EXTERNAL lookup from a pod times out while cluster.local
+  # works. Disabled → coredns's pod resolv.conf gets the node's real upstreams instead.
+  hostdns_patch = yamlencode({
+    machine = { features = { hostDNS = { forwardKubeDNSToHost = false } } }
   })
 
   # NetBird node-level overlay. CPs and workers join with DIFFERENT setup keys so they
@@ -88,15 +101,44 @@ locals {
   #   workers → kube fabric IP. All workers share VLAN-10 L2, so Cilium
   #            autoDirectNodeRoutes routes pod east-west directly over the 50G
   #            fabric — no BGP, no overlay.
-  cp_nodeip_patch     = yamlencode({ machine = { kubelet = { nodeIP = { validSubnets = [local.kube_cp_cidr] } } } })
-  worker_nodeip_patch = yamlencode({ machine = { kubelet = { nodeIP = { validSubnets = [local.kube_cidr] } } } })
+  # clusterDNS must be set explicitly: Talos defaults it to 10.96.0.10 (the upstream
+  # default service CIDR's DNS) and does NOT derive it from our serviceSubnets — the
+  # kube-dns Service actually lands at cidrhost(service_cidr, 10). Without this every
+  # pod's resolv.conf points at a black hole.
+  kubelet_cluster_dns = [cidrhost(local.service_cidr, 10)]
+  cp_nodeip_patch     = yamlencode({ machine = { kubelet = { clusterDNS = local.kubelet_cluster_dns, nodeIP = { validSubnets = [local.kube_cp_cidr] } } } })
+  # extraMounts: expose /var/mnt to the kubelet so hostPath volumes there work —
+  # Talos's kubelet container only sees an allow-listed /var set. Used by the netops
+  # VictoriaMetrics 30d buffer (kubernetes/apps/prod/htz-fsn1/netops/).
+  worker_nodeip_patch = yamlencode({ machine = { kubelet = {
+    clusterDNS = local.kubelet_cluster_dns
+    nodeIP     = { validSubnets = [local.kube_cidr] }
+    extraMounts = [{
+      destination = "/var/mnt"
+      type        = "bind"
+      source      = "/var/mnt"
+      options     = ["bind", "rshared", "rw"]
+    }]
+  } } })
 
-  cp_base_patches = compact([local.install_patch, local.cp_netbird_patch, local.cp_nodeip_patch])
+  # OpenEBS Mayastor prereqs (workers): 2MiB hugepages for the io-engine's SPDK
+  # data plane (1024 pages = 2GiB), the nvme-tcp initiator module (replicated
+  # volumes attach over NVMe-oF), and the engine node label. The kubelet only
+  # discovers the hugepages resource at startup — restart it once after this lands.
+  worker_mayastor_patch = yamlencode({
+    machine = {
+      sysctls    = { "vm.nr_hugepages" = "1024" }
+      kernel     = { modules = [{ name = "nvme_tcp" }] }
+      nodeLabels = { "openebs.io/engine" = "mayastor" }
+    }
+  })
+
+  cp_base_patches = compact([local.cp_install_patch, local.hostdns_patch, local.cp_netbird_patch, local.cp_nodeip_patch])
   # Workers ARE NetBird peers: the apiserver lives on the kube-cp hcloud net, only
   # reachable over the mesh, and workers resolve the API endpoint via the yucca.internal
   # NetBird DNS zone. nodeIP stays on the fabric (worker_nodeip_patch) so pod east-west
   # rides VLAN 10; only the API control path uses NetBird.
-  worker_base_patches = compact([local.install_patch, local.worker_netbird_patch, local.worker_nodeip_patch])
+  worker_base_patches = compact([local.worker_install_patch, local.hostdns_patch, local.worker_mayastor_patch, local.worker_netbird_patch, local.worker_nodeip_patch])
 
   # ── Control-plane cluster config (same on every CP) ──────────────────────
   cp_cluster_patch = yamlencode({
@@ -107,8 +149,24 @@ locals {
         podSubnets     = [local.pod_cidr]
         serviceSubnets = [local.service_cidr]
       }
-      proxy     = { disabled = true } # Cilium kube-proxy replacement (KubePrism)
-      apiServer = { certSANs = local.apiserver_cert_sans }
+      proxy = { disabled = true } # Cilium kube-proxy replacement (KubePrism)
+      # coredns is OURS (kubernetes/apps/prod/htz-fsn1/coredns.yaml), not Talos's:
+      # Talos's bootstrap-manifest reconciliation kept reverting the worker-affinity
+      # pin on every CP config change, putting coredns back on the CPs where worker
+      # pods can't reliably reach it. Talos doesn't prune already-applied manifests,
+      # so disabling only stops it from managing/reverting them.
+      coreDNS = { disabled = true }
+      apiServer = {
+        certSANs = local.apiserver_cert_sans
+        # Dial kubelets by HOSTNAME first (Talos's default is InternalIP-first). The
+        # worker InternalIPs are fabric addresses only reachable via the mgmt NetBird
+        # routers — a single flappy bridge that intermittently broke logs/exec. Worker
+        # hostnames resolve (via the CPs' extraHostEntries below) to the workers' OWN
+        # NetBird IPs, so apiserver→kubelet is peer-to-peer over the mesh — the same
+        # always-on tunnels the kubelets already use to reach the apiserver. The CP
+        # hostnames resolve via hcloud DNS to their kube-cp IPs, unchanged.
+        extraArgs = { "kubelet-preferred-address-types" = "Hostname,InternalIP,ExternalIP" }
+      }
       # Pin etcd to the kube-cp hcloud subnet so CP↔CP etcd stays off the mesh.
       etcd = { advertisedSubnets = [local.kube_cp_cidr] }
     }
@@ -123,10 +181,22 @@ locals {
   #    apiserver — a peer's — to register its etcd membership; its own apiserver
   #    isn't up until etcd joins). Off-node peers resolve api_dns_name via the
   #    NetBird yucca.internal zone.
+  #  • kubelet dialing (worker_mesh_kubelet): the apiserver prefers the Hostname node
+  #    address (cp_cluster_patch), so every node hostname must resolve on the CPs:
+  #    CP hostnames → their kube-cp IPs (stable), worker hostnames → their NetBird
+  #    IPs (data.netbird_peer — the peer-to-peer mesh path, no mgmt route). Talos
+  #    host-dns can't resolve NetBird DNS zones, hence /etc/hosts, which the
+  #    hostNetwork apiserver inherits.
+  cp_host_entries = concat(
+    [for ip in local.cp_private_ips : { ip = ip, aliases = [local.api_dns_name] }],
+    [for i, ip in local.cp_private_ips : { ip = ip, aliases = [local.cp_hostnames[i]] }],
+    [for i, p in data.netbird_peer.worker : { ip = p.ip, aliases = [local.worker_hostnames[i]] }],
+  )
+
   cp_extras_patch = yamlencode({
     machine = {
       sysctls = { "net.ipv4.ip_forward" = "1" }
-      network = { extraHostEntries = [for ip in local.cp_private_ips : { ip = ip, aliases = [local.api_dns_name] }] }
+      network = { extraHostEntries = local.cp_host_entries }
     }
   })
 
@@ -156,6 +226,16 @@ locals {
 # Cluster PKI (sensitive).
 resource "talos_machine_secrets" "this" {
   talos_version = "v${local.c.talos_version}"
+}
+
+# Worker NetBird peers — their mesh IPs feed the CPs' /etc/hosts (cp_host_entries)
+# so the apiserver dials worker kubelets peer-to-peer. Lookup is by peer name
+# (= the worker hostname; the netbird stack keeps one live peer per node). Gated:
+# on a greenfield bootstrap the workers aren't peers yet — set
+# cluster.worker_mesh_kubelet = false, then flip it after they join.
+data "netbird_peer" "worker" {
+  count = local.c.worker_mesh_kubelet ? length(local.c.workers) : 0
+  name  = local.worker_hostnames[count.index]
 }
 
 # Per-CP machine config — rendered into hcloud user_data (controlplane.tf). Each

@@ -72,6 +72,49 @@ variable "node_lags" {
   EOT
 }
 
+variable "node_bgp" {
+  type = object({
+    peer_range = string # the kube CIDR — nodes dynamic-peer from it; the IRB is its .1
+    # Extra prefixes accepted from the nodes beyond the transit-advertised space —
+    # e.g. the internal (NetBird-only) LoadBalancer VIP range.
+    accept_prefixes = optional(list(string), [])
+  })
+  default     = null
+  description = <<-EOT
+    Set to enable Cilium node iBGP + the kube-VLAN IRB (north-south for LoadBalancer
+    VIPs). irb.<kube_vlan> is the spine's only IRB — the VLAN-10 gateway (peer_range's .1)
+    AND the iBGP peer address; nodes dynamic-peer from peer_range, so worker IPs aren't
+    duplicated here. The core accepts what the transits already advertise (local.
+    advertised) and reaches each LB VIP via its /32 next-hop; the concrete pool ranges
+    live only in the Cilium LoadBalancerIPPools.
+  EOT
+}
+
+variable "node_egress" {
+  type        = map(string)
+  default     = {}
+  description = <<-EOT
+    Worker internet egress via the fabric (the 40G transit instead of each node's 1 GbE
+    eth0). Map of worker fabric IP => its public egress /32 in the advertised space. Each
+    node SNATs its egress to that IP and default-routes via the core; this adds the /32
+    return route so replies land on the right worker. The IP mapping lives here and in the
+    node SNAT config (kubernetes/.../node-egress) — the two must agree.
+  EOT
+}
+
+variable "sflow" {
+  type = object({
+    collector        = string # sflow-rt VIP (lb_internal range)
+    agent_id         = string # stable agent identity (the lo0 host IP)
+    udp_port         = optional(number, 6343)
+    polling_interval = optional(number, 5)    # counter export cadence (seconds)
+    sample_rate      = optional(number, 2048) # 1:N packet sampling
+    interfaces       = list(string)           # PHYSICAL ports (sFlow can't attach to ae)
+  })
+  default     = null
+  description = "sFlow export to the in-cluster sflow-rt collector — the seconds-granularity bandwidth source. See sflow.tf."
+}
+
 variable "mgmt_trusted_sources" {
   type        = list(string)
   default     = ["10.40.5.0/24", "10.254.0.0/15", "100.64.0.0/10", "127.0.0.0/8"]

@@ -1,0 +1,47 @@
+# Mayastor DiskPools — one per worker on the SECOND NVMe (nvme1n1, the install
+# disk is nvme0n1). Addressed by-id (serial) so device renumbering can't eat the
+# wrong disk. These back the `openebs-replicated` StorageClass (repl=2).
+# OpenEBS itself is installed by Helm (see kustomization.yaml in this dir for the
+# Flux HelmRelease); prereqs (hugepages, nvme_tcp, engine label) are Talos machine
+# config (talos.tf worker_mayastor_patch).
+apiVersion: openebs.io/v1beta3
+kind: DiskPool
+metadata:
+  name: pool-jeanne
+  namespace: openebs
+spec:
+  node: yucca-htz-fsn-father-k8s-jeanne
+  disks: ["aio:///dev/disk/by-id/nvme-SAMSUNG_MZQL21T9HCJR-00A07_S64GNNFX503097"]
+---
+apiVersion: openebs.io/v1beta3
+kind: DiskPool
+metadata:
+  name: pool-sheron
+  namespace: openebs
+spec:
+  node: yucca-htz-fsn-father-k8s-sheron
+  disks: ["aio:///dev/disk/by-id/nvme-SAMSUNG_MZQL21T9HCJR-00A07_S64GNJ0WC25872"]
+---
+apiVersion: openebs.io/v1beta3
+kind: DiskPool
+metadata:
+  name: pool-dianna
+  namespace: openebs
+spec:
+  node: yucca-htz-fsn-father-k8s-dianna
+  disks: ["aio:///dev/disk/by-id/nvme-SAMSUNG_MZQL21T9HCJR-00A07_S64GNNFX500876"]
+---
+# Replicated volumes (2 copies on distinct workers, NVMe-oF/TCP attach). For
+# VictoriaMetrics and anything that should survive a node loss. PG (CNPG) will use
+# LOCAL volumes instead (openebs-hostpath) — replication happens at the Postgres
+# layer there, not the block layer.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-replicated
+provisioner: io.openebs.csi-mayastor
+allowVolumeExpansion: true
+parameters:
+  protocol: nvmf
+  repl: "2"
+  ioTimeout: "60"

@@ -56,11 +56,13 @@ resource "talos_machine_configuration_apply" "worker" {
 
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.worker.machine_configuration
-  # One-time apply targets the maintenance-mode node at its Hetzner public IP (DHCP);
-  # the config then brings up bond0.10 at fabric_ip + joins NetBird, and the node
-  # reboots into the cluster. Post-join reconfig would target fabric_ip over NetBird.
-  node           = var.cluster.workers[count.index].maint_ip
-  endpoint       = var.cluster.workers[count.index].maint_ip
+  # The FIRST apply targets the maintenance-mode node at its Hetzner public IP (DHCP,
+  # provisioned=false); the config brings up bond0.10 at fabric_ip + joins NetBird and
+  # the node reboots into the cluster. Every later apply targets the LIVE node at its
+  # fabric IP (over the NetBird kube route) — the maintenance endpoint no longer
+  # exists once installed. Flip provisioned in tfvars per worker as it comes up.
+  node           = var.cluster.workers[count.index].provisioned ? var.cluster.workers[count.index].fabric_ip : var.cluster.workers[count.index].maint_ip
+  endpoint       = var.cluster.workers[count.index].provisioned ? var.cluster.workers[count.index].fabric_ip : var.cluster.workers[count.index].maint_ip
   config_patches = local.worker_node_patches[count.index]
   apply_mode     = "auto"
 
