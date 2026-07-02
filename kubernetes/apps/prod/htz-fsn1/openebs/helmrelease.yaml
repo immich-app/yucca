@@ -1,0 +1,55 @@
+# OpenEBS on father — LocalPV (openebs-hostpath, for CNPG's node-local PG
+# volumes) + Mayastor (openebs-replicated SC + the DiskPools next door, for
+# anything that must survive a node loss — VictoriaMetrics today).
+#
+# ADOPTED: the release was first installed by helm CLI at bring-up with these
+# exact values (same name + namespace → helm-controller takes over the release
+# history). Talos prereqs (hugepages, nvme_tcp, engine label, /var/mnt kubelet
+# mount, host firewall ports 10124/10199/8420/4421) live in the talos stack.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openebs
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: openebs
+  namespace: openebs
+spec:
+  interval: 1h
+  url: https://openebs.github.io/openebs
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: openebs
+  namespace: openebs
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: openebs
+      version: "*"
+      sourceRef:
+        kind: HelmRepository
+        name: openebs
+  values:
+    engines:
+      local:
+        lvm: { enabled: false }
+        zfs: { enabled: false }
+    alloy: { enabled: false }
+    loki: { enabled: false }
+    # Talos: the kubelet only sees /var/mnt (talos.tf extraMounts) — the default
+    # /var/local/openebs paths are invisible to it and volumes fail to mount.
+    localpv-provisioner:
+      localpv:
+        basePath: /var/mnt/openebs/localpv
+    mayastor:
+      etcd:
+        localpvScConfig:
+          basePath: /var/mnt/openebs/etcd

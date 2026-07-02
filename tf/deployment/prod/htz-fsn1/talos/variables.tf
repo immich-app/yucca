@@ -87,3 +87,34 @@ variable "trusted_cidrs" {
   type        = list(string)
   default     = []
 }
+
+# ── Flux (flux.tf) ────────────────────────────────────────────────────────────
+variable "flux_operator_version" {
+  description = "flux-operator + flux-instance chart version. 0.53.0+: 0.50.0's built-in eventSources CRD patch breaks against current Flux 2.x (see staging)."
+  type        = string
+  default     = "0.53.0"
+}
+
+variable "flux_git_ref" {
+  description = "Git branch Flux syncs. TEMPORARY feat/prod until the branch merges; then main."
+  type        = string
+  default     = "feat/prod"
+}
+
+variable "flux_github_app_id" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "flux_github_app_installation_id" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "flux_github_app_private_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}

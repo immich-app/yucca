@@ -59,7 +59,7 @@ resource "helm_release" "flux_instance" {
   repository      = "oci://ghcr.io/controlplaneio-fluxcd/charts"
   chart           = "flux-instance"
   version         = var.flux_operator_version
-  values          = [templatefile("${path.module}/flux-values.yaml.tftpl", { env = "staging" })]
+  values          = [templatefile("${path.module}/flux-values.yaml.tftpl", { env = "staging", git_ref = "main" })]
   cleanup_on_fail = true
   wait_for_jobs   = true
 
