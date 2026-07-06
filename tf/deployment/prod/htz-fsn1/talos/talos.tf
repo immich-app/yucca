@@ -83,12 +83,16 @@ locals {
   # the CP-only router group for the kube-cp network — the workers must NOT be in it, or
   # NetBird treats them as kube-cp routers and they never install the client route (their
   # pods can't reach the apiserver). See the netbird stack for the group/router wiring.
-  # NB_USE_LEGACY_ROUTING: newer netbird installs client routes into a policy
-  # table (7120) reached via ip rules — host traffic follows them, but Cilium's
-  # BPF fib lookup only consults the MAIN table, so POD traffic to routed subnets
-  # (e.g. pod→apiserver via kube-cp) gets ICMP no-route. Legacy mode puts routes
-  # in main where the datapath can see them.
-  netbird_env = ["NB_MANAGEMENT_URL=https://api.netbird.io", "NB_USE_LEGACY_ROUTING=true"]
+  # Both CP + worker run netbird in its normal (modern) mode. The pod→routed-subnet
+  # problem — Cilium's eBPF host-routing does its FIB lookup against the MAIN table
+  # only, so any route netbird parks in a policy table (it has been observed using
+  # both main and table 7120 across versions/restarts) is invisible to POD egress,
+  # and pod→apiserver via kube-cp gets "no route to host" — is fixed DETERMINISTICALLY
+  # on the workers by worker_netbird_route_patch (a Talos-managed main-table route),
+  # NOT by pinning netbird to its deprecated NB_USE_LEGACY_ROUTING mode. CPs don't
+  # run the eBPF pod-datapath to routed subnets (their control-plane pods are
+  # hostNetwork → host stack, which honors policy routing), so they need no route.
+  netbird_env = ["NB_MANAGEMENT_URL=https://api.netbird.io"]
   cp_netbird_patch = var.netbird_talos_cp_setup_key != "" ? yamlencode({
     apiVersion  = "v1alpha1"
     kind        = "ExtensionServiceConfig"
@@ -101,6 +105,24 @@ locals {
     name        = "netbird"
     environment = concat(["NB_SETUP_KEY=${var.netbird_talos_setup_key}"], local.netbird_env)
   }) : ""
+
+  # DETERMINISTIC pod→apiserver fix: a Talos-managed route for the kube-cp subnet
+  # (apiserver + private API LB, reachable only over the mesh) into the MAIN table
+  # via wt0 — exactly where Cilium's eBPF FIB lookup reads. netbird still installs
+  # its own route (its table is version-dependent); ours guarantees main is
+  # populated regardless, so pod egress to kube-cp always resolves. Declaring a
+  # route on wt0 does NOT disturb the netbird extension (it keeps owning wt0's
+  # address; Talos only adds the route). Workers only — CPs are ON kube-cp.
+  worker_netbird_route_patch = yamlencode({
+    machine = {
+      network = {
+        interfaces = [{
+          interface = "wt0"
+          routes    = [{ network = local.kube_cp_cidr }]
+        }]
+      }
+    }
+  })
 
   # nodeIP selection:
   #   CPs    → kube-cp hcloud private subnet (apiserver↔CP-kubelet stays private;
@@ -181,7 +203,7 @@ locals {
   # NetBird DNS zone. nodeIP stays on the fabric (worker_nodeip_patch) so pod east-west
   # rides VLAN 10; only the API control path uses NetBird.
   # (install patch is PER-WORKER — by disk serial — appended in workers.tf)
-  worker_base_patches = compact([local.hostdns_patch, local.worker_mayastor_patch, local.worker_volumes_patch, local.worker_netbird_patch, local.worker_nodeip_patch])
+  worker_base_patches = compact([local.hostdns_patch, local.worker_mayastor_patch, local.worker_volumes_patch, local.worker_netbird_patch, local.worker_netbird_route_patch, local.worker_nodeip_patch])
 
   # ── Control-plane cluster config (same on every CP) ──────────────────────
   cp_cluster_patch = yamlencode({
