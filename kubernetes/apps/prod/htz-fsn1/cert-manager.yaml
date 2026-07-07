@@ -26,6 +26,24 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: cert-manager
+  # PROD TOPOLOGY: the webhook must run on the CONTROL PLANES. The apiserver
+  # (hostNetwork on the CPs) calls admission webhooks itself, and CP→worker-pod
+  # traffic rides geneve over the NetBird mgmt route — where TLS-sized packets
+  # blackhole (same plane the coredns pin dodges). On a CP the call is local.
+  patches:
+    - target:
+        kind: HelmRelease
+        name: cert-manager
+      patch: |
+        - op: add
+          path: /spec/values/webhook
+          value:
+            nodeSelector:
+              node-role.kubernetes.io/control-plane: ""
+            tolerations:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+                effect: NoSchedule
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization

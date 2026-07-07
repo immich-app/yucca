@@ -1,0 +1,12 @@
+---
+# The openebs namespace — owned HERE (cluster-apps), not by the openebs
+# Kustomization that targets it: pruning lessons of 2026-07-06 (the namespace
+# briefly lived in a since-removed manifest; the restructure pruned it and took
+# the whole storage control plane down with it). privileged: hostPath + hugepages
+# + /dev access for the Mayastor io-engine.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openebs
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
