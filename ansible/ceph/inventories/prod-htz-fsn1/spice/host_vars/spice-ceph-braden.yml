@@ -1,0 +1,9 @@
+---
+hostname_short: spice-ceph-braden
+bond_ip: 178.63.139.240
+hetzner_server_number: 3008194
+host_index: 10
+mon: false
+fabric_nic: PLACEHOLDER_25g_bond_member
+oob_nic: PLACEHOLDER_1g_wan
+# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)

@@ -170,3 +170,14 @@ run = "scripts/ansible-play.sh hardware-inventory.yml"
 [tasks."migrate-networkd"]
 description = "One-shot ifupdown→networkd migration (rolling, serial=1, noout-gated)"
 run = "scripts/ansible-play.sh migrate-networkd.yml"
+
+[tasks.reprovision]
+description = "Hetzner installimage reprovision (rescue -> reset -> installimage -> verify). DESTRUCTIVE - canary first."
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+# HETZNER_ROBOT_* come from tf/.env.prod via op run; the same op session also
+# satisfies ansible-play.sh's inner op inject of secrets.yml.tpl. Set CEPH_ENV first.
+OP_ACCOUNT=team-futo op run --env-file=../../tf/.env.prod -- \\
+  scripts/ansible-play.sh reprovision.yml "$@"
+"""

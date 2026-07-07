@@ -18,6 +18,7 @@ set -euo pipefail
 # Map: short cluster name -> target filename under ~/.ssh/
 declare -A KEYS=(
   [sietch]="id_ed25519_sietch"
+  [spice]="id_ed25519_spice"
 )
 
 # Map: short cluster name -> 1P vault holding its
@@ -26,6 +27,7 @@ declare -A KEYS=(
 # Override any lookup with OP_VAULT=<vault>.
 declare -A VAULTS=(
   [sietch]="yucca_tf_staging"
+  [spice]="yucca_tf_prod"
 )
 DEFAULT_VAULT="yucca_tf_dev"
 

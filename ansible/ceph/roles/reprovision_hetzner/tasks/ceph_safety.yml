@@ -1,0 +1,19 @@
+---
+# Day-2 safety hook. Default 'permissive' is a no-op (the bootstrap cluster does
+# not exist yet). Set reprovision_ceph_safety=strict for live-cluster reimage to
+# force an explicit acknowledgement that the node is dead / drained / ok-to-stop.
+#
+# TODO(day-2): in strict mode, replace the manual override with a real check:
+#   delegate to a healthy mon and assert `ceph osd ok-to-stop <ids>` + HEALTH_OK,
+#   and `ceph osd set noout` for the duration.
+
+- name: Refuse to wipe a node in a live cluster without explicit acknowledgement
+  ansible.builtin.fail:
+    msg: >-
+      reprovision_ceph_safety=strict: refusing to wipe {{ inventory_hostname }}.
+      Confirm the node is dead/drained (ceph osd ok-to-stop) and pass
+      -e i_know_its_dead=true, or set reprovision_ceph_safety=permissive for the
+      initial bootstrap.
+  when:
+    - reprovision_ceph_safety | default('permissive') == 'strict'
+    - not (i_know_its_dead | default(false) | bool)

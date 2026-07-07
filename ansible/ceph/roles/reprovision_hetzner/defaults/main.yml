@@ -1,0 +1,64 @@
+---
+# reprovision_hetzner - drive a Hetzner Robot installimage reprovision of an
+# SX295 ceph node: arm rescue + hw reset (Robot API via uri), wait for the real
+# rescue ramdisk, optionally zap the OSD HDDs, run installimage, reboot, verify.
+#
+# Everything that touches a node is delegate_to: localhost raw ssh/scp (no Python
+# on the rescue ramdisk; survives the reset/reboot connection boundary). This role
+# is ALWAYS destructive to the OS NVMes and must NEVER be folded into deploy/converge.
+
+# --- Robot API ---
+reprovision_robot_base_url: "https://robot-ws.your-server.de"
+reprovision_robot_username: "{{ lookup('ansible.builtin.env', 'HETZNER_ROBOT_USERNAME') }}"
+reprovision_robot_password: "{{ lookup('ansible.builtin.env', 'HETZNER_ROBOT_PASSWORD') }}"
+reprovision_rescue_os: linux
+reprovision_robot_retries: 5         # retry Robot API calls on 429/5xx/transient before failing the node
+reprovision_robot_delay: 10
+
+# --- installimage / hardware (SX295 painbox shape) ---
+reprovision_image: "/root/.oldroot/nfs/install/../images/Debian-bookworm-latest-amd64-base.tar.zst"
+# The Hetzner rescue installer is NOT on PATH; invoke + gate on its real path.
+# Its presence (executable) is also the reliable "am I in rescue?" signal.
+reprovision_installimage_bin: /root/.oldroot/nfs/install/installimage
+reprovision_boot_mode: bios          # bios|uefi - gates the ESP partition in autosetup.j2
+reprovision_expect_nvme: 2           # 2x NVMe (OS RAID-1)
+reprovision_expect_sata: 14          # 14x SATA HDD (OSDs) - baseline; some nodes carry more
+reprovision_disk_min_bytes: 1000000000000  # 1 TB floor for disk classification (drops the BMC 0-byte virtual disk)
+reprovision_installimage_timeout: 1800
+
+# --- SSH (one key only, no agent -> no MaxAuthTries; key authorized in BOTH rescue and installed OS) ---
+reprovision_ssh_user: root
+reprovision_ssh_key_path: "{{ provision_iac_ssh_key_path }}"   # ~/.ssh/id_ed25519_spice
+reprovision_ssh_opts: >-
+  -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes -o LogLevel=ERROR
+
+# --- gating + modes ---
+confirm_wipe: false                  # hard destructive gate (must pass -e confirm_wipe=true)
+reprovision_mode: install            # install | inspect (inspect = arm+reset+wait+inspect, NO wipe)
+reprovision_wipe_osd_disks: false    # opt-in: zap the 14 OSD HDDs in rescue (day-2 reimage; off for virgin bootstrap)
+reprovision_ceph_safety: permissive  # permissive | strict (strict refuses a live node without i_know_its_dead=true)
+# Resume-safe re-runs: skip a node whose INSTALLED-OS marker already matches inventory
+# (converge the not-yet-done nodes, leave the good ones alone). Off = always reimage.
+reprovision_skip_if_provisioned: false
+reprovision_force: false             # override skip_if_provisioned: reimage even if already provisioned
+reprovision_probe_retries: 3         # transport-only retries for the skip probe (don't re-wipe a healthy node on an ssh blip)
+reprovision_probe_delay: 5
+
+# --- timing / polling ---
+reprovision_reset_settle_delay: 25   # pause after hw-reset before first rescue probe
+reprovision_rescue_retries: 60       # 60 x 10s = 10 min to enter rescue
+reprovision_rescue_delay: 10
+reprovision_rescue_max_uptime: 1200  # this-boot guard: reject a stale already-up rescue (P1-4)
+reprovision_os_retries: 60           # 60 x 15s = 15 min for installed OS
+reprovision_os_delay: 15
+reprovision_marker_path: /etc/ceph-provisioned.json
+
+# --- canary gate (fan-out blocked until the canary is verified-booted) ---
+reprovision_canary_host: spice-ceph-adelia
+reprovision_canary_marker: "{{ lookup('ansible.builtin.env', 'HOME') }}/.cache/{{ cluster_name | default('spice') }}-canary-verified"
+
+# --- keys authorized in RESCUE: operator break-glass keys; the iac pubkey is added from disk by register_keys ---
+reprovision_operator_pubkeys:
+  - { name: andy-futo, key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO7XdW03gJKyABt5KCMxOLPb5sOGTXuZV0OHc1Ro46Nt andy@futo.org" }
+  - { name: nutgood, key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOaH71qha6kLO2qRu+w6C5wPpWhkiBjEUeY1fAjAVApR nutgood" }

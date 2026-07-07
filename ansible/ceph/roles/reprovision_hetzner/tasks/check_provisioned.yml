@@ -1,0 +1,63 @@
+---
+# Resume-safe skip: if this node's INSTALLED OS already carries a provisioning
+# marker that matches inventory, set reprovision_skip=true so main.yml leaves it
+# untouched (no arm, no reset, no wipe). Lets a fan-out re-run converge only the
+# not-yet-done nodes after a halt, without re-wiping the ones that succeeded.
+# Off by default; -e reprovision_force=true reimages regardless. All ssh via localhost.
+#
+# Safety: the probe retries ONLY on ssh-transport failure (rc 255) so a transient
+# blip cannot flip a healthy node to skip=false and re-wipe it; a genuinely-down or
+# virgin node (rc != 0 after retries) still reimages. A corrupt marker is parsed
+# under block/rescue -> {} -> mismatch -> reimage (never a silent skip or a halt).
+
+- name: Default - do not skip
+  ansible.builtin.set_fact:
+    reprovision_skip: false
+
+- name: Read any existing provisioning marker (installed OS, not rescue)
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "[ ! -x {{ reprovision_installimage_bin }} ] && cat {{ reprovision_marker_path }}"
+  delegate_to: localhost
+  register: reprovision_existing_marker
+  changed_when: false
+  failed_when: false
+  retries: "{{ reprovision_probe_retries }}"
+  delay: "{{ reprovision_probe_delay }}"
+  # rc 0 (skip candidate) and rc 1 (reimage) stop immediately; only ssh-transport
+  # failures (rc 255) retry, so a blip doesn't wrongly mark a healthy node reimage.
+  until: (reprovision_existing_marker.rc | default(255)) != 255
+  when:
+    - reprovision_skip_if_provisioned | default(false) | bool
+    - not (reprovision_force | default(false) | bool)
+
+- name: Parse the marker if present (corrupt/truncated -> {} -> reimage)
+  when:
+    - reprovision_existing_marker.rc is defined
+    - reprovision_existing_marker.rc == 0
+    - (reprovision_existing_marker.stdout | default('') | trim | length) > 0
+  block:
+    - name: Parse marker JSON
+      ansible.builtin.set_fact:
+        reprovision_marker_parsed: "{{ reprovision_existing_marker.stdout | from_json }}"
+  rescue:
+    - name: Corrupt marker - treat as not-provisioned
+      ansible.builtin.set_fact:
+        reprovision_marker_parsed: {}
+
+- name: Decide skip (marker present and matches this host)
+  ansible.builtin.set_fact:
+    reprovision_skip: >-
+      {{ (reprovision_marker_parsed.hostname | default('') == inventory_hostname)
+         and ((reprovision_marker_parsed.hetzner_server_number | default(-1)) | int
+              == (hetzner_server_number | int)) }}
+  when: reprovision_marker_parsed is defined
+
+- name: Report skip
+  ansible.builtin.debug:
+    msg: >-
+      SKIP {{ inventory_hostname }}: already provisioned (marker matches).
+      Pass -e reprovision_force=true to reimage anyway.
+  when: reprovision_skip | default(false) | bool

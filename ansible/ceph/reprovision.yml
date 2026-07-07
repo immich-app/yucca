@@ -1,0 +1,54 @@
+---
+# Reprovision Hetzner SX295 ceph nodes via the Robot API + installimage.
+# Ansible-native replacement for the out-of-band installimage step:
+#   arm rescue (uri) -> hw reset (uri) -> wait for rescue -> [zap OSD HDDs] ->
+#   installimage -> reboot -> verify installed OS. Then hand off to `mise run deploy`.
+#
+# ALWAYS DESTRUCTIVE to the NVMe OS disks. NEVER fold this into deploy/converge.
+# Launch ONLY via `mise run reprovision` (wraps op run --env-file=../../tf/.env.prod,
+# which materializes HETZNER_ROBOT_* and lets ansible-play.sh op-inject secrets).
+# Set CEPH_ENV first (e.g. inventories/prod-htz-fsn1/spice/inventory.ini).
+#
+# Inspect node 1 (arm rescue + reset + assert disks/boot-mode, NO wipe):
+#   mise run reprovision -- --limit spice-ceph-adelia -e confirm_wipe=true -e reprovision_mode=inspect
+# Canary (one node, full wipe + verify; verifying it unlocks fan-out):
+#   mise run reprovision -- --limit spice-ceph-adelia -e confirm_wipe=true
+# Fan-out (remaining nodes, batched; gated on the canary marker):
+#   mise run reprovision -- --limit 'ceph_nodes:!spice-ceph-adelia' -e confirm_wipe=true -e reprovision_serial=5
+# Resume after a halt (skip already-provisioned nodes, converge only the rest):
+#   mise run reprovision -- --limit ceph_nodes -e confirm_wipe=true -e allow_fanout=true \
+#       -e reprovision_skip_if_provisioned=true -e reprovision_serial=5
+# Day-2 reimage of a dead node (also zap its OSD HDDs, with the ceph-safety gate):
+#   mise run reprovision -- --limit <host> -e confirm_wipe=true -e reprovision_wipe_osd_disks=true \
+#       -e reprovision_ceph_safety=strict -e i_know_its_dead=true
+
+- name: Reprovision ceph nodes (rescue -> installimage -> installed OS)
+  hosts: ceph_nodes
+  gather_facts: false
+  become: false
+  serial: "{{ reprovision_serial | default(1) }}"
+  max_fail_percentage: 0          # any node fails -> halt the batch (no further wipes)
+  pre_tasks:
+    # run_once + included through the role so role defaults load and --limit can't
+    # skip it (a hosts: localhost play would be). Asserts creds/keys, enforces the
+    # fan-out gate, registers rescue keys, publishes fingerprints to localhost facts.
+    - name: Preflight + register robot keys (once)  # noqa: run-once[task]
+      ansible.builtin.include_role:
+        name: reprovision_hetzner
+        tasks_from: preflight
+      run_once: true
+  roles:
+    - role: reprovision_hetzner
+
+- name: Verify reprovisioned nodes after reboot
+  hosts: ceph_nodes
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Skip verify in inspect mode (no install happened)
+      ansible.builtin.meta: end_play
+      when: reprovision_mode | default('install') != 'install'
+    - name: Verify installed OS marker
+      ansible.builtin.include_role:
+        name: reprovision_hetzner
+        tasks_from: verify

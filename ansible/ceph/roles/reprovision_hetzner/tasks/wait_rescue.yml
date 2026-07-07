@@ -1,0 +1,80 @@
+---
+# Per-host: wait for THIS reset's rescue boot, then assert hardware matches the
+# autosetup before anything destructive. All probes delegate_to localhost raw ssh.
+
+- name: Settle after hw-reset before probing
+  ansible.builtin.pause:
+    seconds: "{{ reprovision_reset_settle_delay }}"
+  delegate_to: localhost
+
+# Strong rescue gate: the installimage binary exists ONLY in the Hetzner rescue
+# ramdisk (and is NOT on PATH, so gate on its real path). Carry /proc/uptime so we
+# can reject a stale already-up rescue (this-boot guard).
+- name: Wait until node is REALLY in rescue (installimage binary present)
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "[ -x {{ reprovision_installimage_bin }} ] && echo RESCUE_READY $(cut -d' ' -f1 /proc/uptime)"
+  delegate_to: localhost
+  register: rescue_probe
+  changed_when: false
+  failed_when: false
+  retries: "{{ reprovision_rescue_retries }}"
+  delay: "{{ reprovision_rescue_delay }}"
+  until: rescue_probe.rc == 0 and 'RESCUE_READY' in (rescue_probe.stdout | default(''))
+
+- name: Assert the node entered rescue
+  ansible.builtin.assert:
+    that: "'RESCUE_READY' in (rescue_probe.stdout | default(''))"
+    fail_msg: "{{ inventory_hostname }} ({{ bond_ip }}) never entered rescue within timeout - NOT wiping."
+
+- name: This-boot guard - reject a stale rescue from a prior run
+  ansible.builtin.assert:
+    that: (rescue_probe.stdout.split()[1] | float) < (reprovision_rescue_max_uptime | float)
+    fail_msg: >-
+      {{ inventory_hostname }} rescue uptime {{ rescue_probe.stdout.split()[1] }}s exceeds
+      {{ reprovision_rescue_max_uptime }}s - looks like a stale rescue, not this reset's boot.
+      Re-run, or raise reprovision_rescue_max_uptime if the box is genuinely slow to boot.
+
+- name: Push the hardware-probe script
+  ansible.builtin.command:
+    cmd: >-
+      scp {{ reprovision_ssh_opts }} -i {{ reprovision_ssh_key_path | expanduser }}
+      {{ role_path }}/files/probe-hardware.sh {{ reprovision_ssh_user }}@{{ bond_ip }}:/tmp/probe-hardware.sh
+  delegate_to: localhost
+  changed_when: false
+
+# Classify disks by rotational type + size (like sietch's detect.yml), NOT /dev/sdN,
+# so the BMC 0-byte virtual disk and any device reordering are ignored.
+- name: Probe boot mode + disk topology (by rotational type + size)
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "bash /tmp/probe-hardware.sh {{ reprovision_disk_min_bytes }}"
+  delegate_to: localhost
+  register: reprovision_hw_probe
+  changed_when: false
+
+# installimage builds the OS RAID from exactly the NVMe pair, so that is the hard
+# requirement (mirrors sietch asserting exactly 2 non-rotational SSDs). The OSD-HDD
+# count varies across the fleet and is a note, not a gate.
+- name: Assert boot mode + exactly the expected non-rotational NVMe OS disks
+  ansible.builtin.assert:
+    that:
+      - (reprovision_hw_probe.stdout_lines[0] | trim) == reprovision_boot_mode
+      - (reprovision_hw_probe.stdout_lines[1] | int) == (reprovision_expect_nvme | int)
+      - (reprovision_hw_probe.stdout_lines[2] | int) >= 1
+    fail_msg: >-
+      {{ inventory_hostname }} hardware mismatch:
+      mode={{ reprovision_hw_probe.stdout_lines[0] }} os_nvme={{ reprovision_hw_probe.stdout_lines[1] }}
+      osd_hdd={{ reprovision_hw_probe.stdout_lines[2] }}
+      (need {{ reprovision_boot_mode }} / {{ reprovision_expect_nvme }} NVMe / >=1 OSD disk).
+
+- name: Note OSD-HDD count when it differs from the baseline
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }}: {{ reprovision_hw_probe.stdout_lines[2] }} OSD HDDs
+      (baseline {{ reprovision_expect_sata }}); install uses NVMe only - confirm OSD host_vars at deploy.
+  when: (reprovision_hw_probe.stdout_lines[2] | int) != (reprovision_expect_sata | int)

@@ -11,10 +11,14 @@ ${h.hostname_short} ansible_host=${h.bond_ip}
 ansible_user=${ansible_ssh_user}
 ansible_ssh_private_key_file=${ansible_ssh_key}
 
-# MON/MGR nodes — currently all nodes
+# MON/MGR nodes - hosts whose `roles` include "mon". Defaults to all nodes
+# (default roles contain "mon"); large clusters pin a fixed quorum (e.g. 5) by
+# setting roles without "mon" on the OSD-only hosts.
 [ceph_mon]
 %{ for h in hosts ~}
+%{ if contains(h.roles, "mon") ~}
 ${h.hostname_short}
+%{ endif ~}
 %{ endfor ~}
 
 # Bootstrap node — first MON/MGR, runs cephadm bootstrap

@@ -1,0 +1,40 @@
+---
+# Mandatory pre-installimage step: wipe stale mdraid/LVM/GPT metadata off the OS
+# NVMes so installimage's fresh RAID has nothing to collide with (otherwise the
+# installed OS can't assemble root at boot and never comes back). Mirrors the
+# proven provision_host/tasks/disks.yml teardown. Runs in rescue; delegate localhost.
+
+- name: Re-confirm rescue before wiping OS-disk metadata
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "[ -x {{ reprovision_installimage_bin }} ]"
+  delegate_to: localhost
+  changed_when: false
+
+- name: Push the OS-disk prepare script
+  ansible.builtin.command:
+    cmd: >-
+      scp {{ reprovision_ssh_opts }} -i {{ reprovision_ssh_key_path | expanduser }}
+      {{ role_path }}/files/prepare-os-disks.sh
+      {{ reprovision_ssh_user }}@{{ bond_ip }}:/tmp/prepare-os-disks.sh
+  delegate_to: localhost
+  changed_when: true
+
+# The script exits non-zero if any stale mdraid superblock survives -> the task
+# fails -> the batch halts BEFORE installimage (never wipe-install onto disks we
+# could not clean).
+- name: Wipe stale RAID/LVM metadata off the OS NVMes
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "bash /tmp/prepare-os-disks.sh"
+  delegate_to: localhost
+  register: reprovision_prepare_disks
+  changed_when: "'wiped:' in reprovision_prepare_disks.stdout"
+
+- name: Show OS-disk prepare result
+  ansible.builtin.debug:
+    var: reprovision_prepare_disks.stdout_lines
