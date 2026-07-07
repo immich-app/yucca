@@ -39,6 +39,13 @@ resource "terraform_data" "mgmt_site_id_check" {
 # (op://<vault>/<title>/password). Survives state loss and is operator-visible.
 resource "tls_private_key" "mgmt_provisioning" {
   algorithm = "ED25519"
+
+  lifecycle {
+    # Rotating this key requires re-registering it in Robot and re-authorizing
+    # hosts — a deliberate runbook, never a plan side effect. (The reprovision
+    # flow arms hetzner_boot_linux; it never destroys the key.)
+    prevent_destroy = true
+  }
 }
 
 data "onepassword_vault" "env" {

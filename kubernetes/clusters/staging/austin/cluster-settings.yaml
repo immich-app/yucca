@@ -21,3 +21,7 @@ data:
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
+
+  # ─── Storage ─────────────────────────────────────────────────────────
+  # CNPG database PVs: node-local NVMe via the overlay's spare-disk SC.
+  DB_STORAGE_CLASS: openebs-spare-disk

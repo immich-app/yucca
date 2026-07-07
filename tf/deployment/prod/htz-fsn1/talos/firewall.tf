@@ -4,7 +4,7 @@
 # Trust planes for this hybrid cluster:
 #   kube_cidr        10.40.10.0/24  workers' fabric IPs (east-west, BGP)
 #   kube_cp_cidr     10.40.11.0/24  CP private IPs + the API LB (etcd, LB health-checks)
-#   netbird_node_cidr 100.64.0.0/10 the NetBird mesh (apiserver↔kubelet, node control)
+#   netbird_node_cidr 10.254.0.0/15 the NetBird mesh (apiserver↔kubelet, node control)
 #   trusted_cidrs    operator/CI source ranges
 #
 # ⚠️ The TF runner dials the CP PUBLIC IPs for bootstrap (apid 50000) and the

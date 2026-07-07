@@ -128,7 +128,7 @@ spec:
       serviceAccountName: vmagent
       containers:
         - name: vmagent
-          image: victoriametrics/vmagent:latest
+          image: victoriametrics/vmagent:latest@sha256:4f2d79253c1ce04296e4624724a815e53ea5ebadd465a1d0291153afb9893a30
           args:
             - -promscrape.config=/config/scrape.yml
             - -remoteWrite.url=http://victoria-metrics.netops.svc:8428/api/v1/write

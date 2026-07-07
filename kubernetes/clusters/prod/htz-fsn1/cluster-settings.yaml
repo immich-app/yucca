@@ -28,3 +28,9 @@ data:
   OPENEBS_HOSTPATH_CLASS_ENABLED: "true"
   OPENEBS_LOCALPV_BASEPATH: /var/mnt/localpv/hostpath
   OPENEBS_MAYASTOR_ETCD_BASEPATH: /var/mnt/openebs/etcd
+
+  # ─── Storage ─────────────────────────────────────────────────────────
+  # CNPG database PVs: LOCAL volumes on the u-localpv partition (see
+  # openebs/diskpools.yaml) — Postgres replicates itself; Mayastor is for
+  # workloads without app-level replication.
+  DB_STORAGE_CLASS: openebs-hostpath

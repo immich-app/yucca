@@ -117,8 +117,8 @@ variable "sflow" {
 
 variable "mgmt_trusted_sources" {
   type        = list(string)
-  default     = ["10.40.5.0/24", "10.254.0.0/15", "100.64.0.0/10", "127.0.0.0/8"]
-  description = "Source prefixes allowed to reach SSH/NETCONF on the RE (lo0 PROTECT-RE filter, applied when transit exists). OOB + NetBird + Tailscale + loopback."
+  default     = ["10.40.5.0/24", "10.254.0.0/15", "127.0.0.0/8"]
+  description = "Source prefixes allowed to reach SSH/NETCONF on the RE (lo0 PROTECT-RE filter, applied when transit exists). OOB + NetBird mesh (this account assigns 10.254.0.0/15, NOT the 100.64/10 NetBird Cloud default) + loopback."
 }
 
 variable "local_as" {

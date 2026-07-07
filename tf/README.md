@@ -39,11 +39,6 @@ tf/
 │       │       ├── inventory-destroy.ini.tftpl
 │       │       ├── inventory-provision-debian-live.ini.tftpl
 │       │       └── secrets.yml.tpl.tftpl
-│       ├── talos-cluster/            ← Talos K8s VMs on the ceph hypervisors
-│       │   ├── main.tf, variables.tf, outputs.tf
-│       │   └── modules/
-│       │       ├── inventory-renderer/  ← renders ansible/talos inventory + host_vars
-│       │       └── talos-bootstrap/     ← siderolabs/talos: config apply, bootstrap, kubeconfig
 │       └── talos-baremetal/         ← Talos on bare-metal nodes already in maintenance mode
 │           ├── main.tf, variables.tf, outputs.tf
 │           └── firewall.tf              ← Talos host ingress firewall (default-deny + allow-lists)
@@ -327,8 +322,8 @@ On apply, the module:
 ## The talos-baremetal module (staging/austin/talos)
 
 Brings up Talos on **bare-metal nodes already running in maintenance mode** at
-known addresses — no Ansible, no hypervisors, no VLANs (contrast the VM-oriented
-`talos-cluster` module). It dials each node's maintenance IP, applies machine
+known addresses — no Ansible, no hypervisors, no VLANs (the earlier VM-oriented
+`talos-cluster` module was removed unused). It dials each node's maintenance IP, applies machine
 config (which installs to disk + reboots), bootstraps one CP, then emits
 kube/talosconfig and gates on cluster health.
 

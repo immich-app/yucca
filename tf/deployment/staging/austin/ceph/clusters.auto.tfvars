@@ -9,6 +9,11 @@
 
 clusters = {
   sietch = {
+    # ⚠ domain/partition/region/provider_code DUPLICATE the facts terragrunt
+    # already injects from the directory layout + region.hcl — the ceph-cluster
+    # module reads the per-cluster copies, so they must be kept in sync by hand.
+    # (Deliberately not refactored yet; folding root inputs into the cluster
+    # object is a module-shape change.)
     domain            = "staging.austin.int.futo.cloud"
     partition         = "staging"
     region            = "austin"

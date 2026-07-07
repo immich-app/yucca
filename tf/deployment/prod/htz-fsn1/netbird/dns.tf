@@ -23,7 +23,8 @@ resource "netbird_dns_zone" "yucca_internal" {
     module.netbird.group_ids["talos"],
     module.netbird.group_ids["mgmt"],
     module.netbird.group_ids["ci"],
-    module.netbird.group_ids["k8s_operator"],
+    # (k8s_operator removed with the rest of its half-wiring — re-add alongside
+    # the service user/token when the in-cluster operator deploys.)
   ]
 }
 

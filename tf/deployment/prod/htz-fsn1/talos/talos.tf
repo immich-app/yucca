@@ -11,15 +11,12 @@
 # Bootstrap/kubeconfig/health dial the CP PUBLIC IPs (firewalled) — the only thing
 # the TF runner can reach before NetBird/the LB settle.
 
-module "names" {
-  source       = "../../../../shared/modules/node-names"
-  cluster_name = var.cluster.name
-  # CPs first (auto-picked), then workers (explicit override or auto).
-  names = concat(
-    [for i in range(var.cluster.cp_count) : null],
-    [for w in var.cluster.workers : try(w.name, null)],
-  )
-}
+# Node names are EXPLICIT in tfvars (cluster.cp_names + workers[*].name) — the
+# node-names shuffle module was retired here: auto-picked names re-roll when the
+# pool input changes (adding an explicit name shrinks the shuffle pool → every
+# auto name changes → every node renames), and positional slotting meant a
+# cp_count change renamed all workers. migrations.tf forgets the old module
+# state without destroying anything.
 
 locals {
   c = var.cluster
@@ -49,12 +46,14 @@ locals {
 
   kube_cp_prefix = split("/", local.kube_cp_cidr)[1] # 24
 
-  # Hostnames: yucca-htz-fsn-father-k8s-<name>.
-  hostname = { for i in range(local.c.cp_count + length(local.c.workers)) :
-    i => "yucca-${var.provider_code}-${var.region_code}-${local.c.name}-k8s-${module.names.resolved[i]}"
-  }
-  cp_hostnames     = [for i in range(local.c.cp_count) : local.hostname[i]]
-  worker_hostnames = [for j in range(length(local.c.workers)) : local.hostname[local.c.cp_count + j]]
+  # Hostnames: yucca-htz-fsn-father-k8s-<name>. Workers additionally get a
+  # hostname-keyed map — the STABLE key for the apply resources (workers.tf) and
+  # the netbird peer lookups, so list edits can't shift another node's identity.
+  node_prefix      = "yucca-${var.provider_code}-${var.region_code}-${local.c.name}-k8s"
+  cp_hostnames     = [for n in local.c.cp_names : "${local.node_prefix}-${n}"]
+  workers_named    = [for w in local.c.workers : merge(w, { hostname = "${local.node_prefix}-${w.name}" })]
+  worker_hostnames = [for w in local.workers_named : w.hostname]
+  worker_node_map  = { for w in local.workers_named : w.hostname => w }
 
   # apiserver cert SANs — the names/IPs clients dial. NOT the CP public IPs (those
   # don't exist until the servers are created from this very config).
@@ -260,7 +259,10 @@ locals {
   cp_host_entries = concat(
     [for ip in local.cp_private_ips : { ip = ip, aliases = [local.api_dns_name, local.legacy_api_dns_name] }],
     [for i, ip in local.cp_private_ips : { ip = ip, aliases = [local.cp_hostnames[i]] }],
-    [for i, p in data.netbird_peer.worker : { ip = p.ip, aliases = [local.worker_hostnames[i]] }],
+    # Iterate the tfvars LIST (not the hostname-keyed data map, whose lexical
+    # order differs) — entry order is part of the rendered CP config, and
+    # reordering it would churn every CP's machine config for nothing.
+    [for w in local.workers_named : { ip = data.netbird_peer.worker[w.hostname].ip, aliases = [w.hostname] } if local.c.worker_mesh_kubelet],
   )
 
   cp_extras_patch = yamlencode({
@@ -296,6 +298,13 @@ locals {
 # Cluster PKI (sensitive).
 resource "talos_machine_secrets" "this" {
   talos_version = "v${local.c.talos_version}"
+
+  lifecycle {
+    # Destroying/replacing this rolls the ENTIRE cluster identity (every node's
+    # PKI). Any plan that wants to is a bug — a deliberate re-key must lift this
+    # flag in the same reviewed change.
+    prevent_destroy = true
+  }
 }
 
 # Worker NetBird peers — their mesh IPs feed the CPs' /etc/hosts (cp_host_entries)
@@ -304,8 +313,8 @@ resource "talos_machine_secrets" "this" {
 # on a greenfield bootstrap the workers aren't peers yet — set
 # cluster.worker_mesh_kubelet = false, then flip it after they join.
 data "netbird_peer" "worker" {
-  count = local.c.worker_mesh_kubelet ? length(local.c.workers) : 0
-  name  = local.worker_hostnames[count.index]
+  for_each = { for hostname, w in local.worker_node_map : hostname => w if local.c.worker_mesh_kubelet }
+  name     = each.key
 }
 
 # Per-CP machine config — rendered into hcloud user_data (controlplane.tf). Each
@@ -360,6 +369,13 @@ resource "talos_machine_bootstrap" "this" {
   timeouts             = { create = "10m" }
 
   depends_on = [hcloud_server.control_plane]
+
+  lifecycle {
+    # A replace re-bootstraps a LIVE cluster (identity roll). The re-bootstrap
+    # runbook (README) must lift this flag deliberately. Note this also turns
+    # any bootstrap_endpoint change into a hard plan error — intended.
+    prevent_destroy = true
+  }
 }
 
 resource "talos_cluster_kubeconfig" "this" {

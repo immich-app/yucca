@@ -12,11 +12,14 @@ metadata:
 spec:
   # Skip the network/broadcast addresses — .0 is dropped by upstream routers.
   allowFirstLastIPs: "No"
-  # Public pools take every LB service EXCEPT ones labeled lb=internal (those get
-  # a NetBird-only VIP from lb-internal below and must never draw a public IP).
+  # Pool-a is the DEFAULT public pool: every LB service EXCEPT ones labeled
+  # lb=internal (NetBird-only VIP from lb-internal, must never draw a public IP)
+  # or lb=public-b (explicit opt-in to pool-b below). Disjoint selectors keep
+  # pool assignment deterministic — with identical selectors Cilium picks
+  # arbitrarily between matching pools.
   serviceSelector:
     matchExpressions:
-      - { key: lb, operator: NotIn, values: ["internal"] }
+      - { key: lb, operator: NotIn, values: ["internal", "public-b"] }
   blocks:
     - cidr: 69.48.224.0/26
 ---
@@ -26,9 +29,10 @@ metadata:
   name: lb-public-b
 spec:
   allowFirstLastIPs: "No"
+  # Opt-in only: label a Service lb=public-b to draw from this range.
   serviceSelector:
-    matchExpressions:
-      - { key: lb, operator: NotIn, values: ["internal"] }
+    matchLabels:
+      lb: public-b
   blocks:
     - cidr: 69.48.224.64/26
 ---

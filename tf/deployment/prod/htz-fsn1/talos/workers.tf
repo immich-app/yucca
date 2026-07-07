@@ -17,7 +17,8 @@
 locals {
   kube_prefix = split("/", local.kube_cidr)[1] # 24
 
-  worker_node_patches = [for j, w in var.cluster.workers : [
+  # Keyed by hostname (worker_node_map) — same stable key as the apply resource.
+  worker_node_patches = { for hostname, w in local.worker_node_map : hostname => [
     # Install disk by SERIAL (never by name — enumeration swaps across boots).
     yamlencode({
       machine = { install = {
@@ -54,12 +55,16 @@ locals {
         }
       }
     }),
-    yamlencode({ apiVersion = "v1alpha1", kind = "HostnameConfig", auto = "off", hostname = local.worker_hostnames[j] }),
-  ]]
+    yamlencode({ apiVersion = "v1alpha1", kind = "HostnameConfig", auto = "off", hostname = hostname }),
+  ] }
 }
 
+# Keyed by HOSTNAME, not list position: removing or reordering a worker in
+# tfvars must never shift another node's resource address — with count, a shift
+# destroyed (= RESET, wiping Mayastor/localpv data) every displaced live node.
+# Matches the talos-baremetal module's worker_node_map pattern.
 resource "talos_machine_configuration_apply" "worker" {
-  count = length(var.cluster.workers)
+  for_each = local.worker_node_map
 
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.worker.machine_configuration
@@ -68,18 +73,32 @@ resource "talos_machine_configuration_apply" "worker" {
   # the node reboots into the cluster. Every later apply targets the LIVE node at its
   # fabric IP (over the NetBird kube route) — the maintenance endpoint no longer
   # exists once installed. Flip provisioned in tfvars per worker as it comes up.
-  node           = var.cluster.workers[count.index].provisioned ? var.cluster.workers[count.index].fabric_ip : var.cluster.workers[count.index].maint_ip
-  endpoint       = var.cluster.workers[count.index].provisioned ? var.cluster.workers[count.index].fabric_ip : var.cluster.workers[count.index].maint_ip
-  config_patches = local.worker_node_patches[count.index]
+  node           = each.value.provisioned ? each.value.fabric_ip : each.value.maint_ip
+  endpoint       = each.value.provisioned ? each.value.fabric_ip : each.value.maint_ip
+  config_patches = local.worker_node_patches[each.key]
   apply_mode     = "auto"
 
+  # reset=false: decommissioning a Mayastor-bearing node must be a deliberate
+  # `talosctl reset`, never a terraform destroy side effect (a removed tfvars
+  # entry now just reboots the node out of management). NB: on_destroy is read
+  # from STATE, so this protects only after it has been applied once.
   on_destroy = {
     reboot   = true
-    reset    = true
+    reset    = false
     graceful = false
   }
 
   # Workers join only after the apiserver is up (bootstrap), or they sit in
   # maintenance waiting for it.
   depends_on = [talos_machine_bootstrap.this]
+
+  lifecycle {
+    # worker_netbird_patch is silently OMITTED when the setup key is "" (the
+    # credential-less validate default) — an env-less apply would strip NetBird
+    # from the live worker configs. Fail loudly instead.
+    precondition {
+      condition     = length(var.netbird_talos_setup_key) > 0
+      error_message = "netbird_talos_setup_key is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."
+    }
+  }
 }

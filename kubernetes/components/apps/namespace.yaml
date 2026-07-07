@@ -3,3 +3,14 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: yucca
+  labels:
+    # Enforce the restricted PodSecurity standard: this namespace holds the JWT
+    # signing key and S3 credentials — no root, no writable rootfs, no caps.
+    # The yucca-common chart's securityContext defaults comply; CNPG-operator
+    # pods are restricted-compliant by design.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+  annotations:
+    # Never prune: holds the CNPG database (PVCs) and TF-provisioned secrets.
+    kustomize.toolkit.fluxcd.io/prune: disabled

@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: hyperglass
-          image: ghcr.io/thatmattlove/hyperglass:latest
+          image: ghcr.io/thatmattlove/hyperglass:latest@sha256:7e7515bf6e27d0980f82516b62b4d0fcebdddb81140e17ee1be2f29f8cc929ab
           # Without --workers it forks one per CPU — 192 on the EPYC workers — and
           # instantly OOMs. The startup UI build also needs headroom (2Gi limit).
           command: ["hyperglass", "start", "--workers", "4"]

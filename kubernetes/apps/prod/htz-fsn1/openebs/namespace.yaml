@@ -10,3 +10,6 @@ metadata:
   name: openebs
   labels:
     pod-security.kubernetes.io/enforce: privileged
+  annotations:
+    # Never prune this namespace — see the 2026-07-06 incident above.
+    kustomize.toolkit.fluxcd.io/prune: disabled

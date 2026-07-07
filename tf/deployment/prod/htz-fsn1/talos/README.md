@@ -11,24 +11,24 @@ stack brings up a healthy, Cilium-networked cluster and stops there.
             │  cp-1  cp-2  cp-3   (CCX23, Talos snapshot)   │
             │   • public IPv4  → NetBird + bootstrap + LB    │
             │   • kube-cp 10.40.11.0/24 (eth1) → etcd        │
-            │   • API LB (lb11) → :6443, public + private    │
+            │   • API LB (lb11) → :6443, PRIVATE (lb_public=false) │
             └───────┬───────────────────────┬───────────────┘
-        NetBird mesh│ (CP route to fabric    │ public LB :6443 (api_dns_name)
-        via mgmt    │  net, advertised)      │
+        NetBird mesh│ (CP route to fabric    │ private LB :6443 (api_dns_name,
+        via mgmt    │  net, advertised)      │  reached over the mesh)
             ┌───────┴───────────────────────┴───────────────┐
             │   Juniper fabric — kube VLAN 10 / 10.40.10.0/24 │
             │   wk-1 .11   wk-2 .12   wk-3 .13   (bond0, 50G)  │
-            │   • nodeIP = fabric IP → Cilium autoDirectNodeRoutes │
-            │     puts pod east-west directly on the 50G fabric    │
+            │   • pod↔pod rides geneve (routingMode: tunnel) over │
+            │     the 50G fabric between workers                   │
             └─────────────────────────────────────────────────┘
 ```
 
 | Plane | Path | Carries |
 |---|---|---|
 | node / control | NetBird (CP) → mgmt routers → `kube` fabric | apiserver↔kubelet, CP→worker |
-| API endpoint | public Hetzner Cloud LB (`api_dns_name`) | kubelet→apiserver, operators |
+| API endpoint | private Hetzner Cloud LB (`api_dns_name`, NetBird-reachable) | kubelet→apiserver, operators |
 | etcd | `kube-cp` hcloud private subnet (`10.40.11.0/24`) | CP↔CP |
-| pod east-west | `kube` fabric VLAN 10 (50G), `autoDirectNodeRoutes` | worker↔worker pods |
+| pod east-west | `kube` fabric VLAN 10 (50G), geneve tunnel | worker↔worker pods |
 
 No vSwitch, no BGP. **Cilium BGP is reserved for north-south later** (advertising
 ingress/LoadBalancer VIPs to the fabric leaf, which already speaks BGP).

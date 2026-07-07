@@ -1,4 +1,11 @@
-replicas: 1
+# 2 replicas + a PDB (templates/pdb.yaml): the user-facing frontend survives
+# single-node drains/reboots.
+replicas: 2
+
+# Generous requests, deliberately huge memory limits (never CPU-limit).
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { memory: 4Gi }
 
 # Stable in-cluster name, independent of the Helm release name (dev == prod).
 fullnameOverride: yucca-web

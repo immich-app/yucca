@@ -4,16 +4,19 @@ data "onepassword_vault" "prod" {
   name = "yucca_tf_${coalesce(var.partition, "prod")}"
 }
 
+# Titles come from the discovery locals (region-scoped) so the written items and
+# the discovery refs can never drift. NB: retitling recreates the 1P items — the
+# old partition-scoped YUCCA_PROD_{KUBE,TALOS}CONFIG records need manual archive.
 resource "onepassword_item" "kubeconfig" {
   vault    = data.onepassword_vault.prod.uuid
-  title    = upper("YUCCA_${coalesce(var.partition, "PROD")}_KUBECONFIG")
+  title    = local._kubeconfig_title
   category = "password"
   password = talos_cluster_kubeconfig.this.kubeconfig_raw
 }
 
 resource "onepassword_item" "talosconfig" {
   vault    = data.onepassword_vault.prod.uuid
-  title    = upper("YUCCA_${coalesce(var.partition, "PROD")}_TALOSCONFIG")
+  title    = local._talosconfig_title
   category = "password"
   password = data.talos_client_configuration.this.talos_config
 }
@@ -35,5 +38,14 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
   }
   data = {
     api-token = var.cloudflare_api_token
+  }
+
+  lifecycle {
+    # "" default keeps credential-less validate clean; never let it reach the
+    # cluster (cert-manager would silently stop renewing).
+    precondition {
+      condition     = length(var.cloudflare_api_token) > 0
+      error_message = "cloudflare_api_token is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."
+    }
   }
 }

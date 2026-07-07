@@ -38,6 +38,11 @@ spec:
     # (tf .../secrets.tf), like yucca-michael — not managed in this repo.
     radosEndpoint: ${S3_ENDPOINT}
     radosSecretName: yucca-metrics-rgw
+    # Drop the chart's dev-fixture POLAR_* placeholder Secret (same pattern as
+    # the yucca-api/michael/admin-api HelmReleases) — real billing creds arrive
+    # via ExternalSecret when Polar integration lands; until then rendering the
+    # placeholders into a prod Secret invites silently-broken billing.
+    secretData: null
     # Full replacement of the chart's dev env: production mode, OTLP metrics to
     # the in-cluster vmagent. Logs are collected node-side by
     # victoria-logs-collector (pod stdout), so no OTEL_LOGGING push here.

@@ -14,7 +14,7 @@ cluster = {
 
   # The node extension set lives in schematic.yaml (managed via
   # talos_image_factory_schematic in image.tf) — no schematic id to paste here.
-  install_disk = "/dev/nvme0n1" # worker install target (AX162-R: 2× NVMe; CP VMs boot from the snapshot)
+  install_disk = "/dev/sda" # CP install target (hcloud VMs: virtio /dev/sda) — the ONLY consumer is cp_install_patch; workers install by NVMe serial (workers.tf)
 
   cilium_version = "1.19.5"
   hubble         = true
@@ -23,7 +23,11 @@ cluster = {
   netbird_node_cidr = "10.254.0.0/15"
 
   # ── Cloud control plane (Hetzner Cloud, fsn1) ──────────────────────────────
-  cp_count       = 3
+  cp_count = 3
+  # PINNED to the live nodes (verified against discovery/cp_nodes 2026-07-07).
+  # Order follows cp_ip_offset: kaycee=.11, bettie=.12, ofelia=.13. A wrong name
+  # here RENAMES a live control plane — check twice.
+  cp_names       = ["kaycee", "bettie", "ofelia"]
   cp_server_type = "ccx23" # 4 vCPU / 16 GB, dedicated x86
   cp_location    = "fsn1"
   cp_ip_offset   = 11 # CP private IPs → 10.40.11.11 / .12 / .13 (etcd)
@@ -32,10 +36,13 @@ cluster = {
   lb_public      = false # private-only LB; the API endpoint stays on the kube-cp net
 
   # ── Bare-metal workers (Hetzner Robot dedicated; sequential after mgmt-1/2) ──
+  # `name` keys the apply resources (stable across list edits — removing or
+  # reordering an entry no longer touches the others). Names verified against
+  # the live nodes 2026-07-07.
   workers = [
-    { fabric_ip = "10.40.10.11", maint_ip = "178.63.124.38", robot_id = 3008210, install_serial = "S64GNNFX503099" },
-    { fabric_ip = "10.40.10.12", maint_ip = "178.63.124.37", robot_id = 3008211, install_serial = "S64GNJ0WC25870" },
-    { fabric_ip = "10.40.10.13", maint_ip = "178.63.124.39", robot_id = 3008212, install_serial = "S64GNNFX500881" },
+    { name = "jeanne", fabric_ip = "10.40.10.11", maint_ip = "178.63.124.38", robot_id = 3008210, install_serial = "S64GNNFX503099" },
+    { name = "sheron", fabric_ip = "10.40.10.12", maint_ip = "178.63.124.37", robot_id = 3008211, install_serial = "S64GNJ0WC25870" },
+    { name = "dianna", fabric_ip = "10.40.10.13", maint_ip = "178.63.124.39", robot_id = 3008212, install_serial = "S64GNNFX500881" },
   ]
   # 2×25G Broadcom NICs (enp193s0f0np0/f1np1) enslaved into bond0 (tagged kube VLAN 10).
   # Selected by driver — robust across per-node PCI naming. eth0 (ixgbe 10G) stays the

@@ -93,7 +93,7 @@ spec:
     spec:
       containers:
         - name: smokeping
-          image: linuxserver/smokeping:latest
+          image: linuxserver/smokeping:latest@sha256:32026e7bdb59f88b788082704d3031863240c0577704935f5cccefd2e1c2eae3
           env:
             - { name: PUID, value: "1000" }
             - { name: PGID, value: "1000" }

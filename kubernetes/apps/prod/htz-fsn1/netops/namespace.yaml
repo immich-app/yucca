@@ -12,3 +12,8 @@ metadata:
   name: netops
   labels:
     pod-security.kubernetes.io/enforce: privileged
+  annotations:
+    # Never prune: this namespace holds hand-created secrets (netops-ssh,
+    # grafana-admin, hyperglass-devices) and the VictoriaMetrics PVC — a prune
+    # would destroy state only a manual runbook can restore.
+    kustomize.toolkit.fluxcd.io/prune: disabled

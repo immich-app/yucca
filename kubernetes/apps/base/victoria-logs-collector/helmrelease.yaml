@@ -9,6 +9,9 @@ spec:
     kind: OCIRepository
     name: victoria-logs-collector
   interval: 1h
+  install:
+    remediation:
+      retries: 3 # first-install failures self-retry instead of wedging until manual intervention
   rollback:
     cleanupOnFail: true
   upgrade:

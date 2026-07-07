@@ -43,7 +43,7 @@ spec:
     spec:
       containers:
         - name: exporter
-          image: czerwonk/junos_exporter:latest
+          image: czerwonk/junos_exporter:latest@sha256:df559e0f92eafba2e00796f36dcfbfc481ed2a2afd974396c5ad275ba9f2be0a
           command: ["/app/junos_exporter"] # image has no entrypoint
           args:
             - -config.file=/config/config.yml

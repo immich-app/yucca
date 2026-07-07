@@ -200,7 +200,7 @@ variable "clusters" {
     })
 
     nodes = list(object({
-      name    = string
+      name    = optional(string) # auto-picked from the node-names inventory when omitted
       role    = optional(string, "control-plane")
       address = string
     }))

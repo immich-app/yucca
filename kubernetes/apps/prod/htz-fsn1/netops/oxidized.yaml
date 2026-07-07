@@ -72,7 +72,7 @@ spec:
             - { name: data, mountPath: /data }
       containers:
         - name: oxidized
-          image: oxidized/oxidized:latest
+          image: oxidized/oxidized:latest@sha256:8511477bb6f31eba42a0b0278a67f42eb83033846a159f36a6e1e782900efc25
           ports:
             - containerPort: 8888
           volumeMounts:

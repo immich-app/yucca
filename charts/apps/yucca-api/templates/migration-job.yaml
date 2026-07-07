@@ -18,9 +18,21 @@ spec:
         job: migrate
     spec:
       restartPolicy: OnFailure
+      # Restricted-PSS-compliant (the yucca namespace enforces `restricted`).
+      # No readOnlyRootFilesystem: the migrate step writes to /app (pnpm).
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-pg
           image: postgres:18-alpine
+          securityContext: &jobContainerSecurityContext
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
           command: ["sh", "-c"]
           args:
             - |
@@ -35,6 +47,7 @@ spec:
         - name: migrate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          securityContext: *jobContainerSecurityContext
           workingDir: /app
           command: ["sh", "-c"]
           args:

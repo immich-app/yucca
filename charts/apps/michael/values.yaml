@@ -1,4 +1,12 @@
-replicas: 1
+# 2 replicas + a PDB (templates/pdb.yaml): michael is the production restic
+# gateway — a single replica turns every node drain into interrupted backups.
+# Stateless S3 proxy, safe to run N-way.
+replicas: 2
+
+# Generous requests, deliberately huge memory limits (never CPU-limit).
+resources:
+  requests: { cpu: 250m, memory: 256Mi }
+  limits: { memory: 4Gi }
 
 # Stable in-cluster name, independent of the Helm release name (dev == prod).
 fullnameOverride: yucca-michael
@@ -15,16 +23,18 @@ ports:
 service:
   type: ClusterIP
 
-# DEV FIXTURE — the public half of the project's well-known local-dev keypair
-# (see charts/yucca-api/values.yaml + .mise/tasks/*/env). Prod replaces this
-# with an ExternalSecret.
-secretData:
-  # michael (Go) verifies ES256 JWTs from yucca-api with this public key.
-  JWT_PUBLIC_KEY: |
-    -----BEGIN PUBLIC KEY-----
-    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpLmwUSBO0p7P1UvGReVxFTvAsCfg
-    GS7NQtJ3AnJkYaigO1MS5J59I4uRXCmpLtcwTocUGHMRVZrGLQMWdZY4DQ==
-    -----END PUBLIC KEY-----
+# OPT-IN dev verification key — the public half of the project's well-known
+# local-dev keypair (see charts/yucca-api/values.yaml + .mise/tasks/*/env).
+# Renders into the Secret ONLY when useDevKeypair is true (dev/local overlay).
+# Default false: with no key provided the Secret doesn't render and the pod
+# fails loudly, instead of silently trusting tokens anyone can mint with the
+# committed private half. Prod provides the real key via ExternalSecret.
+useDevKeypair: false
+devJwtPublicKey: |
+  -----BEGIN PUBLIC KEY-----
+  MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpLmwUSBO0p7P1UvGReVxFTvAsCfg
+  GS7NQtJ3AnJkYaigO1MS5J59I4uRXCmpLtcwTocUGHMRVZrGLQMWdZY4DQ==
+  -----END PUBLIC KEY-----
 
 env:
   - name: RESTIC_API_PORT

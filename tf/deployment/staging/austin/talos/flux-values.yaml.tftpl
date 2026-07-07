@@ -3,7 +3,10 @@
 # per-environment cluster path. ${env} is templated by Terraform.
 instance:
   cluster:
-    networkPolicy: false
+    # Flux's default policies: only flux controllers reach source-controller's
+    # artifact server / the notification webhook receiver. Without them any pod
+    # can pull rendered manifests (which embed substituted cluster settings).
+    networkPolicy: true
   components:
     - source-controller
     - kustomize-controller

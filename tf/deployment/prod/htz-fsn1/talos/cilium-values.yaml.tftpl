@@ -1,11 +1,10 @@
 # Cilium for the hybrid prod cluster. Talos sets cni:none + proxy:disabled, so
 # nodes stay NotReady until this lands the datapath.
 #
-# Native routing + autoDirectNodeRoutes: all WORKERS share the kube VLAN-10 L2
-# (10.40.10.0/24), so Cilium installs a direct route to each peer's podCIDR via the
-# peer's fabric nodeIP — pod east-west rides the 50G fabric with NO overlay and NO
-# BGP. CPs run no workloads (no pod east-west), so the mixed CP nodeIP (hcloud
-# private) is harmless.
+# TUNNEL (geneve) routing — see the routingMode block below for the full why:
+# the cluster spans two L2 domains (CPs on kube-cp hcloud, workers on the fabric
+# VLAN) bridged only by NetBird, which native routing/autoDirectNodeRoutes can't
+# span. Worker↔worker east-west still rides the 50G fabric, just encapsulated.
 #
 # securityContext + cgroup blocks are MANDATORY on Talos. Ref: Talos "Deploying Cilium".
 

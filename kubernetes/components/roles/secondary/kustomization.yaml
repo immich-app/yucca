@@ -19,4 +19,8 @@ kind: Component
 resources:
   - ../../apps/namespace.yaml
   - ../../apps/michael.yaml
-  - ../../apps/yucca-metrics-worker.yaml
+  # NOT yucca-metrics-worker: its Kustomization dependsOn yucca-database, which
+  # secondary never deploys (it would wedge permanently on "dependency not
+  # found"), and the chart hard-wires POSTGRES_* from the absent yucca-db-app
+  # Secret. Re-add once the secondary metrics design exists (region-local
+  # metering without the primary DB).

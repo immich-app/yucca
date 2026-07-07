@@ -6,6 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 30m
+  retryInterval: 2m # fresh-bootstrap CRD races retry in minutes, not 30m
   path: ./kubernetes/apps/dev/local
   prune: true
   wait: false

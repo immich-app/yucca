@@ -2,4 +2,4 @@ apiVersion: v2
 name: yucca-common
 description: Library chart with shared templates for Yucca services
 type: library
-version: 0.1.0
+version: 0.2.0

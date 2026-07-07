@@ -17,12 +17,18 @@ variable "cluster" {
     cilium_version = string
     hubble         = bool
 
-    # NetBird CGNAT range node IPs come from (kubelet nodeIP.validSubnets). NetBird
-    # Cloud default is 100.64.0.0/10. The node plane (CP↔worker) rides this mesh.
+    # NetBird mesh range node IPs come from (kubelet nodeIP.validSubnets). THIS
+    # account assigns 10.254.0.0/15 (see clusters.auto.tfvars) — not the NetBird
+    # Cloud default of 100.64.0.0/10. The node plane (CP↔worker) rides this mesh.
     netbird_node_cidr = string
 
     # ── Cloud control plane (Hetzner Cloud) ──────────────────────────────────
-    cp_count       = number # 3
+    cp_count = number # 3
+    # EXPLICIT node names (wordlist-style), one per CP, in cp_ip_offset order.
+    # Names are PINNED — never auto-shuffled — so node identity can't silently
+    # re-roll on a list edit (renaming a live node's hostname = renaming its
+    # Kubernetes node = effectively replacing it).
+    cp_names       = list(string)
     cp_server_type = string # ccx23 (dedicated vCPU x86)
     cp_location    = string # fsn1
     cp_ip_offset   = number # CP[i] private (kube-cp) IP = cidrhost(kube_cp, offset+i)
@@ -37,7 +43,7 @@ variable "cluster" {
     # reaches the kubelet there via NetBird→mgmt, and the node reaches the apiserver
     # over its own NetBird peer.
     workers = list(object({
-      name = optional(string) # hostname override; null = auto-pick
+      name = string # EXPLICIT node name (see cp_names) — keys the apply resources; renaming = node replacement
       # Install-disk NVMe serial — NOT a device name: nvme0/nvme1 enumeration is
       # not stable across boots (observed swapping), and a name-based install
       # target could point an upgrade at the DATA disk.
@@ -64,6 +70,15 @@ variable "cluster" {
     # flip true once the workers have joined. See cp_extras_patch in talos.tf.
     worker_mesh_kubelet = optional(bool, true)
   })
+
+  validation {
+    condition     = length(var.cluster.cp_names) == var.cluster.cp_count
+    error_message = "cluster.cp_names must have exactly cp_count entries (one name per CP, in cp_ip_offset order)."
+  }
+  validation {
+    condition     = length(distinct(concat(var.cluster.cp_names, var.cluster.workers[*].name))) == var.cluster.cp_count + length(var.cluster.workers)
+    error_message = "Node names must be unique across CPs and workers."
+  }
 }
 
 # NetBird setup key for the node-level siderolabs/netbird extension (CP + workers

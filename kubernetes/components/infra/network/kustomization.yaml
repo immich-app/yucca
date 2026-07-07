@@ -5,7 +5,10 @@ resources:
   - ./namespace.yaml
   - ./cert-manager.yaml
   - ./cert-manager-issuer.yaml
-  - ./cilium-lb.yaml
+  # LB IP pools + announcement are CLUSTER TOPOLOGY, not shared infra: staging
+  # defines its L2/ARP pool in its overlay (cilium-lb.yaml), father its BGP
+  # pools in cilium-bgp.yaml. A shared pool here would CIDR-overlap father's
+  # lb-internal /24 and Cilium marks overlapping pools Conflicting.
   - ./envoy-gateway.yaml
   - ./envoy-proxy.yaml
   - ./httproutes.yaml

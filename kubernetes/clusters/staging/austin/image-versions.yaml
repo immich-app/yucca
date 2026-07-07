@@ -1,13 +1,17 @@
 ---
-# CI-MANAGED. The deploy workflow rewrites YUCCA_IMAGE_TAG to the newly-built
-# short git SHA on merge to main (staging auto-promotes the highest tag); prod
-# promotes this same validated artifact behind an approval — see prod's copy.
-# Kept DISJOINT from cluster-settings (human) + cluster-settings.generated (TF):
-# apps.yaml postBuild-substitutes YUCCA_IMAGE_TAG from this ConfigMap.
+# BOOTSTRAP-ONLY. This git copy exists so cluster-apps' postBuild substitution
+# has a source on a fresh cluster; after bootstrap the flux-operator ResourceSet
+# (apps/staging/austin/flux-system/image-automation.yaml) owns YUCCA_IMAGE_TAG,
+# rewriting it to the latest 0.0.<run> build tag from GHCR. The ssa annotation
+# below makes the git sync create-but-never-update this object — without it,
+# kustomize-controller force-reapplies `main` every minute and fights the
+# ResourceSet. Kept DISJOINT from cluster-settings (human) + generated (TF).
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: image-versions
   namespace: flux-system
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 data:
   YUCCA_IMAGE_TAG: main

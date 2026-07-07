@@ -49,6 +49,16 @@ resource "kubernetes_secret_v1" "github_app" {
     githubAppPrivateKey     = var.flux_github_app_private_key
   }
   depends_on = [helm_release.flux_operator]
+
+  lifecycle {
+    # The variable defaults to "" so credential-less validate/plan stays clean —
+    # but an APPLY without the op-run env would silently rewrite the live secret
+    # to an empty key. Fail loudly instead.
+    precondition {
+      condition     = length(var.flux_github_app_private_key) > 0
+      error_message = "flux_github_app_private_key is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."
+    }
+  }
 }
 
 resource "helm_release" "flux_instance" {

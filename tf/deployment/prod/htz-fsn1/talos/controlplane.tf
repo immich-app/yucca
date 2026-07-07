@@ -38,6 +38,10 @@ resource "hcloud_server" "control_plane" {
 
   lifecycle {
     ignore_changes = [user_data, image]
+    # etcd members — replacing one rolls quorum; destroying all rolls the
+    # cluster. Any legitimate replace (scale-down, location change) must
+    # temporarily lift this flag, deliberately.
+    prevent_destroy = true
   }
 }
 
@@ -56,6 +60,16 @@ resource "talos_machine_configuration_apply" "cp" {
   endpoint                    = local.cp_private_ips[count.index]
 
   depends_on = [hcloud_server.control_plane]
+
+  lifecycle {
+    # cp_netbird_patch is silently OMITTED when the setup key is "" (the
+    # credential-less validate default) — an env-less apply would strip NetBird
+    # from the live CP configs. Fail loudly instead.
+    precondition {
+      condition     = length(var.netbird_talos_cp_setup_key) > 0
+      error_message = "netbird_talos_cp_setup_key is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."
+    }
+  }
 }
 
 # ── API load balancer ────────────────────────────────────────────────────────
