@@ -18,14 +18,67 @@
 # VG mapping: ceph_db_vg1 on SSD1 partition 5, ceph_db_vg2 on SSD2 partition 5
 # LV naming: db-slot0..5 on VG1, db-slot6..11 on VG2 (one per HDD OSD)
 
-- name: Skip in-role LVM setup (no sas_path_prefix — externally-managed LVM)
+# NVMe-RAID shape (spice): a single vg0 on the NVMe RAID-1 already carries the
+# OS LVs from installimage. Create the block.db LVs (one per HDD OSD) + one
+# ssd-osd LV here at converge, before osds.yml. This replaces painbox's fragile
+# installimage -x chroot post-install with an idempotent, observable ansible
+# step. Gated on ceph_db_lvs_per_node (spice sets it; genuinely
+# externally-managed hosts do not).
+- name: Set up LVM (NVMe-RAID single-vg0 topology)
+  when:
+    - sas_path_prefix is undefined
+    - ceph_db_lvs_per_node is defined
+  block:
+    - name: Assert vg0 exists (created by installimage)
+      ansible.builtin.command: vgs {{ ceph_db_vg }}
+      changed_when: false
+
+    - name: Create block.db LVs on vg0 (fixed size, one per HDD OSD)
+      ansible.builtin.shell: |
+        if lvs {{ ceph_db_vg }}/db-slot{{ item }} 2>/dev/null; then
+          echo "db-slot{{ item }} already exists"
+        else
+          lvcreate --yes -Wy -L {{ ceph_db_lv_size }} -n db-slot{{ item }} {{ ceph_db_vg }}
+        fi
+      loop: "{{ range(0, ceph_db_lvs_per_node | int) | list }}"
+      register: vg0_db_results
+      changed_when: "'already exists' not in (vg0_db_results.stdout | default(''))"
+
+    - name: Create the ssd-osd LV from vg0 remainder minus reserve
+      ansible.builtin.shell: |
+        set -o pipefail
+        if lvs {{ ceph_db_vg }}/{{ ceph_ssd_osd_lv }} 2>/dev/null; then
+          echo "{{ ceph_ssd_osd_lv }} already exists"
+        else
+          free_g=$(vgs {{ ceph_db_vg }} --noheadings --nosuffix --units g -o vg_free | tr -d ' ' | cut -d. -f1)
+          osd_g=$(( free_g - {{ ceph_ssd_osd_reserve_gib }} ))
+          [ "$osd_g" -gt 0 ] || { echo "FATAL: {{ ceph_db_vg }} free ${free_g}G <= reserve {{ ceph_ssd_osd_reserve_gib }}G"; exit 1; }
+          lvcreate --yes -Wy -L "${osd_g}G" -n {{ ceph_ssd_osd_lv }} {{ ceph_db_vg }}
+        fi
+      args:
+        executable: /bin/bash
+      register: vg0_ssd_result
+      changed_when: "'already exists' not in (vg0_ssd_result.stdout | default(''))"
+
+    - name: Verify vg0 LVM layout
+      ansible.builtin.command: lvs {{ ceph_db_vg }} -o lv_name,lv_size --noheadings
+      register: vg0_lvm_state
+      changed_when: false
+
+    - name: Show vg0 LVM layout
+      ansible.builtin.debug:
+        msg: "{{ vg0_lvm_state.stdout_lines }}"
+
+# Genuinely externally-managed LVM (neither sietch dual-SSD nor spice NVMe-RAID).
+- name: Skip in-role LVM setup (externally-managed LVM)
   ansible.builtin.debug:
     msg: >-
-      LVM is externally managed on this host (e.g., Hetzner installimage
-      post-install creates vg0 + db-slots on a RAID-1 NVMe). Skipping the
-      sietch-shape dual-SSD-VG setup. If LVM is missing on this host,
+      LVM is externally managed on this host (no sas_path_prefix and no
+      ceph_db_lvs_per_node). Skipping in-role LVM setup. If LVM is missing,
       reprovision via the cluster's installimage flow.
-  when: sas_path_prefix is undefined
+  when:
+    - sas_path_prefix is undefined
+    - ceph_db_lvs_per_node is undefined
 
 - name: Set up LVM (sietch-shape dual-SSD-VG topology)
   when: sas_path_prefix is defined

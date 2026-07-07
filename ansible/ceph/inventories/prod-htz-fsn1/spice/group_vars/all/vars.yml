@@ -63,11 +63,15 @@ reprovision_expect_sata: 14
 # reprovision_image: override only if node-1 inspect shows a different image path/name.
 
 # === Storage (SX295: 2x NVMe RAID-1 OS + 14x SATA HDD per node) ===
-# block.db LVs carved from the NVMe RAID-1 vg0 by the installimage post-install
-# (14x 128G + ssd-osd remainder); HDDs become OSDs with block.db on those LVs.
+# block.db LVs carved from the NVMe RAID-1 vg0 at converge by ceph_deploy's
+# lvm-setup (NVMe-RAID branch): 14x 128G db-slots + one ssd-osd LV from the vg0
+# remainder minus reserve. HDDs become OSDs with block.db on those LVs.
 ssd_model_pattern: "SAMSUNG"      # VERIFY model on node 1 (lsblk -o NAME,MODEL)
+ceph_db_vg: vg0                   # single NVMe-RAID VG created by installimage
 ceph_db_lv_size: "128G"
 ceph_db_lvs_per_node: 14
+ceph_ssd_osd_lv: ssd-osd          # NVMe-backed OSD LV (fast replicated pool)
+ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expansion
 
 # === RGW (DRAFT - review for a 48-node cluster before deploy) ===
 # painbox used failure_domain=osd (single node). With 48 hosts, the failure
