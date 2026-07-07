@@ -23,8 +23,13 @@ public_network: 10.40.20.0/23     # VLAN 120 (Ceph Public)
 cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
 # Bond of the two 25G NICs, LACP to match the leaf ae<k> aggregate (cluster-fabric).
 bond_mode: "802.3ad"
-# bond_interfaces / vlan ids are applied by the networkd role from spice-hosts.yaml
-# (fabric_nic members) once those NIC names are verified on a live node.
+# The two Intel E800 (ice) 25G ports, verified uniform across all 48 SX295 nodes
+# (PCI 0000:c1:00.0 / .1). Consumed by the networkd role as the bond0 members.
+bond_interfaces:
+  - enp193s0f0
+  - enp193s0f1
+# 1G WAN (igb, PCI 0000:c5:00.0); holds the default route until the fabric cutover.
+oob_nic: enp197s0
 fabric_public_vlan: 120
 fabric_private_vlan: 122
 dns_server: 185.12.64.1            # Hetzner recursive (reachable via WAN default route)

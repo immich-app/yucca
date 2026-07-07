@@ -4,6 +4,4 @@ bond_ip: 178.63.139.221
 hetzner_server_number: 3012010
 host_index: 26
 mon: false
-fabric_nic: PLACEHOLDER_25g_bond_member
-oob_nic: PLACEHOLDER_1g_wan
 # ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)

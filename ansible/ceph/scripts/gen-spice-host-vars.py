@@ -3,9 +3,10 @@
 # tf/deployment/prod/htz-fsn1/ceph/spice-hosts.yaml (the single source of truth).
 #
 # host_vars is committed (per-node hardware facts are stable inventory truth). The
-# reprovision play needs hetzner_server_number + bond_ip; host_index/mon/NICs feed
-# the later networkd + ceph_deploy convergence. The ceph_hdd_osds by-path OSD map
-# is deferred until node-1 inspection and appended later.
+# reprovision play needs hetzner_server_number + bond_ip; host_index/mon feed the
+# later networkd + ceph_deploy convergence. NIC names (bond_interfaces/oob_nic) are
+# uniform across the fleet and live in group_vars/all/vars.yml, not per host. The
+# ceph_hdd_osds by-path OSD map is deferred until node-1 inspection and appended later.
 #
 # Idempotent: skips files that already exist unless --force is passed (so a
 # hand-added ceph_hdd_osds block is never clobbered).
@@ -39,8 +40,6 @@ for host, h in roster["hosts"].items():
         f"hetzner_server_number: {h['server_number']}\n"
         f"host_index: {h['host_index']}\n"
         f"mon: {str(h['mon']).lower()}\n"
-        f"fabric_nic: {h['fabric_nic']}\n"
-        f"oob_nic: {h['oob_nic']}\n"
         "# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)\n"
     )
     print(f"wrote: {f.name}")
