@@ -18,6 +18,9 @@ apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
   - ../../apps/namespace.yaml
+  # Policies referencing apps a secondary doesn't run are inert (selectors
+  # match nothing); the default-deny + michael/db rules are what matter here.
+  - ../../apps/networkpolicies.yaml
   - ../../apps/michael.yaml
   # NOT yucca-metrics-worker: its Kustomization dependsOn yucca-database, which
   # secondary never deploys (it would wedge permanently on "dependency not
