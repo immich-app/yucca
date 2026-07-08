@@ -32,6 +32,34 @@
     mode: '0644'
   notify: Reload systemd for networkd
 
+# Tagged VLAN sub-interfaces on the bond (spice). No-op when networkd_bond_vlans
+# is empty (flat active-backup clusters like sietch).
+- name: Deploy bond VLAN .netdev files
+  ansible.builtin.template:
+    src: bond-vlan.netdev.j2
+    dest: "{{ networkd_config_dir }}/25-{{ networkd_bond_name }}.{{ vlan.id }}.netdev"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ networkd_bond_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "vlan {{ vlan.id }}"
+  notify: Reload systemd for networkd
+
+- name: Deploy bond VLAN .network files
+  ansible.builtin.template:
+    src: bond-vlan.network.j2
+    dest: "{{ networkd_config_dir }}/25-{{ networkd_bond_name }}.{{ vlan.id }}.network"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ networkd_bond_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "vlan {{ vlan.id }}"
+  notify: Reload systemd for networkd
+
 - name: Deploy rollback script
   ansible.builtin.template:
     src: rollback-networkd.sh.j2

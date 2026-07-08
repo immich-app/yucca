@@ -13,6 +13,11 @@
   ansible.builtin.import_tasks: packages.yml
   tags: [packages]
 
+- name: Configure lldpd for fabric discovery
+  ansible.builtin.import_tasks: lldpd.yml
+  when: "'lldpd' in (baseline_extra_packages | default([]))"
+  tags: [lldpd, network]
+
 - name: Configure /etc/hosts and services
   ansible.builtin.import_tasks: system.yml
   tags: [system]

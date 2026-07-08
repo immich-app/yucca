@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# Tagged VLAN {{ vlan.id }} sub-interface on {{ networkd_bond_name }}.
+
+[NetDev]
+Name={{ networkd_bond_name }}.{{ vlan.id }}
+Kind=vlan
+
+[VLAN]
+Id={{ vlan.id }}

@@ -1,4 +1,22 @@
 # {{ ansible_managed }}
+{% if networkd_bond_vlans | length > 0 %}
+# Bond carries no L3 of its own; addresses live on the VLAN sub-interfaces.
+# The VLAN= directives instantiate the sub-interfaces declared by the .netdev
+# files (Kind=vlan alone only registers the type).
+
+[Match]
+Name={{ networkd_bond_name }}
+
+[Network]
+{% for vlan in networkd_bond_vlans %}
+VLAN={{ networkd_bond_name }}.{{ vlan.id }}
+{% endfor %}
+LinkLocalAddressing=no
+IPv6AcceptRA=no
+
+[Link]
+RequiredForOnline=carrier
+{% else %}
 # Bond L3: {{ bond_ip }}/24 via {{ gateway }}
 
 [Match]
@@ -12,3 +30,4 @@ Domains={{ cluster_domain }}
 
 [Link]
 RequiredForOnline=routable
+{% endif %}

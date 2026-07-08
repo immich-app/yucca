@@ -32,7 +32,7 @@
       ifupdown: {{ ifupdown_svc.status.ActiveState }}/{{ ifupdown_svc.status.SubState }}
       (no running daemon)
 
-- name: Check bond0 IP address
+- name: Check bond0 IP address (flat clusters only)
   ansible.builtin.shell: |
     set -o pipefail
     ip -4 addr show {{ networkd_bond_name }} | grep -oP 'inet \K[0-9.]+'
@@ -40,13 +40,30 @@
     executable: /bin/bash
   register: bond0_ip_check
   changed_when: false
+  when: networkd_bond_vlans | length == 0
 
-- name: Assert bond0 has expected IP
+- name: Assert bond0 has expected IP (flat clusters only)
   ansible.builtin.assert:
     that:
       - bond_ip in bond0_ip_check.stdout
     fail_msg: "bond0 IP mismatch: expected {{ bond_ip }}, got {{ bond0_ip_check.stdout | trim }}"
     success_msg: "bond0 IP: {{ bond_ip }}"
+  when: networkd_bond_vlans | length == 0
+
+- name: Assert each bond VLAN sub-interface carries its address (VLAN clusters)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ip -4 addr show {{ networkd_bond_name }}.{{ vlan.id }} | grep -oP 'inet \K[0-9.]+'
+  args:
+    executable: /bin/bash
+  register: vlan_ip_check
+  changed_when: false
+  failed_when: vlan.address.split('/')[0] not in vlan_ip_check.stdout
+  loop: "{{ networkd_bond_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "{{ networkd_bond_name }}.{{ vlan.id }} -> {{ vlan.address }}"
+  when: networkd_bond_vlans | length > 0
 
 - name: Check bond member interfaces
   ansible.builtin.shell: |
@@ -68,18 +85,20 @@
     success_msg: "Bond member {{ item }} present"
   loop: "{{ bond_interfaces }}"
 
-- name: Check gateway reachability
+- name: Check gateway reachability (flat clusters only)
   ansible.builtin.command: "ping -c 2 -W 3 {{ gateway }}"
   changed_when: false
   failed_when: false
   register: gw_ping
+  when: networkd_bond_vlans | length == 0
 
-- name: Assert gateway is reachable
+- name: Assert gateway is reachable (flat clusters only)
   ansible.builtin.assert:
     that:
       - gw_ping.rc == 0
     fail_msg: "Gateway {{ gateway }} unreachable"
     success_msg: "Gateway {{ gateway }} reachable"
+  when: networkd_bond_vlans | length == 0
 
 - name: Show networkctl status
   ansible.builtin.command: "networkctl status {{ networkd_bond_name }}"

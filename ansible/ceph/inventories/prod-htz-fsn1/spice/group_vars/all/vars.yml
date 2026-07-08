@@ -33,6 +33,23 @@ oob_nic: enp197s0
 fabric_public_vlan: 120
 fabric_private_vlan: 122
 dns_server: 185.12.64.1            # Hetzner recursive (reachable via WAN default route)
+
+# Tagged VLAN sub-interfaces on the 25G LACP bond (consumed by the networkd role).
+# Addresses derive from host_index; /23 masks match public_network/cluster_network.
+# No Gateway here -- the default route stays on the 1G WAN until fabric cutover.
+networkd_bond_vlans:
+  - id: "{{ fabric_public_vlan }}"     # 120 - Ceph public  (10.40.20.0/23)
+    address: "10.40.20.{{ host_index }}/23"
+  - id: "{{ fabric_private_vlan }}"    # 122 - Ceph private (10.40.22.0/23)
+    address: "10.40.22.{{ host_index }}/23"
+
+# Cluster-specific packages, merged with baseline_diag_packages. Spice hardware:
+# Intel E800 (ice) 25G NICs on an LACP fabric; direct-attach SATA HDDs + NVMe (no
+# SAS expander / Mellanox, so none of sietch's mstflint/ledmon/sg3-utils here).
+baseline_extra_packages:
+  - lldpd       # LLDP neighbor/switch discovery on the 25G fabric
+  - ethtool     # NIC/bond link, driver, and 25G speed inspection
+  - tcpdump     # packet capture for fabric/network debugging
 timezone: UTC
 
 # === Ceph ===

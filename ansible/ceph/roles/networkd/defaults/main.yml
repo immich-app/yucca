@@ -21,6 +21,18 @@ networkd_bond_name: bond0
 networkd_bond_mode: "{{ bond_mode | default('active-backup') }}"
 networkd_bond_miimon: 100                          # MII link monitoring interval (ms)
 
+# LACP (802.3ad) tuning. Only emitted when networkd_bond_mode == '802.3ad', so
+# active-backup clusters (e.g. sietch) are unaffected.
+networkd_bond_lacp_rate: fast                      # 1s LACPDUs (vs 30s 'slow')
+networkd_bond_xmit_hash_policy: layer3+4           # spread flows across both members
+
+# Tagged VLAN sub-interfaces carried on the bond (opt-in). Each entry:
+#   { id: <vlan id>, address: <CIDR>, dns: <optional> }
+# Empty     -> bond0 carries bond_ip directly (flat active-backup clusters).
+# Non-empty -> bond0 carries NO L3; each VLAN sub-interface carries its address
+#              (spice: VLAN 120 public + VLAN 122 private on the 25G LACP bond).
+networkd_bond_vlans: []
+
 # --- Paths ---
 networkd_config_dir: /etc/systemd/network
 networkd_rollback_script: /usr/local/sbin/rollback-networkd.sh
