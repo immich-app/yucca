@@ -8,6 +8,15 @@
 # is ALWAYS destructive to the OS NVMes and must NEVER be folded into deploy/converge.
 
 # --- Robot API ---
+# Master switch for the Hetzner Robot portion (register rescue keys, arm rescue,
+# hw reset). Default true = the full remote path (reprovision.yml). Set false for
+# the manual rescue-first path (add-node.yml): the operator arms rescue + resets a
+# node by hand in the portal, and Ansible only runs the install/chroot/verify once
+# the node is ALREADY in rescue. False removes the Robot API from the loop entirely
+# -- no key registration, no arm, no reset -- so an errant run cannot flip a live
+# node into rescue (installimage exists only in the rescue ramdisk, so wait_rescue
+# refuses a node a human did not deliberately rescue).
+reprovision_use_robot: true
 reprovision_robot_base_url: "https://robot-ws.your-server.de"
 reprovision_robot_username: "{{ lookup('ansible.builtin.env', 'HETZNER_ROBOT_USERNAME') }}"
 reprovision_robot_password: "{{ lookup('ansible.builtin.env', 'HETZNER_ROBOT_PASSWORD') }}"

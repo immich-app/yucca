@@ -23,7 +23,9 @@
 
 - name: Arm rescue + hw reset via Robot
   ansible.builtin.import_tasks: robot.yml
-  when: not (reprovision_skip | default(false) | bool)
+  when:
+    - not (reprovision_skip | default(false) | bool)
+    - reprovision_use_robot | default(true) | bool
 
 - name: Wait for the real rescue ramdisk + assert hardware matches autosetup
   ansible.builtin.import_tasks: wait_rescue.yml

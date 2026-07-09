@@ -3,17 +3,9 @@
 # (include_role ... tasks_from: preflight, run_once: true). Loading it through the
 # role makes the role defaults (robot url/creds, canary marker) available, and
 # run_once means --limit cannot skip it (unlike a separate hosts: localhost play).
-# Asserts creds/keys, enforces the fan-out gate, and registers the rescue keys +
-# publishes their fingerprints onto localhost facts for the per-host robot.yml.
-
-- name: Assert Robot creds present in env (from op run --env-file=tf/.env.prod)
-  ansible.builtin.assert:
-    that:
-      - reprovision_robot_username | length > 0
-      - reprovision_robot_password | length > 0
-    fail_msg: >-
-      HETZNER_ROBOT_{USERNAME,PASSWORD} not in env. Run via 'mise run reprovision'
-      (which wraps op run --env-file=../../tf/.env.prod).
+# Asserts keys, enforces the fan-out gate, and (Robot path only) registers the
+# rescue keys + publishes their fingerprints onto localhost facts for robot.yml.
+# The manual add-node path sets reprovision_use_robot=false and skips all of that.
 
 - name: Stat the spice ansible-iac keypair on the controller
   ansible.builtin.stat:
@@ -53,85 +45,9 @@
       (--limit {{ reprovision_canary_host }}); fan-out unlocks once its wait/verify
       succeeds, or override with -e allow_fanout=true.
 
-# --- Register rescue keys in the Robot and collect their fingerprints ---------
-- name: Build desired rescue key set (operator keys + iac pubkey from disk)
-  ansible.builtin.set_fact:
-    reprovision_desired_keys: >-
-      {{ reprovision_operator_pubkeys
-         + [{'name': 'spice-ansible-iac',
-             'key': lookup('ansible.builtin.file', (reprovision_ssh_key_path | expanduser) ~ '.pub') | trim}] }}
-  delegate_to: localhost
-
-- name: Fetch keys already registered in the Robot
-  ansible.builtin.uri:
-    url: "{{ reprovision_robot_base_url }}/key"
-    method: GET
-    force_basic_auth: true
-    url_username: "{{ reprovision_robot_username }}"
-    url_password: "{{ reprovision_robot_password }}"
-    return_content: true
-  register: reprovision_robot_keys_before
-  delegate_to: localhost
-  retries: "{{ reprovision_robot_retries }}"
-  delay: "{{ reprovision_robot_delay }}"
-  until: (reprovision_robot_keys_before.status | default(0)) == 200
-
-- name: Register any desired key missing from the Robot (idempotent; 409 = exists)
-  ansible.builtin.uri:
-    url: "{{ reprovision_robot_base_url }}/key"
-    method: POST
-    force_basic_auth: true
-    url_username: "{{ reprovision_robot_username }}"
-    url_password: "{{ reprovision_robot_password }}"
-    body_format: form-urlencoded
-    body:
-      name: "{{ item.name }}"
-      data: "{{ item.key }}"
-    status_code: [200, 201, 409]
-  loop: "{{ reprovision_desired_keys }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: >-
-    (item.key.split()[1]) not in
-    (reprovision_robot_keys_before.json | map(attribute='key') | map(attribute='data')
-     | map('regex_replace', '^\S+\s+(\S+).*$', '\1') | list)
-  delegate_to: localhost
-
-- name: Re-fetch keys (now includes any just-registered)
-  ansible.builtin.uri:
-    url: "{{ reprovision_robot_base_url }}/key"
-    method: GET
-    force_basic_auth: true
-    url_username: "{{ reprovision_robot_username }}"
-    url_password: "{{ reprovision_robot_password }}"
-    return_content: true
-  register: reprovision_robot_keys_after
-  delegate_to: localhost
-  retries: "{{ reprovision_robot_retries }}"
-  delay: "{{ reprovision_robot_delay }}"
-  until: (reprovision_robot_keys_after.status | default(0)) == 200
-
-# Match by the key BODY (2nd field) - robust to comment/whitespace; take the
-# Robot's own fingerprint (no local ssh-keygen, which is fragile on /dev/stdin).
-- name: Publish rescue key fingerprints onto localhost facts
-  ansible.builtin.set_fact:
-    reprovision_key_fingerprints: >-
-      {%- set existing = reprovision_robot_keys_after.json | map(attribute='key') | list -%}
-      {%- set out = [] -%}
-      {%- for d in reprovision_desired_keys -%}
-        {%- set blob = d.key.split()[1] -%}
-        {%- for e in existing if e.data.split()[1] == blob -%}
-          {%- if out.append(e.fingerprint) %}{% endif -%}
-        {%- endfor -%}
-      {%- endfor -%}
-      {{ out }}
-  delegate_to: localhost
-  delegate_facts: true
-
-- name: Assert we resolved a fingerprint for every desired key
-  ansible.builtin.assert:
-    that: (hostvars['localhost'].reprovision_key_fingerprints | length) == (reprovision_desired_keys | length)
-    fail_msg: >-
-      Resolved {{ hostvars['localhost'].reprovision_key_fingerprints | length }} of
-      {{ reprovision_desired_keys | length }} rescue key fingerprints from the Robot - aborting
-      before any node is armed (an unresolved operator/iac key would lock rescue access).
+# --- Register rescue keys in the Robot (Robot path only) ----------------------
+# Skipped entirely on the manual add-node path (reprovision_use_robot=false): the
+# operator arms rescue by hand in the portal, so no API key registration is needed.
+- name: Register rescue keys + resolve fingerprints in the Robot
+  ansible.builtin.import_tasks: register_robot_keys.yml
+  when: reprovision_use_robot | default(true) | bool
