@@ -29,6 +29,11 @@
     that: "'RESCUE_READY' in (rescue_probe.stdout | default(''))"
     fail_msg: "{{ inventory_hostname }} ({{ bond_ip }}) never entered rescue within timeout - NOT wiping."
 
+# Robot path only: uptime correlates with the reset we just triggered, so a high
+# uptime means a stale rescue (not this reset's boot). On the manual add-node path
+# there is no such reset -- a node can legitimately sit in rescue for weeks -- so
+# this guard is meaningless there; the installimage-ramdisk check above is the real
+# in-rescue proof. Skip it when use_robot is false.
 - name: This-boot guard - reject a stale rescue from a prior run
   ansible.builtin.assert:
     that: (rescue_probe.stdout.split()[1] | float) < (reprovision_rescue_max_uptime | float)
@@ -36,6 +41,7 @@
       {{ inventory_hostname }} rescue uptime {{ rescue_probe.stdout.split()[1] }}s exceeds
       {{ reprovision_rescue_max_uptime }}s - looks like a stale rescue, not this reset's boot.
       Re-run, or raise reprovision_rescue_max_uptime if the box is genuinely slow to boot.
+  when: reprovision_use_robot | default(true) | bool
 
 - name: Push the hardware-probe script
   ansible.builtin.command:
