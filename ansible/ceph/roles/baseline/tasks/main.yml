@@ -5,6 +5,11 @@
 #          (created by provision_host during initial OS install).
 # Everything here is convergeable via normal deploy pipeline.
 
+- name: Ensure iac automation access (root key + ansible-iac)
+  ansible.builtin.import_tasks: iac-access.yml
+  when: provision_iac_ssh_key_path is defined
+  tags: [iac_access, users]
+
 - name: Configure ops user
   ansible.builtin.import_tasks: users.yml
   tags: [users]

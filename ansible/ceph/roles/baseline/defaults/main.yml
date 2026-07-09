@@ -2,6 +2,15 @@
 # Post-boot OS baseline — runs via ansible-iac after provisioning.
 # Configures everything that doesn't need to be in the chroot.
 
+# --- iac automation access (convergence twin of the reprovision -x chroot) ---
+# Ensures root's iac key + the ansible-iac sudo account on already-installed nodes
+# without reimaging. baseline_iac_pubkey derives from the cluster's iac key; the
+# iac-access task is gated on provision_iac_ssh_key_path so clusters without one
+# skip. Override baseline_iac_pubkey directly to authorize a different key.
+baseline_iac_user: ansible-iac
+baseline_iac_pubkey: >-
+  {{ lookup('file', (provision_iac_ssh_key_path | expanduser) ~ '.pub') }}
+
 # --- ops user ---
 baseline_ops_user: ops
 baseline_ops_uid: 1001
