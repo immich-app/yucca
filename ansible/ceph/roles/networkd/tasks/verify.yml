@@ -100,6 +100,36 @@
     success_msg: "Gateway {{ gateway }} reachable"
   when: networkd_bond_vlans | length == 0
 
+# Coexistence: the reachability-critical WAN must have survived networkd
+# activation untouched (still owned by ifupdown). Assert its address and the
+# default route are intact BEFORE commit locks the boot services in -- if networkd
+# disturbed the WAN, we stop here and ifupdown still owns the next boot.
+- name: Read WAN address + default route (coexistence)
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "ADDR:$(ip -4 addr show {{ oob_nic }} | grep -oP 'inet \K[0-9.]+' | head -1)"
+    echo "DEFROUTE:$(ip route show default)"
+  args:
+    executable: /bin/bash
+  register: networkd_wan_state
+  changed_when: false
+  when:
+    - not (networkd_replace_ifupdown | default(true) | bool)
+    - oob_nic is defined
+
+- name: Assert the WAN survived networkd activation (coexistence)
+  ansible.builtin.assert:
+    that:
+      - bond_ip in networkd_wan_state.stdout
+      - oob_nic in networkd_wan_state.stdout
+    fail_msg: >-
+      WAN {{ oob_nic }} lost its address ({{ bond_ip }}) or default route after
+      networkd started -- NOT committing. Inspect: ip addr show {{ oob_nic }}; ip route.
+    success_msg: "WAN {{ oob_nic }} intact: {{ bond_ip }} + default route present"
+  when:
+    - not (networkd_replace_ifupdown | default(true) | bool)
+    - oob_nic is defined
+
 - name: Show networkctl status
   ansible.builtin.command: "networkctl status {{ networkd_bond_name }}"
   register: networkctl_out

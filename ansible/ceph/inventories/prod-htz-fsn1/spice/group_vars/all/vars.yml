@@ -23,6 +23,13 @@ public_network: 10.40.20.0/23     # VLAN 120 (Ceph Public)
 cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
 # Bond of the two 25G NICs, LACP to match the leaf ae<k> aggregate (cluster-fabric).
 bond_mode: "802.3ad"
+# COEXISTENCE: keep the 1G WAN (oob_nic) on ifupdown exactly as installimage set
+# it (static IP + default route), and let networkd manage ONLY the bond + VLANs.
+# The WAN is never migrated, so a networkd error can't cost us the reachability
+# link (the painbox failure). networkd's commit leaves networking.service enabled
+# and an Unmanaged=yes guard fences oob_nic off. Flip to true only if the default
+# route ever moves onto the fabric and the WAN is retired.
+networkd_replace_ifupdown: false
 # The two Intel E800 (ice) 25G ports, verified uniform across all 48 SX295 nodes
 # (PCI 0000:c1:00.0 / .1). Consumed by the networkd role as the bond0 members.
 bond_interfaces:

@@ -1,14 +1,15 @@
 ---
-# systemd-networkd bond0 configuration.
+# systemd-networkd bond configuration. Live activation, no reboot required:
+#   1. deploy: write .netdev/.network configs (+ WAN unmanaged guard in
+#      coexistence mode) + rollback script
+#   2. activate: start networkd (brings up the bond + VLANs; the WAN is untouched)
+#   3. verify: assert the bond/VLANs are correct and, in coexistence, that the WAN
+#      kept its address + default route
+#   4. commit: enable networkd for future boots; disable ifupdown ONLY in full-
+#      migration mode (coexistence leaves it enabled to keep the WAN)
 #
-# Live migration — no reboot required:
-#   1. deploy: write .netdev/.network configs + rollback script
-#   2. activate: start networkd (adopts existing bond0 from ifupdown)
-#   3. verify: assert networkd is managing bond0 correctly
-#   4. commit: disable ifupdown, enable networkd for future boots
-#
-# If verify fails, networkd is stopped and ifupdown still owns next boot.
-# Gated on networkd_enabled (default: false).
+# If verify fails the play halts before commit, so ifupdown still owns next boot.
+# Gated on networkd_enabled (default: false); mode set by networkd_replace_ifupdown.
 
 - name: Deploy networkd configs
   ansible.builtin.import_tasks: deploy.yml

@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+# Coexistence guard: the 1G WAN ({{ oob_nic }}) stays under ifupdown
+# (/etc/network/interfaces, exactly as installimage wrote it -- static IP,
+# gateway, default route). Tell systemd-networkd to NEVER manage it, so bringing
+# the bond/VLAN fabric up or down can never disturb the link that keeps the node
+# reachable. The 05- prefix sorts this ahead of the bond files so the WAN match
+# is settled first. Match is exact -- networkd only ever configures the bond
+# members it is explicitly given.
+
+[Match]
+Name={{ oob_nic }}
+
+[Link]
+Unmanaged=yes

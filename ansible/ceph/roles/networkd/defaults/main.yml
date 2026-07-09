@@ -1,7 +1,6 @@
 ---
-# systemd-networkd bond0 configuration.
-# Replaces ifupdown /etc/network/interfaces with .netdev + .network
-# unit files. Designed for active-backup bond with static IP.
+# systemd-networkd bond configuration, in one of two modes (see
+# networkd_replace_ifupdown): full migration off ifupdown, or coexistence beside it.
 #
 # Prerequisites:
 #   - systemd-networkd is installed (present in Debian 12 base)
@@ -11,10 +10,24 @@
 # Safety:
 #   - /etc/network/interfaces is left on disk as rollback backup
 #   - Rollback script deployed to /usr/local/sbin/rollback-networkd.sh
-#   - Migration requires a reboot (services are never toggled live)
+#   - networkd is started live and verified before any boot-service toggle
 
 # Master toggle. When false, the entire role is skipped.
 networkd_enabled: false
+
+# Replace ifupdown entirely (full migration) vs coexist with it.
+#   true (default): networkd owns ALL networking; commit.yml disables ifupdown for
+#                   future boots. For flat clusters (sietch) where the bond is the
+#                   only/management interface, so there is nothing else to keep.
+#   false         : COEXISTENCE. ifupdown keeps the interfaces it already owns --
+#                   the 1G WAN (oob_nic) that installimage configured in
+#                   /etc/network/interfaces and that carries the default route --
+#                   while networkd manages ONLY the bond + VLANs. commit.yml leaves
+#                   networking.service enabled, so the reachability-critical WAN is
+#                   never migrated and cannot be lost by a networkd error (spice).
+#                   An explicit Unmanaged=yes guard fences oob_nic off from networkd.
+#                   Requires oob_nic to be defined.
+networkd_replace_ifupdown: true
 
 # --- Bond ---
 networkd_bond_name: bond0

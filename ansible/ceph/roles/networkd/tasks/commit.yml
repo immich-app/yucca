@@ -3,10 +3,21 @@
 # Only runs after verify.yml passes. If verify failed, we never reach here
 # and ifupdown still owns the next boot.
 
-- name: Disable ifupdown networking.service
+# Full migration only: hand the whole stack to networkd. In coexistence mode
+# (spice) ifupdown MUST stay enabled -- it owns the 1G WAN, and disabling it would
+# leave the WAN unconfigured on the next boot (the painbox failure).
+- name: Disable ifupdown networking.service (full migration only)
   ansible.builtin.systemd:
     name: networking.service
     enabled: false
+  when: networkd_replace_ifupdown | default(true) | bool
+
+- name: Keep ifupdown enabled for the WAN (coexistence)
+  ansible.builtin.debug:
+    msg: >-
+      Coexistence: networking.service left ENABLED so ifupdown keeps the WAN
+      ({{ oob_nic | default('oob_nic') }}); networkd owns only the bond + VLANs.
+  when: not (networkd_replace_ifupdown | default(true) | bool)
 
 - name: Enable systemd-networkd.service
   ansible.builtin.systemd:
