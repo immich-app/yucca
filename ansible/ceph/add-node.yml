@@ -40,6 +40,13 @@
   max_fail_percentage: 0          # any node fails -> halt the batch (no further wipes)
   vars:
     reprovision_use_robot: false  # no Robot API: rescue is armed by hand, not here
+    # The stale-rescue guard assumes an Ansible-triggered reset (uptime proves
+    # "this boot"). There is none here, so uptime just means "how long ago the
+    # operator rescued the node" -- a node legitimately sitting in rescue for hours
+    # must not be rejected. The real in-rescue proof is the installimage ramdisk
+    # (asserted separately), not uptime; relax the guard to a day. Lower with -e
+    # for stricter "must have just rescued it" behaviour.
+    reprovision_rescue_max_uptime: 86400
   pre_tasks:
     # run_once + through the role so defaults load and --limit can't skip it. With
     # use_robot=false this asserts keys + the fan-out gate only (no Robot calls).
