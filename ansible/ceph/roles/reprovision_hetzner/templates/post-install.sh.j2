@@ -1,0 +1,41 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Minimal installimage -x chroot post-install for {{ inventory_hostname }}.
+#
+# Purpose: seed login access DETERMINISTICALLY so the node is reachable and
+# sudo-manageable after reboot even when the rescue did not carry our key
+# (Robot armed rescue without the key, in-place installimage, manual rescue).
+# installimage's own "copy the rescue authorized_keys" is unreliable in those
+# cases, which leaves root keyless and the node unreachable for convergence.
+#
+# Scope is deliberately the least-brittle subset of a chroot: ONLY inert
+# filesystem/user writes. NO apt, NO lvcreate -- those depend on network / device
+# state inside the chroot and are the fragile steps that disrupted installimage
+# on painbox. Packages, db-slot LVs and sysctl stay at post-boot convergence.
+# Everything below is deterministic on a fresh install, so set -e cannot
+# spuriously abort installimage.
+set -euo pipefail
+
+IAC_PUB='{{ lookup("file", (reprovision_ssh_key_path | expanduser) ~ ".pub") }}'
+
+echo "=== post-install: seeding login access ==="
+
+# --- root: guarantee the iac key is authorized ---
+# root is the spice login user for both reprovision and convergence, and baseline
+# never manages root's keys, so this persists. This is THE reachability guarantee.
+install -d -m 700 /root/.ssh
+grep -qxF "$IAC_PUB" /root/.ssh/authorized_keys 2>/dev/null \
+  || printf '%s\n' "$IAC_PUB" >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+
+# --- ansible-iac: named automation account, key + passwordless sudo ---
+# Not managed by baseline (which owns 'ops' with exclusive keys), so no conflict.
+id ansible-iac >/dev/null 2>&1 || useradd -m -s /bin/bash ansible-iac
+install -d -m 700 -o ansible-iac -g ansible-iac /home/ansible-iac/.ssh
+printf '%s\n' "$IAC_PUB" > /home/ansible-iac/.ssh/authorized_keys
+chown ansible-iac:ansible-iac /home/ansible-iac/.ssh/authorized_keys
+chmod 600 /home/ansible-iac/.ssh/authorized_keys
+printf 'ansible-iac ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/ansible-iac
+chmod 440 /etc/sudoers.d/ansible-iac
+
+echo "=== post-install: root + ansible-iac keys and sudo seeded ==="

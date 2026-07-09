@@ -1,9 +1,10 @@
 ## Hetzner installimage autosetup for {{ cluster_name }} SX295 ceph nodes ({{ cluster_domain }}).
 ## Rendered by reprovision_hetzner for {{ inventory_hostname }}. DO NOT hand-edit.
 ## Hardware: SX295 - 2x NVMe (OS, RAID-1) + 14x SATA HDD (Ceph OSDs, UNTOUCHED here).
-## Applied base-OS-only: installimage -a -c /autosetup  (NO -x chroot post-install;
-## db-slot/ssd-osd LVs, packages and sysctl are done post-boot by ceph_deploy
-## convergence -- see roles/ceph_deploy/tasks/lvm-setup.yml and roles/baseline).
+## Applied with: installimage -a -c /autosetup -x /tmp/post-install.sh
+## The -x does ONLY user/key seeding (root + ansible-iac; see post-install.sh.j2).
+## db-slot/ssd-osd LVs, packages and sysctl stay at post-boot ceph_deploy
+## convergence -- roles/ceph_deploy/tasks/lvm-setup.yml and roles/baseline.
 
 DRIVE1 /dev/nvme0n1
 DRIVE2 /dev/nvme1n1
