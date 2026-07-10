@@ -28,8 +28,10 @@ cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
 # Per-host Ceph BIND addresses on the fabric VLANs. Derived from host_index the
 # same way as networkd_bond_vlans below (host_index is a per-host host_var, so
 # these resolve per host at play time). These live INSIDE public_network /
-# cluster_network -- unlike bond_ip, which is the 1G WAN address used for the
-# ansible/SSH connection (ansible_host) and cephadm host management. cephadm
+# cluster_network -- unlike bond_ip, which is the 1G WAN address used only for the
+# ansible/SSH connection (ansible_host). Ceph itself never touches the WAN: mon-ip,
+# the cephadm host-add address, and the RGW/monitoring binds all use the fabric via
+# ceph_service_ip (role default = ceph_public_ip) / ceph_bind_networks. cephadm
 # bootstrap --mon-ip MUST be inside public_network, so bootstrap.yml binds the
 # initial mon to ceph_public_ip, not the WAN bond_ip. (sietch is flat and has no
 # host_index; its bootstrap falls back to bond_ip, which is already in its
@@ -199,3 +201,11 @@ ceph_prometheus_port: 9095
 ceph_grafana_port: 3000
 ceph_alertmanager_port: 9093
 # ceph_grafana_admin_user/password are defined once in the Secret aliases block above.
+
+# === Security / firewall ===
+# Spice is fabric-only: every Ceph daemon binds the 25G fabric (mon/mgr/OSD via
+# public_network/cluster_network; RGW + monitoring via ceph_bind_networks) and
+# never listens on the 1G WAN. RGW is therefore scoped to the trusted networks
+# rather than left world-open (ceph_firewall_rgw_any_source defaults true for
+# flat/dev clusters; spice pins it closed).
+ceph_firewall_rgw_any_source: false

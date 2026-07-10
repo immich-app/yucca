@@ -32,7 +32,7 @@
   ansible.builtin.shell: |
     set -o pipefail
     cephadm bootstrap \
-      --mon-ip {{ ceph_public_ip | default(bond_ip) }} \
+      --mon-ip {{ ceph_service_ip }} \
       --initial-dashboard-user {{ ceph_dashboard_user }} \
       --initial-dashboard-password "$(cat /tmp/.ceph-dashboard-pw)" \
       --dashboard-password-noupdate \

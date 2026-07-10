@@ -38,7 +38,7 @@
   ansible.builtin.shell: |
     set -euo pipefail
     HOST="{{ hostvars[item]['hostname_short'] }}"
-    ADDR="{{ hostvars[item]['bond_ip'] }}"
+    ADDR="{{ hostvars[item]['ceph_service_ip'] }}"
     echo "Testing SSH to $HOST ($ADDR)..."
     ceph cephadm check-host "$HOST" "$ADDR" 2>&1 || {
       echo "WARN: ceph cephadm check-host failed, testing raw SSH..."
@@ -75,10 +75,10 @@
        grep -q '"{{ hostvars[item]['hostname_short'] }}"'; then
       echo "Host {{ hostvars[item]['hostname_short'] }} already in cluster"
     else
-      echo "Adding {{ hostvars[item]['hostname_short'] }} ({{ hostvars[item]['bond_ip'] }})"
+      echo "Adding {{ hostvars[item]['hostname_short'] }} ({{ hostvars[item]['ceph_service_ip'] }})"
       ceph orch host add \
         {{ hostvars[item]['hostname_short'] }} \
-        {{ hostvars[item]['bond_ip'] }} 2>&1
+        {{ hostvars[item]['ceph_service_ip'] }} 2>&1
     fi
   args:
     executable: /bin/bash

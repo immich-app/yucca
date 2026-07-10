@@ -2,7 +2,7 @@
 # Ceph release train. Upstream publishes per-release apt trees at
 # download.ceph.com/debian-<release>/, and each tree has subdirectories
 # per Debian codename. prerequisites.yml pins the codename to 'bookworm'
-# in the sources.list entry — when upgrading the base OS to Trixie,
+# in the sources.list entry - when upgrading the base OS to Trixie,
 # flip the codename there. This split keeps the Ceph release and the
 # Debian release independently versionable.
 ceph_release: tentacle
@@ -16,7 +16,26 @@ cephadm_install_method: repo   # 'repo' or 'curl'
 # splitting under load which tanks performance during the first fill.
 # These values are sized for ~36 OSDs. Scale proportionally for larger
 # clusters.
-ceph_pg_init_data: 128        # EC data pool — bulk of I/O
+ceph_pg_init_data: 128        # EC data pool - bulk of I/O
 ceph_pg_init_index: 16        # bucket index
 ceph_pg_init_non_ec: 16       # multipart uploads
 ceph_pg_init_meta: 8          # .rgw.root, .meta, .log, .control
+
+# --- Service bind/advertise policy (per-cluster; fabric-only on spice) ---
+# The single address Ceph point-services advertise + bind on: the mon --mon-ip,
+# the cephadm host-add address (inter-node orchestration SSH), and the dashboard
+# monitoring-integration URLs. Defaults to bond_ip so flat clusters (sietch, where
+# bond_ip IS the only network) are unchanged; spice defines ceph_public_ip (the
+# 25G fabric address) so it resolves to the fabric and Ceph never advertises the
+# 1G WAN. NB: this is NOT the ansible/SSH connection address (that stays bond_ip /
+# ansible_host until the WAN is retired) - only what Ceph itself uses.
+ceph_service_ip: "{{ ceph_public_ip | default(bond_ip) }}"
+
+# CIDR(s) cephadm restricts daemon binds to, injected as the `networks:` field of
+# the RGW + monitoring service specs. mon/mgr/OSD already bind per public_network/
+# cluster_network; this closes the remaining daemons (beast RGW, prometheus,
+# grafana, alertmanager, node-exporter) that otherwise bind 0.0.0.0 and would
+# listen on the WAN. Defaults to public_network, which is the fabric on spice and
+# the single flat network on sietch (a no-op there).
+ceph_bind_networks:
+  - "{{ public_network }}"

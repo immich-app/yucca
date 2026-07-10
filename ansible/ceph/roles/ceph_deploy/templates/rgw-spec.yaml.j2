@@ -1,4 +1,4 @@
-# RGW service spec — rendered by ceph-deploy role
+# RGW service spec - rendered by ceph-deploy role
 # Applied via: ceph orch apply -i /etc/ceph/rgw-spec.yaml
 #
 # Do not edit by hand. Regenerate by re-running the ceph-deploy role.
@@ -8,6 +8,12 @@ placement:
   hosts:
 {% for host in groups['ceph_nodes'] %}
     - {{ hostvars[host]['hostname_short'] }}
+{% endfor %}
+# Restrict the beast frontend bind to the fabric network(s); without this cephadm
+# binds 0.0.0.0 and RGW would listen on the 1G WAN. Fabric-only on spice.
+networks:
+{% for net in ceph_bind_networks %}
+  - {{ net }}
 {% endfor %}
 spec:
   rgw_realm: {{ ceph_rgw_realm }}

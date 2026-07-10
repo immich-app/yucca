@@ -345,6 +345,7 @@
     {% for h in groups['ceph_nodes'] %}
         '{{ hostvars[h]['hostname_short'] }}',
         '{{ hostvars[h]['bond_ip'] }}',
+        '{{ hostvars[h]['ceph_service_ip'] }}',
     {% endfor %}
         '{{ ceph_rgw_dns_name }}',
     ])
@@ -431,7 +432,8 @@
     DNS:{{ ceph_rgw_dns_name }},\
     DNS:*.{{ ceph_rgw_dns_name }}\
     {% for h in groups['ceph_nodes'] %},DNS:{{ hostvars[h]['hostname_short'] }}.{{ cluster_domain }}{% endfor %}\
-    {% for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['bond_ip'] }}{% endfor %}"
+    {% for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['bond_ip'] }}{% endfor %}\
+    {% for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['ceph_service_ip'] }}{% endfor %}"
   args:
     executable: /bin/bash
     creates: /etc/ceph/rgw-ssl.crt
@@ -711,7 +713,7 @@
       - "Access Key:        op://{{ cluster_secrets_vault }}/{{ cluster_name | upper }}_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY/password"
       - "Secret Key:        op://{{ cluster_secrets_vault }}/{{ cluster_name | upper }}_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY/password"
       - "Endpoint (DNS):    {{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}"
-      - "Endpoint (direct): {{ ceph_rgw_scheme }}://{{ bond_ip }}:{{ ceph_rgw_port }}"
+      - "Endpoint (direct): {{ ceph_rgw_scheme }}://{{ ceph_service_ip }}:{{ ceph_rgw_port }}"
       - "Region:            {{ ceph_rgw_zonegroup_api_name }}"
       - "Virtual-hosted:    {{ ceph_rgw_scheme }}://<bucket>.{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}"
       - "Path-style:        {{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}/<bucket>"

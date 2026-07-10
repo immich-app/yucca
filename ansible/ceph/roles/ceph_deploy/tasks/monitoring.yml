@@ -1,5 +1,5 @@
 ---
-# Phase 5.8: Monitoring stack — dashboard integration
+# Phase 5.8: Monitoring stack - dashboard integration
 #
 # cephadm auto-deploys the full monitoring stack (node-exporter,
 # ceph-exporter, prometheus, alertmanager, grafana) during bootstrap.
@@ -62,26 +62,48 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
+# --- Step 2.5: Restrict monitoring daemon bind to the fabric ---
+# cephadm auto-deployed the stack binding all interfaces; re-apply with `networks:`
+# so prometheus/grafana/alertmanager/node-exporter/ceph-exporter bind only
+# ceph_bind_networks (fabric-only on spice, so they never listen on the WAN).
+# Placement matches cephadm's defaults, so no daemon relocates.
+- name: Render monitoring service spec (fabric bind restriction)
+  ansible.builtin.template:
+    src: monitoring-spec.yaml.j2
+    dest: /etc/ceph/monitoring-spec.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Apply monitoring service spec
+  ansible.builtin.command: ceph orch apply -i /etc/ceph/monitoring-spec.yaml
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
 # --- Step 3: Configure dashboard integrations ---
+# The dashboard runs on the active mgr and reaches these services on the fabric;
+# advertise ceph_service_ip (fabric on spice), not bond_ip (the 1G WAN), so the
+# URLs stay inside ceph_firewall_trusted_networks after harden.
 
 - name: Configure dashboard Prometheus URL
   ansible.builtin.command: >
     ceph dashboard set-prometheus-api-host
-    http://{{ hostvars[groups['ceph_bootstrap'][0]]['bond_ip'] }}:{{ ceph_prometheus_port }}
+    http://{{ hostvars[groups['ceph_bootstrap'][0]]['ceph_service_ip'] }}:{{ ceph_prometheus_port }}
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
 - name: Configure dashboard Alertmanager URL
   ansible.builtin.command: >
     ceph dashboard set-alertmanager-api-host
-    http://{{ hostvars[groups['ceph_bootstrap'][0]]['bond_ip'] }}:{{ ceph_alertmanager_port }}
+    http://{{ hostvars[groups['ceph_bootstrap'][0]]['ceph_service_ip'] }}:{{ ceph_alertmanager_port }}
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
 - name: Configure dashboard Grafana URL
   ansible.builtin.command: >
     ceph dashboard set-grafana-api-url
-    https://{{ hostvars[groups['ceph_bootstrap'][0]]['bond_ip'] }}:{{ ceph_grafana_port }}
+    https://{{ hostvars[groups['ceph_bootstrap'][0]]['ceph_service_ip'] }}:{{ ceph_grafana_port }}
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
@@ -159,9 +181,9 @@
     ceph orch ls --service-type ceph-exporter
     echo ""
     echo "=== Endpoints ==="
-    echo "Prometheus:   http://{{ bond_ip }}:{{ ceph_prometheus_port }}"
-    echo "Grafana:      https://{{ bond_ip }}:{{ ceph_grafana_port }}"
-    echo "Alertmanager: http://{{ bond_ip }}:{{ ceph_alertmanager_port }}"
+    echo "Prometheus:   http://{{ ceph_service_ip }}:{{ ceph_prometheus_port }}"
+    echo "Grafana:      https://{{ ceph_service_ip }}:{{ ceph_grafana_port }}"
+    echo "Alertmanager: http://{{ ceph_service_ip }}:{{ ceph_alertmanager_port }}"
   args:
     executable: /bin/bash
   register: monitoring_status
