@@ -16,9 +16,13 @@ cluster_domain: prod.fsn1.htz.futo.cloud
 # Ceph public/cluster traffic runs on the bonded 25G fabric VLANs (NetBox
 # FSN1-C1-PUBLIC / FSN1-C1-PRIVATE). Per-host IPs are 10.40.20.<host_index> /
 # 10.40.22.<host_index> (host_index from spice-hosts.yaml; gateway .1 = leaf IRB).
+# A third fabric VLAN, FSN1-C1-HOST-MGMT (124, 10.40.24.0/24), is the in-band
+# host-management path: the leaf trunks it to every server bond and the fabric
+# advertises 10.40.24.0/24 into the NetBird overlay, so it is the intended
+# ansible/SSH reach once the WAN is retired.
 # The DEFAULT ROUTE stays on the 1G WAN for now (Hetzner gateway); ansible reaches
 # nodes over their WAN address until the fabric is cut over. Revisit if/when the
-# default route moves to Ceph Public.
+# default route moves off the WAN (to Ceph Public or Host-Mgmt).
 public_network: 10.40.20.0/23     # VLAN 120 (Ceph Public)
 cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
 # Per-host Ceph BIND addresses on the fabric VLANs. Derived from host_index the
@@ -50,6 +54,7 @@ bond_interfaces:
 oob_nic: enp197s0
 fabric_public_vlan: 120
 fabric_private_vlan: 122
+fabric_mgmt_vlan: 124
 dns_server: 185.12.64.1            # Hetzner recursive (reachable via WAN default route)
 # Time sync: Hetzner's own NTP (low-latency from FSN1, consistent across all 47).
 # Ceph mon quorum is skew-sensitive; pin the source rather than the distro pool.
@@ -59,13 +64,16 @@ chrony_ntp_servers:
   - ntp3.hetzner.de
 
 # Tagged VLAN sub-interfaces on the 25G LACP bond (consumed by the networkd role).
-# Addresses derive from host_index; /23 masks match public_network/cluster_network.
-# No Gateway here -- the default route stays on the 1G WAN until fabric cutover.
+# Addresses derive from host_index; masks match each network (public/private /23,
+# host-mgmt /24). No Gateway here -- the default route stays on the 1G WAN until
+# fabric cutover.
 networkd_bond_vlans:
   - id: "{{ fabric_public_vlan }}"     # 120 - Ceph public  (10.40.20.0/23)
     address: "10.40.20.{{ host_index }}/23"
   - id: "{{ fabric_private_vlan }}"    # 122 - Ceph private (10.40.22.0/23)
     address: "10.40.22.{{ host_index }}/23"
+  - id: "{{ fabric_mgmt_vlan }}"       # 124 - Host mgmt    (10.40.24.0/24)
+    address: "10.40.24.{{ host_index }}/24"
 
 # Cluster-specific packages, merged with baseline_diag_packages. Spice hardware:
 # Intel E800 (ice) 25G NICs on an LACP fabric; direct-attach SATA HDDs + NVMe (no
