@@ -28,13 +28,19 @@ name: Infra (Terraform)
 # advertises the node subnets the overlay-joining jobs reach; prod/global must
 # precede prod/htz-fsn1/netbird (a real terragrunt dependency).
 #
-# The two post-apply Ansible converges (ceph RGW users on the ceph stack; mgmt
-# hosts on the fabric stack) are gated independently of their TF apply: on push
-# they run only when their own surface changed (ceph: ansible/ceph/**; mgmt:
-# ansible/mgmt/** + tf/render/ansible-mgmt/** + .mise/tasks/mgmt/**), and on
-# workflow_dispatch only when the run_ceph_ansible / run_mgmt_ansible toggles are
-# set (both default off). A pure-Terraform change to either stack thus applies
-# without reconverging the nodes — and the ceph overlay join is skipped with it.
+# The two post-apply Ansible converges are gated independently of their TF apply.
+# They differ by blast radius:
+#   - ceph (full baseline -> tune -> deploy -> harden against a LIVE bare-metal
+#     cluster) is DELIBERATE: it runs ONLY on workflow_dispatch with
+#     run_ceph_ansible=true, targeting the single cluster named by the
+#     ceph_cluster input (spice = prod/htz-fsn1, sietch = staging/austin). A push
+#     NEVER converges a ceph cluster, so merging a ceph change (prod- or
+#     staging-scoped) can never auto-run an Ansible converge on a live cluster.
+#   - mgmt (mgmt hosts on the fabric stack) still auto-runs on push when its own
+#     surface changed (ansible/mgmt/** + tf/render/ansible-mgmt/** +
+#     .mise/tasks/mgmt/**), and on workflow_dispatch when run_mgmt_ansible is set.
+# A pure-Terraform change to either stack thus applies without reconverging the
+# nodes, and the matching overlay join is skipped with it.
 #
 # The fabric (switch) apply is gated the same way: on push it applies only when the
 # fabric surface changed (tf/deployment/prod/htz-fsn1/fabric/**, the fabric shared
@@ -80,9 +86,16 @@ on:
   workflow_dispatch:
     inputs:
       run_ceph_ansible:
-        description: 'Run the Ceph Ansible converge (RGW users) after the ceph apply'
+        description: 'Run the Ceph Ansible converge (full pipeline) against ceph_cluster'
         type: boolean
         default: false
+      ceph_cluster:
+        description: 'Ceph cluster the converge targets (only used when run_ceph_ansible is true)'
+        type: choice
+        options:
+          - sietch
+          - spice
+        default: sietch
       run_mgmt_ansible:
         description: 'Run the mgmt Ansible converge after the fabric apply'
         type: boolean
@@ -113,9 +126,9 @@ jobs:
       prod: ${{ steps.filter.outputs.prod }}
       dev: ${{ steps.filter.outputs.dev }}
       shared: ${{ steps.filter.outputs.shared }}
-      # Ansible-converge gates: isolate the Ansible surfaces so a pure-Terraform
-      # change to the ceph/fabric stack applies without reconverging the nodes.
-      ansible_ceph: ${{ steps.filter.outputs.ansible_ceph }}
+      # Mgmt Ansible-converge gate: isolate the mgmt Ansible surface so a
+      # pure-Terraform change to the fabric stack applies without reconverging the
+      # mgmt hosts. (The ceph converge is workflow_dispatch-only -- no push gate.)
       ansible_mgmt: ${{ steps.filter.outputs.ansible_mgmt }}
       # Fabric-apply gate: the fabric (switch) stack applies only when its own
       # surface changed — not on every prod change.
@@ -130,10 +143,15 @@ jobs:
           filters: |
             staging:
               - 'tf/deployment/staging/**'
-              - 'ansible/ceph/**'
+              # Only staging's own ceph inventory activates the staging matrix.
+              # A prod ceph change (or a shared ceph role/play) must NEVER open
+              # the staging partition -- see DEFECT 3. The ceph Ansible converge
+              # itself is workflow_dispatch-only regardless (no push converge).
+              - 'ansible/ceph/inventories/staging-**'
             prod:
               - 'tf/deployment/prod/**'
               - 'ansible/mgmt/**'
+              - 'ansible/ceph/inventories/prod-**'
               - 'tf/render/**'
               - 'tf/providers/**'
               - '.mise/tasks/infra/**'
@@ -150,11 +168,11 @@ jobs:
               - '.mise/config.toml'
               - '.github/actions/netbird-connect/**'
               - '.github/workflows/infra.yml'
-            # ── Ansible-converge gates (stack-step level, not partition level) ──
-            # These don't open/close a partition's matrix; the apply job uses them
-            # to decide whether to run the post-apply Ansible converge for its stack.
-            ansible_ceph:
-              - 'ansible/ceph/**'
+            # -- Mgmt Ansible-converge gate (stack-step level, not partition) --
+            # Does not open/close a partition's matrix; the apply job uses it to
+            # decide whether to run the post-apply mgmt converge for the fabric
+            # stack. (There is no ceph equivalent: the ceph converge is
+            # workflow_dispatch-only, so it needs no push paths-filter.)
             ansible_mgmt:
               - 'ansible/mgmt/**'
               - 'tf/render/ansible-mgmt/**'
@@ -347,27 +365,43 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
-      # Decide whether each post-apply Ansible converge runs. On push, gate on the
-      # paths-filter (did the Ansible surface change?); on manual dispatch, gate on
-      # the run_*_ansible toggles (default off) since there's no diff to detect.
+      # Decide whether each post-apply Ansible converge runs.
+      #   - ceph: DELIBERATE and blast-radius-guarded. Runs ONLY on
+      #     workflow_dispatch with run_ceph_ansible=true, and ONLY for the ceph
+      #     matrix entry whose partition/region owns the selected ceph_cluster
+      #     (spice -> prod/htz-fsn1, sietch -> staging/austin). A push never sets
+      #     this gate, so merging a ceph change cannot converge a live cluster.
+      #   - mgmt: on push, gate on the paths-filter (did the mgmt surface change?);
+      #     on manual dispatch, gate on the run_mgmt_ansible toggle (default off).
       - name: Resolve Ansible-converge gates
         id: ansible_gate
         env:
           DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
           DISPATCH_CEPH: ${{ inputs.run_ceph_ansible }}
           DISPATCH_MGMT: ${{ inputs.run_mgmt_ansible }}
-          CHANGED_CEPH: ${{ needs.changes.outputs.ansible_ceph }}
+          CEPH_CLUSTER: ${{ inputs.ceph_cluster }}
+          PARTITION: ${{ matrix.partition }}
+          REGION: ${{ matrix.region }}
           CHANGED_MGMT: ${{ needs.changes.outputs.ansible_mgmt }}
         run: |
           set -euo pipefail
-          if [ "$DISPATCH" = "true" ]; then
-            ceph=$DISPATCH_CEPH; mgmt=$DISPATCH_MGMT
-          else
-            ceph=$CHANGED_CEPH; mgmt=$CHANGED_MGMT
+          # ceph converge: dispatch-only, and pinned to the one cluster/entry.
+          ceph=false
+          if [ "$DISPATCH" = "true" ] && [ "$DISPATCH_CEPH" = "true" ]; then
+            case "$CEPH_CLUSTER" in
+              spice)  want_partition=prod;    want_region=htz-fsn1 ;;
+              sietch) want_partition=staging; want_region=austin ;;
+              *) echo "unknown ceph_cluster: '$CEPH_CLUSTER'" >&2; exit 1 ;;
+            esac
+            if [ "$PARTITION" = "$want_partition" ] && [ "$REGION" = "$want_region" ]; then
+              ceph=true
+            fi
           fi
+          # mgmt converge: push -> paths-filter; dispatch -> toggle.
+          if [ "$DISPATCH" = "true" ]; then mgmt=$DISPATCH_MGMT; else mgmt=$CHANGED_MGMT; fi
           echo "ceph=${ceph:-false}" >> "$GITHUB_OUTPUT"
           echo "mgmt=${mgmt:-false}" >> "$GITHUB_OUTPUT"
-          echo "Ansible converge gates → ceph=${ceph:-false} mgmt=${mgmt:-false}"
+          echo "Ansible converge gates -> ceph=${ceph:-false} (cluster=${CEPH_CLUSTER:-none}) mgmt=${mgmt:-false}"
 
       # Decide whether the fabric (switch) apply runs. Same model as the Ansible
       # gates: on push, gate on the paths-filter (did the fabric surface change?);
@@ -421,26 +455,31 @@ jobs:
           --working-dir "tf/deployment/$STACK_DIR"
           --non-interactive apply -auto-approve
 
-      # ── Ceph convergence (Ansible) — ceph stack, gated on the converge gate ──
+      # -- Ceph convergence (Ansible) - ceph stack, workflow_dispatch-only --
       # The TF apply above only minted the RGW keys into 1P + the cluster Secret;
-      # this creates the matching RGW users on the bare-metal cluster. Reuses the
-      # NetBird overlay + 1Password session already established in this entry.
-      # Skipped (along with the overlay join above) when ansible/ceph/** is
-      # unchanged on push, or when run_ceph_ansible is off on manual dispatch.
+      # this converges the selected bare-metal cluster. Reuses the NetBird overlay
+      # + 1Password session already established in this entry. The gate fires ONLY
+      # on workflow_dispatch with run_ceph_ansible=true, and only for the entry
+      # that owns the chosen ceph_cluster (spice=prod/htz-fsn1, sietch=staging/
+      # austin) -- a push never converges here. Cluster + region are threaded from
+      # the dispatch inputs / matrix so this is not hardcoded to sietch/austin.
       - name: Render Ansible inventory from the ceph TF state
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         env:
           PARTITION: ${{ matrix.partition }}
-        run: ansible/ceph/scripts/render-inventories.sh "$PARTITION"
+          REGION: ${{ matrix.region }}
+        run: ansible/ceph/scripts/render-inventories.sh "$PARTITION" "$REGION"
       - name: Install the ansible-iac SSH key from 1Password
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
-        # Pulls op://yucca_tf_<partition>/SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY to
-        # ~/.ssh/id_ed25519_sietch — the path the rendered inventory references.
+        # Pulls op://yucca_tf_<partition>/<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY to
+        # ~/.ssh/id_ed25519_<cluster> -- the path the rendered inventory references
+        # (spice -> id_ed25519_spice, sietch -> id_ed25519_sietch).
         env:
           PARTITION: ${{ matrix.partition }}
+          CEPH_CLUSTER: ${{ inputs.ceph_cluster }}
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          OP_VAULT="yucca_tf_$PARTITION" ansible/ceph/scripts/install-ssh-keys.sh sietch
+          OP_VAULT="yucca_tf_$PARTITION" ansible/ceph/scripts/install-ssh-keys.sh "$CEPH_CLUSTER"
       - name: Provision the ceph Ansible toolchain (venv + collections)
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         working-directory: ansible/ceph
@@ -448,7 +487,7 @@ jobs:
           mise trust
           mise install
           mise run setup
-      - name: Deploy Ceph (full pipeline — baseline → tune → deploy → harden)
+      - name: Deploy Ceph (full pipeline -- baseline -> tune -> deploy -> harden)
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         # Run from ansible/ceph so mise loads ansible/ceph/.mise.toml (where the
         # `deploy` task + CEPH_ENV-relative inventory paths live); the root config
@@ -458,7 +497,7 @@ jobs:
         # over the NetBird overlay, so disable strict host-key checking for this run.
         env:
           ANSIBLE_HOST_KEY_CHECKING: 'false'
-          CEPH_ENV: inventories/${{ matrix.partition }}-${{ matrix.region }}/sietch/inventory.ini
+          CEPH_ENV: inventories/${{ matrix.partition }}-${{ matrix.region }}/${{ inputs.ceph_cluster }}/inventory.ini
         run: mise run deploy
 
       # ── Mgmt convergence (Ansible) — fabric stack, gated on the converge gate ─
