@@ -1,5 +1,5 @@
 #!/usr/sbin/nft -f
-# Ceph node firewall — managed by Ansible (security role)
+# Ceph node firewall - managed by Ansible (security role)
 # Allows only Ceph services + SSH from trusted networks. Drops everything else.
 
 flush ruleset
@@ -23,10 +23,16 @@ table inet filter {
         tcp dport 22 accept
 {% endif %}
 
+{% if ceph_firewall_rgw_any_source | bool %}
         # RGW / S3 (all sources)
         tcp dport {{ ceph_firewall_rgw_port }} accept
+{% endif %}
 
 {% for net in ceph_firewall_trusted_networks %}
+{% if not (ceph_firewall_rgw_any_source | bool) %}
+        # RGW / S3 (restricted to trusted networks)
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_rgw_port }} accept
+{% endif %}
         # --- Trusted network: {{ net }} ---
 
 {% if not (ceph_firewall_ssh_any_source | bool) %}
