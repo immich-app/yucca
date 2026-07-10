@@ -4,4 +4,6 @@ bond_ip: 178.63.139.220
 hetzner_server_number: 3014578
 host_index: 40
 mon: false
-# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)
+# ceph_hdd_osds: defined in group_vars/all/vars.yml (SX295 by-path map is
+# uniform across nodes). Override here ONLY if a node's by-path differs
+# (e.g. spice-ceph-miguel). Verify with: ls -l /dev/disk/by-path/pci-*-ata-*
