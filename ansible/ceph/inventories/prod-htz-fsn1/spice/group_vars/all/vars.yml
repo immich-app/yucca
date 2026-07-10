@@ -114,6 +114,31 @@ ceph_db_lvs_per_node: 14
 ceph_ssd_osd_lv: ssd-osd          # NVMe-backed OSD LV (fast replicated pool)
 ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expansion
 
+# OSD device map (by-path, consumed by ceph_deploy/osd-spec.yml.j2, NVMe-RAID shape:
+# no sas_path_prefix -> data path is /dev/disk/by-path/<path_phy>, db is /dev/<db>).
+# The 14x 20TB SATA HDDs sit on 3 AHCI controllers; the by-path layout is IDENTICAL
+# across 46 of the 47 nodes (verified 2026-07-10), so it lives here as a group_var
+# instead of 47 host_vars. Exception: spice-ceph-miguel has one disk on
+# 46:00.0-ata-4 (not 87:00.0-ata-4) and overrides ceph_hdd_osds in its host_vars.
+# db-slotN and ssd-osd LVs are carved from vg0 at deploy by lvm-setup.
+ceph_hdd_osds:
+  - { path_phy: pci-0000:45:00.0-ata-1, db: vg0/db-slot0 }
+  - { path_phy: pci-0000:45:00.0-ata-2, db: vg0/db-slot1 }
+  - { path_phy: pci-0000:45:00.0-ata-3, db: vg0/db-slot2 }
+  - { path_phy: pci-0000:45:00.0-ata-4, db: vg0/db-slot3 }
+  - { path_phy: pci-0000:45:00.0-ata-5, db: vg0/db-slot4 }
+  - { path_phy: pci-0000:45:00.0-ata-6, db: vg0/db-slot5 }
+  - { path_phy: pci-0000:45:00.0-ata-7, db: vg0/db-slot6 }
+  - { path_phy: pci-0000:45:00.0-ata-8, db: vg0/db-slot7 }
+  - { path_phy: pci-0000:46:00.0-ata-1, db: vg0/db-slot8 }
+  - { path_phy: pci-0000:46:00.0-ata-2, db: vg0/db-slot9 }
+  - { path_phy: pci-0000:87:00.0-ata-1, db: vg0/db-slot10 }
+  - { path_phy: pci-0000:87:00.0-ata-2, db: vg0/db-slot11 }
+  - { path_phy: pci-0000:87:00.0-ata-3, db: vg0/db-slot12 }
+  - { path_phy: pci-0000:87:00.0-ata-4, db: vg0/db-slot13 }
+ceph_ssd_osds:
+  - { lv: vg0/ssd-osd }
+
 # === RGW ===
 # EC 16+4, HOST failure domain -- capacity-max profile (80% usable, m=4) for the
 # beta behind michael. Host domain trades rack-loss protection for capacity: a

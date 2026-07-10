@@ -40,7 +40,9 @@ for host, h in roster["hosts"].items():
         f"hetzner_server_number: {h['server_number']}\n"
         f"host_index: {h['host_index']}\n"
         f"mon: {str(h['mon']).lower()}\n"
-        "# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)\n"
+        "# ceph_hdd_osds: defined in group_vars/all/vars.yml (SX295 by-path map is\n"
+        "# uniform across nodes). Override here ONLY if a node's by-path differs\n"
+        "# (e.g. spice-ceph-miguel). Verify with: ls -l /dev/disk/by-path/pci-*-ata-*\n"
     )
     print(f"wrote: {f.name}")
     wrote += 1

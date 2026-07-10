@@ -65,7 +65,11 @@ clusters = {
       { name = "mattie", bond_ip = "178.63.139.237", roles = ["osd", "rgw"] },                                 # srv 3014575 host_index 37
       { name = "miguel", bond_ip = "178.63.139.216", roles = ["osd", "rgw"] },                                 # srv 3014576 host_index 38
       { name = "murphy", bond_ip = "178.63.139.232", roles = ["osd", "rgw"] },                                 # srv 3014577 host_index 39
-      { name = "noreen", bond_ip = "178.63.139.220", roles = ["osd", "rgw"] },                                 # srv 3014578 host_index 40
+      # EXCLUDED until recovered: noreen (srv 3014578, host_index 40, 178.63.139.220)
+      # hit the BIOS boot-order fault and is held in triage (never imaged). Kept out
+      # of TF so the rendered inventory + deploy target only the 47 live nodes.
+      # Re-add this line once Hetzner fixes its boot order and it images cleanly.
+      # { name = "noreen", bond_ip = "178.63.139.220", roles = ["osd", "rgw"] },      # srv 3014578 host_index 40
       { name = "philip", bond_ip = "178.63.139.219", roles = ["osd", "rgw"] },                                 # srv 3014579 host_index 41
       { name = "raymon", bond_ip = "178.63.139.223", roles = ["osd", "rgw"] },                                 # srv 3014580 host_index 42
       { name = "romona", bond_ip = "178.63.139.236", roles = ["osd", "rgw"] },                                 # srv 3014581 host_index 43
