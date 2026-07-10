@@ -29,7 +29,8 @@
   hosts: ceph_nodes
   become: true
   gather_facts: false
-  serial: 1
+  serial: "{{ networkd_serial | default(1) }}"
+  max_fail_percentage: 0   # any node fails (e.g. WAN drops -> unreachable) -> halt
 
   pre_tasks:
     # Ceph-health gate applies only to a live cluster. Pre-Ceph clusters (spice
