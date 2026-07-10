@@ -54,9 +54,15 @@ networkd_bond_vlans:
 # Intel E800 (ice) 25G NICs on an LACP fabric; direct-attach SATA HDDs + NVMe (no
 # SAS expander / Mellanox, so none of sietch's mstflint/ledmon/sg3-utils here).
 baseline_extra_packages:
-  - lldpd       # LLDP neighbor/switch discovery on the 25G fabric
-  - ethtool     # NIC/bond link, driver, and 25G speed inspection
-  - tcpdump     # packet capture for fabric/network debugging
+  - lldpd                 # LLDP neighbor/switch discovery on the 25G fabric
+  - ethtool               # NIC/bond link, driver, and 25G speed inspection
+  - tcpdump               # packet capture for fabric/network debugging
+  # Intel E810 (ice) DDP package (intel/ice/ddp/ice.pkg). WITHOUT it the NIC boots
+  # into Safe Mode, whose crippled classifier drops LACP/LLDP control frames -> the
+  # 25G bond never aggregates. The minimal Debian image omits it; baseline installs
+  # it and (nic-firmware.yml) reboots once to load the DDP. Needs the non-free-firmware
+  # apt component (present in the Hetzner Debian base).
+  - firmware-misc-nonfree
 timezone: UTC
 
 # === Ceph ===

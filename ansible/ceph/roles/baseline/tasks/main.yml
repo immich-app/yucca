@@ -18,6 +18,12 @@
   ansible.builtin.import_tasks: packages.yml
   tags: [packages]
 
+# After packages (firmware-misc-nonfree) are installed: load the Intel ice DDP so
+# E810 NICs leave Safe Mode. Self-gating (no-op on non-ice hosts / already-loaded).
+- name: Activate Intel ice NIC firmware (DDP / exit Safe Mode)
+  ansible.builtin.import_tasks: nic-firmware.yml
+  tags: [packages, nic_firmware, network]
+
 - name: Configure lldpd for fabric discovery
   ansible.builtin.import_tasks: lldpd.yml
   when: "'lldpd' in (baseline_extra_packages | default([]))"

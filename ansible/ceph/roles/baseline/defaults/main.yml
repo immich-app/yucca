@@ -11,6 +11,13 @@ baseline_iac_user: ansible-iac
 baseline_iac_pubkey: >-
   {{ lookup('file', (provision_iac_ssh_key_path | expanduser) ~ '.pub') }}
 
+# --- Intel ice NIC firmware (DDP) ---
+# nic-firmware.yml reboots an E810 host once to load the DDP (exit Safe Mode) after
+# firmware-misc-nonfree is installed. Set false to install the package but skip the
+# activating reboot (an operator can reboot on their own schedule).
+baseline_nic_firmware_activate: true
+baseline_nic_firmware_reboot_timeout: 600
+
 # --- ops user ---
 baseline_ops_user: ops
 baseline_ops_uid: 1001
