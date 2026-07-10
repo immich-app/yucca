@@ -18,5 +18,31 @@
   become: true
   gather_facts: true
 
+  pre_tasks:
+    # Fail fast if the inventory was not rendered from TF. The ceph_deploy role
+    # gates every phase on the ceph_bootstrap/ceph_mon/ceph_join groups and indexes
+    # groups['ceph_bootstrap'][0]; against a hand-written stopgap inventory that
+    # lacks them the role would error mid-run or, worse, fall through to placing a
+    # MON on every host. render-inventories.sh emits these groups from TF state
+    # (bootstrap = exactly one host, mon = an odd quorum including the bootstrap
+    # node) - refuse to deploy against anything else.
+    - name: Assert the TF-rendered placement groups are present and sane
+      ansible.builtin.assert:
+        that:
+          - (groups['ceph_bootstrap'] | default([])) | length == 1
+          - (groups['ceph_mon'] | default([])) | length >= 1
+          - (groups['ceph_mon'] | default([]) | length) is odd
+          - ((groups['ceph_bootstrap'] | default([])) | intersect(groups['ceph_mon'] | default([])) | length) == 1
+        fail_msg: >-
+          Inventory is missing or has bad TF-rendered placement groups
+          (need ceph_bootstrap = exactly 1 host that is also in ceph_mon, and
+          ceph_mon = a non-empty ODD quorum). Render it first:
+          scripts/render-inventories.sh <partition> <region>. Refusing to deploy.
+        success_msg: >-
+          Placement OK: bootstrap={{ groups['ceph_bootstrap'] | default([]) | length }},
+          mon={{ groups['ceph_mon'] | default([]) | length }},
+          join={{ groups['ceph_join'] | default([]) | length }}.
+      run_once: true
+
   roles:
     - ceph_deploy
