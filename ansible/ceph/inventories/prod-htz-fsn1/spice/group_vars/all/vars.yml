@@ -25,23 +25,19 @@ cluster_domain: prod.fsn1.htz.futo.cloud
 # default route moves off the WAN (to Ceph Public or Host-Mgmt).
 public_network: 10.40.20.0/23     # VLAN 120 (Ceph Public)
 cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
-# Per-host Ceph BIND addresses on the fabric VLANs. Derived from host_index the
-# same way as networkd_bond_vlans below (host_index is a per-host host_var, so
-# these resolve per host at play time). These live INSIDE public_network /
-# cluster_network -- unlike bond_ip, which is the 1G WAN address used only for the
-# ansible/SSH connection (ansible_host). Ceph itself never touches the WAN: mon-ip,
-# the cephadm host-add address, and the RGW/monitoring binds all use the fabric via
-# ceph_service_ip (role default = ceph_public_ip) / ceph_bind_networks. cephadm
-# bootstrap --mon-ip MUST be inside public_network, so bootstrap.yml binds the
-# initial mon to ceph_public_ip, not the WAN bond_ip. (sietch is flat and has no
-# host_index; its bootstrap falls back to bond_ip, which is already in its
-# public_network -- see the `default(bond_ip)` in ceph_deploy/tasks/bootstrap.yml.)
+# Per-host Ceph BIND address on the fabric public VLAN. Derived from host_index the
+# same way as networkd_bond_vlans below (a per-host host_var, so it resolves per
+# host at play time). Lives INSIDE public_network -- unlike bond_ip, the 1G WAN
+# address used only for the ansible/SSH connection (ansible_host). (No
+# ceph_cluster_ip var: OSD replication binds to the cluster_network CIDR, which
+# cephadm resolves to each node's bond0.122 address on its own.)
 ceph_public_ip: "10.40.20.{{ host_index }}"    # bond0.120, inside public_network
-ceph_cluster_ip: "10.40.22.{{ host_index }}"   # bond0.122, inside cluster_network
 # The address Ceph point-services advertise + bind on (mon --mon-ip, cephadm
-# host-add, dashboard monitoring URLs) = the fabric public IP. A group_var, NOT a
-# role default, because join/rgw/monitoring read it via hostvars[<host>], which
-# does not expose role defaults; here it resolves per host to 10.40.20.<host_index>.
+# host-add, dashboard monitoring URLs) = the fabric public IP. Ceph never touches
+# the WAN. A group_var, NOT a role default, because join/rgw/monitoring read it via
+# hostvars[<host>], which does not expose role defaults; here it resolves per host
+# to 10.40.20.<host_index>. sietch is flat with no ceph_public_ip, so there it
+# falls back to bond_ip (already inside its public_network).
 ceph_service_ip: "{{ ceph_public_ip | default(bond_ip) }}"
 # Fabric-only bind opt-in: cephadm restricts the RGW + monitoring daemon binds to
 # these CIDR(s) so nothing Ceph listens on the 1G WAN (mon/mgr/OSD already bind
