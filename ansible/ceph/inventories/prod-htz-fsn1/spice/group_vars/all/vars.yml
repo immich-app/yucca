@@ -197,8 +197,21 @@ ceph_rgw_dns_name: s3.{{ cluster_domain }}
 ceph_rgw_replicated_size: 3
 ceph_rgw_replicated_min_size: 2
 ceph_rgw_count_per_host: 1
-ceph_rgw_port: 7480
-ceph_rgw_ssl: false
+ceph_rgw_port: 443
+# RGW/beast terminates TLS on 443 with a 10-year self-signed cert: rgw.yml
+# generates /etc/ceph/rgw-ssl.{crt,key} and cephadm distributes it to every RGW
+# daemon via the service spec. Clients reach RGW over the fabric / NetBird, so the
+# cert SANs cover the s3.<domain> name (+ wildcard for virtual-hosted buckets) and
+# each node's fabric IP (ceph_service_ip). Self-signed: clients trust-on-first-use
+# or pin the CA. Falkenstein/Saxony/DE matches the FSN1 site (cosmetic for a
+# self-signed cert; only the CN + SANs are validated).
+ceph_rgw_ssl: true
+ceph_rgw_ssl_cert_days: 3650   # 10 years
+ceph_rgw_ssl_cert_subject_c: DE
+ceph_rgw_ssl_cert_subject_st: Saxony
+ceph_rgw_ssl_cert_subject_l: Falkenstein
+ceph_rgw_ssl_cert_subject_o: FUTO
+ceph_rgw_ssl_cert_email: yucca@futo.org
 ceph_rgw_scheme: "{{ 'https' if ceph_rgw_ssl else 'http' }}"
 ceph_rgw_s3_user_uid: svc-yucca-restic
 ceph_rgw_s3_user_display_name: "yucca/restic service account"
