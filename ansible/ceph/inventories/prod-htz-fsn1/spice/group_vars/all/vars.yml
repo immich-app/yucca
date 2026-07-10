@@ -38,6 +38,12 @@ cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
 # public_network -- see the `default(bond_ip)` in ceph_deploy/tasks/bootstrap.yml.)
 ceph_public_ip: "10.40.20.{{ host_index }}"    # bond0.120, inside public_network
 ceph_cluster_ip: "10.40.22.{{ host_index }}"   # bond0.122, inside cluster_network
+# Fabric-only bind opt-in: cephadm restricts the RGW + monitoring daemon binds to
+# these CIDR(s) so nothing Ceph listens on the 1G WAN (mon/mgr/OSD already bind
+# public_network/cluster_network). The role default is empty (flat clusters bind
+# every interface, unchanged); spice pins the fabric public network.
+ceph_bind_networks:
+  - "{{ public_network }}"
 # Bond of the two 25G NICs, LACP to match the leaf ae<k> aggregate (cluster-fabric).
 bond_mode: "802.3ad"
 # COEXISTENCE: keep the 1G WAN (oob_nic) on ifupdown exactly as installimage set

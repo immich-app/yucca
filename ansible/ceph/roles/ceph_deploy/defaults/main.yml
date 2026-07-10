@@ -34,8 +34,9 @@ ceph_service_ip: "{{ ceph_public_ip | default(bond_ip) }}"
 # CIDR(s) cephadm restricts daemon binds to, injected as the `networks:` field of
 # the RGW + monitoring service specs. mon/mgr/OSD already bind per public_network/
 # cluster_network; this closes the remaining daemons (beast RGW, prometheus,
-# grafana, alertmanager, node-exporter) that otherwise bind 0.0.0.0 and would
-# listen on the WAN. Defaults to public_network, which is the fabric on spice and
-# the single flat network on sietch (a no-op there).
-ceph_bind_networks:
-  - "{{ public_network }}"
+# grafana, alertmanager, node-exporter, ceph-exporter) that otherwise bind 0.0.0.0.
+# EMPTY by default: no `networks:` field is emitted and the monitoring re-spec is
+# skipped, so daemons bind every interface exactly as cephadm ships them - flat
+# clusters like sietch are untouched. A cluster that must be fabric-only (spice)
+# opts in by setting this to its fabric CIDR(s) in group_vars.
+ceph_bind_networks: []
