@@ -3,3 +3,8 @@
   ansible.builtin.systemd:
     name: lldpd
     state: restarted
+
+- name: Restart chrony
+  ansible.builtin.systemd:
+    name: chrony
+    state: restarted

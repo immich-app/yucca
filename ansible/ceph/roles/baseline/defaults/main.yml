@@ -71,8 +71,17 @@ baseline_diag_packages:
 # ...) sets its own list or leaves it empty.
 baseline_extra_packages: []
 
+# --- Time sync (chrony) ---
+# Pinned NTP sources for chrony.conf. Default to the Debian pool as a safe,
+# explicit fallback; each cluster overrides with a consistent low-latency set
+# (e.g. spice -> Hetzner NTP). Owned by chrony.yml (install+config+enable), NOT
+# baseline_enable_services, so system.yml never starts a not-yet-installed unit.
+chrony_ntp_servers:
+  - 0.debian.pool.ntp.org
+  - 1.debian.pool.ntp.org
+  - 2.debian.pool.ntp.org
+
 # --- Services ---
 baseline_enable_services:
   - dbus
-  - chrony
   - podman.socket

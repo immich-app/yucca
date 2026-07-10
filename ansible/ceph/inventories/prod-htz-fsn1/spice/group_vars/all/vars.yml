@@ -40,6 +40,12 @@ oob_nic: enp197s0
 fabric_public_vlan: 120
 fabric_private_vlan: 122
 dns_server: 185.12.64.1            # Hetzner recursive (reachable via WAN default route)
+# Time sync: Hetzner's own NTP (low-latency from FSN1, consistent across all 47).
+# Ceph mon quorum is skew-sensitive; pin the source rather than the distro pool.
+chrony_ntp_servers:
+  - ntp1.hetzner.de
+  - ntp2.hetzner.de
+  - ntp3.hetzner.de
 
 # Tagged VLAN sub-interfaces on the 25G LACP bond (consumed by the networkd role).
 # Addresses derive from host_index; /23 masks match public_network/cluster_network.

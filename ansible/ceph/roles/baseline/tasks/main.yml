@@ -18,6 +18,10 @@
   ansible.builtin.import_tasks: packages.yml
   tags: [packages]
 
+- name: Configure time sync (chrony) for Ceph
+  ansible.builtin.import_tasks: chrony.yml
+  tags: [chrony, time, system]
+
 # After packages (firmware-misc-nonfree) are installed: load the Intel ice DDP so
 # E810 NICs leave Safe Mode. Self-gating (no-op on non-ice hosts / already-loaded).
 - name: Activate Intel ice NIC firmware (DDP / exit Safe Mode)

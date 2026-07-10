@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Time sync for Ceph. Mons will not form/keep quorum with clock skew, so pin a
+# consistent, low-latency source set (chrony_ntp_servers) rather than the distro
+# default pool. makestep allows a large one-off correction on freshly-imaged nodes
+# before the cluster forms; after that chrony only slews.
+
+{% for s in chrony_ntp_servers %}
+server {{ s }} iburst
+{% endfor %}
+
+driftfile /var/lib/chrony/chrony.drift
+makestep 1.0 3
+rtcsync
+logdir /var/log/chrony
+leapsectz right/UTC
