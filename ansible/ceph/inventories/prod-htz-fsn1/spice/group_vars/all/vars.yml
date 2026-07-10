@@ -195,6 +195,16 @@ ceph_rgw_ssl: false
 ceph_rgw_scheme: "{{ 'https' if ceph_rgw_ssl else 'http' }}"
 ceph_rgw_s3_user_uid: svc-yucca-restic
 ceph_rgw_s3_user_display_name: "yucca/restic service account"
+# Metrics-worker RGW admin user (read-only): the yucca-metrics-worker service
+# reads bucket usage from RadosGW. Keys are TF-minted (SPICE_METRICS_WORKER_*)
+# and injected via secrets.yml.tpl as vault_metrics_worker_*; rgw.yml (Step 14.5)
+# creates the user with these caps. Without this block the RGW phase fails with
+# AnsibleUndefinedVariable. Mirror of the sietch definition.
+ceph_rgw_metrics_user_uid: metrics-worker
+ceph_rgw_metrics_user_display_name: "yucca/metrics-worker RGW admin (read-only)"
+ceph_rgw_metrics_user_access_key: "{{ vault_metrics_worker_access_key }}"
+ceph_rgw_metrics_user_secret_key: "{{ vault_metrics_worker_secret_key }}"
+ceph_rgw_metrics_user_caps: "buckets=read;usage=read;metadata=read;users=read"
 
 # === Monitoring Stack ===
 ceph_prometheus_port: 9095
