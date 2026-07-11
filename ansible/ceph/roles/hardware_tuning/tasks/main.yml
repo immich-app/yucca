@@ -16,41 +16,59 @@
   ansible.builtin.shell: |
     set -euo pipefail
     NR="{{ ceph_hdd_nr_requests }}"
+    SCHED="{{ ceph_hdd_scheduler }}"
+    RA="{{ ceph_hdd_readahead_kb }}"
+    CHANGED=0
     for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
                  | awk '$2==1 && $3=="disk" {print $1}'); do
       BDEV=$(basename "$dev")
-      echo "{{ ceph_hdd_scheduler }}" \
-        > /sys/block/"$BDEV"/queue/scheduler 2>/dev/null || true
-      echo "{{ ceph_hdd_readahead_kb }}" \
-        > /sys/block/"$BDEV"/queue/read_ahead_kb 2>/dev/null || true
-      if [ "$NR" -gt 0 ] 2>/dev/null; then
-        echo "$NR" > /sys/block/"$BDEV"/queue/nr_requests 2>/dev/null || true
+      Q=/sys/block/"$BDEV"/queue
+      if ! grep -q "\[$SCHED\]" "$Q"/scheduler 2>/dev/null; then
+        echo "$SCHED" > "$Q"/scheduler 2>/dev/null && CHANGED=1 || true
       fi
-      echo "HDD $BDEV: sched={{ ceph_hdd_scheduler }} ra={{ ceph_hdd_readahead_kb }}KB"
+      if [ "$(cat "$Q"/read_ahead_kb 2>/dev/null || echo -1)" != "$RA" ]; then
+        echo "$RA" > "$Q"/read_ahead_kb 2>/dev/null && CHANGED=1 || true
+      fi
+      if [ "$NR" -gt 0 ] 2>/dev/null \
+         && [ "$(cat "$Q"/nr_requests 2>/dev/null || echo -1)" != "$NR" ]; then
+        echo "$NR" > "$Q"/nr_requests 2>/dev/null && CHANGED=1 || true
+      fi
+      echo "HDD $BDEV: sched=$SCHED ra=${RA}KB"
     done
+    [ "$CHANGED" -eq 0 ] || echo CHANGED
   args:
     executable: /bin/bash
-  changed_when: false
+  register: hdd_tuning
+  changed_when: "'CHANGED' in (hdd_tuning.stdout | default(''))"
 
 - name: Apply tuning to existing SSD devices
   ansible.builtin.shell: |
     set -euo pipefail
     NR="{{ ceph_ssd_nr_requests }}"
+    SCHED="{{ ceph_ssd_scheduler }}"
+    RA="{{ ceph_ssd_readahead_kb }}"
+    CHANGED=0
     for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
                  | awk '$2==0 && $3=="disk" {print $1}'); do
       BDEV=$(basename "$dev")
-      echo "{{ ceph_ssd_scheduler }}" \
-        > /sys/block/"$BDEV"/queue/scheduler 2>/dev/null || true
-      echo "{{ ceph_ssd_readahead_kb }}" \
-        > /sys/block/"$BDEV"/queue/read_ahead_kb 2>/dev/null || true
-      if [ "$NR" -gt 0 ] 2>/dev/null; then
-        echo "$NR" > /sys/block/"$BDEV"/queue/nr_requests 2>/dev/null || true
+      Q=/sys/block/"$BDEV"/queue
+      if ! grep -q "\[$SCHED\]" "$Q"/scheduler 2>/dev/null; then
+        echo "$SCHED" > "$Q"/scheduler 2>/dev/null && CHANGED=1 || true
       fi
-      echo "SSD $BDEV: sched={{ ceph_ssd_scheduler }} ra={{ ceph_ssd_readahead_kb }}KB"
+      if [ "$(cat "$Q"/read_ahead_kb 2>/dev/null || echo -1)" != "$RA" ]; then
+        echo "$RA" > "$Q"/read_ahead_kb 2>/dev/null && CHANGED=1 || true
+      fi
+      if [ "$NR" -gt 0 ] 2>/dev/null \
+         && [ "$(cat "$Q"/nr_requests 2>/dev/null || echo -1)" != "$NR" ]; then
+        echo "$NR" > "$Q"/nr_requests 2>/dev/null && CHANGED=1 || true
+      fi
+      echo "SSD $BDEV: sched=$SCHED ra=${RA}KB"
     done
+    [ "$CHANGED" -eq 0 ] || echo CHANGED
   args:
     executable: /bin/bash
-  changed_when: false
+  register: ssd_tuning
+  changed_when: "'CHANGED' in (ssd_tuning.stdout | default(''))"
 
 - name: Enable fstrim.timer for OS partitions
   ansible.builtin.systemd:
