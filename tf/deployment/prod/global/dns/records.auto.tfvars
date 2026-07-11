@@ -1,55 +1,41 @@
 # futo.cloud zone (FUTO Account).
 zone_id = "474fbfd96bf49879054a493f126c4071"
 
-# Spice RGW S3 endpoint (prod). Round-robin A across all 47 spice ceph nodes'
-# FABRIC public IPs (10.40.20.<host_index>, VLAN 120) -- RGW/beast binds only the
-# fabric (ceph_bind_networks), so that is where it listens. RFC1918: the name
-# resolves anywhere, but the addresses route only from networks that reach the
-# fabric. NetBird advertises cls1_public (10.40.20.0/23) to the overlay, so overlay
-# clients (michael) resolve and reach these; proxied stays false (Cloudflare cannot
-# proxy private addresses). The wildcard serves S3 virtual-hosted buckets
-# (<bucket>.s3.prod.fsn1.htz.futo.cloud); the cluster rgw_dns_name and the
-# self-signed TLS cert SANs expect both names. noreen (host_index 40) is excluded
-# (held in triage). Values are the fabric IPs of the IN-SERVICE nodes in
-# tf/deployment/prod/htz-fsn1/ceph/clusters.auto.tfvars (host_index -> IP via that
-# stack's spice-hosts.yaml); regenerate if the roster changes. The lists here and
-# the ceph roster are kept in sync by tf/scripts/check-s3-dns-roster.py (CI gate
-# s3-dns-roster-validate); it fails if a node is added/removed on one side only.
+# Spice RGW S3 endpoint (prod). A single health-checked Ceph ingress VIP,
+# 10.40.20.250 -- NOT round-robin over the node fabric IPs anymore. The VIP is
+# owned by the ceph ingress service (haproxy + keepalived) on the spice cluster:
+# keepalived floats the VIP across the ingress hosts and haproxy health-checks the
+# RGW backends, so a dead node is drained by the load balancer instead of
+# blackholing one entry of an N-way DNS rotation. The apex and the wildcard both
+# resolve to this one address.
+#
+# SOURCE OF TRUTH for the VIP is the ansible ceph side: `ceph_rgw_ingress_vip`
+# (spice group_vars) must equal the address set here. If that VIP changes, change
+# it in both places (and re-run tf/scripts/check-s3-dns-roster.py, the CI gate
+# s3-dns-roster-validate, which asserts these A-records equal the expected VIP).
+#
+# The VIP sits on the fabric public network (10.40.20.0/23, VLAN 120) where
+# RGW/beast binds. RFC1918: the name resolves anywhere, but the address routes
+# only from networks that reach the fabric. NetBird advertises cls1_public
+# (10.40.20.0/23) to the overlay, so overlay clients (michael) resolve and reach
+# it; proxied stays false (Cloudflare cannot proxy a private address). The
+# wildcard serves S3 virtual-hosted buckets (<bucket>.s3.prod.fsn1.htz.futo.cloud);
+# the cluster rgw_dns_name and the self-signed TLS cert SANs expect both names.
+#
+# APPLY ORDERING (operator-coordinated, not enforced in TF): do NOT apply this DNS
+# cutover before the Ceph ingress service is live, or the endpoint goes dark.
+# Sequence: deploy ingress via the ceph converge, verify the VIP answers on
+# 10.40.20.250, THEN apply this DNS. (Rollback is the reverse: point DNS back at
+# the node roster before tearing the ingress down.)
 records = {
   "s3.prod.fsn1.htz.futo.cloud" = {
-    type = "A"
-    values = [
-      "10.40.20.4", "10.40.20.5", "10.40.20.6", "10.40.20.7", "10.40.20.8",
-      "10.40.20.9", "10.40.20.10", "10.40.20.11", "10.40.20.12",
-      "10.40.20.13", "10.40.20.14", "10.40.20.15", "10.40.20.16",
-      "10.40.20.17", "10.40.20.18", "10.40.20.19", "10.40.20.20",
-      "10.40.20.21", "10.40.20.22", "10.40.20.23", "10.40.20.24",
-      "10.40.20.25", "10.40.20.26", "10.40.20.27", "10.40.20.28",
-      "10.40.20.29", "10.40.20.30", "10.40.20.31", "10.40.20.32",
-      "10.40.20.33", "10.40.20.34", "10.40.20.35", "10.40.20.36",
-      "10.40.20.37", "10.40.20.38", "10.40.20.39", "10.40.20.41",
-      "10.40.20.42", "10.40.20.43", "10.40.20.44", "10.40.20.45",
-      "10.40.20.46", "10.40.20.47", "10.40.20.48", "10.40.20.49",
-      "10.40.20.50", "10.40.20.51",
-    ]
-    comment = "Spice RGW S3 endpoint (tf/deployment/prod/global/dns)"
+    type    = "A"
+    values  = ["10.40.20.250"] # ceph_rgw_ingress_vip (spice group_vars)
+    comment = "Spice RGW S3 endpoint -- ceph ingress VIP (tf/deployment/prod/global/dns)"
   }
   "*.s3.prod.fsn1.htz.futo.cloud" = {
-    type = "A"
-    values = [
-      "10.40.20.4", "10.40.20.5", "10.40.20.6", "10.40.20.7", "10.40.20.8",
-      "10.40.20.9", "10.40.20.10", "10.40.20.11", "10.40.20.12",
-      "10.40.20.13", "10.40.20.14", "10.40.20.15", "10.40.20.16",
-      "10.40.20.17", "10.40.20.18", "10.40.20.19", "10.40.20.20",
-      "10.40.20.21", "10.40.20.22", "10.40.20.23", "10.40.20.24",
-      "10.40.20.25", "10.40.20.26", "10.40.20.27", "10.40.20.28",
-      "10.40.20.29", "10.40.20.30", "10.40.20.31", "10.40.20.32",
-      "10.40.20.33", "10.40.20.34", "10.40.20.35", "10.40.20.36",
-      "10.40.20.37", "10.40.20.38", "10.40.20.39", "10.40.20.41",
-      "10.40.20.42", "10.40.20.43", "10.40.20.44", "10.40.20.45",
-      "10.40.20.46", "10.40.20.47", "10.40.20.48", "10.40.20.49",
-      "10.40.20.50", "10.40.20.51",
-    ]
-    comment = "Spice RGW S3 virtual-hosted buckets (tf/deployment/prod/global/dns)"
+    type    = "A"
+    values  = ["10.40.20.250"] # ceph_rgw_ingress_vip (spice group_vars)
+    comment = "Spice RGW S3 virtual-hosted buckets -- ceph ingress VIP (tf/deployment/prod/global/dns)"
   }
 }
