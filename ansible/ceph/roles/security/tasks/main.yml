@@ -20,25 +20,26 @@
     validate: "nft -c -f %s"
   when: ceph_firewall_enabled | bool
 
-# Reload the firewall only when the LIVE kernel ruleset actually differs from
-# the desired one -- not merely when the rendered file changed. A
-# `systemctl restart nftables` flushes and reloads atomically; on a busy cluster
-# that momentary flush can briefly stall OSD peering, so it must not fire on
-# no-op converges (the harden step runs on every gated CI apply). The desired
-# ruleset is normalized by loading it into a throwaway network namespace --
-# fully isolated, it never touches the live firewall -- then compared to
-# `nft list ruleset`. Both sides go through nft's own output formatting, so the
-# match is on effective rules, not file text. Anything inconclusive falls back
-# to applying (DIFF), so the firewall is never left stale or drifted.
+# Reload the firewall only when the LIVE filter table actually differs from the
+# desired one -- not merely when the rendered file changed. On DIFF we `reload`
+# (ExecReload = nft -f /etc/nftables.conf), which with the table-scoped config
+# atomically replaces ONLY table inet filter and leaves the podman/docker tables
+# alone -- unlike a `restart`, whose ExecStop flushes the whole ruleset (that
+# momentary flush can stall OSD peering and drop podman's rules). The desired
+# state is normalized by loading the config into a throwaway network namespace --
+# fully isolated, it never touches the live firewall -- then its table inet filter
+# is compared to the live one. Both sides go through nft's own output formatting,
+# so the match is on effective rules, not file text. Anything inconclusive falls
+# back to reloading (DIFF), so the firewall is never left stale or drifted.
 - name: Compare the live nftables ruleset against the desired one
   ansible.builtin.shell: |
     set -o pipefail
     norm() { grep -vE '^[[:space:]]*#' | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ +$//' | grep -v '^$'; }
-    live="$(nft list ruleset | norm)"
+    live="$(nft list table inet filter 2>/dev/null | norm)"
     ns="nft-cmp-$$"
     ip netns add "$ns"
     if ip netns exec "$ns" nft -f /etc/nftables.conf 2>/dev/null; then
-      desired="$(ip netns exec "$ns" nft list ruleset | norm)"
+      desired="$(ip netns exec "$ns" nft list table inet filter 2>/dev/null | norm)"
       [ "$live" = "$desired" ] && echo SAME || echo DIFF
     else
       echo DIFF
@@ -56,7 +57,7 @@
     name: nftables
     enabled: true
     state: >-
-      {{ 'restarted'
+      {{ 'reloaded'
          if (nft_ruleset_cmp.stdout | default('DIFF') | trim) == 'DIFF'
          else 'started' }}
   when: ceph_firewall_enabled | bool
