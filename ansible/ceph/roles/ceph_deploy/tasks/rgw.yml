@@ -742,16 +742,6 @@
   no_log: true
   tags: [s3_keys]
 
-- name: S3 key drift notice (dry flag — no action taken)
-  ansible.builtin.debug:
-    msg:
-      - "S3 svc-user keys differ from 1P values."
-      - "To align (rotates keys, requires Yucca-app re-config): re-run with -e rotate_s3_keys=true"
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - s3_key_drift | default(false)
-    - not (rotate_s3_keys | default(false) | bool)
-
 - name: Display S3 endpoint (credentials live in 1P, not log output)
   ansible.builtin.debug:
     msg:
