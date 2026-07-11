@@ -1,0 +1,42 @@
+---
+# Early SSH lockdown. Runs in baseline (right after iac-access authorizes the iac
+# key on root), NOT gated behind the harden stage -- so a freshly installimaged
+# node is never left with root PASSWORD login exposed on the public WAN before
+# harden runs (installimage ships PermitRootLogin yes + a root password). The
+# security role's 50-hardening.conf applies the FULL sshd hardening later; this is
+# the security-critical subset only (root key-only, no password auth, locked root
+# password), using the SAME values so the two drop-ins never disagree.
+#
+# Safe on both clusters and idempotent on live nodes: ansible reaches every node
+# by KEY (root on spice, ansible-iac on sietch) and iac-access has already
+# authorized the key on root, so disabling password auth and locking the root
+# password cannot lock anyone out. The Validate->Reload handler chain reloads
+# (never restarts) only on change, after sshd -t passes.
+
+- name: Deploy the baseline SSH lockdown drop-in
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-baseline-ssh.conf
+    content: |
+      # Managed by ansible (roles/baseline/tasks/ssh-hardening.yml). Early
+      # root/password lockdown; roles/security 50-hardening.conf adds the rest.
+      PermitRootLogin prohibit-password
+      PasswordAuthentication no
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Validate sshd config
+  tags: [ssh, hardening, security]
+
+- name: Lock the root password (root is key-only; ansible/cephadm use keys)
+  ansible.builtin.user:
+    name: root
+    password_lock: true
+  tags: [ssh, hardening, security]
+
+# Supersede the one-off interim drop-in from the pre-baseline BLOCKER remediation.
+- name: Remove the interim root-password drop-in if present
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d/00-disable-root-password.conf
+    state: absent
+  notify: Validate sshd config
+  tags: [ssh, hardening, security]

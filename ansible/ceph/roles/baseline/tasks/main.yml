@@ -10,6 +10,13 @@
   when: provision_iac_ssh_key_path is defined
   tags: [iac_access, users]
 
+# Immediately after the iac key is authorized on root: close root password login
+# and password auth (do NOT wait for the harden stage). Prevents an installimage
+# node from sitting root-password-open on the WAN during the deploy campaign.
+- name: Harden SSH early (root key-only, no password auth, lock root)
+  ansible.builtin.import_tasks: ssh-hardening.yml
+  tags: [ssh, hardening, security]
+
 - name: Configure ops user
   ansible.builtin.import_tasks: users.yml
   tags: [users]
