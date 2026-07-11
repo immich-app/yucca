@@ -90,6 +90,78 @@
       or (ceph_alertmanager_webhook_urls | default([]) | length) > 0
   changed_when: false
 
+# --- Step 2.6: Pin the mgr dashboard + prometheus module bind to the fabric ---
+#
+# The dashboard (8443) and the prometheus mgr module (9283) run INSIDE the active
+# ceph-mgr, not as standalone cephadm daemons, so the monitoring re-spec above
+# does not reach them -- they bind :: (every interface, WAN included) and are
+# closed only by nftables. Pin each mgr instance's own server_addr to that
+# instance's fabric IP (ceph_service_ip) so whichever mgr is active listens on
+# the fabric, never the WAN.
+#
+# PER-INSTANCE, not global: the active mgr fails over across the mgr hosts and
+# each host has a DIFFERENT fabric IP (ceph_service_ip = 10.40.20.<index>). A
+# single global mgr/dashboard/server_addr would bind a foreign IP after failover
+# and the dashboard could not start. Ceph resolves the localized key
+# mgr/<module>/<mgr_id>/server_addr ahead of the global one (the module reads it
+# via get_localized_module_option), and each mgr reads ITS OWN value when its
+# module starts serving (on mgr start / failover), so per-instance binding is
+# inherently failover-safe. The mgr_id is the cephadm daemon name (<host>.<rand>,
+# e.g. spice-ceph-adelia.abcdef), NOT hostname_short -- it is discovered at
+# runtime from `ceph orch ps`, and the daemon's host is mapped back to that
+# host's ceph_service_ip.
+#
+# TIMING: the new bind takes effect the next time each mgr (re)starts its module
+# (mgr restart, failover, or upgrade); nftables keeps the WAN closed until then.
+# We deliberately do NOT force a live module reload (disable/enable) -- that would
+# drop the dashboard mid-converge for no durability gain, and the per-instance
+# config can never leave the dashboard unbindable the way a global one could.
+#
+# Opt-in: only when ceph_bind_networks is non-empty. sietch (empty) is a no-op
+# and keeps cephadm's bind-all default.
+- name: Pin mgr dashboard + prometheus module bind to the fabric (per mgr instance)
+  ansible.builtin.shell: |
+    set -o pipefail
+    python3 - <<'PYEOF'
+    import json, subprocess, sys
+
+    fabric_ip = {
+    {% for h in groups['ceph_nodes'] %}
+        "{{ hostvars[h]['hostname_short'] }}": "{{ hostvars[h]['ceph_service_ip'] }}",
+    {% endfor %}
+    }
+
+    mgrs = json.loads(subprocess.check_output(
+        ["ceph", "orch", "ps", "--daemon-type", "mgr", "--format", "json"]))
+    cfg = json.loads(subprocess.check_output(
+        ["ceph", "config", "dump", "--format", "json"]))
+    current = {(c["section"], c["name"]): c["value"] for c in cfg}
+
+    changed = False
+    for d in mgrs:
+        mgr_id = d["daemon_id"]
+        host = d["hostname"]
+        ip = fabric_ip.get(host)
+        if not ip:
+            sys.stderr.write(
+                "WARNING: no fabric IP for mgr host %s, skipping\n" % host)
+            continue
+        for mod in ("dashboard", "prometheus"):
+            key = "mgr/%s/%s/server_addr" % (mod, mgr_id)
+            if current.get(("mgr", key)) != ip:
+                subprocess.check_call(["ceph", "config", "set", "mgr", key, ip])
+                print("CHANGED %s -> %s" % (key, ip))
+                changed = True
+    print("CHANGED" if changed else "ok")
+    PYEOF
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_bind_networks | default([]) | length) > 0
+  register: mgr_module_bind
+  changed_when: "'CHANGED' in (mgr_module_bind.stdout | default(''))"
+
 # --- Step 3: Configure dashboard integrations ---
 # The dashboard runs on the active mgr and reaches these services on the fabric;
 # advertise ceph_service_ip (fabric on spice), not bond_ip (the 1G WAN), so the

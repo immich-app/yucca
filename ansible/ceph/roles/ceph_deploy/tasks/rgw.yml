@@ -62,6 +62,29 @@
   register: bulk_flag_result
   changed_when: "'CHANGED' in (bulk_flag_result.stdout | default(''))"
 
+- name: Pin EC data pool min_size to k+1 ({{ ceph_rgw_ec_min_size }})
+  # The EC pool otherwise inherits Ceph's default min_size = k+1 implicitly. Pin
+  # it EXPLICITLY so the write-availability floor is documented and cannot drift:
+  # k+1 keeps a PG writable while at least k+1 shards are up, so writes tolerate
+  # up to m-1 host losses while reads still tolerate m. NEVER set below k+1 --
+  # allowing writes at k shards risks data loss if another shard is lost during
+  # recovery. Idempotent get-then-set; gated on the pool existing (fresh run:
+  # create_data_pool changed; re-run: pool already in pool_list).
+  ansible.builtin.shell: |
+    set -o pipefail
+    cur=$(ceph osd pool get {{ ceph_rgw_data_pool }} min_size | awk '{print $2}')
+    if [ "$cur" != "{{ ceph_rgw_ec_min_size }}" ]; then
+      ceph osd pool set {{ ceph_rgw_data_pool }} min_size {{ ceph_rgw_ec_min_size }}
+      echo CHANGED
+    fi
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (create_data_pool is changed) or (ceph_rgw_data_pool in pool_list.stdout)
+  register: ec_min_size_result
+  changed_when: "'CHANGED' in (ec_min_size_result.stdout | default(''))"
+
 # --- Step 4: Replicated index pool ---
 
 - name: Create replicated index pool {{ ceph_rgw_index_pool }}

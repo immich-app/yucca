@@ -62,6 +62,30 @@ but a full-node loss degrades a large share of PGs. For host-level
 failure domain you need **11+ nodes minimum**. Production (Yucca) will
 want this; dev can tolerate the weaker guarantee.
 
+## Durability and DR ceiling
+
+The spice (production, htz-fsn1) backup-of-record stores objects in an EC 16+4
+data pool with `failure_domain=host`. min_size is pinned to k+1 = 17 by the RGW
+role. What that pool tolerates:
+
+- **Reads:** survive up to m = 4 simultaneous host (or OSD) losses. With 4
+  chunks gone the remaining 16 = k chunks still reconstruct every object.
+- **Writes:** survive up to m - 1 = 3 simultaneous host losses. At the k+1
+  floor a PG stays writable only while at least 17 shards are up; the 4th host
+  loss drops a PG to k = 16 shards, which still serves reads but blocks writes
+  until recovery restores a 17th shard. min_size is never set below k+1 --
+  permitting writes at k shards would risk data loss if another shard were lost
+  mid-recovery.
+
+This is a **single-site** guarantee with **no rack diversity**: every node sits
+in one datacenter (FSN1) and the failure domain is host, not rack. A rack, row,
+PDU, or switch fault that takes down more than m hosts at once, or a whole-
+datacenter loss (power, network, fire, flood), exceeds this ceiling -- there is
+no second site and no off-region copy. The pool protects against disk and node
+failure, not site failure. Off-site DR (a second region, or an external copy of
+the backup-of-record) is out of scope for this cluster and would need a separate
+replication path.
+
 ## block.db sizing
 
 Rule of thumb: block.db ~ 4% of OSD data size.

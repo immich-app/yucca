@@ -21,6 +21,15 @@ ceph_pg_init_index: 16        # bucket index
 ceph_pg_init_non_ec: 16       # multipart uploads
 ceph_pg_init_meta: 8          # .rgw.root, .meta, .log, .control
 
+# RGW EC data-pool min_size (write-availability floor). Ceph defaults an EC pool
+# to min_size = k+1, which is the correct floor: at k+1 up shards a PG stays
+# writable, so writes tolerate up to m-1 host losses while reads still tolerate m.
+# Pin it EXPLICITLY (get-then-set in rgw.yml) so the value is documented and
+# cannot drift. NEVER set below k+1: permitting writes at k shards risks data loss
+# if another shard is lost mid-recovery. Derived from ceph_rgw_ec_k so it tracks
+# whatever profile a cluster runs (spice 16+4 -> 17, sietch 8+3 -> 9).
+ceph_rgw_ec_min_size: "{{ (ceph_rgw_ec_k | int) + 1 }}"
+
 # MGR daemon count (1 active + standbys). cephadm's default and upstream guidance
 # is a small fixed count; deploying one per host (e.g. 47 on spice) is wasteful and
 # non-standard. count:N lets cephadm place them (caps at the host count on small
