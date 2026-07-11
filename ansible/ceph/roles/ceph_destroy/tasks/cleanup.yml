@@ -102,7 +102,11 @@
   ansible.builtin.shell: |
     set -o pipefail
     REMOVED=0
-    for ssd in $(lsblk -dnpo NAME,MODEL | grep -i "{{ ssd_model_pattern }}" | awk '{print $1}'); do
+    # Fixed-string (-F) match, and skip entirely on an empty pattern -- grep ''
+    # matches every disk, which in a destroy path would target them all.
+    PATTERN={{ ssd_model_pattern | default('') | quote }}
+    if [ -n "$PATTERN" ]; then
+    for ssd in $(lsblk -dnpo NAME,MODEL | grep -iF -- "$PATTERN" | awk '{print $1}'); do
       if [[ "$ssd" == *nvme* ]]; then PART="${ssd}p6"; else PART="${ssd}6"; fi
       if [ -b "$PART" ] && pvs "$PART" --noheadings 2>/dev/null | grep -q "$PART"; then
         echo "Removing orphaned PV: $PART"
@@ -110,6 +114,7 @@
         REMOVED=$((REMOVED+1))
       fi
     done
+    fi
     if [ $REMOVED -eq 0 ]; then echo "No orphaned SSD OSD PVs found"; fi
   args:
     executable: /bin/bash
@@ -118,7 +123,7 @@
 
 # --- Step 5: Wipe device signatures ---
 # Wipe ALL rotational (HDD) devices that have any filesystem/LVM/LUKS signatures.
-# Every HDD in these servers is a Ceph OSD — no ambiguity about which to wipe.
+# Every HDD in these servers is a Ceph OSD - no ambiguity about which to wipe.
 # Only wipes devices that actually have signatures (idempotent on clean disks).
 - name: Wipe HDD device signatures
   ansible.builtin.shell: |
@@ -143,7 +148,11 @@
   ansible.builtin.shell: |
     set -o pipefail
     ZAPPED=0
-    for ssd in $(lsblk -dnpo NAME,MODEL | grep -i "{{ ssd_model_pattern }}" | awk '{print $1}'); do
+    # Fixed-string (-F) match, and skip entirely on an empty pattern -- grep ''
+    # matches every disk, which in a destroy path would target them all.
+    PATTERN={{ ssd_model_pattern | default('') | quote }}
+    if [ -n "$PATTERN" ]; then
+    for ssd in $(lsblk -dnpo NAME,MODEL | grep -iF -- "$PATTERN" | awk '{print $1}'); do
       if [[ "$ssd" == *nvme* ]]; then PART="${ssd}p6"; else PART="${ssd}6"; fi
       if [ -b "$PART" ]; then
         SIGS=$(wipefs "$PART" 2>/dev/null | tail -n +2)
@@ -155,6 +164,7 @@
         fi
       fi
     done
+    fi
     if [ $ZAPPED -eq 0 ]; then echo "No SSD OSD partitions to wipe"; fi
   args:
     executable: /bin/bash
