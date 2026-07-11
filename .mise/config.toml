@@ -92,6 +92,10 @@ run = "tf/op-run.sh terragrunt --working-dir ${TF_STACK_DIR:-tf/deployment/stagi
 description = "Format terraform + terragrunt files recursively"
 run = "tofu fmt -recursive tf/ && terragrunt hcl format --working-dir tf/"
 
+[tasks."tf:check-dns-roster"]
+description = "Drift-check the prod S3 RGW DNS roster against the ceph node roster (credential-free, no state)"
+run = "tf/scripts/check-s3-dns-roster.py"
+
 [env]
 NODE_ENV = "development"
 LOG_LEVEL = "debug"

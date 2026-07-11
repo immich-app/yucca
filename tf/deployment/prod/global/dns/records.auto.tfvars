@@ -10,9 +10,11 @@ zone_id = "474fbfd96bf49879054a493f126c4071"
 # proxy private addresses). The wildcard serves S3 virtual-hosted buckets
 # (<bucket>.s3.prod.fsn1.htz.futo.cloud); the cluster rgw_dns_name and the
 # self-signed TLS cert SANs expect both names. noreen (host_index 40) is excluded
-# (held in triage). Values generated from
-# tf/deployment/prod/htz-fsn1/ceph/spice-hosts.yaml; regenerate if the roster
-# changes.
+# (held in triage). Values are the fabric IPs of the IN-SERVICE nodes in
+# tf/deployment/prod/htz-fsn1/ceph/clusters.auto.tfvars (host_index -> IP via that
+# stack's spice-hosts.yaml); regenerate if the roster changes. The lists here and
+# the ceph roster are kept in sync by tf/scripts/check-s3-dns-roster.py (CI gate
+# s3-dns-roster-validate); it fails if a node is added/removed on one side only.
 records = {
   "s3.prod.fsn1.htz.futo.cloud" = {
     type = "A"
