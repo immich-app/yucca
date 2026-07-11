@@ -46,6 +46,22 @@
     - create_data_pool is changed
   changed_when: true
 
+- name: Mark the EC data pool as bulk (autoscaler sizing floor)
+  # bulk=true tells the pg_autoscaler to target a pg_num sized for the pool's
+  # expected full capacity, so it will not shrink the pre-seeded pg_num
+  # (ceph_pg_init_data) back toward 1 during the first fill. Idempotent: only sets
+  # when not already true.
+  ansible.builtin.shell: |
+    set -o pipefail
+    [ "$(ceph osd pool get {{ ceph_rgw_data_pool }} bulk | awk '{print $2}')" = "true" ] || { ceph osd pool set {{ ceph_rgw_data_pool }} bulk true; echo CHANGED; }
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (create_data_pool is changed) or (ceph_rgw_data_pool in pool_list.stdout)
+  register: bulk_flag_result
+  changed_when: "'CHANGED' in (bulk_flag_result.stdout | default(''))"
+
 # --- Step 4: Replicated index pool ---
 
 - name: Create replicated index pool {{ ceph_rgw_index_pool }}
