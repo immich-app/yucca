@@ -155,6 +155,10 @@ run = "scripts/ansible-play.sh backup-config.yml"
 description = "Snapshot bootstrap secrets (RGW TLS, admin keyring) to 1P (DR belt)"
 run = "scripts/ansible-play.sh post-deploy-capture.yml"
 
+[tasks."backup-timer"]
+description = "Install + enable the scheduled cluster-state backup timer on the bootstrap node"
+run = "scripts/ansible-play.sh backup-ceph.yml"
+
 [tasks."rotate-certs"]
 description = "Rotate RGW TLS cert (regenerate self-signed, restart RGW daemons)"
 run = "scripts/ansible-play.sh rotate-certs.yml"

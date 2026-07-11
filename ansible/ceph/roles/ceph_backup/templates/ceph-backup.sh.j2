@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# ceph-backup.sh - capture recoverable Ceph cluster state to a timestamped
+# tarball under a local backup dir, prune old tarballs, optionally sync offsite.
+#
+# Runs on the bootstrap node as root and uses the on-node admin keyring; it
+# embeds NO credentials. Installed + scheduled by ansible/ceph/backup-ceph.yml.
+#
+# Does NOT dump secret keyrings. The backup dir is root-only (0700) and the
+# capture set is config/topology only: fsid, ceph config dump, monmap, osdmap,
+# crushmap (+ decompiled), osd tree, orch ls/host ls, RGW realm/zonegroup/zone.
+set -euo pipefail
+
+# --- Config (rendered from ansible vars; environment overrides win) ---
+BACKUP_DIR="${CEPH_BACKUP_DIR:-{{ ceph_backup_dir }}}"
+RETENTION_DAYS="${CEPH_BACKUP_RETENTION_DAYS:-{{ ceph_backup_retention_days }}}"
+# Offsite target: EMPTY by default. Operator decision - set to an rsync target
+# (user@host:/path or rsync://...) or an S3 URI (s3://bucket/prefix) to ship
+# offsite. Leaving it empty skips the offsite step entirely.
+OFFSITE_DEST="${CEPH_BACKUP_OFFSITE_DEST:-{{ ceph_backup_offsite_dest }}}"
+
+TS="$(date -u +%Y%m%dT%H%M%SZ)"
+STAGE="$(mktemp -d "${TMPDIR:-/tmp}/ceph-backup.XXXXXX")"
+OUT="${STAGE}/ceph-state-${TS}"
+mkdir -p "${OUT}"
+trap 'rm -rf "${STAGE}"' EXIT
+
+log() { echo "ceph-backup: $*" >&2; }
+
+# cap <outfile> <cmd...>: run a capture command; keep going if a subsystem is
+# absent (e.g. a cluster with no RGW realm) so one gap does not abort the run.
+cap() {
+  local out="$1"
+  shift
+  if "$@" >"${OUT}/${out}" 2>"${OUT}/${out}.err"; then
+    rm -f "${OUT}/${out}.err"
+  else
+    log "WARN: capture failed: ${out} (kept ${out}.err)"
+  fi
+}
+
+# --- Capture set ---
+cap fsid.txt           ceph fsid
+cap ceph-status.txt    ceph status
+cap config-dump.json   ceph config dump --format json
+cap config-dump.txt    ceph config dump
+cap osd-tree.txt       ceph osd tree
+cap osd-tree.json      ceph osd tree --format json
+cap osd-dump.json      ceph osd dump --format json
+cap mon-dump.json      ceph mon dump --format json
+cap orch-services.yaml ceph orch ls --format yaml
+cap orch-hosts.yaml    ceph orch host ls --format yaml
+
+# Binary maps + human-readable decodes (decode tools are best-effort).
+if ceph mon getmap -o "${OUT}/monmap.bin" 2>"${OUT}/monmap.err"; then
+  rm -f "${OUT}/monmap.err"
+  if command -v monmaptool >/dev/null 2>&1; then
+    monmaptool --print "${OUT}/monmap.bin" >"${OUT}/monmap.txt" 2>/dev/null || true
+  fi
+else
+  log "WARN: monmap capture failed (kept monmap.err)"
+fi
+
+if ceph osd getmap -o "${OUT}/osdmap.bin" 2>"${OUT}/osdmap.err"; then
+  rm -f "${OUT}/osdmap.err"
+  if command -v osdmaptool >/dev/null 2>&1; then
+    osdmaptool --print "${OUT}/osdmap.bin" >"${OUT}/osdmap.txt" 2>/dev/null || true
+  fi
+else
+  log "WARN: osdmap capture failed (kept osdmap.err)"
+fi
+
+if ceph osd getcrushmap -o "${OUT}/crushmap.bin" 2>"${OUT}/crushmap.err"; then
+  rm -f "${OUT}/crushmap.err"
+  if command -v crushtool >/dev/null 2>&1; then
+    crushtool -d "${OUT}/crushmap.bin" -o "${OUT}/crushmap.txt" 2>/dev/null || true
+  fi
+else
+  log "WARN: crushmap capture failed (kept crushmap.err)"
+fi
+
+# RGW multisite config (absent on clusters with no realm - non-fatal).
+cap rgw-realm.json     radosgw-admin realm get
+cap rgw-zonegroup.json radosgw-admin zonegroup get
+cap rgw-zone.json      radosgw-admin zone get
+
+# Provenance.
+{
+  echo "captured_at=${TS}"
+  echo "host=$(hostname -f 2>/dev/null || hostname)"
+  echo "ceph_version=$(ceph --version 2>/dev/null || echo unknown)"
+} >"${OUT}/MANIFEST.txt"
+
+# --- Package ---
+mkdir -p "${BACKUP_DIR}"
+chmod 0700 "${BACKUP_DIR}"
+TARBALL="${BACKUP_DIR}/ceph-state-${TS}.tar.gz"
+tar -C "${STAGE}" -czf "${TARBALL}" "ceph-state-${TS}"
+chmod 0600 "${TARBALL}"
+log "wrote ${TARBALL}"
+
+# --- Prune ---
+if [ "${RETENTION_DAYS}" -gt 0 ] 2>/dev/null; then
+  find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'ceph-state-*.tar.gz' \
+    -mtime "+${RETENTION_DAYS}" -print -delete \
+    | while read -r p; do log "pruned ${p}"; done || true
+fi
+
+# --- Optional offsite sync (skipped unless OFFSITE_DEST is set) ---
+if [ -n "${OFFSITE_DEST}" ]; then
+  case "${OFFSITE_DEST}" in
+    s3://*)
+      if command -v aws >/dev/null 2>&1; then
+        aws s3 cp "${TARBALL}" "${OFFSITE_DEST%/}/$(basename "${TARBALL}")" \
+          && log "synced to ${OFFSITE_DEST}"
+      else
+        log "WARN: OFFSITE_DEST is S3 but the aws CLI is not installed - skipping offsite sync"
+      fi
+      ;;
+    *)
+      if command -v rsync >/dev/null 2>&1; then
+        rsync -a "${TARBALL}" "${OFFSITE_DEST}" && log "synced to ${OFFSITE_DEST}"
+      else
+        log "WARN: rsync not installed - skipping offsite sync"
+      fi
+      ;;
+  esac
+else
+  log "offsite sync disabled (CEPH_BACKUP_OFFSITE_DEST empty)"
+fi
+
+log "done"
