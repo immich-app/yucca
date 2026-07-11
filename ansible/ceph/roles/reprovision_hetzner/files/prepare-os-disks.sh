@@ -14,9 +14,15 @@
 # 1.2 at the front, 1.0 at the tail) - raw writes cannot be refused by a live array -
 # plus wipefs, re-stopping after each member in case a degraded array re-assembles.
 #
-# SAFETY: only devices that ACTUALLY carry a mdraid superblock are touched (a no-op
-# on ceph OSD disks, which are LVM/bluestore with no mdraid, so a day-2 reimage keeps
-# OSD data). The extra destructive wipe (sgdisk/partprobe) is OS-NVMe-only.
+# SAFETY: the mdraid-superblock clearing only touches devices that ACTUALLY carry a
+# superblock (a no-op on the bluestore OSD HDDs, which are LVM with no mdraid). The
+# extra destructive wipe (vgremove/pvremove/sgdisk/partprobe) is OS-NVMe-only.
+#
+# DO NOT read this as "a reimage preserves OSDs". On the NVMe-RAID shape (spice) the
+# HDD OSD block.db LVs AND the ssd-osd data LV live on the OS NVMe (vg0) this script
+# zeroes, so a reimage DESTROYS every OSD on the node even though the HDD data
+# devices themselves are untouched (an OSD is unusable once its block.db is gone).
+# The tasks/ceph_safety.yml gate must clear the node (ceph osd ok-to-stop) first.
 # Mirrors provision_host/tasks/disks.yml.
 set -uo pipefail
 echo "=== prepare-os-disks: starting ==="

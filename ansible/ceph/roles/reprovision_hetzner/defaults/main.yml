@@ -46,7 +46,10 @@ reprovision_ssh_opts: >-
 confirm_wipe: false                  # hard destructive gate (must pass -e confirm_wipe=true)
 reprovision_mode: install            # install | inspect (inspect = arm+reset+wait+inspect, NO wipe)
 reprovision_wipe_osd_disks: false    # opt-in: zap the 14 OSD HDDs in rescue (day-2 reimage; off for virgin bootstrap)
-reprovision_ceph_safety: permissive  # permissive | strict (strict refuses a live node without i_know_its_dead=true)
+reprovision_ceph_safety: auto        # auto | strict | permissive (see tasks/ceph_safety.yml).
+# auto: probe a peer mon; enforce ok-to-stop + health only when a live cluster with
+# this node's OSDs is reachable (a no-op for the initial bootstrap). strict: always
+# enforce, fail closed if unverifiable. permissive: skip (explicit bootstrap escape).
 # Resume-safe re-runs: skip a node whose INSTALLED-OS marker already matches inventory
 # (converge the not-yet-done nodes, leave the good ones alone). Off = always reimage.
 reprovision_skip_if_provisioned: false

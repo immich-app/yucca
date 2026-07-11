@@ -18,9 +18,10 @@
 # Resume after a halt (skip already-provisioned nodes, converge only the rest):
 #   mise run reprovision -- --limit ceph_nodes -e confirm_wipe=true -e allow_fanout=true \
 #       -e reprovision_skip_if_provisioned=true -e reprovision_serial=5
-# Day-2 reimage of a dead node (also zap its OSD HDDs, with the ceph-safety gate):
+# Day-2 reimage of a node (also zap its OSD HDDs; the ceph-safety gate verifies
+# ok-to-stop against a live mon and refuses if the OSDs are not safe to lose):
 #   mise run reprovision -- --limit <host> -e confirm_wipe=true -e reprovision_wipe_osd_disks=true \
-#       -e reprovision_ceph_safety=strict -e i_know_its_dead=true
+#       -e reprovision_ceph_safety=strict
 
 - name: Reprovision ceph nodes (rescue -> installimage -> installed OS)
   hosts: ceph_nodes
