@@ -19,6 +19,13 @@ ceph_ssd_nr_requests: 0         # NVMe/SSD defaults are fine
 # BlueStore manages discard for OSD devices internally.
 ceph_enable_fstrim_timer: true
 
+# Transparent Huge Pages -- madvise is universally correct for BlueStore.
+# THP=always drives tcmalloc/BlueStore RSS bloat and allocation-stall latency.
+# Applied on all ceph clusters (not gated behind the CPU governor).
+ceph_thp_enabled: true
+ceph_thp_mode: madvise          # /sys/kernel/mm/transparent_hugepage/enabled
+ceph_thp_defrag: madvise        # /sys/kernel/mm/transparent_hugepage/defrag
+
 # CPU governor — force performance mode (disables power saving C-states)
 # Useful for dedicated Ceph nodes where latency matters more than power.
 ceph_cpu_governor_enabled: false

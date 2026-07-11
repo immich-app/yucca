@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Sets Transparent Huge Pages to {{ ceph_thp_mode }} on every boot -- before Ceph OSDs start.
+# THP=always bloats BlueStore/tcmalloc RSS and causes allocation-stall latency.
+[Unit]
+Description=Set Transparent Huge Pages to {{ ceph_thp_mode }}
+Before=ceph-osd.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'echo {{ ceph_thp_mode }} > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true'
+ExecStart=/bin/sh -c 'echo {{ ceph_thp_defrag }} > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true'
+
+[Install]
+WantedBy=multi-user.target

@@ -77,6 +77,47 @@
     state: started
   when: ceph_enable_fstrim_timer | bool
 
+# ---------- Transparent Huge Pages ----------
+
+- name: Set Transparent Huge Pages live
+  ansible.builtin.shell: |
+    set -euo pipefail
+    ch=0
+    # sysfs prints the active value in [brackets]: "always [madvise] never".
+    cur=$(grep -oP '\[\K[^\]]+' /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || echo "")
+    if [ "$cur" != "{{ ceph_thp_mode }}" ]; then
+      echo "{{ ceph_thp_mode }}" > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
+      ch=1
+    fi
+    curd=$(grep -oP '\[\K[^\]]+' /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || echo "")
+    if [ "$curd" != "{{ ceph_thp_defrag }}" ]; then
+      echo "{{ ceph_thp_defrag }}" > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true
+      ch=1
+    fi
+    [ "$ch" = 1 ] && echo CHANGED || echo ok
+  args:
+    executable: /bin/bash
+  register: _thp_live
+  changed_when: "'CHANGED' in _thp_live.stdout"
+  when: ceph_thp_enabled | bool
+
+- name: Deploy systemd unit for THP persistence
+  ansible.builtin.template:
+    src: ceph-thp.service.j2
+    dest: /etc/systemd/system/ceph-thp.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd
+  when: ceph_thp_enabled | bool
+
+- name: Enable ceph-thp service
+  ansible.builtin.systemd:
+    name: ceph-thp.service
+    enabled: true
+    daemon_reload: true
+  when: ceph_thp_enabled | bool
+
 # ---------- CPU governor tuning ----------
 
 - name: Install cpupower package
@@ -117,13 +158,16 @@
     daemon_reload: true
   when: ceph_cpu_governor_enabled | bool
 
-- name: Add processor.max_cstate to GRUB cmdline
-  ansible.builtin.lineinfile:
-    path: /etc/default/grub
-    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
-    line: >-
-      GRUB_CMDLINE_LINUX_DEFAULT="quiet processor.max_cstate={{ ceph_cpu_max_cstate }}"
-    backrefs: false
+# Use a /etc/default/grub.d drop-in that only appends the cstate token, rather
+# than rewriting GRUB_CMDLINE_LINUX_DEFAULT (which would drop existing tokens
+# and inject "quiet"). Debian grub-mkconfig sources grub.d/*.cfg after grub.
+- name: Add processor.max_cstate via GRUB drop-in
+  ansible.builtin.template:
+    src: 99-ceph-cstate.cfg.j2
+    dest: /etc/default/grub.d/99-ceph-cstate.cfg
+    owner: root
+    group: root
+    mode: '0644'
   notify: Update GRUB
   when: ceph_cpu_governor_enabled | bool
 
