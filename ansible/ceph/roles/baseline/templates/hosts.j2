@@ -1,8 +1,10 @@
 127.0.0.1	localhost
 
-# Ceph cluster nodes
+# Ceph cluster nodes. Map each name to ceph_service_ip -- the fabric IP on spice
+# (bond0.120), falling back to bond_ip on flat clusters like sietch -- so in-cluster
+# name resolution matches where Ceph binds, not the 1G WAN.
 {% for host in groups['ceph_nodes'] %}
-{{ hostvars[host]['bond_ip'] }}	{{ hostvars[host]['hostname_short'] }}.{{ cluster_domain }}	{{ hostvars[host]['hostname_short'] }}
+{{ hostvars[host]['ceph_service_ip'] }}	{{ hostvars[host]['hostname_short'] }}.{{ cluster_domain }}	{{ hostvars[host]['hostname_short'] }}
 {% endfor %}
 
 ::1		localhost ip6-localhost ip6-loopback
