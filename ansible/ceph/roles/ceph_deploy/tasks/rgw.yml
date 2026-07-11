@@ -133,6 +133,18 @@
 # spikes and throughput drops. Pre-sizing avoids this penalty during
 # the first fill. Idempotent: only increases pg_num, never decreases.
 
+# The top-of-file pool_list snapshot predates the data/index/non-EC pools
+# created just above, so on a fresh run 1 it does NOT contain them and every
+# "in pool_list.stdout" gate below would skip - deferring all pre-sizing to a
+# second converge. Re-query now that the explicit pools exist so run 1 sizes
+# them. (The lazily-created .rgw.* system pools are handled later, after the
+# RGW daemon is up.)
+- name: Re-query pools after explicit RGW pools are created
+  ansible.builtin.command: ceph osd pool ls
+  register: pool_list
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
 - name: Set initial PG count on data pool
   ansible.builtin.command: >
     ceph osd pool set {{ ceph_rgw_data_pool }}
@@ -172,52 +184,10 @@
     - pg_extra_result.rc != 0
     - "'is not >= current' not in pg_extra_result.stderr | default('')"
 
-- name: Set initial PG count on RGW metadata pools
-  ansible.builtin.command: >
-    ceph osd pool set {{ item }} pg_num {{ ceph_pg_init_meta }}
-  loop:
-    - .rgw.root
-    - "{{ ceph_rgw_zone }}.rgw.log"
-    - "{{ ceph_rgw_zone }}.rgw.control"
-    - "{{ ceph_rgw_zone }}.rgw.meta"
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    # Skip pools that haven't materialized yet — RGW creates them
-    # lazily on first daemon startup. Mirrors the per-pool gate used
-    # by the data/index/extra pool tasks above.
-    - item in pool_list.stdout
-  register: pg_meta_result
-  changed_when: "'set' in pg_meta_result.stdout | default('')"
-  failed_when:
-    - pg_meta_result.rc is defined
-    - pg_meta_result.rc != 0
-    - "'is not >= current' not in pg_meta_result.stderr | default('')"
-
-- name: Pin replica size on the RGW metadata + mgr pools (durability)
-  # These otherwise inherit the cluster-spec osd_pool_default_size 2 / min_size 1,
-  # unlike index/extra which are pinned. Losing 2 OSDs behind a metadata PG would
-  # take out the RGW/mgr control plane, and min_size 1 permits single-replica
-  # writes. Pin to the same replicated size (spice 3/2; sietch stays 2/1 via its
-  # own var). Idempotent: only sets when the current value differs.
-  ansible.builtin.shell: |
-    set -o pipefail
-    ch=0
-    [ "$(ceph osd pool get {{ item }} size | awk '{print $2}')" = "{{ ceph_rgw_replicated_size }}" ] || { ceph osd pool set {{ item }} size {{ ceph_rgw_replicated_size }}; ch=1; }
-    [ "$(ceph osd pool get {{ item }} min_size | awk '{print $2}')" = "{{ ceph_rgw_replicated_min_size }}" ] || { ceph osd pool set {{ item }} min_size {{ ceph_rgw_replicated_min_size }}; ch=1; }
-    [ "$ch" = 1 ] && echo CHANGED || echo ok
-  args:
-    executable: /bin/bash
-  loop:
-    - .rgw.root
-    - "{{ ceph_rgw_zone }}.rgw.log"
-    - "{{ ceph_rgw_zone }}.rgw.control"
-    - "{{ ceph_rgw_zone }}.rgw.meta"
-    - .mgr
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - item in pool_list.stdout
-  register: size_meta_result
-  changed_when: "'CHANGED' in (size_meta_result.stdout | default(''))"
+# NB: the .rgw.* system-pool PG-count and size/min_size pins are NOT here - those
+# pools are created lazily by the realm/zone setup and the RGW daemon, so they do
+# not exist yet at this point in the play. They are pinned in Step 13.6 below,
+# after the RGW readiness wait, against a freshly re-queried pool list.
 
 - name: Wait for PG peering to complete
   ansible.builtin.shell: |
@@ -599,11 +569,56 @@
 
 - name: Re-query pools after RGW is up (system pools are created lazily)
   ansible.builtin.command: ceph osd pool ls
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - (ceph_rgw_ssd_pools | length + ceph_rgw_hdd_pools | length) > 0
+  when: inventory_hostname in groups['ceph_bootstrap']
   register: pool_list_post
   changed_when: false
+
+- name: Set initial PG count on RGW metadata pools
+  ansible.builtin.command: >
+    ceph osd pool set {{ item }} pg_num {{ ceph_pg_init_meta }}
+  loop:
+    - .rgw.root
+    - "{{ ceph_rgw_zone }}.rgw.log"
+    - "{{ ceph_rgw_zone }}.rgw.control"
+    - "{{ ceph_rgw_zone }}.rgw.meta"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item in (pool_list_post.stdout | default(''))
+  register: pg_meta_result
+  changed_when: "'set' in pg_meta_result.stdout | default('')"
+  failed_when:
+    - pg_meta_result.rc is defined
+    - pg_meta_result.rc != 0
+    - "'is not >= current' not in pg_meta_result.stderr | default('')"
+
+- name: Pin replica size on the RGW metadata + mgr pools (durability)
+  # These otherwise inherit the cluster-spec osd_pool_default_size / min_size,
+  # unlike index/extra which are pinned. Losing 2 OSDs behind a metadata PG would
+  # take out the RGW/mgr control plane, and min_size 1 permits single-replica
+  # writes. Pin to the same replicated size (spice 3/2; sietch stays 2/1 via its
+  # own var). Runs here, after RGW readiness, because these pools are created
+  # lazily by the daemon; the pre-daemon snapshot missed them so run 1 skipped
+  # the pin and they sat at the inherited 2/1 until a second converge. Idempotent:
+  # only sets when the current value differs.
+  ansible.builtin.shell: |
+    set -o pipefail
+    ch=0
+    [ "$(ceph osd pool get {{ item }} size | awk '{print $2}')" = "{{ ceph_rgw_replicated_size }}" ] || { ceph osd pool set {{ item }} size {{ ceph_rgw_replicated_size }}; ch=1; }
+    [ "$(ceph osd pool get {{ item }} min_size | awk '{print $2}')" = "{{ ceph_rgw_replicated_min_size }}" ] || { ceph osd pool set {{ item }} min_size {{ ceph_rgw_replicated_min_size }}; ch=1; }
+    [ "$ch" = 1 ] && echo CHANGED || echo ok
+  args:
+    executable: /bin/bash
+  loop:
+    - .rgw.root
+    - "{{ ceph_rgw_zone }}.rgw.log"
+    - "{{ ceph_rgw_zone }}.rgw.control"
+    - "{{ ceph_rgw_zone }}.rgw.meta"
+    - .mgr
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item in (pool_list_post.stdout | default(''))
+  register: size_meta_result
+  changed_when: "'CHANGED' in (size_meta_result.stdout | default(''))"
 
 - name: Pin pools to the SSD device-class CRUSH rule
   ansible.builtin.shell: |

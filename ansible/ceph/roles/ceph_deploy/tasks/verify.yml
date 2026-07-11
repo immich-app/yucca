@@ -126,3 +126,41 @@
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - crush_placement_check.stdout_lines is defined
+
+# --- Validation: RGW replicated-pool durability ---
+# Guards the run-1 durability regression surfaced by the deep review: the
+# .rgw.* system pools are created lazily by the RGW daemon, so a size/min_size
+# pin taken before the daemon is up skips them and they sit at the inherited
+# 2/1. Assert every RGW replicated pool that exists carries the cluster's target
+# size/min_size, so a miss fails the play instead of shipping single-replica.
+- name: Validate RGW replicated-pool durability
+  ansible.builtin.shell: |
+    set -o pipefail
+    rc=0
+    check() {  # $1 pool
+      ceph osd pool ls | grep -qxF "$1" || { echo "skip (absent): $1"; return; }
+      sz=$(ceph osd pool get "$1" size | awk '{print $2}')
+      mn=$(ceph osd pool get "$1" min_size | awk '{print $2}')
+      if [ "$sz" = {{ ceph_rgw_replicated_size | quote }} ] && [ "$mn" = {{ ceph_rgw_replicated_min_size | quote }} ]; then
+        echo "ok: $1 size=$sz min_size=$mn"
+      else
+        echo "FAIL: $1 size=$sz min_size=$mn (want {{ ceph_rgw_replicated_size }}/{{ ceph_rgw_replicated_min_size }})"; rc=1
+      fi
+    }
+    {% for p in [ceph_rgw_index_pool, ceph_rgw_extra_pool, '.rgw.root', ceph_rgw_zone ~ '.rgw.log', ceph_rgw_zone ~ '.rgw.control', ceph_rgw_zone ~ '.rgw.meta', '.mgr'] %}
+    check {{ p | quote }}
+    {% endfor %}
+    [ "$rc" = 0 ] && echo VALIDATION_OK || echo VALIDATION_FAIL
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: pool_durability_check
+  changed_when: false
+  failed_when: "'VALIDATION_FAIL' in (pool_durability_check.stdout | default(''))"
+
+- name: Show RGW replicated-pool durability validation
+  ansible.builtin.debug:
+    msg: "{{ pool_durability_check.stdout_lines }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - pool_durability_check.stdout_lines is defined

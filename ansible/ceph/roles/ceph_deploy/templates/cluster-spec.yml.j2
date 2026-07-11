@@ -1,7 +1,7 @@
 [global]
 # Initial cluster config applied during cephadm bootstrap
-osd_pool_default_size = 2
-osd_pool_default_min_size = 1
+osd_pool_default_size = {{ ceph_osd_pool_default_size | default(2) }}
+osd_pool_default_min_size = {{ ceph_osd_pool_default_min_size | default(1) }}
 public_network = {{ public_network }}
 cluster_network = {{ cluster_network }}
 

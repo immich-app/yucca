@@ -207,6 +207,12 @@ ceph_rgw_extra_pool: "{{ ceph_rgw_zone }}.rgw.buckets.non-ec"
 ceph_rgw_dns_name: s3.{{ cluster_domain }}
 ceph_rgw_replicated_size: 3
 ceph_rgw_replicated_min_size: 2
+# Bootstrap default for any pool that does not pin its own size (footgun guard:
+# an ad-hoc or future pool on a prod cluster should not land at single-replica
+# 2/1). Applied via cluster-spec.yml.j2 at cephadm bootstrap; role default is
+# 2/1 so sietch is unchanged. Named RGW pools still pin their own size above.
+ceph_osd_pool_default_size: 3
+ceph_osd_pool_default_min_size: 2
 # --- Device-class CRUSH pool placement ---
 # crush-rules.yml creates replicated_ssd/replicated_hdd but binds nothing; every
 # replicated pool otherwise falls to the default class-agnostic rule, so the
