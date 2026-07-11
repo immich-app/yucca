@@ -1,5 +1,5 @@
 ---
-# ops user — human-interactive account.
+# ops user - human-interactive account.
 # Convergeable: running this again fixes drift in password, sudo, shell.
 
 - name: Ensure ops user exists
@@ -27,7 +27,12 @@
 - name: Set ops user password
   ansible.builtin.user:
     name: "{{ baseline_ops_user }}"
-    password: "{{ ops_password | password_hash('sha512') }}"
+    # password_hash draws a RANDOM salt by default, so the hash differs every run
+    # and the user module rewrites /etc/shadow (reporting 'changed') on every
+    # converge. Derive a STABLE salt from the password (one-way sha256, so the
+    # public salt in /etc/shadow leaks nothing) to make the hash deterministic and
+    # the task idempotent, while still reconciling an out-of-band password change.
+    password: "{{ ops_password | password_hash('sha512', salt=(ops_password | hash('sha256'))[:16]) }}"
   no_log: true
 
 - name: Configure ops sudo
