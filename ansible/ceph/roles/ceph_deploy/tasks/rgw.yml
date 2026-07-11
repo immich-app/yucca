@@ -448,6 +448,8 @@
 #   - a wildcard under the same name for virtual-hosted buckets
 #   - per-node FQDNs so direct-host addressing also validates
 #   - per-node bond IPs so IP-based S3 clients also validate
+#   - the RGW ingress VIP (only when ceph_rgw_ingress_enabled) so a client hitting
+#     the health-checked VIP, where haproxy terminates TLS with this cert, validates
 
 # Build the -subj and SAN as single-line strings up front. Doing this inline in
 # the openssl command forced a backslash-newline INSIDE the quoted args, which
@@ -464,6 +466,7 @@
       {%- for h in groups['ceph_nodes'] %},DNS:{{ hostvars[h]['hostname_short'] }}.{{ cluster_domain }}{% endfor %}
       {%- for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['bond_ip'] }}{% endfor %}
       {%- for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['ceph_service_ip'] }}{% endfor %}
+      {%- if ceph_rgw_ingress_enabled | default(false) | bool and (ceph_rgw_ingress_vip | default('')) | length > 0 %},IP:{{ ceph_rgw_ingress_vip }}{% endif %}
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - ceph_rgw_ssl | default(false) | bool
@@ -573,6 +576,78 @@
   retries: 30
   delay: 10
   when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+
+# --- Step 13.7: RGW ingress (haproxy + keepalived) -- health-checked S3 VIP ---
+#
+# Opt-in floating VIP in front of RGW in TLS TERMINATION mode: haproxy `mode http`
+# terminates the client's TLS on the VIP with the RGW self-signed cert (reused,
+# combined cert+key -- see template), then re-encrypts to each RGW/beast backend
+# (default-server ssl / verify none). The keepalived VIP + haproxy per-backend
+# health check drop a dead RGW node from rotation instead of blackholing ~1/N of
+# S3 connections.
+#
+# Runs HERE, after the RGW readiness wait above, on purpose: the ingress spec's
+# backend_service references the RGW service, which must already exist and be
+# running before cephadm can wire the ingress to it. It also needs
+# rgw_ssl_cert_combined_pem, the fact built in Step 11.6.
+#
+# WHY TERMINATE, not passthrough: L4 passthrough (`mode tcp`) for an RGW backend
+# requires IngressSpec.use_tcp_mode_over_rgw, a post-20.2.2 upstream field absent
+# on the pinned 20.2.2 (source-verified: an unknown spec key makes `ceph orch
+# apply` TypeError). Terminate is the only health-checked ingress mode available
+# here. haproxy forwards the Host header in mode http, so virtual-hosted buckets
+# keep working against haproxy's wildcard cert.
+#
+# NO 443 COLLISION: haproxy terminates on VIP:{{ ceph_rgw_ingress_frontend_port }},
+# beast binds each node's fabric IP:{{ ceph_rgw_port }} -- distinct sockets. This
+# holds ONLY when the RGW spec restricts beast to a specific IP (ceph_bind_networks
+# non-empty); otherwise beast binds 0.0.0.0 and the co-located VIP bind collides.
+# Asserted below.
+#
+# APPLY ORDERING (cross-tool): the DNS cutover that points s3.<domain> at the VIP
+# is done separately in TF and MUST NOT precede this ingress being live, or S3
+# resolves to a VIP that nothing answers.
+#
+# Idempotent + declarative: `ceph orch apply -i` reconciles to the spec.
+
+- name: Assert RGW ingress preconditions (VIP + restricted beast bind + RGW ssl)
+  ansible.builtin.assert:
+    that:
+      - (ceph_rgw_ingress_vip | default('')) | length > 0
+      - ceph_bind_networks | default([]) | length > 0
+      - ceph_rgw_ssl | default(false) | bool
+    fail_msg: >-
+      ceph_rgw_ingress_enabled is true but a precondition is unmet.
+      Require: ceph_rgw_ingress_vip set (e.g. 10.40.20.250); ceph_bind_networks
+      non-empty so beast binds a specific per-node IP (else beast binds
+      0.0.0.0:{{ ceph_rgw_port }} and the haproxy VIP bind on the same port fails
+      with EADDRINUSE); and ceph_rgw_ssl true so the self-signed cert exists for
+      haproxy to terminate with (rgw_ssl_cert_combined_pem).
+    quiet: true
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ingress_enabled | default(false) | bool
+
+- name: Render RGW ingress service spec
+  ansible.builtin.template:
+    src: rgw-ingress-spec.yaml.j2
+    dest: /etc/ceph/rgw-ingress-spec.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ingress_enabled | default(false) | bool
+    - (ceph_rgw_ingress_vip | default('')) | length > 0
+  no_log: true   # spec embeds the RGW private key (combined PEM)
+
+- name: Apply RGW ingress service spec
+  ansible.builtin.command: ceph orch apply -i /etc/ceph/rgw-ingress-spec.yaml
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ingress_enabled | default(false) | bool
+    - (ceph_rgw_ingress_vip | default('')) | length > 0
   changed_when: false
 
 # --- Step 13.6: Pin pools to device-class CRUSH rules ---

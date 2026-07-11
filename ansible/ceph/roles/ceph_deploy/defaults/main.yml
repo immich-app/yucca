@@ -67,6 +67,47 @@ ceph_rgw_hdd_crush_rule: replicated_hdd
 ceph_rgw_ssd_pools: []
 ceph_rgw_hdd_pools: []
 
+# --- RGW ingress: health-checked S3 VIP (haproxy + keepalived; per-cluster; opt-in) ---
+# A cephadm `ingress` service that puts a keepalived-managed floating VIP with
+# haproxy health checks in front of RGW, in TLS TERMINATION mode (haproxy
+# `mode http`: haproxy terminates the client TLS on the VIP with the reused RGW
+# self-signed cert, then re-encrypts to the RGW backends). A dead RGW node is then
+# dropped from the VIP instead of blackholing ~1/N of S3 connections. DEFAULT OFF:
+# no ingress spec is rendered or applied, so flat/dev clusters (sietch) and any
+# cluster that has not opted in are a complete no-op.
+#
+# (Terminate, not L4 passthrough, because passthrough for an RGW backend needs
+# IngressSpec.use_tcp_mode_over_rgw, a post-20.2.2 upstream field absent on the
+# pinned 20.2.2 -- source-verified; an unknown spec key makes `orch apply`
+# TypeError. Terminate is the only health-checked ingress mode available here.)
+#
+# A cluster opts in by setting ceph_rgw_ingress_enabled: true AND
+# ceph_rgw_ingress_vip in its group_vars. Three hard preconditions, all asserted
+# at apply time:
+#   1. ceph_rgw_ingress_vip must be set (the VIP the clients hit).
+#   2. ceph_bind_networks must be non-empty - otherwise beast binds
+#      0.0.0.0:<ceph_rgw_port> and the co-located haproxy VIP bind on the same
+#      port collides (EADDRINUSE). Restricted beast binds a per-node IP, the VIP
+#      is a distinct socket, so they coexist.
+#   3. ceph_rgw_ssl must be true - haproxy terminates with the RGW self-signed
+#      cert (rgw_ssl_cert_combined_pem), which only exists when RGW ssl is on.
+ceph_rgw_ingress_enabled: false
+# Floating VIP the S3 clients hit (bare IP; the prefix is added below). Empty by
+# default; a cluster that opts in sets this to an address on its RGW-facing
+# network (e.g. spice fabric public 10.40.20.250).
+ceph_rgw_ingress_vip: ""
+# CIDR prefix of the network the VIP lives on - MUST match the prefix of the
+# public/RGW-facing network (spice fabric public = /23) so keepalived binds the
+# VIP to the right interface.
+ceph_rgw_ingress_vip_prefix: 23
+# Port clients hit on the VIP. Must match ceph_rgw_port (the S3/beast port).
+ceph_rgw_ingress_frontend_port: 443
+# haproxy stats/monitor port (load-balancer status; not the S3 data path).
+ceph_rgw_ingress_monitor_port: 1967
+# Number of haproxy + keepalived instances cephadm spreads across nodes (VRRP
+# needs >= 2 for failover; 3 tolerates one node loss with quorum to spare).
+ceph_rgw_ingress_count: 3
+
 # --- Alert delivery (per-cluster; opt-in) ---
 # cephadm auto-deploys alertmanager but with NO receiver, so the ~89 Prometheus
 # alert rules (OSD down, host down, PG degraded, near-full) fire into the default

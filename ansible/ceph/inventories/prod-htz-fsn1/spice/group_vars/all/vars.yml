@@ -262,6 +262,26 @@ ceph_rgw_ssl_cert_subject_l: Falkenstein
 ceph_rgw_ssl_cert_subject_o: FUTO
 ceph_rgw_ssl_cert_email: yucca@futo.org
 ceph_rgw_scheme: "{{ 'https' if ceph_rgw_ssl else 'http' }}"
+# --- RGW ingress: health-checked S3 VIP (haproxy + keepalived, TLS terminate) ---
+# A cephadm ingress service puts a keepalived floating VIP with haproxy health
+# checks in front of the 47 RGW daemons, in TLS TERMINATION mode (haproxy
+# `mode http`: haproxy terminates the client TLS on the VIP with the reused RGW
+# self-signed cert, then re-encrypts to each beast backend). Without it a dead RGW
+# node blackholes ~1/47 of S3 connections; with it the node is health-checked out
+# of the VIP. The VIP sits on the fabric public network (10.40.20.0/23, bond0.120);
+# NetBird already advertises 10.40.20.0/23 into the overlay, so the VIP is
+# reachable, and DNS points s3.<domain> at it (that DNS cutover is a separate TF
+# apply that MUST follow the ingress being live, not precede it). The VIP is added
+# to the RGW cert SAN (rgw.yml) so a client hitting it validates; virtual-hosted
+# buckets keep working because mode http forwards the Host header to the wildcard
+# cert. Terminate (not L4 passthrough) because passthrough needs a post-20.2.2
+# cephadm field (use_tcp_mode_over_rgw) absent on the pinned 20.2.2.
+#
+# Preconditions are satisfied here: ceph_bind_networks non-empty (VIP:443 vs beast
+# per-node-IP:443 are distinct sockets) and ceph_rgw_ssl true (cert exists).
+ceph_rgw_ingress_enabled: true
+ceph_rgw_ingress_vip: "10.40.20.250"
+ceph_rgw_ingress_vip_prefix: 23   # matches public_network 10.40.20.0/23
 ceph_rgw_s3_user_uid: svc-yucca-restic
 ceph_rgw_s3_user_display_name: "yucca/restic service account"
 # Metrics-worker RGW admin user (read-only): the yucca-metrics-worker service
