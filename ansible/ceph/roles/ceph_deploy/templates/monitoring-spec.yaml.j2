@@ -37,6 +37,14 @@ networks:
   - {{ net }}
 {% endfor %}
 {% endif %}
+{% if ceph_alertmanager_webhook_urls | default([]) | length > 0 %}
+spec:
+  user_data:
+    default_webhook_urls:
+{% for url in ceph_alertmanager_webhook_urls %}
+      - {{ url }}
+{% endfor %}
+{% endif %}
 ---
 service_type: node-exporter
 placement:

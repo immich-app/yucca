@@ -57,3 +57,15 @@ ceph_rgw_ssd_crush_rule: replicated_ssd
 ceph_rgw_hdd_crush_rule: replicated_hdd
 ceph_rgw_ssd_pools: []
 ceph_rgw_hdd_pools: []
+
+# --- Alert delivery (per-cluster; opt-in) ---
+# cephadm auto-deploys alertmanager but with NO receiver, so the ~89 Prometheus
+# alert rules (OSD down, host down, PG degraded, near-full) fire into the default
+# null route and no human is notified. Set this to one or more webhook URLs (a
+# chat incoming-webhook, or a pager like Opsgenie/PagerDuty, or a FUTO endpoint)
+# and the alertmanager service spec routes all alerts there via cephadm's
+# user_data.default_webhook_urls. Values may be op:// refs resolved before the
+# play. EMPTY by default: no receiver is wired (cephadm default is unchanged), and
+# verify.yml warns that alert delivery is not configured. TODO(operator): set the
+# destination for spice.
+ceph_alertmanager_webhook_urls: []

@@ -62,14 +62,15 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
-# --- Step 2.5: Restrict monitoring daemon bind to the fabric ---
-# cephadm auto-deployed the stack binding all interfaces; re-apply with `networks:`
-# so prometheus/grafana/alertmanager/node-exporter/ceph-exporter bind only
-# ceph_bind_networks (fabric-only on spice, so they never listen on the WAN).
-# Placement matches cephadm's defaults, so no daemon relocates. SKIPPED entirely
-# when ceph_bind_networks is empty (flat clusters like sietch) - the auto-deployed
-# bind-all stack is left exactly as cephadm shipped it.
-- name: Render monitoring service spec (fabric bind restriction)
+# --- Step 2.5: Re-spec the monitoring stack (fabric bind + alert delivery) ---
+# cephadm auto-deployed the stack binding all interfaces and with NO alertmanager
+# receiver. Re-apply the spec to (a) restrict the bind to ceph_bind_networks
+# (fabric-only on spice, so ceph never listens on the WAN) and (b) route alerts to
+# ceph_alertmanager_webhook_urls. Placement matches cephadm's defaults, so no
+# daemon relocates. Each piece is independently gated in the template, and the
+# whole re-spec is SKIPPED when BOTH are empty (flat clusters with no alerting, like
+# sietch) - the auto-deployed stack is then left exactly as cephadm shipped it.
+- name: Render monitoring service spec (fabric bind + alert receiver)
   ansible.builtin.template:
     src: monitoring-spec.yaml.j2
     dest: /etc/ceph/monitoring-spec.yaml
@@ -79,12 +80,14 @@
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - (ceph_bind_networks | default([]) | length) > 0
+      or (ceph_alertmanager_webhook_urls | default([]) | length) > 0
 
 - name: Apply monitoring service spec
   ansible.builtin.command: ceph orch apply -i /etc/ceph/monitoring-spec.yaml
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - (ceph_bind_networks | default([]) | length) > 0
+      or (ceph_alertmanager_webhook_urls | default([]) | length) > 0
   changed_when: false
 
 # --- Step 3: Configure dashboard integrations ---

@@ -127,6 +127,21 @@
     - inventory_hostname in groups['ceph_bootstrap']
     - crush_placement_check.stdout_lines is defined
 
+# --- Alert delivery status ---
+# cephadm's alertmanager ships with no receiver, so a cluster with no configured
+# webhook routes every alert rule into a null route. Surface this loudly rather
+# than failing the play (the destination is a deliberate per-cluster decision).
+- name: Report alert-delivery status
+  ansible.builtin.debug:
+    msg: >-
+      {{ ('ALERT DELIVERY: ' ~ (ceph_alertmanager_webhook_urls | length | string)
+          ~ ' webhook receiver(s) configured.')
+         if (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+         else ('WARNING: no alert delivery configured - alertmanager has no receiver, so the '
+               ~ 'Prometheus alert rules fire into a null route and reach no human. '
+               ~ 'Set ceph_alertmanager_webhook_urls to a webhook/pager endpoint.') }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
 # --- Validation: RGW replicated-pool durability ---
 # Guards the run-1 durability regression surfaced by the deep review: the
 # .rgw.* system pools are created lazily by the RGW daemon, so a size/min_size
