@@ -32,6 +32,35 @@ ceph_sysctl_net_ipv4_tcp_tw_reuse: 1
 ceph_sysctl_net_ipv4_tcp_max_tw_buckets: 2000000
 ceph_sysctl_net_ipv4_ip_local_port_range: "8192 65535"
 
+# --- Security hardening (host kernel / network) ---
+# Universally-good host settings; safe on all clusters.
+ceph_sysctl_net_ipv4_tcp_syncookies: 1                  # SYN flood mitigation
+ceph_sysctl_net_ipv4_conf_all_accept_redirects: 0       # ignore ICMP redirects
+ceph_sysctl_net_ipv4_conf_default_accept_redirects: 0
+ceph_sysctl_net_ipv4_conf_all_send_redirects: 0         # do not send ICMP redirects
+ceph_sysctl_net_ipv4_conf_default_send_redirects: 0
+ceph_sysctl_net_ipv4_conf_all_accept_source_route: 0    # drop source-routed packets
+ceph_sysctl_net_ipv4_conf_default_accept_source_route: 0
+ceph_sysctl_net_ipv6_conf_all_accept_redirects: 0
+ceph_sysctl_net_ipv6_conf_all_accept_source_route: 0
+ceph_sysctl_kernel_kptr_restrict: 1                     # hide kernel pointers from /proc
+ceph_sysctl_kernel_dmesg_restrict: 1                    # restrict dmesg to privileged users
+ceph_sysctl_net_ipv4_conf_all_log_martians: 1           # log packets with impossible addresses
+# rp_filter LOOSE (2), NOT strict (1). The spice nodes are multi-homed: a 1G
+# WAN carries the default route while the 25G fabric VLAN sub-interfaces
+# (bond0.120/.122/.124) carry cluster traffic. STRICT reverse-path filtering
+# would blackhole asymmetric fabric routing on such a host, so use loose mode.
+ceph_sysctl_net_ipv4_conf_all_rp_filter: 2
+ceph_sysctl_net_ipv4_conf_default_rp_filter: 2
+
+# --- Persistent journald ---
+# The KVM-only headless nodes default to volatile journald (Storage=auto with
+# no /var/log/journal), so logs are lost across the pipeline's own reboots.
+# Make the journal persistent and bound its on-disk / runtime footprint.
+ceph_journald_storage: persistent
+ceph_journald_system_max_use: 2G      # cap persistent journal at ~2 GB
+ceph_journald_runtime_max_use: 200M   # cap volatile (tmpfs) journal at ~200 MB
+
 # --- Centralized logging (opt-in) ---
 # When enabled, configures rsyslog to forward all logs to a remote syslog
 # server. Disabled by default — enable when a log aggregator is available.

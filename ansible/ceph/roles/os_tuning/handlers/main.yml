@@ -7,3 +7,8 @@
   ansible.builtin.systemd:
     name: rsyslog
     state: restarted
+
+- name: Restart systemd-journald
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
