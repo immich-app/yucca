@@ -2,18 +2,18 @@
 # Phase 4.5: Ensure Ceph block.db LVM is set up on each node (sietch-shape only)
 #
 # This task is sietch-shape-specific: it assumes dual SAS-attached SSDs each
-# with partition 5 → its own VG, with 6 db-slot LVs per VG (12 total). It
-# ensures PVs, VGs, and LVs exist. Idempotent — skips if already present.
+# with partition 5 -> its own VG, with 6 db-slot LVs per VG (12 total). It
+# ensures PVs, VGs, and LVs exist. Idempotent - skips if already present.
 # Provides a recovery path if the LVM was destroyed by `mise run destroy`.
 #
-# Painbox-shape (Hetzner SX295, NVMe RAID-1 → single vg0 with all LVs created
-# by installimage post-install) skips the whole block — its host_vars don't
+# Painbox-shape (Hetzner SX295, NVMe RAID-1 -> single vg0 with all LVs created
+# by installimage post-install) skips the whole block - its host_vars don't
 # define `sas_path_prefix` so the gate below short-circuits.
 #
 # Required host_vars (sietch-shape only):
-#   sas_path_prefix  — by-path prefix for SSD discovery (e.g., pci-0000:02:00.0-sas-exp...)
-#   ssd1_phy, ssd2_phy — PHY slot numbers for the two SSDs
-#   ceph_db_vg1, ceph_db_vg2 — VG names for SSD1/SSD2 partition 5
+#   sas_path_prefix  - by-path prefix for SSD discovery (e.g., pci-0000:02:00.0-sas-exp...)
+#   ssd1_phy, ssd2_phy - PHY slot numbers for the two SSDs
+#   ceph_db_vg1, ceph_db_vg2 - VG names for SSD1/SSD2 partition 5
 #
 # VG mapping: ceph_db_vg1 on SSD1 partition 5, ceph_db_vg2 on SSD2 partition 5
 # LV naming: db-slot0..5 on VG1, db-slot6..11 on VG2 (one per HDD OSD)
