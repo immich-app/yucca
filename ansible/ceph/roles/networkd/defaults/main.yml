@@ -40,11 +40,21 @@ networkd_bond_lacp_rate: fast                      # 1s LACPDUs (vs 30s 'slow')
 networkd_bond_xmit_hash_policy: layer3+4           # spread flows across both members
 
 # Tagged VLAN sub-interfaces carried on the bond (opt-in). Each entry:
-#   { id: <vlan id>, address: <CIDR>, dns: <optional> }
+#   { id: <vlan id>, address: <CIDR>, dns: <optional>, mtu: <optional> }
 # Empty     -> bond0 carries bond_ip directly (flat active-backup clusters).
 # Non-empty -> bond0 carries NO L3; each VLAN sub-interface carries its address
 #              (spice: VLAN 120 public + VLAN 122 private on the 25G LACP bond).
+# A VLAN opts into jumbo with its own `mtu:` (e.g. 9000 on the private/replication
+# VLAN); VLANs without `mtu:` default to 1500.
 networkd_bond_vlans: []
+
+# Bond MTU ceiling = the largest child VLAN MTU (a VLAN child cannot exceed its
+# parent), defaulting to 1500. Raising a single VLAN to jumbo raises the bond and
+# its 25G members to match, so the jumbo VLAN's frames are not silently capped by a
+# 1500 parent/slave. Flat clusters (no VLANs) resolve to 1500 -> no MTU is emitted.
+networkd_bond_mtu: >-
+  {{ (networkd_bond_vlans | map(attribute='mtu', default=1500) | map('int') | max)
+     if (networkd_bond_vlans | length > 0) else 1500 }}
 
 # --- Paths ---
 networkd_config_dir: /etc/systemd/network

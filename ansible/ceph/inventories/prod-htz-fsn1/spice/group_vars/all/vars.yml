@@ -82,11 +82,22 @@ chrony_ntp_servers:
 # Addresses derive from host_index; masks match each network (public/private /23,
 # host-mgmt /24). No Gateway here -- the default route stays on the 1G WAN until
 # fabric cutover.
+# Jumbo (MTU 9000) is enabled on VLAN 122 (Ceph PRIVATE / OSD replication) ONLY.
+# That is a closed, homogeneous, all-under-our-control path where jumbo's packet/
+# interrupt savings on replication+recovery actually pay off. VLAN 120 (Ceph public,
+# where RGW faces heterogeneous 1500 S3 clients + the ~1400 NetBird overlay) and
+# VLAN 124 (mgmt) stay at 1500: jumbo on a client-facing path is a partial-blackhole
+# risk (small ops fine, large PUT/GET hang) for near-zero gain. The bond ceiling and
+# both 25G members auto-raise to the max child MTU so the jumbo VLAN is not capped.
+# PAIRED REQUIREMENT: the leaf server-LAG + the VLAN 122 IRB must be >= 9000 on the
+# QFX side before the cluster network passes jumbo; validate with a bidirectional
+# `ping -M do -s 8972` matrix on 10.40.22.0/23 + green ceph health before relying on it.
 networkd_bond_vlans:
   - id: "{{ fabric_public_vlan }}"     # 120 - Ceph public  (10.40.20.0/23)
     address: "10.40.20.{{ host_index }}/23"
   - id: "{{ fabric_private_vlan }}"    # 122 - Ceph private (10.40.22.0/23)
     address: "10.40.22.{{ host_index }}/23"
+    mtu: 9000
   - id: "{{ fabric_mgmt_vlan }}"       # 124 - Host mgmt    (10.40.24.0/24)
     address: "10.40.24.{{ host_index }}/24"
 

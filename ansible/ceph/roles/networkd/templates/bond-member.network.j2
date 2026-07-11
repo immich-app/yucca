@@ -6,3 +6,9 @@ Name={{ member_interface }}
 
 [Network]
 Bond={{ networkd_bond_name }}
+{% if networkd_bond_mtu | int > 1500 %}
+
+[Link]
+# A bond slave below the bond MTU silently caps the bond; keep members at the ceiling.
+MTUBytes={{ networkd_bond_mtu | int }}
+{% endif %}

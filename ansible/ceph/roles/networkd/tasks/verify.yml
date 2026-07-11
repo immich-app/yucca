@@ -65,6 +65,48 @@
     label: "{{ networkd_bond_name }}.{{ vlan.id }} -> {{ vlan.address }}"
   when: networkd_bond_vlans | length > 0
 
+# MTU checks are local (ip link), so they confirm the host APPLIED the configured
+# MTU without depending on the switch/leaf side being raised yet. End-to-end jumbo
+# (ping -M do -s 8972) is validated separately, after the QFX side is at >= 9000.
+- name: Assert bond0 MTU matches the configured ceiling
+  ansible.builtin.shell: |
+    set -o pipefail
+    ip -o link show {{ networkd_bond_name }} | grep -oP 'mtu \K[0-9]+'
+  args:
+    executable: /bin/bash
+  register: bond_mtu_check
+  changed_when: false
+  failed_when: (bond_mtu_check.stdout | trim) != (networkd_bond_mtu | int | string)
+
+- name: Assert each bond member MTU matches the bond ceiling (no silent cap)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ip -o link show {{ member_interface }} | grep -oP 'mtu \K[0-9]+'
+  args:
+    executable: /bin/bash
+  register: member_mtu_check
+  changed_when: false
+  failed_when: (member_mtu_check.stdout | trim) != (networkd_bond_mtu | int | string)
+  loop: "{{ bond_interfaces }}"
+  loop_control:
+    loop_var: member_interface
+    label: "{{ member_interface }} mtu={{ networkd_bond_mtu | int }}"
+
+- name: Assert each VLAN sub-interface MTU matches its config
+  ansible.builtin.shell: |
+    set -o pipefail
+    ip -o link show {{ networkd_bond_name }}.{{ vlan.id }} | grep -oP 'mtu \K[0-9]+'
+  args:
+    executable: /bin/bash
+  register: vlan_mtu_check
+  changed_when: false
+  failed_when: (vlan_mtu_check.stdout | trim) != (vlan.mtu | default(1500) | int | string)
+  loop: "{{ networkd_bond_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "{{ networkd_bond_name }}.{{ vlan.id }} mtu={{ vlan.mtu | default(1500) }}"
+  when: networkd_bond_vlans | length > 0
+
 - name: Check bond member interfaces
   ansible.builtin.shell: |
     set -o pipefail

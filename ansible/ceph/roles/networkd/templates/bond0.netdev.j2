@@ -4,6 +4,9 @@
 [NetDev]
 Name={{ networkd_bond_name }}
 Kind=bond
+{% if networkd_bond_mtu | int > 1500 %}
+MTUBytes={{ networkd_bond_mtu | int }}
+{% endif %}
 
 [Bond]
 Mode={{ networkd_bond_mode }}
