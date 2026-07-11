@@ -1,6 +1,10 @@
 ---
+# Galaxy collections are pinned to the currently-resolved major and floored at
+# a known-good minor. Compatible-release ranges (no lockfile in this repo) keep
+# a fleet-wide Ceph campaign reproducible: a new major cannot be pulled in
+# mid-run and change module behavior between the first and last node.
 collections:
   - name: ansible.posix
-    version: ">=2.0.0"
+    version: ">=2.0.0,<3.0.0"
   - name: community.general
-    version: ">=9.0.0"
+    version: ">=12.0.0,<13.0.0"
