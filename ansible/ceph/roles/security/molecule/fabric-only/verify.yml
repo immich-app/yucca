@@ -1,0 +1,88 @@
+---
+# Verify the CLOSED / fabric-only branch of nftables.conf.j2. This is the
+# inverse of molecule/default: RGW/S3 and SSH must NOT be accepted from any
+# source, and must instead be restricted to the trusted fabric + NetBird
+# networks. Also asserts the rendered ruleset is idempotent (a second render
+# reports changed=false), the check the default scenario omitted.
+- name: Verify fabric-only (closed firewall) template rendering
+  hosts: all
+  gather_facts: false
+
+  # Load the role defaults so every downstream var (ports, mon list, etc.) is
+  # defined. defaults/main.yml ships ceph_firewall_rgw_any_source: true, and
+  # vars_files outranks play vars, so the CLOSED-branch overrides are applied
+  # below via set_fact (which outranks vars_files) rather than play vars.
+  vars_files:
+    - ../../defaults/main.yml
+
+  vars:
+    public_network: 10.40.20.0/23
+    ceph_rgw_port: 443
+    ceph_prometheus_port: 9095
+    ceph_grafana_port: 3000
+    ceph_alertmanager_port: 9093
+
+  tasks:
+    - name: Select the fabric-only (closed) firewall branch
+      ansible.builtin.set_fact:
+        # No any-source exposure for RGW or SSH.
+        ceph_firewall_rgw_any_source: false
+        ceph_firewall_ssh_any_source: false
+        # spice fabric (10.40.20.0/23) + NetBird overlay (100.64.0.0/10).
+        ceph_firewall_trusted_networks:
+          - 10.40.20.0/23
+          - 100.64.0.0/10
+
+    - name: Render nftables.conf.j2 (closed branch)
+      ansible.builtin.template:
+        src: "../../templates/nftables.conf.j2"
+        dest: /tmp/molecule-nftables-fabric.conf
+        mode: '0644'
+
+    - name: Verify nftables has policy drop
+      ansible.builtin.command: grep -c 'policy drop' /tmp/molecule-nftables-fabric.conf
+      register: drop_check
+      failed_when: drop_check.stdout | int < 1
+      changed_when: false
+
+    - name: Verify RGW is NOT open from any source
+      ansible.builtin.command: grep -cE '^[[:space:]]*tcp dport 443 accept' /tmp/molecule-nftables-fabric.conf
+      register: rgw_open_check
+      failed_when: rgw_open_check.stdout | int != 0
+      changed_when: false
+
+    - name: Verify SSH is NOT open from any source
+      ansible.builtin.command: grep -cE '^[[:space:]]*tcp dport 22 accept' /tmp/molecule-nftables-fabric.conf
+      register: ssh_open_check
+      failed_when: ssh_open_check.stdout | int != 0
+      changed_when: false
+
+    - name: Verify RGW is restricted to the fabric network
+      ansible.builtin.command: grep -cE 'ip saddr 10\.40\.20\.0/23 tcp dport 443 accept' /tmp/molecule-nftables-fabric.conf
+      register: rgw_fabric_check
+      failed_when: rgw_fabric_check.stdout | int < 1
+      changed_when: false
+
+    - name: Verify SSH is restricted to the fabric network
+      ansible.builtin.command: grep -cE 'ip saddr 10\.40\.20\.0/23 tcp dport 22 accept' /tmp/molecule-nftables-fabric.conf
+      register: ssh_fabric_check
+      failed_when: ssh_fabric_check.stdout | int < 1
+      changed_when: false
+
+    - name: Verify RGW is restricted to the NetBird overlay
+      ansible.builtin.command: grep -cE 'ip saddr 100\.64\.0\.0/10 tcp dport 443 accept' /tmp/molecule-nftables-fabric.conf
+      register: rgw_netbird_check
+      failed_when: rgw_netbird_check.stdout | int < 1
+      changed_when: false
+
+    - name: Re-render nftables.conf.j2 to assert idempotence
+      ansible.builtin.template:
+        src: "../../templates/nftables.conf.j2"
+        dest: /tmp/molecule-nftables-fabric.conf
+        mode: '0644'
+      register: rerender
+      failed_when: rerender is changed
+
+    - name: Report success
+      ansible.builtin.debug:
+        msg: "Fabric-only (closed firewall) templates validated successfully"
