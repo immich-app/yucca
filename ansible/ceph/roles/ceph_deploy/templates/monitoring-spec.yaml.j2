@@ -11,39 +11,49 @@
 service_type: prometheus
 placement:
   count: 1
+{% if ceph_bind_networks | default([]) | length > 0 %}
 networks:
 {% for net in ceph_bind_networks %}
   - {{ net }}
 {% endfor %}
+{% endif %}
 ---
 service_type: grafana
 placement:
   count: 1
+{% if ceph_bind_networks | default([]) | length > 0 %}
 networks:
 {% for net in ceph_bind_networks %}
   - {{ net }}
 {% endfor %}
+{% endif %}
 ---
 service_type: alertmanager
 placement:
   count: 1
+{% if ceph_bind_networks | default([]) | length > 0 %}
 networks:
 {% for net in ceph_bind_networks %}
   - {{ net }}
 {% endfor %}
+{% endif %}
 ---
 service_type: node-exporter
 placement:
   host_pattern: '*'
+{% if ceph_bind_networks | default([]) | length > 0 %}
 networks:
 {% for net in ceph_bind_networks %}
   - {{ net }}
 {% endfor %}
+{% endif %}
 ---
 service_type: ceph-exporter
 placement:
   host_pattern: '*'
+{% if ceph_bind_networks | default([]) | length > 0 %}
 networks:
 {% for net in ceph_bind_networks %}
   - {{ net }}
 {% endfor %}
+{% endif %}

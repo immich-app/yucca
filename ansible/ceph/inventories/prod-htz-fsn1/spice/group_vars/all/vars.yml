@@ -135,7 +135,12 @@ reprovision_expect_sata: 14
 # block.db LVs carved from the NVMe RAID-1 vg0 at converge by ceph_deploy's
 # lvm-setup (NVMe-RAID branch): 14x 128G db-slots + one ssd-osd LV from the vg0
 # remainder minus reserve. HDDs become OSDs with block.db on those LVs.
-ssd_model_pattern: "SAMSUNG"      # VERIFY model on node 1 (lsblk -o NAME,MODEL)
+# Consumed ONLY by ceph_destroy's partition-6 SSD-OSD wipe (sietch's dual-SSD
+# shape). spice is NVMe-RAID: the ssd-osd is a vg0 LV removed by the generic VG/PV
+# cleanup, and the NVMe carries no partition 6, so this pattern is a deliberate
+# no-match here (the SSD-partition wipe finds nothing). cleanup.yml references it
+# unconditionally, so it must stay defined; the value is a don't-care on spice.
+ssd_model_pattern: "__no_ssd_osd_partitions_on_nvme_raid__"
 ceph_db_vg: vg0                   # single NVMe-RAID VG created by installimage
 ceph_db_lv_size: "128G"
 ceph_db_lvs_per_node: 14
