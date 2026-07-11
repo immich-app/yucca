@@ -43,3 +43,10 @@
 - name: Configure /etc/hosts and services
   ansible.builtin.import_tasks: system.yml
   tags: [system]
+
+# Last: freeze the load-bearing packages installed above (podman ecosystem,
+# chrony) so a stray apt upgrade cannot move them under a live cluster. Runs after
+# every install so nothing is held before it exists.
+- name: Freeze load-bearing package versions (no unattended upgrades)
+  ansible.builtin.import_tasks: hold-packages.yml
+  tags: [packages, hold]

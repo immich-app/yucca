@@ -71,6 +71,17 @@ baseline_diag_packages:
 # ...) sets its own list or leaves it empty.
 baseline_extra_packages: []
 
+# Load-bearing host packages frozen at their installed version via a dpkg hold, so
+# a stray `apt upgrade` cannot move them out from under a live cluster. We run NO
+# unattended-upgrades by design; upgrading these is a deliberate, health-gated act
+# (unhold -> upgrade -> re-hold, ideally through the serial converge). The default
+# covers cephadm's container runtime (podman + ecosystem) and the chrony time
+# source that mon quorum depends on. Diagnostic/ops tools are intentionally NOT
+# held (a version drift there is harmless). Extend per cluster, or set [] to
+# disable. For an exact-version pin (rather than freeze-at-installed) add an apt
+# preferences entry; the hold covers the common "do not let it drift" need.
+baseline_held_packages: "{{ baseline_podman_packages + ['chrony'] }}"
+
 # --- Time sync (chrony) ---
 # Pinned NTP sources for chrony.conf. Default to the Debian pool as a safe,
 # explicit fallback; each cluster overrides with a consistent low-latency set
