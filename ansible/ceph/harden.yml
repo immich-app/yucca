@@ -18,6 +18,21 @@
   hosts: ceph_nodes
   become: true
   gather_facts: false
+  # Blast-radius control (see baseline.yml): batch the roll + halt on any node
+  # failure or cluster degradation. Especially important here - a bad nftables
+  # ruleset that fences the fabric shows up as an unreachable batch (halts on
+  # max_fail_percentage) or a degraded cluster at the post-batch health gate,
+  # before it reaches the rest of the fleet.
+  serial: "{{ ceph_converge_serial | default('10%') }}"
+  max_fail_percentage: 0
+
+  pre_tasks:
+    - name: Ceph-health gate (pre-batch)
+      ansible.builtin.import_tasks: tasks/health_gate.yml
 
   roles:
     - security
+
+  post_tasks:
+    - name: Ceph-health gate (post-batch)
+      ansible.builtin.import_tasks: tasks/health_gate.yml

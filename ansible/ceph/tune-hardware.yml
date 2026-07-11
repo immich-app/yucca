@@ -9,6 +9,18 @@
   hosts: ceph_nodes
   become: true
   gather_facts: false
+  # Blast-radius control (see baseline.yml): batch the roll + halt on any node
+  # failure or cluster degradation.
+  serial: "{{ ceph_converge_serial | default('10%') }}"
+  max_fail_percentage: 0
+
+  pre_tasks:
+    - name: Ceph-health gate (pre-batch)
+      ansible.builtin.import_tasks: tasks/health_gate.yml
 
   roles:
     - hardware_tuning
+
+  post_tasks:
+    - name: Ceph-health gate (post-batch)
+      ansible.builtin.import_tasks: tasks/health_gate.yml
