@@ -456,6 +456,25 @@
 #   - per-node FQDNs so direct-host addressing also validates
 #   - per-node bond IPs so IP-based S3 clients also validate
 
+# Build the -subj and SAN as single-line strings up front. Doing this inline in
+# the openssl command forced a backslash-newline INSIDE the quoted args, which
+# folds the next line's indentation into the value (e.g. C="DE    ") and openssl
+# aborts on the over-length field. Precomputing here keeps the shell one flat line
+# per arg. The {%- ... %} whitespace-control strips the fold-inserted spaces so the
+# SAN concatenates with no embedded whitespace.
+- name: Build RGW self-signed cert subject and SAN
+  ansible.builtin.set_fact:
+    _rgw_cert_subj: >-
+      /C={{ ceph_rgw_ssl_cert_subject_c }}/ST={{ ceph_rgw_ssl_cert_subject_st }}/L={{ ceph_rgw_ssl_cert_subject_l }}/O={{ ceph_rgw_ssl_cert_subject_o }}/CN={{ ceph_rgw_dns_name }}/emailAddress={{ ceph_rgw_ssl_cert_email }}
+    _rgw_cert_san: >-
+      subjectAltName=DNS:{{ ceph_rgw_dns_name }},DNS:*.{{ ceph_rgw_dns_name }}
+      {%- for h in groups['ceph_nodes'] %},DNS:{{ hostvars[h]['hostname_short'] }}.{{ cluster_domain }}{% endfor %}
+      {%- for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['bond_ip'] }}{% endfor %}
+      {%- for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['ceph_service_ip'] }}{% endfor %}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ssl | default(false) | bool
+
 - name: Generate RGW self-signed cert and key (10 year validity)
   ansible.builtin.shell: |
     set -euo pipefail
@@ -464,18 +483,8 @@
       -keyout /etc/ceph/rgw-ssl.key \
       -out /etc/ceph/rgw-ssl.crt \
       -days {{ ceph_rgw_ssl_cert_days }} \
-      -subj "/C={{ ceph_rgw_ssl_cert_subject_c }}\
-    /ST={{ ceph_rgw_ssl_cert_subject_st }}\
-    /L={{ ceph_rgw_ssl_cert_subject_l }}\
-    /O={{ ceph_rgw_ssl_cert_subject_o }}\
-    /CN={{ ceph_rgw_dns_name }}\
-    /emailAddress={{ ceph_rgw_ssl_cert_email }}" \
-      -addext "subjectAltName=\
-    DNS:{{ ceph_rgw_dns_name }},\
-    DNS:*.{{ ceph_rgw_dns_name }}\
-    {% for h in groups['ceph_nodes'] %},DNS:{{ hostvars[h]['hostname_short'] }}.{{ cluster_domain }}{% endfor %}\
-    {% for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['bond_ip'] }}{% endfor %}\
-    {% for h in groups['ceph_nodes'] %},IP:{{ hostvars[h]['ceph_service_ip'] }}{% endfor %}"
+      -subj {{ _rgw_cert_subj | quote }} \
+      -addext {{ _rgw_cert_san | quote }}
   args:
     executable: /bin/bash
     creates: /etc/ceph/rgw-ssl.crt
