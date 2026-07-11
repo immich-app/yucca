@@ -21,6 +21,12 @@ ceph_pg_init_index: 16        # bucket index
 ceph_pg_init_non_ec: 16       # multipart uploads
 ceph_pg_init_meta: 8          # .rgw.root, .meta, .log, .control
 
+# MGR daemon count (1 active + standbys). cephadm's default and upstream guidance
+# is a small fixed count; deploying one per host (e.g. 47 on spice) is wasteful and
+# non-standard. count:N lets cephadm place them (caps at the host count on small
+# clusters like sietch).
+ceph_mgr_count: 3
+
 # --- Service bind/advertise policy (per-cluster; fabric-only on spice) ---
 # ceph_service_ip (the address Ceph point-services advertise + bind on: mon
 # --mon-ip, the cephadm host-add address, the dashboard monitoring URLs) is
