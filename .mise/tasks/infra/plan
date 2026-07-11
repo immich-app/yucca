@@ -33,5 +33,13 @@ SITE="${SITE:-htz-fsn1}"
 # With a service-account token in the env, drop OP_ACCOUNT — the onepassword
 # provider rejects having both set ("service_account_token and account are set").
 unset OP_ACCOUNT
+
+# When CI sets TG_PLAN, persist the diff to that (absolute) path so the gated
+# apply can consume the EXACT reviewed plan (terragrunt runs tofu inside a
+# .terragrunt-cache dir, so a relative -out would be unreachable -- pass an
+# absolute path). Local `tf:plan` leaves TG_PLAN unset -> a plain read-only plan.
+PLAN_OUT=()
+[ -n "${TG_PLAN:-}" ] && PLAN_OUT=(-out="$TG_PLAN")
+
 # jeremmfr/junos is concurrency-safe; the device NETCONF connection-limit is 250.
-OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE/fabric" plan -parallelism=4 "$@"
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "tf/deployment/prod/$SITE/fabric" plan -parallelism=4 "${PLAN_OUT[@]}" "$@"

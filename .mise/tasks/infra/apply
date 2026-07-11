@@ -34,10 +34,23 @@ SITE="${SITE:-htz-fsn1}"
 # provider rejects having both set ("service_account_token and account are set").
 unset OP_ACCOUNT
 STACK_DIR="tf/deployment/prod/$SITE/fabric"
+
+# Bind the apply to the reviewed plan. When CI passes TG_PLAN pointing at the
+# saved plan artifact, apply THAT file (no fresh re-plan, no -auto-approve): tofu
+# fails closed if the saved plan is stale relative to current state. Strip any
+# -auto-approve the caller passed (meaningless with a plan file). Local/manual
+# runs leave TG_PLAN unset and keep the interactive/`-auto-approve` behaviour.
+APPLY_ARGS=("$@")
+if [ -n "${TG_PLAN:-}" ]; then
+  [ -f "$TG_PLAN" ] || { echo "infra:apply: TG_PLAN set but plan file missing: $TG_PLAN" >&2; exit 1; }
+  filtered=(); for a in "${APPLY_ARGS[@]}"; do [ "$a" = "-auto-approve" ] && continue; filtered+=("$a"); done
+  APPLY_ARGS=("${filtered[@]}" "$TG_PLAN")
+fi
+
 # jeremmfr/junos is concurrency-safe (per-resource CRUD); reads/refresh run in
 # parallel and commits serialize on the per-device config lock (handled by the
 # provider). The device NETCONF connection-limit is raised to 250.
-OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "$STACK_DIR" apply -parallelism=4 "$@"
+OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "$STACK_DIR" apply -parallelism=4 "${APPLY_ARGS[@]}"
 
 # Confirm the dangling `commit confirmed` jeremmfr leaves on the last commit per
 # device: its per-resource "confirm" is `commit check`, which does NOT cancel the
