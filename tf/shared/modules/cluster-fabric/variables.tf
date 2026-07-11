@@ -82,7 +82,13 @@ variable "vc_member_serials" {
 variable "jumbo_mtu" {
   type        = number
   default     = 9216
-  description = "MTU for the spine uplink (ae0)."
+  description = "Physical (L2) jumbo MTU for the spine uplink (ae0) and the server bonds (ae1..aeN)."
+}
+
+variable "private_irb_mtu" {
+  type        = number
+  default     = 9000
+  description = "L3 (family inet) MTU of the private/cluster IRB gateway (VLAN 122), matching the Ceph hosts. Cluster-network only; the public (120) and host-mgmt (124) IRBs stay at the 1500 default by deliberate design."
 }
 
 variable "api_vlan_id" {
