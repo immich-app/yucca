@@ -28,6 +28,15 @@
   when:
     - sas_path_prefix is undefined
     - ceph_db_lvs_per_node is defined
+  # DATA SAFETY: never let lvol SHRINK an existing LV -- reconciling a drifted
+  # db-slot down would truncate a live block.db and corrupt the OSD. shrink:false
+  # means lvol still creates and may grow, but leaves a larger existing LV alone
+  # (the old shell skipped existing LVs entirely). opts -Wy wipes stale signatures
+  # on (re)created LVs, preserving the destroy->recreate recovery-path freshness.
+  module_defaults:
+    community.general.lvol:
+      shrink: false
+      opts: "-Wy"
   block:
     - name: Assert vg0 exists (created by installimage)
       ansible.builtin.command: vgs {{ ceph_db_vg }}
@@ -103,6 +112,12 @@
 
 - name: Set up LVM (sietch-shape dual-SSD-VG topology)
   when: sas_path_prefix is defined
+  # DATA SAFETY: shrink:false so lvol never truncates a live block.db LV on drift
+  # (it may still create/grow); opts -Wy wipes stale signatures on (re)created LVs.
+  module_defaults:
+    community.general.lvol:
+      shrink: false
+      opts: "-Wy"
   block:
     - name: Resolve SSD1 device path
       ansible.builtin.command: >
