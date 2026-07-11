@@ -39,6 +39,7 @@ spec:
       - /dev/{{ hdd.db }}
 {% endfor %}
   encrypted: true
+  crush_device_class: hdd
 {% endif %}
 {% if h.ceph_ssd_osds | default([]) | length > 0 %}
 ---
@@ -58,5 +59,6 @@ spec:
 {% endif %}
 {% endfor %}
   encrypted: true
+  crush_device_class: ssd
 {% endif %}
 {% endfor %}

@@ -84,3 +84,45 @@
       The running cluster's password does not match ceph_dashboard_password.
       Re-run the ceph_deploy role to reconcile, or investigate an out-of-band change.
   when: inventory_hostname in groups['ceph_bootstrap']
+
+# --- Validation: device-class CRUSH pool placement ---
+# Guards the "rule created but no pool bound" failure mode surfaced by the deep
+# review: assert every pool we intended on a tier actually carries that rule, and
+# that the SSD rule bound to live OSDs (a rule whose device class has zero OSDs
+# selects nothing and leaves the pinned pool's PGs inactive). Only runs when the
+# cluster opts in to pinning (ceph_rgw_ssd_pools / _hdd_pools); skips absent pools.
+- name: Validate device-class pool placement
+  ansible.builtin.shell: |
+    set -o pipefail
+    rc=0
+    check() {  # $1 pool, $2 want_rule
+      ceph osd pool ls | grep -qxF "$1" || { echo "skip (absent): $1"; return; }
+      got=$(ceph osd pool get "$1" crush_rule | awk '{print $2}')
+      if [ "$got" = "$2" ]; then echo "ok: $1 -> $2"
+      else echo "FAIL: $1 -> $got (want $2)"; rc=1; fi
+    }
+    {% for p in ceph_rgw_ssd_pools %}
+    check {{ p | quote }} {{ ceph_rgw_ssd_crush_rule | quote }}
+    {% endfor %}
+    {% for p in ceph_rgw_hdd_pools %}
+    check {{ p | quote }} {{ ceph_rgw_hdd_crush_rule | quote }}
+    {% endfor %}
+    n=$(ceph osd crush class ls-osd ssd 2>/dev/null | grep -c '^[0-9]' || true)
+    if [ "$n" -gt 0 ]; then echo "ok: ssd class has $n OSDs"
+    else echo "FAIL: ssd class has 0 OSDs (replicated_ssd would select nothing)"; rc=1; fi
+    [ "$rc" = 0 ] && echo VALIDATION_OK || echo VALIDATION_FAIL
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_rgw_ssd_pools | length + ceph_rgw_hdd_pools | length) > 0
+  register: crush_placement_check
+  changed_when: false
+  failed_when: "'VALIDATION_FAIL' in (crush_placement_check.stdout | default(''))"
+
+- name: Show device-class pool placement validation
+  ansible.builtin.debug:
+    msg: "{{ crush_placement_check.stdout_lines }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - crush_placement_check.stdout_lines is defined

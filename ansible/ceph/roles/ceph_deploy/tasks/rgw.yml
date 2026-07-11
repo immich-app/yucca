@@ -582,6 +582,65 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
+# --- Step 13.6: Pin pools to device-class CRUSH rules ---
+#
+# crush-rules.yml creates replicated_ssd/replicated_hdd but binds no pool, so
+# every replicated pool falls to the default class-agnostic rule and the
+# omap-heavy bucket index lands on HDD while the ssd-osd NVMe tier sits idle.
+# Pin the latency-sensitive index/metadata/mgr pools to the SSD rule and the
+# bulk non-EC pool to HDD.
+#
+# Runs HERE (after RGW readiness) on purpose: .rgw.root and the prod-z1.rgw.*
+# metadata pools are created lazily by the realm/zone setup and the RGW daemon,
+# so a pool snapshot taken before the daemon is up (like the top-of-file one)
+# would miss them. Re-query fresh, and gate each pin on the pool existing now.
+# Opt-in per cluster via ceph_rgw_ssd_pools / ceph_rgw_hdd_pools (empty default
+# leaves a live cluster's pools where they are - re-homing forces a rebalance).
+
+- name: Re-query pools after RGW is up (system pools are created lazily)
+  ansible.builtin.command: ceph osd pool ls
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_rgw_ssd_pools | length + ceph_rgw_hdd_pools | length) > 0
+  register: pool_list_post
+  changed_when: false
+
+- name: Pin pools to the SSD device-class CRUSH rule
+  ansible.builtin.shell: |
+    set -o pipefail
+    cur=$(ceph osd pool get {{ item | quote }} crush_rule | awk '{print $2}')
+    if [ "$cur" != {{ ceph_rgw_ssd_crush_rule | quote }} ]; then
+      ceph osd pool set {{ item | quote }} crush_rule {{ ceph_rgw_ssd_crush_rule | quote }}
+      echo CHANGED
+    fi
+  args:
+    executable: /bin/bash
+  loop: "{{ ceph_rgw_ssd_pools }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_ssd_pools | length > 0
+    - item in (pool_list_post.stdout | default(''))
+  register: ssd_pin_result
+  changed_when: "'CHANGED' in (ssd_pin_result.stdout | default(''))"
+
+- name: Pin pools to the HDD device-class CRUSH rule
+  ansible.builtin.shell: |
+    set -o pipefail
+    cur=$(ceph osd pool get {{ item | quote }} crush_rule | awk '{print $2}')
+    if [ "$cur" != {{ ceph_rgw_hdd_crush_rule | quote }} ]; then
+      ceph osd pool set {{ item | quote }} crush_rule {{ ceph_rgw_hdd_crush_rule | quote }}
+      echo CHANGED
+    fi
+  args:
+    executable: /bin/bash
+  loop: "{{ ceph_rgw_hdd_pools }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_rgw_hdd_pools | length > 0
+    - item in (pool_list_post.stdout | default(''))
+  register: hdd_pin_result
+  changed_when: "'CHANGED' in (hdd_pin_result.stdout | default(''))"
+
 # --- Step 13.5: Ensure dashboard RGW user has admin caps ---
 #
 # cephadm auto-creates a "dashboard" RGW user with system=true but

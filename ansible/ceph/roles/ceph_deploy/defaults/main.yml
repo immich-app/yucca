@@ -46,3 +46,14 @@ ceph_mgr_count: 3
 # clusters like sietch are untouched. A cluster that must be fabric-only (spice)
 # opts in by setting this to its fabric CIDR(s) in group_vars.
 ceph_bind_networks: []
+
+# --- Device-class CRUSH pool placement (per-cluster; opt-in) ---
+# Pools listed here are pinned to the named device-class CRUSH rule after RGW is
+# up. EMPTY by default so a cluster's pools stay on whatever rule they already
+# carry - re-homing a live pool triggers a full rebalance under load, so this is
+# never applied implicitly. A cluster with a dedicated fast tier (spice's ssd-osd
+# NVMe) opts in via group_vars. The rule names must match crush-rules.yml.
+ceph_rgw_ssd_crush_rule: replicated_ssd
+ceph_rgw_hdd_crush_rule: replicated_hdd
+ceph_rgw_ssd_pools: []
+ceph_rgw_hdd_pools: []

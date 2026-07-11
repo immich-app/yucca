@@ -207,6 +207,27 @@ ceph_rgw_extra_pool: "{{ ceph_rgw_zone }}.rgw.buckets.non-ec"
 ceph_rgw_dns_name: s3.{{ cluster_domain }}
 ceph_rgw_replicated_size: 3
 ceph_rgw_replicated_min_size: 2
+# --- Device-class CRUSH pool placement ---
+# crush-rules.yml creates replicated_ssd/replicated_hdd but binds nothing; every
+# replicated pool otherwise falls to the default class-agnostic rule, so the
+# omap-heavy bucket index lands on HDD (~98.5% of weight) while the 47-OSD NVMe
+# ssd-osd tier sits idle. Pin the latency-sensitive index/metadata/mgr pools to
+# the SSD tier; keep the bulk non-EC pool on HDD. The EC data pool is pinned to
+# hdd via ceph_rgw_ec_device_class (the EC profile), not here. OSD device classes
+# are forced at creation in osd-spec.yml.j2 (ssd-osd -> ssd, HDD -> hdd), and
+# verify.yml asserts every intended pool carries its rule and the ssd class has
+# live OSDs.
+ceph_rgw_ssd_crush_rule: replicated_ssd
+ceph_rgw_hdd_crush_rule: replicated_hdd
+ceph_rgw_ssd_pools:
+  - "{{ ceph_rgw_index_pool }}"
+  - "{{ ceph_rgw_zone }}.rgw.meta"
+  - .rgw.root
+  - "{{ ceph_rgw_zone }}.rgw.log"
+  - "{{ ceph_rgw_zone }}.rgw.control"
+  - .mgr
+ceph_rgw_hdd_pools:
+  - "{{ ceph_rgw_extra_pool }}"
 ceph_rgw_count_per_host: 1
 ceph_rgw_port: 443
 # RGW/beast terminates TLS on 443 with a 10-year self-signed cert: rgw.yml
