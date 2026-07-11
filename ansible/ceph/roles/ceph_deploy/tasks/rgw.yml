@@ -547,7 +547,11 @@
   args:
     executable: /bin/bash
   register: rgw_running_count
-  until: "(rgw_running_count.stdout | int) >= (groups['ceph_nodes'] | length)"
+  # Wait for RGW on the nodes in THIS run (respects --limit), not all ceph_nodes,
+  # so a subset deploy does not block forever waiting for daemons on hosts it never
+  # joined. The rgw-spec placement stays pinned to all ceph_nodes (it must not
+  # shrink on a --limit re-run); only the readiness gate is play-scoped.
+  until: "(rgw_running_count.stdout | int) >= (groups['ceph_nodes'] | intersect(ansible_play_hosts) | length)"
   retries: 30
   delay: 10
   when: inventory_hostname in groups['ceph_bootstrap']
