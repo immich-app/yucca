@@ -26,7 +26,7 @@
     # MON on every host. render-inventories.sh emits these groups from TF state
     # (bootstrap = exactly one host, mon = an odd quorum including the bootstrap
     # node) - refuse to deploy against anything else.
-    - name: Assert the TF-rendered placement groups are present and sane
+    - name: Assert the TF-rendered placement groups are present and sane  # noqa: run-once[task]
       ansible.builtin.assert:
         that:
           - (groups['ceph_bootstrap'] | default([])) | length == 1

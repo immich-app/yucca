@@ -27,7 +27,7 @@
 - name: Activate the ice DDP (exit Safe Mode) when needed
   when: baseline_ice_nic.stdout | trim | length > 0
   block:
-    - name: Check whether the ice NIC is in Safe Mode
+    - name: Check whether the ice NIC is in Safe Mode  # noqa: risky-shell-pipe
       # In Safe Mode advanced ops are disabled: --show-fec fails "not supported".
       # NB: no `set -o pipefail` here -- ethtool exits non-zero on "not supported",
       # which pipefail would propagate and mask grep's match, always yielding "ok".
