@@ -177,6 +177,32 @@
     - pg_meta_result.rc != 0
     - "'is not >= current' not in pg_meta_result.stderr | default('')"
 
+- name: Pin replica size on the RGW metadata + mgr pools (durability)
+  # These otherwise inherit the cluster-spec osd_pool_default_size 2 / min_size 1,
+  # unlike index/extra which are pinned. Losing 2 OSDs behind a metadata PG would
+  # take out the RGW/mgr control plane, and min_size 1 permits single-replica
+  # writes. Pin to the same replicated size (spice 3/2; sietch stays 2/1 via its
+  # own var). Idempotent: only sets when the current value differs.
+  ansible.builtin.shell: |
+    set -o pipefail
+    ch=0
+    [ "$(ceph osd pool get {{ item }} size | awk '{print $2}')" = "{{ ceph_rgw_replicated_size }}" ] || { ceph osd pool set {{ item }} size {{ ceph_rgw_replicated_size }}; ch=1; }
+    [ "$(ceph osd pool get {{ item }} min_size | awk '{print $2}')" = "{{ ceph_rgw_replicated_min_size }}" ] || { ceph osd pool set {{ item }} min_size {{ ceph_rgw_replicated_min_size }}; ch=1; }
+    [ "$ch" = 1 ] && echo CHANGED || echo ok
+  args:
+    executable: /bin/bash
+  loop:
+    - .rgw.root
+    - "{{ ceph_rgw_zone }}.rgw.log"
+    - "{{ ceph_rgw_zone }}.rgw.control"
+    - "{{ ceph_rgw_zone }}.rgw.meta"
+    - .mgr
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item in pool_list.stdout
+  register: size_meta_result
+  changed_when: "'CHANGED' in (size_meta_result.stdout | default(''))"
+
 - name: Wait for PG peering to complete
   ansible.builtin.shell: |
     set -o pipefail
