@@ -31,6 +31,7 @@
     check fs.aio-max-nr {{ ceph_sysctl_fs_aio_max_nr }}
     check vm.zone_reclaim_mode {{ ceph_sysctl_vm_zone_reclaim_mode }}
     check kernel.pid_max {{ ceph_sysctl_kernel_pid_max }}
+    check fs.inotify.max_user_instances {{ ceph_sysctl_fs_inotify_max_user_instances }}
     if [ $FAIL -ne 0 ]; then exit 1; fi
     echo "All sysctl checks passed"
   args:

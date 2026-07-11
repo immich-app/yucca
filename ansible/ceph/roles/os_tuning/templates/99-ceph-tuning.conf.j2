@@ -9,6 +9,12 @@ vm.zone_reclaim_mode = {{ ceph_sysctl_vm_zone_reclaim_mode }}
 # --- FS ---
 fs.aio-max-nr = {{ ceph_sysctl_fs_aio_max_nr }}
 fs.file-max = {{ ceph_sysctl_fs_file_max }}
+# inotify headroom for cephadm-on-podman: each node runs many containers/systemd
+# units (OSDs + mon/mgr/rgw + the monitoring stack), and podman/systemd lean on
+# inotify watches. Debian's default max_user_instances (128) is a known bottleneck
+# at container scale; raise both so daemon starts + file watches do not exhaust it.
+fs.inotify.max_user_instances = {{ ceph_sysctl_fs_inotify_max_user_instances }}
+fs.inotify.max_user_watches = {{ ceph_sysctl_fs_inotify_max_user_watches }}
 
 # --- Kernel ---
 kernel.pid_max = {{ ceph_sysctl_kernel_pid_max }}

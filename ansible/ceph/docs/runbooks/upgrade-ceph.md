@@ -86,6 +86,27 @@ ceph osd stat         # all OSDs up + in
 Re-running `upgrade-ceph.yml` with the prior image as the target performs the
 same health-gated rollback with all the same checks.
 
+## Podman compatibility (cross-major upgrades)
+
+The baseline role `dpkg`-holds podman (and the rest of its ecosystem) at its
+installed version so a stray `apt upgrade` cannot move the container runtime out
+from under a live cluster. Patch-train upgrades (20.2.x -> 20.2.y) run on the same
+podman, so the hold needs no attention. But a **cross-major Ceph upgrade** may
+require a newer podman per the cephadm compatibility matrix, and the hold will
+block the podman bump. When that applies:
+
+```bash
+# On each node (drive via a serial, health-gated converge, not all at once):
+apt-mark unhold podman
+apt-get install -y --only-upgrade podman   # to a version the cephadm matrix allows
+apt-mark hold podman                        # re-freeze at the new version
+```
+
+Do this BEFORE `ceph orch upgrade start`, verify `podman version` on every node,
+then upgrade Ceph. Check the cephadm podman support matrix for the target release
+first; too-new podman can also break cephadm, so bump to a *supported* version,
+not merely the latest. `baseline_held_packages` controls which packages are held.
+
 ## Gotchas
 
 - **No cross-major downgrade.** Rollback is only safe *within* the pinned

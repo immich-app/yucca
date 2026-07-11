@@ -13,6 +13,10 @@ ceph_sysctl_vm_zone_reclaim_mode: 0        # disable NUMA zone reclaim (causes s
 # --- FS ---
 ceph_sysctl_fs_aio_max_nr: 1048576         # async I/O slots — OSD prepare fails if too low
 ceph_sysctl_fs_file_max: 26234859          # file descriptor ceiling
+# inotify headroom for cephadm-on-podman container scale (many daemons/units per
+# node); Debian's default max_user_instances=128 is a known podman-at-scale limit.
+ceph_sysctl_fs_inotify_max_user_instances: 512
+ceph_sysctl_fs_inotify_max_user_watches: 524288
 
 # --- Kernel ---
 ceph_sysctl_kernel_pid_max: 4194304        # high OSD count spawns many threads
