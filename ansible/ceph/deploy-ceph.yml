@@ -44,5 +44,20 @@
           join={{ groups['ceph_join'] | default([]) | length }}.
       run_once: true
 
+    # Per host: the address the mon/OSD/RGW bind (ceph_service_ip) must be live on
+    # a local interface before bootstrap. For spice this is the fabric IP on
+    # bond0.120; a node whose VLAN sub-interface did not come back after a reboot
+    # would otherwise fail deep inside cephadm bootstrap/join. gather_facts is on,
+    # so ansible_all_ipv4_addresses is populated.
+    - name: Assert the Ceph service IP is live on this node (fabric/bond up)
+      ansible.builtin.assert:
+        that:
+          - ceph_service_ip in ansible_all_ipv4_addresses
+        fail_msg: >-
+          ceph_service_ip {{ ceph_service_ip }} is not on any local interface on
+          {{ inventory_hostname }} - the Ceph bind network (spice: bond0.120) is
+          down on this node. Bring the fabric up before deploying it.
+        success_msg: "Ceph service IP {{ ceph_service_ip }} is live on {{ inventory_hostname }}."
+
   roles:
     - ceph_deploy
