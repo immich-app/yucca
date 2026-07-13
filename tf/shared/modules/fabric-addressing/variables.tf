@@ -5,6 +5,8 @@
 # Scheme (htz-fsn1 = site 40):
 #   site supernet      10.<site_id>.0.0/16                  -> 10.40.0.0/16
 #   management         10.<site_id>.5.0/24                  -> 10.40.5.0/24  (vme)
+#   kube               10.<site_id>.<kube_octet>.0/24       -> 10.40.10.0/24 (vlan 10)
+#   kube-cp            10.<site_id>.<kube_cp_octet>.0/24     -> 10.40.11.0/24 (Hetzner vSwitch, NOT a fabric vlan)
 #   spine vme          10.<site_id>.5.115                   -> 10.40.5.115   (site core)
 #   cluster <n> /20    10.<site_id>.<n*16>.0/20             -> n=1: 10.40.16.0/20, n=2: 10.40.32.0/20
 #   leaf vme           10.<site_id>.5.(125 + (n-1)*10)      -> n=1: .125, n=2: .135
@@ -38,8 +40,20 @@ variable "cluster_id" {
   }
 }
 
-variable "api_octet" {
+variable "kube_octet" {
   type        = number
   default     = 10
-  description = "Third octet of the site-global API network (10.<site>.<api_octet>.0/24); also its VLAN id."
+  description = "Third octet of the site-global Kubernetes node network 'kube' (10.<site>.<kube_octet>.0/24); also its fabric VLAN id. Carries worker east-west (pods now, Ceph later) on the 50G fabric."
+}
+
+variable "kube_cp_octet" {
+  type        = number
+  default     = 11
+  description = <<-EOT
+    Third octet of the site-global Kubernetes control-plane subnet ("kube-cp",
+    10.<site>.<kube_cp_octet>.0/24) — a small isolated Hetzner Cloud private subnet
+    for the cloud CP VMs (etcd) + the API LB. NOT a Juniper fabric VLAN; carved from
+    the site supernet only for collision-free IPAM. Default 11 sits in the
+    site-global band (octets 0-15, before cluster /20s).
+  EOT
 }

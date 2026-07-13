@@ -36,5 +36,13 @@ spec:
   eventSources:
     - kind: Kustomization
       name: "*"
-    - kind: HelmRelease
-      name: "*"
+    # HelmReleases live OUTSIDE flux-system; an eventSource without an explicit
+    # namespace only matches the Alert's own namespace, so each HR namespace
+    # needs its own entry or HR failures never post a ❌ status.
+    - { kind: HelmRelease, name: "*", namespace: yucca }
+    - { kind: HelmRelease, name: "*", namespace: cert-manager }
+    - { kind: HelmRelease, name: "*", namespace: envoy-system }
+    - { kind: HelmRelease, name: "*", namespace: openebs-system }
+    - { kind: HelmRelease, name: "*", namespace: cnpg-system }
+    - { kind: HelmRelease, name: "*", namespace: netbird }
+    - { kind: HelmRelease, name: "*", namespace: observability }

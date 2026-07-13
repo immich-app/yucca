@@ -1,0 +1,52 @@
+# LoadBalancer return-path routing (workers).
+#
+# Inbound to a LoadBalancer VIP arrives via the fabric (BGP → transit), but the workers'
+# default route is their public eth0. A reply sourced from a VIP (69.48.224.0/24) sent out
+# eth0 is dropped by Hetzner Robot as spoofed (the VIP isn't the NIC's IP). So we source-
+# route VIP-sourced traffic back through the fabric core (the spine IRB, 10.40.10.1), where
+# 69.48.224.0/24 is a valid source — making the path symmetric. General egress stays on eth0.
+#
+# Talos has no policy-routing knob in machineconfig, so this runs as a privileged, self-
+# healing DaemonSet on the workers. When GitOps lands on prod, adopt it into the Flux tree
+# (and template the CIDR/gateway from cluster-settings instead of hardcoding).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: lb-return-route
+  namespace: kube-system
+  labels:
+    app: lb-return-route
+spec:
+  selector:
+    matchLabels:
+      app: lb-return-route
+  template:
+    metadata:
+      labels:
+        app: lb-return-route
+    spec:
+      hostNetwork: true
+      # Workers only — the CPs are on the hcloud net, not the fabric.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - { key: node-role.kubernetes.io/control-plane, operator: DoesNotExist }
+      containers:
+        - name: route
+          image: alpine:3.20
+          securityContext:
+            privileged: true
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                ip rule show | grep -q "from 69.48.224.0/24 lookup 200" || \
+                  ip rule add from 69.48.224.0/24 lookup 200 priority 100
+                ip route replace default via 10.40.10.1 table 200
+                sleep 30
+              done
+          resources:
+            requests: { cpu: 5m, memory: 16Mi }
+            limits: { memory: 32Mi }

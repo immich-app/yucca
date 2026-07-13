@@ -4,5 +4,3 @@ kind: Kustomization
 resources:
   - ./ocirepository.yaml
   - ./helmrelease.yaml
-  - ./storageclass-spare-disk.yaml
-  - ./storageclass-spare-disk-2.yaml

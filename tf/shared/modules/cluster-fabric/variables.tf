@@ -85,9 +85,9 @@ variable "jumbo_mtu" {
   description = "MTU for the spine uplink (ae0)."
 }
 
-variable "api_vlan_id" {
+variable "kube_vlan_id" {
   type        = number
-  description = "Site-global API VLAN id (carried on every cluster)."
+  description = "Site-global kube VLAN id (carried on every cluster)."
 }
 
 variable "mgmt_vlan_id" {

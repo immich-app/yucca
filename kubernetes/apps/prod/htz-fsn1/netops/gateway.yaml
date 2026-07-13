@@ -1,0 +1,71 @@
+---
+# The netops Gateway — terminates *.father.fsn.htz.yucca.futo.network with the
+# cert-manager wildcard (certificate.yaml) on the SAME VIP the netops DNS records
+# point at. Its Envoy data plane deploys into THIS namespace (operator runs in
+# GatewayNamespace mode). Per-host routing: httproutes.yaml.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: netops-envoy
+  namespace: netops
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        replicas: 2
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: envoy
+                  gateway.envoyproxy.io/owning-gateway-name: netops
+      envoyService:
+        type: LoadBalancer
+        patch:
+          type: StrategicMerge
+          value:
+            metadata:
+              labels:
+                lb: internal
+              annotations:
+                lbipam.cilium.io/ips: "10.40.12.16" # = every netops DNS name (dns.tf)
+  telemetry:
+    metrics:
+      prometheus: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: netops
+  namespace: netops
+spec:
+  gatewayClassName: envoy
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: netops-envoy
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.father.fsn.htz.yucca.futo.network"
+      allowedRoutes:
+        namespaces:
+          from: Same
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: netops-wildcard-tls
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.father.fsn.htz.yucca.futo.network"
+      allowedRoutes:
+        namespaces:
+          from: Same

@@ -1,0 +1,617 @@
+# Provisioned Grafana dashboards (netops). GENERATED-then-committed — edit the
+# dashboard in Grafana, export JSON, and paste back here (or regenerate).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: netops
+data:
+  fabric-overview.json: |
+    {
+     "uid": "father-fabric",
+     "title": "father \u2014 fabric & cluster overview",
+     "timezone": "browser",
+     "refresh": "5s",
+     "time": {
+      "from": "now-1h",
+      "to": "now"
+     },
+     "panels": [
+      {
+       "type": "timeseries",
+       "title": "Fabric throughput \u2014 sFlow 5s \u2014 INTO switch port (bits/s)",
+       "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "bps",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "sflow_ifinoctets{port!=\"\"}*8",
+         "legendFormat": "{{port}}",
+         "refId": "A"
+        }
+       ],
+       "id": 1
+      },
+      {
+       "type": "timeseries",
+       "title": "Fabric throughput \u2014 sFlow 5s \u2014 OUT of switch port (bits/s)",
+       "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "bps",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "sflow_ifoutoctets{port!=\"\"}*8",
+         "legendFormat": "{{port}}",
+         "refId": "A"
+        }
+       ],
+       "id": 2
+      },
+      {
+       "type": "timeseries",
+       "title": "Interface throughput \u2014 NETCONF 60s \u2014 TX (bits/s)",
+       "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "bps",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "rate(junos_interface_transmit_bytes{name=~\"ae[0-9]+|et-.+|xe-.+|irb.+\"}[2m])*8",
+         "legendFormat": "{{target}} {{name}}",
+         "refId": "A"
+        }
+       ],
+       "id": 3
+      },
+      {
+       "type": "timeseries",
+       "title": "Interface throughput \u2014 NETCONF 60s \u2014 RX (bits/s)",
+       "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "bps",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "rate(junos_interface_receive_bytes{name=~\"ae[0-9]+|et-.+|xe-.+|irb.+\"}[2m])*8",
+         "legendFormat": "{{target}} {{name}}",
+         "refId": "A"
+        }
+       ],
+       "id": 4
+      },
+      {
+       "type": "stat",
+       "title": "BGP sessions up",
+       "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 4,
+        "h": 4
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "none",
+         "thresholds": {
+          "mode": "absolute",
+          "steps": [
+           {
+            "color": "red",
+            "value": null
+           },
+           {
+            "color": "green",
+            "value": 4
+           }
+          ]
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "reduceOptions": {
+         "calcs": [
+          "lastNotNull"
+         ]
+        },
+        "colorMode": "background"
+       },
+       "targets": [
+        {
+         "expr": "sum(junos_bgp_session_up)",
+         "refId": "A"
+        }
+       ],
+       "id": 5
+      },
+      {
+       "type": "stat",
+       "title": "Red alarms",
+       "gridPos": {
+        "x": 4,
+        "y": 16,
+        "w": 4,
+        "h": 4
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "none",
+         "thresholds": {
+          "mode": "absolute",
+          "steps": [
+           {
+            "color": "green",
+            "value": null
+           },
+           {
+            "color": "red",
+            "value": 1
+           }
+          ]
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "reduceOptions": {
+         "calcs": [
+          "lastNotNull"
+         ]
+        },
+        "colorMode": "background"
+       },
+       "targets": [
+        {
+         "expr": "sum(junos_alarms_red_count)",
+         "refId": "A"
+        }
+       ],
+       "id": 6
+      },
+      {
+       "type": "stat",
+       "title": "Yellow alarms",
+       "gridPos": {
+        "x": 8,
+        "y": 16,
+        "w": 4,
+        "h": 4
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "none",
+         "thresholds": {
+          "mode": "absolute",
+          "steps": [
+           {
+            "color": "green",
+            "value": null
+           },
+           {
+            "color": "yellow",
+            "value": 1
+           }
+          ]
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "reduceOptions": {
+         "calcs": [
+          "lastNotNull"
+         ]
+        },
+        "colorMode": "background"
+       },
+       "targets": [
+        {
+         "expr": "sum(junos_alarms_yellow_count)",
+         "refId": "A"
+        }
+       ],
+       "id": 7
+      },
+      {
+       "type": "stat",
+       "title": "k8s nodes reporting",
+       "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 4,
+        "h": 4
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "none",
+         "thresholds": {
+          "mode": "absolute",
+          "steps": [
+           {
+            "color": "red",
+            "value": null
+           },
+           {
+            "color": "green",
+            "value": 6
+           }
+          ]
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "reduceOptions": {
+         "calcs": [
+          "lastNotNull"
+         ]
+        },
+        "colorMode": "background"
+       },
+       "targets": [
+        {
+         "expr": "count(up{job=\"kubelet\"} == 1)",
+         "refId": "A"
+        }
+       ],
+       "id": 8
+      },
+      {
+       "type": "stat",
+       "title": "Metrics ingest (samples/s)",
+       "gridPos": {
+        "x": 16,
+        "y": 16,
+        "w": 8,
+        "h": 4
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "ops",
+         "thresholds": {
+          "mode": "absolute",
+          "steps": [
+           {
+            "color": "green",
+            "value": null
+           }
+          ]
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "reduceOptions": {
+         "calcs": [
+          "lastNotNull"
+         ]
+        },
+        "colorMode": "background"
+       },
+       "targets": [
+        {
+         "expr": "sum(rate(vm_rows_inserted_total[1m]))",
+         "refId": "A"
+        }
+       ],
+       "id": 9
+      },
+      {
+       "type": "timeseries",
+       "title": "Interface errors + drops (pkt/s)",
+       "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "pps",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "sum by (target,name) (rate(junos_interface_transmit_errors{name=~\"ae.+|et-.+\"}[5m]))",
+         "legendFormat": "TX err {{target}} {{name}}",
+         "refId": "A"
+        },
+        {
+         "expr": "sum by (target,name) (rate(junos_interface_receive_errors{name=~\"ae.+|et-.+\"}[5m]))",
+         "legendFormat": "RX err {{target}} {{name}}",
+         "refId": "B"
+        },
+        {
+         "expr": "sum by (target,name) (rate(junos_interface_transmit_drops{name=~\"ae.+|et-.+\"}[5m]))",
+         "legendFormat": "TX drop {{target}} {{name}}",
+         "refId": "C"
+        }
+       ],
+       "id": 10
+      },
+      {
+       "type": "timeseries",
+       "title": "BGP prefixes received (Cilium iBGP + transit)",
+       "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "none",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "junos_bgp_session_prefixes_received_count",
+         "legendFormat": "{{target}} {{ip}}",
+         "refId": "A"
+        }
+       ],
+       "id": 11
+      },
+      {
+       "type": "timeseries",
+       "title": "Switch temperatures (\u00b0C)",
+       "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "celsius",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "junos_environment_item_temp",
+         "legendFormat": "{{target}} {{item}}",
+         "refId": "A"
+        }
+       ],
+       "id": 12
+      },
+      {
+       "type": "timeseries",
+       "title": "k8s node CPU (cores)",
+       "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+       },
+       "fieldConfig": {
+        "defaults": {
+         "unit": "none",
+         "custom": {
+          "fillOpacity": 12,
+          "showPoints": "never",
+          "stacking": {
+           "mode": "none"
+          }
+         }
+        },
+        "overrides": []
+       },
+       "options": {
+        "legend": {
+         "displayMode": "table",
+         "placement": "bottom",
+         "calcs": [
+          "mean",
+          "max",
+          "lastNotNull"
+         ]
+        },
+        "tooltip": {
+         "mode": "multi",
+         "sort": "desc"
+        }
+       },
+       "targets": [
+        {
+         "expr": "sum by (instance) (rate(container_cpu_usage_seconds_total{id=\"/\"}[2m]))",
+         "legendFormat": "{{instance}}",
+         "refId": "A"
+        }
+       ],
+       "id": 13
+      }
+     ],
+     "schemaVersion": 39,
+     "version": 1
+    }

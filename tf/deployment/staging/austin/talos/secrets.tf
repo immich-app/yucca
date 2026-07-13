@@ -30,6 +30,12 @@ resource "tls_private_key" "yucca_jwt" {
   count       = local.provision_secrets ? 1 : 0
   algorithm   = "ECDSA"
   ecdsa_curve = "P256"
+
+  # NO prevent_destroy — deliberately: this resource is count-gated (flipping
+  # cni would plan a destroy) and staging clusters are rebuildable by design;
+  # the 1P YUCCA_JWT_KEYPAIR record is the survives-state-loss source of truth.
+  # Revisit when the prod app secrets stack lands — prod's key SHOULD be
+  # prevent_destroy'd.
 }
 
 # Source-of-truth record in 1Password. Survives state loss and is visible/
@@ -199,6 +205,15 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
   }
   data = {
     api-token = var.cloudflare_api_token
+  }
+
+  lifecycle {
+    # "" default keeps credential-less validate clean; never let it reach the
+    # cluster (cert-manager would silently stop renewing).
+    precondition {
+      condition     = length(var.cloudflare_api_token) > 0
+      error_message = "cloudflare_api_token is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."
+    }
   }
 }
 

@@ -18,8 +18,10 @@ spec:
   # tag (release-please linked-versions).
   url: oci://ghcr.io/immich-app/yucca/yucca-api
   filter:
-    # CI build track: 0.0.<github.run_number>, monotonically increasing.
-    semver: ">=0.0.0"
+    # CI build track: 0.0.<github.run_number>, monotonically increasing. The
+    # upper bound keeps release-please release tags (>= 0.1.0) off this track —
+    # staging must follow CI builds, not published releases.
+    semver: ">=0.0.0 <0.1.0"
   # No secretRef: the app images are public, so the provider reads tags
   # from GHCR unauthenticated.
 ---

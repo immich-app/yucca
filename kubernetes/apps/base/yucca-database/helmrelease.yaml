@@ -28,8 +28,14 @@ spec:
   values:
     instances: 3
     storage: 10Gi
-    # Node-local NVMe via OpenEBS LocalPV hostpath (no replicated block storage).
-    # CNPG provides HA at the app layer: primary + 2 streaming replicas, spread
-    # one-per-node by its default anti-affinity, each binding a local PV on its
-    # node (WaitForFirstConsumer).
-    storageClass: openebs-spare-disk
+    # Generous requests, huge memory limit (no CPU limit — CFS throttling hurts
+    # postgres tail latency more than contention does).
+    resources:
+      requests: { cpu: 500m, memory: 1Gi }
+      limits: { memory: 8Gi }
+    # Node-local NVMe (no replicated block storage). CNPG provides HA at the app
+    # layer: primary + 2 streaming replicas, spread one-per-node by its default
+    # anti-affinity, each binding a local PV on its node (WaitForFirstConsumer).
+    # Per-cluster class: staging = openebs-spare-disk (overlay SC), prod =
+    # openebs-hostpath (chart localpv class) — set in each cluster-settings.
+    storageClass: ${DB_STORAGE_CLASS}

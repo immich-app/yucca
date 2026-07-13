@@ -1,4 +1,11 @@
+# Single replica ON PURPOSE: a cron-style meter worker — two replicas would
+# double-count usage.
 replicas: 1
+
+# Generous requests, deliberately huge memory limits (never CPU-limit).
+resources:
+  requests: { cpu: 100m, memory: 512Mi }
+  limits: { memory: 4Gi }
 
 # Stable in-cluster name, independent of the Helm release name (dev == prod).
 fullnameOverride: yucca-metrics-worker

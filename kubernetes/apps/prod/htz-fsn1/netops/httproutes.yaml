@@ -1,0 +1,96 @@
+---
+# HTTP -> HTTPS for everything on the netops gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: netops-redirect-https
+  namespace: netops
+spec:
+  parentRefs:
+    - name: netops
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana
+  namespace: netops
+spec:
+  parentRefs: [{ name: netops, sectionName: https }]
+  hostnames: [grafana.father.fsn.htz.yucca.futo.network]
+  rules: [{ backendRefs: [{ name: grafana, port: 80 }] }]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: lg
+  namespace: netops
+spec:
+  parentRefs: [{ name: netops, sectionName: https }]
+  hostnames: [lg.father.fsn.htz.yucca.futo.network]
+  rules: [{ backendRefs: [{ name: hyperglass, port: 80 }] }]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: smokeping
+  namespace: netops
+spec:
+  parentRefs: [{ name: netops, sectionName: https }]
+  hostnames: [smokeping.father.fsn.htz.yucca.futo.network]
+  rules: [{ backendRefs: [{ name: smokeping, port: 80 }] }]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: oxidized
+  namespace: netops
+spec:
+  parentRefs: [{ name: netops, sectionName: https }]
+  hostnames: [oxidized.father.fsn.htz.yucca.futo.network]
+  rules: [{ backendRefs: [{ name: oxidized, port: 80 }] }]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: sflow
+  namespace: netops
+spec:
+  parentRefs: [{ name: netops, sectionName: https }]
+  hostnames: [sflow.father.fsn.htz.yucca.futo.network]
+  rules: [{ backendRefs: [{ name: sflow-rt, port: 80 }] }]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: hubble
+  namespace: netops
+spec:
+  parentRefs: [{ name: netops, sectionName: https }]
+  hostnames: [hubble.father.fsn.htz.yucca.futo.network]
+  rules:
+    - backendRefs:
+        - name: hubble-ui
+          namespace: kube-system
+          port: 80
+---
+# Allow the cross-namespace backendRef above (netops HTTPRoute -> kube-system Service).
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: netops-hubble
+  namespace: kube-system
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: netops
+  to:
+    - group: ""
+      kind: Service

@@ -1,0 +1,66 @@
+# VictoriaMetrics single — the SHORT-TERM, HIGH-GRANULARITY tier of the hybrid
+# design: 30d retention at 10s scrape resolution, in-cluster. vmagent remote-writes
+# here today and will FAN OUT to the o11y cluster later (second -remoteWrite.url in
+# vmagent.yaml) — this instance stays the fast local buffer, o11y the long-term one.
+#
+# Storage: a REPLICATED Mayastor volume (openebs-replicated, repl=2 across the
+# workers' second NVMe) — survives a node loss, attaches over NVMe-oF/TCP.
+# Image digest matches the repo's compose pin.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: victoria-metrics-data
+  namespace: netops
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: openebs-replicated
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: victoria-metrics
+  namespace: netops
+spec:
+  replicas: 1
+  strategy: { type: Recreate } # hostPath: never two writers
+  selector:
+    matchLabels: { app: victoria-metrics }
+  template:
+    metadata:
+      labels: { app: victoria-metrics }
+    spec:
+      containers:
+        - name: victoria-metrics
+          image: victoriametrics/victoria-metrics:latest@sha256:dc030542eb0cd262287c9ec32e5867f8dcccc0efd5906c10f7fc8176c53d34d7
+          args:
+            - -storageDataPath=/storage
+            - -retentionPeriod=30d
+            - -dedup.minScrapeInterval=10s
+            - -httpListenAddr=:8428
+          ports:
+            - containerPort: 8428
+          volumeMounts:
+            - { name: storage, mountPath: /storage }
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { memory: 4Gi }
+          readinessProbe:
+            httpGet: { path: /health, port: 8428 }
+            initialDelaySeconds: 5
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: victoria-metrics-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: victoria-metrics
+  namespace: netops
+spec:
+  selector: { app: victoria-metrics }
+  ports:
+    - { name: http, port: 8428, targetPort: 8428 }

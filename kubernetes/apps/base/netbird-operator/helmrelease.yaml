@@ -65,5 +65,13 @@ spec:
                         - flux-system
                         - cnpg-system
                         - openebs-system
+                        - openebs # father's openebs namespace name
                         - cert-manager
                         - netbird
+                        # Ingress data plane: envoy-gateway recreates proxy pods
+                        # dynamically (node drains included) — gating them here
+                        # is the exact outage shape documented above.
+                        - envoy-system
+                        # Monitoring agents must be schedulable while the
+                        # operator is down, or an incident blinds itself.
+                        - observability

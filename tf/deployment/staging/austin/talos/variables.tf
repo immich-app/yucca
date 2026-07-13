@@ -3,7 +3,11 @@
 variable "flux_operator_version" {
   description = "Chart version for flux-operator + flux-instance (OCI ghcr.io/controlplaneio-fluxcd/charts). Mirrors yucca-o11y."
   type        = string
-  default     = "0.50.0"
+  # 0.53.0+: 0.50.0's built-in eventSources patch targets versions[1] of the
+  # notification CRD, which current Flux 2.x collapsed to one version → the
+  # FluxInstance build fails ("doc is missing path …/eventSources/…/enum/-") and
+  # no controllers install. 0.53.0 handles the single-version CRD.
+  default = "0.53.0"
 }
 
 # Commit-status Provider auth via a GitHub App (no PAT). notification-controller
@@ -196,7 +200,7 @@ variable "clusters" {
     })
 
     nodes = list(object({
-      name    = optional(string) # explicit hostname override; null = auto-pick from the shared inventory
+      name    = optional(string) # auto-picked from the node-names inventory when omitted
       role    = optional(string, "control-plane")
       address = string
     }))

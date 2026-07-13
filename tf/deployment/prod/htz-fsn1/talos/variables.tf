@@ -1,0 +1,157 @@
+# Hybrid prod cluster topology — the single source of truth (clusters.auto.tfvars).
+# One object, not a map: this stack's bring-up is bespoke (cloud CP via hcloud
+# user_data + bare-metal workers via apid apply), so a for_each map buys nothing.
+
+variable "cluster" {
+  description = "The prod hybrid Talos cluster (Star Wars name; prod = 'father')."
+  type = object({
+    name               = string
+    talos_version      = string
+    kubernetes_version = string
+
+    # The Image Factory schematic (extension set) is managed in TF — see
+    # schematic.yaml + talos_image_factory_schematic in image.tf. The schematic id
+    # and image URLs derive from it, so they're NOT inputs here.
+    install_disk = string
+
+    cilium_version = string
+    hubble         = bool
+
+    # NetBird mesh range node IPs come from (kubelet nodeIP.validSubnets). THIS
+    # account assigns 10.254.0.0/15 (see clusters.auto.tfvars) — not the NetBird
+    # Cloud default of 100.64.0.0/10. The node plane (CP↔worker) rides this mesh.
+    netbird_node_cidr = string
+
+    # ── Cloud control plane (Hetzner Cloud) ──────────────────────────────────
+    cp_count = number # 3
+    # EXPLICIT node names (wordlist-style), one per CP, in cp_ip_offset order.
+    # Names are PINNED — never auto-shuffled — so node identity can't silently
+    # re-roll on a list edit (renaming a live node's hostname = renaming its
+    # Kubernetes node = effectively replacing it).
+    cp_names       = list(string)
+    cp_server_type = string # ccx23 (dedicated vCPU x86)
+    cp_location    = string # fsn1
+    cp_ip_offset   = number # CP[i] private (kube-cp) IP = cidrhost(kube_cp, offset+i)
+    lb_type        = string # lb11
+    lb_ip_offset   = number # API LB private IP = cidrhost(kube_cp, offset)
+    lb_public      = bool   # also expose a public frontend (operators/workers reach it)
+
+    # ── Bare-metal workers (Hetzner Robot) ────────────────────────────────────
+    # maint_ip = the Hetzner public IP the node comes up on in Talos maintenance
+    # mode (DHCP) — the endpoint for the one-time config apply. fabric_ip = the
+    # post-install kube (VLAN 10) address (nodeIP + worker east-west); the apiserver
+    # reaches the kubelet there via NetBird→mgmt, and the node reaches the apiserver
+    # over its own NetBird peer.
+    workers = list(object({
+      name = string # EXPLICIT node name (see cp_names) — keys the apply resources; renaming = node replacement
+      # Install-disk NVMe serial — NOT a device name: nvme0/nvme1 enumeration is
+      # not stable across boots (observed swapping), and a name-based install
+      # target could point an upgrade at the DATA disk.
+      install_serial = string
+      fabric_ip      = string               # 10.40.10.x on the kube fabric VLAN
+      maint_ip       = string               # Hetzner public IP (maintenance-mode apid endpoint)
+      robot_id       = number               # Hetzner Robot server number (provisioning/doc)
+      provisioned    = optional(bool, true) # false ONLY while first-provisioning: config
+      # applies then target maint_ip (maintenance mode); true = target fabric_ip (live).
+    }))
+    # Fabric bond members. Prefer worker_bond_driver (a Talos deviceSelector by NIC
+    # driver, e.g. "bnxt_en") — robust across per-node PCI naming. worker_bond_interfaces
+    # (explicit Talos names) is the fallback when a driver match is ambiguous.
+    worker_bond_driver     = optional(string)
+    worker_bond_interfaces = optional(list(string), [])
+    # Worker default route (egress for image pulls + NetBird): via the kube fabric
+    # IRB gateway (fabric transit) when true, else the Hetzner public NIC (DHCP).
+    worker_default_route_via_fabric = optional(bool, true)
+
+    # apiserver→kubelet rides the mesh peer-to-peer: the CPs get /etc/hosts entries
+    # mapping each worker hostname to its NetBird IP (data.netbird_peer lookups) and
+    # the apiserver prefers the Hostname node address. Requires the workers to BE
+    # NetBird peers — set false for a greenfield bootstrap (no peers to look up yet),
+    # flip true once the workers have joined. See cp_extras_patch in talos.tf.
+    worker_mesh_kubelet = optional(bool, true)
+  })
+
+  validation {
+    condition     = length(var.cluster.cp_names) == var.cluster.cp_count
+    error_message = "cluster.cp_names must have exactly cp_count entries (one name per CP, in cp_ip_offset order)."
+  }
+  validation {
+    condition     = length(distinct(concat(var.cluster.cp_names, var.cluster.workers[*].name))) == var.cluster.cp_count + length(var.cluster.workers)
+    error_message = "Node names must be unique across CPs and workers."
+  }
+}
+
+# NetBird setup key for the node-level siderolabs/netbird extension (CP + workers
+# both join the same site network). Injected via TF_VAR from 1P (op run); the
+# netbird stack mints it (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_..._KEY).
+variable "netbird_talos_setup_key" {
+  description = "NetBird setup key for the WORKERS (group: talos). Sensitive."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "netbird_talos_cp_setup_key" {
+  description = "NetBird setup key for the CONTROL PLANES (groups: talos + talos_cp, the kube-cp router group). Sensitive."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Extra operator/CI source CIDRs allowed on the Talos host firewall (apid 50000 +
+# apiserver 6443), on top of the node planes + NetBird range. e.g. the CI runner's
+# NetBird range. The host running `tf apply` MUST be in one of these or apid hangs.
+variable "trusted_cidrs" {
+  description = "Extra source CIDRs allowed on the Talos ingress firewall (operator/CI)."
+  type        = list(string)
+  default     = []
+}
+
+# ── Flux (flux.tf) ────────────────────────────────────────────────────────────
+variable "flux_operator_version" {
+  description = "flux-operator + flux-instance chart version. 0.53.0+: 0.50.0's built-in eventSources CRD patch breaks against current Flux 2.x (see staging)."
+  type        = string
+  default     = "0.53.0"
+}
+
+variable "flux_git_ref" {
+  description = "Git branch Flux syncs. TEMPORARY feat/prod until the branch merges; then main."
+  type        = string
+  default     = "feat/prod"
+}
+
+variable "flux_github_app_id" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "flux_github_app_installation_id" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "flux_github_app_private_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+# The talos_cluster_health data sources are BOOTSTRAP sequencing gates. Post-
+# bootstrap they re-run on every plan/apply and any transient (an apiserver cert
+# rotation, a worker mid-reboot, a runner-side mesh blip) fails the whole run —
+# they blocked several day-2 applies. Enable only for greenfield bring-up.
+variable "bootstrap_health_gate" {
+  description = "Run the cluster-health gates (greenfield bootstrap only)."
+  type        = bool
+  default     = false
+}
+
+# Cloudflare API token for cert-manager's Let's Encrypt DNS-01 solver (the
+# futo.network zone). op://shared_tf/CLOUDFLARE_API_TOKEN via tf/.env.prod.
+variable "cloudflare_api_token" {
+  type      = string
+  sensitive = true
+  default   = ""
+}

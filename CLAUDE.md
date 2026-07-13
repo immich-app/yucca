@@ -156,7 +156,7 @@ account-wide stacks. Slug = `<partition>-<region>`.
 
 - **`tf/`** — OpenTofu + Terragrunt, authoritative for cluster identity, 1P secret items, and
   rendered Ansible inventories. Layout: `deployment/<partition>/<region>/<stack>/`; shared logic
-  in `shared/modules/` (ceph-cluster, talos-cluster, talos-baremetal, identity, fabric-addressing,
+  in `shared/modules/` (ceph-cluster, talos-baremetal, identity, fabric-addressing,
   netbird-env, fabric/switch config). Every stack emits a non-sensitive **`discovery` output**
   (the contract `yuctl`/k8s/ansible consume); all secrets in it are `op://` refs. `render/` renders
   Ansible inventories.

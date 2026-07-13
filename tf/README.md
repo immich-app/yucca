@@ -39,11 +39,6 @@ tf/
 │       │       ├── inventory-destroy.ini.tftpl
 │       │       ├── inventory-provision-debian-live.ini.tftpl
 │       │       └── secrets.yml.tpl.tftpl
-│       ├── talos-cluster/            ← Talos K8s VMs on the ceph hypervisors
-│       │   ├── main.tf, variables.tf, outputs.tf
-│       │   └── modules/
-│       │       ├── inventory-renderer/  ← renders ansible/talos inventory + host_vars
-│       │       └── talos-bootstrap/     ← siderolabs/talos: config apply, bootstrap, kubeconfig
 │       └── talos-baremetal/         ← Talos on bare-metal nodes already in maintenance mode
 │           ├── main.tf, variables.tf, outputs.tf
 │           └── firewall.tf              ← Talos host ingress firewall (default-deny + allow-lists)
@@ -254,7 +249,7 @@ Per `stack_type` **payload**:
 | `ceph` | `*/ceph` | `ceph_clusters: { <name> => { cluster_name, fqdn, rgw_s3_endpoint, health_cred_ref, s3_admin_cred_refs, secret_item_titles, bootstrap_host } }` |
 | `dns` | `*/dns` | `dns: { provider, zone, record_fqdns, api_token_ref }` |
 | `netbird` | `*/netbird`, `prod/global` | `netbird: { name_prefix, vault, group_ids, policy_ids, network_ids, setup_key_item_titles }` |
-| `fabric` | `prod/htz-fsn1/fabric` | `fabric: { site_id, api_cidr, mgmt_cidr, cluster_cidrs }` |
+| `fabric` | `prod/htz-fsn1/fabric` | `fabric: { site_id, kube_cidr, mgmt_cidr, cluster_cidrs }` |
 
 The talos stacks persist their kube/talosconfig into 1Password
 (`onepassword_item`, mirroring the JWT-keypair / netbird-setup-key pattern) so
@@ -327,8 +322,8 @@ On apply, the module:
 ## The talos-baremetal module (staging/austin/talos)
 
 Brings up Talos on **bare-metal nodes already running in maintenance mode** at
-known addresses — no Ansible, no hypervisors, no VLANs (contrast the VM-oriented
-`talos-cluster` module). It dials each node's maintenance IP, applies machine
+known addresses — no Ansible, no hypervisors, no VLANs (the earlier VM-oriented
+`talos-cluster` module was removed unused). It dials each node's maintenance IP, applies machine
 config (which installs to disk + reboots), bootstraps one CP, then emits
 kube/talosconfig and gates on cluster health.
 

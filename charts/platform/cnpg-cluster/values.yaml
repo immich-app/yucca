@@ -7,3 +7,6 @@ storage: 1Gi
 storageClass: ""
 database: yucca
 owner: yucca
+# Per-instance postgres pod resources (CNPG spec.resources). Empty = BestEffort
+# (dev default); real clusters set this via the HelmRelease.
+resources: {}

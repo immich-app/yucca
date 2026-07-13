@@ -14,12 +14,23 @@ Each ceph cluster = one leaf pair; the spine is shared across clusters.
 |---|---|---|
 | site supernet | `10.<site>.0.0/16` | `10.40.0.0/16` |
 | management (vme) | `10.<site>.5.0/24` | `10.40.5.0/24` (spine `.115`, leaf `.125`) |
+| kube (VLAN) | `10.<site>.<kube_octet>.0/24` | `10.40.10.0/24` → vlan 10 |
+| kube-cp (hcloud) | `10.<site>.<kube_cp_octet>.0/24` | `10.40.11.0/24` (gw `.1`, CP VMs etcd + API LB) |
 | cluster `n` /20 | `10.<site>.<n*16>.0/20` | `10.40.16.0/20` |
 | public (VLAN) | cluster /20, /23 idx 2 | `10.40.20.0/23` → vlan 20 |
 | private (VLAN) | cluster /20, /23 idx 3 | `10.40.22.0/23` → vlan 22 |
 | leaf vme | `.125 + (n-1)*10` | `.125` |
 
 VLAN id == the network's third octet; gateway = `.1` (IRB on the leaf).
+
+> **`kube-cp` is not a fabric VLAN.** It's a small isolated **Hetzner Cloud private
+> subnet** holding only the cloud control-plane VMs (etcd CP↔CP) + the API LB's
+> private IP. CP↔worker control traffic and worker→API ride the **NetBird WireGuard
+> mesh** (node IPs are NetBird addresses), and worker↔worker east-west rides the
+> `kube` fabric net (`10.40.10.0/24`) at 50G via Cilium BGP. The API endpoint is a
+> **Hetzner Cloud LB** (no L2 VIP — hcloud private nets are anti-spoofed/routed).
+> `kube-cp` is carved from the site supernet only for collision-free IPAM and is
+> **never** configured on the Junos switches.
 
 ## Layout
 

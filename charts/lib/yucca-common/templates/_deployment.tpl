@@ -26,10 +26,34 @@ spec:
       hostAliases:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      # Restricted-PSS-compliant defaults (the yucca namespace enforces
+      # `restricted`). uid/gid 1000 matches every service Dockerfile (USER
+      # node/michael, both 1000) — set explicitly because kubelet can't verify
+      # runAsNonRoot against a NAMED image user. Override wholesale via
+      # .Values.podSecurityContext when a chart needs something else.
+      securityContext:
+        {{- if .Values.podSecurityContext }}
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- else }}
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          securityContext:
+            {{- if .Values.containerSecurityContext }}
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+            {{- else }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+            {{- end }}
           {{- with .Values.command }}
           command: {{ toYaml . | nindent 12 }}
           {{- end }}
@@ -65,10 +89,19 @@ spec:
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts: {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
-      volumes: {{- toYaml . | nindent 8 }}
-      {{- end }}
+          # /tmp is always a writable emptyDir: the root filesystem is
+          # read-only by default (securityContext above) and the Node runtimes
+          # expect a writable tmpdir.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 {{- end -}}

@@ -68,3 +68,12 @@ resource "netbox_ip_address" "gateway" {
   dns_name    = "gw-${var.site.code}-C${split("-", each.key)[0]}-${lower(each.value.role)}"
   description = "IRB gateway for ${var.site.code}-C${split("-", each.key)[0]}-${each.value.role}"
 }
+
+# ── Extra (non-VLAN) prefixes: cloud subnets, overlays, public space ─────────
+resource "netbox_prefix" "extra" {
+  for_each    = var.extra_prefixes
+  prefix      = each.value.prefix
+  status      = each.value.status
+  site_id     = local.site_id
+  description = each.value.description
+}

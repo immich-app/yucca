@@ -21,6 +21,14 @@ spec:
     remediation:
       retries: 3
   values:
+    # DEV-ONLY relaxation: Tilt live_update syncs source into /app inside the
+    # running container, and michael's `air` rebuilds in-place — both need a
+    # writable rootfs (the chart default is readOnlyRootFilesystem: true).
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop: [ALL]
     image:
       repository: ghcr.io/immich-app/yucca/yucca-metrics-worker # TODO: confirm prod registry
       tag: 0.0.1

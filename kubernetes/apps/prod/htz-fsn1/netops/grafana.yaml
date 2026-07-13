@@ -1,0 +1,96 @@
+# Grafana — the netops pane of glass, on an INTERNAL VIP only (lb-internal pool,
+# NetBird-reachable): http://grafana.father.fsn.htz.yucca.futo.network
+# Admin password: 1Password item op://yucca_tf_prod/FATHER_GRAFANA_ADMIN/password —
+# the `grafana-admin` Secret is created from it (op read), never from git.
+# Datasource + dashboards are fully provisioned (no clicking): the in-cluster
+# VictoriaMetrics is the (prometheus-compatible) default datasource.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: netops
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: VictoriaMetrics
+        type: prometheus
+        access: proxy
+        url: http://victoria-metrics.netops.svc:8428
+        isDefault: true
+        jsonData:
+          timeInterval: 10s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: netops
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: netops
+        folder: netops
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: netops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: grafana }
+  template:
+    metadata:
+      labels: { app: grafana }
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.4.0
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: grafana-admin, key: password }
+            - name: GF_SERVER_ROOT_URL
+              value: https://grafana.father.fsn.htz.yucca.futo.network
+            - name: GF_ANALYTICS_REPORTING_ENABLED
+              value: "false"
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - { name: datasources, mountPath: /etc/grafana/provisioning/datasources }
+            - { name: dashboard-provider, mountPath: /etc/grafana/provisioning/dashboards }
+            - { name: dashboards, mountPath: /var/lib/grafana/dashboards }
+            - { name: data, mountPath: /var/lib/grafana }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 10
+      volumes:
+        - name: datasources
+          configMap: { name: grafana-datasources }
+        - name: dashboard-provider
+          configMap: { name: grafana-dashboard-provider }
+        - name: dashboards
+          configMap: { name: grafana-dashboards }
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: netops
+spec:
+  selector: { app: grafana }
+  ports:
+    - { name: http, port: 80, targetPort: 3000 }

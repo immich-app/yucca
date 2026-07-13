@@ -1,0 +1,11 @@
+# Talos Image Factory schematic for the father WORKERS (bare-metal Hetzner Robot).
+# Split from schematic.yaml (the CP/VM set): qemu-guest-agent must NOT be here — on
+# metal there is no virtio port, the extension service waits forever for
+# /dev/virtio-ports/org.qemu.guest_agent.0, and the boot sequence never reaches
+# `running`, failing every talos health check (and with it every TF plan/apply).
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/netbird            # node-level overlay (worker↔apiserver)
+      - siderolabs/intel-ucode        # worker Xeon microcode
+      - siderolabs/util-linux-tools   # fstrim et al.

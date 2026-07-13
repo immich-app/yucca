@@ -1,0 +1,12 @@
+# Talos Image Factory schematic for the `father` cluster — the single source of
+# truth for the node extension set. Registered with the factory by TF
+# (talos_image_factory_schematic, image.tf); its id derives the CP (hcloud) and
+# worker (metal) image URLs. One schematic covers both platforms — the extras are
+# harmless no-ops on the other (qemu-guest-agent on metal, intel-ucode on a VM).
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/netbird            # node-level overlay (CP↔fabric route)
+      - siderolabs/qemu-guest-agent   # hcloud control-plane VMs
+      - siderolabs/intel-ucode        # worker Xeon microcode
+      - siderolabs/util-linux-tools   # fstrim et al.
