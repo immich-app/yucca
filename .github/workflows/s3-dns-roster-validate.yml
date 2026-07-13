@@ -1,26 +1,28 @@
 name: s3-dns-roster-validate
 
-# Static gate: the prod S3 RGW DNS endpoint (the A-records for
+# Static gate: the prod S3 RGW DNS roster (the A-records for
 # s3.prod.fsn1.htz.futo.cloud + the wildcard, in tf/deployment/prod/global/dns)
-# must resolve to exactly the single health-checked Ceph ingress VIP (haproxy +
-# keepalived), not a stale multi-value node roster. If a name stops resolving to
-# the expected VIP (typo, leftover round-robin values, apex/wildcard disagreeing)
-# the endpoint blackholes or splits. Without this gate the mismatch first surfaces
+# is a hand-maintained round-robin over every in-service spice ceph node's fabric
+# IP. Nothing links it to the ceph stack, so adding/replacing/removing a node can
+# silently blackhole the endpoint (a stale IP that routes nowhere) or drop capacity
+# (a live node left out of rotation). Without this gate the mismatch first surfaces
 # in production, after the DNS apply.
 #
-# tf/scripts/check-s3-dns-roster.py asserts both S3 names resolve to exactly the
-# expected VIP (EXPECTED_VIP constant = ansible ceph_rgw_ingress_vip) and fails on
-# any divergence. Credential-free and stdlib-only: no remote state, no provider,
-# no 1Password, no host connection.
+# tf/scripts/check-s3-dns-roster.py reconstructs the expected roster from the ceph
+# source of truth (clusters.auto.tfvars in-service set + spice-hosts.yaml
+# host_index -> fabric IP) and fails on any divergence. Credential-free and
+# stdlib-only: no remote state, no provider, no 1Password, no host connection.
 #
 # Its own workflow (not a job in infra.yml or ci.yml) so the path filter below is
-# workflow-scoped: it fires only when the DNS records or the check itself change,
-# mirroring ansible-ceph-validate.yml.
+# workflow-scoped: it fires only when the DNS roster or a ceph roster input
+# changes, mirroring ansible-ceph-validate.yml.
 
 on:
   pull_request:
     paths: &paths
       - 'tf/deployment/prod/global/dns/records.auto.tfvars'
+      - 'tf/deployment/prod/htz-fsn1/ceph/clusters.auto.tfvars'
+      - 'tf/deployment/prod/htz-fsn1/ceph/spice-hosts.yaml'
       - 'tf/scripts/check-s3-dns-roster.py'
       - '.github/workflows/s3-dns-roster-validate.yml'
   push:
@@ -38,7 +40,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Check S3 DNS endpoint vs ceph ingress VIP
+    name: Check S3 DNS roster vs ceph node roster
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
