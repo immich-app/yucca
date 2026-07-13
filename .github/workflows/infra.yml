@@ -397,6 +397,12 @@ jobs:
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+        with:
+          # Pin, don't resolve "latest": the version-check endpoint 1P hits to
+          # resolve "latest" intermittently returns empty JSON (all parallel
+          # plan/apply jobs fail at "Getting latest version number"). A pinned
+          # version installs directly, skipping that call.
+          version: '2.31.1'
 
       # Guardrail: prod Flux must sync `main` once we're ON main. flux_git_ref
       # defaults to a feature branch during bring-up (deliberate, documented
@@ -525,6 +531,9 @@ jobs:
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+        with:
+          # See the plan job's note: pin to skip the flaky "latest" resolution.
+          version: '2.31.1'
 
       # Pull the EXACT plan the reviewer approved, downloaded to the same absolute
       # path the plan job wrote. `terragrunt apply <planfile>` fails closed if the
