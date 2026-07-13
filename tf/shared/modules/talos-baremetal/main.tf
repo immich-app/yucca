@@ -35,9 +35,10 @@ locals {
     })
   ]
 
-  # Stable per-hostname maps (TF map iteration is alphabetical by key, so plan
-  # ordering is deterministic across runs).
-  node_map        = { for n in local.nodes_named : n.hostname => n }
+  # Keyed by address (static, known at plan) — NOT the hostname, which derives from
+  # the random_shuffle and is unknown until apply (for_each keys must be known at
+  # plan). Map iteration is alphabetical by key, so plan ordering is deterministic.
+  node_map        = { for n in local.nodes_named : n.address => n }
   cp_node_map     = { for k, n in local.node_map : k => n if n.role == "control-plane" }
   worker_node_map = { for k, n in local.node_map : k => n if n.role == "worker" }
 

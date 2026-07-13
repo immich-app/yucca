@@ -40,3 +40,6 @@ charts/
 # auto-generated
 yaak/
 CHANGELOG.md
+
+# Markdown is not prettier-formatted (docs follow their own conventions).
+*.md

@@ -36,6 +36,10 @@ resource "junos_interface_physical" "server_lag" {
   }
   trunk        = true
   vlan_members = local.trunk_members
+
+  # jeremmfr commits per-resource: a trunk member is rejected if the VLAN isn't
+  # on the box yet, so create the VLANs first.
+  depends_on = [junos_vlan.this]
 }
 
 # Spine uplink bond (jumbo, storm-controlled).
@@ -50,6 +54,8 @@ resource "junos_interface_physical" "ae0" {
   trunk         = true
   vlan_members  = local.trunk_members
   storm_control = "default"
+
+  depends_on = [junos_vlan.this]
 }
 
 # IRB gateways for the cluster networks (inter-VLAN filter applied inbound).
