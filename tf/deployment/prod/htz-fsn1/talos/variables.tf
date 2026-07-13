@@ -115,9 +115,9 @@ variable "flux_operator_version" {
 }
 
 variable "flux_git_ref" {
-  description = "Git branch Flux syncs. TEMPORARY feat/prod until the branch merges; then main."
+  description = "Git branch Flux syncs."
   type        = string
-  default     = "feat/prod"
+  default     = "main"
 }
 
 variable "flux_github_app_id" {
