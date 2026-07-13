@@ -389,6 +389,24 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
+      # Guardrail: prod Flux must sync `main` once we're ON main. flux_git_ref
+      # defaults to a feature branch during bring-up (deliberate, documented
+      # TEMPORARY); merging that branch without flipping the default would leave
+      # production reconciling a stale/deleted ref forever. Runs on every plan of
+      # the prod talos stack so the failure shows up in the PR's merge queue too.
+      - name: Guard prod flux_git_ref
+        if: matrix.stack == 'talos' && matrix.partition == 'prod' && github.ref == 'refs/heads/main'
+        env:
+          STACK_DIR: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          vars="tf/deployment/$STACK_DIR/variables.tf"
+          # The default lives in the flux_git_ref variable block.
+          if ! awk '/variable "flux_git_ref"/,/^}/' "$vars" | grep -q 'default[[:space:]]*=[[:space:]]*"main"'; then
+            echo "::error file=$vars::flux_git_ref default is not \"main\" on the main branch — prod Flux would track a dead ref. Flip the default." >&2
+            exit 1
+          fi
+
       # talos + fabric read data sources over the overlay on PLAN (talos_cluster_health;
       # the switch vme), so they must join NetBird. The cloud-API stacks (ceph/dns/
       # netbird) need no overlay. The setup key already exists in 1P (bootstrapped).

@@ -1,0 +1,52 @@
+# Envoy Gateway on father — CHERRY-PICKED from components/infra/network (same
+# caveat as cert-manager.yaml: REMOVE this file when components/infra is enabled,
+# or the Kustomization names collide). Deploys the operator + the APP gateway
+# (pre-staged for the yucca launch: VIP ${INGRESS_INTERNAL_IP}, cert for
+# ${APP_DOMAIN}); the NETOPS gateway lives in netops/gateway.yaml.
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: envoy-gateway
+  namespace: flux-system
+spec:
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: envoy-gateway
+      namespace: envoy-system
+  interval: 1h
+  retryInterval: 2m
+  timeout: 10m
+  path: ./kubernetes/apps/base/envoy-gateway
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: envoy-system
+
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: envoy-proxy
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: envoy-gateway
+    - name: cert-manager-issuer
+  interval: 1h
+  retryInterval: 2m
+  timeout: 10m
+  path: ./kubernetes/apps/base/envoy-proxy
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: envoy-system

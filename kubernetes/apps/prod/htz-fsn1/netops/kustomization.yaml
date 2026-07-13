@@ -1,0 +1,21 @@
+---
+# The father netops stack. Secrets (netops-ssh, grafana-admin, hyperglass-devices)
+# are NOT in git — they are created from 1Password (yucca_tf_prod: NETOPS_FABRIC_*,
+# FATHER_GRAFANA_ADMIN) at bring-up; Flux only manages the workloads around them.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./namespace.yaml
+  - ./networkpolicies.yaml
+  - ./junos-exporter.yaml
+  - ./victoria-metrics.yaml
+  - ./vmagent.yaml
+  - ./grafana.yaml
+  - ./grafana-dashboards.yaml
+  - ./sflow-rt.yaml
+  - ./smokeping.yaml
+  - ./oxidized.yaml
+  - ./hyperglass.yaml
+  - ./certificate.yaml
+  - ./gateway.yaml
+  - ./httproutes.yaml

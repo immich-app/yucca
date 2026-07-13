@@ -20,7 +20,10 @@ spec:
           topologySpreadConstraints:
             - maxSkew: 1
               topologyKey: kubernetes.io/hostname
-              whenUnsatisfiable: ScheduleAnyway
+              # DoNotSchedule: with ScheduleAnyway both replicas could co-locate
+              # and one node reboot takes all ingress down. Both real clusters
+              # have 3+ schedulable nodes, so this is always satisfiable.
+              whenUnsatisfiable: DoNotSchedule
               labelSelector:
                 matchLabels:
                   app.kubernetes.io/name: envoy
@@ -31,6 +34,10 @@ spec:
           type: StrategicMerge
           value:
             metadata:
+              labels:
+                # Pools with a serviceSelector (e.g. father's lb-internal) require
+                # this; ignored where the pool matches by IP annotation (staging).
+                lb: internal
               annotations:
                 # Cilium LB-IPAM assigns this specific VIP to the Service.
                 lbipam.cilium.io/ips: "${INGRESS_INTERNAL_IP}"

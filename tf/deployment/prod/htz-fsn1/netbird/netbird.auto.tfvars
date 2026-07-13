@@ -9,19 +9,31 @@
 # yucca-reachable here, not strictly a network-resource tag.) `resources` is the
 # routed-subnet tag the site Network resources (netbird.tf) are tagged into;
 # it replaced the retired shared "yucca_resource" tag.
+# NB: no k8s_operator group/key here — the in-cluster netbird operator isn't
+# deployed on father, and the half-wired group+setup-key invited use before the
+# service user/token existed. Mirror the staging pattern (staging/global/netbird
+# mints the service user; the talos stack lands netbird-mgmt-api-key) when the
+# operator actually deploys.
 groups = {
-  ci           = { resource = true } # ephemeral CI runners → yucca-prod-htz-fsn1-ci
-  mgmt         = { resource = true } # management nodes (ansible); also the route peers
-  talos        = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
-  k8s_operator = { resource = true } # in-cluster kubernetes operator
-  resources    = { resource = true } # routed-subnet tag → yucca-prod-htz-fsn1-resources (Network resources tag in)
+  ci        = { resource = true } # ephemeral CI runners → yucca-prod-htz-fsn1-ci
+  mgmt      = { resource = true } # management nodes (ansible); also the route peers
+  talos     = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
+  resources = { resource = true } # routed-subnet tag → yucca-prod-htz-fsn1-resources (Network resources tag in)
+  # CP-only subset of `talos` — the ROUTER peer group for the kube-cp network. Only
+  # the cloud CPs sit on the kube-cp hcloud subnet, so only they can route it; if the
+  # router were the whole `talos` group the bare-metal WORKERS (also `talos`) would be
+  # treated as routers and never install the client route to kube-cp. resource = false:
+  # it's a routing peer group, not a yucca-reachable tag (the CPs are already reachable
+  # via `talos`). CPs join via the talos_cp setup key below (auto_groups tags them
+  # into both talos + talos_cp).
+  talos_cp = { resource = false }
 }
 
 setup_keys = {
-  ci           = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
-  mgmt         = { type = "reusable", auto_groups = ["mgmt"] }
-  talos        = { type = "reusable", auto_groups = ["talos"] }
-  k8s_operator = { type = "reusable", auto_groups = ["k8s_operator"] }
+  ci       = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
+  mgmt     = { type = "reusable", auto_groups = ["mgmt"] }
+  talos    = { type = "reusable", auto_groups = ["talos"] }             # WORKERS
+  talos_cp = { type = "reusable", auto_groups = ["talos", "talos_cp"] } # CONTROL PLANES (also the kube-cp router group)
 }
 
 policies = {
@@ -32,11 +44,11 @@ policies = {
       name         = "ci-to-all"
       protocol     = "all"
       sources      = ["ci"]
-      destinations = ["mgmt", "talos", "k8s_operator"]
+      destinations = ["mgmt", "talos"]
     }]
   }
 
-  # CI also reaches the routed site subnets (switch vme 10.40.5.0/24 + api +
+  # CI also reaches the routed site subnets (switch vme 10.40.5.0/24 + kube +
   # cluster nets), so the fabric jobs can NETCONF the switches over the overlay
   # (the switches are routed resources behind the mgmt peers, not peers
   # themselves). `resources` is this site's resource group — every routed
@@ -48,6 +60,33 @@ policies = {
       protocol      = "all"
       bidirectional = false
       sources       = ["ci"]
+      destinations  = ["resources"]
+    }]
+  }
+
+  # Cluster nodes talk to each other over the mesh (CP↔CP control; any node-level
+  # peer-to-peer). NetBird is default-deny, so without this talos peers can't reach
+  # one another even though they share the group.
+  talos-mesh = {
+    description = "Talos cluster nodes ↔ each other over the NetBird mesh."
+    rules = [{
+      name         = "talos-mesh"
+      protocol     = "all"
+      sources      = ["talos"]
+      destinations = ["talos"]
+    }]
+  }
+
+  # Talos nodes reach the routed site subnets (esp. the kube fabric net 10.40.10/24)
+  # via the mgmt route peers — this is how the cloud CPs' apiserver reaches the
+  # bare-metal worker kubelets.
+  talos-to-resources = {
+    description = "Talos nodes → routed site subnets (kube fabric etc.)."
+    rules = [{
+      name          = "talos-to-resources"
+      protocol      = "all"
+      bidirectional = false
+      sources       = ["talos"]
       destinations  = ["resources"]
     }]
   }

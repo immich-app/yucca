@@ -48,6 +48,24 @@ done
 # Kustomization; kept validated too).
 kb kubernetes/apps/dev/local/repos >/dev/null && echo "    OK  kubernetes/apps/dev/local/repos"
 
+echo "==> prod guardrails (no dev IdP behind the primary app set)"
+# The prod cluster-settings carry a placeholder dev OIDC issuer until the real
+# IdP exists; this gate makes it mechanically impossible to enable the yucca
+# workload set (components/roles/primary) against it. Staging legitimately uses
+# the dev issuer, so only prod overlays are checked.
+for kz in kubernetes/apps/prod/*/kustomization.yaml; do
+  region_dir=$(basename "$(dirname "$kz")")
+  settings="kubernetes/clusters/prod/$region_dir/cluster-settings.yaml"
+  # primary role enabled = an UNcommented components entry referencing roles/primary
+  if grep -Eq '^[[:space:]]*-[[:space:]].*components/roles/primary' "$kz"; then
+    if grep -Eq '^[[:space:]]*OIDC_ISSUER:.*(external-dev-|mock-oidc)' "$settings"; then
+      echo "FAIL: prod/$region_dir enables roles/primary but $settings still points at a dev OIDC issuer" >&2
+      exit 1
+    fi
+  fi
+done
+echo "    OK  prod OIDC guard"
+
 echo "==> flux-local build (full tree, helm rendering as Flux would)"
 # Via uvx so uv supplies a Python matching flux-local's requires-python
 # (>=3.13) regardless of the host. One retry: flux-local fans out `flux build

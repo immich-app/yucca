@@ -75,3 +75,13 @@ variable "role_colors" {
     server = "00bcd4"
   }
 }
+
+variable "extra_prefixes" {
+  description = "Non-VLAN prefixes to register (cloud subnets, overlay/pod/service CIDRs, public space). Key = short name."
+  type = map(object({
+    prefix      = string
+    description = string
+    status      = optional(string, "active") # or "container"
+  }))
+  default = {}
+}

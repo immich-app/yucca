@@ -1,0 +1,90 @@
+# Cilium for the hybrid prod cluster. Talos sets cni:none + proxy:disabled, so
+# nodes stay NotReady until this lands the datapath.
+#
+# TUNNEL (geneve) routing — see the routingMode block below for the full why:
+# the cluster spans two L2 domains (CPs on kube-cp hcloud, workers on the fabric
+# VLAN) bridged only by NetBird, which native routing/autoDirectNodeRoutes can't
+# span. Worker↔worker east-west still rides the 50G fabric, just encapsulated.
+#
+# securityContext + cgroup blocks are MANDATORY on Talos. Ref: Talos "Deploying Cilium".
+
+ipam:
+  mode: kubernetes
+
+# Tunnel (geneve) routing. The cluster spans two L2 domains — CPs on the kube-cp
+# hcloud net, workers on the fabric VLAN — bridged only by NetBird. Native routing
+# can't span that; a geneve overlay carries pod↔pod over whatever host-to-host path
+# exists (the 50G fabric for worker↔worker, NetBird for CP↔worker). East-west still
+# rides the fabric, just encapsulated (~50B overhead, negligible at 50G).
+routingMode: tunnel
+tunnelProtocol: geneve
+
+# Masquerade pod traffic to non-pod destinations (internet, node IPs); pod↔pod is
+# tunnelled so it isn't masqueraded. ip-masq-agent excludes only the pod CIDR, so the
+# geneve underlay + node-IP traffic egressing wt0 is SNAT'd to the node's NetBird
+# address (which WireGuard accepts). Requires BPF masquerade on.
+enableIPv4Masquerade: true
+bpf:
+  masquerade: true
+ipMasqAgent:
+  enabled: true
+  config:
+    nonMasqueradeCIDRs:
+      - ${pod_cidr}
+    masqLinkLocal: false
+
+# LoadBalancer VIPs are advertised into the fabric via BGP (below), not L2 — keep L2
+# announcements off so Cilium doesn't ARP for VIPs it shouldn't.
+l2announcements:
+  enabled: false
+
+# NORTH-SOUTH — the worker BGP speakers peer the spine's VLAN-10 IRB (10.40.10.1, iBGP
+# AS 402421) and advertise LoadBalancer /32s from the public pools; the core reaches
+# each VIP via its /32 and they're covered by the transit 69.48.224.0/24 advertisement.
+# The CiliumBGPClusterConfig / PeerConfig / Advertisement + LoadBalancerIPPools are
+# applied as CRs (bgp/*.yaml), not templated here. Peering is on the fabric — worker-only.
+bgpControlPlane:
+  enabled: true
+
+# kube-proxy replacement → Talos KubePrism (localhost:7445), stable apiserver
+# endpoint with no kube-proxy.
+kubeProxyReplacement: ${kube_proxy_replacement}
+%{ if kube_proxy_replacement ~}
+k8sServiceHost: localhost
+k8sServicePort: 7445
+%{ endif ~}
+
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+%{ if hubble ~}
+hubble:
+  relay:
+    enabled: true
+  ui:
+    enabled: true # exposed NetBird-only via the hubble-ui-internal LB Service (flux tree)
+%{ else ~}
+hubble:
+  enabled: false
+%{ endif ~}

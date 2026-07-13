@@ -19,8 +19,7 @@ Provisioning split across the monorepo:
 | Subtree | Owns |
 |---|---|
 | `ansible/talos/` (this) | Hypervisor substrate: bridges, libvirt, image, VM definitions. Stops at "VMs ready"; Terraform owns bootstrap (the subtree README explains why the boundary sits here). |
-| `tf/shared/modules/talos-cluster/modules/inventory-renderer/` | Renders the Ansible inventory + (future) `secrets.yml.tpl` from `tf/deployment/staging/austin/talos/clusters.auto.tfvars`. Parity with the ceph-cluster module. |
-| `tf/shared/modules/talos-cluster/modules/talos-bootstrap/` | `siderolabs/talos` provider — machine_secrets, configuration_apply per node, bootstrap, kubeconfig. Drives the talosctl sequence so operators don't run it by hand. |
+| `tf/shared/modules/talos-baremetal/` | `siderolabs/talos` provider — machine_secrets, configuration_apply per node, bootstrap, kubeconfig. Drives the talosctl sequence so operators don't run it by hand. (The VM-oriented talos-cluster module + inventory-renderer this table used to point at were removed unused.) |
 
 ## Physical layout
 

@@ -24,10 +24,14 @@ output "discovery" {
       domain        = var.domain
     }
     dns = {
-      provider      = "cloudflare"
-      zone          = "futo.cloud"
-      record_fqdns  = keys(var.records)
-      api_token_ref = "op://yucca_tf_${var.partition}/CLOUDFLARE_API_TOKEN/password"
+      provider     = "cloudflare"
+      zone         = "futo.cloud"
+      record_fqdns = keys(var.records)
+      # The dev partition shares staging's Cloudflare token (no yucca_tf_dev
+      # item exists) — tf/.env wires CLOUDFLARE_API_TOKEN from the staging
+      # vault for both partitions, so the ref must match reality, not
+      # var.partition.
+      api_token_ref = "op://yucca_tf_staging/CLOUDFLARE_API_TOKEN/password"
     }
   }
 }

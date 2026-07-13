@@ -1,0 +1,102 @@
+# hyperglass — looking glass for the fabric (BGP route lookups, ping, traceroute
+# from the switches' vantage point). Internal VIP:
+# http://lg.father.fsn.htz.yucca.futo.network
+#
+# devices.yaml is NOT here: it embeds the netops password (netmiko can't key-auth
+# through hyperglass config), so it's a Secret rendered at deploy time from
+# op://yucca_tf_prod/NETOPS_FABRIC_PASSWORD (see the deploy script / runbook):
+#   kubectl -n netops create secret generic hyperglass-devices --from-file=devices.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hyperglass-config
+  namespace: netops
+data:
+  config.yaml: |
+    org_name: yucca netops
+    site_title: father looking glass
+    plugins: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyperglass
+  namespace: netops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: hyperglass }
+  template:
+    metadata:
+      labels: { app: hyperglass }
+    spec:
+      containers:
+        - name: hyperglass
+          image: ghcr.io/thatmattlove/hyperglass:latest@sha256:7e7515bf6e27d0980f82516b62b4d0fcebdddb81140e17ee1be2f29f8cc929ab
+          # Without --workers it forks one per CPU — 192 on the EPYC workers — and
+          # instantly OOMs. The startup UI build also needs headroom (2Gi limit).
+          command: ["hyperglass", "start", "--workers", "4"]
+          env:
+            - { name: HYPERGLASS_APP_PATH, value: /etc/hyperglass }
+            - { name: HYPERGLASS_HOST, value: 0.0.0.0 }
+            - { name: HYPERGLASS_PORT, value: "8001" }
+          ports:
+            - containerPort: 8001
+          volumeMounts:
+            - { name: config, mountPath: /etc/hyperglass/config.yaml, subPath: config.yaml }
+            - { name: devices, mountPath: /etc/hyperglass/devices.yaml, subPath: devices.yaml }
+          resources:
+            requests: { cpu: 200m, memory: 1Gi }
+            # The one-shot startup UI build (Next.js) keys its worker count off the
+            # node's 192 hardware threads and peaks absurdly high; the limit is
+            # build headroom only — steady-state is <1Gi on a 128GB idle worker.
+            limits: { memory: 16Gi }
+      volumes:
+        - name: config
+          configMap: { name: hyperglass-config }
+        - name: devices
+          secret: { secretName: hyperglass-devices }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyperglass
+  namespace: netops
+spec:
+  selector: { app: hyperglass }
+  ports:
+    - { name: http, port: 80, targetPort: 8001 }
+---
+# hyperglass's cache/queue backend (it dials `redis:6379` by default).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: netops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["--save", "", "--appendonly", "no"] # pure cache, no persistence
+          ports:
+            - containerPort: 6379
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: netops
+spec:
+  selector: { app: redis }
+  ports:
+    - { name: redis, port: 6379, targetPort: 6379 }

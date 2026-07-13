@@ -18,7 +18,9 @@ spine_vc_serials = ["WH3622440738", "WH0220510012"]
 # ansible/mgmt reads the private half from there. Nothing to set here.
 
 # Hosts to ARM for a fresh OS install on next boot (DESTRUCTIVE on reboot).
-# Reprovisioning both mgmt nodes. NOTE: mgmt-1 is the tailscale subnet router —
-# reboot mgmt-2 first and confirm it's a working route peer before rebooting
-# mgmt-1, or site routing drops. Set back to [] once reprovisioning is complete.
-mgmt_reprovision_targets = ["htz-fsn-mgmt-1", "htz-fsn-mgmt-2"]
+# NOTE when arming: mgmt-1 is the tailscale subnet router — reboot mgmt-2 first
+# and confirm it's a working route peer before rebooting mgmt-1, or site routing
+# drops. Arm ONE host at a time and set back to [] once reprovisioning is
+# complete (CI re-applies this file on every merge — a stale entry keeps the
+# host armed and any crash/maintenance reboot wipes it).
+mgmt_reprovision_targets = []

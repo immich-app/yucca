@@ -1,0 +1,71 @@
+---
+# Ingress-only network policies for netops. The stack is deliberately
+# self-contained (its own gateway/envoy pods, vmagent, VictoriaMetrics all live
+# HERE), so one intra-namespace allow covers every internal flow; the only
+# cross-boundary ingress is the gateway VIP (10.40.12.16) and the spine's raw
+# sFlow stream (10.40.12.14). These pods mount fabric credentials (netops-ssh,
+# hyperglass password) — nothing else in the cluster gets to talk to them.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: netops
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: netops
+spec:
+  # gateway→backends (grafana/sflow-rt/smokeping/oxidized/hyperglass/redis),
+  # vmagent scrapes, grafana→victoria-metrics — all stay inside netops.
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-gateway
+  namespace: netops
+spec:
+  # The front door: NetBird peers hit the internal VIP, which DNATs to the
+  # envoy pods' data-plane container ports (envoy-gateway maps listener 443 to
+  # a 10xxx containerPort, so no port pin here). 0.0.0.0/0 is safe: the VIP is
+  # in the lb-internal pool — excluded from the transit advertisement and
+  # reachable only over the NetBird mgmt route.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: envoy
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-sflow-collector
+  namespace: netops
+spec:
+  # The spine streams sFlow datagrams at 10.40.12.14 (see sflow-rt.yaml). Kept
+  # DELIBERATELY wide: with externalTrafficPolicy Cluster the stream can arrive
+  # SNAT'd to a node IP, and this feed has already been lost silently once
+  # (2026-07-06) — a clever source filter risks repeating that for zero gain
+  # (the VIP itself is internal-only).
+  podSelector:
+    matchLabels:
+      app: sflow-rt
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - { port: 6343, protocol: UDP }

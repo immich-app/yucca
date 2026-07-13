@@ -26,7 +26,7 @@ output "discovery" {
     }
     fabric = {
       site_id   = var.site_id
-      api_cidr  = module.addr_site.api_cidr
+      kube_cidr = module.addr_site.kube_cidr
       mgmt_cidr = module.addr_site.mgmt_cidr
       cluster_cidrs = {
         cls1 = {

@@ -17,10 +17,57 @@ module "core" {
   public_vlan_id    = module.addr_cls1.public_vlan_id
   private_vlan_id   = module.addr_cls1.private_vlan_id
   host_mgmt_vlan_id = module.addr_cls1.host_mgmt_vlan_id
-  api_vlan_id       = module.addr_site.api_vlan_id
+  kube_vlan_id      = module.addr_site.kube_vlan_id
   mgmt_vlan_id      = module.addr_site.mgmt_vlan_id
 
   vc_member_serials = var.spine_vc_serials
+
+  # father's bare-metal kube workers hang off the core (channelized 25G breakouts of
+  # port 2, one leg per VC member). Each ae bundles the two ports cabled to one node
+  # (pairs derived from LLDP — consecutive MACs on the node's dual-port Broadcom NIC):
+  #   ae1 = ...46:a1:3a/3b   ae2 = ...47:05:c4/c5   ae3 = ...4e:86:c5/c6
+  node_lags = {
+    ae1 = ["et-0/0/2:2", "et-1/0/2:3"]
+    ae2 = ["et-0/0/2:3", "et-1/0/2:2"]
+    ae3 = ["et-0/0/2:1", "et-1/0/2:1"]
+  }
+
+  # Cilium node iBGP for LoadBalancer VIPs — the spine gets its first IRB (the kube net's
+  # .1 gateway) and dynamic-peers the workers from the kube subnet, accepting the LB /32s
+  # they advertise (covered by the transit aggregate, so reachable north-south). The
+  # concrete LB pool ranges live only in the Cilium LoadBalancerIPPools.
+  node_bgp = {
+    peer_range = module.addr_site.kube_cidr
+    # Internal (NetBird-only) LB VIPs — accepted from the nodes but NOT in the
+    # transit-advertised space, so they are reachable on-net only.
+    accept_prefixes = [module.addr_site.lb_internal_cidr]
+  }
+
+  # sFlow → the in-cluster sflow-rt collector (netops, VIP .14 in lb_internal —
+  # reachable on the spine via the Cilium iBGP /32). Counter samples every 5s =
+  # the seconds-granularity bandwidth feed; every up physical port is listed
+  # (sFlow attaches to members, not ae bundles): worker bonds (et-*/0/2:*), mgmt
+  # hosts (et-*/0/3:0), transit (et-0/0/27), leaf uplink ae0 (et-*/0/30,31).
+  sflow = {
+    collector = cidrhost(module.addr_site.lb_internal_cidr, 14)
+    agent_id  = "69.48.224.254"
+    interfaces = [
+      "et-0/0/2:1", "et-0/0/2:2", "et-0/0/2:3",
+      "et-1/0/2:1", "et-1/0/2:2", "et-1/0/2:3",
+      "et-0/0/3:0", "et-1/0/3:0",
+      "et-0/0/27",
+      "et-0/0/30", "et-0/0/31", "et-1/0/30", "et-1/0/31",
+    ]
+  }
+
+  # Worker internet egress via the fabric (40G transit vs 1 GbE eth0): each worker SNATs
+  # to a public /32 and default-routes via the core; these are the return routes. The
+  # node SNAT + default route live in kubernetes/.../node-egress (must match these IPs).
+  node_egress = {
+    "10.40.10.11" = "69.48.224.241"
+    "10.40.10.12" = "69.48.224.242"
+    "10.40.10.13" = "69.48.224.243"
+  }
 
   # Upstream IP-transit. Today: one transit (Core-Backbone), primary/default
   # (prepend 0). Add a second entry with prepend>0 + a lower local_pref to
@@ -54,7 +101,7 @@ module "cluster_cls1" {
   public_vlan_id    = module.addr_cls1.public_vlan_id
   private_vlan_id   = module.addr_cls1.private_vlan_id
   host_mgmt_vlan_id = module.addr_cls1.host_mgmt_vlan_id
-  api_vlan_id       = module.addr_site.api_vlan_id
+  kube_vlan_id      = module.addr_site.kube_vlan_id
   mgmt_vlan_id      = module.addr_site.mgmt_vlan_id
   prefixlen         = module.addr_cls1.prefixlen
 
@@ -65,14 +112,32 @@ module "cluster_cls1" {
 # so a single resource owns the whole `system` container per switch.
 locals {
   fabric_name_servers = ["1.1.1.1", "9.9.9.9", "2606:4700:4700::1111", "2620:fe::fe"]
+
+  # Read-only service login for the netops stack (junos_exporter metrics, hyperglass
+  # looking glass, oxidized config backup — kubernetes/apps/prod/htz-fsn1/netops/).
+  # `network` grants ping/traceroute (the looking glass); no configure rights. The
+  # private key lives ONLY in the cluster (Secret) + 1Password, never in git.
+  netops_classes = {
+    netops-ro = { permissions = ["view", "view-configuration", "network"] }
+  }
+  netops_users = {
+    netops = {
+      class            = "netops-ro"
+      uid              = 3000
+      full_name        = "netops read-only (exporter/LG/backup)"
+      ssh_ed25519_keys = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJSaBWwn5kKONxc0bc1w39xYBeBFAuqRWzMQTBM0xCmb netops@father"]
+      # For password-only tools (hyperglass/netmiko). Hash injected from 1P.
+      encrypted_password = var.netops_password_hash != "" ? var.netops_password_hash : null
+    }
+  }
 }
 
 module "login_spine" {
   source    = "../../../../shared/modules/fabric-login"
   providers = { junos = junos.spine }
 
-  users        = module.identity.fabric_login.users
-  classes      = module.identity.fabric_login.classes
+  users        = merge(module.identity.fabric_login.users, local.netops_users)
+  classes      = merge(module.identity.fabric_login.classes, local.netops_classes)
   name_servers = local.fabric_name_servers
 }
 
@@ -80,7 +145,7 @@ module "login_leaf_cls1" {
   source    = "../../../../shared/modules/fabric-login"
   providers = { junos = junos.leaf_cls1 }
 
-  users        = module.identity.fabric_login.users
-  classes      = module.identity.fabric_login.classes
+  users        = merge(module.identity.fabric_login.users, local.netops_users)
+  classes      = merge(module.identity.fabric_login.classes, local.netops_classes)
   name_servers = local.fabric_name_servers
 }

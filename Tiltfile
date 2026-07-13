@@ -258,11 +258,13 @@ local_resource(
 APP_WIRING = {
     # name (== HelmRelease metadata.name)  build image ref   resource_deps
     # dev_env: receives the .env override Secret (see load_dev_env above).
-    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael'], 'dev_env': True},
+    # dev_keypair: render the well-known dev JWT fixture into the chart Secret
+    # (the chart default is useDevKeypair=false so real overlays fail loudly).
+    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael'], 'dev_env': True, 'dev_keypair': True},
     'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc']},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user'], 'dev_env': True},
     'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
-    'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user']},
+    'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user'], 'dev_keypair': True},
     'yucca-mock-oidc':        {'build': 'mock-oidc-provider', 'deps': []},
     'yucca-database':         {'build': None,                 'deps': ['cloudnative-pg']},
     # The CephObjectStoreUser creates no pods (just a Secret once Rook mints the
@@ -373,6 +375,19 @@ for app in LOCAL_APPS:
     builds = [wiring['build']] if wiring['build'] else []
     flags = ['--timeout=10m']
     extra_deps = []
+    # Dev deviations from the hardened chart defaults (which target the real
+    # clusters' restricted-PSS namespaces): the `dev` image stages run as ROOT
+    # with a root-owned /app (no USER directive — prod stages drop privileges),
+    # live_update syncs source into /app, and the dev watchers/air build into
+    # /app at boot — so dev pods keep the image's user and a WRITABLE rootfs.
+    # One replica is enough (live_update would sync N pods, and the
+    # port-forwards hit one anyway).
+    if wiring['build']:
+        flags += ['--set-json', 'podSecurityContext={"seccompProfile":{"type":"RuntimeDefault"}}']
+        flags += ['--set-json', 'containerSecurityContext={"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false,"capabilities":{"drop":["ALL"]}}']
+        flags += ['--set', 'replicas=1']
+    if wiring.get('dev_keypair'):
+        flags += ['--set', 'useDevKeypair=true']
     if wiring.get('dev_values'):
         for key in sorted(app.values.keys()):
             flags += ['--set-json', '%s=%s' % (key, str(encode_json(app.values[key])).rstrip('\n'))]

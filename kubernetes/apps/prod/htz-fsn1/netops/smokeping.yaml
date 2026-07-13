@@ -1,0 +1,129 @@
+# smokeping — latency/loss history for the paths that matter: the fabric switches,
+# the spine gateway, the workers, the mgmt hosts, the transit next-hop, and the
+# internet. Internal VIP: http://smokeping.father.fsn.htz.yucca.futo.network
+# (linuxserver image seeds /config from /defaults on first boot — our Targets is
+# mounted over /defaults so a fresh /config always picks it up.)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smokeping-targets
+  namespace: netops
+data:
+  Targets: |
+    *** Targets ***
+    probe = FPing
+    menu = Top
+    title = father / htz-fsn1 network latency
+
+    + fabric
+    menu = Fabric
+    title = Switch fabric
+
+    ++ corenetsw
+    menu = corenetsw (spine)
+    title = htz-fsn1-corenetsw vme
+    host = 10.40.5.115
+
+    ++ cls1netsw
+    menu = cls1netsw (leaf)
+    title = htz-fsn1-cls1netsw vme
+    host = 10.40.5.125
+
+    ++ spineirb
+    menu = spine irb.10
+    title = kube VLAN gateway (spine IRB)
+    host = 10.40.10.1
+
+    + workers
+    menu = Workers
+    title = father bare-metal workers (fabric IPs)
+
+    ++ jeanne
+    menu = jeanne
+    host = 10.40.10.11
+
+    ++ sheron
+    menu = sheron
+    host = 10.40.10.12
+
+    ++ dianna
+    menu = dianna
+    host = 10.40.10.13
+
+    + mgmt
+    menu = Mgmt hosts
+    title = management hosts
+
+    ++ mgmt1
+    menu = mgmt-1
+    host = 10.40.10.2
+
+    ++ mgmt2
+    menu = mgmt-2
+    host = 10.40.10.3
+
+    + upstream
+    menu = Upstream
+    title = transit + internet
+
+    ++ transit
+    menu = Core-Backbone peer
+    host = 5.56.17.224
+
+    ++ cloudflare
+    menu = 1.1.1.1
+    host = 1.1.1.1
+
+    ++ quad9
+    menu = 9.9.9.9
+    host = 9.9.9.9
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smokeping
+  namespace: netops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: smokeping }
+  template:
+    metadata:
+      labels: { app: smokeping }
+    spec:
+      containers:
+        - name: smokeping
+          image: linuxserver/smokeping:latest@sha256:32026e7bdb59f88b788082704d3031863240c0577704935f5cccefd2e1c2eae3
+          env:
+            - { name: PUID, value: "1000" }
+            - { name: PGID, value: "1000" }
+            - { name: TZ, value: Europe/Berlin }
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            # Mounted straight over /config/Targets: the linuxserver image only
+            # seeds /config on first boot and never re-reads /defaults, so a
+            # /defaults mount silently serves the stock targets forever.
+            - { name: targets, mountPath: /config/Targets, subPath: Targets }
+            - { name: config, mountPath: /config }
+            - { name: data, mountPath: /data }
+          resources:
+            requests: { cpu: 20m, memory: 96Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - name: targets
+          configMap: { name: smokeping-targets }
+        - name: config
+          emptyDir: {}
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smokeping
+  namespace: netops
+spec:
+  selector: { app: smokeping }
+  ports:
+    - { name: http, port: 80, targetPort: 80 }

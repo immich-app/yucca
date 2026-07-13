@@ -127,3 +127,10 @@ variable "mgmt_reprovision_targets" {
     planned reprovision; set to the host(s) being reprovisioned, apply, then reboot.
   EOT
 }
+
+variable "netops_password_hash" {
+  description = "sha512-crypt hash for the netops fabric login (op://yucca_tf_prod/NETOPS_FABRIC_PASSWORD/hash). Sensitive."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

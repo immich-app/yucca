@@ -4,4 +4,5 @@ kind: Kustomization
 resources:
   - ./cluster-settings.generated.yaml
   - ./cluster-settings.yaml
+  - ./image-versions.yaml
   - ./apps.yaml

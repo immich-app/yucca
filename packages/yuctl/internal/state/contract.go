@@ -84,7 +84,7 @@ type Netbird struct {
 // Fabric is the fabric stack payload.
 type Fabric struct {
 	SiteID       string   `json:"site_id"`
-	APICIDR      string   `json:"api_cidr"`
+	KubeCIDR     string   `json:"kube_cidr"`
 	MgmtCIDR     string   `json:"mgmt_cidr"`
 	ClusterCIDRs []string `json:"cluster_cidrs"`
 }

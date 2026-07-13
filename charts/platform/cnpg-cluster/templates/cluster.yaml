@@ -4,6 +4,9 @@ metadata:
   name: {{ .Values.clusterName }}
 spec:
   instances: {{ .Values.instances }}
+  {{- with .Values.resources }}
+  resources: {{- toYaml . | nindent 4 }}
+  {{- end }}
   storage:
     size: {{ .Values.storage }}
     {{- with .Values.storageClass }}

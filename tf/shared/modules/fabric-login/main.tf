@@ -21,9 +21,10 @@ resource "junos_system_login_user" "this" {
   full_name = each.value.full_name
 
   dynamic "authentication" {
-    for_each = length(local.user_keys[each.key]) > 0 ? [1] : []
+    for_each = length(local.user_keys[each.key]) > 0 || each.value.encrypted_password != null ? [1] : []
     content {
-      ssh_public_keys = local.user_keys[each.key]
+      ssh_public_keys    = length(local.user_keys[each.key]) > 0 ? local.user_keys[each.key] : null
+      encrypted_password = each.value.encrypted_password
     }
   }
 

@@ -6,10 +6,10 @@
 #   (install to disk + reboot) → machine_bootstrap (one CP) → worker apply
 #   → kubeconfig + talosconfig → cluster_health gate.
 #
-# Differs from the talos-cluster module (which provisions VMs on ceph
-# hypervisors over VLAN 50): no Ansible inventory, no hypervisors, no
-# kernel `ip=` cmdline. Nodes are dialed directly at their maintenance IP,
-# which is also pinned as the post-install static IP on the bond.
+# Bare-metal-direct by design (the earlier VM-on-ceph-hypervisors
+# talos-cluster module was removed unused): no Ansible inventory, no
+# hypervisors, no kernel `ip=` cmdline. Nodes are dialed directly at their
+# maintenance IP, which is also pinned as the post-install static IP on the bond.
 
 # Per-node names from the shared inventory (operator override per node, else auto).
 module "names" {

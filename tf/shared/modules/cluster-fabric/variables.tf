@@ -91,9 +91,9 @@ variable "private_irb_mtu" {
   description = "L3 (family inet) MTU of the private/cluster IRB gateway (VLAN 122), matching the Ceph hosts. Cluster-network only; the public (120) and host-mgmt (124) IRBs stay at the 1500 default by deliberate design."
 }
 
-variable "api_vlan_id" {
+variable "kube_vlan_id" {
   type        = number
-  description = "Site-global API VLAN id (carried on every cluster)."
+  description = "Site-global kube VLAN id (carried on every cluster)."
 }
 
 variable "mgmt_vlan_id" {

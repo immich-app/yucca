@@ -1,0 +1,19 @@
+# netops — in-cluster network operations stack for the htz-fsn1 fabric:
+# junos_exporter + vmagent + VictoriaMetrics (30d high-granularity buffer) +
+# Grafana, plus hyperglass/smokeping/oxidized. Everything is exposed ONLY on
+# internal LoadBalancer VIPs (lb-internal pool, NetBird-reachable — never public).
+# Applied by hand today; to be adopted by Flux when GitOps lands on father.
+#
+# privileged PodSecurity: VictoriaMetrics persists to a hostPath (no CSI on
+# father yet — the NVMe data disks are unprovisioned); baseline forbids hostPath.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netops
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+  annotations:
+    # Never prune: this namespace holds hand-created secrets (netops-ssh,
+    # grafana-admin, hyperglass-devices) and the VictoriaMetrics PVC — a prune
+    # would destroy state only a manual runbook can restore.
+    kustomize.toolkit.fluxcd.io/prune: disabled

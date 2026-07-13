@@ -79,3 +79,19 @@ tf/render/*/.terraform/
 tf/render/*/.terraform.lock.hcl
 tf/render/*/terraform.tfstate*
 .DS_Store
+
+# Local operator credential/token caches — NEVER commit. Tracked configs (tf/.env*)
+# reference secrets as op:// refs only; literal tokens live in the harness scratchpad
+# (outside the repo). These patterns are a belt-and-braces guard in case a cache is
+# ever written inside the tree.
+op_sa
+nb_pat
+nb_setup_key
+aws_key
+aws_secret
+robot_user
+robot_pass
+hcloud_token
+*.token
+*.secret
+env.local.sh

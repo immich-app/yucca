@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#MISE description="Build + upload the Talos hcloud snapshot for the prod cluster. The schematic is TF-managed (talos_image_factory_schematic); this reads its image URL from tofu output. Idempotent unless FORCE=1."
+# hcloud can't boot the Talos ISO, so the CP VMs need a Talos *snapshot*.
+# hcloud-upload-image builds it the only way possible: spin a temporary rescue
+# server, dd the factory hcloud-amd64 raw image, snapshot, tear down. The talos
+# stack's data.hcloud_image then resolves it by label.
+#
+#   mise run hetzner:talos-image            # build for the prod father cluster
+#   FORCE=1 mise run hetzner:talos-image    # rebuild even if a snapshot exists
+set -euo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+STACK="${TALOS_STACK:-tf/deployment/prod/htz-fsn1/talos}"
+TFVARS="$ROOT/$STACK/clusters.auto.tfvars"
+[ -f "$TFVARS" ] || { echo "talos-image: tfvars not found: $TFVARS" >&2; exit 1; }
+
+# OVH S3 backend cert verification on macOS (same shim as the infra:* tasks).
+if [ -z "${SSL_CERT_FILE:-}" ] && [ "$(uname -s)" = "Darwin" ] && [ -f /etc/ssl/cert.pem ]; then
+  export SSL_CERT_FILE=/etc/ssl/cert.pem AWS_CA_BUNDLE=/etc/ssl/cert.pem
+fi
+
+val() { grep -E "^[[:space:]]*$1[[:space:]]*=" "$TFVARS" | head -1 | sed -E 's/[^"]*"([^"]+)".*/\1/'; }
+NAME=$(val name); VERSION=$(val talos_version); LOCATION=$(val cp_location)
+SELECTOR="os=talos,cluster=${NAME},arch=amd64,version=${VERSION}"
+
+tg() { OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "$STACK" "$@"; }
+
+# The schematic is TF-managed (talos_image_factory_schematic). Pull its id straight
+# from state (grep the exact `id =` line — robust against terragrunt log noise);
+# if it isn't applied yet, create just it (targeted, dependency-free — touches no
+# servers/data sources) and re-read. Then build the factory URLs from the id.
+read_schematic_id() {
+  tg state show -no-color talos_image_factory_schematic.this 2>/dev/null \
+    | grep -E '^[[:space:]]+id[[:space:]]+=' | head -1 | sed -E 's/.*"([^"]+)".*/\1/'
+}
+ID=$(read_schematic_id || true)
+if [ -z "$ID" ]; then
+  echo "talos-image: registering the Image Factory schematic in TF (targeted apply)…"
+  tg apply -target=talos_image_factory_schematic.this -auto-approve
+  ID=$(read_schematic_id)
+fi
+[ -n "$ID" ] || { echo "talos-image: could not resolve the schematic id from $STACK" >&2; exit 1; }
+URL="https://factory.talos.dev/image/${ID}/v${VERSION}/hcloud-amd64.raw.xz"
+METAL_URL="https://factory.talos.dev/image/${ID}/v${VERSION}/metal-amd64.raw.xz"
+
+# Read-only hcloud token from 1Password (CI: OP_SERVICE_ACCOUNT_TOKEN; dev:
+# interactive team-futo sign-in — same pattern as infra:plan).
+if [ -z "${HCLOUD_TOKEN:-}" ]; then
+  if [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
+    HCLOUD_TOKEN=$(op read "op://yucca_tf_prod/HCLOUD_API_TOKEN/password")
+  else
+    HCLOUD_TOKEN=$(op read --account "${OP_ACCOUNT:-team-futo}" "op://yucca_tf_prod/HCLOUD_API_TOKEN/password")
+  fi
+  export HCLOUD_TOKEN
+fi
+
+echo "cluster=$NAME  talos=v$VERSION  schematic=$ID"
+echo "  hcloud image : $URL"
+echo "  metal image  : $METAL_URL  (workers dd this in rescue)"
+
+# Idempotency: skip when a matching snapshot already exists.
+EXISTING=$(hcloud image list --type snapshot --selector "$SELECTOR" \
+  --output noheader --output columns=id 2>/dev/null || true)
+if [ -n "$EXISTING" ] && [ -z "${FORCE:-}" ]; then
+  echo "talos-image: snapshot already exists (id ${EXISTING}). Set FORCE=1 to rebuild."
+  exit 0
+fi
+
+echo "talos-image: uploading the Talos v$VERSION hcloud snapshot (spins a temporary server)…"
+hcloud-upload-image upload \
+  --image-url "$URL" \
+  --architecture x86 \
+  --compression xz \
+  --location "$LOCATION" \
+  --labels "$SELECTOR"
+
+echo "talos-image: done — data.hcloud_image.talos (selector os=talos,cluster=${NAME},arch=amd64) now resolves."

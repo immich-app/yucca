@@ -13,9 +13,24 @@ data:
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
   # ─── Ingress entry point ─────────────────────────────────────────────
-  # TODO: real prod ingress VIPs once the htz-fsn1 cluster is provisioned.
-  INGRESS_INTERNAL_IP: 10.10.10.16
+  # App gateway VIP (lb_internal range; the netops gateway pins .16 itself).
+  # TODO: INGRESS_PUBLIC_IP once the public app frontend is wired (lb-public pool).
+  INGRESS_INTERNAL_IP: 10.40.12.20
   INGRESS_PUBLIC_IP: 0.0.0.0
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
+
+  # ─── OpenEBS (shared apps/base/openebs, see the father openebs wrapper) ──
+  # Mayastor ON: openebs-replicated (repl=2) on the r-mayastor partitions.
+  # LocalPV on the u-localpv xfs partition (node-local; CNPG replicates itself).
+  OPENEBS_MAYASTOR_ENABLED: "true"
+  OPENEBS_HOSTPATH_CLASS_ENABLED: "true"
+  OPENEBS_LOCALPV_BASEPATH: /var/mnt/localpv/hostpath
+  OPENEBS_MAYASTOR_ETCD_BASEPATH: /var/mnt/openebs/etcd
+
+  # ─── Storage ─────────────────────────────────────────────────────────
+  # CNPG database PVs: LOCAL volumes on the u-localpv partition (see
+  # openebs/diskpools.yaml) — Postgres replicates itself; Mayastor is for
+  # workloads without app-level replication.
+  DB_STORAGE_CLASS: openebs-hostpath

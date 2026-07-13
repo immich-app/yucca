@@ -39,6 +39,12 @@ variable "provider_code" {
   default     = null
 }
 
+variable "region_code" {
+  description = "3-letter region segment (fsn) — used in the reverse-hostname DNS names."
+  type        = string
+  default     = null
+}
+
 variable "domain" {
   description = "Region FQDN suffix."
   type        = string

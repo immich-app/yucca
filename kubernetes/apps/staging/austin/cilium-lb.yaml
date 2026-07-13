@@ -1,0 +1,33 @@
+---
+# Staging LB topology (formerly apps/base/cilium-lb, moved here because pool
+# layout is per-cluster: father uses BGP pools in its cilium-bgp.yaml, and a
+# shared base pool would CIDR-overlap its lb-internal /24 → Conflicting pools).
+# Applied directly by cluster-apps (no postBuild substitution on raw overlay
+# resources), so the VIP is LITERAL here — keep in sync with INGRESS_INTERNAL_IP
+# in clusters/staging/austin/cluster-settings.yaml.
+#
+# Single-address LB-IPAM pool for the ingress VIP. The envoy Service requests it
+# explicitly via the `lbipam.cilium.io/ips` annotation (see envoyproxy.yaml).
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: ingress
+spec:
+  blocks:
+    - cidr: 10.10.10.16/32
+---
+# Announce LoadBalancer IPs via L2 (ARP) on the node bond so the VIP is
+# reachable on the LAN. Requires l2announcements enabled in the Cilium config
+# (tf .../cilium-values.yaml.tftpl).
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: ingress
+spec:
+  loadBalancerIPs: true
+  interfaces:
+    - ^bond0$
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists

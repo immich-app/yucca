@@ -1,0 +1,151 @@
+# vmagent — the single scrape + fan-out point. Scrapes at 10s (high granularity)
+# and remote-writes to the in-cluster VictoriaMetrics (30d buffer). The o11y
+# long-term tier is wired LATER by adding a second -remoteWrite.url (placeholder
+# below) — vmagent buffers on disk and ships to both, so the hybrid needs no other
+# change.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vmagent
+  namespace: netops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: netops-vmagent
+rules:
+  - apiGroups: [""]
+    resources: [nodes, nodes/metrics, nodes/proxy, services, endpoints, pods]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: netops-vmagent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: netops-vmagent
+subjects:
+  - { kind: ServiceAccount, name: vmagent, namespace: netops }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmagent-config
+  namespace: netops
+data:
+  scrape.yml: |
+    global:
+      scrape_interval: 10s
+      external_labels:
+        cluster: father
+        site: htz-fsn1
+    scrape_configs:
+      # The fabric switches (spine + cls1 leaf) via junos_exporter. The exporter
+      # polls the switches synchronously per scrape and burns ~20s/device in its
+      # SSH layer (the raw RPC is ~2s — known exporter quirk, revisit), so this job
+      # runs at 60s with a generous timeout. 60s counter resolution is plenty for
+      # bandwidth dashboards; sFlow is the upgrade path if we ever need seconds.
+      - job_name: junos
+        scrape_interval: 60s
+        scrape_timeout: 55s
+        static_configs:
+          - targets: ["junos-exporter.netops.svc:9326"]
+      # sflow-rt: seconds-granularity per-port fabric rates (the spine exports
+      # counter samples every 5s; the prometheus app serves them PRE-RATED — the
+      # sflow_* series are already per-second gauges, no rate() needed). The
+      # datasource label is the SNMP ifIndex (persistent on Junos); the relabels
+      # map it to the port name (regenerate from `show snmp mib walk ifDescr`
+      # after channelization changes).
+      - job_name: sflow
+        scrape_interval: 5s
+        metrics_path: /prometheus/metrics/ALL/ifinoctets,ifoutoctets,ifinutilization,ifoututilization,ifinerrors,ifouterrors,ifindiscards,ifoutdiscards,ifinpkts,ifoutpkts/txt
+        static_configs:
+          - targets: ["sflow-rt.netops.svc:80"] # the Service maps 80 -> 8008
+        metric_relabel_configs:
+          - {source_labels: [datasource], regex: "545", target_label: port, replacement: "et-0/0/27"}
+          - {source_labels: [datasource], regex: "548", target_label: port, replacement: "et-0/0/30"}
+          - {source_labels: [datasource], regex: "549", target_label: port, replacement: "et-0/0/31"}
+          - {source_labels: [datasource], regex: "589", target_label: port, replacement: "et-1/0/30"}
+          - {source_labels: [datasource], regex: "590", target_label: port, replacement: "et-1/0/31"}
+          - {source_labels: [datasource], regex: "597", target_label: port, replacement: "ae0"}
+          - {source_labels: [datasource], regex: "601", target_label: port, replacement: "et-0/0/2:0"}
+          - {source_labels: [datasource], regex: "602", target_label: port, replacement: "et-0/0/2:1"}
+          - {source_labels: [datasource], regex: "603", target_label: port, replacement: "et-0/0/2:2"}
+          - {source_labels: [datasource], regex: "604", target_label: port, replacement: "et-0/0/2:3"}
+          - {source_labels: [datasource], regex: "620", target_label: port, replacement: "et-1/0/2:0"}
+          - {source_labels: [datasource], regex: "622", target_label: port, replacement: "et-1/0/2:1"}
+          - {source_labels: [datasource], regex: "623", target_label: port, replacement: "et-1/0/2:2"}
+          - {source_labels: [datasource], regex: "624", target_label: port, replacement: "et-1/0/2:3"}
+          - {source_labels: [datasource], regex: "625", target_label: port, replacement: "et-1/0/3:0"}
+          - {source_labels: [datasource], regex: "648", target_label: port, replacement: "et-0/0/3:0"}
+          - {source_labels: [datasource], regex: "666", target_label: port, replacement: "et-1/0/27"}
+          - {source_labels: [datasource], regex: "669", target_label: port, replacement: "ae3"}
+          - {source_labels: [datasource], regex: "671", target_label: port, replacement: "ae2"}
+          - {source_labels: [datasource], regex: "675", target_label: port, replacement: "ae1"}
+      # Self-observability of the metrics tier.
+      - job_name: victoria-metrics
+        static_configs:
+          - targets: ["victoria-metrics.netops.svc:8428"]
+      - job_name: vmagent
+        static_configs:
+          - targets: ["localhost:8429"]
+      # coredns (service metrics port).
+      - job_name: coredns
+        static_configs:
+          - targets: ["kube-dns.kube-system.svc:9153"]
+      # Node + container metrics straight from every kubelet (no apiserver proxy).
+      - job_name: kubelet
+        scheme: https
+        tls_config: { insecure_skip_verify: true }
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs: [{ role: node }]
+      - job_name: cadvisor
+        scheme: https
+        metrics_path: /metrics/cadvisor
+        tls_config: { insecure_skip_verify: true }
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs: [{ role: node }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vmagent
+  namespace: netops
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vmagent }
+  template:
+    metadata:
+      labels: { app: vmagent }
+    spec:
+      serviceAccountName: vmagent
+      containers:
+        - name: vmagent
+          image: victoriametrics/vmagent:latest@sha256:4f2d79253c1ce04296e4624724a815e53ea5ebadd465a1d0291153afb9893a30
+          args:
+            - -promscrape.config=/config/scrape.yml
+            - -remoteWrite.url=http://victoria-metrics.netops.svc:8428/api/v1/write
+            # o11y long-term tier — uncomment + point at the o11y vminsert when wired:
+            # - -remoteWrite.url=https://<o11y-vminsert>/insert/0/prometheus/api/v1/write
+            - -remoteWrite.tmpDataPath=/buffer
+            - -httpListenAddr=:8429
+          ports:
+            - containerPort: 8429
+          volumeMounts:
+            - { name: config, mountPath: /config }
+            - { name: buffer, mountPath: /buffer }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+      volumes:
+        - name: config
+          configMap: { name: vmagent-config }
+        - name: buffer
+          emptyDir: { sizeLimit: 2Gi }
