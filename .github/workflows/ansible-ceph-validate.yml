@@ -14,13 +14,13 @@ name: ansible-ceph-validate
 on:
   pull_request:
     paths:
-      - "ansible/ceph/**"
-      - ".github/workflows/ansible-ceph-validate.yml"
+      - 'ansible/ceph/**'
+      - '.github/workflows/ansible-ceph-validate.yml'
   push:
     branches: [main]
     paths:
-      - "ansible/ceph/**"
-      - ".github/workflows/ansible-ceph-validate.yml"
+      - 'ansible/ceph/**'
+      - '.github/workflows/ansible-ceph-validate.yml'
 
 # Read-only: checkout + tool downloads only. No writes through the token, no
 # deploy credentials, no 1Password.

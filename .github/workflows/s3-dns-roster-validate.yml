@@ -20,9 +20,9 @@ name: s3-dns-roster-validate
 on:
   pull_request:
     paths: &paths
-      - "tf/deployment/prod/global/dns/records.auto.tfvars"
-      - "tf/scripts/check-s3-dns-roster.py"
-      - ".github/workflows/s3-dns-roster-validate.yml"
+      - 'tf/deployment/prod/global/dns/records.auto.tfvars'
+      - 'tf/scripts/check-s3-dns-roster.py'
+      - '.github/workflows/s3-dns-roster-validate.yml'
   push:
     branches: [main]
     paths: *paths
