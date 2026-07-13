@@ -1,4 +1,5 @@
 import { defaults } from '$lib/fetch-client';
+import { formatDuration } from '$lib/utils/format';
 import debounce from 'lodash.debounce';
 
 type SummaryEvent = {
@@ -97,9 +98,10 @@ export function createLogObserver(logId: string) {
       case 'status': {
         state.status = {
           progress: event.percent_done,
-          text: event.seconds_remaining
-            ? `${event.seconds_remaining} seconds remaining`
-            : '',
+          text:
+            event.seconds_remaining && event.percent_done < 100
+              ? `${formatDuration(event.seconds_remaining * 1000)} remaining`
+              : 'Nearly done.',
           currentFiles: event.current_files ?? [],
         };
         flush();
