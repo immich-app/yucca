@@ -40,6 +40,8 @@ type LogEvent =
       percent_done: number;
       seconds_remaining?: number;
       current_files?: string[];
+      bytes_done?: number;
+      total_bytes?: number;
     };
 
 const formatErrorEvent = (
@@ -99,7 +101,10 @@ export function createLogObserver(logId: string) {
         state.status = {
           progress: event.percent_done,
           text:
-            event.seconds_remaining && event.percent_done < 100
+            event.seconds_remaining &&
+            (event.bytes_done && event.total_bytes
+              ? event.bytes_done < event.total_bytes
+              : event.percent_done < 100)
               ? `${formatDuration(event.seconds_remaining * 1000)} remaining`
               : 'Nearly done.',
           currentFiles: event.current_files ?? [],
