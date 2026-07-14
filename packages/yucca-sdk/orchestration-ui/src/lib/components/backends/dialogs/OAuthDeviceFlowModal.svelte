@@ -89,7 +89,7 @@
         shape="round"
         fullWidth
         onclick={onRetry}
-        disabled={query.isPending}>Try again</Button
+        disabled={query.isFetching}>Try again</Button
       >
     </HStack>
   </ModalFooter>
