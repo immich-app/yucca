@@ -64,21 +64,13 @@ export const useBackendEventHandler = () => {
   };
 };
 
-const startYuccaLogin = async (onCreate?: (backendId: string) => void) => {
+export const handleStartYuccaLogin = (
+  onCreate?: (backendId: string) => void,
+) => {
   void modalManager.show(OAuthDeviceFlow, {
     onCreate,
   });
 };
-
-export const useYuccaLogin = () =>
-  createMutation(
-    () => ({
-      mutationFn: (onCreate?: (backendId: string) => void) =>
-        startYuccaLogin(onCreate),
-      onError: (error) => handleError(error, 'Failed to start login'),
-    }),
-    () => queryClient,
-  );
 
 export const handleSetupLocalStorage = (
   onCreate?: (backendId: string) => void,

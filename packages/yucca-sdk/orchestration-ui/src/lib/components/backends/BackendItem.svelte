@@ -7,7 +7,7 @@
   } from "$lib/fetch-client";
   import {
     getBackendActions,
-    useYuccaLogin,
+    handleStartYuccaLogin,
   } from "$lib/services/backend.service";
   import { Badge, Icon, Text } from "@immich/ui";
   import { mdiCloudOutline, mdiHarddisk, mdiShieldCheckOutline } from "@mdi/js";
@@ -33,11 +33,9 @@
     s3: "S3 Server",
   };
 
-  const yuccaLogin = useYuccaLogin();
-
   const { LoginAgain, Reconfigure } = $derived(
     getBackendActions(repository, backend, repositoryBackend, () =>
-      yuccaLogin.mutate(undefined),
+      handleStartYuccaLogin(),
     ),
   );
 </script>

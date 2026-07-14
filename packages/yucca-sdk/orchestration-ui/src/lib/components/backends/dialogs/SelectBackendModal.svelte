@@ -4,14 +4,13 @@
   import Suspense from "$lib/components/util/Suspense.svelte";
   import {
     handleSetupLocalStorage,
+    handleStartYuccaLogin,
     useBackends,
-    useYuccaLogin,
   } from "$lib/services/backend.service";
   import {
     Button,
     HStack,
     Icon,
-    LoadingSpinner,
     Modal,
     ModalBody,
     ModalFooter,
@@ -38,7 +37,6 @@
   }: Props = $props();
 
   const backends = useBackends();
-  const yuccaLogin = useYuccaLogin();
 
   const onFutoBackups = () => {
     const futoBackend = backends.data!.find(
@@ -48,7 +46,7 @@
     if (futoBackend) {
       onSelect(futoBackend.id);
     } else {
-      yuccaLogin.mutate(onSelect);
+      handleStartYuccaLogin(onSelect);
     }
   };
 
@@ -65,7 +63,7 @@
 
       <Suspense query={backends}>
         <StackList>
-          <StackListItem disabled={disabled || yuccaLogin.isPending} onclick={onFutoBackups}>
+          <StackListItem {disabled} onclick={onFutoBackups}>
             {#snippet icon()}
               <Icon icon={mdiShieldCheck} size="36px" />
             {/snippet}
@@ -76,14 +74,10 @@
             </Stack>
 
             {#snippet trailing()}
-              {#if yuccaLogin.isPending}
-                <LoadingSpinner />
-              {:else}
-                <Icon icon={mdiChevronRight} />
-              {/if}
+              <Icon icon={mdiChevronRight} />
             {/snippet}
           </StackListItem>
-          <StackListItem disabled={disabled || yuccaLogin.isPending} onclick={onLocalBackups}>
+          <StackListItem {disabled} onclick={onLocalBackups}>
             {#snippet icon()}
               <Icon icon={mdiHarddisk} size="36px" />
             {/snippet}
@@ -101,7 +95,7 @@
           {#each backends.data as backend}
             {#if backend.type === "local"}
               <StackListItem
-                disabled={disabled || yuccaLogin.isPending}
+                {disabled}
                 onclick={() => {
                   onSelect(backend.id);
                 }}
