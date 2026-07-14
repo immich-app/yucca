@@ -326,6 +326,7 @@ scripts/ansible-play.sh deploy-ceph.yml --tags bootstrap
 | `drift` | `mise run drift` | Detect configuration drift (via ansible-play.sh) |
 | `deploy` | `mise run deploy` | Full deploy pipeline (via ansible-play.sh) |
 | `backup` | `mise run backup` | Export cluster config for DR (via ansible-play.sh) |
+| `backup-timer` | `mise run backup-timer` | Install the scheduled on-node cluster-state backup timer (bootstrap node) |
 | `capture` | `mise run capture` | Snapshot RGW TLS + admin keyring to 1P for disaster recovery |
 | `bench` | `mise run bench` | S3 benchmark (RGW round-trip) |
 | `bench-rados` | `mise run bench-rados` | RADOS bench (raw cluster I/O) |

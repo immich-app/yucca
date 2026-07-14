@@ -1,4 +1,26 @@
 # {{ ansible_managed }}
+{% if networkd_bond_vlans | length > 0 %}
+# Bond carries no L3 of its own; addresses live on the VLAN sub-interfaces.
+# The VLAN= directives instantiate the sub-interfaces declared by the .netdev
+# files (Kind=vlan alone only registers the type).
+
+[Match]
+Name={{ networkd_bond_name }}
+
+[Network]
+{% for vlan in networkd_bond_vlans %}
+VLAN={{ networkd_bond_name }}.{{ vlan.id }}
+{% endfor %}
+LinkLocalAddressing=no
+IPv6AcceptRA=no
+
+[Link]
+# The fabric is NOT the boot-critical path -- the 1G WAN carries connectivity
+# until cutover, and the leaf may not have LACP up yet -- so a carrier-less bond
+# must not stall boot via systemd-networkd-wait-online. (The VLAN sub-interfaces
+# are RequiredForOnline=no too.) Raise to 'carrier' after the fabric is cut over.
+RequiredForOnline=no
+{% else %}
 # Bond L3: {{ bond_ip }}/24 via {{ gateway }}
 
 [Match]
@@ -12,3 +34,4 @@ Domains={{ cluster_domain }}
 
 [Link]
 RequiredForOnline=routable
+{% endif %}

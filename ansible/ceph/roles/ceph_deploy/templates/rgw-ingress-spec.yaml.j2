@@ -1,0 +1,53 @@
+# RGW ingress service spec (haproxy + keepalived) - rendered by ceph_deploy role
+# Applied via: ceph orch apply -i /etc/ceph/rgw-ingress-spec.yaml
+#
+# Do not edit by hand. Regenerate by re-running the ceph_deploy role.
+#
+# PURPOSE: a health-checked floating VIP in front of RGW so a dead RGW node is
+# dropped from rotation instead of blackholing ~1/N of S3 connections. keepalived
+# owns the VIP; haproxy runs the per-backend health check.
+#
+# MODE: TLS TERMINATION at haproxy, re-encrypt to the RGW backends. haproxy runs
+# `mode http`: it terminates the client's TLS on the VIP with the cert below, then
+# opens a fresh TLS session to each RGW/beast backend (which keeps its own cert).
+# This is the ONLY health-checked ingress mode available on the pinned Ceph 20.2.2
+# -- L4 passthrough (`mode tcp`) for an RGW backend requires
+# IngressSpec.use_tcp_mode_over_rgw, a post-20.2.2 upstream field that is absent
+# here (source-verified: applying it makes `ceph orch apply` TypeError). See the
+# 20.2.2 haproxy.cfg.j2: an `mode http` backend with `backend_spec.ssl` emits
+# `default-server ssl` + `verify none`, i.e. re-encrypt with no hostname verify
+# (backends are reached by IP) -- exactly this terminate config.
+#
+# CERT: we reuse the SAME 10-year self-signed RGW cert (its SAN now carries the
+# VIP, the wildcard, and the s3 DNS name), so a client hitting the VIP validates,
+# and virtual-hosted buckets keep working because `mode http` forwards the Host
+# header and haproxy holds the wildcard cert.
+#
+# SSL FIELD SPLIT (verified against Ceph 20.2.2 source):
+#   cephadm (services/ingress.py) writes spec.ssl_cert -> /var/lib/haproxy/haproxy.pem
+#   and spec.ssl_key -> haproxy.pem.key. The haproxy frontend binds
+#   `ssl crt /var/lib/haproxy/haproxy.pem`, and HAProxy's `crt` expects the cert
+#   chain AND the private key in that single PEM. So we pass the COMBINED cert+key
+#   PEM as ssl_cert and OMIT ssl_key (one self-contained haproxy.pem, no sidecar).
+#   This reuses rgw_ssl_cert_combined_pem (cat of rgw-ssl.crt + rgw-ssl.key) -- the
+#   same combined material the RGW spec already feeds beast. ssl: true is set for
+#   correctness/intent; the frontend TLS bind is keyed off ssl_cert presence.
+#
+# NO 443 COLLISION: haproxy terminates on VIP:{{ ceph_rgw_ingress_frontend_port }};
+# beast binds each node's fabric IP:{{ ceph_rgw_port }} -- distinct sockets, so
+# they co-locate on the same host. This holds ONLY because the RGW spec restricts
+# beast to a specific IP (ceph_bind_networks non-empty); otherwise beast binds
+# 0.0.0.0:{{ ceph_rgw_port }}, taking the VIP's port, and the haproxy bind fails
+# with EADDRINUSE. The apply task asserts that precondition.
+service_type: ingress
+service_id: rgw.{{ ceph_rgw_realm }}.{{ ceph_rgw_zone }}
+placement:
+  count: {{ ceph_rgw_ingress_count }}
+spec:
+  backend_service: rgw.{{ ceph_rgw_realm }}.{{ ceph_rgw_zone }}
+  virtual_ip: {{ ceph_rgw_ingress_vip }}/{{ ceph_rgw_ingress_vip_prefix }}
+  frontend_port: {{ ceph_rgw_ingress_frontend_port }}
+  monitor_port: {{ ceph_rgw_ingress_monitor_port }}
+  ssl: true
+  ssl_cert: |
+{{ rgw_ssl_cert_combined_pem | trim | indent(4, True) }}

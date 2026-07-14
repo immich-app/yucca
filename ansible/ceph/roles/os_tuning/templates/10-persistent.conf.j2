@@ -1,0 +1,7 @@
+# systemd-journald persistence - managed by Ansible (os_tuning role)
+# Headless KVM-only nodes default to a volatile journal; make it persistent
+# and bound so logs survive reboots without unbounded disk growth.
+[Journal]
+Storage={{ ceph_journald_storage }}
+SystemMaxUse={{ ceph_journald_system_max_use }}
+RuntimeMaxUse={{ ceph_journald_runtime_max_use }}

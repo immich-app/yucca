@@ -1,0 +1,7 @@
+---
+hostname_short: spice-ceph-jewell
+bond_ip: 178.63.139.210
+hetzner_server_number: 3012012
+host_index: 28
+mon: false
+# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)

@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# lldpd config for ceph fabric nodes (read from /etc/lldpd.d/ at daemon start).
+# Port ID as the interface name (readable in NetBox / on the switch) and a
+# cluster-tagged system description. lldpd advertises on all interfaces by
+# default; the leaf only cares about the bonded 25G members.
+configure lldp portidsubtype ifname
+configure system description "{{ cluster_name | default('ceph') }} {{ cluster_role | default('ceph') }} node"

@@ -1,0 +1,34 @@
+# Copy to reviewers.auto.tfvars and fill in REAL identities before applying.
+#
+# OPERATOR TODO (required decision -- CI cannot pick reviewers):
+#   1. Set github_owner + repository to this repo's owner/name.
+#   2. For EACH gate Environment, list at least one required reviewer as a
+#      numeric GitHub team ID and/or user ID:
+#        - team ID:  gh api orgs/<owner>/teams/<team-slug> --jq .id
+#        - user ID:  gh api users/<login> --jq .id
+#   3. Provide a GITHUB_TOKEN with repo-admin (Environments:write) when applying.
+#
+# Leaving any environment with zero reviewers is REJECTED by the variable
+# validation (fail-closed): an empty gate would apply prod with -auto-approve.
+
+github_owner = "REPLACE_ME_OWNER" # e.g. "immich-app"
+repository   = "REPLACE_ME_REPO"  # e.g. "yucca"
+
+environment_reviewers = {
+  "staging-austin" = {
+    team_ids = [] # TODO: >= 1 reviewer (team and/or user)
+    user_ids = []
+  }
+  "staging-global" = {
+    team_ids = []
+    user_ids = []
+  }
+  "prod-global" = {
+    team_ids = []
+    user_ids = []
+  }
+  "prod-htz-fsn1" = {
+    team_ids = []
+    user_ids = []
+  }
+}

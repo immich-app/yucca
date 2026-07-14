@@ -1,0 +1,104 @@
+---
+# Per-host WIPE: render autosetup + a minimal chroot post-install, push both, run
+# installimage (base OS + `-x post-install.sh`), reboot. The -x does ONLY inert
+# user/key seeding (root + ansible-iac authorized_keys and sudo), so the node is
+# reachable and manageable after reboot even if the rescue did not carry our key
+# (installimage's own authorized_keys copy is unreliable in that case). NO apt/LVM
+# in the chroot -- that fragile step (network/device state under set -e) disrupted
+# installimage on painbox; packages, db-slot LVs and sysctl stay at convergence.
+#
+# block/rescue + max_fail_percentage:0 (play) = halt-fast: a failed node is left
+# in rescue (NOT rebooted) and the batch stops. All delegate_to localhost.
+
+- name: Reprovision (wipe) {{ inventory_hostname }}
+  delegate_to: localhost
+  block:
+    - name: Re-confirm rescue immediately before wipe (defense in depth)
+      ansible.builtin.command:
+        cmd: >-
+          ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+          -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+          "[ -x {{ reprovision_installimage_bin }} ]"
+      changed_when: false
+
+    - name: Render autosetup to a local temp file
+      ansible.builtin.tempfile:
+        state: file
+        suffix: "-autosetup-{{ inventory_hostname }}"
+      register: reprovision_tmp_autosetup
+
+    - name: Render autosetup
+      ansible.builtin.template:
+        src: autosetup.j2
+        dest: "{{ reprovision_tmp_autosetup.path }}"
+        mode: '0600'
+
+    - name: Push autosetup -> /autosetup
+      ansible.builtin.command:
+        cmd: >-
+          scp {{ reprovision_ssh_opts }} -i {{ reprovision_ssh_key_path | expanduser }}
+          {{ reprovision_tmp_autosetup.path }} {{ reprovision_ssh_user }}@{{ bond_ip }}:/autosetup
+      changed_when: true
+
+    - name: Render post-install.sh to a local temp file
+      ansible.builtin.tempfile:
+        state: file
+        suffix: "-postinstall-{{ inventory_hostname }}"
+      register: reprovision_tmp_postinstall
+
+    - name: Render post-install.sh (chroot user/key seeding)
+      ansible.builtin.template:
+        src: post-install.sh.j2
+        dest: "{{ reprovision_tmp_postinstall.path }}"
+        mode: '0700'
+
+    - name: Push post-install.sh -> /tmp/post-install.sh
+      ansible.builtin.command:
+        cmd: >-
+          scp {{ reprovision_ssh_opts }} -i {{ reprovision_ssh_key_path | expanduser }}
+          {{ reprovision_tmp_postinstall.path }} {{ reprovision_ssh_user }}@{{ bond_ip }}:/tmp/post-install.sh
+      changed_when: true
+
+    - name: Run installimage (WIPE - base OS + -x user/key seeding)
+      ansible.builtin.command:
+        cmd: >-
+          ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+          -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+          "{{ reprovision_installimage_bin }} -a -c /autosetup -x /tmp/post-install.sh"
+      register: reprovision_installimage
+      changed_when: true
+      timeout: "{{ reprovision_installimage_timeout }}"
+
+    - name: Assert installimage reported completion
+      ansible.builtin.assert:
+        that: "'INSTALLATION COMPLETE' in (reprovision_installimage.stdout | default(''))"
+        fail_msg: >-
+          installimage did not report INSTALLATION COMPLETE on {{ inventory_hostname }}.
+          stdout tail: {{ (reprovision_installimage.stdout | default('') | trim)[-400:] }}
+
+    - name: Reboot into the installed OS
+      ansible.builtin.command:
+        cmd: >-
+          ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+          -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }} "reboot"
+      changed_when: true
+      failed_when: false   # reboot drops the connection; rc != 0 is expected
+
+  rescue:
+    - name: Halt - installimage failed, node left in rescue (not rebooted)
+      ansible.builtin.fail:
+        msg: >-
+          installimage FAILED on {{ inventory_hostname }} ({{ bond_ip }}). Node left in
+          rescue, NOT rebooted; batch halts (max_fail_percentage=0). Investigate, then
+          re-run with --limit {{ inventory_hostname }}. stderr:
+          {{ reprovision_installimage.stderr | default('n/a') }}
+
+  always:
+    - name: Clean up the local temp files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ reprovision_tmp_autosetup.path | default('') }}"
+        - "{{ reprovision_tmp_postinstall.path | default('') }}"
+      when: (item | default('')) | length > 0

@@ -31,6 +31,7 @@
     check fs.aio-max-nr {{ ceph_sysctl_fs_aio_max_nr }}
     check vm.zone_reclaim_mode {{ ceph_sysctl_vm_zone_reclaim_mode }}
     check kernel.pid_max {{ ceph_sysctl_kernel_pid_max }}
+    check fs.inotify.max_user_instances {{ ceph_sysctl_fs_inotify_max_user_instances }}
     if [ $FAIL -ne 0 ]; then exit 1; fi
     echo "All sysctl checks passed"
   args:
@@ -45,6 +46,33 @@
       - "fs.aio-max-nr = {{ ceph_sysctl_fs_aio_max_nr }}"
       - "kernel.pid_max = {{ ceph_sysctl_kernel_pid_max }}"
       - "net.core.rmem_max = {{ ceph_sysctl_net_core_rmem_max }}"
+
+# --- Persistent journald ---
+
+- name: Ensure persistent journal directory exists
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: '2755'
+
+- name: Ensure journald drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy persistent journald drop-in
+  ansible.builtin.template:
+    src: 10-persistent.conf.j2
+    dest: /etc/systemd/journald.conf.d/10-persistent.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart systemd-journald
 
 # --- Centralized logging (opt-in) ---
 

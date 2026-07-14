@@ -2,6 +2,21 @@
 # Write systemd-networkd config files and rollback script.
 # No services are started or stopped. Safe to re-run.
 
+# Coexistence only: explicitly fence the 1G WAN off from networkd so it stays on
+# ifupdown. The 05- prefix settles this match before any bond file. Flat clusters
+# (networkd_replace_ifupdown=true) have no separate WAN to protect and skip this.
+- name: Deploy WAN unmanaged guard (coexistence)
+  ansible.builtin.template:
+    src: wan-unmanaged.network.j2
+    dest: "{{ networkd_config_dir }}/05-{{ oob_nic }}-unmanaged.network"
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - not (networkd_replace_ifupdown | default(true) | bool)
+    - oob_nic is defined
+  notify: Reload systemd for networkd
+
 - name: Deploy bond0.netdev
   ansible.builtin.template:
     src: bond0.netdev.j2
@@ -30,6 +45,34 @@
     owner: root
     group: root
     mode: '0644'
+  notify: Reload systemd for networkd
+
+# Tagged VLAN sub-interfaces on the bond (spice). No-op when networkd_bond_vlans
+# is empty (flat active-backup clusters like sietch).
+- name: Deploy bond VLAN .netdev files
+  ansible.builtin.template:
+    src: bond-vlan.netdev.j2
+    dest: "{{ networkd_config_dir }}/25-{{ networkd_bond_name }}.{{ vlan.id }}.netdev"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ networkd_bond_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "vlan {{ vlan.id }}"
+  notify: Reload systemd for networkd
+
+- name: Deploy bond VLAN .network files
+  ansible.builtin.template:
+    src: bond-vlan.network.j2
+    dest: "{{ networkd_config_dir }}/25-{{ networkd_bond_name }}.{{ vlan.id }}.network"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ networkd_bond_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "vlan {{ vlan.id }}"
   notify: Reload systemd for networkd
 
 - name: Deploy rollback script

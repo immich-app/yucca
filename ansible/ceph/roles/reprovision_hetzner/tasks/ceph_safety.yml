@@ -1,0 +1,106 @@
+---
+# Day-2 safety gate for a live-cluster reimage.
+#
+# WHY THIS MATTERS ON SPICE: a reimage zeroes the OS NVMe (prepare-os-disks.sh),
+# and on the NVMe-RAID shape the 14 HDD OSD block.db LVs AND the ssd-osd data LV
+# all live on that NVMe (vg0). So reimaging a spice node DESTROYS every OSD on it
+# -- it is NOT a data-preserving operation. This gate refuses to proceed unless a
+# healthy cluster confirms the node's OSDs are safe to stop.
+#
+# Modes (reprovision_ceph_safety):
+#   auto (default) - delegate to a peer admin/mon host and probe the cluster. If a
+#                    live cluster is reachable and this node has OSDs in it, enforce
+#                    the real checks; if no cluster answers (initial bootstrap),
+#                    permit. Default-on precisely when there is something to protect.
+#   strict         - always enforce; if the cluster cannot be reached to verify,
+#                    REFUSE (fail closed). Use for a deliberate day-2 reimage.
+#   permissive     - skip all checks. Explicit escape hatch for the initial
+#                    bootstrap, or a known-dead node when no peer can verify it.
+#
+# Enforced checks (auto-when-reachable and strict):
+#   - cluster is not HEALTH_ERR (no inactive/unavailable PGs)
+#   - `ceph osd ok-to-stop <this node's osd ids>` returns ok
+# On pass, noout is set on this node's OSDs so the reimage window does not trigger
+# a premature rebalance; it clears when the old OSDs are purged on re-add.
+
+- name: Ceph-safety - resolve mode and admin delegate
+  ansible.builtin.set_fact:
+    _cs_mode: "{{ reprovision_ceph_safety | default('auto') }}"
+    # Delegate ceph queries to a cluster member that is NOT the target: the
+    # bootstrap host normally, or a different mon when the target IS bootstrap.
+    _cs_admin_host: >-
+      {{ (groups['ceph_mon'] | default([]) | difference([inventory_hostname]) | first | default(''))
+         if ((groups['ceph_bootstrap'] | default([]) | first | default('')) == inventory_hostname)
+         else (groups['ceph_bootstrap'] | default([]) | first | default('')) }}
+
+- name: Ceph-safety - strict mode requires a reachable admin peer
+  ansible.builtin.fail:
+    msg: >-
+      reprovision_ceph_safety=strict but there is no peer admin/mon host to verify
+      ok-to-stop for {{ inventory_hostname }}. Refusing to reimage without
+      confirmation. Bring an admin/mon peer up, or use reprovision_ceph_safety=permissive
+      only if you are certain the node is already dead and drained.
+  when:
+    - _cs_mode == 'strict'
+    - _cs_admin_host | length == 0
+
+- name: Ceph-safety - evaluate live-cluster reimage safety
+  ansible.builtin.shell: |
+    set -o pipefail
+    # 1. Is a cluster reachable from this admin peer?
+    if ! ceph fsid >/dev/null 2>&1; then
+      if [ "$CS_MODE" = strict ]; then
+        echo "VERDICT=REFUSE reason=cluster-unreachable-in-strict"; exit 0
+      fi
+      echo "VERDICT=PERMIT reason=no-cluster-bootstrap"; exit 0
+    fi
+    # 2. Does the target host still carry OSDs in this cluster?
+    ids=$(ceph osd ls-tree "$CS_HOST" 2>/dev/null | awk 'NF' | tr '\n' ' ')
+    ids=$(echo "$ids" | xargs || true)
+    if [ -z "$ids" ]; then
+      echo "VERDICT=PERMIT reason=no-osds-on-host host=$CS_HOST"; exit 0
+    fi
+    # 3. Refuse on HEALTH_ERR (inactive / unavailable PGs - losing more is unsafe).
+    h=$(ceph health 2>/dev/null | cut -d' ' -f1)
+    if [ "$h" = "HEALTH_ERR" ]; then
+      echo "VERDICT=REFUSE reason=HEALTH_ERR host=$CS_HOST osds=[$ids]"; exit 0
+    fi
+    # 4. Ask the cluster whether stopping the OSDs on this host keeps PGs available.
+    if ! ceph osd ok-to-stop $ids >/dev/null 2>&1; then
+      echo "VERDICT=REFUSE reason=not-ok-to-stop host=$CS_HOST osds=[$ids] health=$h"; exit 0
+    fi
+    # 5. Passed - protect the reimage window from a premature rebalance.
+    for id in $ids; do ceph osd add-noout "osd.$id" >/dev/null 2>&1 || true; done
+    echo "VERDICT=PERMIT reason=ok-to-stop host=$CS_HOST osds=[$ids] health=$h noout=set"
+  args:
+    executable: /bin/bash
+  environment:
+    CS_MODE: "{{ _cs_mode }}"
+    CS_HOST: "{{ hostname_short }}"
+  delegate_to: "{{ _cs_admin_host }}"
+  register: _cs_eval
+  changed_when: "'noout=set' in (_cs_eval.stdout | default(''))"
+  failed_when: false
+  when:
+    - _cs_mode != 'permissive'
+    - _cs_admin_host | length > 0
+
+- name: Ceph-safety - enforce the verdict
+  ansible.builtin.assert:
+    that:
+      # strict requires a POSITIVE permit (an unreachable delegate yields empty
+      # stdout, which must fail closed); auto only requires the absence of a refuse.
+      - >-
+        ('VERDICT=PERMIT' in (_cs_eval.stdout | default('')))
+        if _cs_mode == 'strict'
+        else ('VERDICT=REFUSE' not in (_cs_eval.stdout | default('')))
+    success_msg: "ceph-safety: {{ _cs_eval.stdout | default('skipped (permissive or no peer)') | trim }}"
+    fail_msg: >-
+      reprovision_ceph_safety={{ _cs_mode }}: REFUSING to reimage {{ inventory_hostname }}.
+      A reimage DESTROYS every OSD on this node (block.db + ssd-osd live on the wiped
+      NVMe). Cluster verdict: {{ _cs_eval.stdout | default('(no response from admin peer)') | trim }}.
+      Drain the node (ceph osd out, wait for HEALTH_OK) or fix cluster health, then
+      retry; or pass reprovision_ceph_safety=permissive only if the node is already
+      dead and you accept the OSD loss.
+  when:
+    - _cs_mode != 'permissive'

@@ -1,0 +1,82 @@
+---
+# Play 3 (post-reboot): confirm the INSTALLED OS came up (reachable with the spice
+# key that installimage copied from rescue, NOT rescue, hostname matches), then
+# write the provisioning marker (installimage base-only doesn't write it) and, on
+# the canary, record the fan-out-unlock marker. All delegate_to localhost raw ssh;
+# the fresh base image has no Python, so no ansible modules run against the node.
+
+- name: Initial post-reboot wait
+  ansible.builtin.pause:
+    seconds: 60
+  delegate_to: localhost
+
+- name: Wait for the installed OS (reachable, not rescue, hostname set)
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "[ ! -x {{ reprovision_installimage_bin }} ] && hostname -f"
+  delegate_to: localhost
+  register: reprovision_os_probe
+  changed_when: false
+  failed_when: false
+  retries: "{{ reprovision_os_retries }}"
+  delay: "{{ reprovision_os_delay }}"
+  until:
+    - reprovision_os_probe.rc == 0
+    - (reprovision_os_probe.stdout | trim) == (inventory_hostname ~ '.' ~ cluster_domain)
+
+- name: Assert the installed OS came up with the expected hostname
+  ansible.builtin.assert:
+    that:
+      - reprovision_os_probe.rc == 0
+      - (reprovision_os_probe.stdout | trim) == (inventory_hostname ~ '.' ~ cluster_domain)
+    fail_msg: >-
+      {{ inventory_hostname }} ({{ bond_ip }}) did not come up as the installed OS with
+      hostname {{ inventory_hostname }}.{{ cluster_domain }} within timeout
+      (rc={{ reprovision_os_probe.rc }}, got '{{ reprovision_os_probe.stdout | default('') | trim }}').
+
+- name: Build the provisioning marker locally
+  ansible.builtin.tempfile:
+    state: file
+    suffix: "-marker-{{ inventory_hostname }}"
+  register: reprovision_marker_tmp
+  delegate_to: localhost
+
+- name: Render marker JSON
+  ansible.builtin.copy:
+    dest: "{{ reprovision_marker_tmp.path }}"
+    mode: '0644'
+    content: >-
+      {{ {'hostname': inventory_hostname,
+          'fqdn': inventory_hostname ~ '.' ~ cluster_domain,
+          'bond_ip': bond_ip,
+          'cluster_name': cluster_name,
+          'cluster_domain': cluster_domain,
+          'hetzner_server_number': hetzner_server_number | int,
+          'provisioned_at': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ'),
+          'method': 'installimage',
+          'role_version': '2.0'} | to_nice_json }}
+  delegate_to: localhost
+
+- name: Write the marker onto the installed OS
+  ansible.builtin.command:
+    cmd: >-
+      scp {{ reprovision_ssh_opts }} -i {{ reprovision_ssh_key_path | expanduser }}
+      {{ reprovision_marker_tmp.path }} {{ reprovision_ssh_user }}@{{ bond_ip }}:{{ reprovision_marker_path }}
+  delegate_to: localhost
+  changed_when: true
+
+- name: Clean up the local marker temp
+  ansible.builtin.file:
+    path: "{{ reprovision_marker_tmp.path }}"
+    state: absent
+  delegate_to: localhost
+
+- name: Record canary verified (unlocks fan-out)
+  ansible.builtin.copy:
+    dest: "{{ reprovision_canary_marker }}"
+    content: "verified {{ inventory_hostname }} {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}\n"
+    mode: '0644'
+  delegate_to: localhost
+  when: inventory_hostname == reprovision_canary_host

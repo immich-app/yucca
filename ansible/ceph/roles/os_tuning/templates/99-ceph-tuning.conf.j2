@@ -9,6 +9,12 @@ vm.zone_reclaim_mode = {{ ceph_sysctl_vm_zone_reclaim_mode }}
 # --- FS ---
 fs.aio-max-nr = {{ ceph_sysctl_fs_aio_max_nr }}
 fs.file-max = {{ ceph_sysctl_fs_file_max }}
+# inotify headroom for cephadm-on-podman: each node runs many containers/systemd
+# units (OSDs + mon/mgr/rgw + the monitoring stack), and podman/systemd lean on
+# inotify watches. Debian's default max_user_instances (128) is a known bottleneck
+# at container scale; raise both so daemon starts + file watches do not exhaust it.
+fs.inotify.max_user_instances = {{ ceph_sysctl_fs_inotify_max_user_instances }}
+fs.inotify.max_user_watches = {{ ceph_sysctl_fs_inotify_max_user_watches }}
 
 # --- Kernel ---
 kernel.pid_max = {{ ceph_sysctl_kernel_pid_max }}
@@ -27,3 +33,22 @@ net.ipv4.tcp_fin_timeout = {{ ceph_sysctl_net_ipv4_tcp_fin_timeout }}
 net.ipv4.tcp_tw_reuse = {{ ceph_sysctl_net_ipv4_tcp_tw_reuse }}
 net.ipv4.tcp_max_tw_buckets = {{ ceph_sysctl_net_ipv4_tcp_max_tw_buckets }}
 net.ipv4.ip_local_port_range = {{ ceph_sysctl_net_ipv4_ip_local_port_range }}
+
+# --- Security hardening (host kernel / network) ---
+net.ipv4.tcp_syncookies = {{ ceph_sysctl_net_ipv4_tcp_syncookies }}
+net.ipv4.conf.all.accept_redirects = {{ ceph_sysctl_net_ipv4_conf_all_accept_redirects }}
+net.ipv4.conf.default.accept_redirects = {{ ceph_sysctl_net_ipv4_conf_default_accept_redirects }}
+net.ipv4.conf.all.send_redirects = {{ ceph_sysctl_net_ipv4_conf_all_send_redirects }}
+net.ipv4.conf.default.send_redirects = {{ ceph_sysctl_net_ipv4_conf_default_send_redirects }}
+net.ipv4.conf.all.accept_source_route = {{ ceph_sysctl_net_ipv4_conf_all_accept_source_route }}
+net.ipv4.conf.default.accept_source_route = {{ ceph_sysctl_net_ipv4_conf_default_accept_source_route }}
+net.ipv6.conf.all.accept_redirects = {{ ceph_sysctl_net_ipv6_conf_all_accept_redirects }}
+net.ipv6.conf.all.accept_source_route = {{ ceph_sysctl_net_ipv6_conf_all_accept_source_route }}
+kernel.kptr_restrict = {{ ceph_sysctl_kernel_kptr_restrict }}
+kernel.dmesg_restrict = {{ ceph_sysctl_kernel_dmesg_restrict }}
+net.ipv4.conf.all.log_martians = {{ ceph_sysctl_net_ipv4_conf_all_log_martians }}
+# rp_filter LOOSE (2), NOT strict (1): these hosts are multi-homed (1G WAN
+# default route + 25G fabric VLAN sub-interfaces). Strict RPF would blackhole
+# asymmetric fabric traffic.
+net.ipv4.conf.all.rp_filter = {{ ceph_sysctl_net_ipv4_conf_all_rp_filter }}
+net.ipv4.conf.default.rp_filter = {{ ceph_sysctl_net_ipv4_conf_default_rp_filter }}

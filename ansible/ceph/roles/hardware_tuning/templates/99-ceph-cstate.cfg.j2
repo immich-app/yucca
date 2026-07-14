@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# Adds processor.max_cstate to the kernel cmdline WITHOUT clobbering existing
+# tokens. Debian grub-mkconfig sources /etc/default/grub.d/*.cfg after
+# /etc/default/grub, so appending to the inherited value preserves whatever
+# else is set (e.g. consoleblank=0) and does not force "quiet".
+GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT processor.max_cstate={{ ceph_cpu_max_cstate }}"

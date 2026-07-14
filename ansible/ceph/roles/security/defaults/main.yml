@@ -16,6 +16,13 @@ ceph_firewall_trusted_networks:
 ceph_firewall_mon_ports: [3300, 6789]
 ceph_firewall_osd_port_range: "6800-7300"
 ceph_firewall_rgw_port: "{{ ceph_rgw_port | default(443) }}"
+# Allow RGW/S3 from any source (true) or restrict to trusted networks (false).
+# Mirrors ceph_firewall_ssh_any_source. Default true so a public S3 endpoint
+# keeps working out of the box. Set false in production once the client path is
+# confirmed to be inside ceph_firewall_trusted_networks (RFC1918 + NetBird
+# 100.64.0.0/10); on spice the fabric (10.40.20.0/23) and NetBird overlay both
+# already fall in those ranges, so restricting drops only public-internet reach.
+ceph_firewall_rgw_any_source: true
 ceph_firewall_dashboard_port: 8443
 ceph_firewall_prometheus_port: "{{ ceph_prometheus_port | default(9095) }}"
 ceph_firewall_grafana_port: "{{ ceph_grafana_port | default(3000) }}"
@@ -31,12 +38,12 @@ ceph_firewall_service_discovery_port: 8765
 
 # --- Optional service gateways (disabled by default) ---
 
-# iSCSI gateway — block storage for non-native clients
+# iSCSI gateway - block storage for non-native clients
 ceph_firewall_iscsi_enabled: false
 ceph_firewall_iscsi_port: 3260
 ceph_firewall_iscsi_api_port: 5000
 
-# NFS-Ganesha — CephFS export for NFS clients
+# NFS-Ganesha - CephFS export for NFS clients
 ceph_firewall_nfs_enabled: false
 ceph_firewall_nfs_port: 2049
 ceph_firewall_nfs_mgmt_port: 12049

@@ -1,0 +1,91 @@
+name: ansible-ceph-validate
+
+# Static validation gate for the ansible/ceph stack. ci.yml only validates the
+# Kubernetes/Flux surface (mise run k8s:validate); nothing there parses the ceph
+# playbooks, inventory or scripts. Without this gate a broken playbook, host_var
+# or script arg first executes during the post-merge PROD apply against real
+# nodes. This job runs the existing local validators (yamllint + ansible-lint +
+# shellcheck + syntax-check) with NO secrets and NO connection to any host.
+#
+# It lives in its own workflow (not a job in ci.yml) so the path filter below is
+# workflow-scoped: `on.<event>.paths` gates the whole file. Adding the same
+# filter inside ci.yml would gate every ci.yml job (k8s validate, tests) too.
+
+on:
+  pull_request:
+    paths:
+      - 'ansible/ceph/**'
+      - '.github/workflows/ansible-ceph-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ansible/ceph/**'
+      - '.github/workflows/ansible-ceph-validate.yml'
+
+# Read-only: checkout + tool downloads only. No writes through the token, no
+# deploy credentials, no 1Password.
+permissions:
+  contents: read
+
+concurrency:
+  group: ansible-ceph-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate ansible/ceph (lint + syntax)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ansible/ceph
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+        env:
+          # mise downloads tools from GitHub releases; anonymous requests hit
+          # API rate limits.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Trust the nested ansible/ceph/.mise.toml and install its pinned Python
+      # (3.12). The use-mise action installs root tools from the repo root; the
+      # ceph config is only picked up here, where cwd is ansible/ceph.
+      - name: Trust and install mise tools
+        run: |
+          mise trust --all
+          mise install
+
+      # Create the project .venv exactly as `mise run setup` does: pip install
+      # requirements.txt (pins ansible-core, ansible-lint, yamllint) and the
+      # ansible-galaxy collections (ansible.posix, community.general) that
+      # ansible-lint / syntax-check need to resolve modules. PyPI + Galaxy only;
+      # no secrets.
+      - name: Install ansible tooling
+        run: mise run setup
+
+      # yamllint + ansible-lint + shellcheck (scripts/*.sh). None need a live
+      # inventory or secrets; shellcheck ships on ubuntu-latest runners.
+      - name: Lint (yamllint + ansible-lint + shellcheck)
+        run: mise run lint
+
+      # ansible-playbook --syntax-check needs *an* inventory, but the real
+      # inventory.ini is TF-generated and gitignored, so it does not exist in
+      # CI. A syntax-check only parses YAML/role structure, so any valid
+      # inventory works: write a throwaway localhost inventory and point CEPH_ENV
+      # at it (the ceph:check task honours an exported CEPH_ENV). This never
+      # connects to a host.
+      - name: Syntax-check playbooks
+        env:
+          CEPH_ENV: /tmp/ci-inventory.ini
+        run: |
+          printf '[all]\nlocalhost ansible_connection=local\n' > /tmp/ci-inventory.ini
+          mise run check
+
+      # Byte-compile the helper scripts so a broken generator is caught here,
+      # not mid-provision. (shellcheck above covers the *.sh scripts.)
+      - name: Compile Python scripts
+        run: mise exec -- python -m py_compile scripts/*.py

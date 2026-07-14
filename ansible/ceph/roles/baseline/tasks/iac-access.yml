@@ -1,0 +1,39 @@
+---
+# Idempotent convergence twin of the reprovision -x chroot (reprovision_hetzner/
+# templates/post-install.sh.j2). Seeds the SAME login access -- root's iac key and
+# the ansible-iac sudo account -- so nodes that were installed WITHOUT the chroot
+# (e.g. the first 36 imaged before it existed) converge to the same state without
+# reimaging. Fresh nodes already have it from the chroot; this just re-affirms.
+#
+# Runs as the connection user (spice: root). Gated on provision_iac_ssh_key_path so
+# clusters that do not define an iac key skip cleanly. Standalone:
+#   scripts/ansible-play.sh <spice> baseline.yml --tags iac_access --limit <hosts>
+
+- name: Ensure the ansible-iac automation user
+  ansible.builtin.user:
+    name: "{{ baseline_iac_user }}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Passwordless sudo for ansible-iac
+  ansible.builtin.copy:
+    content: "{{ baseline_iac_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/{{ baseline_iac_user }}"
+    owner: root
+    group: root
+    mode: '0440'
+    validate: "visudo -cf %s"
+
+- name: Authorize the iac key on ansible-iac
+  ansible.posix.authorized_key:
+    user: "{{ baseline_iac_user }}"
+    key: "{{ baseline_iac_pubkey }}"
+    state: present
+
+# Non-exclusive: root is the reachability guarantee and must never be pruned here.
+- name: Authorize the iac key on root
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ baseline_iac_pubkey }}"
+    state: present

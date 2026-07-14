@@ -1,6 +1,6 @@
 ---
 # Post-deploy Ceph cluster tuning.
-# Requires a running cluster — all tasks use ceph CLI commands.
+# Requires a running cluster -- all tasks use ceph CLI commands.
 # Runs from the bootstrap node only.
 #
 # Every config-set task checks the current value first and only
@@ -136,13 +136,20 @@
 # --- CRUSH tunables ---
 
 - name: Ensure CRUSH tunables are optimal
-  ansible.builtin.command: ceph osd crush tunables optimal
+  ansible.builtin.shell: |
+    set -o pipefail
+    OPTIMAL=$(ceph osd crush show-tunables --format json \
+      | python3 -c "import sys, json; print(json.load(sys.stdin).get('optimal_tunables', 0))")
+    [ "$OPTIMAL" = "1" ] || { ceph osd crush tunables optimal; echo CHANGED; }
+  args:
+    executable: /bin/bash
+  register: crush_tunables
   when: inventory_hostname in groups['ceph_bootstrap']
-  changed_when: false
+  changed_when: "'CHANGED' in (crush_tunables.stdout | default(''))"
 
 # --- Prometheus alerting rules ---
 # cephadm ships 89 built-in alert rules across 16 groups (OSD, MON, PG,
-# pool, MDS, hardware, network, etc.). No custom rules needed — verify
+# pool, MDS, hardware, network, etc.). No custom rules needed -- verify
 # they're loaded.
 
 - name: Verify Prometheus alert rules are loaded

@@ -1,0 +1,54 @@
+name: s3-dns-roster-validate
+
+# Static gate: the prod S3 RGW DNS roster (the A-records for
+# s3.prod.fsn1.htz.futo.cloud + the wildcard, in tf/deployment/prod/global/dns)
+# is a hand-maintained round-robin over every in-service spice ceph node's fabric
+# IP. Nothing links it to the ceph stack, so adding/replacing/removing a node can
+# silently blackhole the endpoint (a stale IP that routes nowhere) or drop capacity
+# (a live node left out of rotation). Without this gate the mismatch first surfaces
+# in production, after the DNS apply.
+#
+# tf/scripts/check-s3-dns-roster.py reconstructs the expected roster from the ceph
+# source of truth (clusters.auto.tfvars in-service set + spice-hosts.yaml
+# host_index -> fabric IP) and fails on any divergence. Credential-free and
+# stdlib-only: no remote state, no provider, no 1Password, no host connection.
+#
+# Its own workflow (not a job in infra.yml or ci.yml) so the path filter below is
+# workflow-scoped: it fires only when the DNS roster or a ceph roster input
+# changes, mirroring ansible-ceph-validate.yml.
+
+on:
+  pull_request:
+    paths: &paths
+      - 'tf/deployment/prod/global/dns/records.auto.tfvars'
+      - 'tf/deployment/prod/htz-fsn1/ceph/clusters.auto.tfvars'
+      - 'tf/deployment/prod/htz-fsn1/ceph/spice-hosts.yaml'
+      - 'tf/scripts/check-s3-dns-roster.py'
+      - '.github/workflows/s3-dns-roster-validate.yml'
+  push:
+    branches: [main]
+    paths: *paths
+
+# Read-only: checkout only. No writes through the token, no deploy credentials,
+# no 1Password.
+permissions:
+  contents: read
+
+concurrency:
+  group: s3-dns-roster-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Check S3 DNS roster vs ceph node roster
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      # Stdlib-only Python; ubuntu-latest ships python3. No mise/tool install
+      # needed, so this gate stays fast and dependency-free.
+      - name: Roster drift check
+        run: tf/scripts/check-s3-dns-roster.py

@@ -2,33 +2,122 @@
 # Phase 4.5: Ensure Ceph block.db LVM is set up on each node (sietch-shape only)
 #
 # This task is sietch-shape-specific: it assumes dual SAS-attached SSDs each
-# with partition 5 → its own VG, with 6 db-slot LVs per VG (12 total). It
-# ensures PVs, VGs, and LVs exist. Idempotent — skips if already present.
+# with partition 5 -> its own VG, with 6 db-slot LVs per VG (12 total). It
+# ensures PVs, VGs, and LVs exist. Idempotent - skips if already present.
 # Provides a recovery path if the LVM was destroyed by `mise run destroy`.
 #
-# Painbox-shape (Hetzner SX295, NVMe RAID-1 → single vg0 with all LVs created
-# by installimage post-install) skips the whole block — its host_vars don't
+# Painbox-shape (Hetzner SX295, NVMe RAID-1 -> single vg0 with all LVs created
+# by installimage post-install) skips the whole block - its host_vars don't
 # define `sas_path_prefix` so the gate below short-circuits.
 #
 # Required host_vars (sietch-shape only):
-#   sas_path_prefix  — by-path prefix for SSD discovery (e.g., pci-0000:02:00.0-sas-exp...)
-#   ssd1_phy, ssd2_phy — PHY slot numbers for the two SSDs
-#   ceph_db_vg1, ceph_db_vg2 — VG names for SSD1/SSD2 partition 5
+#   sas_path_prefix  - by-path prefix for SSD discovery (e.g., pci-0000:02:00.0-sas-exp...)
+#   ssd1_phy, ssd2_phy - PHY slot numbers for the two SSDs
+#   ceph_db_vg1, ceph_db_vg2 - VG names for SSD1/SSD2 partition 5
 #
 # VG mapping: ceph_db_vg1 on SSD1 partition 5, ceph_db_vg2 on SSD2 partition 5
 # LV naming: db-slot0..5 on VG1, db-slot6..11 on VG2 (one per HDD OSD)
 
-- name: Skip in-role LVM setup (no sas_path_prefix — externally-managed LVM)
+# NVMe-RAID shape (spice): a single vg0 on the NVMe RAID-1 already carries the
+# OS LVs from installimage. Create the block.db LVs (one per HDD OSD) + one
+# ssd-osd LV here at converge, before osds.yml. This replaces painbox's fragile
+# installimage -x chroot post-install with an idempotent, observable ansible
+# step. Gated on ceph_db_lvs_per_node (spice sets it; genuinely
+# externally-managed hosts do not).
+- name: Set up LVM (NVMe-RAID single-vg0 topology)
+  when:
+    - sas_path_prefix is undefined
+    - ceph_db_lvs_per_node is defined
+  # DATA SAFETY: never let lvol SHRINK an existing LV -- reconciling a drifted
+  # db-slot down would truncate a live block.db and corrupt the OSD. shrink:false
+  # means lvol still creates and may grow, but leaves a larger existing LV alone
+  # (the old shell skipped existing LVs entirely). opts -Wy wipes stale signatures
+  # on (re)created LVs, preserving the destroy->recreate recovery-path freshness.
+  module_defaults:
+    community.general.lvol:
+      shrink: false
+      opts: "-Wy"
+  block:
+    - name: Assert vg0 exists (created by installimage)
+      ansible.builtin.command: vgs {{ ceph_db_vg }}
+      changed_when: false
+
+    - name: Create block.db LVs on vg0 (fixed size, one per HDD OSD)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg }}"
+        lv: "db-slot{{ item }}"
+        size: "{{ ceph_db_lv_size }}"
+        state: present
+      loop: "{{ range(0, ceph_db_lvs_per_node | int) | list }}"
+
+    # ssd-osd is sized as (vg0 free - reserve); lvol has no "free minus N GiB"
+    # primitive, so compute the GiB with a read-only shell and feed it to lvol.
+    # Gate the compute + create on the LV being absent: once ssd-osd exists, vg0
+    # free == reserve, so recomputing would yield <= 0 and the original shell's
+    # FATAL guard would (correctly) refuse -- and an unforced lvol resize would
+    # fail. The existence check preserves that idempotency exactly.
+    - name: Check whether the ssd-osd LV already exists on vg0
+      ansible.builtin.command: lvs {{ ceph_db_vg }}/{{ ceph_ssd_osd_lv }}
+      register: vg0_ssd_check
+      changed_when: false
+      failed_when: false
+
+    - name: Compute the ssd-osd size (vg0 free minus reserve, in GiB)
+      ansible.builtin.shell: |
+        set -o pipefail
+        free_g=$(vgs {{ ceph_db_vg }} --noheadings --nosuffix --units g -o vg_free | tr -d ' ' | cut -d. -f1)
+        echo $(( free_g - {{ ceph_ssd_osd_reserve_gib }} ))
+      args:
+        executable: /bin/bash
+      register: vg0_ssd_size
+      changed_when: false
+      when: vg0_ssd_check.rc != 0
+
+    - name: Fail when vg0 free is at or below the reserve
+      ansible.builtin.fail:
+        msg: >-
+          FATAL: {{ ceph_db_vg }} free minus reserve
+          {{ ceph_ssd_osd_reserve_gib }}G leaves no room for {{ ceph_ssd_osd_lv }}
+      when:
+        - vg0_ssd_check.rc != 0
+        - (vg0_ssd_size.stdout | int) <= 0
+
+    - name: Create the ssd-osd LV from vg0 remainder minus reserve
+      community.general.lvol:
+        vg: "{{ ceph_db_vg }}"
+        lv: "{{ ceph_ssd_osd_lv }}"
+        size: "{{ vg0_ssd_size.stdout | int }}G"
+        state: present
+      when: vg0_ssd_check.rc != 0
+
+    - name: Verify vg0 LVM layout
+      ansible.builtin.command: lvs {{ ceph_db_vg }} -o lv_name,lv_size --noheadings
+      register: vg0_lvm_state
+      changed_when: false
+
+    - name: Show vg0 LVM layout
+      ansible.builtin.debug:
+        msg: "{{ vg0_lvm_state.stdout_lines }}"
+
+# Genuinely externally-managed LVM (neither sietch dual-SSD nor spice NVMe-RAID).
+- name: Skip in-role LVM setup (externally-managed LVM)
   ansible.builtin.debug:
     msg: >-
-      LVM is externally managed on this host (e.g., Hetzner installimage
-      post-install creates vg0 + db-slots on a RAID-1 NVMe). Skipping the
-      sietch-shape dual-SSD-VG setup. If LVM is missing on this host,
+      LVM is externally managed on this host (no sas_path_prefix and no
+      ceph_db_lvs_per_node). Skipping in-role LVM setup. If LVM is missing,
       reprovision via the cluster's installimage flow.
-  when: sas_path_prefix is undefined
+  when:
+    - sas_path_prefix is undefined
+    - ceph_db_lvs_per_node is undefined
 
 - name: Set up LVM (sietch-shape dual-SSD-VG topology)
   when: sas_path_prefix is defined
+  # DATA SAFETY: shrink:false so lvol never truncates a live block.db LV on drift
+  # (it may still create/grow); opts -Wy wipes stale signatures on (re)created LVs.
+  module_defaults:
+    community.general.lvol:
+      shrink: false
+      opts: "-Wy"
   block:
     - name: Resolve SSD1 device path
       ansible.builtin.command: >
@@ -54,51 +143,64 @@
       changed_when: false
       failed_when: false
 
-    - name: Create PV and VG on SSD1 partition 5
-      ansible.builtin.shell: |
-        PART="{{ ssd1_dev.stdout }}5"
-        wipefs -af "$PART"
-        pvcreate -f "$PART" && vgcreate {{ ceph_db_vg1 }} "$PART"
+    # lvg runs "pvcreate -f" but not "--yes", so it will not clear a stale
+    # foreign (ceph/ext) signature on a reused partition. Preserve the original
+    # wipefs -af, gated exactly as before on the VG being absent, so we never
+    # wipe a live PV. lvg then creates the PV+VG idempotently.
+    - name: Wipe stale signatures on SSD1 partition 5
+      ansible.builtin.command: wipefs -af {{ ssd1_dev.stdout }}5
       when: vg1_check.rc != 0
       changed_when: true
 
-    - name: Create PV and VG on SSD2 partition 5
-      ansible.builtin.shell: |
-        PART="{{ ssd2_dev.stdout }}5"
-        wipefs -af "$PART"
-        pvcreate -f "$PART" && vgcreate {{ ceph_db_vg2 }} "$PART"
+    - name: Create PV and VG on SSD1 partition 5
+      community.general.lvg:
+        vg: "{{ ceph_db_vg1 }}"
+        pvs: "{{ ssd1_dev.stdout }}5"
+        state: present
+
+    - name: Wipe stale signatures on SSD2 partition 5
+      ansible.builtin.command: wipefs -af {{ ssd2_dev.stdout }}5
       when: vg2_check.rc != 0
       changed_when: true
 
-    - name: Create block.db LVs on VG1 (slots 0-4 at 240G, slot 5 gets remainder)
-      ansible.builtin.shell: |
-        if lvs {{ ceph_db_vg1 }}/db-slot{{ item }} 2>/dev/null; then
-          echo "db-slot{{ item }} already exists"
-        else
-          {% if item < 5 %}
-          lvcreate --yes -Wy -L {{ ceph_db_lv_size }} -n db-slot{{ item }} {{ ceph_db_vg1 }}
-          {% else %}
-          lvcreate --yes -Wy -l 100%FREE -n db-slot{{ item }} {{ ceph_db_vg1 }}
-          {% endif %}
-        fi
-      loop: [0, 1, 2, 3, 4, 5]
-      register: vg1_lv_results
-      changed_when: "'already exists' not in (vg1_lv_results.stdout | default(''))"
+    - name: Create PV and VG on SSD2 partition 5
+      community.general.lvg:
+        vg: "{{ ceph_db_vg2 }}"
+        pvs: "{{ ssd2_dev.stdout }}5"
+        state: present
 
-    - name: Create block.db LVs on VG2 (slots 6-10 at 240G, slot 11 gets remainder)
-      ansible.builtin.shell: |
-        if lvs {{ ceph_db_vg2 }}/db-slot{{ item }} 2>/dev/null; then
-          echo "db-slot{{ item }} already exists"
-        else
-          {% if item < 11 %}
-          lvcreate --yes -Wy -L {{ ceph_db_lv_size }} -n db-slot{{ item }} {{ ceph_db_vg2 }}
-          {% else %}
-          lvcreate --yes -Wy -l 100%FREE -n db-slot{{ item }} {{ ceph_db_vg2 }}
-          {% endif %}
-        fi
-      loop: [6, 7, 8, 9, 10, 11]
-      register: vg2_lv_results
-      changed_when: "'already exists' not in (vg2_lv_results.stdout | default(''))"
+    # Fixed slots first, then the 100%FREE remainder, so the remainder LV only
+    # claims the space left after the fixed LVs (matches the sequential order of
+    # the original single-loop shell).
+    - name: Create fixed-size block.db LVs on VG1 (slots 0-4 at 240G)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg1 }}"
+        lv: "db-slot{{ item }}"
+        size: "{{ ceph_db_lv_size }}"
+        state: present
+      loop: [0, 1, 2, 3, 4]
+
+    - name: Create remainder block.db LV on VG1 (slot 5, 100%FREE)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg1 }}"
+        lv: db-slot5
+        size: 100%FREE
+        state: present
+
+    - name: Create fixed-size block.db LVs on VG2 (slots 6-10 at 240G)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg2 }}"
+        lv: "db-slot{{ item }}"
+        size: "{{ ceph_db_lv_size }}"
+        state: present
+      loop: [6, 7, 8, 9, 10]
+
+    - name: Create remainder block.db LV on VG2 (slot 11, 100%FREE)
+      community.general.lvol:
+        vg: "{{ ceph_db_vg2 }}"
+        lv: db-slot11
+        size: 100%FREE
+        state: present
 
     # --- SSD OSD data LVs (partition 6) ---
     # part6 of each SSD is the SSD-class OSD data device. cephadm cannot deploy
@@ -120,46 +222,50 @@
       failed_when: false
       when: ceph_ssd_vg2 is defined
 
-    - name: Create PV and VG on SSD1 partition 6 (SSD OSD)
-      ansible.builtin.shell: |
-        PART="{{ ssd1_dev.stdout }}6"
-        wipefs -af "$PART"
-        pvcreate -f "$PART" && vgcreate {{ ceph_ssd_vg1 }} "$PART"
+    # Same wipefs-then-lvg safety as partition 5, gated on the SSD-OSD VG being
+    # requested (ceph_ssd_vg1/2 defined) and absent.
+    - name: Wipe stale signatures on SSD1 partition 6 (SSD OSD)
+      ansible.builtin.command: wipefs -af {{ ssd1_dev.stdout }}6
       when:
         - ceph_ssd_vg1 is defined
         - ssd_vg1_check.rc | default(1) != 0
       changed_when: true
 
-    - name: Create PV and VG on SSD2 partition 6 (SSD OSD)
-      ansible.builtin.shell: |
-        PART="{{ ssd2_dev.stdout }}6"
-        wipefs -af "$PART"
-        pvcreate -f "$PART" && vgcreate {{ ceph_ssd_vg2 }} "$PART"
+    - name: Create PV and VG on SSD1 partition 6 (SSD OSD)
+      community.general.lvg:
+        vg: "{{ ceph_ssd_vg1 }}"
+        pvs: "{{ ssd1_dev.stdout }}6"
+        state: present
+      when: ceph_ssd_vg1 is defined
+
+    - name: Wipe stale signatures on SSD2 partition 6 (SSD OSD)
+      ansible.builtin.command: wipefs -af {{ ssd2_dev.stdout }}6
       when:
         - ceph_ssd_vg2 is defined
         - ssd_vg2_check.rc | default(1) != 0
       changed_when: true
 
+    - name: Create PV and VG on SSD2 partition 6 (SSD OSD)
+      community.general.lvg:
+        vg: "{{ ceph_ssd_vg2 }}"
+        pvs: "{{ ssd2_dev.stdout }}6"
+        state: present
+      when: ceph_ssd_vg2 is defined
+
     - name: Create SSD OSD LV on VG1 (100%FREE)
-      ansible.builtin.shell: |
-        if lvs {{ ceph_ssd_vg1 }}/osd-ssd 2>/dev/null; then
-          echo "osd-ssd already exists"
-        else
-          lvcreate --yes -Wy -l 100%FREE -n osd-ssd {{ ceph_ssd_vg1 }}
-        fi
-      register: ssd_lv1_result
-      changed_when: "'already exists' not in (ssd_lv1_result.stdout | default(''))"
+      community.general.lvol:
+        vg: "{{ ceph_ssd_vg1 }}"
+        lv: osd-ssd
+        size: 100%FREE
+        state: present
       when: ceph_ssd_vg1 is defined
 
     - name: Create SSD OSD LV on VG2 (100%FREE)
-      ansible.builtin.shell: |
-        if lvs {{ ceph_ssd_vg2 }}/osd-ssd 2>/dev/null; then
-          echo "osd-ssd already exists"
-        else
-          lvcreate --yes -Wy -l 100%FREE -n osd-ssd {{ ceph_ssd_vg2 }}
-        fi
-      register: ssd_lv2_result
-      changed_when: "'already exists' not in (ssd_lv2_result.stdout | default(''))"
+      community.general.lvol:
+        vg: "{{ ceph_ssd_vg2 }}"
+        lv: osd-ssd
+        size: 100%FREE
+        state: present
       when: ceph_ssd_vg2 is defined
 
     - name: Verify LVM setup

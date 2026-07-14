@@ -1,0 +1,34 @@
+---
+# Fabric-only firewall scenario: exercises the CLOSED branch of
+# nftables.conf.j2, the mirror image of the default scenario. Here
+# ceph_firewall_rgw_any_source and ceph_firewall_ssh_any_source are both
+# false, so RGW/S3 and SSH are reachable only from the trusted fabric +
+# NetBird networks rather than from any source. Matches spice's production
+# posture (ceph_firewall_rgw_any_source: false).
+driver:
+  name: default
+
+platforms:
+  - name: molecule-security-fabric-test
+    image: debian:bookworm
+    pre_build_image: true
+
+provisioner:
+  name: ansible
+  inventory:
+    hosts:
+      all:
+        hosts:
+          molecule-security-fabric-test:
+            hostname_short: molecule-security-fabric-test
+            bond_ip: 10.40.20.99
+        children:
+          ceph_nodes:
+            hosts:
+              molecule-security-fabric-test:
+          ceph_bootstrap:
+            hosts:
+              molecule-security-fabric-test:
+
+verifier:
+  name: ansible

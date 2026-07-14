@@ -155,6 +155,10 @@ run = "scripts/ansible-play.sh backup-config.yml"
 description = "Snapshot bootstrap secrets (RGW TLS, admin keyring) to 1P (DR belt)"
 run = "scripts/ansible-play.sh post-deploy-capture.yml"
 
+[tasks."backup-timer"]
+description = "Install + enable the scheduled cluster-state backup timer on the bootstrap node"
+run = "scripts/ansible-play.sh backup-ceph.yml"
+
 [tasks."rotate-certs"]
 description = "Rotate RGW TLS cert (regenerate self-signed, restart RGW daemons)"
 run = "scripts/ansible-play.sh rotate-certs.yml"
@@ -170,3 +174,14 @@ run = "scripts/ansible-play.sh hardware-inventory.yml"
 [tasks."migrate-networkd"]
 description = "One-shot ifupdown→networkd migration (rolling, serial=1, noout-gated)"
 run = "scripts/ansible-play.sh migrate-networkd.yml"
+
+[tasks.reprovision]
+description = "Hetzner installimage reprovision (rescue -> reset -> installimage -> verify). DESTRUCTIVE - canary first."
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+# HETZNER_ROBOT_* come from tf/.env.prod via op run; the same op session also
+# satisfies ansible-play.sh's inner op inject of secrets.yml.tpl. Set CEPH_ENV first.
+OP_ACCOUNT=team-futo op run --env-file=../../tf/.env.prod -- \\
+  scripts/ansible-play.sh reprovision.yml "$@"
+"""

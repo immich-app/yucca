@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# Runs ceph-backup.service on a schedule. Persistent=true catches up a missed
+# run (host powered off at the scheduled time) on the next boot.
+[Unit]
+Description=Scheduled Ceph cluster-state backup
+
+[Timer]
+OnCalendar={{ ceph_backup_oncalendar }}
+RandomizedDelaySec={{ ceph_backup_randomized_delay }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

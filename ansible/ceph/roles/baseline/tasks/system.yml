@@ -17,3 +17,10 @@
     enabled: true
     state: started
   loop: "{{ baseline_enable_services }}"
+
+# timezone: UTC is declared in group_vars but nothing set it, so nodes drifted to
+# the image default (Europe/Berlin) and logs render in CEST. Idempotent, reboot-free.
+- name: Set the system timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+  when: timezone is defined

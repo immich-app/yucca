@@ -1,0 +1,71 @@
+---
+# Intel E810 (ice) NICs need their DDP package (intel/ice/ddp/ice.pkg, provided by
+# firmware-misc-nonfree, installed via baseline_extra_packages). Without it the NIC
+# boots into Safe Mode: the packet classifier is crippled and drops reserved-multicast
+# control frames (LACP 01:80:c2:00:00:02, LLDP ..:0e), so the 25G fabric bond never
+# aggregates even though the switch is correctly configured. The DDP only loads when
+# ice (re)probes, so once the package is present a single reboot clears Safe Mode.
+#
+# Safe by design: only acts on hosts with an ice NIC; only reboots when the NIC is
+# actually in Safe Mode AND the DDP file is present (so the reboot will fix it, and
+# healthy nodes are never rebooted); refuses to reboot if the DDP is still missing
+# (would loop). The WAN is on a separate igb NIC, so the reboot keeps the node
+# reachable (coexistence). Idempotent: a converged node is a no-op.
+
+- name: Find an ice-bound netdev (is this an E810 host?)
+  ansible.builtin.shell: |
+    set -o pipefail
+    for d in /sys/bus/pci/drivers/ice/0000:*/net/*; do
+      [ -e "$d" ] && { basename "$d"; break; }
+    done
+  args:
+    executable: /bin/bash
+  register: baseline_ice_nic
+  changed_when: false
+  failed_when: false
+
+- name: Activate the ice DDP (exit Safe Mode) when needed
+  when: baseline_ice_nic.stdout | trim | length > 0
+  block:
+    - name: Check whether the ice NIC is in Safe Mode  # noqa: risky-shell-pipe
+      # In Safe Mode advanced ops are disabled: --show-fec fails "not supported".
+      # NB: no `set -o pipefail` here -- ethtool exits non-zero on "not supported",
+      # which pipefail would propagate and mask grep's match, always yielding "ok".
+      ansible.builtin.shell: |
+        if ethtool --show-fec {{ baseline_ice_nic.stdout | trim }} 2>&1 | grep -qi "not supported"; then
+          echo safemode
+        else
+          echo ok
+        fi
+      args:
+        executable: /bin/bash
+      register: baseline_ice_mode
+      changed_when: false
+
+    # Gate on the dpkg DB (deterministic), not a file stat: after a large apt
+    # transaction the DDP file can lag briefly on disk, but dpkg-query reflects the
+    # install immediately -- and if the package is installed, the DDP file is present.
+    - name: Check firmware-misc-nonfree is installed (provides the DDP)
+      ansible.builtin.command: dpkg-query -W -f=${Status} firmware-misc-nonfree
+      register: baseline_ice_ddp_pkg
+      changed_when: false
+      failed_when: false
+
+    - name: Warn - NIC in Safe Mode but firmware-misc-nonfree not installed (do not reboot; would loop)
+      ansible.builtin.debug:
+        msg: >-
+          ice NIC {{ baseline_ice_nic.stdout | trim }} is in Safe Mode but
+          firmware-misc-nonfree is not installed. NOT rebooting. Check that it is in
+          baseline_extra_packages and that the non-free-firmware apt component is enabled.
+      when:
+        - "'safemode' in baseline_ice_mode.stdout"
+        - "'install ok installed' not in baseline_ice_ddp_pkg.stdout"
+
+    - name: Reboot once to load the ice DDP and exit Safe Mode
+      ansible.builtin.reboot:
+        reboot_timeout: "{{ baseline_nic_firmware_reboot_timeout }}"
+        msg: "Loading Intel ice DDP (exit Safe Mode) after firmware-misc-nonfree install"
+      when:
+        - baseline_nic_firmware_activate | bool
+        - "'safemode' in baseline_ice_mode.stdout"
+        - "'install ok installed' in baseline_ice_ddp_pkg.stdout"

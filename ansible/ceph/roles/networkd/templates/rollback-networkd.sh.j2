@@ -1,12 +1,25 @@
 #!/bin/bash
 # {{ ansible_managed }}
-# Emergency rollback: systemd-networkd -> ifupdown
-# Run from iDRAC console if SSH is unreachable after migration.
-# /etc/network/interfaces was preserved during migration.
+# Emergency rollback: stop systemd-networkd, hand networking back to ifupdown.
+# Run from the KVM/console if SSH is unreachable after activation.
+# /etc/network/interfaces was preserved throughout.
+{% if networkd_replace_ifupdown | default(true) | bool %}
+# Full-migration cluster: the reachability address {{ bond_ip }} lives on
+# {{ networkd_bond_name }}, which ifupdown re-owns after this rollback.
+{% else %}
+# Coexistence cluster: ifupdown already owns the WAN ({{ oob_nic }}); networkd
+# only added the bond/VLAN fabric. Stopping networkd should leave the WAN
+# ({{ bond_ip }} on {{ oob_nic }}) untouched -- this is mostly belt-and-suspenders.
+{% endif %}
 
 set -euo pipefail
+{% if networkd_replace_ifupdown | default(true) | bool %}
+CHECK_IFACE={{ networkd_bond_name }}
+{% else %}
+CHECK_IFACE={{ oob_nic }}
+{% endif %}
 
-echo "=== Rollback: networkd -> ifupdown ==="
+echo "=== Rollback: networkd -> ifupdown (check ${CHECK_IFACE}) ==="
 
 systemctl stop systemd-networkd.service systemd-networkd.socket
 systemctl disable systemd-networkd.service systemd-networkd.socket
@@ -17,10 +30,10 @@ systemctl start networking.service
 echo "Waiting 5s for link..."
 sleep 5
 
-if ip addr show {{ networkd_bond_name }} | grep -q '{{ bond_ip }}'; then
-  echo "OK: {{ bond_ip }} is up on {{ networkd_bond_name }}"
+if ip addr show "$CHECK_IFACE" | grep -q '{{ bond_ip }}'; then
+  echo "OK: {{ bond_ip }} is up on ${CHECK_IFACE}"
   echo "Rollback complete. Verify SSH access, then investigate."
 else
-  echo "WARN: {{ bond_ip }} not found on {{ networkd_bond_name }}"
+  echo "WARN: {{ bond_ip }} not found on ${CHECK_IFACE}"
   echo "Try: ip addr show; cat /etc/network/interfaces; journalctl -u networking"
 fi

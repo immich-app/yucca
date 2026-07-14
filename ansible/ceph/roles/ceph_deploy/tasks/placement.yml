@@ -6,7 +6,8 @@
 #   2. Else if <=2 active hosts: 1 MON (bootstrap only, avoids 2-MON fragility)
 #   3. Else: MON on all active hosts
 #
-# MGR always deploys on all active hosts (standbys are harmless).
+# MGR deploys a capped count (ceph_mgr_count, default 3: 1 active + standbys),
+# not one per host -- cephadm schedules them and caps at the host count.
 
 - name: Determine active cluster hosts
   ansible.builtin.shell: |
@@ -45,10 +46,10 @@
       MON placement: {{ mon_hosts }}
       ({{ 'explicit ceph_mon group'
          if groups['ceph_mon'] | default([]) | length > 0
-         else ('single MON — avoids 2-mon quorum fragility'
+         else ('single MON - avoids 2-mon quorum fragility'
                if active_hosts.stdout.split(',') | length <= 2
                else 'MON on all hosts') }}).
-      MGR placement: {{ active_hosts.stdout }} (all hosts).
+      MGR placement: count:{{ ceph_mgr_count }}.
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - mon_hosts is defined
@@ -61,9 +62,9 @@
     - mon_hosts | default('') | length > 0
   changed_when: false
 
-- name: Deploy MGR on all active hosts
+- name: Deploy MGR at a capped count (not one per host)
   ansible.builtin.command: >
-    ceph orch apply mgr --placement="{{ active_hosts.stdout }}"
+    ceph orch apply mgr --placement="count:{{ ceph_mgr_count }}"
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - active_hosts.stdout | default('') | length > 0

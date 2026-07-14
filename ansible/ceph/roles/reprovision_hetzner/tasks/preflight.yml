@@ -1,0 +1,53 @@
+---
+# Controller-side preflight, run ONCE from reprovision.yml Play 1 pre_tasks
+# (include_role ... tasks_from: preflight, run_once: true). Loading it through the
+# role makes the role defaults (robot url/creds, canary marker) available, and
+# run_once means --limit cannot skip it (unlike a separate hosts: localhost play).
+# Asserts keys, enforces the fan-out gate, and (Robot path only) registers the
+# rescue keys + publishes their fingerprints onto localhost facts for robot.yml.
+# The manual add-node path sets reprovision_use_robot=false and skips all of that.
+
+- name: Stat the spice ansible-iac keypair on the controller
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ reprovision_ssh_key_path | expanduser }}"
+    - "{{ reprovision_ssh_key_path | expanduser }}.pub"
+  register: reprovision_key_stat
+  delegate_to: localhost
+
+- name: Assert the keypair exists
+  ansible.builtin.assert:
+    that: reprovision_key_stat.results | map(attribute='stat.exists') | min
+    fail_msg: "Missing {{ reprovision_ssh_key_path }} (.pub). Run scripts/install-ssh-keys.sh spice."
+
+- name: Assert every target carries hetzner_server_number (host_vars loaded)
+  ansible.builtin.assert:
+    that: hostvars[item].hetzner_server_number is defined
+    fail_msg: "{{ item }} has no hetzner_server_number. Run scripts/gen-spice-host-vars.py."
+  loop: "{{ ansible_play_hosts_all }}"
+
+- name: Stat the canary-verified marker
+  ansible.builtin.stat:
+    path: "{{ reprovision_canary_marker }}"
+  register: reprovision_canary_stat
+  delegate_to: localhost
+
+- name: Fan-out guard - block multi-node wipes until the canary is verified
+  ansible.builtin.assert:
+    that:
+      - (ansible_play_hosts_all | length) <= 1
+        or reprovision_canary_stat.stat.exists
+        or (allow_fanout | default(false) | bool)
+    fail_msg: >-
+      Refusing to reprovision {{ ansible_play_hosts_all | length }} nodes: the canary
+      ({{ reprovision_canary_host }}) has not been verified. Run the canary first
+      (--limit {{ reprovision_canary_host }}); fan-out unlocks once its wait/verify
+      succeeds, or override with -e allow_fanout=true.
+
+# --- Register rescue keys in the Robot (Robot path only) ----------------------
+# Skipped entirely on the manual add-node path (reprovision_use_robot=false): the
+# operator arms rescue by hand in the portal, so no API key registration is needed.
+- name: Register rescue keys + resolve fingerprints in the Robot
+  ansible.builtin.import_tasks: register_robot_keys.yml
+  when: reprovision_use_robot | default(true) | bool

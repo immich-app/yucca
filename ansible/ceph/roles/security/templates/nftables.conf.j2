@@ -1,8 +1,13 @@
 #!/usr/sbin/nft -f
-# Ceph node firewall — managed by Ansible (security role)
+# Ceph node firewall - managed by Ansible (security role)
 # Allows only Ceph services + SSH from trusted networks. Drops everything else.
 
-flush ruleset
+# Replace ONLY our own table. A global `flush ruleset` would also wipe the
+# podman/docker/fail2ban tables (cephadm runs podman on these nodes) and would
+# make the no-op guard never match. `table inet filter` creates it if absent,
+# then delete+re-add atomically replaces just our rules.
+table inet filter
+delete table inet filter
 
 table inet filter {
     chain input {
@@ -23,10 +28,16 @@ table inet filter {
         tcp dport 22 accept
 {% endif %}
 
+{% if ceph_firewall_rgw_any_source | bool %}
         # RGW / S3 (all sources)
         tcp dport {{ ceph_firewall_rgw_port }} accept
+{% endif %}
 
 {% for net in ceph_firewall_trusted_networks %}
+{% if not (ceph_firewall_rgw_any_source | bool) %}
+        # RGW / S3 (restricted to trusted networks)
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_rgw_port }} accept
+{% endif %}
         # --- Trusted network: {{ net }} ---
 
 {% if not (ceph_firewall_ssh_any_source | bool) %}

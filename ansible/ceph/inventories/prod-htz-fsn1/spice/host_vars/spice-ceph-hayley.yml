@@ -1,0 +1,7 @@
+---
+hostname_short: spice-ceph-hayley
+bond_ip: 178.63.139.230
+hetzner_server_number: 3012008
+host_index: 24
+mon: true
+# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)

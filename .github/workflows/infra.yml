@@ -28,13 +28,19 @@ name: Infra (Terraform)
 # advertises the node subnets the overlay-joining jobs reach; prod/global must
 # precede prod/htz-fsn1/netbird (a real terragrunt dependency).
 #
-# The two post-apply Ansible converges (ceph RGW users on the ceph stack; mgmt
-# hosts on the fabric stack) are gated independently of their TF apply: on push
-# they run only when their own surface changed (ceph: ansible/ceph/**; mgmt:
-# ansible/mgmt/** + tf/render/ansible-mgmt/** + .mise/tasks/mgmt/**), and on
-# workflow_dispatch only when the run_ceph_ansible / run_mgmt_ansible toggles are
-# set (both default off). A pure-Terraform change to either stack thus applies
-# without reconverging the nodes — and the ceph overlay join is skipped with it.
+# The two post-apply Ansible converges are gated independently of their TF apply.
+# They differ by blast radius:
+#   - ceph (full baseline -> tune -> deploy -> harden against a LIVE bare-metal
+#     cluster) is DELIBERATE: it runs ONLY on workflow_dispatch with
+#     run_ceph_ansible=true, targeting the single cluster named by the
+#     ceph_cluster input (spice = prod/htz-fsn1, sietch = staging/austin). A push
+#     NEVER converges a ceph cluster, so merging a ceph change (prod- or
+#     staging-scoped) can never auto-run an Ansible converge on a live cluster.
+#   - mgmt (mgmt hosts on the fabric stack) still auto-runs on push when its own
+#     surface changed (ansible/mgmt/** + tf/render/ansible-mgmt/** +
+#     .mise/tasks/mgmt/**), and on workflow_dispatch when run_mgmt_ansible is set.
+# A pure-Terraform change to either stack thus applies without reconverging the
+# nodes, and the matching overlay join is skipped with it.
 #
 # The fabric (switch) apply is gated the same way: on push it applies only when the
 # fabric surface changed (tf/deployment/prod/htz-fsn1/fabric/**, the fabric shared
@@ -45,13 +51,26 @@ name: Infra (Terraform)
 #
 # Environment gates rekey to <partition>-<region> (one per stack's region):
 # staging-austin, staging-global, prod-global, prod-htz-fsn1. Each matrix apply
-# entry references its own gate, so an unprovisioned Environment hangs the apply.
+# entry references its own gate. GitHub does NOT hang on an unprovisioned
+# Environment -- it auto-creates it on first reference with ZERO protection
+# rules, so a brand-new <partition>-<region> would apply with -auto-approve and
+# no required reviewer (fail OPEN). The intended fix has TWO parts, currently PARKED:
+#   1. The Environments are managed as code (tf/deployment/_meta/github, the
+#      integrations/github provider: github_repository_environment + required
+#      reviewers) so every gate exists WITH reviewers by construction.
+#   2. The `discover` job FAILS CLOSED (a "required reviewers" step) on apply-bearing
+#      events, refusing to proceed unless each Environment carries a reviewer.
+# BOTH are DISABLED for now (the _meta/github stack is stubbed and the discover step
+# is `if: false`): enforcing them requires a one-time bootstrap (GH_ENV_ADMIN_TOKEN
+# secret + the four Environments created with reviewers) that would otherwise break
+# the first push-to-main. Until that blast radius is redesigned, apply gates behave
+# as GitHub's default (auto-create UNPROTECTED). Tracked for follow-up.
 #
 # Prerequisites (provisioned out-of-band):
 #   - Repo secrets: OP_TF_YUCCA_STAGING_ENV (+ _WRITE); OP_TF_YUCCA_PROD_ENV
 #     (read) + OP_TF_YUCCA_PROD_ENV_WRITE (netbird apply / write escalation source).
-#   - GitHub Environments with required reviewers: staging-austin, staging-global,
-#     prod-global, prod-htz-fsn1.
+#   - GitHub Environments with required reviewers (staging-austin, staging-global,
+#     prod-global, prod-htz-fsn1): DEFERRED -- the approval gate is parked (above).
 #   - BOOTSTRAP — the netbird stacks applied ONCE out-of-band so the CI/mgmt setup
 #     keys exist in 1P before anything tries to connect (CI can't mint them itself:
 #     the apply that mints them is gated behind the plan that needs them). E.g.:
@@ -80,9 +99,16 @@ on:
   workflow_dispatch:
     inputs:
       run_ceph_ansible:
-        description: 'Run the Ceph Ansible converge (RGW users) after the ceph apply'
+        description: 'Run the Ceph Ansible converge (full pipeline) against ceph_cluster'
         type: boolean
         default: false
+      ceph_cluster:
+        description: 'Ceph cluster the converge targets (only used when run_ceph_ansible is true)'
+        type: choice
+        options:
+          - sietch
+          - spice
+        default: sietch
       run_mgmt_ansible:
         description: 'Run the mgmt Ansible converge after the fabric apply'
         type: boolean
@@ -93,7 +119,10 @@ on:
         default: false
 
 # Serialize: the OVH S3 backend has no state locking (single-operator model),
-# so never let two infra runs apply concurrently.
+# so never let two infra runs apply concurrently. This workflow-wide concurrency
+# group IS the single-operator assertion that stands in for a backend lock: at
+# most one infra run holds it at a time, and cancel-in-progress:false lets a
+# running apply finish rather than being interrupted mid-state-write.
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
@@ -108,14 +137,15 @@ jobs:
     # Skip on fork PRs (no access to secrets / the overlay anyway).
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       staging: ${{ steps.filter.outputs.staging }}
       prod: ${{ steps.filter.outputs.prod }}
       dev: ${{ steps.filter.outputs.dev }}
       shared: ${{ steps.filter.outputs.shared }}
-      # Ansible-converge gates: isolate the Ansible surfaces so a pure-Terraform
-      # change to the ceph/fabric stack applies without reconverging the nodes.
-      ansible_ceph: ${{ steps.filter.outputs.ansible_ceph }}
+      # Mgmt Ansible-converge gate: isolate the mgmt Ansible surface so a
+      # pure-Terraform change to the fabric stack applies without reconverging the
+      # mgmt hosts. (The ceph converge is workflow_dispatch-only -- no push gate.)
       ansible_mgmt: ${{ steps.filter.outputs.ansible_mgmt }}
       # Fabric-apply gate: the fabric (switch) stack applies only when its own
       # surface changed — not on every prod change.
@@ -130,10 +160,15 @@ jobs:
           filters: |
             staging:
               - 'tf/deployment/staging/**'
-              - 'ansible/ceph/**'
+              # Only staging's own ceph inventory activates the staging matrix.
+              # A prod ceph change (or a shared ceph role/play) must NEVER open
+              # the staging partition -- see DEFECT 3. The ceph Ansible converge
+              # itself is workflow_dispatch-only regardless (no push converge).
+              - 'ansible/ceph/inventories/staging-**'
             prod:
               - 'tf/deployment/prod/**'
               - 'ansible/mgmt/**'
+              - 'ansible/ceph/inventories/prod-**'
               - 'tf/render/**'
               - 'tf/providers/**'
               - '.mise/tasks/infra/**'
@@ -150,11 +185,11 @@ jobs:
               - '.mise/config.toml'
               - '.github/actions/netbird-connect/**'
               - '.github/workflows/infra.yml'
-            # ── Ansible-converge gates (stack-step level, not partition level) ──
-            # These don't open/close a partition's matrix; the apply job uses them
-            # to decide whether to run the post-apply Ansible converge for its stack.
-            ansible_ceph:
-              - 'ansible/ceph/**'
+            # -- Mgmt Ansible-converge gate (stack-step level, not partition) --
+            # Does not open/close a partition's matrix; the apply job uses it to
+            # decide whether to run the post-apply mgmt converge for the fabric
+            # stack. (There is no ceph equivalent: the ceph converge is
+            # workflow_dispatch-only, so it needs no push paths-filter.)
             ansible_mgmt:
               - 'ansible/mgmt/**'
               - 'tf/render/ansible-mgmt/**'
@@ -184,6 +219,9 @@ jobs:
       || needs.changes.outputs.shared == 'true'
       || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       has_stacks: ${{ steps.gen.outputs.has_stacks }}
@@ -198,13 +236,39 @@ jobs:
           PROD: ${{ needs.changes.outputs.prod }}
           SHARED: ${{ needs.changes.outputs.shared }}
           DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          # Dispatch scoping: a manual run only touches the partition(s) its
+          # toggles actually act on, instead of forcing BOTH partitions active.
+          DISPATCH_CEPH: ${{ inputs.run_ceph_ansible }}
+          DISPATCH_MGMT: ${{ inputs.run_mgmt_ansible }}
+          DISPATCH_FABRIC: ${{ inputs.run_fabric }}
+          CEPH_CLUSTER: ${{ inputs.ceph_cluster }}
         run: |
           set -euo pipefail
 
-          # Active partitions: own filter OR a shared/manual force. dev is
-          # local-only and never emitted (no remote state / no CI SA).
+          # Active partitions: own filter OR a shared force. dev is local-only and
+          # never emitted (no remote state / no CI SA).
           declare -A active=()
-          if [ "$SHARED" = "true" ] || [ "$DISPATCH" = "true" ]; then
+          if [ "$DISPATCH" = "true" ]; then
+            # Manual run: scope to the partition each requested action touches.
+            #   - ceph converge -> the partition owning the chosen cluster
+            #     (spice = prod, sietch = staging)
+            #   - mgmt converge / fabric apply -> prod (htz-fsn1 only)
+            # A BARE dispatch (no toggle set) is a plan-only preview: emit both
+            # partitions so the operator sees every diff, but the apply job is
+            # skipped entirely (see its `if:`), so nothing applies unreviewed.
+            if [ "$DISPATCH_CEPH" = "true" ]; then
+              case "$CEPH_CLUSTER" in
+                spice)  active[prod]=1 ;;
+                sietch) active[staging]=1 ;;
+                *) echo "unknown ceph_cluster: '$CEPH_CLUSTER'" >&2; exit 1 ;;
+              esac
+            fi
+            [ "$DISPATCH_MGMT" = "true" ] && active[prod]=1
+            [ "$DISPATCH_FABRIC" = "true" ] && active[prod]=1
+            if [ "${#active[@]}" -eq 0 ]; then
+              active[staging]=1; active[prod]=1   # bare dispatch = plan-only preview
+            fi
+          elif [ "$SHARED" = "true" ]; then
             active[staging]=1; active[prod]=1
           else
             [ "$STAGING" = "true" ] && active[staging]=1
@@ -251,12 +315,59 @@ jobs:
           echo "has_stacks=$has" >> "$GITHUB_OUTPUT"
           echo "Discovered stacks:"; echo "$include" | jq -r '.[] | "  [\(.order)] \(.partition)@\(.region)/\(.stack)  (\(.dir))"'
 
+      # -- Approval-gate assertion: PARKED (disabled) ----------------------
+      # This step asserted that every target Environment carries a required
+      # reviewer and failed the run otherwise (fail-closed four-eyes on prod
+      # applies). It is DISABLED pending a blast-radius redesign: as written it
+      # blocks the FIRST push-to-main until BOTH (a) a GH_ENV_ADMIN_TOKEN secret
+      # exists (the built-in GITHUB_TOKEN cannot read protection rules) AND (b) the
+      # four Environments are created WITH reviewers via the parked
+      # tf/deployment/_meta/github stack. Neither is bootstrapped yet, so enforcing
+      # here would break every prod/staging apply on merge. While parked, an
+      # unprovisioned Environment auto-creates UNPROTECTED (fail OPEN) -- the
+      # pre-hardening status quo, tracked for follow-up. The full logic is kept
+      # below for revival; re-enable once the gate can be provisioned without a
+      # hard cutover. See tf/deployment/_meta/github/terragrunt.hcl.disabled.
+      - name: Fail closed unless every target Environment has required reviewers
+        # PARKED: re-enable by restoring this guard (blast-radius redesign pending):
+        #   steps.gen.outputs.has_stacks == 'true'
+        #   && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: false
+        env:
+          GH_TOKEN: ${{ secrets.GH_ENV_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          MATRIX: ${{ steps.gen.outputs.matrix }}
+        run: |
+          set -euo pipefail
+          envs=$(jq -r '.include[] | "\(.partition)-\(.region)"' <<<"$MATRIX" | sort -u)
+          [ -n "$envs" ] || { echo "No environments to verify."; exit 0; }
+          fail=0
+          while IFS= read -r envname; do
+            [ -n "$envname" ] || continue
+            if ! resp=$(gh api "repos/$REPO/environments/$envname" 2>/dev/null); then
+              echo "FAIL-CLOSED: environment '$envname' is missing or unreadable -> treated as unprotected." >&2
+              fail=1; continue
+            fi
+            n=$(jq '[.protection_rules[]? | select(.type=="required_reviewers") | .reviewers[]?] | length' <<<"$resp")
+            if [ "${n:-0}" -lt 1 ]; then
+              echo "FAIL-CLOSED: environment '$envname' has no required reviewers (approval gate would fail open)." >&2
+              fail=1
+            else
+              echo "OK: environment '$envname' has ${n} required reviewer(s)."
+            fi
+          done <<<"$envs"
+          [ "$fail" -eq 0 ] || {
+            echo "One or more target Environments lack a required reviewer; refusing to plan/apply (fail closed)." >&2
+            exit 1
+          }
+
   # ── Plan every changed stack (parallel; read-only) ───────────────────────────
   plan:
     name: Plan ${{ matrix.partition }}@${{ matrix.region }}/${{ matrix.stack }}
     needs: [changes, discover]
     if: needs.discover.outputs.has_stacks == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
@@ -272,10 +383,22 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      # Filesystem-safe artifact id for this stack (stack may nest '/').
+      - id: planid
+        name: Compute plan artifact id
+        env:
+          DIR: ${{ matrix.dir }}
+        run: echo "id=$(printf '%s' "$DIR" | tr '/' '-')" >> "$GITHUB_OUTPUT"
       - name: Set up mise (go + opentofu + terragrunt)
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+        with:
+          # Pin, don't resolve "latest": the version-check endpoint 1P hits to
+          # resolve "latest" intermittently returns empty JSON (all parallel
+          # plan/apply jobs fail at "Getting latest version number"). A pinned
+          # version installs directly, skipping that call.
+          version: '2.31.1'
 
       # Guardrail: prod Flux must sync `main` once we're ON main. flux_git_ref
       # defaults to a feature branch during bring-up (deliberate, documented
@@ -319,29 +442,63 @@ jobs:
       # Prod fabric goes through the mise task (builds the hetzner provider, renders
       # the NETCONF key; junos comes from the registry). Every other stack is a
       # plain registry-provider terragrunt plan.
+      # Persist the diff to an ABSOLUTE path (terragrunt runs tofu inside a
+      # .terragrunt-cache dir, so a relative -out would be unreachable). The gated
+      # apply downloads this exact file and applies it -- the human approves the
+      # DIFF, not a plan-job log. TG_PLAN threads the path into the mise task too.
       - name: Terragrunt plan (fabric)
         if: matrix.stack == 'fabric'
+        env:
+          TG_PLAN: ${{ github.workspace }}/tfplan.bin
         run: mise run infra:plan -- --non-interactive
       - name: Terragrunt plan
         if: matrix.stack != 'fabric'
         env:
           STACK_DIR: ${{ matrix.dir }}
+          TG_PLAN: ${{ github.workspace }}/tfplan.bin
         run: >-
           tf/op-run.sh terragrunt
           --working-dir "tf/deployment/$STACK_DIR"
-          --non-interactive plan
+          --non-interactive plan -out="$TG_PLAN"
+
+      # Hand the saved plan to the apply job. NOTE: a tofu plan file can embed
+      # sensitive values in the clear, so keep retention short and rely on the
+      # repo's private-artifact scoping. if-no-files-found:error makes a missing
+      # plan fail loudly rather than silently fall back to a fresh apply.
+      - name: Upload reviewed plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tfplan-${{ steps.planid.outputs.id }}
+          path: ${{ github.workspace }}/tfplan.bin
+          if-no-files-found: error
+          retention-days: 1
 
   # ── Apply (gated, ordered) ───────────────────────────────────────────────────
   apply:
     name: Apply ${{ matrix.partition }}@${{ matrix.region }}/${{ matrix.stack }} (gated)
     needs: [changes, discover, plan]
-    # Only on merge to main (or manual dispatch) — never on PRs.
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.discover.outputs.has_stacks == 'true'
+    # Only on merge to main (or a SCOPED manual dispatch) -- never on PRs. A bare
+    # workflow_dispatch (no run_ceph_ansible / run_mgmt_ansible / run_fabric) is
+    # plan-only: the apply job is skipped so a manual "just look" run can never
+    # apply every emitted stack unreviewed.
+    if: >-
+      needs.discover.outputs.has_stacks == 'true'
+      && (
+        github.event_name == 'push'
+        || (github.event_name == 'workflow_dispatch'
+            && (inputs.run_ceph_ansible || inputs.run_mgmt_ansible || inputs.run_fabric))
+      )
     runs-on: ubuntu-latest
+    # Ceiling for a worst-case entry (TF apply + up to 90-min ceph converge).
+    # Finer per-phase bounds are enforced at step level (apply 30 / converge 90).
+    timeout-minutes: 120
     strategy:
-      fail-fast: false
-      # Serialize so the sorted `order` is honored: account netbird → site netbird
-      # → node-touching stacks, and prod/global before prod/htz-fsn1/netbird.
+      # fail-fast so a failed lower-order apply (e.g. netbird) cancels the
+      # remaining ordered node-touching applies instead of running against a
+      # half-provisioned overlay.
+      fail-fast: true
+      # Serialize so the sorted `order` is honored: account netbird -> site netbird
+      # -> node-touching stacks, and prod/global before prod/htz-fsn1/netbird.
       max-parallel: 1
       matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
     # Per-region approval gate.
@@ -360,32 +517,67 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      # Same filesystem-safe id the plan job used to name the artifact.
+      - id: planid
+        name: Compute plan artifact id
+        env:
+          DIR: ${{ matrix.dir }}
+        run: echo "id=$(printf '%s' "$DIR" | tr '/' '-')" >> "$GITHUB_OUTPUT"
       - name: Set up mise (go + opentofu + terragrunt + ansible)
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+        with:
+          # See the plan job's note: pin to skip the flaky "latest" resolution.
+          version: '2.31.1'
 
-      # Decide whether each post-apply Ansible converge runs. On push, gate on the
-      # paths-filter (did the Ansible surface change?); on manual dispatch, gate on
-      # the run_*_ansible toggles (default off) since there's no diff to detect.
+      # Pull the EXACT plan the reviewer approved, downloaded to the same absolute
+      # path the plan job wrote. `terragrunt apply <planfile>` fails closed if the
+      # saved plan is stale relative to current state -- so a drifted backend can
+      # never silently apply a different diff than the one that was reviewed.
+      - name: Download reviewed plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tfplan-${{ steps.planid.outputs.id }}
+          path: ${{ github.workspace }}
+
+      # Decide whether each post-apply Ansible converge runs.
+      #   - ceph: DELIBERATE and blast-radius-guarded. Runs ONLY on
+      #     workflow_dispatch with run_ceph_ansible=true, and ONLY for the ceph
+      #     matrix entry whose partition/region owns the selected ceph_cluster
+      #     (spice -> prod/htz-fsn1, sietch -> staging/austin). A push never sets
+      #     this gate, so merging a ceph change cannot converge a live cluster.
+      #   - mgmt: on push, gate on the paths-filter (did the mgmt surface change?);
+      #     on manual dispatch, gate on the run_mgmt_ansible toggle (default off).
       - name: Resolve Ansible-converge gates
         id: ansible_gate
         env:
           DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
           DISPATCH_CEPH: ${{ inputs.run_ceph_ansible }}
           DISPATCH_MGMT: ${{ inputs.run_mgmt_ansible }}
-          CHANGED_CEPH: ${{ needs.changes.outputs.ansible_ceph }}
+          CEPH_CLUSTER: ${{ inputs.ceph_cluster }}
+          PARTITION: ${{ matrix.partition }}
+          REGION: ${{ matrix.region }}
           CHANGED_MGMT: ${{ needs.changes.outputs.ansible_mgmt }}
         run: |
           set -euo pipefail
-          if [ "$DISPATCH" = "true" ]; then
-            ceph=$DISPATCH_CEPH; mgmt=$DISPATCH_MGMT
-          else
-            ceph=$CHANGED_CEPH; mgmt=$CHANGED_MGMT
+          # ceph converge: dispatch-only, and pinned to the one cluster/entry.
+          ceph=false
+          if [ "$DISPATCH" = "true" ] && [ "$DISPATCH_CEPH" = "true" ]; then
+            case "$CEPH_CLUSTER" in
+              spice)  want_partition=prod;    want_region=htz-fsn1 ;;
+              sietch) want_partition=staging; want_region=austin ;;
+              *) echo "unknown ceph_cluster: '$CEPH_CLUSTER'" >&2; exit 1 ;;
+            esac
+            if [ "$PARTITION" = "$want_partition" ] && [ "$REGION" = "$want_region" ]; then
+              ceph=true
+            fi
           fi
+          # mgmt converge: push -> paths-filter; dispatch -> toggle.
+          if [ "$DISPATCH" = "true" ]; then mgmt=$DISPATCH_MGMT; else mgmt=$CHANGED_MGMT; fi
           echo "ceph=${ceph:-false}" >> "$GITHUB_OUTPUT"
           echo "mgmt=${mgmt:-false}" >> "$GITHUB_OUTPUT"
-          echo "Ansible converge gates → ceph=${ceph:-false} mgmt=${mgmt:-false}"
+          echo "Ansible converge gates -> ceph=${ceph:-false} (cluster=${CEPH_CLUSTER:-none}) mgmt=${mgmt:-false}"
 
       # Decide whether the fabric (switch) apply runs. Same model as the Ansible
       # gates: on push, gate on the paths-filter (did the fabric surface change?);
@@ -428,37 +620,50 @@ jobs:
       # Gated: only when the fabric surface changed (push) or run_fabric (dispatch).
       - name: Terragrunt apply (fabric)
         if: matrix.stack == 'fabric' && steps.fabric_gate.outputs.run == 'true'
-        run: mise run infra:apply -- --non-interactive -auto-approve
-      # Everything else: direct terragrunt apply with the partition's write SA.
+        timeout-minutes: 30
+        # TG_PLAN routes the reviewed plan into the mise task, which applies that
+        # file (no fresh re-plan, no -auto-approve) and fails on a stale plan.
+        env:
+          TG_PLAN: ${{ github.workspace }}/tfplan.bin
+        run: mise run infra:apply -- --non-interactive
+      # Everything else: direct terragrunt apply of the reviewed plan file with
+      # the partition's write SA (no -auto-approve -- the plan is pre-approved).
       - name: Terragrunt apply
         if: matrix.stack != 'fabric'
+        timeout-minutes: 30
         env:
           STACK_DIR: ${{ matrix.dir }}
+          TG_PLAN: ${{ github.workspace }}/tfplan.bin
         run: >-
           tf/op-run.sh terragrunt
           --working-dir "tf/deployment/$STACK_DIR"
-          --non-interactive apply -auto-approve
+          --non-interactive apply "$TG_PLAN"
 
-      # ── Ceph convergence (Ansible) — ceph stack, gated on the converge gate ──
+      # -- Ceph convergence (Ansible) - ceph stack, workflow_dispatch-only --
       # The TF apply above only minted the RGW keys into 1P + the cluster Secret;
-      # this creates the matching RGW users on the bare-metal cluster. Reuses the
-      # NetBird overlay + 1Password session already established in this entry.
-      # Skipped (along with the overlay join above) when ansible/ceph/** is
-      # unchanged on push, or when run_ceph_ansible is off on manual dispatch.
+      # this converges the selected bare-metal cluster. Reuses the NetBird overlay
+      # + 1Password session already established in this entry. The gate fires ONLY
+      # on workflow_dispatch with run_ceph_ansible=true, and only for the entry
+      # that owns the chosen ceph_cluster (spice=prod/htz-fsn1, sietch=staging/
+      # austin) -- a push never converges here. Cluster + region are threaded from
+      # the dispatch inputs / matrix so this is not hardcoded to sietch/austin.
       - name: Render Ansible inventory from the ceph TF state
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         env:
           PARTITION: ${{ matrix.partition }}
-        run: ansible/ceph/scripts/render-inventories.sh "$PARTITION"
+          REGION: ${{ matrix.region }}
+        run: ansible/ceph/scripts/render-inventories.sh "$PARTITION" "$REGION"
       - name: Install the ansible-iac SSH key from 1Password
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
-        # Pulls op://yucca_tf_<partition>/SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY to
-        # ~/.ssh/id_ed25519_sietch — the path the rendered inventory references.
+        # Pulls op://yucca_tf_<partition>/<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY to
+        # ~/.ssh/id_ed25519_<cluster> -- the path the rendered inventory references
+        # (spice -> id_ed25519_spice, sietch -> id_ed25519_sietch).
         env:
           PARTITION: ${{ matrix.partition }}
+          CEPH_CLUSTER: ${{ inputs.ceph_cluster }}
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          OP_VAULT="yucca_tf_$PARTITION" ansible/ceph/scripts/install-ssh-keys.sh sietch
+          OP_VAULT="yucca_tf_$PARTITION" ansible/ceph/scripts/install-ssh-keys.sh "$CEPH_CLUSTER"
       - name: Provision the ceph Ansible toolchain (venv + collections)
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         working-directory: ansible/ceph
@@ -466,8 +671,9 @@ jobs:
           mise trust
           mise install
           mise run setup
-      - name: Deploy Ceph (full pipeline — baseline → tune → deploy → harden)
+      - name: Deploy Ceph (full pipeline -- baseline -> tune -> deploy -> harden)
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
+        timeout-minutes: 90
         # Run from ansible/ceph so mise loads ansible/ceph/.mise.toml (where the
         # `deploy` task + CEPH_ENV-relative inventory paths live); the root config
         # has no `deploy` task.
@@ -476,7 +682,7 @@ jobs:
         # over the NetBird overlay, so disable strict host-key checking for this run.
         env:
           ANSIBLE_HOST_KEY_CHECKING: 'false'
-          CEPH_ENV: inventories/${{ matrix.partition }}-${{ matrix.region }}/sietch/inventory.ini
+          CEPH_ENV: inventories/${{ matrix.partition }}-${{ matrix.region }}/${{ inputs.ceph_cluster }}/inventory.ini
         run: mise run deploy
 
       # ── Mgmt convergence (Ansible) — fabric stack, gated on the converge gate ─
@@ -488,4 +694,5 @@ jobs:
       # overlay join regardless (it touches the switch vme directly).
       - name: Ansible converge (mgmt hosts)
         if: matrix.stack == 'fabric' && steps.ansible_gate.outputs.mgmt == 'true'
+        timeout-minutes: 30
         run: mise run mgmt:ansible

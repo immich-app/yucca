@@ -4,7 +4,14 @@
 [NetDev]
 Name={{ networkd_bond_name }}
 Kind=bond
+{% if networkd_bond_mtu | int > 1500 %}
+MTUBytes={{ networkd_bond_mtu | int }}
+{% endif %}
 
 [Bond]
 Mode={{ networkd_bond_mode }}
 MIIMonitorSec={{ networkd_bond_miimon }}ms
+{% if networkd_bond_mode == '802.3ad' %}
+TransmitHashPolicy={{ networkd_bond_xmit_hash_policy }}
+LACPTransmitRate={{ networkd_bond_lacp_rate }}
+{% endif %}

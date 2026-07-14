@@ -1,0 +1,67 @@
+# Monitoring stack service spec - rendered by the ceph-deploy role.
+# Applied via: ceph orch apply -i /etc/ceph/monitoring-spec.yaml
+#
+# cephadm auto-deploys the monitoring stack at bootstrap binding 0.0.0.0 (every
+# interface, WAN included). This re-applies each service with `networks:` so the
+# daemons bind ONLY the fabric (ceph never listens on the WAN). Placement matches
+# cephadm's own defaults - singletons keep count 1, the exporters stay on every
+# host - so this restricts the bind address without relocating any daemon.
+#
+# Do not edit by hand. Regenerate by re-running the ceph-deploy role.
+service_type: prometheus
+placement:
+  count: 1
+{% if ceph_bind_networks | default([]) | length > 0 %}
+networks:
+{% for net in ceph_bind_networks %}
+  - {{ net }}
+{% endfor %}
+{% endif %}
+---
+service_type: grafana
+placement:
+  count: 1
+{% if ceph_bind_networks | default([]) | length > 0 %}
+networks:
+{% for net in ceph_bind_networks %}
+  - {{ net }}
+{% endfor %}
+{% endif %}
+---
+service_type: alertmanager
+placement:
+  count: 1
+{% if ceph_bind_networks | default([]) | length > 0 %}
+networks:
+{% for net in ceph_bind_networks %}
+  - {{ net }}
+{% endfor %}
+{% endif %}
+{% if ceph_alertmanager_webhook_urls | default([]) | length > 0 %}
+spec:
+  user_data:
+    default_webhook_urls:
+{% for url in ceph_alertmanager_webhook_urls %}
+      - {{ url }}
+{% endfor %}
+{% endif %}
+---
+service_type: node-exporter
+placement:
+  host_pattern: '*'
+{% if ceph_bind_networks | default([]) | length > 0 %}
+networks:
+{% for net in ceph_bind_networks %}
+  - {{ net }}
+{% endfor %}
+{% endif %}
+---
+service_type: ceph-exporter
+placement:
+  host_pattern: '*'
+{% if ceph_bind_networks | default([]) | length > 0 %}
+networks:
+{% for net in ceph_bind_networks %}
+  - {{ net }}
+{% endfor %}
+{% endif %}

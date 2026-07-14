@@ -1,0 +1,51 @@
+---
+# Per-host reprovision phases. Run from reprovision.yml Play 1 (hosts: ceph_nodes).
+# Robot key registration + preflight asserts + the fan-out guard run ONCE in the
+# play's pre_tasks (so --limit cannot skip them); this role is the per-host body.
+#
+# ALWAYS DESTRUCTIVE unless reprovision_skip_if_provisioned skips an already-good
+# node (see check_provisioned.yml). NEVER fold into deploy/converge.
+
+- name: Refuse to run without confirm_wipe=true
+  ansible.builtin.fail:
+    msg: >-
+      REFUSING TO RUN. installimage wipes the NVMe OS disks
+      {{ '(and reprovision_wipe_osd_disks zaps the 14 OSD HDDs)' if reprovision_wipe_osd_disks | bool else '' }}.
+      Pass -e confirm_wipe=true.
+  when: not (confirm_wipe | default(false) | bool)
+
+- name: Resume-safe skip check (sets reprovision_skip)
+  ansible.builtin.import_tasks: check_provisioned.yml
+
+- name: Ceph-safety guard (live-cluster reimage)
+  ansible.builtin.import_tasks: ceph_safety.yml
+  when: not (reprovision_skip | default(false) | bool)
+
+- name: Arm rescue + hw reset via Robot
+  ansible.builtin.import_tasks: robot.yml
+  when:
+    - not (reprovision_skip | default(false) | bool)
+    - reprovision_use_robot | default(true) | bool
+
+- name: Wait for the real rescue ramdisk + assert hardware matches autosetup
+  ansible.builtin.import_tasks: wait_rescue.yml
+  when: not (reprovision_skip | default(false) | bool)
+
+- name: Wipe stale RAID/LVM metadata off the OS NVMes (before installimage)
+  ansible.builtin.import_tasks: prepare_disks.yml
+  when:
+    - not (reprovision_skip | default(false) | bool)
+    - reprovision_mode | default('install') == 'install'
+
+- name: Zap OSD HDDs (opt-in; day-2 reimage)
+  ansible.builtin.import_tasks: wipe_osds.yml
+  when:
+    - not (reprovision_skip | default(false) | bool)
+    - reprovision_mode | default('install') == 'install'
+    - reprovision_wipe_osd_disks | default(false) | bool
+
+- name: Render, push, run installimage, reboot
+  ansible.builtin.import_tasks: installimage.yml
+  when:
+    - not (reprovision_skip | default(false) | bool)
+    - reprovision_mode | default('install') == 'install'

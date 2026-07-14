@@ -25,10 +25,14 @@ resource "junos_interface_physical" "member" {
   }
 }
 
-# Server bonds (LACP trunks).
+# Server bonds (LACP trunks). Jumbo L2 (matches ae0 + the spine): the aggregate
+# carries the physical MTU; 802.3ad members inherit it, so no per-member mtu (see
+# the `member` resource above). This raises the L2 ceiling on the whole trunk;
+# per-VLAN L3 stays governed by the IRBs, so the 1500 VLANs (120/124) are untouched.
 resource "junos_interface_physical" "server_lag" {
   for_each = local.server_lag_names
   name     = each.value
+  mtu      = var.jumbo_mtu
   parent_ether_opts {
     lacp {
       mode = "active"
@@ -69,6 +73,9 @@ resource "junos_interface_logical" "irb_public" {
   }
 }
 
+# Cluster (Ceph replication) gateway. Jumbo L3 on this VLAN only: the .1 gateway's
+# IP MTU matches the hosts' 9000 (< the 9216 L2 ceiling on the bonds/uplink). Set
+# per-unit (family inet mtu) so the public/mgmt IRBs stay at their 1500 default.
 resource "junos_interface_logical" "irb_private" {
   name = "irb.${var.private_vlan_id}"
   family_inet {
@@ -76,6 +83,7 @@ resource "junos_interface_logical" "irb_private" {
       cidr_ip = "${var.private_gateway}/${var.prefixlen}"
     }
     filter_input = "NO-CROSS-VLAN"
+    mtu          = var.private_irb_mtu
   }
 }
 

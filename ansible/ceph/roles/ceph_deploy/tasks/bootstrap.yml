@@ -32,7 +32,7 @@
   ansible.builtin.shell: |
     set -o pipefail
     cephadm bootstrap \
-      --mon-ip {{ bond_ip }} \
+      --mon-ip {{ ceph_service_ip }} \
       --initial-dashboard-user {{ ceph_dashboard_user }} \
       --initial-dashboard-password "$(cat /tmp/.ceph-dashboard-pw)" \
       --dashboard-password-noupdate \
@@ -75,7 +75,7 @@
 # `--dashboard-password-noupdate` means it is never re-applied afterwards. If a
 # cluster was ever bootstrapped out-of-band (or before this var existed),
 # cephadm generated a *random* admin password and no playbook run would ever
-# correct it — the vaulted password stays aspirational. These tasks reconcile
+# correct it; the vaulted password stays aspirational. These tasks reconcile
 # the running cluster to `ceph_dashboard_password` on every converge, so the
 # vault is the single source of truth for both initial set and rotation.
 - name: Write dashboard password to temp file (reconcile)

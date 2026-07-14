@@ -1,0 +1,50 @@
+---
+# Per-host Robot API: arm linux rescue (authorizing the registered keys), then
+# hardware-reset so the box netboots the rescue ramdisk. All delegate_to localhost.
+# Fingerprints come from preflight (localhost facts).
+
+- name: Arm linux rescue (authorize registered keys)
+  ansible.builtin.uri:
+    url: "{{ reprovision_robot_base_url }}/boot/{{ hetzner_server_number }}/rescue"
+    method: POST
+    force_basic_auth: true
+    url_username: "{{ reprovision_robot_username }}"
+    url_password: "{{ reprovision_robot_password }}"
+    body_format: form-urlencoded
+    body:
+      os: "{{ reprovision_rescue_os }}"
+      # list value -> repeated authorized_key[] params via urlencode(doseq=True)
+      "authorized_key[]": "{{ hostvars['localhost'].reprovision_key_fingerprints }}"
+    status_code: [200, 201]
+  register: reprovision_rescue_arm
+  delegate_to: localhost
+  retries: "{{ reprovision_robot_retries }}"
+  delay: "{{ reprovision_robot_delay }}"
+  until: (reprovision_rescue_arm.status | default(0)) in [200, 201]
+
+- name: Assert rescue armed
+  ansible.builtin.assert:
+    that: reprovision_rescue_arm.json.rescue.active | default(false)
+    fail_msg: "Rescue not active for {{ inventory_hostname }} (srv {{ hetzner_server_number }})."
+
+- name: Hardware reset (reboot into rescue)
+  ansible.builtin.uri:
+    url: "{{ reprovision_robot_base_url }}/reset/{{ hetzner_server_number }}"
+    method: POST
+    force_basic_auth: true
+    url_username: "{{ reprovision_robot_username }}"
+    url_password: "{{ reprovision_robot_password }}"
+    body_format: form-urlencoded
+    body:
+      type: hw
+    status_code: [200, 201]
+  register: reprovision_reset
+  delegate_to: localhost
+  retries: "{{ reprovision_robot_retries }}"
+  delay: "{{ reprovision_robot_delay }}"
+  until: (reprovision_reset.status | default(0)) in [200, 201]
+
+- name: Assert reset accepted
+  ansible.builtin.assert:
+    that: reprovision_reset.json.reset is defined
+    fail_msg: "hw reset rejected for {{ inventory_hostname }} (srv {{ hetzner_server_number }})."

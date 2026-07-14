@@ -1,0 +1,7 @@
+---
+hostname_short: spice-ceph-lucius
+bond_ip: 178.63.139.212
+hetzner_server_number: 3014573
+host_index: 35
+mon: false
+# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)

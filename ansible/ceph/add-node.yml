@@ -1,0 +1,67 @@
+---
+# Manual, rescue-first "add a node" path: install + chroot + verify on a node the
+# operator has ALREADY put into the Hetzner rescue system by hand. This is the
+# default way to (re)image a spice node -- the Robot API (register keys / arm
+# rescue / hw reset) is deliberately OUT of the loop (reprovision_use_robot=false).
+#
+# WHY manual: the Robot rescue/reset step is the unreliable part (nodes that arm
+# rescue but never boot it) AND the highest blast radius (an errant /reset on a
+# LIVE spice node once the cluster is in production). Taking it out means nothing
+# Ansible does here can flip a running node into rescue: installimage exists only
+# in the rescue ramdisk, so wait_rescue hard-refuses any node a human did not
+# deliberately rescue. The install/chroot/verify automation -- the reliable part --
+# still runs untouched.
+#
+# For the rare remote "nuke a dead node" case, use reprovision.yml (Robot path).
+#
+# OPERATOR PRECONDITION (do this in the Hetzner Robot portal, per node):
+#   1. Enable the Linux rescue system, authorizing the spice-ansible-iac key
+#      (and operator break-glass keys). 2. Trigger a hardware reset. 3. Wait until
+#      the node is reachable in rescue over its WAN IP. THEN run this play.
+#   Run it promptly after rescue boots (wait_rescue rejects a stale rescue whose
+#   uptime exceeds reprovision_rescue_max_uptime; raise it with -e if needed).
+#
+# No secrets and no Robot creds are needed -- run with plain ansible-playbook:
+#   Canary (one node, full wipe + verify):
+#     ansible-playbook -i inventories/prod-htz-fsn1/spice/inventory.ini add-node.yml \
+#       -e confirm_wipe=true --limit spice-ceph-philip
+#   Fan-out (only nodes you have already rescued; low serial, canary-gated):
+#     ansible-playbook -i inventories/prod-htz-fsn1/spice/inventory.ini add-node.yml \
+#       -e confirm_wipe=true -e allow_fanout=true -e reprovision_serial=2 \
+#       --limit 'rescue:!spice-ceph-philip'
+#
+# ALWAYS DESTRUCTIVE to the NVMe OS disks (installimage). Requires confirm_wipe=true.
+
+- name: Add node (manual rescue -> installimage -> installed OS)
+  hosts: ceph_nodes
+  gather_facts: false
+  become: false
+  serial: "{{ reprovision_serial | default(1) }}"
+  max_fail_percentage: 0          # any node fails -> halt the batch (no further wipes)
+  vars:
+    reprovision_use_robot: false  # no Robot API: rescue is armed by hand, not here
+    # With use_robot=false, wait_rescue skips the this-boot uptime guard entirely
+    # (it only makes sense when Ansible triggered the reset). A node may sit in
+    # rescue for weeks; the installimage-ramdisk check is the real in-rescue proof.
+  pre_tasks:
+    # run_once + through the role so defaults load and --limit can't skip it. With
+    # use_robot=false this asserts keys + the fan-out gate only (no Robot calls).
+    - name: Preflight (once)  # noqa: run-once[task]
+      ansible.builtin.include_role:
+        name: reprovision_hetzner
+        tasks_from: preflight
+      run_once: true
+  roles:
+    - role: reprovision_hetzner
+
+- name: Verify added nodes after reboot
+  hosts: ceph_nodes
+  gather_facts: false
+  become: false
+  vars:
+    reprovision_use_robot: false
+  tasks:
+    - name: Verify installed OS marker
+      ansible.builtin.include_role:
+        name: reprovision_hetzner
+        tasks_from: verify

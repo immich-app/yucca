@@ -7,6 +7,12 @@ cluster_role: ceph
 cluster_domain: staging.austin.int.futo.cloud
 public_network: 10.10.10.0/24
 cluster_network: 10.10.10.0/24
+# The address Ceph point-services advertise + bind on (mon --mon-ip, cephadm
+# host-add, dashboard monitoring URLs). Flat cluster: no ceph_public_ip, so this
+# resolves to bond_ip (10.10.10.9x) - identical to the pre-fabric behavior. A
+# group_var, NOT a role default, because it is read via hostvars[<host>] which
+# does not expose role defaults.
+ceph_service_ip: "{{ ceph_public_ip | default(bond_ip) }}"
 gateway: 10.10.10.1
 dns_server: 10.10.10.1
 bond_mode: active-backup

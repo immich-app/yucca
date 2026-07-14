@@ -1,0 +1,24 @@
+---
+# Time sync (chrony) for Ceph. Owns the package + config + service so the source
+# set is explicit and versioned, not left to the distro default pool. Ceph mon
+# quorum is skew-sensitive, so this is a hard prerequisite, not a nicety.
+
+- name: Install chrony
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: Deploy chrony.conf (pinned NTP sources)
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart chrony
+
+- name: Enable and start chrony
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started

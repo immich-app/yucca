@@ -20,15 +20,62 @@ inputs:
     description: Optional peer hostname to register the runner as.
     required: false
     default: ''
+  version:
+    description: >-
+      Pinned NetBird client version to install. MUST match the in-repo SHA256
+      pins in the install step below (bump both together).
+    required: false
+    default: '0.74.4'
 
 runs:
   using: composite
   steps:
-    - name: Install NetBird client
+    # Install a PINNED NetBird release and verify its SHA256 against an in-repo
+    # pin before executing anything -- never `curl | sh`. This runner holds the
+    # prod-write 1Password SA token and overlay access to the live nodes, so a
+    # compromised pkgs.netbird.io/install.sh would run as root here.
+    #
+    # To bump: pick a version, then read the published checksums and copy the
+    # `netbird_<ver>_linux_<arch>.tar.gz` lines into SHA256 below:
+    #   curl -fsSL \
+    #     https://github.com/netbirdio/netbird/releases/download/v<ver>/netbird_<ver>_checksums.txt
+    - name: Install NetBird client (pinned + SHA256-verified)
       shell: bash
+      env:
+        NB_VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
-        curl -fsSL https://pkgs.netbird.io/install.sh | sh
+
+        # Pinned SHA256 of netbird_${NB_VERSION}_linux_<arch>.tar.gz.
+        declare -A SHA256=(
+          [amd64]=b854710409e7de79071642e2c328b181d4db7b9c90c298ee32b6e3b5d9ebd36f
+          [arm64]=af6fc4909bcc68e55197eddbecd8a8ec1b02bc9b34cc28ef72e2858375e138d9
+        )
+
+        case "$(uname -m)" in
+          x86_64)  arch=amd64 ;;
+          aarch64) arch=arm64 ;;
+          *) echo "unsupported CPU arch: $(uname -m)" >&2; exit 1 ;;
+        esac
+        want="${SHA256[$arch]:-}"
+        [ -n "$want" ] || { echo "no pinned SHA256 for arch '$arch'" >&2; exit 1; }
+
+        tarball="netbird_${NB_VERSION}_linux_${arch}.tar.gz"
+        url="https://github.com/netbirdio/netbird/releases/download/v${NB_VERSION}/${tarball}"
+
+        tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+        curl -fsSL --retry 3 --proto '=https' --tlsv1.2 -o "$tmp/$tarball" "$url"
+
+        # Fail closed on any mismatch BEFORE the artifact is unpacked or run.
+        echo "${want}  ${tmp}/${tarball}" | sha256sum -c -
+
+        tar -xzf "$tmp/$tarball" -C "$tmp" netbird
+        sudo install -m 0755 "$tmp/netbird" /usr/local/bin/netbird
+
+        # Register + start the daemon (what the upstream installer would do), so
+        # the later `netbird up` has a service to talk to.
+        sudo netbird service install 2>/dev/null || true
+        sudo netbird service start   2>/dev/null || true
         netbird version
 
     - name: Connect to NetBird

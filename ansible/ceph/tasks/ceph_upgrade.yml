@@ -1,0 +1,280 @@
+---
+# cephadm-orchestrated Ceph upgrade: preflight gate, record-for-rollback,
+# start, bounded poll, and post-convergence assertions. Imported by
+# upgrade-ceph.yml. Every task here is a cluster op: run_once and delegated to
+# the bootstrap node (groups['ceph_bootstrap'][0]), matching the repo idiom
+# (deploy-ceph.yml / tune-ceph.yml / roles/ceph_deploy). Read-only probes are
+# changed_when:false; only `ceph orch upgrade start` reports changed.
+#
+# Target selection (one is REQUIRED, asserted in the playbook, no default):
+#   ceph_upgrade_target_image  -- full image ref, e.g.
+#                                 quay.io/ceph/ceph:v20.2.2 (preferred: exact,
+#                                 digest-pinnable, and what rollback consumes)
+#   ceph_upgrade_version       -- e.g. 20.2.2 (cephadm resolves the image)
+
+# --- Resolve the upgrade target into a single `ceph orch upgrade start` arg ---
+- name: Resolve upgrade target argument
+  ansible.builtin.set_fact:
+    _ceph_upgrade_arg: >-
+      {{ ('--image ' ~ ceph_upgrade_target_image)
+         if (ceph_upgrade_target_image | default('') | string | length > 0)
+         else ('--ceph-version ' ~ ceph_upgrade_version) }}
+    _ceph_upgrade_target_desc: >-
+      {{ ceph_upgrade_target_image
+         if (ceph_upgrade_target_image | default('') | string | length > 0)
+         else ('ceph-version ' ~ (ceph_upgrade_version | default(''))) }}
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Preflight: health ---------------------------------------------------
+- name: Preflight -- probe Ceph health
+  ansible.builtin.command: ceph health --format json
+  register: _ceph_up_health_pre
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Preflight -- assert cluster health gate
+  ansible.builtin.assert:
+    that:
+      - >-
+        (_ceph_up_health_pre.stdout | from_json).status == 'HEALTH_OK'
+        or (ceph_upgrade_allow_health_warn | bool
+            and (_ceph_up_health_pre.stdout | from_json).status == 'HEALTH_WARN')
+    fail_msg: >-
+      Ceph is {{ (_ceph_up_health_pre.stdout | from_json).status }}. An upgrade
+      requires HEALTH_OK. To proceed on a KNOWN-BENIGN HEALTH_WARN, re-run with
+      -e ceph_upgrade_allow_health_warn=true after reviewing `ceph health detail`.
+      Refusing to upgrade an unhealthy cluster.
+    success_msg: >-
+      Health gate OK: {{ (_ceph_up_health_pre.stdout | from_json).status }}
+      (allow_health_warn={{ ceph_upgrade_allow_health_warn | bool }}).
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Preflight: no upgrade already running -------------------------------
+- name: Preflight -- probe orchestrator upgrade status
+  ansible.builtin.command: ceph orch upgrade status --format json
+  register: _ceph_up_status_pre
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Preflight -- assert no upgrade is in progress
+  ansible.builtin.assert:
+    that:
+      - not ((_ceph_up_status_pre.stdout | from_json).in_progress | default(false))
+    fail_msg: >-
+      An orchestrator upgrade is already in progress
+      (target={{ (_ceph_up_status_pre.stdout | from_json).target_image | default('?') }}).
+      Let it finish or `ceph orch upgrade stop` before starting a new one.
+    success_msg: "No upgrade in progress."
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Preflight: all OSDs up and in ---------------------------------------
+- name: Preflight -- probe OSD stat
+  ansible.builtin.command: ceph osd stat --format json
+  register: _ceph_up_osd_pre
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Preflight -- assert all OSDs up and in
+  ansible.builtin.assert:
+    that:
+      - (_ceph_up_osd_pre.stdout | from_json).num_osds | int > 0
+      - (_ceph_up_osd_pre.stdout | from_json).num_up_osds | int
+        == (_ceph_up_osd_pre.stdout | from_json).num_osds | int
+      - (_ceph_up_osd_pre.stdout | from_json).num_in_osds | int
+        == (_ceph_up_osd_pre.stdout | from_json).num_osds | int
+    fail_msg: >-
+      OSDs are not all up/in
+      ({{ (_ceph_up_osd_pre.stdout | from_json).num_up_osds }} up,
+      {{ (_ceph_up_osd_pre.stdout | from_json).num_in_osds }} in of
+      {{ (_ceph_up_osd_pre.stdout | from_json).num_osds }}). Restore full OSD
+      membership before upgrading.
+    success_msg: >-
+      All {{ (_ceph_up_osd_pre.stdout | from_json).num_osds }} OSDs up and in.
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Record current state for rollback -----------------------------------
+# The exact rollback target is the image the daemons are running NOW. Capture
+# the distinct container image refs across all daemons plus the daemon-version
+# map, print them, and stash to a fact so an operator can copy the prior image
+# into `ceph orch upgrade start --image <prior>` (see runbook header).
+- name: Record -- current daemon versions
+  ansible.builtin.command: ceph versions --format json
+  register: _ceph_up_versions_pre
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Record -- current container image(s) in use
+  ansible.builtin.shell: |
+    set -o pipefail
+    ceph orch ps --format json 2>/dev/null \
+      | python3 -c "
+    import sys, json
+    imgs = sorted({d.get('container_image_name')
+                   for d in json.load(sys.stdin)
+                   if d.get('container_image_name')})
+    print('\n'.join(imgs))
+    "
+  args:
+    executable: /bin/bash
+  register: _ceph_up_images_pre
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Record -- stash rollback facts
+  ansible.builtin.set_fact:
+    ceph_upgrade_rollback_images: "{{ _ceph_up_images_pre.stdout_lines | default([]) }}"
+    ceph_upgrade_prior_overall: "{{ (_ceph_up_versions_pre.stdout | from_json).overall | default({}) }}"
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Record -- print rollback anchor (SAVE THIS before proceeding)
+  ansible.builtin.debug:
+    msg:
+      - "ROLLBACK ANCHOR -- prior image(s) currently running (pass to --image to roll back):"
+      - "{{ ceph_upgrade_rollback_images }}"
+      - "Prior daemon version(s) overall: {{ ceph_upgrade_prior_overall }}"
+      - "Upgrade target: {{ _ceph_upgrade_target_desc }}"
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# Idempotency: if the target image is already the sole running image and the
+# cluster is version-converged, there is nothing to do. Skip start + poll so a
+# re-run is a clean no-op instead of a spurious upgrade cycle.
+- name: Decide whether an upgrade is needed
+  ansible.builtin.set_fact:
+    _ceph_upgrade_needed: >-
+      {{ not (
+           (ceph_upgrade_target_image | default('') | string | length > 0)
+           and (ceph_upgrade_rollback_images == [ceph_upgrade_target_image])
+           and ((_ceph_up_versions_pre.stdout | from_json).overall | length == 1)
+         ) }}
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Report -- already at target (no-op)
+  ansible.builtin.debug:
+    msg: >-
+      Cluster is already running {{ ceph_upgrade_target_image | default(_ceph_upgrade_target_desc) }}
+      and is version-converged. Nothing to upgrade.
+  when: not (_ceph_upgrade_needed | bool)
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Start the upgrade ----------------------------------------------------
+- name: Start orchestrator upgrade
+  ansible.builtin.command: "ceph orch upgrade start {{ _ceph_upgrade_arg }}"
+  register: _ceph_up_start
+  changed_when: (_ceph_up_start.rc | default(1)) == 0
+  when: _ceph_upgrade_needed | bool
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Show upgrade-start result
+  ansible.builtin.debug:
+    msg: "{{ _ceph_up_start.stdout_lines | default(['(no output)']) }}"
+  when: _ceph_upgrade_needed | bool
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Poll to completion (bounded) ----------------------------------------
+# ceph_upgrade_poll_retries * ceph_upgrade_poll_delay bounds the wait
+# (default 120 * 30s = 60 min). We stop polling when the orchestrator reports
+# in_progress=false (done) OR is_paused=true (cephadm auto-pauses on a failed
+# step), then assert-not-paused below so a stall fails the play loudly.
+- name: Poll orchestrator upgrade status until complete or paused
+  ansible.builtin.command: ceph orch upgrade status --format json
+  register: _ceph_up_poll
+  changed_when: false
+  until: >-
+    (not ((_ceph_up_poll.stdout | from_json).in_progress | default(true)))
+    or ((_ceph_up_poll.stdout | from_json).is_paused | default(false))
+  retries: "{{ ceph_upgrade_poll_retries | int }}"
+  delay: "{{ ceph_upgrade_poll_delay | int }}"
+  when: _ceph_upgrade_needed | bool
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Assert upgrade did not stall or pause
+  ansible.builtin.assert:
+    that:
+      - not ((_ceph_up_poll.stdout | from_json).is_paused | default(false))
+      - not ((_ceph_up_poll.stdout | from_json).in_progress | default(true))
+    fail_msg: >-
+      Upgrade did not complete cleanly:
+      in_progress={{ (_ceph_up_poll.stdout | from_json).in_progress | default('?') }},
+      is_paused={{ (_ceph_up_poll.stdout | from_json).is_paused | default('?') }},
+      message='{{ (_ceph_up_poll.stdout | from_json).message | default('') }}'.
+      Investigate `ceph orch upgrade status` and `ceph -W cephadm`. To abort and
+      roll back, see the rollback runbook in upgrade-ceph.yml
+      (ceph orch upgrade stop; then start --image <prior>).
+    success_msg: "Orchestrator reports upgrade complete (not paused, not in progress)."
+  when: _ceph_upgrade_needed | bool
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Post: health + version convergence ----------------------------------
+- name: Post -- probe Ceph health
+  ansible.builtin.command: ceph health --format json
+  register: _ceph_up_health_post
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Post -- assert cluster healthy after upgrade
+  ansible.builtin.assert:
+    that:
+      - >-
+        (_ceph_up_health_post.stdout | from_json).status == 'HEALTH_OK'
+        or (ceph_upgrade_allow_health_warn | bool
+            and (_ceph_up_health_post.stdout | from_json).status == 'HEALTH_WARN')
+    fail_msg: >-
+      Post-upgrade health is {{ (_ceph_up_health_post.stdout | from_json).status }}.
+      Investigate `ceph health detail` before declaring the upgrade done.
+    success_msg: "Post-upgrade health OK: {{ (_ceph_up_health_post.stdout | from_json).status }}."
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Post -- probe daemon versions
+  ansible.builtin.command: ceph versions --format json
+  register: _ceph_up_versions_post
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+- name: Post -- assert all daemons converged on one version
+  ansible.builtin.assert:
+    that:
+      - ((_ceph_up_versions_post.stdout | from_json).overall | length) == 1
+    fail_msg: >-
+      Daemons have NOT converged on a single version after the upgrade:
+      {{ (_ceph_up_versions_post.stdout | from_json).overall }}.
+      Some daemons are still on the old build -- check `ceph orch ps` and
+      `ceph orch upgrade status`.
+    success_msg: >-
+      All daemons converged:
+      {{ (_ceph_up_versions_post.stdout | from_json).overall | list | first }}.
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+
+# --- Summary --------------------------------------------------------------
+- name: Upgrade summary
+  ansible.builtin.debug:
+    msg:
+      - "=== Ceph upgrade summary ==="
+      - "Target requested : {{ _ceph_upgrade_target_desc }}"
+      - "Action taken     : {{ 'upgraded' if (_ceph_upgrade_needed | bool) else 'no-op (already at target)' }}"
+      - "Prior version(s) : {{ ceph_upgrade_prior_overall | list }}"
+      - "Now running      : {{ (_ceph_up_versions_post.stdout | from_json).overall | list }}"
+      - "Health           : {{ (_ceph_up_health_post.stdout | from_json).status }}"
+      - "Rollback image(s): {{ ceph_upgrade_rollback_images }}"
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"

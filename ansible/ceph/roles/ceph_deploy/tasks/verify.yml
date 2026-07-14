@@ -84,3 +84,98 @@
       The running cluster's password does not match ceph_dashboard_password.
       Re-run the ceph_deploy role to reconcile, or investigate an out-of-band change.
   when: inventory_hostname in groups['ceph_bootstrap']
+
+# --- Validation: device-class CRUSH pool placement ---
+# Guards the "rule created but no pool bound" failure mode surfaced by the deep
+# review: assert every pool we intended on a tier actually carries that rule, and
+# that the SSD rule bound to live OSDs (a rule whose device class has zero OSDs
+# selects nothing and leaves the pinned pool's PGs inactive). Only runs when the
+# cluster opts in to pinning (ceph_rgw_ssd_pools / _hdd_pools); skips absent pools.
+- name: Validate device-class pool placement
+  ansible.builtin.shell: |
+    set -o pipefail
+    rc=0
+    check() {  # $1 pool, $2 want_rule
+      ceph osd pool ls | grep -qxF "$1" || { echo "skip (absent): $1"; return; }
+      got=$(ceph osd pool get "$1" crush_rule | awk '{print $2}')
+      if [ "$got" = "$2" ]; then echo "ok: $1 -> $2"
+      else echo "FAIL: $1 -> $got (want $2)"; rc=1; fi
+    }
+    {% for p in ceph_rgw_ssd_pools %}
+    check {{ p | quote }} {{ ceph_rgw_ssd_crush_rule | quote }}
+    {% endfor %}
+    {% for p in ceph_rgw_hdd_pools %}
+    check {{ p | quote }} {{ ceph_rgw_hdd_crush_rule | quote }}
+    {% endfor %}
+    n=$(ceph osd crush class ls-osd ssd 2>/dev/null | grep -c '^[0-9]' || true)
+    if [ "$n" -gt 0 ]; then echo "ok: ssd class has $n OSDs"
+    else echo "FAIL: ssd class has 0 OSDs (replicated_ssd would select nothing)"; rc=1; fi
+    [ "$rc" = 0 ] && echo VALIDATION_OK || echo VALIDATION_FAIL
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_rgw_ssd_pools | length + ceph_rgw_hdd_pools | length) > 0
+  register: crush_placement_check
+  changed_when: false
+  failed_when: "'VALIDATION_FAIL' in (crush_placement_check.stdout | default(''))"
+
+- name: Show device-class pool placement validation
+  ansible.builtin.debug:
+    msg: "{{ crush_placement_check.stdout_lines }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - crush_placement_check.stdout_lines is defined
+
+# --- Alert delivery status ---
+# cephadm's alertmanager ships with no receiver, so a cluster with no configured
+# webhook routes every alert rule into a null route. Surface this loudly rather
+# than failing the play (the destination is a deliberate per-cluster decision).
+- name: Report alert-delivery status
+  ansible.builtin.debug:
+    msg: >-
+      {{ ('ALERT DELIVERY: ' ~ (ceph_alertmanager_webhook_urls | length | string)
+          ~ ' webhook receiver(s) configured.')
+         if (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+         else ('WARNING: no alert delivery configured - alertmanager has no receiver, so the '
+               ~ 'Prometheus alert rules fire into a null route and reach no human. '
+               ~ 'Set ceph_alertmanager_webhook_urls to a webhook/pager endpoint.') }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+# --- Validation: RGW replicated-pool durability ---
+# Guards the run-1 durability regression surfaced by the deep review: the
+# .rgw.* system pools are created lazily by the RGW daemon, so a size/min_size
+# pin taken before the daemon is up skips them and they sit at the inherited
+# 2/1. Assert every RGW replicated pool that exists carries the cluster's target
+# size/min_size, so a miss fails the play instead of shipping single-replica.
+- name: Validate RGW replicated-pool durability
+  ansible.builtin.shell: |
+    set -o pipefail
+    rc=0
+    check() {  # $1 pool
+      ceph osd pool ls | grep -qxF "$1" || { echo "skip (absent): $1"; return; }
+      sz=$(ceph osd pool get "$1" size | awk '{print $2}')
+      mn=$(ceph osd pool get "$1" min_size | awk '{print $2}')
+      if [ "$sz" = {{ ceph_rgw_replicated_size | quote }} ] && [ "$mn" = {{ ceph_rgw_replicated_min_size | quote }} ]; then
+        echo "ok: $1 size=$sz min_size=$mn"
+      else
+        echo "FAIL: $1 size=$sz min_size=$mn (want {{ ceph_rgw_replicated_size }}/{{ ceph_rgw_replicated_min_size }})"; rc=1
+      fi
+    }
+    {% for p in [ceph_rgw_index_pool, ceph_rgw_extra_pool, '.rgw.root', ceph_rgw_zone ~ '.rgw.log', ceph_rgw_zone ~ '.rgw.control', ceph_rgw_zone ~ '.rgw.meta', '.mgr'] %}
+    check {{ p | quote }}
+    {% endfor %}
+    [ "$rc" = 0 ] && echo VALIDATION_OK || echo VALIDATION_FAIL
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: pool_durability_check
+  changed_when: false
+  failed_when: "'VALIDATION_FAIL' in (pool_durability_check.stdout | default(''))"
+
+- name: Show RGW replicated-pool durability validation
+  ansible.builtin.debug:
+    msg: "{{ pool_durability_check.stdout_lines }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - pool_durability_check.stdout_lines is defined

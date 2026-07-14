@@ -1,0 +1,36 @@
+---
+# Per-host, opt-in (reprovision_wipe_osd_disks), runs in rescue BEFORE installimage.
+# Pushes + runs the proven OSD-HDD zap so a re-added node's disks aren't skipped by
+# cephadm. All delegate_to localhost raw ssh/scp.
+
+- name: Re-confirm node is in rescue before zapping OSD HDDs
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "[ -x {{ reprovision_installimage_bin }} ]"
+  delegate_to: localhost
+  changed_when: false
+
+- name: Push the OSD-HDD zap script
+  ansible.builtin.command:
+    cmd: >-
+      scp {{ reprovision_ssh_opts }} -i {{ reprovision_ssh_key_path | expanduser }}
+      {{ role_path }}/files/zap-osd-hdds.sh
+      {{ reprovision_ssh_user }}@{{ bond_ip }}:/tmp/zap-osd-hdds.sh
+  delegate_to: localhost
+  changed_when: true
+
+- name: Zap the OSD HDDs (LVM teardown + wipefs + sgdisk + bluestore zero)
+  ansible.builtin.command:
+    cmd: >-
+      ssh {{ reprovision_ssh_opts }} -l {{ reprovision_ssh_user }}
+      -i {{ reprovision_ssh_key_path | expanduser }} {{ bond_ip }}
+      "bash /tmp/zap-osd-hdds.sh"
+  delegate_to: localhost
+  register: reprovision_osd_zap
+  changed_when: "'zapped:' in reprovision_osd_zap.stdout"
+
+- name: Show OSD-HDD zap result
+  ansible.builtin.debug:
+    var: reprovision_osd_zap.stdout_lines

@@ -1,0 +1,23 @@
+---
+- name: Restart lldpd
+  ansible.builtin.systemd:
+    name: lldpd
+    state: restarted
+
+- name: Restart chrony
+  ansible.builtin.systemd:
+    name: chrony
+    state: restarted
+
+# sshd drop-in changes notify "Validate sshd config"; it runs sshd -t against the
+# real combined config and only then notifies "Reload sshd" (handlers fire in
+# listed order), so an invalid config halts the play before any reload.
+- name: Validate sshd config
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
+  notify: Reload sshd
+
+- name: Reload sshd
+  ansible.builtin.systemd:
+    name: ssh
+    state: reloaded

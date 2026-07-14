@@ -40,7 +40,24 @@ Backups are written to `backups/<timestamp>/` on the Ansible controller
 
 ### Backup schedule
 
-No automated schedule is configured. Run manually:
+**Scheduled (automated):** `mise run backup-timer` (or
+`scripts/ansible-play.sh backup-ceph.yml`) installs an on-node capture
+script (`/usr/local/sbin/ceph-backup.sh`) plus a systemd timer on the
+bootstrap node. The timer runs daily (with up to 1h of jitter) and writes a
+timestamped tarball to `/var/backups/ceph/` (root-only, `0700`), pruning
+tarballs older than `ceph_backup_retention_days` (default 14). Each tarball
+holds the recoverable cluster state: `fsid`, `ceph config dump`, monmap,
+osdmap, crushmap (binary + decompiled), `ceph osd tree`, `ceph orch ls` /
+`host ls`, and the RGW realm/zonegroup/zone. It does **not** contain secret
+keyrings. Opt a cluster out with `ceph_backup_enabled: false` in its
+group_vars.
+
+**Offsite:** left as an operator decision. Set `ceph_backup_offsite_dest`
+(empty by default) to an rsync target (`user@host:/path/`) or S3 URI
+(`s3://bucket/prefix`) and the script ships each tarball after capture.
+
+**Manual (`mise run backup`):** the controller-local export below is still
+available for ad-hoc snapshots. Run it manually:
 
 - Before any cluster topology change (add/remove node or OSD)
 - Before Ceph version upgrades

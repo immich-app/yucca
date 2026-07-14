@@ -1,0 +1,253 @@
+# Canonical SX295 roster for the spice ceph cluster (FSN1-DC24). Source of truth
+# for the reprovision driver (rescue/reset/installimage, keyed by server_number)
+# and the later networkd fabric config (host_index -> VLAN IPs). Keyed by the
+# node's hostname_short (spice-ceph-<name>); mirrors mgmt-hosts.yaml.
+#
+#   host_index - offset in every cluster VLAN (gateway .1 on the leaf IRB):
+#                public 10.40.20.<idx> (VLAN 120), private 10.40.22.<idx> (VLAN 122).
+#                mgmt-1/2 hold .2/.3; ceph nodes start at .4.
+#   mon        - true on the 5 quorum nodes (roles include "mon").
+site_id: 40
+cluster_id: 1
+
+hosts:
+  spice-ceph-adelia:
+    server_number: 3008187
+    public_ip: 178.63.139.248
+    host_index: 4
+    mon: true
+  spice-ceph-alexus:
+    server_number: 3008189
+    public_ip: 178.63.139.254
+    host_index: 5
+    mon: false
+  spice-ceph-alyssa:
+    server_number: 3008190
+    public_ip: 178.63.139.228
+    host_index: 6
+    mon: false
+  spice-ceph-ardith:
+    server_number: 3008191
+    public_ip: 178.63.139.227
+    host_index: 7
+    mon: false
+  spice-ceph-athena:
+    server_number: 3008192
+    public_ip: 178.63.139.225
+    host_index: 8
+    mon: false
+  spice-ceph-bernie:
+    server_number: 3008193
+    public_ip: 178.63.139.226
+    host_index: 9
+    mon: false
+  spice-ceph-braden:
+    server_number: 3008194
+    public_ip: 178.63.139.240
+    host_index: 10
+    mon: false
+  spice-ceph-callie:
+    server_number: 3008195
+    public_ip: 178.63.139.243
+    host_index: 11
+    mon: false
+  spice-ceph-catina:
+    server_number: 3008196
+    public_ip: 178.63.139.244
+    host_index: 12
+    mon: false
+  spice-ceph-cletus:
+    server_number: 3008197
+    public_ip: 178.63.139.253
+    host_index: 13
+    mon: false
+  spice-ceph-curtis:
+    server_number: 3008198
+    public_ip: 178.63.139.252
+    host_index: 14
+    mon: true
+  spice-ceph-darion:
+    server_number: 3008199
+    public_ip: 178.63.139.251
+    host_index: 15
+    mon: false
+  spice-ceph-deidra:
+    server_number: 3008200
+    public_ip: 178.63.139.250
+    host_index: 16
+    mon: false
+  spice-ceph-deonte:
+    server_number: 3008201
+    public_ip: 178.63.139.249
+    host_index: 17
+    mon: false
+  spice-ceph-dorian:
+    server_number: 3008202
+    public_ip: 178.63.139.242
+    host_index: 18
+    mon: false
+  spice-ceph-edythe:
+    server_number: 3008203
+    public_ip: 178.63.139.247
+    host_index: 19
+    mon: false
+  spice-ceph-eloise:
+    server_number: 3008204
+    public_ip: 178.63.139.246
+    host_index: 20
+    mon: false
+  spice-ceph-evelyn:
+    server_number: 3008205
+    public_ip: 178.63.139.245
+    host_index: 21
+    mon: false
+  spice-ceph-gaylon:
+    server_number: 3008206
+    public_ip: 178.63.139.241
+    host_index: 22
+    mon: false
+  spice-ceph-graham:
+    server_number: 3008207
+    public_ip: 178.63.139.239
+    host_index: 23
+    mon: false
+  spice-ceph-hayley:
+    server_number: 3012008
+    public_ip: 178.63.139.230
+    host_index: 24
+    mon: true
+  spice-ceph-howell:
+    server_number: 3012009
+    public_ip: 178.63.139.222
+    host_index: 25
+    mon: false
+  spice-ceph-jacque:
+    server_number: 3012010
+    public_ip: 178.63.139.221
+    host_index: 26
+    mon: false
+  spice-ceph-javier:
+    server_number: 3012011
+    public_ip: 178.63.139.207
+    host_index: 27
+    mon: false
+  spice-ceph-jewell:
+    server_number: 3012012
+    public_ip: 178.63.139.210
+    host_index: 28
+    mon: false
+  spice-ceph-joseph:
+    server_number: 3012013
+    public_ip: 178.63.139.218
+    host_index: 29
+    mon: false
+  spice-ceph-kassie:
+    server_number: 3012014
+    public_ip: 178.63.139.208
+    host_index: 30
+    mon: false
+  spice-ceph-kelsea:
+    server_number: 3012015
+    public_ip: 178.63.139.217
+    host_index: 31
+    mon: false
+  spice-ceph-kurtis:
+    server_number: 3012016
+    public_ip: 178.63.139.234
+    host_index: 32
+    mon: false
+  spice-ceph-lemuel:
+    server_number: 3012017
+    public_ip: 178.63.139.214
+    host_index: 33
+    mon: false
+  spice-ceph-lizzie:
+    server_number: 3014572
+    public_ip: 178.63.139.213
+    host_index: 34
+    mon: true
+  spice-ceph-lucius:
+    server_number: 3014573
+    public_ip: 178.63.139.212
+    host_index: 35
+    mon: false
+  spice-ceph-marian:
+    server_number: 3014574
+    public_ip: 178.63.139.211
+    host_index: 36
+    mon: false
+  spice-ceph-mattie:
+    server_number: 3014575
+    public_ip: 178.63.139.237
+    host_index: 37
+    mon: false
+  spice-ceph-miguel:
+    server_number: 3014576
+    public_ip: 178.63.139.216
+    host_index: 38
+    mon: false
+  spice-ceph-murphy:
+    server_number: 3014577
+    public_ip: 178.63.139.232
+    host_index: 39
+    mon: false
+  spice-ceph-noreen:
+    server_number: 3014578
+    public_ip: 178.63.139.220
+    host_index: 40
+    mon: false
+  spice-ceph-philip:
+    server_number: 3014579
+    public_ip: 178.63.139.219
+    host_index: 41
+    mon: false
+  spice-ceph-raymon:
+    server_number: 3014580
+    public_ip: 178.63.139.223
+    host_index: 42
+    mon: false
+  spice-ceph-romona:
+    server_number: 3014581
+    public_ip: 178.63.139.236
+    host_index: 43
+    mon: false
+  spice-ceph-serena:
+    server_number: 3014582
+    public_ip: 178.63.139.229
+    host_index: 44
+    mon: true
+  spice-ceph-shanna:
+    server_number: 3014583
+    public_ip: 178.63.139.209
+    host_index: 45
+    mon: false
+  spice-ceph-shelby:
+    server_number: 3014584
+    public_ip: 178.63.139.224
+    host_index: 46
+    mon: false
+  spice-ceph-sommer:
+    server_number: 3014585
+    public_ip: 178.63.139.215
+    host_index: 47
+    mon: false
+  spice-ceph-sylvia:
+    server_number: 3014586
+    public_ip: 178.63.139.235
+    host_index: 48
+    mon: false
+  spice-ceph-theron:
+    server_number: 3014587
+    public_ip: 178.63.139.238
+    host_index: 49
+    mon: false
+  spice-ceph-trista:
+    server_number: 3014588
+    public_ip: 178.63.139.233
+    host_index: 50
+    mon: false
+  spice-ceph-virgie:
+    server_number: 3014589
+    public_ip: 178.63.139.231
+    host_index: 51
+    mon: false

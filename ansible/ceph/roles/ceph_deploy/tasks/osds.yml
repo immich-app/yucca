@@ -52,17 +52,17 @@
   ansible.builtin.shell: |
     set -o pipefail
     EXPECTED={{
-      groups['ceph_nodes']
+      (groups['ceph_nodes'] | intersect(ansible_play_hosts))
         | map('extract', hostvars)
         | map(attribute='ceph_hdd_osds', default=[])
         | map('length') | sum
       +
-      groups['ceph_nodes']
+      (groups['ceph_nodes'] | intersect(ansible_play_hosts))
         | map('extract', hostvars)
         | map(attribute='ceph_ssd_osds', default=[])
         | map('length') | sum
     }}
-    echo "Expecting $EXPECTED OSDs total across the cluster"
+    echo "Expecting $EXPECTED OSDs across the nodes in this run"
     for i in $(seq 1 180); do
       ACTUAL=$(ceph osd stat --format json 2>/dev/null \
         | python3 -c "import sys, json; print(json.load(sys.stdin).get('num_osds', 0))" \

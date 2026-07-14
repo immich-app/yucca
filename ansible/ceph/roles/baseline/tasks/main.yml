@@ -5,6 +5,18 @@
 #          (created by provision_host during initial OS install).
 # Everything here is convergeable via normal deploy pipeline.
 
+- name: Ensure iac automation access (root key + ansible-iac)
+  ansible.builtin.import_tasks: iac-access.yml
+  when: provision_iac_ssh_key_path is defined
+  tags: [iac_access, users]
+
+# Immediately after the iac key is authorized on root: close root password login
+# and password auth (do NOT wait for the harden stage). Prevents an installimage
+# node from sitting root-password-open on the WAN during the deploy campaign.
+- name: Harden SSH early (root key-only, no password auth, lock root)
+  ansible.builtin.import_tasks: ssh-hardening.yml
+  tags: [ssh, hardening, security]
+
 - name: Configure ops user
   ansible.builtin.import_tasks: users.yml
   tags: [users]
@@ -13,6 +25,28 @@
   ansible.builtin.import_tasks: packages.yml
   tags: [packages]
 
+- name: Configure time sync (chrony) for Ceph
+  ansible.builtin.import_tasks: chrony.yml
+  tags: [chrony, time, system]
+
+# After packages (firmware-misc-nonfree) are installed: load the Intel ice DDP so
+# E810 NICs leave Safe Mode. Self-gating (no-op on non-ice hosts / already-loaded).
+- name: Activate Intel ice NIC firmware (DDP / exit Safe Mode)
+  ansible.builtin.import_tasks: nic-firmware.yml
+  tags: [packages, nic_firmware, network]
+
+- name: Configure lldpd for fabric discovery
+  ansible.builtin.import_tasks: lldpd.yml
+  when: "'lldpd' in (baseline_extra_packages | default([]))"
+  tags: [lldpd, network]
+
 - name: Configure /etc/hosts and services
   ansible.builtin.import_tasks: system.yml
   tags: [system]
+
+# Last: freeze the load-bearing packages installed above (podman ecosystem,
+# chrony) so a stray apt upgrade cannot move them under a live cluster. Runs after
+# every install so nothing is held before it exists.
+- name: Freeze load-bearing package versions (no unattended upgrades)
+  ansible.builtin.import_tasks: hold-packages.yml
+  tags: [packages, hold]

@@ -1,11 +1,15 @@
 ---
 # Security hardening for Ceph nodes.
-# Deploys nftables firewall rules and SSH hardening.
-# Run AFTER deploy-ceph.yml — cephadm needs unrestricted access during deploy.
+# Deploys the nftables firewall + the full sshd hardening drop-in.
+# Runs AFTER deploy-ceph.yml - cephadm needs unrestricted access during deploy.
+# NB: the security-critical sshd lockdown (root key-only, no password auth, locked
+# root password) is applied EARLY in the baseline role, not here, so a node is
+# never left root-password-open on the WAN during the deploy campaign; this stage
+# adds the firewall and the remaining sshd hardening on top.
 #
 # WARNING: This locks down inbound traffic. Ensure ceph_firewall_trusted_networks
-# includes all subnets that need to reach Ceph services. SSH (port 22) is always
-# open from any source to prevent lockout.
+# includes all subnets that need to reach Ceph services. SSH (port 22) stays open
+# from any source (ceph_firewall_ssh_any_source) to prevent lockout.
 #
 # Usage:
 #   scripts/ansible-play.sh harden.yml
@@ -14,6 +18,21 @@
   hosts: ceph_nodes
   become: true
   gather_facts: false
+  # Blast-radius control (see baseline.yml): batch the roll + halt on any node
+  # failure or cluster degradation. Especially important here - a bad nftables
+  # ruleset that fences the fabric shows up as an unreachable batch (halts on
+  # max_fail_percentage) or a degraded cluster at the post-batch health gate,
+  # before it reaches the rest of the fleet.
+  serial: "{{ ceph_converge_serial | default('10%') }}"
+  max_fail_percentage: 0
+
+  pre_tasks:
+    - name: Ceph-health gate (pre-batch)
+      ansible.builtin.import_tasks: tasks/health_gate.yml
 
   roles:
     - security
+
+  post_tasks:
+    - name: Ceph-health gate (post-batch)
+      ansible.builtin.import_tasks: tasks/health_gate.yml

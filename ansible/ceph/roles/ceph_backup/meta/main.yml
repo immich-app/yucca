@@ -1,0 +1,14 @@
+---
+# No dependencies - deploys a self-contained capture script + systemd timer on
+# the bootstrap node. Independent of the deploy pipeline; run deliberately via
+# backup-ceph.yml. Complements post-deploy-capture.yml (secrets -> 1P) and
+# backup-config.yml (one-shot controller-local export) with a SCHEDULED,
+# on-node config/topology backup.
+dependencies: []
+
+galaxy_info:
+  author: FUTO
+  license: AGPL-3.0-only
+  role_name: ceph_backup
+  description: Scheduled capture of Ceph cluster config/topology state to local tarballs for DR
+  min_ansible_version: "2.19"

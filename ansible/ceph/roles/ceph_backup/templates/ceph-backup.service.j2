@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# Oneshot capture of Ceph cluster config/topology state. Triggered by
+# ceph-backup.timer; can also be run on demand: systemctl start ceph-backup.service
+[Unit]
+Description=Ceph cluster-state backup (config/topology to {{ ceph_backup_dir }})
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Belt-and-suspenders: any file the script writes lands root-only.
+UMask=0077
+ExecStart={{ ceph_backup_script_path }}

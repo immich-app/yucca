@@ -1,0 +1,7 @@
+---
+hostname_short: spice-ceph-kelsea
+bond_ip: 178.63.139.217
+hetzner_server_number: 3012015
+host_index: 31
+mon: false
+# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)

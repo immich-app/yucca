@@ -18,5 +18,46 @@
   become: true
   gather_facts: true
 
+  pre_tasks:
+    # Fail fast if the inventory was not rendered from TF. The ceph_deploy role
+    # gates every phase on the ceph_bootstrap/ceph_mon/ceph_join groups and indexes
+    # groups['ceph_bootstrap'][0]; against a hand-written stopgap inventory that
+    # lacks them the role would error mid-run or, worse, fall through to placing a
+    # MON on every host. render-inventories.sh emits these groups from TF state
+    # (bootstrap = exactly one host, mon = an odd quorum including the bootstrap
+    # node) - refuse to deploy against anything else.
+    - name: Assert the TF-rendered placement groups are present and sane  # noqa: run-once[task]
+      ansible.builtin.assert:
+        that:
+          - (groups['ceph_bootstrap'] | default([])) | length == 1
+          - (groups['ceph_mon'] | default([])) | length >= 1
+          - (groups['ceph_mon'] | default([]) | length) is odd
+          - ((groups['ceph_bootstrap'] | default([])) | intersect(groups['ceph_mon'] | default([])) | length) == 1
+        fail_msg: >-
+          Inventory is missing or has bad TF-rendered placement groups
+          (need ceph_bootstrap = exactly 1 host that is also in ceph_mon, and
+          ceph_mon = a non-empty ODD quorum). Render it first:
+          scripts/render-inventories.sh <partition> <region>. Refusing to deploy.
+        success_msg: >-
+          Placement OK: bootstrap={{ groups['ceph_bootstrap'] | default([]) | length }},
+          mon={{ groups['ceph_mon'] | default([]) | length }},
+          join={{ groups['ceph_join'] | default([]) | length }}.
+      run_once: true
+
+    # Per host: the address the mon/OSD/RGW bind (ceph_service_ip) must be live on
+    # a local interface before bootstrap. For spice this is the fabric IP on
+    # bond0.120; a node whose VLAN sub-interface did not come back after a reboot
+    # would otherwise fail deep inside cephadm bootstrap/join. gather_facts is on,
+    # so ansible_all_ipv4_addresses is populated.
+    - name: Assert the Ceph service IP is live on this node (fabric/bond up)
+      ansible.builtin.assert:
+        that:
+          - ceph_service_ip in ansible_all_ipv4_addresses
+        fail_msg: >-
+          ceph_service_ip {{ ceph_service_ip }} is not on any local interface on
+          {{ inventory_hostname }} - the Ceph bind network (spice: bond0.120) is
+          down on this node. Bring the fabric up before deploying it.
+        success_msg: "Ceph service IP {{ ceph_service_ip }} is live on {{ inventory_hostname }}."
+
   roles:
     - ceph_deploy

@@ -1,0 +1,125 @@
+---
+# Health-gated, cephadm-orchestrated Ceph upgrade (Tentacle 20.2.x train).
+#
+# This is a DELIBERATE, MANUALLY-INVOKED day-2 operation. It is intentionally
+# NOT wired into site.yml -- converge must never trigger a cluster upgrade.
+#
+# What it does (all cluster ops run_once on groups['ceph_bootstrap'][0]):
+#   1. Preflight gate: HEALTH_OK (or an explicit allow-HEALTH_WARN toggle),
+#      no upgrade already in progress, and all OSDs up+in. Refuses otherwise.
+#   2. Records the rollback anchor (current running image(s) + versions) and
+#      prints it BEFORE touching anything.
+#   3. `ceph orch upgrade start` to the REQUIRED, explicit target (below).
+#   4. Polls `ceph orch upgrade status` with a bounded timeout; fails loudly
+#      if cephadm pauses/stalls the upgrade.
+#   5. Post: asserts HEALTH_OK (or WARN toggle) and that all daemons converged
+#      on one version; prints a summary.
+#
+# ---------------------------------------------------------------------------
+# REQUIRED TARGET (no default -- the play refuses to run without one):
+#   -e ceph_upgrade_target_image=quay.io/ceph/ceph:v20.2.2    (preferred)
+#     or
+#   -e ceph_upgrade_version=20.2.2
+#
+# OPTIONAL TOGGLES:
+#   -e ceph_upgrade_allow_health_warn=true   # proceed on a benign HEALTH_WARN
+#   -e ceph_upgrade_poll_retries=120         # poll attempts   (default 120)
+#   -e ceph_upgrade_poll_delay=30            # seconds/attempt (default 30)
+#   # -> default bound = 120 * 30s = 60 minutes
+#
+# USAGE:
+#   scripts/ansible-play.sh upgrade-ceph.yml \
+#     -e ceph_upgrade_target_image=quay.io/ceph/ceph:v20.2.2
+#
+#   # dry run of the preflight/plan (no start; poll/start are skipped in check):
+#   scripts/ansible-play.sh upgrade-ceph.yml \
+#     -e ceph_upgrade_target_image=quay.io/ceph/ceph:v20.2.2 --check
+#
+# ===========================================================================
+# ROLLBACK RUNBOOK (read before you start; see docs/runbooks/upgrade-ceph.md)
+# ===========================================================================
+# cephadm upgrades roll one daemon type at a time (mgr -> mon -> ... -> osd)
+# and auto-PAUSE on the first failure rather than tearing the cluster down.
+# There is no destructive cutover, so rollback = point the orchestrator back
+# at the PRIOR image and let it converge.
+#
+# 0. Capture the prior image. This play PRINTS it ("ROLLBACK ANCHOR ...")
+#    before starting; otherwise read the running image now:
+#      ceph orch ps --format json | \
+#        python3 -c 'import sys,json;print(sorted({d["container_image_name"] for d in json.load(sys.stdin)}))'
+#
+# 1. Stop / pause the in-flight upgrade:
+#      ceph orch upgrade stop            # abandons the current target
+#      # (or `ceph orch upgrade pause` / `resume` to hold and inspect)
+#
+# 2. Roll back to the prior image (only daemons ahead of it move):
+#      ceph orch upgrade start --image <PRIOR_IMAGE>
+#
+# 3. Watch it converge:
+#      ceph orch upgrade status
+#      ceph -W cephadm                   # live cephadm event log
+#      watch ceph versions
+#
+# 4. Health checks once status shows not in_progress:
+#      ceph health detail                # expect HEALTH_OK
+#      ceph versions                     # expect ONE overall version
+#      ceph osd stat                     # all OSDs up + in
+#
+# Notes / gotchas:
+#   - Ceph does NOT support downgrading across a major release. Rollback is
+#     only safe WITHIN the pinned 20.2.x train (patch level). Do not use this
+#     to cross 20.x -> 19.x.
+#   - If a mon/osd is stuck mid-step, `ceph orch upgrade stop` then re-target;
+#     cephadm reconciles idempotently.
+#   - Re-running THIS play with the prior image as the target performs the
+#     same health-gated rollback with all the same checks.
+# ===========================================================================
+
+- name: Upgrade Ceph (cephadm-orchestrated, health-gated)
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  vars:
+    # Poll bound for the orchestrated upgrade (retries * delay seconds).
+    ceph_upgrade_poll_retries: 120
+    ceph_upgrade_poll_delay: 30
+    # Preflight/postflight normally demand HEALTH_OK. Flip to true (on the CLI)
+    # only after reviewing `ceph health detail` and judging the WARN benign.
+    ceph_upgrade_allow_health_warn: false
+
+  pre_tasks:
+    # Same TF-rendered placement guard as deploy-ceph.yml: every cluster op is
+    # delegated to groups['ceph_bootstrap'][0]; against a hand-written stopgap
+    # inventory that lacks the group this would index an empty list.
+    - name: Assert the bootstrap placement group is present  # noqa: run-once[task]
+      ansible.builtin.assert:
+        that:
+          - (groups['ceph_bootstrap'] | default([])) | length == 1
+        fail_msg: >-
+          Inventory is missing the TF-rendered ceph_bootstrap group (need exactly
+          one host). Render it first: scripts/render-inventories.sh <partition>
+          <region>. Refusing to upgrade.
+        success_msg: "Bootstrap node: {{ groups['ceph_bootstrap'][0] }}."
+      run_once: true
+
+    # Refuse to run without an explicit, operator-supplied target. No default
+    # image/version is baked in -- an accidental converge cannot pick one up.
+    - name: Assert an explicit upgrade target was provided  # noqa: run-once[task]
+      ansible.builtin.assert:
+        that:
+          - (ceph_upgrade_target_image | default('') | string | length > 0)
+            or (ceph_upgrade_version | default('') | string | length > 0)
+        fail_msg: >-
+          No upgrade target. Pass exactly one of:
+          -e ceph_upgrade_target_image=quay.io/ceph/ceph:v20.2.X  (preferred)
+          or -e ceph_upgrade_version=20.2.X. Refusing to run with no target.
+        success_msg: >-
+          Target:
+          {{ ceph_upgrade_target_image
+             | default('ceph-version ' ~ (ceph_upgrade_version | default('')), true) }}.
+      run_once: true
+
+  tasks:
+    - name: Run the health-gated upgrade flow on the bootstrap node
+      ansible.builtin.import_tasks: tasks/ceph_upgrade.yml

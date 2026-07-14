@@ -1,0 +1,7 @@
+---
+hostname_short: spice-ceph-romona
+bond_ip: 178.63.139.236
+hetzner_server_number: 3014581
+host_index: 43
+mon: false
+# ceph_hdd_osds: DEFERRED until node-1 inspection (uniform SX295 by-path map)

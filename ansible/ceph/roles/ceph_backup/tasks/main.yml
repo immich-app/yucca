@@ -1,0 +1,80 @@
+---
+# Deploy the scheduled cluster-state backup: capture script + systemd
+# service/timer on the bootstrap node. Read-only capture to a root-only local
+# dir, so it is universally safe; gate with ceph_backup_enabled to opt out.
+
+- name: Scheduled backup install
+  when: ceph_backup_enabled | bool
+  block:
+    - name: Ensure the backup directory exists (root-only)
+      ansible.builtin.file:
+        path: "{{ ceph_backup_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Deploy the ceph-backup.sh capture script
+      ansible.builtin.template:
+        src: ceph-backup.sh.j2
+        dest: "{{ ceph_backup_script_path }}"
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Deploy the ceph-backup.service unit
+      ansible.builtin.template:
+        src: ceph-backup.service.j2
+        dest: /etc/systemd/system/ceph-backup.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Deploy the ceph-backup.timer unit
+      ansible.builtin.template:
+        src: ceph-backup.timer.j2
+        dest: /etc/systemd/system/ceph-backup.timer
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload systemd
+
+    - name: Reload systemd now so the units are current before enabling
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable and start the backup timer
+      ansible.builtin.systemd:
+        name: ceph-backup.timer
+        enabled: true
+        state: started
+
+    # Starting the oneshot service blocks until ExecStart returns, so this both
+    # proves the script runs and leaves a first tarball to inspect.
+    - name: Trigger one immediate backup to validate the install
+      ansible.builtin.systemd:
+        name: ceph-backup.service
+        state: started
+      when: ceph_backup_run_now | bool
+
+    - name: Find the most recent backup tarball
+      ansible.builtin.find:
+        paths: "{{ ceph_backup_dir }}"
+        patterns: 'ceph-state-*.tar.gz'
+      register: ceph_backup_tarballs
+      when: ceph_backup_run_now | bool
+
+    - name: Report backup install status
+      ansible.builtin.debug:
+        msg: >-
+          Scheduled backups installed on {{ inventory_hostname }}: timer
+          {{ ceph_backup_oncalendar }} (jitter {{ ceph_backup_randomized_delay }}),
+          dir {{ ceph_backup_dir }}, retention {{ ceph_backup_retention_days }}d,
+          offsite {{ ('set: ' ~ ceph_backup_offsite_dest)
+                      if (ceph_backup_offsite_dest | length > 0)
+                      else 'DISABLED (empty - operator TODO)' }}.
+          Latest tarball:
+          {{ (ceph_backup_tarballs.files | map(attribute='path') | sort | last)
+             if (ceph_backup_run_now | bool
+                 and (ceph_backup_tarballs.files | default([]) | length) > 0)
+             else 'none yet (timer will produce one)' }}
