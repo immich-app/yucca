@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { randomBytes } from 'node:crypto';
+import { availableParallelism } from 'node:os';
 import { ConfigurationKey } from '../enum';
 import { DB } from '../schema';
 
@@ -98,5 +99,10 @@ export class ConfigRepository {
 
   async skipExtraConfig() {
     return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
+  }
+
+  async getResticOptionRestConnections() {
+    const concurrency = await this.get(ConfigurationKey.ResticOptionRestConnections);
+    return concurrency ? Number.parseInt(concurrency) : availableParallelism();
   }
 }
