@@ -6,17 +6,6 @@ terraform {
       source  = "siderolabs/talos"
       version = "~> 0.11"
     }
-    # Hetzner Cloud — the 3 control-plane VMs, their private subnet (etcd), and the
-    # public API load balancer. Token via HCLOUD_TOKEN (op run --env-file).
-    hcloud = {
-      source  = "hetznercloud/hcloud"
-      version = "~> 1.51"
-    }
-    # Hostname picks for the talos nodes (node-names module → random_shuffle).
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
     # Cilium install (CNI) post-bootstrap, in the same apply.
     helm = {
       source  = "hashicorp/helm"
@@ -32,12 +21,6 @@ terraform {
     onepassword = {
       source  = "1Password/onepassword"
       version = "~> 2.1"
-    }
-    # Worker NetBird peer lookups — the mesh addresses the CP apiserver dials for
-    # worker kubelets (see cp_extras_patch). Auth via NB_PAT (op run).
-    netbird = {
-      source  = "registry.terraform.io/futo-org/netbird"
-      version = "1.0.2"
     }
   }
 }

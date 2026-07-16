@@ -62,10 +62,12 @@ resource "netbox_prefix" "network" {
 }
 
 resource "netbox_ip_address" "gateway" {
-  for_each    = local.networks
-  ip_address  = "${each.value.gateway}/${split("/", each.value.prefix)[1]}"
-  status      = "active"
-  dns_name    = "gw-${var.site.code}-C${split("-", each.key)[0]}-${lower(each.value.role)}"
+  for_each   = local.networks
+  ip_address = "${each.value.gateway}/${split("/", each.value.prefix)[1]}"
+  status     = "active"
+  # lower(): NetBox normalizes dns_name to lowercase on write — mixed case here
+  # is a perpetual plan diff.
+  dns_name    = lower("gw-${var.site.code}-c${split("-", each.key)[0]}-${each.value.role}")
   description = "IRB gateway for ${var.site.code}-C${split("-", each.key)[0]}-${each.value.role}"
 }
 

@@ -2,7 +2,8 @@
 
 Manages the Falkenstein (site 40) switch fabric as code:
 
-- **spine** (`corenetsw` VC) — shared site core: VC, 100G→4×25G breakout, VLAN stretch.
+- **spine** (`corenetsw` VC) — shared site core: VC, per-port breakout (ports 1-3
+  100G→4×25G, port 0 100G→4×10G for the father CPs), VLAN stretch.
 - **cls1** (`cls1netsw` VC) — ceph cluster 1's leaf pair: public/private VLANs, IRB
   gateways, the `NO-CROSS-VLAN` filter, and the 48 server LAGs.
 
@@ -15,22 +16,24 @@ Each ceph cluster = one leaf pair; the spine is shared across clusters.
 | site supernet | `10.<site>.0.0/16` | `10.40.0.0/16` |
 | management (vme) | `10.<site>.5.0/24` | `10.40.5.0/24` (spine `.115`, leaf `.125`) |
 | kube (VLAN) | `10.<site>.<kube_octet>.0/24` | `10.40.10.0/24` → vlan 10 |
-| kube-cp (hcloud) | `10.<site>.<kube_cp_octet>.0/24` | `10.40.11.0/24` (gw `.1`, CP VMs etcd + API LB) |
+| kube-cp (VLAN) | `10.<site>.<kube_cp_octet>.0/24` | `10.40.11.0/24` → vlan 11 (gw `.1` = spine IRB) |
 | cluster `n` /20 | `10.<site>.<n*16>.0/20` | `10.40.16.0/20` |
 | public (VLAN) | cluster /20, /23 idx 2 | `10.40.20.0/23` → vlan 20 |
 | private (VLAN) | cluster /20, /23 idx 3 | `10.40.22.0/23` → vlan 22 |
 | leaf vme | `.125 + (n-1)*10` | `.125` |
 
-VLAN id == the network's third octet; gateway = `.1` (IRB on the leaf).
+VLAN id == the network's third octet; gateway = `.1` (IRB on the leaf, except the
+site-global kube/kube-cp VLANs, whose IRBs live on the spine).
 
-> **`kube-cp` is not a fabric VLAN.** It's a small isolated **Hetzner Cloud private
-> subnet** holding only the cloud control-plane VMs (etcd CP↔CP) + the API LB's
-> private IP. CP↔worker control traffic and worker→API ride the **NetBird WireGuard
-> mesh** (node IPs are NetBird addresses), and worker↔worker east-west rides the
-> `kube` fabric net (`10.40.10.0/24`) at 50G via Cilium BGP. The API endpoint is a
-> **Hetzner Cloud LB** (no L2 VIP — hcloud private nets are anti-spoofed/routed).
-> `kube-cp` is carved from the site supernet only for collision-free IPAM and is
-> **never** configured on the Junos switches.
+> **`kube-cp` is the control-plane VLAN.** The father bare-metal CPs are its only
+> members (etcd CP↔CP + apiserver + the Talos-elected API **VIP** `10.40.11.5`),
+> hanging off the spine's port-0 **4×10G** breakout (ae4-6, one leg per VC member).
+> The spine routes kube↔kube-cp between its two IRBs (`10.40.10.1` / `10.40.11.1`),
+> which is how worker kubelets and the apiserver reach each other; worker↔worker
+> east-west rides the `kube` VLAN at 50G. Operators reach the API over the NetBird
+> kube-cp route (the CPs are the route peers). Historically kube-cp was an isolated
+> Hetzner Cloud subnet for the retired cloud CP VMs + API LB — same CIDR, so the
+> API DNS record and etcd addressing carried over unchanged.
 
 ## Layout
 

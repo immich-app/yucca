@@ -22,6 +22,11 @@ module "core" {
 
   vc_member_serials = var.spine_vc_serials
 
+  # Port 0 carries the father control-plane breakout at 10G (the CPs' Intel 82599
+  # NICs are 10G-only; needs the QSFP+ 4x10G breakout cables — see cp_node_lags);
+  # ports 1-3 stay 25G (workers + mgmt + spares).
+  breakout_ports = { 0 = "10g", 1 = "25g", 2 = "25g", 3 = "25g" }
+
   # father's bare-metal kube workers hang off the core (channelized 25G breakouts of
   # port 2, one leg per VC member). Each ae bundles the two ports cabled to one node
   # (pairs derived from LLDP — consecutive MACs on the node's dual-port Broadcom NIC):
@@ -30,6 +35,23 @@ module "core" {
     ae1 = ["et-0/0/2:2", "et-1/0/2:3"]
     ae2 = ["et-0/0/2:3", "et-1/0/2:2"]
     ae3 = ["et-0/0/2:1", "et-1/0/2:1"]
+  }
+
+  # father's bare-metal control planes: port-0 breakout legs at 10G (xe-), one leg
+  # per VC member, trunking the kube-cp VLAN. Pairing VERIFIED 2026-07-15 via MAC
+  # learning against the maintenance-mode nodes (NIC port 1 → FPC 0, port 2 →
+  # FPC 1, same leg index on both members):
+  #   ae4 = harlan …0a:fe:c8/ca   ae5 = imelda …09:68:68/6a   ae6 = roscoe …65:07:40/42
+  cp_node_lags = {
+    ae4 = ["xe-0/0/0:2", "xe-1/0/0:2"]
+    ae5 = ["xe-0/0/0:1", "xe-1/0/0:1"]
+    ae6 = ["xe-0/0/0:0", "xe-1/0/0:0"]
+  }
+
+  # kube-cp VLAN + its spine IRB (10.40.11.1) — the spine routes kube↔kube-cp.
+  kube_cp = {
+    vlan_id = module.addr_site.kube_cp_vlan_id
+    cidr    = module.addr_site.kube_cp_cidr
   }
 
   # Cilium node iBGP for LoadBalancer VIPs — the spine gets its first IRB (the kube net's
@@ -54,6 +76,8 @@ module "core" {
     interfaces = [
       "et-0/0/2:1", "et-0/0/2:2", "et-0/0/2:3",
       "et-1/0/2:1", "et-1/0/2:2", "et-1/0/2:3",
+      "xe-0/0/0:0", "xe-0/0/0:1", "xe-0/0/0:2",
+      "xe-1/0/0:0", "xe-1/0/0:1", "xe-1/0/0:2",
       "et-0/0/3:0", "et-1/0/3:0",
       "et-0/0/27",
       "et-0/0/30", "et-0/0/31", "et-1/0/30", "et-1/0/31",

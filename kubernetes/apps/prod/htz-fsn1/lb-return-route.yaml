@@ -26,7 +26,7 @@ spec:
         app: lb-return-route
     spec:
       hostNetwork: true
-      # Workers only — the CPs are on the hcloud net, not the fabric.
+      # Workers only — the CPs are on the kube-cp VLAN, not the kube VLAN.
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

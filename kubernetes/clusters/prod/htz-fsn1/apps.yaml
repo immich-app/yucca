@@ -1,10 +1,55 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# cluster-apps entry point for prod@htz-fsn1. Authored ahead of the cluster (the
-# prod Talos/flux stack isn't built yet); activates once that stack provisions
-# flux and it syncs kubernetes/clusters/prod/htz-fsn1. Precedence (last wins):
-# cluster-settings-generated (TF) -> cluster-settings (human) -> image-versions
-# (the committed, CI-promoted prod tag); keys are disjoint by design.
+# prod@htz-fsn1 entry points — TWO layers, so a fresh cluster can't deadlock:
+# the 2026-07 rebuild proved a flat tree wedges itself (kustomize-controller
+# server-side dry-runs every object, so any CR whose CRD is missing blocks the
+# WHOLE apply — including the HelmReleases that would install those CRDs).
+#
+#   cluster-infra  operators/CRD providers (apps/prod/htz-fsn1/infra) — wait: true,
+#                  so Ready ⇒ operators running ⇒ CRDs registered.
+#   cluster-apps   everything else (CRs + workloads) — dependsOn cluster-infra.
+#
+# Substitution precedence (last wins): cluster-settings-generated (TF) ->
+# cluster-settings (human) -> image-versions (the committed, CI-promoted prod
+# tag); keys are disjoint by design. Injected into the NESTED Kustomizations via
+# the patches block (both layers' direct objects use no ${vars} themselves).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-infra
+  namespace: flux-system
+spec:
+  interval: 1h
+  retryInterval: 2m
+  path: ./kubernetes/apps/prod/htz-fsn1/infra
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  # The health gate cluster-apps depends on: every nested Kustomization here
+  # carries healthChecks on its HelmRelease, so wait covers operator readiness.
+  wait: true
+  timeout: 10m
+  patches:
+    - target:
+        group: kustomize.toolkit.fluxcd.io
+        kind: Kustomization
+      patch: |-
+        apiVersion: kustomize.toolkit.fluxcd.io/v1
+        kind: Kustomization
+        metadata:
+          name: _
+        spec:
+          postBuild:
+            substituteFrom:
+              - kind: ConfigMap
+                name: cluster-settings-generated
+              - kind: ConfigMap
+                name: cluster-settings
+              - kind: ConfigMap
+                name: image-versions
+---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -12,11 +57,12 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  # Fast retry: this Kustomization applies CRs (Certificates, Gateways,
-  # DiskPools) whose CRDs its own children install — on fresh bootstrap the
-  # first apply races them, and without retryInterval a failure waits the
-  # full 1h interval.
+  # Fast retry: CRD registration can trail the infra layer's Ready by moments
+  # (mayastor's diskpool operator creates its CRD at startup) — without
+  # retryInterval a dry-run failure waits the full 1h interval.
   retryInterval: 2m
+  dependsOn:
+    - name: cluster-infra
   path: ./kubernetes/apps/prod/htz-fsn1
   prune: true
   sourceRef:

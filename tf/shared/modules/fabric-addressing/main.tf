@@ -11,16 +11,15 @@ locals {
   kube_cidr    = "10.${var.site_id}.${var.kube_octet}.0/24"
   kube_vlan_id = var.kube_octet
 
-  # Site-global Kubernetes control-plane subnet ("kube-cp"). NOT a Juniper fabric
-  # VLAN — it's a small, isolated Hetzner Cloud private subnet holding ONLY the
-  # cloud control-plane VMs (for etcd CP↔CP) + the Kubernetes API LB's private IP.
-  # The workers do NOT join it: CP↔worker control + worker→API ride the NetBird
-  # WireGuard mesh (node IPs are NetBird addresses), and worker↔worker east-west
-  # rides the `kube` fabric net at 50G. Carved from the site supernet only for
-  # collision-free IPAM; it is NEVER configured on the Junos switches.
-  #   kube-cp  10.<site>.<kube_cp_octet>.0/24  (Hetzner Cloud subnet, gw .1)
+  # Site-global Kubernetes control-plane VLAN ("kube-cp") — a fabric VLAN like
+  # `kube`: holds the bare-metal control-plane nodes (etcd CP↔CP + apiserver) and
+  # the cluster's API VIP. Workers do NOT join it — the spine routes kube↔kube-cp
+  # via its two IRBs. (Historically this was an isolated Hetzner Cloud private
+  # subnet for the cloud CP VMs + API LB; same CIDR, now on the switches.)
+  #   kube-cp  10.<site>.<kube_cp_octet>.0/24  -> vlan <kube_cp_octet> (gw .1 = spine IRB)
   kube_cp_cidr    = "10.${var.site_id}.${var.kube_cp_octet}.0/24"
-  kube_cp_gateway = cidrhost(local.kube_cp_cidr, 1) # .1 — Hetzner Cloud Gateway
+  kube_cp_vlan_id = var.kube_cp_octet
+  kube_cp_gateway = cidrhost(local.kube_cp_cidr, 1) # .1 — spine IRB
 
   # Internal (NetBird-only) Kubernetes LoadBalancer VIP range. Like kube-cp it is
   # NEVER a switch VLAN: Cilium assigns VIPs from it and the workers advertise the

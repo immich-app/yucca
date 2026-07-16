@@ -27,15 +27,14 @@ variable "vc_member_serials" {
 }
 
 variable "breakout_ports" {
-  type        = list(number)
-  default     = [0, 1, 2, 3]
-  description = "QSFP28 ports channelized 100G->4x25G on each VC member."
-}
-
-variable "breakout_speed" {
-  type        = string
-  default     = "25g"
-  description = "Per-channel speed for the breakout ports."
+  type        = map(string)
+  default     = { 0 = "25g", 1 = "25g", 2 = "25g", 3 = "25g" }
+  description = <<-EOT
+    QSFP28 ports channelized on each VC member: port number -> per-channel speed.
+    25g -> et-<fpc>/0/<port>:0..3 legs; 10g -> xe-<fpc>/0/<port>:0..3. NB: 10g
+    channelization needs a QSFP+ (40G-class) breakout cable — the QFX5200 silently
+    falls back to unchannelized 100G on a QSFP28 cable.
+  EOT
 }
 
 variable "kube_vlan_id" {
@@ -69,6 +68,31 @@ variable "node_lags" {
     trunk carrying the kube VLAN (the nodes tag their fabric IP onto it). The two
     members MUST be the ports cabled to the SAME node — LACP won't aggregate ports
     facing different partners.
+  EOT
+}
+
+variable "cp_node_lags" {
+  type        = map(list(string))
+  default     = {}
+  description = <<-EOT
+    Control-plane node LACP bonds terminated on the core — same shape and rules as
+    node_lags (key = ae name; value = the two member sub-ports, one per VC member,
+    cabled to the SAME node), but the trunk carries the kube-cp VLAN instead of
+    kube. Requires var.kube_cp. Members are 10G breakout legs (xe-…).
+  EOT
+}
+
+variable "kube_cp" {
+  type = object({
+    vlan_id = number
+    cidr    = string
+  })
+  default     = null
+  description = <<-EOT
+    Kubernetes control-plane network on the fabric: creates the kube-cp VLAN + its
+    IRB (.1) on the spine — the second spine IRB, making the spine the router
+    between kube (workers) and kube-cp (bare-metal CPs: etcd + the API VIP).
+    null = no kube-cp VLAN.
   EOT
 }
 

@@ -2,9 +2,7 @@
 # Helm (OCI charts), then Flux reconciles this repo's kubernetes/clusters/prod
 # path on its own. Lands after the cluster + CNI (providers.tf helm/kubernetes).
 #
-# ⚠ TEMPORARY: the sync ref is feat/prod (var.flux_git_ref) so father can be
-# GitOps-managed before the branch merges. Flip flux_git_ref to "main" (the
-# default once this merges) — nothing else changes.
+# Sync ref = main (var.flux_git_ref default; CI guards it stays that way).
 
 resource "helm_release" "flux_operator" {
   name             = "flux-operator"

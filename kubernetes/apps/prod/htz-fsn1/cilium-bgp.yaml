@@ -86,7 +86,8 @@ kind: CiliumBGPClusterConfig
 metadata:
   name: father
 spec:
-  # Workers only — the CPs live on the hcloud net, not the fabric, so they can't peer.
+  # Workers only — the CPs live on the kube-cp VLAN; the spine's iBGP group peers
+  # from the kube VLAN (10.40.10.0/24) only.
   nodeSelector:
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane

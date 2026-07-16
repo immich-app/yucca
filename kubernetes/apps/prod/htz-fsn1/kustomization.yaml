@@ -1,13 +1,15 @@
 ---
-# prod@htz-fsn1 cluster overlay — father.
+# prod@htz-fsn1 cluster overlay — father: the APP layer (custom resources +
+# workloads). The CRD/operator providers live in ./infra, applied by the
+# `cluster-infra` Flux Kustomization that this layer dependsOn — see
+# infra/kustomization.yaml for why (fresh-cluster dry-run deadlock).
 #
 # CURRENT SCOPE: Flux owns the cluster BASELINE (coredns, the Cilium BGP LB
-# config, the netops stack, OpenEBS pools) — adopted from the hand-applied
-# bring-up state. The platform/infra components and the yucca app set are
-# DELIBERATELY not enabled yet:
+# config, the netops stack, OpenEBS pools). The platform/infra components and
+# the yucca app set are DELIBERATELY not enabled yet:
 #   - components/infra needs real cluster-settings (RGW endpoint, o11y vmauth)
-#     and would collide with the in-cluster OpenEBS install (openebs/ here owns
-#     it via HelmRelease instead).
+#     and would collide with the in-cluster OpenEBS install (infra/openebs.yaml
+#     owns it via HelmRelease instead).
 #   - components/roles/primary is the yucca WORKLOAD set — explicitly held back
 #     until prod launch.
 # Re-enable by uncommenting `components:` below.
@@ -18,10 +20,7 @@ resources:
   - ./coredns.yaml
   - ./cilium-bgp.yaml
   - ./lb-return-route.yaml
-  - ./cert-manager.yaml
-  - ./namespace-envoy-system.yaml
-  - ./envoy.yaml
-  - ./openebs
+  - ./diskpools.yaml
   - ./netops
 # components:
 #   - ../../../components/infra

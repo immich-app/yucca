@@ -20,8 +20,8 @@ groups = {
   talos     = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
   resources = { resource = true } # routed-subnet tag → yucca-prod-htz-fsn1-resources (Network resources tag in)
   # CP-only subset of `talos` — the ROUTER peer group for the kube-cp network. Only
-  # the cloud CPs sit on the kube-cp hcloud subnet, so only they can route it; if the
-  # router were the whole `talos` group the bare-metal WORKERS (also `talos`) would be
+  # the CPs sit on the kube-cp VLAN, so only they can route it; if the router were
+  # the whole `talos` group the bare-metal WORKERS (also `talos`) would be
   # treated as routers and never install the client route to kube-cp. resource = false:
   # it's a routing peer group, not a yucca-reachable tag (the CPs are already reachable
   # via `talos`). CPs join via the talos_cp setup key below (auto_groups tags them
