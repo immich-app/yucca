@@ -38,8 +38,13 @@ INV_ROOT="$ANSIBLE_CEPH/inventories"
 
 # The `render` output is non-sensitive (inventory text + op:// references — no
 # raw secrets). Reading state needs the S3 backend creds, so go through the
-# op-run wrapper which injects them from tf/.env.
-JSON="$(cd "$STACK_DIR" && OP_ENV_FILE="$REPO_ROOT/tf/.env" "$REPO_ROOT/tf/op-run.sh" terragrunt output -json render)"
+# op-run wrapper which injects them from the partition's env file: prod refs
+# live in tf/.env.prod, everything else in tf/.env (the same split infra.yml
+# makes). op run resolves every ref up front, so a mismatched file fails on the
+# wrong vault under the prod service-account token.
+ENV_FILE="$REPO_ROOT/tf/.env"
+if [ "$PARTITION" = "prod" ]; then ENV_FILE="$REPO_ROOT/tf/.env.prod"; fi
+JSON="$(cd "$STACK_DIR" && OP_ENV_FILE="$ENV_FILE" "$REPO_ROOT/tf/op-run.sh" terragrunt output -json render)"
 
 # JSON travels via env (RENDER_JSON); the heredoc owns python's stdin (the
 # program), so we can't also pipe the data in.
