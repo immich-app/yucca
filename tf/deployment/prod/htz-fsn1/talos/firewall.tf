@@ -1,15 +1,16 @@
 # Talos host ingress firewall (default-deny + per-service allow-lists). Governs
 # HOST-network ports only; pod/ClusterIP traffic rides Cilium.
 #
-# Trust planes for this hybrid cluster:
+# Trust planes:
 #   kube_cidr        10.40.10.0/24  workers' fabric IPs (east-west, BGP)
-#   kube_cp_cidr     10.40.11.0/24  CP private IPs + the API LB (etcd, LB health-checks)
-#   netbird_node_cidr 10.254.0.0/15 the NetBird mesh (apiserver↔kubelet, node control)
+#   kube_cp_cidr     10.40.11.0/24  CP IPs + the API VIP (etcd, apiserver)
+#   netbird_node_cidr 10.254.0.0/15 the NetBird mesh (operators, backup plane)
 #   trusted_cidrs    operator/CI source ranges
 #
-# ⚠️ The TF runner dials the CP PUBLIC IPs for bootstrap (apid 50000) and the
-# helm/kubernetes providers (apiserver 6443). Its source IP MUST be in
-# trusted_cidrs (e.g. the CI runner's egress / NetBird range) or those steps hang.
+# ⚠️ The TF runner dials the CP kube-cp IPs (over the NetBird kube-cp route) for
+# bootstrap (apid 50000) and the helm/kubernetes providers (apiserver 6443). Its
+# source IP MUST be in trusted_cidrs (e.g. the CI runner's NetBird range) or
+# those steps hang.
 locals {
   firewall_allow = concat([local.kube_cidr, local.kube_cp_cidr, local.c.netbird_node_cidr], var.trusted_cidrs)
   operator_allow = local.firewall_allow
@@ -41,7 +42,7 @@ locals {
     }),
     # Cilium geneve overlay (tunnel routing): pod↔pod is encapsulated node-to-node
     # (UDP 6081). Required across BOTH L2 domains — worker↔worker over the fabric and
-    # CP↔worker over the mesh — or pod-to-pod traffic is silently dropped.
+    # CP↔worker routed via the spine IRBs — or pod-to-pod traffic is silently dropped.
     yamlencode({
       apiVersion   = "v1alpha1"
       kind         = "NetworkRuleConfig"

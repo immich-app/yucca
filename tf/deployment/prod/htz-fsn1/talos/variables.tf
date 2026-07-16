@@ -1,9 +1,10 @@
-# Hybrid prod cluster topology — the single source of truth (clusters.auto.tfvars).
-# One object, not a map: this stack's bring-up is bespoke (cloud CP via hcloud
-# user_data + bare-metal workers via apid apply), so a for_each map buys nothing.
+# All-bare-metal prod cluster topology — the single source of truth
+# (clusters.auto.tfvars). One object, not a map: this stack's bring-up is bespoke
+# (CPs + workers both driven over apid, but with different planes/volumes), so a
+# for_each map buys nothing.
 
 variable "cluster" {
-  description = "The prod hybrid Talos cluster (Star Wars name; prod = 'father')."
+  description = "The prod bare-metal Talos cluster (Star Wars name; prod = 'father')."
   type = object({
     name               = string
     talos_version      = string
@@ -12,47 +13,51 @@ variable "cluster" {
     # The Image Factory schematic (extension set) is managed in TF — see
     # schematic.yaml + talos_image_factory_schematic in image.tf. The schematic id
     # and image URLs derive from it, so they're NOT inputs here.
-    install_disk = string
 
     cilium_version = string
     hubble         = bool
 
-    # NetBird mesh range node IPs come from (kubelet nodeIP.validSubnets). THIS
-    # account assigns 10.254.0.0/15 (see clusters.auto.tfvars) — not the NetBird
-    # Cloud default of 100.64.0.0/10. The node plane (CP↔worker) rides this mesh.
+    # NetBird mesh range (host firewall trust + operator plane). THIS account
+    # assigns 10.254.0.0/15 (see clusters.auto.tfvars) — not the NetBird Cloud
+    # default of 100.64.0.0/10.
     netbird_node_cidr = string
 
-    # ── Cloud control plane (Hetzner Cloud) ──────────────────────────────────
-    cp_count = number # 3
-    # EXPLICIT node names (wordlist-style), one per CP, in cp_ip_offset order.
-    # Names are PINNED — never auto-shuffled — so node identity can't silently
-    # re-roll on a list edit (renaming a live node's hostname = renaming its
-    # Kubernetes node = effectively replacing it).
-    cp_names       = list(string)
-    cp_server_type = string # ccx23 (dedicated vCPU x86)
-    cp_location    = string # fsn1
-    cp_ip_offset   = number # CP[i] private (kube-cp) IP = cidrhost(kube_cp, offset+i)
-    lb_type        = string # lb11
-    lb_ip_offset   = number # API LB private IP = cidrhost(kube_cp, offset)
-    lb_public      = bool   # also expose a public frontend (operators/workers reach it)
-
-    # ── Bare-metal workers (Hetzner Robot) ────────────────────────────────────
-    # maint_ip = the Hetzner public IP the node comes up on in Talos maintenance
-    # mode (DHCP) — the endpoint for the one-time config apply. fabric_ip = the
-    # post-install kube (VLAN 10) address (nodeIP + worker east-west); the apiserver
-    # reaches the kubelet there via NetBird→mgmt, and the node reaches the apiserver
-    # over its own NetBird peer.
-    workers = list(object({
-      name = string # EXPLICIT node name (see cp_names) — keys the apply resources; renaming = node replacement
-      # Install-disk NVMe serial — NOT a device name: nvme0/nvme1 enumeration is
-      # not stable across boots (observed swapping), and a name-based install
-      # target could point an upgrade at the DATA disk.
+    # ── Bare-metal control planes (Hetzner Robot; kube-cp fabric VLAN 11) ─────
+    # cp_ip = the post-install kube-cp (VLAN 11) address — etcd + apiserver +
+    # nodeIP; the spine routes kube↔kube-cp. maint_ip = the Hetzner public IP the
+    # node comes up on in Talos maintenance mode (DHCP on the onboard 1G NIC) —
+    # the endpoint for the one-time install apply.
+    cps = list(object({
+      name = string # EXPLICIT node name (wordlist-style) — keys the apply resources; renaming = node replacement
+      # Install-disk serial — NOT a device name: sda/sdb enumeration is not
+      # stable across boots, and a name-based install target could point an
+      # upgrade at the wrong disk.
       install_serial = string
-      fabric_ip      = string               # 10.40.10.x on the kube fabric VLAN
+      cp_ip          = string               # 10.40.11.x on the kube-cp fabric VLAN
       maint_ip       = string               # Hetzner public IP (maintenance-mode apid endpoint)
       robot_id       = number               # Hetzner Robot server number (provisioning/doc)
       provisioned    = optional(bool, true) # false ONLY while first-provisioning: config
-      # applies then target maint_ip (maintenance mode); true = target fabric_ip (live).
+      # applies then target maint_ip (maintenance mode); true = target cp_ip (live).
+    }))
+    # CP fabric bond members (2×10G Intel 82599 SFP+). Selected by NIC driver —
+    # ixgbe matches exactly the two 10G ports (the onboard 1G public NIC is e1000e).
+    cp_bond_driver     = optional(string)
+    cp_bond_interfaces = optional(list(string), [])
+    # API VIP = cidrhost(kube_cp, vip_offset) — Talos etcd-elected, floats between
+    # the CPs on VLAN 11. 5 keeps the retired hcloud LB's IP, so the api_dns_name
+    # record (NetBird DNS zone) carried over unchanged.
+    vip_offset = number
+
+    # ── Bare-metal workers (Hetzner Robot; kube fabric VLAN 10) ───────────────
+    # maint_ip/fabric_ip semantics as for cps; nodeIP = fabric_ip (worker east-west
+    # rides VLAN 10 at 50G, apiserver↔kubelet routes via the spine IRBs).
+    workers = list(object({
+      name           = string
+      install_serial = string
+      fabric_ip      = string # 10.40.10.x on the kube fabric VLAN
+      maint_ip       = string
+      robot_id       = number
+      provisioned    = optional(bool, true)
     }))
     # Fabric bond members. Prefer worker_bond_driver (a Talos deviceSelector by NIC
     # driver, e.g. "bnxt_en") — robust across per-node PCI naming. worker_bond_interfaces
@@ -62,21 +67,10 @@ variable "cluster" {
     # Worker default route (egress for image pulls + NetBird): via the kube fabric
     # IRB gateway (fabric transit) when true, else the Hetzner public NIC (DHCP).
     worker_default_route_via_fabric = optional(bool, true)
-
-    # apiserver→kubelet rides the mesh peer-to-peer: the CPs get /etc/hosts entries
-    # mapping each worker hostname to its NetBird IP (data.netbird_peer lookups) and
-    # the apiserver prefers the Hostname node address. Requires the workers to BE
-    # NetBird peers — set false for a greenfield bootstrap (no peers to look up yet),
-    # flip true once the workers have joined. See cp_extras_patch in talos.tf.
-    worker_mesh_kubelet = optional(bool, true)
   })
 
   validation {
-    condition     = length(var.cluster.cp_names) == var.cluster.cp_count
-    error_message = "cluster.cp_names must have exactly cp_count entries (one name per CP, in cp_ip_offset order)."
-  }
-  validation {
-    condition     = length(distinct(concat(var.cluster.cp_names, var.cluster.workers[*].name))) == var.cluster.cp_count + length(var.cluster.workers)
+    condition     = length(distinct(concat(var.cluster.cps[*].name, var.cluster.workers[*].name))) == length(var.cluster.cps) + length(var.cluster.workers)
     error_message = "Node names must be unique across CPs and workers."
   }
 }

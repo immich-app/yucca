@@ -14,8 +14,9 @@ module "netbox" {
 
   # Site-global VLANs (present on every cluster).
   global_vlans = {
-    MGMT = { vid = module.addr_site.mgmt_vlan_id, prefix = module.addr_site.mgmt_cidr }
-    KUBE = { vid = module.addr_site.kube_vlan_id, prefix = module.addr_site.kube_cidr }
+    MGMT      = { vid = module.addr_site.mgmt_vlan_id, prefix = module.addr_site.mgmt_cidr }
+    KUBE      = { vid = module.addr_site.kube_vlan_id, prefix = module.addr_site.kube_cidr }
+    "KUBE-CP" = { vid = module.addr_site.kube_cp_vlan_id, prefix = module.addr_site.kube_cp_cidr }
   }
 
   clusters = {
@@ -37,7 +38,6 @@ module "netbox" {
   # Pod/service CIDRs mirror the talos stack (talos.tf locals); the public carves
   # mirror the Cilium LB pools + node-egress + transit config in this stack.
   extra_prefixes = {
-    kube_cp     = { prefix = module.addr_site.kube_cp_cidr, description = "Hetzner Cloud kube-cp: father CP VMs (etcd) + private API LB — not a fabric VLAN" }
     lb_internal = { prefix = module.addr_site.lb_internal_cidr, description = "father internal (NetBird-only) LoadBalancer VIPs — Cilium lb-internal pool, iBGP /32s to the spine" }
     pods        = { prefix = "10.250.0.0/17", description = "father pod CIDR (Cilium, geneve over the kube VLAN)", status = "container" }
     services    = { prefix = "10.250.128.0/17", description = "father service CIDR (ClusterIPs; kube-dns at .128.10)", status = "container" }

@@ -26,12 +26,6 @@ opentofu = "1.11.5"
 terragrunt = "0.99.4"
 # ansible/mgmt convergence (mgmt:ansible task, run from CI on prod apply).
 "pipx:ansible-core" = "2.18.1"
-# Hetzner Cloud — build/upload the Talos hcloud snapshot + manage images
-# (hetzner:talos-image). hcloud-upload-image spins a temporary rescue server,
-# dd's the factory raw image, and snapshots it (hcloud can't boot the Talos ISO).
-hcloud = "1.66.0"
-"github:apricote/hcloud-upload-image" = "1.5.0"
-
 [tasks.dev]
 description = "Start all services in development mode"
 depends = ["install:deps", "common:build", "docker:start"]

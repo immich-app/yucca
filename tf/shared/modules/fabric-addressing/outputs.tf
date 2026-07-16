@@ -90,12 +90,17 @@ output "kube_vlan_id" {
 
 output "kube_cp_cidr" {
   value       = local.kube_cp_cidr
-  description = "Site-global Kubernetes control-plane subnet 'kube-cp' (10.<site>.<kube_cp_octet>.0/24) — an isolated Hetzner Cloud private subnet for the CP VMs (etcd) + the API LB. NOT a fabric VLAN."
+  description = "Site-global Kubernetes control-plane network 'kube-cp' (10.<site>.<kube_cp_octet>.0/24), a fabric VLAN — bare-metal CPs (etcd) + the API VIP."
+}
+
+output "kube_cp_vlan_id" {
+  value       = local.kube_cp_vlan_id
+  description = "Site-global kube-cp VLAN id (== kube_cp_octet, e.g. 11)."
 }
 
 output "kube_cp_gateway" {
   value       = local.kube_cp_gateway
-  description = "Hetzner Cloud Gateway (.1) for the kube-cp subnet."
+  description = "Spine IRB gateway (.1) for the kube-cp network."
 }
 
 output "lb_internal_cidr" {

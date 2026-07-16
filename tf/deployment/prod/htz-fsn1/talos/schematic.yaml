@@ -1,12 +1,13 @@
 # Talos Image Factory schematic for the `father` cluster — the single source of
-# truth for the node extension set. Registered with the factory by TF
-# (talos_image_factory_schematic, image.tf); its id derives the CP (hcloud) and
-# worker (metal) image URLs. One schematic covers both platforms — the extras are
-# harmless no-ops on the other (qemu-guest-agent on metal, intel-ucode on a VM).
+# truth for the node extension set (CPs + workers, all bare-metal Hetzner Robot).
+# Registered with the factory by TF (talos_image_factory_schematic, image.tf); its
+# id derives the metal installer/image URLs. NB: qemu-guest-agent must NOT be here —
+# on metal there is no virtio port, the extension service waits forever for
+# /dev/virtio-ports/org.qemu.guest_agent.0, and the boot sequence never reaches
+# `running`, failing every talos health check (and with it every TF plan/apply).
 customization:
   systemExtensions:
     officialExtensions:
-      - siderolabs/netbird            # node-level overlay (CP↔fabric route)
-      - siderolabs/qemu-guest-agent   # hcloud control-plane VMs
-      - siderolabs/intel-ucode        # worker Xeon microcode
+      - siderolabs/netbird            # node-level overlay (operator plane / kube-cp route)
+      - siderolabs/intel-ucode        # Xeon microcode
       - siderolabs/util-linux-tools   # fstrim et al.

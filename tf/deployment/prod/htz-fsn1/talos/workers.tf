@@ -1,18 +1,16 @@
 # ── Bare-metal workers ───────────────────────────────────────────────────────
 # Applied over apid to nodes already in Talos maintenance mode at their fabric_ip
-# (reachable from the TF runner via NetBird → mgmt → fabric `kube` net). After the
-# install+reboot they keep that fabric IP and join the NetBird mesh.
+# or maint_ip (see below). After the install+reboot they keep that fabric IP and
+# join the NetBird mesh (operator/backup plane only).
 #
-#   bond0 (2×25G LACP) → vlan 10 (kube) = fabric_ip   — nodeIP + worker east-west (50G)
-#   default route via the kube IRB gateway (fabric transit) for egress
+#   bond0 (2×25G LACP) → vlan 10 (kube) = fabric_ip — nodeIP + worker east-west (50G)
+#   route to kube-cp (apiserver + VIP) via the kube IRB (10.40.10.1) — the fabric
+#   path to the control plane; the old wt0 (NetBird) route is retired
+#   default route via the Hetzner public NIC (DHCP) for egress
 #
-# Workers are NOT NetBird peers: nodeIP = fabric_ip, so Cilium autoDirectNodeRoutes
-# routes pod east-west directly over the shared VLAN-10 L2 (no BGP). The apiserver
-# reaches worker kubelets via the CPs' NetBird route to the kube net (mgmt routers).
-#
-# Workers are PROVISIONED to maintenance mode out of band — see the Phase-4 runbook
-# (./README.md): Hetzner rescue → dd the Talos metal image → bring up bond0.10 at
-# fabric_ip. This stack assumes they're already there.
+# Workers are PROVISIONED to maintenance mode out of band — see the runbook
+# (./README.md): Hetzner rescue → dd the Talos metal image → reboot. This stack
+# assumes they're already there.
 
 locals {
   kube_prefix = split("/", local.kube_cidr)[1] # 24
@@ -23,7 +21,7 @@ locals {
     yamlencode({
       machine = { install = {
         diskSelector = { serial = w.install_serial }
-        image        = local.worker_install_image
+        image        = local.install_image
       } }
     }),
     yamlencode({
@@ -47,9 +45,14 @@ locals {
             vlans = [{
               vlanId    = module.addr_site.kube_vlan_id # 10
               addresses = ["${w.fabric_ip}/${local.kube_prefix}"]
-              routes = var.cluster.worker_default_route_via_fabric ? [
-                { network = "0.0.0.0/0", gateway = local.kube_gateway },
-              ] : []
+              # kube-cp (apiserver + API VIP) lives one IRB away — pin the route so
+              # kubelet→apiserver + geneve to the CPs ride the fabric, not the mesh.
+              routes = concat(
+                [{ network = local.kube_cp_cidr, gateway = local.kube_gateway }],
+                var.cluster.worker_default_route_via_fabric ? [
+                  { network = "0.0.0.0/0", gateway = local.kube_gateway },
+                ] : [],
+              )
             }]
           }]
         }

@@ -1,11 +1,12 @@
-# ── prod hybrid Talos cluster: `father` ──────────────────────────────────────
-# Topology (see README.md): 3 Hetzner Cloud CP VMs + 3 Hetzner Robot bare-metal
-# workers. CP↔worker rides the NetBird mesh; worker↔worker east-west rides the
-# 50G fabric (kube VLAN 10) via Cilium BGP; etcd CP↔CP on a private hcloud subnet;
-# API via a public Hetzner Cloud LB.
+# ── prod bare-metal Talos cluster: `father` ──────────────────────────────────
+# Topology (see README.md): 3 Hetzner Robot bare-metal CPs on the kube-cp fabric
+# VLAN 11 (etcd + API VIP 10.40.11.5) + 3 Hetzner Robot bare-metal workers on the
+# kube fabric VLAN 10. The spine routes kube↔kube-cp between its IRBs; NetBird
+# stays on every node as the operator/backup plane (kube-cp is routed to the mesh
+# via the CPs). No Hetzner Cloud anywhere — the cloud CP VMs + API LB are retired.
 #
-# Adding/replacing a node = edit here + `tf:plan` (CI applies). Workers must
-# already be in Talos maintenance mode at their fabric_ip (see Phase-4 runbook).
+# Adding/replacing a node = edit here + `tf:plan` (CI applies). Nodes must
+# already be in Talos maintenance mode at their maint_ip (see the runbook).
 
 cluster = {
   name               = "father" # prod K8s cluster (Star Wars; staging = luke)
@@ -14,7 +15,6 @@ cluster = {
 
   # The node extension set lives in schematic.yaml (managed via
   # talos_image_factory_schematic in image.tf) — no schematic id to paste here.
-  install_disk = "/dev/sda" # CP install target (hcloud VMs: virtio /dev/sda) — the ONLY consumer is cp_install_patch; workers install by NVMe serial (workers.tf)
 
   cilium_version = "1.19.5"
   hubble         = true
@@ -22,23 +22,23 @@ cluster = {
   # NetBird peer address range for this deployment (firewall trust for the mesh).
   netbird_node_cidr = "10.254.0.0/15"
 
-  # ── Cloud control plane (Hetzner Cloud, fsn1) ──────────────────────────────
-  cp_count = 3
-  # PINNED to the live nodes (verified against discovery/cp_nodes 2026-07-07).
-  # Order follows cp_ip_offset: kaycee=.11, bettie=.12, ofelia=.13. A wrong name
-  # here RENAMES a live control plane — check twice.
-  cp_names       = ["kaycee", "bettie", "ofelia"]
-  cp_server_type = "ccx23" # 4 vCPU / 16 GB, dedicated x86
-  cp_location    = "fsn1"
-  cp_ip_offset   = 11 # CP private IPs → 10.40.11.11 / .12 / .13 (etcd)
-  lb_type        = "lb11"
-  lb_ip_offset   = 5     # API LB private IP → 10.40.11.5
-  lb_public      = false # private-only LB; the API endpoint stays on the kube-cp net
+  # ── Bare-metal control planes (Hetzner Robot; kube-cp VLAN 11, gw .1 = spine) ──
+  # `name` keys the apply resources (stable across list edits). VIP 10.40.11.5
+  # (= the retired hcloud LB IP, so api_dns_name carried over unchanged).
+  # provisioned=false → the one-time install apply dials maint_ip (maintenance
+  # mode); flip true per node as it comes up.
+  cps = [
+    { name = "harlan", cp_ip = "10.40.11.11", maint_ip = "178.63.124.20", robot_id = 3027819, install_serial = "17451A00D9F8" },
+    { name = "imelda", cp_ip = "10.40.11.12", maint_ip = "178.63.124.21", robot_id = 3027863, install_serial = "1708162471F6" },
+    { name = "roscoe", cp_ip = "10.40.11.13", maint_ip = "178.63.124.22", robot_id = 3028524, install_serial = "18201C72C94D" },
+  ]
+  # 2×10G Intel 82599ES SFP+ (ixgbe) enslaved into bond0 (tagged kube-cp VLAN 11,
+  # spine port-0 breakout ae4-6). The onboard 1G (e1000e) stays the DHCP
+  # public/egress NIC (default route + NetBird endpoint).
+  cp_bond_driver = "ixgbe"
+  vip_offset     = 5 # API VIP → 10.40.11.5
 
-  # ── Bare-metal workers (Hetzner Robot dedicated; sequential after mgmt-1/2) ──
-  # `name` keys the apply resources (stable across list edits — removing or
-  # reordering an entry no longer touches the others). Names verified against
-  # the live nodes 2026-07-07.
+  # ── Bare-metal workers (Hetzner Robot; kube VLAN 10) ─────────────────────────
   workers = [
     { name = "jeanne", fabric_ip = "10.40.10.11", maint_ip = "178.63.124.38", robot_id = 3008210, install_serial = "S64GNNFX503099" },
     { name = "sheron", fabric_ip = "10.40.10.12", maint_ip = "178.63.124.37", robot_id = 3008211, install_serial = "S64GNJ0WC25870" },
@@ -52,8 +52,8 @@ cluster = {
 }
 
 # Operator/CI sources allowed on the Talos host firewall (apid 50000 + apiserver
-# 6443), on top of the node planes. NetBird peer range ONLY — no public IPs (the
-# hcloud firewall also blocks public apiserver/apid; see hcloud-firewall.tf). A
-# re-bootstrap dials apid on a CP public IP, so temporarily re-add the operator's
-# /32 here (and open 50000 on the hcloud firewall) for that one step.
+# 6443), on top of the node planes. NetBird peer range ONLY — no public IPs.
+# Operators reach the CPs over the NetBird kube-cp route (the CPs are the route
+# peers); a re-bootstrap that must dial apid before the mesh is up goes through
+# a maint_ip (maintenance mode is unauthenticated — no firewall yet).
 trusted_cidrs = ["10.254.0.0/15"]

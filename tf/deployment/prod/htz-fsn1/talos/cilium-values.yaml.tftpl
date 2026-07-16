@@ -1,9 +1,9 @@
-# Cilium for the hybrid prod cluster. Talos sets cni:none + proxy:disabled, so
-# nodes stay NotReady until this lands the datapath.
+# Cilium for the prod cluster. Talos sets cni:none + proxy:disabled, so nodes
+# stay NotReady until this lands the datapath.
 #
 # TUNNEL (geneve) routing — see the routingMode block below for the full why:
-# the cluster spans two L2 domains (CPs on kube-cp hcloud, workers on the fabric
-# VLAN) bridged only by NetBird, which native routing/autoDirectNodeRoutes can't
+# the cluster spans two L2 domains (CPs on the kube-cp VLAN, workers on the kube
+# VLAN) routed by the spine IRBs, which autoDirectNodeRoutes (same-L2-only) can't
 # span. Worker↔worker east-west still rides the 50G fabric, just encapsulated.
 #
 # securityContext + cgroup blocks are MANDATORY on Talos. Ref: Talos "Deploying Cilium".
@@ -12,17 +12,17 @@ ipam:
   mode: kubernetes
 
 # Tunnel (geneve) routing. The cluster spans two L2 domains — CPs on the kube-cp
-# hcloud net, workers on the fabric VLAN — bridged only by NetBird. Native routing
-# can't span that; a geneve overlay carries pod↔pod over whatever host-to-host path
-# exists (the 50G fabric for worker↔worker, NetBird for CP↔worker). East-west still
-# rides the fabric, just encapsulated (~50B overhead, negligible at 50G).
+# VLAN (11), workers on the kube VLAN (10) — routed by the spine's IRBs.
+# autoDirectNodeRoutes only works within one L2; a geneve overlay carries pod↔pod
+# over the routed node-to-node path instead. East-west still rides the fabric,
+# just encapsulated (~50B overhead, negligible at 50G).
 routingMode: tunnel
 tunnelProtocol: geneve
 
 # Masquerade pod traffic to non-pod destinations (internet, node IPs); pod↔pod is
-# tunnelled so it isn't masqueraded. ip-masq-agent excludes only the pod CIDR, so the
-# geneve underlay + node-IP traffic egressing wt0 is SNAT'd to the node's NetBird
-# address (which WireGuard accepts). Requires BPF masquerade on.
+# tunnelled so it isn't masqueraded. ip-masq-agent excludes only the pod CIDR, so
+# node-IP traffic egressing wt0 (NetBird, the operator plane) is still SNAT'd to
+# the node's mesh address (which WireGuard accepts). Requires BPF masquerade on.
 enableIPv4Masquerade: true
 bpf:
   masquerade: true

@@ -96,16 +96,17 @@ resource "netbird_dns_record" "father_worker" {
   ttl      = 300
 }
 
-# API endpoint — round-robin over the 3 CP IPs. NOT the LB: hcloud LBs refuse
-# traffic from their own targets (the CPs), so the endpoint resolves straight to
-# the CPs (reachable over the yucca-fsn-father-kube-cp route).
+# API endpoint — the Talos-elected VIP on the kube-cp VLAN (etcd parks it on a
+# healthy CP, so the record only answers where an apiserver runs). Reachable over
+# the yucca-fsn-father-kube-cp route. (Historically round-robin over the CP IPs —
+# the retired hcloud LB refused traffic from its own targets.)
 resource "netbird_dns_record" "father_kube_api" {
-  for_each = local.father_cps
-  zone_id  = netbird_dns_zone.yucca_internal.id
-  name     = local.father_kube_api_fqdn
-  type     = "A"
-  content  = each.value
-  ttl      = 300
+  count   = var.talos_discovery_enabled ? 1 : 0
+  zone_id = netbird_dns_zone.yucca_internal.id
+  name    = local.father_kube_api_fqdn
+  type    = "A"
+  content = local.talos_kube.api_vip
+  ttl     = 300
 }
 
 output "kube_api_fqdn" {

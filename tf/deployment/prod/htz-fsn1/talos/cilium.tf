@@ -1,7 +1,8 @@
 # Cilium CNI — installed post-bootstrap in the same apply (helm provider bound to
 # the bootstrap CP, providers.tf). Talos set cni:none + proxy:disabled, so nodes
-# go Ready only once this lands the datapath. Native routing + autoDirectNodeRoutes
-# keeps worker east-west on the 50G fabric (cilium-values.yaml.tftpl).
+# go Ready only once this lands the datapath. Geneve tunnel routing spans the two
+# routed fabric VLANs (kube/kube-cp); worker east-west still rides the 50G fabric
+# (cilium-values.yaml.tftpl).
 resource "helm_release" "cilium" {
   name       = "cilium"
   namespace  = "kube-system"
@@ -27,9 +28,9 @@ data "talos_cluster_health" "post_cni" {
   count = var.bootstrap_health_gate ? 1 : 0
 
   client_configuration = talos_machine_secrets.this.client_configuration
-  control_plane_nodes  = local.cp_private_ips
+  control_plane_nodes  = local.cp_ips
   worker_nodes         = [for w in var.cluster.workers : w.fabric_ip]
-  endpoints            = local.cp_private_ips
+  endpoints            = local.cp_ips
 
   timeouts = { read = "10m" }
 

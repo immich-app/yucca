@@ -35,13 +35,14 @@ output "discovery" {
     }
     kubernetes = {
       cluster_name      = var.cluster.name
-      api_endpoint      = local.cluster_endpoint  # https://<api_dns_name>:6443 (LB)
+      api_endpoint      = local.cluster_endpoint  # https://<api_dns_name>:6443 (VIP)
+      api_vip           = local.api_vip           # Talos-elected VIP on kube-cp (the api_dns_name A record)
       operator_endpoint = local.operator_endpoint # direct bootstrap-CP apiserver
-      cp_node_ips       = local.cp_private_ips    # kube-cp IPs; operators/yuctl reach via NetBird
+      cp_node_ips       = local.cp_ips            # kube-cp IPs; operators/yuctl reach via NetBird
       worker_node_ips   = [for w in var.cluster.workers : w.fabric_ip]
       # Node NAME → IP maps (short wordlist names). Consumed by the netbird stack
       # (yucca.futo.network records) instead of hardcoding names in two stacks.
-      cp_nodes        = { for i, n in var.cluster.cp_names : n => local.cp_private_ips[i] }
+      cp_nodes        = { for n in var.cluster.cps : n.name => n.cp_ip }
       worker_nodes    = { for w in var.cluster.workers : w.name => w.fabric_ip }
       kubeconfig_ref  = "op://${local._disc_vault}/${local._kubeconfig_title}/password"
       talosconfig_ref = "op://${local._disc_vault}/${local._talosconfig_title}/password"

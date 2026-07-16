@@ -74,6 +74,35 @@ resource "junos_interface_physical" "node_lag" {
   vlan_members = ["vlan${var.kube_vlan_id}"]
 }
 
+# Control-plane node bonds — same pattern as node_lags, but the trunk carries the
+# kube-cp VLAN (the CPs' only fabric presence; kube↔kube-cp routes via the IRBs).
+locals {
+  cp_node_lag_members = merge([for ae, ports in var.cp_node_lags : { for p in ports : p => ae }]...)
+}
+
+resource "junos_interface_physical" "cp_node_lag_member" {
+  for_each = local.cp_node_lag_members
+  name     = each.key
+  ether_opts {
+    ae_8023ad = each.value
+  }
+}
+
+resource "junos_interface_physical" "cp_node_lag" {
+  for_each = var.cp_node_lags
+  name     = each.key
+  mtu      = 9216
+  parent_ether_opts {
+    lacp {
+      mode = "active"
+    }
+  }
+  trunk        = true
+  vlan_members = ["vlan${var.kube_cp.vlan_id}"]
+
+  depends_on = [junos_vlan.this]
+}
+
 # Management-node ports (mgmt-1, mgmt-2) — one channelized port-3 leg per VC member,
 # each a single-port trunk of the stretched VLANs. Identical config per node.
 resource "junos_interface_physical" "mgmt_node" {
