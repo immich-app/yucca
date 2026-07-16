@@ -8,9 +8,9 @@ name: Infra (Terraform)
 # local, plus the reserved `global` pseudo-region for partition-wide stacks) →
 # stack. Stacks live at tf/deployment/<partition>/<region>/<stack>/terragrunt.hcl
 # (e.g. staging/austin/ceph, staging/global/{dns,netbird}, prod/htz-fsn1/{fabric,
-# netbird}, prod/global). A single `discover` job scans that tree into a matrix of
-# {partition, region, stack, dir, order}, so adding a stack/region needs no
-# workflow edit — only its terragrunt.hcl and a matching GitHub Environment.
+# netbird}, prod/global). A single `discover` job scans that tree into one matrix
+# PER PARTITION of {partition, region, stack, dir, order}, so adding a stack/region
+# needs no workflow edit — only its terragrunt.hcl and a matching GitHub Environment.
 #
 # Per-partition selection (Actions can't index secrets dynamically, hence the
 # ternaries):
@@ -21,12 +21,19 @@ name: Infra (Terraform)
 #     (global + site) apply with the WRITE SA directly.
 #   - dev is local-only (no remote state, no CI service account) → never emitted.
 #
-# Apply ordering (preserved via a per-entry `order` + max-parallel: 1 on a sorted
-# matrix): global-region stacks first (account NetBird + DNS), then site NetBird,
-# then node-touching stacks (ceph/talos/fabric). NetBird must precede the
-# node-touching stacks because it mints the CI setup key into 1Password and
-# advertises the node subnets the overlay-joining jobs reach; prod/global must
-# precede prod/htz-fsn1/netbird (a real terragrunt dependency).
+# Apply ordering (preserved via a per-entry `order` + max-parallel: 1 on each
+# partition's sorted matrix): global-region stacks first (account NetBird + DNS),
+# then site NetBird, then node-touching stacks (ceph/talos/fabric). NetBird must
+# precede the node-touching stacks because it mints the CI setup key into
+# 1Password and advertises the node subnets the overlay-joining jobs reach;
+# prod/global must precede prod/htz-fsn1/netbird (a real terragrunt dependency).
+#
+# The partitions are INDEPENDENT pipelines: plan/apply are split per partition
+# (plan-staging → apply-staging, plan-prod → apply-prod), so a failed staging
+# plan never blocks a prod apply (and vice versa). Every ordering dependency
+# above is intra-partition, and state files are per-stack, so the partitions
+# planning/applying concurrently touch disjoint state. The job bodies are shared
+# via YAML anchors; every step keys off `matrix.*`, so they stay identical.
 #
 # The two post-apply Ansible converges are gated independently of their TF apply.
 # They differ by blast radius:
@@ -223,8 +230,12 @@ jobs:
     permissions:
       contents: read
     outputs:
-      matrix: ${{ steps.gen.outputs.matrix }}
-      has_stacks: ${{ steps.gen.outputs.has_stacks }}
+      # One matrix (+ has_* flag) per partition: staging and prod run as
+      # independent plan/apply pipelines downstream.
+      staging_matrix: ${{ steps.gen.outputs.staging_matrix }}
+      prod_matrix: ${{ steps.gen.outputs.prod_matrix }}
+      has_staging: ${{ steps.gen.outputs.has_staging }}
+      has_prod: ${{ steps.gen.outputs.has_prod }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -275,7 +286,11 @@ jobs:
             [ "$PROD" = "true" ] && active[prod]=1
           fi
 
-          entries=()
+          # One entry list per partition: the partitions run as INDEPENDENT
+          # plan/apply pipelines downstream (prod must not depend on staging
+          # plans), so discover emits a separate matrix for each. The ordering
+          # sort only ever mattered within a partition; it still holds there.
+          declare -A part_entries=()
           while IFS= read -r tg; do
             rel=${tg#tf/deployment/}
             rel=${rel%/terragrunt.hcl}
@@ -297,23 +312,21 @@ jobs:
             elif [ "$stack" = "netbird" ]; then order=1
             else order=2; fi
 
-            entries+=("$(jq -nc \
+            part_entries[$partition]+="$(jq -nc \
               --arg p "$partition" --arg r "$region" --arg s "$stack" \
               --arg d "$rel" --argjson o "$order" \
-              '{partition:$p,region:$r,stack:$s,dir:$d,order:$o}')")
+              '{partition:$p,region:$r,stack:$s,dir:$d,order:$o}')"$'\n'
           done < <(find tf/deployment -mindepth 2 -name terragrunt.hcl -type f | sort)
 
-          if [ "${#entries[@]}" -eq 0 ]; then
-            include='[]'
-          else
-            include=$(printf '%s\n' "${entries[@]}" | jq -s 'sort_by(.order, .dir)')
-          fi
-          matrix=$(jq -nc --argjson inc "$include" '{include:$inc}')
-          has=$([ "$(jq 'length' <<<"$include")" -gt 0 ] && echo true || echo false)
-
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
-          echo "has_stacks=$has" >> "$GITHUB_OUTPUT"
-          echo "Discovered stacks:"; echo "$include" | jq -r '.[] | "  [\(.order)] \(.partition)@\(.region)/\(.stack)  (\(.dir))"'
+          for partition in staging prod; do
+            include=$(printf '%s' "${part_entries[$partition]:-}" | jq -s 'sort_by(.order, .dir)')
+            matrix=$(jq -nc --argjson inc "$include" '{include:$inc}')
+            has=$([ "$(jq 'length' <<<"$include")" -gt 0 ] && echo true || echo false)
+            echo "${partition}_matrix=$matrix" >> "$GITHUB_OUTPUT"
+            echo "has_${partition}=$has" >> "$GITHUB_OUTPUT"
+            echo "Discovered $partition stacks:"
+            jq -r '.[] | "  [\(.order)] \(.partition)@\(.region)/\(.stack)  (\(.dir))"' <<<"$include"
+          done
 
       # -- Approval-gate assertion: PARKED (disabled) ----------------------
       # This step asserted that every target Environment carries a required
@@ -330,16 +343,18 @@ jobs:
       # hard cutover. See tf/deployment/_meta/github/terragrunt.hcl.disabled.
       - name: Fail closed unless every target Environment has required reviewers
         # PARKED: re-enable by restoring this guard (blast-radius redesign pending):
-        #   steps.gen.outputs.has_stacks == 'true'
+        #   (steps.gen.outputs.has_staging == 'true' || steps.gen.outputs.has_prod == 'true')
         #   && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         if: false
         env:
           GH_TOKEN: ${{ secrets.GH_ENV_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          MATRIX: ${{ steps.gen.outputs.matrix }}
+          MATRIX_STAGING: ${{ steps.gen.outputs.staging_matrix }}
+          MATRIX_PROD: ${{ steps.gen.outputs.prod_matrix }}
         run: |
           set -euo pipefail
-          envs=$(jq -r '.include[] | "\(.partition)-\(.region)"' <<<"$MATRIX" | sort -u)
+          envs=$(printf '%s\n%s\n' "$MATRIX_STAGING" "$MATRIX_PROD" \
+            | jq -r '.include[] | "\(.partition)-\(.region)"' | sort -u)
           [ -n "$envs" ] || { echo "No environments to verify."; exit 0; }
           fail=0
           while IFS= read -r envname; do
@@ -362,23 +377,27 @@ jobs:
           }
 
   # ── Plan every changed stack (parallel; read-only) ───────────────────────────
-  plan:
+  # One plan job per partition so each partition's gated apply depends ONLY on
+  # its own plans — a failed staging plan must never block a prod apply. The two
+  # jobs share their body via the &plan-env/&plan-steps YAML anchors; every step
+  # keys off `matrix.*`, so the body is partition-agnostic.
+  plan-staging:
     name: Plan ${{ matrix.partition }}@${{ matrix.region }}/${{ matrix.stack }}
     needs: [changes, discover]
-    if: needs.discover.outputs.has_stacks == 'true'
+    if: needs.discover.outputs.has_staging == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
-    env:
+      matrix: ${{ fromJSON(needs.discover.outputs.staging_matrix) }}
+    env: &plan-env
       # Read-scoped SA + env-file by partition.
       OP_SERVICE_ACCOUNT_TOKEN: ${{ matrix.partition == 'prod' && secrets.OP_TF_YUCCA_PROD_ENV || secrets.OP_TF_YUCCA_STAGING_ENV }}
       OP_ENV_FILE: ${{ matrix.partition == 'prod' && 'tf/.env.prod' || 'tf/.env' }}
       SITE: ${{ matrix.region }}
       REGION: ${{ matrix.region }}
       PARTITION: ${{ matrix.partition }}
-    steps:
+    steps: &plan-steps
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -473,16 +492,30 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # ── Apply (gated, ordered) ───────────────────────────────────────────────────
-  apply:
+  plan-prod:
+    name: Plan ${{ matrix.partition }}@${{ matrix.region }}/${{ matrix.stack }}
+    needs: [changes, discover]
+    if: needs.discover.outputs.has_prod == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.prod_matrix) }}
+    env: *plan-env
+    steps: *plan-steps
+
+  # ── Apply (gated, ordered within each partition) ─────────────────────────────
+  # One apply job per partition, each needing only its OWN partition's plans (see
+  # the plan jobs above). Bodies shared via the &apply-env/&apply-steps anchors.
+  apply-staging:
     name: Apply ${{ matrix.partition }}@${{ matrix.region }}/${{ matrix.stack }} (gated)
-    needs: [changes, discover, plan]
+    needs: [changes, discover, plan-staging]
     # Only on merge to main (or a SCOPED manual dispatch) -- never on PRs. A bare
     # workflow_dispatch (no run_ceph_ansible / run_mgmt_ansible / run_fabric) is
     # plan-only: the apply job is skipped so a manual "just look" run can never
     # apply every emitted stack unreviewed.
     if: >-
-      needs.discover.outputs.has_stacks == 'true'
+      needs.discover.outputs.has_staging == 'true'
       && (
         github.event_name == 'push'
         || (github.event_name == 'workflow_dispatch'
@@ -497,14 +530,15 @@ jobs:
       # remaining ordered node-touching applies instead of running against a
       # half-provisioned overlay.
       fail-fast: true
-      # Serialize so the sorted `order` is honored: account netbird -> site netbird
-      # -> node-touching stacks, and prod/global before prod/htz-fsn1/netbird.
+      # Serialize so the sorted `order` is honored within the partition: global
+      # stacks -> site netbird -> node-touching stacks (for prod that includes
+      # prod/global before prod/htz-fsn1/netbird, a real terragrunt dependency).
       max-parallel: 1
-      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.discover.outputs.staging_matrix) }}
     # Per-region approval gate.
     environment:
       name: ${{ matrix.partition }}-${{ matrix.region }}
-    env:
+    env: &apply-env
       # Write-capable SA by partition, EXCEPT prod/fabric which keeps the read SA
       # and self-escalates to the in-vault write SA inside `mise run infra:apply`.
       OP_SERVICE_ACCOUNT_TOKEN: ${{ (matrix.partition == 'prod' && matrix.stack == 'fabric') && secrets.OP_TF_YUCCA_PROD_ENV || matrix.partition == 'prod' && secrets.OP_TF_YUCCA_PROD_ENV_WRITE || secrets.OP_TF_YUCCA_STAGING_ENV_WRITE }}
@@ -512,7 +546,7 @@ jobs:
       SITE: ${{ matrix.region }}
       REGION: ${{ matrix.region }}
       PARTITION: ${{ matrix.partition }}
-    steps:
+    steps: &apply-steps
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -696,3 +730,26 @@ jobs:
         if: matrix.stack == 'fabric' && steps.ansible_gate.outputs.mgmt == 'true'
         timeout-minutes: 30
         run: mise run mgmt:ansible
+
+  apply-prod:
+    name: Apply ${{ matrix.partition }}@${{ matrix.region }}/${{ matrix.stack }} (gated)
+    # Depends only on prod's own plans: staging planning/applying (or failing to)
+    # never blocks a prod apply. Same gating/serialization as apply-staging.
+    needs: [changes, discover, plan-prod]
+    if: >-
+      needs.discover.outputs.has_prod == 'true'
+      && (
+        github.event_name == 'push'
+        || (github.event_name == 'workflow_dispatch'
+            && (inputs.run_ceph_ansible || inputs.run_mgmt_ansible || inputs.run_fabric))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.discover.outputs.prod_matrix) }}
+    environment:
+      name: ${{ matrix.partition }}-${{ matrix.region }}
+    env: *apply-env
+    steps: *apply-steps
