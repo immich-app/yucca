@@ -35,9 +35,10 @@
     mode: '0644'
 
 - name: Update apt cache on live image
+  # Always refresh: the sources.list above was just replaced, so a
+  # cache_valid_time skip would install against the stale live-medium index.
   ansible.builtin.apt:
     update_cache: true
-    cache_valid_time: 3600
   changed_when: false
 
 - name: Install provisioning prerequisites on live image
