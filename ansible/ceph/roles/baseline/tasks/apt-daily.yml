@@ -1,0 +1,31 @@
+---
+# Neutralize Debian's stock periodic apt before any dpkg/apt task runs.
+#
+# On a freshly-imaged node the apt-daily / unattended-upgrades units fire at boot
+# and hold the dpkg frontend lock. A converge that then runs apt or dpkg races
+# them and fails ("dpkg frontend lock was locked by another process"). We run no
+# unattended upgrades by design (load-bearing packages are dpkg-held), so masking
+# these units is both the intended end state and the fix for that race.
+
+- name: Stop and mask the periodic apt units
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    masked: true
+  loop:
+    - apt-daily.timer
+    - apt-daily.service
+    - apt-daily-upgrade.timer
+    - apt-daily-upgrade.service
+    - unattended-upgrades.service
+  # A minimal image may omit unattended-upgrades; masking an absent unit is a
+  # no-op we tolerate. The lock wait below is the hard gate.
+  failed_when: false
+
+- name: Wait for the dpkg frontend lock to be released
+  # A boot-time apt run started before we masked the units may still hold the
+  # lock. flock blocks until it is free (the same lock apt/dpkg take), then
+  # releases immediately; it fails only if the lock is still held at timeout.
+  ansible.builtin.command:
+    cmd: flock --timeout 150 /var/lib/dpkg/lock-frontend true
+  changed_when: false

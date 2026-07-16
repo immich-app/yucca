@@ -5,6 +5,12 @@
 #          (created by provision_host during initial OS install).
 # Everything here is convergeable via normal deploy pipeline.
 
+# First, before any dpkg/apt task: stop Debian's periodic apt and drain any
+# boot-time apt still holding the dpkg lock, so the converge cannot race it.
+- name: Neutralize periodic apt and clear the dpkg lock
+  ansible.builtin.import_tasks: apt-daily.yml
+  tags: [packages, apt]
+
 - name: Ensure iac automation access (root key + ansible-iac)
   ansible.builtin.import_tasks: iac-access.yml
   when: provision_iac_ssh_key_path is defined
