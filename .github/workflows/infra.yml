@@ -390,8 +390,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.staging_matrix) }}
-    env: &plan-env
-      # Read-scoped SA + env-file by partition.
+    env: &plan-env # Read-scoped SA + env-file by partition.
       OP_SERVICE_ACCOUNT_TOKEN: ${{ matrix.partition == 'prod' && secrets.OP_TF_YUCCA_PROD_ENV || secrets.OP_TF_YUCCA_STAGING_ENV }}
       OP_ENV_FILE: ${{ matrix.partition == 'prod' && 'tf/.env.prod' || 'tf/.env' }}
       SITE: ${{ matrix.region }}
