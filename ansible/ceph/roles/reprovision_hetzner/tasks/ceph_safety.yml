@@ -90,10 +90,12 @@
     that:
       # strict requires a POSITIVE permit (an unreachable delegate yields empty
       # stdout, which must fail closed); auto only requires the absence of a refuse.
+      # Outer parens are load-bearing: assert wraps each entry in {% if ... %},
+      # and Jinja cannot parse a bare conditional expression there.
       - >-
-        ('VERDICT=PERMIT' in (_cs_eval.stdout | default('')))
-        if _cs_mode == 'strict'
-        else ('VERDICT=REFUSE' not in (_cs_eval.stdout | default('')))
+        (('VERDICT=PERMIT' in (_cs_eval.stdout | default('')))
+         if _cs_mode == 'strict'
+         else ('VERDICT=REFUSE' not in (_cs_eval.stdout | default(''))))
     success_msg: "ceph-safety: {{ _cs_eval.stdout | default('skipped (permissive or no peer)') | trim }}"
     fail_msg: >-
       reprovision_ceph_safety={{ _cs_mode }}: REFUSING to reimage {{ inventory_hostname }}.
