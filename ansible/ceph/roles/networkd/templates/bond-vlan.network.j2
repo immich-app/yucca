@@ -14,6 +14,6 @@ DNS={{ vlan.dns }}
 
 [Link]
 RequiredForOnline=no
-{% if vlan.mtu is defined %}
-MTUBytes={{ vlan.mtu | int }}
-{% endif %}
+{# Always pin: an unset MTUBytes inherits the bond's (possibly jumbo) MTU on
+   fresh creation; the documented contract is mtu-less VLANs run at 1500. #}
+MTUBytes={{ vlan.mtu | default(1500) | int }}
