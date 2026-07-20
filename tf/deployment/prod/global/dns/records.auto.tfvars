@@ -1,7 +1,7 @@
 # futo.cloud zone (FUTO Account).
 zone_id = "474fbfd96bf49879054a493f126c4071"
 
-# Spice RGW S3 endpoint (prod). Round-robin A across all 47 spice ceph nodes'
+# Spice RGW S3 endpoint (prod). Round-robin A across all 48 spice ceph nodes'
 # FABRIC public IPs (10.40.20.<host_index>, VLAN 120) -- RGW/beast binds only the
 # fabric (ceph_bind_networks), so that is where it listens. RFC1918: the name
 # resolves anywhere, but the addresses route only from networks that reach the
@@ -9,8 +9,8 @@ zone_id = "474fbfd96bf49879054a493f126c4071"
 # clients (michael) resolve and reach these; proxied stays false (Cloudflare cannot
 # proxy private addresses). The wildcard serves S3 virtual-hosted buckets
 # (<bucket>.s3.prod.fsn1.htz.futo.cloud); the cluster rgw_dns_name and the
-# self-signed TLS cert SANs expect both names. noreen (host_index 40) is excluded
-# (held in triage). Values are the fabric IPs of the IN-SERVICE nodes in
+# self-signed TLS cert SANs expect both names. Values are the fabric IPs of the
+# IN-SERVICE nodes in
 # tf/deployment/prod/htz-fsn1/ceph/clusters.auto.tfvars (host_index -> IP via that
 # stack's spice-hosts.yaml); regenerate if the roster changes. The lists here and
 # the ceph roster are kept in sync by tf/scripts/check-s3-dns-roster.py (CI gate
@@ -27,7 +27,8 @@ records = {
       "10.40.20.25", "10.40.20.26", "10.40.20.27", "10.40.20.28",
       "10.40.20.29", "10.40.20.30", "10.40.20.31", "10.40.20.32",
       "10.40.20.33", "10.40.20.34", "10.40.20.35", "10.40.20.36",
-      "10.40.20.37", "10.40.20.38", "10.40.20.39", "10.40.20.41",
+      "10.40.20.37", "10.40.20.38", "10.40.20.39", "10.40.20.40",
+      "10.40.20.41",
       "10.40.20.42", "10.40.20.43", "10.40.20.44", "10.40.20.45",
       "10.40.20.46", "10.40.20.47", "10.40.20.48", "10.40.20.49",
       "10.40.20.50", "10.40.20.51",
@@ -45,7 +46,8 @@ records = {
       "10.40.20.25", "10.40.20.26", "10.40.20.27", "10.40.20.28",
       "10.40.20.29", "10.40.20.30", "10.40.20.31", "10.40.20.32",
       "10.40.20.33", "10.40.20.34", "10.40.20.35", "10.40.20.36",
-      "10.40.20.37", "10.40.20.38", "10.40.20.39", "10.40.20.41",
+      "10.40.20.37", "10.40.20.38", "10.40.20.39", "10.40.20.40",
+      "10.40.20.41",
       "10.40.20.42", "10.40.20.43", "10.40.20.44", "10.40.20.45",
       "10.40.20.46", "10.40.20.47", "10.40.20.48", "10.40.20.49",
       "10.40.20.50", "10.40.20.51",
