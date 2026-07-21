@@ -12,9 +12,21 @@ ceph_firewall_trusted_networks:
   - 192.168.0.0/16
   - 100.64.0.0/10
 
+# Interfaces accepted WHOLESALE (no port filtering), e.g. the closed
+# replication VLAN (spice: bond0.122). Port rules only match daemon dports,
+# so return traffic of connections established BEFORE the firewall loaded
+# targets ephemeral ports and hits the drop policy (conntrack cannot adopt
+# mid-stream flows it did not see open). On a closed cluster L2, filtering
+# per-port adds nothing; accepting the interface keeps live replication
+# flowing through a firewall (re)activation. Default empty: flat-network
+# clusters (sietch) have no dedicated replication interface to trust.
+ceph_firewall_trusted_ifaces: []
+
 # Ports to open (derived from Ceph service layout)
 ceph_firewall_mon_ports: [3300, 6789]
-ceph_firewall_osd_port_range: "6800-7300"
+# Full modern bind range (ms_bind_port_max default 7568; the historic docs
+# range 6800-7300 under-covers a restart-churned 15-OSD host).
+ceph_firewall_osd_port_range: "6800-7568"
 ceph_firewall_rgw_port: "{{ ceph_rgw_port | default(443) }}"
 # Allow RGW/S3 from any source (true) or restrict to trusted networks (false).
 # Mirrors ceph_firewall_ssh_any_source. Default true so a public S3 endpoint
