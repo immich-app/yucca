@@ -22,5 +22,10 @@ terraform {
       source  = "1Password/onepassword"
       version = "~> 2.1"
     }
+    # App JWT keypair generation (secrets.tf).
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 }

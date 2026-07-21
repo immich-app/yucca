@@ -149,3 +149,74 @@ variable "cloudflare_api_token" {
   sensitive = true
   default   = ""
 }
+
+# ─── App secrets (secrets.tf) ────────────────────────────────────────────────
+# Externally-issued / human-managed creds from yucca_tf_prod (+ shared_tf_prod
+# for the vmauth token), injected via TF_VAR from op:// refs in tf/.env.prod.
+# Empty defaults keep credential-less `tofu validate` clean; the Secret
+# preconditions refuse to ship empties to the cluster.
+
+variable "yucca_oidc_client_id" {
+  description = "OIDC client ID for yucca-api (prod Zitadel, CUSTOMER_ZITADEL_OAUTH_CLIENT_ID_YUCCA_WEB)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_oidc_client_secret" {
+  description = "OIDC client secret for yucca-api (prod Zitadel)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_oidc_device_client_id" {
+  description = "Public OIDC client ID for yucca-api's device flow (CUSTOMER_ZITADEL_OAUTH_CLIENT_ID_YUCCA_ORCHESTRATOR)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_oidc_admin_client_id" {
+  description = "OIDC client ID for yucca-admin-api — not registered yet (empty mirrors staging)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_oidc_admin_client_secret" {
+  description = "OIDC client secret for yucca-admin-api — not registered yet."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_rgw_access_key_id" {
+  description = "Spice RGW (S3) access key for michael (svc-yucca-restic, out-of-band contract item)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_rgw_secret_access_key" {
+  description = "Spice RGW (S3) secret key for michael (svc-yucca-restic)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "spice_metrics_worker_access_key" {
+  description = "Spice RGW admin access key for yucca-metrics-worker (per-bucket usage via the RGW admin API)."
+  type        = string
+  default     = ""
+}
+
+variable "spice_metrics_worker_secret_key" {
+  description = "Spice RGW admin secret key for yucca-metrics-worker."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "vmauth_remote_write_password" {
+  description = "o11y prod vmauth bearer token for vmagent/logs remote-write (shared_tf_prod/O11Y_VICTORIAMETRICS_VMAUTH_PASSWORD)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

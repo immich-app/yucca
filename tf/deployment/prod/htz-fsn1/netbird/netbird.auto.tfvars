@@ -19,6 +19,11 @@ groups = {
   mgmt      = { resource = true } # management nodes (ansible); also the route peers
   talos     = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
   resources = { resource = true } # routed-subnet tag → yucca-prod-htz-fsn1-resources (Network resources tag in)
+  # cls1 (ceph) nets only — split from `resources` so talos-to-resources does NOT
+  # grant them: the workers reach the RGW frontend over the FABRIC (spine-routed),
+  # and a NetBird client route would shadow that path. yucca users still get
+  # access via resource = true.
+  ceph_nets = { resource = true }
   # CP-only subset of `talos` — the ROUTER peer group for the kube-cp network. Only
   # the CPs sit on the kube-cp VLAN, so only they can route it; if the router were
   # the whole `talos` group the bare-metal WORKERS (also `talos`) would be

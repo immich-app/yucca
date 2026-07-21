@@ -1,10 +1,7 @@
 ---
-# TF-RENDERED — do not hand-edit. Authored ahead of the cluster (prod's
-# Talos/flux stack isn't built yet — tf/deployment/prod/htz-fsn1 is fabric-only),
-# to a valid value matching what TF will regenerate once that stack lands. Keys
-# are DISJOINT from the human cluster-settings + CI image-versions ConfigMaps.
-# TODO(prod): real RGW endpoint + observability vmauth host when the cluster is
-# provisioned.
+# TF-RENDERED — do not hand-edit (hand-maintained until the talos stack renders
+# it; values match what TF would derive). Keys are DISJOINT from the human
+# cluster-settings + CI image-versions ConfigMaps.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,16 +13,19 @@ data:
   CLUSTER_ROLE: primary
   METRICS_CLUSTER_LABEL: yucca_prod_htz_fsn1
 
-  # TODO: real production ingress domain + restic-gateway host.
-  APP_DOMAIN: yucca.futo.cloud
-  GW_HOST: gw.yucca.futo.cloud
+  # Per-service ingress hostnames. web (apex; /api routes to yucca-api) on the
+  # app gateway; gw. (michael, restic) on the dedicated gw-proxy gateway.
+  APP_DOMAIN: backups.futo.cloud
+  GW_HOST: gw.backups.futo.cloud
 
-  # Bare-metal RGW (Ceph S3) gateway. Prod uses a COMPLETELY SEPARATE Ceph from
-  # staging's sietch cluster. S3_HOST is the same gateway without the scheme
-  # (michael's S3_BACKEND_DNS_HOST). TODO: real production RGW endpoint.
-  S3_ENDPOINT: https://s3.prod.futo.cloud
-  S3_HOST: s3.prod.futo.cloud
+  # Spice RGW (Ceph S3): round-robin DNS across all 48 nodes' fabric VLAN-120
+  # IPs (prod/global/dns), reached over the FABRIC — the spine routes
+  # kube↔cls1-public (fabric stack public_routing). Self-signed cert, so
+  # consumers skip TLS verify. S3_HOST is the schemeless form for michael's
+  # DNS-based backend LB (S3_BACKEND_DNS_HOST).
+  S3_ENDPOINT: https://s3.prod.fsn1.htz.futo.cloud
+  S3_HOST: s3.prod.fsn1.htz.futo.cloud
 
-  # Observability egress. TODO: real prod vmauth host.
+  # Observability egress (apps -> agents -> o11y prod vmauth).
   VMAGENT_OTLP: vmagent-yucca.observability.svc:8429
   VLOGS_REMOTE_URL: https://vmauth.prod.futostatus.com/insert/native

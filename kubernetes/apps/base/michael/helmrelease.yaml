@@ -21,6 +21,8 @@ spec:
     remediation:
       retries: 3
   values:
+    # Per-cluster fleet size (staging 2, father 12 — the 60+ Gbps data plane).
+    replicas: ${MICHAEL_REPLICAS}
     image:
       repository: ghcr.io/immich-app/yucca/michael
       tag: ${YUCCA_IMAGE_TAG}

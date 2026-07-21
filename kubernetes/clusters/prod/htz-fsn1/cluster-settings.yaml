@@ -1,22 +1,33 @@
 ---
-# Per-cluster, HUMAN-managed settings for prod@htz-fsn1. Authored ahead of the
-# cluster; activates once the prod flux stack syncs this path. Neither CI nor TF
-# touch this file. Keys here are disjoint from cluster-settings.generated.yaml
-# (TF) and image-versions.yaml (CI). TODO(prod): real ingress VIPs + ops contact.
+# Per-cluster, HUMAN-managed settings for prod@htz-fsn1. Neither CI nor TF
+# touch this file. Keys are disjoint from cluster-settings.generated.yaml (TF)
+# and image-versions.yaml (CI).
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cluster-settings
   namespace: flux-system
 data:
-  # TODO: real production OIDC issuer (Zitadel prod instance).
-  OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
+  # Production Zitadel instance; clients in 1P (CUSTOMER_ZITADEL_OAUTH_*).
+  OIDC_ISSUER: https://external-prod-r5dlf0.us1.zitadel.cloud
 
-  # ─── Ingress entry point ─────────────────────────────────────────────
-  # App gateway VIP (lb_internal range; the netops gateway pins .16 itself).
-  # TODO: INGRESS_PUBLIC_IP once the public app frontend is wired (lb-public pool).
-  INGRESS_INTERNAL_IP: 10.40.12.20
-  INGRESS_PUBLIC_IP: 0.0.0.0
+  # ─── Ingress entry points ────────────────────────────────────────────
+  # App gateway (web/api): public pool-a VIP, BGP-advertised /32 covered by the
+  # 69.48.224.0/24 transit aggregate. lb: public selects pool-a.
+  INGRESS_LB_LABEL: public
+  INGRESS_VIP: 69.48.224.5
+  # Dedicated michael (restic) gateway — see apps/prod/htz-fsn1/gw-proxy.
+  # externalTrafficPolicy: Local + one envoy per worker → spine ECMP.
+  GW_PARENT_GATEWAY: gw
+  GW_VIP: 69.48.224.6
+  GW_PROXY_REPLICAS: "3"
+  # (netops keeps its own internal VIP, pinned at 10.40.12.16 in netops/.)
+
+  # ─── App fleet sizing ────────────────────────────────────────────────
+  # michael sized for the 60+ Gbps backup data plane (~4 per worker today;
+  # scale with the worker count). API is stateless behind the app gateway.
+  MICHAEL_REPLICAS: "12"
+  API_REPLICAS: "3"
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org

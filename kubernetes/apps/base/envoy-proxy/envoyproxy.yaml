@@ -35,12 +35,13 @@ spec:
           value:
             metadata:
               labels:
-                # Pools with a serviceSelector (e.g. father's lb-internal) require
-                # this; ignored where the pool matches by IP annotation (staging).
-                lb: internal
+                # Pool selection where pools use a serviceSelector (father:
+                # internal → lb-internal, public → lb-public-a); ignored where
+                # the pool matches by IP annotation (staging).
+                lb: ${INGRESS_LB_LABEL}
               annotations:
                 # Cilium LB-IPAM assigns this specific VIP to the Service.
-                lbipam.cilium.io/ips: "${INGRESS_INTERNAL_IP}"
+                lbipam.cilium.io/ips: "${INGRESS_VIP}"
   telemetry:
     metrics:
       prometheus: {}

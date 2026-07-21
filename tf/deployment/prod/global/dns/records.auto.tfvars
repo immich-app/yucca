@@ -16,6 +16,22 @@ zone_id = "474fbfd96bf49879054a493f126c4071"
 # the ceph roster are kept in sync by tf/scripts/check-s3-dns-roster.py (CI gate
 # s3-dns-roster-validate); it fails if a node is added/removed on one side only.
 records = {
+  # Yucca prod ingress: app gateway (web + /api) and the dedicated michael
+  # (restic) gateway. Public pool-a VIPs (Cilium LB-IPAM pins, cluster-settings
+  # INGRESS_VIP / GW_VIP), BGP-advertised /32s covered by the 69.48.224.0/24
+  # transit aggregate. proxied false: restic long-lived uploads and the API
+  # don't want Cloudflare in the path.
+  "backups.futo.cloud" = {
+    type    = "A"
+    values  = ["69.48.224.5"]
+    comment = "Yucca prod web/api gateway (tf/deployment/prod/global/dns)"
+  }
+  "gw.backups.futo.cloud" = {
+    type    = "A"
+    values  = ["69.48.224.6"]
+    comment = "Yucca prod restic gateway - michael (tf/deployment/prod/global/dns)"
+  }
+
   "s3.prod.fsn1.htz.futo.cloud" = {
     type = "A"
     values = [

@@ -11,6 +11,8 @@ kind: Kustomization
 resources:
   - ./namespace-envoy-system.yaml
   - ./namespace-openebs.yaml
+  - ./namespace-cnpg-system.yaml
   - ./cert-manager.yaml
   - ./envoy.yaml
   - ./openebs.yaml
+  - ./cnpg.yaml

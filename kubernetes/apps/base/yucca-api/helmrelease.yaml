@@ -21,6 +21,8 @@ spec:
     remediation:
       retries: 3
   values:
+    # Per-cluster replica count (staging 2, father 3).
+    replicas: ${API_REPLICAS}
     image:
       repository: ghcr.io/immich-app/yucca/yucca-api
       # Substituted by Flux postBuild from the image-versions ConfigMap (CI-bumped).

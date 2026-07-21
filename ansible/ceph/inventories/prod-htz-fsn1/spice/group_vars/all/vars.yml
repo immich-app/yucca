@@ -95,6 +95,11 @@ chrony_ntp_servers:
 networkd_bond_vlans:
   - id: "{{ fabric_public_vlan }}"     # 120 - Ceph public  (10.40.20.0/23)
     address: "10.40.20.{{ host_index }}/23"
+    # Return route to the kube workers (michael S3 clients): the spine holds a
+    # second IRB on this VLAN (10.40.21.254, fabric stack public_routing) and
+    # routes kube<->cls1-public. The leaf keeps the .1 host gateway.
+    routes:
+      - { to: "10.40.10.0/24", via: "10.40.21.254" }
   - id: "{{ fabric_private_vlan }}"    # 122 - Ceph private (10.40.22.0/23)
     address: "10.40.22.{{ host_index }}/23"
     mtu: 9000
