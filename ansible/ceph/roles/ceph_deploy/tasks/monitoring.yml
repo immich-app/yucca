@@ -76,7 +76,8 @@
     dest: /etc/ceph/monitoring-spec.yaml
     owner: root
     group: root
-    mode: '0644'
+    # 0600: the spec now carries the grafana initial_admin_password.
+    mode: '0600'
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - (ceph_bind_networks | default([]) | length) > 0
@@ -228,7 +229,19 @@
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - grafana_container.stdout | default('') | length > 0
+  register: grafana_pw_reset
   changed_when: false
+  # grafana-cli exits 0 when there is NO admin user to reset (it prints
+  # "specify a user-id" over an empty user list), so rc alone green-lights a
+  # no-op and the vault password never lands (spice, 2026-07-21: fresh
+  # tentacle grafana ships disable_initial_admin_creation, user table empty,
+  # this task "ok" on every converge). The admin is seeded by
+  # initial_admin_password in the monitoring spec; if it is still absent,
+  # fail loudly instead.
+  failed_when: >-
+    (grafana_pw_reset.rc | default(1)) != 0
+    or 'specify a user-id'
+       in ((grafana_pw_reset.stdout | default('')) + (grafana_pw_reset.stderr | default('')))
   no_log: true
   tags: [grafana_admin_password]
 
@@ -248,6 +261,35 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
   no_log: true
+
+# --- Step 4.5: Provision custom Grafana dashboards ---
+
+# Dashboards committed under files/grafana-dashboards/ are uploaded via the
+# Grafana API as the (now seeded) admin, so they live in the repo instead of
+# hand-uploads that a fresh cluster silently lacks (spice shipped without the
+# RGW capacity dashboard until 2026-07-21). overwrite keeps them converged;
+# the cephadm file-provisioned stock dashboards are untouched.
+- name: Upload custom Grafana dashboards
+  ansible.builtin.uri:
+    url: "https://{{ hostvars[groups['ceph_bootstrap'][0]]['ceph_service_ip'] }}:{{ ceph_grafana_port }}/api/dashboards/db"
+    method: POST
+    url_username: "{{ ceph_grafana_admin_user }}"
+    url_password: "{{ ceph_grafana_admin_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    body_format: json
+    body:
+      dashboard: "{{ lookup('ansible.builtin.file', item) | from_json }}"
+      overwrite: true
+      message: provisioned by ansible (ceph_deploy)
+    status_code: 200
+  loop: "{{ query('ansible.builtin.fileglob', role_path ~ '/files/grafana-dashboards/*.json') }}"
+  loop_control:
+    label: "{{ item | basename }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  no_log: true
+  tags: [grafana_dashboards]
 
 # --- Step 5: Display monitoring endpoints ---
 
