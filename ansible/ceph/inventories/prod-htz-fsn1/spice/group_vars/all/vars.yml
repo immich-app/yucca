@@ -317,5 +317,12 @@ ceph_firewall_rgw_any_source: false
 # wholesale so established OSD flows survive firewall (re)activation instead
 # of dying on the drop policy (see the security role defaults for the full
 # rationale; 2026-07-20 incident).
+# wt0 is the NetBird overlay: NetBird's own policy engine (default-deny,
+# group-scoped, enforced in its own nftables table) is the access-control
+# plane for mesh traffic, so this firewall must not second-guess it per port.
+# In particular netbird-ssh DNATs overlay :22 to :22022 on the netbird
+# address, which a dport allow-list here would silently drop post-DNAT. Inert until a
+# node is enrolled (no wt0 = no match), so it ships ahead of the peer rollout.
 ceph_firewall_trusted_ifaces:
   - bond0.122
+  - wt0
