@@ -54,3 +54,11 @@
     dest: /etc/ssh/sshd_config.d/no-sntrup.conf
     mode: '0644'
   notify: Restart sshd
+
+# Apply the kex change NOW. Handlers flush at end of play, so an aborted run
+# leaves the drop-in on disk with the old sshd still offering sntrup761 -- the
+# very hang this task exists to prevent then keeps killing the runs that would
+# have flushed the handler (2026-07-16..20: four days unapplied on spice; hung
+# CI sessions and three mgr serve loops before a manual fleet sshd restart).
+- name: Flush handlers so the running sshd stops offering sntrup761
+  ansible.builtin.meta: flush_handlers
