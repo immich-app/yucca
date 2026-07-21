@@ -15,9 +15,17 @@
 # mints the service user; the talos stack lands netbird-mgmt-api-key) when the
 # operator actually deploys.
 groups = {
-  ci        = { resource = true } # ephemeral CI runners → yucca-prod-htz-fsn1-ci
-  mgmt      = { resource = true } # management nodes (ansible); also the route peers
-  talos     = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
+  ci    = { resource = true } # ephemeral CI runners → yucca-prod-htz-fsn1-ci
+  mgmt  = { resource = true } # management nodes (ansible); also the route peers
+  talos = { resource = true } # Talos cluster nodes → yucca-prod-htz-fsn1-talos
+  # Ceph cluster nodes (spice) as first-class peers → yucca-prod-htz-fsn1-ceph.
+  # resource = true: yucca users SSH them over the overlay via the auto policy.
+  # Deliberately NO ceph-mesh policy and NO router role, and the group must stay
+  # out of every network's distribution groups: ceph nodes receive zero overlay
+  # routes, so nothing can shadow their fabric paths (replication stays on the
+  # 25G bond). Node-side enrollment is the ansible netbird role (separate PR);
+  # the node firewall already trusts wt0 (#285).
+  ceph      = { resource = true }
   resources = { resource = true } # routed-subnet tag → yucca-prod-htz-fsn1-resources (Network resources tag in)
   # cls1 (ceph) nets only — split from `resources` so talos-to-resources does NOT
   # grant them: the workers reach the RGW frontend over the FABRIC (spine-routed),
@@ -39,6 +47,7 @@ setup_keys = {
   mgmt     = { type = "reusable", auto_groups = ["mgmt"] }
   talos    = { type = "reusable", auto_groups = ["talos"] }             # WORKERS
   talos_cp = { type = "reusable", auto_groups = ["talos", "talos_cp"] } # CONTROL PLANES (also the kube-cp router group)
+  ceph     = { type = "reusable", auto_groups = ["ceph"] }              # spice ceph nodes
 }
 
 policies = {
@@ -79,6 +88,21 @@ policies = {
       protocol     = "all"
       sources      = ["talos"]
       destinations = ["talos"]
+    }]
+  }
+
+  # CI converges the ceph nodes over the overlay: SSH only, nothing broader.
+  # Kept out of ci-to-all so the grant is auditable on its own; the ceph group
+  # is never a source anywhere (nodes initiate nothing on the mesh).
+  ci-to-ceph = {
+    description = "CI → spice ceph nodes, SSH only."
+    rules = [{
+      name          = "ci-to-ceph"
+      protocol      = "tcp"
+      bidirectional = false
+      sources       = ["ci"]
+      destinations  = ["ceph"]
+      ports         = ["22"]
     }]
   }
 
