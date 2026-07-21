@@ -36,6 +36,13 @@ module "core" {
     ae2 = ["et-0/0/2:3", "et-1/0/2:2"]
     ae3 = ["et-0/0/2:1", "et-1/0/2:1"]
   }
+  # Spine routes kube ↔ cls1-public (same pattern as kube↔kube-cp): the workers'
+  # fabric path to the spice RGW frontend (michael S3 traffic, not via NetBird).
+  # IRB = last usable /23 address; the leaf keeps the .1 host gateway.
+  public_routing = {
+    cidr = module.addr_cls1.public_cidr
+    ip   = "${cidrhost(module.addr_cls1.public_cidr, 510)}/${module.addr_cls1.prefixlen}"
+  }
 
   # father's bare-metal control planes: port-0 breakout legs at 10G (xe-), one leg
   # per VC member, trunking the kube-cp VLAN. Pairing VERIFIED 2026-07-15 via MAC

@@ -71,6 +71,20 @@ variable "node_lags" {
   EOT
 }
 
+variable "public_routing" {
+  type = object({
+    cidr = string # the cluster public network (e.g. 10.40.20.0/23)
+    ip   = string # spine IRB address on that VLAN, CIDR form (e.g. 10.40.21.254/23)
+  })
+  default     = null
+  description = <<-EOT
+    When set, the spine gets an IRB on the cluster public VLAN and routes
+    kube ↔ cls-public between its own IRBs (same pattern as kube↔kube-cp) —
+    the workers' fabric path to the Ceph RGW frontend. Hosts on the public
+    VLAN reach the kube net back via `ip` (the ceph ansible adds that route).
+  EOT
+}
+
 variable "cp_node_lags" {
   type        = map(list(string))
   default     = {}

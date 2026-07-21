@@ -1,7 +1,7 @@
 # Envoy Gateway on father — CHERRY-PICKED from components/infra/network (same
 # caveat as cert-manager.yaml: REMOVE this file when components/infra is enabled,
 # or the Kustomization names collide). Deploys the operator + the APP gateway
-# (pre-staged for the yucca launch: VIP ${INGRESS_INTERNAL_IP}, cert for
+# (pre-staged for the yucca launch: VIP ${INGRESS_VIP}, cert for
 # ${APP_DOMAIN}); the NETOPS gateway lives in netops/gateway.yaml.
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---

@@ -15,9 +15,18 @@ data:
   # ─── Ingress entry point ─────────────────────────────────────────────
   # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
   # the 10.10.10.15 control-plane API VIP). Public IP is the NAT in front of it,
-  # which staging.backups.futo.cloud resolves to publicly.
-  INGRESS_INTERNAL_IP: 10.10.10.16
+  # which staging.backups.futo.cloud resolves to publicly. The lb label is
+  # ignored here (the pool matches by IP annotation, no serviceSelector).
+  INGRESS_LB_LABEL: internal
+  INGRESS_VIP: 10.10.10.16
   INGRESS_PUBLIC_IP: 97.77.242.205
+  # Single shared gateway: michael's gw. route attaches to the app gateway
+  # (father runs a dedicated gw-proxy instead).
+  GW_PARENT_GATEWAY: envoy
+
+  # ─── App fleet sizing ────────────────────────────────────────────────
+  MICHAEL_REPLICAS: "2"
+  API_REPLICAS: "2"
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org

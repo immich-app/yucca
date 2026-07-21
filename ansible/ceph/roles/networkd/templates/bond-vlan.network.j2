@@ -11,6 +11,12 @@ Address={{ vlan.address }}
 {% if vlan.dns is defined %}
 DNS={{ vlan.dns }}
 {% endif %}
+{% for route in vlan.routes | default([]) %}
+
+[Route]
+Destination={{ route.to }}
+Gateway={{ route.via }}
+{% endfor %}
 
 [Link]
 RequiredForOnline=no

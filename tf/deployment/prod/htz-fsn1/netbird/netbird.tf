@@ -19,6 +19,11 @@ locals {
   # NB: the `kube-cp` VLAN is deliberately NOT in this map — it's routed by its
   # own network below (via the CPs, the talos_cp group), keeping the API plane's
   # mesh path independent of the mgmt routers.
+  # The cls1 (ceph) networks are tagged `ceph_nets`, NOT `resources`: yucca users
+  # still reach them (resource=true group ⇒ yucca→resources policy destination),
+  # but the talos-to-resources policy doesn't — the workers' RGW path is the
+  # FABRIC (spine routes kube↔cls1-public), and a NetBird client route here
+  # would shadow the machineconfig fabric route (policy-routing table wins).
   routed = {
     mgmt = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
     # Internal LB VIPs (Grafana + netops UIs): NetBird peer -> mgmt router -> spine
@@ -26,9 +31,9 @@ locals {
     # this range via the spine IRB (10.40.10.1).
     lb_internal    = { address = module.addr_site.lb_internal_cidr, description = "father internal LoadBalancer VIPs (netops UIs)" }
     kube           = { address = module.addr_site.kube_cidr, description = "Site-global kube node network (fabric)" }
-    cls1_public    = { address = module.addr_cls1.public_cidr, description = "cls1 public cluster network" }
-    cls1_private   = { address = module.addr_cls1.private_cidr, description = "cls1 private cluster network" }
-    cls1_host_mgmt = { address = module.addr_cls1.host_mgmt_cidr, description = "cls1 host-management network" }
+    cls1_public    = { address = module.addr_cls1.public_cidr, description = "cls1 public cluster network", groups = ["ceph_nets"] }
+    cls1_private   = { address = module.addr_cls1.private_cidr, description = "cls1 private cluster network", groups = ["ceph_nets"] }
+    cls1_host_mgmt = { address = module.addr_cls1.host_mgmt_cidr, description = "cls1 host-management network", groups = ["ceph_nets"] }
   }
 
   netbird_networks = {
@@ -39,7 +44,7 @@ locals {
         for name, r in local.routed : name => {
           address     = r.address
           description = r.description
-          groups      = ["resources"]
+          groups      = try(r.groups, ["resources"])
         }
       }
     }

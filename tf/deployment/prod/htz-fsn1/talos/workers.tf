@@ -6,6 +6,7 @@
 #   bond0 (2×25G LACP) → vlan 10 (kube) = fabric_ip — nodeIP + worker east-west (50G)
 #   route to kube-cp (apiserver + VIP) via the kube IRB (10.40.10.1) — the fabric
 #   path to the control plane; the old wt0 (NetBird) route is retired
+#   route to cls1-public (spice RGW) via the same IRB — michael's S3 data path
 #   default route via the Hetzner public NIC (DHCP) for egress
 #
 # Workers are PROVISIONED to maintenance mode out of band — see the runbook
@@ -49,6 +50,8 @@ locals {
               # kubelet→apiserver + geneve to the CPs ride the fabric, not the mesh.
               routes = concat(
                 [{ network = local.kube_cp_cidr, gateway = local.kube_gateway }],
+                # spice RGW frontend — spine routes kube↔cls1-public (michael S3 path).
+                [{ network = local.cls1_public_cidr, gateway = local.kube_gateway }],
                 var.cluster.worker_default_route_via_fabric ? [
                   { network = "0.0.0.0/0", gateway = local.kube_gateway },
                 ] : [],

@@ -4,7 +4,7 @@
 # kube↔kube-cp). Other gateways live on the leaves.
 locals {
   spine_vlans = merge({
-    "vlan${var.public_vlan_id}"    = { id = var.public_vlan_id, l3 = null }
+    "vlan${var.public_vlan_id}"    = { id = var.public_vlan_id, l3 = var.public_routing == null ? null : "irb.${var.public_vlan_id}" }
     "vlan${var.private_vlan_id}"   = { id = var.private_vlan_id, l3 = null }
     "vlan${var.kube_vlan_id}"      = { id = var.kube_vlan_id, l3 = var.node_bgp == null ? null : "irb.${var.kube_vlan_id}" }
     "vlan${var.mgmt_vlan_id}"      = { id = var.mgmt_vlan_id, l3 = null }
@@ -28,5 +28,16 @@ resource "junos_interface_logical" "kube_cp_irb" {
   name  = "irb.${var.kube_cp.vlan_id}"
   family_inet {
     address { cidr_ip = "${cidrhost(var.kube_cp.cidr, 1)}/${split("/", var.kube_cp.cidr)[1]}" }
+  }
+}
+
+# Public-VLAN IRB — NOT the .1 gateway (that's the leaf); a second L3 presence
+# so the spine routes kube↔cls-public for the workers' RGW path. Public-VLAN
+# hosts route the kube net back via this address.
+resource "junos_interface_logical" "public_irb" {
+  count = var.public_routing == null ? 0 : 1
+  name  = "irb.${var.public_vlan_id}"
+  family_inet {
+    address { cidr_ip = var.public_routing.ip }
   }
 }
