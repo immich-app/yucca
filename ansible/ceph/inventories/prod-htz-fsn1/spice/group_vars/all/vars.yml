@@ -308,3 +308,9 @@ ceph_alertmanager_port: 9093
 # rather than left world-open (ceph_firewall_rgw_any_source defaults true for
 # flat/dev clusters; spice pins it closed).
 ceph_firewall_rgw_any_source: false
+# The private replication VLAN is a closed L2 (cluster nodes only): accept it
+# wholesale so established OSD flows survive firewall (re)activation instead
+# of dying on the drop policy (see the security role defaults for the full
+# rationale; 2026-07-20 incident).
+ceph_firewall_trusted_ifaces:
+  - bond0.122

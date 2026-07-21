@@ -62,6 +62,27 @@
          else 'started' }}
   when: ceph_firewall_enabled | bool
 
+# Connections established BEFORE the firewall (conntrack) loaded are picked up
+# mid-stream with an unknown window scale; strict tracking marks their packets
+# INVALID, so they miss the established,related accept and die at the drop
+# policy (2026-07-20: wedged 9 OSDs + 7 RGWs on spice at first activation).
+# Liberal window tracking lets those flows match established and survive.
+- name: Keep pre-firewall TCP flows alive (liberal conntrack window tracking)
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-ceph-conntrack.conf
+    content: |
+      # Managed by Ansible (security role). See role tasks for rationale.
+      net.netfilter.nf_conntrack_tcp_be_liberal = 1
+    owner: root
+    group: root
+    mode: '0644'
+  when: ceph_firewall_enabled | bool
+
+- name: Apply conntrack sysctl now (module loaded by the nftables ct rules)
+  ansible.builtin.command: sysctl -q -p /etc/sysctl.d/99-ceph-conntrack.conf
+  changed_when: false
+  when: ceph_firewall_enabled | bool
+
 - name: Show active nftables rules
   ansible.builtin.command: nft list ruleset
   register: nft_rules

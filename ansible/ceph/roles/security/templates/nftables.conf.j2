@@ -15,6 +15,12 @@ table inet filter {
 
         # Loopback
         iifname "lo" accept
+{% for ifc in ceph_firewall_trusted_ifaces %}
+
+        # Trusted interface (closed cluster L2): accept wholesale so return
+        # traffic of pre-firewall established flows cannot hit the drop policy.
+        iifname "{{ ifc }}" accept
+{% endfor %}
 
         # Established/related
         ct state established,related accept
