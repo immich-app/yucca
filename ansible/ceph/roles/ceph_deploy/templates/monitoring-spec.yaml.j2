@@ -21,6 +21,15 @@ networks:
 service_type: grafana
 placement:
   count: 1
+spec:
+  # Seed the admin user: tentacle cephadm renders grafana with
+  # disable_initial_admin_creation, so without this no admin exists and the
+  # reset-admin-password enforcement below has nothing to reset (it exits 0
+  # anyway - see that task's failed_when). anonymous_access/protocol restate
+  # the cephadm defaults so a re-apply of this spec cannot drop them.
+  initial_admin_password: "{{ ceph_grafana_admin_password }}"
+  anonymous_access: true
+  protocol: https
 {% if ceph_bind_networks | default([]) | length > 0 %}
 networks:
 {% for net in ceph_bind_networks %}
