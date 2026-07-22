@@ -1,0 +1,23 @@
+---
+# Enroll ceph nodes as NetBird overlay peers (endpoints only: no routes, no
+# mesh, no router role - replication and RGW stay on the fabric).
+#
+# Gated by ceph_netbird_enabled (spice: group_vars true; clusters without a
+# minted setup key leave it false). Fresh enrollment needs the setup key:
+#
+#   Canary:   mise run netbird -- --limit spice-ceph-philip
+#   Fleet:    mise run netbird
+#
+# Converging already-enrolled nodes is key-free, so site.yml carries this play
+# and the CI deploy pipeline keeps nodes converged with no secrets plumbing; a
+# reimaged (unenrolled) node fails with instructions instead of half-joining.
+- name: NetBird overlay enrollment
+  hosts: ceph_nodes
+  become: true
+  serial: "{{ netbird_serial | default(4) }}"
+  max_fail_percentage: 0
+  tasks:
+    - name: Enroll via the netbird role
+      ansible.builtin.import_role:
+        name: netbird
+      when: ceph_netbird_enabled | default(false) | bool

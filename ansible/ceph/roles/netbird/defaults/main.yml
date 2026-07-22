@@ -1,0 +1,24 @@
+---
+# NetBird enrollment defaults for ceph nodes. Endpoints only: no router role,
+# no IP forwarding, no route acceptance (the ceph peer group is kept out of
+# every network's distribution groups in TF, so the client receives zero
+# overlay routes and the fabric stays authoritative for cluster traffic).
+# Access to the node over the overlay is governed by NetBird policies
+# (yucca operators via the auto policy, CI via ci-to-ceph tcp/22); the node
+# firewall accepts wt0 wholesale (security role ceph_firewall_trusted_ifaces).
+ceph_netbird_enabled: false
+
+# Pinned + dpkg-held: netbird is load-bearing access infrastructure and its
+# ssh/DNAT behavior was audited against this version's source. Upgrades are
+# deliberate: bump the pin here (the install task unholds, installs, re-holds).
+ceph_netbird_version: "0.73.2"
+
+ceph_netbird_management_url: "https://api.netbird.io"
+
+# Setup key - NEVER committed. `mise run netbird` reads it from 1Password
+# (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_CEPH_SETUP_KEY) and passes
+# it as an extra-var. Only FRESH enrollment needs it; converging an already
+# connected node skips `netbird up` entirely, so the CI deploy pipeline can
+# carry this role with no secrets plumbing. A reimaged node fails the assert
+# below with instructions until an operator runs `mise run netbird` for it.
+ceph_netbird_setup_key: ""

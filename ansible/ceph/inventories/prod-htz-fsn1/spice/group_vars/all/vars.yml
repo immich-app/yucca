@@ -326,3 +326,10 @@ ceph_firewall_rgw_any_source: false
 ceph_firewall_trusted_ifaces:
   - bond0.122
   - wt0
+
+# === NetBird ===
+# Spice nodes are NetBird endpoint peers (group yucca-prod-htz-fsn1-ceph):
+# operator + CI SSH arrives over the overlay, governed by NetBird policies.
+# Fresh enrollment: `mise run netbird` (canary --limit spice-ceph-philip first);
+# converge of enrolled nodes is key-free. See roles/netbird.
+ceph_netbird_enabled: true

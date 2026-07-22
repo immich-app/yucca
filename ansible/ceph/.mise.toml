@@ -100,6 +100,21 @@ run = "scripts/ansible-play.sh status.yml"
 description = "Detect configuration drift from expected state"
 run = "scripts/ansible-play.sh drift.yml"
 
+[tasks.netbird]
+description = "Enroll ceph nodes into NetBird (reads the setup key from 1Password)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+# op creds: CI provides a SA token in OP_SERVICE_ACCOUNT_TOKEN; locally we use
+# the team-futo desktop session (same pattern as mgmt:ansible).
+ACCT=(); [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && ACCT=(--account "${OP_ACCOUNT:-team-futo}")
+# Only prod/htz-fsn1 mints a ceph setup key today (tf netbird stack). The key is
+# needed for FRESH enrollment only; converge of enrolled nodes runs key-free via
+# site.yml/deploy.
+NB_SETUP_KEY=$(op read "${ACCT[@]}" "op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_CEPH_SETUP_KEY/password")
+scripts/ansible-play.sh netbird.yml --extra-vars "ceph_netbird_setup_key=$NB_SETUP_KEY" "$@"
+"""
+
 [tasks.deploy]
 description = "Full deploy: baseline → tune → deploy → tune ceph → harden"
 run = """
