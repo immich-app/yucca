@@ -333,3 +333,8 @@ ceph_firewall_trusted_ifaces:
 # Fresh enrollment: `mise run netbird` (canary --limit spice-ceph-philip first);
 # converge of enrolled nodes is key-free. See roles/netbird.
 ceph_netbird_enabled: true
+# Human SSH is SSO/policy-gated via NetBird's own server (overlay :22 -> :22022,
+# wt0-scoped so cephadm/ansible key SSH on fabric+WAN are untouched). Root off:
+# operators `netbird ssh ops@<node>` and sudo. `mise run netbird` sets the
+# per-peer management flag via the API.
+ceph_netbird_ssh_server: true

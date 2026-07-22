@@ -31,11 +31,17 @@
     update_cache: true
   changed_when: false
 
-- name: Unhold netbird for the pinned install (no-op unless previously held)
+- name: Query the installed netbird version
+  ansible.builtin.command: dpkg-query -W -f='${Version}' netbird
+  register: ceph_netbird_installed
+  changed_when: false
+  failed_when: false
+
+- name: Unhold netbird only when the pinned version differs (keeps converge clean)
   ansible.builtin.dpkg_selections:
     name: netbird
     selection: install
-  failed_when: false
+  when: (ceph_netbird_installed.stdout | default('')) != ceph_netbird_version
 
 - name: Install NetBird at the pinned version
   ansible.builtin.apt:
@@ -118,3 +124,98 @@
       {{ inventory_hostname }} received overlay network routes - the ceph peer
       group must stay out of all NetBird network distribution groups. Fix the
       TF (tf/deployment/prod/htz-fsn1/netbird) before enrolling further nodes.
+
+# --- NetBird SSH server (SSO-gated human access; ops+sudo, root off) ---
+# Gated on the API token so a token-less converge is a no-op on already-enabled
+# peers. The DNAT is wt0-scoped, so cephadm (fabric) and ansible (WAN) keep
+# key-based sshd on :22 - verified on the philip canary 2026-07-22.
+
+- name: Look up this peer in the NetBird API
+  ansible.builtin.uri:
+    url: "{{ ceph_netbird_api_url }}/api/peers"
+    headers:
+      Authorization: "Token {{ ceph_netbird_api_token }}"
+  delegate_to: localhost
+  register: ceph_netbird_peers
+  no_log: true
+  when:
+    - ceph_netbird_ssh_server | bool
+    - ceph_netbird_api_token | length > 0
+
+- name: Record this peer's id and current ssh state
+  ansible.builtin.set_fact:
+    ceph_netbird_peer: >-
+      {{ ceph_netbird_peers.json
+         | selectattr('name', 'equalto', inventory_hostname)
+         | list | first | default({}) }}
+  when:
+    - ceph_netbird_ssh_server | bool
+    - ceph_netbird_api_token | length > 0
+
+- name: Enable ssh_enabled on the peer (management side; preserves other fields)
+  ansible.builtin.uri:
+    url: "{{ ceph_netbird_api_url }}/api/peers/{{ ceph_netbird_peer.id }}"
+    method: PUT
+    headers:
+      Authorization: "Token {{ ceph_netbird_api_token }}"
+    body_format: json
+    body:
+      name: "{{ ceph_netbird_peer.name }}"
+      ssh_enabled: true
+      login_expiration_enabled: "{{ ceph_netbird_peer.login_expiration_enabled | default(false) }}"
+      inactivity_expiration_enabled: "{{ ceph_netbird_peer.inactivity_expiration_enabled | default(false) }}"
+    status_code: 200
+  delegate_to: localhost
+  no_log: true
+  when:
+    - ceph_netbird_ssh_server | bool
+    - ceph_netbird_api_token | length > 0
+    - ceph_netbird_peer.id is defined
+    - not (ceph_netbird_peer.ssh_enabled | default(false))
+
+- name: Check whether the netbird-ssh server is listening (:22022)
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      ss -tlnH | awk '{print $4}' | grep -cE ':22022$' || true
+    executable: /bin/bash
+  register: ceph_netbird_ssh_listen
+  changed_when: false
+  when:
+    - ceph_netbird_ssh_server | bool
+    - ceph_netbird_api_token | length > 0
+
+- name: Apply the server-ssh client flags (down/up over WAN)
+  # `netbird up` short-circuits on a connected peer ("Already connected"), so a
+  # down/up cycle is needed to (re)apply client flags. Safe: ansible connects
+  # over the WAN, and the cycle drops only the overlay. The server binds once
+  # both the client flag and management ssh_enabled agree. Idempotent - skipped
+  # once :22022 already listens. No --enable-ssh-root: humans use ops + sudo.
+  ansible.builtin.shell: |
+    set -e
+    netbird down
+    sleep 2
+    netbird up \
+      --management-url {{ ceph_netbird_management_url }} \
+      --hostname {{ inventory_hostname }} \
+      --allow-server-ssh {{ '--enable-ssh-sftp' if ceph_netbird_ssh_sftp else '' }}
+  changed_when: true
+  when:
+    - ceph_netbird_ssh_server | bool
+    - ceph_netbird_api_token | length > 0
+    - (ceph_netbird_ssh_listen.stdout | default('0') | trim) == '0'
+
+- name: Assert the netbird-ssh server is listening on :22022
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      ss -tlnH | awk '{print $4}' | grep -cE ':22022$' || true
+    executable: /bin/bash
+  register: ceph_netbird_ssh_final
+  changed_when: false
+  retries: 6
+  delay: 5
+  until: (ceph_netbird_ssh_final.stdout | trim) == '1'
+  when:
+    - ceph_netbird_ssh_server | bool
+    - ceph_netbird_api_token | length > 0

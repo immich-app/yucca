@@ -22,3 +22,18 @@ ceph_netbird_management_url: "https://api.netbird.io"
 # carry this role with no secrets plumbing. A reimaged node fails the assert
 # below with instructions until an operator runs `mise run netbird` for it.
 ceph_netbird_setup_key: ""
+
+# --- NetBird SSH server (SSO/policy-gated human access over the overlay) ---
+# When true, netbird runs its own SSH server and DNATs overlay :22 -> :22022
+# (the DNAT is wt0-scoped, so sshd keeps fabric+WAN :22 and cephadm + ansible
+# are unaffected). Humans reach nodes with `netbird ssh ops@<node>` and sudo;
+# root login is deliberately OFF. Enabling needs BOTH the client flag below AND
+# ssh_enabled=true on the management side, which is a per-peer NetBird API call
+# (the client flag alone is not enough - verified 2026-07-22). So the API token
+# must be provided: `mise run netbird` reads it from op://shared_tf/
+# NETBIRD_TF_PAT. A token-less converge (CI deploy pipeline) is a no-op on
+# already-enabled peers and leaves un-enabled ones for `mise run netbird`.
+ceph_netbird_ssh_server: false
+ceph_netbird_ssh_sftp: true
+ceph_netbird_api_url: "https://api.netbird.io"
+ceph_netbird_api_token: ""
