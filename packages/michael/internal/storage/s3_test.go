@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"michael/internal/config"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 func TestIsPreconditionFailed_NilError(t *testing.T) {
@@ -59,6 +61,103 @@ func TestIsBackendFailure(t *testing.T) {
 				t.Errorf("isBackendFailure(%v) = %v, want %v", tc.err, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestIsNotFound(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"generic error", &genericError{msg: "boom"}, false},
+		{"404", &httpError{statusCode: 404}, true},
+		{"403", &httpError{statusCode: 403}, false},
+		{"500", &httpError{statusCode: 500}, false},
+		{"types.NotFound", &types.NotFound{}, true},
+		{"types.NoSuchKey", &types.NoSuchKey{}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsNotFound(tc.err); got != tc.want {
+				t.Errorf("IsNotFound(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestListObjects_PaginatesAllPages(t *testing.T) {
+	// Restic's REST listing has no pagination, so ListObjects must walk every
+	// ListObjectsV2 page — a repo past 1000 keys otherwise gets silently
+	// truncated and restic reports the tail packs as missing.
+	var tokens []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("continuation-token")
+		tokens = append(tokens, token)
+		w.Header().Set("Content-Type", "application/xml")
+		if token == "" {
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Name>bucket</Name><Prefix>data/</Prefix><KeyCount>2</KeyCount><MaxKeys>2</MaxKeys>
+  <IsTruncated>true</IsTruncated><NextContinuationToken>tok-2</NextContinuationToken>
+  <Contents><Key>data/aa</Key><Size>1</Size></Contents>
+  <Contents><Key>data/bb</Key><Size>2</Size></Contents>
+</ListBucketResult>`))
+			return
+		}
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Name>bucket</Name><Prefix>data/</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys>
+  <IsTruncated>false</IsTruncated>
+  <Contents><Key>data/cc</Key><Size>3</Size></Contents>
+</ListBucketResult>`))
+	}))
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	blobs, err := s.ListObjects(context.Background(), "bucket", "data/")
+	if err != nil {
+		t.Fatalf("ListObjects: %v", err)
+	}
+
+	want := []BlobInfo{{Name: "aa", Size: 1}, {Name: "bb", Size: 2}, {Name: "cc", Size: 3}}
+	if len(blobs) != len(want) {
+		t.Fatalf("got %d blobs (%v), want %d", len(blobs), blobs, len(want))
+	}
+	for i, b := range blobs {
+		if b != want[i] {
+			t.Errorf("blob[%d] = %+v, want %+v", i, b, want[i])
+		}
+	}
+	if len(tokens) != 2 || tokens[0] != "" || tokens[1] != "tok-2" {
+		t.Errorf("continuation tokens sent = %q, want [\"\" \"tok-2\"]", tokens)
+	}
+}
+
+func TestListObjects_EmptyIsNonNil(t *testing.T) {
+	// The handler JSON-encodes the result directly; a nil slice would render
+	// as `null` instead of the `[]` restic expects.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Name>bucket</Name><Prefix>data/</Prefix><KeyCount>0</KeyCount><MaxKeys>1000</MaxKeys>
+  <IsTruncated>false</IsTruncated>
+</ListBucketResult>`))
+	}))
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	blobs, err := s.ListObjects(context.Background(), "bucket", "data/")
+	if err != nil {
+		t.Fatalf("ListObjects: %v", err)
+	}
+	if blobs == nil {
+		t.Fatal("expected non-nil empty slice")
+	}
+	if len(blobs) != 0 {
+		t.Fatalf("expected empty result, got %v", blobs)
 	}
 }
 

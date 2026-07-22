@@ -284,31 +284,32 @@ func (w *sha256Writer) Write(p []byte) (n int, err error) {
 }
 
 func (s *S3Storage) ListObjects(ctx context.Context, bucket, prefix string) ([]BlobInfo, error) {
-	out, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+	// ListObjectsV2 caps a single page at 1000 keys, and restic's REST protocol
+	// has no listing pagination — a truncated response makes restic report every
+	// pack past the cutoff as missing from the repo. Always walk all pages.
+	blobs := []BlobInfo{}
+	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
 	})
-	if err != nil {
-		return nil, fmt.Errorf("list objects: %w", err)
-	}
-
-	if out.KeyCount == nil || *out.KeyCount == 0 {
-		return []BlobInfo{}, nil
-	}
-
-	blobs := make([]BlobInfo, 0, len(out.Contents))
-	for _, obj := range out.Contents {
-		if obj.Key == nil || obj.Size == nil {
-			continue
+	for paginator.HasMorePages() {
+		out, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list objects: %w", err)
 		}
-		name := *obj.Key
-		if len(name) > len(prefix) {
-			name = name[len(prefix):]
+		for _, obj := range out.Contents {
+			if obj.Key == nil || obj.Size == nil {
+				continue
+			}
+			name := *obj.Key
+			if len(name) > len(prefix) {
+				name = name[len(prefix):]
+			}
+			blobs = append(blobs, BlobInfo{
+				Name: name,
+				Size: *obj.Size,
+			})
 		}
-		blobs = append(blobs, BlobInfo{
-			Name: name,
-			Size: *obj.Size,
-		})
 	}
 
 	return blobs, nil
@@ -323,6 +324,26 @@ func (s *S3Storage) DeleteObject(ctx context.Context, bucket, key string) error 
 		return fmt.Errorf("delete object: %w", err)
 	}
 	return nil
+}
+
+// IsNotFound reports whether err is an S3 404 — the object (or bucket) does
+// not exist, as opposed to a storage failure.
+func IsNotFound(err error) bool {
+	var notFound *types.NotFound
+	if errors.As(err, &notFound) {
+		return true
+	}
+	var noSuchKey *types.NoSuchKey
+	if errors.As(err, &noSuchKey) {
+		return true
+	}
+	var apiErr interface {
+		HTTPStatusCode() int
+	}
+	if errors.As(err, &apiErr) {
+		return apiErr.HTTPStatusCode() == 404
+	}
+	return false
 }
 
 // isPreconditionFailed checks if an S3 error is a 412 Precondition Failed.
