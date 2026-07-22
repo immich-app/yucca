@@ -4,11 +4,16 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
 )
+
+// probeTimeout bounds a single health probe. Without it a probe against an
+// unreachable (blackholed, not refused) backend runs to the 30s dial timeout.
+const probeTimeout = 5 * time.Second
 
 // ErrNoBackends is returned when the pool has no backend to route a request to.
 var ErrNoBackends = errors.New("no S3 backends available")
@@ -188,24 +193,39 @@ func (p *Pool) applyEndpoints(endpoints []string) {
 
 // probeAll actively checks every backend, ejecting those that fail the probe
 // and reinstating (clearing the passive failure streak of) those that pass.
+// Probes run concurrently with a per-probe timeout, so a reconcile costs
+// max(probe) rather than sum — N unreachable backends once serialized N×30s
+// dial timeouts into pool init and crash-looped startup.
 func (p *Pool) probeAll(ctx context.Context) {
+	var wg sync.WaitGroup
 	for _, b := range p.snapshot() {
-		prober, ok := b.store.(Prober)
-		if !ok {
-			// Unprobeable store (e.g. a bare fake): assume healthy.
-			b.healthy.Store(true)
-			continue
+		wg.Add(1)
+		go func(b *backend) {
+			defer wg.Done()
+			p.probeOne(ctx, b)
+		}(b)
+	}
+	wg.Wait()
+}
+
+func (p *Pool) probeOne(ctx context.Context, b *backend) {
+	prober, ok := b.store.(Prober)
+	if !ok {
+		// Unprobeable store (e.g. a bare fake): assume healthy.
+		b.healthy.Store(true)
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+	if err := prober.Probe(ctx, p.probeBucket); err != nil {
+		if b.healthy.CompareAndSwap(true, false) {
+			p.logger.Warn().Str("backend", b.endpoint).Err(err).Msg("backend failed health probe; ejecting")
 		}
-		if err := prober.Probe(ctx, p.probeBucket); err != nil {
-			if b.healthy.CompareAndSwap(true, false) {
-				p.logger.Warn().Str("backend", b.endpoint).Err(err).Msg("backend failed health probe; ejecting")
-			}
-			continue
-		}
-		b.failures.Store(0)
-		if b.healthy.CompareAndSwap(false, true) {
-			p.logger.Info().Str("backend", b.endpoint).Msg("backend healthy; reinstated")
-		}
+		return
+	}
+	b.failures.Store(0)
+	if b.healthy.CompareAndSwap(false, true) {
+		p.logger.Info().Str("backend", b.endpoint).Msg("backend healthy; reinstated")
 	}
 }
 
