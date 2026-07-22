@@ -1,7 +1,11 @@
 <script lang="ts">
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import type { SocketEvent } from "$lib/events";
-  import type { BackendDto } from "$lib/fetch-client";
-  import { useBackendEventHandler } from "$lib/services/backend.service";
+  import { type BackendDto } from "$lib/fetch-client";
+  import {
+    useBackendEventHandler,
+    useDeviceFlow,
+  } from "$lib/services/backend.service";
   import {
     Button,
     Code,
@@ -20,13 +24,14 @@
   import OnEvents from "../../util/OnEvents.svelte";
 
   type Props = {
-    userCode: string;
-    verificationUri: string;
     onCreate?: (backendId: string) => void;
     onClose: () => void;
   };
 
-  let { userCode, verificationUri, onCreate, onClose }: Props = $props();
+  let { onCreate, onClose }: Props = $props();
+
+  const uid = $props.id();
+  const query = useDeviceFlow(uid);
 
   const { onBackendCreate: onBackendCreateHandler } = useBackendEventHandler();
 
@@ -41,12 +46,12 @@
     onClose();
   }
 
-  function onOpen() {
-    window.open(verificationUri, "_blank");
+  function onRetry() {
+    query.refetch();
   }
 
   function onCopy() {
-    navigator.clipboard.writeText(userCode);
+    navigator.clipboard.writeText(query.data!.userCode);
   }
 </script>
 
@@ -54,31 +59,38 @@
 
 <Modal title="Logging into FUTO Backups" icon={false} {onClose}>
   <ModalBody>
-    <VStack>
-      <Text>You may be asked or shown the following code:</Text>
-      <Stack direction="row" align="center">
-        <Code class="text-3xl select-all">{userCode}</Code>
-        <IconButton
-          color="secondary"
-          variant="outline"
-          icon={mdiContentCopy}
-          onclick={onCopy}
-          aria-label="Copy code"
-        />
-      </Stack>
+    <Suspense {query}>
+      <VStack>
+        <Text>You may be asked or shown the following code:</Text>
+        <Stack direction="row" align="center">
+          <Code class="text-3xl select-all">{query.data!.userCode}</Code>
+          <IconButton
+            color="secondary"
+            variant="outline"
+            icon={mdiContentCopy}
+            onclick={onCopy}
+            aria-label="Copy code"
+          />
+        </Stack>
 
-      <HStack class="mt-4">
-        <LoadingSpinner />
-        <Text>Waiting for you to confirm login...</Text>
-      </HStack>
-    </VStack>
+        <HStack class="mt-4">
+          <LoadingSpinner />
+          <Text>Waiting for you to confirm login...</Text>
+        </HStack>
+      </VStack>
+    </Suspense>
   </ModalBody>
   <ModalFooter>
     <HStack fullWidth>
       <Button shape="round" color="secondary" fullWidth onclick={onClose}>
         Cancel
       </Button>
-      <Button shape="round" fullWidth onclick={onOpen}>Open login again</Button>
+      <Button
+        shape="round"
+        fullWidth
+        onclick={onRetry}
+        disabled={query.isFetching}>Try again</Button
+      >
     </HStack>
   </ModalFooter>
 </Modal>

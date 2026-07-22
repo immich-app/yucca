@@ -19,6 +19,7 @@ import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const backendKeys = {
   all: ['backends'] as const,
+  deviceFlow: (uid: string) => ['deviceFlow', uid] as const,
 };
 
 export const useBackends = () =>
@@ -26,6 +27,21 @@ export const useBackends = () =>
     () => ({
       queryKey: backendKeys.all,
       queryFn: () => getBackends().then(({ backends }) => backends),
+    }),
+    () => queryClient,
+  );
+
+export const useDeviceFlow = (uid: string) =>
+  createQuery(
+    () => ({
+      queryKey: backendKeys.deviceFlow(uid),
+      queryFn: async () => {
+        const response = await oidcDeviceFlow();
+        window.open(response.verificationUri, '_blank');
+        return response;
+      },
+      refetchOnReconnect: false,
+      refetchOnWindowFocus: false,
     }),
     () => queryClient,
   );
@@ -48,24 +64,13 @@ export const useBackendEventHandler = () => {
   };
 };
 
-const startYuccaLogin = async (onCreate?: (backendId: string) => void) => {
-  const response = await oidcDeviceFlow();
+export const handleStartYuccaLogin = (
+  onCreate?: (backendId: string) => void,
+) => {
   void modalManager.show(OAuthDeviceFlow, {
-    ...response,
     onCreate,
   });
-  window.open(response.verificationUri, '_blank');
 };
-
-export const useYuccaLogin = () =>
-  createMutation(
-    () => ({
-      mutationFn: (onCreate?: (backendId: string) => void) =>
-        startYuccaLogin(onCreate),
-      onError: (error) => handleError(error, 'Failed to start login'),
-    }),
-    () => queryClient,
-  );
 
 export const handleSetupLocalStorage = (
   onCreate?: (backendId: string) => void,
