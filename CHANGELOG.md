@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.11.0](https://github.com/immich-app/yucca/compare/v0.10.0...v0.11.0) (2026-07-22)
+
+
+### Features
+
+* **all:** introduce partition/region/ceph-cluster model across the stack ([#222](https://github.com/immich-app/yucca/issues/222)) ([c6985d9](https://github.com/immich-app/yucca/commit/c6985d902c8cc84c130c4d591ec6c2131160e4a9))
+* **bgp:** stand up bgp ([#224](https://github.com/immich-app/yucca/issues/224)) ([aeee19e](https://github.com/immich-app/yucca/commit/aeee19e336786ed2ed8136938ae2104f6c498cb4))
+* **ceph:** netbird enrollment role for the spice nodes ([#287](https://github.com/immich-app/yucca/issues/287)) ([2881be6](https://github.com/immich-app/yucca/commit/2881be69a4b63e9fb517941ed0447248fd16fe4b))
+* **ceph:** prod spice cluster on htz-fsn1 ([#256](https://github.com/immich-app/yucca/issues/256)) ([0357aac](https://github.com/immich-app/yucca/commit/0357aac743b4e24745f9ad9dfddcdef7a8f3cd03))
+* **ceph:** re-add noreen to spice ([#273](https://github.com/immich-app/yucca/issues/273)) ([0c923c8](https://github.com/immich-app/yucca/commit/0c923c854617a39cfd2f06da3fbfbb3ad9a60e31))
+* **ceph:** trust the netbird overlay interface in nftables ([#285](https://github.com/immich-app/yucca/issues/285)) ([4782ef8](https://github.com/immich-app/yucca/commit/4782ef8d69a089a4542319841228e3f4f3f637a5))
+* **claude:** first CLAUDE.md ([#226](https://github.com/immich-app/yucca/issues/226)) ([745bf59](https://github.com/immich-app/yucca/commit/745bf5970e9490912effc886b753027cfbb36c9f))
+* **fabric:** management plane on a per cluster basis ([#240](https://github.com/immich-app/yucca/issues/240)) ([baae250](https://github.com/immich-app/yucca/commit/baae250f76a58289ce3a33353d8bca795deb72b5))
+* **k8s:** cluster naming ([#243](https://github.com/immich-app/yucca/issues/243)) ([254b7a4](https://github.com/immich-app/yucca/commit/254b7a4b49a5199dbec833d216564ca668a2d8d2))
+* **netbird-ansible:** better subnet routers ([#217](https://github.com/immich-app/yucca/issues/217)) ([e039026](https://github.com/immich-app/yucca/commit/e039026cbeb72ebfbd274196788dfd08317afe21))
+* **netbird:** ceph peer group, setup key, and CI ssh policy ([#286](https://github.com/immich-app/yucca/issues/286)) ([12b46f5](https://github.com/immich-app/yucca/commit/12b46f582d7d107cf723c65dee757ab1d0238028))
+* **netbird:** k8s ([#218](https://github.com/immich-app/yucca/issues/218)) ([0ec09f0](https://github.com/immich-app/yucca/commit/0ec09f022a85ea4ecd6e9548f80cf096f601fb2c))
+* **prod:** add mgmt-1 to terraform ownership (bye tailscale) ([#230](https://github.com/immich-app/yucca/issues/230)) ([f75cc90](https://github.com/immich-app/yucca/commit/f75cc90cf9429fc295bd8e025717016edeff4a07))
+* **prod:** continue prod ([#267](https://github.com/immich-app/yucca/issues/267)) ([1f9b84b](https://github.com/immich-app/yucca/commit/1f9b84bb1d294f29a60187f494733615f4d39508))
+* **prod:** continue prod ([#288](https://github.com/immich-app/yucca/issues/288)) ([114904e](https://github.com/immich-app/yucca/commit/114904e9662eba00cd0cacb590c4b5ddea8b8536))
+* **prod:** deploy prod apps ([#284](https://github.com/immich-app/yucca/issues/284)) ([bd74b16](https://github.com/immich-app/yucca/commit/bd74b16c7c95e5fac6a94e143eed814c0a9d4a13))
+* **prod:** prod ([#247](https://github.com/immich-app/yucca/issues/247)) ([963364a](https://github.com/immich-app/yucca/commit/963364a034b847149a6ce0570a6a6f5f5ccf82e2))
+* **yucca:** add full e2e mgmt provisioning maybe ([#182](https://github.com/immich-app/yucca/issues/182)) ([481c5e9](https://github.com/immich-app/yucca/commit/481c5e920a289c5dc09d4a7c147a962044e8a852))
+
+
+### Bug Fixes
+
+* **ceph:** flush handlers after the sshd kex workaround ([#276](https://github.com/immich-app/yucca/issues/276)) ([879b8d3](https://github.com/immich-app/yucca/commit/879b8d3e09592087bdeb4f73650b6dd1eeb37696))
+* **ceph:** keep established flows alive through firewall activation ([#275](https://github.com/immich-app/yucca/issues/275)) ([158ca39](https://github.com/immich-app/yucca/commit/158ca39731fa12a7f93bca3611ef53b6f326eeba))
+* **ceph:** mask periodic apt and refresh cache after repo changes ([#271](https://github.com/immich-app/yucca/issues/271)) ([9f1bb2f](https://github.com/immich-app/yucca/commit/9f1bb2f25a22e176a3219de6b2e7bd9f97d931ad))
+* **ceph:** parenthesize the ceph-safety verdict ternary ([#272](https://github.com/immich-app/yucca/issues/272)) ([f24f0f3](https://github.com/immich-app/yucca/commit/f24f0f38a988a2eaa3a1072448b67a53b480911b))
+* **ceph:** pin mtu-less VLAN sub-interfaces to 1500 ([#274](https://github.com/immich-app/yucca/issues/274)) ([9f3bea6](https://github.com/immich-app/yucca/commit/9f3bea6987f5d2dd5679e015c4ecaf13f5b1acbc))
+* **ceph:** render inventories with the partition's op env file ([#270](https://github.com/immich-app/yucca/issues/270)) ([21f6cdb](https://github.com/immich-app/yucca/commit/21f6cdbb4e20b073caf76bb35f254892938030cd))
+* **ceph:** seed the grafana admin and provision dashboards from the repo ([#283](https://github.com/immich-app/yucca/issues/283)) ([017da30](https://github.com/immich-app/yucca/commit/017da30a6e9af546bfda2ac6ca868693c3441822))
+* **ci:** apply prettier formatting ([#225](https://github.com/immich-app/yucca/issues/225)) ([4cf9ac0](https://github.com/immich-app/yucca/commit/4cf9ac0a8338866cabb0b9f3770a098296f7f20c))
+* **fabric:** depends_on ([#246](https://github.com/immich-app/yucca/issues/246)) ([789e036](https://github.com/immich-app/yucca/commit/789e0361c5dfe50ce4aa9c3870ec9e6466d506a9))
+* **fabric:** fix fabric deployment ([#228](https://github.com/immich-app/yucca/issues/228)) ([f78ba50](https://github.com/immich-app/yucca/commit/f78ba50ebc5288cedc73a5efb38c1f005de35e3a))
+* **fabric:** unhinged fix to duplicate config blocks because this is entirely spaget ([#229](https://github.com/immich-app/yucca/issues/229)) ([ceba1f0](https://github.com/immich-app/yucca/commit/ceba1f0eef3070e3186be197d32e7407c03de8ca))
+* **flux:** branch ref ([#255](https://github.com/immich-app/yucca/issues/255)) ([3427483](https://github.com/immich-app/yucca/commit/3427483e5d2fdcd66174253df01e4e19b4903e53))
+* **kube:** move to local volumes ([#241](https://github.com/immich-app/yucca/issues/241)) ([e00ea72](https://github.com/immich-app/yucca/commit/e00ea72a21f8c26fb91469b18c2ceae29f278939))
+* **netbird:** add netbird network to trusted list ([#219](https://github.com/immich-app/yucca/issues/219)) ([4033cc2](https://github.com/immich-app/yucca/commit/4033cc2d97424eb5e7295aa677e2812c72de51e3))
+* **netbird:** comment in the things ([#221](https://github.com/immich-app/yucca/issues/221)) ([54c410f](https://github.com/immich-app/yucca/commit/54c410f59c3e502bafbe522018256c23ddeff79a))
+* **netbird:** comment out lines ([#220](https://github.com/immich-app/yucca/issues/220)) ([a6235d7](https://github.com/immich-app/yucca/commit/a6235d77edcc0a00de8fd916b6cbf8179075b7e4))
+* **netbird:** make mutating webhook not go boom ([#244](https://github.com/immich-app/yucca/issues/244)) ([7858d73](https://github.com/immich-app/yucca/commit/7858d7318d1e3f2f515cc61affc604040f937886))
+* **netbird:** policies ([#239](https://github.com/immich-app/yucca/issues/239)) ([012db81](https://github.com/immich-app/yucca/commit/012db81704781957e29898ca2f036787721e86c6))
+* **netbird:** restore the talos plan's NetBird connect (revert -refre… ([#215](https://github.com/immich-app/yucca/issues/215)) ([8474098](https://github.com/immich-app/yucca/commit/847409819fd476c9f2adb9c93be78a790ce98780))
+* **netbird:** restore the talos plan's NetBird connect (revert -refresh=false) ([8474098](https://github.com/immich-app/yucca/commit/847409819fd476c9f2adb9c93be78a790ce98780))
+* **netbird:** some issues ([#212](https://github.com/immich-app/yucca/issues/212)) ([948b15c](https://github.com/immich-app/yucca/commit/948b15cf0bf9f46705db14803c9151bdbaf9595f))
+* **netbird:** take explicit group-name overrides verbatim([#216](https://github.com/immich-app/yucca/issues/216)) ([00421f3](https://github.com/immich-app/yucca/commit/00421f33ecdd6460d28bd37ae4f9e78ca9e53027))
+* **talos:** drop stale luke CP re-key migration ([#257](https://github.com/immich-app/yucca/issues/257)) ([26b58fe](https://github.com/immich-app/yucca/commit/26b58feb154843cfd1bd0794b12a53aba66c94ad))
+* **talos:** drop stale luke CP re-key migration (state already address-keyed) ([26b58fe](https://github.com/immich-app/yucca/commit/26b58feb154843cfd1bd0794b12a53aba66c94ad))
+* **typo:** fix typo ([#245](https://github.com/immich-app/yucca/issues/245)) ([9ad33c4](https://github.com/immich-app/yucca/commit/9ad33c444d80fcc43a13ea2453b74f66a03ba4c9))
+* **workflow:** gate ansible workflows ([#227](https://github.com/immich-app/yucca/issues/227)) ([b723285](https://github.com/immich-app/yucca/commit/b72328562604b254a57a2155499411a165b38c12))
+* **workflow:** missing working directory ([#223](https://github.com/immich-app/yucca/issues/223)) ([48c6220](https://github.com/immich-app/yucca/commit/48c62208941f0bfc5ce18ca949a08ef9db6af05f))
+
 ## [0.10.0](https://github.com/immich-app/yucca/compare/v0.9.1...v0.10.0) (2026-06-26)
 
 
