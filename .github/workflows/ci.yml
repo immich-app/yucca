@@ -51,9 +51,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # helm template + kubeconform per chart, then flux-local builds the whole
-      # kubernetes/ tree the way Flux would. No cluster involved.
+      # kubernetes/ tree the way Flux would. No cluster involved. One retry:
+      # flux-local downloads third-party charts (rook is still a classic
+      # HelmRepository) and a transient network reset shouldn't fail the build.
       - name: Validate charts + Flux tree
-        run: mise run k8s:validate
+        run: mise run k8s:validate || { echo "::warning::k8s:validate failed once (transient chart fetch?); retrying"; mise run k8s:validate; }
 
   integration:
     name: Integration Tests

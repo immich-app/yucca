@@ -27,6 +27,11 @@ jobs:
   # ── Build + push every app image (the ONLY delivery action CI performs) ──
   build:
     name: Build ${{ matrix.app.name }}
+    # Release-please commits only touch changelog/version bookkeeping — the app
+    # tree is identical to the parent, whose images already exist. Skip the
+    # rebuild; release-promote.yml retags the parent's images with the release
+    # tag (a manifest copy).
+    if: "${{ !startsWith(github.event.head_commit.message, 'chore(main): release') }}"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -74,8 +79,8 @@ jobs:
   # rolls it out in-cluster. Outcome is visible as a GitHub commit status
   # (notification-controller Provider), not as a job here. No GHA step needed.
 
-  # Production promotion moved to release-promote.yml: it fires on
-  # release-please `release published`, retags the validated sha images with
-  # the release tag, and (behind the `production` Environment gate) pins both
-  # YUCCA_IMAGE_TAG and the flux-release GitRepository tag via
-  # .github/scripts/promote-prod.sh.
+  # Production promotion lives in release-promote.yml. The gate is the
+  # release-please PR merge itself: on release publish, the parent commit's
+  # already-built sha images are retagged with the release tag (manifest copy,
+  # no rebuild) and the prod pin (flux-release tag + YUCCA_IMAGE_TAG) is
+  # committed via .github/scripts/promote-prod.sh.

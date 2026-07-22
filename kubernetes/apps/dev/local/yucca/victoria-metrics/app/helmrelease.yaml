@@ -6,14 +6,9 @@ metadata:
   namespace: yucca
 spec:
   interval: 1h
-  chart:
-    spec:
-      chart: victoria-metrics-single
-      version: 0.35.0
-      sourceRef:
-        kind: HelmRepository
-        name: victoriametrics
-        namespace: flux-system
+  chartRef:
+    kind: OCIRepository
+    name: victoria-metrics-single
   install:
     remediation:
       retries: 3

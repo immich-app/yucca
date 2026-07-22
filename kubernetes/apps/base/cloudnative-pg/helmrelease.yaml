@@ -6,15 +6,9 @@ metadata:
   name: cloudnative-pg
 spec:
   interval: 1h
-  chart:
-    spec:
-      chart: cloudnative-pg
-      version: 0.23.0
-      sourceRef:
-        kind: HelmRepository
-        name: cloudnative-pg
-        # Resolves in the HelmRelease's own namespace (cnpg-system via the
-        # overlay targetNamespace), where the HelmRepository above also lands.
+  chartRef:
+    kind: OCIRepository
+    name: cloudnative-pg
   install:
     crds: CreateReplace
     remediation:

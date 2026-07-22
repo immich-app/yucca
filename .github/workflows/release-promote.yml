@@ -1,20 +1,22 @@
 name: Release promote
 
-# Production promotion, driven by release-please releases. When a release is
-# published (or on manual dispatch with a tag):
-#   1. retag — the release commit's already-built `sha-<sha>` app images (they
-#      were built + staging-validated when the release PR merged) get the
-#      release tag, so prod images carry the release-please version.
-#   2. promote (GATED behind the `production` Environment) — commit the pin to
-#      main: YUCCA_IMAGE_TAG + the flux-release GitRepository tag. Prod's Flux
-#      pulls both; manifests, charts, and images all move together per release.
+# Production promotion. The gate IS the release-please PR merge: when the
+# release publishes, this workflow (1) retags the already-built, already-
+# staging-validated images of the release's parent commit with the release tag
+# (a manifest copy — nothing is rebuilt), and (2) commits the prod pin to main
+# (flux-release GitRepository tag + YUCCA_IMAGE_TAG). Prod's Flux pulls it.
+#
+# The release commit only touches changelog/version bookkeeping, so its app
+# tree is identical to its parent — whose sha-<sha> images exist (deploy.yml
+# skips building release commits). workflow_dispatch is the ROLLBACK lever:
+# re-promote any older tag (its images already carry the tag; retag no-ops).
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to promote (e.g. v0.13.0)
+        description: Release tag to promote (e.g. v0.13.0) — rollback lever
         required: true
 
 permissions: {}
@@ -24,55 +26,12 @@ env:
   TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
 
 jobs:
-  retag:
-    name: Retag images to ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+  promote:
+    name: Promote ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }} to production
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Log in to GHCR
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Resolve release commit
-        run: git fetch --depth=1 origin "refs/tags/${TAG}:refs/tags/${TAG}"
-
-      - name: Retag release images
-        run: |
-          set -euo pipefail
-          sha=$(git rev-list -n1 "refs/tags/${TAG}")
-          echo "release ${TAG} -> ${sha}"
-          apps=(yucca-api yucca-admin-api yucca-metrics-worker web michael)
-          # The deploy workflow builds sha-<sha> on the release PR's merge
-          # commit; it may still be running when the release publishes. Wait.
-          for app in "${apps[@]}"; do
-            src="${IMAGE_PREFIX}/${app}:sha-${sha}"
-            for i in $(seq 1 60); do
-              docker buildx imagetools inspect "$src" >/dev/null 2>&1 && break
-              [ "$i" = 60 ] && { echo "::error::${src} never appeared (deploy build failed?)"; exit 1; }
-              echo "waiting for ${src} (${i}/60)"; sleep 30
-            done
-            docker buildx imagetools create -t "${IMAGE_PREFIX}/${app}:${TAG}" "$src"
-            echo "tagged ${app}:${TAG}"
-          done
-
-  promote:
-    name: Promote production
-    needs: retag
-    runs-on: ubuntu-latest
-    # The `production` Environment's required-reviewers rule = the approval gate.
-    environment: production
-    permissions:
-      contents: read
     steps:
       - name: Create push token
         id: token
@@ -87,6 +46,39 @@ jobs:
           ref: main
           token: ${{ steps.token.outputs.token }}
           persist-credentials: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag release images (manifest copy, no rebuild)
+        run: |
+          set -euo pipefail
+          git fetch --depth=2 origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          # The release commit's app tree == its parent's; the parent's images
+          # were built on its own main push and validated in staging.
+          sha=$(git rev-parse "${TAG}^")
+          echo "release ${TAG} -> images of ${sha}"
+          for app in yucca-api yucca-admin-api yucca-metrics-worker web michael; do
+            dst="${IMAGE_PREFIX}/${app}:${TAG}"
+            if docker buildx imagetools inspect "$dst" >/dev/null 2>&1; then
+              echo "${app}:${TAG} already exists (rollback re-promotion); skipping"
+              continue
+            fi
+            src="${IMAGE_PREFIX}/${app}:sha-${sha}"
+            # Tolerate a release PR merged seconds after its parent: the parent
+            # build may still be finishing. Short poll, then fail closed.
+            for i in $(seq 1 20); do
+              docker buildx imagetools inspect "$src" >/dev/null 2>&1 && break
+              [ "$i" = 20 ] && { echo "::error::${src} not found — did the parent commit's build fail?"; exit 1; }
+              echo "waiting for ${src} (${i}/20)"; sleep 30
+            done
+            docker buildx imagetools create -t "$dst" "$src"
+            echo "tagged ${app}:${TAG}"
+          done
 
       - name: Pin production to the release
         run: ./.github/scripts/promote-prod.sh "$TAG"
