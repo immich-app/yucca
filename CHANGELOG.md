@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.0](https://github.com/immich-app/yucca/compare/v0.13.1...v0.14.0) (2026-07-22)
+
+
+### Features
+
+* **ceph:** passwordless ops sudo on sietch and spice ([#299](https://github.com/immich-app/yucca/issues/299)) ([526bbfc](https://github.com/immich-app/yucca/commit/526bbfcca565429031bc64526ba592c700860ea7))
+
+
+### Bug Fixes
+
+* **michael:** paginate on more than 1000 objects ([#304](https://github.com/immich-app/yucca/issues/304)) ([37e603c](https://github.com/immich-app/yucca/commit/37e603c9df94169c1557e2bfc3fce85467434105))
+
 ## [0.13.1](https://github.com/immich-app/yucca/compare/v0.13.0...v0.13.1) (2026-07-22)
 
 
