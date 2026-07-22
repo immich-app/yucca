@@ -39,11 +39,11 @@ data:
   scrape.yml: |
     global:
       scrape_interval: 10s
-      # Telemetry identity tags: cluster (short name — the netops tier is its
-      # own), site, env. Fill gaps only — the spice jobs' target-level
-      # cluster=spice wins; site/env inherit.
+      # Site/env identity tags. `cluster` is deliberately NOT here: vmagent
+      # applies external_labels OVER target labels (unlike Prometheus's
+      # fill-gaps semantics — it relabeled all 48 spice targets to
+      # cluster=netops), so each job stamps its own cluster label instead.
       external_labels:
-        cluster: netops
         site: htz-fsn1
         env: prod
     scrape_configs:
@@ -56,7 +56,8 @@ data:
         scrape_interval: 60s
         scrape_timeout: 55s
         static_configs:
-          - targets: ["junos-exporter.netops.svc:9326"]
+          - labels: { cluster: netops }
+            targets: ["junos-exporter.netops.svc:9326"]
       # sflow-rt: seconds-granularity per-port fabric rates (the spine exports
       # counter samples every 5s; the prometheus app serves them PRE-RATED — the
       # sflow_* series are already per-second gauges, no rate() needed). The
@@ -67,7 +68,8 @@ data:
         scrape_interval: 5s
         metrics_path: /prometheus/metrics/ALL/ifinoctets,ifoutoctets,ifinutilization,ifoututilization,ifinerrors,ifouterrors,ifindiscards,ifoutdiscards,ifinpkts,ifoutpkts/txt
         static_configs:
-          - targets: ["sflow-rt.netops.svc:80"] # the Service maps 80 -> 8008
+          - labels: { cluster: netops }
+            targets: ["sflow-rt.netops.svc:80"] # the Service maps 80 -> 8008
         metric_relabel_configs:
           - {source_labels: [datasource], regex: "545", target_label: port, replacement: "et-0/0/27"}
           - {source_labels: [datasource], regex: "548", target_label: port, replacement: "et-0/0/30"}
@@ -92,14 +94,17 @@ data:
       # Self-observability of the metrics tier.
       - job_name: victoria-metrics
         static_configs:
-          - targets: ["victoria-metrics.netops.svc:8428"]
+          - labels: { cluster: netops }
+            targets: ["victoria-metrics.netops.svc:8428"]
       - job_name: vmagent
         static_configs:
-          - targets: ["localhost:8429"]
+          - labels: { cluster: netops }
+            targets: ["localhost:8429"]
       # coredns (service metrics port).
       - job_name: coredns
         static_configs:
-          - targets: ["kube-dns.kube-system.svc:9153"]
+          - labels: { cluster: netops }
+            targets: ["kube-dns.kube-system.svc:9153"]
       # Node + container metrics straight from every kubelet (no apiserver proxy).
       - job_name: kubelet
         scheme: https
@@ -107,6 +112,8 @@ data:
         authorization:
           credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         kubernetes_sd_configs: [{ role: node }]
+        relabel_configs:
+          - { target_label: cluster, replacement: netops }
       - job_name: cadvisor
         scheme: https
         metrics_path: /metrics/cadvisor
@@ -114,14 +121,15 @@ data:
         authorization:
           credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         kubernetes_sd_configs: [{ role: node }]
+        relabel_configs:
+          - { target_label: cluster, replacement: netops }
       # ─── spice (bare-metal Ceph) ────────────────────────────────────────
       # All 48 nodes' fabric VLAN-120 IPs (host_index 4-51; roster
       # tf/.../ceph/spice-hosts.yaml — same list the s3 DNS records pin),
-      # reached over the spine-routed kube↔cls1-public path. The target-level
-      # cluster=spice label wins over the external_labels cluster (external
-      # labels only fill gaps at remote write), so spice series arrive at o11y
-      # under their own cluster identity. 30s: 48 node-exporters at the global
-      # 10s would triple the sample volume for no operational gain.
+      # reached over the spine-routed kube↔cls1-public path. cluster=spice is
+      # stamped per-target (see the external_labels note: vmagent would
+      # override it from globals). 30s: 48 node-exporters at the global 10s
+      # would triple the sample volume for no operational gain.
       - job_name: ceph-node-exporter
         scrape_interval: 30s
         static_configs:
