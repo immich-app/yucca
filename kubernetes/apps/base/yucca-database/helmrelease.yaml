@@ -9,6 +9,9 @@ spec:
   chart:
     spec:
       chart: charts/platform/cnpg-cluster
+      # Repackage on every git revision — the in-repo charts keep a static
+      # version, so the default ChartVersion strategy never ships template edits.
+      reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
         name: flux-system
