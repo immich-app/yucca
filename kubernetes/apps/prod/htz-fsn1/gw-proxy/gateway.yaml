@@ -27,4 +27,4 @@ spec:
         mode: Terminate
         certificateRefs:
           - kind: Secret
-            name: staging-backups-tls
+            name: app-domain-tls

@@ -106,6 +106,22 @@ policies = {
     }]
   }
 
+  # Talos nodes → o11y's prod mesh gateway (external group, resolved in
+  # netbird.tf): vmagent + victoria-logs-collector remote-write to the
+  # UNAUTHENTICATED mesh vmauth (vmauth.o11y.futo.network:443) — this ACL is
+  # the only gate. Mirrors o11y's own bootstrap-egress precedent.
+  talos-to-o11y-gateway = {
+    description = "Talos nodes → o11y prod mesh gateway (unauth vmauth remote-write)."
+    rules = [{
+      name          = "talos-to-o11y-gateway"
+      protocol      = "tcp"
+      bidirectional = false
+      sources       = ["talos"]
+      destinations  = ["o11y_k8s_gateway"]
+      ports         = ["443"]
+    }]
+  }
+
   # Talos nodes reach the routed site subnets (esp. the kube fabric net 10.40.10/24)
   # via the mgmt route peers — this is how the cloud CPs' apiserver reaches the
   # bare-metal worker kubelets.

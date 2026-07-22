@@ -69,7 +69,8 @@ data:
   Corefile: ".:53 {\n    errors\n    health {\n        lameduck 5s\n    }\n    ready\n\
     \    log . {\n        class error\n    }\n    prometheus :9153\n\n    kubernetes\
     \ cluster.local in-addr.arpa ip6.arpa {\n        pods insecure\n        fallthrough\
-    \ in-addr.arpa ip6.arpa\n        ttl 30\n    }\n    forward . /etc/resolv.conf\
+    \ in-addr.arpa ip6.arpa\n        ttl 30\n    }\n    hosts {\n        10.69.0.10\
+    \ vmauth.o11y.futo.network\n        fallthrough\n    }\n    forward . /etc/resolv.conf\
     \ {\n       max_concurrent 1000\n    }\n    cache 30 {\n       disable success\
     \ cluster.local\n       disable denial cluster.local\n    }\n    loop\n    reload\n\
     \    loadbalance\n}\n"

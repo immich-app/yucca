@@ -9,8 +9,11 @@
   (dict "name" "POSTGRES_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "password")))
 )) }}
 {{- /* extraEnvFrom comes after the chart secret: for duplicate keys Kubernetes
-takes the LAST envFrom source, so these act as overrides. */}}
+takes the LAST envFrom source, so these act as overrides. optional: everything
+the worker needs is explicit env above — deployments that null secretData
+(staging/prod) provide no Secret at all, and Optional=false would wedge the
+pod in CreateContainerConfigError. */}}
 {{- $_ := set .Values "envFrom" (concat
-  (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .))))
+  (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .) "optional" true)))
   (.Values.extraEnvFrom | default (list))) }}
 {{- include "yucca-common.deployment" . }}

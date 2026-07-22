@@ -26,6 +26,7 @@ data:
   S3_ENDPOINT: https://s3.prod.fsn1.htz.futo.cloud
   S3_HOST: s3.prod.fsn1.htz.futo.cloud
 
-  # Observability egress (apps -> agents -> o11y prod vmauth).
+  # Observability egress (apps -> agents -> o11y's MESH vmauth over NetBird,
+  # unauthenticated; see apps/prod/htz-fsn1/observability).
   VMAGENT_OTLP: vmagent-yucca.observability.svc:8429
-  VLOGS_REMOTE_URL: https://vmauth.prod.futostatus.com/insert/native
+  VLOGS_REMOTE_URL: https://vmauth.o11y.futo.network/insert/native
