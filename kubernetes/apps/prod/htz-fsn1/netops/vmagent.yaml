@@ -1,8 +1,7 @@
 # vmagent — the single scrape + fan-out point. Scrapes at 10s (high granularity)
-# and remote-writes to the in-cluster VictoriaMetrics (30d buffer). The o11y
-# long-term tier is wired LATER by adding a second -remoteWrite.url (placeholder
-# below) — vmagent buffers on disk and ships to both, so the hybrid needs no other
-# change.
+# and remote-writes to BOTH the in-cluster VictoriaMetrics (30d buffer) and
+# o11y's mesh vmauth (long-term tier, over NetBird, unauth). Also scrapes the
+# spice ceph fleet (cluster=spice) over the fabric.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -40,9 +39,13 @@ data:
   scrape.yml: |
     global:
       scrape_interval: 10s
+      # Telemetry identity tags: cluster (short name — the netops tier is its
+      # own), site, env. Fill gaps only — the spice jobs' target-level
+      # cluster=spice wins; site/env inherit.
       external_labels:
-        cluster: father
+        cluster: netops
         site: htz-fsn1
+        env: prod
     scrape_configs:
       # The fabric switches (spine + cls1 leaf) via junos_exporter. The exporter
       # polls the switches synchronously per scrape and burns ~20s/device in its
@@ -111,6 +114,62 @@ data:
         authorization:
           credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         kubernetes_sd_configs: [{ role: node }]
+      # ─── spice (bare-metal Ceph) ────────────────────────────────────────
+      # All 48 nodes' fabric VLAN-120 IPs (host_index 4-51; roster
+      # tf/.../ceph/spice-hosts.yaml — same list the s3 DNS records pin),
+      # reached over the spine-routed kube↔cls1-public path. The target-level
+      # cluster=spice label wins over the external_labels cluster (external
+      # labels only fill gaps at remote write), so spice series arrive at o11y
+      # under their own cluster identity. 30s: 48 node-exporters at the global
+      # 10s would triple the sample volume for no operational gain.
+      - job_name: ceph-node-exporter
+        scrape_interval: 30s
+        static_configs:
+          - labels: { cluster: spice }
+            targets: [
+              "10.40.20.4:9100", "10.40.20.5:9100", "10.40.20.6:9100", "10.40.20.7:9100", "10.40.20.8:9100", "10.40.20.9:9100",
+              "10.40.20.10:9100", "10.40.20.11:9100", "10.40.20.12:9100", "10.40.20.13:9100", "10.40.20.14:9100", "10.40.20.15:9100",
+              "10.40.20.16:9100", "10.40.20.17:9100", "10.40.20.18:9100", "10.40.20.19:9100", "10.40.20.20:9100", "10.40.20.21:9100",
+              "10.40.20.22:9100", "10.40.20.23:9100", "10.40.20.24:9100", "10.40.20.25:9100", "10.40.20.26:9100", "10.40.20.27:9100",
+              "10.40.20.28:9100", "10.40.20.29:9100", "10.40.20.30:9100", "10.40.20.31:9100", "10.40.20.32:9100", "10.40.20.33:9100",
+              "10.40.20.34:9100", "10.40.20.35:9100", "10.40.20.36:9100", "10.40.20.37:9100", "10.40.20.38:9100", "10.40.20.39:9100",
+              "10.40.20.40:9100", "10.40.20.41:9100", "10.40.20.42:9100", "10.40.20.43:9100", "10.40.20.44:9100", "10.40.20.45:9100",
+              "10.40.20.46:9100", "10.40.20.47:9100", "10.40.20.48:9100", "10.40.20.49:9100", "10.40.20.50:9100", "10.40.20.51:9100"
+            ]
+      # Per-daemon Ceph metrics (the cephadm ceph-exporter on every node).
+      - job_name: ceph-exporter
+        scrape_interval: 30s
+        static_configs:
+          - labels: { cluster: spice }
+            targets: [
+              "10.40.20.4:9926", "10.40.20.5:9926", "10.40.20.6:9926", "10.40.20.7:9926", "10.40.20.8:9926", "10.40.20.9:9926",
+              "10.40.20.10:9926", "10.40.20.11:9926", "10.40.20.12:9926", "10.40.20.13:9926", "10.40.20.14:9926", "10.40.20.15:9926",
+              "10.40.20.16:9926", "10.40.20.17:9926", "10.40.20.18:9926", "10.40.20.19:9926", "10.40.20.20:9926", "10.40.20.21:9926",
+              "10.40.20.22:9926", "10.40.20.23:9926", "10.40.20.24:9926", "10.40.20.25:9926", "10.40.20.26:9926", "10.40.20.27:9926",
+              "10.40.20.28:9926", "10.40.20.29:9926", "10.40.20.30:9926", "10.40.20.31:9926", "10.40.20.32:9926", "10.40.20.33:9926",
+              "10.40.20.34:9926", "10.40.20.35:9926", "10.40.20.36:9926", "10.40.20.37:9926", "10.40.20.38:9926", "10.40.20.39:9926",
+              "10.40.20.40:9926", "10.40.20.41:9926", "10.40.20.42:9926", "10.40.20.43:9926", "10.40.20.44:9926", "10.40.20.45:9926",
+              "10.40.20.46:9926", "10.40.20.47:9926", "10.40.20.48:9926", "10.40.20.49:9926", "10.40.20.50:9926", "10.40.20.51:9926"
+            ]
+      # Cluster-level metrics (health, pools) from the mgr prometheus module.
+      # mgr is count:3 with cephadm-chosen placement that MOVES on redeploy, so
+      # scrape :9283 on every node: only mgr hosts answer (active = full set,
+      # standby = tiny), the rest refuse — one RST per interval, and
+      # up{job="ceph-mgr"} tracks where the mgrs actually live.
+      - job_name: ceph-mgr
+        scrape_interval: 30s
+        static_configs:
+          - labels: { cluster: spice }
+            targets: [
+              "10.40.20.4:9283", "10.40.20.5:9283", "10.40.20.6:9283", "10.40.20.7:9283", "10.40.20.8:9283", "10.40.20.9:9283",
+              "10.40.20.10:9283", "10.40.20.11:9283", "10.40.20.12:9283", "10.40.20.13:9283", "10.40.20.14:9283", "10.40.20.15:9283",
+              "10.40.20.16:9283", "10.40.20.17:9283", "10.40.20.18:9283", "10.40.20.19:9283", "10.40.20.20:9283", "10.40.20.21:9283",
+              "10.40.20.22:9283", "10.40.20.23:9283", "10.40.20.24:9283", "10.40.20.25:9283", "10.40.20.26:9283", "10.40.20.27:9283",
+              "10.40.20.28:9283", "10.40.20.29:9283", "10.40.20.30:9283", "10.40.20.31:9283", "10.40.20.32:9283", "10.40.20.33:9283",
+              "10.40.20.34:9283", "10.40.20.35:9283", "10.40.20.36:9283", "10.40.20.37:9283", "10.40.20.38:9283", "10.40.20.39:9283",
+              "10.40.20.40:9283", "10.40.20.41:9283", "10.40.20.42:9283", "10.40.20.43:9283", "10.40.20.44:9283", "10.40.20.45:9283",
+              "10.40.20.46:9283", "10.40.20.47:9283", "10.40.20.48:9283", "10.40.20.49:9283", "10.40.20.50:9283", "10.40.20.51:9283"
+            ]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -131,9 +190,14 @@ spec:
           image: victoriametrics/vmagent:latest@sha256:4f2d79253c1ce04296e4624724a815e53ea5ebadd465a1d0291153afb9893a30
           args:
             - -promscrape.config=/config/scrape.yml
+            # Pick up ConfigMap edits without a pod restart.
+            - -promscrape.configCheckInterval=1m
             - -remoteWrite.url=http://victoria-metrics.netops.svc:8428/api/v1/write
-            # o11y long-term tier — uncomment + point at the o11y vminsert when wired:
-            # - -remoteWrite.url=https://<o11y-vminsert>/insert/0/prometheus/api/v1/write
+            # o11y long-term tier: the unauth mesh vmauth over NetBird (same
+            # path as the observability agents; NetBird ACL is the only gate).
+            - -remoteWrite.url=https://vmauth.o11y.futo.network/insert/0/prometheus/api/v1/write
+            # Bound each URL's spill so two queues fit the 2Gi buffer emptyDir.
+            - -remoteWrite.maxDiskUsagePerURL=900MB
             - -remoteWrite.tmpDataPath=/buffer
             - -httpListenAddr=:8429
           ports:

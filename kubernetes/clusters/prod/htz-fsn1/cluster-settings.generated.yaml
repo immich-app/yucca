@@ -11,7 +11,11 @@ data:
   # Cluster identity (derived: yucca_<partition>_<region>).
   CLUSTER_NAME: yucca_prod_htz_fsn1
   CLUSTER_ROLE: primary
-  METRICS_CLUSTER_LABEL: yucca_prod_htz_fsn1
+  # Telemetry identity tags (cluster = short cluster name; site; env). The
+  # netops vmagent stamps its own set (cluster=netops, spice jobs cluster=spice).
+  METRICS_CLUSTER_LABEL: father
+  METRICS_SITE_LABEL: htz-fsn1
+  METRICS_ENV_LABEL: prod
 
   # Per-service ingress hostnames. web (apex; /api routes to yucca-api) on the
   # app gateway; gw. (michael, restic) on the dedicated gw-proxy gateway.
