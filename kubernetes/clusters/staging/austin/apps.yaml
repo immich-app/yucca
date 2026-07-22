@@ -21,6 +21,17 @@ spec:
     name: flux-system
     namespace: flux-system
   wait: false
+  # Direct objects (the nested Kustomization CRs) carry substitutable source
+  # refs (${MANIFEST_SOURCE:=flux-system}); staging keeps the default, but the
+  # substitution pass must run for the default to resolve.
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings-generated
+      - kind: ConfigMap
+        name: cluster-settings
+      - kind: ConfigMap
+        name: image-versions
   patches:
     - target:
         group: kustomize.toolkit.fluxcd.io

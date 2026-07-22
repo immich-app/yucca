@@ -25,12 +25,24 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: flux-system
+    # Release-pinned (see flux-release.yaml); root flux-system stays on main.
+    name: flux-release
     namespace: flux-system
   # The health gate cluster-apps depends on: every nested Kustomization here
   # carries healthChecks on its HelmRelease, so wait covers operator readiness.
   wait: true
   timeout: 10m
+  # Direct objects (the nested Kustomization CRs) now carry substitutable
+  # source refs (${MANIFEST_SOURCE}), so this layer substitutes them itself
+  # too — the patches block below still covers the NESTED layers.
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings-generated
+      - kind: ConfigMap
+        name: cluster-settings
+      - kind: ConfigMap
+        name: image-versions
   patches:
     - target:
         group: kustomize.toolkit.fluxcd.io
@@ -67,9 +79,18 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: flux-system
+    # Release-pinned (see flux-release.yaml); root flux-system stays on main.
+    name: flux-release
     namespace: flux-system
   wait: false
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings-generated
+      - kind: ConfigMap
+        name: cluster-settings
+      - kind: ConfigMap
+        name: image-versions
   patches:
     - target:
         group: kustomize.toolkit.fluxcd.io

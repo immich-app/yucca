@@ -14,7 +14,7 @@ spec:
       reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
-        name: flux-system
+        name: ${CHART_SOURCE:=flux-system}
         namespace: flux-system
   install:
     remediation:
