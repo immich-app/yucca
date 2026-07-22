@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/immich-app/yucca/compare/v0.13.0...v0.13.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **michael:** better load balancer initialization ([#297](https://github.com/immich-app/yucca/issues/297)) ([55ccf7d](https://github.com/immich-app/yucca/commit/55ccf7df26cd77db4d0a52721a2a04148df6e65a))
+
 ## [0.13.0](https://github.com/immich-app/yucca/compare/v0.12.0...v0.13.0) (2026-07-22)
 
 
