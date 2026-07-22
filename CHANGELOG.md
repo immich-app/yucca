@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/immich-app/yucca/compare/v0.12.0...v0.13.0) (2026-07-22)
+
+
+### Features
+
+* **yucca sdk:** pin rest connections to 'availableParallelism' ([#264](https://github.com/immich-app/yucca/issues/264)) ([6f88b57](https://github.com/immich-app/yucca/commit/6f88b578f54833966483b89e1ce0c02d7c1badf2))
+
 ## [0.12.0](https://github.com/immich-app/yucca/compare/v0.11.0...v0.12.0) (2026-07-22)
 
 
