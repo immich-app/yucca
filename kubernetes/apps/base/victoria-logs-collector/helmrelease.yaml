@@ -49,8 +49,9 @@ spec:
         - kubernetes.pod_namespace
         - kubernetes.container_name
         - kubernetes.pod_labels.app.kubernetes.io/name
-      # Stamp the remote-cluster identity on every log line (o11y convention).
-      extraFields: '{"cluster":"${METRICS_CLUSTER_LABEL}"}'
+      # Stamp the remote-cluster identity on every log line (cluster/site/env,
+      # same tags as the metrics pipeline).
+      extraFields: '{"cluster":"${METRICS_CLUSTER_LABEL}","site":"${METRICS_SITE_LABEL}","env":"${METRICS_ENV_LABEL}"}'
 
     # All staging nodes are control-plane; tolerate the taint so the DaemonSet
     # lands everywhere.
