@@ -18,7 +18,7 @@
     group: root
     mode: '0644'
   when: mgmt_oob.nic is defined
-  notify: Reload systemd for networkd
+  notify: Restart systemd-networkd
 
 # ── 25G fabric VLAN sub-interfaces ──────────────────────────────────────────
 - name: Deploy fabric parent .network (declares VLANs, no L3 of its own)
@@ -28,12 +28,12 @@
     owner: root
     group: root
     mode: '0644'
-  notify: Reload systemd for networkd
+  notify: Restart systemd-networkd
 
 - name: Deploy VLAN .netdev files
   ansible.builtin.template:
     src: vlan.netdev.j2
-    dest: "{{ mgmt_networkd_config_dir }}/30-{{ mgmt_fabric_nic }}.{{ vlan.id }}.netdev"
+    dest: "{{ mgmt_networkd_config_dir }}/30-vlan{{ vlan.id }}.netdev"
     owner: root
     group: root
     mode: '0644'
@@ -41,12 +41,12 @@
   loop_control:
     loop_var: vlan
     label: "vlan {{ vlan.id }}"
-  notify: Reload systemd for networkd
+  notify: Restart systemd-networkd
 
 - name: Deploy VLAN .network files
   ansible.builtin.template:
     src: vlan.network.j2
-    dest: "{{ mgmt_networkd_config_dir }}/30-{{ mgmt_fabric_nic }}.{{ vlan.id }}.network"
+    dest: "{{ mgmt_networkd_config_dir }}/30-vlan{{ vlan.id }}.network"
     owner: root
     group: root
     mode: '0644'
@@ -54,4 +54,34 @@
   loop_control:
     loop_var: vlan
     label: "vlan {{ vlan.id }}"
-  notify: Reload systemd for networkd
+  notify: Restart systemd-networkd
+
+# Migration from the dotted <nic>.<id> naming (pre-2026-07): remove the old
+# config files (incl. the hand-applied lb-internal drop-in dir — the route is
+# TF-rendered into vlan routes now) and the old kernel links, so the renamed
+# vlan<id> netdevs don't coexist with same-address duplicates.
+- name: Find old dotted-name VLAN configs
+  ansible.builtin.find:
+    paths: "{{ mgmt_networkd_config_dir }}"
+    patterns: "30-{{ mgmt_fabric_nic }}.*"
+    file_type: any
+  register: old_vlan_cfgs
+
+- name: Remove old dotted-name VLAN configs
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ old_vlan_cfgs.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  notify: Restart systemd-networkd
+
+- name: Remove old dotted-name kernel links
+  ansible.builtin.command: ip link delete {{ mgmt_fabric_nic }}.{{ vlan.id }}
+  loop: "{{ mgmt_fabric_vlans }}"
+  loop_control:
+    loop_var: vlan
+    label: "{{ mgmt_fabric_nic }}.{{ vlan.id }}"
+  register: old_link_del
+  changed_when: old_link_del.rc == 0
+  failed_when: false

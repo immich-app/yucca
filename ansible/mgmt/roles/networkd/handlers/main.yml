@@ -1,5 +1,9 @@
 ---
-- name: Reload systemd for networkd
+# RESTART, not reload: `networkctl reload` re-reads .network files but never
+# creates netdevs from new/renamed .netdev files — the VLAN sub-interfaces
+# would silently not exist (2026-07 mgmt converge). Only the fabric NIC and
+# OOB are networkd-managed; the WAN is unmanaged, so a restart can't drop it.
+- name: Restart systemd-networkd
   ansible.builtin.systemd:
     name: systemd-networkd
-    state: reloaded
+    state: restarted
