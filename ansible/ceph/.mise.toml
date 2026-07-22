@@ -112,7 +112,13 @@ ACCT=(); [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && ACCT=(--account "${OP_ACCOUNT
 # needed for FRESH enrollment only; converge of enrolled nodes runs key-free via
 # site.yml/deploy.
 NB_SETUP_KEY=$(op read "${ACCT[@]}" "op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_CEPH_SETUP_KEY/password")
-scripts/ansible-play.sh netbird.yml --extra-vars "ceph_netbird_setup_key=$NB_SETUP_KEY" "$@"
+# NetBird API token (management PAT): sets ssh_enabled per peer, which the
+# client --allow-server-ssh flag alone cannot do. Only needed to enable the
+# SSH server; enrollment-only runs work without it.
+NB_API_TOKEN=$(op read "${ACCT[@]}" "op://shared_tf/NETBIRD_TF_PAT/password")
+scripts/ansible-play.sh netbird.yml \
+  --extra-vars "ceph_netbird_setup_key=$NB_SETUP_KEY" \
+  --extra-vars "ceph_netbird_api_token=$NB_API_TOKEN" "$@"
 """
 
 [tasks.deploy]
