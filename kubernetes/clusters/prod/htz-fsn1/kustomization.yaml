@@ -5,4 +5,5 @@ resources:
   - ./cluster-settings.generated.yaml
   - ./cluster-settings.yaml
   - ./image-versions.yaml
+  - ./flux-release.yaml
   - ./apps.yaml

@@ -8,6 +8,13 @@ metadata:
   name: cluster-settings
   namespace: flux-system
 data:
+  # ─── Release pinning ─────────────────────────────────────────────────
+  # App-tree manifests + in-repo charts build from the flux-release
+  # GitRepository (release-please tag, see flux-release.yaml). Staging keeps
+  # the ${...:=flux-system} defaults and tracks main.
+  MANIFEST_SOURCE: flux-release
+  CHART_SOURCE: flux-release
+
   # Production Zitadel instance; clients in 1P (CUSTOMER_ZITADEL_OAUTH_*).
   OIDC_ISSUER: https://external-prod-r5dlf0.us1.zitadel.cloud
 
