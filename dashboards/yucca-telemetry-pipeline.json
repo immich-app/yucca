@@ -86,9 +86,7 @@
       "id": 2,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -168,9 +166,7 @@
       "id": 3,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -262,9 +258,7 @@
       "id": 5,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -344,9 +338,7 @@
       "id": 6,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -425,9 +417,7 @@
       "id": 7,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -506,9 +496,7 @@
       "id": 8,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -601,9 +589,7 @@
       "id": 10,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -682,9 +668,7 @@
       "id": 11,
       "options": {
         "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -713,11 +697,7 @@
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": [
-    "yucca",
-    "o11y",
-    "pipeline"
-  ],
+  "tags": ["yucca", "o11y", "pipeline"],
   "templating": {
     "list": [
       {
