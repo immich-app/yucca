@@ -376,7 +376,7 @@
       },
       "id": 10,
       "panels": [],
-      "title": "Capacity Trends \u2014 When Do We Need to Act?",
+      "title": "Capacity Trends: When Do We Need to Act?",
       "type": "row"
     },
     {
@@ -617,7 +617,7 @@
       },
       "id": 20,
       "panels": [],
-      "title": "Raw vs Usable \u2014 Why Does Cluster Usage Look Inflated?",
+      "title": "Raw vs Usable: Why Does Cluster Usage Look Inflated?",
       "type": "row"
     },
     {
@@ -1001,7 +1001,7 @@
       },
       "id": 30,
       "panels": [],
-      "title": "S3 Performance \u2014 How Is the System Performing?",
+      "title": "S3 Performance: How Is the System Performing?",
       "type": "row"
     },
     {
@@ -1542,7 +1542,7 @@
       },
       "id": 40,
       "panels": [],
-      "title": "Engineering Deep Dive \u2014 OSD & BlueStore Internals",
+      "title": "Engineering Deep Dive: OSD & BlueStore Internals",
       "type": "row"
     },
     {
@@ -2041,7 +2041,7 @@
       },
       "id": 50,
       "panels": [],
-      "title": "System Metrics \u2014 Node-Level Resource Utilization",
+      "title": "System Metrics: Node-Level Resource Utilization",
       "type": "row"
     },
     {

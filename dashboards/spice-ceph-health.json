@@ -1190,7 +1190,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Spice \u2014 Ceph health",
+  "title": "Spice: Ceph health",
   "uid": "spice-ceph-health",
   "version": 1
 }

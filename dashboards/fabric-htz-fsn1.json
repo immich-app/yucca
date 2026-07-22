@@ -1,6 +1,6 @@
 {
   "uid": "fabric-htz-fsn1",
-  "title": "Fabric \u2014 htz-fsn1 overview",
+  "title": "Fabric: htz-fsn1 overview",
   "timezone": "browser",
   "refresh": "5s",
   "time": {
@@ -10,7 +10,7 @@
   "panels": [
     {
       "type": "timeseries",
-      "title": "Fabric throughput \u2014 sFlow 5s \u2014 INTO switch port (bits/s)",
+      "title": "Fabric throughput INTO switch port (sFlow 5s, bits/s)",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -64,7 +64,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Fabric throughput \u2014 sFlow 5s \u2014 OUT of switch port (bits/s)",
+      "title": "Fabric throughput OUT of switch port (sFlow 5s, bits/s)",
       "gridPos": {
         "x": 12,
         "y": 0,
@@ -118,7 +118,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Interface throughput \u2014 NETCONF 60s \u2014 TX (bits/s)",
+      "title": "Interface throughput TX (NETCONF 60s, bits/s)",
       "gridPos": {
         "x": 0,
         "y": 8,
@@ -172,7 +172,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Interface throughput \u2014 NETCONF 60s \u2014 RX (bits/s)",
+      "title": "Interface throughput RX (NETCONF 60s, bits/s)",
       "gridPos": {
         "x": 12,
         "y": 8,

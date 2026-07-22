@@ -403,7 +403,7 @@
       },
       "id": 8,
       "panels": [],
-      "title": "Per node \u2014 hotspots",
+      "title": "Per node: hotspots",
       "type": "row"
     },
     {
@@ -1134,7 +1134,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Spice \u2014 Node fleet",
+  "title": "Spice: Node fleet",
   "uid": "spice-nodes",
   "version": 1
 }
