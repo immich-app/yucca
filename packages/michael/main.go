@@ -16,6 +16,7 @@ import (
 	"michael/internal/handlers"
 	"michael/internal/metrics"
 	"michael/internal/storage"
+	"michael/internal/version"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -100,7 +101,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info().Int("port", cfg.Port).Msg("starting michael")
+		log.Info().Int("port", cfg.Port).Str("version", version.Version).Msg("starting michael")
 		if err := httpSrv.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("server error")
 		}

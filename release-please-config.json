@@ -21,6 +21,70 @@
           "type": "json",
           "path": "packages/yucca-sdk/orchestration-ui/package.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/common/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/e2e/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/mock-oidc-provider/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/restic-api/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/web/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/yucca-admin-api/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/yucca-api/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/yucca-metrics-worker/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "packages/michael/internal/version/version.go"
+        },
+        {
+          "type": "generic",
+          "path": "charts/apps/michael/Chart.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "charts/apps/web/Chart.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "charts/apps/yucca-api/Chart.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "charts/apps/yucca-admin-api/Chart.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "charts/apps/yucca-metrics-worker/Chart.yaml"
         }
       ]
     }
