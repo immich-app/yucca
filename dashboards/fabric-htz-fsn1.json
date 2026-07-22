@@ -21,24 +21,26 @@
         "defaults": {
           "unit": "bps",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -73,24 +75,26 @@
         "defaults": {
           "unit": "bps",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -125,24 +129,26 @@
         "defaults": {
           "unit": "bps",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -177,24 +183,26 @@
         "defaults": {
           "unit": "bps",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -475,24 +483,26 @@
         "defaults": {
           "unit": "pps",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -543,24 +553,26 @@
         "defaults": {
           "unit": "none",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -595,24 +607,26 @@
         "defaults": {
           "unit": "celsius",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -647,24 +661,26 @@
         "defaults": {
           "unit": "none",
           "custom": {
-            "fillOpacity": 12,
+            "fillOpacity": 0,
             "showPoints": "never",
             "stacking": {
               "mode": "none"
-            }
+            },
+            "gradientMode": "none"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ]
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "multi",
@@ -710,5 +726,6 @@
     "fabric",
     "netops",
     "prod"
-  ]
+  ],
+  "graphTooltip": 1
 }
