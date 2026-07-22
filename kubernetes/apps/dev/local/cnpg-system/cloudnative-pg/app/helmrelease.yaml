@@ -6,14 +6,9 @@ metadata:
   namespace: cnpg-system
 spec:
   interval: 1h
-  chart:
-    spec:
-      chart: cloudnative-pg
-      version: 0.23.0
-      sourceRef:
-        kind: HelmRepository
-        name: cloudnative-pg
-        namespace: flux-system
+  chartRef:
+    kind: OCIRepository
+    name: cloudnative-pg
   install:
     crds: CreateReplace
     remediation:
