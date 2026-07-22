@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { randomBytes } from 'node:crypto';
+import { availableParallelism } from 'node:os';
 import { ConfigurationKey } from '../enum';
 import { DB } from '../schema';
 
@@ -36,6 +37,16 @@ export class ConfigRepository {
       .executeTakeFirstOrThrow();
 
     return value;
+  }
+
+  private async getOptional(key: ConfigurationKey) {
+    const row = await this.db
+      .selectFrom('config')
+      .where('config.key', '=', key)
+      .select('config.value')
+      .executeTakeFirst();
+
+    return row?.value;
   }
 
   private async has(key: ConfigurationKey) {
@@ -98,5 +109,10 @@ export class ConfigRepository {
 
   async skipExtraConfig() {
     return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
+  }
+
+  async getResticOptionRestConnections() {
+    const concurrency = await this.getOptional(ConfigurationKey.ResticOptionRestConnections);
+    return concurrency ? Number.parseInt(concurrency) : availableParallelism();
   }
 }

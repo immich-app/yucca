@@ -3,17 +3,25 @@ import { Injectable } from '@nestjs/common';
 import { Writable } from 'node:stream';
 import { RepositorySnapshotRestoreRequestDto } from '../dto/repository.dto';
 import { createSampledLogWriter, RetentionPolicy } from '../utils/restic';
+import { ConfigRepository } from './config.repository';
 
 @Injectable()
 export class ResticRepository {
+  constructor(private readonly config: ConfigRepository) {}
+
   async init(repository: string, key: Uint8Array) {
-    await init().repository(repository).password(Buffer.from(key).toString('hex')).run();
+    await init()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .run();
   }
 
   async backup(repository: string, key: Uint8Array, paths: string[], logStream?: Writable, signal?: AbortSignal) {
     const write = createSampledLogWriter(logStream);
 
     return await backup()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .addFile(...paths)
@@ -33,6 +41,7 @@ export class ResticRepository {
     const write = createSampledLogWriter(logStream);
 
     let command = restore()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
@@ -49,6 +58,7 @@ export class ResticRepository {
 
   async ls(repository: string, key: Uint8Array, snapshotId: string, path: string) {
     return await ls()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
@@ -57,15 +67,25 @@ export class ResticRepository {
   }
 
   async stats(repository: string, key: Uint8Array) {
-    return await stats().repository(repository).password(Buffer.from(key).toString('hex')).modeRawData().run();
+    return await stats()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .modeRawData()
+      .run();
   }
 
   async snapshots(repository: string, key: Uint8Array) {
-    return await snapshots().repository(repository).password(Buffer.from(key).toString('hex')).run();
+    return await snapshots()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .run();
   }
 
   async forget(repository: string, key: Uint8Array, snapshotId: string, prune = true, signal?: AbortSignal) {
     return await forget()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
@@ -76,6 +96,7 @@ export class ResticRepository {
 
   async forgetByPolicy(repository: string, key: Uint8Array, policy: RetentionPolicy, signal?: AbortSignal) {
     return await forget()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .signal(signal)
@@ -89,15 +110,29 @@ export class ResticRepository {
       .run();
   }
 
-  prune(repository: string, key: Uint8Array, signal?: AbortSignal) {
-    return prune().repository(repository).password(Buffer.from(key).toString('hex')).signal(signal).run();
+  async prune(repository: string, key: Uint8Array, signal?: AbortSignal) {
+    return await prune()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .signal(signal)
+      .run();
   }
 
   async keyList(repository: string, key: Uint8Array) {
-    return await keyList().repository(repository).password(Buffer.from(key).toString('hex')).run();
+    return await keyList()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .run();
   }
 
   async unlockAll(repository: string, key: Uint8Array) {
-    return await unlock().removeAll().repository(repository).password(Buffer.from(key).toString('hex')).run();
+    return await unlock()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .removeAll()
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .run();
   }
 }
