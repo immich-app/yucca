@@ -1,0 +1,120 @@
+---
+# Install NetBird (pinned) and join the overlay as an endpoint peer.
+# Convergeable: install is pin+hold, `netbird up` is skipped when connected.
+# Adapted from ansible/mgmt/roles/netbird, minus the route-peer parts (no IP
+# forwarding here - ceph nodes must never route or receive overlay routes).
+
+- name: Ensure keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Install the NetBird apt signing key
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -fsSL https://pkgs.netbird.io/debian/public.key | gpg --dearmor -o /etc/apt/keyrings/netbird.gpg
+  args:
+    creates: /etc/apt/keyrings/netbird.gpg
+    executable: /bin/bash
+
+- name: Add the NetBird apt repository
+  ansible.builtin.copy:
+    content: "deb [signed-by=/etc/apt/keyrings/netbird.gpg] https://pkgs.netbird.io/debian stable main\n"
+    dest: /etc/apt/sources.list.d/netbird.list
+    mode: '0644'
+
+- name: Update apt cache
+  # Always refresh: a cache_valid_time skip after a repo add installs against a
+  # stale index (same lesson as ceph_deploy/prerequisites).
+  ansible.builtin.apt:
+    update_cache: true
+  changed_when: false
+
+- name: Unhold netbird for the pinned install (no-op unless previously held)
+  ansible.builtin.dpkg_selections:
+    name: netbird
+    selection: install
+  failed_when: false
+
+- name: Install NetBird at the pinned version
+  ansible.builtin.apt:
+    name: "netbird={{ ceph_netbird_version }}"
+    state: present
+    allow_downgrade: true
+
+- name: Hold netbird at the pinned version
+  ansible.builtin.dpkg_selections:
+    name: netbird
+    selection: hold
+
+- name: Enable and start the netbird service
+  ansible.builtin.systemd:
+    name: netbird
+    enabled: true
+    state: started
+
+- name: Check NetBird connection status
+  ansible.builtin.command: netbird status
+  register: ceph_netbird_status
+  changed_when: false
+  failed_when: false
+
+- name: Assert the setup key is provided (fresh enrollment only)
+  ansible.builtin.assert:
+    that:
+      - ceph_netbird_setup_key | length > 0
+    fail_msg: >-
+      {{ inventory_hostname }} is not connected to NetBird and
+      ceph_netbird_setup_key is empty. Fresh enrollment needs the key: run
+      `mise run netbird` (reads NETBIRD_YUCCA_PROD_HTZ_FSN1_CEPH_SETUP_KEY
+      from 1Password), optionally with -- --limit {{ inventory_hostname }}.
+      Already-enrolled nodes converge without it.
+  when: "'Management: Connected' not in ceph_netbird_status.stdout"
+
+- name: Join the overlay
+  ansible.builtin.command:
+    cmd: >-
+      netbird up
+      --setup-key {{ ceph_netbird_setup_key }}
+      --management-url {{ ceph_netbird_management_url }}
+      --hostname {{ inventory_hostname }}
+  register: ceph_netbird_up
+  changed_when: ceph_netbird_up.rc == 0
+  no_log: true
+  when: "'Management: Connected' not in ceph_netbird_status.stdout"
+
+- name: Re-check status after join
+  ansible.builtin.command: netbird status
+  register: ceph_netbird_status_post
+  changed_when: false
+  retries: 6
+  delay: 5
+  until: "'Management: Connected' in ceph_netbird_status_post.stdout"
+  # Same condition as the join task: a node that was already connected never
+  # joined, so there is nothing to re-check (and _post stays undefined for the
+  # asserts' default() fallback).
+  when: "'Management: Connected' not in ceph_netbird_status.stdout"
+
+- name: Assert connected
+  ansible.builtin.assert:
+    that:
+      - >-
+        'Management: Connected'
+        in (ceph_netbird_status_post.stdout | default(ceph_netbird_status.stdout))
+    success_msg: "{{ inventory_hostname }}: NetBird connected"
+
+- name: Assert no overlay routes were received (fabric stays authoritative)
+  # `Networks: -` is the 0.73.x status line for zero received routes. If this
+  # fires, the ceph group leaked into a network's distribution groups in TF -
+  # an overlay route here could shadow the node's fabric paths. Format is
+  # version-coupled; revisit when bumping ceph_netbird_version.
+  ansible.builtin.assert:
+    that:
+      - >-
+        'Networks: -'
+        in (ceph_netbird_status_post.stdout | default(ceph_netbird_status.stdout))
+    fail_msg: >-
+      {{ inventory_hostname }} received overlay network routes - the ceph peer
+      group must stay out of all NetBird network distribution groups. Fix the
+      TF (tf/deployment/prod/htz-fsn1/netbird) before enrolling further nodes.

@@ -16,6 +16,9 @@
 - name: OS baseline (ops user, packages, /etc/hosts)
   import_playbook: baseline.yml
 
+- name: NetBird overlay enrollment (endpoints only; gated by ceph_netbird_enabled)
+  import_playbook: netbird.yml
+
 - name: OS tuning (sysctl, TCP buffers)
   import_playbook: tune-os.yml
 
