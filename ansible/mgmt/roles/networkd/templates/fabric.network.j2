@@ -9,7 +9,7 @@ Name={{ mgmt_fabric_nic }}
 
 [Network]
 {% for vlan in mgmt_fabric_vlans %}
-VLAN={{ mgmt_fabric_nic }}.{{ vlan.id }}
+VLAN=vlan{{ vlan.id }}
 {% endfor %}
 LinkLocalAddressing=no
 IPv6AcceptRA=no

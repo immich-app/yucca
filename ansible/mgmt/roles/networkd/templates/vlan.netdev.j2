@@ -1,8 +1,10 @@
 # {{ ansible_managed }}
-# Tagged VLAN {{ vlan.id }} sub-interface on {{ mgmt_fabric_nic }}.
+# Tagged VLAN {{ vlan.id }} sub-interface on {{ mgmt_fabric_nic }}. Short
+# `vlan<id>` name: `{{ mgmt_fabric_nic }}.{{ vlan.id }}` overflows the kernel's
+# 15-char IFNAMSIZ for 3-digit VLAN ids and networkd silently ignores it.
 
 [NetDev]
-Name={{ mgmt_fabric_nic }}.{{ vlan.id }}
+Name=vlan{{ vlan.id }}
 Kind=vlan
 
 [VLAN]

@@ -64,7 +64,12 @@ resource "local_file" "host_vars" {
       { id = module.addressing.public_vlan_id, address = "${cidrhost(module.addressing.public_cidr, each.value.host_index)}/${local.pub_mask}" },
       { id = module.addressing.private_vlan_id, address = "${cidrhost(module.addressing.private_cidr, each.value.host_index)}/${local.priv_mask}" },
       { id = module.addressing.host_mgmt_vlan_id, address = "${cidrhost(module.addressing.host_mgmt_cidr, each.value.host_index)}/${local.host_mgmt_mask}" },
-      { id = module.addressing.kube_vlan_id, address = "${cidrhost(module.addressing.kube_cidr, each.value.host_index)}/${local.kube_mask}" },
+      # lb_internal route: the mgmt hosts are the NetBird routing peers for the
+      # internal LB VIPs; the spine (kube IRB .1) carries the /32s via iBGP.
+      # Previously a hand-applied networkd drop-in — owned here now.
+      { id = module.addressing.kube_vlan_id, address = "${cidrhost(module.addressing.kube_cidr, each.value.host_index)}/${local.kube_mask}", routes = [
+        { to = module.addressing.lb_internal_cidr, via = cidrhost(module.addressing.kube_cidr, 1) },
+      ] },
     ]
   })}"
 }
