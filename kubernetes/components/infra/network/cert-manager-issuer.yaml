@@ -16,6 +16,6 @@ spec:
   wait: true
   sourceRef:
     kind: GitRepository
-    name: flux-system
+    name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
   targetNamespace: cert-manager

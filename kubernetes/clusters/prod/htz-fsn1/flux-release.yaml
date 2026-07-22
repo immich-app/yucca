@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/source.toolkit.fluxcd.io/gitrepository_v1.json
+---
+# RELEASE-PINNED source for prod's app tree + charts. The root flux-system
+# GitRepository stays on main (guarded in CI) and syncs only this cluster
+# entrypoint; cluster-infra/cluster-apps and every chart build from THIS
+# repository at the release-please tag below. The tag is bumped by the gated
+# promote job (.github/scripts/promote-prod.sh, release-promote workflow) —
+# do not hand-edit outside an emergency rollback.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-release
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    tag: v0.13.0
+  url: https://github.com/immich-app/yucca.git
