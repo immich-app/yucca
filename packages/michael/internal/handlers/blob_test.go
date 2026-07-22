@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"michael/internal/storage"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 var testBlobName = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -254,6 +256,42 @@ func TestDeleteBlob_Success(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDeleteBlob_MissingBlobIsIdempotent(t *testing.T) {
+	deleted := false
+	store := &mockStorage{
+		headObjectFn: func(_ context.Context, _, _ string) (int64, error) {
+			return 0, &types.NotFound{}
+		},
+		deleteObjectFn: func(_ context.Context, _, _ string) error {
+			deleted = true
+			return nil
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodDelete, "/"+testRepository+"/data/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200 for already-absent blob, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if deleted {
+		t.Error("DeleteObject must not be called for an already-absent blob")
+	}
+}
+
+func TestDeleteBlob_HeadStorageError(t *testing.T) {
+	store := &mockStorage{
+		headObjectFn: func(_ context.Context, _, _ string) (int64, error) {
+			return 0, errors.New("dial tcp: connection refused")
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodDelete, "/"+testRepository+"/data/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for storage failure, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 

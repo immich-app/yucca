@@ -116,6 +116,12 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 	key := blobType + "/" + name
 	size, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
+		// Idempotent delete: restic removes blobs it isn't sure were uploaded
+		// (e.g. cleanup after a failed save) — an already-absent blob is success.
+		if storage.IsNotFound(err) {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		hlog.FromRequest(r).Error().Err(err).Msg("head blob for delete failed")
 		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
