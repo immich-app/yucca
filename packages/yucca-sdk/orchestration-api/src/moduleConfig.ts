@@ -15,6 +15,9 @@ export type ImmichIntegration = {
     importPaths: string[];
     exclusionPatterns: string[];
   }[];
+  hooks: {
+    createDatabaseBackup(): Promise<void>;
+  };
 };
 
 export type ModuleConfig = {

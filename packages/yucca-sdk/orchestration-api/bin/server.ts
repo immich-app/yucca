@@ -19,6 +19,9 @@ async function bootstrap() {
               exclusionPatterns: [],
             },
           ],
+          hooks: {
+            async createDatabaseBackup() {},
+          },
         },
       }),
     }),
