@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/immich-app/yucca/compare/v0.14.0...v0.14.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **mgmt:** vlan interface names exceeded IFNAMSIZ ([#305](https://github.com/immich-app/yucca/issues/305)) ([9a7b72d](https://github.com/immich-app/yucca/commit/9a7b72d89cd799695ca2e667064d70cb7aad4e8f))
+
 ## [0.14.0](https://github.com/immich-app/yucca/compare/v0.13.1...v0.14.0) (2026-07-22)
 
 
