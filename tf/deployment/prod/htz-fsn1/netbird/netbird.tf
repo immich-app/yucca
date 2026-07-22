@@ -75,6 +75,14 @@ locals {
   }
 }
 
+# o11y's prod mesh gateway group (owned by the yucca-o11y repo's netbird TF) —
+# destination of the talos-to-o11y-gateway policy (netbird.auto.tfvars): the
+# observability agents remote-write to the mesh vmauth
+# (vmauth.o11y.futo.network → the gateway VIP behind o11y's routing peers).
+data "netbird_group" "o11y_k8s_gateway" {
+  name = "o11y-production-k8s-gateway"
+}
+
 module "netbird" {
   source = "../../../../shared/modules/netbird-env"
 
@@ -82,10 +90,11 @@ module "netbird" {
   name_prefix = "yucca_${var.partition}_${var.region}" # yucca_prod_htz_fsn1 (slug normalized in the module)
   vault       = "yucca_tf_${var.partition}"            # yucca_tf_prod
 
-  groups     = var.groups
-  setup_keys = var.setup_keys
-  policies   = var.policies
-  networks   = local.netbird_networks
+  groups          = var.groups
+  external_groups = { o11y_k8s_gateway = data.netbird_group.o11y_k8s_gateway.id }
+  setup_keys      = var.setup_keys
+  policies        = var.policies
+  networks        = local.netbird_networks
 }
 
 output "group_ids" {

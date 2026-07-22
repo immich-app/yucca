@@ -22,7 +22,7 @@ spec:
         mode: Terminate
         certificateRefs:
           - kind: Secret
-            name: staging-backups-tls
+            name: app-domain-tls
     - name: http
       protocol: HTTP
       port: 80

@@ -142,8 +142,10 @@ spec:
             - { name: config, mountPath: /config }
             - { name: buffer, mountPath: /buffer }
           resources:
-            requests: { cpu: 50m, memory: 128Mi }
-            limits: { memory: 512Mi }
+            requests: { cpu: 50m, memory: 256Mi }
+            # 512Mi OOM-looped every ~8min once the 12 k8s + 5 static targets
+            # were all scraping (269 restarts over 6 days).
+            limits: { memory: 4Gi }
       volumes:
         - name: config
           configMap: { name: vmagent-config }
