@@ -30,6 +30,10 @@ ceph_repo_key_url: "https://download.ceph.com/keys/release.asc"
 admin_user: ansible-iac
 timezone: UTC
 
+# Staging only: ops gets passwordless sudo (prod keeps the role default "ALL",
+# which requires the ops password).
+baseline_ops_sudo: "NOPASSWD:ALL"
+
 # Cluster-specific packages, merged with the baseline role's universal
 # baseline_diag_packages. These match sietch's hardware: Mellanox ConnectX 25G
 # NICs (eno1np0/eno2np1) and SAS-expander drive enclosures. A different cluster
