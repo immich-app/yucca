@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.0](https://github.com/immich-app/yucca/compare/v0.11.0...v0.12.0) (2026-07-22)
+
+
+### Features
+
+* **ceph:** netbird ssh server for spice (sso-gated human access) ([#290](https://github.com/immich-app/yucca/issues/290)) ([b2d49cc](https://github.com/immich-app/yucca/commit/b2d49cce467554cb4b65f272a4cd65c19e7bf691))
+* **o11y:** more better monitoring ([#291](https://github.com/immich-app/yucca/issues/291)) ([cc2e1f4](https://github.com/immich-app/yucca/commit/cc2e1f471eb00abd1326d4287abfff36740e1418))
+* **o11y:** oci dashboards ([#294](https://github.com/immich-app/yucca/issues/294)) ([c5f827e](https://github.com/immich-app/yucca/commit/c5f827e76c1a4bb1f54e3c599fec90e203badd80))
+* **o11y:** shared crossair, no fill, legend ordering ([#295](https://github.com/immich-app/yucca/issues/295)) ([832c73e](https://github.com/immich-app/yucca/commit/832c73e7651e52cc9fa83f8c4f2ce3324c544d9f))
+
+
+### Bug Fixes
+
+* **o11y:** wrong labels ([#293](https://github.com/immich-app/yucca/issues/293)) ([522630f](https://github.com/immich-app/yucca/commit/522630fec0e8afa4ba47f4424aacc8e1d1fdfe98))
+
 ## [0.11.0](https://github.com/immich-app/yucca/compare/v0.10.0...v0.11.0) (2026-07-22)
 
 
