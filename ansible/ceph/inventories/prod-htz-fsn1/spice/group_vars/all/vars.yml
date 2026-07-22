@@ -132,6 +132,10 @@ ceph_repo_key_url: "https://download.ceph.com/keys/release.asc"
 admin_user: root
 provision_iac_ssh_key_path: "~/.ssh/id_ed25519_spice"
 
+# ops gets passwordless sudo (matches sietch; the ops password remains for
+# console login but no longer gates root).
+baseline_ops_sudo: "NOPASSWD:ALL"
+
 # 1P vault for cluster secret lookups.
 cluster_secrets_vault: yucca_tf_prod
 
