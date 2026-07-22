@@ -446,3 +446,54 @@ func TestPool_StatsReflectActivity(t *testing.T) {
 		t.Errorf("expected 4 total requests across backends, got %d", totalReq)
 	}
 }
+
+// slowProbeStore blocks each probe until its context is cancelled — an
+// unreachable, blackholed backend that eats the whole probe budget.
+type slowProbeStore struct {
+	fakeStore
+}
+
+func (s *slowProbeStore) Probe(ctx context.Context, _ string) error {
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+// Probes must run concurrently and be bounded by probeTimeout: N unreachable
+// backends cost one timeout, not N — serial unbounded probes once pushed pool
+// init past the kubelet startup budget and crash-looped the deployment.
+func TestPool_ProbesConcurrentAndBounded(t *testing.T) {
+	const n = 8
+	eps := make([]string, n)
+	stores := make([]*slowProbeStore, n)
+	for i := range n {
+		eps[i] = string(rune('a' + i))
+		stores[i] = &slowProbeStore{}
+	}
+	i := 0
+	factory := func(ep string) (Storage, error) {
+		s := stores[i]
+		i++
+		s.endpoint = ep
+		return s, nil
+	}
+	start := time.Now()
+	p, err := NewPool(PoolConfig{EjectThreshold: 3, ReconcileInterval: time.Hour},
+		factory, &testResolver{eps: eps}, zerolog.Nop())
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	elapsed := time.Since(start)
+	if elapsed > probeTimeout+2*time.Second {
+		t.Errorf("pool init took %v; serial probing suspected (budget %v)", elapsed, probeTimeout)
+	}
+	// Cross-store overlap shows in wall-clock: all N probes block until their
+	// per-probe deadline, so init must take ~one probeTimeout, not N of them.
+	if elapsed < probeTimeout {
+		t.Errorf("probes returned before the timeout cancelled them (%v)", elapsed)
+	}
+	for _, b := range p.snapshot() {
+		if b.healthy.Load() {
+			t.Errorf("backend %s should be unhealthy after timed-out probe", b.endpoint)
+		}
+	}
+}

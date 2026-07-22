@@ -45,6 +45,17 @@ func main() {
 	}
 	log.Logger = zerolog.New(output).With().Timestamp().Caller().Logger()
 	zerolog.SetGlobalLevel(cfg.LogLevel)
+
+	// Bind the listener BEFORE the (potentially slow) backend pool init, so the
+	// kubelet's tcpSocket startup probe sees the process as alive while probes
+	// run. With the port bound late, N unreachable backends once pushed init
+	// past the startup budget and crash-looped the deployment.
+	addr := fmt.Sprintf(":%d", cfg.Port)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatal().Err(err).Str("addr", addr).Msg("failed to bind listener")
+	}
+
 	store, pool := buildStorage(cfg)
 
 	if cfg.OTLPLogsEnabled {
@@ -74,7 +85,6 @@ func main() {
 
 	srv := handlers.NewServer(store, cfg.JWTPublicKey, m)
 
-	addr := fmt.Sprintf(":%d", cfg.Port)
 	httpSrv := &http.Server{
 		Addr:    addr,
 		Handler: srv.Handler(),
@@ -91,7 +101,7 @@ func main() {
 
 	go func() {
 		log.Info().Int("port", cfg.Port).Msg("starting michael")
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpSrv.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("server error")
 		}
 	}()
