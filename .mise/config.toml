@@ -21,7 +21,9 @@ kustomize = "5.8.1"            # flux-local shells out to it
 flux2 = "2.7.5"                # ...and to the flux CLI
 uv = "0.9.18"
 
-cosign = "3.1.2"
+# github backend: the aqua backend fails to verify cosign v3's sigstore
+# bundles ("No bundle found in attestation").
+"github:sigstore/cosign" = "3.1.2"
 "github:grafana/dashboard-linter" = "0.2.0" # lints o11y/dashboards/*.json in CI
 
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
