@@ -72,7 +72,11 @@ run = [{ task = "*:fix" }, { task = "web:lingui" }]
 
 [tasks."o11y:render"]
 description = "Render the o11y bundle"
-run = '.github/scripts/render-o11y-manifests.sh {{arg(name="output-dir", default="/tmp/yucca-o11y")}} {{arg(name="repo", default="immich-app/yucca")}}'
+usage = '''
+arg "<output-dir>" default="/tmp/yucca-o11y"
+arg "<repo>" default="immich-app/yucca"
+'''
+run = '.github/scripts/render-o11y-manifests.sh "${usage_output_dir?}" "${usage_repo?}"'
 
 [tasks."o11y:lint"]
 description = "Lint dashboards"
