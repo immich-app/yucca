@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/immich-app/yucca/compare/v0.15.1...v0.16.0) (2026-07-23)
+
+
+### Features
+
+* **admin:** wire up admin ([#313](https://github.com/immich-app/yucca/issues/313)) ([8afa305](https://github.com/immich-app/yucca/commit/8afa3059eee5bd1d9c963c2017ad7c80f4ba159a))
+* **o11y:** ship dashboards as a signed OCI manifest bundle ([#315](https://github.com/immich-app/yucca/issues/315)) ([37e8b2f](https://github.com/immich-app/yucca/commit/37e8b2fc94d9865d2cc89b71302d2299e7d1d915))
+
 ## [0.15.1](https://github.com/immich-app/yucca/compare/v0.15.0...v0.15.1) (2026-07-23)
 
 
