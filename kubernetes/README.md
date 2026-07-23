@@ -6,10 +6,10 @@ This directory holds **two parallel trees** with different consumers:
 kubernetes/
 ├── clusters/                 # ← real clusters (partition/region GitOps; reconciled by Flux)
 │   ├── staging/austin/       #   cluster-settings(.generated) + apps.yaml (cluster-apps entry)
-│   ├── prod/htz-fsn1/         #   + image-versions (git pin, bumped by the gated promote job)
+│   ├── prod/htz-fsn1/         #   + flux-release + image-versions (prod pins, release-please-stamped)
 │   └── dev/local/            #   ← dev-mirror entry point (repos.yaml + apps.yaml; consumed by Tilt)
 ├── apps/
-│   ├── base/                 #   reusable HelmReleases (chart + image.repository); tag via ${YUCCA_IMAGE_TAG}
+│   ├── base/                 #   reusable HelmReleases (chart + image.repository); tag via ${YUCCA_IMAGE_TAG:=}
 │   ├── staging/austin/       #   overlay: components [infra, roles/primary] + flux-system/ (image automation, notifications)
 │   ├── prod/htz-fsn1/         #   overlay: components [infra, roles/primary] + flux-system/ (notifications)
 │   └── dev/local/            #   ← dev-mirror tree (Tilt/k3d only): yucca/ rook-ceph/ cnpg-system/ repos/
@@ -45,11 +45,15 @@ a kubeconfig or joins the tailnet.
    highest `0.0.<n>` tag in GHCR; a `ResourceSet` writes it into the `image-versions`
    ConfigMap, which the `cluster-apps` `postBuild.substituteFrom` feeds into every app
    HelmRelease as `${YUCCA_IMAGE_TAG}`. No GHA job, no git commit.
-3. **production (gated)** — the `promote-production` job runs only behind the
-   `production` GitHub Environment's **required-reviewers gate** (guarded by repo var
-   `PROD_CLUSTER_READY`). It pins `clusters/prod/htz-fsn1/image-versions.yaml` to the
-   validated `0.0.<n>` and commits it (`promote-prod.sh`, `[skip ci]`); prod Flux pulls
-   and applies. Still no cluster access from CI.
+3. **production (gated by the release PR)** — release-please stamps the next release
+   tag into BOTH prod pins (`clusters/prod/htz-fsn1/flux-release.yaml` and
+   `image-versions.yaml`, extra-files), so **merging the release PR is the promotion**:
+   prod's `flux-release` GitRepository jumps to the tag (manifests + charts) and
+   `${YUCCA_IMAGE_TAG}` selects the matching `v<version>` images (pushed by the same
+   commit's build job — the rollout stalls harmlessly for the few minutes that build
+   takes). No promote workflow, no bot commit, still no cluster access from CI.
+   **Rollback** = revert the two stamped lines in a normal PR; the old tag's images
+   still exist.
 4. **visibility** — notification-controller's GitHub `Provider`/`Alert`
    (`apps/<partition>/<region>/flux-system/notifications.yaml`) posts each reconcile result as a
    **commit status** (✅/❌ on the deployed commit). (Trade-off vs the old push model:
@@ -57,7 +61,7 @@ a kubeconfig or joins the tailnet.
 
 ### Prerequisites (provisioned out-of-band)
 
-- **GitHub Environment** `production` with required reviewers; repo var `PROD_CLUSTER_READY=true` once prod exists. (No `staging` environment needed — staging is fully in-cluster.)
+- (No GitHub Environment needed — the prod gate is the reviewed release-please PR; staging is fully in-cluster.)
 - **CI secrets**: just `PUSH_O_MATIC_*` (already exist) for the prod-pin commit + `GITHUB_TOKEN` for the GHCR push. (Tailscale / `OP_*` cluster secrets are no longer needed.)
 - **Cluster secret (TF-provisioned from 1P)**: just the commit-status credential, via a **dedicated `yucca-flux` GitHub App** (no PAT) with only *Commit statuses: write* — `TF_VAR_flux_github_app_id`, `TF_VAR_flux_github_app_installation_id`, `TF_VAR_flux_github_app_private_key`. No git-sync or GHCR pull secret: yucca is a public repo with public images, so Flux reads both unauthenticated.
 - **Flux bootstrap**: `tf apply` the staging stack (`flux.tf`) with those `TF_VAR`s set, after these manifests are on `main`.
