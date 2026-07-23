@@ -12,6 +12,10 @@ metadata:
 data:
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
+  # admin-api host on the NetBird overlay; the admin OIDC redirect URIs derive
+  # from this (see base yucca-admin-api HR).
+  YUCCA_ADMIN_HOST: admin.luke.aus.int.yucca.futo.network
+
   # ─── Ingress entry point ─────────────────────────────────────────────
   # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
   # the 10.10.10.15 control-plane API VIP). Public IP is the NAT in front of it,

@@ -18,6 +18,10 @@ data:
   # Production Zitadel instance; clients in 1P (CUSTOMER_ZITADEL_OAUTH_*).
   OIDC_ISSUER: https://external-prod-r5dlf0.us1.zitadel.cloud
 
+  # admin-api host on the NetBird overlay (netops gateway wildcard); the
+  # admin OIDC redirect URIs derive from this (see base yucca-admin-api HR).
+  YUCCA_ADMIN_HOST: admin.father.fsn.htz.yucca.futo.network
+
   # ─── Ingress entry points ────────────────────────────────────────────
   # App gateway (web/api): public pool-a VIP, BGP-advertised /32 covered by the
   # 69.48.224.0/24 transit aggregate. lb: public selects pool-a.

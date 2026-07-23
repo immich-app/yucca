@@ -60,6 +60,8 @@ locals {
     oxidized  = cidrhost(module.addr_site.lb_internal_cidr, 16)
     sflow     = cidrhost(module.addr_site.lb_internal_cidr, 16)
     hubble    = cidrhost(module.addr_site.lb_internal_cidr, 16)
+    # yucca-admin-api (namespace yucca), routed via the same netops gateway.
+    admin = cidrhost(module.addr_site.lb_internal_cidr, 16)
   }
 }
 

@@ -176,13 +176,13 @@ variable "yucca_oidc_device_client_id" {
 }
 
 variable "yucca_oidc_admin_client_id" {
-  description = "OIDC client ID for yucca-admin-api — not registered yet (empty mirrors staging)."
+  description = "OIDC client ID for yucca-admin-api (internal-tooling app on auth.internal.futo.cloud; FUTO_ZITADEL_OAUTH_CLIENT_ID_YUCCA_INTERNAL_TOOLING in shared_tf)."
   type        = string
   default     = ""
 }
 
 variable "yucca_oidc_admin_client_secret" {
-  description = "OIDC client secret for yucca-admin-api — not registered yet."
+  description = "OIDC client secret for yucca-admin-api (FUTO_ZITADEL_OAUTH_CLIENT_SECRET_YUCCA_INTERNAL_TOOLING in shared_tf; ref stays commented in tf/.env.prod until minted)."
   type        = string
   sensitive   = true
   default     = ""

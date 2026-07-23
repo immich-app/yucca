@@ -34,10 +34,13 @@ spec:
     # secretData nulled: replaced by the TF-provisioned `yucca-admin-api` Secret
     # (OIDC_ADMIN_CLIENT_ID/SECRET) via the chart's envFrom: secretRef.
     secretData: null
-    # Not publicly routed — exposed via Tailscale later; set redirect URIs then.
-    oidcIssuer: ${OIDC_ISSUER}
-    oidcRedirectUri: https://CHANGEME/api/auth/oidc/callback
-    oidcLogoutRedirectUri: https://CHANGEME
+    # Not publicly routed — reached over the NetBird overlay at
+    # ${YUCCA_ADMIN_HOST} (per-cluster, from cluster-settings). Admin auth uses
+    # the internal FUTO Zitadel (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in
+    # shared_tf), not the customer ${OIDC_ISSUER}.
+    oidcIssuer: https://auth.internal.futo.cloud
+    oidcRedirectUri: https://${YUCCA_ADMIN_HOST}/api/auth/oidc/callback
+    oidcLogoutRedirectUri: https://${YUCCA_ADMIN_HOST}
     env:
       - name: NODE_ENV
         value: production
