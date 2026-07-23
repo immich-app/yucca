@@ -43,7 +43,9 @@ spec:
         {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          {{- /* No explicit tag ⇒ the release image for this chart's stamped
+               appVersion (GHCR tags carry the v prefix, appVersion doesn't). */}}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default (printf "v%s" .Chart.AppVersion) }}"
           imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
           securityContext:
             {{- if .Values.containerSecurityContext }}

@@ -26,7 +26,11 @@ spec:
   values:
     image:
       repository: ghcr.io/immich-app/yucca/web
-      tag: ${YUCCA_IMAGE_TAG}
+      # Substituted from the image-versions ConfigMap: staging's is rewritten
+      # in-cluster to the latest CI build (flux-operator ResourceSet), prod's is
+      # release-please-stamped in git. If unset, the empty default lets the
+      # chart fall back to v<appVersion> — the matching release image.
+      tag: ${YUCCA_IMAGE_TAG:=}
     env:
       - name: NODE_ENV
         value: production

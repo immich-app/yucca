@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/immich-app/yucca/compare/v0.15.0...v0.15.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **ci:** change bumping workflow ([#311](https://github.com/immich-app/yucca/issues/311)) ([c938fc3](https://github.com/immich-app/yucca/commit/c938fc379a072fe76e533d9ed9a0632b793b22ed))
+
 ## [0.15.0](https://github.com/immich-app/yucca/compare/v0.14.1...v0.15.0) (2026-07-23)
 
 

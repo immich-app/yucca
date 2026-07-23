@@ -3,10 +3,6 @@ name: Deploy
 on:
   push:
     branches: [main]
-    # The gated prod promotion commits the pin back to main; ignore that path
-    # so it can't retrigger the workflow (it's also marked [skip ci]).
-    paths-ignore:
-      - kubernetes/clusters/prod/htz-fsn1/image-versions.yaml
   workflow_dispatch:
 
 concurrency:
@@ -25,13 +21,10 @@ env:
 
 jobs:
   # ── Build + push every app image (the ONLY delivery action CI performs) ──
+  # Release commits build like any other — they're the stamped tree the release
+  # tag points at, and they additionally push v<version> image tags (below).
   build:
     name: Build ${{ matrix.app.name }}
-    # Release-please commits only touch changelog/version bookkeeping — the app
-    # tree is identical to the parent, whose images already exist. Skip the
-    # rebuild; release-promote.yml retags the parent's images with the release
-    # tag (a manifest copy).
-    if: "${{ !startsWith(github.event.head_commit.message, 'chore(main): release') }}"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -61,16 +54,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Release commits (release-please merges) additionally get the release
+      # image tag, v<version> from the stamped root package.json — the same tag
+      # release-please pins into prod's pin files in that very commit. Prod's
+      # rollout stalls harmlessly (old pods keep serving) until this build
+      # pushes; no retag/promote workflow needed.
+      - name: Compute release image tag
+        id: release
+        if: "startsWith(github.event.head_commit.message, 'chore(main): release')"
+        env:
+          APP: ${{ matrix.app.name }}
+        run: echo "tag=${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: .
           file: ${{ matrix.app.dockerfile }}
           push: true
+          # The empty line when steps.release is skipped is filtered out.
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:${{ env.BUILD_TAG }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:sha-${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:main
+            ${{ steps.release.outputs.tag }}
           cache-from: type=gha,scope=${{ matrix.app.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
 
@@ -79,8 +86,11 @@ jobs:
   # rolls it out in-cluster. Outcome is visible as a GitHub commit status
   # (notification-controller Provider), not as a job here. No GHA step needed.
 
-  # Production promotion lives in release-promote.yml. The gate is the
-  # release-please PR merge itself: on release publish, the parent commit's
-  # already-built sha images are retagged with the release tag (manifest copy,
-  # no rebuild) and the prod pin (flux-release tag + YUCCA_IMAGE_TAG) is
-  # committed via .github/scripts/promote-prod.sh.
+  # Production promotion is the release-please PR itself: it stamps the new
+  # tag into both prod pins (kubernetes/clusters/prod/htz-fsn1/
+  # {flux-release,image-versions}.yaml, extra-files), so merging it commits
+  # the promotion through normal review — no promote workflow, no bot push to
+  # main. Prod Flux pulls the pins from main and the app tree + charts from
+  # the tag; images are the v<version> tags pushed by the build job above on
+  # that same release commit. Rollback = revert the two stamped lines in a
+  # normal PR.

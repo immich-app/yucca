@@ -85,6 +85,14 @@
         {
           "type": "generic",
           "path": "charts/apps/yucca-metrics-worker/Chart.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "kubernetes/clusters/prod/htz-fsn1/flux-release.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "kubernetes/clusters/prod/htz-fsn1/image-versions.yaml"
         }
       ]
     }

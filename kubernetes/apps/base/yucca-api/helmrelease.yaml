@@ -28,8 +28,11 @@ spec:
     replicas: ${API_REPLICAS}
     image:
       repository: ghcr.io/immich-app/yucca/yucca-api
-      # Substituted by Flux postBuild from the image-versions ConfigMap (CI-bumped).
-      tag: ${YUCCA_IMAGE_TAG}
+      # Substituted from the image-versions ConfigMap: staging's is rewritten
+      # in-cluster to the latest CI build (flux-operator ResourceSet), prod's is
+      # release-please-stamped in git. If unset, the empty default lets the
+      # chart fall back to v<appVersion> — the matching release image.
+      tag: ${YUCCA_IMAGE_TAG:=}
     # Migration Job assumes the dev image layout; dist-only prod image migrates
     # at boot. Re-enable once the Job has a prod-compatible command.
     migration:
