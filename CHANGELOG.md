@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/immich-app/yucca/compare/v0.14.1...v0.15.0) (2026-07-23)
+
+
+### Features
+
+* **yucca sdk:** hooks for creating db dump & performing rollback ([#309](https://github.com/immich-app/yucca/issues/309)) ([4cbdde3](https://github.com/immich-app/yucca/commit/4cbdde3ac506c64a5993094cf3d1428b1d1086a3))
+
 ## [0.14.1](https://github.com/immich-app/yucca/compare/v0.14.0...v0.14.1) (2026-07-22)
 
 
