@@ -1,0 +1,17 @@
+exclusions:
+  template-job-rule:
+    reason: fleet-scoped dashboards; no per-job drill-down variable by design
+  template-instance-rule:
+    reason: fleet-scoped dashboards; no per-instance drill-down variable by design
+  target-job-rule:
+    reason: queries pin exporters with explicit job labels instead of a $job variable
+  target-instance-rule:
+    reason: panels aggregate across the fleet; no $instance filtering by design
+  panel-title-description-rule:
+    reason: panel titles are self-describing; per-panel descriptions are not maintained
+  target-rate-interval-rule:
+    reason: fixed rate windows are deliberate; revisit if migrating to $__rate_interval
+  uneditable-dashboard:
+    reason: grafana-operator reverts drift each resync; editable kept for ad-hoc exploration
+  template-on-time-change-reload-rule:
+    reason: refresh-on-time-range-change not set on the datasource variable; revisit
