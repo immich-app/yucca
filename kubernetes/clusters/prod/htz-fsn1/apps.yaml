@@ -10,9 +10,10 @@
 #   cluster-apps   everything else (CRs + workloads) — dependsOn cluster-infra.
 #
 # Substitution precedence (last wins): cluster-settings-generated (TF) ->
-# cluster-settings (human) -> image-versions (the committed, CI-promoted prod
-# tag); keys are disjoint by design. Injected into the NESTED Kustomizations via
-# the patches block (both layers' direct objects use no ${vars} themselves).
+# cluster-settings (human) -> image-versions (release-please-stamped prod
+# image pin; see image-versions.yaml); keys are disjoint by design. Injected
+# into the NESTED Kustomizations via the patches block (both layers' direct
+# objects use no ${vars} themselves).
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:

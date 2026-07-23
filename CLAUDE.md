@@ -175,7 +175,8 @@ account-wide stacks. Slug = `<partition>-<region>`.
   identical whether Tilt or Flux renders them.
 
 Deploy flow on merge to main: CI builds images tagged `0.0.<run_number>` → Flux auto-promotes the
-highest tag to staging → production is gated behind a reviewed `promote-production` job.
+highest tag to staging → production is promoted by merging the release-please PR, which stamps the
+release tag into both prod pins (`kubernetes/clusters/prod/htz-fsn1/{flux-release,image-versions}.yaml`).
 
 ## Conventions
 
