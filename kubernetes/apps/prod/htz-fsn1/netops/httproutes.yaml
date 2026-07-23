@@ -94,3 +94,57 @@ spec:
   to:
     - group: ""
       kind: Service
+---
+# yucca-admin-api — NetBird-only human access (${YUCCA_ADMIN_HOST}); the admin
+# OIDC redirect URIs in the base HR derive from the same host.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: admin
+  namespace: netops
+spec:
+  parentRefs: [{ name: netops, sectionName: https }]
+  hostnames: [admin.father.fsn.htz.yucca.futo.network]
+  rules:
+    - backendRefs:
+        - name: yucca-admin-api
+          namespace: yucca
+          port: 3030
+---
+# Allow the cross-namespace backendRef above (netops HTTPRoute -> yucca Service).
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: netops-admin
+  namespace: yucca
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: netops
+  to:
+    - group: ""
+      kind: Service
+---
+# The yucca namespace is default-deny (components/apps/networkpolicies.yaml);
+# open admin-api to the netops gateway's envoy pods only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-admin-api-netops
+  namespace: yucca
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: yucca-admin-api
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: netops
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: envoy
+      ports:
+        - { port: 3030, protocol: TCP }

@@ -68,15 +68,17 @@ variable "yucca_oidc_device_client_id" {
   default     = ""
 }
 
-# yucca-admin-api OIDC client (separate registration from yucca-api).
+# yucca-admin-api OIDC client (separate registration from yucca-api): the
+# internal-tooling app on auth.internal.futo.cloud, shared with prod
+# (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in shared_tf).
 variable "yucca_oidc_admin_client_id" {
-  description = "OIDC client ID for yucca-admin-api (staging IdP). Injected via TF_VAR from 1P."
+  description = "OIDC client ID for yucca-admin-api (internal-tooling app). Injected via TF_VAR from 1P."
   type        = string
   default     = ""
 }
 
 variable "yucca_oidc_admin_client_secret" {
-  description = "OIDC client secret for yucca-admin-api (staging IdP). Injected via TF_VAR from 1P."
+  description = "OIDC client secret for yucca-admin-api (internal-tooling app; ref stays commented in tf/.env until minted). Injected via TF_VAR from 1P."
   type        = string
   sensitive   = true
   default     = ""

@@ -11,8 +11,11 @@
 #   api/admin-api/worker      → CNPG pods :5432 (yucca-db-rw/-ro)
 #   CNPG replication          → CNPG pods :5432 (pod↔pod)
 #   cnpg-system operator      → CNPG pods :8000 (instance manager)
-#   admin-api / metrics-worker: NO inbound at all (no HTTPRoute; cron worker) —
-#                               the default-deny is their whole policy
+#   admin-api / metrics-worker: NO inbound in this component (no HTTPRoute;
+#                               cron worker) — the default-deny is their whole
+#                               policy here. father additionally opens admin-api
+#                               to its netops gateway (apps/prod/htz-fsn1/netops/
+#                               httproutes.yaml, NetBird-only access).
 #   nothing scrapes this namespace; logs are collected node-side; kubelet
 #   probes are exempt from NetworkPolicy
 apiVersion: networking.k8s.io/v1
