@@ -3,6 +3,7 @@ import RestoreSnapshotModal from '$lib/components/backups/dialogs/RestoreSnapsho
 import { SocketEvent } from '$lib/events';
 import {
   getSnapshots,
+  type ImmichRollbackRequestDto,
   type RepositorySnapshotRestoreFromPointRequestDto,
   type RepositorySnapshotRestoreRequestDto,
   type RunDto,
@@ -11,7 +12,7 @@ import {
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
-import { mdiBackupRestore, mdiDeleteOutline } from '@mdi/js';
+import { mdiBackupRestore, mdiDeleteOutline, mdiHistory } from '@mdi/js';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const snapshotKeys = {
@@ -122,6 +123,16 @@ export const handleForgetSnapshot = async (
   }
 };
 
+export const useRollbackSnapshot = () =>
+  createMutation(
+    () => ({
+      mutationFn: (dto: ImmichRollbackRequestDto) =>
+        sdk.startImmichRollback(dto),
+      onError: (error) => handleError(error, 'Failed to start rollback'),
+    }),
+    () => queryClient,
+  );
+
 export const handleGetSnapshotListing = async (
   id: string,
   snapshotId: string,
@@ -138,8 +149,10 @@ export const handleGetSnapshotListing = async (
 export const getSnapshotActions = (
   repositoryId: string,
   snapshot: SnapshotDto,
+  immich?: boolean,
 ) => {
   const removeSnapshot = useRemoveSnapshot(repositoryId);
+  const rollback = useRollbackSnapshot();
 
   const Restore: ActionItem = {
     title: 'Restore',
@@ -149,6 +162,13 @@ export const getSnapshotActions = (
         repository: repositoryId,
         snapshot: snapshot.id,
       }),
+  };
+
+  const Rollback: ActionItem = {
+    title: 'Rollback',
+    icon: mdiHistory,
+    onAction: () => rollback.mutate({ repositoryId, snapshotId: snapshot.id }),
+    $if: () => immich === true,
   };
 
   const Delete: ActionItem = {
@@ -171,5 +191,5 @@ export const getSnapshotActions = (
     },
   };
 
-  return { Restore, Delete };
+  return { Restore, Rollback, Delete };
 };

@@ -13,9 +13,10 @@
 
   type Props = {
     repository: LocalRepositoryDto;
+    immich?: boolean;
   };
 
-  let { repository }: Props = $props();
+  let { repository, immich = false }: Props = $props();
 
   const { advanced } = options;
   // svelte-ignore state_referenced_locally
@@ -35,7 +36,11 @@
       <Text class="text-center py-6" color="muted">No backups yet</Text>
     {:else}
       {#each snapshots as snapshot (snapshot.id)}
-        <RepositorySnapshotsListItem repositoryId={repository.id} {snapshot} />
+        <RepositorySnapshotsListItem
+          repositoryId={repository.id}
+          {snapshot}
+          {immich}
+        />
       {/each}
     {/if}
   {/snippet}

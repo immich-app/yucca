@@ -163,6 +163,30 @@
         ]
       }
     },
+    "/api/yucca/integrations/immich/rollback": {
+      "post": {
+        "operationId": "startImmichRollback",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImmichRollbackRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/api/yucca/onboarding": {
       "get": {
         "operationId": "onboardingStatus",
@@ -1404,6 +1428,24 @@
           "dataFolders",
           "backupConfiguration",
           "libraries"
+        ]
+      },
+      "ImmichRollbackRequestDto": {
+        "type": "object",
+        "properties": {
+          "repositoryId": {
+            "type": "string"
+          },
+          "snapshotId": {
+            "type": "string"
+          },
+          "backupFileName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repositoryId",
+          "snapshotId"
         ]
       },
       "BootstrapStatus": {

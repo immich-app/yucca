@@ -21,6 +21,7 @@ async function bootstrap() {
           ],
           hooks: {
             async createDatabaseBackup() {},
+            async enterMaintenanceRollback() {},
           },
         },
       }),

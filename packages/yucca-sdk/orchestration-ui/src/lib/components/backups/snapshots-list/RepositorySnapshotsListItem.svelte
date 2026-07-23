@@ -8,15 +8,16 @@
   type Props = {
     repositoryId: string;
     snapshot: SnapshotDto;
+    immich?: boolean;
   };
 
-  const { repositoryId, snapshot }: Props = $props();
-  const { Restore, Delete } = $derived(
-    getSnapshotActions(repositoryId, snapshot),
+  const { repositoryId, snapshot, immich = false }: Props = $props();
+  const { Restore, Rollback, Delete } = $derived(
+    getSnapshotActions(repositoryId, snapshot, immich),
   );
 </script>
 
-<StackListItem actions={[Restore, Delete]}>
+<StackListItem actions={[Restore, Rollback, Delete]}>
   <HStack>
     <RelativeTime time={snapshot.time} />
 

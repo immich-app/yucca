@@ -87,6 +87,11 @@ export type ConfigureImmichIntegrationRequestDto = {
     libraries: "all" | string[];
     retentionPolicy?: (RetentionPolicyDto) | null;
 };
+export type ImmichRollbackRequestDto = {
+    repositoryId: string;
+    snapshotId: string;
+    backupFileName?: string;
+};
 export type BootstrapStatus = "not-ready" | "ready" | "error";
 export type TelemetryLevel = "full" | "none";
 export type OnboardingStatusResponseDto = {
@@ -322,6 +327,13 @@ export function configureImmichIntegration(configureImmichIntegrationRequestDto:
         ...opts,
         method: "POST",
         body: configureImmichIntegrationRequestDto
+    })));
+}
+export function startImmichRollback(immichRollbackRequestDto: ImmichRollbackRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/integrations/immich/rollback", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: immichRollbackRequestDto
     })));
 }
 export function onboardingStatus(opts?: Oazapfts.RequestOpts) {
