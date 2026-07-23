@@ -29,7 +29,7 @@
       },
       "id": 1,
       "panels": [],
-      "title": "Cluster state",
+      "title": "Fleet",
       "type": "row"
     },
     {
@@ -41,42 +41,21 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "OK"
-                },
-                "1": {
-                  "color": "yellow",
-                  "index": 1,
-                  "text": "WARN"
-                },
-                "2": {
-                  "color": "red",
-                  "index": 2,
-                  "text": "ERR"
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": 0
               },
               {
                 "color": "yellow",
-                "value": 1
+                "value": 46
               },
               {
-                "color": "red",
-                "value": 2
+                "color": "green",
+                "value": 48
               }
             ]
           },
@@ -110,10 +89,10 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "ceph_health_status{cluster=~\"$cluster\"}"
+          "expr": "count(up{cluster=~\"$cluster\", job=\"ceph-node-exporter\"} == 1)"
         }
       ],
-      "title": "Health",
+      "title": "Nodes reporting",
       "type": "stat"
     },
     {
@@ -130,20 +109,13 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": 0
-              },
-              {
-                "color": "yellow",
-                "value": 3
-              },
-              {
                 "color": "green",
-                "value": 5
+                "value": 0
               }
             ]
           },
-          "unit": "short"
+          "unit": "percentunit",
+          "decimals": 1
         },
         "overrides": []
       },
@@ -173,10 +145,10 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(ceph_mon_quorum_status{cluster=~\"$cluster\"})"
+          "expr": "1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\", mode=\"idle\"}[$__rate_interval]))"
         }
       ],
-      "title": "Mons in quorum",
+      "title": "Fleet CPU",
       "type": "stat"
     },
     {
@@ -193,16 +165,21 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": 0
               },
               {
-                "color": "green",
-                "value": 500
+                "color": "yellow",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.25
               }
             ]
           },
-          "unit": "short"
+          "unit": "percentunit",
+          "decimals": 1
         },
         "overrides": []
       },
@@ -232,17 +209,10 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(ceph_osd_up{cluster=~\"$cluster\"})"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "B",
-          "expr": "count(ceph_osd_up{cluster=~\"$cluster\"})"
+          "expr": "avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\", mode=\"iowait\"}[$__rate_interval]))"
         }
       ],
-      "title": "OSDs up / total",
+      "title": "Fleet iowait",
       "type": "stat"
     },
     {
@@ -264,7 +234,8 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "percentunit",
+          "decimals": 1
         },
         "overrides": []
       },
@@ -294,10 +265,10 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(ceph_osd_in{cluster=~\"$cluster\"})"
+          "expr": "1 - sum(node_memory_MemAvailable_bytes{cluster=~\"$cluster\"}) / sum(node_memory_MemTotal_bytes{cluster=~\"$cluster\"})"
         }
       ],
-      "title": "OSDs in",
+      "title": "Fleet memory used",
       "type": "stat"
     },
     {
@@ -310,30 +281,16 @@
             "mode": "thresholds"
           },
           "mappings": [],
-          "max": 1,
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "yellow",
-                "value": 0.7
-              },
-              {
-                "color": "orange",
-                "value": 0.8
-              },
-              {
-                "color": "red",
-                "value": 0.9
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "Bps"
         },
         "overrides": []
       },
@@ -345,17 +302,17 @@
       },
       "id": 6,
       "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
       "targets": [
         {
@@ -363,12 +320,11 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(ceph_cluster_total_used_bytes{cluster=~\"$cluster\"}) / sum(ceph_cluster_total_bytes{cluster=~\"$cluster\"})"
+          "expr": "sum(rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=\"bond0.120\"}[$__rate_interval]))"
         }
       ],
-      "title": "Raw used",
-      "type": "gauge",
-      "description": "Raw includes EC parity + block.db; use pool % for planning"
+      "title": "Fabric RX (all nodes)",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -389,7 +345,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "Bps"
         },
         "overrides": []
       },
@@ -419,10 +375,10 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(ceph_pool_objects{cluster=~\"$cluster\"})"
+          "expr": "sum(rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=\"bond0.120\"}[$__rate_interval]))"
         }
       ],
-      "title": "Objects",
+      "title": "Fabric TX (all nodes)",
       "type": "stat"
     },
     {
@@ -435,7 +391,7 @@
       },
       "id": 8,
       "panels": [],
-      "title": "Placement groups",
+      "title": "Per node: hotspots",
       "type": "row"
     },
     {
@@ -479,7 +435,9 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -510,53 +468,12 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(ceph_pg_degraded{cluster=~\"$cluster\"})",
-          "legendFormat": "degraded"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "B",
-          "expr": "sum(ceph_pg_undersized{cluster=~\"$cluster\"})",
-          "legendFormat": "undersized"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "C",
-          "expr": "sum(ceph_pg_peering{cluster=~\"$cluster\"})",
-          "legendFormat": "peering"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "D",
-          "expr": "sum(ceph_pg_backfilling{cluster=~\"$cluster\"})",
-          "legendFormat": "backfilling"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "E",
-          "expr": "sum(ceph_pg_recovering{cluster=~\"$cluster\"})",
-          "legendFormat": "recovering"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "F",
-          "expr": "sum(ceph_pg_inconsistent{cluster=~\"$cluster\"})",
-          "legendFormat": "inconsistent"
+          "expr": "topk(10, 1 - avg by (instance) (rate(node_cpu_seconds_total{cluster=~\"$cluster\", mode=\"idle\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}}"
         }
       ],
-      "title": "PG states (unhealthy)",
-      "type": "timeseries",
-      "description": "All zero on a healthy cluster"
+      "title": "CPU busy (top 10)",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -599,7 +516,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -630,410 +547,11 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(ceph_pg_active{cluster=~\"$cluster\"})",
-          "legendFormat": "active"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "B",
-          "expr": "sum(ceph_pg_clean{cluster=~\"$cluster\"})",
-          "legendFormat": "clean"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "C",
-          "expr": "sum(ceph_pg_total{cluster=~\"$cluster\"})",
-          "legendFormat": "total"
+          "expr": "topk(10, avg by (instance) (rate(node_cpu_seconds_total{cluster=~\"$cluster\", mode=\"iowait\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}}"
         }
       ],
-      "title": "PGs active/clean vs total",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 15
-      },
-      "id": 11,
-      "panels": [],
-      "title": "Client + recovery IO",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "uid": "$datasource"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "Bps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 16
-      },
-      "id": 12,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "Last *",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "A",
-          "expr": "sum(rate(ceph_pool_rd_bytes{cluster=~\"$cluster\"}[$__rate_interval]))",
-          "legendFormat": "read"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "B",
-          "expr": "sum(rate(ceph_pool_wr_bytes{cluster=~\"$cluster\"}[$__rate_interval]))",
-          "legendFormat": "write"
-        }
-      ],
-      "title": "Client throughput",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "uid": "$datasource"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "iops"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 13,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "Last *",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "A",
-          "expr": "sum(rate(ceph_pool_rd{cluster=~\"$cluster\"}[$__rate_interval]))",
-          "legendFormat": "read"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "B",
-          "expr": "sum(rate(ceph_pool_wr{cluster=~\"$cluster\"}[$__rate_interval]))",
-          "legendFormat": "write"
-        }
-      ],
-      "title": "Client IOPS",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "uid": "$datasource"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
-      },
-      "id": 14,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "Last *",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "A",
-          "expr": "sum(rate(ceph_osd_recovery_ops{cluster=~\"$cluster\"}[$__rate_interval]))",
-          "legendFormat": "recovery"
-        }
-      ],
-      "title": "Recovery ops/s",
-      "type": "timeseries",
-      "description": "Non-zero means rebalance/recovery is running"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 32
-      },
-      "id": 15,
-      "panels": [],
-      "title": "OSD latency + fullness",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "uid": "$datasource"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 33
-      },
-      "id": 16,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "Last *",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "A",
-          "expr": "avg(ceph_osd_apply_latency_ms{cluster=~\"$cluster\"})",
-          "legendFormat": "apply (avg)"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "B",
-          "expr": "avg(ceph_osd_commit_latency_ms{cluster=~\"$cluster\"})",
-          "legendFormat": "commit (avg)"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "C",
-          "expr": "max(ceph_osd_apply_latency_ms{cluster=~\"$cluster\"})",
-          "legendFormat": "apply (worst OSD)"
-        },
-        {
-          "datasource": {
-            "uid": "$datasource"
-          },
-          "refId": "D",
-          "expr": "max(ceph_osd_commit_latency_ms{cluster=~\"$cluster\"})",
-          "legendFormat": "commit (worst OSD)"
-        }
-      ],
-      "title": "OSD apply/commit latency",
+      "title": "iowait (top 10)",
       "type": "timeseries"
     },
     {
@@ -1086,8 +604,432 @@
       "gridPos": {
         "h": 8,
         "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(10, 1 - node_memory_MemAvailable_bytes{cluster=~\"$cluster\"} / node_memory_MemTotal_bytes{cluster=~\"$cluster\"})",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "title": "Memory used (top 10)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
         "x": 12,
-        "y": 33
+        "y": 15
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(10, node_load15{cluster=~\"$cluster\"} / count by (instance) (node_cpu_seconds_total{cluster=~\"$cluster\", mode=\"idle\"}))",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "title": "Load15 / cores (top 10)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 13,
+      "panels": [],
+      "title": "Storage + network",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(10, rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=\"bond0.120\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} RX"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "expr": "topk(10, rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=\"bond0.120\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} TX"
+        }
+      ],
+      "title": "Ceph public VLAN (bond0.120) per node, top 10",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 15,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(10, rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=\"bond0.122\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} RX"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "expr": "topk(10, rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=\"bond0.122\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} TX"
+        }
+      ],
+      "title": "Replication VLAN (bond0.122) per node, top 10",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(10, rate(node_disk_io_time_seconds_total{cluster=~\"$cluster\", device=~\"sd.*\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} {{device}}"
+        }
+      ],
+      "title": "Disk busy %, worst 10 (HDDs)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
       },
       "id": 17,
       "options": {
@@ -1110,18 +1052,18 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "topk(10, ceph_osd_stat_bytes_used{cluster=~\"$cluster\"} / ceph_osd_stat_bytes{cluster=~\"$cluster\"})",
-          "legendFormat": "{{ceph_daemon}}"
+          "expr": "topk(10, rate(node_disk_write_time_seconds_total{cluster=~\"$cluster\", device=~\"sd.*\"}[$__rate_interval]) / rate(node_disk_writes_completed_total{cluster=~\"$cluster\", device=~\"sd.*\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} {{device}}"
         }
       ],
-      "title": "Fullest OSDs (top 10)",
+      "title": "Disk write latency, worst 10 (HDDs)",
       "type": "timeseries"
     }
   ],
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["spice", "ceph", "prod"],
+  "tags": ["spice", "nodes", "prod"],
   "templating": {
     "list": [
       {
@@ -1129,7 +1071,7 @@
           "text": "default",
           "value": "default"
         },
-        "label": "Data Source",
+        "label": "Data source",
         "name": "datasource",
         "options": [],
         "query": "prometheus",
@@ -1146,7 +1088,7 @@
         "label": "cluster",
         "name": "cluster",
         "options": [],
-        "query": "label_values(ceph_health_status, cluster)",
+        "query": "label_values(node_uname_info, cluster)",
         "refresh": 1,
         "regex": "",
         "sort": 1,
@@ -1160,7 +1102,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Spice: Ceph health",
-  "uid": "spice-ceph-health",
+  "title": "Spice: Node fleet",
+  "uid": "yucca-spice-nodes",
   "version": 1
 }

@@ -21,6 +21,11 @@ kustomize = "5.8.1"            # flux-local shells out to it
 flux2 = "2.7.5"                # ...and to the flux CLI
 uv = "0.9.18"
 
+# github backend: the aqua backend fails to verify cosign v3's sigstore
+# bundles ("No bundle found in attestation").
+"github:sigstore/cosign" = "3.1.2"
+"github:grafana/dashboard-linter" = "0.2.0"
+
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
 opentofu = "1.11.5"
 terragrunt = "0.99.4"
@@ -64,6 +69,18 @@ run = [{ tasks = ["lint", "*:check"] }, { task = "format" }, { task = "test" }]
 [tasks.fix]
 description = "Run all possible code fixes"
 run = [{ task = "*:fix" }, { task = "web:lingui" }]
+
+[tasks."o11y:render"]
+description = "Render the o11y bundle"
+usage = '''
+arg "<output-dir>" default="/tmp/yucca-o11y"
+arg "<repo>" default="immich-app/yucca"
+'''
+run = '.github/scripts/render-o11y-manifests.sh "${usage_output_dir?}" "${usage_repo?}"'
+
+[tasks."o11y:lint"]
+description = "Lint dashboards"
+run = "for f in o11y/dashboards/*.json; do dashboard-linter lint --strict \"$f\"; done"
 
 # ─── Infrastructure (tf + ansible) ──────────────────────────────────────────
 # tf:* tasks wrap terragrunt with tf/op-run.sh, which injects secrets from

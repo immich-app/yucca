@@ -1,5 +1,5 @@
 {
-  "uid": "fabric-htz-fsn1",
+  "uid": "yucca-fabric-htz-fsn1",
   "title": "Fabric: htz-fsn1 overview",
   "timezone": "browser",
   "refresh": "5s",
@@ -686,7 +686,7 @@
           "text": "default",
           "value": "default"
         },
-        "label": "Data Source",
+        "label": "Data source",
         "name": "datasource",
         "options": [],
         "query": "prometheus",

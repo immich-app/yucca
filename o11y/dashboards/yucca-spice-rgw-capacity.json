@@ -2755,7 +2755,7 @@
           "text": "default",
           "value": "default"
         },
-        "label": "Data Source",
+        "label": "Data source",
         "name": "datasource",
         "options": [],
         "query": "prometheus",
@@ -2804,6 +2804,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "RGW Bucket Capacity & Performance",
-  "uid": "spice-rgw-capacity",
+  "uid": "yucca-spice-rgw-capacity",
   "version": 1
 }

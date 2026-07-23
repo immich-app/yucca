@@ -1,0 +1,118 @@
+---
+name: o11y
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - o11y/**
+      - .github/workflows/o11y.yml
+      - .github/scripts/render-o11y-manifests.sh
+      - .mise/config.toml
+  pull_request:
+    paths:
+      - o11y/**
+      - .github/workflows/o11y.yml
+      - .github/scripts/render-o11y-manifests.sh
+      - .mise/config.toml
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}/o11y-manifests
+  MISE_AUTO_INSTALL: 'false'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          install_args: kustomize github:grafana/dashboard-linter
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          cache: false
+
+      - name: Validate dashboards
+        run: |
+          set -euo pipefail
+          for f in o11y/dashboards/*.json; do
+            jq -e '.uid and .title and (.panels | length > 0)' "$f" >/dev/null \
+              || { echo "::error file=$f::invalid dashboard (needs uid, title, panels)"; exit 1; }
+          done
+          echo "validated: $(ls o11y/dashboards/*.json | wc -l) dashboards"
+
+      - name: Lint dashboards
+        run: mise run o11y:lint
+
+      - name: Render manifests
+        run: |
+          set -euo pipefail
+          manifests=$(mktemp -d)
+          mise run o11y:render "$manifests" "${GITHUB_REPOSITORY}"
+          (cd "$manifests" && kustomize create --autodetect --recursive && kustomize build . >/dev/null)
+          echo "bundle builds cleanly"
+
+  push:
+    needs: validate
+    # Only main and releases may publish and sign; blocks workflow_dispatch on
+    # arbitrary branches from minting tags (e.g. a branch named "latest").
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          install_args: flux2 github:sigstore/cosign
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          cache: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push and Sign
+        env:
+          PRIMARY_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
+        run: |
+          set -euo pipefail
+          PRIMARY_TAG=${PRIMARY_TAG//[!a-zA-Z0-9._-]/-}
+
+          manifests=$(mktemp -d)
+          mise run o11y:render "$manifests" "${GITHUB_REPOSITORY}"
+
+          digest_url=$(flux push artifact "oci://${IMAGE}:${PRIMARY_TAG}" \
+            --path="$manifests" \
+            --source="https://github.com/${GITHUB_REPOSITORY}" \
+            --revision="${GITHUB_REF_NAME}@sha1:${GITHUB_SHA}" \
+            --output json | jq -r '.repository + "@" + .digest')
+
+          if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
+            flux tag artifact "oci://${IMAGE}:${PRIMARY_TAG}" --tag latest
+          fi
+
+          cosign sign --yes "${digest_url}"
