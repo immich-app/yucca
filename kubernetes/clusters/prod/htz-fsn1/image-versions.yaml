@@ -8,4 +8,4 @@ metadata:
   name: image-versions
   namespace: flux-system
 data:
-  YUCCA_IMAGE_TAG: main
+  YUCCA_IMAGE_TAG: v0.15.0
