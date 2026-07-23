@@ -55,7 +55,7 @@ Verify manually with:
 
 ```bash
 cosign verify ghcr.io/immich-app/yucca/o11y-manifests:latest \
-  --certificate-identity-regexp '^https://github\.com/immich-app/yucca/\.github/workflows/o11y\.yml@' \
+  --certificate-identity-regexp '^https://github\.com/immich-app/yucca/\.github/workflows/o11y\.yml@refs/(heads/main|tags/v)' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
@@ -80,11 +80,11 @@ spec:
   url: oci://ghcr.io/immich-app/yucca/o11y-manifests
   ref:
     tag: main # fast feedback; use `semver: ">=0.0.0"` or `tag: latest` for release-only
-  verify: # gate on the CI cosign signature
+  verify: # gate on the CI cosign signature, pinned to main/release identities
     provider: cosign
     matchOIDCIdentity:
       - issuer: "^https://token\\.actions\\.githubusercontent\\.com$"
-        subject: "^https://github\\.com/immich-app/yucca/\\.github/workflows/o11y\\.yml@.*$"
+        subject: "^https://github\\.com/immich-app/yucca/\\.github/workflows/o11y\\.yml@refs/(heads/main|tags/v[^@]+)$"
   # secretRef: { name: ghcr-pull }   # only if the GHCR package stays private
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

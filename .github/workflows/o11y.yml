@@ -8,10 +8,14 @@ on:
     paths:
       - o11y/**
       - .github/workflows/o11y.yml
+      - .github/scripts/render-o11y-manifests.sh
+      - .mise/config.toml
   pull_request:
     paths:
       - o11y/**
       - .github/workflows/o11y.yml
+      - .github/scripts/render-o11y-manifests.sh
+      - .mise/config.toml
   release:
     types:
       - published
@@ -63,7 +67,9 @@ jobs:
 
   push:
     needs: validate
-    if: github.event_name != 'pull_request'
+    # Only main and releases may publish and sign; blocks workflow_dispatch on
+    # arbitrary branches from minting tags (e.g. a branch named "latest").
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
