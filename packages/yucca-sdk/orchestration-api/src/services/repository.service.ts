@@ -31,6 +31,7 @@ import { DatabaseRepository } from '../repositories/database.repository';
 import { LoggingRepository } from '../repositories/logging.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
+import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RepositoryLocalMetricsRepository } from '../repositories/repositoryLocalMetrics.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { ResticRepository } from '../repositories/restic.repository';
@@ -55,6 +56,7 @@ export class RepositoryService {
     private readonly repository: RepositoryRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryLocalMetrics: RepositoryLocalMetricsRepository,
+    private readonly repositoryIntegrationImmich: RepositoryIntegrationImmichRepository,
     private readonly moduleConfig: ModuleConfigRepository,
     private readonly storage: StorageRepository,
     @Inject(forwardRef(() => BootstrapService))
@@ -486,6 +488,30 @@ export class RepositoryService {
 
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
+
+                const config = this.moduleConfig.get();
+                if (config.immichIntegration) {
+                  const immichIntegration = await this.repositoryIntegrationImmich.get();
+                  if (id === immichIntegration?.id) {
+                    this.telemetry.submitStructuredLog('Creating Immich database backup', {
+                      repositoryId: id,
+                    });
+
+                    try {
+                      await config.immichIntegration.hooks.createDatabaseBackup();
+
+                      this.telemetry.submitStructuredLog('Created Immich database backup', {
+                        repositoryId: id,
+                      });
+                    } catch (error) {
+                      this.telemetry.submitStructuredLog('Failed to create Immich database backup', {
+                        repositoryId: id,
+                        error,
+                      });
+                    }
+                  }
+                }
+
                 await this.restic.unlockAll(endpoint, key);
                 const summary = await this.restic.backup(endpoint, key, paths, log, taskSignal);
 

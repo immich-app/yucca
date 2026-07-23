@@ -70,7 +70,7 @@
         <ImmichManageBackupOverview {repository} {schedule} />
         <BackendsList {repository} />
         <RepositoryRunHistory {repository} />
-        <RepositorySnapshotsList {repository} />
+        <RepositorySnapshotsList {repository} immich />
       </Stack>
     {/if}
   </Container>

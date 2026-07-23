@@ -98,3 +98,18 @@ export class ConfigureImmichIntegrationRequestDto {
   @IsObject()
   retentionPolicy?: RetentionPolicyDto | null;
 }
+
+export class ImmichRollbackRequestDto {
+  @ApiProperty({ type: String })
+  @IsString()
+  repositoryId!: string;
+
+  @ApiProperty({ type: String })
+  @IsString()
+  snapshotId!: string;
+
+  @ApiProperty({ type: String, required: false })
+  @IsOptional()
+  @IsString()
+  backupFileName?: string;
+}

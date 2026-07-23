@@ -15,6 +15,10 @@ export type ImmichIntegration = {
     importPaths: string[];
     exclusionPatterns: string[];
   }[];
+  hooks: {
+    createDatabaseBackup(): Promise<void>;
+    enterMaintenanceRollback(repositoryId: string, snapshotId: string, backupFileName?: string): Promise<void>;
+  };
 };
 
 export type ModuleConfig = {

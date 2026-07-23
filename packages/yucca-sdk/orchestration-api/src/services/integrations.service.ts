@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { join } from 'node:path';
-import { ConfigureImmichIntegrationRequestDto, IntegrationsResponseDto } from '../dto/integrations.dto';
+import {
+  ConfigureImmichIntegrationRequestDto,
+  ImmichRollbackRequestDto,
+  IntegrationsResponseDto,
+} from '../dto/integrations.dto';
 import { InternalEvent } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import type { ImmichIntegration, ModuleConfig } from '../moduleConfig';
@@ -107,6 +111,15 @@ export class IntegrationsService {
       type: 'IntegrationUpdate',
       integrations: await this.getIntegrationsConfig(),
     });
+  }
+
+  async enterImmichMaintenanceRollback(dto: ImmichRollbackRequestDto) {
+    const { immichIntegration } = this.moduleConfig.get();
+    if (!immichIntegration) {
+      throw new BadRequestException('Immich integration is not enabled.');
+    }
+
+    await immichIntegration.hooks.enterMaintenanceRollback(dto.repositoryId, dto.snapshotId, dto.backupFileName);
   }
 
   private async syncImmichRepositoryPaths(
