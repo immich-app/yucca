@@ -38,7 +38,7 @@ spec:
     # ${YUCCA_ADMIN_HOST} (per-cluster, from cluster-settings). Admin auth uses
     # the internal FUTO Zitadel (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in
     # shared_tf), not the customer ${OIDC_ISSUER}.
-    oidcIssuer: https://auth.internal.futo.cloud
+    oidcIssuer: https://auth.internal.futo.org
     oidcRedirectUri: https://${YUCCA_ADMIN_HOST}/api/auth/oidc/callback
     oidcLogoutRedirectUri: https://${YUCCA_ADMIN_HOST}
     env:

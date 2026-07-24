@@ -69,7 +69,7 @@ variable "yucca_oidc_device_client_id" {
 }
 
 # yucca-admin-api OIDC client (separate registration from yucca-api): the
-# internal-tooling app on auth.internal.futo.cloud, shared with prod
+# internal-tooling app on auth.internal.futo.org, shared with prod
 # (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in shared_tf).
 variable "yucca_oidc_admin_client_id" {
   description = "OIDC client ID for yucca-admin-api (internal-tooling app). Injected via TF_VAR from 1P."
