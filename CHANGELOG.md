@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/immich-app/yucca/compare/v0.17.0...v0.18.0) (2026-07-24)
+
+
+### Features
+
+* **admin:** make admin go brr ([#327](https://github.com/immich-app/yucca/issues/327)) ([37ecd7b](https://github.com/immich-app/yucca/commit/37ecd7bf58809ad6902beeb7a5a0b137b031cc4d))
+
 ## [0.17.0](https://github.com/immich-app/yucca/compare/v0.16.1...v0.17.0) (2026-07-24)
 
 
