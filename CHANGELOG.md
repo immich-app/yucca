@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/immich-app/yucca/compare/v0.19.1...v0.19.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* **michael:** dramatically improve michael latencies ([#324](https://github.com/immich-app/yucca/issues/324)) ([6471d41](https://github.com/immich-app/yucca/commit/6471d41079c875e1fdb312cbf6f8f033687cb932))
+
 ## [0.19.1](https://github.com/immich-app/yucca/compare/v0.19.0...v0.19.1) (2026-07-24)
 
 
