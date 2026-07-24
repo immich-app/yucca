@@ -23,8 +23,10 @@ OP_SERVICE_ACCOUNT_TOKEN=$(op read "${ACCT[@]}" \
 export OP_SERVICE_ACCOUNT_TOKEN
 
 # Render the NETCONF SSH key from 1Password to a 0600 temp file (op run can't
-# write files) — now via the escalated SA.
-KEYF=$(mktemp); chmod 600 "$KEYF"; trap 'rm -f "$KEYF"' EXIT
+# write files) — now via the escalated SA. DETERMINISTIC path: must match the
+# plan job's render exactly (the value lives inside the saved plan).
+KEYF="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/netconf-terraform-key"
+rm -f "$KEYF"; ( umask 077; : > "$KEYF" ); trap 'rm -f "$KEYF"' EXIT
 op read "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/password" > "$KEYF"
 
 export TF_VAR_netconf_ssh_key_path="$KEYF"

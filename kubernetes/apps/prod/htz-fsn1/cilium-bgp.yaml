@@ -49,8 +49,28 @@ spec:
   serviceSelector:
     matchLabels:
       lb: internal
+  # Ranges, not the full /24: .17 is carved out for lb-gw-internal below
+  # (overlapping pools would mark each other conflicting and disable).
   blocks:
-    - cidr: 10.40.12.0/24
+    - start: 10.40.12.1
+      stop: 10.40.12.16
+    - start: 10.40.12.18
+      stop: 10.40.12.254
+---
+# Dedicated internal VIP for the gw (michael) envoy Service: it already draws
+# its public IP from pool-a (lb: public), so a second, label-disjoint pool
+# grants the internal twin (${GW_INT_VIP}) requested via lbipam.cilium.io/ips.
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lb-gw-internal
+spec:
+  serviceSelector:
+    matchLabels:
+      lb-internal-vip: gw
+  blocks:
+    - start: 10.40.12.17
+      stop: 10.40.12.17
 ---
 apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement

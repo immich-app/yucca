@@ -47,6 +47,7 @@ func SetupLogProvider(cfg config.Config) (*sdklog.LoggerProvider, error) {
 	}
 
 	provider := sdklog.NewLoggerProvider(
+		sdklog.WithResource(otelResource()),
 		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
 	)
 	return provider, nil

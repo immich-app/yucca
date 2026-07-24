@@ -1,0 +1,39 @@
+---
+# Internal (on-net) access to michael via ${GW_INT_HOST} → ${GW_INT_VIP}.
+# The public gw VIP rides the transit aggregate and is NOT routable from inside
+# Hetzner (mgmt hosts); this twin listener/VIP serves the same michael backend
+# over the fabric. DNS lives in the NetBird zone (netbird stack dns.tf `gw`).
+#
+# Cert: same DNS-01 pipeline as netops-wildcard; the Secret must live beside
+# the Gateway (envoy-system).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gw-internal
+  namespace: envoy-system
+spec:
+  secretName: gw-internal-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+    - "${GW_INT_HOST}"
+---
+# Route the internal hostname to michael — mirror of apps/base/httproutes/gw.yaml
+# (which stays ${GW_HOST}-only; this listener is prod-specific).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gw-internal
+  namespace: yucca
+spec:
+  parentRefs:
+    - name: gw
+      namespace: envoy-system
+      sectionName: https-internal
+  hostnames:
+    - "${GW_INT_HOST}"
+  rules:
+    - backendRefs:
+        - name: yucca-michael
+          port: 3010

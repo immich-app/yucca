@@ -69,7 +69,9 @@ variable "groups" {
     }
     server_admins = {
       description = "Login access to provisioned servers (e.g. the ceph nodes)."
-      server      = { sudo = "ALL" }
+      # NOPASSWD: these accounts authenticate by SSH key only and have no local
+      # passwords to type; passworded sudo just blocks remote automation.
+      server = { sudo = "NOPASSWD:ALL" }
     }
   }
 

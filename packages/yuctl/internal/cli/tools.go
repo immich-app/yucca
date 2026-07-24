@@ -32,6 +32,7 @@ type benchFlags struct {
 
 	host          string
 	fromHere      bool
+	sshIdentity   string
 	agentBin      string
 	repo          string
 	repoID        string
@@ -57,6 +58,7 @@ func (f *benchFlags) registerCommon(c *cobra.Command) {
 	f.admin.register(c)
 	c.Flags().StringVar(&f.host, "host", "", "ssh destination of the management host (default: the region's first mgmt host from discovery)")
 	c.Flags().BoolVar(&f.fromHere, "from-here", false, "run the benchmark on this machine (no ssh; agent runs in-process)")
+	c.Flags().StringVar(&f.sshIdentity, "ssh-identity", "", "ssh private key for the management host (default: ssh agent/config)")
 	c.Flags().StringVar(&f.agentBin, "agent-bin", "", "local linux/amd64 bench-agent binary (default: the embedded one)")
 	c.Flags().StringVar(&f.repo, "repo", "", "restic repository URL; skips admin-api provisioning (default $RESTIC_REPOSITORY, else a repo is created via admin-api)")
 	c.Flags().StringVar(&f.repoID, "repo-id", "", "existing repository id; a fresh URL is minted via admin-api")
@@ -177,8 +179,17 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 	}
 
 	if cfg.Repo == "" {
-		if err := loadTopo(); err != nil {
-			return err
+		// Topology is only needed to derive the admin URL; an explicit
+		// --admin-url / $YUCTL_ADMIN_API_URL skips state access entirely
+		// (the context file alone names the token-cache partition).
+		if f.admin.adminURL == "" && os.Getenv("YUCTL_ADMIN_API_URL") == "" {
+			if err := loadTopo(); err != nil {
+				return err
+			}
+		} else if cc == nil {
+			if cc, err = requireContext(); err != nil {
+				return err
+			}
 		}
 		client, _, err := f.admin.adminLogin(ctx, cmd, cc, topo)
 		if err != nil {
@@ -219,7 +230,7 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 		outPath = ""
 	}
 
-	opts := bench.RunOpts{Host: host, AgentBin: f.agentBin, Config: cfg, Out: outPath}
+	opts := bench.RunOpts{Host: host, SSHIdentity: f.sshIdentity, AgentBin: f.agentBin, Config: cfg, Out: outPath}
 	if f.fromHere {
 		_, err = bench.RunHere(ctx, opts)
 	} else {

@@ -16,6 +16,7 @@ resources:
   - ./flux-system
   - ./coredns.yaml
   - ./cilium-bgp.yaml
+  - ./gw-internal.yaml
   - ./lb-return-route.yaml
   - ./diskpools.yaml
   - ./netops

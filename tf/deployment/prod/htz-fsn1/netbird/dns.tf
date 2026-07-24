@@ -62,6 +62,10 @@ locals {
     hubble    = cidrhost(module.addr_site.lb_internal_cidr, 16)
     # yucca-admin-api (namespace yucca), routed via the same netops gateway.
     admin = cidrhost(module.addr_site.lb_internal_cidr, 16)
+    # michael (restic) internal gateway VIP — second IP on the gw envoy Service
+    # (kubernetes/apps/prod/htz-fsn1/gw-proxy/), for on-net clients (mgmt hosts,
+    # yuctl tools bench) since the public VIP aggregate isn't routed inside Hetzner.
+    gw = cidrhost(module.addr_site.lb_internal_cidr, 17)
   }
 }
 

@@ -28,3 +28,17 @@ spec:
         certificateRefs:
           - kind: Secret
             name: app-domain-tls
+    # Internal twin (${GW_INT_VIP}): same envoy fleet, NetBird-zone hostname,
+    # own DNS-01 cert (gw-internal.yaml at the overlay root).
+    - name: https-internal
+      protocol: HTTPS
+      port: 443
+      hostname: "${GW_INT_HOST}"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: gw-internal-tls

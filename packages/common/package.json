@@ -17,6 +17,7 @@
     "@opentelemetry/exporter-trace-otlp-proto": "catalog:",
     "@opentelemetry/instrumentation-pino": "catalog:",
     "@opentelemetry/propagator-b3": "catalog:",
+    "@opentelemetry/resources": "catalog:",
     "@opentelemetry/propagator-jaeger": "catalog:",
     "@opentelemetry/sdk-node": "catalog:",
     "nestjs-otel": "catalog:",
