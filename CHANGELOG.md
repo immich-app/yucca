@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/immich-app/yucca/compare/v0.19.0...v0.19.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* **all:** adjust benchmark related configs and fix metrics ([#332](https://github.com/immich-app/yucca/issues/332)) ([1ff83d6](https://github.com/immich-app/yucca/commit/1ff83d6754c68474027322d1b4b82e45ba0cc3ef))
+
 ## [0.19.0](https://github.com/immich-app/yucca/compare/v0.18.0...v0.19.0) (2026-07-24)
 
 
