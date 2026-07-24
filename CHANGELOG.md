@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/immich-app/yucca/compare/v0.16.0...v0.16.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* throw not found exception when item missing ([#318](https://github.com/immich-app/yucca/issues/318)) ([9b565eb](https://github.com/immich-app/yucca/commit/9b565ebe1f98d780df324f020f3c1b5d8ba81d20))
+
 ## [0.16.0](https://github.com/immich-app/yucca/compare/v0.15.1...v0.16.0) (2026-07-23)
 
 
