@@ -340,14 +340,10 @@ func (p *Pool) HeadObject(ctx context.Context, bucket, key string) (int64, error
 	return size, err
 }
 
-func (p *Pool) ListObjects(ctx context.Context, bucket, prefix string) ([]BlobInfo, error) {
-	var blobs []BlobInfo
-	err := p.do(func(s Storage) error {
-		var e error
-		blobs, e = s.ListObjects(ctx, bucket, prefix)
-		return e
+func (p *Pool) ListObjects(ctx context.Context, bucket, prefix string, fn func(BlobInfo) error) error {
+	return p.do(func(s Storage) error {
+		return s.ListObjects(ctx, bucket, prefix, fn)
 	})
-	return blobs, err
 }
 
 func (p *Pool) DeleteObject(ctx context.Context, bucket, key string) error {

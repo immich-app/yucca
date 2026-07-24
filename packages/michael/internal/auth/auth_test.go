@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
@@ -47,7 +48,7 @@ func validClaims() jwt.MapClaims {
 
 func TestAuthMissingHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
-	_, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for missing auth header")
 	}
@@ -59,7 +60,7 @@ func TestAuthMissingHeader(t *testing.T) {
 func TestAuthInvalidAuthType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", "Bearer some-token")
-	_, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for non-Basic auth")
 	}
@@ -72,7 +73,7 @@ func TestAuthMissingToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	// Basic auth with no password (just username, no colon)
 	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("restic")))
-	_, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for missing token")
 	}
@@ -84,7 +85,7 @@ func TestAuthMissingToken(t *testing.T) {
 func TestAuthInvalidJWT(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth("not-a-valid-jwt"))
-	_, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for invalid JWT")
 	}
@@ -102,7 +103,7 @@ func TestAuthInvalidPayloadNonUUID(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
-	_, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for non-UUID user")
 	}
@@ -119,7 +120,7 @@ func TestAuthInvalidPayloadMissingWriteOnce(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
-	_, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey)
 	if err == nil {
 		t.Fatal("expected error for missing writeOnce")
 	}
@@ -133,7 +134,7 @@ func TestAuthSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
 
-	a, err := extractAuth(req, testPublicKey)
+	a, _, err := extractAuth(req, testPublicKey)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -194,5 +195,78 @@ func TestAuthMiddlewareSuccess(t *testing.T) {
 	}
 	if gotAuth.User != testUser {
 		t.Errorf("expected user %s in context, got %s", testUser, gotAuth.User)
+	}
+}
+
+func TestVerifierCachesVerifiedTokens(t *testing.T) {
+	token := makeJWT(t, validClaims())
+
+	var lookups []bool
+	v := NewVerifier(testPublicKey, func(hit bool) { lookups = append(lookups, hit) })
+
+	for range 3 {
+		req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
+		req.Header.Set("Authorization", makeBasicAuth(token))
+		a, err := v.authenticate(req)
+		if err != nil {
+			t.Fatalf("authenticate: %v", err)
+		}
+		if a.User != testUser || a.Repository != testRepository {
+			t.Fatalf("unexpected auth: %+v", a)
+		}
+	}
+
+	want := []bool{false, true, true}
+	if len(lookups) != len(want) {
+		t.Fatalf("lookups = %v, want %v", lookups, want)
+	}
+	for i := range want {
+		if lookups[i] != want[i] {
+			t.Fatalf("lookups = %v, want %v", lookups, want)
+		}
+	}
+}
+
+func TestVerifierCacheHonorsExpiry(t *testing.T) {
+	token := makeJWT(t, validClaims())
+	v := NewVerifier(testPublicKey, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
+	req.Header.Set("Authorization", makeBasicAuth(token))
+	if _, err := v.authenticate(req); err != nil {
+		t.Fatalf("authenticate: %v", err)
+	}
+
+	// Force the cached entry past its expiry; the stale entry must be evicted
+	// and the (still exp-valid) token re-verified rather than served stale.
+	key := sha256.Sum256([]byte(makeBasicAuth(token)))
+	if _, ok := v.cache.get(key, time.Now().Add(2*time.Hour)); ok {
+		t.Fatal("expired cache entry served")
+	}
+	if _, ok := v.cache.get(key, time.Now()); ok {
+		t.Fatal("expired entry should have been evicted")
+	}
+}
+
+func TestVerifierDoesNotCacheInvalidTokens(t *testing.T) {
+	otherKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	badToken := func() string {
+		tok := jwt.NewWithClaims(jwt.SigningMethodES256, validClaims())
+		signed, err := tok.SignedString(otherKey)
+		if err != nil {
+			t.Fatalf("sign: %v", err)
+		}
+		return signed
+	}()
+
+	v := NewVerifier(testPublicKey, nil)
+	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
+	req.Header.Set("Authorization", makeBasicAuth(badToken))
+	if _, err := v.authenticate(req); err == nil {
+		t.Fatal("expected error for token signed by wrong key")
+	}
+	key := sha256.Sum256([]byte(makeBasicAuth(badToken)))
+	if _, ok := v.cache.get(key, time.Now()); ok {
+		t.Fatal("invalid token must not be cached")
 	}
 }

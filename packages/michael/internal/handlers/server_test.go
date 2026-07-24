@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,6 +54,7 @@ type mockStorage struct {
 	getObjectFn    func(ctx context.Context, bucket, key, rangeHeader string) (*storage.S3Object, error)
 	putObjectFn    func(ctx context.Context, bucket, key string, body io.Reader, contentLength int64, writeOnce bool, sha256Hex string) error
 	listObjectsFn  func(ctx context.Context, bucket, prefix string) ([]storage.BlobInfo, error)
+	listStreamFn   func(ctx context.Context, bucket, prefix string, fn func(storage.BlobInfo) error) error
 	deleteObjectFn func(ctx context.Context, bucket, key string) error
 }
 
@@ -91,11 +93,28 @@ func (m *mockStorage) PutObject(ctx context.Context, bucket, key string, body io
 	return nil
 }
 
-func (m *mockStorage) ListObjects(ctx context.Context, bucket, prefix string) ([]storage.BlobInfo, error) {
-	if m.listObjectsFn != nil {
-		return m.listObjectsFn(ctx, bucket, prefix)
+// ListObjects adapts the slice-returning listObjectsFn to the streaming
+// interface, filtering by prefix so sharded data/ listings behave like S3.
+func (m *mockStorage) ListObjects(ctx context.Context, bucket, prefix string, fn func(storage.BlobInfo) error) error {
+	if m.listStreamFn != nil {
+		return m.listStreamFn(ctx, bucket, prefix, fn)
 	}
-	return []storage.BlobInfo{}, nil
+	if m.listObjectsFn == nil {
+		return nil
+	}
+	blobs, err := m.listObjectsFn(ctx, bucket, prefix)
+	if err != nil {
+		return err
+	}
+	for _, b := range blobs {
+		if !strings.HasPrefix(b.Name, prefix) {
+			continue
+		}
+		if err := fn(b); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *mockStorage) DeleteObject(ctx context.Context, bucket, key string) error {
@@ -202,7 +221,7 @@ func TestAccessLogOutput(t *testing.T) {
 
 	store := &mockStorage{
 		listObjectsFn: func(_ context.Context, _, _ string) ([]storage.BlobInfo, error) {
-			return []storage.BlobInfo{{Name: "abc", Size: 42}}, nil
+			return []storage.BlobInfo{{Name: "data/abc", Size: 42}}, nil
 		},
 	}
 	srv := newTestServer(store)

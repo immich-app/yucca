@@ -1,10 +1,15 @@
 package handlers
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/rs/zerolog/hlog"
 
@@ -16,28 +21,109 @@ import (
 )
 
 // GET /{path}/{type}
+//
+// Streams the restic v2 JSON array as listing pages arrive instead of
+// buffering the whole repo listing. data/ (the bulk of a repo, hex-named) fans
+// out across 16 hex prefixes: RGW scans them in parallel and each shard lands
+// on its own pool backend.
 func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 
 	accept := r.Header.Get("Accept")
 	if accept != ContentTypeResticV2 {
-		writeError(w, r,http.StatusNotImplemented, "Not Implemented")
+		writeError(w, r, http.StatusNotImplemented, "Not Implemented")
 		return
 	}
 
 	blobType := chi.URLParam(r, "type")
-	prefix := blobType + "/"
-	blobs, err := s.Storage.ListObjects(r.Context(), a.Repository, prefix)
-	if err != nil {
-		hlog.FromRequest(r).Error().Err(err).Msg("list blobs failed")
-		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
-		return
+	typePrefix := blobType + "/"
+
+	prefixes := []string{typePrefix}
+	if blobType == "data" {
+		prefixes = make([]string, 16)
+		for i := range prefixes {
+			prefixes[i] = fmt.Sprintf("%s%x", typePrefix, i)
+		}
 	}
 
-	w.Header().Set("Content-Type", ContentTypeResticV2)
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(blobs); err != nil {
-		hlog.FromRequest(r).Error().Err(err).Msg("failed to encode blob list response")
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	var (
+		mu    sync.Mutex
+		buf   *bufio.Writer
+		first = true
+	)
+	emit := func(b storage.BlobInfo) error {
+		name := strings.TrimPrefix(b.Name, typePrefix)
+		if name == "" {
+			return nil
+		}
+		entry, err := json.Marshal(storage.BlobInfo{Name: name, Size: b.Size})
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if first {
+			first = false
+			w.Header().Set("Content-Type", ContentTypeResticV2)
+			w.WriteHeader(http.StatusOK)
+			buf = bufio.NewWriterSize(w, 64<<10)
+			if _, err := buf.WriteString("["); err != nil {
+				return err
+			}
+		} else if _, err := buf.WriteString(","); err != nil {
+			return err
+		}
+		_, err = buf.Write(entry)
+		return err
+	}
+
+	var (
+		wg      sync.WaitGroup
+		errOnce sync.Once
+		listErr error
+	)
+	for _, prefix := range prefixes {
+		wg.Add(1)
+		go func(prefix string) {
+			defer wg.Done()
+			if err := s.Storage.ListObjects(ctx, a.Repository, prefix, emit); err != nil {
+				errOnce.Do(func() {
+					listErr = err
+					cancel()
+				})
+			}
+		}(prefix)
+	}
+	wg.Wait()
+
+	if listErr != nil {
+		hlog.FromRequest(r).Error().Err(listErr).Msg("list blobs failed")
+		if first {
+			writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+			return
+		}
+		// The 200 and part of the body are already out; abort the connection
+		// so the client sees a truncated response, not a valid-looking list.
+		panic(http.ErrAbortHandler)
+	}
+
+	if first {
+		w.Header().Set("Content-Type", ContentTypeResticV2)
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte("[]")); err != nil {
+			hlog.FromRequest(r).Error().Err(err).Msg("failed to write blob list response")
+		}
+		return
+	}
+	if _, err := buf.WriteString("]"); err != nil {
+		hlog.FromRequest(r).Error().Err(err).Msg("failed to write blob list response")
+		return
+	}
+	if err := buf.Flush(); err != nil {
+		hlog.FromRequest(r).Error().Err(err).Msg("failed to flush blob list response")
 	}
 }
 

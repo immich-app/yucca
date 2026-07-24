@@ -728,12 +728,541 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "id": 18,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate({__name__=\"http.server.request.ttfb_bucket\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=\"http.server.request.ttfb_bucket\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p95"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate({__name__=\"http.server.request.ttfb_bucket\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "title": "Request TTFB (quantiles)",
+      "type": "timeseries",
+      "description": "Time to first response byte — michael+RGW latency without body streaming (request duration includes the transfer, so large blobs skew it)."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "id": 19,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum(rate({__name__=\"auth.cache.hits\", cluster=~\"$cluster\"}[$__rate_interval])) / (sum(rate({__name__=\"auth.cache.hits\", cluster=~\"$cluster\"}[$__rate_interval])) + sum(rate({__name__=\"auth.cache.misses\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "hit ratio"
+        }
+      ],
+      "title": "JWT verify cache hit ratio",
+      "type": "timeseries",
+      "description": "ECDSA verify cost is only paid on misses. restic reuses one token per session, so this should sit near 100%."
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 31
+      },
+      "id": 20,
+      "panels": [],
+      "title": "S3 client (transport to RGW)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum(rate({__name__=\"s3.client.dials\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "TCP dials"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "expr": "sum(rate({__name__=\"s3.client.tls_handshake.duration_count\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "TLS handshakes"
+        }
+      ],
+      "title": "Connection churn",
+      "type": "timeseries",
+      "description": "New TCP connections and TLS handshakes to RGW. Near zero once pools are warm; sustained churn means idle-pool exhaustion or backend churn."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum(rate({__name__=\"s3.client.connections\", cluster=~\"$cluster\", reused=\"true\"}[$__rate_interval])) / sum(rate({__name__=\"s3.client.connections\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "reuse ratio"
+        }
+      ],
+      "title": "Connection reuse ratio",
+      "type": "timeseries",
+      "description": "Share of S3 requests served over a pooled connection."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, method) (rate({__name__=\"s3.client.ttfb_bucket\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "{{method}}"
+        }
+      ],
+      "title": "S3 TTFB p95 by method",
+      "type": "timeseries",
+      "description": "RGW response latency per S3 method. PUT includes the request body upload, so it tracks pack size, not gateway latency."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate({__name__=\"s3.client.tls_handshake.duration_bucket\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=\"s3.client.tls_handshake.duration_bucket\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "legendFormat": "p95"
+        }
+      ],
+      "title": "TLS handshake duration (quantiles)",
+      "type": "timeseries",
+      "description": "Empty once pools are warm — no handshakes, no samples."
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
       },
       "id": 13,
       "panels": [],
@@ -789,7 +1318,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 49
       },
       "id": 14,
       "options": {
@@ -878,7 +1407,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 49
       },
       "id": 15,
       "options": {
@@ -957,7 +1486,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 57
       },
       "id": 16,
       "options": {
@@ -1036,7 +1565,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 32
+        "y": 57
       },
       "id": 17,
       "options": {
