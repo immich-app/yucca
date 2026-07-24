@@ -176,6 +176,13 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     OIDC_ADMIN_CLIENT_ID     = var.yucca_oidc_admin_client_id
     OIDC_ADMIN_CLIENT_SECRET = var.yucca_oidc_admin_client_secret
   }
+
+  lifecycle {
+    precondition {
+      condition     = length(var.yucca_oidc_admin_client_id) > 0 && length(var.yucca_oidc_admin_client_secret) > 0
+      error_message = "yucca-admin-api OIDC client creds are empty — the code exchange 500s with invalid_client; check the shared_tf refs in tf/.env."
+    }
+  }
 }
 
 # michael: verifies yucca-api's JWTs with the public key + RGW S3 creds for the
