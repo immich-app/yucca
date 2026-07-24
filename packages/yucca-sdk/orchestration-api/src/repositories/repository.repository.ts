@@ -41,19 +41,21 @@ export class RepositoryRepository {
     await this.db.updateTable('repositories').set(set).where('id', '=', id).execute();
   }
 
-  async get(id: string): Promise<RepositoryRow> {
+  async get(id: string): Promise<RepositoryRow | undefined> {
     const row = await this.db
       .selectFrom('repositories')
       .selectAll('repositories')
       .where('id', '=', id)
-      .executeTakeFirstOrThrow();
+      .executeTakeFirst();
 
-    return {
-      id: row.id,
-      remoteId: row.remoteId,
-      backendId: row.backendId,
-      retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
-    };
+    if (row) {
+      return {
+        id: row.id,
+        remoteId: row.remoteId,
+        backendId: row.backendId,
+        retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
+      };
+    }
   }
 
   async getAll(): Promise<RepositoryRow[]> {
