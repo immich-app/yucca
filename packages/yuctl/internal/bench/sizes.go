@@ -57,7 +57,13 @@ func FormatBytes(n int64) string {
 	return fmt.Sprintf("%d B", n)
 }
 
+// FormatBPS renders a byte rate with its network-style bit rate alongside,
+// e.g. "396.2 MiB/s (3.32 Gbps)".
 func FormatBPS(bps float64) string {
+	return fmt.Sprintf("%s (%s)", formatBytesPerSec(bps), FormatBits(bps))
+}
+
+func formatBytesPerSec(bps float64) string {
 	for _, u := range []string{"B/s", "KiB/s", "MiB/s", "GiB/s"} {
 		if bps < 1024 || u == "GiB/s" {
 			return fmt.Sprintf("%.1f %s", bps, u)
@@ -65,6 +71,19 @@ func FormatBPS(bps float64) string {
 		bps /= 1024
 	}
 	return ""
+}
+
+// FormatBits renders a byte rate as decimal bits/s (network convention).
+func FormatBits(bytesPerSec float64) string {
+	bits := bytesPerSec * 8
+	switch {
+	case bits >= 1e9:
+		return fmt.Sprintf("%.2f Gbps", bits/1e9)
+	case bits >= 1e6:
+		return fmt.Sprintf("%.0f Mbps", bits/1e6)
+	default:
+		return fmt.Sprintf("%.0f kbps", bits/1e3)
+	}
 }
 
 func FormatDuration(seconds float64) string {
