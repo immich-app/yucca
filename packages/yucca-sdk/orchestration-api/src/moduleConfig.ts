@@ -17,7 +17,11 @@ export type ImmichIntegration = {
   }[];
   hooks: {
     createDatabaseBackup(): Promise<void>;
-    enterMaintenanceRollback(repositoryId: string, snapshotId: string, backupFileName?: string): Promise<void>;
+    enterMaintenanceRollback(
+      repositoryId: string,
+      snapshotId: string,
+      backupFileName?: string,
+    ): Promise<{ jwt: string }>;
   };
 };
 

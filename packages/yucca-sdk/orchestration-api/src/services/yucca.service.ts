@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { EventsGateway, GatewayEvent } from '../events/events.gateway';
 import type { ImmichIntegration } from '../moduleConfig';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { RepositoryService } from './repository.service';
 
 @Injectable()
 export class YuccaService {
   constructor(
     private readonly moduleConfig: ModuleConfigRepository,
     private readonly events: EventsGateway,
+    private readonly repositoryService: RepositoryService,
   ) {}
 
   setExternalBaseUrl(externalBaseUrl: string) {
@@ -24,5 +26,9 @@ export class YuccaService {
 
   emit(event: GatewayEvent) {
     this.events.emit(event);
+  }
+
+  restoreSnapshotInplace(repositoryId: string, snapshotId: string) {
+    return this.repositoryService.restoreSnapshot(repositoryId, snapshotId, {});
   }
 }

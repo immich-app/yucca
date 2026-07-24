@@ -113,13 +113,13 @@ export class IntegrationsService {
     });
   }
 
-  async enterImmichMaintenanceRollback(dto: ImmichRollbackRequestDto) {
+  async enterImmichMaintenanceRollback(dto: ImmichRollbackRequestDto): Promise<{ jwt: string }> {
     const { immichIntegration } = this.moduleConfig.get();
     if (!immichIntegration) {
       throw new BadRequestException('Immich integration is not enabled.');
     }
 
-    await immichIntegration.hooks.enterMaintenanceRollback(dto.repositoryId, dto.snapshotId, dto.backupFileName);
+    return await immichIntegration.hooks.enterMaintenanceRollback(dto.repositoryId, dto.snapshotId, dto.backupFileName);
   }
 
   private async syncImmichRepositoryPaths(

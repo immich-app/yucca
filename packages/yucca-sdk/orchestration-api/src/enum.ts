@@ -7,6 +7,10 @@ export enum CookieName {
   YuccaOidcCodeVerifier = 'yucca-oidc-code-verifier',
 }
 
+export enum ImmichCookie {
+  MaintenanceToken = 'immich_maintenance_token',
+}
+
 export enum ConfigurationKey {
   EncryptionKey = 'encryption-key',
   OnboardedKey = 'onboarded-key',
