@@ -32,18 +32,16 @@ export class BackendRepository {
   }
 
   async getBackend(id: string) {
-    const backend = await this.db
-      .selectFrom('backends')
-      .selectAll('backends')
-      .where('id', '=', id)
-      .executeTakeFirstOrThrow();
+    const backend = await this.db.selectFrom('backends').selectAll('backends').where('id', '=', id).executeTakeFirst();
 
-    const configuration = JSON.parse(backend.configuration) as BackendConfiguration;
+    if (backend) {
+      const configuration = JSON.parse(backend.configuration) as BackendConfiguration;
 
-    return {
-      id: backend.id,
-      configuration,
-      backend: Backend.from(configuration),
-    };
+      return {
+        id: backend.id,
+        configuration,
+        backend: Backend.from(configuration),
+      };
+    }
   }
 }

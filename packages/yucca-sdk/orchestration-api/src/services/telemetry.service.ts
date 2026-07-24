@@ -39,8 +39,12 @@ export class TelemetryService {
 
     void this.backend
       .getBackend(REPOSITORY_DEFAULT_CLOUD_UUID)
-      .then(({ configuration }) => {
-        const backend = Backend.from(configuration);
+      .then((result) => {
+        if (!result) {
+          throw new Error('No production backend configured');
+        }
+
+        const backend = Backend.from(result.configuration);
         backend.submitStructuredLog(summary, {
           ...serializeErrors(data),
           version,

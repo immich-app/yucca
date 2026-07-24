@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Sse } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Sse } from '@nestjs/common';
 import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { RunResponseDto } from '../dto/repository.dto';
@@ -12,7 +12,12 @@ export class RunHistoryController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ type: RunResponseDto })
   async getRun(@Param('id') id: string): Promise<RunResponseDto> {
-    return { run: await this.repository.get(id) };
+    const run = await this.repository.get(id);
+    if (!run) {
+      throw new NotFoundException('Run not found');
+    }
+
+    return { run };
   }
 
   @Sse('/:id/stream')

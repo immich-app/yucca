@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
 import { Updateable } from 'kysely';
@@ -83,7 +83,12 @@ export class ScheduleService {
       return;
     }
 
-    const { repositories } = await this.schedule.get(id);
+    const schedule = await this.schedule.get(id);
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
+    }
+
+    const { repositories } = schedule;
 
     const lastRun = new Date().toISOString();
 
@@ -236,6 +241,9 @@ export class ScheduleService {
     await this.schedule.updateSchedule(scheduleId, set);
 
     const schedule = await this.schedule.get(scheduleId);
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
+    }
 
     this.telemetry.submitStructuredLog('Updated schedule', {
       scheduleId,

@@ -156,7 +156,7 @@ export class RunHistoryRepository {
   }
 
   async get(id: string) {
-    return this.db.selectFrom('runHistory').selectAll('runHistory').where('id', '=', id).executeTakeFirstOrThrow();
+    return this.db.selectFrom('runHistory').selectAll('runHistory').where('id', '=', id).executeTakeFirst();
   }
 
   async getAll(repositoryId: string) {

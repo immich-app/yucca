@@ -1,4 +1,4 @@
-import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Updateable } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { type WriteStream } from 'node:fs';
@@ -67,13 +67,26 @@ export class RepositoryService {
     this.logger.setContext(RepositoryService.name);
   }
 
+  private async getBackendOrThrow(backendId: string) {
+    const result = await this.backend.getBackend(backendId);
+    if (!result) {
+      throw new NotFoundException('Backend not found locally');
+    }
+    return result;
+  }
+
   private async getLocalRepository(
     id: string,
     configuration?: RepositoryConfigurationDto,
     metrics?: RepositoryMetricsDto,
   ): Promise<Pick<LocalRepositoryDto, 'configuration' | 'metrics'>> {
     if (!configuration) {
-      const [paths, { retentionPolicy }] = await Promise.all([this.repositoryPath.get(id), this.repository.get(id)]);
+      const [paths, repository] = await Promise.all([this.repositoryPath.get(id), this.repository.get(id)]);
+      if (!repository) {
+        throw new NotFoundException('Repository not found locally');
+      }
+
+      const { retentionPolicy } = repository;
       configuration = { paths, retentionPolicy };
     }
 
@@ -91,7 +104,7 @@ export class RepositoryService {
       backendId = backends[0].id;
     }
 
-    const { backend, configuration } = await this.backend.getBackend(backendId);
+    const { backend, configuration } = await this.getBackendOrThrow(backendId);
     const { repository: remote } = await backend.createRepository(dto);
     const id = randomUUID();
 
@@ -287,11 +300,14 @@ export class RepositoryService {
       remoteId = id;
     } else {
       const localRepository = await this.repository.get(id);
-      backendId = localRepository.backendId;
-      remoteId = localRepository.remoteId;
+      if (!localRepository) {
+        throw new NotFoundException('Repository not found locally');
+      }
+
+      ({ backendId, remoteId } = localRepository);
     }
 
-    const { backend, configuration } = await this.backend.getBackend(backendId);
+    const { backend, configuration } = await this.getBackendOrThrow(backendId);
 
     let remote;
     if (dto.name) {
@@ -374,7 +390,7 @@ export class RepositoryService {
     if (typeof repository === 'string') {
       const localRepository = await this.repository.get(repository);
       if (!localRepository) {
-        throw new BadRequestException('Repository not found locally');
+        throw new NotFoundException('Repository not found locally');
       }
 
       backendId = localRepository.backendId;
@@ -383,7 +399,7 @@ export class RepositoryService {
       ({ backendId, remoteId } = repository);
     }
 
-    const { backend } = await this.backend.getBackend(backendId);
+    const { backend } = await this.getBackendOrThrow(backendId);
     const endpoint = await backend.getResticEndpoint(remoteId);
 
     const key = await this.config.deriveEncryptionKey(`repository-${remoteId}`);
@@ -423,8 +439,13 @@ export class RepositoryService {
       });
 
       if (metrics.sizeBytes) {
-        const { backendId, remoteId } = await this.repository.get(id);
-        const { backend } = await this.backend.getBackend(backendId);
+        const repository = await this.repository.get(id);
+        if (!repository) {
+          return; // removed during process
+        }
+
+        const { backendId, remoteId } = repository;
+        const { backend } = await this.getBackendOrThrow(backendId);
 
         if (backend.isMetricsCapable()) {
           await backend.submitMetricRepositorySize(remoteId, metrics.sizeBytes);
@@ -459,8 +480,13 @@ export class RepositoryService {
       repositoryId: id,
     });
 
-    const { backendId, remoteId } = await this.repository.get(id);
-    const { backend } = await this.backend.getBackend(backendId);
+    const repository = await this.repository.get(id);
+    if (!repository) {
+      throw new NotFoundException('Repository not found locally');
+    }
+
+    const { backendId, remoteId, retentionPolicy } = repository;
+    const { backend } = await this.getBackendOrThrow(backendId);
     const { endpoint, key } = await this.getResticParameters(id);
 
     const paths = await this.repositoryPath.get(id);
@@ -520,9 +546,8 @@ export class RepositoryService {
                   summary,
                 });
 
-                const { retentionPolicy: policy } = await this.repository.get(id);
-                if (policy) {
-                  await this.runForgetAndPrune(endpoint, key, policy, log, taskSignal);
+                if (retentionPolicy) {
+                  await this.runForgetAndPrune(endpoint, key, retentionPolicy, log, taskSignal);
 
                   this.telemetry.submitStructuredLog('Finished prune on primary backend', {
                     repositoryId: id,
@@ -616,14 +641,19 @@ export class RepositoryService {
       throw new BadRequestException('Task already running!');
     }
 
-    const { retentionPolicy: policy } = await this.repository.get(id);
-    if (!policy) {
+    const repository = await this.repository.get(id);
+    if (!repository) {
+      throw new NotFoundException('Repository not found locally');
+    }
+
+    const { retentionPolicy } = repository;
+    if (!retentionPolicy) {
       throw new BadRequestException('No retention policy configured for this repository');
     }
 
     this.telemetry.submitStructuredLog('Running repository prune', {
       repositoryId: id,
-      retentionPolicy: policy,
+      retentionPolicy,
     });
 
     const { endpoint, key } = await this.getResticParameters(id);
@@ -640,7 +670,7 @@ export class RepositoryService {
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Forget, logId, signal);
                 await this.restic.unlockAll(endpoint, key);
-                await this.runForgetAndPrune(endpoint, key, policy, log, taskSignal);
+                await this.runForgetAndPrune(endpoint, key, retentionPolicy, log, taskSignal);
               } finally {
                 this.tasks.endTask(id);
               }
@@ -691,7 +721,7 @@ export class RepositoryService {
     });
 
     try {
-      const { configuration, backend } = await this.backend.getBackend(backendId);
+      const { configuration, backend } = await this.getBackendOrThrow(backendId);
       const { repository: remote } = await backend.getRepository(id);
       const localId = randomUUID();
 
@@ -761,7 +791,7 @@ export class RepositoryService {
     id: string,
     dto: RepositoryPrimaryBackendReconfigureRequestDto,
   ): Promise<RepositoryCreateResponseDto> {
-    const { backend, configuration } = await this.backend.getBackend(dto.backendId);
+    const { backend, configuration } = await this.getBackendOrThrow(dto.backendId);
 
     const { repository: remote } = await backend.createRepository({
       name: 'Restored Repository',

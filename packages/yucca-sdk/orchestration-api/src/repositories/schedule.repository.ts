@@ -13,26 +13,26 @@ export class ScheduleRepository {
   }
 
   async get(id: string) {
-    const { ordering, paused, ...schedule } = await this.db
-      .selectFrom('schedules')
-      .selectAll('schedules')
-      .where('id', '=', id)
-      .executeTakeFirstOrThrow();
+    const row = await this.db.selectFrom('schedules').selectAll('schedules').where('id', '=', id).executeTakeFirst();
 
-    const repositorySchedules = await this.db
-      .selectFrom('repositorySchedules')
-      .selectAll('repositorySchedules')
-      .where('schedule', '=', id)
-      .execute();
+    if (row) {
+      const { ordering, paused, ...schedule } = row;
 
-    return {
-      ...schedule,
-      paused: !!paused,
-      repositories: repositorySchedules
-        .filter(({ schedule: scheduleId }) => scheduleId === schedule.id)
-        .map(({ repository }) => repository)
-        .toSorted((a, b) => ordering.indexOf(a) - ordering.indexOf(b)),
-    };
+      const repositorySchedules = await this.db
+        .selectFrom('repositorySchedules')
+        .selectAll('repositorySchedules')
+        .where('schedule', '=', id)
+        .execute();
+
+      return {
+        ...schedule,
+        paused: !!paused,
+        repositories: repositorySchedules
+          .filter(({ schedule: scheduleId }) => scheduleId === schedule.id)
+          .map(({ repository }) => repository)
+          .toSorted((a, b) => ordering.indexOf(a) - ordering.indexOf(b)),
+      };
+    }
   }
 
   async getAll() {
@@ -63,7 +63,7 @@ export class ScheduleRepository {
   }
 
   updateSchedule(id: string, schedule: Updateable<ScheduleTable>) {
-    return this.db.updateTable('schedules').where('id', '=', id).set(schedule).returningAll().executeTakeFirstOrThrow();
+    return this.db.updateTable('schedules').where('id', '=', id).set(schedule).returningAll().executeTakeFirst();
   }
 
   removeSchedule(id: string) {
