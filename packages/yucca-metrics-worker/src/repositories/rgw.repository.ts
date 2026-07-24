@@ -29,6 +29,11 @@ export class RgwRepository {
   }
 
   async *getBucketStatsStream(pageSize = 1000): AsyncGenerator<BucketStats> {
+    // Some RGW versions ignore max-entries/marker on /admin/bucket (observed on
+    // v19.2.2, which returns the full listing on every page), so terminating on
+    // entries.length < pageSize alone would loop forever. Dedupe by bucket and
+    // stop as soon as a page yields nothing new.
+    const seen = new Set<string>();
     let marker = '';
 
     for (;;) {
@@ -38,7 +43,13 @@ export class RgwRepository {
       }
 
       const entries: RgwBucketEntry[] = await this.adminRequest('/admin/bucket', query);
+      let progressed = false;
       for (const entry of entries) {
+        if (seen.has(entry.bucket)) {
+          continue;
+        }
+        seen.add(entry.bucket);
+        progressed = true;
         yield {
           bucket: entry.bucket,
           objects: entry.usage?.['rgw.main']?.num_objects ?? 0,
@@ -47,7 +58,7 @@ export class RgwRepository {
       }
 
       const last = entries.at(-1);
-      if (!last || entries.length < pageSize) {
+      if (!last || entries.length < pageSize || !progressed) {
         return;
       }
       marker = last.bucket;
