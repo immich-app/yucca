@@ -77,6 +77,30 @@
     state: started
   when: ceph_enable_fstrim_timer | bool
 
+# ---------- SATA link power management ----------
+
+# The udev rule above covers boot and hot-plug; this applies the policy to
+# ports that are already up. Writing the attribute schedules a libata EH cycle
+# on that port, which is why this role wants serial: 1 on a serving cluster.
+- name: Set SATA link power management policy live
+  ansible.builtin.shell: |
+    set -uo pipefail
+    POLICY="{{ ceph_sata_link_pm_policy }}"
+    CHANGED=0
+    for f in /sys/class/scsi_host/host*/link_power_management_policy; do
+      [ -w "$f" ] || continue
+      CUR=$(cat "$f" 2>/dev/null || echo "")
+      if [ "$CUR" != "$POLICY" ]; then
+        echo "$POLICY" > "$f" 2>/dev/null && CHANGED=1 || true
+      fi
+    done
+    [ "$CHANGED" -eq 0 ] || echo CHANGED
+  args:
+    executable: /bin/bash
+  register: _sata_lpm
+  changed_when: "'CHANGED' in (_sata_lpm.stdout | default(''))"
+  when: ceph_sata_link_pm_enabled | bool
+
 # ---------- Transparent Huge Pages ----------
 
 - name: Set Transparent Huge Pages live
@@ -207,6 +231,22 @@
   register: scheduler_verify
   changed_when: false
 
+- name: Verify SATA link power management policy
+  ansible.builtin.shell: |
+    set -uo pipefail
+    echo "=== SATA link power management ==="
+    for f in /sys/class/scsi_host/host*/link_power_management_policy; do
+      [ -e "$f" ] || continue
+      cat "$f"
+    done | sort | uniq -c | sed 's/^/  /'
+  args:
+    executable: /bin/bash
+  register: sata_lpm_verify
+  changed_when: false
+  when: ceph_sata_link_pm_enabled | bool
+
 - name: Display disk tuning state
   ansible.builtin.debug:
-    msg: "{{ scheduler_verify.stdout_lines }}"
+    msg: >-
+      {{ scheduler_verify.stdout_lines
+         + (sata_lpm_verify.stdout_lines | default([])) }}
