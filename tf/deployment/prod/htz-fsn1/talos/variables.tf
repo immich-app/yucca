@@ -176,7 +176,7 @@ variable "yucca_oidc_device_client_id" {
 }
 
 variable "yucca_oidc_admin_client_id" {
-  description = "OIDC client ID for yucca-admin-api (internal-tooling app on auth.internal.futo.cloud; FUTO_ZITADEL_OAUTH_CLIENT_ID_YUCCA_INTERNAL_TOOLING in shared_tf)."
+  description = "OIDC client ID for yucca-admin-api (internal-tooling app on auth.internal.futo.org; FUTO_ZITADEL_OAUTH_CLIENT_ID_YUCCA_INTERNAL_TOOLING in shared_tf)."
   type        = string
   default     = ""
 }
