@@ -351,6 +351,17 @@ func (t *Topology) CephClusters(partition, region string) map[string]state.CephC
 	return out
 }
 
+// MgmtHosts returns the region's management-host roster (fabric payload), or
+// nil for regions without a fabric stack (e.g. austin).
+func (t *Topology) MgmtHosts(partition, region string) []state.MgmtHost {
+	for _, s := range t.Stacks {
+		if s.Partition == partition && s.Region == region && s.Discovery.Fabric != nil && len(s.Discovery.Fabric.MgmtHosts) > 0 {
+			return s.Discovery.Fabric.MgmtHosts
+		}
+	}
+	return nil
+}
+
 // PrimaryRegion returns the region name whose discovery.role == "primary" for
 // the given partition, or "" if none is found.
 func (t *Topology) PrimaryRegion(partition string) string {

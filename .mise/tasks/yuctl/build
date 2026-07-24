@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-#MISE description="Build yuctl"
+#MISE description="Build yuctl (embeds the linux bench agent)"
 set -e
 
-cd packages/yuctl && go build -o ../../dist/yuctl .
+mkdir -p dist
+cd packages/yuctl
+
+# Two-stage: cross-build the bench agent, embed it (-tags embedagent) so
+# `yuctl tools bench` is self-contained. Plain `go build` still works without
+# the tag — the embedded agent is then absent and --agent-bin is required.
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../../dist/bench-agent-linux-amd64 ./cmd/bench-agent
+gzip -9 -n -c ../../dist/bench-agent-linux-amd64 > internal/bench/bench-agent-linux-amd64.gz
+
+go build -tags embedagent -o ../../dist/yuctl .

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ExpressionBuilder, Kysely, Updateable } from 'kysely';
+import { ExpressionBuilder, Insertable, Kysely, Updateable } from 'kysely';
 import { jsonBuildObject } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
@@ -54,6 +54,11 @@ export class RepositoryRepository {
       .select(ownerJson)
       .select(metricsJson)
       .executeTakeFirstOrThrow();
+  }
+
+  async create(repository: Insertable<RepositoryTable>) {
+    const row = await this.db.insertInto('repositories').values(repository).returning('id').executeTakeFirstOrThrow();
+    return this.get(row.id);
   }
 
   async update(id: string, repository: Updateable<RepositoryTable>) {

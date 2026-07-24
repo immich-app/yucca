@@ -14,6 +14,7 @@ node_modules
 mise.local.toml
 
 dist/
+packages/yuctl/internal/bench/bench-agent-linux-amd64.gz
 packages/michael/michael
 
 # k3d/Tilt dev stack — Helm builds subchart snapshots on the fly; the .dev/

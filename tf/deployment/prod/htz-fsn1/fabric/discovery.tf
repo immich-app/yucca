@@ -34,6 +34,14 @@ output "discovery" {
           private = module.addr_cls1.private_cidr
         }
       }
+      # Management-host roster (from ../mgmt-hosts.yaml) so yuctl can pick a
+      # site-local ssh target (e.g. `yuctl tools bench`) without a checkout.
+      mgmt_hosts = [
+        for name, h in local.mgmt_hosts : {
+          name      = name
+          public_ip = h.public_ip
+        }
+      ]
     }
   }
 }

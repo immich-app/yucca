@@ -17,6 +17,11 @@ Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
 -----END PRIVATE KEY-----
 }
 
+# Dev restic minting: the same dev keypair signs repo tokens (michael's dev
+# public key matches), pointed at the local michael.
+export RESTIC_JWT_PRIVATE_KEY=${RESTIC_JWT_PRIVATE_KEY:-$JWT_PRIVATE_KEY}
+export RESTIC_ENDPOINT=${RESTIC_ENDPOINT:-http://localhost:3010}
+
 export OIDC_ADMIN_ISSUER=${OIDC_ISSUER:-http://localhost:8092}
 export OIDC_ADMIN_CLIENT_ID=${OIDC_CLIENT_ID:-client ID}
 export OIDC_ADMIN_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-client secret}

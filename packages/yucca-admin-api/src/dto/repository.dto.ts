@@ -70,6 +70,32 @@ export class RepositoryGetResponseDto {
   repository!: RepositoryAdminDto;
 }
 
+export class RepositoryCreateRequestDto {
+  @ApiProperty()
+  @IsString()
+  name!: string;
+
+  @ApiProperty({ required: false, description: 'Owner; defaults to the admin service user' })
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  worm?: boolean;
+}
+
+export class RepositoryCreateResponseDto {
+  @ApiProperty()
+  repository!: RepositoryAdminDto;
+}
+
+export class RepositoryUrlResponseDto {
+  @ApiProperty({ description: 'restic rest: URL with an embedded repository token' })
+  url!: string;
+}
+
 export class RepositoryUpdateRequestDto {
   @ApiProperty({ required: false })
   @IsOptional()

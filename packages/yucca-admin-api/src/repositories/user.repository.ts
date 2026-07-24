@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Kysely, Updateable } from 'kysely';
+import { Insertable, Kysely, Updateable } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
 import { UserTable } from 'src/schema/tables/user.table';
@@ -23,6 +23,14 @@ export class UserRepository {
 
   get(id: string) {
     return this.db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
+  }
+
+  getBySub(sub: string) {
+    return this.db.selectFrom('users').selectAll().where('sub', '=', sub).executeTakeFirst();
+  }
+
+  create(user: Insertable<UserTable>) {
+    return this.db.insertInto('users').values(user).returningAll().executeTakeFirstOrThrow();
   }
 
   update(id: string, user: Updateable<UserTable>) {

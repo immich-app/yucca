@@ -56,6 +56,8 @@ env:
     value: debug
   - name: OIDC_ADMIN_ALLOW_INSECURE
     value: "true"
+  - name: RESTIC_ENDPOINT
+    value: http://yucca-michael:3010
   - name: OTEL_METRICS
     value: http://victoria-metrics:8428/opentelemetry/v1/metrics
   - name: OTEL_LOGGING
