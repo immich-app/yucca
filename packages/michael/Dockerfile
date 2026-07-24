@@ -7,8 +7,10 @@ ARG ALPINE_IMAGE=alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145
 
 FROM golang:1.25-alpine${ALPINE_VERSION} AS dev
 WORKDIR /src
+# air is pinned: @latest broke the build when v1.67.2 started requiring a newer
+# Go than this base image ships (bump air and the golang tag together).
 RUN apk add --no-cache bash restic && \
-    go install github.com/air-verse/air@latest
+    go install github.com/air-verse/air@v1.67.1
 COPY packages/michael/go.mod packages/michael/go.sum ./
 RUN go mod download
 COPY packages/michael/ ./
