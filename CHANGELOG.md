@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.17.0](https://github.com/immich-app/yucca/compare/v0.16.1...v0.17.0) (2026-07-24)
+
+
+### Features
+
+* **ceph:** enable telemetry phone-home for transparency ([#316](https://github.com/immich-app/yucca/issues/316)) ([03d9bdd](https://github.com/immich-app/yucca/commit/03d9bdd4971bdc70f9cbd8992db57d86d020ef6b))
+
+
+### Bug Fixes
+
+* **admin:** correct oidc issuer url ([#321](https://github.com/immich-app/yucca/issues/321)) ([e1e5e6f](https://github.com/immich-app/yucca/commit/e1e5e6fa4deec85c6adeed6e7823f68f47825bc4))
+* **ci:** fix ci so it works ([#323](https://github.com/immich-app/yucca/issues/323)) ([434df44](https://github.com/immich-app/yucca/commit/434df44ff85032921e656b013fe07f15b1808d63))
+* **ci:** fix ci so it works ([#325](https://github.com/immich-app/yucca/issues/325)) ([28d386d](https://github.com/immich-app/yucca/commit/28d386d05d5dff740beb80255518f49fd8202100))
+* **metrics-worker:** prevent infinite looping ([#326](https://github.com/immich-app/yucca/issues/326)) ([4028905](https://github.com/immich-app/yucca/commit/40289051ef04896f7fa6a7866dcd7d672d34b472))
+
 ## [0.16.1](https://github.com/immich-app/yucca/compare/v0.16.0...v0.16.1) (2026-07-24)
 
 
