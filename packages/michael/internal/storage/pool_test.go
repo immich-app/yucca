@@ -55,12 +55,12 @@ func (f *fakeStore) HeadObject(_ context.Context, _, _ string) (int64, error) {
 	return 0, nil
 }
 
-func (f *fakeStore) ListObjects(_ context.Context, _, _ string) ([]BlobInfo, error) {
+func (f *fakeStore) ListObjects(_ context.Context, _, _ string, _ func(BlobInfo) error) error {
 	f.calls.Add(1)
 	if f.opFail.Load() {
-		return nil, f.transportErr()
+		return f.transportErr()
 	}
-	return []BlobInfo{}, nil
+	return nil
 }
 
 func (f *fakeStore) DeleteObject(_ context.Context, _, _ string) error {

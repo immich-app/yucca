@@ -20,6 +20,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -57,13 +58,14 @@ func main() {
 		log.Fatal().Err(err).Str("addr", addr).Msg("failed to bind listener")
 	}
 
-	store, pool := buildStorage(cfg)
-
 	if cfg.OTLPLogsEnabled {
 		log.Info().Str("endpoint", cfg.OTLPLogsEndpoint).Msg("OpenTelemetry logs enabled")
 	}
 
+	// Metrics before storage: the backend transports are built instrumented.
 	var m *metrics.Metrics
+	var tm *metrics.TransportMetrics
+	var meter otelmetric.Meter
 	var meterProvider *sdkmetric.MeterProvider
 	if cfg.OTLPEnabled {
 		var err error
@@ -71,17 +73,24 @@ func main() {
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to setup meter provider")
 		}
-		meter := meterProvider.Meter("michael")
+		meter = meterProvider.Meter("michael")
 		m, err = metrics.NewMetrics(meter)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to create metrics")
 		}
-		if pool != nil {
-			if err := metrics.RegisterBackendMetrics(meter, pool); err != nil {
-				log.Fatal().Err(err).Msg("failed to register backend metrics")
-			}
+		tm, err = metrics.NewTransportMetrics(meter)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to create transport metrics")
 		}
 		log.Info().Str("endpoint", cfg.OTLPMetricsEndpoint).Msg("OpenTelemetry metrics enabled")
+	}
+
+	store, pool := buildStorage(cfg, tm)
+
+	if pool != nil && meterProvider != nil {
+		if err := metrics.RegisterBackendMetrics(meter, pool); err != nil {
+			log.Fatal().Err(err).Msg("failed to register backend metrics")
+		}
 	}
 
 	srv := handlers.NewServer(store, cfg.JWTPublicKey, m)
@@ -136,13 +145,17 @@ func main() {
 // configured it is a single S3 client (legacy behavior) and pool is nil. With
 // source=file or source=dns it is a load-balancing Pool, also returned
 // concretely so the caller can register its metrics and run its reconcile loop.
-func buildStorage(cfg config.Config) (storage.Storage, *storage.Pool) {
+func buildStorage(cfg config.Config, tm *metrics.TransportMetrics) (storage.Storage, *storage.Pool) {
 	if cfg.S3BackendSource == "" {
-		return storage.NewS3Storage(cfg), nil
+		return storage.NewS3StorageWithOptions(cfg, storage.S3Options{
+			Endpoint:      cfg.S3Endpoint,
+			TLSSkipVerify: cfg.S3TLSSkipVerify,
+			Wrap:          transportWrap(tm, cfg.S3Endpoint),
+		}), nil
 	}
 
 	resolver := buildResolver(cfg)
-	factory := backendFactory(cfg)
+	factory := backendFactory(cfg, tm)
 	pool, err := storage.NewPool(storage.PoolConfig{
 		EjectThreshold:    cfg.S3EjectThreshold,
 		ProbeBucket:       cfg.S3ProbeBucket,
@@ -160,10 +173,14 @@ func buildStorage(cfg config.Config) (storage.Storage, *storage.Pool) {
 // directly while still signing/Host-ing with cfg.S3Endpoint (replacing the
 // HAProxy hop); otherwise the resolved endpoint is used as the S3 endpoint
 // as-is.
-func backendFactory(cfg config.Config) storage.BackendFactory {
+func backendFactory(cfg config.Config, tm *metrics.TransportMetrics) storage.BackendFactory {
 	if !cfg.S3BackendPinHost {
 		return func(endpoint string) (storage.Storage, error) {
-			return storage.NewS3StorageForEndpoint(cfg, endpoint), nil
+			return storage.NewS3StorageWithOptions(cfg, storage.S3Options{
+				Endpoint:      endpoint,
+				TLSSkipVerify: cfg.S3TLSSkipVerify,
+				Wrap:          transportWrap(tm, endpoint),
+			}), nil
 		}
 	}
 	return func(endpoint string) (storage.Storage, error) {
@@ -183,7 +200,19 @@ func backendFactory(cfg config.Config) storage.BackendFactory {
 			Endpoint:      cfg.S3Endpoint,
 			DialAddr:      dial,
 			TLSSkipVerify: cfg.S3TLSSkipVerify,
+			Wrap:          transportWrap(tm, dial),
 		}), nil
+	}
+}
+
+// transportWrap returns the metrics wrapper for one backend's transport, or
+// nil when metrics are disabled.
+func transportWrap(tm *metrics.TransportMetrics, backend string) func(http.RoundTripper) http.RoundTripper {
+	if tm == nil {
+		return nil
+	}
+	return func(rt http.RoundTripper) http.RoundTripper {
+		return tm.Wrap(backend, rt)
 	}
 }
 

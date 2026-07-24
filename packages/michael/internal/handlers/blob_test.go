@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	"michael/internal/storage"
@@ -174,8 +175,8 @@ func TestListBlobs_Success(t *testing.T) {
 	store := &mockStorage{
 		listObjectsFn: func(_ context.Context, _, _ string) ([]storage.BlobInfo, error) {
 			return []storage.BlobInfo{
-				{Name: "abc123", Size: 1024},
-				{Name: "def456", Size: 2048},
+				{Name: "data/abc123", Size: 1024},
+				{Name: "data/def456", Size: 2048},
 			}, nil
 		},
 	}
@@ -196,8 +197,49 @@ func TestListBlobs_Success(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 	if len(blobs) != 2 {
-		t.Errorf("expected 2 blobs, got %d", len(blobs))
+		t.Fatalf("expected 2 blobs, got %d", len(blobs))
 	}
+	// Shard order is nondeterministic; names must be prefix-stripped.
+	got := map[string]int64{}
+	for _, b := range blobs {
+		got[b.Name] = b.Size
+	}
+	if got["abc123"] != 1024 || got["def456"] != 2048 {
+		t.Errorf("unexpected blobs: %v", got)
+	}
+}
+
+func TestListBlobs_MidStreamErrorAbortsConnection(t *testing.T) {
+	// After entries have been streamed, a shard failure can't become a 500 —
+	// the handler must abort the connection so the client doesn't mistake a
+	// truncated listing for a complete one.
+	emitted := make(chan struct{})
+	var once sync.Once
+	store := &mockStorage{
+		listStreamFn: func(_ context.Context, _, prefix string, fn func(storage.BlobInfo) error) error {
+			if prefix == "data/f" {
+				// Fail only after another shard has streamed an entry, so the
+				// 200 + partial body is already out.
+				<-emitted
+				return errors.New("gateway exploded")
+			}
+			if err := fn(storage.BlobInfo{Name: prefix + "0cafe", Size: 1}); err != nil {
+				return err
+			}
+			once.Do(func() { close(emitted) })
+			return nil
+		},
+	}
+	srv := newTestServer(store)
+
+	defer func() {
+		if r := recover(); r != http.ErrAbortHandler {
+			t.Errorf("expected panic(http.ErrAbortHandler), got %v", r)
+		}
+	}()
+	doRequest(t, srv, http.MethodGet, "/"+testRepository+"/data", nil, defaultAuth(), map[string]string{
+		"Accept": ContentTypeResticV2,
+	})
 }
 
 func TestListBlobs_MissingAcceptHeader(t *testing.T) {

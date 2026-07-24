@@ -116,12 +116,17 @@ func TestListObjects_PaginatesAllPages(t *testing.T) {
 	defer srv.Close()
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
-	blobs, err := s.ListObjects(context.Background(), "bucket", "data/")
+	var blobs []BlobInfo
+	err := s.ListObjects(context.Background(), "bucket", "data/", func(b BlobInfo) error {
+		blobs = append(blobs, b)
+		return nil
+	})
 	if err != nil {
 		t.Fatalf("ListObjects: %v", err)
 	}
 
-	want := []BlobInfo{{Name: "aa", Size: 1}, {Name: "bb", Size: 2}, {Name: "cc", Size: 3}}
+	// Names are full keys; prefix-stripping is the caller's job.
+	want := []BlobInfo{{Name: "data/aa", Size: 1}, {Name: "data/bb", Size: 2}, {Name: "data/cc", Size: 3}}
 	if len(blobs) != len(want) {
 		t.Fatalf("got %d blobs (%v), want %d", len(blobs), blobs, len(want))
 	}
@@ -135,9 +140,8 @@ func TestListObjects_PaginatesAllPages(t *testing.T) {
 	}
 }
 
-func TestListObjects_EmptyIsNonNil(t *testing.T) {
-	// The handler JSON-encodes the result directly; a nil slice would render
-	// as `null` instead of the `[]` restic expects.
+func TestListObjects_EmptyListing(t *testing.T) {
+	// An empty listing completes without invoking the callback.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/xml")
 		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
@@ -149,15 +153,16 @@ func TestListObjects_EmptyIsNonNil(t *testing.T) {
 	defer srv.Close()
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
-	blobs, err := s.ListObjects(context.Background(), "bucket", "data/")
+	calls := 0
+	err := s.ListObjects(context.Background(), "bucket", "data/", func(BlobInfo) error {
+		calls++
+		return nil
+	})
 	if err != nil {
 		t.Fatalf("ListObjects: %v", err)
 	}
-	if blobs == nil {
-		t.Fatal("expected non-nil empty slice")
-	}
-	if len(blobs) != 0 {
-		t.Fatalf("expected empty result, got %v", blobs)
+	if calls != 0 {
+		t.Fatalf("expected no callbacks for empty listing, got %d", calls)
 	}
 }
 

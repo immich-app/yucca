@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"net/http"
@@ -54,8 +55,20 @@ func (s *Server) Handler() http.Handler {
 		r.Use(metrics.Middleware(s.Metrics))
 	}
 
+	var onLookup func(hit bool)
+	if s.Metrics != nil {
+		onLookup = func(hit bool) {
+			if hit {
+				s.Metrics.AuthCacheHits.Add(context.Background(), 1)
+			} else {
+				s.Metrics.AuthCacheMisses.Add(context.Background(), 1)
+			}
+		}
+	}
+	verifier := auth.NewVerifier(s.JWTPublicKey, onLookup)
+
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(auth.Middleware(s.JWTPublicKey))
+		r.Use(verifier.Middleware())
 		r.Use(authLogContext)
 		if s.Metrics != nil {
 			r.Use(metrics.BlobMiddleware(s.Metrics))

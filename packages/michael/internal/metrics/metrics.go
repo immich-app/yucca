@@ -45,8 +45,18 @@ type Metrics struct {
 	UploadedBytes   otelmetric.Int64Counter
 	StoredBytes     otelmetric.Int64UpDownCounter
 	RequestDuration otelmetric.Float64Histogram
+	RequestTTFB     otelmetric.Float64Histogram
 	RequestCount    otelmetric.Int64Counter
 	RequestErrors   otelmetric.Int64Counter
+	AuthCacheHits   otelmetric.Int64Counter
+	AuthCacheMisses otelmetric.Int64Counter
+}
+
+// durationBuckets replaces the SDK default histogram boundaries, which are
+// sized for milliseconds — recording seconds against them put every sub-5s
+// request in the first bucket.
+var durationBuckets = []float64{
+	0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120,
 }
 
 func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
@@ -77,9 +87,20 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 
 	requestDuration, err := meter.Float64Histogram("http.server.request.duration",
 		otelmetric.WithDescription("HTTP server request duration"),
-		otelmetric.WithUnit("s"))
+		otelmetric.WithUnit("s"),
+		otelmetric.WithExplicitBucketBoundaries(durationBuckets...))
 	if err != nil {
 		return nil, fmt.Errorf("creating request_duration histogram: %w", err)
+	}
+
+	// Duration includes streaming the body to the client, so for large blobs it
+	// measures client throughput; TTFB isolates michael+RGW latency.
+	requestTTFB, err := meter.Float64Histogram("http.server.request.ttfb",
+		otelmetric.WithDescription("Time from request start to first response byte"),
+		otelmetric.WithUnit("s"),
+		otelmetric.WithExplicitBucketBoundaries(durationBuckets...))
+	if err != nil {
+		return nil, fmt.Errorf("creating request_ttfb histogram: %w", err)
 	}
 
 	requestCount, err := meter.Int64Counter("http.server.request.count",
@@ -94,14 +115,29 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating request_errors counter: %w", err)
 	}
 
+	authCacheHits, err := meter.Int64Counter("auth.cache.hits",
+		otelmetric.WithDescription("JWT verifications served from the token cache"))
+	if err != nil {
+		return nil, fmt.Errorf("creating auth_cache_hits counter: %w", err)
+	}
+
+	authCacheMisses, err := meter.Int64Counter("auth.cache.misses",
+		otelmetric.WithDescription("JWT verifications requiring a full signature check"))
+	if err != nil {
+		return nil, fmt.Errorf("creating auth_cache_misses counter: %w", err)
+	}
+
 	return &Metrics{
 		RequestedBytes:  requestedBytes,
 		DownloadedBytes: downloadedBytes,
 		UploadedBytes:   uploadedBytes,
 		StoredBytes:     storedBytes,
 		RequestDuration: requestDuration,
+		RequestTTFB:     requestTTFB,
 		RequestCount:    requestCount,
 		RequestErrors:   requestErrors,
+		AuthCacheHits:   authCacheHits,
+		AuthCacheMisses: authCacheMisses,
 	}, nil
 }
 
@@ -230,19 +266,29 @@ func (cw *countingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// ResponseWriter wraps http.ResponseWriter to count bytes written and track status.
+// ResponseWriter wraps http.ResponseWriter to count bytes written, track
+// status, and stamp when the response started (for TTFB).
 type ResponseWriter struct {
 	http.ResponseWriter
 	BytesWritten int64
 	Status       int
+	FirstByte    time.Time
+}
+
+func (w *ResponseWriter) markStart() {
+	if w.FirstByte.IsZero() {
+		w.FirstByte = time.Now()
+	}
 }
 
 func (w *ResponseWriter) WriteHeader(code int) {
+	w.markStart()
 	w.Status = code
 	w.ResponseWriter.WriteHeader(code)
 }
 
 func (w *ResponseWriter) Write(p []byte) (int, error) {
+	w.markStart()
 	if w.Status == 0 {
 		w.Status = http.StatusOK
 	}
@@ -254,6 +300,7 @@ func (w *ResponseWriter) Write(p []byte) (int, error) {
 // ReadFrom implements io.ReaderFrom to preserve sendfile/splice zero-copy
 // optimization when the underlying ResponseWriter supports it.
 func (w *ResponseWriter) ReadFrom(r io.Reader) (int64, error) {
+	w.markStart()
 	if w.Status == 0 {
 		w.Status = http.StatusOK
 	}
@@ -337,6 +384,9 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 			attrs := HttpMetricOption(r.Method, route, status)
 
 			m.RequestDuration.Record(r.Context(), duration, attrs)
+			if !ww.FirstByte.IsZero() {
+				m.RequestTTFB.Record(r.Context(), ww.FirstByte.Sub(start).Seconds(), attrs)
+			}
 			m.RequestCount.Add(r.Context(), 1, attrs)
 
 			if status >= 400 {

@@ -47,7 +47,7 @@ type Storage interface {
 	HeadObject(ctx context.Context, bucket, key string) (int64, error)
 	GetObject(ctx context.Context, bucket, key, rangeHeader string) (*S3Object, error)
 	PutObject(ctx context.Context, bucket, key string, body io.Reader, contentLength int64, writeOnce bool, sha256Hex string) error
-	ListObjects(ctx context.Context, bucket, prefix string) ([]BlobInfo, error)
+	ListObjects(ctx context.Context, bucket, prefix string, fn func(BlobInfo) error) error
 	DeleteObject(ctx context.Context, bucket, key string) error
 }
 
@@ -73,6 +73,9 @@ type S3Options struct {
 	// TLSSkipVerify disables TLS certificate verification, for gateways behind a
 	// self-signed cert (matching HAProxy's `ssl verify none`).
 	TLSSkipVerify bool
+	// Wrap, when set, wraps the backend's transport (e.g. with per-backend
+	// client metrics).
+	Wrap func(http.RoundTripper) http.RoundTripper
 }
 
 // NewS3StorageForEndpoint builds an S3Storage bound to a specific endpoint,
@@ -98,19 +101,25 @@ func NewS3StorageWithOptions(cfg config.Config, opts S3Options) *S3Storage {
 		BaseEndpoint: aws.String(opts.Endpoint),
 		UsePathStyle: cfg.S3ForcePathStyle,
 	}
-	if hc := buildHTTPClient(opts); hc != nil {
-		s3opts.HTTPClient = hc
-	}
+	s3opts.HTTPClient = buildHTTPClient(opts)
 	return &S3Storage{client: s3.New(s3opts)}
 }
 
-// buildHTTPClient returns a custom HTTP client when the backend needs a pinned
-// dial address or relaxed TLS, or nil to use the SDK default.
+// buildHTTPClient builds the HTTP client for one backend. Always custom (never
+// the SDK default), so connection pooling behaves identically across
+// dev/staging/prod regardless of pin-host or TLS settings.
 func buildHTTPClient(opts S3Options) *http.Client {
-	if opts.DialAddr == "" && !opts.TLSSkipVerify {
-		return nil
-	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+
+	// Each transport serves a single gateway, and restic fans out far more
+	// concurrent requests than the default per-host idle cap of 2 — anything
+	// past that paid a fresh TCP+TLS handshake. Buffers sized for multi-MB
+	// pack transfers (defaults are 4KB).
+	transport.MaxIdleConns = 0
+	transport.MaxIdleConnsPerHost = 128
+	transport.IdleConnTimeout = 120 * time.Second
+	transport.WriteBufferSize = 64 << 10
+	transport.ReadBufferSize = 64 << 10
 
 	if opts.TLSSkipVerify {
 		if transport.TLSClientConfig == nil {
@@ -132,7 +141,11 @@ func buildHTTPClient(opts S3Options) *http.Client {
 		}
 	}
 
-	return &http.Client{Transport: transport}
+	var rt http.RoundTripper = transport
+	if opts.Wrap != nil {
+		rt = opts.Wrap(transport)
+	}
+	return &http.Client{Transport: rt}
 }
 
 // Probe performs a cheap liveness check against the backend gateway. It issues a
@@ -283,11 +296,12 @@ func (w *sha256Writer) Write(p []byte) (n int, err error) {
 	return w.hash.Write(p)
 }
 
-func (s *S3Storage) ListObjects(ctx context.Context, bucket, prefix string) ([]BlobInfo, error) {
-	// ListObjectsV2 caps a single page at 1000 keys, and restic's REST protocol
-	// has no listing pagination — a truncated response makes restic report every
-	// pack past the cutoff as missing from the repo. Always walk all pages.
-	blobs := []BlobInfo{}
+// ListObjects streams every object under prefix to fn as pages arrive, instead
+// of buffering the whole listing — restic's REST protocol has no pagination, so
+// a large repo is one response and TTFB otherwise waits on every ListObjectsV2
+// page (1000 keys each). Names are full object keys; callers strip what they
+// need. An fn error aborts the walk.
+func (s *S3Storage) ListObjects(ctx context.Context, bucket, prefix string, fn func(BlobInfo) error) error {
 	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
@@ -295,24 +309,18 @@ func (s *S3Storage) ListObjects(ctx context.Context, bucket, prefix string) ([]B
 	for paginator.HasMorePages() {
 		out, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list objects: %w", err)
+			return fmt.Errorf("list objects: %w", err)
 		}
 		for _, obj := range out.Contents {
 			if obj.Key == nil || obj.Size == nil {
 				continue
 			}
-			name := *obj.Key
-			if len(name) > len(prefix) {
-				name = name[len(prefix):]
+			if err := fn(BlobInfo{Name: *obj.Key, Size: *obj.Size}); err != nil {
+				return err
 			}
-			blobs = append(blobs, BlobInfo{
-				Name: name,
-				Size: *obj.Size,
-			})
 		}
 	}
-
-	return blobs, nil
+	return nil
 }
 
 func (s *S3Storage) DeleteObject(ctx context.Context, bucket, key string) error {
