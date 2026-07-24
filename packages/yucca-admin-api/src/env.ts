@@ -1,3 +1,4 @@
+import type { StringValue } from 'ms';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -11,6 +12,13 @@ const schema = z.object({
   POSTGRES_PASSWORD: z.string(),
   POSTGRES_DATABASE: z.string(),
   POSTGRES_SSL: z.union([z.enum(['require', 'allow', 'prefer', 'verify-full']), z.boolean()]).default(false),
+
+  JWT_PRIVATE_KEY: z.string(),
+  JWT_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "1d", "30m", "3600s"')
+    .default('24h')
+    .transform((value): StringValue => value as StringValue),
 
   OIDC_ADMIN_ISSUER: z.url().transform((url) => new URL(url)),
   OIDC_ADMIN_CLIENT_ID: z.string(),

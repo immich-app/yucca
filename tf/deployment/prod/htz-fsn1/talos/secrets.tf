@@ -85,6 +85,35 @@ resource "onepassword_item" "yucca_jwt" {
   }
 }
 
+# ES256 keypair for yucca-admin-api's CLI session JWTs (yuctl login). Separate
+# trust domain from yucca_jwt on purpose: admin-api both signs and verifies,
+# and nothing else may accept these tokens.
+resource "tls_private_key" "yucca_admin_jwt" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "onepassword_item" "yucca_admin_jwt" {
+  vault    = data.onepassword_vault.prod.uuid
+  title    = "YUCCA_ADMIN_JWT_KEYPAIR"
+  category = "password"
+
+  password = tls_private_key.yucca_admin_jwt.private_key_pem_pkcs8
+
+  section {
+    label = "keypair"
+    field {
+      label = "public_key"
+      type  = "STRING"
+      value = tls_private_key.yucca_admin_jwt.public_key_pem
+    }
+  }
+}
+
 # Namespaces created here so the Secrets have a home before Flux reconciles;
 # the Flux overlays declare them too (bare Namespace is safe under dual SSA).
 resource "kubernetes_namespace_v1" "yucca" {
@@ -129,6 +158,7 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     namespace = kubernetes_namespace_v1.yucca.metadata[0].name
   }
   data = {
+    JWT_PRIVATE_KEY          = tls_private_key.yucca_admin_jwt.private_key_pem_pkcs8
     OIDC_ADMIN_CLIENT_ID     = var.yucca_oidc_admin_client_id
     OIDC_ADMIN_CLIENT_SECRET = var.yucca_oidc_admin_client_secret
   }

@@ -33,6 +33,20 @@ secretData:
   OIDC_ADMIN_CLIENT_ID: "client ID"
   OIDC_ADMIN_CLIENT_SECRET: "client secret"
 
+# OPT-IN dev signing key for CLI session JWTs. The project's well-known
+# local-dev ES256 keypair (the same one committed in .mise/tasks/*/env and the
+# yucca-api chart) renders into the Secret ONLY when useDevKeypair is true —
+# set by the dev/local overlay. Default false: an overlay that forgets to
+# provide a real key gets a loud missing-JWT_PRIVATE_KEY crash instead of
+# silently signing admin tokens with a public fixture.
+useDevKeypair: false
+devJwtPrivateKey: |
+  -----BEGIN PRIVATE KEY-----
+  MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgCla79+Sip4o2hZ1K
+  nQJYp2xU/nsCJmRoZmvXjeX6cW+hRANCAASkubBRIE7Sns/VS8ZF5XEVO8CwJ+AZ
+  Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
+  -----END PRIVATE KEY-----
+
 env:
   - name: NODE_ENV
     value: development

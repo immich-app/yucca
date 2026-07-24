@@ -261,7 +261,7 @@ APP_WIRING = {
     # dev_keypair: render the well-known dev JWT fixture into the chart Secret
     # (the chart default is useDevKeypair=false so real overlays fail loudly).
     'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael'], 'dev_env': True, 'dev_keypair': True},
-    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc']},
+    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc'], 'dev_keypair': True},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user'], 'dev_env': True},
     'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
     'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user'], 'dev_keypair': True},

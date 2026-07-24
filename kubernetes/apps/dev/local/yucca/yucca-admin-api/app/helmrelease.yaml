@@ -29,6 +29,9 @@ spec:
       readOnlyRootFilesystem: false
       capabilities:
         drop: [ALL]
+    # Dev-only: render the well-known local-dev JWT signing key into the chart
+    # Secret (the chart default is false so real overlays fail loudly instead).
+    useDevKeypair: true
     image:
       repository: ghcr.io/immich-app/yucca/yucca-admin-api # TODO: confirm prod registry
       tag: 0.0.1

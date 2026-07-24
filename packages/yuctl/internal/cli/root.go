@@ -42,6 +42,7 @@ func NewRootCmd() *cobra.Command {
 
 	root.AddCommand(
 		newSelectCmd(),
+		newLoginCmd(),
 		newCephCmd(),
 		newInfraCmd(),
 		newUsersCmd(),

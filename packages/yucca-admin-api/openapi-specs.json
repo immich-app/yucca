@@ -67,6 +67,76 @@
         ]
       }
     },
+    "/api/auth/cli/login": {
+      "get": {
+        "operationId": "cliLogin",
+        "parameters": [
+          {
+            "name": "port",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code_challenge",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/cli/token": {
+      "post": {
+        "operationId": "cliToken",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CliTokenRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CliTokenResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/auth/oidc/callback": {
       "get": {
         "operationId": "oidcCallback",
@@ -442,6 +512,44 @@
           }
         },
         "required": [
+          "sub"
+        ]
+      },
+      "CliTokenRequestDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "One-time code delivered to the loopback redirect"
+          },
+          "codeVerifier": {
+            "type": "string",
+            "description": "Plaintext verifier whose S256 hash was sent as code_challenge on /auth/cli/login"
+          }
+        },
+        "required": [
+          "code",
+          "codeVerifier"
+        ]
+      },
+      "CliTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "ES256 session JWT for Authorization: Bearer"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "Session expiry, ISO 8601"
+          },
+          "sub": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresAt",
           "sub"
         ]
       },

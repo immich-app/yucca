@@ -1,11 +1,12 @@
-import { Controller, Get, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import { parse } from 'cookie';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
-import { AuthDto } from 'src/dto/auth.dto';
+import { AuthDto, CliTokenRequestDto, CliTokenResponseDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
-import { AuthService } from 'src/services/auth.service';
+import { AuthService, type CliLoginParams } from 'src/services/auth.service';
 
 @Controller('/auth')
 export class AuthController {
@@ -43,6 +44,40 @@ export class AuthController {
     response.redirect(redirectTo);
   }
 
+  // Loopback login for yuctl: the CLI opens this in a browser with its
+  // listener port, a state nonce, and an S256 code challenge; the normal OIDC
+  // dance runs, and the callback redirects to 127.0.0.1:<port> with a one-time
+  // code the CLI exchanges at /auth/cli/token. The CLI params ride along in
+  // their own short-lived cookie, mirroring how state/verifier already travel.
+  @Get('/cli/login')
+  @ApiQuery({ name: 'port', type: Number })
+  @ApiQuery({ name: 'state', type: String })
+  @ApiQuery({ name: 'code_challenge', type: String })
+  async cliLogin(
+    @Query('port') port: string,
+    @Query('state') state: string,
+    @Query('code_challenge') codeChallenge: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const params = this.auth.parseCliLoginParams(port, state, codeChallenge);
+
+    const { redirectTo, state: oidcState, codeVerifier } = await this.auth.oidcAuthorize();
+
+    response.cookie(CookieName.CliLogin, JSON.stringify(params), {
+      maxAge: Duration.fromObject({ minutes: 10 }).toMillis(),
+    });
+    response.cookie(CookieName.OidcState, oidcState);
+    response.cookie(CookieName.OidcCodeVerifier, codeVerifier);
+
+    response.redirect(redirectTo);
+  }
+
+  @Post('/cli/token')
+  @ApiOkResponse({ type: CliTokenResponseDto })
+  async cliToken(@Body() body: CliTokenRequestDto): Promise<CliTokenResponseDto> {
+    return await this.auth.cliToken(body.code, body.codeVerifier);
+  }
+
   @Get('/oidc/callback')
   async oidcCallback(@Req() request: Request, @Res() response: Response) {
     const { sub, accessToken, redirectTo } = await this.auth.oidcCallback(request);
@@ -65,6 +100,25 @@ export class AuthController {
       secure: request.protocol === 'https',
       maxAge: Duration.fromObject({ days: 7 }).toMillis(),
     });
+
+    // CLI loopback flow: hand the browser back to the local yuctl listener
+    // with a one-time code instead of the admin UI.
+    const cliCookie = parse(request.headers.cookie ?? '')[CookieName.CliLogin];
+    if (cliCookie) {
+      // Re-validate: the cookie is client-controlled, and the values are
+      // interpolated into the loopback redirect.
+      const raw = JSON.parse(cliCookie) as CliLoginParams;
+      const { port, state, codeChallenge } = this.auth.parseCliLoginParams(
+        String(raw.port),
+        raw.state,
+        raw.codeChallenge,
+      );
+      const code = await this.auth.mintCliCode(sub, codeChallenge);
+
+      response.clearCookie(CookieName.CliLogin);
+      response.redirect(`http://127.0.0.1:${port}/callback?code=${encodeURIComponent(code)}&state=${state}`);
+      return;
+    }
 
     response.redirect(redirectTo);
   }

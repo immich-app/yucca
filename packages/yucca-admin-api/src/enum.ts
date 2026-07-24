@@ -3,6 +3,15 @@ export enum CookieName {
   AccessToken = 'yucca-admin-access-token',
   OidcState = 'yucca-admin-oidc-state',
   OidcCodeVerifier = 'yucca-admin-oidc-code-verifier',
+  CliLogin = 'yucca-admin-cli-login',
+}
+
+// Audiences of the ES256 JWTs this service mints for the CLI login flow.
+export enum JwtAudience {
+  // One-time authorization code handed to the loopback redirect (short TTL).
+  CliCode = 'yucca-admin-cli-code',
+  // CLI session token sent as `Authorization: Bearer`.
+  Cli = 'yucca-admin-cli',
 }
 
 export enum MetadataKey {

@@ -1,21 +1,41 @@
 import { WideContextRepository } from '@common/server/otel';
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { parse } from 'cookie';
 import { Request } from 'express';
+import { createHash } from 'node:crypto';
 import { IncomingHttpHeaders } from 'node:http';
-import { AuthDto } from 'src/dto/auth.dto';
-import { CookieName } from 'src/enum';
+import { AuthDto, CliTokenResponseDto } from 'src/dto/auth.dto';
+import { CookieName, JwtAudience } from 'src/enum';
 import { env } from 'src/env';
 import { OidcRepository } from 'src/repositories/oidc.repository';
+
+// Loopback-flow parameters set by the CLI on /auth/cli/login, carried through
+// the OIDC dance in the CliLogin cookie.
+export interface CliLoginParams {
+  port: number;
+  state: string;
+  codeChallenge: string;
+}
+
+// state / code_challenge are CLI-generated random strings; constrain them to
+// URL-safe base64 so they can be echoed into the loopback redirect untouched.
+const URL_SAFE = /^[\w-]{16,128}$/;
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly oidc: OidcRepository,
+    private readonly jwt: JwtService,
     private readonly wideContext: WideContextRepository,
   ) {}
 
   async authenticate(headers: IncomingHttpHeaders): Promise<AuthDto> {
+    const bearer = headers.authorization?.match(/^Bearer (.+)$/i)?.[1];
+    if (bearer) {
+      return await this.authenticateCli(bearer);
+    }
+
     const cookies = parse(headers.cookie ?? '');
     const sub = cookies[CookieName.Sub];
     const accessToken = cookies[CookieName.AccessToken];
@@ -87,5 +107,62 @@ export class AuthService {
       sub: claims.sub,
       accessToken: response.access_token,
     };
+  }
+
+  private async authenticateCli(token: string): Promise<AuthDto> {
+    let payload: { sub: string };
+    try {
+      payload = await this.jwt.verifyAsync(token, { audience: JwtAudience.Cli });
+    } catch {
+      throw new UnauthorizedException('Invalid CLI session token');
+    }
+
+    this.wideContext.assignContext({ cliSub: payload.sub });
+
+    return { sub: payload.sub };
+  }
+
+  // Validates the loopback-flow query params of GET /auth/cli/login.
+  parseCliLoginParams(port?: string, state?: string, codeChallenge?: string): CliLoginParams {
+    const portNum = Number(port);
+    if (!Number.isInteger(portNum) || portNum < 1024 || portNum > 65_535) {
+      throw new BadRequestException('port must be an integer in [1024, 65535]');
+    }
+    if (!state || !URL_SAFE.test(state)) {
+      throw new BadRequestException('state must be 16-128 URL-safe base64 characters');
+    }
+    if (!codeChallenge || !URL_SAFE.test(codeChallenge)) {
+      throw new BadRequestException('code_challenge must be 16-128 URL-safe base64 characters');
+    }
+    return { port: portNum, state, codeChallenge };
+  }
+
+  // Mints the one-time code delivered to the CLI's loopback listener: a
+  // short-lived JWT binding the authenticated sub to the CLI's code_challenge.
+  // One-time use is enforced by PKCE semantics rather than server state — the
+  // code alone is useless without the verifier, which never leaves the CLI.
+  async mintCliCode(sub: string, codeChallenge: string): Promise<string> {
+    return await this.jwt.signAsync({ sub, cnf: codeChallenge }, { audience: JwtAudience.CliCode, expiresIn: '60s' });
+  }
+
+  async cliToken(code: string, codeVerifier: string): Promise<CliTokenResponseDto> {
+    let payload: { sub: string; cnf: string };
+    try {
+      payload = await this.jwt.verifyAsync(code, { audience: JwtAudience.CliCode });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired CLI login code');
+    }
+
+    const challenge = createHash('sha256').update(codeVerifier).digest('base64url');
+    if (challenge !== payload.cnf) {
+      throw new UnauthorizedException('code_verifier does not match code_challenge');
+    }
+
+    const accessToken = await this.jwt.signAsync({ sub: payload.sub }, { audience: JwtAudience.Cli });
+    const { exp } = this.jwt.decode<{ exp: number }>(accessToken);
+
+    this.wideContext.assignContext({ cliSub: payload.sub });
+
+    return { accessToken, expiresAt: new Date(exp * 1000).toISOString(), sub: payload.sub };
   }
 }
