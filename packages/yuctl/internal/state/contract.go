@@ -35,7 +35,7 @@ type Discovery struct {
 
 // RegionMeta is the per-region metadata merged in from region.hcl.
 type RegionMeta struct {
-	SiteID       string `json:"site_id"`
+	SiteID       *int   `json:"site_id"` // numeric fabric site id; null for non-fabric sites (austin)
 	Datacenter   string `json:"datacenter"`
 	ProviderCode string `json:"provider_code"`
 	Domain       string `json:"domain"`
@@ -59,7 +59,7 @@ type CephCluster struct {
 	RGWS3Endpoint    string            `json:"rgw_s3_endpoint"`
 	HealthCredRef    string            `json:"health_cred_ref"`    // op:// reference
 	S3AdminCredRefs  map[string]string `json:"s3_admin_cred_refs"` // op:// references
-	SecretItemTitles []string          `json:"secret_item_titles"`
+	SecretItemTitles map[string]string `json:"secret_item_titles"` // purpose → 1P item title
 	BootstrapHost    string            `json:"bootstrap_host"`
 }
 
@@ -71,22 +71,29 @@ type DNS struct {
 	APITokenRef string   `json:"api_token_ref"` // op:// reference
 }
 
-// Netbird is the netbird / global stack payload.
+// Netbird is the netbird / global stack payload. All maps are keyed by the
+// friendly resource name (e.g. group "ceph", network "HTZ-FSN1").
 type Netbird struct {
-	NamePrefix         string   `json:"name_prefix"`
-	Vault              string   `json:"vault"`
-	GroupIDs           []string `json:"group_ids"`
-	PolicyIDs          []string `json:"policy_ids"`
-	NetworkIDs         []string `json:"network_ids"`
-	SetupKeyItemTitles []string `json:"setup_key_item_titles"`
+	NamePrefix         string            `json:"name_prefix"`
+	Vault              string            `json:"vault"`
+	GroupIDs           map[string]string `json:"group_ids"`
+	PolicyIDs          map[string]string `json:"policy_ids"`
+	NetworkIDs         map[string]string `json:"network_ids"`
+	SetupKeyItemTitles map[string]string `json:"setup_key_item_titles"`
+}
+
+// ClusterCIDR is one fabric cluster's public/private CIDR pair.
+type ClusterCIDR struct {
+	Public  string `json:"public"`
+	Private string `json:"private"`
 }
 
 // Fabric is the fabric stack payload.
 type Fabric struct {
-	SiteID       string   `json:"site_id"`
-	KubeCIDR     string   `json:"kube_cidr"`
-	MgmtCIDR     string   `json:"mgmt_cidr"`
-	ClusterCIDRs []string `json:"cluster_cidrs"`
+	SiteID       *int                   `json:"site_id"`
+	KubeCIDR     string                 `json:"kube_cidr"`
+	MgmtCIDR     string                 `json:"mgmt_cidr"`
+	ClusterCIDRs map[string]ClusterCIDR `json:"cluster_cidrs"` // keyed by ceph cluster slug (e.g. "cls1")
 }
 
 // tfState is the minimal slice of a terraform.tfstate JSON document we care

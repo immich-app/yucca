@@ -1,11 +1,14 @@
 import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository } from '@common/server/otel';
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
+import { createPublicKey } from 'node:crypto';
 import { AuthController } from './controllers/auth.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { SessionController } from './controllers/session.controller';
 import { UserController } from './controllers/user.controller';
+import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { DatabaseRepository } from './repositories/database.repository';
 import { OidcRepository } from './repositories/oidc.repository';
@@ -19,7 +22,18 @@ import { SessionService } from './services/session.service';
 import { UserService } from './services/user.service';
 import { getKyselyConfig } from './utils/database';
 
-export const imports = [KyselyModule.forRoot(getKyselyConfig())];
+export const imports = [
+  JwtModule.register({
+    global: true,
+    privateKey: env.JWT_PRIVATE_KEY,
+    // Verification key derived from the signing key: CLI session JWTs are
+    // minted and validated by this same service.
+    publicKey: createPublicKey(env.JWT_PRIVATE_KEY).export({ type: 'spki', format: 'pem' }).toString(),
+    signOptions: { algorithm: 'ES256', expiresIn: env.JWT_EXPIRES_IN },
+    verifyOptions: { algorithms: ['ES256'] },
+  }),
+  KyselyModule.forRoot(getKyselyConfig()),
+];
 
 export const controllers = [AuthController, UserController, SessionController, RepositoryController];
 

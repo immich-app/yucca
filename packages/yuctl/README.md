@@ -41,7 +41,7 @@ packages/yuctl/
     context/                  # ~/.config/yuctl/context.json {partition,region,ceph_cluster}
     k8s/                      # talosctl upgrade wrapper
     ceph/                     # RGW/dashboard health probe
-    adminapi/                 # OIDC device flow + cookie-auth admin-api client
+    adminapi/                 # CLI loopback login + Bearer admin-api client
 ```
 
 ## Command tree
@@ -49,6 +49,7 @@ packages/yuctl/
 ```
 yuctl
 ├── select <partition>@<region>     validate vs discovery → write context (clears ceph)
+├── login                           browser loopback login → cached admin-api session JWT
 ├── ceph
 │   ├── select <name>               validate vs region's ceph_clusters keys → nest in context
 │   └── get
@@ -57,7 +58,7 @@ yuctl
 │   └── talos
 │       └── upgrade                 talosctl upgrade CP nodes (--dry-run, confirm/--yes, --image)
 └── users
-    └── list                        list users in the partition's PRIMARY region (UNTESTED)
+    └── list                        list users in the partition's PRIMARY region
 ```
 
 Global flags: `--log-level` (trace|debug|info|warn|error), `--log-format`
@@ -110,35 +111,33 @@ yuctl ceph select sietch
 yuctl ceph get health         # → Ceph health against staging end-to-end
 ```
 
-## `users list` — UNTESTED against a live admin-api
+## `login` / `users list` — admin-api auth
 
-`users list` is implemented to spec but **has not been exercised end-to-end**,
-because it depends on out-of-band setup that does not exist yet:
+`yuctl login` authenticates against the selected partition's admin-api using
+the **CLI loopback login flow** — no IdP client secret ever reaches the
+operator machine:
 
-- a **public OIDC device client** registered for the admin scope (the device
-  client id today lives only for `yucca-api`, not the admin issuer), and
-- **admin-api ingress exposure** — `yucca-admin-api` is in-cluster-only at the
-  moment.
+1. Resolve the partition's **primary** region (`discovery.role == "primary"`)
+   and derive the admin-api base URL from its k8s `api_endpoint`
+   (`kube.<cluster>.<region>.<provider>.yucca.futo.network` →
+   `https://admin.<…>` — the same overlay host as `YUCCA_ADMIN_HOST`); override
+   with `--admin-url` or `YUCTL_ADMIN_API_URL`. The host is on the NetBird
+   overlay, so the operator (and their browser) must be connected.
+2. Start a listener on `127.0.0.1:<random port>` and open the browser at
+   `GET /api/auth/cli/login?port&state&code_challenge` (S256 challenge; the
+   verifier never leaves yuctl). `--no-browser` prints the URL instead.
+3. The admin-api — which owns the confidential OIDC client — runs its normal
+   browser OIDC dance, then redirects to the loopback listener with a
+   **one-time code**.
+4. yuctl exchanges code + verifier at `POST /api/auth/cli/token` for an
+   admin-api-minted **24h ES256 session JWT**, cached at 0600
+   (`admin-token-<partition>.json`); `--reauth` forces a fresh login. The JWT
+   is sent as `Authorization: Bearer` and verified locally by the admin-api
+   (`packages/yucca-admin-api/src/services/auth.service.ts`).
 
-What it does when those exist:
-
-1. Resolve the partition's **primary** region (`discovery.role == "primary"`).
-2. Derive the admin-api base URL from `region_meta.domain`
-   (`https://yucca-admin-api.<domain>`); override with `--admin-url` or
-   `YUCTL_ADMIN_API_URL`.
-3. Run the **OAuth 2.0 device-authorization flow** against the Zitadel issuer
-   (`--issuer` / `OIDC_ADMIN_ISSUER`) using the public device client
-   (`--client-id` / `OIDC_ADMIN_DEVICE_CLIENT_ID`), print the verification
-   prompt, poll the token endpoint, and resolve the subject via OIDC userinfo.
-   The token is cached at 0600 (`admin-token-<partition>.json`); `--reauth`
-   forces a fresh login.
-4. Call `GET /api/user` (cursor-paginated via `nextCursor`, `--limit` page size).
-
-**Auth is COOKIE-based, not Bearer.** The admin-api validates the
-`yucca-admin-sub` + `yucca-admin-access-token` cookies by calling OIDC userinfo
-(`packages/yucca-admin-api/src/services/auth.service.ts`,
-`src/middleware/auth.guard.ts`, cookie names in `src/enum.ts`). yuctl sends both
-cookies and never an `Authorization` header.
+`users list` reuses the cached session (running the same login flow when it is
+missing or expired) and calls `GET /api/user` (cursor-paginated via
+`nextCursor`, `--limit` page size).
 
 ## Environment variables
 
@@ -148,9 +147,7 @@ cookies and never an `Authorization` header.
 | `YUCTL_TF_STATE_ACCESS_KEY_REF` / `…_SECRET_KEY_REF` | op refs for state creds                | `op://yucca_tf/TF_STATE_S3_{ACCESS,SECRET}_KEY/password` |
 | `YUCTL_TF_DEPLOYMENT_DIR`                            | force the local stack-enumeration dir  | walk up for `tf/deployment`                              |
 | `OP_BIN`                                             | 1Password CLI binary                   | `op`                                                     |
-| `OIDC_ADMIN_ISSUER`                                  | admin OIDC issuer (`users list`)       | — (flag `--issuer`)                                      |
-| `OIDC_ADMIN_DEVICE_CLIENT_ID`                        | public device client id (`users list`) | — (flag `--client-id`)                                   |
-| `YUCTL_ADMIN_API_URL`                                | admin-api base URL (`users list`)      | derived from region domain                               |
+| `YUCTL_ADMIN_API_URL`                                | admin-api base URL (`login`, `users`)  | derived from discovery `api_endpoint`                    |
 
 ## Tests
 

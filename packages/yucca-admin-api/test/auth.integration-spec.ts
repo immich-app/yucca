@@ -2,6 +2,7 @@ import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { parse } from 'cookie';
+import { createHash } from 'node:crypto';
 import { env } from 'src/env';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -133,6 +134,72 @@ describe('AuthController (e2e)', () => {
           expect.stringContaining('yucca-admin-access-token='),
         ]),
       );
+    });
+  });
+
+  describe('CLI loopback login flow', () => {
+    const verifier = 'integration-cli-verifier-0123456789';
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+    const state = 'integration-cli-state-0123456789';
+
+    it('rejects malformed loopback params', async () => {
+      await request(app.getHttpServer())
+        .get('/api/auth/cli/login')
+        .query({ port: '80', state, code_challenge: challenge })
+        .expect(400);
+    });
+
+    it('runs end-to-end: cli/login -> callback -> loopback code -> cli/token -> Bearer', async () => {
+      const { header } = await request(app.getHttpServer())
+        .get('/api/auth/cli/login')
+        .query({ port: '8123', state, code_challenge: challenge })
+        .expect(302);
+      const loginCookies = parse((header['set-cookie'] as never as string[]).join('; '));
+      expect(loginCookies['yucca-admin-cli-login']).toBeDefined();
+
+      const redirectUrl = new URL(header.location);
+      redirectUrl.pathname = '/api/form';
+      redirectUrl.searchParams.set('sub', 'cli-admin');
+
+      const { headers } = await fetch(redirectUrl, { redirect: 'manual' });
+      const callbackUrl = new URL(headers.get('location')!);
+
+      const { header: cbHeader } = await request(app.getHttpServer())
+        .get(callbackUrl.pathname + callbackUrl.search)
+        .set('Cookie', [
+          `yucca-admin-oidc-state=${loginCookies['yucca-admin-oidc-state']}`,
+          `yucca-admin-oidc-code-verifier=${loginCookies['yucca-admin-oidc-code-verifier']}`,
+          `yucca-admin-cli-login=${encodeURIComponent(loginCookies['yucca-admin-cli-login']!)}`,
+        ])
+        .expect(302);
+
+      const loopback = new URL(cbHeader.location);
+      expect(loopback.origin).toBe('http://127.0.0.1:8123');
+      expect(loopback.pathname).toBe('/callback');
+      expect(loopback.searchParams.get('state')).toBe(state);
+      expect(cbHeader['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringContaining('yucca-admin-cli-login=;')]),
+      );
+      const code = loopback.searchParams.get('code')!;
+
+      // Wrong verifier is rejected; the right one yields a Bearer session.
+      await request(app.getHttpServer())
+        .post('/api/auth/cli/token')
+        .send({ code, codeVerifier: 'wrong-verifier' })
+        .expect(401);
+
+      const { body } = await request(app.getHttpServer())
+        .post('/api/auth/cli/token')
+        .send({ code, codeVerifier: verifier })
+        .expect(201);
+      expect(body.sub).toBe('cli-admin');
+      expect(body.accessToken).toBeDefined();
+
+      await request(app.getHttpServer())
+        .get('/api/auth')
+        .set('Authorization', `Bearer ${body.accessToken}`)
+        .expect(200)
+        .expect({ sub: 'cli-admin' });
     });
   });
 });

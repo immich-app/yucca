@@ -10,12 +10,6 @@ import (
 	"strings"
 )
 
-// Cookie names mirror packages/yucca-admin-api/src/enum.ts.
-const (
-	cookieSub         = "yucca-admin-sub"
-	cookieAccessToken = "yucca-admin-access-token"
-)
-
 // User mirrors the admin-api UserDto (src/dto/user.dto.ts).
 type User struct {
 	ID       string `json:"id"`
@@ -31,7 +25,7 @@ type userPage struct {
 	NextCursor *string `json:"nextCursor"`
 }
 
-// Client talks to one admin-api instance using cookie auth.
+// Client talks to one admin-api instance using a CLI session JWT.
 type Client struct {
 	baseURL string
 	http    *http.Client
@@ -47,11 +41,39 @@ func NewClient(baseURL string, token Token, hc *http.Client) *Client {
 	return &Client{baseURL: strings.TrimRight(baseURL, "/"), http: hc, token: token}
 }
 
-// setAuth attaches BOTH auth cookies. The admin-api validates them via OIDC
-// userinfo; a Bearer header would be ignored.
 func (c *Client) setAuth(req *http.Request) {
-	req.AddCookie(&http.Cookie{Name: cookieSub, Value: c.token.Sub})
-	req.AddCookie(&http.Cookie{Name: cookieAccessToken, Value: c.token.AccessToken})
+	req.Header.Set("Authorization", "Bearer "+c.token.AccessToken)
+}
+
+// GetAuth verifies the session against GET /api/auth and returns the
+// authenticated subject.
+func (c *Client) GetAuth(ctx context.Context) (string, error) {
+	u := c.baseURL + "/api/auth"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "application/json")
+	c.setAuth(req)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("GET %s: %w", u, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return "", fmt.Errorf("admin-api rejected the session token (status 401) — run `yuctl login --reauth`")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GET %s: status %d", u, resp.StatusCode)
+	}
+	var out struct {
+		Sub string `json:"sub"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", fmt.Errorf("parse auth response: %w", err)
+	}
+	return out.Sub, nil
 }
 
 // ListUsers returns every user, following the cursor pagination. limit (when
@@ -99,7 +121,7 @@ func (c *Client) listUserPage(ctx context.Context, cursor string, limit int) (*u
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return nil, fmt.Errorf("admin-api rejected cookies (status %d) — token may be expired or the device client lacks admin access", resp.StatusCode)
+		return nil, fmt.Errorf("admin-api rejected the session token (status %d) — run `yuctl login --reauth`", resp.StatusCode)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GET %s: status %d", u, resp.StatusCode)
@@ -111,5 +133,14 @@ func (c *Client) listUserPage(ctx context.Context, cursor string, limit int) (*u
 	return &page, nil
 }
 
-// ParseLimit is the exported validator for the --limit flag.
-func ParseLimit(s string) (int, error) { return parseLimit(s) }
+// ParseLimit validates a user-supplied --limit page size for the admin-api.
+func ParseLimit(s string) (int, error) {
+	if s == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 1 {
+		return 0, fmt.Errorf("limit must be a positive integer")
+	}
+	return n, nil
+}

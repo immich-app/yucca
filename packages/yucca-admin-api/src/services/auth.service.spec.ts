@@ -1,5 +1,18 @@
+import { JwtService } from '@nestjs/jwt';
+import { createHash, createPublicKey } from 'node:crypto';
+import { env } from 'src/env';
 import { Mocks, newMocks } from '../../test/mocks';
 import { AuthService } from './auth.service';
+
+// Real JwtService over the local-dev keypair: the CLI-flow tests exercise
+// actual ES256 mint/verify rather than mocked crypto.
+const newJwtService = () =>
+  new JwtService({
+    privateKey: env.JWT_PRIVATE_KEY,
+    publicKey: createPublicKey(env.JWT_PRIVATE_KEY).export({ type: 'spki', format: 'pem' }).toString(),
+    signOptions: { algorithm: 'ES256', expiresIn: env.JWT_EXPIRES_IN },
+    verifyOptions: { algorithms: ['ES256'] },
+  });
 
 describe(AuthService.name, () => {
   let mocks: Mocks;
@@ -7,7 +20,7 @@ describe(AuthService.name, () => {
 
   beforeEach(() => {
     mocks = newMocks();
-    sut = new AuthService(mocks.oidc as never, mocks.wideContext);
+    sut = new AuthService(mocks.oidc as never, newJwtService(), mocks.wideContext);
   });
 
   it('should exist', () => {
@@ -139,6 +152,57 @@ describe(AuthService.name, () => {
 
       expect(mocks.oidc.callback).toHaveBeenCalledWith(expect.any(URL), 'state', 'code');
       expect(mocks.wideContext.assignContext).toHaveBeenCalledWith({ claims });
+    });
+  });
+
+  describe('cli login flow', () => {
+    const verifier = 'cli-verifier-0123456789abcdef';
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+
+    it('should authenticate a Bearer token minted via cliToken', async () => {
+      const code = await sut.mintCliCode('oidc-sub', challenge);
+      const { accessToken, sub, expiresAt } = await sut.cliToken(code, verifier);
+
+      expect(sub).toBe('oidc-sub');
+      expect(new Date(expiresAt).getTime()).toBeGreaterThan(Date.now());
+
+      await expect(sut.authenticate({ authorization: `Bearer ${accessToken}` })).resolves.toEqual({ sub: 'oidc-sub' });
+    });
+
+    it('should reject a mismatched code verifier', async () => {
+      const code = await sut.mintCliCode('oidc-sub', challenge);
+      await expect(sut.cliToken(code, 'some-other-verifier')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"code_verifier does not match code_challenge"`,
+      );
+    });
+
+    it('should reject a session token used as a code and vice versa', async () => {
+      const code = await sut.mintCliCode('oidc-sub', challenge);
+      const { accessToken } = await sut.cliToken(code, verifier);
+
+      await expect(sut.cliToken(accessToken, verifier)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Invalid or expired CLI login code"`,
+      );
+      await expect(sut.authenticate({ authorization: `Bearer ${code}` })).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Invalid CLI session token"`,
+      );
+    });
+
+    it('should reject garbage Bearer tokens', async () => {
+      await expect(sut.authenticate({ authorization: 'Bearer not-a-jwt' })).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Invalid CLI session token"`,
+      );
+    });
+
+    it('should validate cli login params', () => {
+      expect(() => sut.parseCliLoginParams('80', 'a'.repeat(32), challenge)).toThrow('port');
+      expect(() => sut.parseCliLoginParams('8000', 'bad state!', challenge)).toThrow('state');
+      expect(() => sut.parseCliLoginParams('8000', 'a'.repeat(32), 'nope~')).toThrow('code_challenge');
+      expect(sut.parseCliLoginParams('8000', 'a'.repeat(32), challenge)).toEqual({
+        port: 8000,
+        state: 'a'.repeat(32),
+        codeChallenge: challenge,
+      });
     });
   });
 });

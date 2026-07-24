@@ -16,7 +16,7 @@ const cephState = `{
         "role": "primary",
         "stack": "ceph",
         "stack_type": "ceph",
-        "region_meta": {"site_id": "austin", "datacenter": "austin", "provider_code": "aus", "domain": "staging.example.com"},
+        "region_meta": {"site_id": null, "datacenter": "austin", "provider_code": "aus", "domain": "staging.example.com"},
         "ceph_clusters": {
           "sietch": {
             "cluster_name": "sietch",
@@ -24,7 +24,7 @@ const cephState = `{
             "rgw_s3_endpoint": "https://s3.sietch.staging.austin.int",
             "health_cred_ref": "op://yucca_tf_staging/SIETCH_HEALTH/password",
             "s3_admin_cred_refs": {"access": "op://v/i/access", "secret": "op://v/i/secret"},
-            "secret_item_titles": ["SIETCH_HEALTH"],
+            "secret_item_titles": {"health": "SIETCH_HEALTH"},
             "bootstrap_host": "ceph-1.sietch"
           }
         }
