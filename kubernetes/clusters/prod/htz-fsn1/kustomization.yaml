@@ -6,4 +6,5 @@ resources:
   - ./cluster-settings.yaml
   - ./image-versions.yaml
   - ./flux-release.yaml
+  - ./prod-pin.yaml
   - ./apps.yaml

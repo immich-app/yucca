@@ -1,0 +1,15 @@
+---
+# MIRROR of the CI-owned deploy/prod branch layout — the LIVE pin lives on
+# that branch (written by .github/scripts/write-prod-pin.sh); this main copy
+# only exists so validation (flux-local) can build the prod-pin Kustomization
+# without fetching the branch. Values here are a snapshot, not authority.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-release
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    tag: v0.16.0
+  url: https://github.com/immich-app/yucca.git

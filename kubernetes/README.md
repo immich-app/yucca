@@ -6,10 +6,10 @@ This directory holds **two parallel trees** with different consumers:
 kubernetes/
 ├── clusters/                 # ← real clusters (partition/region GitOps; reconciled by Flux)
 │   ├── staging/austin/       #   cluster-settings(.generated) + apps.yaml (cluster-apps entry)
-│   ├── prod/htz-fsn1/         #   + flux-release + image-versions (prod pins, release-please-stamped)
+│   ├── prod/htz-fsn1/         #   + prod-pin (applies the CI-written deploy/prod pin branch)
 │   └── dev/local/            #   ← dev-mirror entry point (repos.yaml + apps.yaml; consumed by Tilt)
 ├── apps/
-│   ├── base/                 #   reusable HelmReleases (chart + image.repository); tag via ${YUCCA_IMAGE_TAG:=}
+│   ├── base/                 #   reusable HelmReleases; per-app image tag vars (${<APP>_IMAGE_TAG:=})
 │   ├── staging/austin/       #   overlay: components [infra, roles/primary] + flux-system/ (image automation, notifications)
 │   ├── prod/htz-fsn1/         #   overlay: components [infra, roles/primary] + flux-system/ (notifications)
 │   └── dev/local/            #   ← dev-mirror tree (Tilt/k3d only): yucca/ rook-ceph/ cnpg-system/ repos/
@@ -43,25 +43,30 @@ a kubeconfig or joins the tailnet.
 2. **staging (automatic, in-cluster)** — the flux-operator `ResourceSetInputProvider`
    (`apps/staging/austin/flux-system/image-automation.yaml`, type `OCIArtifactTag`) detects the
    highest `0.0.<n>` tag in GHCR; a `ResourceSet` writes it into the `image-versions`
-   ConfigMap, which the `cluster-apps` `postBuild.substituteFrom` feeds into every app
-   HelmRelease as `${YUCCA_IMAGE_TAG}`. No GHA job, no git commit.
-3. **production (gated by the release PR)** — release-please stamps the next release
-   tag into BOTH prod pins (`clusters/prod/htz-fsn1/flux-release.yaml` and
-   `image-versions.yaml`, extra-files), so **merging the release PR is the promotion**:
-   prod's `flux-release` GitRepository jumps to the tag (manifests + charts) and
-   `${YUCCA_IMAGE_TAG}` selects the matching `v<version>` images (pushed by the same
-   commit's build job — the rollout stalls harmlessly for the few minutes that build
-   takes). No promote workflow, no bot commit, still no cluster access from CI.
-   **Rollback** = revert the two stamped lines in a normal PR; the old tag's images
-   still exist.
-4. **visibility** — notification-controller's GitHub `Provider`/`Alert`
+   ConfigMap (per-app keys, all set to the same build), which `postBuild.substituteFrom`
+   feeds into every app HelmRelease. No GHA job, no git commit.
+3. **staging gate** — the pipeline waits for staging's commit statuses to go green
+   (`wait-for-rollout.sh`), then runs the staging test suite (placeholder for now).
+   Emergency bypass: `gh workflow run deploy.yml -f skip-staging=true` skips this
+   gate entirely (manual dispatch only — a merge can never skip it).
+4. **production** — the pipeline retags the SAME images `v1.0.<run_number>` (manifest
+   copy), pushes **git tag `v1.0.<n>`** (the rollback handle), and commits the pin to
+   the CI-owned **`deploy/prod` branch** (`kubernetes/pin/prod/`: `flux-release` at the
+   exact tag + per-app image keys). The `prod-pin` Flux Kustomization
+   (`clusters/prod/htz-fsn1/prod-pin.yaml`) applies whatever that branch says —
+   `git log deploy/prod` is the deployment ledger. Then prod statuses are awaited and
+   the prod test suite runs (placeholder). Still no cluster access from CI.
+5. **rollback (surgical)** — the `Rollback prod` workflow (`rollback.yml`,
+   `workflow_dispatch`) re-points any subset of `{apps, manifests}` at any previously
+   deployed `v1.0.<n>` with one commit to `deploy/prod`. It validates the tag and
+   images exist first, and runs immediately (no Deploy queue).
+6. **visibility** — notification-controller's GitHub `Provider`/`Alert`
    (`apps/<partition>/<region>/flux-system/notifications.yaml`) posts each reconcile result as a
-   **commit status** (✅/❌ on the deployed commit). (Trade-off vs the old push model:
-   the rollout no longer streams in the Actions log — it surfaces as the commit status.)
+   **commit status** (✅/❌ on the deployed commit); the pipeline's wait jobs poll these.
 
 ### Prerequisites (provisioned out-of-band)
 
-- (No GitHub Environment needed — the prod gate is the reviewed release-please PR; staging is fully in-cluster.)
+- (No GitHub Environment needed — the prod gate is the staging test stage of the pipeline; staging is fully in-cluster.)
 - **CI secrets**: just `PUSH_O_MATIC_*` (already exist) for the prod-pin commit + `GITHUB_TOKEN` for the GHCR push. (Tailscale / `OP_*` cluster secrets are no longer needed.)
 - **Cluster secret (TF-provisioned from 1P)**: just the commit-status credential, via a **dedicated `yucca-flux` GitHub App** (no PAT) with only *Commit statuses: write* — `TF_VAR_flux_github_app_id`, `TF_VAR_flux_github_app_installation_id`, `TF_VAR_flux_github_app_private_key`. No git-sync or GHCR pull secret: yucca is a public repo with public images, so Flux reads both unauthenticated.
 - **Flux bootstrap**: `tf apply` the staging stack (`flux.tf`) with those `TF_VAR`s set, after these manifests are on `main`.

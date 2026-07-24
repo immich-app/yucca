@@ -26,11 +26,12 @@ spec:
   values:
     image:
       repository: ghcr.io/immich-app/yucca/yucca-admin-api
-      # Substituted from the image-versions ConfigMap: staging's is rewritten
-      # in-cluster to the latest CI build (flux-operator ResourceSet), prod's is
-      # release-please-stamped in git. If unset, the empty default lets the
-      # chart fall back to v<appVersion> — the matching release image.
-      tag: ${YUCCA_IMAGE_TAG:=}
+      # Substituted from the image-versions ConfigMap — PER-APP key so prod
+      # rollback can be surgical. Staging's ConfigMap is rewritten in-cluster
+      # to the latest CI build (flux-operator ResourceSet); prod's comes from
+      # the CI-written deploy/prod pin branch. If unset, the empty default
+      # lets the chart fall back to v<appVersion> (bootstrap safety).
+      tag: ${YUCCA_ADMIN_API_IMAGE_TAG:=}
     # secretData nulled: replaced by the TF-provisioned `yucca-admin-api` Secret
     # (OIDC_ADMIN_CLIENT_ID/SECRET) via the chart's envFrom: secretRef.
     secretData: null

@@ -3,7 +3,7 @@ name: web
 description: Yucca web UI (SvelteKit SSR)
 type: application
 version: 0.1.0
-appVersion: "0.16.0" # x-release-please-version
+appVersion: "0.16.0"
 dependencies:
   - name: yucca-common
     version: 0.2.0

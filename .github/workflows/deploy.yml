@@ -1,10 +1,43 @@
 name: Deploy
 
+# Continuous deployment — every merge to main walks the whole path:
+#
+#   build ─> staging rollout ─> staging tests ─> prod deploy (tag + pin) ─> prod tests
+#
+# Delivery stays PULL-based (CI never holds a kubeconfig or joins the tailnet):
+#   * staging: the flux-operator ResourceSetInputProvider spots the new
+#     0.0.<n> build tag in GHCR and rolls it in-cluster.
+#   * prod: once staging tests pass, this pipeline retags the SAME images as
+#     v1.0.<n> (manifest copy, no rebuild), pushes git tag v1.0.<n> — the
+#     rollback handle — and commits the pin (manifest tag + one image key per
+#     app) to the CI-owned deploy/prod branch, which the prod-pin Flux
+#     Kustomization applies. `git log deploy/prod` is the deployment ledger.
+#   * rollout progress is observed through the commit statuses each cluster's
+#     notification-controller posts back to GitHub.
+#
+# Surgical rollback (any app subset, any previously deployed tag) lives in
+# rollback.yml — deliberately outside this workflow's concurrency queue.
+# Emergency bypass: a manual dispatch with skip-staging=true goes straight
+# from build to prod (see the input's comment below).
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      # Escape hatch for emergencies (hotfix that must reach prod NOW, or
+      # staging known-broken for unrelated reasons): skips the staging rollout
+      # wait AND the staging test gate — build goes straight to prod. Only
+      # reachable via a manual dispatch, never on a normal merge:
+      #   gh workflow run deploy.yml -f skip-staging=true
+      skip-staging:
+        description: Skip the staging rollout wait + staging tests (emergency)
+        type: boolean
+        required: false
+        default: false
 
+# Serialize whole pipelines: staging must hold a build through its tests
+# before the next build may replace it (staging always runs the highest
+# 0.0.<n>), and prod promotions must land in order.
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
@@ -14,15 +47,14 @@ permissions:
 
 env:
   IMAGE_PREFIX: ghcr.io/immich-app/yucca
-  # Monotonic monorepo build tag (all 5 apps ship together). The staging
-  # ResourceSetInputProvider picks the highest 0.0.<n> from GHCR and deploys it
-  # in-cluster — pull-based, so CI never needs cluster/Tailscale access.
+  # Monotonic monorepo build tag, staging track (all 5 apps ship together).
   BUILD_TAG: 0.0.${{ github.run_number }}
+  # Prod tag for the same build — same run number on the >=1.0.0 track, which
+  # never collides with staging's <0.1.0 filter.
+  PROD_TAG: v1.0.${{ github.run_number }}
 
 jobs:
-  # ── Build + push every app image (the ONLY delivery action CI performs) ──
-  # Release commits build like any other — they're the stamped tree the release
-  # tag points at, and they additionally push v<version> image tags (below).
+  # ── Build + push every app image ─────────────────────────────────────────
   build:
     name: Build ${{ matrix.app.name }}
     runs-on: ubuntu-latest
@@ -54,43 +86,134 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Release commits (release-please merges) additionally get the release
-      # image tag, v<version> from the stamped root package.json — the same tag
-      # release-please pins into prod's pin files in that very commit. Prod's
-      # rollout stalls harmlessly (old pods keep serving) until this build
-      # pushes; no retag/promote workflow needed.
-      - name: Compute release image tag
-        id: release
-        if: "startsWith(github.event.head_commit.message, 'chore(main): release')"
-        env:
-          APP: ${{ matrix.app.name }}
-        run: echo "tag=${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
-
       - name: Build and push
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: .
           file: ${{ matrix.app.dockerfile }}
           push: true
-          # The empty line when steps.release is skipped is filtered out.
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:${{ env.BUILD_TAG }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:sha-${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:main
-            ${{ steps.release.outputs.tag }}
           cache-from: type=gha,scope=${{ matrix.app.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
 
-  # Staging deploys automatically: the flux-operator ResourceSetInputProvider in
-  # kubernetes/apps/staging/flux-system/ detects the new ${BUILD_TAG} in GHCR and
-  # rolls it out in-cluster. Outcome is visible as a GitHub commit status
-  # (notification-controller Provider), not as a job here. No GHA step needed.
+  # ── Staging: deployed in-cluster; we only wait for it to report green ────
+  staging-rollout:
+    name: Wait for staging rollout
+    # skip-staging cascades: staging-tests auto-skips when this job skips.
+    if: ${{ !inputs.skip-staging }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Wait for staging to report green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./.github/scripts/wait-for-rollout.sh staging "${GITHUB_SHA}" 1500
 
-  # Production promotion is the release-please PR itself: it stamps the new
-  # tag into both prod pins (kubernetes/clusters/prod/htz-fsn1/
-  # {flux-release,image-versions}.yaml, extra-files), so merging it commits
-  # the promotion through normal review — no promote workflow, no bot push to
-  # main. Prod Flux pulls the pins from main and the app tree + charts from
-  # the tag; images are the v<version> tags pushed by the build job above on
-  # that same release commit. Rollback = revert the two stamped lines in a
-  # normal PR.
+  staging-tests:
+    name: Staging tests
+    needs: staging-rollout
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: run the real staging test suite (e2e against the staging domain,
+      # version assertion that the new build is actually serving, smoke of the
+      # restic protocol path). Until then this gate is a no-op that only
+      # requires the rollout to have reported green.
+      - name: Placeholder
+        run: echo "TODO staging test suite — intentionally passing"
+
+  # ── Prod: retag the staging-validated images, tag the repo, write the pin ─
+  deploy-prod:
+    name: Deploy prod (${{ github.sha }})
+    needs: [build, staging-tests]
+    # Normal path: staging tests passed. Emergency path: skip-staging was
+    # explicitly dispatched, so the staging jobs are skipped and only the
+    # build must be green.
+    if: ${{ !cancelled() && needs.build.result == 'success' && (needs.staging-tests.result == 'success' || inputs.skip-staging) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Create push token
+        id: token
+        uses: immich-app/devtools/actions/create-workflow-token@9db058b2e6eec20e07760b0e17a0505c78ec3191 # create-workflow-token-action-v2.0.1
+        with:
+          client-id: ${{ secrets.PUSH_O_MATIC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ steps.token.outputs.token }}
+          persist-credentials: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag images for prod (manifest copy, no rebuild)
+        run: |
+          set -euo pipefail
+          for app in yucca-api yucca-admin-api yucca-metrics-worker web michael; do
+            docker buildx imagetools create -t "${IMAGE_PREFIX}/${app}:${PROD_TAG}" "${IMAGE_PREFIX}/${app}:sha-${GITHUB_SHA}"
+            echo "tagged ${app}:${PROD_TAG}"
+          done
+
+      # The git tag is the rollback handle: it freezes the manifest/chart tree
+      # the pin points at and names the deploy for humans. Idempotent so a
+      # rerun of a half-failed job doesn't trip over its own tag.
+      - name: Tag the deployed commit
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${PROD_TAG}" >/dev/null 2>&1; then
+            echo "${PROD_TAG} already exists (rerun); skipping"
+          else
+            git tag "${PROD_TAG}"
+            git push origin "refs/tags/${PROD_TAG}"
+          fi
+
+      - name: Write the prod pin
+        run: ./.github/scripts/write-prod-pin.sh deploy "${PROD_TAG}"
+
+  prod-rollout:
+    name: Wait for prod rollout
+    needs: deploy-prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      statuses: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Wait for prod to report green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./.github/scripts/wait-for-rollout.sh prod-htz-fsn1 "${GITHUB_SHA}" 1500
+
+  prod-tests:
+    name: Prod tests
+    needs: prod-rollout
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: run the real prod verification (read-only smoke against the prod
+      # domain, version assertion, restic protocol probe). A failure here is
+      # the signal to reach for rollback.yml.
+      - name: Placeholder
+        run: echo "TODO prod test suite — intentionally passing"

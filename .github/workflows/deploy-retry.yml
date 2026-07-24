@@ -1,0 +1,33 @@
+name: Deploy retry
+
+# GitHub Actions has no native retry; this absorbs transient infra failures in
+# Deploy (Docker Hub 502s on the buildx bootstrap, runner death, GHCR blips)
+# by rerunning the FAILED jobs only — rerun-failed-jobs keeps the successful
+# matrix legs and their already-pushed images, and the retried leg reuses the
+# build cache. The run_attempt guard allows two automatic retries, then a
+# genuinely broken build stays red. Deliberately scoped to Deploy alone —
+# legitimately red CI should stay red, not get hammered.
+#
+# The trigger is safe despite zizmor's blanket warning: Deploy only runs on
+# push to main / manual dispatch, and this job never checks out or executes
+# anything from the triggering run — it only calls the rerun API.
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [Deploy]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  retry:
+    name: Rerun failed Deploy jobs
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt < 3
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Rerun failed jobs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/rerun-failed-jobs"

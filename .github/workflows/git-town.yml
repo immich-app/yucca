@@ -8,8 +8,6 @@ jobs:
     name: Display the branch stack
     runs-on: ubuntu-slim
 
-    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
-
     permissions:
       contents: read
       pull-requests: write

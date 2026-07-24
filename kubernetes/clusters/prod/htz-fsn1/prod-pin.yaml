@@ -1,0 +1,35 @@
+---
+# THE prod deploy pin source. The Deploy pipeline (and the surgical Rollback
+# workflow) write kubernetes/pin/prod/ on the CI-owned deploy/prod branch:
+# the flux-release GitRepository pinned to an exact v1.0.<n> tag plus the
+# image-versions ConfigMap with one key per app. This Kustomization applies
+# whatever that branch says; `git log deploy/prod` is the deployment ledger.
+# A same-named bootstrap copy of both pinned objects lives in this directory
+# (ssa: IfNotPresent) so a fresh cluster can come up before its first deploy.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: prod-pin
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    branch: deploy/prod
+  url: https://github.com/immich-app/yucca.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: prod-pin
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  path: ./kubernetes/pin/prod
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: prod-pin
+    namespace: flux-system
+  wait: true
+  timeout: 2m

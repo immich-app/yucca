@@ -10,7 +10,7 @@ metadata:
 data:
   # ─── Release pinning ─────────────────────────────────────────────────
   # App-tree manifests + in-repo charts build from the flux-release
-  # GitRepository (release-please tag, see flux-release.yaml). Staging keeps
+  # GitRepository (pinned by the deploy/prod branch, see prod-pin.yaml). Staging keeps
   # the ${...:=flux-system} defaults and tracks main.
   MANIFEST_SOURCE: flux-release
   CHART_SOURCE: flux-release

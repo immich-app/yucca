@@ -174,15 +174,18 @@ account-wide stacks. Slug = `<partition>-<region>`.
   rook/cnpg/objectuser. Service names are pinned via `fullnameOverride` so in-cluster DNS is
   identical whether Tilt or Flux renders them.
 
-Deploy flow on merge to main: CI builds images tagged `0.0.<run_number>` → Flux auto-promotes the
-highest tag to staging → production is promoted by merging the release-please PR, which stamps the
-release tag into both prod pins (`kubernetes/clusters/prod/htz-fsn1/{flux-release,image-versions}.yaml`).
+Deploy flow on merge to main (continuous, one pipeline in `deploy.yml`): CI builds images tagged
+`0.0.<run_number>` → staging pulls the highest tag in-cluster → pipeline waits for staging to report
+green + runs staging tests → retags the images `v1.0.<run_number>`, pushes that git tag (rollback
+handle), and commits the pin to the CI-owned `deploy/prod` branch (per-app image keys + manifest tag),
+which prod Flux applies → waits for prod + runs prod tests. Surgical rollback via `rollback.yml`
+(any app subset → any previously deployed tag).
 
 ## Conventions
 
 - **Conventional commits** are enforced on PRs (`feat(scope):`, `fix(scope):`, `chore:`).
-  Common scopes: `ceph`, `netbird`, `michael`, `yucca-api`, `ansible`, `bgp`. Releases are
-  automated via release-please (`chore(main): release …` PRs); the monorepo is single-versioned.
+  Common scopes: `ceph`, `netbird`, `michael`, `yucca-api`, `ansible`, `bgp`. Deployment is
+  continuous from main (no release-please); prod deploys are tagged `v1.0.<run_number>`.
 - ESLint flat config (`eslint.config.mjs`) is strict on promises: `no-floating-promises`,
   `no-misused-promises`, `require-await`, `await-thenable` are all errors. Prettier: single quotes,
   trailing commas, width 120.

@@ -1,0 +1,14 @@
+---
+# MIRROR of the CI-owned deploy/prod branch layout — see flux-release.yaml's
+# header. One key per app is what makes rollback surgical.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: image-versions
+  namespace: flux-system
+data:
+  YUCCA_API_IMAGE_TAG: v0.16.0
+  YUCCA_ADMIN_API_IMAGE_TAG: v0.16.0
+  YUCCA_METRICS_WORKER_IMAGE_TAG: v0.16.0
+  WEB_IMAGE_TAG: v0.16.0
+  MICHAEL_IMAGE_TAG: v0.16.0
