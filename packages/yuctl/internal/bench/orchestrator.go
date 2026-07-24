@@ -47,12 +47,37 @@ func Run(ctx context.Context, opts RunOpts) (*RunResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	return finish(result, opts.Out)
+}
 
-	if opts.Out != "" {
-		if err := SaveResult(opts.Out, result); err != nil {
+// RunHere executes the benchmark on the local machine — no ssh, the agent
+// library runs in-process against a locally pinned restic.
+func RunHere(ctx context.Context, opts RunOpts) (*RunResult, error) {
+	resticBin, err := EnsureResticLocal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cfg := opts.Config
+	cfg.ResticBin = resticBin
+
+	log.Info().Ints("connections", cfg.Connections).Str("size", FormatBytes(cfg.Size)).
+		Str("restic", ResticVersion).Msg("starting local benchmark")
+	sink := &eventSink{}
+	if err := RunAgent(ctx, cfg, sink.handle); err != nil {
+		return nil, err
+	}
+	if sink.result == nil {
+		return nil, fmt.Errorf("benchmark finished without a result")
+	}
+	return finish(sink.result, opts.Out)
+}
+
+func finish(result *RunResult, out string) (*RunResult, error) {
+	if out != "" {
+		if err := SaveResult(out, result); err != nil {
 			return nil, err
 		}
-		log.Info().Str("path", opts.Out).Msg("results saved")
+		log.Info().Str("path", out).Msg("results saved")
 	}
 	RenderSummary(os.Stdout, result)
 	return result, nil
@@ -139,8 +164,7 @@ func drive(ctx context.Context, host string, cfg Config) (*RunResult, error) {
 		stdin.Close()
 	}()
 
-	var result *RunResult
-	var fatal string
+	sink := &eventSink{}
 	sc := bufio.NewScanner(stdout)
 	sc.Buffer(make([]byte, 1<<20), 8<<20)
 	for sc.Scan() {
@@ -148,41 +172,51 @@ func drive(ctx context.Context, host string, cfg Config) (*RunResult, error) {
 		if err := json.Unmarshal(sc.Bytes(), &ev); err != nil {
 			continue
 		}
-		switch ev.Type {
-		case "warning":
-			log.Warn().Msg(ev.Message)
-		case "phase_start":
-			log.Info().Int("connections", ev.Connections).Msgf("%s: started", ev.Phase)
-		case "progress":
-			e := log.Info().Int("connections", ev.Connections).Str("done", FormatBytes(ev.Done)).Str("rate", FormatBPS(ev.BPS))
-			if ev.Total > 0 {
-				e = e.Str("progress", fmt.Sprintf("%.0f%%", float64(ev.Done)/float64(ev.Total)*100))
-			}
-			e.Msgf("%s: running", ev.Phase)
-		case "phase_done":
-			pr := ev.PhaseResult
-			e := log.Info().Int("connections", ev.Connections).Str("duration", FormatDuration(pr.Seconds))
-			if pr.Throughput > 0 {
-				e = e.Str("throughput", FormatBPS(pr.Throughput))
-			}
-			e.Msgf("%s: done", ev.Phase)
-		case "result":
-			result = ev.Result
-		case "fatal":
-			fatal = ev.Message
-		}
+		sink.handle(ev)
 	}
 	waitErr := cmd.Wait()
-	if fatal != "" {
-		return nil, fmt.Errorf("agent: %s", fatal)
+	if sink.fatal != "" {
+		return nil, fmt.Errorf("agent: %s", sink.fatal)
 	}
 	if waitErr != nil {
 		return nil, fmt.Errorf("ssh agent session: %w", waitErr)
 	}
-	if result == nil {
+	if sink.result == nil {
 		return nil, fmt.Errorf("agent finished without a result event")
 	}
-	return result, nil
+	return sink.result, nil
+}
+
+// eventSink renders agent events as log lines and captures the terminal ones.
+type eventSink struct {
+	result *RunResult
+	fatal  string
+}
+
+func (s *eventSink) handle(ev Event) {
+	switch ev.Type {
+	case "warning":
+		log.Warn().Msg(ev.Message)
+	case "phase_start":
+		log.Info().Int("connections", ev.Connections).Msgf("%s: started", ev.Phase)
+	case "progress":
+		e := log.Info().Int("connections", ev.Connections).Str("done", FormatBytes(ev.Done)).Str("rate", FormatBPS(ev.BPS))
+		if ev.Total > 0 {
+			e = e.Str("progress", fmt.Sprintf("%.0f%%", float64(ev.Done)/float64(ev.Total)*100))
+		}
+		e.Msgf("%s: running", ev.Phase)
+	case "phase_done":
+		pr := ev.PhaseResult
+		e := log.Info().Int("connections", ev.Connections).Str("duration", FormatDuration(pr.Seconds))
+		if pr.Throughput > 0 {
+			e = e.Str("throughput", FormatBPS(pr.Throughput))
+		}
+		e.Msgf("%s: done", ev.Phase)
+	case "result":
+		s.result = ev.Result
+	case "fatal":
+		s.fatal = ev.Message
+	}
 }
 
 // EmitJSON is the agent-side event sink: one JSON object per stdout line.

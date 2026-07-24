@@ -166,6 +166,10 @@ How it works:
   back, and writes a results JSON locally.
 - The **target host** comes from discovery (`fabric.mgmt_hosts`, first entry);
   `--host` overrides. Regions without a fabric stack (austin) need `--host`.
+  `--from-here` skips ssh entirely and runs the agent **in-process on this
+  machine** (a platform-matched pinned restic is fetched) — for running yuctl
+  directly on a mgmt host, or ad-hoc runs from anywhere. With an explicit
+  `--repo` it needs neither a selected context nor state credentials.
 - The **repository** is created via admin-api (`yuctl login` session):
   `POST /repository` + `POST /repository/:id/url` mint a fresh
   `yucca-bench-<label>-<ts>` repo and a restic URL signed with yucca-api's

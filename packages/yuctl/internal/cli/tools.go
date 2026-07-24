@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"yuctl/internal/bench"
+	yctx "yuctl/internal/context"
+	"yuctl/internal/discovery"
 )
 
 func newToolsCmd() *cobra.Command {
@@ -29,6 +31,7 @@ type benchFlags struct {
 	admin adminFlags
 
 	host          string
+	fromHere      bool
 	agentBin      string
 	repo          string
 	repoID        string
@@ -53,6 +56,7 @@ type benchFlags struct {
 func (f *benchFlags) registerCommon(c *cobra.Command) {
 	f.admin.register(c)
 	c.Flags().StringVar(&f.host, "host", "", "ssh destination of the management host (default: the region's first mgmt host from discovery)")
+	c.Flags().BoolVar(&f.fromHere, "from-here", false, "run the benchmark on this machine (no ssh; agent runs in-process)")
 	c.Flags().StringVar(&f.agentBin, "agent-bin", "", "local linux/amd64 bench-agent binary (default: the embedded one)")
 	c.Flags().StringVar(&f.repo, "repo", "", "restic repository URL; skips admin-api provisioning (default $RESTIC_REPOSITORY, else a repo is created via admin-api)")
 	c.Flags().StringVar(&f.repoID, "repo-id", "", "existing repository id; a fresh URL is minted via admin-api")
@@ -127,23 +131,41 @@ func newBenchCleanupCmd() *cobra.Command {
 }
 
 // runBench resolves the context (host from discovery, repository via admin-api
-// unless supplied) and drives the remote run.
+// unless supplied) and drives the run. Context/topology are resolved lazily so
+// a --from-here run with an explicit --repo needs neither state creds nor a
+// selected context (e.g. yuctl invoked directly on a mgmt host).
 func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error {
 	ctx := cmd.Context()
-	cc, err := requireContext()
-	if err != nil {
-		return err
-	}
-	topo, err := resolveTopology(ctx)
-	if err != nil {
+
+	var cc *yctx.Context
+	var topo *discovery.Topology
+	loadTopo := func() error {
+		if topo != nil {
+			return nil
+		}
+		var err error
+		if cc, err = requireContext(); err != nil {
+			return err
+		}
+		topo, err = resolveTopology(ctx)
 		return err
 	}
 
-	host := f.host
-	if host == "" {
+	var host string
+	switch {
+	case f.fromHere && f.host != "":
+		return fmt.Errorf("--from-here and --host are mutually exclusive")
+	case f.fromHere:
+		// no remote host: the agent runs in-process on this machine
+	case f.host != "":
+		host = f.host
+	default:
+		if err := loadTopo(); err != nil {
+			return err
+		}
 		hosts := topo.MgmtHosts(cc.Partition, cc.Region)
 		if len(hosts) == 0 {
-			return fmt.Errorf("discovery has no mgmt hosts for %s@%s; pass --host", cc.Partition, cc.Region)
+			return fmt.Errorf("discovery has no mgmt hosts for %s@%s; pass --host (or --from-here)", cc.Partition, cc.Region)
 		}
 		host = hosts[0].PublicIP
 		log.Info().Str("mgmt", hosts[0].Name).Str("host", host).Msg("using mgmt host from discovery")
@@ -155,6 +177,9 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 	}
 
 	if cfg.Repo == "" {
+		if err := loadTopo(); err != nil {
+			return err
+		}
 		client, _, err := f.admin.adminLogin(ctx, cmd, cc, topo)
 		if err != nil {
 			return err
@@ -194,7 +219,12 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 		outPath = ""
 	}
 
-	_, err = bench.Run(ctx, bench.RunOpts{Host: host, AgentBin: f.agentBin, Config: cfg, Out: outPath})
+	opts := bench.RunOpts{Host: host, AgentBin: f.agentBin, Config: cfg, Out: outPath}
+	if f.fromHere {
+		_, err = bench.RunHere(ctx, opts)
+	} else {
+		_, err = bench.Run(ctx, opts)
+	}
 	return err
 }
 
