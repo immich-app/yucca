@@ -175,6 +175,10 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     JWT_PRIVATE_KEY          = tls_private_key.yucca_admin_jwt[0].private_key_pem_pkcs8
     OIDC_ADMIN_CLIENT_ID     = var.yucca_oidc_admin_client_id
     OIDC_ADMIN_CLIENT_SECRET = var.yucca_oidc_admin_client_secret
+    # Restic repository tokens (POST /repository/:id/url, used by yuctl tools
+    # bench): deliberately the yucca_jwt SIGNING key — michael only accepts
+    # tokens from that keypair. Admin session JWTs stay on yucca_admin_jwt.
+    RESTIC_JWT_PRIVATE_KEY = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
   }
 }
 

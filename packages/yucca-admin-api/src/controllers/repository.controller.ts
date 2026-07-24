@@ -1,11 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import {
+  RepositoryCreateRequestDto,
+  RepositoryCreateResponseDto,
   RepositoryGetResponseDto,
   RepositoryListQueryDto,
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  RepositoryUrlResponseDto,
 } from 'src/dto/repository.dto';
 import { AuthRoute } from 'src/middleware/auth.guard';
 import { RepositoryService } from 'src/services/repository.service';
@@ -21,11 +24,25 @@ export class RepositoryController {
     return this.repository.list(query);
   }
 
+  @Post()
+  @AuthRoute()
+  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  createRepository(@Body() dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
+    return this.repository.create(dto);
+  }
+
   @Get('/:id')
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryGetResponseDto })
   getRepository(@Param('id') id: string): Promise<RepositoryGetResponseDto> {
     return this.repository.get(id);
+  }
+
+  @Post('/:id/url')
+  @AuthRoute()
+  @ApiOkResponse({ type: RepositoryUrlResponseDto })
+  repositoryUrl(@Param('id') id: string): Promise<RepositoryUrlResponseDto> {
+    return this.repository.url(id);
   }
 
   @Patch('/:id')

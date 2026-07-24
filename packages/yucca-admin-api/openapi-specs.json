@@ -398,6 +398,35 @@
         "tags": [
           "Repository"
         ]
+      },
+      "post": {
+        "operationId": "createRepository",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryCreateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
       }
     },
     "/api/repository/{id}": {
@@ -482,6 +511,36 @@
         "responses": {
           "204": {
             "description": ""
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/url": {
+      "post": {
+        "operationId": "repositoryUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryUrlResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -752,6 +811,35 @@
           "items"
         ]
       },
+      "RepositoryCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "description": "Owner; defaults to the admin service user"
+          },
+          "worm": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "RepositoryCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryAdminDto"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      },
       "RepositoryGetResponseDto": {
         "type": "object",
         "properties": {
@@ -761,6 +849,18 @@
         },
         "required": [
           "repository"
+        ]
+      },
+      "RepositoryUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "restic rest: URL with an embedded repository token"
+          }
+        },
+        "required": [
+          "url"
         ]
       },
       "RepositoryUpdateRequestDto": {

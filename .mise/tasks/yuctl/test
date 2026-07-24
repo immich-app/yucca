@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run unit tests for yuctl"
+#MISE dir="{{config_root}}/packages/yuctl"
+set -e
+
+go test ./... "$@"

@@ -1,0 +1,194 @@
+package bench
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+
+	"github.com/rs/zerolog/log"
+)
+
+const remoteDir = ".cache/yuctl-bench/bin"
+
+// RunOpts drives one remote benchmark run from the dev machine.
+type RunOpts struct {
+	Host     string // ssh destination for the management host
+	AgentBin string // local linux/amd64 bench-agent; "" = use the embedded one
+	Config   Config
+	Out      string // local results path ("" = don't save)
+}
+
+// Run pushes the agent + pinned restic to the host, streams the run, and
+// returns the collected result.
+func Run(ctx context.Context, opts RunOpts) (*RunResult, error) {
+	agentBin, cleanup, err := agentBinary(opts.AgentBin)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+	resticBin, err := EnsureResticLinux(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info().Str("host", opts.Host).Msg("pushing agent + restic " + ResticVersion)
+	if err := push(ctx, opts.Host, agentBin, resticBin); err != nil {
+		return nil, err
+	}
+
+	log.Info().Str("host", opts.Host).Ints("connections", opts.Config.Connections).
+		Str("size", FormatBytes(opts.Config.Size)).Msg("starting remote benchmark")
+	result, err := drive(ctx, opts.Host, opts.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.Out != "" {
+		if err := SaveResult(opts.Out, result); err != nil {
+			return nil, err
+		}
+		log.Info().Str("path", opts.Out).Msg("results saved")
+	}
+	RenderSummary(os.Stdout, result)
+	return result, nil
+}
+
+func sshBase(host string) []string {
+	return []string{
+		"-o", "BatchMode=yes",
+		"-o", "ServerAliveInterval=30",
+		"-o", "ServerAliveCountMax=8",
+		host,
+	}
+}
+
+func run(ctx context.Context, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s %v: %w: %s", name, args, err, tail(out.String(), 1000))
+	}
+	return nil
+}
+
+// agentBinary resolves the local agent to push: an explicit path, or the
+// embedded one materialized into a temp file.
+func agentBinary(explicit string) (string, func(), error) {
+	if explicit != "" {
+		if _, err := os.Stat(explicit); err != nil {
+			return "", nil, fmt.Errorf("agent binary %s: %w", explicit, err)
+		}
+		return explicit, func() {}, nil
+	}
+	raw, err := embeddedAgent()
+	if err != nil {
+		return "", nil, err
+	}
+	dir, err := os.MkdirTemp("", "yuctl-bench-agent")
+	if err != nil {
+		return "", nil, err
+	}
+	path := dir + "/bench-agent"
+	if err := os.WriteFile(path, raw, 0o755); err != nil {
+		os.RemoveAll(dir)
+		return "", nil, err
+	}
+	return path, func() { os.RemoveAll(dir) }, nil
+}
+
+func push(ctx context.Context, host, agentBin, resticBin string) error {
+	if err := run(ctx, "ssh", append(sshBase(host), "mkdir -p "+remoteDir)...); err != nil {
+		return err
+	}
+	if err := run(ctx, "scp", "-q", agentBin, host+":"+remoteDir+"/bench-agent"); err != nil {
+		return err
+	}
+	if err := run(ctx, "scp", "-q", resticBin, host+":"+remoteDir+"/restic"); err != nil {
+		return err
+	}
+	return run(ctx, "ssh", append(sshBase(host), "chmod +x "+remoteDir+"/bench-agent "+remoteDir+"/restic")...)
+}
+
+// drive runs the remote agent, feeding Config over stdin and consuming the
+// event stream from stdout. The agent's stderr passes straight through.
+func drive(ctx context.Context, host string, cfg Config) (*RunResult, error) {
+	cmd := exec.CommandContext(ctx, "ssh", append(sshBase(host), remoteDir+"/bench-agent")...)
+	cmd.Stderr = os.Stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	go func() {
+		_ = json.NewEncoder(stdin).Encode(cfg)
+		stdin.Close()
+	}()
+
+	var result *RunResult
+	var fatal string
+	sc := bufio.NewScanner(stdout)
+	sc.Buffer(make([]byte, 1<<20), 8<<20)
+	for sc.Scan() {
+		var ev Event
+		if err := json.Unmarshal(sc.Bytes(), &ev); err != nil {
+			continue
+		}
+		switch ev.Type {
+		case "warning":
+			log.Warn().Msg(ev.Message)
+		case "phase_start":
+			log.Info().Int("connections", ev.Connections).Msgf("%s: started", ev.Phase)
+		case "progress":
+			e := log.Info().Int("connections", ev.Connections).Str("done", FormatBytes(ev.Done)).Str("rate", FormatBPS(ev.BPS))
+			if ev.Total > 0 {
+				e = e.Str("progress", fmt.Sprintf("%.0f%%", float64(ev.Done)/float64(ev.Total)*100))
+			}
+			e.Msgf("%s: running", ev.Phase)
+		case "phase_done":
+			pr := ev.PhaseResult
+			e := log.Info().Int("connections", ev.Connections).Str("duration", FormatDuration(pr.Seconds))
+			if pr.Throughput > 0 {
+				e = e.Str("throughput", FormatBPS(pr.Throughput))
+			}
+			e.Msgf("%s: done", ev.Phase)
+		case "result":
+			result = ev.Result
+		case "fatal":
+			fatal = ev.Message
+		}
+	}
+	waitErr := cmd.Wait()
+	if fatal != "" {
+		return nil, fmt.Errorf("agent: %s", fatal)
+	}
+	if waitErr != nil {
+		return nil, fmt.Errorf("ssh agent session: %w", waitErr)
+	}
+	if result == nil {
+		return nil, fmt.Errorf("agent finished without a result event")
+	}
+	return result, nil
+}
+
+// EmitJSON is the agent-side event sink: one JSON object per stdout line.
+func EmitJSON(w io.Writer) func(Event) {
+	enc := json.NewEncoder(w)
+	return func(ev Event) {
+		_ = enc.Encode(ev)
+	}
+}

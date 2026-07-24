@@ -88,12 +88,20 @@ type ClusterCIDR struct {
 	Private string `json:"private"`
 }
 
+// MgmtHost is one management host of a fabric site — the ssh targets for
+// site-local tooling (yuctl tools bench).
+type MgmtHost struct {
+	Name     string `json:"name"`
+	PublicIP string `json:"public_ip"`
+}
+
 // Fabric is the fabric stack payload.
 type Fabric struct {
 	SiteID       *int                   `json:"site_id"`
 	KubeCIDR     string                 `json:"kube_cidr"`
 	MgmtCIDR     string                 `json:"mgmt_cidr"`
 	ClusterCIDRs map[string]ClusterCIDR `json:"cluster_cidrs"` // keyed by ceph cluster slug (e.g. "cls1")
+	MgmtHosts    []MgmtHost             `json:"mgmt_hosts,omitempty"`
 }
 
 // tfState is the minimal slice of a terraform.tfstate JSON document we care

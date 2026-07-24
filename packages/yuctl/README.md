@@ -57,8 +57,12 @@ yuctl
 ├── infra
 │   └── talos
 │       └── upgrade                 talosctl upgrade CP nodes (--dry-run, confirm/--yes, --image)
-└── users
-    └── list                        list users in the partition's PRIMARY region
+├── users
+│   └── list                        list users in the partition's PRIMARY region
+└── tools
+    └── bench                       restic e2e benchmark against michael, run from a mgmt host
+        ├── compare <a> <b>         render before/after deltas from two results files
+        └── cleanup                 forget+prune every bench snapshot (timed)
 ```
 
 Global flags: `--log-level` (trace|debug|info|warn|error), `--log-format`
@@ -138,6 +142,47 @@ operator machine:
 `users list` reuses the cached session (running the same login flow when it is
 missing or expired) and calls `GET /api/user` (cursor-paginated via
 `nextCursor`, `--limit` page size).
+
+## `tools bench` — michael end-to-end benchmark
+
+Benchmarks the restic gateway with real restic traffic from a **management
+host** of the selected region (the real client path to the `gw` VIP), built
+for before/after comparisons of michael changes.
+
+```bash
+yuctl select prod@htz-fsn1
+yuctl tools bench --size 64GiB --connections 5,16,32,64 --label before-sweep
+yuctl tools bench --size 1TiB --connections 64 --incrementals 3 --label before
+# ...deploy the new michael, rerun with --label after...
+yuctl tools bench compare bench-before-*.json bench-after-*.json
+```
+
+How it works:
+
+- The orchestrator pushes an embedded linux/amd64 **bench agent** (built and
+  `go:embed`ded by `mise yuctl:build`; `--agent-bin` overrides) plus a
+  **pinned restic release** (downloaded once, checksum-verified — identical
+  client on every run) to the mgmt host over ssh, streams progress events
+  back, and writes a results JSON locally.
+- The **target host** comes from discovery (`fabric.mgmt_hosts`, first entry);
+  `--host` overrides. Regions without a fabric stack (austin) need `--host`.
+- The **repository** is created via admin-api (`yuctl login` session):
+  `POST /repository` + `POST /repository/:id/url` mint a fresh
+  `yucca-bench-<label>-<ts>` repo and a restic URL signed with yucca-api's
+  key. `--repo`/`RESTIC_REPOSITORY` skips provisioning (BYO);
+  `--repo-id` re-mints a URL for an existing repo. Bench repos persist after
+  the run (admin-api repository deletion is unimplemented — needs S3-side
+  removal); `cleanup` prunes them to ~empty.
+- Phases per `--connections` cell: `generate` (seeded incompressible data) →
+  `backup` → N×(`mutate` + `incremental`) → `check` (the pack-listing path) →
+  wipe → `restore`. Each cell reseeds its dataset so dedup can't fake upload
+  numbers; the agent preflights free disk in `--workdir`.
+- Credentials (repo URL with embedded JWT, password) travel over the ssh
+  session's stdin — never argv — and are scrubbed from results files.
+
+The ssh session stays open for the whole run (keepalives set); run multi-hour
+benchmarks inside tmux. Pair the client numbers with the michael dashboard
+(TTFB, connection churn, S3 client metrics) for the server-side view.
 
 ## Environment variables
 
