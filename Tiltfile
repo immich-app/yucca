@@ -298,9 +298,24 @@ def discover_helm_repos():
             repos[doc['metadata']['name']] = doc['spec']['url']
     return repos
 
+def discover_oci_repos():
+    """OCIRepository name -> chart source (oci:// URL + pinned tag), from the dev-mirror tree."""
+    repos = {}
+    for path in listdir('kubernetes/apps', recursive=True):
+        if not path.endswith('/ocirepository.yaml') or '/apps/dev/local/' not in path:
+            continue
+        doc = read_yaml(path)
+        if doc and doc.get('kind') == 'OCIRepository':
+            repos[doc['metadata']['name']] = struct(
+                url=doc['spec']['url'],
+                tag=doc['spec'].get('ref', {}).get('tag', ''),
+            )
+    return repos
+
 def discover_apps():
     """All HelmReleases under kubernetes/apps, split by chart source kind."""
     local_apps, remote_apps = [], []
+    oci_repos = discover_oci_repos()
     for path in listdir('kubernetes/apps', recursive=True):
         if not path.endswith('/helmrelease.yaml'):
             continue
@@ -312,11 +327,30 @@ def discover_apps():
         hr = read_yaml(path)
         if not hr or hr.get('kind') != 'HelmRelease':
             continue
+        name = hr['metadata']['name']
+        namespace = hr['metadata'].get('namespace', 'yucca')
+        chart_ref = hr['spec'].get('chartRef', {})
+        if chart_ref:
+            # OCI-pinned remote chart (chartRef -> OCIRepository, no spec.chart):
+            # helm installs oci:// chart URLs natively, so no helm_repo resource
+            # is involved — repo='' marks these in the install loop below.
+            if chart_ref.get('kind') != 'OCIRepository':
+                fail("HelmRelease '%s' (%s): unsupported chartRef kind '%s'" % (name, path, chart_ref.get('kind')))
+            oci = oci_repos.get(chart_ref['name'])
+            if not oci:
+                fail("HelmRelease '%s' (%s): chartRef OCIRepository '%s' not found under kubernetes/apps/dev/local/" % (name, path, chart_ref['name']))
+            remote_apps.append(struct(
+                name=name,
+                namespace=namespace,
+                chart=oci.url,
+                version=oci.tag,
+                repo='',
+                values=hr['spec'].get('values', {}),
+            ))
+            continue
         chart_spec = hr['spec']['chart']['spec']
         source = chart_spec.get('sourceRef', {})
         chart = chart_spec.get('chart', '')
-        name = hr['metadata']['name']
-        namespace = hr['metadata'].get('namespace', 'yucca')
         if source.get('kind') == 'GitRepository' and chart.startswith('charts/'):
             # In-repo chart: dev renders it with its values.yaml defaults; the
             # HelmRelease's .spec.values are the prod-side overrides. Apps that
@@ -362,10 +396,12 @@ for app in REMOTE_APPS:
         flags += ['--set-json', '%s=%s' % (key, str(encode_json(app.values[key])).rstrip('\n'))]
     helm_resource(
         app.name,
-        '%s-repo/%s' % (app.repo, app.chart),
+        # OCI apps (repo='') carry the full oci:// chart URL, which helm
+        # resolves directly; HelmRepository apps go through their helm_repo.
+        app.chart if not app.repo else '%s-repo/%s' % (app.repo, app.chart),
         namespace=app.namespace,
         flags=flags,
-        resource_deps=['%s-repo' % app.repo] + wiring['deps'],
+        resource_deps=(['%s-repo' % app.repo] if app.repo else []) + wiring['deps'],
         labels=['helm'],
         pod_readiness=wiring.get('pod_readiness', ''),
     )
