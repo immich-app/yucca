@@ -31,6 +31,11 @@ data:
   # externalTrafficPolicy: Local + one envoy per worker → spine ECMP.
   GW_PARENT_GATEWAY: gw
   GW_VIP: 69.48.224.6
+  # Internal (NetBird-zone) twin of the gw VIP: on-net clients (mgmt hosts,
+  # yuctl tools bench) can't reach the public aggregate from inside Hetzner.
+  # DNS: netbird dns.tf `gw` record; pool: lb-gw-internal in cilium-bgp.yaml.
+  GW_INT_VIP: 10.40.12.17
+  GW_INT_HOST: gw.father.fsn.htz.yucca.futo.network
   GW_PROXY_REPLICAS: "3"
   # (netops keeps its own internal VIP, pinned at 10.40.12.16 in netops/.)
 

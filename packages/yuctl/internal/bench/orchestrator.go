@@ -17,10 +17,11 @@ const remoteDir = ".cache/yuctl-bench/bin"
 
 // RunOpts drives one remote benchmark run from the dev machine.
 type RunOpts struct {
-	Host     string // ssh destination for the management host
-	AgentBin string // local linux/amd64 bench-agent; "" = use the embedded one
-	Config   Config
-	Out      string // local results path ("" = don't save)
+	Host        string // ssh destination for the management host
+	SSHIdentity string // ssh private key file ("" = ssh defaults/agent)
+	AgentBin    string // local linux/amd64 bench-agent; "" = use the embedded one
+	Config      Config
+	Out         string // local results path ("" = don't save)
 }
 
 // Run pushes the agent + pinned restic to the host, streams the run, and
@@ -37,13 +38,13 @@ func Run(ctx context.Context, opts RunOpts) (*RunResult, error) {
 	}
 
 	log.Info().Str("host", opts.Host).Msg("pushing agent + restic " + ResticVersion)
-	if err := push(ctx, opts.Host, agentBin, resticBin); err != nil {
+	if err := push(ctx, opts.SSHIdentity, opts.Host, agentBin, resticBin); err != nil {
 		return nil, err
 	}
 
 	log.Info().Str("host", opts.Host).Ints("connections", opts.Config.Connections).
 		Str("size", FormatBytes(opts.Config.Size)).Msg("starting remote benchmark")
-	result, err := drive(ctx, opts.Host, opts.Config)
+	result, err := drive(ctx, opts.SSHIdentity, opts.Host, opts.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -83,13 +84,23 @@ func finish(result *RunResult, out string) (*RunResult, error) {
 	return result, nil
 }
 
-func sshBase(host string) []string {
-	return []string{
+// sshOpts builds the common ssh/scp options. accept-new (TOFU) keeps first
+// contact with a discovery-resolved IP from failing BatchMode.
+func sshOpts(identity string) []string {
+	args := []string{
 		"-o", "BatchMode=yes",
+		"-o", "StrictHostKeyChecking=accept-new",
 		"-o", "ServerAliveInterval=30",
 		"-o", "ServerAliveCountMax=8",
-		host,
 	}
+	if identity != "" {
+		args = append(args, "-i", identity, "-o", "IdentitiesOnly=yes")
+	}
+	return args
+}
+
+func sshBase(identity, host string) []string {
+	return append(sshOpts(identity), host)
 }
 
 func run(ctx context.Context, name string, args ...string) error {
@@ -128,23 +139,24 @@ func agentBinary(explicit string) (string, func(), error) {
 	return path, func() { os.RemoveAll(dir) }, nil
 }
 
-func push(ctx context.Context, host, agentBin, resticBin string) error {
-	if err := run(ctx, "ssh", append(sshBase(host), "mkdir -p "+remoteDir)...); err != nil {
+func push(ctx context.Context, identity, host, agentBin, resticBin string) error {
+	if err := run(ctx, "ssh", append(sshBase(identity, host), "mkdir -p "+remoteDir)...); err != nil {
 		return err
 	}
-	if err := run(ctx, "scp", "-q", agentBin, host+":"+remoteDir+"/bench-agent"); err != nil {
+	scp := append([]string{"-q"}, sshOpts(identity)...)
+	if err := run(ctx, "scp", append(scp, agentBin, host+":"+remoteDir+"/bench-agent")...); err != nil {
 		return err
 	}
-	if err := run(ctx, "scp", "-q", resticBin, host+":"+remoteDir+"/restic"); err != nil {
+	if err := run(ctx, "scp", append(scp, resticBin, host+":"+remoteDir+"/restic")...); err != nil {
 		return err
 	}
-	return run(ctx, "ssh", append(sshBase(host), "chmod +x "+remoteDir+"/bench-agent "+remoteDir+"/restic")...)
+	return run(ctx, "ssh", append(sshBase(identity, host), "chmod +x "+remoteDir+"/bench-agent "+remoteDir+"/restic")...)
 }
 
 // drive runs the remote agent, feeding Config over stdin and consuming the
 // event stream from stdout. The agent's stderr passes straight through.
-func drive(ctx context.Context, host string, cfg Config) (*RunResult, error) {
-	cmd := exec.CommandContext(ctx, "ssh", append(sshBase(host), remoteDir+"/bench-agent")...)
+func drive(ctx context.Context, identity, host string, cfg Config) (*RunResult, error) {
+	cmd := exec.CommandContext(ctx, "ssh", append(sshBase(identity, host), remoteDir+"/bench-agent")...)
 	cmd.Stderr = os.Stderr
 
 	stdin, err := cmd.StdinPipe()

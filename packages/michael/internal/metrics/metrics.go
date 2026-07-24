@@ -5,19 +5,39 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"michael/internal/auth"
 	"michael/internal/config"
+	"michael/internal/version"
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	otelmetric "go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 )
+
+// otelResource identifies this process to the collector. Without
+// service.instance.id every replica exports IDENTICAL series; the TSDB merges
+// them into one, interleaved cumulative counters read as resets, and rate()
+// reports ~1/replicas of the real traffic.
+func otelResource() *sdkresource.Resource {
+	host, _ := os.Hostname()
+	res, err := sdkresource.Merge(sdkresource.Default(), sdkresource.NewSchemaless(
+		attribute.String("service.name", "michael"),
+		attribute.String("service.version", version.Version),
+		attribute.String("service.instance.id", host),
+	))
+	if err != nil {
+		return sdkresource.Default()
+	}
+	return res
+}
 
 type Metrics struct {
 	RequestedBytes  otelmetric.Int64Counter
@@ -102,6 +122,7 @@ func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {
 	}
 
 	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(otelResource()),
 		sdkmetric.WithReader(
 			sdkmetric.NewPeriodicReader(exporter,
 				sdkmetric.WithInterval(cfg.OTLPMetricsInterval),

@@ -36,8 +36,10 @@ spec:
             metadata:
               labels:
                 lb: public
+                # Second, internal VIP (lb-gw-internal pool) for on-net clients.
+                lb-internal-vip: gw
               annotations:
-                lbipam.cilium.io/ips: "${GW_VIP}"
+                lbipam.cilium.io/ips: "${GW_VIP},${GW_INT_VIP}"
   telemetry:
     metrics:
       prometheus: {}

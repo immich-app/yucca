@@ -23,8 +23,11 @@ if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
 fi
 
 # Render the NETCONF SSH key from 1Password to a 0600 temp file (op run can't
-# write files).
-KEYF=$(mktemp); chmod 600 "$KEYF"; trap 'rm -f "$KEYF"' EXIT
+# write files). DETERMINISTIC path: the value is recorded in the saved plan, so
+# the gated apply (a different runner) must render to the identical path or
+# tofu rejects the plan ("Mismatch between input and plan variable value").
+KEYF="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/netconf-terraform-key"
+rm -f "$KEYF"; ( umask 077; : > "$KEYF" ); trap 'rm -f "$KEYF"' EXIT
 op read "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/password" > "$KEYF"
 
 export TF_VAR_netconf_ssh_key_path="$KEYF"

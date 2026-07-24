@@ -6,13 +6,20 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
 import { B3Propagator } from '@opentelemetry/propagator-b3';
 import { JaegerPropagator } from '@opentelemetry/propagator-jaeger';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { logs, metrics, NodeSDK, tracing } from '@opentelemetry/sdk-node';
+import { hostname } from 'node:os';
 import { otelEnv } from './env.js';
 
 const SpanProcessor = otelEnv.NODE_ENV === 'development' ? tracing.SimpleSpanProcessor : tracing.BatchSpanProcessor;
 const LogProcessor = otelEnv.NODE_ENV === 'development' ? logs.SimpleLogRecordProcessor : logs.BatchLogRecordProcessor;
 
 const otelSDK = new NodeSDK({
+  // Without service.instance.id every replica exports IDENTICAL series; the
+  // TSDB merges them and rate() reads ~1/replicas of the real traffic. The SDK
+  // merges this with its detected resource (service.name via OTEL_SERVICE_NAME).
+  resource: resourceFromAttributes({ 'service.instance.id': hostname() }),
+
   // metrics
   metricReader: new metrics.PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
