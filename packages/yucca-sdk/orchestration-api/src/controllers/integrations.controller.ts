@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Res } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import {
   ConfigureImmichIntegrationRequestDto,
@@ -6,6 +6,8 @@ import {
   IntegrationsResponseDto,
 } from '../dto/integrations.dto';
 
+import { type Response } from 'express';
+import { ImmichCookie } from '../enum';
 import { IntegrationsService } from '../services/integrations.service';
 
 @Controller('/yucca/integrations')
@@ -24,7 +26,8 @@ export class IntegrationsController {
   }
 
   @Post('immich/rollback')
-  startImmichRollback(@Body() dto: ImmichRollbackRequestDto) {
-    return this.service.enterImmichMaintenanceRollback(dto);
+  async startImmichRollback(@Body() dto: ImmichRollbackRequestDto, @Res({ passthrough: true }) response: Response) {
+    const { jwt } = await this.service.enterImmichMaintenanceRollback(dto);
+    response.cookie(ImmichCookie.MaintenanceToken, jwt);
   }
 }

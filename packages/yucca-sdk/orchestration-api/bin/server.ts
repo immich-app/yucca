@@ -21,7 +21,11 @@ async function bootstrap() {
           ],
           hooks: {
             async createDatabaseBackup() {},
-            async enterMaintenanceRollback() {},
+            async enterMaintenanceRollback() {
+              return {
+                jwt: 'abc',
+              };
+            },
           },
         },
       }),
