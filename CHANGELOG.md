@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.19.0](https://github.com/immich-app/yucca/compare/v0.18.0...v0.19.0) (2026-07-24)
+
+
+### Features
+
+* **admin:** make the whole thing benchmarkable ([#330](https://github.com/immich-app/yucca/issues/330)) ([ecf969b](https://github.com/immich-app/yucca/commit/ecf969ba3eb1a5a6a30679388bc7993423fa4d3d))
+
+
+### Bug Fixes
+
+* **admin:** make secrets propagate ([#329](https://github.com/immich-app/yucca/issues/329)) ([001207e](https://github.com/immich-app/yucca/commit/001207e8868939c5ee8b2ccc84f554017521313c))
+
 ## [0.18.0](https://github.com/immich-app/yucca/compare/v0.17.0...v0.18.0) (2026-07-24)
 
 
