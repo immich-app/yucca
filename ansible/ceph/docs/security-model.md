@@ -211,14 +211,24 @@ cluster, including the authenticated user, timestamp, and command arguments.
 
 ## Telemetry
 
-Telemetry phone-home is explicitly disabled:
+Telemetry phone-home is **enabled** -- Yucca is built in the open, so the cluster
+contributes anonymized data upstream to the Ceph project:
 
 ```
-ceph_telemetry_enabled: false
+ceph_telemetry_enabled: true
 ```
 
-No cluster metadata, performance data, or crash reports are sent to upstream
-Ceph. All data stays within the cluster boundary.
+All channels are on: basic (cluster shape, pool usage), crash (daemon crash
+reports), perf (performance counters), ident (cluster identity), and device
+(drive health / failure data). Reports are anonymous -- no contact or
+organization is attached and the public leaderboard is off. Data is shared under
+the Ceph `sharing-1-0` license; the device channel in particular feeds the
+upstream drive-failure-prediction dataset.
+
+Tradeoff worth noting: the device channel's per-drive UUIDs are UUID-v1 and embed
+the mgr host's MAC, so they act as a stable per-cluster fingerprint rather than
+being truly anonymous. This is an accepted consequence of building in the open.
+Set `ceph_telemetry_enabled: false` per-cluster to opt a cluster back out.
 
 ## Network topology
 

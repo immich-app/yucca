@@ -2,8 +2,10 @@
 # Post-deploy Ceph cluster tuning
 # These require a running cluster (ceph config set / ceph commands).
 
-# Disable telemetry phone-home
-ceph_telemetry_enabled: false
+# Enable telemetry phone-home. Yucca is built in the open, so the cluster
+# contributes anonymized data upstream to the Ceph project (all channels; no
+# contact/org attached; leaderboard off). Set false per-cluster to opt out.
+ceph_telemetry_enabled: true
 
 # OSD recovery throttling (also in cluster-spec.yml.j2 initial config,
 # but re-asserted here for idempotency after config changes)
@@ -19,12 +21,12 @@ ceph_osd_deep_scrub_interval: 604800    # 7 days
 # PG autoscaler
 ceph_mon_target_pg_per_osd: 100
 
-# BlueStore block.db — 0 means use the entire LV
+# BlueStore block.db: 0 means use the entire LV
 ceph_bluestore_block_db_size: 0
 
 # Log rotation retention (days)
 ceph_log_retention_days: 30
 
-# Audit logging — logs ceph admin commands to the cluster log channel.
+# Audit logging: records ceph admin commands to the cluster log channel.
 # Viewable via: ceph log last -W audit
 ceph_audit_enabled: true

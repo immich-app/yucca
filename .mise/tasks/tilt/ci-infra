@@ -13,7 +13,7 @@ if ! kubectl config current-context | grep -q '^k3d-yucca$'; then
 fi
 
 exec tilt ci --timeout 1800s \
-  cloudnative-pg-repo rook-release-repo victoriametrics-repo helm-deps \
+  rook-release-repo helm-deps \
   cloudnative-pg rook-ceph-operator rook-ceph-cluster \
   yucca-object-user yucca-database yucca-mock-oidc \
   yucca-victoria-metrics yucca-victoria-logs
