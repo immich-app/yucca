@@ -1,12 +1,15 @@
+import { adoptRepositories, getAuth } from '@futo-org/backups-api-client';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { createEventSource, EventSourceClient } from 'eventsource-client';
+import { hostname } from 'node:os';
 import { yuccaWellKnown } from '../backends/yucca.backend';
 import { REPOSITORY_DEFAULT_CLOUD_UUID } from '../const';
-import { BackendType } from '../enum';
+import { BackendType, CookieName } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { RepositoryRepository } from '../repositories/repository.repository';
 import { TelemetryService } from './telemetry.service';
 
 @Injectable()
@@ -17,9 +20,58 @@ export class AuthService {
     readonly moduleConfig: ModuleConfigRepository,
     readonly events: EventsGateway,
     readonly telemetry: TelemetryService,
+    readonly repository: RepositoryRepository,
   ) {}
 
-  private async waitForDeviceFlow(events: EventSourceClient, url?: string) {
+  // Names this immich instance's consumer. Prefer the external URL host (stable,
+  // identifies the deployment); fall back to the machine hostname.
+  private consumerName(): string {
+    const external = this.moduleConfig.get().externalBaseUrl;
+    if (external) {
+      try {
+        return new URL(external).host;
+      } catch {
+        // fall through to hostname
+      }
+    }
+    return hostname() || 'immich';
+  }
+
+  // After login the session is bound to this instance's immich consumer, so new
+  // repositories land on it automatically. Pre-existing repositories still sit
+  // on the user's default consumer — adopt them onto this instance. Best-effort:
+  // adoption never blocks a successful login.
+  private async adoptOwnRepositories(endpoint: string | undefined, accessToken: string): Promise<void> {
+    try {
+      const requestOptions = {
+        baseUrl: endpoint,
+        headers: { cookie: `${CookieName.YuccaAccessToken}=${accessToken}` },
+      };
+
+      const auth = await getAuth(requestOptions);
+      if (!auth.consumerId) {
+        return;
+      }
+
+      const repositories = await this.repository.getAll();
+      const repositoryIds = repositories
+        .filter((row) => row.backendId === REPOSITORY_DEFAULT_CLOUD_UUID)
+        .map((row) => row.remoteId);
+      if (repositoryIds.length === 0) {
+        return;
+      }
+
+      await adoptRepositories(auth.consumerId, { repositoryIds }, requestOptions);
+      this.telemetry.submitStructuredLog('Adopted repositories into instance consumer', {
+        consumerId: auth.consumerId,
+        count: repositoryIds.length,
+      });
+    } catch (error) {
+      this.telemetry.submitStructuredLog('Repository adoption skipped', { error: String(error) });
+    }
+  }
+
+  private async waitForDeviceFlow(events: EventSourceClient, overrideEndpoint: string | undefined, endpoint: string) {
     for await (const { data } of events) {
       const { type, accessToken } = JSON.parse(data);
 
@@ -28,8 +80,10 @@ export class AuthService {
           await this.backend.updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
             type: BackendType.Yucca,
             accessToken,
-            url,
+            url: overrideEndpoint,
           });
+
+          await this.adoptOwnRepositories(endpoint, accessToken);
 
           this.telemetry.submitStructuredLog('Connected FUTO Backups backend', {
             backendId: REPOSITORY_DEFAULT_CLOUD_UUID,
@@ -66,8 +120,13 @@ export class AuthService {
     const overrideEndpoint = this.moduleConfig.get().yuccaProductionApi;
     const endpoint = overrideEndpoint ?? (await yuccaWellKnown.getBaseUrl());
 
+    // Register this session as a named immich consumer instance.
+    const url = new URL('/api/auth/oidc/device', endpoint);
+    url.searchParams.set('consumer_type', 'immich');
+    url.searchParams.set('consumer_name', this.consumerName());
+
     const events: EventSourceClient = createEventSource({
-      url: new URL('/api/auth/oidc/device', endpoint),
+      url,
       onDisconnect: () => events.close(),
     });
 
@@ -77,7 +136,7 @@ export class AuthService {
       clearTimeout(connectTimeout);
       const { userCode, verificationUri } = JSON.parse(data);
 
-      void this.waitForDeviceFlow(events, overrideEndpoint).catch((error) => {
+      void this.waitForDeviceFlow(events, overrideEndpoint, endpoint).catch((error) => {
         this.telemetry.submitStructuredLog('Device flow authentication errored', { error });
         this.events.publish({ type: 'DeviceFlowFailure' });
       });

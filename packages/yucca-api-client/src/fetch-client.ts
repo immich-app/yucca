@@ -19,7 +19,7 @@ export type AuthDto = {
     name: string;
     email: string;
     sessionId: string;
-    consumerId?: object | null;
+    consumerId?: string | null;
     features: {
         [key: string]: boolean;
     };

@@ -15,7 +15,7 @@ export class AuthDto {
 
   // The consumer instance bound to this session (device-flow logins); null
   // for web sessions and sessions predating the consumer model.
-  @ApiProperty({ required: false, nullable: true })
+  @ApiProperty({ type: 'string', required: false, nullable: true })
   consumerId!: string | null;
 
   // Resolved feature flags: per-user override, else registry default.

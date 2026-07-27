@@ -143,8 +143,11 @@ contract, regenerate rather than editing the client.
   (NOT NULL); device-flow sessions bind to a consumer via `?consumer_type=&consumer_name=` on
   `/auth/oidc/device`. Existing repos were backfilled onto a default `immich` consumer; instance
   attribution is client-driven via `POST /consumers/:id/adopt` (moves default-consumer repos to a
-  named instance), never guessed server-side. The `/consumers` API surface (list, create, adopt,
-  manage — including multiple `immich` instances) is open to **every** authenticated user.
+  named instance), never guessed server-side. The in-repo orchestrator (`yucca-sdk`) does this on
+  device-flow login: it registers as an `immich` consumer named after its external host, then
+  best-effort adopts its existing repositories onto that instance. The `/consumers` API surface
+  (list, create, adopt, manage — including multiple `immich` instances) is open to **every**
+  authenticated user.
 - **Feature flags** = registry in code (`@common/server` `FeatureFlags`), strict-boolean per-user
   overrides in `userFeatureFlagOverride`. Resolution is `override ?? registry default`; the default
   flips at GA via a release (code-only defaults). Flags gate self-service use of the individual

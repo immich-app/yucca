@@ -619,7 +619,7 @@
             "type": "string"
           },
           "consumerId": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "features": {
