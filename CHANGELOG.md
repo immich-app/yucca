@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/immich-app/yucca/compare/v0.20.0...v0.21.0) (2026-07-27)
+
+
+### Features
+
+* **infra:** switch prod over to netkit ([#342](https://github.com/immich-app/yucca/issues/342)) ([af5ab66](https://github.com/immich-app/yucca/commit/af5ab66778c4abe03503bee5d32279d2222f778b))
+* **yucca:** per user dashboards ([#344](https://github.com/immich-app/yucca/issues/344)) ([7dd44c2](https://github.com/immich-app/yucca/commit/7dd44c269b9c0becf3f30ae5df720f1b9c236560))
+
 ## [0.20.0](https://github.com/immich-app/yucca/compare/v0.19.3...v0.20.0) (2026-07-27)
 
 
