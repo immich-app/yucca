@@ -169,30 +169,37 @@ func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {
 	return provider, nil
 }
 
-func MetricAttrs(a auth.Auth) attribute.Set {
-	return attribute.NewSet(
-		attribute.String("customerId", a.User),
-		attribute.String("repositoryId", a.Repository),
-	)
-}
-
 // --- Cached metric helpers (hot-path allocation avoidance) ---
 
-type authAttrKey struct{ user, repository string }
+type blobAttrKey struct{ user, repository, blobType string }
 
-var authAttrCache sync.Map
+var blobAttrCache sync.Map
 
-func AuthMetricOption(a auth.Auth) otelmetric.MeasurementOption {
-	key := authAttrKey{a.User, a.Repository}
-	if v, ok := authAttrCache.Load(key); ok {
+func BlobMetricOption(a auth.Auth, blobType string) otelmetric.MeasurementOption {
+	key := blobAttrKey{a.User, a.Repository, blobType}
+	if v, ok := blobAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
 	opt := otelmetric.WithAttributeSet(attribute.NewSet(
 		attribute.String("customerId", a.User),
 		attribute.String("repositoryId", a.Repository),
+		attribute.String("type", blobType),
 	))
-	authAttrCache.Store(key, opt)
+	blobAttrCache.Store(key, opt)
 	return opt
+}
+
+// BlobType returns the blob-category metric label for a request: the {type}
+// route param ("data", "index", ...), "config" for repository config
+// operations, "repo" for repository-level create/delete.
+func BlobType(r *http.Request) string {
+	if t := chi.URLParam(r, "type"); t != "" {
+		return t
+	}
+	if strings.HasSuffix(r.URL.Path, "/config") {
+		return "config"
+	}
+	return "repo"
 }
 
 type httpAttrKey struct {
@@ -214,6 +221,38 @@ func HttpMetricOption(method, route string, status int) otelmetric.MeasurementOp
 		attribute.Int("status", status),
 	))
 	httpAttrCache.Store(key, opt)
+	return opt
+}
+
+type httpUserAttrKey struct {
+	method     string
+	route      string
+	status     int
+	user       string
+	repository string
+}
+
+var httpUserAttrCache sync.Map
+
+// HttpUserMetricOption is HttpMetricOption plus the request's verified
+// identity. Used for the request count/error counters only — the duration and
+// TTFB histograms stay route-scoped to keep bucket-series cardinality down.
+func HttpUserMetricOption(method, route string, status int, user, repository string) otelmetric.MeasurementOption {
+	if user == "" {
+		return HttpMetricOption(method, route, status)
+	}
+	key := httpUserAttrKey{method, route, status, user, repository}
+	if v, ok := httpUserAttrCache.Load(key); ok {
+		return v.(otelmetric.MeasurementOption)
+	}
+	opt := otelmetric.WithAttributeSet(attribute.NewSet(
+		attribute.String("method", method),
+		attribute.String("route", route),
+		attribute.Int("status", status),
+		attribute.String("customerId", user),
+		attribute.String("repositoryId", repository),
+	))
+	httpUserAttrCache.Store(key, opt)
 	return opt
 }
 
@@ -346,7 +385,7 @@ func BlobMiddleware(m *Metrics) func(http.Handler) http.Handler {
 			}
 
 			a := auth.FromContext(r.Context())
-			attrs := AuthMetricOption(a)
+			attrs := BlobMetricOption(a, BlobType(r))
 
 			if cr.n > 0 {
 				m.UploadedBytes.Add(r.Context(), cr.n, attrs)
@@ -358,12 +397,38 @@ func BlobMiddleware(m *Metrics) func(http.Handler) http.Handler {
 	}
 }
 
+// authCapture carries the verified identity from the authed route group out to
+// Middleware, which wraps the whole router (it must observe auth failures too)
+// and therefore never sees the auth context on its own request.
+type authCapture struct {
+	user       string
+	repository string
+}
+
+type authCaptureKey struct{}
+
+// CaptureAuth copies the request's verified identity into the holder injected
+// by Middleware so request count/error metrics can be labeled per user. Must
+// be mounted after auth.Middleware.
+func CaptureAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h, _ := r.Context().Value(authCaptureKey{}).(*authCapture); h != nil {
+			a := auth.FromContext(r.Context())
+			h.user = a.User
+			h.repository = a.Repository
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Middleware records HTTP request metrics.
 func Middleware(m *Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			ww := &ResponseWriter{ResponseWriter: w}
+			capture := &authCapture{}
+			r = r.WithContext(context.WithValue(r.Context(), authCaptureKey{}, capture))
 
 			next.ServeHTTP(ww, r)
 
@@ -382,15 +447,16 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 			}
 
 			attrs := HttpMetricOption(r.Method, route, status)
+			countAttrs := HttpUserMetricOption(r.Method, route, status, capture.user, capture.repository)
 
 			m.RequestDuration.Record(r.Context(), duration, attrs)
 			if !ww.FirstByte.IsZero() {
 				m.RequestTTFB.Record(r.Context(), ww.FirstByte.Sub(start).Seconds(), attrs)
 			}
-			m.RequestCount.Add(r.Context(), 1, attrs)
+			m.RequestCount.Add(r.Context(), 1, countAttrs)
 
 			if status >= 400 {
-				m.RequestErrors.Add(r.Context(), 1, attrs)
+				m.RequestErrors.Add(r.Context(), 1, countAttrs)
 			}
 		})
 	}

@@ -278,7 +278,7 @@ func TestErrorLogOutput(t *testing.T) {
 		t.Fatalf("no error log entry found in output:\n%s", buf.String())
 	}
 
-	for _, field := range []string{"error", "time", "request_id", "remote_ip", "user", "repository", "method", "route"} {
+	for _, field := range []string{"error", "time", "request_id", "remote_ip", "user", "repository", "route"} {
 		if _, ok := errLog[field]; !ok {
 			t.Errorf("error log missing field %q, got: %v", field, errLog)
 		}
@@ -291,10 +291,17 @@ func TestErrorLogOutput(t *testing.T) {
 		t.Errorf("expected message='list blobs failed', got %v", errLog["message"])
 	}
 
-	// Should also have an access log for this failed request
+	// Should also have an access log for this failed request, carrying the
+	// authenticated identity (authLogContext mutates the shared request logger).
 	accessLog := findLog(entries, map[string]interface{}{"status": float64(http.StatusInternalServerError)})
 	if accessLog == nil {
 		t.Fatalf("no access log entry for the 500 response:\n%s", buf.String())
+	}
+	if accessLog["user"] != testUser {
+		t.Errorf("expected access log user=%s, got %v", testUser, accessLog["user"])
+	}
+	if accessLog["repository"] != testRepository {
+		t.Errorf("expected access log repository=%s, got %v", testRepository, accessLog["repository"])
 	}
 }
 
