@@ -5,6 +5,16 @@ regular schedule, or during disaster recovery.
 
 **Time estimate:** Backup: 2 minutes. Restore: depends on scenario.
 
+> Resolve `<ssh-target>` for your cluster from
+> [cluster-profiles.md](../cluster-profiles.md) first. Restore steps write to
+> the bootstrap node, and sietch and spice have different bootstrap hosts, SSH
+> users, and keys. Copying a keyring to the wrong cluster's bootstrap is the
+> failure mode this guards against.
+>
+> Every playbook below runs against whichever inventory `CEPH_ENV` points at.
+> `scripts/ansible-play.sh` requires it and exits if it is unset, so there is
+> no default to fall back on: `CEPH_ENV=<inventory>/inventory.ini`.
+
 ---
 
 ## Backup
@@ -93,8 +103,8 @@ ceph orch host rescan <hostname>
 Or manually copy from the backup:
 
 ```bash
-scp backups/<timestamp>/ceph.conf ansible-iac@<host>:/etc/ceph/ceph.conf
-scp backups/<timestamp>/ceph.client.admin.keyring ansible-iac@<host>:/etc/ceph/ceph.client.admin.keyring
+scp backups/<timestamp>/ceph.conf <ssh user>@<host>:/etc/ceph/ceph.conf
+scp backups/<timestamp>/ceph.client.admin.keyring <ssh user>@<host>:/etc/ceph/ceph.client.admin.keyring
 ```
 
 ### Scenario 2: Lost admin keyring on ALL nodes
@@ -105,9 +115,9 @@ scp backups/<timestamp>/ceph.client.admin.keyring ansible-iac@<host>:/etc/ceph/c
 
 ```bash
 scp backups/<timestamp>/ceph.client.admin.keyring \
-  ansible-iac@sietch-ceph-laurel:/etc/ceph/
+  <ssh-target>:/etc/ceph/
 
-ssh ansible-iac@sietch-ceph-laurel
+ssh <ssh-target>
 sudo chmod 600 /etc/ceph/ceph.client.admin.keyring
 sudo chown ceph:ceph /etc/ceph/ceph.client.admin.keyring
 ```
