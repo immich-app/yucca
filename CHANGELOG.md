@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.20.0](https://github.com/immich-app/yucca/compare/v0.19.3...v0.20.0) (2026-07-27)
+
+
+### Features
+
+* **admin-cli:** make admin-cli faster ([#340](https://github.com/immich-app/yucca/issues/340)) ([bcc8ef7](https://github.com/immich-app/yucca/commit/bcc8ef7bab402a4e0bab407e4c000bdcfd6f9d04))
+* **all:** email allowlist for invites ([#341](https://github.com/immich-app/yucca/issues/341)) ([86a215a](https://github.com/immich-app/yucca/commit/86a215a3dbcd360f1cdccd6a28968e2a128727f8))
+* **all:** post-benchmark cleanup ([#336](https://github.com/immich-app/yucca/issues/336)) ([57a5923](https://github.com/immich-app/yucca/commit/57a59232d0a0a1d4f64a372d0bee7228039907bf))
+
 ## [0.19.3](https://github.com/immich-app/yucca/compare/v0.19.2...v0.19.3) (2026-07-27)
 
 
