@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 )
@@ -71,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 		r.Use(verifier.Middleware())
 		r.Use(authLogContext)
 		if s.Metrics != nil {
+			r.Use(metrics.CaptureAuth)
 			r.Use(metrics.BlobMiddleware(s.Metrics))
 		}
 
@@ -126,13 +128,13 @@ func authLogContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := auth.FromContext(r.Context())
 		route := chi.RouteContext(r.Context()).RoutePattern()
-		l := hlog.FromRequest(r).With().
-			Str("user", a.User).
-			Str("repository", a.Repository).
-			Str("method", r.Method).
-			Str("route", route).
-			Logger()
-		r = r.WithContext(l.WithContext(r.Context()))
+		// Mutate the request logger in place instead of deriving a new one:
+		// the AccessHandler completion line logs through the outer request's
+		// logger pointer, so this is what puts user/repository on access logs.
+		// method is omitted — the access line already carries it.
+		hlog.FromRequest(r).UpdateContext(func(c zerolog.Context) zerolog.Context {
+			return c.Str("user", a.User).Str("repository", a.Repository).Str("route", route)
+		})
 		next.ServeHTTP(w, r)
 	})
 }

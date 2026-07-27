@@ -30,13 +30,17 @@ victoria-logs-collector.
 | `yucca-telemetry-pipeline.json` | Is telemetry itself healthy: scrape + remote-write | `up`, `vmagent_remotewrite_*`, `vm_*` |
 
 Per-user metric inventory (used by the two user dashboards): michael counts
-bytes moved per user/repository (`blobs.*`, labels `customerId`/`repositoryId`),
+bytes moved per user/repository/blob-type (`blobs.*`, labels
+`customerId`/`repositoryId`/`type`) and requests per user
+(`http.server.request.{count,errors}` carry `customerId`/`repositoryId` on
+authenticated requests; the duration/TTFB histograms stay route-scoped),
 yucca-metrics-worker gauges authoritative RGW bucket usage every 5 min
-(`rgw_repository_*`, same labels), and yucca-api gauges client-reported backup
-health (`user_repository_size`, `user_last_*` — labels `user_id`/
-`repository_id`). Known gaps: yucca-api / admin-api emit no HTTP-level OTLP
-metrics (request rate/latency), and nothing scrapes CNPG or the envoy gateways
-on father.
+(`rgw_repository_*`), yucca-api / admin-api count every request per handler and
+customer (`api_request_count`, unsampled even though the request log lines are
+sampled), and yucca-api gauges client-reported backup health
+(`user_repository_size`, `user_last_*` — labels `user_id`/`repository_id`).
+Known gaps: no API-side latency histograms, and nothing scrapes CNPG or the
+envoy gateways on father.
 
 ## Distribution contract
 

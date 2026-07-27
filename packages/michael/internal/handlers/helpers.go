@@ -64,7 +64,7 @@ func (s *Server) respondWithS3Object(w http.ResponseWriter, r *http.Request, obj
 
 	if s.Metrics != nil && obj.ContentLength > 0 {
 		a := auth.FromContext(r.Context())
-		s.Metrics.RequestedBytes.Add(r.Context(), obj.ContentLength, metrics.AuthMetricOption(a))
+		s.Metrics.RequestedBytes.Add(r.Context(), obj.ContentLength, metrics.BlobMetricOption(a, metrics.BlobType(r)))
 	}
 
 	if _, err := io.Copy(w, obj.Body); err != nil {

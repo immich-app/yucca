@@ -1,5 +1,7 @@
 import { type CallHandler, type ExecutionContext, Injectable, type NestInterceptor, Scope } from '@nestjs/common';
+import { type Attributes, type Counter } from '@opentelemetry/api';
 import { type Request } from 'express';
+import { MetricService } from 'nestjs-otel';
 import { randomUUID } from 'node:crypto';
 import { Observable, catchError, tap } from 'rxjs';
 import { otelEnv } from './env.js';
@@ -8,10 +10,32 @@ import { WideContextRepository } from './wideContext.repository.js';
 
 @Injectable({ scope: Scope.REQUEST })
 export class LoggingInterceptor implements NestInterceptor {
+  private readonly requestCount: Counter;
+
   constructor(
     private readonly logger: LoggerRepository,
     private readonly wideContext: WideContextRepository,
-  ) {}
+    metricService: MetricService,
+  ) {
+    this.requestCount = metricService.getCounter('api_request_count', {
+      description: 'API requests by handler, status, and customer',
+    });
+  }
+
+  // Counts every request (log lines are sampled, the counter is not). The
+  // handler label is Controller.method — bounded, unlike the raw path which
+  // embeds resource ids. customerId/repositoryId come from the wide context
+  // when the request authenticated.
+  private recordRequest(handler: string, method: string, event: Record<string, unknown>) {
+    const attributes: Attributes = { handler, method, status: event.status_code as number };
+    if (typeof event.customerId === 'string') {
+      attributes.customerId = event.customerId;
+    }
+    if (typeof event.repositoryId === 'string') {
+      attributes.repositoryId = event.repositoryId;
+    }
+    this.requestCount.add(1, attributes);
+  }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const startTime = Date.now();
@@ -20,12 +44,13 @@ export class LoggingInterceptor implements NestInterceptor {
     const request = httpCtx.getRequest<Request>();
     const response = httpCtx.getResponse<Request>();
 
+    const handler = `${context.getClass().name}.${context.getHandler().name}`;
     const event: Record<string, unknown> = {
       request_id: request.headers['x-request-id'] ?? randomUUID(),
       timestamp: new Date().toISOString(),
       method: request.method,
       path: request.path,
-      _msg: `${request.method} ${context.getClass().name}.${context.getHandler().name}`,
+      _msg: `${request.method} ${handler}`,
     };
 
     return next.handle().pipe(
@@ -36,6 +61,7 @@ export class LoggingInterceptor implements NestInterceptor {
         event._msg += ' (OK)';
 
         this.wideContext.applyContext(event);
+        this.recordRequest(handler, request.method, event);
 
         if ((event.duration_ms as number) > 500) {
           event._msg = '[SLOW] ' + event._msg;
@@ -58,6 +84,7 @@ export class LoggingInterceptor implements NestInterceptor {
         event._msg += ` (ERROR ${error.name})`;
 
         this.wideContext.applyContext(event);
+        this.recordRequest(handler, request.method, event);
 
         this.logger.error(event);
         throw error;

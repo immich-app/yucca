@@ -182,7 +182,7 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.Metrics != nil && r.ContentLength > 0 {
-		s.Metrics.StoredBytes.Add(r.Context(), r.ContentLength, metrics.AuthMetricOption(a))
+		s.Metrics.StoredBytes.Add(r.Context(), r.ContentLength, metrics.BlobMetricOption(a, metrics.BlobType(r)))
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -220,7 +220,7 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.Metrics != nil && size > 0 {
-		s.Metrics.StoredBytes.Add(r.Context(), -size, metrics.AuthMetricOption(a))
+		s.Metrics.StoredBytes.Add(r.Context(), -size, metrics.BlobMetricOption(a, metrics.BlobType(r)))
 	}
 
 	w.WriteHeader(http.StatusOK)

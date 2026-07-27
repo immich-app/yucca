@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -83,42 +84,30 @@ func TestCountingWriter(t *testing.T) {
 	}
 }
 
-func TestMetricAttrs(t *testing.T) {
-	a := auth.Auth{
-		User:       "customer-123",
-		Repository: "repo-456",
+func TestBlobType(t *testing.T) {
+	cases := []struct {
+		method, path, want string
+	}{
+		{"POST", "/repo-1/data/" + strings.Repeat("a", 64), "data"},
+		{"GET", "/repo-1/locks/", "locks"},
+		{"POST", "/repo-1/config", "config"},
+		{"POST", "/repo-1/", "repo"},
 	}
 
-	attrs := MetricAttrs(a)
+	r := chi.NewRouter()
+	var got string
+	capture := func(w http.ResponseWriter, r *http.Request) { got = BlobType(r) }
+	r.Post("/{path}/", capture)
+	r.Post("/{path}/config", capture)
+	r.Get("/{path}/{type}/", capture)
+	r.Post("/{path}/{type}/{name}", capture)
 
-	customerID, found := attrs.Value("customerId")
-	if !found {
-		t.Fatal("expected customerId attribute")
-	}
-	if customerID.AsString() != "customer-123" {
-		t.Fatalf("expected customer-123, got %s", customerID.AsString())
-	}
-
-	repoID, found := attrs.Value("repositoryId")
-	if !found {
-		t.Fatal("expected repositoryId attribute")
-	}
-	if repoID.AsString() != "repo-456" {
-		t.Fatalf("expected repo-456, got %s", repoID.AsString())
-	}
-
-	// Should have exactly 2 attributes
-	if attrs.Len() != 2 {
-		t.Fatalf("expected 2 attributes, got %d", attrs.Len())
-	}
-}
-
-func TestMetricAttrsEquivalence(t *testing.T) {
-	a := auth.Auth{User: "u1", Repository: "r1"}
-	x := MetricAttrs(a)
-	y := MetricAttrs(a)
-	if !x.Equals(&y) {
-		t.Fatal("expected equivalent attribute sets")
+	for _, c := range cases {
+		got = ""
+		r.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(c.method, c.path, nil))
+		if got != c.want {
+			t.Fatalf("%s %s: expected blob type %q, got %q", c.method, c.path, c.want, got)
+		}
 	}
 }
 
@@ -315,21 +304,44 @@ func (f *readFromResponseWriter) ReadFrom(r io.Reader) (int64, error) {
 	return io.Copy(&f.buf, r)
 }
 
-func TestAuthMetricOptionCacheHit(t *testing.T) {
+func TestBlobMetricOptionCacheHit(t *testing.T) {
 	a := auth.Auth{User: "u1", Repository: "r1"}
-	opt1 := AuthMetricOption(a)
-	opt2 := AuthMetricOption(a)
+	opt1 := BlobMetricOption(a, "data")
+	opt2 := BlobMetricOption(a, "data")
 	// Same pointer means the cache returned the same object.
 	if opt1 != opt2 {
-		t.Fatal("expected cached AuthMetricOption to return the same object")
+		t.Fatal("expected cached BlobMetricOption to return the same object")
 	}
 }
 
-func TestAuthMetricOptionDifferentKeys(t *testing.T) {
-	a := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1"})
-	b := AuthMetricOption(auth.Auth{User: "u2", Repository: "r2"})
+func TestBlobMetricOptionDifferentKeys(t *testing.T) {
+	a := BlobMetricOption(auth.Auth{User: "u1", Repository: "r1"}, "data")
+	b := BlobMetricOption(auth.Auth{User: "u2", Repository: "r2"}, "data")
 	if a == b {
 		t.Fatal("different auth keys should produce different options")
+	}
+	c := BlobMetricOption(auth.Auth{User: "u1", Repository: "r1"}, "index")
+	if a == c {
+		t.Fatal("different blob types should produce different options")
+	}
+}
+
+func TestHttpUserMetricOption(t *testing.T) {
+	// Empty user delegates to the route-scoped option.
+	anon := HttpUserMetricOption("GET", "/foo", 200, "", "")
+	if anon != HttpMetricOption("GET", "/foo", 200) {
+		t.Fatal("expected empty user to reuse the route-scoped option")
+	}
+
+	a := HttpUserMetricOption("GET", "/foo", 200, "u1", "r1")
+	if a == anon {
+		t.Fatal("expected per-user option to differ from the route-scoped one")
+	}
+	if a != HttpUserMetricOption("GET", "/foo", 200, "u1", "r1") {
+		t.Fatal("expected cached HttpUserMetricOption to return the same object")
+	}
+	if a == HttpUserMetricOption("GET", "/foo", 200, "u2", "r2") {
+		t.Fatal("different users should produce different options")
 	}
 }
 
@@ -383,13 +395,13 @@ func TestCachedRoutePattern(t *testing.T) {
 	}
 }
 
-func TestAuthMetricOptionConcurrency(t *testing.T) {
+func TestBlobMetricOptionConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			AuthMetricOption(auth.Auth{User: "u1", Repository: "r1"})
+			BlobMetricOption(auth.Auth{User: "u1", Repository: "r1"}, "data")
 		}()
 	}
 	wg.Wait()
