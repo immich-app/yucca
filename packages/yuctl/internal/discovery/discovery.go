@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/rs/zerolog"
 
@@ -82,12 +83,25 @@ func NewClient(ctx context.Context, logger zerolog.Logger) (*Client, error) {
 	if accessKey == "" || secretKey == "" {
 		accessRef := envOr("YUCTL_TF_STATE_ACCESS_KEY_REF", defaultAccessKeyRef)
 		secretRef := envOr("YUCTL_TF_STATE_SECRET_KEY_REF", defaultSecretKeyRef)
-		var err error
-		if accessKey, err = op.Read(ctx, accessRef); err != nil {
-			return nil, fmt.Errorf("resolve state-bucket access key: %w", err)
+		// Each `op read` costs seconds of desktop-app IPC; resolve both
+		// references concurrently.
+		var wg sync.WaitGroup
+		var accessErr, secretErr error
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			accessKey, accessErr = op.Read(ctx, accessRef)
+		}()
+		go func() {
+			defer wg.Done()
+			secretKey, secretErr = op.Read(ctx, secretRef)
+		}()
+		wg.Wait()
+		if accessErr != nil {
+			return nil, fmt.Errorf("resolve state-bucket access key: %w", accessErr)
 		}
-		if secretKey, err = op.Read(ctx, secretRef); err != nil {
-			return nil, fmt.Errorf("resolve state-bucket secret key: %w", err)
+		if secretErr != nil {
+			return nil, fmt.Errorf("resolve state-bucket secret key: %w", secretErr)
 		}
 	}
 
@@ -107,9 +121,14 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+// resolveConcurrency bounds the parallel GetObject fan-out in Resolve.
+const resolveConcurrency = 8
+
 // Resolve discovers stacks (local tree preferred, else bucket listing), reads
 // each state object, and returns the populated topology. Stacks whose state has
-// no `discovery` output yet are skipped with a debug log.
+// no `discovery` output yet are skipped with a debug log. State objects are
+// fetched concurrently; results keep the (sorted) enumeration order so the
+// topology stays deterministic.
 func (c *Client) Resolve(ctx context.Context) (*Topology, error) {
 	stacks, src, err := c.enumerate(ctx)
 	if err != nil {
@@ -117,25 +136,41 @@ func (c *Client) Resolve(ctx context.Context) (*Topology, error) {
 	}
 	c.log.Debug().Str("source", src).Int("stacks", len(stacks)).Msg("enumerated stacks")
 
+	resolved := make([]*ResolvedStack, len(stacks))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, resolveConcurrency)
+	for i, st := range stacks {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			raw, err := c.getObject(ctx, st.Key)
+			if err != nil {
+				// A locally-enumerated stack may not have been applied yet (no state
+				// object). Skip rather than abort the whole resolve.
+				c.log.Debug().Str("key", st.Key).Err(err).Msg("skip: state object unreadable")
+				return
+			}
+			d, err := state.ParseDiscovery(raw)
+			if err != nil {
+				c.log.Warn().Str("key", st.Key).Err(err).Msg("skip: discovery parse failed")
+				return
+			}
+			if d == nil {
+				c.log.Debug().Str("key", st.Key).Msg("skip: no discovery output")
+				return
+			}
+			resolved[i] = &ResolvedStack{Stack: st, Discovery: *d}
+		}()
+	}
+	wg.Wait()
+
 	topo := &Topology{}
-	for _, st := range stacks {
-		raw, err := c.getObject(ctx, st.Key)
-		if err != nil {
-			// A locally-enumerated stack may not have been applied yet (no state
-			// object). Skip rather than abort the whole resolve.
-			c.log.Debug().Str("key", st.Key).Err(err).Msg("skip: state object unreadable")
-			continue
+	for _, r := range resolved {
+		if r != nil {
+			topo.Stacks = append(topo.Stacks, *r)
 		}
-		d, err := state.ParseDiscovery(raw)
-		if err != nil {
-			c.log.Warn().Str("key", st.Key).Err(err).Msg("skip: discovery parse failed")
-			continue
-		}
-		if d == nil {
-			c.log.Debug().Str("key", st.Key).Msg("skip: no discovery output")
-			continue
-		}
-		topo.Stacks = append(topo.Stacks, ResolvedStack{Stack: st, Discovery: *d})
 	}
 	return topo, nil
 }
