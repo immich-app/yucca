@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -19,7 +21,73 @@ func newUsersCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newUsersListCmd())
 	cmd.AddCommand(newUsersAllowlistCmd())
+	cmd.AddCommand(newUsersViewDashboardCmd())
 	return cmd
+}
+
+const defaultGrafanaURL = "https://grafana.futostatus.com"
+
+func newUsersViewDashboardCmd() *cobra.Command {
+	flags := &adminFlags{}
+	var userID, email, grafanaURL string
+	var noOpen bool
+	c := &cobra.Command{
+		Use:   "view-dashboard",
+		Short: "Open the per-user Grafana dashboard for a user",
+		Long: "Build the Grafana per-user drill-down URL (dashboard uid yucca-per-user) for\n" +
+			"a user and open it in the browser. --id builds the URL without contacting the\n" +
+			"admin-api; --email resolves the user via the partition's admin-api first.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			id := userID
+			if email != "" {
+				client, partition, err := flags.allowlistClient(cmd)
+				if err != nil {
+					return err
+				}
+				users, err := client.ListUsers(cmd.Context(), 0)
+				if err != nil {
+					return err
+				}
+				id = ""
+				for _, u := range users {
+					if strings.EqualFold(u.Email, email) {
+						id = u.ID
+						break
+					}
+				}
+				if id == "" {
+					return fmt.Errorf("no user with email %q in partition %s", email, partition)
+				}
+			}
+
+			base := grafanaURL
+			if base == "" {
+				base = os.Getenv("YUCTL_GRAFANA_URL")
+			}
+			if base == "" {
+				base = defaultGrafanaURL
+			}
+			dashboardURL := strings.TrimRight(base, "/") + "/d/yucca-per-user?var-user=" + url.QueryEscape(id)
+
+			fmt.Fprintln(cmd.OutOrStdout(), dashboardURL)
+			if noOpen {
+				return nil
+			}
+			if err := openBrowser(dashboardURL); err != nil {
+				return fmt.Errorf("open browser: %w", err)
+			}
+			return nil
+		},
+	}
+	c.Flags().StringVar(&userID, "id", "", "user id (uuid)")
+	c.Flags().StringVar(&email, "email", "", "user email; resolved to an id via the admin-api")
+	c.Flags().StringVar(&grafanaURL, "grafana-url", "", "Grafana base URL (default: $YUCTL_GRAFANA_URL or "+defaultGrafanaURL+")")
+	c.Flags().BoolVar(&noOpen, "no-open", false, "print the dashboard URL instead of opening the browser")
+	c.MarkFlagsOneRequired("id", "email")
+	c.MarkFlagsMutuallyExclusive("id", "email")
+	flags.register(c)
+	return c
 }
 
 func newUsersListCmd() *cobra.Command {
