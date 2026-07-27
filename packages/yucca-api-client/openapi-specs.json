@@ -55,6 +55,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "invite_code",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

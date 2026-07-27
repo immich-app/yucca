@@ -1,4 +1,5 @@
 import { AuthDto } from 'src/dto/auth.dto';
+import { env } from 'src/env';
 import { Mocks, newMocks } from '../../test/mocks';
 import { AuthService } from './auth.service';
 
@@ -20,6 +21,7 @@ const mockUser = {
 describe(AuthService.name, () => {
   let mocks: Mocks;
   let sut: AuthService;
+  let allowedEmailDomains: string[];
 
   beforeEach(() => {
     mocks = newMocks();
@@ -27,10 +29,17 @@ describe(AuthService.name, () => {
       mocks.jwt as never,
       mocks.oidc as never,
       mocks.user as never,
+      mocks.userAllowlist as never,
       mocks.crypto,
       mocks.session as never,
       mocks.wideContext,
     );
+    allowedEmailDomains = env.ALLOWED_EMAIL_DOMAINS;
+    env.ALLOWED_EMAIL_DOMAINS = [];
+  });
+
+  afterEach(() => {
+    env.ALLOWED_EMAIL_DOMAINS = allowedEmailDomains;
   });
 
   it('should exist', () => {
@@ -172,11 +181,12 @@ describe(AuthService.name, () => {
     it('should create a new user if one does not exist', async () => {
       const claims = {
         name: 'name',
-        email: 'email',
+        email: 'name@example.test',
       };
 
       const accessToken = Symbol('Access Token');
 
+      env.ALLOWED_EMAIL_DOMAINS = ['example.test'];
       mocks.user.getBySub.mockResolvedValue(void 0);
       mocks.user.create.mockResolvedValue(mockUser);
       mocks.oidc.callback.mockResolvedValue(claims as never);
@@ -235,6 +245,99 @@ describe(AuthService.name, () => {
         userId: mockUser.id,
         accessToken,
       });
+    });
+  });
+
+  describe('getOrCreateUser', () => {
+    const claims = {
+      sub: 'new-sub',
+      name: 'name',
+      email: 'New@Example.com',
+    };
+
+    const entry = {
+      id: 'entry',
+      email: 'new@example.com',
+      inviteCode: 'CODE123456',
+      invited: true,
+      inviteUsed: false,
+      inviteUsedAt: null,
+      createdAt: new Date(),
+    };
+
+    beforeEach(() => {
+      mocks.user.getBySub.mockResolvedValue(void 0);
+      mocks.user.create.mockResolvedValue(mockUser);
+    });
+
+    it('should allow a new user whose email domain is allowed', async () => {
+      env.ALLOWED_EMAIL_DOMAINS = ['example.com'];
+
+      await expect(sut.getOrCreateUser(claims)).resolves.toBe(mockUser);
+
+      expect(mocks.userAllowlist.getByEmail).not.toHaveBeenCalled();
+      expect(mocks.user.create).toHaveBeenCalledWith({ sub: claims.sub, name: claims.name, email: claims.email });
+    });
+
+    it('should allow a new user with an invited allowlist entry and mark it used', async () => {
+      mocks.userAllowlist.getByEmail.mockResolvedValue(entry);
+
+      await expect(sut.getOrCreateUser(claims)).resolves.toBe(mockUser);
+
+      expect(mocks.userAllowlist.getByEmail).toHaveBeenCalledWith('new@example.com');
+      expect(mocks.userAllowlist.markUsed).toHaveBeenCalledWith(entry.id);
+    });
+
+    it('should not mark an already-used allowlist entry again', async () => {
+      mocks.userAllowlist.getByEmail.mockResolvedValue({ ...entry, inviteUsed: true });
+
+      await expect(sut.getOrCreateUser(claims)).resolves.toBe(mockUser);
+
+      expect(mocks.userAllowlist.markUsed).not.toHaveBeenCalled();
+    });
+
+    it('should reject a new user whose allowlist entry is only staged', async () => {
+      mocks.userAllowlist.getByEmail.mockResolvedValue({ ...entry, invited: false });
+
+      await expect(sut.getOrCreateUser(claims)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Email is not allowed during the beta"`,
+      );
+      expect(mocks.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should allow a new user with a valid invite code and mark it used', async () => {
+      mocks.userAllowlist.getByInviteCode.mockResolvedValue(entry);
+
+      await expect(sut.getOrCreateUser(claims, 'code123456')).resolves.toBe(mockUser);
+
+      expect(mocks.userAllowlist.getByInviteCode).toHaveBeenCalledWith('CODE123456');
+      expect(mocks.userAllowlist.markUsed).toHaveBeenCalledWith(entry.id);
+    });
+
+    it('should reject an already-used invite code', async () => {
+      mocks.userAllowlist.getByInviteCode.mockResolvedValue({ ...entry, inviteUsed: true });
+
+      await expect(sut.getOrCreateUser(claims, 'CODE123456')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Email is not allowed during the beta"`,
+      );
+      expect(mocks.userAllowlist.markUsed).not.toHaveBeenCalled();
+      expect(mocks.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject a new user with no allowlist match', async () => {
+      await expect(sut.getOrCreateUser(claims)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Email is not allowed during the beta"`,
+      );
+      expect(mocks.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should let an existing user log in regardless of the allowlist', async () => {
+      mocks.user.getBySub.mockResolvedValue(mockUser);
+
+      await expect(sut.getOrCreateUser(claims)).resolves.toEqual(mockUser);
+
+      expect(mocks.userAllowlist.getByEmail).not.toHaveBeenCalled();
+      expect(mocks.user.update).toHaveBeenCalledWith(mockUser.id, { name: claims.name, email: claims.email });
     });
   });
 });

@@ -99,10 +99,13 @@ export function logout(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(codeChallenge: string, state: string, opts?: Oazapfts.RequestOpts) {
+export function oidcAuthorize(codeChallenge: string, state: string, { inviteCode }: {
+    inviteCode?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
         code_challenge: codeChallenge,
-        state
+        state,
+        invite_code: inviteCode
     }))}`, {
         ...opts
     }));

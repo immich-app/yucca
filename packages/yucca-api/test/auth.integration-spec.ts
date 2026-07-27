@@ -215,6 +215,112 @@ describe('AuthController (e2e)', () => {
     });
   });
 
+  describe('beta allowlist', () => {
+    let allowedEmailDomains: string[];
+
+    beforeEach(() => {
+      allowedEmailDomains = env.ALLOWED_EMAIL_DOMAINS;
+      env.ALLOWED_EMAIL_DOMAINS = [];
+    });
+
+    afterEach(() => {
+      env.ALLOWED_EMAIL_DOMAINS = allowedEmailDomains;
+    });
+
+    const loginCallback = async (sub: string, inviteCode?: string) => {
+      const loginPath = inviteCode ? `/api/auth/oidc/login?invite_code=${inviteCode}` : '/api/auth/oidc/login';
+      const { header } = await request(app.getHttpServer()).get(loginPath).expect(302);
+      const cookies = parse((header['set-cookie'] as never as string[]).join('; '));
+
+      const redirectUrl = new URL(header.location);
+      redirectUrl.pathname = '/api/form';
+      redirectUrl.searchParams.set('sub', sub);
+
+      const { headers } = await fetch(redirectUrl, {
+        redirect: 'manual',
+      });
+
+      const callbackUrl = new URL(headers.get('location')!);
+
+      const cookieHeader = [
+        `yucca-oidc-state=${cookies['yucca-oidc-state']}`,
+        `yucca-oidc-code-verifier=${cookies['yucca-oidc-code-verifier']}`,
+      ];
+      if (cookies['yucca-invite-code']) {
+        cookieHeader.push(`yucca-invite-code=${cookies['yucca-invite-code']}`);
+      }
+
+      return request(app.getHttpServer())
+        .get(callbackUrl.pathname + callbackUrl.search)
+        .set('Cookie', cookieHeader);
+    };
+
+    it('redirects a non-allowlisted new user to the invite page', async () => {
+      const response = await loginCallback('blocked-user');
+
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe('/login/invite?error=not_allowed');
+      await expect(testUtils.getUserBySub('blocked-user')).resolves.toBeUndefined();
+    });
+
+    it('allows a new user whose email domain is allowed', async () => {
+      env.ALLOWED_EMAIL_DOMAINS = ['example.test'];
+
+      const response = await loginCallback('domain-user');
+
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe('/');
+      await expect(testUtils.getUserBySub('domain-user')).resolves.toBeTruthy();
+    });
+
+    it('allows an invited email and marks the entry used', async () => {
+      await testUtils.createAllowlistEntry({ email: 'allowed-user@example.test' });
+
+      const response = await loginCallback('allowed-user');
+
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe('/');
+      await expect(testUtils.getUserBySub('allowed-user')).resolves.toBeTruthy();
+      await expect(testUtils.getAllowlistEntry('allowed-user@example.test')).resolves.toEqual(
+        expect.objectContaining({ inviteUsed: true, inviteUsedAt: expect.any(Date) }),
+      );
+    });
+
+    it('blocks a staged (not yet invited) email', async () => {
+      await testUtils.createAllowlistEntry({ email: 'staged-user@example.test', invited: false });
+
+      const response = await loginCallback('staged-user');
+
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe('/login/invite?error=not_allowed');
+      await expect(testUtils.getUserBySub('staged-user')).resolves.toBeUndefined();
+    });
+
+    it('redeems an invite code for a different email', async () => {
+      await testUtils.createAllowlistEntry({ email: 'invitee@example.com', inviteCode: 'REDEEMME01' });
+
+      const response = await loginCallback('code-user', 'redeemme01');
+
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe('/');
+      await expect(testUtils.getUserBySub('code-user')).resolves.toBeTruthy();
+      await expect(testUtils.getAllowlistEntry('invitee@example.com')).resolves.toEqual(
+        expect.objectContaining({ inviteUsed: true }),
+      );
+    });
+
+    it('rejects an already-used invite code', async () => {
+      await testUtils.createAllowlistEntry({ email: 'used@example.com', inviteCode: 'USEDCODE01' });
+
+      await loginCallback('first-code-user', 'USEDCODE01');
+      const response = await loginCallback('second-code-user', 'USEDCODE01');
+
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe('/login/invite?error=not_allowed');
+      await expect(testUtils.getUserBySub('second-code-user')).resolves.toBeUndefined();
+    });
+  });
+
   describe('GET /auth/oidc/device (SSE)', () => {
     it('completes device flow and creates user', async () => {
       const replay = new ReplaySubject<MessageEvent>();

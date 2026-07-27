@@ -4,6 +4,7 @@ import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
+import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 
@@ -46,6 +47,14 @@ export const newUserRepositoryMock = (): jest.Mocked<RepositoryInterface<UserRep
   };
 };
 
+export const newUserAllowlistRepositoryMock = (): jest.Mocked<RepositoryInterface<UserAllowlistRepository>> => {
+  return {
+    getByEmail: jest.fn(),
+    getByInviteCode: jest.fn(),
+    markUsed: jest.fn(),
+  };
+};
+
 export const newLoggerRepositoryMock = (): jest.Mocked<RepositoryInterface<LoggerRepository>> => {
   return {
     debug: jest.fn(),
@@ -80,6 +89,7 @@ export const newMocks = () => {
     oidc: newOidcRepositoryMock(),
     session: newSessionRepositoryMock(),
     user: newUserRepositoryMock(),
+    userAllowlist: newUserAllowlistRepositoryMock(),
     logger: newLoggerRepositoryMock(),
     wideContext: newWideContextRepositoryMock(),
     jwt: newJwtServiceMock(),
