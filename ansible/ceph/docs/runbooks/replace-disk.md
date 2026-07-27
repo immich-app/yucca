@@ -8,6 +8,12 @@
 - Physical or remote hands access for the disk swap
 - Cluster has enough free capacity to absorb the missing OSD during backfill
 
+> **Which cluster?** Sections 1-7 below describe the **sietch** shape: SAS
+> expander bays (`sas_path_prefix`), dual-SSD block.db VGs, on-site hands in
+> Austin, `ansible-iac` SSH. **Spice is a different shape** and several steps do
+> not apply to it. For spice, use section 1 to identify the disk, then jump to
+> [Spice (Hetzner SX295)](#spice-hetzner-sx295) instead of sections 2-7.
+
 ---
 
 ## 1. Identify the failed disk
@@ -244,3 +250,149 @@ smartctl -a /dev/sdX
 ```
 
 Confirm the new disk has zero errors.
+
+---
+
+## Spice (Hetzner SX295)
+
+Spice nodes are the NVMe-RAID shape: 14x SATA HDD on 3 AHCI controllers, plus
+2x NVMe in RAID-1 (`md1`) carrying `vg0`, which holds the OS, 14x 128G
+`db-slotN` LVs, and the `ssd-osd` LV. There is no SAS expander, no
+`sas_path_prefix`, and no IPMI. SSH is `root` with `~/.ssh/id_ed25519_spice`.
+
+Two differences drive the whole procedure:
+
+- **block.db survives the swap.** The db slot is an LV on `vg0` (NVMe), not on
+  the HDD. Replacing the disk does not touch it, so it keeps the dead OSD's
+  metadata and must be zapped before reuse. Nothing in sections 4-6 covers this.
+- **The disk/slot pairing is not what the inventory implies.** `ceph_hdd_osds`
+  groups `{path_phy, db}` per row, but a cephadm OSD spec has no per-disk
+  block.db syntax, so those become two independent path arrays and ceph-volume
+  pairs them in its own order. Resolve the real pairing from the live host, and
+  never assume the slot written next to a disk in group_vars.
+
+### 1. Resolve the OSD, disk, bay, and db slot
+
+```bash
+# db slot and kernel device, from the host
+cephadm ceph-volume lvm list | grep -A 8 "====== osd.<id>"
+
+# bay: the by-path is what the replacement disk will inherit
+ls -l /dev/disk/by-path/ | grep <sdX>$
+
+# serial, for the Hetzner ticket
+smartctl -i /dev/<sdX> | grep -i "serial number"
+```
+
+Record all four. The by-path identifies the bay; the serial identifies the disk
+to Hetzner; the db slot is what you zap and reuse.
+
+### 2. Drain
+
+```bash
+ceph osd out <id>
+```
+
+Watch until it holds no PGs. `osd df` reports `SIZE 0 B` for an out OSD, so the
+`PGS` column is the one to track:
+
+```bash
+ceph osd df | awk 'NR==1 || $1==<id>'
+```
+
+Do not proceed until it reaches 0 and the cluster is `active+clean`.
+
+Draining is safe even when the disk has unreadable sectors: for EC pools Ceph
+reconstructs any shard the failing disk cannot hand over from the surviving
+shards.
+
+### 3. Clear stale scrub errors
+
+If the disk caused scrub errors, the `inconsistent` flag and the scrub-error
+count are sticky. They survive the drain even though the damage is gone,
+because only a scrub clears them:
+
+```bash
+for pg in <pgids>; do ceph pg deep-scrub $pg; done
+```
+
+Do not `ceph pg repair` a failing disk. Repair rebuilds the bad shard and writes
+it back to the same drive; draining relocates it to a healthy one.
+
+### 4. Remove the OSD and free the db slot
+
+```bash
+ceph orch daemon stop osd.<id>
+ceph orch osd rm <id> --replace     # keeps the id reserved for the new disk
+```
+
+Then, on the node, zap the db LV. The LV itself stays; only its contents go:
+
+```bash
+cephadm ceph-volume lvm zap vg0/db-slot<N>
+lvs vg0 | grep db-slot<N>           # confirm the LV still exists
+```
+
+Skipping this is the most common failure: ceph-volume refuses a db device that
+still carries an old OSD's metadata, and the recreate fails with no obvious
+pointer back to this step.
+
+### 5. Physical swap
+
+Hetzner support ticket quoting the **serial** from step 1, since there is no
+IPMI and no bay LED. Reference the by-path only as supporting detail; Hetzner
+identifies drives by serial.
+
+After the swap, confirm the new disk is present at the same by-path:
+
+```bash
+ls -l /dev/disk/by-path/ | grep <bay-path>
+smartctl -i /dev/disk/by-path/<bay-path> | grep -i "serial number"
+```
+
+The serial must differ from the one you sent. Same serial means the disk was
+not actually swapped.
+
+### 6. Recreate the OSD
+
+Create explicitly rather than re-applying the spec. This is the only way to
+pin the disk to the intended slot:
+
+```bash
+DISK=/dev/disk/by-path/<bay-path>
+DB_LV=vg0/db-slot<N>
+
+cephadm ceph-volume \
+  --keyring /var/lib/ceph/bootstrap-osd/ceph.keyring \
+  lvm create --dmcrypt --no-systemd --data "$DISK" --block.db "$DB_LV"
+
+ceph cephadm osd activate <hostname>
+```
+
+Re-applying the spec (`ceph orch apply osd -i /etc/ceph/osd-spec.yml`) also
+works when exactly one data path and one db slot are free, because then only
+one pairing is possible. With more than one of either free, cephadm chooses,
+and it may not choose what you expect.
+
+The Ansible equivalent, if you would rather not hand-run ceph-volume:
+
+```bash
+scripts/ansible-play.sh deploy-ceph.yml \
+  --tags osds --limit spice-ceph-<host>,spice-ceph-adelia
+```
+
+`spice-ceph-adelia` is the spice bootstrap node and must be in `--limit`.
+
+### 7. Verify
+
+```bash
+ceph osd tree | grep "osd.<id>"        # up, weight > 0
+ceph osd df | awk 'NR==1 || $1==<id>'  # PGs climbing as backfill lands
+ceph -s                                # back to active+clean
+```
+
+Confirm the new OSD picked up the intended slot, since nothing enforced it:
+
+```bash
+cephadm ceph-volume lvm list | grep -A 8 "====== osd.<id>"
+```
