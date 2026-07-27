@@ -15,3 +15,5 @@ exclusions:
     reason: grafana-operator reverts drift each resync; editable kept for ad-hoc exploration
   template-on-time-change-reload-rule:
     reason: refresh-on-time-range-change not set on the datasource variable; revisit
+  template-datasource-rule:
+    reason: house style is `$datasource` (+ `$logs_datasource` where VictoriaLogs panels exist), not type-prefixed names

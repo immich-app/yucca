@@ -58,7 +58,8 @@ yuctl
 │   └── talos
 │       └── upgrade                 talosctl upgrade CP nodes (--dry-run, confirm/--yes, --image)
 ├── users
-│   └── list                        list users in the partition's PRIMARY region
+│   ├── list                        list users in the partition's PRIMARY region
+│   └── view-dashboard              open the grafana per-user drill-down (--id or --email)
 └── tools
     └── bench                       restic e2e benchmark against michael, run from a mgmt host
         ├── compare <a> <b>         render before/after deltas from two results files
@@ -197,6 +198,7 @@ benchmarks inside tmux. Pair the client numbers with the michael dashboard
 | `YUCTL_TF_DEPLOYMENT_DIR`                            | force the local stack-enumeration dir  | walk up for `tf/deployment`                              |
 | `OP_BIN`                                             | 1Password CLI binary                   | `op`                                                     |
 | `YUCTL_ADMIN_API_URL`                                | admin-api base URL (`login`, `users`)  | derived from discovery `api_endpoint`                    |
+| `YUCTL_GRAFANA_URL`                                  | grafana base (`users view-dashboard`)  | `https://grafana.futostatus.com`                         |
 
 ## Tests
 

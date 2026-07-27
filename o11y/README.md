@@ -11,12 +11,17 @@ JSON.
 
 Every series at o11y carries `cluster` (`father` k8s / `spice` ceph / `netops`
 fabric tier / `luke` staging), `site`, `env`. Each dashboard uses a
-`$datasource` variable — no datasource UIDs are baked in.
+`$datasource` variable — no datasource UIDs are baked in. Dashboards with logs
+panels additionally use a `$logs_datasource` variable (the VictoriaLogs grafana
+datasource); log lines carry the same `cluster`/`site`/`env` fields, stamped by
+victoria-logs-collector.
 
 | File (= uid) | Covers | Source metrics |
 | --- | --- | --- |
 | `yucca-overview.json` | Single pane of glass: backup data plane + platform | michael OTLP, `ceph_rgw_*`, cadvisor, PVCs, coredns |
-| `yucca-michael.json` | Restic gateway deep dive: HTTP + S3 backend pool | `http.server.request.*`, `s3.backend.*` (OTel, dotted names) |
+| `yucca-michael.json` | Restic gateway deep dive: HTTP + S3 backend pool + logs | `http.server.request.*`, `s3.backend.*` (OTel, dotted names), VictoriaLogs |
+| `yucca-top-users.json` | Fleet-wide top talkers: storage, traffic, stale backups per user (rows link to the per-user board) | `rgw_repository_*`, `blobs.*`, `user_last_*` (all keyed by user id) |
+| `yucca-per-user.json` | Single-user drill-down: storage, backup health, traffic, logs. Deep-linkable as `/d/yucca-per-user?var-user=<id>` (`yuctl users view-dashboard`) | `rgw_repository_*`, `blobs.*`, `user_*`, VictoriaLogs |
 | `yucca-spice-rgw-capacity.json` | RGW/pool capacity, S3 perf, OSD/BlueStore internals | `ceph_pool_*`, `ceph_rgw_*`, `ceph_osd_*`, `node_*` |
 | `yucca-spice-ceph-health.json` | Cluster health: quorum, OSDs, PGs, recovery, latency | `ceph_health_*`, `ceph_pg_*`, `ceph_osd_*` |
 | `yucca-spice-nodes.json` | 48-node fleet hotspots: CPU/mem/disk/fabric VLANs | `node_*` (job `ceph-node-exporter`) |
@@ -24,9 +29,14 @@ fabric tier / `luke` staging), `site`, `env`. Each dashboard uses a
 | `yucca-fabric-htz-fsn1.json` | Switch fabric: sFlow 5s rates, NETCONF, BGP, alarms | `sflow_*`, `junos_*` (port of the in-cluster netops board) |
 | `yucca-telemetry-pipeline.json` | Is telemetry itself healthy: scrape + remote-write | `up`, `vmagent_remotewrite_*`, `vm_*` |
 
-Known gaps (metrics that do not exist yet, so no dashboard): yucca-api /
-admin-api / metrics-worker emit no OTLP app metrics today (only michael does),
-and nothing scrapes CNPG or the envoy gateways on father.
+Per-user metric inventory (used by the two user dashboards): michael counts
+bytes moved per user/repository (`blobs.*`, labels `customerId`/`repositoryId`),
+yucca-metrics-worker gauges authoritative RGW bucket usage every 5 min
+(`rgw_repository_*`, same labels), and yucca-api gauges client-reported backup
+health (`user_repository_size`, `user_last_*` — labels `user_id`/
+`repository_id`). Known gaps: yucca-api / admin-api emit no HTTP-level OTLP
+metrics (request rate/latency), and nothing scrapes CNPG or the envoy gateways
+on father.
 
 ## Distribution contract
 

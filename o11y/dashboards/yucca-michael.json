@@ -324,7 +324,7 @@
       ],
       "title": "Upload to S3",
       "type": "stat",
-      "description": "restic PUT path: michael \u2192 RGW"
+      "description": "restic PUT path: michael → RGW"
     },
     {
       "datasource": {
@@ -380,7 +380,7 @@
       ],
       "title": "Download from S3",
       "type": "stat",
-      "description": "restic GET path: RGW \u2192 michael"
+      "description": "restic GET path: RGW → michael"
     },
     {
       "collapsed": false,
@@ -1925,6 +1925,59 @@
       ],
       "title": "p99 latency by route",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 82
+      },
+      "id": 30,
+      "panels": [],
+      "title": "Logs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 83
+      },
+      "id": 31,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "expr": "{kubernetes.container_name=\"michael\"} cluster:=\"$cluster\""
+        }
+      ],
+      "title": "michael logs",
+      "type": "logs",
+      "description": "Pod stdout via victoria-logs-collector. Request-scoped lines carry user/repository/route fields — filter with e.g. `user:=\"<uuid>\"` or `level:=\"error\"`."
     }
   ],
   "preload": false,
@@ -1942,6 +1995,16 @@
         "name": "datasource",
         "options": [],
         "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "label": "Logs data source",
+        "name": "logs_datasource",
+        "options": [],
+        "query": "victoriametrics-logs-datasource",
         "refresh": 1,
         "regex": "",
         "type": "datasource"
