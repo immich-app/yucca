@@ -59,7 +59,25 @@ yuctl
 │       └── upgrade                 talosctl upgrade CP nodes (--dry-run, confirm/--yes, --image)
 ├── users
 │   ├── list                        list users in the partition's PRIMARY region
-│   └── view-dashboard              open the grafana per-user drill-down (--id or --email)
+│   ├── view-dashboard              open the grafana per-user drill-down (--id or --email)
+│   ├── allowlist                   beta email allowlist + invites (list/add/remove/invite/invite-batch)
+│   ├── features                    per-user feature-flag overrides
+│   │   ├── list <email>            resolved flags + overrides for one user
+│   │   ├── set <email> <flag> on|off   set an override (--reason for the audit trail)
+│   │   └── clear <email> <flag>    remove an override (revert to registry default)
+│   └── consumers
+│       └── list <email>            a user's consumer instances (immich/fubar/restic)
+├── repos
+│   ├── list [--user <email>]       list repositories (owner, consumer type)
+│   ├── create [--user <email>] [--consumer-type t] [--worm] [--name n]
+│   └── url <id> [--ttl 30d] [--label l]   mint a restic rest: URL (jti printed for revocation)
+├── tokens
+│   ├── list [--user] [--repository] [--active]   audit minted restic tokens
+│   └── revoke <jti>                revoke a token (michael rejects it within seconds)
+├── features
+│   ├── list                        the flag registry (defaults, stages, override counts)
+│   ├── users <flag>                who holds an override for a flag
+│   └── enable-batch <flag> <n>     enable for the oldest n users without an override
 └── tools
     └── bench                       restic e2e benchmark against michael, run from a mgmt host
         ├── compare <a> <b>         render before/after deltas from two results files

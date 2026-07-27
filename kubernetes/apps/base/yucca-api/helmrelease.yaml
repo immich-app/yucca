@@ -62,6 +62,8 @@ spec:
         value: ${OIDC_ISSUER}
       - name: RESTIC_ENDPOINT
         value: https://${GW_HOST}
+      - name: REDIS_URL
+        value: redis://yucca-redis:6379
       # Beta email allowlist: comma-separated domains that may sign up without
       # an allowlist entry. Empty default = allowlist/invite-code only.
       - name: ALLOWED_EMAIL_DOMAINS

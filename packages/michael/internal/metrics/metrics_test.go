@@ -107,9 +107,25 @@ func TestMetricAttrs(t *testing.T) {
 		t.Fatalf("expected repo-456, got %s", repoID.AsString())
 	}
 
-	// Should have exactly 2 attributes
-	if attrs.Len() != 2 {
-		t.Fatalf("expected 2 attributes, got %d", attrs.Len())
+	consumer, found := attrs.Value("consumer")
+	if !found {
+		t.Fatal("expected consumer attribute")
+	}
+	if consumer.AsString() != "unknown" {
+		t.Fatalf("expected unknown consumer for legacy auth, got %s", consumer.AsString())
+	}
+
+	// Should have exactly 3 attributes
+	if attrs.Len() != 3 {
+		t.Fatalf("expected 3 attributes, got %d", attrs.Len())
+	}
+}
+
+func TestMetricAttrsConsumer(t *testing.T) {
+	attrs := MetricAttrs(auth.Auth{User: "u", Repository: "r", Consumer: "fubar"})
+	consumer, _ := attrs.Value("consumer")
+	if consumer.AsString() != "fubar" {
+		t.Fatalf("expected fubar, got %s", consumer.AsString())
 	}
 }
 
@@ -330,6 +346,15 @@ func TestAuthMetricOptionDifferentKeys(t *testing.T) {
 	b := AuthMetricOption(auth.Auth{User: "u2", Repository: "r2"})
 	if a == b {
 		t.Fatal("different auth keys should produce different options")
+	}
+}
+
+func TestAuthMetricOptionConsumerInCacheKey(t *testing.T) {
+	// Same user+repo but different consumer must not share a cache entry.
+	a := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1", Consumer: "immich"})
+	b := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1", Consumer: "fubar"})
+	if a == b {
+		t.Fatal("different consumers should produce different options")
 	}
 }
 

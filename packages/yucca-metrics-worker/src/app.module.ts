@@ -5,8 +5,10 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { KyselyModule } from 'nestjs-kysely';
 import { MeterRepository } from './repositories/meter.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
+import { ResticTokenRepository } from './repositories/resticToken.repository';
 import { RgwRepository } from './repositories/rgw.repository';
 import { MetricsService } from './services/metrics.service';
+import { RevocationSyncService } from './services/revocationSync.service';
 import { getKyselyConfig } from './utils/database';
 
 export const imports = [KyselyModule.forRoot(getKyselyConfig()), ScheduleModule.forRoot()];
@@ -17,7 +19,9 @@ export const providers = [
   RgwRepository,
   MeterRepository,
   RepositoryRepository,
+  ResticTokenRepository,
   MetricsService,
+  RevocationSyncService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
 ];
 

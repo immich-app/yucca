@@ -7,6 +7,7 @@ export enum CookieName {
 
 export enum MetadataKey {
   Auth = 'AUTH',
+  Feature = 'FEATURE',
 }
 
 export enum DatabaseLock {

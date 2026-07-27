@@ -100,6 +100,29 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  name: allow-ingress-redis
+  namespace: yucca
+spec:
+  # Restic-token revocation denylist (valkey, no auth): reachable only from
+  # the services that write revocations (apis, worker reconcile) and michael
+  # (per-request checks).
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [yucca-api, yucca-admin-api, yucca-metrics-worker, michael]
+      ports:
+        - { port: 6379, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
   name: allow-ingress-database
   namespace: yucca
 spec:

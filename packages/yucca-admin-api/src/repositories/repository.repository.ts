@@ -31,8 +31,15 @@ export class RepositoryRepository {
     const rows = await this.db
       .selectFrom('repositories')
       .innerJoin('users', 'users.id', 'repositories.userId')
+      .innerJoin('consumers', 'consumers.id', 'repositories.consumerId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
-      .select(['repositories.id', 'repositories.name', 'repositories.worm'])
+      .select([
+        'repositories.id',
+        'repositories.name',
+        'repositories.worm',
+        'repositories.consumerId',
+        'consumers.type as consumerType',
+      ])
       .select(ownerJson)
       .select(metricsJson)
       .orderBy('repositories.id', 'asc')
@@ -48,9 +55,16 @@ export class RepositoryRepository {
     return this.db
       .selectFrom('repositories')
       .innerJoin('users', 'users.id', 'repositories.userId')
+      .innerJoin('consumers', 'consumers.id', 'repositories.consumerId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .where('repositories.id', '=', id)
-      .select(['repositories.id', 'repositories.name', 'repositories.worm'])
+      .select([
+        'repositories.id',
+        'repositories.name',
+        'repositories.worm',
+        'repositories.consumerId',
+        'consumers.type as consumerType',
+      ])
       .select(ownerJson)
       .select(metricsJson)
       .executeTakeFirstOrThrow();

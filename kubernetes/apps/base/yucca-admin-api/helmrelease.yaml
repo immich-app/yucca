@@ -50,5 +50,7 @@ spec:
         value: info
       - name: RESTIC_ENDPOINT
         value: https://${GW_HOST}
+      - name: REDIS_URL
+        value: redis://yucca-redis:6379
       - name: OTEL_METRICS
         value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics

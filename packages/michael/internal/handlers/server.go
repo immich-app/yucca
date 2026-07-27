@@ -9,7 +9,10 @@ import (
 
 	"michael/internal/auth"
 	"michael/internal/metrics"
+	"michael/internal/revocation"
 	"michael/internal/storage"
+
+	"michael/internal/httputil"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -21,6 +24,9 @@ type Server struct {
 	Storage      storage.Storage
 	JWTPublicKey *ecdsa.PublicKey
 	Metrics      *metrics.Metrics
+	// Optional restic-token revocation checks (nil = disabled). Fail-open:
+	// a Redis error never blocks a request.
+	Revoker revocation.Revoker
 }
 
 func NewServer(s storage.Storage, jwtPublicKey *ecdsa.PublicKey, m *metrics.Metrics) *Server {
@@ -69,6 +75,9 @@ func (s *Server) Handler() http.Handler {
 
 	r.Route("/{path}", func(r chi.Router) {
 		r.Use(verifier.Middleware())
+		// Runs on every request, after auth: the verifier caches whole tokens,
+		// so a revoked-but-cached token would otherwise never be re-checked.
+		r.Use(s.revocationMiddleware)
 		r.Use(authLogContext)
 		if s.Metrics != nil {
 			r.Use(metrics.BlobMiddleware(s.Metrics))
@@ -98,6 +107,46 @@ func (s *Server) Handler() http.Handler {
 	})
 
 	return r
+}
+
+func (s *Server) countRevocation(ctx context.Context, outcome string) {
+	if s.Metrics != nil {
+		s.Metrics.RevocationChecks.Add(ctx, 1, metrics.RevocationCheckOption(outcome))
+	}
+}
+
+func (s *Server) revocationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.Revoker == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		a := auth.FromContext(r.Context())
+		if a.Jti == "" {
+			// Legacy token predating jti claims — nothing to check.
+			s.countRevocation(r.Context(), "skipped")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		revoked, err := s.Revoker.IsRevoked(r.Context(), a.Jti)
+		if err != nil {
+			// Fail-open: Redis must never take down the backup plane.
+			hlog.FromRequest(r).Warn().Err(err).Msg("revocation check failed; allowing request")
+			s.countRevocation(r.Context(), "error")
+			next.ServeHTTP(w, r)
+			return
+		}
+		if revoked {
+			s.countRevocation(r.Context(), "revoked")
+			httputil.WriteError(w, r, http.StatusUnauthorized, "Token revoked")
+			return
+		}
+
+		s.countRevocation(r.Context(), "allowed")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func validateBlobType(next http.Handler) http.Handler {

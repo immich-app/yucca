@@ -4,21 +4,27 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
+import { ConsumerController } from './controllers/consumer.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
+import { ConsumerRepository } from './repositories/consumer.repository';
 import { CryptoRepository } from './repositories/crypto.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { FeatureFlagRepository } from './repositories/featureFlag.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryMetricsRepository } from './repositories/repositoryMetrics.repository';
 import { RepositoryMetricsHistoryRepository } from './repositories/repositoryMetricsHistory.repository';
 import { ResticApiRepository } from './repositories/resticApi.repository';
+import { ResticTokenRepository } from './repositories/resticToken.repository';
+import { RevocationRepository } from './repositories/revocation.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { UserRepository } from './repositories/user.repository';
 import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
 import { AuthService } from './services/auth.service';
+import { ConsumerService } from './services/consumer.service';
 import { DatabaseService } from './services/database.service';
 import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
@@ -33,21 +39,26 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, MetricsController, RepositoryController];
+export const controllers = [AuthController, ConsumerController, MetricsController, RepositoryController];
 
 export const providers = [
   WideContextRepository,
   LoggerRepository,
   ResticApiRepository,
   DatabaseRepository,
+  ConsumerRepository,
   CryptoRepository,
+  FeatureFlagRepository,
   OidcRepository,
   UserRepository,
   UserAllowlistRepository,
   RepositoryRepository,
   RepositoryMetricsRepository,
   RepositoryMetricsHistoryRepository,
+  ResticTokenRepository,
+  RevocationRepository,
   SessionRepository,
+  ConsumerService,
   DatabaseService,
   MetricsService,
   RepositoryService,

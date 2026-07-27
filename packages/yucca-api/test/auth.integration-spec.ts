@@ -54,7 +54,20 @@ describe('AuthController (e2e)', () => {
           name: user.name,
           email: user.email,
           sessionId: session.id,
+          consumerId: null,
+          features: { 'multi-consumer': false },
         });
+    });
+
+    it('reflects feature overrides in the auth response', async () => {
+      await testUtils.setFeatureOverride(user.id, 'multi-consumer', true);
+
+      const { body } = await request(app.getHttpServer())
+        .get('/api/auth')
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(200);
+
+      expect(body.features).toEqual({ 'multi-consumer': true });
     });
 
     it('rejects a disabled user with an existing session', async () => {

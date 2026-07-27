@@ -16,8 +16,11 @@ function getDb() {
 export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
+    await db.deleteFrom('resticTokens').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
+    await db.deleteFrom('consumers').execute();
+    await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('users').execute();
     await db.deleteFrom('userAllowlist').execute();
   },
@@ -54,23 +57,56 @@ export const testUtils = {
     email,
     sub,
     disabled = false,
-  }: Partial<{ name: string; email: string; sub: string; disabled: boolean }> = {}) => {
+    createdAt,
+  }: Partial<{ name: string; email: string; sub: string; disabled: boolean; createdAt: Date }> = {}) => {
     return getDb()
       .insertInto('users')
-      .values({ name, email: email ?? `${randomUUID()}@example.test`, sub: sub ?? randomUUID(), disabled })
+      .values({
+        name,
+        email: email ?? `${randomUUID()}@example.test`,
+        sub: sub ?? randomUUID(),
+        disabled,
+        ...(createdAt ? { createdAt } : {}),
+      })
       .returningAll()
       .executeTakeFirstOrThrow();
+  },
+
+  getResticToken: (jti: string) => {
+    return getDb().selectFrom('resticTokens').selectAll().where('jti', '=', jti).executeTakeFirst();
   },
 
   createSession: (userId: string, accessToken: string = randomUUID()) => {
     return getDb().insertInto('sessions').values({ userId, accessToken }).returningAll().executeTakeFirstOrThrow();
   },
 
-  createRepository: (
+  createConsumer: (
     userId: string,
-    { name = 'My Repository', worm = false }: Partial<{ name: string; worm: boolean }> = {},
+    { type = 'immich', name = 'Immich' }: Partial<{ type: string; name: string }> = {},
   ) => {
-    return getDb().insertInto('repositories').values({ userId, name, worm }).returningAll().executeTakeFirstOrThrow();
+    return getDb().insertInto('consumers').values({ userId, type, name }).returningAll().executeTakeFirstOrThrow();
+  },
+
+  createRepository: async (
+    userId: string,
+    {
+      name = 'My Repository',
+      worm = false,
+      consumerId,
+    }: Partial<{ name: string; worm: boolean; consumerId: string }> = {},
+  ) => {
+    const db = getDb();
+    if (!consumerId) {
+      const consumer =
+        (await db.selectFrom('consumers').selectAll().where('userId', '=', userId).executeTakeFirst()) ??
+        (await testUtils.createConsumer(userId));
+      consumerId = consumer.id;
+    }
+    return db
+      .insertInto('repositories')
+      .values({ userId, name, worm, consumerId })
+      .returningAll()
+      .executeTakeFirstOrThrow();
   },
 
   getUser: (id: string) => {

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Build fubar (FUTO Backups CLI)"
+set -e
+
+mkdir -p dist
+cd packages/fubar
+go build -o ../../dist/fubar .

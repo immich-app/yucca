@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run fubar unit tests"
+#MISE dir="{{config_root}}/packages/fubar"
+set -e
+
+go test ./... "$@"

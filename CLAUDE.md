@@ -114,9 +114,11 @@ to victoria-*).
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Shares the same DB + JWT validation. |
 | `michael` | Go | **Production** restic REST backend — S3 proxy implementing restic's HTTP protocol, with JWT (ECDSA pubkey) verification, WORM enforcement, multi-backend pool/DNS load-balancing. Deployed in k8s (`kubernetes/apps/base/michael`). |
 | `restic-api` | NestJS | Earlier TypeScript implementation of the same restic backend, kept as a **reference** (`mise restic-api:dev-reference`); not in the deployed app set. |
-| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, emits OTel gauges. |
+| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, emits OTel gauges; **also reconciles revoked restic tokens into Redis** so the denylist survives a Redis restart. |
+| `fubar` | Go | User-facing FUTO Backups CLI — a restic wrapper with device-flow login (registers a `fubar` consumer), scheduled backups (`fubar daemon` + launchd/systemd), and telemetry to yucca-api. Ships as a static binary (release lane in `publish.yml`), not a container. Named product (not themed like clusters). |
+| `redis` (valkey) | — | Ephemeral revocation denylist michael checks per request. In-repo chart `charts/apps/redis`; primary-region only (secondaries have no denylist-population path and run with revocation off). |
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). Used by compose and k3d when no real issuer is configured. |
-| `common` (`@common/server`) | TS lib | Shared OTel init, pino logger repository, logging interceptor. |
+| `common` (`@common/server`) | TS lib | Shared OTel init, pino logger repository, logging interceptor, **the feature-flag registry (`FeatureFlags`) and consumer types (`ConsumerTypes`)**. |
 
 **Frontend** (`packages/web`) is **SvelteKit 5 + Tailwind 4**, using `@immich/ui`, lingui i18n
 (`mise web:lingui:*` to extract/compile — compiled locales are generated, not edited), and the
@@ -133,6 +135,26 @@ generated API client. It also embeds the orchestration UI (`@futo-org/backups-or
 `packages/yucca-api-client/src/fetch-client.ts` (published as `@futo-org/backups-api-client`,
 consumed by web). `fetch-client.ts` is generated (eslint-ignored). When you change an API
 contract, regenerate rather than editing the client.
+
+### Consumers, feature flags, and restic-token revocation
+
+- **Consumers** (`consumers` table) make "what backs up this account" first-class: a user has N
+  consumer instances of type `immich`, `fubar`, or `restic`. Every repository has a `consumerId`
+  (NOT NULL); device-flow sessions bind to a consumer via `?consumer_type=&consumer_name=` on
+  `/auth/oidc/device`. Existing repos were backfilled onto a default `immich` consumer; instance
+  attribution is client-driven via `POST /consumers/:id/adopt` (moves default-consumer repos to a
+  named instance), never guessed server-side.
+- **Feature flags** = registry in code (`@common/server` `FeatureFlags`), strict-boolean per-user
+  overrides in `userFeatureFlagOverride`. Resolution is `override ?? registry default`. The
+  registry default flips at GA via a release (code-only defaults). Multi-consumer surface is gated
+  behind the `multi-consumer` flag (`@RequireFeature` guard); default off, so un-flagged users are
+  byte-identical to pre-change behavior. Manage from yuctl: `users features set/clear`,
+  `features enable-batch`. **Boundary rule:** env/cluster-settings = deployment config (ops-owned,
+  per-partition); feature flags = per-user product gating (admin-owned, runtime). Never mix.
+- **Restic tokens** are tracked (`resticTokens`, one row per mint, jti + consumer claim) and
+  revocable: revoke writes `revokedAt` then a Redis key michael checks per request (fail-open — a
+  Redis outage never blocks backups; ~5s michael cache delay on revoke). michael enforces only
+  where `REDIS_ADDR` is set (primary regions). yuctl: `tokens list/revoke`, `repos url --ttl`.
 
 ### Database
 

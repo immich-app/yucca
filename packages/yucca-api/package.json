@@ -31,6 +31,7 @@
     "class-validator": "catalog:",
     "cookie": "catalog:",
     "event-iterator": "catalog:",
+    "ioredis": "catalog:",
     "kysely": "catalog:",
     "kysely-postgres-js": "catalog:",
     "luxon": "catalog:",

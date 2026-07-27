@@ -1,0 +1,11 @@
+apiVersion: v2
+name: redis
+description: Valkey denylist store for restic-token revocation (ephemeral by design)
+type: application
+version: 0.1.0
+# Upstream image; the tag is pinned in values.yaml, so appVersion is informational.
+appVersion: "8"
+dependencies:
+  - name: yucca-common
+    version: 0.2.0
+    repository: "file://../../lib/yucca-common"

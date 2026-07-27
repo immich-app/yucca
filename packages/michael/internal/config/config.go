@@ -45,6 +45,12 @@ type Config struct {
 	OTLPLogsEnabled     bool
 	LogLevel            zerolog.Level
 	LogPretty           bool
+
+	// Restic-token revocation checking. Empty RedisAddr disables it (e.g.
+	// secondary regions, which have no local denylist population path).
+	RedisAddr          string
+	RedisTimeout       time.Duration
+	RevocationCacheTTL time.Duration
 }
 
 func LoadConfig() Config {
@@ -180,6 +186,24 @@ func LoadConfig() Config {
 		}
 	}
 
+	redisAddr := os.Getenv("REDIS_ADDR")
+	redisTimeout := 50 * time.Millisecond
+	if v := os.Getenv("REDIS_TIMEOUT_MS"); v != "" {
+		ms, err := strconv.Atoi(v)
+		if err != nil || ms < 1 {
+			log.Fatal().Msg("REDIS_TIMEOUT_MS must be a positive number")
+		}
+		redisTimeout = time.Duration(ms) * time.Millisecond
+	}
+	revocationCacheTTL := 5000 * time.Millisecond
+	if v := os.Getenv("REVOCATION_CACHE_TTL_MS"); v != "" {
+		ms, err := strconv.Atoi(v)
+		if err != nil || ms < 1 {
+			log.Fatal().Msg("REVOCATION_CACHE_TTL_MS must be a positive number")
+		}
+		revocationCacheTTL = time.Duration(ms) * time.Millisecond
+	}
+
 	return Config{
 		Port:                port,
 		JWTPublicKey:        jwtPublicKey,
@@ -207,6 +231,9 @@ func LoadConfig() Config {
 		OTLPLogsEnabled:     otlpLogsEndpoint != "",
 		LogLevel:            logLevel,
 		LogPretty:           logPretty,
+		RedisAddr:           redisAddr,
+		RedisTimeout:        redisTimeout,
+		RevocationCacheTTL:  revocationCacheTTL,
 	}
 }
 

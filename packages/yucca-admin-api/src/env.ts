@@ -30,6 +30,15 @@ const schema = z.object({
     .default('1d')
     .transform((value): StringValue => value as StringValue),
   RESTIC_ENDPOINT: z.url().optional(),
+  // Hard ceiling for admin-requested token TTLs (POST /repository/:id/url).
+  RESTIC_JWT_MAX_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "90d", "30m", "3600s"')
+    .default('90d')
+    .transform((value): StringValue => value as StringValue),
+
+  // Revocation denylist writes; unset disables them (loud warn at startup).
+  REDIS_URL: z.string().optional(),
 
   OIDC_ADMIN_ISSUER: z.url().transform((url) => new URL(url)),
   OIDC_ADMIN_CLIENT_ID: z.string(),

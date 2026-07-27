@@ -92,7 +92,26 @@
     "/api/auth/oidc/device": {
       "get": {
         "operationId": "oidcDeviceFlow",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "consumer_type",
+            "required": false,
+            "in": "query",
+            "description": "immich | fubar | restic",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "consumer_name",
+            "required": false,
+            "in": "query",
+            "description": "Instance name, e.g. a hostname",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -100,6 +119,143 @@
         },
         "tags": [
           "Auth"
+        ]
+      }
+    },
+    "/api/consumers": {
+      "get": {
+        "operationId": "listConsumers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Consumer"
+        ]
+      },
+      "post": {
+        "operationId": "createConsumer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Consumer"
+        ]
+      }
+    },
+    "/api/consumers/{id}": {
+      "patch": {
+        "operationId": "updateConsumer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Consumer"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteConsumer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Consumer"
+        ]
+      }
+    },
+    "/api/consumers/{id}/adopt": {
+      "post": {
+        "operationId": "adoptRepositories",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerAdoptRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Consumer"
         ]
       }
     },
@@ -461,13 +617,131 @@
           },
           "sessionId": {
             "type": "string"
+          },
+          "consumerId": {
+            "type": "object",
+            "nullable": true
+          },
+          "features": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
           }
         },
         "required": [
           "id",
           "name",
           "email",
-          "sessionId"
+          "sessionId",
+          "features"
+        ]
+      },
+      "ConsumerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "immich",
+              "fubar",
+              "restic"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "repositoryCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "createdAt",
+          "repositoryCount"
+        ]
+      },
+      "ConsumerListResponseDto": {
+        "type": "object",
+        "properties": {
+          "consumers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsumerDto"
+            }
+          }
+        },
+        "required": [
+          "consumers"
+        ]
+      },
+      "ConsumerCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "immich",
+              "fubar",
+              "restic"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name"
+        ]
+      },
+      "ConsumerResponseDto": {
+        "type": "object",
+        "properties": {
+          "consumer": {
+            "$ref": "#/components/schemas/ConsumerDto"
+          }
+        },
+        "required": [
+          "consumer"
+        ]
+      },
+      "ConsumerUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ConsumerAdoptRequestDto": {
+        "type": "object",
+        "properties": {
+          "repositoryIds": {
+            "description": "Repositories to move from the default consumer to this one",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "repositoryIds"
         ]
       },
       "SubmitBackupEndRequestDto": {
@@ -628,6 +902,12 @@
           "name": {
             "type": "string"
           },
+          "consumerId": {
+            "type": "string"
+          },
+          "consumerType": {
+            "type": "string"
+          },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
           },
@@ -639,6 +919,8 @@
           "id",
           "worm",
           "name",
+          "consumerId",
+          "consumerType",
           "metrics"
         ]
       },

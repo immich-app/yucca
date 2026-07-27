@@ -1,5 +1,6 @@
+import { isConsumerType, resolveFeatures } from '@common/server';
 import { LoggerRepository, WideContextRepository } from '@common/server/otel';
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { parse } from 'cookie';
 import EventIterator from 'event-iterator';
 import { Request } from 'express';
@@ -9,12 +10,14 @@ import { from } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { env } from 'src/env';
+import { ConsumerRepository } from 'src/repositories/consumer.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
+import { FeatureFlagRepository } from 'src/repositories/featureFlag.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
-import { EmailNotAllowedException } from 'src/utils/exceptions';
+import { EmailNotAllowedException, FeatureNotEnabledException } from 'src/utils/exceptions';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +29,8 @@ export class AuthService {
     private readonly crypto: CryptoRepository,
     private readonly session: SessionRepository,
     private readonly wideContext: WideContextRepository,
+    private readonly consumer: ConsumerRepository,
+    private readonly featureFlag: FeatureFlagRepository,
   ) {}
 
   async authenticate(headers: IncomingHttpHeaders): Promise<AuthDto> {
@@ -36,14 +41,23 @@ export class AuthService {
       throw new UnauthorizedException(`Missing ${CookieName.AccessToken} cookie`);
     }
 
-    const user = await this.user.getByAccessToken(accessToken);
-    if (!user) {
+    const row = await this.user.getByAccessToken(accessToken);
+    if (!row) {
       throw new UnauthorizedException(`Invalid access token`);
     }
 
-    this.wideContext.addContext('customerId', user.id);
+    this.wideContext.addContext('customerId', row.id);
 
-    return user;
+    const { consumerLastSeenAt, ...user } = row;
+
+    // Consumer liveness, throttled to one write per 5 minutes.
+    if (user.consumerId && (!consumerLastSeenAt || Date.now() - consumerLastSeenAt.getTime() > 300_000)) {
+      await this.consumer.touchLastSeen(user.consumerId);
+    }
+
+    const overrides = await this.featureFlag.getByUser(user.id);
+
+    return { ...user, features: resolveFeatures(overrides) };
   }
 
   async logout(auth: AuthDto): Promise<URL | void> {
@@ -102,6 +116,7 @@ export class AuthService {
     await this.session.create({
       userId: user.id,
       accessToken,
+      kind: 'web',
     });
 
     return {
@@ -138,6 +153,9 @@ export class AuthService {
         name: claims.name,
         email: claims.email,
       });
+
+      // Invariant: every user has a default (immich) consumer from day one.
+      await this.consumer.getOrCreateDefault(user.id);
     }
 
     return user;
@@ -168,8 +186,44 @@ export class AuthService {
     throw new EmailNotAllowedException();
   }
 
+  // Resolves which consumer instance a device-flow session binds to. Absent
+  // type = legacy client → the default consumer. With the multi-consumer flag
+  // off only immich is allowed (still the default consumer — no instances
+  // without the flag); with it on, (type, name) names a reusable instance.
+  private async resolveDeviceConsumer(
+    userId: string,
+    features: Record<string, boolean>,
+    consumerType?: string,
+    consumerName?: string,
+  ): Promise<string> {
+    if (consumerType && !isConsumerType(consumerType)) {
+      throw new BadRequestException(`Unknown consumer type '${consumerType}'`);
+    }
+
+    if (!features['multi-consumer']) {
+      if (consumerType && consumerType !== 'immich') {
+        throw new FeatureNotEnabledException('multi-consumer');
+      }
+      const consumer = await this.consumer.getOrCreateDefault(userId);
+      return consumer.id;
+    }
+
+    const type = consumerType ?? 'immich';
+    if (!consumerType) {
+      const consumer = await this.consumer.getOrCreateDefault(userId);
+      return consumer.id;
+    }
+
+    const name = consumerName?.trim() || type;
+    const existing = await this.consumer.getByUserTypeName(userId, type, name);
+    const consumer = existing ?? (await this.consumer.create({ userId, type, name }));
+    return consumer.id;
+  }
+
   async oidcDeviceFlow(
     callback: (data: { userCode: string; verificationUri: string }) => void,
+    consumerType?: string,
+    consumerName?: string,
   ): Promise<{ accessToken: string }> {
     const { userCode, verificationUri, claims: pendingClaims } = await this.oidc.deviceFlow();
 
@@ -187,11 +241,22 @@ export class AuthService {
 
     this.wideContext.addContext('customerId', user.id);
 
+    const overrides = await this.featureFlag.getByUser(user.id);
+    const consumerId = await this.resolveDeviceConsumer(
+      user.id,
+      resolveFeatures(overrides),
+      consumerType,
+      consumerName,
+    );
+    await this.consumer.touchLastSeen(consumerId);
+
     const accessToken = this.crypto.randomHex(32);
 
     await this.session.create({
       userId: user.id,
       accessToken,
+      consumerId,
+      kind: 'device',
     });
 
     return {
@@ -199,23 +264,31 @@ export class AuthService {
     };
   }
 
-  oidcDeviceFlowObservable() {
+  oidcDeviceFlowObservable(consumerType?: string, consumerName?: string) {
     return from(
       new EventIterator<MessageEvent>(
         (queue) =>
-          void this.oidcDeviceFlow((data) =>
-            queue.push({
-              data: {
-                type: 'START',
-                ...data,
-              },
-            } as MessageEvent),
+          void this.oidcDeviceFlow(
+            (data) =>
+              queue.push({
+                data: {
+                  type: 'START',
+                  ...data,
+                },
+              } as MessageEvent),
+            consumerType,
+            consumerName,
           )
             .then(({ accessToken }) => queue.push({ data: { type: 'SUCCESS', accessToken } } as MessageEvent))
             .catch((error) => {
               this.wideContext.setErrorCause(error);
               this.logger.error('oidcDeviceFlow error:', error);
-              const reason = error instanceof EmailNotAllowedException ? 'EMAIL_NOT_ALLOWED' : 'UNKNOWN';
+              let reason = 'UNKNOWN';
+              if (error instanceof EmailNotAllowedException) {
+                reason = 'EMAIL_NOT_ALLOWED';
+              } else if (error instanceof FeatureNotEnabledException) {
+                reason = 'FEATURE_NOT_ENABLED';
+              }
               queue.push({ data: { type: 'FAILURE', reason } } as MessageEvent);
             })
             .finally(() => queue.stop()),

@@ -62,6 +62,8 @@ spec:
         value: info
       - name: OTEL_METRICS
         value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics
+      - name: REDIS_URL
+        value: redis://yucca-redis:6379
       # sietch RGW uses a self-signed wildcard cert; the worker is Node.
       - name: NODE_TLS_REJECT_UNAUTHORIZED
         value: "0"

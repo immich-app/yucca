@@ -18,3 +18,6 @@ resources:
   - ../../apps/web.yaml
   - ../../apps/michael.yaml
   - ../../apps/yucca-metrics-worker.yaml
+  # Revocation denylist (valkey). Primary-only: secondaries have no local
+  # population path — their michael runs with revocation checking disabled.
+  - ../../apps/redis.yaml

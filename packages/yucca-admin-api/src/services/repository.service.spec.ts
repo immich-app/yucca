@@ -13,6 +13,8 @@ const repositoryRow = {
   id: '00000000-0000-0000-0000-00000000000r',
   name: 'bench',
   worm: false,
+  consumerId: '00000000-0000-0000-0000-00000000000c',
+  consumerType: 'restic',
   user: { id: '00000000-0000-0000-0000-00000000000u', name: 'u', email: 'u@x', disabled: false },
   metrics: { sizeBytes: 0, lastStarted: null, lastBackup: null, lastSuccessfulBackup: null, lastBackupDuration: null },
 };
@@ -20,14 +22,18 @@ const repositoryRow = {
 describe(RepositoryService.name, () => {
   let repositories: { [k: string]: jest.Mock };
   let users: { [k: string]: jest.Mock };
+  let consumers: { [k: string]: jest.Mock };
+  let resticTokens: { [k: string]: jest.Mock };
   let jwt: JwtService;
   let sut: RepositoryService;
 
   beforeEach(() => {
     repositories = { list: jest.fn(), get: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
     users = { getBySub: jest.fn(), create: jest.fn() };
+    consumers = { getByUser: jest.fn(), getOrCreateByType: jest.fn().mockResolvedValue({ id: 'consumer-id' }) };
+    resticTokens = { create: jest.fn() };
     jwt = newJwtService();
-    sut = new RepositoryService(repositories as never, users as never, jwt);
+    sut = new RepositoryService(repositories as never, users as never, consumers as never, resticTokens as never, jwt);
   });
 
   describe('create', () => {
@@ -37,9 +43,11 @@ describe(RepositoryService.name, () => {
       await expect(sut.create({ name: 'bench', userId: repositoryRow.user.id })).resolves.toEqual({
         repository: repositoryRow,
       });
+      expect(consumers.getOrCreateByType).toHaveBeenCalledWith(repositoryRow.user.id, 'restic', 'Manual restic');
       expect(repositories.create).toHaveBeenCalledWith({
         name: 'bench',
         userId: repositoryRow.user.id,
+        consumerId: 'consumer-id',
         worm: false,
       });
       expect(users.getBySub).not.toHaveBeenCalled();
@@ -53,6 +61,7 @@ describe(RepositoryService.name, () => {
 
       expect(users.getBySub).toHaveBeenCalledWith('yucca-admin-service');
       expect(users.create).not.toHaveBeenCalled();
+      expect(consumers.getOrCreateByType).toHaveBeenCalledWith('service-user-id', 'restic', 'admin');
       expect(repositories.create).toHaveBeenCalledWith(expect.objectContaining({ userId: 'service-user-id' }));
     });
 
@@ -64,7 +73,12 @@ describe(RepositoryService.name, () => {
       await sut.create({ name: 'bench', worm: true });
 
       expect(users.create).toHaveBeenCalledWith(expect.objectContaining({ sub: 'yucca-admin-service' }));
-      expect(repositories.create).toHaveBeenCalledWith({ name: 'bench', userId: 'new-service-user', worm: true });
+      expect(repositories.create).toHaveBeenCalledWith({
+        name: 'bench',
+        userId: 'new-service-user',
+        consumerId: 'consumer-id',
+        worm: true,
+      });
     });
   });
 
@@ -98,7 +112,7 @@ describe(RepositoryService.name, () => {
       restic.RESTIC_ENDPOINT = 'https://gw.example.net';
       repositories.get.mockResolvedValue(repositoryRow);
 
-      const { url } = await sut.url(repositoryRow.id);
+      const { url, jti, expiresAt } = await sut.url(repositoryRow.id);
       expect(url.startsWith('rest:https://restic:')).toBe(true);
 
       const parsed = new URL(url.slice('rest:'.length));
@@ -110,7 +124,43 @@ describe(RepositoryService.name, () => {
         user: repositoryRow.user.id,
         repository: repositoryRow.id,
         writeOnce: false,
+        jti,
+        consumer: repositoryRow.consumerType,
       });
+      expect(expiresAt.getTime()).toBe((claims as { exp: number }).exp * 1000);
+
+      expect(resticTokens.create).toHaveBeenCalledWith({
+        jti,
+        repositoryId: repositoryRow.id,
+        userId: repositoryRow.user.id,
+        consumerId: repositoryRow.consumerId,
+        mintedBy: 'admin',
+        label: null,
+        expiresAt,
+      });
+    });
+
+    it('should honor a custom TTL and label under the cap', async () => {
+      restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
+      restic.RESTIC_ENDPOINT = 'https://gw.example.net';
+      repositories.get.mockResolvedValue(repositoryRow);
+
+      const before = Date.now();
+      const { expiresAt } = await sut.url(repositoryRow.id, { expiresIn: '30d', label: 'manual test' });
+      const days = (expiresAt.getTime() - before) / 86_400_000;
+      expect(days).toBeGreaterThan(29.9);
+      expect(days).toBeLessThan(30.1);
+      expect(resticTokens.create).toHaveBeenCalledWith(expect.objectContaining({ label: 'manual test' }));
+    });
+
+    it('should reject a TTL above the cap', async () => {
+      restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
+      restic.RESTIC_ENDPOINT = 'https://gw.example.net';
+
+      await expect(sut.url(repositoryRow.id, { expiresIn: '365d' })).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"expiresIn exceeds the 90d cap"`,
+      );
+      expect(resticTokens.create).not.toHaveBeenCalled();
     });
   });
 });

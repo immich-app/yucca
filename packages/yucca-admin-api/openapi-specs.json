@@ -330,6 +330,143 @@
         ]
       }
     },
+    "/api/user/{id}/features": {
+      "get": {
+        "operationId": "getUserFeatures",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserFeaturesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{id}/features/{flag}": {
+      "put": {
+        "operationId": "setUserFeature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "flag",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureOverrideSetRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureOverrideDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      },
+      "delete": {
+        "operationId": "clearUserFeature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "flag",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{id}/consumers": {
+      "get": {
+        "operationId": "listUserConsumers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
     "/api/session/{id}": {
       "delete": {
         "operationId": "deleteSession",
@@ -531,6 +668,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryUrlRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -545,6 +692,93 @@
         },
         "tags": [
           "Repository"
+        ]
+      }
+    },
+    "/api/restic-tokens": {
+      "get": {
+        "operationId": "listResticTokens",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 50,
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "repositoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "required": false,
+            "in": "query",
+            "description": "true = only unexpired, unrevoked tokens",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResticTokenListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ResticToken"
+        ]
+      }
+    },
+    "/api/restic-tokens/{jti}": {
+      "delete": {
+        "operationId": "revokeResticToken",
+        "parameters": [
+          {
+            "name": "jti",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ResticToken"
         ]
       }
     },
@@ -698,6 +932,97 @@
         },
         "tags": [
           "Allowlist"
+        ]
+      }
+    },
+    "/api/features": {
+      "get": {
+        "operationId": "listFeatures",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Features"
+        ]
+      }
+    },
+    "/api/features/{flag}/users": {
+      "get": {
+        "operationId": "listFeatureUsers",
+        "parameters": [
+          {
+            "name": "flag",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureUsersResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Features"
+        ]
+      }
+    },
+    "/api/features/{flag}/enable-batch": {
+      "post": {
+        "operationId": "enableFeatureBatch",
+        "parameters": [
+          {
+            "name": "flag",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureEnableBatchRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureEnableBatchResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Features"
         ]
       }
     }
@@ -869,6 +1194,115 @@
           "items"
         ]
       },
+      "FeatureOverrideDto": {
+        "type": "object",
+        "properties": {
+          "flag": {
+            "type": "string"
+          },
+          "value": {
+            "type": "boolean"
+          },
+          "setBy": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "object",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flag",
+          "value",
+          "setBy",
+          "updatedAt"
+        ]
+      },
+      "UserFeaturesResponseDto": {
+        "type": "object",
+        "properties": {
+          "features": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Resolved flags: override, else registry default"
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureOverrideDto"
+            }
+          }
+        },
+        "required": [
+          "features",
+          "overrides"
+        ]
+      },
+      "FeatureOverrideSetRequestDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "ConsumerAdminDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "immich | fubar | restic"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "type",
+          "name",
+          "createdAt"
+        ]
+      },
+      "ConsumerListResponseDto": {
+        "type": "object",
+        "properties": {
+          "consumers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsumerAdminDto"
+            }
+          }
+        },
+        "required": [
+          "consumers"
+        ]
+      },
       "RepositoryOwnerDto": {
         "type": "object",
         "properties": {
@@ -931,6 +1365,12 @@
           "worm": {
             "type": "boolean"
           },
+          "consumerId": {
+            "type": "string"
+          },
+          "consumerType": {
+            "type": "string"
+          },
           "user": {
             "$ref": "#/components/schemas/RepositoryOwnerDto"
           },
@@ -942,6 +1382,8 @@
           "id",
           "name",
           "worm",
+          "consumerId",
+          "consumerType",
           "user",
           "metrics"
         ]
@@ -976,6 +1418,15 @@
           },
           "worm": {
             "type": "boolean"
+          },
+          "consumerType": {
+            "type": "string",
+            "enum": [
+              "immich",
+              "fubar",
+              "restic"
+            ],
+            "description": "Consumer type for the owning consumer; defaults to 'restic' (manual use)"
           }
         },
         "required": [
@@ -1004,16 +1455,39 @@
           "repository"
         ]
       },
+      "RepositoryUrlRequestDto": {
+        "type": "object",
+        "properties": {
+          "expiresIn": {
+            "type": "string",
+            "description": "Token TTL like '30d'; defaults to RESTIC_JWT_EXPIRES_IN, capped"
+          },
+          "label": {
+            "type": "string",
+            "description": "Label stored on the token for auditing"
+          }
+        }
+      },
       "RepositoryUrlResponseDto": {
         "type": "object",
         "properties": {
           "url": {
             "type": "string",
             "description": "restic rest: URL with an embedded repository token"
+          },
+          "jti": {
+            "type": "string",
+            "description": "jti of the embedded token, for auditing and revocation"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "expiry of the embedded token"
           }
         },
         "required": [
-          "url"
+          "url",
+          "jti",
+          "expiresAt"
         ]
       },
       "RepositoryUpdateRequestDto": {
@@ -1036,6 +1510,72 @@
         },
         "required": [
           "repository"
+        ]
+      },
+      "ResticTokenDto": {
+        "type": "object",
+        "properties": {
+          "jti": {
+            "type": "string"
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "consumerId": {
+            "type": "object",
+            "nullable": true
+          },
+          "mintedBy": {
+            "type": "string",
+            "description": "'user' or 'admin'"
+          },
+          "label": {
+            "type": "object",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "revokedBy": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jti",
+          "repositoryId",
+          "userId",
+          "mintedBy",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "ResticTokenListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResticTokenDto"
+            }
+          },
+          "nextCursor": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "AllowlistEntryDto": {
@@ -1154,6 +1694,125 @@
         },
         "required": [
           "count"
+        ]
+      },
+      "FeatureFlagDefDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean",
+            "description": "Registry default when no override exists"
+          },
+          "stage": {
+            "type": "string",
+            "description": "experimental | beta | ga | retired"
+          },
+          "description": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string"
+          },
+          "overrides": {
+            "type": "number",
+            "description": "Number of users with an override for this flag"
+          }
+        },
+        "required": [
+          "key",
+          "default",
+          "stage",
+          "description",
+          "since",
+          "overrides"
+        ]
+      },
+      "FeatureFlagListResponseDto": {
+        "type": "object",
+        "properties": {
+          "flags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagDefDto"
+            }
+          }
+        },
+        "required": [
+          "flags"
+        ]
+      },
+      "FeatureUserDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "value": {
+            "type": "boolean"
+          },
+          "setBy": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "object",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "value",
+          "setBy",
+          "updatedAt"
+        ]
+      },
+      "FeatureUsersResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureUserDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "FeatureEnableBatchRequestDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "description": "Enable for this many not-yet-overridden users, oldest first"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
+      "FeatureEnableBatchResponseDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureUserDto"
+            }
+          }
+        },
+        "required": [
+          "enabled"
         ]
       }
     }

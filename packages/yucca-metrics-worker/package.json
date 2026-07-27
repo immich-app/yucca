@@ -27,6 +27,7 @@
     "@nestjs/schedule": "catalog:",
     "@opentelemetry/api": "catalog:",
     "aws4fetch": "catalog:",
+    "ioredis": "catalog:",
     "kysely": "catalog:",
     "kysely-postgres-js": "catalog:",
     "nestjs-kysely": "catalog:",

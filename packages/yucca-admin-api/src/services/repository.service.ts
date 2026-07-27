@@ -1,5 +1,7 @@
-import { Injectable, InternalServerErrorException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotImplementedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import ms, { StringValue } from 'ms';
+import { randomUUID } from 'node:crypto';
 import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
@@ -8,10 +10,13 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  RepositoryUrlRequestDto,
   RepositoryUrlResponseDto,
 } from 'src/dto/repository.dto';
 import { env } from 'src/env';
+import { ConsumerRepository } from 'src/repositories/consumer.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
+import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
 
@@ -29,6 +34,8 @@ export class RepositoryService {
   constructor(
     private readonly repositories: RepositoryRepository,
     private readonly users: UserRepository,
+    private readonly consumers: ConsumerRepository,
+    private readonly resticTokens: ResticTokenRepository,
     private readonly jwt: JwtService,
   ) {}
 
@@ -46,13 +53,22 @@ export class RepositoryService {
 
   async create(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
     let userId = dto.userId;
-    if (!userId) {
+    let consumer: { type: string; name: string };
+    if (userId) {
+      // Admin-provisioned repos on real users default to manual restic use.
+      const type = dto.consumerType ?? 'restic';
+      const names: Record<string, string> = { restic: 'Manual restic', immich: 'Immich', fubar: 'fubar' };
+      consumer = { type, name: names[type] ?? type };
+    } else {
       const user = (await this.users.getBySub(serviceUser.sub)) ?? (await this.users.create(serviceUser));
       userId = user.id;
+      consumer = { type: 'restic', name: 'admin' };
     }
+    const { id: consumerId } = await this.consumers.getOrCreateByType(userId, consumer.type, consumer.name);
     const repository = await this.repositories.create({
       name: dto.name,
       userId,
+      consumerId,
       worm: dto.worm ?? false,
     });
     return { repository };
@@ -60,22 +76,56 @@ export class RepositoryService {
 
   // Mirrors yucca-api's createUrl: a restic rest: URL with an embedded JWT
   // that michael verifies against yucca-api's public key.
-  async url(id: string): Promise<RepositoryUrlResponseDto> {
+  async url(id: string, dto: RepositoryUrlRequestDto = {}): Promise<RepositoryUrlResponseDto> {
     if (!env.RESTIC_JWT_PRIVATE_KEY || !env.RESTIC_ENDPOINT) {
       throw new NotImplementedException('RESTIC_JWT_PRIVATE_KEY / RESTIC_ENDPOINT are not configured');
     }
+
+    let expiresIn = env.RESTIC_JWT_EXPIRES_IN;
+    if (dto.expiresIn) {
+      const requested = ms(dto.expiresIn as StringValue);
+      const cap = ms(env.RESTIC_JWT_MAX_EXPIRES_IN);
+      if (!requested || requested <= 0) {
+        throw new BadRequestException(`Invalid expiresIn '${dto.expiresIn}'`);
+      }
+      if (requested > cap) {
+        throw new BadRequestException(`expiresIn exceeds the ${env.RESTIC_JWT_MAX_EXPIRES_IN} cap`);
+      }
+      expiresIn = dto.expiresIn as StringValue;
+    }
+
     const repository = await this.repositories.get(id);
+    const jti = randomUUID();
     const token = await this.jwt.signAsync(
-      { user: repository.user.id, repository: repository.id, writeOnce: repository.worm },
-      { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn: env.RESTIC_JWT_EXPIRES_IN },
+      {
+        user: repository.user.id,
+        repository: repository.id,
+        writeOnce: repository.worm,
+        jti,
+        consumer: repository.consumerType,
+      },
+      { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn },
     );
+
+    // expiresAt comes from the signed token itself, not re-derived.
+    const { exp } = this.jwt.decode<{ exp: number }>(token);
+    const expiresAt = new Date(exp * 1000);
+    await this.resticTokens.create({
+      jti,
+      repositoryId: repository.id,
+      userId: repository.user.id,
+      consumerId: repository.consumerId,
+      mintedBy: 'admin',
+      label: dto.label ?? null,
+      expiresAt,
+    });
 
     const url = new URL(env.RESTIC_ENDPOINT);
     url.username = 'restic';
     url.password = token;
     url.pathname = repository.id;
 
-    return { url: `rest:${url.href}` };
+    return { url: `rest:${url.href}`, jti, expiresAt };
   }
 
   async update(id: string, dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto> {

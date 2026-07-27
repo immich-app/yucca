@@ -50,6 +50,8 @@ type Metrics struct {
 	RequestErrors   otelmetric.Int64Counter
 	AuthCacheHits   otelmetric.Int64Counter
 	AuthCacheMisses otelmetric.Int64Counter
+	// Revocation check results, labeled outcome=allowed|revoked|error|skipped.
+	RevocationChecks otelmetric.Int64Counter
 }
 
 // durationBuckets replaces the SDK default histogram boundaries, which are
@@ -127,17 +129,24 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating auth_cache_misses counter: %w", err)
 	}
 
+	revocationChecks, err := meter.Int64Counter("revocation.check.count",
+		otelmetric.WithDescription("Restic-token revocation checks by outcome"))
+	if err != nil {
+		return nil, fmt.Errorf("creating revocation_check_count counter: %w", err)
+	}
+
 	return &Metrics{
-		RequestedBytes:  requestedBytes,
-		DownloadedBytes: downloadedBytes,
-		UploadedBytes:   uploadedBytes,
-		StoredBytes:     storedBytes,
-		RequestDuration: requestDuration,
-		RequestTTFB:     requestTTFB,
-		RequestCount:    requestCount,
-		RequestErrors:   requestErrors,
-		AuthCacheHits:   authCacheHits,
-		AuthCacheMisses: authCacheMisses,
+		RequestedBytes:   requestedBytes,
+		DownloadedBytes:  downloadedBytes,
+		UploadedBytes:    uploadedBytes,
+		StoredBytes:      storedBytes,
+		RequestDuration:  requestDuration,
+		RequestTTFB:      requestTTFB,
+		RequestCount:     requestCount,
+		RequestErrors:    requestErrors,
+		AuthCacheHits:    authCacheHits,
+		AuthCacheMisses:  authCacheMisses,
+		RevocationChecks: revocationChecks,
 	}, nil
 }
 
@@ -169,27 +178,38 @@ func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {
 	return provider, nil
 }
 
+// consumerLabel bounds the label to the consumer *type*; legacy tokens
+// without the claim report "unknown". Never label by consumer instance id.
+func consumerLabel(a auth.Auth) string {
+	if a.Consumer == "" {
+		return "unknown"
+	}
+	return a.Consumer
+}
+
 func MetricAttrs(a auth.Auth) attribute.Set {
 	return attribute.NewSet(
 		attribute.String("customerId", a.User),
 		attribute.String("repositoryId", a.Repository),
+		attribute.String("consumer", consumerLabel(a)),
 	)
 }
 
 // --- Cached metric helpers (hot-path allocation avoidance) ---
 
-type authAttrKey struct{ user, repository string }
+type authAttrKey struct{ user, repository, consumer string }
 
 var authAttrCache sync.Map
 
 func AuthMetricOption(a auth.Auth) otelmetric.MeasurementOption {
-	key := authAttrKey{a.User, a.Repository}
+	key := authAttrKey{a.User, a.Repository, consumerLabel(a)}
 	if v, ok := authAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
 	opt := otelmetric.WithAttributeSet(attribute.NewSet(
 		attribute.String("customerId", a.User),
 		attribute.String("repositoryId", a.Repository),
+		attribute.String("consumer", consumerLabel(a)),
 	))
 	authAttrCache.Store(key, opt)
 	return opt
@@ -214,6 +234,17 @@ func HttpMetricOption(method, route string, status int) otelmetric.MeasurementOp
 		attribute.Int("status", status),
 	))
 	httpAttrCache.Store(key, opt)
+	return opt
+}
+
+var revocationAttrCache sync.Map
+
+func RevocationCheckOption(outcome string) otelmetric.MeasurementOption {
+	if v, ok := revocationAttrCache.Load(outcome); ok {
+		return v.(otelmetric.MeasurementOption)
+	}
+	opt := otelmetric.WithAttributeSet(attribute.NewSet(attribute.String("outcome", outcome)))
+	revocationAttrCache.Store(outcome, opt)
 	return opt
 }
 

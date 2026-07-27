@@ -1,0 +1,27 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: redis
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/apps/redis
+      # Repackage on every git revision — the in-repo charts keep a static
+      # version, so the default ChartVersion strategy never ships template edits.
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: ${CHART_SOURCE:=flux-system}
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  # Chart defaults are already prod-shaped (ephemeral valkey, pinned digest).
+  values: {}

@@ -15,6 +15,7 @@ import (
 	"michael/internal/config"
 	"michael/internal/handlers"
 	"michael/internal/metrics"
+	"michael/internal/revocation"
 	"michael/internal/storage"
 	"michael/internal/version"
 
@@ -94,6 +95,13 @@ func main() {
 	}
 
 	srv := handlers.NewServer(store, cfg.JWTPublicKey, m)
+	if cfg.RedisAddr != "" {
+		srv.Revoker = revocation.NewRedisRevoker(cfg.RedisAddr, cfg.RedisTimeout, cfg.RevocationCacheTTL)
+		log.Info().Str("addr", cfg.RedisAddr).Dur("cache_ttl", cfg.RevocationCacheTTL).
+			Msg("restic token revocation checking enabled")
+	} else {
+		log.Info().Msg("REDIS_ADDR not set; restic token revocation checking disabled")
+	}
 
 	httpSrv := &http.Server{
 		Addr:    addr,

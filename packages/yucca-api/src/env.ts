@@ -45,6 +45,9 @@ const schema = z.object({
   OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
 
   RESTIC_ENDPOINT: z.string().default('http://localhost:3010'),
+
+  // Revocation denylist writes; unset disables them (loud warn at startup).
+  REDIS_URL: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);

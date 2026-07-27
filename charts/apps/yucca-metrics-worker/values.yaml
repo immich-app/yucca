@@ -50,6 +50,8 @@ env:
     value: http://victoria-metrics:8428/opentelemetry/v1/metrics
   - name: OTEL_LOGGING
     value: http://victoria-logs:9428/insert/opentelemetry/v1/logs
+  - name: REDIS_URL
+    value: redis://yucca-redis:6379
 
 # Probes keep `tilt ci`/Flux honest: without them a crash-looping dev process
 # still counts as Ready. The startupProbe budgets for the dev watcher's first

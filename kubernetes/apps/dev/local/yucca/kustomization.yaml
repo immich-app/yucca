@@ -8,6 +8,7 @@ resources:
   - ./mock-oidc/ks.yaml
   - ./victoria-metrics/ks.yaml
   - ./victoria-logs/ks.yaml
+  - ./redis/ks.yaml
   - ./michael/ks.yaml
   - ./metrics-worker/ks.yaml
   - ./yucca-api/ks.yaml

@@ -80,6 +80,8 @@ env:
     value: "true"
   - name: RESTIC_ENDPOINT
     value: http://yucca-michael:3010
+  - name: REDIS_URL
+    value: redis://yucca-redis:6379
   # mock-oidc issues <sub>@example.test for any sub, so dev logins pass the
   # beta email allowlist.
   - name: ALLOWED_EMAIL_DOMAINS

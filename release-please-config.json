@@ -68,6 +68,10 @@
         },
         {
           "type": "generic",
+          "path": "packages/fubar/internal/version/version.go"
+        },
+        {
+          "type": "generic",
           "path": "charts/apps/michael/Chart.yaml"
         },
         {

@@ -21,8 +21,17 @@ export class UserRepository {
       .selectFrom('sessions')
       .where('accessToken', '=', accessToken)
       .innerJoin('users', 'users.id', 'sessions.userId')
+      .leftJoin('consumers', 'consumers.id', 'sessions.consumerId')
       .where('users.disabled', '=', false)
-      .select(['users.id', 'users.sub', 'users.name', 'users.email', 'sessions.id as sessionId'])
+      .select([
+        'users.id',
+        'users.sub',
+        'users.name',
+        'users.email',
+        'sessions.id as sessionId',
+        'sessions.consumerId as consumerId',
+        'consumers.lastSeenAt as consumerLastSeenAt',
+      ])
       .executeTakeFirst();
   }
 

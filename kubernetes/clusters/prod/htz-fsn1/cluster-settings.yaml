@@ -65,3 +65,6 @@ data:
   # openebs/diskpools.yaml) — Postgres replicates itself; Mayastor is for
   # workloads without app-level replication.
   DB_STORAGE_CLASS: openebs-hostpath
+
+  # Restic-token revocation denylist (primary regions run redis in-namespace).
+  REDIS_ADDR: "yucca-redis:6379"

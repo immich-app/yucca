@@ -31,3 +31,40 @@ jobs:
             --filter @futo-org/backups-orchestrator-api \
             --filter @futo-org/backups-orchestrator-ui \
             publish --access public --provenance --no-git-checks
+
+  fubar-binaries:
+    name: fubar release binaries
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+
+      - name: Build matrix
+        working-directory: packages/fubar
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p ../../dist/fubar-release
+          for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
+            GOOS="${target%/*}"
+            GOARCH="${target#*/}"
+            ext=""
+            [ "$GOOS" = "windows" ] && ext=".exe"
+            out="../../dist/fubar-release/fubar_${version}_${GOOS}_${GOARCH}${ext}"
+            CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" mise x -- go build -trimpath -ldflags='-s -w' -o "$out" .
+          done
+          (cd ../../dist/fubar-release && shasum -a 256 fubar_* > "fubar_${version}_SHA256SUMS")
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/fubar-release/* --clobber

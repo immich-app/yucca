@@ -15,6 +15,9 @@ const schema = z.object({
   RADOS_ENDPOINT: z.url().transform((url) => new URL(url)),
   RADOS_ACCESS_KEY_ID: z.string(),
   RADOS_SECRET_ACCESS_KEY: z.string(),
+
+  // Revocation reconcile target; unset skips the reconcile cron.
+  REDIS_URL: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);

@@ -157,6 +157,16 @@ persistence, secrets) are where a future prod cluster overlay diverges. Notably:
   fixtures** (the same keypair lives in `.mise/tasks/*/env`); they must become
   `ExternalSecret`s backed by the org's 1Password (External Secrets Operator)
   before prod.
+- **`redis` (valkey)** is the restic-token revocation denylist. It is
+  deliberately ephemeral (no persistence): the metrics-worker re-seeds it from
+  the DB every 5 min, and michael fails **open**, so losing it degrades to
+  "revocations delayed", never "backups broken". It is **primary-region only**
+  — a partition's primary region owns the DB and the reconcile job, so it's the
+  only place that can populate the denylist. Secondary regions run `michael`
+  with `REDIS_ADDR` unset (revocation checking off) until a cross-region design
+  lands (options: valkey `REPLICAOF` to secondaries, or cross-region reads).
+  Wired into `components/roles/primary` only; `allow-ingress-redis` in
+  `networkpolicies.yaml` restricts 6379 to the apps + michael.
 
 ## Real OIDC credentials in dev (`.env` + 1Password)
 

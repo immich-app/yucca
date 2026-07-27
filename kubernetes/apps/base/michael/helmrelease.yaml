@@ -40,6 +40,9 @@ spec:
     env:
       - name: RESTIC_API_PORT
         value: "3010"
+      # Empty on secondaries (no local denylist) — disables revocation checking.
+      - name: REDIS_ADDR
+        value: ${REDIS_ADDR:=}
       - name: LOG_LEVEL
         value: info
       - name: S3_ENDPOINT

@@ -149,6 +149,46 @@ func TestAuthSuccess(t *testing.T) {
 	}
 }
 
+func TestAuthOptionalClaims(t *testing.T) {
+	cases := []struct {
+		name         string
+		jti          any
+		consumer     any
+		wantJti      string
+		wantConsumer string
+	}{
+		{name: "present", jti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", consumer: "fubar", wantJti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", wantConsumer: "fubar"},
+		{name: "absent", jti: nil, consumer: nil, wantJti: "", wantConsumer: ""},
+		{name: "garbage types ignored", jti: 42, consumer: true, wantJti: "", wantConsumer: ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			claims := validClaims()
+			if tc.jti != nil {
+				claims["jti"] = tc.jti
+			}
+			if tc.consumer != nil {
+				claims["consumer"] = tc.consumer
+			}
+			token := makeJWT(t, claims)
+			req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
+			req.Header.Set("Authorization", makeBasicAuth(token))
+
+			a, _, err := extractAuth(req, testPublicKey)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if a.Jti != tc.wantJti {
+				t.Errorf("expected jti %q, got %q", tc.wantJti, a.Jti)
+			}
+			if a.Consumer != tc.wantConsumer {
+				t.Errorf("expected consumer %q, got %q", tc.wantConsumer, a.Consumer)
+			}
+		})
+	}
+}
+
 func TestAuthMiddlewareRepoMismatch(t *testing.T) {
 	token := makeJWT(t, validClaims())
 

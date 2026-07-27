@@ -1,0 +1,38 @@
+# Single replica, deliberately ephemeral: the only data is revoked restic-token
+# jtis, and the metrics-worker reconcile re-seeds them within one 5-minute tick
+# after any restart. michael fails open, so redis being down degrades to
+# "revocations delayed", never to "backups broken". No persistence, no PDB.
+replicas: 1
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 512Mi }
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: yucca-redis
+
+image:
+  repository: valkey/valkey
+  tag: 8-alpine@sha256:a038175878d66b9d274fbf8be73c0305e93798b83917647f167e18cef3c71eec
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: redis
+    containerPort: 6379
+
+service:
+  type: ClusterIP
+
+# No persistence (--save '' --appendonly no); --dir /tmp keeps valkey happy on
+# the chart's read-only rootfs (yucca-common always mounts a /tmp emptyDir), so
+# the default hardened securityContext applies unchanged.
+command: [valkey-server]
+args: ["--save", "", "--appendonly", "no", "--dir", "/tmp"]
+
+startupProbe:
+  tcpSocket: { port: redis }
+  periodSeconds: 2
+  failureThreshold: 30
+readinessProbe:
+  tcpSocket: { port: redis }
+  periodSeconds: 10

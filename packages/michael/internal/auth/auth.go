@@ -21,6 +21,10 @@ type Auth struct {
 	User       string `json:"user"`
 	Repository string `json:"repository"`
 	WriteOnce  bool   `json:"writeOnce"`
+	// Optional claims: legacy tokens carry neither. Jti identifies the token
+	// for revocation; Consumer is the consumer *type* (immich/fubar/restic).
+	Jti      string `json:"jti"`
+	Consumer string `json:"consumer"`
 }
 
 type contextKey string
@@ -196,6 +200,15 @@ func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, time.Time, 
 		return Auth{}, time.Time{}, &authError{http.StatusBadRequest, "writeOnce must be a boolean"}
 	}
 	auth.WriteOnce = writeOnce
+
+	// jti and consumer are optional — tokens minted before the consumer model
+	// carry neither, and non-string values are simply ignored.
+	if jti, ok := claims["jti"].(string); ok {
+		auth.Jti = jti
+	}
+	if consumer, ok := claims["consumer"].(string); ok {
+		auth.Consumer = consumer
+	}
 
 	var exp time.Time
 	if expTime, _ := claims.GetExpirationTime(); expTime != nil {

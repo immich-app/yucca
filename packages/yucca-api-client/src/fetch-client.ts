@@ -19,6 +19,35 @@ export type AuthDto = {
     name: string;
     email: string;
     sessionId: string;
+    consumerId?: object | null;
+    features: {
+        [key: string]: boolean;
+    };
+};
+export type ConsumerDto = {
+    id: string;
+    "type": "immich" | "fubar" | "restic";
+    name: string;
+    createdAt: string;
+    lastSeenAt?: string | null;
+    repositoryCount: number;
+};
+export type ConsumerListResponseDto = {
+    consumers: ConsumerDto[];
+};
+export type ConsumerCreateRequestDto = {
+    "type": "immich" | "fubar" | "restic";
+    name: string;
+};
+export type ConsumerResponseDto = {
+    consumer: ConsumerDto;
+};
+export type ConsumerUpdateRequestDto = {
+    name: string;
+};
+export type ConsumerAdoptRequestDto = {
+    /** Repositories to move from the default consumer to this one */
+    repositoryIds: string[];
 };
 export type SubmitBackupEndRequestDto = {
     success: boolean;
@@ -64,6 +93,8 @@ export type RepositoryWithMetricsDto = {
     id: string;
     worm: boolean;
     name: string;
+    consumerId: string;
+    consumerType: string;
     metrics: RepositoryMetricsDto;
     meter?: RepositoryMeterDto;
 };
@@ -115,10 +146,54 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/device", {
+export function oidcDeviceFlow({ consumerType, consumerName }: {
+    consumerType?: string;
+    consumerName?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/device${QS.query(QS.explode({
+        consumer_type: consumerType,
+        consumer_name: consumerName
+    }))}`, {
         ...opts
     }));
+}
+export function listConsumers(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConsumerListResponseDto;
+    }>("/api/consumers", {
+        ...opts
+    }));
+}
+export function createConsumer(consumerCreateRequestDto: ConsumerCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConsumerResponseDto;
+    }>("/api/consumers", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: consumerCreateRequestDto
+    })));
+}
+export function updateConsumer(id: string, consumerUpdateRequestDto: ConsumerUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/consumers/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: consumerUpdateRequestDto
+    })));
+}
+export function deleteConsumer(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/consumers/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
+export function adoptRepositories(id: string, consumerAdoptRequestDto: ConsumerAdoptRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/consumers/${encodeURIComponent(id)}/adopt`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: consumerAdoptRequestDto
+    })));
 }
 export function submitMetricBackupStart(repositoryId: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/backup/start`, {

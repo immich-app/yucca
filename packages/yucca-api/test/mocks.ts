@@ -1,6 +1,8 @@
 import type { LoggerRepository, WideContextRepository } from '@common/server/otel';
+import type { ConsumerRepository } from 'src/repositories/consumer.repository';
 import type { CryptoRepository } from 'src/repositories/crypto.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
+import type { FeatureFlagRepository } from 'src/repositories/featureFlag.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
@@ -55,6 +57,25 @@ export const newUserAllowlistRepositoryMock = (): jest.Mocked<RepositoryInterfac
   };
 };
 
+export const newConsumerRepositoryMock = (): jest.Mocked<RepositoryInterface<ConsumerRepository>> => {
+  return {
+    create: jest.fn(),
+    getById: jest.fn(),
+    getByUser: jest.fn(),
+    getByUserTypeName: jest.fn(),
+    getOrCreateDefault: jest.fn(),
+    touchLastSeen: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
+};
+
+export const newFeatureFlagRepositoryMock = (): jest.Mocked<RepositoryInterface<FeatureFlagRepository>> => {
+  return {
+    getByUser: jest.fn().mockResolvedValue([]),
+  };
+};
+
 export const newLoggerRepositoryMock = (): jest.Mocked<RepositoryInterface<LoggerRepository>> => {
   return {
     debug: jest.fn(),
@@ -84,8 +105,10 @@ export const newMetricServiceMock = () => ({
 
 export const newMocks = () => {
   return {
+    consumer: newConsumerRepositoryMock(),
     crypto: newCryptoRepositoryMock(),
     database: newDatabaseRepositoryMock(),
+    featureFlag: newFeatureFlagRepositoryMock(),
     oidc: newOidcRepositoryMock(),
     session: newSessionRepositoryMock(),
     user: newUserRepositoryMock(),

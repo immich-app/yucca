@@ -10,6 +10,12 @@ export class RepositoryDto {
 
   @ApiProperty()
   name!: string;
+
+  @ApiProperty()
+  consumerId!: string;
+
+  @ApiProperty()
+  consumerType!: string;
 }
 
 export class RepositoryMetricsDto {

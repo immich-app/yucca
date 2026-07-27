@@ -90,7 +90,12 @@ export class AuthController {
   }
 
   @Sse('/oidc/device')
-  oidcDeviceFlow(): Observable<MessageEvent> {
-    return this.auth.oidcDeviceFlowObservable();
+  @ApiQuery({ name: 'consumer_type', type: String, required: false, description: 'immich | fubar | restic' })
+  @ApiQuery({ name: 'consumer_name', type: String, required: false, description: 'Instance name, e.g. a hostname' })
+  oidcDeviceFlow(
+    @Query('consumer_type') consumerType?: string,
+    @Query('consumer_name') consumerName?: string,
+  ): Observable<MessageEvent> {
+    return this.auth.oidcDeviceFlowObservable(consumerType, consumerName);
   }
 }

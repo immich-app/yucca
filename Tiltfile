@@ -284,6 +284,8 @@ APP_WIRING = {
     'cloudnative-pg':         {'build': None,                 'deps': []},
     'rook-ceph-operator':     {'build': None,                 'deps': []},
     'yucca-victoria-metrics': {'build': None,                 'deps': []},
+    # Revocation denylist (upstream valkey image, no build).
+    'yucca-redis':            {'build': None,                 'deps': []},
     'yucca-victoria-logs':    {'build': None,                 'deps': []},
 }
 
@@ -461,6 +463,7 @@ kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 &
 kubectl port-forward -n rook-ceph svc/rook-ceph-rgw-yucca 9000:80 &
 kubectl port-forward -n yucca svc/victoria-metrics 8428:8428 &
 kubectl port-forward -n yucca svc/victoria-logs 9428:9428 &
+kubectl port-forward -n yucca svc/yucca-redis 6379:6379 &
 wait''',
     resource_deps=['yucca-api', 'yucca-web', 'yucca-michael', 'yucca-mock-oidc'],
     labels=['app'],
