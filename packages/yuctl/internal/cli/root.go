@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	flagLogLevel  string
-	flagLogFormat string
+	flagLogLevel         string
+	flagLogFormat        string
+	flagRefreshDiscovery bool
 )
 
 // NewRootCmd builds the root command and registers every subcommand.
@@ -39,6 +40,8 @@ func NewRootCmd() *cobra.Command {
 
 	root.PersistentFlags().StringVar(&flagLogLevel, "log-level", "info", "log level (trace, debug, info, warn, error)")
 	root.PersistentFlags().StringVar(&flagLogFormat, "log-format", "pretty", "log format (pretty|json)")
+	root.PersistentFlags().BoolVar(&flagRefreshDiscovery, "refresh-discovery", false,
+		"bypass the cached topology and re-read Terraform state from S3")
 
 	root.AddCommand(
 		newSelectCmd(),
@@ -71,12 +74,25 @@ func setupLogging() error {
 	return nil
 }
 
-// resolveTopology builds the discovery client and resolves the full topology.
-// Shared by every command that needs to read state.
+// resolveTopology returns the cached topology when fresh (see
+// discovery.LoadCachedTopology; TTL 1h, YUCTL_DISCOVERY_TTL to override,
+// --refresh-discovery to bypass), otherwise builds the discovery client,
+// resolves live from S3 state, and refreshes the cache. Shared by every command
+// that needs to read state.
 func resolveTopology(ctx context.Context) (*discovery.Topology, error) {
+	if !flagRefreshDiscovery {
+		if topo, ok := discovery.LoadCachedTopology(log.Logger); ok {
+			return topo, nil
+		}
+	}
 	client, err := discovery.NewClient(ctx, log.Logger)
 	if err != nil {
 		return nil, err
 	}
-	return client.Resolve(ctx)
+	topo, err := client.Resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	discovery.SaveCachedTopology(topo, log.Logger)
+	return topo, nil
 }
