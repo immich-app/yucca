@@ -50,7 +50,7 @@ variable "hosts" {
     Ordered list of hosts in this cluster. First host is the bootstrap node unless a different host has bootstrap=true.
     Each host:
       - name:       (optional) short identifier. If null, TF picks from wordlist.
-                    Once deployed, do NOT change — drives hostname and all identity.
+                    Once deployed, do NOT change: it drives hostname and all identity.
       - bond_ip:    primary IP address ansible connects to
       - bootstrap:  (optional) true for the cephadm bootstrap node; exactly one per cluster
       - roles:      list of Ceph roles (mon, mgr, osd, rgw); informational
@@ -94,7 +94,13 @@ variable "provision_profile" {
 }
 
 variable "name_seed" {
-  description = "Optional seed to re-roll the cluster's wordlist auto-names. Do NOT bump once hosts are deployed — renames every auto-named host."
+  description = "Optional seed to re-roll the cluster's wordlist auto-names. Do NOT bump once hosts are deployed; it renames every auto-named host."
   type        = string
   default     = "v1"
+}
+
+variable "alertmanager_webhook" {
+  description = "Emit a vault_alertmanager_webhook_url reference in secrets.yml.tpl, pointing at <CLUSTER>_CEPH_ALERTMANAGER_WEBHOOK_URL. The item is provisioned OUT OF BAND (it holds an externally-issued receiver URL, not a generated password) and is listed in the stack's ceph_unmanaged_secret_roles so TF never overwrites it. Leave false for clusters with no alert receiver: the reference would otherwise break `op inject` on a vault that has no such item."
+  type        = bool
+  default     = false
 }

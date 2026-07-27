@@ -25,7 +25,7 @@ module "names" {
   names        = [for h in var.hosts : h.name]
 }
 
-# The wordlist + shuffle moved into node-names — preserve the existing shuffle state
+# The wordlist + shuffle moved into node-names; preserve the existing shuffle state
 # so host names don't re-randomize on this refactor.
 moved {
   from = random_shuffle.names
@@ -59,7 +59,7 @@ locals {
   # Every Ceph-project item grep-matches *_CEPH_* across all clusters.
   secret_prefix = "${upper(var.cluster_name)}_CEPH"
 
-  secrets = {
+  secrets = merge({
     ops              = "${local.secret_prefix}_OPS_PASSWORD"
     dashboard        = "${local.secret_prefix}_DASHBOARD_PASSWORD"
     grafana          = "${local.secret_prefix}_GRAFANA_PASSWORD"
@@ -70,5 +70,13 @@ locals {
     # 1P contract, which is named by cluster, not by the ceph subsystem.
     metrics_worker_access = "${upper(var.cluster_name)}_METRICS_WORKER_ACCESS_KEY"
     metrics_worker_secret = "${upper(var.cluster_name)}_METRICS_WORKER_SECRET_KEY"
-  }
+    },
+    # Alertmanager receiver URL. Opt-in per cluster, and provisioned OUT OF BAND:
+    # the value is an externally-issued webhook (Zulip/Opsgenie/etc), not a
+    # generated password, so the role is listed in the stack's
+    # ceph_unmanaged_secret_roles and TF only ever references it.
+    var.alertmanager_webhook ? {
+      alertmanager_webhook = "${local.secret_prefix}_ALERTMANAGER_WEBHOOK_URL"
+    } : {}
+  )
 }
