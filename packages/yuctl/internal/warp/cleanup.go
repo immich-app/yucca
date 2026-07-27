@@ -46,6 +46,7 @@ func (s *Session) Cleanup(ctx context.Context, opts CleanupOptions) error {
 	}
 
 	if !opts.Force {
+		log.Info().Msg("checking for running load")
 		if running, err := s.anyLoadRunning(ctx); err != nil {
 			log.Warn().Err(err).Msg("could not check for running load")
 		} else if running {
@@ -99,13 +100,21 @@ echo cleanup done`, mci, target.Endpoint, strings.Join(patterns, "|"), strings.J
 	if _, err := s.client.BatchV1().Jobs(s.Namespace).Create(ctx, &job, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("create cleanup job: %w", err)
 	}
-	log.Info().Str("job", name).Strs("prefixes", opts.Prefixes).Msg("cleanup job launched; waiting")
+	log.Info().Str("job", name).Strs("prefixes", opts.Prefixes).
+		Msg("cleanup job launched; waiting (first run pulls the mc image)")
 
+	start := time.Now()
+	lastLog := time.Time{}
 	waitErr := wait.PollUntilContextTimeout(ctx, 5*time.Second, opts.Timeout, true,
 		func(ctx context.Context) (bool, error) {
 			j, err := s.client.BatchV1().Jobs(s.Namespace).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return false, err
+			}
+			if time.Since(lastLog) > 15*time.Second {
+				lastLog = time.Now()
+				log.Info().Str("elapsed", time.Since(start).Round(time.Second).String()).
+					Int32("active", j.Status.Active).Msg("cleanup job running")
 			}
 			for _, c := range j.Status.Conditions {
 				if c.Status != corev1.ConditionTrue {

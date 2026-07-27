@@ -113,38 +113,56 @@ func (s *Session) Start(ctx context.Context, opts StartOptions) error {
 
 	log.Info().Int("pods", len(pods)).Int("put_streams", totalPut).Int("get_streams", totalGet).
 		Str("obj_size", opts.PutObjSize).Int("rgw_endpoints", len(ips)).Bool("nonstop", nonstop).
-		Msg("starting warp load")
+		Msg("relaunching load on all pods in parallel (kill previous, then launch)")
 
+	var wg sync.WaitGroup
+	errs := make([]error, len(pods))
 	for i, pod := range pods {
 		put := share(totalPut, len(pods), i)
 		get := share(totalGet, len(pods), i)
+		wg.Add(1)
+		go func(i int, pod RunnerPod, put, get int) {
+			defer wg.Done()
+			putCmd := fmt.Sprintf(`/warp put --host=%s --host-select=roundrobin%s --bucket=%sput-%s `+
+				`--obj.size=%s --duration=%s --concurrent=%d --noclear --no-color >> /tmp/warp-put.log 2>&1`,
+				hostList, tlsFlags, opts.BucketPrefix, pod.Name, opts.PutObjSize, runDuration, put)
+			getCmd := fmt.Sprintf(`/warp get --host=%s --host-select=roundrobin%s --bucket=%sget-%s `+
+				`--objects=%d --obj.size=%s --duration=%s --concurrent=%d --noclear --no-color >> /tmp/warp-get.log 2>&1`,
+				hostList, tlsFlags, opts.BucketPrefix, pod.Name, opts.GetObjects, opts.GetObjSize, runDuration, get)
 
-		putCmd := fmt.Sprintf(`/warp put --host=%s --host-select=roundrobin%s --bucket=%sput-%s `+
-			`--obj.size=%s --duration=%s --concurrent=%d --noclear --no-color >> /tmp/warp-put.log 2>&1`,
-			hostList, tlsFlags, opts.BucketPrefix, pod.Name, opts.PutObjSize, runDuration, put)
-		getCmd := fmt.Sprintf(`/warp get --host=%s --host-select=roundrobin%s --bucket=%sget-%s `+
-			`--objects=%d --obj.size=%s --duration=%s --concurrent=%d --noclear --no-color >> /tmp/warp-get.log 2>&1`,
-			hostList, tlsFlags, opts.BucketPrefix, pod.Name, opts.GetObjects, opts.GetObjSize, runDuration, get)
-
-		// Kill and launch are separate execs: the launch script's literal
-		// "/warp put ..." text would otherwise match the kill patterns in the
-		// same command line and SIGTERM the script itself.
-		if _, err := s.podExec(ctx, pod.Name, killScript); err != nil {
-			return fmt.Errorf("stop previous load on %s: %w", pod.Name, err)
-		}
-		var script strings.Builder
-		if put > 0 {
-			script.WriteString(launchLine("put", putCmd, nonstop))
-		}
-		if get > 0 {
-			script.WriteString(launchLine("get", getCmd, nonstop))
-		}
-		script.WriteString("true\n")
-		if _, err := s.podExec(ctx, pod.Name, script.String()); err != nil {
-			return fmt.Errorf("start load on %s: %w", pod.Name, err)
-		}
-		log.Info().Str("pod", pod.Name).Str("node", pod.Node).Int("put", put).Int("get", get).Msg("load launched")
+			// Kill and launch are separate execs: the launch script's literal
+			// "/warp put ..." text would otherwise match the kill patterns in
+			// the same command line and SIGTERM the script itself.
+			if _, err := s.podExec(ctx, pod.Name, killScript); err != nil {
+				if s.podGone(ctx, pod.Name) {
+					log.Warn().Str("pod", pod.Name).Msg("pod terminated mid-start; skipping it")
+					return
+				}
+				errs[i] = fmt.Errorf("stop previous load on %s: %w", pod.Name, err)
+				return
+			}
+			var script strings.Builder
+			if put > 0 {
+				script.WriteString(launchLine("put", putCmd, nonstop))
+			}
+			if get > 0 {
+				script.WriteString(launchLine("get", getCmd, nonstop))
+			}
+			script.WriteString("true\n")
+			if _, err := s.podExec(ctx, pod.Name, script.String()); err != nil {
+				errs[i] = fmt.Errorf("start load on %s: %w", pod.Name, err)
+				return
+			}
+			log.Info().Str("pod", pod.Name).Str("node", pod.Node).Int("put", put).Int("get", get).Msg("load launched")
+		}(i, pod, put, get)
 	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	log.Info().Msg("all pods launched; `yuctl tools warp watch` for the live dashboard")
 
 	return s.saveRunConfig(ctx, map[string]string{
 		"started_at":    time.Now().UTC().Format(time.RFC3339),
@@ -202,11 +220,25 @@ func (s *Session) Stop(ctx context.Context) error {
 		log.Info().Msg("nothing deployed; nothing to stop")
 		return nil
 	}
-	for _, pod := range pods {
-		if _, err := s.podExec(ctx, pod.Name, killScript); err != nil {
-			return fmt.Errorf("stop load on %s: %w", pod.Name, err)
+	log.Info().Int("pods", len(pods)).Msg("killing warp processes on all pods in parallel")
+	var wg sync.WaitGroup
+	errs := make([]error, len(pods))
+	for i, pod := range pods {
+		wg.Add(1)
+		go func(i int, pod RunnerPod) {
+			defer wg.Done()
+			if _, err := s.podExec(ctx, pod.Name, killScript); err != nil {
+				errs[i] = fmt.Errorf("stop load on %s: %w", pod.Name, err)
+			}
+		}(i, pod)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return err
 		}
 	}
+	log.Info().Msg("verifying nothing survived")
 	if running, err := s.anyLoadRunning(ctx); err == nil && running {
 		return fmt.Errorf("some warp processes survived the kill; check pods manually")
 	}
@@ -220,12 +252,27 @@ func (s *Session) anyLoadRunning(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, pod := range pods {
-		out, err := s.podExec(ctx, pod.Name, `pgrep -f '/warp ([p]ut|[g]et)' 2>/dev/null | wc -l`)
+	var wg sync.WaitGroup
+	counts := make([]int, len(pods))
+	errs := make([]error, len(pods))
+	for i, pod := range pods {
+		wg.Add(1)
+		go func(i int, pod RunnerPod) {
+			defer wg.Done()
+			out, err := s.podExec(ctx, pod.Name, `pgrep -f '/warp ([p]ut|[g]et)' 2>/dev/null | wc -l`)
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			counts[i], _ = strconv.Atoi(strings.TrimSpace(out))
+		}(i, pod)
+	}
+	wg.Wait()
+	for i, err := range errs {
 		if err != nil {
 			return false, err
 		}
-		if n, _ := strconv.Atoi(strings.TrimSpace(out)); n > 0 {
+		if counts[i] > 0 {
 			return true, nil
 		}
 	}
@@ -264,6 +311,7 @@ func (s *Session) Status(ctx context.Context, sampleSeconds int) (*StatusReport,
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Int("pods", len(pods)).Int("window_s", sampleSeconds).Msg("sampling pods and NIC counters")
 	report := &StatusReport{}
 
 	if cm, err := s.client.CoreV1().ConfigMaps(s.Namespace).Get(ctx, runConfigMap, metav1.GetOptions{}); err == nil {

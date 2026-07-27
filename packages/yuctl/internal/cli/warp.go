@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"yuctl/internal/warp"
@@ -178,6 +179,7 @@ func newWarpStatusCmd(f *warpFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			log.Info().Int("window_s", sample).Msg("sampling pods and NIC counters")
 			report, err := s.Status(cmd.Context(), sample)
 			if err != nil {
 				return err
@@ -206,6 +208,7 @@ func newWarpWatchCmd(f *warpFlags) *cobra.Command {
 			out := cmd.OutOrStdout()
 			fmt.Fprint(out, "\x1b[?1049h\x1b[?25l") // alt screen, hide cursor
 			defer fmt.Fprint(out, "\x1b[?25h\x1b[?1049l")
+			fmt.Fprintf(out, "%s connecting · sampling %ds window…\n", label, sample)
 
 			v := &warpView{label: label}
 			for {

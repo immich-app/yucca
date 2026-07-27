@@ -97,11 +97,13 @@ func (s *Session) Deploy(ctx context.Context, opts DeployOptions) error {
 	log.Info().Int("workers", len(workers)).Int("replicas", replicas).Int("cpu_per_pod", cpu).
 		Str("image", opts.Image).Msg("deploying warp runners")
 
+	log.Info().Str("secret", opts.SourceNS+"/"+opts.SourceSecret).Msg("reading RGW credentials")
 	access, secret, err := s.readSourceCreds(ctx, opts)
 	if err != nil {
 		return err
 	}
 
+	log.Info().Str("namespace", s.Namespace).Msg("applying namespace, creds secret, and runner deployment")
 	ns, err := renderManifest("namespace.yaml", map[string]any{"Namespace": s.Namespace})
 	if err != nil {
 		return err
@@ -145,12 +147,60 @@ func (s *Session) Deploy(ctx context.Context, opts DeployOptions) error {
 	if err := s.waitRollout(ctx, int32(replicas)); err != nil {
 		return err
 	}
+	if err := s.rebalance(ctx, workers, opts.PodsPerNode, int32(replicas)); err != nil {
+		return err
+	}
 	log.Info().Msg("warp runners deployed and ready")
 	return nil
 }
 
-// waitRollout polls the Deployment until every replica is updated and ready.
+// rebalance heals a skewed spread: node drains (e.g. rolling reboots) evict
+// runners onto the remaining workers and nothing moves them back — the spread
+// constraint only acts at scheduling time. Surplus pods on overloaded workers
+// are deleted so the scheduler respreads them onto the underloaded ones.
+func (s *Session) rebalance(ctx context.Context, workers []Worker, podsPerNode int, replicas int32) error {
+	pods, err := s.RunnerPods(ctx)
+	if err != nil {
+		return err
+	}
+	perNode := map[string][]RunnerPod{}
+	for _, p := range pods {
+		perNode[p.Node] = append(perNode[p.Node], p)
+	}
+	underloaded := false
+	for _, w := range workers {
+		if len(perNode[w.Name]) < podsPerNode {
+			underloaded = true
+		}
+	}
+	if !underloaded {
+		return nil
+	}
+	deleted := 0
+	for node, nodePods := range perNode {
+		for _, p := range nodePods[podsPerNode:] {
+			log.Warn().Str("pod", p.Name).Str("node", node).Msg("deleting surplus runner to respread")
+			if err := s.client.CoreV1().Pods(s.Namespace).Delete(ctx, p.Name, metav1.DeleteOptions{}); err != nil && !isNotFound(err) {
+				return fmt.Errorf("delete surplus pod %s: %w", p.Name, err)
+			}
+			deleted++
+		}
+	}
+	if deleted == 0 {
+		log.Warn().Msg("spread is uneven but no worker exceeds pods-per-node; leaving as is")
+		return nil
+	}
+	log.Info().Int("deleted", deleted).Msg("waiting for respread; restart the load with `warp start` afterwards")
+	return s.waitRollout(ctx, replicas)
+}
+
+// waitRollout polls the Deployment until every replica is updated and ready,
+// logging progress whenever the ready count changes (and periodically so long
+// waits — image pulls, scheduling — never look hung).
 func (s *Session) waitRollout(ctx context.Context, replicas int32) error {
+	start := time.Now()
+	lastReady := int32(-1)
+	lastLog := time.Time{}
 	return wait.PollUntilContextTimeout(ctx, 3*time.Second, 5*time.Minute, true,
 		func(ctx context.Context) (bool, error) {
 			d, err := s.client.AppsV1().Deployments(s.Namespace).Get(ctx, deploymentName, metav1.GetOptions{})
@@ -160,8 +210,11 @@ func (s *Session) waitRollout(ctx context.Context, replicas int32) error {
 			done := d.Status.ObservedGeneration >= d.Generation &&
 				d.Status.UpdatedReplicas == replicas &&
 				d.Status.ReadyReplicas == replicas
-			if !done {
-				log.Debug().Int32("ready", d.Status.ReadyReplicas).Int32("want", replicas).Msg("waiting for rollout")
+			if !done && (d.Status.ReadyReplicas != lastReady || time.Since(lastLog) > 15*time.Second) {
+				lastReady = d.Status.ReadyReplicas
+				lastLog = time.Now()
+				log.Info().Int32("ready", d.Status.ReadyReplicas).Int32("want", replicas).
+					Str("elapsed", time.Since(start).Round(time.Second).String()).Msg("waiting for rollout")
 			}
 			return done, nil
 		})
@@ -201,6 +254,7 @@ func (s *Session) readSourceCreds(ctx context.Context, opts DeployOptions) (stri
 // skips the running-load check.
 func (s *Session) Undeploy(ctx context.Context, force bool) error {
 	if !force {
+		log.Info().Msg("checking for running load")
 		running, err := s.anyLoadRunning(ctx)
 		if err != nil {
 			log.Warn().Err(err).Msg("could not check for running load")
@@ -208,6 +262,7 @@ func (s *Session) Undeploy(ctx context.Context, force bool) error {
 			return fmt.Errorf("warp load is still running; `yuctl tools warp stop` first (or --force)")
 		}
 	}
+	log.Info().Str("namespace", s.Namespace).Msg("deleting namespace and waiting for it to go")
 	err := s.client.CoreV1().Namespaces().Delete(ctx, s.Namespace, metav1.DeleteOptions{})
 	if isNotFound(err) {
 		log.Info().Str("namespace", s.Namespace).Msg("nothing deployed")

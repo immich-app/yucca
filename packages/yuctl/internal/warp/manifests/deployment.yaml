@@ -38,6 +38,9 @@ spec:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: DoNotSchedule
+          # Without Honor, tainted control-plane nodes count as 0-pod domains
+          # and cap the fleet at one pod per worker (skew vs 0 > maxSkew).
+          nodeTaintsPolicy: Honor
           labelSelector:
             matchLabels:
               app: {{ .Name }}

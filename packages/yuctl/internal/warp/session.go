@@ -24,6 +24,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -78,6 +79,7 @@ func NewSession(ctx context.Context, k8s state.Kubernetes, ceph state.CephCluste
 		}
 		raw = b
 	case k8s.KubeconfigRef != "":
+		log.Info().Str("cluster", k8s.ClusterName).Msg("reading kubeconfig from 1Password (may prompt to unlock)")
 		v, err := op.Read(ctx, k8s.KubeconfigRef)
 		if err != nil {
 			return nil, fmt.Errorf("resolve kubeconfig: %w", err)
@@ -203,6 +205,7 @@ func (s *Session) ResolveS3(ctx context.Context, override string) (*S3Target, er
 // inside pod (the vantage the load actually runs from). It degrades gracefully:
 // with neither bash nor nc in the image, the unprobed roster is returned.
 func (s *Session) ProbeIPs(ctx context.Context, pod string, t *S3Target) []string {
+	log.Info().Int("endpoints", len(t.IPs)).Str("from", pod).Msg("probing RGW endpoints for liveness")
 	tool, err := s.podExec(ctx, pod,
 		`command -v bash >/dev/null 2>&1 && echo bash && exit; command -v nc >/dev/null 2>&1 && echo nc && exit; echo none`)
 	if err != nil {
@@ -241,6 +244,8 @@ func (s *Session) ProbeIPs(ctx context.Context, pod string, t *S3Target) []strin
 	}
 	if dead := len(t.IPs) - len(healthy); dead > 0 {
 		log.Warn().Int("dead", dead).Int("healthy", len(healthy)).Msg("excluding unreachable RGW endpoints")
+	} else {
+		log.Info().Int("healthy", len(healthy)).Msg("all RGW endpoints reachable")
 	}
 	return healthy
 }
@@ -257,7 +262,9 @@ func (s *Session) RunnerPods(ctx context.Context) ([]RunnerPod, error) {
 	}
 	var out []RunnerPod
 	for _, p := range pods.Items {
-		if p.Status.Phase != corev1.PodRunning {
+		// Terminating pods still report phase Running; exec'ing into one races
+		// its container teardown.
+		if p.Status.Phase != corev1.PodRunning || p.DeletionTimestamp != nil {
 			continue
 		}
 		out = append(out, RunnerPod{Name: p.Name, Node: p.Spec.NodeName})
@@ -270,4 +277,14 @@ func (s *Session) RunnerPods(ctx context.Context) ([]RunnerPod, error) {
 type RunnerPod struct {
 	Name string
 	Node string
+}
+
+// podGone reports whether a pod has been deleted or is terminating — used to
+// downgrade exec failures against pods that died mid-operation.
+func (s *Session) podGone(ctx context.Context, name string) bool {
+	p, err := s.client.CoreV1().Pods(s.Namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return isNotFound(err)
+	}
+	return p.DeletionTimestamp != nil || p.Status.Phase != corev1.PodRunning
 }
