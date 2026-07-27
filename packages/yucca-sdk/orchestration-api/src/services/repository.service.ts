@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { Observable } from 'rxjs';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
+  GetSnapshotResponseDto,
   ListSnapshotsResponseDto,
   LocalRepositoryDto,
   RepositoryCheckImportResponseDto,
@@ -23,7 +24,7 @@ import {
   RepositoryWithMetricsDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
-import { TaskType } from '../enum';
+import { ResticTagPrefix, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
@@ -488,6 +489,7 @@ export class RepositoryService {
 
               try {
                 const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
+                const tags = [];
 
                 const config = this.moduleConfig.get();
                 if (config.immichIntegration) {
@@ -498,7 +500,8 @@ export class RepositoryService {
                     });
 
                     try {
-                      await config.immichIntegration.hooks.createDatabaseBackup();
+                      const backupFileName = await config.immichIntegration.hooks.createDatabaseBackup();
+                      tags.push(`${ResticTagPrefix.ImmichBackupFileName}=${backupFileName}`);
 
                       this.telemetry.submitStructuredLog('Created Immich database backup', {
                         repositoryId: id,
@@ -513,7 +516,7 @@ export class RepositoryService {
                 }
 
                 await this.restic.unlockAll(endpoint, key);
-                const summary = await this.restic.backup(endpoint, key, paths, log, taskSignal);
+                const summary = await this.restic.backup(endpoint, key, paths, log, taskSignal, tags);
 
                 this.telemetry.submitStructuredLog('Finished backup to primary backend', {
                   repositoryId: id,
@@ -811,6 +814,13 @@ export class RepositoryService {
     return {
       snapshots: snapshots.map((snapshot) => this.mapSnapshot(snapshot)),
     };
+  }
+
+  async getSnapshot(repositoryId: string, snapshotId: string): Promise<GetSnapshotResponseDto> {
+    const { endpoint, key } = await this.getResticParameters(repositoryId);
+    const snapshots = await this.restic.snapshot(endpoint, key, snapshotId);
+
+    return { snapshot: this.mapSnapshot(snapshots[0]) };
   }
 
   async restoreSnapshot(

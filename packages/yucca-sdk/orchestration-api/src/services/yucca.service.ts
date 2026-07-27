@@ -28,7 +28,12 @@ export class YuccaService {
     this.events.emit(event);
   }
 
-  restoreSnapshotInplace(repositoryId: string, snapshotId: string) {
-    return this.repositoryService.restoreSnapshot(repositoryId, snapshotId, {});
+  async restoreSnapshotInplace(repositoryId: string, snapshotId: string) {
+    const { snapshot } = await this.repositoryService.getSnapshot(repositoryId, snapshotId);
+    await this.repositoryService.restoreSnapshot(repositoryId, snapshotId, {});
+
+    return {
+      tags: snapshot.tags ?? [],
+    };
   }
 }
