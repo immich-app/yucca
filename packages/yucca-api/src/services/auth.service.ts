@@ -1,4 +1,4 @@
-import { isConsumerType, resolveFeatures } from '@common/server';
+import { consumerTypeFlag, isConsumerType, resolveFeatures } from '@common/server';
 import { LoggerRepository, WideContextRepository } from '@common/server/otel';
 import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { parse } from 'cookie';
@@ -187,36 +187,32 @@ export class AuthService {
   }
 
   // Resolves which consumer instance a device-flow session binds to. Absent
-  // type = legacy client → the default consumer. With the multi-consumer flag
-  // off only immich is allowed (still the default consumer — no instances
-  // without the flag); with it on, (type, name) names a reusable instance.
+  // type = legacy client → the default consumer. An explicit type names a
+  // reusable (type, name) instance; restic/fubar require their per-type flag,
+  // immich is always allowed.
   private async resolveDeviceConsumer(
     userId: string,
     features: Record<string, boolean>,
     consumerType?: string,
     consumerName?: string,
   ): Promise<string> {
-    if (consumerType && !isConsumerType(consumerType)) {
-      throw new BadRequestException(`Unknown consumer type '${consumerType}'`);
-    }
-
-    if (!features['multi-consumer']) {
-      if (consumerType && consumerType !== 'immich') {
-        throw new FeatureNotEnabledException('multi-consumer');
-      }
-      const consumer = await this.consumer.getOrCreateDefault(userId);
-      return consumer.id;
-    }
-
-    const type = consumerType ?? 'immich';
     if (!consumerType) {
       const consumer = await this.consumer.getOrCreateDefault(userId);
       return consumer.id;
     }
 
-    const name = consumerName?.trim() || type;
-    const existing = await this.consumer.getByUserTypeName(userId, type, name);
-    const consumer = existing ?? (await this.consumer.create({ userId, type, name }));
+    if (!isConsumerType(consumerType)) {
+      throw new BadRequestException(`Unknown consumer type '${consumerType}'`);
+    }
+
+    const flag = consumerTypeFlag(consumerType);
+    if (flag && !features[flag]) {
+      throw new FeatureNotEnabledException(flag);
+    }
+
+    const name = consumerName?.trim() || consumerType;
+    const existing = await this.consumer.getByUserTypeName(userId, consumerType, name);
+    const consumer = existing ?? (await this.consumer.create({ userId, type: consumerType, name }));
     return consumer.id;
   }
 

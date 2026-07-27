@@ -1,3 +1,4 @@
+import { consumerTypeFlag } from '@common/server';
 import { BadRequestException, Injectable, NotFoundException, Scope, UnauthorizedException } from '@nestjs/common';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
@@ -10,6 +11,7 @@ import { ConsumerRepository } from 'src/repositories/consumer.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
 import { RevocationRepository } from 'src/repositories/revocation.repository';
+import { FeatureNotEnabledException } from 'src/utils/exceptions';
 
 @Injectable({ scope: Scope.REQUEST })
 export class ConsumerService {
@@ -39,6 +41,11 @@ export class ConsumerService {
   }
 
   create(auth: AuthDto, dto: ConsumerCreateRequestDto) {
+    // immich (the default type) is free; restic/fubar are gated per-type.
+    const flag = consumerTypeFlag(dto.type);
+    if (flag && !auth.features[flag]) {
+      throw new FeatureNotEnabledException(flag);
+    }
     return this.consumers.create({ userId: auth.id, type: dto.type, name: dto.name });
   }
 

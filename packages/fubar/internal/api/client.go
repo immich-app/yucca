@@ -63,7 +63,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		return fmt.Errorf("session expired or invalid — run `fubar login` again")
 	}
 	if resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("%s %s: forbidden — is the multi-consumer feature enabled for your account?", method, path)
+		return fmt.Errorf("%s %s: forbidden — is the fubar feature (consumer-fubar) enabled for your account?", method, path)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("%s %s: status %d", method, path, resp.StatusCode)
@@ -228,7 +228,7 @@ func DeviceFlowAs(ctx context.Context, baseURL, consumerType, consumerName strin
 		case "FAILURE":
 			switch event.Reason {
 			case "FEATURE_NOT_ENABLED":
-				return "", fmt.Errorf("your account does not have the multi-consumer feature enabled — ask an admin to run `yuctl users features set <you> multi-consumer on`")
+				return "", fmt.Errorf("your account does not have the fubar feature enabled — ask an admin to run `yuctl users features set <you> consumer-fubar on`")
 			case "EMAIL_NOT_ALLOWED":
 				return "", fmt.Errorf("this email is not allowed during the beta")
 			default:

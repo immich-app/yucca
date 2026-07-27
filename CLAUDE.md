@@ -143,14 +143,18 @@ contract, regenerate rather than editing the client.
   (NOT NULL); device-flow sessions bind to a consumer via `?consumer_type=&consumer_name=` on
   `/auth/oidc/device`. Existing repos were backfilled onto a default `immich` consumer; instance
   attribution is client-driven via `POST /consumers/:id/adopt` (moves default-consumer repos to a
-  named instance), never guessed server-side.
+  named instance), never guessed server-side. The `/consumers` API surface (list, create, adopt,
+  manage — including multiple `immich` instances) is open to **every** authenticated user.
 - **Feature flags** = registry in code (`@common/server` `FeatureFlags`), strict-boolean per-user
-  overrides in `userFeatureFlagOverride`. Resolution is `override ?? registry default`. The
-  registry default flips at GA via a release (code-only defaults). Multi-consumer surface is gated
-  behind the `multi-consumer` flag (`@RequireFeature` guard); default off, so un-flagged users are
-  byte-identical to pre-change behavior. Manage from yuctl: `users features set/clear`,
-  `features enable-batch`. **Boundary rule:** env/cluster-settings = deployment config (ops-owned,
-  per-partition); feature flags = per-user product gating (admin-owned, runtime). Never mix.
+  overrides in `userFeatureFlagOverride`. Resolution is `override ?? registry default`; the default
+  flips at GA via a release (code-only defaults). Flags gate self-service use of the individual
+  non-default consumer *types*, not the whole surface: `consumer-restic` and `consumer-fubar`
+  (both `experimental`, default off) — `immich` needs none. The mapping lives in `@common/server`
+  `ConsumerTypeFlags`/`consumerTypeFlag()`, checked in `ConsumerService.create` and the device
+  flow; admin-provisioned consumers bypass it (admin authority). `@RequireFeature` remains as the
+  generic route-level guard for future whole-route gating. Manage from yuctl: `users features
+  set/clear`, `features enable-batch`. **Boundary rule:** env/cluster-settings = deployment config
+  (ops-owned, per-partition); feature flags = per-user product gating (admin-owned, runtime).
 - **Restic tokens** are tracked (`resticTokens`, one row per mint, jti + consumer claim) and
   revocable: revoke writes `revokedAt` then a Redis key michael checks per request (fail-open — a
   Redis outage never blocks backups; ~5s michael cache delay on revoke). michael enforces only

@@ -72,18 +72,18 @@ describe(AuthService.name, () => {
         sut.authenticate({
           cookie: 'yucca-access-token=my-token',
         }),
-      ).resolves.toEqual({ ...mockUser, features: { 'multi-consumer': false } });
+      ).resolves.toEqual({ ...mockUser, features: { 'consumer-restic': false, 'consumer-fubar': false } });
       expect(mocks.wideContext.addContext).toHaveBeenCalledWith('customerId', mockUser.id);
     });
 
     it('should resolve feature overrides over registry defaults', async () => {
       mocks.user.getByAccessToken.mockResolvedValue(mockUser);
-      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'multi-consumer', value: true }]);
+      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'consumer-fubar', value: true }]);
       await expect(
         sut.authenticate({
           cookie: 'yucca-access-token=my-token',
         }),
-      ).resolves.toEqual(expect.objectContaining({ features: { 'multi-consumer': true } }));
+      ).resolves.toEqual(expect.objectContaining({ features: { 'consumer-restic': false, 'consumer-fubar': true } }));
     });
 
     it('should ignore overrides for flags not in the registry', async () => {
@@ -93,7 +93,7 @@ describe(AuthService.name, () => {
         sut.authenticate({
           cookie: 'yucca-access-token=my-token',
         }),
-      ).resolves.toEqual(expect.objectContaining({ features: { 'multi-consumer': false } }));
+      ).resolves.toEqual(expect.objectContaining({ features: { 'consumer-restic': false, 'consumer-fubar': false } }));
     });
   });
 
@@ -303,22 +303,27 @@ describe(AuthService.name, () => {
       });
     });
 
-    it('rejects non-immich consumers when the flag is off', async () => {
+    it('rejects a fubar consumer without the consumer-fubar flag', async () => {
       await expect(sut.oidcDeviceFlow(jest.fn(), 'fubar', 'my-laptop')).rejects.toThrowErrorMatchingInlineSnapshot(
-        `"Feature 'multi-consumer' is not enabled for this account"`,
+        `"Feature 'consumer-fubar' is not enabled for this account"`,
       );
       expect(mocks.session.create).not.toHaveBeenCalled();
     });
 
-    it('binds the default consumer for immich when the flag is off', async () => {
+    it('binds a named immich instance for everyone (no flag needed)', async () => {
+      mocks.consumer.getByUserTypeName.mockResolvedValue(void 0);
+      mocks.consumer.create.mockResolvedValue({ id: 'immich-home' } as never);
+
       await expect(sut.oidcDeviceFlow(jest.fn(), 'immich', 'home-server')).resolves.toEqual({ accessToken });
+
+      expect(mocks.consumer.create).toHaveBeenCalledWith({ userId: mockUser.id, type: 'immich', name: 'home-server' });
       expect(mocks.session.create).toHaveBeenCalledWith(
-        expect.objectContaining({ consumerId: 'default-consumer', kind: 'device' }),
+        expect.objectContaining({ consumerId: 'immich-home', kind: 'device' }),
       );
     });
 
-    it('creates a named consumer instance when the flag is on', async () => {
-      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'multi-consumer', value: true }]);
+    it('creates a fubar consumer instance when consumer-fubar is on', async () => {
+      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'consumer-fubar', value: true }]);
       mocks.consumer.getByUserTypeName.mockResolvedValue(void 0);
       mocks.consumer.create.mockResolvedValue({ id: 'fubar-consumer' } as never);
 
@@ -331,7 +336,7 @@ describe(AuthService.name, () => {
     });
 
     it('reuses an existing consumer instance by (type, name)', async () => {
-      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'multi-consumer', value: true }]);
+      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'consumer-fubar', value: true }]);
       mocks.consumer.getByUserTypeName.mockResolvedValue({ id: 'existing-fubar' } as never);
 
       await expect(sut.oidcDeviceFlow(jest.fn(), 'fubar', 'my-laptop')).resolves.toEqual({ accessToken });

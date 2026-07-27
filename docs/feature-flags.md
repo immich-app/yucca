@@ -28,8 +28,8 @@ kill-switch that survives a GA default flip).
   as `features: Record<string, boolean>` — so web, the orchestrator SDK, and
   fubar all read the same resolved state.
 - **Device flow** honors flags too: a non-immich `consumer_type` on
-  `/auth/oidc/device` fails with `FEATURE_NOT_ENABLED` unless `multi-consumer`
-  is on.
+  `/auth/oidc/device` fails with `FEATURE_NOT_ENABLED` unless the type's flag
+  (`consumer-fubar`) is on. immich needs no flag.
 
 ## Lifecycle (`stage`)
 
@@ -48,11 +48,11 @@ from the registry plus their override row.
 
 ```bash
 yuctl features list                          # registry: defaults, stages, override counts
-yuctl features users multi-consumer          # who has an override, set by whom, why
+yuctl features users consumer-fubar           # who has an override, set by whom, why
 yuctl users features list <email>            # one user's resolved flags + overrides
-yuctl users features set <email> multi-consumer on --reason "beta cohort 1"
-yuctl users features clear <email> multi-consumer
-yuctl features enable-batch multi-consumer 50   # oldest 50 users without an override
+yuctl users features set <email> consumer-fubar on --reason "early access"
+yuctl users features clear <email> consumer-fubar
+yuctl features enable-batch consumer-fubar 50   # oldest 50 users without an override
 ```
 
 Batch enrollment orders by `users.createdAt` then `id` (users predating the

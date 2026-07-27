@@ -8,14 +8,16 @@ import {
   ConsumerResponseDto,
   ConsumerUpdateRequestDto,
 } from 'src/dto/consumer.dto';
-import { Auth, AuthRoute, RequireFeature } from 'src/middleware/auth.guard';
+import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { ConsumerService } from 'src/services/consumer.service';
 
+// The consumer surface is open to every authenticated user (multiple immich
+// instances, adopt, management). Creating/binding a restic or fubar consumer
+// is gated per-type by ConsumerService against the user's feature flags.
 @Controller('/consumers')
 export class ConsumerController {
   constructor(private readonly consumers: ConsumerService) {}
 
-  // Ungated: with the flag off this returns the default consumer only.
   @Get()
   @AuthRoute()
   @ApiOkResponse({ type: ConsumerListResponseDto })
@@ -25,7 +27,6 @@ export class ConsumerController {
 
   @Post()
   @AuthRoute()
-  @RequireFeature('multi-consumer')
   @ApiOkResponse({ type: ConsumerResponseDto })
   async createConsumer(@Auth() auth: AuthDto, @Body() dto: ConsumerCreateRequestDto): Promise<ConsumerResponseDto> {
     const consumer = await this.consumers.create(auth, dto);
@@ -34,7 +35,6 @@ export class ConsumerController {
 
   @Patch('/:id')
   @AuthRoute()
-  @RequireFeature('multi-consumer')
   @HttpCode(HttpStatus.NO_CONTENT)
   async updateConsumer(
     @Auth() auth: AuthDto,
@@ -46,7 +46,6 @@ export class ConsumerController {
 
   @Delete('/:id')
   @AuthRoute()
-  @RequireFeature('multi-consumer')
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteConsumer(@Auth() auth: AuthDto, @Param('id') id: string): Promise<void> {
     return this.consumers.delete(auth, id);
@@ -54,7 +53,6 @@ export class ConsumerController {
 
   @Post('/:id/adopt')
   @AuthRoute()
-  @RequireFeature('multi-consumer')
   @HttpCode(HttpStatus.NO_CONTENT)
   adoptRepositories(
     @Auth() auth: AuthDto,

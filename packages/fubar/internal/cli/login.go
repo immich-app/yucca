@@ -78,8 +78,8 @@ func newLoginCmd() *cobra.Command {
 			fmt.Fprintln(out)
 			fmt.Fprintf(out, "%s logged in as %s (%s)\n", ui.Good.Render("✓"), auth.Name, auth.Email)
 			fmt.Fprintf(out, "  consumer: fubar/%s\n", name)
-			if !auth.Features["multi-consumer"] {
-				fmt.Fprintln(out, ui.Warn.Render("  note: the multi-consumer feature is not enabled for this account yet"))
+			if !auth.Features["consumer-fubar"] {
+				fmt.Fprintln(out, ui.Warn.Render("  note: the fubar feature (consumer-fubar) is not enabled for this account yet"))
 			}
 			return nil
 		},

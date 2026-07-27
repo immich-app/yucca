@@ -39,7 +39,7 @@ describe('ConsumerController (e2e)', () => {
   });
 
   describe('GET /consumers', () => {
-    it('lists the default consumer even with the flag off', async () => {
+    it('lists the default consumer for everyone', async () => {
       const { body } = await request(app.getHttpServer()).get('/api/consumers').set('Cookie', cookie()).expect(200);
 
       expect(body.consumers).toEqual([
@@ -56,7 +56,17 @@ describe('ConsumerController (e2e)', () => {
   });
 
   describe('POST /consumers', () => {
-    it('403s when the multi-consumer flag is off', async () => {
+    it('lets anyone create additional immich instances (no flag)', async () => {
+      const { body } = await request(app.getHttpServer())
+        .post('/api/consumers')
+        .set('Cookie', cookie())
+        .send({ type: 'immich', name: 'second-server' })
+        .expect(201);
+
+      expect(body.consumer).toMatchObject({ type: 'immich', name: 'second-server', repositoryCount: 0 });
+    });
+
+    it('403s creating a fubar consumer without consumer-fubar', async () => {
       await request(app.getHttpServer())
         .post('/api/consumers')
         .set('Cookie', cookie())
@@ -64,8 +74,16 @@ describe('ConsumerController (e2e)', () => {
         .expect(403);
     });
 
-    it('creates a consumer when the flag is on', async () => {
-      await testUtils.setFeatureOverride(user.id, 'multi-consumer', true);
+    it('403s creating a restic consumer without consumer-restic', async () => {
+      await request(app.getHttpServer())
+        .post('/api/consumers')
+        .set('Cookie', cookie())
+        .send({ type: 'restic', name: 'manual' })
+        .expect(403);
+    });
+
+    it('creates a fubar consumer when consumer-fubar is on', async () => {
+      await testUtils.setFeatureOverride(user.id, 'consumer-fubar', true);
 
       const { body } = await request(app.getHttpServer())
         .post('/api/consumers')
@@ -77,8 +95,6 @@ describe('ConsumerController (e2e)', () => {
     });
 
     it('rejects unknown consumer types', async () => {
-      await testUtils.setFeatureOverride(user.id, 'multi-consumer', true);
-
       await request(app.getHttpServer())
         .post('/api/consumers')
         .set('Cookie', cookie())
@@ -88,8 +104,6 @@ describe('ConsumerController (e2e)', () => {
   });
 
   describe('DELETE /consumers/:id', () => {
-    beforeEach(() => testUtils.setFeatureOverride(user.id, 'multi-consumer', true));
-
     it('refuses to delete the default consumer', async () => {
       await request(app.getHttpServer()).delete(`/api/consumers/${consumer.id}`).set('Cookie', cookie()).expect(400);
     });
@@ -121,8 +135,6 @@ describe('ConsumerController (e2e)', () => {
   });
 
   describe('POST /consumers/:id/adopt', () => {
-    beforeEach(() => testUtils.setFeatureOverride(user.id, 'multi-consumer', true));
-
     it('re-parents default-consumer repositories', async () => {
       const repository = await testUtils.createRepository(user.id);
       const fubar = await testUtils.createConsumer(user.id, 'fubar', 'laptop');

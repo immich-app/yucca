@@ -130,7 +130,7 @@ func TestFubarEndToEnd(t *testing.T) {
 		t.Fatal("expected the first fubar login to fail (feature disabled)")
 	}
 
-	// 2. Enable multi-consumer for this freshly-created user.
+	// 2. Enable consumer-fubar for this freshly-created user.
 	db, err := sql.Open("pgx", pgDSN)
 	if err != nil {
 		t.Fatalf("open pg: %v", err)
@@ -143,7 +143,7 @@ func TestFubarEndToEnd(t *testing.T) {
 	}
 	if _, err := db.ExecContext(ctx,
 		`INSERT INTO "userFeatureFlagOverride" ("userId", flag, value, "setBy")
-		 VALUES ($1, 'multi-consumer', true, 'fubar-it')
+		 VALUES ($1, 'consumer-fubar', true, 'fubar-it')
 		 ON CONFLICT ("userId", flag) DO UPDATE SET value = true`, userID); err != nil {
 		t.Fatalf("enable flag: %v", err)
 	}
@@ -162,8 +162,8 @@ func TestFubarEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get auth: %v", err)
 	}
-	if !auth.Features["multi-consumer"] {
-		t.Fatal("expected multi-consumer to be enabled")
+	if !auth.Features["consumer-fubar"] {
+		t.Fatal("expected consumer-fubar to be enabled")
 	}
 	if auth.ConsumerID == nil {
 		t.Fatal("expected the session to be bound to a consumer")

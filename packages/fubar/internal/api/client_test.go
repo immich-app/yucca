@@ -47,7 +47,7 @@ func TestDeviceFlowFeatureNotEnabled(t *testing.T) {
 	defer srv.Close()
 
 	_, err := DeviceFlow(context.Background(), srv.URL, "x", nil)
-	if err == nil || !strings.Contains(err.Error(), "multi-consumer") {
+	if err == nil || !strings.Contains(err.Error(), "consumer-fubar") {
 		t.Fatalf("expected feature-not-enabled error, got %v", err)
 	}
 }

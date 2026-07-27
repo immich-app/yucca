@@ -117,7 +117,7 @@ Everything lives under `~/.config/fubar/`:
 
 ## Troubleshooting
 
-- **"the multi-consumer feature is not enabled for this account"** — fubar is a
+- **"the fubar feature (consumer-fubar) is not enabled for this account"** — fubar is a
   newer way to back up, and access is being rolled out gradually. Ask your FUTO
   Backups administrator to enable it for your account.
 - **Something's not working** — run `fubar doctor`. It checks your login,
@@ -153,7 +153,7 @@ FUBAR_IT=1 mise fubar:test:integration
 
 It runs the whole path a user takes — device-flow login registering a `fubar`
 consumer, repository creation, a real restic backup through michael, snapshot
-verification, telemetry, and revocation — enabling the `multi-consumer` flag for
+verification, telemetry, and revocation — enabling the `consumer-fubar` flag for
 its throwaway test user directly in Postgres.
 
 restic is pinned (version + per-platform SHA256) in `internal/restic/fetch.go`,

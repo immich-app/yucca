@@ -61,9 +61,9 @@ func newDoctorCmd() *cobra.Command {
 			}
 			check("api session", err, detail)
 
-			if err == nil && !auth.Features["multi-consumer"] {
+			if err == nil && !auth.Features["consumer-fubar"] {
 				problems++
-				fmt.Fprintf(out, "  %s multi-consumer feature is not enabled for this account\n", ui.Warn.Render("!"))
+				fmt.Fprintf(out, "  %s the fubar feature (consumer-fubar) is not enabled for this account\n", ui.Warn.Render("!"))
 			}
 
 			cfg, err := config.Load()

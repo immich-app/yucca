@@ -45,15 +45,15 @@ describe('FeaturesController (e2e)', () => {
     it('lists the registry with override counts', async () => {
       const user = await testUtils.createUser();
       await request(app.getHttpServer())
-        .put(`/api/user/${user.id}/features/multi-consumer`)
+        .put(`/api/user/${user.id}/features/consumer-fubar`)
         .set('Cookie', authCookie)
         .send({ value: true, reason: 'testing' })
         .expect(200);
 
       const { body } = await request(app.getHttpServer()).get('/api/features').set('Cookie', authCookie).expect(200);
 
-      const flag = body.flags.find((f: { key: string }) => f.key === 'multi-consumer');
-      expect(flag).toMatchObject({ key: 'multi-consumer', default: false, stage: 'beta', overrides: 1 });
+      const flag = body.flags.find((f: { key: string }) => f.key === 'consumer-fubar');
+      expect(flag).toMatchObject({ key: 'consumer-fubar', default: false, stage: 'experimental', overrides: 1 });
     });
   });
 
@@ -62,7 +62,7 @@ describe('FeaturesController (e2e)', () => {
       const user = await testUtils.createUser();
 
       await request(app.getHttpServer())
-        .put(`/api/user/${user.id}/features/multi-consumer`)
+        .put(`/api/user/${user.id}/features/consumer-fubar`)
         .set('Cookie', authCookie)
         .send({ value: true, reason: 'beta cohort 1' })
         .expect(200);
@@ -71,13 +71,13 @@ describe('FeaturesController (e2e)', () => {
         .get(`/api/user/${user.id}/features`)
         .set('Cookie', authCookie)
         .expect(200);
-      expect(body.features).toEqual({ 'multi-consumer': true });
+      expect(body.features).toEqual({ 'consumer-restic': false, 'consumer-fubar': true });
       expect(body.overrides).toEqual([
-        expect.objectContaining({ flag: 'multi-consumer', value: true, setBy: 'admin', reason: 'beta cohort 1' }),
+        expect.objectContaining({ flag: 'consumer-fubar', value: true, setBy: 'admin', reason: 'beta cohort 1' }),
       ]);
 
       await request(app.getHttpServer())
-        .delete(`/api/user/${user.id}/features/multi-consumer`)
+        .delete(`/api/user/${user.id}/features/consumer-fubar`)
         .set('Cookie', authCookie)
         .expect(204);
 
@@ -85,7 +85,7 @@ describe('FeaturesController (e2e)', () => {
         .get(`/api/user/${user.id}/features`)
         .set('Cookie', authCookie)
         .expect(200));
-      expect(body.features).toEqual({ 'multi-consumer': false });
+      expect(body.features).toEqual({ 'consumer-restic': false, 'consumer-fubar': false });
       expect(body.overrides).toEqual([]);
     });
 
@@ -106,7 +106,7 @@ describe('FeaturesController (e2e)', () => {
       const third = await testUtils.createUser({ name: 'third', createdAt: new Date('2026-03-01T00:00:00Z') });
 
       const { body } = await request(app.getHttpServer())
-        .post('/api/features/multi-consumer/enable-batch')
+        .post('/api/features/consumer-fubar/enable-batch')
         .set('Cookie', authCookie)
         .send({ count: 2 })
         .expect(201);
@@ -116,7 +116,7 @@ describe('FeaturesController (e2e)', () => {
 
       // Re-running skips already-overridden users.
       const { body: second_run } = await request(app.getHttpServer())
-        .post('/api/features/multi-consumer/enable-batch')
+        .post('/api/features/consumer-fubar/enable-batch')
         .set('Cookie', authCookie)
         .send({ count: 2 })
         .expect(201);
@@ -126,13 +126,13 @@ describe('FeaturesController (e2e)', () => {
     it('lists users with overrides for a flag', async () => {
       const user = await testUtils.createUser();
       await request(app.getHttpServer())
-        .put(`/api/user/${user.id}/features/multi-consumer`)
+        .put(`/api/user/${user.id}/features/consumer-fubar`)
         .set('Cookie', authCookie)
         .send({ value: false, reason: 'opt-out' })
         .expect(200);
 
       const { body } = await request(app.getHttpServer())
-        .get('/api/features/multi-consumer/users')
+        .get('/api/features/consumer-fubar/users')
         .set('Cookie', authCookie)
         .expect(200);
 
