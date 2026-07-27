@@ -30,9 +30,9 @@ export class YuccaService {
 
   async restoreSnapshotInplace(repositoryId: string, snapshotId: string) {
     const { snapshot } = await this.repositoryService.getSnapshot(repositoryId, snapshotId);
-    await this.repositoryService.restoreSnapshot(repositoryId, snapshotId, {});
 
     return {
+      ...(await this.repositoryService.restoreSnapshot(repositoryId, snapshotId, {})),
       tags: snapshot.tags ?? [],
     };
   }
