@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/immich-app/yucca/compare/v0.22.0...v0.22.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **yucca sdk:** include task and logId for restore ([#349](https://github.com/immich-app/yucca/issues/349)) ([f6a7dd9](https://github.com/immich-app/yucca/commit/f6a7dd9d9de08317575c24292364027914a73e72))
+
 ## [0.22.0](https://github.com/immich-app/yucca/compare/v0.21.0...v0.22.0) (2026-07-27)
 
 
