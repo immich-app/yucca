@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.0](https://github.com/immich-app/yucca/compare/v0.21.0...v0.22.0) (2026-07-27)
+
+
+### Features
+
+* store backup file name in tags ([#348](https://github.com/immich-app/yucca/issues/348)) ([661cc6d](https://github.com/immich-app/yucca/commit/661cc6d0ad1974bedbd2edb5794afddcf4e06885))
+* **yucca:** more per user metrics ([#345](https://github.com/immich-app/yucca/issues/345)) ([9883dfe](https://github.com/immich-app/yucca/commit/9883dfe13cb74bb7e77f38e7cb71d8046fb1e4ff))
+
 ## [0.21.0](https://github.com/immich-app/yucca/compare/v0.20.0...v0.21.0) (2026-07-27)
 
 
