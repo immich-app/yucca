@@ -1,5 +1,5 @@
 ---
-# Drift detection — compares expected Ansible state against live cluster.
+# Drift detection: compares expected Ansible state against live cluster.
 # Read-only. No changes. Reports mismatches.
 #
 # Usage:
@@ -112,6 +112,44 @@
             'match': (ssd_sched.stdout | trim | default('none'))
                      == ceph_ssd_scheduler
           }] }}
+
+    # SATA link power management
+    # Every AHCI port matters here, not a representative one: a single port
+    # back on min_power_with_partial is enough to stall an OSD, so report the
+    # distribution when the ports disagree.
+    - name: Check SATA link power management policy
+      ansible.builtin.shell: |
+        set -o pipefail
+        GLOB=/sys/class/scsi_host/host*/link_power_management_policy
+        DISTINCT=$(cat $GLOB 2>/dev/null | sort -u | grep -c .)
+        if [ "$DISTINCT" -eq 0 ]; then
+          # No LPM-capable ports (SAS controllers expose scsi_host without the
+          # attribute). The role skips these too, so there is nothing to drift.
+          echo n/a
+        elif [ "$DISTINCT" -eq 1 ]; then
+          cat $GLOB 2>/dev/null | sort -u
+        else
+          cat $GLOB 2>/dev/null | sort | uniq -c \
+            | awk '{printf "%s=%s ", $2, $1}' | sed 's/^/mixed: /; s/ $//'
+        fi
+      args:
+        executable: /bin/bash
+      register: sata_lpm
+      changed_when: false
+      when: ceph_sata_link_pm_enabled | bool
+
+    - name: Record SATA link power management drift
+      ansible.builtin.set_fact:
+        drift_results: >-
+          {{ drift_results + [{
+            'category': 'hardware',
+            'item': 'SATA link power mgmt',
+            'expected': ceph_sata_link_pm_policy,
+            'actual': sata_lpm.stdout | trim | default('n/a'),
+            'match': (sata_lpm.stdout | trim | default('n/a'))
+                     in [ceph_sata_link_pm_policy, 'n/a']
+          }] }}
+      when: ceph_sata_link_pm_enabled | bool
 
     # nftables
     - name: Check nftables policy

@@ -1,4 +1,4 @@
-# Ceph disk tuning udev rules — managed by Ansible (hardware-tuning role)
+# Ceph disk tuning udev rules, managed by Ansible (hardware-tuning role)
 # Applied on device add/change events. Survives reboots and hot-plug.
 
 # HDD: rotational devices
@@ -13,4 +13,12 @@ ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="0", ATTR{queu
 ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="0", ATTR{queue/read_ahead_kb}="{{ ceph_ssd_readahead_kb }}"
 {% if ceph_ssd_nr_requests > 0 %}
 ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="0", ATTR{queue/nr_requests}="{{ ceph_ssd_nr_requests }}"
+{% endif %}
+{% if ceph_sata_link_pm_enabled %}
+
+# SATA link power management: keep the PHY out of Partial/Slumber. Waking it
+# costs milliseconds and shows up as a BlueStore slow op, and an OSD disk is
+# never idle long enough for the saving to be worth it.
+# TEST== guards non-SATA hosts, which have no such attribute.
+ACTION=="add|change", SUBSYSTEM=="scsi_host", KERNEL=="host*", TEST=="link_power_management_policy", ATTR{link_power_management_policy}="{{ ceph_sata_link_pm_policy }}"
 {% endif %}
