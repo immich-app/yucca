@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "@common/server",
-  "version": "0.19.2",
+  "version": "0.19.3",
   "description": "Common code for the NestJS applications",
   "keywords": [],
   "author": "",

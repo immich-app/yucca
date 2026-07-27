@@ -1,12 +1,13 @@
 export { default as BackendsList } from './components/backends/BackendsList.svelte';
 export { default as BackupsList } from './components/backups/BackupsList.svelte';
+export { default as ViewLogModal } from './components/backups/dialogs/ViewLogModal.svelte';
+export { default as Dashboard } from './components/dashboard/Dashboard.svelte';
 export { default as ImmichBackupsPage } from './components/integrations/immich/ImmichBackupsPage.svelte';
 export { default as ImmichManageBackup } from './components/integrations/immich/ImmichManageBackup.svelte';
 export { default as ImmichOnboardingRestoreFlow } from './components/integrations/immich/ImmichOnboardingRestoreFlow.svelte';
 export { default as ImmichOnboardingSetupFlow } from './components/integrations/immich/ImmichOnboardingSetupFlow.svelte';
 export { default as OnboardingGate } from './components/onboarding/OnboardingGate.svelte';
 export { default as ScheduleList } from './components/schedules/ScheduleList.svelte';
-export { default as Dashboard } from './components/dashboard/Dashboard.svelte';
 export { default as VisualisationGauge } from './components/ui/VisualisationGauge.svelte';
 export { default as VisualisationSegmentedBar } from './components/ui/VisualisationSegmentedBar.svelte';
 export { default as OnEvents } from './components/util/OnEvents.svelte';
