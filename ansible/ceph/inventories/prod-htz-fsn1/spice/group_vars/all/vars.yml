@@ -176,10 +176,25 @@ ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expan
 # OSD device map (by-path, consumed by ceph_deploy/osd-spec.yml.j2, NVMe-RAID shape:
 # no sas_path_prefix -> data path is /dev/disk/by-path/<path_phy>, db is /dev/<db>).
 # The 14x 20TB SATA HDDs sit on 3 AHCI controllers; the by-path layout is IDENTICAL
-# across 46 of the 47 nodes (verified 2026-07-10), so it lives here as a group_var
-# instead of 47 host_vars. Exception: spice-ceph-miguel has one disk on
+# across 47 of the 48 nodes (verified 2026-07-10), so it lives here as a group_var
+# instead of 48 host_vars. Exception: spice-ceph-miguel has one disk on
 # 46:00.0-ata-4 (not 87:00.0-ata-4) and overrides ceph_hdd_osds in its host_vars.
 # db-slotN and ssd-osd LVs are carved from vg0 at deploy by lvm-setup.
+#
+# The {path_phy, db} grouping below is PRESENTATIONAL, not a binding. A cephadm
+# OSD spec has no per-disk block.db syntax: osd-spec.yml.j2 loops this list twice
+# and emits data_devices.paths and db_devices.paths as two independent arrays,
+# so ceph-volume pairs them in whatever order it happens to process. On spice it
+# walked the two lists in opposite directions, and every disk ended up on slot
+# 13-N rather than slot N (verified on alyssa, 2026-07-27). That is harmless:
+# all 14 slots are identical 128G LVs on the same vg0 mirror, so only their
+# count and size matter, not which HDD gets which.
+#
+# Do NOT read a row below as "this disk uses this slot" when diagnosing. Resolve
+# the real pairing with `cephadm ceph-volume lvm list`. To pin a pairing (e.g.
+# rebuilding one replaced disk), create the OSD explicitly rather than via the
+# spec: ceph-volume lvm create --data <by-path> --block.db <vg/db-slot>.
+# See docs/runbooks/replace-disk.md.
 ceph_hdd_osds:
   - { path_phy: pci-0000:45:00.0-ata-1, db: vg0/db-slot0 }
   - { path_phy: pci-0000:45:00.0-ata-2, db: vg0/db-slot1 }
