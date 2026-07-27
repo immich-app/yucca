@@ -17,13 +17,21 @@ export class ResticRepository {
       .run();
   }
 
-  async backup(repository: string, key: Uint8Array, paths: string[], logStream?: Writable, signal?: AbortSignal) {
+  async backup(
+    repository: string,
+    key: Uint8Array,
+    paths: string[],
+    logStream?: Writable,
+    signal?: AbortSignal,
+    tags: string[] = [],
+  ) {
     const write = createSampledLogWriter(logStream);
 
     return await backup()
       .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
+      .tag(...tags)
       .addFile(...paths)
       .signal(signal)
       .on('event', write)
@@ -80,6 +88,15 @@ export class ResticRepository {
       .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
+      .run();
+  }
+
+  async snapshot(repository: string, key: Uint8Array, snapshotId: string) {
+    return await snapshots()
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .repository(repository)
+      .password(Buffer.from(key).toString('hex'))
+      .snapshot(snapshotId)
       .run();
   }
 

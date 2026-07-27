@@ -16,7 +16,7 @@ export type ImmichIntegration = {
     exclusionPatterns: string[];
   }[];
   hooks: {
-    createDatabaseBackup(): Promise<void>;
+    createDatabaseBackup(): Promise<string>;
     enterMaintenanceRollback(
       repositoryId: string,
       snapshotId: string,

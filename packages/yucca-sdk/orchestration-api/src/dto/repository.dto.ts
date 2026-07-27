@@ -231,6 +231,9 @@ export class SnapshotDto {
   @ApiProperty({ type: [String] })
   paths!: string[];
 
+  @ApiProperty({ type: [String], required: false })
+  tags?: string[];
+
   @ApiProperty({ type: SnapshotSummaryDto, required: false })
   summary?: SnapshotSummaryDto;
 }
@@ -238,6 +241,11 @@ export class SnapshotDto {
 export class ListSnapshotsResponseDto {
   @ApiProperty({ type: [SnapshotDto] })
   snapshots!: SnapshotDto[];
+}
+
+export class GetSnapshotResponseDto {
+  @ApiProperty({ type: SnapshotDto })
+  snapshot!: SnapshotDto;
 }
 
 export class RepositorySnapshotRestoreRequestDto {
