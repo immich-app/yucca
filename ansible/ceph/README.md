@@ -134,6 +134,7 @@ Inventory + secrets-template scaffolding live in `yucca/tf/` -- run
 | [docs/adding-a-cluster.md](docs/adding-a-cluster.md) | Developers -- inventory setup, secrets |
 | [docs/secrets.md](docs/secrets.md) | Developers/ops -- 1Password integration |
 | [docs/naming.md](docs/naming.md) | Everyone -- hostname and inventory naming |
+| [docs/cluster-profiles.md](docs/cluster-profiles.md) | Ops -- per-cluster hosts, SSH, vaults, shape differences |
 | [docs/hardware.md](docs/hardware.md) | Ops/procurement -- node specs and hardware shapes |
 | [docs/s3-integration.md](docs/s3-integration.md) | App developers -- endpoints, boto3, certs |
 | [docs/security-model.md](docs/security-model.md) | InfoSec -- encryption, users, firewall |

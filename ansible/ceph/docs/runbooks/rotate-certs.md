@@ -9,16 +9,20 @@ changes (new nodes added, DNS name changed).
 - `op` session live (desktop unlocked or `OP_SERVICE_ACCOUNT_TOKEN` set)
 - Cluster is healthy
 
+> Resolve `<ssh-target>`, `<inventory>`, and `<rgw-dns>` for your cluster from
+> [cluster-profiles.md](../cluster-profiles.md) before running anything here.
+> The examples below show sietch values; spice differs in every one of them.
+
 ---
 
 ## 1. Check current certificate expiry
 
 ```bash
-ssh ansible-iac@sietch-ceph-laurel
+ssh <ssh-target>
 sudo openssl x509 -in /etc/ceph/rgw-ssl.crt -noout -subject -dates -ext subjectAltName
 ```
 
-Output shows:
+Output shows (sietch; spice reads `DE / Saxony / Falkenstein` and its own CN):
 
 ```
 subject=C = US, ST = Texas, L = Austin, O = FUTO, CN = s3.staging.austin.int.futo.cloud
@@ -57,7 +61,7 @@ scripts/ansible-play.sh rotate-certs.yml
   new cert. Export with:
 
 ```bash
-ssh ansible-iac@sietch-ceph-laurel sudo cat /etc/ceph/rgw-ssl.crt
+ssh <ssh-target> sudo cat /etc/ceph/rgw-ssl.crt
 ```
 
 ## 3. Verify after rotation
@@ -67,7 +71,7 @@ ssh ansible-iac@sietch-ceph-laurel sudo cat /etc/ceph/rgw-ssl.crt
 The playbook prints this, but to verify manually:
 
 ```bash
-ssh ansible-iac@sietch-ceph-laurel
+ssh <ssh-target>
 sudo openssl x509 -in /etc/ceph/rgw-ssl.crt -noout -subject -dates -ext subjectAltName
 ```
 
@@ -75,7 +79,7 @@ sudo openssl x509 -in /etc/ceph/rgw-ssl.crt -noout -subject -dates -ext subjectA
 
 ```bash
 # From a node in the cluster (self-signed cert)
-curl -k https://s3.staging.austin.int.futo.cloud:443/
+curl -k https://<rgw-dns>:443/
 ```
 
 Expected: XML response with `ListAllMyBucketsResult` or `AccessDenied`
@@ -83,8 +87,10 @@ Expected: XML response with `ListAllMyBucketsResult` or `AccessDenied`
 
 ### Test direct node access
 
+Any node's bond IP, to confirm the per-node SANs validate:
+
 ```bash
-curl -k https://10.10.10.90:443/
+curl -k https://<node-bond-ip>:443/
 ```
 
 ### Check RGW daemons are running
@@ -93,7 +99,7 @@ curl -k https://10.10.10.90:443/
 ceph orch ls --service-type rgw
 ```
 
-Expected: running count matches the number of ceph_nodes (currently 3).
+Expected: running count matches the cluster's node count (sietch 3, spice 48).
 
 ### Check dashboard can reach RGW
 
@@ -104,18 +110,21 @@ verification disabled for self-signed certs).
 ## Certificate configuration
 
 The cert parameters are controlled by these variables in
-`inventories/staging-austin/sietch/group_vars/all/vars.yml`:
+the cluster's `<inventory>/group_vars/all/vars.yml`:
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `ceph_rgw_ssl` | `true` | Enable TLS on RGW frontend |
-| `ceph_rgw_ssl_cert_days` | `3650` | Validity period (10 years) |
-| `ceph_rgw_ssl_cert_subject_c` | `US` | Country |
-| `ceph_rgw_ssl_cert_subject_st` | `Texas` | State |
-| `ceph_rgw_ssl_cert_subject_l` | `Austin` | Locality |
-| `ceph_rgw_ssl_cert_subject_o` | `FUTO` | Organization |
-| `ceph_rgw_ssl_cert_email` | `yucca@futo.org` | Contact email |
-| `ceph_rgw_dns_name` | `s3.staging.austin.int.futo.cloud` | CN and primary SAN |
+These are set per cluster, not shared, so the values differ between sietch and
+spice. Locality follows where the hardware physically sits.
+
+| Variable | sietch | spice | Purpose |
+|---|---|---|---|
+| `ceph_rgw_ssl` | `true` | `true` | Enable TLS on RGW frontend |
+| `ceph_rgw_ssl_cert_days` | `3650` | `3650` | Validity period (10 years) |
+| `ceph_rgw_ssl_cert_subject_c` | `US` | `DE` | Country |
+| `ceph_rgw_ssl_cert_subject_st` | `Texas` | `Saxony` | State |
+| `ceph_rgw_ssl_cert_subject_l` | `Austin` | `Falkenstein` | Locality |
+| `ceph_rgw_ssl_cert_subject_o` | `FUTO` | `FUTO` | Organization |
+| `ceph_rgw_ssl_cert_email` | `yucca@futo.org` | `yucca@futo.org` | Contact email |
+| `ceph_rgw_dns_name` | `s3.staging.austin.int.futo.cloud` | `s3.{{ cluster_domain }}` | CN and primary SAN |
 
 SANs are auto-generated from inventory: per-node FQDNs and bond IPs are
 included so direct-host access validates.
