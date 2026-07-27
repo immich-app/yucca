@@ -24,7 +24,14 @@ tunnelProtocol: geneve
 # node-IP traffic egressing wt0 (NetBird, the operator plane) is still SNAT'd to
 # the node's mesh address (which WireGuard accepts). Requires BPF masquerade on.
 enableIPv4Masquerade: true
+# netkit datapath (replaces veth; zero-overhead netns crossing, tcx attachments).
+# Needs kernel >= 6.8 + BPF host routing — both hold here (Talos 6.18, KPR + BPF
+# masquerade). NOT switchable in place: every node was rolled onto netkit
+# (drain → label → reboot, via a transitional label-gated CiliumNodeConfig) on
+# 2026-07-27 before this became the cluster-wide default. bpf.tproxy must stay
+# off (broken under netkit, cilium#39892).
 bpf:
+  datapathMode: netkit
   masquerade: true
 ipMasqAgent:
   enabled: true
