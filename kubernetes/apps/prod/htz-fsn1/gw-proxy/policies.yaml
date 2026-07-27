@@ -1,0 +1,19 @@
+---
+# HTTP/2 + buffer tuning for the gw (michael) listener, validated 2026-07-24:
+# EG defaults (64KiB stream / 1MiB conn windows, 32KiB buffers) needlessly
+# constrain per-connection throughput. ALPN deliberately untouched (h2 stays).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: gw-h2-windows
+  namespace: envoy-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: gw
+  connection:
+    bufferLimit: 4Mi
+  http2:
+    initialStreamWindowSize: 4Mi
+    initialConnectionWindowSize: 32Mi

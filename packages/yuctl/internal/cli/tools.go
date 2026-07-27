@@ -33,6 +33,7 @@ type benchFlags struct {
 	host          string
 	fromHere      bool
 	sshIdentity   string
+	sshUser       string
 	agentBin      string
 	repo          string
 	repoID        string
@@ -59,6 +60,7 @@ func (f *benchFlags) registerCommon(c *cobra.Command) {
 	c.Flags().StringVar(&f.host, "host", "", "ssh destination of the management host (default: the region's first mgmt host from discovery)")
 	c.Flags().BoolVar(&f.fromHere, "from-here", false, "run the benchmark on this machine (no ssh; agent runs in-process)")
 	c.Flags().StringVar(&f.sshIdentity, "ssh-identity", "", "ssh private key for the management host (default: ssh agent/config)")
+	c.Flags().StringVar(&f.sshUser, "ssh-user", "", "ssh username for the discovery-resolved mgmt host (default: your local username; identity-registry accounts differ)")
 	c.Flags().StringVar(&f.agentBin, "agent-bin", "", "local linux/amd64 bench-agent binary (default: the embedded one)")
 	c.Flags().StringVar(&f.repo, "repo", "", "restic repository URL; skips admin-api provisioning (default $RESTIC_REPOSITORY, else a repo is created via admin-api)")
 	c.Flags().StringVar(&f.repoID, "repo-id", "", "existing repository id; a fresh URL is minted via admin-api")
@@ -170,6 +172,9 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 			return fmt.Errorf("discovery has no mgmt hosts for %s@%s; pass --host (or --from-here)", cc.Partition, cc.Region)
 		}
 		host = hosts[0].PublicIP
+		if f.sshUser != "" {
+			host = f.sshUser + "@" + host
+		}
 		log.Info().Str("mgmt", hosts[0].Name).Str("host", host).Msg("using mgmt host from discovery")
 	}
 
