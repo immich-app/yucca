@@ -20,6 +20,16 @@ const schema = z.object({
   POSTGRES_DATABASE: z.string(),
   POSTGRES_SSL: z.union([z.enum(['require', 'allow', 'prefer', 'verify-full']), z.boolean()]).default(false),
 
+  ALLOWED_EMAIL_DOMAINS: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((domain) => domain.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+
   OIDC_ISSUER: z.url().transform((url) => new URL(url)),
   OIDC_CLIENT_ID: z.string(),
   OIDC_CLIENT_SECRET: z.string(),

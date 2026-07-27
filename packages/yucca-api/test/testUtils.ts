@@ -22,6 +22,27 @@ export const testUtils = {
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
+    await db.deleteFrom('userAllowlist').execute();
+  },
+
+  createAllowlistEntry: ({
+    email,
+    inviteCode = 'TESTCODE99',
+    invited = true,
+  }: {
+    email: string;
+    inviteCode?: string;
+    invited?: boolean;
+  }) => {
+    return getDb()
+      .insertInto('userAllowlist')
+      .values({ email, inviteCode, invited })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  },
+
+  getAllowlistEntry: (email: string) => {
+    return getDb().selectFrom('userAllowlist').selectAll().where('email', '=', email).executeTakeFirst();
   },
 
   createUser: async (name: string = 'foo', email: string = 'user@example.com', sub = 'foo') => {

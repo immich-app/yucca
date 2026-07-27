@@ -17,14 +17,29 @@ msgstr ""
 #~ msgid "{num, plural, one {# item} other {# items}}"
 #~ msgstr "{num, plural, one {# item} other {# items}}"
 
+#: src/routes/login/invite/+page.svelte
+msgid "Continue"
+msgstr "Continue"
+
 #: src/routes/dashboard/backups/+page.svelte
 #~ msgid "Create new backup"
 #~ msgstr "Create new backup"
+
+#: src/routes/login/invite/+page.svelte
+msgid "Enter an invite code to continue."
+msgstr "Enter an invite code to continue."
 
 #: src/routes/+page.svelte
 #~ msgid "From the {0}: {1}"
 #~ msgstr "From the {0}: {1}"
 
+#: src/routes/login/invite/+page.svelte
+#: src/routes/login/invite/+page.svelte
+#: src/routes/login/invite/+page.svelte
+msgid "Invite code"
+msgstr "Invite code"
+
+#: src/routes/+page.svelte
 #: src/routes/+page.svelte
 msgid "Login"
 msgstr "Login"
@@ -36,6 +51,10 @@ msgstr "Logout"
 #: src/routes/+page.svelte
 #~ msgid "Purchase Immich"
 #~ msgstr "Purchase Immich"
+
+#: src/routes/login/invite/+page.svelte
+msgid "Your email isn't part of the beta yet."
+msgstr "Your email isn't part of the beta yet."
 
 #: src/routes/+page.svelte
 #~ msgid "yucca API"

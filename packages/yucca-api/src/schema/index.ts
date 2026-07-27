@@ -6,6 +6,7 @@ import { RepositoryMetricsTable } from './tables/repositoryMetrics.table';
 import { RepositoryMetricsHistoryTable } from './tables/repositoryMetricsHistory.table';
 import { SessionTable } from './tables/session.table';
 import { UserTable } from './tables/user.table';
+import { UserAllowlistTable } from './tables/userAllowlist.table';
 
 @Database({ name: 'yucca' })
 export class ImmichDatabase {
@@ -17,6 +18,7 @@ export class ImmichDatabase {
     RepositoryMetricsHistoryTable,
     RepositoryMeterTable,
     RepositoryMeterHistoryTable,
+    UserAllowlistTable,
   ];
 
   functions = [];
@@ -32,4 +34,5 @@ export interface DB {
   repositoryMetricsHistory: RepositoryMetricsHistoryTable;
   repositoryMeter: RepositoryMeterTable;
   repositoryMeterHistory: RepositoryMeterHistoryTable;
+  userAllowlist: UserAllowlistTable;
 }

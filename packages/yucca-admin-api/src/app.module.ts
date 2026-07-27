@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { createPublicKey } from 'node:crypto';
+import { AllowlistController } from './controllers/allowlist.controller';
 import { AuthController } from './controllers/auth.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { SessionController } from './controllers/session.controller';
@@ -15,6 +16,8 @@ import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { UserRepository } from './repositories/user.repository';
+import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
+import { AllowlistService } from './services/allowlist.service';
 import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
 import { RepositoryService } from './services/repository.service';
@@ -35,7 +38,13 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, UserController, SessionController, RepositoryController];
+export const controllers = [
+  AuthController,
+  UserController,
+  SessionController,
+  RepositoryController,
+  AllowlistController,
+];
 
 export const providers = [
   WideContextRepository,
@@ -44,8 +53,10 @@ export const providers = [
   DatabaseService,
   OidcRepository,
   UserRepository,
+  UserAllowlistRepository,
   SessionRepository,
   RepositoryRepository,
+  AllowlistService,
   AuthService,
   UserService,
   SessionService,

@@ -13,6 +13,8 @@ import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
+import { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
+import { EmailNotAllowedException } from 'src/utils/exceptions';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +22,7 @@ export class AuthService {
     private readonly logger: LoggerRepository,
     private readonly oidc: OidcRepository,
     private readonly user: UserRepository,
+    private readonly allowlist: UserAllowlistRepository,
     private readonly crypto: CryptoRepository,
     private readonly session: SessionRepository,
     private readonly wideContext: WideContextRepository,
@@ -68,7 +71,11 @@ export class AuthService {
     }
 
     const cookies = parse(request.headers.cookie || '');
-    const { [CookieName.OidcState]: expectedState, [CookieName.OidcCodeVerifier]: codeVerifier } = cookies;
+    const {
+      [CookieName.OidcState]: expectedState,
+      [CookieName.OidcCodeVerifier]: codeVerifier,
+      [CookieName.InviteCode]: inviteCode,
+    } = cookies;
 
     if (!expectedState) {
       throw new InternalServerErrorException('missing expectedState');
@@ -86,7 +93,7 @@ export class AuthService {
 
     this.wideContext.assignContext({ claims });
 
-    const user = await this.getOrCreateUser(claims);
+    const user = await this.getOrCreateUser(claims, inviteCode);
 
     this.wideContext.addContext('customerId', user.id);
 
@@ -103,7 +110,7 @@ export class AuthService {
     };
   }
 
-  async getOrCreateUser(claims: Pick<UserInfoResponse, 'sub' | 'name' | 'email'>) {
+  async getOrCreateUser(claims: Pick<UserInfoResponse, 'sub' | 'name' | 'email'>, inviteCode?: string) {
     if (typeof claims.name !== 'string') {
       throw new InternalServerErrorException('name is missing from claims');
     }
@@ -124,6 +131,8 @@ export class AuthService {
         email: claims.email,
       });
     } else {
+      await this.assertEmailAllowed(claims.email.toLowerCase(), inviteCode);
+
       user = await this.user.create({
         sub: claims.sub,
         name: claims.name,
@@ -132,6 +141,31 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  private async assertEmailAllowed(email: string, inviteCode?: string) {
+    const domain = email.split('@').pop() ?? '';
+    if (env.ALLOWED_EMAIL_DOMAINS.includes(domain)) {
+      return;
+    }
+
+    const entry = await this.allowlist.getByEmail(email);
+    if (entry?.invited) {
+      if (!entry.inviteUsed) {
+        await this.allowlist.markUsed(entry.id);
+      }
+      return;
+    }
+
+    if (inviteCode) {
+      const codeEntry = await this.allowlist.getByInviteCode(inviteCode.trim().toUpperCase());
+      if (codeEntry && !codeEntry.inviteUsed) {
+        await this.allowlist.markUsed(codeEntry.id);
+        return;
+      }
+    }
+
+    throw new EmailNotAllowedException();
   }
 
   async oidcDeviceFlow(
@@ -181,7 +215,8 @@ export class AuthService {
             .catch((error) => {
               this.wideContext.setErrorCause(error);
               this.logger.error('oidcDeviceFlow error:', error);
-              queue.push({ data: { type: 'FAILURE' } } as MessageEvent);
+              const reason = error instanceof EmailNotAllowedException ? 'EMAIL_NOT_ALLOWED' : 'UNKNOWN';
+              queue.push({ data: { type: 'FAILURE', reason } } as MessageEvent);
             })
             .finally(() => queue.stop()),
       ),

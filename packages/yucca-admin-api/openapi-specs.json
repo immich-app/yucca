@@ -547,6 +547,159 @@
           "Repository"
         ]
       }
+    },
+    "/api/allowlist": {
+      "get": {
+        "operationId": "listAllowlist",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 50,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowlistListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Allowlist"
+        ]
+      },
+      "post": {
+        "operationId": "addAllowlistEntry",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllowlistAddRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowlistEntryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Allowlist"
+        ]
+      }
+    },
+    "/api/allowlist/{email}": {
+      "delete": {
+        "operationId": "removeAllowlistEntry",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Allowlist"
+        ]
+      }
+    },
+    "/api/allowlist/invite": {
+      "post": {
+        "operationId": "inviteEmails",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllowlistInviteRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowlistEntriesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Allowlist"
+        ]
+      }
+    },
+    "/api/allowlist/invite-batch": {
+      "post": {
+        "operationId": "inviteBatch",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllowlistInviteBatchRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowlistEntriesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Allowlist"
+        ]
+      }
     }
   },
   "info": {
@@ -883,6 +1036,124 @@
         },
         "required": [
           "repository"
+        ]
+      },
+      "AllowlistEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "inviteCode": {
+            "type": "string"
+          },
+          "invited": {
+            "type": "boolean"
+          },
+          "inviteUsed": {
+            "type": "boolean"
+          },
+          "inviteUsedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "inviteCode",
+          "invited",
+          "inviteUsed",
+          "createdAt"
+        ]
+      },
+      "AllowlistListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllowlistEntryDto"
+            }
+          },
+          "nextCursor": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AllowlistAddRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "staged": {
+            "type": "boolean",
+            "description": "Stage the entry without allowing login yet"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "AllowlistEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/AllowlistEntryDto"
+          }
+        },
+        "required": [
+          "entry"
+        ]
+      },
+      "AllowlistInviteRequestDto": {
+        "type": "object",
+        "properties": {
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "emails"
+        ]
+      },
+      "AllowlistEntriesResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllowlistEntryDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AllowlistInviteBatchRequestDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "count"
         ]
       }
     }

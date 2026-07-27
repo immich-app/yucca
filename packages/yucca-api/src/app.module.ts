@@ -17,6 +17,7 @@ import { RepositoryMetricsHistoryRepository } from './repositories/repositoryMet
 import { ResticApiRepository } from './repositories/resticApi.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { UserRepository } from './repositories/user.repository';
+import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
 import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
 import { MetricsService } from './services/metrics.service';
@@ -42,6 +43,7 @@ export const providers = [
   CryptoRepository,
   OidcRepository,
   UserRepository,
+  UserAllowlistRepository,
   RepositoryRepository,
   RepositoryMetricsRepository,
   RepositoryMetricsHistoryRepository,

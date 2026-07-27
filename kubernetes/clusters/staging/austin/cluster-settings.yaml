@@ -12,6 +12,10 @@ metadata:
 data:
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
+  # Beta gate: these email domains may sign up without an allowlist entry;
+  # everyone else needs a `yuctl users allowlist` entry or invite code.
+  ALLOWED_EMAIL_DOMAINS: futo.org
+
   # admin-api host on the NetBird overlay; the admin OIDC redirect URIs derive
   # from this (see base yucca-admin-api HR).
   YUCCA_ADMIN_HOST: admin.luke.aus.int.yucca.futo.network

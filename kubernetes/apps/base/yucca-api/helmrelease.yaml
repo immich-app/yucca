@@ -62,5 +62,9 @@ spec:
         value: ${OIDC_ISSUER}
       - name: RESTIC_ENDPOINT
         value: https://${GW_HOST}
+      # Beta email allowlist: comma-separated domains that may sign up without
+      # an allowlist entry. Empty default = allowlist/invite-code only.
+      - name: ALLOWED_EMAIL_DOMAINS
+        value: ${ALLOWED_EMAIL_DOMAINS:=}
       - name: OTEL_METRICS
         value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics
