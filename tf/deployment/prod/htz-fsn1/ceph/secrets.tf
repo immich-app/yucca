@@ -24,7 +24,11 @@
 locals {
   # Secret roles owned by the immich/restic contract, provisioned out-of-band.
   # Excluded from TF management here (see header).
-  ceph_unmanaged_secret_roles = ["s3_restic_access", "s3_restic_secret"]
+  # alertmanager_webhook holds an externally-issued receiver URL (Zulip incoming
+  # webhook), not a generated credential. Managing it here would overwrite the
+  # live URL with a random 32-char password on the next apply and silently break
+  # alert delivery, so TF only ever references the item.
+  ceph_unmanaged_secret_roles = ["s3_restic_access", "s3_restic_secret", "alertmanager_webhook"]
 
   # Per-role generated-password length. ops is the break-glass account typed by
   # hand at the KVM/console, so keep it short; dashboard/grafana are web logins

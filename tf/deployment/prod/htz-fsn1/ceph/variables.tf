@@ -10,6 +10,10 @@ variable "clusters" {
     ansible_ssh_key   = string
     vault             = optional(string, "Yucca")
     provision_profile = optional(string)
+    # Reference an out-of-band <CLUSTER>_CEPH_ALERTMANAGER_WEBHOOK_URL item so
+    # the cluster's alertmanager gets a real receiver. See the ceph-cluster
+    # module's alertmanager_webhook variable.
+    alertmanager_webhook = optional(bool, false)
     hosts = list(object({
       name      = optional(string)
       bond_ip   = string

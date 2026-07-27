@@ -28,6 +28,9 @@ clusters = {
     ansible_ssh_key   = "~/.ssh/id_ed25519_spice"
     vault             = "yucca_tf_prod"
     provision_profile = null
+    # SPICE_CEPH_ALERTMANAGER_WEBHOOK_URL is provisioned out of band (Zulip
+    # incoming webhook) and referenced, never generated. See secrets.tf.
+    alertmanager_webhook = true
     hosts = [
       { name = "adelia", bond_ip = "178.63.139.248", bootstrap = true, roles = ["mon", "mgr", "osd", "rgw"] }, # srv 3008187 host_index 4  MON
       { name = "alexus", bond_ip = "178.63.139.254", roles = ["osd", "rgw"] },                                 # srv 3008189 host_index 5
