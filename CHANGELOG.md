@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.3](https://github.com/immich-app/yucca/compare/v0.19.2...v0.19.3) (2026-07-27)
+
+
+### Bug Fixes
+
+* **yucca sdk:** export ViewLogModal ([#337](https://github.com/immich-app/yucca/issues/337)) ([b3cafa2](https://github.com/immich-app/yucca/commit/b3cafa2495fb13b58a29dc3136649e29186ee453))
+
 ## [0.19.2](https://github.com/immich-app/yucca/compare/v0.19.1...v0.19.2) (2026-07-24)
 
 
