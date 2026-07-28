@@ -48,6 +48,7 @@ type Metrics struct {
 	RequestTTFB     otelmetric.Float64Histogram
 	RequestCount    otelmetric.Int64Counter
 	RequestErrors   otelmetric.Int64Counter
+	StorageErrors   otelmetric.Int64Counter
 	AuthCacheHits   otelmetric.Int64Counter
 	AuthCacheMisses otelmetric.Int64Counter
 }
@@ -115,6 +116,16 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating request_errors counter: %w", err)
 	}
 
+	// Backend (RGW) storage-operation failures, split out from the generic HTTP
+	// error counter so a gateway write-error spike is directly visible and
+	// alertable — the signal that a client-facing 500 wave is the storage
+	// backend, not michael or auth.
+	storageErrors, err := meter.Int64Counter("storage.backend.errors",
+		otelmetric.WithDescription("Backend S3 storage operation failures, by operation and blob type"))
+	if err != nil {
+		return nil, fmt.Errorf("creating storage_errors counter: %w", err)
+	}
+
 	authCacheHits, err := meter.Int64Counter("auth.cache.hits",
 		otelmetric.WithDescription("JWT verifications served from the token cache"))
 	if err != nil {
@@ -136,9 +147,31 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		RequestTTFB:     requestTTFB,
 		RequestCount:    requestCount,
 		RequestErrors:   requestErrors,
+		StorageErrors:   storageErrors,
 		AuthCacheHits:   authCacheHits,
 		AuthCacheMisses: authCacheMisses,
 	}, nil
+}
+
+type storageErrAttrKey struct{ operation, blobType string }
+
+var storageErrAttrCache sync.Map
+
+// StorageErrorOption labels a backend storage failure by operation ("put",
+// "get", …) and blob type. Deliberately low-cardinality (no per-user labels):
+// this is a fleet-health/alerting signal, and the per-request identity is
+// already on the logged error line.
+func StorageErrorOption(operation, blobType string) otelmetric.MeasurementOption {
+	key := storageErrAttrKey{operation, blobType}
+	if v, ok := storageErrAttrCache.Load(key); ok {
+		return v.(otelmetric.MeasurementOption)
+	}
+	opt := otelmetric.WithAttributeSet(attribute.NewSet(
+		attribute.String("operation", operation),
+		attribute.String("type", blobType),
+	))
+	storageErrAttrCache.Store(key, opt)
+	return opt
 }
 
 func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {

@@ -1,31 +1,29 @@
 # Cilium for the prod cluster. Talos sets cni:none + proxy:disabled, so nodes
 # stay NotReady until this lands the datapath.
 #
-# TUNNEL (geneve) routing at jumbo MTU. The cluster spans two L2 domains — CPs
-# on the kube-cp VLAN (11), workers on the kube VLAN (10) — routed by the spine
-# IRBs. A geneve overlay carries pod↔pod (and host↔pod, e.g. apiserver→pod
-# webhooks) over the routed node-to-node path with the pod identity in-band —
-# which autoDirectNodeRoutes (same-L2 only) can't span. The jumbo MTU (below),
-# the spine LB ECMP (core-fabric), and DSR (loadBalancer, below) are retained
-# and independent of the routing mode.
+# TUNNEL (geneve) routing. The cluster spans two L2 domains — CPs on the kube-cp
+# VLAN (11), workers on the kube VLAN (10) — routed by the spine IRBs. A geneve
+# overlay carries pod↔pod (and host↔pod, e.g. apiserver→pod webhooks) over the
+# routed node-to-node path with the pod identity in-band — which
+# autoDirectNodeRoutes (same-L2 only) can't span. The spine LB ECMP (core-fabric)
+# and DSR (loadBalancer, below) are independent of the routing mode and retained.
+#
+# MTU: auto-detected (NOT set). Cilium takes the lowest MTU across its devices,
+# which is wt0 (NetBird's WireGuard, 1280) → ~1230 pod MTU. This is DELIBERATE:
+# a single cluster-wide MTU governs the whole pod datapath, and pods egress the
+# 1280 mesh tunnel to reach o11y (vmauth on 10.69.0.10 via wt0). Forcing a jumbo
+# MTU (tried 2026-07-28) black-holes every pod's large frames over WireGuard
+# (PMTUD doesn't survive WG+NAT) and takes o11y remote-write down. The fabric's
+# 1500-bound flows (client↔michael, michael↔RGW) don't benefit from jumbo pods
+# anyway, so there is no reason to raise it past the mesh ceiling.
 #
 # securityContext + cgroup blocks are MANDATORY on Talos. Ref: Talos "Deploying Cilium".
 
 ipam:
   mode: kubernetes
 
-# Tunnel (geneve) routing — see the header. East-west (incl. host↔pod across
-# the two VLANs) rides the fabric encapsulated; geneve overhead is ~50B, so at
-# the jumbo MTU below pods still get ~8950 (vs the 1230 the old auto-detected
-# MTU clamped us to over wt0).
 routingMode: tunnel
 tunnelProtocol: geneve
-
-# Explicit datapath MTU (the fabric bond/VLAN MTU; switch L2 is 9216, IRBs
-# 9202). NEVER auto-detect: Cilium's detection takes the lowest MTU across its
-# devices, and wt0 (NetBird's WireGuard, 1280) once clamped every pod route to
-# 1230. In tunnel mode pods get this minus the ~50B geneve header.
-MTU: ${fabric_mtu}
 
 # Masquerade pod traffic to non-pod destinations (internet, node IPs); pod↔pod is
 # tunnelled so it isn't masqueraded. ip-masq-agent excludes only the pod CIDR, so

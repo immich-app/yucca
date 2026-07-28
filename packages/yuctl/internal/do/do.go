@@ -215,24 +215,32 @@ func fromGodo(d godo.Droplet) Droplet {
 	return out
 }
 
-// CreateDroplets creates one batch of droplets in a single region (DO's
-// multi-create is per-region) with the fleet tag and ssh key.
+// maxMultiCreate is DO's hard cap on names per multi-create request; larger
+// batches 422 ("cannot create more than 10 droplets at a time"), so we chunk.
+const maxMultiCreate = 10
+
+// CreateDroplets creates droplets in a single region (DO's multi-create is
+// per-region) with the fleet tag and ssh key, chunked to DO's per-request cap.
 func (c *Client) CreateDroplets(ctx context.Context, names []string, region, size, image, tag string, keyID int) ([]Droplet, error) {
-	req := &godo.DropletMultiCreateRequest{
-		Names:   names,
-		Region:  region,
-		Size:    size,
-		Image:   godo.DropletCreateImage{Slug: image},
-		SSHKeys: []godo.DropletCreateSSHKey{{ID: keyID}},
-		Tags:    []string{tag},
-	}
-	droplets, _, err := c.do.Droplets.CreateMultiple(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("create %d droplets in %s: %w", len(names), region, err)
-	}
-	out := make([]Droplet, len(droplets))
-	for i, d := range droplets {
-		out[i] = fromGodo(d)
+	var out []Droplet
+	for start := 0; start < len(names); start += maxMultiCreate {
+		end := min(start+maxMultiCreate, len(names))
+		batch := names[start:end]
+		req := &godo.DropletMultiCreateRequest{
+			Names:   batch,
+			Region:  region,
+			Size:    size,
+			Image:   godo.DropletCreateImage{Slug: image},
+			SSHKeys: []godo.DropletCreateSSHKey{{ID: keyID}},
+			Tags:    []string{tag},
+		}
+		droplets, _, err := c.do.Droplets.CreateMultiple(ctx, req)
+		if err != nil {
+			return out, fmt.Errorf("create %d droplets in %s: %w", len(batch), region, err)
+		}
+		for _, d := range droplets {
+			out = append(out, fromGodo(d))
+		}
 	}
 	return out, nil
 }

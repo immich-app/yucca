@@ -262,9 +262,18 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 	}
 
 	// Use unsigned payload so the SDK doesn't need to seek the body for signing.
+	// RetryMaxAttempts=1 (no SDK retry): the body is restic's non-seekable
+	// proxied stream, so any retry would try to rewind it and fail with "failed
+	// to rewind transport stream for retry, request stream is not seekable" —
+	// masking the real backend error and, under load, stalling clients on a
+	// large fraction of PUTs. With retries off, a transient gateway error
+	// surfaces cleanly and restic retries the pack itself (its body IS
+	// seekable). See TestPutObject_NonSeekableBodyOn503_NoRewindRetry.
 	_, err := s.client.PutObject(ctx, input, s3.WithAPIOptions(
 		v4.SwapComputePayloadSHA256ForUnsignedPayloadMiddleware,
-	))
+	), func(o *s3.Options) {
+		o.RetryMaxAttempts = 1
+	})
 	if err != nil {
 		if isPreconditionFailed(err) {
 			return ErrPreconditionFailed
