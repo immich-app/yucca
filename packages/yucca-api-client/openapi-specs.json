@@ -94,16 +94,16 @@
         "operationId": "oidcDeviceFlow",
         "parameters": [
           {
-            "name": "consumer_type",
+            "name": "connection_type",
             "required": false,
             "in": "query",
-            "description": "immich | fubar | restic",
+            "description": "immich | restic",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "consumer_name",
+            "name": "connection_name",
             "required": false,
             "in": "query",
             "description": "Instance name, e.g. a hostname",
@@ -122,9 +122,9 @@
         ]
       }
     },
-    "/api/consumers": {
+    "/api/connections": {
       "get": {
-        "operationId": "listConsumers",
+        "operationId": "listConnections",
         "parameters": [],
         "responses": {
           "200": {
@@ -132,25 +132,25 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConsumerListResponseDto"
+                  "$ref": "#/components/schemas/ConnectionListResponseDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "Consumer"
+          "Connection"
         ]
       },
       "post": {
-        "operationId": "createConsumer",
+        "operationId": "createConnection",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConsumerCreateRequestDto"
+                "$ref": "#/components/schemas/ConnectionCreateRequestDto"
               }
             }
           }
@@ -161,20 +161,51 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConsumerResponseDto"
+                  "$ref": "#/components/schemas/ConnectionResponseDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "Consumer"
+          "Connection"
         ]
       }
     },
-    "/api/consumers/{id}": {
+    "/api/connections/restic": {
+      "post": {
+        "operationId": "createRestic",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionResticRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResticResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Connection"
+        ]
+      }
+    },
+    "/api/connections/{id}": {
       "patch": {
-        "operationId": "updateConsumer",
+        "operationId": "updateConnection",
         "parameters": [
           {
             "name": "id",
@@ -190,7 +221,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConsumerUpdateRequestDto"
+                "$ref": "#/components/schemas/ConnectionUpdateRequestDto"
               }
             }
           }
@@ -201,11 +232,11 @@
           }
         },
         "tags": [
-          "Consumer"
+          "Connection"
         ]
       },
       "delete": {
-        "operationId": "deleteConsumer",
+        "operationId": "deleteConnection",
         "parameters": [
           {
             "name": "id",
@@ -222,11 +253,11 @@
           }
         },
         "tags": [
-          "Consumer"
+          "Connection"
         ]
       }
     },
-    "/api/consumers/{id}/adopt": {
+    "/api/connections/{id}/adopt": {
       "post": {
         "operationId": "adoptRepositories",
         "parameters": [
@@ -244,7 +275,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConsumerAdoptRequestDto"
+                "$ref": "#/components/schemas/ConnectionAdoptRequestDto"
               }
             }
           }
@@ -255,7 +286,7 @@
           }
         },
         "tags": [
-          "Consumer"
+          "Connection"
         ]
       }
     },
@@ -571,6 +602,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResticUrlRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -585,6 +626,59 @@
         },
         "tags": [
           "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/restic-tokens": {
+      "get": {
+        "operationId": "listResticTokens",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResticTokenListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/restic-tokens/{jti}": {
+      "delete": {
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "jti",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ResticToken"
         ]
       }
     }
@@ -618,7 +712,7 @@
           "sessionId": {
             "type": "string"
           },
-          "consumerId": {
+          "connectionId": {
             "type": "string",
             "nullable": true
           },
@@ -637,7 +731,7 @@
           "features"
         ]
       },
-      "ConsumerDto": {
+      "ConnectionDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -647,7 +741,6 @@
             "type": "string",
             "enum": [
               "immich",
-              "fubar",
               "restic"
             ]
           },
@@ -663,6 +756,18 @@
           },
           "repositoryCount": {
             "type": "number"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "description": "Rolled-up storage across this connection’s repositories (RGW size)."
+          },
+          "objectCount": {
+            "type": "number",
+            "description": "Rolled-up object count across this connection’s repositories."
+          },
+          "billableBytes": {
+            "type": "number",
+            "description": "Billed bytes: per-object min-size floor applied (immich exempt)."
           }
         },
         "required": [
@@ -670,31 +775,33 @@
           "type",
           "name",
           "createdAt",
-          "repositoryCount"
+          "repositoryCount",
+          "sizeBytes",
+          "objectCount",
+          "billableBytes"
         ]
       },
-      "ConsumerListResponseDto": {
+      "ConnectionListResponseDto": {
         "type": "object",
         "properties": {
-          "consumers": {
+          "connections": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ConsumerDto"
+              "$ref": "#/components/schemas/ConnectionDto"
             }
           }
         },
         "required": [
-          "consumers"
+          "connections"
         ]
       },
-      "ConsumerCreateRequestDto": {
+      "ConnectionCreateRequestDto": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
             "enum": [
               "immich",
-              "fubar",
               "restic"
             ]
           },
@@ -707,18 +814,139 @@
           "name"
         ]
       },
-      "ConsumerResponseDto": {
+      "ConnectionResponseDto": {
         "type": "object",
         "properties": {
-          "consumer": {
-            "$ref": "#/components/schemas/ConsumerDto"
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionDto"
           }
         },
         "required": [
-          "consumer"
+          "connection"
         ]
       },
-      "ConsumerUpdateRequestDto": {
+      "ConnectionResticRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Repository name (defaults to a generated one)."
+          },
+          "worm": {
+            "type": "boolean",
+            "description": "Enable write-once (WORM) on the repository."
+          },
+          "expiresIn": {
+            "type": "string",
+            "description": "Token lifetime (e.g. \"90d\"), capped at RESTIC_JWT_MAX_EXPIRES_IN."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human label for the minted access key."
+          }
+        }
+      },
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastBackup": {
+            "type": "string"
+          },
+          "lastSuccessfulBackup": {
+            "type": "string"
+          },
+          "lastBackupDuration": {
+            "type": "number"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
+      "RepositoryWithMetricsDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "connectionId": {
+            "type": "string"
+          },
+          "connectionType": {
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
+          }
+        },
+        "required": [
+          "id",
+          "worm",
+          "name",
+          "connectionId",
+          "connectionType",
+          "metrics"
+        ]
+      },
+      "ConnectionResticResponseDto": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionDto"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+          },
+          "url": {
+            "type": "string",
+            "description": "rest: URL with the embedded restic JWT."
+          },
+          "jti": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection",
+          "repository",
+          "url",
+          "jti",
+          "expiresAt"
+        ]
+      },
+      "ConnectionUpdateRequestDto": {
         "type": "object",
         "properties": {
           "name": {
@@ -729,11 +957,11 @@
           "name"
         ]
       },
-      "ConsumerAdoptRequestDto": {
+      "ConnectionAdoptRequestDto": {
         "type": "object",
         "properties": {
           "repositoryIds": {
-            "description": "Repositories to move from the default consumer to this one",
+            "description": "Repositories to move from the default connection to this one",
             "type": "array",
             "items": {
               "type": "string"
@@ -845,83 +1073,15 @@
           },
           "worm": {
             "type": "boolean"
+          },
+          "connectionId": {
+            "type": "string",
+            "description": "Owned connection to create the repository under (defaults to the session/default connection)."
           }
         },
         "required": [
           "name",
           "worm"
-        ]
-      },
-      "RepositoryMetricsDto": {
-        "type": "object",
-        "properties": {
-          "lastBackup": {
-            "type": "string"
-          },
-          "lastSuccessfulBackup": {
-            "type": "string"
-          },
-          "lastBackupDuration": {
-            "type": "number"
-          },
-          "sizeBytes": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "sizeBytes"
-        ]
-      },
-      "RepositoryMeterDto": {
-        "type": "object",
-        "properties": {
-          "sizeBytes": {
-            "type": "number"
-          },
-          "objectCount": {
-            "type": "number"
-          },
-          "lastUpdated": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "sizeBytes",
-          "objectCount"
-        ]
-      },
-      "RepositoryWithMetricsDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "worm": {
-            "type": "boolean"
-          },
-          "name": {
-            "type": "string"
-          },
-          "consumerId": {
-            "type": "string"
-          },
-          "consumerType": {
-            "type": "string"
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/RepositoryMetricsDto"
-          },
-          "meter": {
-            "$ref": "#/components/schemas/RepositoryMeterDto"
-          }
-        },
-        "required": [
-          "id",
-          "worm",
-          "name",
-          "consumerId",
-          "consumerType",
-          "metrics"
         ]
       },
       "RepositoryCreateResponseDto": {
@@ -982,15 +1142,92 @@
           "repository"
         ]
       },
+      "ResticUrlRequestDto": {
+        "type": "object",
+        "properties": {
+          "expiresIn": {
+            "type": "string",
+            "description": "Token lifetime (e.g. \"90d\"). Defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human label for this access key (shown in the token list)."
+          }
+        }
+      },
       "RepositoryCreateResticUrlDto": {
         "type": "object",
         "properties": {
           "url": {
+            "type": "string",
+            "description": "rest: URL with the embedded restic JWT — paste into `restic -r`."
+          },
+          "jti": {
+            "type": "string",
+            "description": "The minted token id, for revocation."
+          },
+          "expiresAt": {
             "type": "string"
           }
         },
         "required": [
-          "url"
+          "url",
+          "jti",
+          "expiresAt"
+        ]
+      },
+      "ResticTokenDto": {
+        "type": "object",
+        "properties": {
+          "jti": {
+            "type": "string"
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "connectionId": {
+            "type": "object",
+            "nullable": true
+          },
+          "mintedBy": {
+            "type": "string",
+            "description": "'user' or 'admin'"
+          },
+          "label": {
+            "type": "object",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jti",
+          "repositoryId",
+          "mintedBy",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "ResticTokenListResponseDto": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResticTokenDto"
+            }
+          }
+        },
+        "required": [
+          "tokens"
         ]
       }
     }

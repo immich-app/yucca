@@ -23,7 +23,7 @@ func newUsersCmd() *cobra.Command {
 	cmd.AddCommand(newUsersAllowlistCmd())
 	cmd.AddCommand(newUsersViewDashboardCmd())
 	cmd.AddCommand(newUsersFeaturesCmd())
-	cmd.AddCommand(newUsersConsumersCmd())
+	cmd.AddCommand(newUsersConnectionsCmd())
 	return cmd
 }
 
@@ -152,17 +152,17 @@ func newUsersFeaturesClearCmd() *cobra.Command {
 	return c
 }
 
-// newUsersConsumersCmd builds `users consumers`.
-func newUsersConsumersCmd() *cobra.Command {
+// newUsersConnectionsCmd builds `users connections`.
+func newUsersConnectionsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "consumers",
-		Short: "A user's consumer instances (immich/fubar/restic)",
+		Use:   "connections",
+		Short: "A user's connection instances (immich/restic)",
 	}
 
 	flags := &adminFlags{}
 	list := &cobra.Command{
 		Use:   "list <email>",
-		Short: "List a user's consumers",
+		Short: "List a user's connections",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -174,19 +174,19 @@ func newUsersConsumersCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			consumers, err := client.GetUserConsumers(ctx, userID)
+			connections, err := client.GetUserConnections(ctx, userID)
 			if err != nil {
 				return err
 			}
 
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
 			fmt.Fprintln(w, "ID\tTYPE\tNAME\tCREATED\tLAST SEEN")
-			for _, consumer := range consumers {
+			for _, connection := range connections {
 				lastSeen := ""
-				if consumer.LastSeenAt != nil {
-					lastSeen = *consumer.LastSeenAt
+				if connection.LastSeenAt != nil {
+					lastSeen = *connection.LastSeenAt
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", consumer.ID, consumer.Type, consumer.Name, consumer.CreatedAt, lastSeen)
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", connection.ID, connection.Type, connection.Name, connection.CreatedAt, lastSeen)
 			}
 			w.Flush()
 			return nil

@@ -12,15 +12,28 @@ export class ResticTokenRepository {
     return this.db.insertInto('resticTokens').values(token).returningAll().executeTakeFirstOrThrow();
   }
 
-  getByConsumer(consumerId: string) {
-    return this.db.selectFrom('resticTokens').selectAll().where('consumerId', '=', consumerId).execute();
+  getByConnection(connectionId: string) {
+    return this.db.selectFrom('resticTokens').selectAll().where('connectionId', '=', connectionId).execute();
   }
 
-  getActiveByConsumer(consumerId: string) {
+  get(jti: string) {
+    return this.db.selectFrom('resticTokens').selectAll().where('jti', '=', jti).executeTakeFirst();
+  }
+
+  getByRepository(repositoryId: string) {
     return this.db
       .selectFrom('resticTokens')
       .selectAll()
-      .where('consumerId', '=', consumerId)
+      .where('repositoryId', '=', repositoryId)
+      .orderBy('createdAt', 'desc')
+      .execute();
+  }
+
+  getActiveByConnection(connectionId: string) {
+    return this.db
+      .selectFrom('resticTokens')
+      .selectAll()
+      .where('connectionId', '=', connectionId)
       .where('revokedAt', 'is', null)
       .where('expiresAt', '>', new Date())
       .execute();

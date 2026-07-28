@@ -35,11 +35,11 @@ export class ResticTokenService {
     const revoked = await this.resticTokens.revoke(jti, auth.sub);
     if (!revoked) {
       // Already revoked — idempotent, but still make sure Redis agrees.
-      await this.revocation.markRevoked(jti, existing.expiresAt);
+      await this.revocation.markInvalid(jti);
       return;
     }
 
     this.logger.info(`Revoked restic token ${jti} (minted ${existing.mintedBy}, by ${auth.sub})`);
-    await this.revocation.markRevoked(jti, existing.expiresAt);
+    await this.revocation.markInvalid(jti);
   }
 }

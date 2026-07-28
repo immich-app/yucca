@@ -157,16 +157,23 @@ persistence, secrets) are where a future prod cluster overlay diverges. Notably:
   fixtures** (the same keypair lives in `.mise/tasks/*/env`); they must become
   `ExternalSecret`s backed by the org's 1Password (External Secrets Operator)
   before prod.
-- **`redis` (valkey)** is the restic-token revocation denylist. It is
-  deliberately ephemeral (no persistence): the metrics-worker re-seeds it from
-  the DB every 5 min, and michael fails **open**, so losing it degrades to
-  "revocations delayed", never "backups broken". It is **primary-region only**
-  — a partition's primary region owns the DB and the reconcile job, so it's the
-  only place that can populate the denylist. Secondary regions run `michael`
-  with `REDIS_ADDR` unset (revocation checking off) until a cross-region design
-  lands (options: valkey `REPLICAOF` to secondaries, or cross-region reads).
-  Wired into `components/roles/primary` only; `allow-ingress-redis` in
-  `networkpolicies.yaml` restricts 6379 to the apps + michael.
+- **`redis` (valkey)** holds the restic-token **validity markers** michael
+  checks per request: a present `yucca:restic:valid:<jti>` key means valid, an
+  absent one means revoked/unknown → denied. It is deliberately ephemeral (no
+  persistence): the apis write markers on mint and clear them on revoke, and the
+  metrics-worker re-asserts them from the DB every 5 min. michael caches each
+  decision briefly and, if Redis is unreachable, honors a **previously-valid**
+  token for a bounded **grace** window (`REVOCATION_GRACE_MS`, default 5 min)
+  before failing closed — so a short outage degrades to "revocations delayed",
+  and only a sustained one denies *revocable* (restic) tokens; immich and other
+  non-revocable types are skipped entirely (`REVOCABLE_CONNECTION_TYPES`) and are
+  never affected. It is **primary-region only** — a partition's primary region
+  owns the DB and the reconcile job, so it's the only place that can populate the
+  markers. Secondary regions run `michael` with `REDIS_ADDR` unset (validity
+  checking off) until a cross-region design lands (options: valkey `REPLICAOF`
+  to secondaries, or cross-region reads). Wired into `components/roles/primary`
+  only; `allow-ingress-redis` in `networkpolicies.yaml` restricts 6379 to the
+  apps + michael.
 
 ## Real OIDC credentials in dev (`.env` + 1Password)
 

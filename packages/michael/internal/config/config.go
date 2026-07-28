@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -46,11 +47,16 @@ type Config struct {
 	LogLevel            zerolog.Level
 	LogPretty           bool
 
-	// Restic-token revocation checking. Empty RedisAddr disables it (e.g.
-	// secondary regions, which have no local denylist population path).
+	// Restic-token validity checking. Empty RedisAddr disables it (e.g.
+	// secondary regions, which have no local validity-marker population path).
 	RedisAddr          string
 	RedisTimeout       time.Duration
-	RevocationCacheTTL time.Duration
+	RevocationFreshTTL time.Duration
+	RevocationGraceTTL time.Duration
+	// Connection types whose tokens are validity-checked. Non-revocable types
+	// (e.g. immich, which has no validity marker) are skipped so an absent marker
+	// never wrongly denies them. Mirrors @common/server ConnectionTypeInfos.revocable.
+	RevocableConnectionTypes map[string]bool
 }
 
 func LoadConfig() Config {
@@ -195,45 +201,62 @@ func LoadConfig() Config {
 		}
 		redisTimeout = time.Duration(ms) * time.Millisecond
 	}
-	revocationCacheTTL := 5000 * time.Millisecond
-	if v := os.Getenv("REVOCATION_CACHE_TTL_MS"); v != "" {
+	// Fresh: how long a confirmed decision is served without touching Redis, so
+	// a revoke takes effect within this window. Grace: how long a previously-valid
+	// jti keeps working while Redis is unreachable, before michael fails closed.
+	revocationFreshTTL := 60 * time.Second
+	if v := os.Getenv("REVOCATION_FRESH_TTL_MS"); v != "" {
 		ms, err := strconv.Atoi(v)
 		if err != nil || ms < 1 {
-			log.Fatal().Msg("REVOCATION_CACHE_TTL_MS must be a positive number")
+			log.Fatal().Msg("REVOCATION_FRESH_TTL_MS must be a positive number")
 		}
-		revocationCacheTTL = time.Duration(ms) * time.Millisecond
+		revocationFreshTTL = time.Duration(ms) * time.Millisecond
 	}
+	revocationGraceTTL := 300 * time.Second
+	if v := os.Getenv("REVOCATION_GRACE_MS"); v != "" {
+		ms, err := strconv.Atoi(v)
+		if err != nil || ms < 1 {
+			log.Fatal().Msg("REVOCATION_GRACE_MS must be a positive number")
+		}
+		revocationGraceTTL = time.Duration(ms) * time.Millisecond
+	}
+	if revocationGraceTTL < revocationFreshTTL {
+		log.Fatal().Msg("REVOCATION_GRACE_MS must be >= REVOCATION_FRESH_TTL_MS")
+	}
+	revocableTypes := parseCSVSet(envOr("REVOCABLE_CONNECTION_TYPES", "restic"))
 
 	return Config{
-		Port:                port,
-		JWTPublicKey:        jwtPublicKey,
-		S3AccessKeyID:       s3AccessKeyID,
-		S3SecretAccessKey:   s3SecretAccessKey,
-		S3Region:            s3Region,
-		S3Endpoint:          s3Endpoint,
-		S3ForcePathStyle:    s3ForcePathStyle,
-		S3BackendSource:     backendSource,
-		S3BackendFile:       backendFile,
-		S3BackendDNSHost:    backendDNSHost,
-		S3BackendScheme:     backendScheme,
-		S3BackendPort:       backendPort,
-		S3BackendPinHost:    backendPinHost,
-		S3TLSSkipVerify:     tlsSkipVerify,
-		S3ProbeBucket:       probeBucket,
-		S3EjectThreshold:    ejectThreshold,
-		S3ReconcileInterval: reconcileInterval,
-		OTLPMetricsEndpoint: otlpEndpoint,
-		OTLPMetricsURLPath:  otlpURLPath,
-		OTLPMetricsInterval: otlpInterval,
-		OTLPEnabled:         otlpEndpoint != "",
-		OTLPLogsEndpoint:    otlpLogsEndpoint,
-		OTLPLogsURLPath:     otlpLogsURLPath,
-		OTLPLogsEnabled:     otlpLogsEndpoint != "",
-		LogLevel:            logLevel,
-		LogPretty:           logPretty,
-		RedisAddr:           redisAddr,
-		RedisTimeout:        redisTimeout,
-		RevocationCacheTTL:  revocationCacheTTL,
+		Port:                     port,
+		JWTPublicKey:             jwtPublicKey,
+		S3AccessKeyID:            s3AccessKeyID,
+		S3SecretAccessKey:        s3SecretAccessKey,
+		S3Region:                 s3Region,
+		S3Endpoint:               s3Endpoint,
+		S3ForcePathStyle:         s3ForcePathStyle,
+		S3BackendSource:          backendSource,
+		S3BackendFile:            backendFile,
+		S3BackendDNSHost:         backendDNSHost,
+		S3BackendScheme:          backendScheme,
+		S3BackendPort:            backendPort,
+		S3BackendPinHost:         backendPinHost,
+		S3TLSSkipVerify:          tlsSkipVerify,
+		S3ProbeBucket:            probeBucket,
+		S3EjectThreshold:         ejectThreshold,
+		S3ReconcileInterval:      reconcileInterval,
+		OTLPMetricsEndpoint:      otlpEndpoint,
+		OTLPMetricsURLPath:       otlpURLPath,
+		OTLPMetricsInterval:      otlpInterval,
+		OTLPEnabled:              otlpEndpoint != "",
+		OTLPLogsEndpoint:         otlpLogsEndpoint,
+		OTLPLogsURLPath:          otlpLogsURLPath,
+		OTLPLogsEnabled:          otlpLogsEndpoint != "",
+		LogLevel:                 logLevel,
+		LogPretty:                logPretty,
+		RedisAddr:                redisAddr,
+		RedisTimeout:             redisTimeout,
+		RevocationFreshTTL:       revocationFreshTTL,
+		RevocationGraceTTL:       revocationGraceTTL,
+		RevocableConnectionTypes: revocableTypes,
 	}
 }
 
@@ -242,6 +265,17 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// parseCSVSet turns "restic, s3" into {"restic":true,"s3":true}, trimming blanks.
+func parseCSVSet(csv string) map[string]bool {
+	set := make(map[string]bool)
+	for _, part := range strings.Split(csv, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			set[p] = true
+		}
+	}
+	return set
 }
 
 // schemeAndPort extracts the scheme and port from an endpoint URL, used to

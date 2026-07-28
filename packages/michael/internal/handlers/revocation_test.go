@@ -10,27 +10,35 @@ import (
 	"testing"
 	"time"
 
+	"michael/internal/revocation"
 	"michael/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// fakeRevoker implements revocation.Revoker for handler tests.
-type fakeRevoker struct {
-	revoked map[string]bool
+// fakeValidator implements revocation.Validator for handler tests.
+type fakeValidator struct {
+	byJti   map[string]revocation.Decision
+	fallbck revocation.Decision
 	err     error
 	calls   int
 }
 
-func (f *fakeRevoker) IsRevoked(_ context.Context, jti string) (bool, error) {
+func (f *fakeValidator) Check(_ context.Context, jti string) (revocation.Decision, error) {
 	f.calls++
-	if f.err != nil {
-		return false, f.err
+	if f.byJti != nil {
+		if d, ok := f.byJti[jti]; ok {
+			return d, f.err
+		}
 	}
-	return f.revoked[jti], nil
+	return f.fallbck, f.err
 }
 
 func doRequestWithJti(t *testing.T, srv *Server, jti string) *httptest.ResponseRecorder {
+	return doRequestWithJtiConn(t, srv, jti, "restic")
+}
+
+func doRequestWithJtiConn(t *testing.T, srv *Server, jti, connection string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 
@@ -43,12 +51,18 @@ func doRequestWithJti(t *testing.T, srv *Server, jti string) *httptest.ResponseR
 	if jti != "" {
 		claims["jti"] = jti
 	}
+	if connection != "" {
+		claims["connection"] = connection
+	}
 	req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, claims)))
 
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 	return rec
 }
+
+// resticRevocable is the RevocableTypes set used by validity tests.
+func resticRevocable() map[string]bool { return map[string]bool{"restic": true} }
 
 func configStore() *mockStorage {
 	return &mockStorage{
@@ -63,7 +77,8 @@ func configStore() *mockStorage {
 
 func TestRevocationRevokedTokenRejected(t *testing.T) {
 	srv := newTestServer(configStore())
-	srv.Revoker = &fakeRevoker{revoked: map[string]bool{"bad": true}}
+	srv.Validator = &fakeValidator{fallbck: revocation.DecisionInvalid}
+	srv.RevocableTypes = resticRevocable()
 
 	rec := doRequestWithJti(t, srv, "bad")
 	if rec.Code != http.StatusUnauthorized {
@@ -77,39 +92,76 @@ func TestRevocationRevokedTokenRejected(t *testing.T) {
 
 func TestRevocationValidTokenAllowed(t *testing.T) {
 	srv := newTestServer(configStore())
-	revoker := &fakeRevoker{revoked: map[string]bool{}}
-	srv.Revoker = revoker
+	validator := &fakeValidator{byJti: map[string]revocation.Decision{"good": revocation.DecisionValid}}
+	srv.Validator = validator
+	srv.RevocableTypes = resticRevocable()
 
 	rec := doRequestWithJti(t, srv, "good")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
 	}
-	if revoker.calls != 1 {
-		t.Fatalf("expected 1 revocation check, got %d", revoker.calls)
+	if validator.calls != 1 {
+		t.Fatalf("expected 1 validity check, got %d", validator.calls)
 	}
 }
 
-func TestRevocationFailsOpenOnError(t *testing.T) {
+// During a Redis outage, a jti still inside its grace window is allowed.
+func TestRevocationGraceAllowed(t *testing.T) {
 	srv := newTestServer(configStore())
-	srv.Revoker = &fakeRevoker{err: errors.New("redis down")}
+	srv.Validator = &fakeValidator{fallbck: revocation.DecisionGrace, err: errors.New("redis down")}
+	srv.RevocableTypes = resticRevocable()
+
+	rec := doRequestWithJti(t, srv, "graced")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 (grace) during outage, got %d", rec.Code)
+	}
+}
+
+// During a Redis outage with no grace, the request fails closed.
+func TestRevocationUnavailableRejected(t *testing.T) {
+	srv := newTestServer(configStore())
+	srv.Validator = &fakeValidator{fallbck: revocation.DecisionUnavailable, err: errors.New("redis down")}
+	srv.RevocableTypes = resticRevocable()
 
 	rec := doRequestWithJti(t, srv, "any")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200 (fail-open) on revoker error, got %d", rec.Code)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 (fail-closed) when validity unknown, got %d", rec.Code)
+	}
+	body, _ := io.ReadAll(rec.Body)
+	if want := "could not be verified"; !strings.Contains(string(body), want) {
+		t.Fatalf("expected body to contain %q, got %s", want, body)
 	}
 }
 
 func TestRevocationSkipsLegacyTokens(t *testing.T) {
 	srv := newTestServer(configStore())
-	revoker := &fakeRevoker{revoked: map[string]bool{}}
-	srv.Revoker = revoker
+	validator := &fakeValidator{fallbck: revocation.DecisionInvalid}
+	srv.Validator = validator
+	srv.RevocableTypes = resticRevocable()
 
 	rec := doRequestWithJti(t, srv, "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200 for legacy token, got %d", rec.Code)
 	}
-	if revoker.calls != 0 {
-		t.Fatalf("expected no revocation checks for legacy token, got %d", revoker.calls)
+	if validator.calls != 0 {
+		t.Fatalf("expected no validity checks for legacy token, got %d", validator.calls)
+	}
+}
+
+// A non-revocable connection type (e.g. immich) is never validity-checked, so a
+// missing marker must not deny it.
+func TestRevocationSkipsNonRevocableConnection(t *testing.T) {
+	srv := newTestServer(configStore())
+	validator := &fakeValidator{fallbck: revocation.DecisionInvalid}
+	srv.Validator = validator
+	srv.RevocableTypes = resticRevocable()
+
+	rec := doRequestWithJtiConn(t, srv, "immich-jti", "immich")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for non-revocable connection, got %d", rec.Code)
+	}
+	if validator.calls != 0 {
+		t.Fatalf("expected no validity checks for immich connection, got %d", validator.calls)
 	}
 }
 
@@ -118,16 +170,17 @@ func TestRevocationDisabledWhenNil(t *testing.T) {
 
 	rec := doRequestWithJti(t, srv, "whatever")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200 with revocation disabled, got %d", rec.Code)
+		t.Fatalf("expected 200 with validity checking disabled, got %d", rec.Code)
 	}
 }
 
 // checked-per-request even when the auth verifier serves the token from its
-// cache: the second request must still hit the revoker.
+// cache: the second request must still hit the validator.
 func TestRevocationRunsOnCachedTokens(t *testing.T) {
 	srv := newTestServer(configStore())
-	revoker := &fakeRevoker{revoked: map[string]bool{}}
-	srv.Revoker = revoker
+	validator := &fakeValidator{byJti: map[string]revocation.Decision{"cached": revocation.DecisionValid}}
+	srv.Validator = validator
+	srv.RevocableTypes = resticRevocable()
 
 	handler := srv.Handler()
 	claims := jwt.MapClaims{
@@ -136,6 +189,7 @@ func TestRevocationRunsOnCachedTokens(t *testing.T) {
 		"writeOnce":  false,
 		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		"jti":        "cached",
+		"connection": "restic",
 	}
 	token := makeBasicAuth(makeJWT(t, claims))
 
@@ -149,12 +203,12 @@ func TestRevocationRunsOnCachedTokens(t *testing.T) {
 		}
 	}
 
-	if revoker.calls != 2 {
-		t.Fatalf("expected 2 revocation checks (one per request), got %d", revoker.calls)
+	if validator.calls != 2 {
+		t.Fatalf("expected 2 validity checks (one per request), got %d", validator.calls)
 	}
 
 	// Revoke between requests: the same (auth-cached) token is now rejected.
-	revoker.revoked["cached"] = true
+	validator.byJti["cached"] = revocation.DecisionInvalid
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", token)
 	rec := httptest.NewRecorder()

@@ -43,5 +43,5 @@ data:
   # CNPG database PVs: node-local NVMe via the overlay's spare-disk SC.
   DB_STORAGE_CLASS: openebs-spare-disk
 
-  # Restic-token revocation denylist (primary regions run redis in-namespace).
+  # Restic-token validity marker store (primary regions run redis in-namespace).
   REDIS_ADDR: "yucca-redis:6379"

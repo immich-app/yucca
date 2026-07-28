@@ -13,8 +13,8 @@ const repositoryRow = {
   id: '00000000-0000-0000-0000-00000000000r',
   name: 'bench',
   worm: false,
-  consumerId: '00000000-0000-0000-0000-00000000000c',
-  consumerType: 'restic',
+  connectionId: '00000000-0000-0000-0000-00000000000c',
+  connectionType: 'restic',
   user: { id: '00000000-0000-0000-0000-00000000000u', name: 'u', email: 'u@x', disabled: false },
   metrics: { sizeBytes: 0, lastStarted: null, lastBackup: null, lastSuccessfulBackup: null, lastBackupDuration: null },
 };
@@ -22,18 +22,27 @@ const repositoryRow = {
 describe(RepositoryService.name, () => {
   let repositories: { [k: string]: jest.Mock };
   let users: { [k: string]: jest.Mock };
-  let consumers: { [k: string]: jest.Mock };
+  let connections: { [k: string]: jest.Mock };
   let resticTokens: { [k: string]: jest.Mock };
+  let revocation: { [k: string]: jest.Mock };
   let jwt: JwtService;
   let sut: RepositoryService;
 
   beforeEach(() => {
     repositories = { list: jest.fn(), get: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
     users = { getBySub: jest.fn(), create: jest.fn() };
-    consumers = { getByUser: jest.fn(), getOrCreateByType: jest.fn().mockResolvedValue({ id: 'consumer-id' }) };
+    connections = { getByUser: jest.fn(), getOrCreateByType: jest.fn().mockResolvedValue({ id: 'connection-id' }) };
     resticTokens = { create: jest.fn() };
+    revocation = { markValid: jest.fn(), markInvalid: jest.fn() };
     jwt = newJwtService();
-    sut = new RepositoryService(repositories as never, users as never, consumers as never, resticTokens as never, jwt);
+    sut = new RepositoryService(
+      repositories as never,
+      users as never,
+      connections as never,
+      resticTokens as never,
+      revocation as never,
+      jwt,
+    );
   });
 
   describe('create', () => {
@@ -43,11 +52,11 @@ describe(RepositoryService.name, () => {
       await expect(sut.create({ name: 'bench', userId: repositoryRow.user.id })).resolves.toEqual({
         repository: repositoryRow,
       });
-      expect(consumers.getOrCreateByType).toHaveBeenCalledWith(repositoryRow.user.id, 'restic', 'Manual restic');
+      expect(connections.getOrCreateByType).toHaveBeenCalledWith(repositoryRow.user.id, 'restic', 'Manual restic');
       expect(repositories.create).toHaveBeenCalledWith({
         name: 'bench',
         userId: repositoryRow.user.id,
-        consumerId: 'consumer-id',
+        connectionId: 'connection-id',
         worm: false,
       });
       expect(users.getBySub).not.toHaveBeenCalled();
@@ -61,7 +70,7 @@ describe(RepositoryService.name, () => {
 
       expect(users.getBySub).toHaveBeenCalledWith('yucca-admin-service');
       expect(users.create).not.toHaveBeenCalled();
-      expect(consumers.getOrCreateByType).toHaveBeenCalledWith('service-user-id', 'restic', 'admin');
+      expect(connections.getOrCreateByType).toHaveBeenCalledWith('service-user-id', 'restic', 'admin');
       expect(repositories.create).toHaveBeenCalledWith(expect.objectContaining({ userId: 'service-user-id' }));
     });
 
@@ -76,7 +85,7 @@ describe(RepositoryService.name, () => {
       expect(repositories.create).toHaveBeenCalledWith({
         name: 'bench',
         userId: 'new-service-user',
-        consumerId: 'consumer-id',
+        connectionId: 'connection-id',
         worm: true,
       });
     });
@@ -125,7 +134,7 @@ describe(RepositoryService.name, () => {
         repository: repositoryRow.id,
         writeOnce: false,
         jti,
-        consumer: repositoryRow.consumerType,
+        connection: repositoryRow.connectionType,
       });
       expect(expiresAt.getTime()).toBe((claims as { exp: number }).exp * 1000);
 
@@ -133,11 +142,14 @@ describe(RepositoryService.name, () => {
         jti,
         repositoryId: repositoryRow.id,
         userId: repositoryRow.user.id,
-        consumerId: repositoryRow.consumerId,
+        connectionId: repositoryRow.connectionId,
         mintedBy: 'admin',
         label: null,
         expiresAt,
       });
+
+      // restic is revocable → a validity marker is written for michael.
+      expect(revocation.markValid).toHaveBeenCalledWith(jti, expiresAt);
     });
 
     it('should honor a custom TTL and label under the cap', async () => {

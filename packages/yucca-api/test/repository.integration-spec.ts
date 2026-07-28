@@ -11,7 +11,7 @@ describe('RepositoryController (e2e)', () => {
   let app: INestApplication<App>;
   let user: { id: string; name: string; email: string; sub: string };
   let session: { id: string; accessToken: string };
-  let repository: { id: string; consumerId: string };
+  let repository: { id: string; connectionId: string };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -48,8 +48,8 @@ describe('RepositoryController (e2e)', () => {
         repository: {
           id: expect.any(String),
           userId: user.id,
-          consumerId: expect.any(String),
-          consumerType: 'immich',
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: 'My Repository',
           metrics: expect.any(Object),
@@ -70,8 +70,8 @@ describe('RepositoryController (e2e)', () => {
         repository: {
           id: repository.id,
           userId: user.id,
-          consumerId: expect.any(String),
-          consumerType: 'immich',
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: expect.any(String),
           metrics: expect.any(Object),
@@ -110,8 +110,8 @@ describe('RepositoryController (e2e)', () => {
         repository: {
           id: repository.id,
           userId: user.id,
-          consumerId: expect.any(String),
-          consumerType: 'immich',
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: 'Updated Name',
           metrics: expect.any(Object),
@@ -132,10 +132,12 @@ describe('RepositoryController (e2e)', () => {
         url: expect.stringMatching(
           /^rest:http:\/\/restic:[\w-]*\.[\w-]*\.[\w-]*@[\w.:]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/,
         ),
+        jti: expect.any(String),
+        expiresAt: expect.any(String),
       });
     });
 
-    it('embeds jti + consumer claims and records the token', async () => {
+    it('embeds jti + connection claims and records the token', async () => {
       const { body } = await request(app.getHttpServer())
         .post(`/api/repository/${repository.id}/restic`)
         .set('Cookie', `yucca-access-token=${session.accessToken}`)
@@ -148,7 +150,7 @@ describe('RepositoryController (e2e)', () => {
         user: user.id,
         repository: repository.id,
         writeOnce: false,
-        consumer: 'immich',
+        connection: 'immich',
         jti: expect.any(String),
       });
 
@@ -156,7 +158,7 @@ describe('RepositoryController (e2e)', () => {
       expect(row).toMatchObject({
         repositoryId: repository.id,
         userId: user.id,
-        consumerId: repository.consumerId,
+        connectionId: repository.connectionId,
         mintedBy: 'user',
         revokedAt: null,
       });

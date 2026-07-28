@@ -23,9 +23,9 @@ export class AuthService {
     readonly repository: RepositoryRepository,
   ) {}
 
-  // Names this immich instance's consumer. Prefer the external URL host (stable,
+  // Names this immich instance's connection. Prefer the external URL host (stable,
   // identifies the deployment); fall back to the machine hostname.
-  private consumerName(): string {
+  private connectionName(): string {
     const external = this.moduleConfig.get().externalBaseUrl;
     if (external) {
       try {
@@ -37,9 +37,9 @@ export class AuthService {
     return hostname() || 'immich';
   }
 
-  // After login the session is bound to this instance's immich consumer, so new
+  // After login the session is bound to this instance's immich connection, so new
   // repositories land on it automatically. Pre-existing repositories still sit
-  // on the user's default consumer — adopt them onto this instance. Best-effort:
+  // on the user's default connection — adopt them onto this instance. Best-effort:
   // adoption never blocks a successful login.
   private async adoptOwnRepositories(endpoint: string | undefined, accessToken: string): Promise<void> {
     try {
@@ -49,7 +49,7 @@ export class AuthService {
       };
 
       const auth = await getAuth(requestOptions);
-      if (!auth.consumerId) {
+      if (!auth.connectionId) {
         return;
       }
 
@@ -61,9 +61,9 @@ export class AuthService {
         return;
       }
 
-      await adoptRepositories(auth.consumerId, { repositoryIds }, requestOptions);
-      this.telemetry.submitStructuredLog('Adopted repositories into instance consumer', {
-        consumerId: auth.consumerId,
+      await adoptRepositories(auth.connectionId, { repositoryIds }, requestOptions);
+      this.telemetry.submitStructuredLog('Adopted repositories into instance connection', {
+        connectionId: auth.connectionId,
         count: repositoryIds.length,
       });
     } catch (error) {
@@ -120,10 +120,10 @@ export class AuthService {
     const overrideEndpoint = this.moduleConfig.get().yuccaProductionApi;
     const endpoint = overrideEndpoint ?? (await yuccaWellKnown.getBaseUrl());
 
-    // Register this session as a named immich consumer instance.
+    // Register this session as a named immich connection instance.
     const url = new URL('/api/auth/oidc/device', endpoint);
-    url.searchParams.set('consumer_type', 'immich');
-    url.searchParams.set('consumer_name', this.consumerName());
+    url.searchParams.set('connection_type', 'immich');
+    url.searchParams.set('connection_name', this.connectionName());
 
     const events: EventSourceClient = createEventSource({
       url,

@@ -65,11 +65,11 @@ yuctl
 │   │   ├── list <email>            resolved flags + overrides for one user
 │   │   ├── set <email> <flag> on|off   set an override (--reason for the audit trail)
 │   │   └── clear <email> <flag>    remove an override (revert to registry default)
-│   └── consumers
-│       └── list <email>            a user's consumer instances (immich/fubar/restic)
+│   └── connections
+│       └── list <email>            a user's connection instances (immich/restic)
 ├── repos
-│   ├── list [--user <email>]       list repositories (owner, consumer type)
-│   ├── create [--user <email>] [--consumer-type t] [--worm] [--name n]
+│   ├── list [--user <email>]       list repositories (owner, connection type)
+│   ├── create [--user <email>] [--connection-type t] [--worm] [--name n]
 │   └── url <id> [--ttl 30d] [--label l]   mint a restic rest: URL (jti printed for revocation)
 ├── tokens
 │   ├── list [--user] [--repository] [--active]   audit minted restic tokens

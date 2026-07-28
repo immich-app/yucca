@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run fubar from source"
-set -e
-cd packages/fubar
-go run . "$@"

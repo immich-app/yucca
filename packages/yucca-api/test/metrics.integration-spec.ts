@@ -133,8 +133,8 @@ describe('MetricsController (e2e)', () => {
         repository: {
           id: repository.id,
           userId: user.id,
-          consumerId: expect.any(String),
-          consumerType: 'immich',
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: expect.any(String),
           metrics: expect.objectContaining({

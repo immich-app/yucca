@@ -77,6 +77,18 @@ describe('ResticTokenController (e2e)', () => {
       const days = (new Date(minted.expiresAt).getTime() - Date.now()) / 86_400_000;
       expect(days).toBeGreaterThan(1.9);
       expect(days).toBeLessThan(2.1);
+
+      // restic is revocable → minting writes a Redis validity marker (present =
+      // valid to michael) with a TTL that tracks the token's expiry.
+      if (env.REDIS_URL) {
+        const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 2, connectTimeout: 2000 });
+        try {
+          expect(await redis.exists(`yucca:restic:valid:${minted.jti}`)).toBe(1);
+          expect(await redis.ttl(`yucca:restic:valid:${minted.jti}`)).toBeGreaterThan(0);
+        } finally {
+          redis.disconnect();
+        }
+      }
     });
 
     it('rejects a TTL above the cap', async () => {
@@ -109,35 +121,38 @@ describe('ResticTokenController (e2e)', () => {
   });
 
   describe('DELETE /restic-tokens/:jti', () => {
-    it('revokes a token in the DB and (when configured) Redis', async () => {
+    it('revokes a token in the DB and (when configured) clears its Redis validity marker', async () => {
       const { minted } = await mintForNewRepository();
 
-      await request(app.getHttpServer())
-        .delete(`/api/restic-tokens/${minted.jti}`)
-        .set('Cookie', authCookie)
-        .expect(204);
-
-      const row = await testUtils.getResticToken(minted.jti);
-      expect(row!.revokedAt).not.toBeNull();
-      expect(row!.revokedBy).toBe('admin');
-
-      // Revoked tokens drop out of active listings.
-      const { body } = await request(app.getHttpServer())
-        .get('/api/restic-tokens?active=true')
-        .set('Cookie', authCookie)
-        .expect(200);
-      expect(body.items).toEqual([]);
-
-      if (env.REDIS_URL) {
-        const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 2, connectTimeout: 2000 });
-        try {
-          const exists = await redis.exists(`yucca:restic:revoked:${minted.jti}`);
-          expect(exists).toBe(1);
-          const ttl = await redis.ttl(`yucca:restic:revoked:${minted.jti}`);
-          expect(ttl).toBeGreaterThan(0);
-        } finally {
-          redis.disconnect();
+      const redis = env.REDIS_URL ? new Redis(env.REDIS_URL, { maxRetriesPerRequest: 2, connectTimeout: 2000 }) : null;
+      try {
+        // The marker is present right after minting…
+        if (redis) {
+          expect(await redis.exists(`yucca:restic:valid:${minted.jti}`)).toBe(1);
         }
+
+        await request(app.getHttpServer())
+          .delete(`/api/restic-tokens/${minted.jti}`)
+          .set('Cookie', authCookie)
+          .expect(204);
+
+        const row = await testUtils.getResticToken(minted.jti);
+        expect(row!.revokedAt).not.toBeNull();
+        expect(row!.revokedBy).toBe('admin');
+
+        // Revoked tokens drop out of active listings.
+        const { body } = await request(app.getHttpServer())
+          .get('/api/restic-tokens?active=true')
+          .set('Cookie', authCookie)
+          .expect(200);
+        expect(body.items).toEqual([]);
+
+        // …and gone after revoke, so michael sees it as invalid.
+        if (redis) {
+          expect(await redis.exists(`yucca:restic:valid:${minted.jti}`)).toBe(0);
+        }
+      } finally {
+        redis?.disconnect();
       }
 
       // Idempotent.

@@ -19,34 +19,78 @@ export type AuthDto = {
     name: string;
     email: string;
     sessionId: string;
-    consumerId?: string | null;
+    connectionId?: string | null;
     features: {
         [key: string]: boolean;
     };
 };
-export type ConsumerDto = {
+export type ConnectionDto = {
     id: string;
-    "type": "immich" | "fubar" | "restic";
+    "type": "immich" | "restic";
     name: string;
     createdAt: string;
     lastSeenAt?: string | null;
     repositoryCount: number;
+    /** Rolled-up storage across this connection’s repositories (RGW size). */
+    sizeBytes: number;
+    /** Rolled-up object count across this connection’s repositories. */
+    objectCount: number;
+    /** Billed bytes: per-object min-size floor applied (immich exempt). */
+    billableBytes: number;
 };
-export type ConsumerListResponseDto = {
-    consumers: ConsumerDto[];
+export type ConnectionListResponseDto = {
+    connections: ConnectionDto[];
 };
-export type ConsumerCreateRequestDto = {
-    "type": "immich" | "fubar" | "restic";
+export type ConnectionCreateRequestDto = {
+    "type": "immich" | "restic";
     name: string;
 };
-export type ConsumerResponseDto = {
-    consumer: ConsumerDto;
+export type ConnectionResponseDto = {
+    connection: ConnectionDto;
 };
-export type ConsumerUpdateRequestDto = {
+export type ConnectionResticRequestDto = {
+    /** Repository name (defaults to a generated one). */
+    name?: string;
+    /** Enable write-once (WORM) on the repository. */
+    worm?: boolean;
+    /** Token lifetime (e.g. "90d"), capped at RESTIC_JWT_MAX_EXPIRES_IN. */
+    expiresIn?: string;
+    /** Human label for the minted access key. */
+    label?: string;
+};
+export type RepositoryMetricsDto = {
+    lastBackup?: string;
+    lastSuccessfulBackup?: string;
+    lastBackupDuration?: number;
+    sizeBytes: number;
+};
+export type RepositoryMeterDto = {
+    sizeBytes: number;
+    objectCount: number;
+    lastUpdated?: string;
+};
+export type RepositoryWithMetricsDto = {
+    id: string;
+    worm: boolean;
+    name: string;
+    connectionId: string;
+    connectionType: string;
+    metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
+};
+export type ConnectionResticResponseDto = {
+    connection: ConnectionDto;
+    repository: RepositoryWithMetricsDto;
+    /** rest: URL with the embedded restic JWT. */
+    url: string;
+    jti: string;
+    expiresAt: string;
+};
+export type ConnectionUpdateRequestDto = {
     name: string;
 };
-export type ConsumerAdoptRequestDto = {
-    /** Repositories to move from the default consumer to this one */
+export type ConnectionAdoptRequestDto = {
+    /** Repositories to move from the default connection to this one */
     repositoryIds: string[];
 };
 export type SubmitBackupEndRequestDto = {
@@ -77,26 +121,8 @@ export type RepositoryMetricsHistoryListResponseDto = {
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
-};
-export type RepositoryMetricsDto = {
-    lastBackup?: string;
-    lastSuccessfulBackup?: string;
-    lastBackupDuration?: number;
-    sizeBytes: number;
-};
-export type RepositoryMeterDto = {
-    sizeBytes: number;
-    objectCount: number;
-    lastUpdated?: string;
-};
-export type RepositoryWithMetricsDto = {
-    id: string;
-    worm: boolean;
-    name: string;
-    consumerId: string;
-    consumerType: string;
-    metrics: RepositoryMetricsDto;
-    meter?: RepositoryMeterDto;
+    /** Owned connection to create the repository under (defaults to the session/default connection). */
+    connectionId?: string;
 };
 export type RepositoryCreateResponseDto = {
     repository: RepositoryWithMetricsDto;
@@ -114,8 +140,32 @@ export type RepositoryUpdateRequestDto = {
 export type RepositoryUpdateResponseDto = {
     repository: RepositoryWithMetricsDto;
 };
+export type ResticUrlRequestDto = {
+    /** Token lifetime (e.g. "90d"). Defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN. */
+    expiresIn?: string;
+    /** Human label for this access key (shown in the token list). */
+    label?: string;
+};
 export type RepositoryCreateResticUrlDto = {
+    /** rest: URL with the embedded restic JWT — paste into `restic -r`. */
     url: string;
+    /** The minted token id, for revocation. */
+    jti: string;
+    expiresAt: string;
+};
+export type ResticTokenDto = {
+    jti: string;
+    repositoryId: string;
+    connectionId?: object | null;
+    /** 'user' or 'admin' */
+    mintedBy: string;
+    label?: object | null;
+    expiresAt: string;
+    revokedAt?: string | null;
+    createdAt: string;
+};
+export type ResticTokenListResponseDto = {
+    tokens: ResticTokenDto[];
 };
 export function getAuth(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -146,53 +196,63 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcDeviceFlow({ consumerType, consumerName }: {
-    consumerType?: string;
-    consumerName?: string;
+export function oidcDeviceFlow({ connectionType, connectionName }: {
+    connectionType?: string;
+    connectionName?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/device${QS.query(QS.explode({
-        consumer_type: consumerType,
-        consumer_name: consumerName
+        connection_type: connectionType,
+        connection_name: connectionName
     }))}`, {
         ...opts
     }));
 }
-export function listConsumers(opts?: Oazapfts.RequestOpts) {
+export function listConnections(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
-        data: ConsumerListResponseDto;
-    }>("/api/consumers", {
+        data: ConnectionListResponseDto;
+    }>("/api/connections", {
         ...opts
     }));
 }
-export function createConsumer(consumerCreateRequestDto: ConsumerCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+export function createConnection(connectionCreateRequestDto: ConnectionCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
-        data: ConsumerResponseDto;
-    }>("/api/consumers", oazapfts.json({
+        data: ConnectionResponseDto;
+    }>("/api/connections", oazapfts.json({
         ...opts,
         method: "POST",
-        body: consumerCreateRequestDto
+        body: connectionCreateRequestDto
     })));
 }
-export function updateConsumer(id: string, consumerUpdateRequestDto: ConsumerUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/consumers/${encodeURIComponent(id)}`, oazapfts.json({
+export function createRestic(connectionResticRequestDto: ConnectionResticRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConnectionResticResponseDto;
+    }>("/api/connections/restic", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: connectionResticRequestDto
+    })));
+}
+export function updateConnection(id: string, connectionUpdateRequestDto: ConnectionUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/connections/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
         method: "PATCH",
-        body: consumerUpdateRequestDto
+        body: connectionUpdateRequestDto
     })));
 }
-export function deleteConsumer(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/consumers/${encodeURIComponent(id)}`, {
+export function deleteConnection(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/connections/${encodeURIComponent(id)}`, {
         ...opts,
         method: "DELETE"
     }));
 }
-export function adoptRepositories(id: string, consumerAdoptRequestDto: ConsumerAdoptRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/consumers/${encodeURIComponent(id)}/adopt`, oazapfts.json({
+export function adoptRepositories(id: string, connectionAdoptRequestDto: ConnectionAdoptRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/connections/${encodeURIComponent(id)}/adopt`, oazapfts.json({
         ...opts,
         method: "POST",
-        body: consumerAdoptRequestDto
+        body: connectionAdoptRequestDto
     })));
 }
 export function submitMetricBackupStart(repositoryId: string, opts?: Oazapfts.RequestOpts) {
@@ -278,12 +338,27 @@ export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
         method: "DELETE"
     }));
 }
-export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
+export function createResticUrl(id: string, resticUrlRequestDto: ResticUrlRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResticUrlDto;
-    }>(`/api/repository/${encodeURIComponent(id)}/restic`, {
+    }>(`/api/repository/${encodeURIComponent(id)}/restic`, oazapfts.json({
         ...opts,
-        method: "POST"
+        method: "POST",
+        body: resticUrlRequestDto
+    })));
+}
+export function listResticTokens(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ResticTokenListResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/restic-tokens`, {
+        ...opts
+    }));
+}
+export function revoke(jti: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/restic-tokens/${encodeURIComponent(jti)}`, {
+        ...opts,
+        method: "DELETE"
     }));
 }

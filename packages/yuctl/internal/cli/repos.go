@@ -64,9 +64,9 @@ func newReposListCmd() *cobra.Command {
 			}
 
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tWORM\tCONSUMER\tOWNER")
+			fmt.Fprintln(w, "ID\tNAME\tWORM\tCONNECTION\tOWNER")
 			for _, r := range repos {
-				fmt.Fprintf(w, "%s\t%s\t%t\t%s\t%s\n", r.ID, r.Name, r.Worm, r.ConsumerType, r.User.Email)
+				fmt.Fprintf(w, "%s\t%s\t%t\t%s\t%s\n", r.ID, r.Name, r.Worm, r.ConnectionType, r.User.Email)
 			}
 			w.Flush()
 			fmt.Fprintf(cmd.ErrOrStderr(), "\n%d repositories in partition %s\n", len(repos), partition)
@@ -80,14 +80,14 @@ func newReposListCmd() *cobra.Command {
 
 func newReposCreateCmd() *cobra.Command {
 	flags := &adminFlags{}
-	var email, consumerType, name string
+	var email, connectionType, name string
 	var worm bool
 	c := &cobra.Command{
 		Use:   "create",
 		Short: "Create a repository (admin service user, or --user <email>)",
 		Long: "Create a repository. Without --user it belongs to the admin service user\n" +
 			"(like bench repos). With --user it is provisioned onto that account, attached\n" +
-			"to a consumer of --consumer-type (default restic, i.e. manual restic use).",
+			"to a connection of --connection-type (default restic, i.e. manual restic use).",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
@@ -96,13 +96,13 @@ func newReposCreateCmd() *cobra.Command {
 				return err
 			}
 
-			opts := adminapi.CreateRepositoryOptions{ConsumerType: consumerType}
+			opts := adminapi.CreateRepositoryOptions{ConnectionType: connectionType}
 			if email != "" {
 				if opts.UserID, err = resolveUserID(ctx, client, email); err != nil {
 					return err
 				}
-			} else if consumerType != "" {
-				return fmt.Errorf("--consumer-type requires --user")
+			} else if connectionType != "" {
+				return fmt.Errorf("--connection-type requires --user")
 			}
 
 			if name == "" {
@@ -114,14 +114,14 @@ func newReposCreateCmd() *cobra.Command {
 			}
 
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 2, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tWORM\tCONSUMER\tOWNER")
-			fmt.Fprintf(w, "%s\t%s\t%t\t%s\t%s\n", repo.ID, repo.Name, repo.Worm, repo.ConsumerType, repo.User.Email)
+			fmt.Fprintln(w, "ID\tNAME\tWORM\tCONNECTION\tOWNER")
+			fmt.Fprintf(w, "%s\t%s\t%t\t%s\t%s\n", repo.ID, repo.Name, repo.Worm, repo.ConnectionType, repo.User.Email)
 			w.Flush()
 			return nil
 		},
 	}
 	c.Flags().StringVar(&email, "user", "", "owner email (default: the admin service user)")
-	c.Flags().StringVar(&consumerType, "consumer-type", "", "consumer type for --user repos (immich|fubar|restic; default restic)")
+	c.Flags().StringVar(&connectionType, "connection-type", "", "connection type for --user repos (immich|restic; default restic)")
 	c.Flags().StringVar(&name, "name", "", "repository name (default: admin-created)")
 	c.Flags().BoolVar(&worm, "worm", false, "write-once repository")
 	flags.register(c)

@@ -13,7 +13,7 @@ import { SessionController } from './controllers/session.controller';
 import { UserController } from './controllers/user.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
-import { ConsumerRepository } from './repositories/consumer.repository';
+import { ConnectionRepository } from './repositories/connection.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
 import { OidcRepository } from './repositories/oidc.repository';
@@ -59,7 +59,7 @@ export const controllers = [
 export const providers = [
   WideContextRepository,
   LoggerRepository,
-  ConsumerRepository,
+  ConnectionRepository,
   DatabaseRepository,
   FeatureFlagRepository,
   DatabaseService,

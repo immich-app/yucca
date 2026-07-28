@@ -66,5 +66,5 @@ data:
   # workloads without app-level replication.
   DB_STORAGE_CLASS: openebs-hostpath
 
-  # Restic-token revocation denylist (primary regions run redis in-namespace).
+  # Restic-token validity marker store (primary regions run redis in-namespace).
   REDIS_ADDR: "yucca-redis:6379"

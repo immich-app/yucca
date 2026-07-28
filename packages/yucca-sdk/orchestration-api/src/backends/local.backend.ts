@@ -42,10 +42,10 @@ export class LocalBackend extends Backend {
         id,
         name: dto.name,
         worm: dto.worm,
-        // Local FS backend has no yucca consumer; fields exist only to satisfy
+        // Local FS backend has no yucca connection; fields exist only to satisfy
         // the shared repository shape.
-        consumerId: '',
-        consumerType: 'local',
+        connectionId: '',
+        connectionType: 'local',
         metrics: {
           sizeBytes: 0,
         },
@@ -59,8 +59,8 @@ export class LocalBackend extends Backend {
         id,
         name: dto.name ?? 'new name',
         worm: false,
-        consumerId: '',
-        consumerType: 'local',
+        connectionId: '',
+        connectionType: 'local',
         metrics: {
           sizeBytes: 0,
         },
@@ -89,8 +89,8 @@ export class LocalBackend extends Backend {
                   id: files[index],
                   name: 'Unknown',
                   worm: false,
-                  consumerId: '',
-                  consumerType: 'local',
+                  connectionId: '',
+                  connectionType: 'local',
                   metrics: {
                     sizeBytes: 0, // in local cache
                   },

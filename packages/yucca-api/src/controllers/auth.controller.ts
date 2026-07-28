@@ -90,12 +90,12 @@ export class AuthController {
   }
 
   @Sse('/oidc/device')
-  @ApiQuery({ name: 'consumer_type', type: String, required: false, description: 'immich | fubar | restic' })
-  @ApiQuery({ name: 'consumer_name', type: String, required: false, description: 'Instance name, e.g. a hostname' })
+  @ApiQuery({ name: 'connection_type', type: String, required: false, description: 'immich | restic' })
+  @ApiQuery({ name: 'connection_name', type: String, required: false, description: 'Instance name, e.g. a hostname' })
   oidcDeviceFlow(
-    @Query('consumer_type') consumerType?: string,
-    @Query('consumer_name') consumerName?: string,
+    @Query('connection_type') connectionType?: string,
+    @Query('connection_name') connectionName?: string,
   ): Observable<MessageEvent> {
-    return this.auth.oidcDeviceFlowObservable(consumerType, consumerName);
+    return this.auth.oidcDeviceFlowObservable(connectionType, connectionName);
   }
 }

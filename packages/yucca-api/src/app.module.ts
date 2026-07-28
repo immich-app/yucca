@@ -4,12 +4,13 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
-import { ConsumerController } from './controllers/consumer.controller';
+import { ConnectionController } from './controllers/connection.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
+import { ResticTokenController } from './controllers/resticToken.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
-import { ConsumerRepository } from './repositories/consumer.repository';
+import { ConnectionRepository } from './repositories/connection.repository';
 import { CryptoRepository } from './repositories/crypto.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
@@ -24,10 +25,11 @@ import { SessionRepository } from './repositories/session.repository';
 import { UserRepository } from './repositories/user.repository';
 import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
 import { AuthService } from './services/auth.service';
-import { ConsumerService } from './services/consumer.service';
+import { ConnectionService } from './services/connection.service';
 import { DatabaseService } from './services/database.service';
 import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
+import { ResticTokenService } from './services/resticToken.service';
 import { getKyselyConfig } from './utils/database';
 
 export const imports = [
@@ -39,14 +41,20 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, ConsumerController, MetricsController, RepositoryController];
+export const controllers = [
+  AuthController,
+  ConnectionController,
+  MetricsController,
+  RepositoryController,
+  ResticTokenController,
+];
 
 export const providers = [
   WideContextRepository,
   LoggerRepository,
   ResticApiRepository,
   DatabaseRepository,
-  ConsumerRepository,
+  ConnectionRepository,
   CryptoRepository,
   FeatureFlagRepository,
   OidcRepository,
@@ -58,10 +66,11 @@ export const providers = [
   ResticTokenRepository,
   RevocationRepository,
   SessionRepository,
-  ConsumerService,
+  ConnectionService,
   DatabaseService,
   MetricsService,
   RepositoryService,
+  ResticTokenService,
   AuthService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },

@@ -1,4 +1,4 @@
-import { consumerTypeFlag, isConsumerType, resolveFeatures } from '@common/server';
+import { connectionTypeFlag, isConnectionType, resolveFeatures } from '@common/server';
 import { LoggerRepository, WideContextRepository } from '@common/server/otel';
 import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { parse } from 'cookie';
@@ -10,7 +10,7 @@ import { from } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { env } from 'src/env';
-import { ConsumerRepository } from 'src/repositories/consumer.repository';
+import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { FeatureFlagRepository } from 'src/repositories/featureFlag.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
@@ -29,7 +29,7 @@ export class AuthService {
     private readonly crypto: CryptoRepository,
     private readonly session: SessionRepository,
     private readonly wideContext: WideContextRepository,
-    private readonly consumer: ConsumerRepository,
+    private readonly connection: ConnectionRepository,
     private readonly featureFlag: FeatureFlagRepository,
   ) {}
 
@@ -48,11 +48,11 @@ export class AuthService {
 
     this.wideContext.addContext('customerId', row.id);
 
-    const { consumerLastSeenAt, ...user } = row;
+    const { connectionLastSeenAt, ...user } = row;
 
-    // Consumer liveness, throttled to one write per 5 minutes.
-    if (user.consumerId && (!consumerLastSeenAt || Date.now() - consumerLastSeenAt.getTime() > 300_000)) {
-      await this.consumer.touchLastSeen(user.consumerId);
+    // Connection liveness, throttled to one write per 5 minutes.
+    if (user.connectionId && (!connectionLastSeenAt || Date.now() - connectionLastSeenAt.getTime() > 300_000)) {
+      await this.connection.touchLastSeen(user.connectionId);
     }
 
     const overrides = await this.featureFlag.getByUser(user.id);
@@ -154,8 +154,8 @@ export class AuthService {
         email: claims.email,
       });
 
-      // Invariant: every user has a default (immich) consumer from day one.
-      await this.consumer.getOrCreateDefault(user.id);
+      // Invariant: every user has a default (immich) connection from day one.
+      await this.connection.getOrCreateDefault(user.id);
     }
 
     return user;
@@ -186,40 +186,40 @@ export class AuthService {
     throw new EmailNotAllowedException();
   }
 
-  // Resolves which consumer instance a device-flow session binds to. Absent
-  // type = legacy client → the default consumer. An explicit type names a
-  // reusable (type, name) instance; restic/fubar require their per-type flag,
+  // Resolves which connection instance a device-flow session binds to. Absent
+  // type = legacy client → the default connection. An explicit type names a
+  // reusable (type, name) instance; restic requires its per-type flag,
   // immich is always allowed.
-  private async resolveDeviceConsumer(
+  private async resolveDeviceConnection(
     userId: string,
     features: Record<string, boolean>,
-    consumerType?: string,
-    consumerName?: string,
+    connectionType?: string,
+    connectionName?: string,
   ): Promise<string> {
-    if (!consumerType) {
-      const consumer = await this.consumer.getOrCreateDefault(userId);
-      return consumer.id;
+    if (!connectionType) {
+      const connection = await this.connection.getOrCreateDefault(userId);
+      return connection.id;
     }
 
-    if (!isConsumerType(consumerType)) {
-      throw new BadRequestException(`Unknown consumer type '${consumerType}'`);
+    if (!isConnectionType(connectionType)) {
+      throw new BadRequestException(`Unknown connection type '${connectionType}'`);
     }
 
-    const flag = consumerTypeFlag(consumerType);
+    const flag = connectionTypeFlag(connectionType);
     if (flag && !features[flag]) {
       throw new FeatureNotEnabledException(flag);
     }
 
-    const name = consumerName?.trim() || consumerType;
-    const existing = await this.consumer.getByUserTypeName(userId, consumerType, name);
-    const consumer = existing ?? (await this.consumer.create({ userId, type: consumerType, name }));
-    return consumer.id;
+    const name = connectionName?.trim() || connectionType;
+    const existing = await this.connection.getByUserTypeName(userId, connectionType, name);
+    const connection = existing ?? (await this.connection.create({ userId, type: connectionType, name }));
+    return connection.id;
   }
 
   async oidcDeviceFlow(
     callback: (data: { userCode: string; verificationUri: string }) => void,
-    consumerType?: string,
-    consumerName?: string,
+    connectionType?: string,
+    connectionName?: string,
   ): Promise<{ accessToken: string }> {
     const { userCode, verificationUri, claims: pendingClaims } = await this.oidc.deviceFlow();
 
@@ -238,20 +238,20 @@ export class AuthService {
     this.wideContext.addContext('customerId', user.id);
 
     const overrides = await this.featureFlag.getByUser(user.id);
-    const consumerId = await this.resolveDeviceConsumer(
+    const connectionId = await this.resolveDeviceConnection(
       user.id,
       resolveFeatures(overrides),
-      consumerType,
-      consumerName,
+      connectionType,
+      connectionName,
     );
-    await this.consumer.touchLastSeen(consumerId);
+    await this.connection.touchLastSeen(connectionId);
 
     const accessToken = this.crypto.randomHex(32);
 
     await this.session.create({
       userId: user.id,
       accessToken,
-      consumerId,
+      connectionId,
       kind: 'device',
     });
 
@@ -260,7 +260,7 @@ export class AuthService {
     };
   }
 
-  oidcDeviceFlowObservable(consumerType?: string, consumerName?: string) {
+  oidcDeviceFlowObservable(connectionType?: string, connectionName?: string) {
     return from(
       new EventIterator<MessageEvent>(
         (queue) =>
@@ -272,8 +272,8 @@ export class AuthService {
                   ...data,
                 },
               } as MessageEvent),
-            consumerType,
-            consumerName,
+            connectionType,
+            connectionName,
           )
             .then(({ accessToken }) => queue.push({ data: { type: 'SUCCESS', accessToken } } as MessageEvent))
             .catch((error) => {

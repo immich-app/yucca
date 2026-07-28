@@ -1,3 +1,4 @@
+import { isRevocableConnectionType } from '@common/server';
 import { BadRequestException, Injectable, InternalServerErrorException, NotImplementedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import ms, { StringValue } from 'ms';
@@ -14,9 +15,10 @@ import {
   RepositoryUrlResponseDto,
 } from 'src/dto/repository.dto';
 import { env } from 'src/env';
-import { ConsumerRepository } from 'src/repositories/consumer.repository';
+import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
+import { RevocationRepository } from 'src/repositories/revocation.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
 
@@ -34,8 +36,9 @@ export class RepositoryService {
   constructor(
     private readonly repositories: RepositoryRepository,
     private readonly users: UserRepository,
-    private readonly consumers: ConsumerRepository,
+    private readonly connections: ConnectionRepository,
     private readonly resticTokens: ResticTokenRepository,
+    private readonly revocation: RevocationRepository,
     private readonly jwt: JwtService,
   ) {}
 
@@ -53,22 +56,22 @@ export class RepositoryService {
 
   async create(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
     let userId = dto.userId;
-    let consumer: { type: string; name: string };
+    let connection: { type: string; name: string };
     if (userId) {
       // Admin-provisioned repos on real users default to manual restic use.
-      const type = dto.consumerType ?? 'restic';
-      const names: Record<string, string> = { restic: 'Manual restic', immich: 'Immich', fubar: 'fubar' };
-      consumer = { type, name: names[type] ?? type };
+      const type = dto.connectionType ?? 'restic';
+      const names: Record<string, string> = { restic: 'Manual restic', immich: 'Immich' };
+      connection = { type, name: names[type] ?? type };
     } else {
       const user = (await this.users.getBySub(serviceUser.sub)) ?? (await this.users.create(serviceUser));
       userId = user.id;
-      consumer = { type: 'restic', name: 'admin' };
+      connection = { type: 'restic', name: 'admin' };
     }
-    const { id: consumerId } = await this.consumers.getOrCreateByType(userId, consumer.type, consumer.name);
+    const { id: connectionId } = await this.connections.getOrCreateByType(userId, connection.type, connection.name);
     const repository = await this.repositories.create({
       name: dto.name,
       userId,
-      consumerId,
+      connectionId,
       worm: dto.worm ?? false,
     });
     return { repository };
@@ -102,7 +105,7 @@ export class RepositoryService {
         repository: repository.id,
         writeOnce: repository.worm,
         jti,
-        consumer: repository.consumerType,
+        connection: repository.connectionType,
       },
       { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn },
     );
@@ -114,11 +117,16 @@ export class RepositoryService {
       jti,
       repositoryId: repository.id,
       userId: repository.user.id,
-      consumerId: repository.consumerId,
+      connectionId: repository.connectionId,
       mintedBy: 'admin',
       label: dto.label ?? null,
       expiresAt,
     });
+
+    // Only revocable connection types (restic) carry a Redis validity marker.
+    if (isRevocableConnectionType(repository.connectionType)) {
+      await this.revocation.markValid(jti, expiresAt);
+    }
 
     const url = new URL(env.RESTIC_ENDPOINT);
     url.username = 'restic';

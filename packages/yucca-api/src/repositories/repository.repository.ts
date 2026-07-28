@@ -32,12 +32,12 @@ export class RepositoryRepository {
   get(id: string) {
     return this.db
       .selectFrom('repositories')
-      .innerJoin('consumers', 'consumers.id', 'repositories.consumerId')
+      .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
       .where('repositories.id', '=', id)
       .selectAll('repositories')
-      .select('consumers.type as consumerType')
+      .select('connections.type as connectionType')
       .select(metricsJson)
       .select(meterJson)
       .executeTakeFirstOrThrow();
@@ -46,12 +46,12 @@ export class RepositoryRepository {
   getByUser(userId: string) {
     return this.db
       .selectFrom('repositories')
-      .innerJoin('consumers', 'consumers.id', 'repositories.consumerId')
+      .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
       .where('repositories.userId', '=', userId)
       .selectAll('repositories')
-      .select('consumers.type as consumerType')
+      .select('connections.type as connectionType')
       .select(metricsJson)
       .select(meterJson)
       .execute();
@@ -70,7 +70,7 @@ export class RepositoryRepository {
     return this.db.selectFrom('repositories').selectAll().where('id', 'in', ids).execute();
   }
 
-  async reparent(ids: string[], consumerId: string) {
-    await this.db.updateTable('repositories').set({ consumerId }).where('id', 'in', ids).execute();
+  async reparent(ids: string[], connectionId: string) {
+    await this.db.updateTable('repositories').set({ connectionId }).where('id', 'in', ids).execute();
   }
 }

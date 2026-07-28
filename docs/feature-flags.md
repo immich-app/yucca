@@ -26,10 +26,10 @@ kill-switch that survives a GA default flip).
 - **yucca-api** gates routes with `@RequireFeature('<key>')` stacked on
   `@AuthRoute()` (403 when off), and returns the resolved flags on `GET /auth`
   as `features: Record<string, boolean>` — so web, the orchestrator SDK, and
-  fubar all read the same resolved state.
-- **Device flow** honors flags too: a non-immich `consumer_type` on
+  the CLI clients all read the same resolved state.
+- **Device flow** honors flags too: a non-immich `connection_type` on
   `/auth/oidc/device` fails with `FEATURE_NOT_ENABLED` unless the type's flag
-  (`consumer-fubar`) is on. immich needs no flag.
+  (`connection-restic`) is on. immich needs no flag.
 
 ## Lifecycle (`stage`)
 
@@ -48,15 +48,15 @@ from the registry plus their override row.
 
 ```bash
 yuctl features list                          # registry: defaults, stages, override counts
-yuctl features users consumer-fubar           # who has an override, set by whom, why
+yuctl features users connection-restic          # who has an override, set by whom, why
 yuctl users features list <email>            # one user's resolved flags + overrides
-yuctl users features set <email> consumer-fubar on --reason "early access"
-yuctl users features clear <email> consumer-fubar
-yuctl features enable-batch consumer-fubar 50   # oldest 50 users without an override
+yuctl users features set <email> connection-restic on --reason "early access"
+yuctl users features clear <email> connection-restic
+yuctl features enable-batch connection-restic 50  # oldest 50 users without an override
 ```
 
 Batch enrollment orders by `users.createdAt` then `id` (users predating the
-consumer migration share `2026-01-01`, tie-broken by id).
+connection migration share `2026-01-01`, tie-broken by id).
 
 ## The boundary rule (why this isn't a config junk drawer)
 

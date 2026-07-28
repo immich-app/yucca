@@ -114,11 +114,10 @@ to victoria-*).
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Shares the same DB + JWT validation. |
 | `michael` | Go | **Production** restic REST backend — S3 proxy implementing restic's HTTP protocol, with JWT (ECDSA pubkey) verification, WORM enforcement, multi-backend pool/DNS load-balancing. Deployed in k8s (`kubernetes/apps/base/michael`). |
 | `restic-api` | NestJS | Earlier TypeScript implementation of the same restic backend, kept as a **reference** (`mise restic-api:dev-reference`); not in the deployed app set. |
-| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, emits OTel gauges; **also reconciles revoked restic tokens into Redis** so the denylist survives a Redis restart. |
-| `fubar` | Go | User-facing FUTO Backups CLI — a restic wrapper with device-flow login (registers a `fubar` consumer), scheduled backups (`fubar daemon` + launchd/systemd), and telemetry to yucca-api. Ships as a static binary (release lane in `publish.yml`), not a container. Named product (not themed like clusters). |
-| `redis` (valkey) | — | Ephemeral revocation denylist michael checks per request. In-repo chart `charts/apps/redis`; primary-region only (secondaries have no denylist-population path and run with revocation off). |
+| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, **rolls usage up per connection into `connectionMetrics` (with the per-type billing floor)**, emits OTel gauges; **also re-asserts restic-token validity markers into Redis** so they survive a Redis restart. |
+| `redis` (valkey) | — | Ephemeral restic-token **validity marker** store michael checks per request (present = valid, absent = revoked). In-repo chart `charts/apps/redis`; primary-region only (secondaries have no marker-population path and run with validity checking off). |
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). Used by compose and k3d when no real issuer is configured. |
-| `common` (`@common/server`) | TS lib | Shared OTel init, pino logger repository, logging interceptor, **the feature-flag registry (`FeatureFlags`) and consumer types (`ConsumerTypes`)**. |
+| `common` (`@common/server`) | TS lib | Shared OTel init, pino logger repository, logging interceptor, **the feature-flag registry (`FeatureFlags`) and connection types (`ConnectionTypes`)**. |
 
 **Frontend** (`packages/web`) is **SvelteKit 5 + Tailwind 4**, using `@immich/ui`, lingui i18n
 (`mise web:lingui:*` to extract/compile — compiled locales are generated, not edited), and the
@@ -136,31 +135,45 @@ generated API client. It also embeds the orchestration UI (`@futo-org/backups-or
 consumed by web). `fetch-client.ts` is generated (eslint-ignored). When you change an API
 contract, regenerate rather than editing the client.
 
-### Consumers, feature flags, and restic-token revocation
+### Connections, feature flags, and restic-token revocation
 
-- **Consumers** (`consumers` table) make "what backs up this account" first-class: a user has N
-  consumer instances of type `immich`, `fubar`, or `restic`. Every repository has a `consumerId`
-  (NOT NULL); device-flow sessions bind to a consumer via `?consumer_type=&consumer_name=` on
-  `/auth/oidc/device`. Existing repos were backfilled onto a default `immich` consumer; instance
-  attribution is client-driven via `POST /consumers/:id/adopt` (moves default-consumer repos to a
+- **Connections** (`connections` table) make "what backs up this account" first-class: a user has N
+  connection instances of type `immich` or `restic`. Every repository has a `connectionId`
+  (NOT NULL); device-flow sessions bind to a connection via `?connection_type=&connection_name=` on
+  `/auth/oidc/device`. Existing repos were backfilled onto a default `immich` connection; instance
+  attribution is client-driven via `POST /connections/:id/adopt` (moves default-connection repos to a
   named instance), never guessed server-side. The in-repo orchestrator (`yucca-sdk`) does this on
-  device-flow login: it registers as an `immich` consumer named after its external host, then
-  best-effort adopts its existing repositories onto that instance. The `/consumers` API surface
+  device-flow login: it registers as an `immich` connection named after its external host, then
+  best-effort adopts its existing repositories onto that instance. The `/connections` API surface
   (list, create, adopt, manage — including multiple `immich` instances) is open to **every**
   authenticated user.
 - **Feature flags** = registry in code (`@common/server` `FeatureFlags`), strict-boolean per-user
   overrides in `userFeatureFlagOverride`. Resolution is `override ?? registry default`; the default
   flips at GA via a release (code-only defaults). Flags gate self-service use of the individual
-  non-default consumer *types*, not the whole surface: `consumer-restic` and `consumer-fubar`
-  (both `experimental`, default off) — `immich` needs none. The mapping lives in `@common/server`
-  `ConsumerTypeFlags`/`consumerTypeFlag()`, checked in `ConsumerService.create` and the device
-  flow; admin-provisioned consumers bypass it (admin authority). `@RequireFeature` remains as the
+  non-default connection *type*, not the whole surface: `connection-restic`
+  (`experimental`, default off) — `immich` needs none. The mapping lives in `@common/server`
+  `ConnectionTypeFlags`/`connectionTypeFlag()`, checked in `ConnectionService.create` and the device
+  flow; admin-provisioned connections bypass it (admin authority). `@RequireFeature` remains as the
   generic route-level guard for future whole-route gating. Manage from yuctl: `users features
   set/clear`, `features enable-batch`. **Boundary rule:** env/cluster-settings = deployment config
   (ops-owned, per-partition); feature flags = per-user product gating (admin-owned, runtime).
-- **Restic tokens** are tracked (`resticTokens`, one row per mint, jti + consumer claim) and
-  revocable: revoke writes `revokedAt` then a Redis key michael checks per request (fail-open — a
-  Redis outage never blocks backups; ~5s michael cache delay on revoke). michael enforces only
+- **Per-type descriptor + billing** live in the code registry (`@common/server` `ConnectionTypeInfos`):
+  each type declares its metering tiers, `reportsActivity`, `minObjectSizeBytes` (billing floor), and
+  `revocable`. Billing keys off the always-available **storage** tier: `yucca-metrics-worker` rolls each
+  connection's per-repo RadosGW readings up into `connectionMetrics` and computes
+  `billableBytes(type, size, objects) = max(size, objects * minObjectSizeBytes)` (immich floor 0; non-immich
+  1 MiB — an aggregate approximation, RadosGW gives no per-object histogram). `GET /connections` returns the
+  rollup. **Self-serve restic** (flagged): `POST /connections/restic` creates connection+repo+long-lived URL
+  in one shot; `POST /repository/:id/restic` mints for an existing repo (`expiresIn` capped by
+  `RESTIC_JWT_MAX_EXPIRES_IN`, default 365d); `GET /repository/:id/restic-tokens` + `DELETE /restic-tokens/:jti`
+  are owner-scoped. See `docs/connections.md`.
+- **Restic-token revocation** = **cached validity, bounded grace** (not a fail-open denylist). Redis holds a
+  positive marker `yucca:restic:valid:<jti>` per live token; michael treats present = valid, **absent =
+  revoked/unknown → denied**. Mint writes the marker (revocable types only — michael **skips** non-revocable
+  types like immich via `REVOCABLE_CONNECTION_TYPES`, so an absent marker never wrongly denies them); revoke
+  deletes it (takes effect within michael's fresh cache `REVOCATION_FRESH_TTL_MS`, default 60s). On a Redis
+  outage michael honors a previously-valid jti until `REVOCATION_GRACE_MS` (default 5min) then fails **closed**.
+  `yucca-metrics-worker` re-asserts valid markers from the DB every 5min (Redis stays ephemeral). Enforced only
   where `REDIS_ADDR` is set (primary regions). yuctl: `tokens list/revoke`, `repos url --ttl`.
 
 ### Database

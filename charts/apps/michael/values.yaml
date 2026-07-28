@@ -39,8 +39,8 @@ devJwtPublicKey: |
 env:
   - name: RESTIC_API_PORT
     value: "3010"
-  # Revocation denylist (dev). Real overlays substitute per-cluster (primary
-  # sets REDIS_ADDR; secondaries leave it unset = checking disabled).
+  # Restic-token validity marker store (dev). Real overlays substitute per-cluster
+  # (primary sets REDIS_ADDR; secondaries leave it unset = validity checking disabled).
   - name: REDIS_ADDR
     value: yucca-redis:6379
   - name: LOG_LEVEL

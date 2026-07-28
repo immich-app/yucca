@@ -1,5 +1,5 @@
 import { Column, ForeignKeyColumn, type Generated, Table } from '@immich/sql-tools';
-import { ConsumerTable } from './consumer.table';
+import { ConnectionTable } from './connection.table';
 import { RepositoryTable } from './repository.table';
 import { UserTable } from './user.table';
 
@@ -17,8 +17,8 @@ export class ResticTokenTable {
   @ForeignKeyColumn(() => UserTable, { onUpdate: 'CASCADE', onDelete: 'CASCADE', index: true })
   userId!: string;
 
-  @ForeignKeyColumn(() => ConsumerTable, { onUpdate: 'CASCADE', onDelete: 'SET NULL', nullable: true, index: true })
-  consumerId!: string | null;
+  @ForeignKeyColumn(() => ConnectionTable, { onUpdate: 'CASCADE', onDelete: 'SET NULL', nullable: true, index: true })
+  connectionId!: string | null;
 
   // 'user' (self-service mint via yucca-api) or 'admin' (yucca-admin-api).
   @Column()

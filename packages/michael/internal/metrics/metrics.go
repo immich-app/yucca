@@ -50,7 +50,7 @@ type Metrics struct {
 	RequestErrors   otelmetric.Int64Counter
 	AuthCacheHits   otelmetric.Int64Counter
 	AuthCacheMisses otelmetric.Int64Counter
-	// Revocation check results, labeled outcome=allowed|revoked|error|skipped.
+	// Validity check results, labeled outcome=allowed|revoked|grace|unavailable|skipped.
 	RevocationChecks otelmetric.Int64Counter
 }
 
@@ -178,38 +178,38 @@ func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {
 	return provider, nil
 }
 
-// consumerLabel bounds the label to the consumer *type*; legacy tokens
-// without the claim report "unknown". Never label by consumer instance id.
-func consumerLabel(a auth.Auth) string {
-	if a.Consumer == "" {
+// connectionLabel bounds the label to the connection *type*; legacy tokens
+// without the claim report "unknown". Never label by connection instance id.
+func connectionLabel(a auth.Auth) string {
+	if a.Connection == "" {
 		return "unknown"
 	}
-	return a.Consumer
+	return a.Connection
 }
 
 func MetricAttrs(a auth.Auth) attribute.Set {
 	return attribute.NewSet(
 		attribute.String("customerId", a.User),
 		attribute.String("repositoryId", a.Repository),
-		attribute.String("consumer", consumerLabel(a)),
+		attribute.String("connection", connectionLabel(a)),
 	)
 }
 
 // --- Cached metric helpers (hot-path allocation avoidance) ---
 
-type authAttrKey struct{ user, repository, consumer string }
+type authAttrKey struct{ user, repository, connection string }
 
 var authAttrCache sync.Map
 
 func AuthMetricOption(a auth.Auth) otelmetric.MeasurementOption {
-	key := authAttrKey{a.User, a.Repository, consumerLabel(a)}
+	key := authAttrKey{a.User, a.Repository, connectionLabel(a)}
 	if v, ok := authAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
 	opt := otelmetric.WithAttributeSet(attribute.NewSet(
 		attribute.String("customerId", a.User),
 		attribute.String("repositoryId", a.Repository),
-		attribute.String("consumer", consumerLabel(a)),
+		attribute.String("connection", connectionLabel(a)),
 	))
 	authAttrCache.Store(key, opt)
 	return opt

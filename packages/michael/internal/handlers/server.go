@@ -24,9 +24,14 @@ type Server struct {
 	Storage      storage.Storage
 	JWTPublicKey *ecdsa.PublicKey
 	Metrics      *metrics.Metrics
-	// Optional restic-token revocation checks (nil = disabled). Fail-open:
-	// a Redis error never blocks a request.
-	Revoker revocation.Revoker
+	// Optional restic-token validity checks (nil = disabled). A present Redis
+	// marker means valid; an absent one means revoked/unknown → denied. A Redis
+	// outage honors previously-valid tokens for a bounded grace window, then denies.
+	Validator revocation.Validator
+	// Connection types whose tokens are validity-checked (the `connection` JWT
+	// claim). A token whose type is absent from this set is skipped — non-revocable
+	// types (e.g. immich) keep no marker, so checking them would wrongly deny.
+	RevocableTypes map[string]bool
 }
 
 func NewServer(s storage.Storage, jwtPublicKey *ecdsa.PublicKey, m *metrics.Metrics) *Server {
@@ -117,7 +122,7 @@ func (s *Server) countRevocation(ctx context.Context, outcome string) {
 
 func (s *Server) revocationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.Revoker == nil {
+		if s.Validator == nil {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -129,23 +134,33 @@ func (s *Server) revocationMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		revoked, err := s.Revoker.IsRevoked(r.Context(), a.Jti)
-		if err != nil {
-			// Fail-open: Redis must never take down the backup plane.
-			hlog.FromRequest(r).Warn().Err(err).Msg("revocation check failed; allowing request")
-			s.countRevocation(r.Context(), "error")
+		if !s.RevocableTypes[a.Connection] {
+			// Non-revocable connection type (e.g. immich) — no validity marker is
+			// maintained for it, so an absent marker must NOT deny. Skip the check.
+			s.countRevocation(r.Context(), "skipped")
 			next.ServeHTTP(w, r)
 			return
 		}
-		if revoked {
+
+		decision, err := s.Validator.Check(r.Context(), a.Jti)
+		switch decision {
+		case revocation.DecisionValid:
+			s.countRevocation(r.Context(), "allowed")
+			next.ServeHTTP(w, r)
+		case revocation.DecisionGrace:
+			// Redis is down but this jti was recently valid — allow, degraded.
+			hlog.FromRequest(r).Warn().Err(err).Msg("validity store unreachable; honoring cached-valid token within grace")
+			s.countRevocation(r.Context(), "grace")
+			next.ServeHTTP(w, r)
+		case revocation.DecisionUnavailable:
+			// Redis is down and this jti has no valid grace entry — fail closed.
+			hlog.FromRequest(r).Warn().Err(err).Msg("validity store unreachable and no grace; denying")
+			s.countRevocation(r.Context(), "unavailable")
+			httputil.WriteError(w, r, http.StatusUnauthorized, "Token validity could not be verified")
+		default: // DecisionInvalid
 			s.countRevocation(r.Context(), "revoked")
 			httputil.WriteError(w, r, http.StatusUnauthorized, "Token revoked")
-			return
 		}
-
-		s.countRevocation(r.Context(), "allowed")
-		next.ServeHTTP(w, r)
 	})
 }
 

@@ -40,7 +40,7 @@ spec:
     env:
       - name: RESTIC_API_PORT
         value: "3010"
-      # Empty on secondaries (no local denylist) — disables revocation checking.
+      # Empty on secondaries (no local marker store) — disables validity checking.
       - name: REDIS_ADDR
         value: ${REDIS_ADDR:=}
       - name: LOG_LEVEL

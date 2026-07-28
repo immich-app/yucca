@@ -96,11 +96,17 @@ func main() {
 
 	srv := handlers.NewServer(store, cfg.JWTPublicKey, m)
 	if cfg.RedisAddr != "" {
-		srv.Revoker = revocation.NewRedisRevoker(cfg.RedisAddr, cfg.RedisTimeout, cfg.RevocationCacheTTL)
-		log.Info().Str("addr", cfg.RedisAddr).Dur("cache_ttl", cfg.RevocationCacheTTL).
-			Msg("restic token revocation checking enabled")
+		srv.Validator = revocation.NewRedisValidator(cfg.RedisAddr, cfg.RedisTimeout, cfg.RevocationFreshTTL, cfg.RevocationGraceTTL)
+		srv.RevocableTypes = cfg.RevocableConnectionTypes
+		revocableTypes := make([]string, 0, len(cfg.RevocableConnectionTypes))
+		for t := range cfg.RevocableConnectionTypes {
+			revocableTypes = append(revocableTypes, t)
+		}
+		log.Info().Str("addr", cfg.RedisAddr).Dur("fresh_ttl", cfg.RevocationFreshTTL).Dur("grace_ttl", cfg.RevocationGraceTTL).
+			Strs("revocable_types", revocableTypes).
+			Msg("restic token validity checking enabled")
 	} else {
-		log.Info().Msg("REDIS_ADDR not set; restic token revocation checking disabled")
+		log.Info().Msg("REDIS_ADDR not set; restic token validity checking disabled")
 	}
 
 	httpSrv := &http.Server{

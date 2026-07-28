@@ -103,8 +103,8 @@ metadata:
   name: allow-ingress-redis
   namespace: yucca
 spec:
-  # Restic-token revocation denylist (valkey, no auth): reachable only from
-  # the services that write revocations (apis, worker reconcile) and michael
+  # Restic-token validity markers (valkey, no auth): reachable only from
+  # the services that write markers (apis, worker reconcile) and michael
   # (per-request checks).
   podSelector:
     matchLabels:

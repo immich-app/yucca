@@ -6,9 +6,9 @@ metadata:
   name: redis
   namespace: flux-system
 spec:
-  # Restic-token revocation denylist (valkey). Primary-role only: secondaries
-  # have no local denylist population path (no DB, no reconcile), so michael
-  # there runs with REDIS_ADDR unset (revocation checking disabled).
+  # Restic-token validity marker store (valkey). Primary-role only: secondaries
+  # have no local marker population path (no DB, no reconcile), so michael
+  # there runs with REDIS_ADDR unset (validity checking disabled).
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

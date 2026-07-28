@@ -1,0 +1,79 @@
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import { ApiOkResponse } from '@nestjs/swagger';
+import { AuthDto } from 'src/dto/auth.dto';
+import {
+  ConnectionAdoptRequestDto,
+  ConnectionCreateRequestDto,
+  ConnectionListResponseDto,
+  ConnectionResponseDto,
+  ConnectionResticRequestDto,
+  ConnectionResticResponseDto,
+  ConnectionUpdateRequestDto,
+} from 'src/dto/connection.dto';
+import { Auth, AuthRoute } from 'src/middleware/auth.guard';
+import { ConnectionService } from 'src/services/connection.service';
+
+// The connection surface is open to every authenticated user (multiple immich
+// instances, adopt, management). Creating/binding a restic connection
+// is gated per-type by ConnectionService against the user's feature flags.
+@Controller('/connections')
+export class ConnectionController {
+  constructor(private readonly connections: ConnectionService) {}
+
+  @Get()
+  @AuthRoute()
+  @ApiOkResponse({ type: ConnectionListResponseDto })
+  listConnections(@Auth() auth: AuthDto): Promise<ConnectionListResponseDto> {
+    return this.connections.list(auth);
+  }
+
+  @Post()
+  @AuthRoute()
+  @ApiOkResponse({ type: ConnectionResponseDto })
+  async createConnection(
+    @Auth() auth: AuthDto,
+    @Body() dto: ConnectionCreateRequestDto,
+  ): Promise<ConnectionResponseDto> {
+    const connection = await this.connections.create(auth, dto);
+    return { connection: { ...connection, repositoryCount: 0, sizeBytes: 0, objectCount: 0, billableBytes: 0 } };
+  }
+
+  // One-shot self-serve restic: connection + repository + long-lived URL. Gated
+  // on the connection-restic feature flag (in-service); invisible in the UI
+  // without it.
+  @Post('/restic')
+  @AuthRoute()
+  @ApiOkResponse({ type: ConnectionResticResponseDto })
+  createRestic(@Auth() auth: AuthDto, @Body() dto: ConnectionResticRequestDto): Promise<ConnectionResticResponseDto> {
+    return this.connections.createRestic(auth, dto);
+  }
+
+  @Patch('/:id')
+  @AuthRoute()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async updateConnection(
+    @Auth() auth: AuthDto,
+    @Param('id') id: string,
+    @Body() dto: ConnectionUpdateRequestDto,
+  ): Promise<void> {
+    await this.connections.update(auth, id, dto);
+  }
+
+  @Delete('/:id')
+  @AuthRoute()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteConnection(@Auth() auth: AuthDto, @Param('id') id: string): Promise<void> {
+    return this.connections.delete(auth, id);
+  }
+
+  @Post('/:id/adopt')
+  @AuthRoute()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  adoptRepositories(
+    @Auth() auth: AuthDto,
+    @Param('id') id: string,
+    @Body() dto: ConnectionAdoptRequestDto,
+  ): Promise<void> {
+    return this.connections.adopt(auth, id, dto);
+  }
+}

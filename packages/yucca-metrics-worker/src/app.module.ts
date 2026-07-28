@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { KyselyModule } from 'nestjs-kysely';
+import { ConnectionMetricsRepository } from './repositories/connectionMetrics.repository';
 import { MeterRepository } from './repositories/meter.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { ResticTokenRepository } from './repositories/resticToken.repository';
@@ -19,6 +20,7 @@ export const providers = [
   RgwRepository,
   MeterRepository,
   RepositoryRepository,
+  ConnectionMetricsRepository,
   ResticTokenRepository,
   MetricsService,
   RevocationSyncService,

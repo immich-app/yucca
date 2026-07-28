@@ -101,7 +101,8 @@ export class YuccaBackend extends Backend {
   }
 
   async getResticEndpoint(id: string) {
-    const { url } = await createResticUrl(id, await this.getRequestOptions());
+    // Empty body → default (RESTIC_JWT_EXPIRES_IN) lifetime, no label.
+    const { url } = await createResticUrl(id, {}, await this.getRequestOptions());
     return url;
   }
 

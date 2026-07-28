@@ -21,7 +21,7 @@ export class UserRepository {
       .selectFrom('sessions')
       .where('accessToken', '=', accessToken)
       .innerJoin('users', 'users.id', 'sessions.userId')
-      .leftJoin('consumers', 'consumers.id', 'sessions.consumerId')
+      .leftJoin('connections', 'connections.id', 'sessions.connectionId')
       .where('users.disabled', '=', false)
       .select([
         'users.id',
@@ -29,8 +29,8 @@ export class UserRepository {
         'users.name',
         'users.email',
         'sessions.id as sessionId',
-        'sessions.consumerId as consumerId',
-        'consumers.lastSeenAt as consumerLastSeenAt',
+        'sessions.connectionId as connectionId',
+        'connections.lastSeenAt as connectionLastSeenAt',
       ])
       .executeTakeFirst();
   }

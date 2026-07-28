@@ -437,9 +437,9 @@
         ]
       }
     },
-    "/api/user/{id}/consumers": {
+    "/api/user/{id}/connections": {
       "get": {
-        "operationId": "listUserConsumers",
+        "operationId": "listUserConnections",
         "parameters": [
           {
             "name": "id",
@@ -456,7 +456,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConsumerListResponseDto"
+                  "$ref": "#/components/schemas/ConnectionListResponseDto"
                 }
               }
             }
@@ -1257,7 +1257,7 @@
           "value"
         ]
       },
-      "ConsumerAdminDto": {
+      "ConnectionAdminDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -1268,7 +1268,7 @@
           },
           "type": {
             "type": "string",
-            "description": "immich | fubar | restic"
+            "description": "immich | restic"
           },
           "name": {
             "type": "string"
@@ -1289,18 +1289,18 @@
           "createdAt"
         ]
       },
-      "ConsumerListResponseDto": {
+      "ConnectionListResponseDto": {
         "type": "object",
         "properties": {
-          "consumers": {
+          "connections": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ConsumerAdminDto"
+              "$ref": "#/components/schemas/ConnectionAdminDto"
             }
           }
         },
         "required": [
-          "consumers"
+          "connections"
         ]
       },
       "RepositoryOwnerDto": {
@@ -1365,10 +1365,10 @@
           "worm": {
             "type": "boolean"
           },
-          "consumerId": {
+          "connectionId": {
             "type": "string"
           },
-          "consumerType": {
+          "connectionType": {
             "type": "string"
           },
           "user": {
@@ -1382,8 +1382,8 @@
           "id",
           "name",
           "worm",
-          "consumerId",
-          "consumerType",
+          "connectionId",
+          "connectionType",
           "user",
           "metrics"
         ]
@@ -1419,14 +1419,13 @@
           "worm": {
             "type": "boolean"
           },
-          "consumerType": {
+          "connectionType": {
             "type": "string",
             "enum": [
               "immich",
-              "fubar",
               "restic"
             ],
-            "description": "Consumer type for the owning consumer; defaults to 'restic' (manual use)"
+            "description": "Connection type for the owning connection; defaults to 'restic' (manual use)"
           }
         },
         "required": [
@@ -1524,7 +1523,7 @@
           "userId": {
             "type": "string"
           },
-          "consumerId": {
+          "connectionId": {
             "type": "object",
             "nullable": true
           },

@@ -13,7 +13,7 @@ export class ResticTokenDto {
   userId!: string;
 
   @ApiProperty({ required: false, nullable: true })
-  consumerId!: string | null;
+  connectionId!: string | null;
 
   @ApiProperty({ description: "'user' or 'admin'" })
   mintedBy!: string;

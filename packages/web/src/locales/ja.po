@@ -13,30 +13,147 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/routes/dashboard/connections/+page.svelte
+msgid "{0} objects"
+msgstr ""
+
+#: src/routes/dashboard/connections/+page.svelte
+msgid "{0} repositories"
+msgstr ""
+
 #: src/routes/+page.svelte
 #~ msgid "{num, plural, one {# item} other {# items}}"
 #~ msgstr "{num, plural, one {# hello} other {# hellos}}"
 
+#: src/routes/dashboard/connections/+page.svelte
+msgid "A connection is a client that backs up this account — an Immich instance or a restic repository."
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "A label for this repository."
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Access key"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Access key lifetime"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Access key revoked"
+msgstr ""
+
+#: src/routes/dashboard/connections/+page.svelte
+msgid "Access keys"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Access keys — {0}"
+msgstr ""
+
+#: src/routes/dashboard/connections/+page.svelte
+msgid "billed"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Choose a strong repository password"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Close"
+msgstr ""
+
+#: src/routes/dashboard/connections/+page.svelte
+#: src/routes/dashboard/connections/+page.svelte
+msgid "Connections"
+msgstr ""
+
 #: src/routes/login/invite/+page.svelte
 msgid "Continue"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Copied to clipboard"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Copy command"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Copy URL"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Create"
 msgstr ""
 
 #: src/routes/dashboard/backups/+page.svelte
 #~ msgid "Create new backup"
 #~ msgstr ""
 
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Created {0} · expires {1}"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Done"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "e.g. laptop"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "e.g. my laptop"
+msgstr ""
+
 #: src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Expired"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Failed to create restic backup"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Failed to load access keys"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Failed to mint a new access key"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Failed to revoke access key"
 msgstr ""
 
 #: src/routes/+page.svelte
 #~ msgid "From the {0}: {1}"
 #~ msgstr "{0}! {1}?"
 
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "How long the URL stays valid, e.g. 90d. Blank uses the default."
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Initialize the repository"
+msgstr ""
+
 #: src/routes/login/invite/+page.svelte
 #: src/routes/login/invite/+page.svelte
 #: src/routes/login/invite/+page.svelte
 msgid "Invite code"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Key label"
 msgstr ""
 
 #: src/routes/+page.svelte
@@ -48,9 +165,66 @@ msgstr ""
 msgid "Logout"
 msgstr ""
 
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Name"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "New access key"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+#: src/routes/dashboard/connections/+page.svelte
+msgid "New restic backup"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "No access keys yet."
+msgstr ""
+
+#: src/routes/dashboard/connections/+page.svelte
+msgid "No connections yet."
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Prevent this repository from being deleted or overwritten."
+msgstr ""
+
 #: src/routes/+page.svelte
 #~ msgid "Purchase Immich"
 #~ msgstr "Hello Immich"
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Repository"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Repository URL"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Restic backup ready"
+msgstr ""
+
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "restic will ask you to set a password when you initialize. Keep it safe — it encrypts your backups and cannot be recovered."
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Revoke"
+msgstr ""
+
+#: src/lib/components/connections/ManageTokensModal.svelte
+msgid "Revoked"
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Shown in the access-key list."
+msgstr ""
+
+#: src/lib/components/connections/CreateResticModal.svelte
+msgid "Write-once (WORM)"
+msgstr ""
 
 #: src/routes/login/invite/+page.svelte
 msgid "Your email isn't part of the beta yet."

@@ -153,13 +153,13 @@ func TestAuthOptionalClaims(t *testing.T) {
 	cases := []struct {
 		name         string
 		jti          any
-		consumer     any
+		connection     any
 		wantJti      string
-		wantConsumer string
+		wantConnection string
 	}{
-		{name: "present", jti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", consumer: "fubar", wantJti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", wantConsumer: "fubar"},
-		{name: "absent", jti: nil, consumer: nil, wantJti: "", wantConsumer: ""},
-		{name: "garbage types ignored", jti: 42, consumer: true, wantJti: "", wantConsumer: ""},
+		{name: "present", jti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", connection: "restic", wantJti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", wantConnection: "restic"},
+		{name: "absent", jti: nil, connection: nil, wantJti: "", wantConnection: ""},
+		{name: "garbage types ignored", jti: 42, connection: true, wantJti: "", wantConnection: ""},
 	}
 
 	for _, tc := range cases {
@@ -168,8 +168,8 @@ func TestAuthOptionalClaims(t *testing.T) {
 			if tc.jti != nil {
 				claims["jti"] = tc.jti
 			}
-			if tc.consumer != nil {
-				claims["consumer"] = tc.consumer
+			if tc.connection != nil {
+				claims["connection"] = tc.connection
 			}
 			token := makeJWT(t, claims)
 			req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
@@ -182,8 +182,8 @@ func TestAuthOptionalClaims(t *testing.T) {
 			if a.Jti != tc.wantJti {
 				t.Errorf("expected jti %q, got %q", tc.wantJti, a.Jti)
 			}
-			if a.Consumer != tc.wantConsumer {
-				t.Errorf("expected consumer %q, got %q", tc.wantConsumer, a.Consumer)
+			if a.Connection != tc.wantConnection {
+				t.Errorf("expected connection %q, got %q", tc.wantConnection, a.Connection)
 			}
 		})
 	}

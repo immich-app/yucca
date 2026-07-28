@@ -107,12 +107,12 @@ func TestMetricAttrs(t *testing.T) {
 		t.Fatalf("expected repo-456, got %s", repoID.AsString())
 	}
 
-	consumer, found := attrs.Value("consumer")
+	connection, found := attrs.Value("connection")
 	if !found {
-		t.Fatal("expected consumer attribute")
+		t.Fatal("expected connection attribute")
 	}
-	if consumer.AsString() != "unknown" {
-		t.Fatalf("expected unknown consumer for legacy auth, got %s", consumer.AsString())
+	if connection.AsString() != "unknown" {
+		t.Fatalf("expected unknown connection for legacy auth, got %s", connection.AsString())
 	}
 
 	// Should have exactly 3 attributes
@@ -121,11 +121,11 @@ func TestMetricAttrs(t *testing.T) {
 	}
 }
 
-func TestMetricAttrsConsumer(t *testing.T) {
-	attrs := MetricAttrs(auth.Auth{User: "u", Repository: "r", Consumer: "fubar"})
-	consumer, _ := attrs.Value("consumer")
-	if consumer.AsString() != "fubar" {
-		t.Fatalf("expected fubar, got %s", consumer.AsString())
+func TestMetricAttrsConnection(t *testing.T) {
+	attrs := MetricAttrs(auth.Auth{User: "u", Repository: "r", Connection: "restic"})
+	connection, _ := attrs.Value("connection")
+	if connection.AsString() != "restic" {
+		t.Fatalf("expected restic, got %s", connection.AsString())
 	}
 }
 
@@ -349,12 +349,12 @@ func TestAuthMetricOptionDifferentKeys(t *testing.T) {
 	}
 }
 
-func TestAuthMetricOptionConsumerInCacheKey(t *testing.T) {
-	// Same user+repo but different consumer must not share a cache entry.
-	a := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1", Consumer: "immich"})
-	b := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1", Consumer: "fubar"})
+func TestAuthMetricOptionConnectionInCacheKey(t *testing.T) {
+	// Same user+repo but different connection must not share a cache entry.
+	a := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1", Connection: "immich"})
+	b := AuthMetricOption(auth.Auth{User: "u1", Repository: "r1", Connection: "restic"})
 	if a == b {
-		t.Fatal("different consumers should produce different options")
+		t.Fatal("different connections should produce different options")
 	}
 }
 

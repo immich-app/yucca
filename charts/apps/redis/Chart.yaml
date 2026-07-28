@@ -1,6 +1,6 @@
 apiVersion: v2
 name: redis
-description: Valkey denylist store for restic-token revocation (ephemeral by design)
+description: Valkey validity-marker store for restic-token revocation (ephemeral by design)
 type: application
 version: 0.1.0
 # Upstream image; the tag is pinned in values.yaml, so appVersion is informational.

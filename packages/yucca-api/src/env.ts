@@ -46,7 +46,20 @@ const schema = z.object({
 
   RESTIC_ENDPOINT: z.string().default('http://localhost:3010'),
 
-  // Revocation denylist writes; unset disables them (loud warn at startup).
+  // Self-serve restic URLs are long-lived (unlike the 1d web/session JWT). Default
+  // TTL when the caller gives none, and a hard cap on any requested TTL.
+  RESTIC_JWT_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "90d", "8760h"')
+    .default('90d')
+    .transform((value): StringValue => value as StringValue),
+  RESTIC_JWT_MAX_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "365d"')
+    .default('365d')
+    .transform((value): StringValue => value as StringValue),
+
+  // Restic-token validity marker writes; unset disables them (loud warn at startup).
   REDIS_URL: z.string().optional(),
 });
 

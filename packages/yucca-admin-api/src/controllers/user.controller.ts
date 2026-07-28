@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Put, Query } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { AuthDto } from 'src/dto/auth.dto';
-import { ConsumerListResponseDto } from 'src/dto/consumer.dto';
+import { ConnectionListResponseDto } from 'src/dto/connection.dto';
 import { FeatureOverrideDto, FeatureOverrideSetRequestDto, UserFeaturesResponseDto } from 'src/dto/features.dto';
 import { SessionListResponseDto } from 'src/dto/session.dto';
 import {
@@ -12,7 +12,7 @@ import {
   UserUpdateResponseDto,
 } from 'src/dto/user.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
-import { ConsumerRepository } from 'src/repositories/consumer.repository';
+import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { FeaturesService } from 'src/services/features.service';
 import { SessionService } from 'src/services/session.service';
 import { UserService } from 'src/services/user.service';
@@ -23,7 +23,7 @@ export class UserController {
     private readonly user: UserService,
     private readonly session: SessionService,
     private readonly features: FeaturesService,
-    private readonly consumers: ConsumerRepository,
+    private readonly connections: ConnectionRepository,
   ) {}
 
   @Get()
@@ -94,10 +94,10 @@ export class UserController {
     return this.features.clear(auth, id, flag);
   }
 
-  @Get('/:id/consumers')
+  @Get('/:id/connections')
   @AuthRoute()
-  @ApiOkResponse({ type: ConsumerListResponseDto })
-  async listUserConsumers(@Param('id') id: string): Promise<ConsumerListResponseDto> {
-    return { consumers: await this.consumers.getByUser(id) };
+  @ApiOkResponse({ type: ConnectionListResponseDto })
+  async listUserConnections(@Param('id') id: string): Promise<ConnectionListResponseDto> {
+    return { connections: await this.connections.getByUser(id) };
   }
 }

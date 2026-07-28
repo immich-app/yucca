@@ -103,8 +103,8 @@ func (c *Client) EnableFeatureBatch(ctx context.Context, flag string, count int)
 	return out.Enabled, nil
 }
 
-// Consumer mirrors the admin-api ConsumerAdminDto.
-type Consumer struct {
+// Connection mirrors the admin-api ConnectionAdminDto.
+type Connection struct {
 	ID         string  `json:"id"`
 	UserID     string  `json:"userId"`
 	Type       string  `json:"type"`
@@ -113,13 +113,13 @@ type Consumer struct {
 	LastSeenAt *string `json:"lastSeenAt"`
 }
 
-// GetUserConsumers lists a user's consumer instances.
-func (c *Client) GetUserConsumers(ctx context.Context, userID string) ([]Consumer, error) {
+// GetUserConnections lists a user's connection instances.
+func (c *Client) GetUserConnections(ctx context.Context, userID string) ([]Connection, error) {
 	var out struct {
-		Consumers []Consumer `json:"consumers"`
+		Connections []Connection `json:"connections"`
 	}
-	if err := c.getJSON(ctx, "/api/user/"+url.PathEscape(userID)+"/consumers", nil, &out); err != nil {
+	if err := c.getJSON(ctx, "/api/user/"+url.PathEscape(userID)+"/connections", nil, &out); err != nil {
 		return nil, err
 	}
-	return out.Consumers, nil
+	return out.Connections, nil
 }

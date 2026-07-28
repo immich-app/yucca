@@ -19,7 +19,7 @@ export const testUtils = {
     await db.deleteFrom('resticTokens').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
-    await db.deleteFrom('consumers').execute();
+    await db.deleteFrom('connections').execute();
     await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('users').execute();
     await db.deleteFrom('userAllowlist').execute();
@@ -80,11 +80,11 @@ export const testUtils = {
     return getDb().insertInto('sessions').values({ userId, accessToken }).returningAll().executeTakeFirstOrThrow();
   },
 
-  createConsumer: (
+  createConnection: (
     userId: string,
     { type = 'immich', name = 'Immich' }: Partial<{ type: string; name: string }> = {},
   ) => {
-    return getDb().insertInto('consumers').values({ userId, type, name }).returningAll().executeTakeFirstOrThrow();
+    return getDb().insertInto('connections').values({ userId, type, name }).returningAll().executeTakeFirstOrThrow();
   },
 
   createRepository: async (
@@ -92,19 +92,19 @@ export const testUtils = {
     {
       name = 'My Repository',
       worm = false,
-      consumerId,
-    }: Partial<{ name: string; worm: boolean; consumerId: string }> = {},
+      connectionId,
+    }: Partial<{ name: string; worm: boolean; connectionId: string }> = {},
   ) => {
     const db = getDb();
-    if (!consumerId) {
-      const consumer =
-        (await db.selectFrom('consumers').selectAll().where('userId', '=', userId).executeTakeFirst()) ??
-        (await testUtils.createConsumer(userId));
-      consumerId = consumer.id;
+    if (!connectionId) {
+      const connection =
+        (await db.selectFrom('connections').selectAll().where('userId', '=', userId).executeTakeFirst()) ??
+        (await testUtils.createConnection(userId));
+      connectionId = connection.id;
     }
     return db
       .insertInto('repositories')
-      .values({ userId, name, worm, consumerId })
+      .values({ userId, name, worm, connectionId })
       .returningAll()
       .executeTakeFirstOrThrow();
   },

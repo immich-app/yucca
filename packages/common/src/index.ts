@@ -1,2 +1,2 @@
-export * from './consumers';
+export * from './connections';
 export * from './features';

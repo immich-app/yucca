@@ -13,10 +13,10 @@ export class AuthDto {
   @ApiProperty()
   sessionId!: string;
 
-  // The consumer instance bound to this session (device-flow logins); null
-  // for web sessions and sessions predating the consumer model.
+  // The connection instance bound to this session (device-flow logins); null
+  // for web sessions and sessions predating the connection model.
   @ApiProperty({ type: 'string', required: false, nullable: true })
-  consumerId!: string | null;
+  connectionId!: string | null;
 
   // Resolved feature flags: per-user override, else registry default.
   @ApiProperty({ type: 'object', additionalProperties: { type: 'boolean' } })

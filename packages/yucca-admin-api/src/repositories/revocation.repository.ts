@@ -3,18 +3,23 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { env } from 'src/env';
 
-const keyFor = (jti: string) => `yucca:restic:revoked:${jti}`;
+const keyFor = (jti: string) => `yucca:restic:valid:${jti}`;
 
-// Mirrors restic-token revocations into Redis, where michael checks them per
-// request. The DB (resticTokens.revokedAt) stays the source of truth; the
-// metrics-worker reconcile re-seeds Redis, so Redis itself is ephemeral.
+// Maintains the Redis "validity" markers michael checks per request: a present
+// key means the token is valid, an absent key means revoked or unknown. This is
+// the inverse of the old denylist and is what makes revocation safe for
+// long-lived tokens — a lost marker denies rather than silently permits.
+//
+// The DB (resticTokens) stays the source of truth; the metrics-worker reconcile
+// re-asserts markers from it, so Redis itself is ephemeral. Only revocable
+// connection types (restic) get markers — michael skips the check for the rest.
 @Injectable()
 export class RevocationRepository implements OnModuleDestroy {
   private client?: Redis;
 
   constructor(private readonly logger: LoggerRepository) {
     if (!env.REDIS_URL) {
-      this.logger.warn('REDIS_URL is not set — restic token revocations will not propagate to michael');
+      this.logger.warn('REDIS_URL is not set — restic token validity will not propagate to michael');
     }
   }
 
@@ -23,9 +28,9 @@ export class RevocationRepository implements OnModuleDestroy {
     return this.client;
   }
 
-  // Call after the DB revokedAt update. The key expires with the token, so
-  // the denylist only ever holds revoked-and-unexpired jtis.
-  async markRevoked(jti: string, expiresAt: Date) {
+  // Call on mint. The marker expires with the token (EXAT), so a lapsed token
+  // needs no explicit cleanup.
+  async markValid(jti: string, expiresAt: Date) {
     if (!env.REDIS_URL) {
       return;
     }
@@ -34,6 +39,15 @@ export class RevocationRepository implements OnModuleDestroy {
       return;
     }
     await this.getClient().set(keyFor(jti), '1', 'EXAT', exat);
+  }
+
+  // Call on revoke. Deleting the marker makes michael treat the jti as invalid
+  // within its fresh-cache TTL.
+  async markInvalid(jti: string) {
+    if (!env.REDIS_URL) {
+      return;
+    }
+    await this.getClient().del(keyFor(jti));
   }
 
   onModuleDestroy() {

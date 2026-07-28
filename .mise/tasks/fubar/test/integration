@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run fubar integration tests (needs the dev stack + FUBAR_IT=1)"
-#MISE dir="{{config_root}}/packages/fubar"
-set -e
-
-# Skips cleanly unless FUBAR_IT is set (see integration_test.go).
-go test -tags integration -count=1 -v ./... "$@"

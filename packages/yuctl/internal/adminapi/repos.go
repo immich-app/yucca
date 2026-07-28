@@ -15,8 +15,8 @@ type Repository struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
 	Worm         bool   `json:"worm"`
-	ConsumerID   string `json:"consumerId"`
-	ConsumerType string `json:"consumerType"`
+	ConnectionID   string `json:"connectionId"`
+	ConnectionType string `json:"connectionType"`
 	User         struct {
 		ID    string `json:"id"`
 		Email string `json:"email"`
@@ -65,15 +65,15 @@ func (c *Client) postJSON(ctx context.Context, path string, body, out any) error
 }
 
 // CreateRepositoryOptions targets CreateRepository at a specific owner and
-// consumer type; zero values keep the admin-service-user default.
+// connection type; zero values keep the admin-service-user default.
 type CreateRepositoryOptions struct {
 	UserID       string
-	ConsumerType string
+	ConnectionType string
 }
 
 // CreateRepository creates a repository. Without options it is owned by the
 // admin service user; with UserID it is provisioned onto that user (default
-// consumer type: restic / "Manual restic").
+// connection type: restic / "Manual restic").
 func (c *Client) CreateRepository(ctx context.Context, name string, worm bool, opts CreateRepositoryOptions) (*Repository, error) {
 	var out struct {
 		Repository Repository `json:"repository"`
@@ -82,8 +82,8 @@ func (c *Client) CreateRepository(ctx context.Context, name string, worm bool, o
 	if opts.UserID != "" {
 		body["userId"] = opts.UserID
 	}
-	if opts.ConsumerType != "" {
-		body["consumerType"] = opts.ConsumerType
+	if opts.ConnectionType != "" {
+		body["connectionType"] = opts.ConnectionType
 	}
 	if err := c.postJSON(ctx, "/api/repository", body, &out); err != nil {
 		return nil, err

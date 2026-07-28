@@ -11,7 +11,7 @@ type ResticToken struct {
 	Jti          string  `json:"jti"`
 	RepositoryID string  `json:"repositoryId"`
 	UserID       string  `json:"userId"`
-	ConsumerID   *string `json:"consumerId"`
+	ConnectionID   *string `json:"connectionId"`
 	MintedBy     string  `json:"mintedBy"`
 	Label        *string `json:"label"`
 	ExpiresAt    string  `json:"expiresAt"`

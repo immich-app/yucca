@@ -1,5 +1,5 @@
 import type { LoggerRepository, WideContextRepository } from '@common/server/otel';
-import type { ConsumerRepository } from 'src/repositories/consumer.repository';
+import type { ConnectionRepository } from 'src/repositories/connection.repository';
 import type { CryptoRepository } from 'src/repositories/crypto.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { FeatureFlagRepository } from 'src/repositories/featureFlag.repository';
@@ -57,7 +57,7 @@ export const newUserAllowlistRepositoryMock = (): jest.Mocked<RepositoryInterfac
   };
 };
 
-export const newConsumerRepositoryMock = (): jest.Mocked<RepositoryInterface<ConsumerRepository>> => {
+export const newConnectionRepositoryMock = (): jest.Mocked<RepositoryInterface<ConnectionRepository>> => {
   return {
     create: jest.fn(),
     getById: jest.fn(),
@@ -105,7 +105,7 @@ export const newMetricServiceMock = () => ({
 
 export const newMocks = () => {
   return {
-    consumer: newConsumerRepositoryMock(),
+    connection: newConnectionRepositoryMock(),
     crypto: newCryptoRepositoryMock(),
     database: newDatabaseRepositoryMock(),
     featureFlag: newFeatureFlagRepositoryMock(),

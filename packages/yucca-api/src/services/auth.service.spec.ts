@@ -8,7 +8,7 @@ const mockAuth: AuthDto = {
   email: 'user@example.com',
   name: 'user',
   sessionId: 'session',
-  consumerId: null,
+  connectionId: null,
   features: {},
 };
 
@@ -18,7 +18,7 @@ const mockUser = {
   name: 'user',
   sub: 'oidc-sub',
   sessionId: 'session',
-  consumerId: null,
+  connectionId: null,
 };
 
 describe(AuthService.name, () => {
@@ -36,7 +36,7 @@ describe(AuthService.name, () => {
       mocks.crypto,
       mocks.session as never,
       mocks.wideContext,
-      mocks.consumer as never,
+      mocks.connection as never,
       mocks.featureFlag as never,
     );
     allowedEmailDomains = env.ALLOWED_EMAIL_DOMAINS;
@@ -72,18 +72,18 @@ describe(AuthService.name, () => {
         sut.authenticate({
           cookie: 'yucca-access-token=my-token',
         }),
-      ).resolves.toEqual({ ...mockUser, features: { 'consumer-restic': false, 'consumer-fubar': false } });
+      ).resolves.toEqual({ ...mockUser, features: { 'connection-restic': false } });
       expect(mocks.wideContext.addContext).toHaveBeenCalledWith('customerId', mockUser.id);
     });
 
     it('should resolve feature overrides over registry defaults', async () => {
       mocks.user.getByAccessToken.mockResolvedValue(mockUser);
-      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'consumer-fubar', value: true }]);
+      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'connection-restic', value: true }]);
       await expect(
         sut.authenticate({
           cookie: 'yucca-access-token=my-token',
         }),
-      ).resolves.toEqual(expect.objectContaining({ features: { 'consumer-restic': false, 'consumer-fubar': true } }));
+      ).resolves.toEqual(expect.objectContaining({ features: { 'connection-restic': true } }));
     });
 
     it('should ignore overrides for flags not in the registry', async () => {
@@ -93,7 +93,7 @@ describe(AuthService.name, () => {
         sut.authenticate({
           cookie: 'yucca-access-token=my-token',
         }),
-      ).resolves.toEqual(expect.objectContaining({ features: { 'consumer-restic': false, 'consumer-fubar': false } }));
+      ).resolves.toEqual(expect.objectContaining({ features: { 'connection-restic': false } }));
     });
   });
 
@@ -287,67 +287,71 @@ describe(AuthService.name, () => {
       } as never);
       mocks.user.getBySub.mockResolvedValue({ ...mockUser, disabled: false } as never);
       mocks.crypto.randomHex.mockReturnValue(accessToken);
-      mocks.consumer.getOrCreateDefault.mockResolvedValue({ id: 'default-consumer' } as never);
+      mocks.connection.getOrCreateDefault.mockResolvedValue({ id: 'default-connection' } as never);
     });
 
-    it('binds the default consumer for legacy clients (no consumer params)', async () => {
+    it('binds the default connection for legacy clients (no connection params)', async () => {
       await expect(sut.oidcDeviceFlow(jest.fn())).resolves.toEqual({ accessToken });
 
-      expect(mocks.consumer.getOrCreateDefault).toHaveBeenCalledWith(mockUser.id);
-      expect(mocks.consumer.touchLastSeen).toHaveBeenCalledWith('default-consumer');
+      expect(mocks.connection.getOrCreateDefault).toHaveBeenCalledWith(mockUser.id);
+      expect(mocks.connection.touchLastSeen).toHaveBeenCalledWith('default-connection');
       expect(mocks.session.create).toHaveBeenCalledWith({
         userId: mockUser.id,
         accessToken,
-        consumerId: 'default-consumer',
+        connectionId: 'default-connection',
         kind: 'device',
       });
     });
 
-    it('rejects a fubar consumer without the consumer-fubar flag', async () => {
-      await expect(sut.oidcDeviceFlow(jest.fn(), 'fubar', 'my-laptop')).rejects.toThrowErrorMatchingInlineSnapshot(
-        `"Feature 'consumer-fubar' is not enabled for this account"`,
+    it('rejects a restic connection without the connection-restic flag', async () => {
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'restic', 'my-laptop')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Feature 'connection-restic' is not enabled for this account"`,
       );
       expect(mocks.session.create).not.toHaveBeenCalled();
     });
 
     it('binds a named immich instance for everyone (no flag needed)', async () => {
-      mocks.consumer.getByUserTypeName.mockResolvedValue(void 0);
-      mocks.consumer.create.mockResolvedValue({ id: 'immich-home' } as never);
+      mocks.connection.getByUserTypeName.mockResolvedValue(void 0);
+      mocks.connection.create.mockResolvedValue({ id: 'immich-home' } as never);
 
       await expect(sut.oidcDeviceFlow(jest.fn(), 'immich', 'home-server')).resolves.toEqual({ accessToken });
 
-      expect(mocks.consumer.create).toHaveBeenCalledWith({ userId: mockUser.id, type: 'immich', name: 'home-server' });
+      expect(mocks.connection.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        type: 'immich',
+        name: 'home-server',
+      });
       expect(mocks.session.create).toHaveBeenCalledWith(
-        expect.objectContaining({ consumerId: 'immich-home', kind: 'device' }),
+        expect.objectContaining({ connectionId: 'immich-home', kind: 'device' }),
       );
     });
 
-    it('creates a fubar consumer instance when consumer-fubar is on', async () => {
-      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'consumer-fubar', value: true }]);
-      mocks.consumer.getByUserTypeName.mockResolvedValue(void 0);
-      mocks.consumer.create.mockResolvedValue({ id: 'fubar-consumer' } as never);
+    it('creates a restic connection instance when connection-restic is on', async () => {
+      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'connection-restic', value: true }]);
+      mocks.connection.getByUserTypeName.mockResolvedValue(void 0);
+      mocks.connection.create.mockResolvedValue({ id: 'restic-connection' } as never);
 
-      await expect(sut.oidcDeviceFlow(jest.fn(), 'fubar', 'my-laptop')).resolves.toEqual({ accessToken });
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'restic', 'my-laptop')).resolves.toEqual({ accessToken });
 
-      expect(mocks.consumer.create).toHaveBeenCalledWith({ userId: mockUser.id, type: 'fubar', name: 'my-laptop' });
+      expect(mocks.connection.create).toHaveBeenCalledWith({ userId: mockUser.id, type: 'restic', name: 'my-laptop' });
       expect(mocks.session.create).toHaveBeenCalledWith(
-        expect.objectContaining({ consumerId: 'fubar-consumer', kind: 'device' }),
+        expect.objectContaining({ connectionId: 'restic-connection', kind: 'device' }),
       );
     });
 
-    it('reuses an existing consumer instance by (type, name)', async () => {
-      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'consumer-fubar', value: true }]);
-      mocks.consumer.getByUserTypeName.mockResolvedValue({ id: 'existing-fubar' } as never);
+    it('reuses an existing connection instance by (type, name)', async () => {
+      mocks.featureFlag.getByUser.mockResolvedValue([{ flag: 'connection-restic', value: true }]);
+      mocks.connection.getByUserTypeName.mockResolvedValue({ id: 'existing-restic' } as never);
 
-      await expect(sut.oidcDeviceFlow(jest.fn(), 'fubar', 'my-laptop')).resolves.toEqual({ accessToken });
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'restic', 'my-laptop')).resolves.toEqual({ accessToken });
 
-      expect(mocks.consumer.create).not.toHaveBeenCalled();
-      expect(mocks.session.create).toHaveBeenCalledWith(expect.objectContaining({ consumerId: 'existing-fubar' }));
+      expect(mocks.connection.create).not.toHaveBeenCalled();
+      expect(mocks.session.create).toHaveBeenCalledWith(expect.objectContaining({ connectionId: 'existing-restic' }));
     });
 
-    it('rejects unknown consumer types', async () => {
+    it('rejects unknown connection types', async () => {
       await expect(sut.oidcDeviceFlow(jest.fn(), 'winamp')).rejects.toThrowErrorMatchingInlineSnapshot(
-        `"Unknown consumer type 'winamp'"`,
+        `"Unknown connection type 'winamp'"`,
       );
     });
   });

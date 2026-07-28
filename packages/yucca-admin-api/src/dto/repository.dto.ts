@@ -1,4 +1,4 @@
-import { ConsumerTypes } from '@common/server';
+import { ConnectionTypes } from '@common/server';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 import { CursorPaginationDto } from 'src/dto/pagination.dto';
@@ -45,10 +45,10 @@ export class RepositoryAdminDto {
   worm!: boolean;
 
   @ApiProperty()
-  consumerId!: string;
+  connectionId!: string;
 
   @ApiProperty()
-  consumerType!: string;
+  connectionType!: string;
 
   @ApiProperty()
   user!: RepositoryOwnerDto;
@@ -94,12 +94,12 @@ export class RepositoryCreateRequestDto {
 
   @ApiProperty({
     required: false,
-    enum: ConsumerTypes,
-    description: "Consumer type for the owning consumer; defaults to 'restic' (manual use)",
+    enum: ConnectionTypes,
+    description: "Connection type for the owning connection; defaults to 'restic' (manual use)",
   })
   @IsOptional()
-  @IsIn(ConsumerTypes)
-  consumerType?: string;
+  @IsIn(ConnectionTypes)
+  connectionType?: string;
 }
 
 export class RepositoryUrlRequestDto {

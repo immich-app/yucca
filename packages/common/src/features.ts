@@ -14,21 +14,14 @@ export interface FeatureFlagDef {
  * `userFeatureFlagOverride` table stores per-user exceptions only.
  */
 export const FeatureFlags = {
-  // The consumer API surface (create/adopt/manage consumers, multiple immich
-  // instances) is available to everyone. These flags gate self-service use of
-  // the individual non-default consumer *types* — see ConsumerTypeFlags.
-  consumerRestic: {
-    key: 'consumer-restic',
+  // The connection API surface (create/adopt/manage connections, multiple immich
+  // instances) is available to everyone. This flag gates self-service use of
+  // the non-default `restic` connection type — see ConnectionTypeFlags.
+  connectionRestic: {
+    key: 'connection-restic',
     default: false,
     stage: 'experimental',
-    description: 'Use raw restic (create restic consumers / self-service tokens)',
-    since: '0.22.0',
-  },
-  consumerFubar: {
-    key: 'consumer-fubar',
-    default: false,
-    stage: 'experimental',
-    description: 'Use the fubar CLI (create/bind fubar consumers)',
+    description: 'Use raw restic (create restic connections / self-service tokens)',
     since: '0.22.0',
   },
 } as const satisfies Record<string, FeatureFlagDef>;
