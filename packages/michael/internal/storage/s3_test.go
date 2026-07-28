@@ -3,14 +3,25 @@ package storage
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"michael/internal/config"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
+
+// readOnly hides any io.Seeker the underlying reader implements, so the value
+// handed to the S3 SDK is a plain, non-seekable stream — exactly what michael
+// proxies in production (restic's r.Body, further wrapped in an io.TeeReader
+// for hashing). The SDK cannot rewind it to retry.
+type readOnly struct{ r io.Reader }
+
+func (ro readOnly) Read(p []byte) (int, error) { return ro.r.Read(p) }
 
 func TestIsPreconditionFailed_NilError(t *testing.T) {
 	if isPreconditionFailed(nil) {
@@ -163,6 +174,49 @@ func TestListObjects_EmptyListing(t *testing.T) {
 	}
 	if calls != 0 {
 		t.Fatalf("expected no callbacks for empty listing, got %d", calls)
+	}
+}
+
+// TestPutObject_NonSeekableBodyOn503_NoRewindRetry reproduces the production
+// throughput collapse: michael streams restic's non-seekable pack body straight
+// into S3 PutObject, and when the gateway returns a retryable 5xx the SDK's
+// default retryer tries to rewind the body to resend it — which fails with
+// "failed to rewind transport stream for retry, request stream is not seekable"
+// and surfaces as an opaque 500 to restic. Under load this hit ~28% of requests
+// and stalled the whole fleet.
+//
+// The desired behaviour (asserted here) is: no rewind is ever attempted, exactly
+// one upload is made, and the caller gets the clean underlying backend error —
+// which restic retries at the pack level (its own body IS seekable). RED before
+// the s3.go RetryMaxAttempts=1 fix, GREEN after.
+func TestPutObject_NonSeekableBodyOn503_NoRewindRetry(t *testing.T) {
+	var puts int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			atomic.AddInt32(&puts, 1)
+			_, _ = io.Copy(io.Discard, r.Body) // let the client finish sending
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	body := readOnly{strings.NewReader("restic-pack-bytes")}
+	err := s.PutObject(context.Background(), "bucket", "data/deadbeef", body, int64(len("restic-pack-bytes")), true, "")
+
+	if err == nil {
+		t.Fatal("expected an error from the 503 gateway, got nil")
+	}
+	// The bug: a retry on the non-seekable body fails to rewind and masks the
+	// real backend error.
+	if msg := err.Error(); strings.Contains(msg, "rewind") || strings.Contains(msg, "not seekable") {
+		t.Fatalf("PutObject attempted a rewind-for-retry on a non-seekable body: %v", err)
+	}
+	// And with retries off, the gateway must see exactly one upload attempt.
+	if n := atomic.LoadInt32(&puts); n != 1 {
+		t.Fatalf("expected exactly 1 upload attempt (no retry on a non-seekable body), got %d", n)
 	}
 }
 

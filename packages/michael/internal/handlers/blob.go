@@ -152,7 +152,10 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	rangeHeader := r.Header.Get("Range")
 	obj, err := s.Storage.GetObject(r.Context(), a.Repository, key, rangeHeader)
 	if err != nil {
-		hlog.FromRequest(r).Error().Err(err).Msg("get blob failed")
+		hlog.FromRequest(r).Error().Err(err).Str("repository", a.Repository).Str("key", key).Msg("get blob failed: backend storage error")
+		if s.Metrics != nil {
+			s.Metrics.StorageErrors.Add(r.Context(), 1, metrics.StorageErrorOption("get", metrics.BlobType(r)))
+		}
 		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
@@ -176,7 +179,10 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r,http.StatusBadRequest, "Content hash does not match blob name")
 			return
 		}
-		hlog.FromRequest(r).Error().Err(err).Msg("save blob failed")
+		hlog.FromRequest(r).Error().Err(err).Str("repository", a.Repository).Str("key", key).Msg("save blob failed: backend storage error")
+		if s.Metrics != nil {
+			s.Metrics.StorageErrors.Add(r.Context(), 1, metrics.StorageErrorOption("put", metrics.BlobType(r)))
+		}
 		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
