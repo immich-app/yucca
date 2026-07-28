@@ -821,14 +821,20 @@ auto-discovers and claims an OS or block.db partition.
 
 ### Hardware-shape independence in the template
 
-`templates/osd-spec.yml.j2` renders one document per host **type**, with two
-shape branches. Hosts whose rendered device lists are identical collapse into
-a single multi-host spec; hosts that differ get their own. sietch nodes have a
-unique SAS prefix per chassis so none of them collapse, which is why the
-template used to emit strictly one document per host. spice is uniform across
-47 of 48 nodes and renders 3 documents instead of 96. Collapsing is opt-in per
-cluster (`ceph_osd_spec_group_by_layout`) because a changed `service_id` does
-not rename a service, it creates a new one and orphans the old.
+`templates/osd-spec.yml.j2` renders one document per host, with two shape
+branches. `ceph_osd_spec_group_by_layout` optionally collapses hosts whose
+rendered device lists are identical into a single multi-host spec -- the shape
+upstream recommends, and worth having for a large uniform fleet.
+
+Both live clusters leave it off. sietch nodes have a unique SAS prefix per
+chassis, so none of them would collapse. spice would collapse 47 of its 48
+nodes to 3 documents instead of 96, but cannot: an OSD's owning service is
+written into its LVM tags at creation (`ceph.osdspec_affinity`) rather than
+derived from the spec, so applying collapsed specs leaves all 720 existing
+daemons on the old names, and `ceph orch ls` fabricates a service for any
+daemon whose spec is missing. Collapsing an already-built cluster therefore
+adds specs without moving anything. Use the flag on a new cluster, where OSDs
+are tagged with the collapsed names from the start.
 
 The two branches are:
 

@@ -201,15 +201,28 @@ ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expan
 # colocates block.db on the 22TB HDD instead of the vg0 db-slot LV.
 ceph_osd_spec_unmanaged: true
 
-# Collapse the per-host OSD specs into one per host TYPE, which is the shape
-# upstream expects ("typically you will have a single spec for each type of
-# host"). spice renders 3 instead of 48x2: one for the 47 nodes sharing an
-# identical by-path map, one for miguel (whose 87:00.0-ata-4 disk sits on
-# 46:00.0 instead), one for the ssd-osd LV common to all 48. Off by default so
-# clusters that have per-host specs deployed are not silently renamed -- a
-# changed service_id creates a new service and orphans the old one, so turning
-# this on is a migration (apply, then `ceph orch rm` the superseded services).
-ceph_osd_spec_group_by_layout: true
+# Collapsing the per-host specs into one per host TYPE is the shape upstream
+# expects, and spice is the obvious candidate: 47 of 48 nodes share a by-path
+# map, so it would render 3 documents instead of 96. It stays OFF here anyway,
+# because the collapse cannot be retrofitted onto a cluster that is already
+# built.
+#
+# An OSD's owning service is not a property of the spec, it is written into the
+# OSD's LVM tags at creation time from CEPH_VOLUME_OSDSPEC_AFFINITY
+# (`ceph.osdspec_affinity=spice-ceph-<host>-<class>`, on the data and db LVs
+# alike). Applying the collapsed specs would not move the 720 existing daemons
+# onto them, and `ceph orch ls` fabricates a service for any daemon whose spec
+# is missing (cephadm describe_service: "new unmanaged service"), so removing
+# the old 96 would only make them reappear synthesized. The end state is 99
+# entries instead of 96, no daemon changed, nothing gained -- the serve-loop
+# cost this was meant to address is already gone via ceph_osd_spec_unmanaged,
+# which cephadm honours regardless of how many specs exist.
+#
+# Re-attributing for real means retagging ~1440 LVs across 48 live hosts, or
+# destroying and rebuilding 720 OSDs. Neither is worth a cosmetic win. Turn
+# this on for a NEW cluster, where the OSDs are tagged with the collapsed names
+# from the start; leave it off for one that already has per-host specs deployed.
+ceph_osd_spec_group_by_layout: false
 
 # OSD device map (by-path, consumed by ceph_deploy/osd-spec.yml.j2, NVMe-RAID shape:
 # no sas_path_prefix -> data path is /dev/disk/by-path/<path_phy>, db is /dev/<db>).

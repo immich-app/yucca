@@ -338,15 +338,18 @@ spec:
 ```
 
 One document per host is the simple form, and it is what `rgw-spec.yaml.j2`
-still does. Watch it at scale: cephadm reconciles every managed spec on every
+does. Watch it at scale: cephadm reconciles every managed spec on every
 serve-loop pass, so N specs across N hosts makes the loop cost scale with the
 fleet. If the hosts are uniform, bucket them by their rendered field values and
-emit one document per bucket with a multi-host `placement.hosts` -- see
-`osd-spec.yml.j2`, which collapses spice's 96 documents to 3. Keep single-host
-buckets on the original `<hostname>-<role>` `service_id`: changing a
-`service_id` does not rename a service, it creates a new one and orphans the
-old, so collapsing an already-deployed cluster is a migration and belongs
-behind a flag.
+emit one document per bucket with a multi-host `placement.hosts` --
+`osd-spec.yml.j2` does this behind `ceph_osd_spec_group_by_layout`.
+
+Decide the bucketing when the cluster is built, not after. A daemon's owning
+service is fixed at creation (for OSDs, in the LVM tag
+`ceph.osdspec_affinity`), and `ceph orch ls` fabricates a service for any
+daemon whose spec has gone missing, so re-bucketing a live cluster adds specs
+without moving daemons onto them. Where a cluster is already deployed, the
+mitigation for loop cost is `unmanaged`, not re-bucketing.
 
 **Apply pattern in tasks/*.yml:**
 

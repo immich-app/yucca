@@ -1,20 +1,21 @@
 # OSD service spec -- rendered by ceph_deploy role
 # Applied via: ceph orch apply osd -i /etc/ceph/osd-spec.yml
 #
-# ONE DOCUMENT PER HOST *TYPE*, not per host. Upstream's guidance is "typically
-# you will have a single spec for each type of host"; cephadm reconciles every
-# managed spec on every serve-loop pass, so a spec per host makes the loop cost
-# scale with the fleet. Hosts whose rendered device lists are byte-identical are
-# collapsed into one spec with a multi-host placement.
+# One document per host by default; optionally one per host TYPE. Upstream's
+# guidance is "typically you will have a single spec for each type of host", and
+# with ceph_osd_spec_group_by_layout set, hosts whose rendered device lists are
+# byte-identical collapse into one spec with a multi-host placement.
 #
-# In practice:
+# That flag is for GREENFIELD clusters only. An OSD's owning service is written
+# into its LVM tags at creation (ceph.osdspec_affinity), not derived from the
+# spec, so collapsing an already-built cluster does not move its daemons and
+# `ceph orch ls` re-synthesizes the old service names from them. Both live
+# clusters therefore leave it off:
 #   - sietch: each node has a unique sas_path_prefix (a different SAS expander
-#     address per chassis), so no two nodes collapse and every node keeps its own
-#     spec -- and, because single-host groups keep the <hostname>-<class>
-#     service_id, keeps its existing service name too.
-#   - spice: the by-path map is identical on 47 of 48 nodes, so those 47 collapse
-#     into one spec. miguel has one disk on a different controller and stays in
-#     its own single-host group under its existing name.
+#     address per chassis), so no two nodes would collapse anyway.
+#   - spice: 47 of 48 nodes share a by-path map and would collapse to 3
+#     documents, but its 720 OSDs are already tagged with the per-host names.
+#     See the spice group_vars for the full reasoning.
 #
 # Hardware-shape independence: when sas_path_prefix is defined the host is
 # sietch-shape (SAS expander, dual-SSD-VG block.db); otherwise the host is
