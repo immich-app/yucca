@@ -13,12 +13,17 @@
 locals {
   # The spine's kube gateway = .1 of the kube net, kept at the net's prefix length.
   kube_irb_address = var.node_bgp == null ? null : "${cidrhost(var.node_bgp.peer_range, 1)}/${split("/", var.node_bgp.peer_range)[1]}"
+  # Per-unit inet MTU for the routed IRB gateways = physical 9216 − 14 (L2
+  # header). Above the hosts' 9000, so jumbo pod traffic routes cross-VLAN
+  # unfragmented. Set explicitly (see interfaces.tf irb_jumbo).
+  irb_unit_mtu = 9202
 }
 
 resource "junos_interface_logical" "kube_irb" {
   count = var.node_bgp == null ? 0 : 1
   name  = "irb.${var.kube_vlan_id}"
   family_inet {
+    mtu = local.irb_unit_mtu
     address { cidr_ip = local.kube_irb_address }
   }
 }
@@ -61,6 +66,25 @@ resource "junos_policyoptions_policy_statement" "reject_all" {
   }
 }
 
+# ECMP across the workers for the LB /32s. Two halves, both required on Junos:
+# `multipath` on the group (bgp-nodes below) keeps every worker's equal path in
+# the RIB, and this forwarding-table export installs them all in the PFE with
+# per-FLOW hashing (Junos calls it "per-packet"; QFX hashes 5-tuples, so a TCP
+# stream stays on one worker). Without it the spine forwards every VIP to a
+# single worker and one node's uplink caps the whole ingress. Note the export
+# is chassis-global: any other equal-cost route set also starts load-balancing,
+# which is the desired behavior. Wired into routing-options in transit.tf.
+resource "junos_policyoptions_policy_statement" "ecmp_lb" {
+  count = var.node_bgp == null ? 0 : 1
+  name  = "ECMP-LOAD-BALANCE"
+  term {
+    name = "load-balance"
+    then {
+      load_balance = "per-packet"
+    }
+  }
+}
+
 # The node iBGP group, dynamic-peered over the kube subnet (`allow`). Raw set-config:
 # dynamic neighbors aren't a typed jeremmfr attribute. Depends on the policies it refs.
 # Per-worker egress return routes: replies to a worker's public egress /32 land on the
@@ -83,5 +107,7 @@ resource "junos_null_load_config" "node_bgp" {
     "set protocols bgp group cilium-nodes family inet unicast",
     "set protocols bgp group cilium-nodes import CILIUM-NODES-IN",
     "set protocols bgp group cilium-nodes export REJECT-ALL",
+    "set protocols bgp group cilium-nodes multipath",
   ])
 }
+

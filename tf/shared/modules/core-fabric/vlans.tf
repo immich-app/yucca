@@ -27,6 +27,7 @@ resource "junos_interface_logical" "kube_cp_irb" {
   count = var.kube_cp == null ? 0 : 1
   name  = "irb.${var.kube_cp.vlan_id}"
   family_inet {
+    mtu = local.irb_unit_mtu # jumbo routed gateway (see bgp-nodes.tf / interfaces.tf)
     address { cidr_ip = "${cidrhost(var.kube_cp.cidr, 1)}/${split("/", var.kube_cp.cidr)[1]}" }
   }
 }

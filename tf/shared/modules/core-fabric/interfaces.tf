@@ -105,9 +105,14 @@ resource "junos_interface_physical" "cp_node_lag" {
 
 # Management-node ports (mgmt-1, mgmt-2) — one channelized port-3 leg per VC member,
 # each a single-port trunk of the stretched VLANs. Identical config per node.
+# mtu 9216 like every other fabric port: these carry the kube VLAN (trunk_members),
+# so a default-1514 member would clamp the irb.10 gateway's operational MTU to 1500
+# even with the unit configured for 9202. The 1500-MTU mgmt hosts are unaffected —
+# a switchport MTU is only a ceiling.
 resource "junos_interface_physical" "mgmt_node" {
   for_each     = toset(var.mgmt_node_ports)
   name         = each.value
+  mtu          = 9216
   trunk        = true
   vlan_members = local.trunk_members
 
@@ -123,6 +128,20 @@ moved {
 # NOTE: vme (the mgmt IP / NETCONF lifeline) is deliberately NOT managed here —
 # it's left untouched on the device, like the leaf's vme, so no apply can break the
 # management path.
+
+# IRB jumbo. The L2 path is 9216 end to end (access ports, node LAGs, ae0), but
+# the irb pseudo-device defaults to 1514 — capping every ROUTED hop
+# (kube↔kube-cp) at 1500 while the hosts run 9000. This sets the PHYSICAL irb
+# ceiling to 9216; the per-unit family-inet MTU (irb_unit_mtu, below) is set
+# EXPLICITLY on each routed IRB unit — physical-MTU inheritance does NOT
+# reliably recalculate existing units' inet MTU on Junos (observed: only the
+# unit whose config was last touched picked it up). Raw set-config on purpose:
+# a typed junos_interface_physical "irb" would `delete interfaces irb` on
+# destroy, taking the IRB UNITS (the fabric's gateways) down with it.
+resource "junos_null_load_config" "irb_jumbo" {
+  action = "set"
+  config = "set interfaces irb mtu 9216"
+}
 
 # Transit uplink unit(s) — routed v4/v6 toward each upstream (et-0/0/27 etc.).
 # The physical port's mtu comes from the access-port set above (et-0/0/0..29).

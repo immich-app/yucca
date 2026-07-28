@@ -1,7 +1,13 @@
 # Cilium BGP (north-south LoadBalancer VIPs). The worker speakers iBGP-peer the spine's
 # kube-VLAN IRB (10.40.10.1, AS 402421) and advertise LoadBalancer /32s from the two
-# public pools; the core reaches each VIP via its /32 and it's covered by the transit
-# 69.48.224.0/24 advertisement. Fabric side: tf/.../core-fabric/bgp-nodes.tf.
+# public pools; the spine ECMPs each VIP per-flow across ALL advertising workers
+# (multipath + forwarding-table load-balance, fabric side: tf/.../core-fabric/
+# bgp-nodes.tf) and it's covered by the transit 69.48.224.0/24 advertisement.
+# With Cilium DSR (loadBalancer.mode hybrid, talos cilium values) the gw LB
+# Service runs externalTrafficPolicy: Cluster: every worker advertises the VIP,
+# the spine ECMPs the /32 across all of them, the landing node dispatches to a
+# backend, and the backend's node replies straight to the client from the VIP —
+# no SNAT hop, client IP preserved, ECMP width independent of pod placement.
 # NOTE: applied to the father cluster directly for now; to be adopted into the Flux tree
 # once GitOps is bootstrapped on prod.
 ---

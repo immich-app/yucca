@@ -16,6 +16,15 @@ resource "junos_routing_options" "this" {
   autonomous_system {
     number = tostring(var.local_as)
   }
+  # Install every equal-cost next-hop in the PFE (per-flow hashed) — the other
+  # half of the cilium-nodes ECMP, see bgp-nodes.tf. Only wired when node iBGP
+  # is enabled; requires local_as (this resource) to be set alongside it.
+  dynamic "forwarding_table" {
+    for_each = var.node_bgp == null ? [] : [1]
+    content {
+      export = [junos_policyoptions_policy_statement.ecmp_lb[0].name]
+    }
+  }
 }
 
 # Originate each advertised prefix via a discard route (redistributed by -OUT).
