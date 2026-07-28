@@ -11,6 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"yuctl/internal/netdev"
 )
 
 // StartOptions shape the load. Zero values reproduce the proven per-pod shape
@@ -388,16 +390,16 @@ func (s *Session) sampleNode(ctx context.Context, pod RunnerPod, seconds int) (*
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("unexpected sample output")
 	}
-	before, after := parseNetDev(parts[0]), parseNetDev(parts[1])
+	before, after := netdev.Parse(parts[0]), netdev.Parse(parts[1])
 	best := NodeThroughput{Node: pod.Node}
 	var bestDelta float64
 	for iface, b := range before {
 		a, ok := after[iface]
-		if !ok || virtualIface(iface) {
+		if !ok || netdev.Virtual(iface) {
 			continue
 		}
-		tx := float64(a.tx-b.tx) * 8 / float64(seconds)
-		rx := float64(a.rx-b.rx) * 8 / float64(seconds)
+		tx := float64(a.TX-b.TX) * 8 / float64(seconds)
+		rx := float64(a.RX-b.RX) * 8 / float64(seconds)
 		if tx+rx > bestDelta {
 			bestDelta = tx + rx
 			best = NodeThroughput{Node: pod.Node, Iface: iface, TxBps: tx, RxBps: rx}
@@ -409,34 +411,3 @@ func (s *Session) sampleNode(ctx context.Context, pod RunnerPod, seconds int) (*
 	return &best, nil
 }
 
-type netDevCounters struct{ rx, tx uint64 }
-
-func parseNetDev(text string) map[string]netDevCounters {
-	res := map[string]netDevCounters{}
-	for _, line := range strings.Split(text, "\n") {
-		name, rest, ok := strings.Cut(line, ":")
-		if !ok {
-			continue
-		}
-		f := strings.Fields(rest)
-		if len(f) < 9 {
-			continue
-		}
-		rx, err1 := strconv.ParseUint(f[0], 10, 64)
-		tx, err2 := strconv.ParseUint(f[8], 10, 64)
-		if err1 != nil || err2 != nil {
-			continue
-		}
-		res[strings.TrimSpace(name)] = netDevCounters{rx: rx, tx: tx}
-	}
-	return res
-}
-
-func virtualIface(name string) bool {
-	for _, p := range []string{"lo", "veth", "lxc", "cilium", "cni", "flannel", "kube", "dummy", "tunl", "docker", "vxlan", "geneve", "wg", "wt", "nb"} {
-		if name == p || strings.HasPrefix(name, p) {
-			return true
-		}
-	}
-	return false
-}

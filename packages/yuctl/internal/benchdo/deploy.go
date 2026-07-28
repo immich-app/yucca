@@ -1,0 +1,366 @@
+package benchdo
+
+import (
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
+	"fmt"
+	"os"
+	"os/exec"
+	"sort"
+	"strings"
+	"sync/atomic"
+	"time"
+
+	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/ssh"
+
+	"yuctl/internal/bench"
+	"yuctl/internal/do"
+)
+
+// DeployOptions shape the droplet fleet.
+type DeployOptions struct {
+	Droplets int      // fleet size (default 3)
+	Regions  []string // round-robined; default a europe-heavy spread near htz-fsn1
+	Size     string   // droplet size slug (default s-2vcpu-4gb)
+	Image    string   // default ubuntu-24-04-x64
+	AgentBin string   // explicit local linux/amd64 bench-agent ("" = embedded)
+
+	// Confirm is called with the creation plan before any droplet is created;
+	// returning false aborts. nil means proceed (--yes).
+	Confirm func(plan string) bool
+}
+
+func (o *DeployOptions) defaults() {
+	if o.Droplets <= 0 {
+		o.Droplets = 3
+	}
+	if len(o.Regions) == 0 {
+		o.Regions = []string{"fra1", "ams3", "lon1", "nyc3"}
+	}
+	if o.Size == "" {
+		o.Size = "s-2vcpu-4gb"
+	}
+	if o.Image == "" {
+		o.Image = "ubuntu-24-04-x64"
+	}
+}
+
+// dropletName is the fleet-stable name of droplet n (1-based) — reconciliation
+// keys on these names, so deploy converges instead of duplicating.
+func (s *Session) dropletName(n int) string {
+	return fmt.Sprintf("yucca-bench-do-%s-%02d", s.Partition, n)
+}
+
+// Deploy converges the fleet: creates missing droplets (confirmed, with the
+// hourly cost and transfer pool spelled out), trims surplus ones, files
+// everything under the yucca-bench project, waits for ssh, and pushes the
+// bench agent + pinned restic everywhere.
+func (s *Session) Deploy(ctx context.Context, opts DeployOptions) error {
+	opts.defaults()
+
+	size, err := s.DO.GetSize(ctx, opts.Size)
+	if err != nil {
+		return err
+	}
+	live, err := s.Droplets(ctx)
+	if err != nil {
+		return err
+	}
+
+	want := map[string]string{} // name -> region
+	var wantNames []string
+	for i := range opts.Droplets {
+		name := s.dropletName(i + 1)
+		want[name] = opts.Regions[i%len(opts.Regions)]
+		wantNames = append(wantNames, name)
+	}
+	have := map[string]do.Droplet{}
+	for _, d := range live {
+		have[d.Name] = d
+	}
+
+	var missing []string
+	for _, name := range wantNames {
+		if _, ok := have[name]; !ok {
+			missing = append(missing, name)
+		}
+	}
+	var surplus []do.Droplet
+	for _, d := range live {
+		if _, ok := want[d.Name]; !ok {
+			surplus = append(surplus, d)
+		}
+	}
+
+	if len(missing) > 0 {
+		perRegion := map[string]int{}
+		for _, name := range missing {
+			perRegion[want[name]]++
+		}
+		var regions []string
+		for r, n := range perRegion {
+			regions = append(regions, fmt.Sprintf("%s×%d", r, n))
+		}
+		sort.Strings(regions)
+		plan := fmt.Sprintf("create %d %s droplet(s) (%s) in project %s:\n"+
+			"  regions: %s\n"+
+			"  cost: $%.4f/h each → $%.2f/h ($%.0f/mo-equivalent) for the fleet of %d\n"+
+			"  transfer allowance: %s per droplet → %s pool (hard cap enforced by the agent)",
+			len(missing), size.Slug, opts.Image, do.ProjectName,
+			strings.Join(regions, ", "),
+			size.PriceHourly, size.PriceHourly*float64(opts.Droplets), size.PriceHourly*float64(opts.Droplets)*730, opts.Droplets,
+			bench.FormatBytes(size.TransferBytes()), bench.FormatBytes(size.TransferBytes()*int64(opts.Droplets)))
+		if opts.Confirm != nil && !opts.Confirm(plan) {
+			return fmt.Errorf("deploy aborted")
+		}
+	}
+
+	keyID, err := s.ensureKey(ctx)
+	if err != nil {
+		return err
+	}
+
+	if len(missing) > 0 {
+		perRegion := map[string][]string{}
+		for _, name := range missing {
+			perRegion[want[name]] = append(perRegion[want[name]], name)
+		}
+		for region, names := range perRegion {
+			log.Info().Str("region", region).Int("count", len(names)).Str("size", size.Slug).Msg("creating droplets")
+			if _, err := s.DO.CreateDroplets(ctx, names, region, size.Slug, opts.Image, s.Tag(), keyID); err != nil {
+				return err
+			}
+		}
+	}
+	for _, d := range surplus {
+		log.Warn().Str("droplet", d.Name).Msg("destroying surplus droplet")
+		if err := s.DO.DeleteDroplet(ctx, d.ID); err != nil {
+			return err
+		}
+	}
+
+	droplets, err := s.DO.WaitActive(ctx, s.Tag(), opts.Droplets, 5*time.Minute)
+	if err != nil {
+		return err
+	}
+
+	// Filing under the project is organizational only — the tag is what every
+	// fleet operation keys on — so a scoped token without project permissions
+	// must not strand freshly created (billing!) droplets mid-deploy. Assign
+	// the whole fleet on every converge; it is idempotent, so a run after a
+	// token fix picks the droplets up.
+	s.assignProject(ctx, droplets)
+
+	log.Info().Int("droplets", len(droplets)).Msg("waiting for ssh")
+	var sshReady atomic.Int32
+	if err := eachDroplet(droplets, func(d do.Droplet) error {
+		if err := s.waitSSH(ctx, d, 4*time.Minute); err != nil {
+			return err
+		}
+		log.Info().Str("droplet", d.Name).Int32("ready", sshReady.Add(1)).Int("want", len(droplets)).Msg("ssh ready")
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	agentBin, cleanup, err := bench.AgentBinary(opts.AgentBin)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	resticBin, err := bench.EnsureResticLinux(ctx)
+	if err != nil {
+		return err
+	}
+	log.Info().Int("droplets", len(droplets)).Str("restic", bench.ResticVersion).Msg("pushing bench agent + restic")
+	if err := eachDroplet(droplets, func(d do.Droplet) error {
+		return s.pushBinaries(ctx, d.PublicIP, agentBin, resticBin)
+	}); err != nil {
+		return err
+	}
+
+	s.State.SizeSlug = size.Slug
+	s.State.PriceHourly = size.PriceHourly
+	s.State.TransferBytes = size.TransferBytes()
+	if s.State.CreatedAt.IsZero() {
+		s.State.CreatedAt = time.Now().UTC()
+	}
+	if err := s.SaveState(); err != nil {
+		return err
+	}
+	log.Info().Int("droplets", len(droplets)).Msg("fleet deployed and ready")
+	return nil
+}
+
+// assignProject files the fleet under the yucca-bench project, best-effort.
+func (s *Session) assignProject(ctx context.Context, droplets []do.Droplet) {
+	projectID, err := s.DO.EnsureProject(ctx)
+	if err != nil {
+		log.Warn().Err(err).Msgf("could not ensure the %s project; droplets stay in the default project (token likely lacks project scopes)", do.ProjectName)
+		return
+	}
+	ids := make([]int, len(droplets))
+	for i, d := range droplets {
+		ids[i] = d.ID
+	}
+	if err := s.DO.AssignDroplets(ctx, projectID, ids); err != nil {
+		log.Warn().Err(err).Msgf("could not file the droplets under the %s project (token likely lacks the project update scope); continuing — the fleet is tracked by tag", do.ProjectName)
+	}
+}
+
+// ensureKey returns the fleet's DO ssh key ID, generating and registering a
+// fresh ed25519 keypair when the fleet has none (or the private key is gone).
+func (s *Session) ensureKey(ctx context.Context) (int, error) {
+	if s.State.KeyID != 0 {
+		if _, err := os.Stat(s.PrivateKeyPath()); err == nil {
+			return s.State.KeyID, nil
+		}
+		log.Warn().Msg("fleet ssh private key file is missing; generating a fresh keypair")
+	}
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return 0, err
+	}
+	block, err := ssh.MarshalPrivateKey(priv, "yuctl bench-do "+s.Partition)
+	if err != nil {
+		return 0, fmt.Errorf("marshal ssh private key: %w", err)
+	}
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.MkdirAll(s.dir, 0o700); err != nil {
+		return 0, err
+	}
+	if err := os.WriteFile(s.PrivateKeyPath(), pem.EncodeToMemory(block), 0o600); err != nil {
+		return 0, err
+	}
+
+	name := "yuctl-bench-do-" + s.Partition
+	keyID, err := s.DO.RegisterKey(ctx, name, string(ssh.MarshalAuthorizedKey(sshPub)))
+	if err != nil {
+		return 0, err
+	}
+	s.State.KeyID = keyID
+	s.State.KeyName = name
+	return keyID, s.SaveState()
+}
+
+// waitSSH retries a no-op ssh until the droplet accepts the fleet key. Fresh
+// droplets take a little while between "active" and sshd+key readiness.
+// Single-shot probes (the loop is the retry) with the latest failure surfaced
+// periodically, so a stuck droplet is visible instead of a silent hang.
+func (s *Session) waitSSH(ctx context.Context, d do.Droplet, timeout time.Duration) error {
+	start := time.Now()
+	deadline := start.Add(timeout)
+	lastLog := start
+	for {
+		_, err := s.sshRunOnce(ctx, d.PublicIP, "true", nil)
+		if err == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("droplet %s (%s) not reachable over ssh after %s: %w", d.Name, d.PublicIP, timeout, err)
+		}
+		if time.Since(lastLog) > 30*time.Second {
+			lastLog = time.Now()
+			log.Warn().Str("droplet", d.Name).Str("ip", d.PublicIP).
+				Str("waited", time.Since(start).Round(time.Second).String()).
+				Str("error", tailStr(err.Error(), 160)).Msg("still waiting for ssh")
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		// A gentle cadence: on paths that graylist port-22 SYN bursts,
+		// hammering a not-yet-reachable droplet only extends the block.
+		case <-time.After(10 * time.Second):
+		}
+	}
+}
+
+// pushBinaries scps the agent and restic into RemoteBinDir on the droplet.
+func (s *Session) pushBinaries(ctx context.Context, ip, agentBin, resticBin string) error {
+	if _, err := s.sshRun(ctx, ip, "mkdir -p "+bench.RemoteBinDir, nil); err != nil {
+		return err
+	}
+	dest := sshUser + "@" + ip + ":" + bench.RemoteBinDir + "/"
+	scp := func(local string) error {
+		cmd := exec.CommandContext(ctx, "scp", append([]string{"-q"}, s.sshArgs(local, dest)...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("scp %s to %s: %w: %s", local, ip, err, tailStr(string(out), 500))
+		}
+		return nil
+	}
+	// The local temp names are already bench-agent / restic_<ver>; normalize
+	// on the remote side so launch paths are stable.
+	if err := scp(agentBin); err != nil {
+		return err
+	}
+	if err := scp(resticBin); err != nil {
+		return err
+	}
+	script := fmt.Sprintf("cd %s && mv -f $(basename %q) bench-agent 2>/dev/null; mv -f $(basename %q) restic 2>/dev/null; chmod +x bench-agent restic",
+		bench.RemoteBinDir, agentBin, resticBin)
+	_, err := s.sshRun(ctx, ip, script, nil)
+	return err
+}
+
+// Undeploy destroys the whole fleet: droplets by tag, the DO ssh key, and the
+// local key/known_hosts/state files. Repositories (and their data) persist —
+// run `bench-do cleanup` first to prune them while the droplets still exist.
+func (s *Session) Undeploy(ctx context.Context, force bool) error {
+	droplets, err := s.Droplets(ctx)
+	if err != nil {
+		return err
+	}
+	if len(droplets) == 0 {
+		log.Info().Msg("no droplets tagged for this fleet")
+	} else {
+		if !force {
+			if running, err := s.anyLoadRunning(ctx, droplets); err != nil {
+				log.Warn().Err(err).Msg("could not check for running load")
+			} else if running {
+				return fmt.Errorf("load is still running; `yuctl tools bench-do stop` first (or --force)")
+			}
+		}
+		log.Info().Int("droplets", len(droplets)).Msg("destroying fleet droplets")
+		if err := s.DO.DeleteByTag(ctx, s.Tag()); err != nil {
+			return err
+		}
+	}
+	if s.State.KeyID != 0 {
+		if err := s.DO.DeleteKey(ctx, s.State.KeyID); err != nil {
+			log.Warn().Err(err).Msg("could not delete the DO ssh key; remove it in the console")
+		}
+	}
+	if len(s.State.Clients) > 0 {
+		log.Warn().Int("repos", len(s.State.Clients)).
+			Msg("bench repositories persist (deletion is unimplemented); their passwords stay in the fleet state file")
+	}
+	if err := s.clearFleetState(); err != nil {
+		return err
+	}
+	log.Info().Msg("fleet undeployed")
+	return nil
+}
+
+// anyLoadRunning reports whether any droplet still has an agent or restic
+// process alive.
+func (s *Session) anyLoadRunning(ctx context.Context, droplets []do.Droplet) (bool, error) {
+	running := false
+	err := eachDroplet(droplets, func(d do.Droplet) error {
+		out, err := s.sshRun(ctx, d.PublicIP,
+			`echo "$(pgrep -fc 'bench-agent --[l]oadgen') $(pgrep -xc restic)" 2>/dev/null || true`, nil)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(out) != "0 0" {
+			running = true
+		}
+		return nil
+	})
+	return running, err
+}
