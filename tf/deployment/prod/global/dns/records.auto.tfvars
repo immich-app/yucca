@@ -26,7 +26,7 @@ records = {
     values  = ["69.48.224.5"]
     comment = "Yucca prod web/api gateway (tf/deployment/prod/global/dns)"
   }
-  "gw.backups.futo.cloud" = {
+  "rest.htz-fsn1.backups.futo.cloud" = {
     type    = "A"
     values  = ["69.48.224.6"]
     comment = "Yucca prod restic gateway - michael (tf/deployment/prod/global/dns)"

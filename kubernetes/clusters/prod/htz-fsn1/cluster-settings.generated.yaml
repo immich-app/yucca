@@ -18,9 +18,10 @@ data:
   METRICS_ENV_LABEL: prod
 
   # Per-service ingress hostnames. web (apex; /api routes to yucca-api) on the
-  # app gateway; gw. (michael, restic) on the dedicated gw-proxy gateway.
+  # app gateway; rest.htz-fsn1. (michael, restic) on the dedicated gw-proxy
+  # gateway (own cert — outside the *.APP_DOMAIN wildcard).
   APP_DOMAIN: backups.futo.cloud
-  GW_HOST: gw.backups.futo.cloud
+  GW_HOST: rest.htz-fsn1.backups.futo.cloud
 
   # Spice RGW (Ceph S3): round-robin DNS across all 48 nodes' fabric VLAN-120
   # IPs (prod/global/dns), reached over the FABRIC — the spine routes
