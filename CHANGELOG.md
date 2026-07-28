@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.23.0](https://github.com/immich-app/yucca/compare/v0.22.1...v0.23.0) (2026-07-28)
+
+
+### Features
+
+* **ceph:** route spice alertmanager to a real receiver ([#355](https://github.com/immich-app/yucca/issues/355)) ([4ef8a18](https://github.com/immich-app/yucca/commit/4ef8a1886cef71a8cadc53ef5bcd6b63e5320dd3))
+* **net:** switch to ecmp, dsr and jumbo frames ([#366](https://github.com/immich-app/yucca/issues/366)) ([71bce9b](https://github.com/immich-app/yucca/commit/71bce9bf55ceef753295948e3e87454f456cfc31))
+* **yuctl:** add tools warp ([#356](https://github.com/immich-app/yucca/issues/356)) ([9cdeeb1](https://github.com/immich-app/yucca/commit/9cdeeb10d4e99885aefc23114db727fe560d299a))
+* **yuctl:** digital ocean driven benchmarks ([#365](https://github.com/immich-app/yucca/issues/365)) ([97652b9](https://github.com/immich-app/yucca/commit/97652b9f76c1bf1274d74eeb52649337a74a9ddf))
+
+
+### Bug Fixes
+
+* **ceph:** pin SATA link power to max_performance on OSD nodes ([#347](https://github.com/immich-app/yucca/issues/347)) ([866d69f](https://github.com/immich-app/yucca/commit/866d69f7126bf927ab17b78936c5b29a564e4ba9))
+
 ## [0.22.1](https://github.com/immich-app/yucca/compare/v0.22.0...v0.22.1) (2026-07-27)
 
 
