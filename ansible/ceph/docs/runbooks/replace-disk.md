@@ -206,6 +206,10 @@ scripts/ansible-play.sh deploy-ceph.yml \
   --tags osds --limit sietch-ceph-<host>,sietch-ceph-laurel
 ```
 
+This works on sietch because its OSD specs are managed, so cephadm acts on the
+re-applied spec. It does **not** carry over to spice, whose specs are
+deliberately unmanaged -- see the spice section below.
+
 ## 7. Verify
 
 ### Check the new OSD is up
@@ -369,19 +373,23 @@ cephadm ceph-volume \
 ceph cephadm osd activate <hostname>
 ```
 
-Re-applying the spec (`ceph orch apply osd -i /etc/ceph/osd-spec.yml`) also
-works when exactly one data path and one db slot are free, because then only
-one pairing is possible. With more than one of either free, cephadm chooses,
-and it may not choose what you expect.
+**Do not rebuild a replaced disk by re-managing the OSD spec.** spice's specs
+carry `unmanaged: true` (`ceph_osd_spec_unmanaged` in its group_vars) precisely
+so cephadm cannot act on a blank disk on its own, and `ceph orch set-managed`
+undoes that. Upstream [tracker #68436][t68436] is this exact sequence: with the
+spec managed after a hardware swap the drivegroup preview fails, and cephadm
+recreates the OSD **without the BlueStore db setup**. On spice that is a silent
+downgrade -- block.db lands colocated on the 22TB HDD instead of the `vg0`
+db-slot LV, and the OSD comes up healthy-looking with the write latency of a
+spinning disk in front of every metadata operation. The bug is open against
+18.2.4 and the cluster runs 20.2.2.
 
-The Ansible equivalent, if you would rather not hand-run ceph-volume:
+The same applies to `deploy-ceph.yml --tags osds`. It re-renders and re-applies
+the spec, which stays unmanaged, so it will not create the OSD for you; the
+`ceph_osd_allow_spec_provisioning` window that would let it is for initial
+cluster provisioning only. Use `ceph-volume` above.
 
-```bash
-scripts/ansible-play.sh deploy-ceph.yml \
-  --tags osds --limit spice-ceph-<host>,spice-ceph-adelia
-```
-
-`spice-ceph-adelia` is the spice bootstrap node and must be in `--limit`.
+[t68436]: https://tracker.ceph.com/issues/68436
 
 ### 7. Verify
 

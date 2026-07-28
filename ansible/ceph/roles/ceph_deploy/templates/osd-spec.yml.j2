@@ -1,64 +1,132 @@
-# OSD service spec — rendered by ceph_deploy role
+# OSD service spec -- rendered by ceph_deploy role
 # Applied via: ceph orch apply osd -i /etc/ceph/osd-spec.yml
 #
-# One document per host because per-host disk paths differ:
-#   - sietch nodes: each has a unique sas_path_prefix (different SAS expander
-#     address per chassis), so explicit data_devices.paths can't be shared.
-#   - NVMe-RAID shape: single host, single spec.
+# ONE DOCUMENT PER HOST *TYPE*, not per host. Upstream's guidance is "typically
+# you will have a single spec for each type of host"; cephadm reconciles every
+# managed spec on every serve-loop pass, so a spec per host makes the loop cost
+# scale with the fleet. Hosts whose rendered device lists are byte-identical are
+# collapsed into one spec with a multi-host placement.
+#
+# In practice:
+#   - sietch: each node has a unique sas_path_prefix (a different SAS expander
+#     address per chassis), so no two nodes collapse and every node keeps its own
+#     spec -- and, because single-host groups keep the <hostname>-<class>
+#     service_id, keeps its existing service name too.
+#   - spice: the by-path map is identical on 47 of 48 nodes, so those 47 collapse
+#     into one spec. miguel has one disk on a different controller and stays in
+#     its own single-host group under its existing name.
 #
 # Hardware-shape independence: when sas_path_prefix is defined the host is
 # sietch-shape (SAS expander, dual-SSD-VG block.db); otherwise the host is
 # NVMe-RAID shape (PCI-ATA disks, single NVMe-RAID VG, SSD OSD as an LV).
 #
-# Idempotent: cephadm no-ops when the spec matches what's deployed. New
-# disks (e.g. populating an empty bay) are picked up automatically on apply.
+# unmanaged: cephadm keeps reconciling a managed spec forever, which on a large
+# fleet costs a ceph-volume lvm+raw list per host per pass. Clusters that do not
+# want that set ceph_osd_spec_unmanaged (see the spice group_vars); the spec then
+# stays registered and complete but cephadm will not act on it. Creating OSDs
+# from an unmanaged spec is an explicit, gated step in osds.yml -- and is for
+# initial provisioning only. Do NOT re-manage a spec to rebuild a replaced disk:
+# see docs/runbooks/replace-disk.md and Ceph tracker #68436.
 #
 # Do not edit by hand. Regenerate by re-running the ceph_deploy role.
+{#
+  Pass 1 -- bucket hosts by their rendered device lists. The join()ed paths are
+  the grouping key, so two hosts collapse only if every data path and every db
+  path matches exactly. namespace() is needed because Jinja loop scopes do not
+  leak assignments back out.
+
+  Collapsing is opt-in per cluster (ceph_osd_spec_group_by_layout). With it off
+  the key is just the hostname, so every host lands in its own group and keeps
+  its historical <hostname>-<class> service_id -- byte-identical to what this
+  template rendered before grouping existed. That default matters because
+  changing a service_id does not rename a service, it creates a new one and
+  orphans the old: sietch's three nodes name their SSD LVs identically
+  (ceph-ssd-rear12/osd-ssd on all three), so they would silently collapse and
+  rename on the next converge. Turn it on when the loop cost of one spec per
+  host is worth a deliberate migration.
+#}
+{% set ns = namespace(hdd={}, ssd={}) %}
 {% for host in groups['ceph_nodes'] %}
 {% set h = hostvars[host] %}
 {% if h.ceph_hdd_osds | default([]) | length > 0 %}
+{% set data_paths = [] %}
+{% set db_paths = [] %}
+{% for hdd in h.ceph_hdd_osds %}
+{% if h.sas_path_prefix is defined %}
+{% set _ = data_paths.append('/dev/disk/by-path/' ~ h.sas_path_prefix ~ '-' ~ hdd.path_phy ~ '-lun-0') %}
+{% else %}
+{% set _ = data_paths.append('/dev/disk/by-path/' ~ hdd.path_phy) %}
+{% endif %}
+{% set _ = db_paths.append('/dev/' ~ hdd.db) %}
+{% endfor %}
+{% set key = ((data_paths | join(',')) ~ '||' ~ (db_paths | join(','))) if ceph_osd_spec_group_by_layout | default(false) else h.hostname_short %}
+{% if key not in ns.hdd %}
+{% set _ = ns.hdd.update({key: {'data': data_paths, 'db': db_paths, 'hosts': []}}) %}
+{% endif %}
+{% set _ = ns.hdd[key]['hosts'].append(h.hostname_short) %}
+{% endif %}
+{% if h.ceph_ssd_osds | default([]) | length > 0 %}
+{% set ssd_paths = [] %}
+{% for ssd in h.ceph_ssd_osds %}
+{% if ssd.lv is defined %}
+{% set _ = ssd_paths.append('/dev/' ~ ssd.lv) %}
+{% else %}
+{% set _ = ssd_paths.append('/dev/disk/by-path/' ~ h.sas_path_prefix ~ '-' ~ ssd.path_phy ~ '-lun-0-part' ~ ssd.partition) %}
+{% endif %}
+{% endfor %}
+{% set key = (ssd_paths | join(',')) if ceph_osd_spec_group_by_layout | default(false) else h.hostname_short %}
+{% if key not in ns.ssd %}
+{% set _ = ns.ssd.update({key: {'data': ssd_paths, 'hosts': []}}) %}
+{% endif %}
+{% set _ = ns.ssd[key]['hosts'].append(h.hostname_short) %}
+{% endif %}
+{% endfor %}
+{#
+  Pass 2 -- emit one document per group. A group holding exactly one host keeps
+  the historical <hostname>-<class> service_id so existing single-host clusters
+  are not renamed (renaming a service_id creates a new service and orphans the
+  old one). Multi-host groups get <cluster>-<class>-<n>.
+#}
+{% for grp in ns.hdd.values() %}
 ---
 service_type: osd
-service_id: {{ h.hostname_short }}-hdd
+service_id: {{ grp.hosts[0] ~ '-hdd' if grp.hosts | length == 1 else cluster_name ~ '-hdd-' ~ loop.index }}
+unmanaged: {{ ceph_osd_spec_unmanaged | default(false) | string | lower }}
 placement:
   hosts:
-    - {{ h.hostname_short }}
+{% for hostname in grp.hosts %}
+    - {{ hostname }}
+{% endfor %}
 spec:
   data_devices:
     paths:
-{% for hdd in h.ceph_hdd_osds %}
-{% if h.sas_path_prefix is defined %}
-      - /dev/disk/by-path/{{ h.sas_path_prefix }}-{{ hdd.path_phy }}-lun-0
-{% else %}
-      - /dev/disk/by-path/{{ hdd.path_phy }}
-{% endif %}
+{% for path in grp.data %}
+      - {{ path }}
 {% endfor %}
   db_devices:
     paths:
-{% for hdd in h.ceph_hdd_osds %}
-      - /dev/{{ hdd.db }}
+{% for path in grp.db %}
+      - {{ path }}
 {% endfor %}
   encrypted: true
   crush_device_class: hdd
-{% endif %}
-{% if h.ceph_ssd_osds | default([]) | length > 0 %}
+{% endfor %}
+{% for grp in ns.ssd.values() %}
 ---
 service_type: osd
-service_id: {{ h.hostname_short }}-ssd
+service_id: {{ grp.hosts[0] ~ '-ssd' if grp.hosts | length == 1 else cluster_name ~ '-ssd-' ~ loop.index }}
+unmanaged: {{ ceph_osd_spec_unmanaged | default(false) | string | lower }}
 placement:
   hosts:
-    - {{ h.hostname_short }}
+{% for hostname in grp.hosts %}
+    - {{ hostname }}
+{% endfor %}
 spec:
   data_devices:
     paths:
-{% for ssd in h.ceph_ssd_osds %}
-{% if ssd.lv is defined %}
-      - /dev/{{ ssd.lv }}
-{% else %}
-      - /dev/disk/by-path/{{ h.sas_path_prefix }}-{{ ssd.path_phy }}-lun-0-part{{ ssd.partition }}
-{% endif %}
+{% for path in grp.data %}
+      - {{ path }}
 {% endfor %}
   encrypted: true
   crush_device_class: ssd
-{% endif %}
 {% endfor %}

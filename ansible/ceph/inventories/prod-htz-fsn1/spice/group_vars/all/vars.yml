@@ -183,6 +183,34 @@ ceph_db_lvs_per_node: 14
 ceph_ssd_osd_lv: ssd-osd          # NVMe-backed OSD LV (fast replicated pool)
 ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expansion
 
+# Keep the OSD specs registered but inert. cephadm reconciles every MANAGED spec
+# on every serve-loop pass, and each pass costs a ceph-volume lvm list + raw list
+# per host; at spice's size that pinned one full loop iteration at ~35 minutes
+# (measured 2026-07-28: nine consecutive intervals, 33m57s to 35m43s), so every
+# orchestrator action -- an OSD drain, a daemon restart -- inherited up to 35
+# minutes of latency before cephadm even looked at it. Unmanaged specs are
+# skipped, and upstream sanctions this for drivegroups ("use the unmanaged
+# parameter" to disable automatic creation on available devices).
+#
+# The specs stay complete and applied, so they remain the record of intent; they
+# just do not act on their own. Creating OSDs from them is gated behind
+# ceph_osd_allow_spec_provisioning (osds.yml), which is for INITIAL provisioning
+# only. Rebuilding a replaced disk goes through ceph-volume by hand -- see
+# docs/runbooks/replace-disk.md. Ceph tracker #68436: re-managing a spec after a
+# disk swap can recreate the OSD without its block.db, which on spice silently
+# colocates block.db on the 22TB HDD instead of the vg0 db-slot LV.
+ceph_osd_spec_unmanaged: true
+
+# Collapse the per-host OSD specs into one per host TYPE, which is the shape
+# upstream expects ("typically you will have a single spec for each type of
+# host"). spice renders 3 instead of 48x2: one for the 47 nodes sharing an
+# identical by-path map, one for miguel (whose 87:00.0-ata-4 disk sits on
+# 46:00.0 instead), one for the ssd-osd LV common to all 48. Off by default so
+# clusters that have per-host specs deployed are not silently renamed -- a
+# changed service_id creates a new service and orphans the old one, so turning
+# this on is a migration (apply, then `ceph orch rm` the superseded services).
+ceph_osd_spec_group_by_layout: true
+
 # OSD device map (by-path, consumed by ceph_deploy/osd-spec.yml.j2, NVMe-RAID shape:
 # no sas_path_prefix -> data path is /dev/disk/by-path/<path_phy>, db is /dev/<db>).
 # The 14x 22TB SATA HDDs sit on 3 AHCI controllers; the by-path layout is IDENTICAL

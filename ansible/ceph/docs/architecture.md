@@ -785,16 +785,22 @@ sequenceDiagram
 flowchart TB
     SIETCH["sietch prep:<br/>provision_host/disks.yml partitions SSDs<br/>then ceph_deploy/lvm-setup.yml<br/><i>creates VG + db-slot LVs on each SSD's partition 5</i>"]
     NVMERAID["spice prep:<br/>installimage builds NVMe RAID-1 -> vg0<br/>then ceph_deploy/lvm-setup.yml<br/><i>carves 14x 128G db-slotN + one ssd-osd LV</i>"]
-    SPEC["ceph_deploy/osds.yml renders<br/>templates/osd-spec.yml.j2 -> /etc/ceph/osd-spec.yml<br/><i>one document per host; paths from host_vars/group_vars</i>"]
+    SPEC["ceph_deploy/osds.yml renders<br/>templates/osd-spec.yml.j2 -> /etc/ceph/osd-spec.yml<br/><i>one document per host TYPE; paths from host_vars/group_vars</i>"]
     APPLY["ceph orch apply osd -i /etc/ceph/osd-spec.yml<br/><i>cephadm: discover disks, LUKS-format, LVM, deploy daemons</i>"]
+    WINDOW{"spec unmanaged?"}
+    OPEN["Open provisioning window<br/><i>ceph orch set-managed, gated on<br/>ceph_osd_allow_spec_provisioning</i>"]
     POLL["Wait for cephadm to provision<br/><i>poll num_osds until expected count reached</i>"]
     UP["Wait for OSDs up<br/><i>poll num_up_osds == num_osds</i>"]
+    CLOSE["Close window (always)<br/><i>ceph orch set-unmanaged</i>"]
     UNSET["Defensive: ceph osd unset noin<br/><i>idempotent -- clears stale flag from prior runs</i>"]
-    REWEIGHT["Safety net: fix any reweight=0 OSDs"]
+    REWEIGHT["Safety net: reweight=0 OSDs<br/><i>skips the removal queue; acts only if noin set</i>"]
 
     SIETCH --> SPEC
     NVMERAID --> SPEC
-    SPEC --> APPLY --> POLL --> UP --> UNSET --> REWEIGHT
+    SPEC --> APPLY --> WINDOW
+    WINDOW -->|no, managed| POLL
+    WINDOW -->|yes| OPEN --> POLL
+    POLL --> UP --> CLOSE --> UNSET --> REWEIGHT
 ```
 
 ### Service-spec model, not per-disk loops
@@ -815,9 +821,16 @@ auto-discovers and claims an OS or block.db partition.
 
 ### Hardware-shape independence in the template
 
-`templates/osd-spec.yml.j2` renders one document per host (sietch nodes
-have unique SAS prefixes per chassis, so a shared spec doesn't work)
-with two shape branches:
+`templates/osd-spec.yml.j2` renders one document per host **type**, with two
+shape branches. Hosts whose rendered device lists are identical collapse into
+a single multi-host spec; hosts that differ get their own. sietch nodes have a
+unique SAS prefix per chassis so none of them collapse, which is why the
+template used to emit strictly one document per host. spice is uniform across
+47 of 48 nodes and renders 3 documents instead of 96. Collapsing is opt-in per
+cluster (`ceph_osd_spec_group_by_layout`) because a changed `service_id` does
+not rename a service, it creates a new one and orphans the old.
+
+The two branches are:
 
 - **sietch-shape** (`sas_path_prefix` defined): data path =
   `/dev/disk/by-path/{{ sas_path_prefix }}-{{ path_phy }}-lun-0`; SSD
@@ -841,8 +854,23 @@ their count and size matter. Resolve a real pairing with
 ### Idempotency
 
 `ceph orch apply osd` is idempotent -- re-applying the same spec is a
-no-op when deployed OSDs match. New disks (populating an empty bay
-later, future expansion) are picked up automatically on the next apply.
+no-op when deployed OSDs match.
+
+Whether a spec keeps acting after that apply depends on
+`ceph_osd_spec_unmanaged`. Managed (sietch, the default) it stays in cephadm's
+reconcile loop and new disks -- populating an empty bay, future expansion --
+are picked up automatically. Unmanaged (spice) the spec is registered and
+complete but inert: cephadm will not create OSDs from it, and provisioning
+needs the explicit window in `osds.yml`.
+
+That is not a cosmetic preference. cephadm reconciles every managed spec on
+every serve-loop pass, and each pass costs a `ceph-volume lvm list` plus a
+`raw list` on each matching host. At spice's size that pinned one loop
+iteration at ~35 minutes, so every orchestrator action inherited up to 35
+minutes of latency; unmanaged, the loop runs in seconds. The tradeoff is that
+a replaced disk is no longer rebuilt for you, which
+[docs/runbooks/replace-disk.md](runbooks/replace-disk.md) wants anyway -- see
+Ceph tracker #68436 for why letting cephadm rebuild it is the riskier path.
 Existing OSDs are not destroyed by a spec apply -- removal requires
 explicit `ceph orch osd rm`.
 

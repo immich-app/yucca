@@ -318,8 +318,8 @@ template's Jinja conditional, not the role logic.
 - `templates/rgw-spec.yaml.j2` + `tasks/rgw.yml`'s `ceph orch apply -i`
   task -- RGW daemon placement spec.
 - `templates/osd-spec.yml.j2` + `tasks/osds.yml`'s
-  `ceph orch apply osd -i` task -- OSD service spec; per-host documents
-  in a multi-doc YAML; Jinja conditional handles sietch-shape vs
+  `ceph orch apply osd -i` task -- OSD service spec; one document per host
+  *type* in a multi-doc YAML; Jinja conditional handles sietch-shape vs
   NVMe-RAID-shape path composition.
 
 **Template skeleton:**
@@ -336,6 +336,17 @@ spec:
   <kind-specific fields>
 {% endfor %}
 ```
+
+One document per host is the simple form, and it is what `rgw-spec.yaml.j2`
+still does. Watch it at scale: cephadm reconciles every managed spec on every
+serve-loop pass, so N specs across N hosts makes the loop cost scale with the
+fleet. If the hosts are uniform, bucket them by their rendered field values and
+emit one document per bucket with a multi-host `placement.hosts` -- see
+`osd-spec.yml.j2`, which collapses spice's 96 documents to 3. Keep single-host
+buckets on the original `<hostname>-<role>` `service_id`: changing a
+`service_id` does not rename a service, it creates a new one and orphans the
+old, so collapsing an already-deployed cluster is a migration and belongs
+behind a flag.
 
 **Apply pattern in tasks/*.yml:**
 
