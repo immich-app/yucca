@@ -1,0 +1,22 @@
+# Bucket purge runs in-cluster: the RGW IPs are fabric-internal, reachable from
+# the workers but not from the operator's machine.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      restartPolicy: Never
+      containers:
+        - name: mc
+          image: {{ .Image }}
+          command: ["sh", "-c", {{ .Script | json }}]
+          envFrom:
+            - secretRef:
+                name: {{ .SecretName }}

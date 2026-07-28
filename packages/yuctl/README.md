@@ -61,9 +61,17 @@ yuctl
 │   ├── list                        list users in the partition's PRIMARY region
 │   └── view-dashboard              open the grafana per-user drill-down (--id or --email)
 └── tools
-    └── bench                       restic e2e benchmark against michael, run from a mgmt host
-        ├── compare <a> <b>         render before/after deltas from two results files
-        └── cleanup                 forget+prune every bench snapshot (timed)
+    ├── bench                       restic e2e benchmark against michael, run from a mgmt host
+    │   ├── compare <a> <b>         render before/after deltas from two results files
+    │   └── cleanup                 forget+prune every bench snapshot (timed)
+    └── warp                        S3 load test fleet against the region's RGW gateways
+        ├── deploy                  create/converge hostNetwork runner pods on the workers
+        ├── start                   launch the load (graceful restart; non-stop by default)
+        ├── status                  one-shot styled dashboard (procs, errors, NIC Gbps)
+        ├── watch                   live dashboard, continuously sampled (lipgloss)
+        ├── stop                    kill the load, keep the runners deployed
+        ├── cleanup                 purge warp buckets via an in-cluster mc Job
+        └── undeploy                delete the loadtest namespace entirely
 ```
 
 Global flags: `--log-level` (trace|debug|info|warn|error), `--log-format`
@@ -188,6 +196,63 @@ How it works:
 The ssh session stays open for the whole run (keepalives set); run multi-hour
 benchmarks inside tmux. Pair the client numbers with the michael dashboard
 (TTFB, connection churn, S3 client metrics) for the server-side view.
+
+## `tools warp` — RGW fleet load test
+
+Reproduces the 2026-07-22 warp soak (~250Gbps combined on father) as an
+on-demand, topology-aware tool. Everything is derived at runtime — worker
+nodes and allocatable CPU from the cluster, the RGW endpoint + credentials
+from discovery and the product's own secret, the gateway roster from DNS with
+a liveness probe run from inside the cluster.
+
+```bash
+yuctl select prod@htz-fsn1
+yuctl tools warp start            # auto-deploys, then runs non-stop until `stop`
+yuctl tools warp watch            # live dashboard: NIC bars, throughput sparkline
+yuctl tools warp status           # same dashboard, one-shot
+yuctl tools warp stop             # kill the load; runners stay for instant restart
+yuctl tools warp cleanup          # purge yuctl-warp-* buckets (in-cluster mc Job)
+yuctl tools warp undeploy         # remove the loadtest namespace
+```
+
+Tuning: `--put-streams`/`--get-streams` (fleet totals) or `--put-per-pod`/
+`--get-per-pod`, `--put-obj-size`/`--get-obj-size`, `--get-objects`,
+`--duration` (bounded) vs `--cycle` (non-stop loop), and on deploy/start:
+`--pods-per-node`, `--workers N` (pin to the first N workers), `--cpu`,
+`--image`. Example scaled-down probe:
+
+```bash
+yuctl tools warp start --workers 1 --put-per-pod 32 --get-streams -1 \
+  --put-obj-size 4MiB --duration 30m
+```
+
+How it works:
+
+- **Runners**: `minio/warp` pods (2 per worker by default) on **hostNetwork**,
+  so the load rides the workers' bonded NICs with no CNI hop. CPU request is
+  derived from node allocatable. Manifests are `go:embed`ded templates
+  (`internal/warp/manifests/`), server-side-applied via client-go — no
+  kubectl dependency. Credentials are copied from the `yucca-michael` secret
+  (the same RGW svc user as the real data path).
+- **Gateway roster**: the ceph cluster's `rgw_s3_endpoint` is resolved to its
+  full A-record set, then TCP-probed *from a runner pod* (the vantage that
+  matters); dead gateways are excluded. Every warp request round-robins over
+  the explicit `--host` list — plain DNS would pin one gateway per process.
+- **Load shape**: per-pod defaults are the proven config — 167 PUT + 17 GET
+  streams of 16MiB objects — so totals scale with the topology (3 workers × 2
+  pods = the 1002/102 ~250Gbps shape). Small GET sizes are latency-bound
+  under write load; 16MiB reads shoulder through.
+- **Non-stop**: without `--duration`, each pod runs a respawning loop of
+  `--cycle` (6h) warp runs with `--noclear`, accumulating data until
+  `cleanup`. `start` is a graceful restart: it kills the previous load first.
+- **`status`** samples `/proc/net/dev` on one pod per node and reports the
+  busiest physical interface's TX/RX, plus warp process and log-error counts.
+- **`cleanup`** runs an in-cluster `mc` Job (RGW IPs are fabric-internal) and
+  purges buckets by prefix; `--legacy` also removes the pre-yuctl soak
+  buckets. A mass delete is itself a load event — RGW GC churns afterwards.
+
+Works identically against staging (`yuctl select staging@austin`) — nothing
+about the fleet size, gateway count, or endpoints is hardcoded.
 
 ## Environment variables
 

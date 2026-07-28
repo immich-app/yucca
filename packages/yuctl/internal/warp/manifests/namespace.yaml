@@ -1,0 +1,11 @@
+# Runners need hostNetwork (and run as the image's default user), which the
+# `restricted` PodSecurity profile forbids by definition — declare the loadtest
+# namespace privileged so admission doesn't warn on every apply.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Namespace }}
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged

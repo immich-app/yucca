@@ -1,0 +1,59 @@
+# hostNetwork runners: the load rides the workers' bonded NICs directly, no CNI
+# veth hop. Standalone warp processes are exec'd in by `yuctl tools warp start`;
+# the pod itself just sleeps.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+  labels:
+    app: {{ .Name }}
+spec:
+  replicas: {{ .Replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Name }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 5
+{{- if .NodeNames }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+{{- range .NodeNames }}
+                      - {{ . }}
+{{- end }}
+{{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          # Without Honor, tainted control-plane nodes count as 0-pod domains
+          # and cap the fleet at one pod per worker (skew vs 0 > maxSkew).
+          nodeTaintsPolicy: Honor
+          labelSelector:
+            matchLabels:
+              app: {{ .Name }}
+      containers:
+        - name: warp
+          image: {{ .Image }}
+          command: ["sh", "-c", "sleep infinity"]
+          envFrom:
+            - secretRef:
+                name: {{ .SecretName }}
+          resources:
+            requests:
+              cpu: "{{ .CPU }}"
+              memory: 4Gi
+            limits:
+              memory: 24Gi
