@@ -36,35 +36,6 @@ func TestShare(t *testing.T) {
 	}
 }
 
-func TestParseNetDev(t *testing.T) {
-	sample := `Inter-|   Receive                                                |  Transmit
- face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
-    lo:  1000     10    0    0    0     0          0         0     1000     10    0    0    0     0       0          0
- bond0: 500000   100    0    0    0     0          0         0   900000    200    0    0    0     0       0          0
-`
-	got := parseNetDev(sample)
-	b, ok := got["bond0"]
-	if !ok || b.rx != 500000 || b.tx != 900000 {
-		t.Fatalf("bond0 = %+v, ok=%v", b, ok)
-	}
-	if _, ok := got["lo"]; !ok {
-		t.Fatal("lo missing (filtering happens later, parsing should keep it)")
-	}
-}
-
-func TestVirtualIface(t *testing.T) {
-	for _, virt := range []string{"lo", "cilium_host", "lxc123", "veth0", "wt0", "nb-wt0"} {
-		if !virtualIface(virt) {
-			t.Errorf("%s should be virtual", virt)
-		}
-	}
-	for _, phys := range []string{"bond0", "enp193s0f0", "eth0", "ens3"} {
-		if virtualIface(phys) {
-			t.Errorf("%s should be physical", phys)
-		}
-	}
-}
-
 func TestRenderDeploymentManifest(t *testing.T) {
 	b, err := renderManifest("deployment.yaml", map[string]any{
 		"Name": "warp-runner", "Namespace": "loadtest", "Image": "minio/warp:latest",

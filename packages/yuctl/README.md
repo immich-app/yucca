@@ -64,6 +64,14 @@ yuctl
     ├── bench                       restic e2e benchmark against michael, run from a mgmt host
     │   ├── compare <a> <b>         render before/after deltas from two results files
     │   └── cleanup                 forget+prune every bench snapshot (timed)
+    ├── bench-do                    restic client fleet on DigitalOcean droplets vs michael
+    │   ├── deploy                  create/converge the droplet fleet (project yucca-bench)
+    │   ├── start                   launch the per-client backup loops (graceful restart)
+    │   ├── status                  one-shot dashboard (throughput, transfer budget, clients)
+    │   ├── watch                   live dashboard, continuously sampled
+    │   ├── stop                    kill the load, collect + save the results JSON
+    │   ├── cleanup                 forget+prune every bench-do repo (from the droplets)
+    │   └── undeploy                destroy the droplets and the ephemeral ssh key
     └── warp                        S3 load test fleet against the region's RGW gateways
         ├── deploy                  create/converge hostNetwork runner pods on the workers
         ├── start                   launch the load (graceful restart; non-stop by default)
@@ -197,6 +205,61 @@ The ssh session stays open for the whole run (keepalives set); run multi-hour
 benchmarks inside tmux. Pair the client numbers with the michael dashboard
 (TTFB, connection churn, S3 client metrics) for the server-side view.
 
+## `tools bench-do` — DigitalOcean restic client fleet
+
+Drives michael from the outside: N DigitalOcean droplets each running real
+restic clients over the public internet — the actual external-user path (DNS,
+edge, michael, RGW), unlike `bench` (mgmt host on the fabric) and `warp`
+(in-cluster, straight at RGW). Fleet lifecycle mirrors `warp`.
+
+```bash
+yuctl select prod@htz-fsn1
+yuctl login
+yuctl tools bench-do start --droplets 6 --clients-per-droplet 2 \
+  --obj-size 64MiB --duration 2h --label big-packs   # auto-deploys (confirms cost first)
+yuctl tools bench-do watch          # live dashboard: Gbps, transfer budget bars, client loops
+yuctl tools bench-do stop           # kill the load, save bench-do-<label>-<ts>.json
+yuctl tools bench-do cleanup        # forget+prune the bench repos (while droplets exist)
+yuctl tools bench-do undeploy       # destroy droplets + the ephemeral ssh key
+```
+
+How it works:
+
+- **Fleet**: droplets (`--droplets`, default 3 × `s-2vcpu-4gb`) are created via
+  the DO API (token from `op://yucca/do_api_token/password`, or
+  `$DIGITALOCEAN_TOKEN`), round-robined across `--do-region`
+  (default `fra1,ams3,lon1,nyc3`), tagged `yuctl-bench-do-<partition>`, and
+  filed under the **`yucca-bench`** project (created if missing). Deploy
+  prints the hourly cost and transfer pool and asks before creating anything
+  (`--yes` skips); it converges — rerunning reconciles the fleet to the
+  requested size and re-pushes binaries.
+- **SSH**: an **ephemeral ed25519 keypair per fleet** — generated on deploy,
+  registered via the API, private key + per-fleet known_hosts under
+  `~/.config/yuctl/bench-do/`, deleted on undeploy. No personal keys involved.
+- **Clients**: one admin-api repository per client (`--clients-per-droplet`),
+  named `yucca-benchdo-…`, created on first start and reused across restarts;
+  restic URLs are re-minted on every start and travel to the droplet over ssh
+  stdin (never argv). Repo passwords live in the 0600 fleet state file — they
+  are the only way back into the repos, so `cleanup` before `undeploy`.
+- **Load**: the bench agent's **loadgen mode** runs detached (nohup) on each
+  droplet, looping seeded generate→backup cycles per client — fresh seed every
+  cycle so nothing dedups — with `--obj-size` as the restic pack size
+  (4–128 MiB, what michael sees as object size), `--size` per-cycle dataset,
+  `--connections` rest.connections. `--duration` bounds the run (`0` =
+  non-stop until `stop`). Progress goes to a droplet-local status file that
+  `status`/`watch` sample over ssh alongside `/proc/net/dev`.
+- **Transfer cap (important)**: DO droplets have a monthly outbound transfer
+  allowance (pooled; overage is billed per GiB) and a sustained restic load
+  can burn through it in hours. The agent tracks wire TX and **hard-stops the
+  droplet's load at the allowance** (counted conservatively as decimal TB);
+  `--max-transfer` overrides. The dashboard shows a per-droplet budget bar and
+  the fleet pool. If the fleet state is lost the cap is re-derived from the
+  droplet size — the load never runs uncapped.
+- **Results**: `stop` collects each droplet's final status and writes a local
+  JSON (per-client cycles, post-dedup uploaded bytes, errors; per-droplet wire
+  TX) plus a rendered summary. Pair with the michael dashboards for the
+  server-side view.
+
 ## `tools warp` — RGW fleet load test
 
 Reproduces the 2026-07-22 warp soak (~250Gbps combined on father) as an
@@ -264,6 +327,8 @@ about the fleet size, gateway count, or endpoints is hardcoded.
 | `OP_BIN`                                             | 1Password CLI binary                   | `op`                                                     |
 | `YUCTL_ADMIN_API_URL`                                | admin-api base URL (`login`, `users`)  | derived from discovery `api_endpoint`                    |
 | `YUCTL_GRAFANA_URL`                                  | grafana base (`users view-dashboard`)  | `https://grafana.futostatus.com`                         |
+| `DIGITALOCEAN_TOKEN`                                 | DO API token (`tools bench-do`)        | resolved via op                                          |
+| `YUCTL_DO_TOKEN_REF`                                 | op ref for the DO token                | `op://yucca/do_api_token/password`                       |
 
 ## Tests
 

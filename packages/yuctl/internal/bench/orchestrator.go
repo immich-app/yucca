@@ -13,7 +13,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const remoteDir = ".cache/yuctl-bench/bin"
+// RemoteBinDir is where the agent and restic land on a remote host, relative
+// to $HOME. Shared with bench-do, which pushes the same binaries to droplets.
+const RemoteBinDir = ".cache/yuctl-bench/bin"
+
+const remoteDir = RemoteBinDir
 
 // RunOpts drives one remote benchmark run from the dev machine.
 type RunOpts struct {
@@ -27,7 +31,7 @@ type RunOpts struct {
 // Run pushes the agent + pinned restic to the host, streams the run, and
 // returns the collected result.
 func Run(ctx context.Context, opts RunOpts) (*RunResult, error) {
-	agentBin, cleanup, err := agentBinary(opts.AgentBin)
+	agentBin, cleanup, err := AgentBinary(opts.AgentBin)
 	if err != nil {
 		return nil, err
 	}
@@ -114,9 +118,10 @@ func run(ctx context.Context, name string, args ...string) error {
 	return nil
 }
 
-// agentBinary resolves the local agent to push: an explicit path, or the
-// embedded one materialized into a temp file.
-func agentBinary(explicit string) (string, func(), error) {
+// AgentBinary resolves the local linux/amd64 agent to push: an explicit path,
+// or the embedded one materialized into a temp file. The returned cleanup
+// removes the materialized copy.
+func AgentBinary(explicit string) (string, func(), error) {
 	if explicit != "" {
 		if _, err := os.Stat(explicit); err != nil {
 			return "", nil, fmt.Errorf("agent binary %s: %w", explicit, err)
