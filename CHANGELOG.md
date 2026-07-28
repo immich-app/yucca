@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/immich-app/yucca/compare/v0.23.0...v0.23.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **michael:** retry loop ([#367](https://github.com/immich-app/yucca/issues/367)) ([8d257aa](https://github.com/immich-app/yucca/commit/8d257aaeb8eddebe7b97adc75a65f7fa29406ba3))
+
 ## [0.23.0](https://github.com/immich-app/yucca/compare/v0.22.1...v0.23.0) (2026-07-28)
 
 
