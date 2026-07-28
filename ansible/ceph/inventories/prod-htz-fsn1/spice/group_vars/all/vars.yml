@@ -3,9 +3,9 @@
 # Committed. Hand-maintained. Adapted from the painbox (SX295/Hetzner) precedent
 # with the network reshaped onto the bonded-25G fabric VLANs.
 #
-# NOTE: sections marked DRAFT are ceph data-protection / RGW decisions that must
-# be reviewed before `mise run deploy` against 48 nodes. They do NOT affect the
-# OS-install milestone (installimage), only the later cephadm convergence.
+# The cluster is deployed and serving production traffic. Every value here lands
+# on 48 live nodes, so converge one node at a time (--limit) and watch cluster
+# health between batches unless you have a specific reason not to.
 
 # === Naming ===
 cluster_name: spice
@@ -80,7 +80,7 @@ fabric_public_vlan: 120
 fabric_private_vlan: 122
 fabric_mgmt_vlan: 124
 dns_server: 185.12.64.1            # Hetzner recursive (reachable via WAN default route)
-# Time sync: Hetzner's own NTP (low-latency from FSN1, consistent across all 47).
+# Time sync: Hetzner's own NTP (low-latency from FSN1, consistent across all 48).
 # Ceph mon quorum is skew-sensitive; pin the source rather than the distro pool.
 chrony_ntp_servers:
   - ntp1.hetzner.de
@@ -159,12 +159,13 @@ ceph_rgw_s3_user_secret_key: "{{ vault_s3_restic_secret_key }}"
 
 # === Reprovision (installimage; reprovision_hetzner role) ===
 # Most knobs live in roles/reprovision_hetzner/defaults; override the operator-
-# facing ones here. VERIFY image name + boot_mode on node 1 (mise run reprovision
-# -- --limit spice-ceph-adelia -e confirm_wipe=true -e reprovision_mode=inspect).
+# facing ones here. These were verified against the fleet during the build-out;
+# re-inspect before trusting them on a different batch of hardware:
+#   mise run reprovision -- --limit <host> -e confirm_wipe=true -e reprovision_mode=inspect
 reprovision_boot_mode: bios          # SX295 painbox precedent = BIOS (verified)
 reprovision_expect_nvme: 2
 reprovision_expect_sata: 14
-# reprovision_image: override only if node-1 inspect shows a different image path/name.
+# reprovision_image: override only if an inspect run shows a different image path/name.
 
 # === Storage (SX295: 2x NVMe RAID-1 OS + 14x SATA HDD per node) ===
 # block.db LVs carved from the NVMe RAID-1 vg0 at converge by ceph_deploy's
@@ -184,7 +185,7 @@ ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expan
 
 # OSD device map (by-path, consumed by ceph_deploy/osd-spec.yml.j2, NVMe-RAID shape:
 # no sas_path_prefix -> data path is /dev/disk/by-path/<path_phy>, db is /dev/<db>).
-# The 14x 20TB SATA HDDs sit on 3 AHCI controllers; the by-path layout is IDENTICAL
+# The 14x 22TB SATA HDDs sit on 3 AHCI controllers; the by-path layout is IDENTICAL
 # across 47 of the 48 nodes (verified 2026-07-10), so it lives here as a group_var
 # instead of 48 host_vars. Exception: spice-ceph-miguel has one disk on
 # 46:00.0-ata-4 (not 87:00.0-ata-4) and overrides ceph_hdd_osds in its host_vars.
@@ -260,7 +261,7 @@ ceph_osd_pool_default_min_size: 2
 # --- Device-class CRUSH pool placement ---
 # crush-rules.yml creates replicated_ssd/replicated_hdd but binds nothing; every
 # replicated pool otherwise falls to the default class-agnostic rule, so the
-# omap-heavy bucket index lands on HDD (~98.5% of weight) while the 47-OSD NVMe
+# omap-heavy bucket index lands on HDD (~98.5% of weight) while the 48-OSD NVMe
 # ssd-osd tier sits idle. Pin the latency-sensitive index/metadata/mgr pools to
 # the SSD tier; keep the bulk non-EC pool on HDD. The EC data pool is pinned to
 # hdd via ceph_rgw_ec_device_class (the EC profile), not here. OSD device classes
@@ -297,10 +298,10 @@ ceph_rgw_ssl_cert_email: yucca@futo.org
 ceph_rgw_scheme: "{{ 'https' if ceph_rgw_ssl else 'http' }}"
 # --- RGW ingress: health-checked S3 VIP (haproxy + keepalived, TLS terminate) ---
 # A cephadm ingress service puts a keepalived floating VIP with haproxy health
-# checks in front of the 47 RGW daemons, in TLS TERMINATION mode (haproxy
+# checks in front of the 48 RGW daemons, in TLS TERMINATION mode (haproxy
 # `mode http`: haproxy terminates the client TLS on the VIP with the reused RGW
 # self-signed cert, then re-encrypts to each beast backend). Without it a dead RGW
-# node blackholes ~1/47 of S3 connections; with it the node is health-checked out
+# node blackholes ~1/48 of S3 connections; with it the node is health-checked out
 # of the VIP. The VIP sits on the fabric public network (10.40.20.0/23, bond0.120);
 # NetBird already advertises 10.40.20.0/23 into the overlay, so the VIP is
 # reachable, and DNS points s3.<domain> at it (that DNS cutover is a separate TF
@@ -349,8 +350,9 @@ ceph_firewall_rgw_any_source: false
 # group-scoped, enforced in its own nftables table) is the access-control
 # plane for mesh traffic, so this firewall must not second-guess it per port.
 # In particular netbird-ssh DNATs overlay :22 to :22022 on the netbird
-# address, which a dport allow-list here would silently drop post-DNAT. Inert until a
-# node is enrolled (no wt0 = no match), so it ships ahead of the peer rollout.
+# address, which a dport allow-list here would silently drop post-DNAT. Inert on
+# a node with no wt0, which is how it shipped ahead of the peer rollout; all 48
+# are enrolled now.
 ceph_firewall_trusted_ifaces:
   - bond0.122
   - wt0

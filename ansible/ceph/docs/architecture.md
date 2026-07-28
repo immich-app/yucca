@@ -16,14 +16,16 @@ specialized docs under `docs/`.
 flowchart LR
     OP([Operator workstation<br/>mise, op CLI, ansible, tofu])
     YUCCA[/Yucca monorepo<br/>tf/ + ansible/ceph/ + kubernetes//]
-    ONEP[("1Password org<br/>yucca_tf, yucca_tf_staging, ...")]
+    ONEP[("1Password org<br/>yucca_tf, yucca_tf_staging,<br/>yucca_tf_prod, ...")]
     S3[("OVH S3<br/>yucca-tf-state bucket")]
-    SIETCH["Sietch, Austin DC<br/>3x Dell R730xd"]
+    SIETCH["<b>sietch</b> -- staging<br/>Austin DC<br/>3x Dell R730xd"]
+    SPICE["<b>spice</b> -- prod<br/>Hetzner FSN1-DC24<br/>48x SX295"]
 
     OP -->|edits| YUCCA
     OP -->|reads/writes secrets| ONEP
     OP -->|TF state I/O| S3
     OP -->|SSH ansible-iac| SIETCH
+    OP -->|SSH root| SPICE
 ```
 
 The yucca monorepo is the single source of truth for cluster identity and
@@ -38,8 +40,17 @@ External dependencies are minimal and explicit:
 - **OVH S3** -- `yucca-tf-state` bucket at `s3.eu-west-par.io.cloud.ovh.net`.
   Keyed by `yucca/<partition>/<region>/<stack>/terraform.tfstate` so multiple
   stacks share the bucket without collision.
-- **Hardware** -- Austin colo for sietch (Dell R730xd x 3, single 10G bond).
-  Detail in [hardware.md](hardware.md).
+- **Hardware** -- Austin colo for sietch (3x Dell R730xd, one flat subnet);
+  Hetzner FSN1-DC24 for spice (48x SX295, a 1G WAN alongside a bonded 2x 25G
+  fabric with split public/cluster VLANs). Detail in
+  [hardware.md](hardware.md).
+- **Hetzner Robot API** -- spice only. Rescue mode plus installimage is the
+  provisioning path (`reprovision_hetzner` role); there is no IPMI, so the API
+  is the only remote hands short of a support ticket.
+- **NetBird overlay** -- spice nodes are enrolled peers. Human SSH is
+  SSO-gated through NetBird's own server; CI reaches the nodes over the
+  overlay. Ansible still connects over the WAN address, which holds the
+  default route.
 
 ---
 
@@ -50,16 +61,23 @@ tool in the mesh derives both from the same source -- directory layout
 (`tf/deployment/<partition>/<region>/<stack>`) -- so isolation is structural,
 not flag-driven.
 
-| Layer        | staging / austin (today)                                | dev / local (planned)                          | prod / htz-fsn1 (planned)                      |
+| Layer        | staging / austin (live)                                 | prod / htz-fsn1 (live)                         | dev / local (planned)                          |
 |--------------|---------------------------------------------------------|------------------------------------------------|------------------------------------------------|
-| TF stack dir | `tf/deployment/staging/austin/ceph/`                    | `tf/deployment/dev/local/ceph/`                | `tf/deployment/prod/htz-fsn1/ceph/`            |
-| TF state key | `yucca/staging/austin/ceph/terraform.tfstate`           | `yucca/dev/local/ceph/terraform.tfstate`       | `yucca/prod/htz-fsn1/ceph/terraform.tfstate`   |
-| 1P vaults    | `yucca_tf_staging`, `yucca_tf_staging_manual`          | `yucca_tf_dev`, `yucca_tf_dev_manual`         | `yucca_tf` (live), `yucca_tf_prod_manual`     |
-| Ansible inv  | `inventories/staging-austin/<cluster>/`                 | `inventories/dev-local/<cluster>/`             | `inventories/prod-htz-fsn1/<cluster>/`         |
+| Cluster      | `sietch` -- 3x Dell R730xd                              | `spice` -- 48x Hetzner SX295                   | --                                             |
+| TF stack dir | `tf/deployment/staging/austin/ceph/`                    | `tf/deployment/prod/htz-fsn1/ceph/`            | `tf/deployment/dev/local/ceph/`                |
+| TF state key | `yucca/staging/austin/ceph/terraform.tfstate`           | `yucca/prod/htz-fsn1/ceph/terraform.tfstate`   | `yucca/dev/local/ceph/terraform.tfstate`       |
+| 1P vaults    | `yucca_tf_staging`, `yucca_tf_staging_manual`          | `yucca_tf_prod`, `yucca_tf_prod_manual`       | `yucca_tf_dev`, `yucca_tf_dev_manual`         |
+| Ansible inv  | `inventories/staging-austin/sietch/`                    | `inventories/prod-htz-fsn1/spice/`             | `inventories/dev-local/<cluster>/`             |
 | mise default | `CEPH_ENV=...staging-austin/sietch/inventory.ini`       | overridden via env at invocation               | overridden via env at invocation               |
 
-Today the only deployed cluster is sietch (staging / austin). Adding another
-region or partition is purely additive: create the matching
+Two clusters are deployed today: sietch (staging / austin) and spice
+(prod / htz-fsn1), which serves production traffic. They share one module, one
+set of roles, and one set of mise tasks -- what differs is their
+`clusters.auto.tfvars` entry and their inventory. Per-cluster hosts, SSH
+targets, vaults, and the shape differences that change a procedure are
+tabulated in [cluster-profiles.md](cluster-profiles.md).
+
+Adding another region or partition is purely additive: create the matching
 `tf/deployment/<partition>/<region>/ceph/` directory, populate
 `clusters.auto.tfvars`, and the same module + Ansible roles + mise tasks work
 unchanged. The state backend key path, 1P vault selection, and inventory
@@ -118,9 +136,11 @@ flowchart TB
 
 ### Handoff points (the edges of the mesh)
 
-1. **TF -> repo** -- `terragrunt apply` renders `inventory.ini`,
-   `inventory-destroy.ini`, optional `inventory-provision.ini`,
-   and `secrets.yml.tpl` into `inventories/<partition>-<region>/<cluster>/`. These files are
+1. **TF -> repo** -- `terragrunt apply` computes `inventory.ini`,
+   `inventory-destroy.ini`, optional `inventory-provision.ini`, and
+   `secrets.yml.tpl` into a `render` output;
+   `scripts/render-inventories.sh <partition> <region>` writes them into
+   `inventories/<partition>-<region>/<cluster>/`. These files are
    gitignored -- the source of truth is `clusters.auto.tfvars` + the
    ceph-cluster module.
 2. **TF <-> op CLI** -- TF runs are wrapped with `op run --env-file=tf/.env`,
@@ -150,14 +170,18 @@ tf/
 |-- .env                              op:// references (committed; no literal secrets)
 |-- shared/modules/ceph-cluster/      per-cluster orchestration module
 |   |-- main.tf, variables.tf, outputs.tf, rendering.tf
-|   |-- wordlist.txt                  923 words for auto-picked hostnames
 |   `-- templates/                    inventory + secrets.yml.tpl templates
+|-- shared/modules/node-names/
+|   `-- wordlist.txt                  923 words for auto-picked hostnames
 `-- deployment/
     |-- terragrunt.hcl                root: state backend, partition/region/stack derived from path
-    `-- staging/austin/ceph/
-        |-- terragrunt.hcl            includes root, sets ansible_project_root
-        |-- main.tf, variables.tf, versions.tf
-        `-- clusters.auto.tfvars      declarative cluster list
+    |-- staging/austin/ceph/          sietch
+    |   |-- terragrunt.hcl            includes root, sets ansible_project_root
+    |   |-- main.tf, variables.tf, versions.tf, secrets.tf
+    |   `-- clusters.auto.tfvars      declarative cluster list
+    `-- prod/htz-fsn1/ceph/           spice -- same shape, plus:
+        `-- spice-hosts.yaml          server_number -> WAN IP -> host_index sidecar,
+                                      read by the reprovision driver and the fabric config
 ```
 
 ### Cluster identity is declared, not derived
@@ -184,6 +208,12 @@ sietch = {
 }
 ```
 
+spice's entry is the same schema with two additions the 48-node shape needs:
+`provision_profile = null` (Hetzner installimage, not debian-live) and a
+per-host `roles` list, which is how MON quorum is declared -- five of the 48
+carry `"mon"` (adelia is bootstrap, then curtis, hayley, lizzie, serena), the
+rest are `osd` + `rgw`.
+
 The module computes everything else: hostname (`<cluster>-<role>-<name>`),
 FQDN (`<hostname>.<domain>`), 1P item names
 (`<CLUSTER>_CEPH_<ROLE>_PASSWORD`), inventory directory path
@@ -191,19 +221,25 @@ FQDN (`<hostname>.<domain>`), 1P item names
 
 ### Auto-naming via wordlist
 
-For hosts where `name = null`, the module picks a stable name from a
-923-word pool using `random_shuffle` seeded by `(cluster_name, name_seed)`.
-Operator-declared names are excluded from the pool to prevent collisions
-within a cluster. Adding hosts at the tail is safe -- existing positions
-keep their names across applies.
+For hosts where `name = null`, the module picks a stable name from the shared
+923-word pool (`tf/shared/modules/node-names/wordlist.txt`) using
+`random_shuffle` seeded by `(cluster_name, name_seed)`. Operator-declared names
+are excluded from the pool to prevent collisions within a cluster. Adding hosts
+at the tail is safe -- existing positions keep their names across applies.
 
-A host declared with no `name` demonstrates this: TF auto-picks a stable
-word (e.g. `evelyn`) -> hostname `<cluster>-ceph-evelyn`.
+Both live clusters name every host explicitly, so nothing is auto-picked today:
+spice's reprovision driver needs hostnames before any apply has run, and
+sietch is small enough that naming three nodes by hand costs nothing. The pool
+is there for clusters that do not care what their nodes are called.
 
 ### Rendered artifacts (gitignored)
 
-Per `tf/shared/modules/ceph-cluster/rendering.tf`, the module writes four
-files into `inventories/<partition>-<region>/<cluster>/`:
+`tf/shared/modules/ceph-cluster/rendering.tf` exposes the artifacts as a
+`rendered_files` output rather than writing them with `local_file` -- a
+`local_file` destination path lands in shared state, which coupled that state
+to whichever worktree applied last. `scripts/render-inventories.sh <partition>
+<region>` reads the output and writes four files into
+`inventories/<partition>-<region>/<cluster>/`:
 
 | File                                       | Purpose                                                                                  |
 |--------------------------------------------|------------------------------------------------------------------------------------------|
@@ -212,7 +248,11 @@ files into `inventories/<partition>-<region>/<cluster>/`:
 | `inventory-provision.ini`                  | Provisioning inventory (only when `provision_profile != null`; uses live-image creds; the profile names the template, not the output) |
 | `secrets.yml.tpl`                          | `vault_*: op://<vault>/<CLUSTER>_CEPH_*/password` pointers, consumed by `op inject -f`   |
 
-All four are in `ansible/ceph/.gitignore`. Re-render with `mise run tf:apply`.
+All four are in `ansible/ceph/.gitignore` for every cluster. Re-render with
+`mise run tf:apply` followed by `scripts/render-inventories.sh` for the
+partition + region you applied (`staging austin`, `prod htz-fsn1`). The script
+is read-only against state, so the apply has to come first for the `render`
+output to reflect the current cluster spec.
 
 ### State backend
 
@@ -231,13 +271,28 @@ to already exist -- fresh-backend init fails with 404 before it can create
 one. Single-operator workflow today; revisit when concurrent applies become
 likely. See `deployment/terragrunt.hcl` for the inline rationale.
 
-### What TF does not yet manage
+### What TF does not manage
 
-`onepassword_item` resources are **dormant** (`tf/.../secrets.tf.disabled`).
-1P items are created today via the `op` CLI (operator runs `op item create`
-once per cluster). The gate to re-enabling them is the dedicated
-`sietch-ceph` service account that lets us split write authority from the
-org-wide superuser SA.
+Both ceph stacks own their generated password items: `secrets.tf` declares
+`onepassword_item.ceph_password` per (cluster, secret role), titled from the
+module's `secrets` output. It lives at the stack, not in the shared module, so
+a stack that manages no secrets never pulls in the onepassword provider -- the
+module's own copy stays parked as `secrets.tf.disabled`.
+
+Four categories stay out of TF by design:
+
+- **S3 service-user keys** (`*_S3_SVC_YUCCA_RESTIC_{ACCESS,SECRET}_KEY`) --
+  a live contract with the restic consumer; recreating them would churn values
+  the RGW is seeded from.
+- **The `ansible-iac` SSH key item** -- generated with
+  `op item create --ssh-generate-key`; the provider cannot generate inline and
+  importing would put the private key in state.
+- **DR documents** (RGW TLS cert/key, admin keyring) -- captured post-deploy by
+  `mise run capture`.
+- **spice's alertmanager webhook** (`SPICE_CEPH_ALERTMANAGER_WEBHOOK_URL`) --
+  an externally issued Zulip receiver URL, not a generated credential. TF
+  references it; managing it would overwrite the live URL with a random
+  password on the next apply and silently stop alert delivery.
 
 ---
 
@@ -248,14 +303,17 @@ org-wide superuser SA.
 | Vault                     | Purpose                                                | Who reads it                       | Who writes it                       |
 |---------------------------|--------------------------------------------------------|------------------------------------|-------------------------------------|
 | `yucca_tf`                | Cross-partition shared (TF state S3 creds)             | TF (via `tf/op-run.sh`)            | Operator (manual)                   |
-| `yucca_tf_staging`        | staging live values (sietch today)                     | Ansible runtime (op inject)        | Superuser SA (TF) + operator (op CLI) |
+| `yucca_tf_staging`        | staging live values (sietch)                            | Ansible runtime (op inject)        | Write SA (TF) + operator (op CLI)   |
+| `yucca_tf_prod`           | prod live values (spice)                                | Ansible runtime (op inject)        | Write SA (TF) + operator (op CLI)   |
 | `yucca_tf_staging_manual` | staging human-fillable placeholders (API tokens, OAuth)| Ansible runtime                    | Operator (manual)                   |
-| `yucca_tf_dev(_manual)`, `yucca_tf`, `yucca_tf_prod_manual` | dev + prod analogues, same shape    | per partition                      | per partition                       |
+| `yucca_tf_prod_manual`, `yucca_tf_dev(_manual)` | prod + dev analogues, same shape  | per partition                      | per partition                       |
 
-Each partition has its own live + `_manual` vault pair; sietch runs in
-staging, so its items live in `yucca_tf_staging`. The `_manual` vaults exist
-for items that can't be auto-generated (third-party API tokens, OAuth client
-secrets) -- they're populated by humans, not by TF.
+Each partition has its own live + `_manual` vault pair, and a cluster's
+`vault` field in `clusters.auto.tfvars` picks the live one: sietch runs in
+staging so its items live in `yucca_tf_staging`, spice runs in prod so its
+items live in `yucca_tf_prod`. The `_manual` vaults exist for items that
+can't be auto-generated (third-party API tokens, OAuth client secrets) --
+they're populated by humans, not by TF.
 
 ### Service accounts
 
@@ -279,8 +337,8 @@ Rotation procedure: [docs/runbooks/rotate-sa-token.md](runbooks/rotate-sa-token.
 
 ### Item categories and naming
 
-Per cluster, the following items live in the cluster's `vault` (currently
-`yucca_tf_staging` for sietch):
+Per cluster, the following items live in the cluster's `vault`
+(`yucca_tf_staging` for sietch, `yucca_tf_prod` for spice):
 
 | Category   | Item title pattern                                      | Field consumed       |
 |------------|---------------------------------------------------------|----------------------|
@@ -289,9 +347,15 @@ Per cluster, the following items live in the cluster's `vault` (currently
 | Password   | `<CLUSTER>_CEPH_GRAFANA_PASSWORD`                       | `password`           |
 | Password   | `<CLUSTER>_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY`         | `password`           |
 | Password   | `<CLUSTER>_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY`         | `password`           |
+| Password   | `<CLUSTER>_METRICS_WORKER_ACCESS_KEY`, `..._SECRET_KEY` | `password`           |
+| Password   | `<CLUSTER>_CEPH_ALERTMANAGER_WEBHOOK_URL` (spice only)  | `password`           |
 | SSH Key    | `<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY`                    | `private_key` / `public_key` |
 | Document   | `<CLUSTER>_CEPH_RGW_TLS_CERT`, `..._RGW_TLS_KEY`       | file content         |
 | Document   | `<CLUSTER>_CEPH_CLIENT_ADMIN_KEYRING`                   | file content         |
+
+The metrics-worker keys drop the `_CEPH` segment: they belong to the
+yucca-metrics-worker service, which reads bucket usage from RadosGW, not to
+the Ceph cluster itself.
 
 The `<CLUSTER>_CEPH_*` prefix is hardcoded in
 `tf/shared/modules/ceph-cluster/main.tf` (`secret_prefix = "${upper(var.cluster_name)}_CEPH"`)
@@ -312,8 +376,8 @@ serves a different shape of secret consumption:
 2. **`op inject -f -i <tpl> -o <out>`** -- file-template resolution.
    Reads a file containing inline `op://` references, resolves each, writes
    to the output path. Used by `scripts/ansible-play.sh` to render
-   `secrets.yml.tpl` -> tmpfile, and by the Hetzner installimage flow to
-   render `post-install.sh.tpl` -> `post-install.sh`.
+   `secrets.yml.tpl` -> tmpfile. (The Hetzner installimage templates carry no
+   secrets and are rendered by Ansible's `template` module, not by op.)
 3. **`op read "op://<vault>/<item>/<field>"`** -- single-value read.
    Used by `scripts/install-ssh-keys.sh`, `rotate-ssh-key.yml`,
    `post-deploy-capture.yml`. Returns one value to stdout for one specific
@@ -333,13 +397,18 @@ The current flow fails closed instead.
 
 ### Role dependency graph
 
-Provisioning is a separate concern (`provision.yml`, sietch only). The main
-pipeline (`site.yml`) runs everything else in this order:
+Getting a bare box to a bootable OS is a separate concern, and each cluster
+takes its own route: sietch runs `provision.yml` (`provision_host`, debootstrap
+from a Debian live image booted over the iDRAC virtual console), spice runs
+`reprovision.yml` (`reprovision_hetzner`, Hetzner rescue mode + installimage
+driven through the Robot API). Both hand off to the same convergence pipeline.
+`site.yml` runs everything after that, in this order:
 
 ```mermaid
 flowchart TB
-    PROV["provision_host<br/><i>separate playbook, live image</i>"]
+    PROV["provision_host (sietch)<br/>reprovision_hetzner (spice)<br/><i>separate playbooks</i>"]
     BASE["baseline<br/><i>users, packages, /etc/hosts</i>"]
+    NB["netbird<br/><i>overlay enrollment;<br/>no-op unless ceph_netbird_enabled</i>"]
     OST["os_tuning<br/><i>sysctl, TCP buffers</i>"]
     HWT["hardware_tuning<br/><i>I/O scheduler, readahead</i>"]
     DEPLOY["ceph_deploy<br/><i>bootstrap, join, OSDs, RGW,<br/>crush rules, monitoring</i>"]
@@ -347,8 +416,9 @@ flowchart TB
     SEC["security<br/><i>nftables, SSH hardening</i>"]
 
     PROV -.->|reboot into installed OS| BASE
-    BASE --> OST
-    BASE --> HWT
+    BASE --> NB
+    NB --> OST
+    NB --> HWT
     OST --> DEPLOY
     HWT --> DEPLOY
     DEPLOY --> CTUNE
@@ -358,21 +428,32 @@ flowchart TB
     class PROV separate
 ```
 
-`site.yml` starts at `baseline` -- `provision_host` runs only on first
-install via `provision.yml`. (The roles above are imported as per-role
-playbooks: `baseline.yml`, `tune-os.yml`, `tune-hardware.yml`,
-`deploy-ceph.yml`, `tune-ceph.yml`, `harden.yml`.)
+`site.yml` starts at `baseline` -- the provisioning roles run only on first
+install, or on a deliberate rebuild. (The roles above are imported as per-role
+playbooks: `baseline.yml`, `netbird.yml`, `tune-os.yml`, `tune-hardware.yml`,
+`deploy-ceph.yml`, `tune-ceph.yml`, `harden.yml`.) The `networkd` role is not
+in `site.yml`; it is applied on its own through `migrate-networkd.yml`, rolling
+one node at a time behind a `noout` gate.
 
 The split is deliberate. `provision_host` does the minimum inside the
 live-image chroot -- just the `ansible-iac` user, so Ansible can connect after
 reboot -- because chroot work is fragile. The ops user, packages, and
 `/etc/hosts` move to the convergeable `baseline` role, which re-runs against a
-live node to fix drift without reprovisioning.
+live node to fix drift without reprovisioning. `reprovision_hetzner` lands in
+the same place by a different road: an `autosetup` file tells installimage to
+build the NVMe mdraid-1 and `vg0`, and a `post-install.sh` chroot step does
+nothing but authorize the cluster key for `root` and `ansible-iac`. That
+chroot step is deliberately inert -- no apt, no `lvcreate` -- because those
+are the steps that broke installimage on the SX295 precedent; packages and
+block.db LVs wait for post-boot convergence.
 
-The OS is installed with `debootstrap` from the live image rather than a
-preseed/autoinstall. The disk layout (mdraid-1 across two SSDs, partitions
-reserved for ceph block.db and SSD OSDs) needs scripted partitioning and
-pre-flight hardware validation that preseed's `partman` recipes can't express.
+On sietch the OS is installed with `debootstrap` from the live image rather
+than a preseed/autoinstall. The disk layout (mdraid-1 across two SSDs,
+partitions reserved for ceph block.db and SSD OSDs) needs scripted partitioning
+and pre-flight hardware validation that preseed's `partman` recipes can't
+express. spice has no such freedom -- installimage owns partitioning on
+Hetzner, so the block.db and `ssd-osd` LVs get carved later, by
+`ceph_deploy/lvm-setup.yml`, on a booted node.
 
 ### Why this order matters
 
@@ -401,7 +482,7 @@ flowchart TB
     P2["Phase 2, bootstrap.yml<br/><i>cephadm bootstrap on first node</i>"]
     P3["Phase 3, join.yml<br/><i>ceph orch host add for remaining nodes</i>"]
     P4["Phase 4, placement.yml<br/><i>MON/MGR placement calculation</i>"]
-    P45["Phase 4.5, lvm-setup.yml<br/><i>ensure block.db VGs/LVs exist (sietch-shape only;<br/>NVMe-RAID shape skips -- LVM owned by installimage post-install)</i>"]
+    P45["Phase 4.5, lvm-setup.yml<br/><i>ensure block.db VGs/LVs exist; branches on shape<br/>(sietch: two SSD VGs; spice: db-slots + ssd-osd on vg0)</i>"]
     P5["Phase 5, osds.yml<br/><i>render osd-spec.yml.j2 -> ceph orch apply osd<br/>(cephadm provisions LUKS + LVM internally)</i>"]
     P55["Phase 5.5, crush-rules.yml<br/><i>replicated_hdd / replicated_ssd rules</i>"]
     P575["Phase 5.75, rgw.yml<br/><i>EC pools, realm/zone, TLS, S3 user</i>"]
@@ -419,28 +500,43 @@ just those phases.
 
 ```
 inventories/
-  staging-austin/sietch/    Austin staging cluster
+  staging-austin/sietch/    Austin staging cluster, 3 nodes
     inventory.ini                     TF-generated, gitignored
     inventory-destroy.ini             TF-generated, gitignored
-    inventory-provision.ini           TF-generated, gitignored
+    inventory-provision.ini           TF-generated, gitignored (debian-live profile)
     secrets.yml.tpl                   TF-generated, gitignored
     group_vars/all/vars.yml           cluster-wide variables (committed)
     host_vars/                        per-node hardware topology (committed)
       sietch-ceph-laurel.yml          bond_ip, SAS path prefix, OSD maps
       sietch-ceph-lawson.yml
       sietch-ceph-samara.yml
-    installimage/                     Hetzner installimage assets (sietch n/a)
+  prod-htz-fsn1/spice/      Falkenstein production cluster, 48 nodes
+    inventory.ini                     TF-generated, gitignored
+    inventory-destroy.ini             TF-generated, gitignored
+    secrets.yml.tpl                   TF-generated, gitignored
+    group_vars/all/vars.yml           committed; carries the fabric VLANs, the
+                                      EC profile, and the shared OSD device map
+    host_vars/                        48 files, committed
+      spice-ceph-adelia.yml           bond_ip, host_index, server number, mon
+      ...                             flag -- no OSD map, that is in group_vars
 ```
 
-A Hetzner NVMe-RAID cluster would follow the same layout, adding an
-`installimage/` directory with a `post-install.sh.tpl` (op-injected) that
-owns LVM setup. No such cluster is deployed today -- sietch is the only live
-cluster -- but the module and roles already support the shape.
+There is no `inventory-provision.ini` for spice: `provision_profile = null`,
+because Hetzner installimage replaces the debian-live provisioning path. The
+installimage assets are role-owned (`roles/reprovision_hetzner/templates/`),
+not inventory-owned, since every Hetzner cluster renders the same two
+templates from its own variables.
 
-`host_vars/*.yml` is committed because per-node hardware facts (bond_ip, SAS
-expander paths, SSD PHY positions, HDD-to-block.db mappings) are stable
-inventory truth -- not operator preference. The `.local.yml` suffix is
-gitignored as an escape hatch for operator-local overrides.
+spice inverts sietch's host_vars/group_vars balance. Its by-path OSD map is
+identical on 47 of the 48 nodes, so the map lives in `group_vars` and only
+`spice-ceph-miguel` overrides it (one disk sits on a different AHCI
+controller). Writing 48 near-identical host_vars files would have made a
+one-node exception invisible.
+
+`host_vars/*.yml` is committed because per-node hardware facts (bond_ip,
+host_index, SAS expander paths, SSD PHY positions, HDD-to-block.db mappings)
+are stable inventory truth -- not operator preference. The `.local.yml` suffix
+is gitignored as an escape hatch for operator-local overrides.
 
 ### Variable precedence
 
@@ -463,7 +559,8 @@ flowchart TB
 - **host_vars** provides per-node physical topology.
 - **extra-vars from @tmpfile** carries op-injected `vault_ops_password`,
   `vault_ceph_dashboard_password`, `vault_grafana_admin_password`,
-  `vault_s3_restic_access_key`, `vault_s3_restic_secret_key`.
+  `vault_s3_restic_access_key`, `vault_s3_restic_secret_key`, plus
+  `vault_metrics_worker_*` and (spice) `vault_alertmanager_webhook_url`.
 - **extra-vars via `-e`** carries safety gates: `confirm_wipe=true`,
   `provision_skip_reboot=true`, `yes_destroy_ceph=true`.
 
@@ -472,9 +569,10 @@ flowchart TB
 `ansible.cfg` contains zero site-specific values. No default inventory, no
 ProxyJump, no hardcoded key paths. Site-specifics live exclusively in
 `clusters.auto.tfvars` (which TF renders into the inventory) or in the
-inventory's `group_vars`. The same `ansible.cfg` and the same roles work
-unchanged across Austin, Hetzner, or any future cluster -- only the cluster
-entry in `clusters.auto.tfvars` differs.
+inventory's `group_vars`. The same `ansible.cfg` and the same roles drive both
+a 3-node SAS-expander cluster in Austin and a 48-node NVMe-RAID cluster on a
+25G Hetzner fabric -- only the cluster entry in `clusters.auto.tfvars` and the
+inventory's `group_vars` differ.
 
 ---
 
@@ -497,7 +595,8 @@ entry in `clusters.auto.tfvars` differs.
 | Bootstrap      | `setup`                                                                  |
 | Verify         | `lint`, `check`, `test`, `preflight`                                  |
 | Read-only ops  | `status`, `drift`                                                       |
-| State change   | `deploy`, `destroy`, `capture`, `backup`                              |
+| State change   | `deploy`, `destroy`, `capture`, `backup`, `backup-timer`              |
+| Provisioning   | `reprovision` (Hetzner installimage), `netbird` (overlay enrollment)     |
 | Rotation       | `rotate-certs`, `rotate-ssh-key`                                        |
 | Inventory      | `hardware-inventory`, `migrate-networkd`                                |
 | Benchmarks     | `bench`, `bench-rados`                                                  |
@@ -530,22 +629,26 @@ wrong cluster. Instead each ceph ops task falls back to sietch only when
 CEPH_ENV="${CEPH_ENV:-inventories/staging-austin/sietch/inventory.ini}"
 
 # operate on another cluster by exporting once per shell, or inline:
-export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
+export CEPH_ENV=inventories/prod-htz-fsn1/spice/inventory.ini
 CEPH_ENV=inventories/<partition>-<region>/<cluster>/inventory.ini mise run status
 ```
+
+The fallback is why spice work starts with an export. A task run without
+`CEPH_ENV` set does not fail -- it quietly targets sietch, which is the whole
+reason the value is not in `[env]`.
 
 `TF_STACK_DIR` works the same way for the root `tf:*` tasks -- it defaults to
 `tf/deployment/staging/austin/ceph` and is overridden per-invocation:
 
 ```bash
-TF_STACK_DIR=tf/deployment/<partition>/<region>/ceph mise run tf:plan
+TF_STACK_DIR=tf/deployment/prod/htz-fsn1/ceph mise run tf:plan
 ```
 
 ---
 
 ## 8. Wrapper scripts (the glue layer)
 
-Three scripts under `ansible/ceph/scripts/` sit between mise and the
+The scripts under `ansible/ceph/scripts/` sit between mise and the
 underlying CLIs. They exist to keep secrets out of `argv`, fail closed
 when 1P is unreachable, and give better error messages than the raw tools.
 
@@ -554,6 +657,7 @@ when 1P is unreachable, and give better error messages than the raw tools.
 | `ansible-play.sh`       | Render secrets via `op inject -f` to a `mktemp`'d file (chmod 600, trap-cleaned), then run `ansible-playbook --extra-vars @<tmpfile>` |
 | `install-ssh-keys.sh`   | Idempotent `op read` -> `~/.ssh/id_ed25519_<cluster>` installer; refuses overwrite on fingerprint mismatch                                |
 | `preflight.sh`          | Verifies TF artifacts present, 1P session live, SSH reachable, Python on targets -- surfaced via `mise run preflight`                    |
+| `render-inventories.sh` | Writes the TF `render` output into this checkout (`<partition> <region>`, defaulting to `staging austin`); read-only against state        |
 
 Per-script reference (synopsis, args, env, exit codes, examples):
 [docs/scripts.md](scripts.md).
@@ -572,6 +676,7 @@ sequenceDiagram
     participant ONEP as 1Password
     participant TG as terragrunt / tofu
     participant S3 as OVH S3
+    participant REND as render-inventories.sh
     participant REPO as Repo (inventories/)
 
     OP->>MISE: mise run tf:apply
@@ -583,7 +688,9 @@ sequenceDiagram
     S3-->>TG: current state
     TG->>TG: plan + apply
     TG->>S3: write updated tfstate
-    TG->>REPO: render inventory.ini,<br/>secrets.yml.tpl, ...
+    OP->>REND: render-inventories.sh <partition> <region>
+    REND->>TG: read the render output
+    REND->>REPO: write inventory.ini,<br/>secrets.yml.tpl, ...
 ```
 
 ### 9.2 `mise run deploy` -- full Ceph deploy
@@ -610,7 +717,7 @@ sequenceDiagram
     OPCLI->>TMP: write resolved YAML
     WRAP->>ANS: run --extra-vars @TMP
     loop phases 1..6
-        ANS->>NODES: SSH ansible-iac@<bond_ip><br/>via id_ed25519_<cluster>
+        ANS->>NODES: SSH <ssh user>@<bond_ip><br/>via id_ed25519_<cluster>
     end
     Note over WRAP,TMP: tmpfile rm'd on exit (trap)
 ```
@@ -676,9 +783,9 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    SIETCH["Sietch prep:<br/>provision_host/disks.yml partitions SSDs<br/>then ceph_deploy/lvm-setup.yml<br/><i>creates VG + db-slot LVs on each SSD's partition 5</i>"]
-    NVMERAID["NVMe-RAID prep:<br/>installimage post-install.sh<br/><i>NVMe RAID-1 -> vg0 -> db-slot0..13 + ssd-osd LVs</i>"]
-    SPEC["ceph_deploy/osds.yml renders<br/>templates/osd-spec.yml.j2 -> /etc/ceph/osd-spec.yml<br/><i>one document per host; paths from host_vars</i>"]
+    SIETCH["sietch prep:<br/>provision_host/disks.yml partitions SSDs<br/>then ceph_deploy/lvm-setup.yml<br/><i>creates VG + db-slot LVs on each SSD's partition 5</i>"]
+    NVMERAID["spice prep:<br/>installimage builds NVMe RAID-1 -> vg0<br/>then ceph_deploy/lvm-setup.yml<br/><i>carves 14x 128G db-slotN + one ssd-osd LV</i>"]
+    SPEC["ceph_deploy/osds.yml renders<br/>templates/osd-spec.yml.j2 -> /etc/ceph/osd-spec.yml<br/><i>one document per host; paths from host_vars/group_vars</i>"]
     APPLY["ceph orch apply osd -i /etc/ceph/osd-spec.yml<br/><i>cephadm: discover disks, LUKS-format, LVM, deploy daemons</i>"]
     POLL["Wait for cephadm to provision<br/><i>poll num_osds until expected count reached</i>"]
     UP["Wait for OSDs up<br/><i>poll num_up_osds == num_osds</i>"]
@@ -712,16 +819,24 @@ auto-discovers and claims an OS or block.db partition.
 have unique SAS prefixes per chassis, so a shared spec doesn't work)
 with two shape branches:
 
-- **Sietch** (`sas_path_prefix` defined): data path =
+- **sietch-shape** (`sas_path_prefix` defined): data path =
   `/dev/disk/by-path/{{ sas_path_prefix }}-{{ path_phy }}-lun-0`; SSD
   OSD = partition on the SAS-attached SSD via `path_phy + partition`.
-- **NVMe-RAID shape** (`sas_path_prefix` undefined): data path =
+- **NVMe-RAID shape** (`sas_path_prefix` undefined -- spice): data path =
   `/dev/disk/by-path/{{ path_phy }}` (operator authors the full PCI-ATA
-  identifier in host_vars); SSD OSD = LV via the `lv` field
-  (`/dev/{{ lv }}`).
+  identifier); SSD OSD = LV via the `lv` field (`/dev/{{ lv }}`).
 
 `db_devices.paths` is always `/dev/{{ db }}` -- both shapes use LVs for
 block.db, no composition needed.
+
+The `{path_phy, db}` pairing in the inventory is presentational, not binding.
+A cephadm OSD spec has no per-disk block.db field, so the template emits
+`data_devices.paths` and `db_devices.paths` as two independent arrays and
+ceph-volume pairs them in whatever order it processes them -- on spice it
+walked the two lists in opposite directions, so disk N landed on `db-slot13-N`.
+Harmless, because all 14 slots are identical 128G LVs on the same mirror; only
+their count and size matter. Resolve a real pairing with
+`cephadm ceph-volume lvm list`, never from the inventory.
 
 ### Idempotency
 
@@ -768,7 +883,9 @@ cephadm's bootstrap automatically deploys:
 1. Enable the `prometheus` MGR module (if not already enabled)
 2. Wait for all five monitoring service types to report `running > 0`
 3. Set dashboard integration URLs for Prometheus, Alertmanager, Grafana
-   (using the bootstrap node's `bond_ip`)
+   (using the bootstrap node's `ceph_service_ip` -- which falls back to
+   `bond_ip` on a flat cluster like sietch, but on spice is the fabric address
+   `10.40.20.<host_index>`, so the dashboard never advertises the 1G WAN)
 4. Set Grafana admin credentials from the op-injected
    `vault_grafana_admin_password`
 5. Disable Grafana SSL cert verification in dashboard (self-signed cert)
@@ -779,6 +896,10 @@ if fewer than 10 rule groups are loaded (expects 16+).
 ---
 
 ## 12. Provision host internals
+
+This is the sietch path only. spice never runs `provision_host` -- Hetzner
+installimage owns partitioning there, and `reprovision_hetzner` drives it
+through the Robot API (rescue -> reset -> installimage -> verify).
 
 ### Ten-phase flow
 
@@ -818,9 +939,8 @@ This prevents:
 - Overwriting the marker with a stale `provisioned_at` timestamp
 
 The marker filename (`ceph-provisioned.json`) is project-scoped, not
-cluster-scoped -- every Ceph cluster (sietch, future) writes the
-same filename. The marker's *contents* identify which cluster + host the
-machine belongs to.
+cluster-scoped -- every cluster provisioned this way writes the same filename.
+The marker's *contents* identify which cluster + host the machine belongs to.
 
 ### Block/rescue cleanup
 
@@ -850,12 +970,13 @@ state.
   shares the terragrunt root config and S3 backend, with its own state key
   (`yucca/<partition>/<region>/talos/terraform.tfstate`). The staging/austin
   talos stack is in the tree.
+- **TF-managed `onepassword_item` resources** -- each ceph stack's
+  `secrets.tf` owns the generated password items, using the partition's write
+  SA. See "What TF does not manage" in section 4 for the categories that stay
+  out.
 
 ### Roadmap
 
-- **TF-managed `onepassword_item` resources** -- re-enable the dormant
-  resources in `secrets.tf.disabled` once the dedicated ceph service account
-  lands, so 1P items are TF-owned rather than created by hand.
 - **OSD LUKS keys in 1P** -- store dm-crypt keys for DR. Deferred until the
   hybrid is stable.
 
@@ -865,6 +986,7 @@ state.
 
 | Topic                              | Doc                                                                            |
 |------------------------------------|--------------------------------------------------------------------------------|
+| Per-cluster hosts, SSH, vaults     | [docs/cluster-profiles.md](cluster-profiles.md)                                |
 | TF/Terragrunt detail               | [`tf/README.md`](../../../tf/README.md)                                        |
 | Wrapper script reference           | [docs/scripts.md](scripts.md)                                                  |
 | Secrets catalog + rotation         | [docs/secrets.md](secrets.md)                                                  |

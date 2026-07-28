@@ -5,13 +5,22 @@ operating Ceph Tentacle (v20) clusters on bare-metal hardware via cephadm.
 Lives in the `yucca` monorepo at `ansible/ceph/`; secrets and inventory
 scaffolding are provisioned from `yucca/tf/` (see `../../tf/`).
 
-| Cluster | Domain | Location | Hardware | Nodes |
-|---------|--------|----------|----------|-------|
-| **sietch** | `staging.austin.int.futo.cloud` | Austin DC | Dell R730xd | 3 |
+| Cluster | Partition@region | Domain | Location | Hardware | Nodes |
+|---------|------------------|--------|----------|----------|-------|
+| **sietch** | `staging@austin` | `staging.austin.int.futo.cloud` | Austin DC | Dell R730xd | 3 |
+| **spice** | `prod@htz-fsn1` | `prod.fsn1.htz.futo.cloud` | Hetzner FSN1-DC24 | SX295 | 48 |
 
-Clusters are declared in `yucca/tf/deployment/staging/austin/ceph/clusters.auto.tfvars`;
-`tofu apply` renders `inventories/<partition>-<region>/<cluster>/inventory.ini`
-and `secrets.yml.tpl` per cluster. The `CEPH_ENV` variable selects the active
+spice serves production traffic: 720 OSDs across the 48 nodes, 672 HDD plus 48
+NVMe-backed `ssd-osd` LVs. That is an OSD count, not a disk count -- the
+physical disks are 672 HDD plus 96 NVMe (two per node, mirrored into `vg0`).
+Per-cluster SSH targets, vaults, and the shape differences that change a
+procedure are in [docs/cluster-profiles.md](docs/cluster-profiles.md).
+
+Clusters are declared in
+`yucca/tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars`;
+`terragrunt apply` plus `scripts/render-inventories.sh <partition> <region>`
+writes `inventories/<partition>-<region>/<cluster>/inventory.ini` and
+`secrets.yml.tpl` per cluster. The `CEPH_ENV` variable selects the active
 cluster for any `mise run` or direct ansible invocation.
 
 ## Architecture
@@ -22,16 +31,27 @@ graph TB
         A[mise + ansible + 1Password CLI]
     end
 
-    subgraph "Austin DC -- 10.10.10.0/24"
+    subgraph SIETCH["sietch -- Austin DC, 10.10.10.0/24 flat"]
         direction TB
         L[laurel<br/>MON+MGR+OSD+RGW]
         W[lawson<br/>MON+MGR+OSD+RGW]
         S[samara<br/>MON+MGR+OSD+RGW]
     end
 
-    A -->|SSH| L
-    A -->|SSH| W
-    A -->|SSH| S
+    subgraph SPICE["spice -- Hetzner FSN1-DC24<br/>public 10.40.20.0/23 - cluster 10.40.22.0/23"]
+        direction TB
+        M["adelia (bootstrap), curtis, hayley,<br/>lizzie, serena<br/>MON+MGR+OSD+RGW"]
+        O["43x OSD+RGW"]
+        V["ingress VIP 10.40.20.250<br/>haproxy + keepalived -> 48 RGW"]
+        O -.-> V
+        M -.-> V
+    end
+
+    A -->|SSH ansible-iac| L
+    A -->|SSH ansible-iac| W
+    A -->|SSH ansible-iac| S
+    A -->|SSH root| M
+    A -->|SSH root| O
 ```
 
 See [docs/architecture.md](docs/architecture.md) for role dependencies,
@@ -40,8 +60,10 @@ data flow, and design rationale.
 ## Quick Start
 
 ```bash
-# 1. Render cluster inventories + secrets templates (once, from yucca/tf/)
-(cd ../../tf/deployment/staging/austin/ceph && tofu init && tofu apply)
+# 1. Render the cluster's inventory + secrets template. The stack must have
+#    been applied first -- the script is read-only against TF state.
+#      sietch: staging austin      spice: prod htz-fsn1
+scripts/render-inventories.sh staging austin
 
 # 2. Set up the ansible side
 mise trust && mise run setup          # bootstrap dev environment
@@ -51,11 +73,16 @@ mise trust && mise run setup          # bootstrap dev environment
 #    block -- that would override your shell value and silently target the
 #    wrong cluster; see docs/scripts.md "Setting CEPH_ENV".
 export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
+# ...or, for production:
+# export CEPH_ENV=inventories/prod-htz-fsn1/spice/inventory.ini
 mise run preflight       # TF artifacts + 1P + SSH + connectivity
 mise run status          # read-only cluster health check
 mise run drift           # configuration drift detection
 mise run deploy          # full pipeline (idempotent)
 ```
+
+An unset `CEPH_ENV` does not fail -- it falls back to sietch. Check it before
+anything that writes.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 
@@ -63,23 +90,29 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 
 | Order | Role | Description |
 |-------|------|-------------|
-| 1 | `provision_host` | Bare-metal Debian 12 install via debootstrap (Austin only) |
+| 1 | `provision_host` | Bare-metal Debian 12 install via debootstrap (sietch only) |
+| 1 | `reprovision_hetzner` | Hetzner rescue + installimage reprovision via the Robot API (spice only) |
 | 2 | `baseline` | Post-boot OS baseline: ops user, packages, /etc/hosts, services |
-| 3 | `os_tuning` | Kernel sysctl, TCP buffers, optional centralized logging |
-| 4 | `hardware_tuning` | I/O scheduler, readahead, udev rules, optional CPU governor |
-| 5 | `ceph_deploy` | cephadm bootstrap, join, placement, OSDs, RGW, monitoring |
-| 6 | `ceph_tuning` | Recovery throttling, scrub window, CRUSH, telemetry, audit |
-| 7 | `security` | nftables firewall, SSH hardening |
-| 8 | `ceph_destroy` | Complete cluster teardown (safety-gated) |
-| 9 | `s3_bench` | Parallel S3 benchmark against local RGW |
+| 3 | `netbird` | NetBird overlay enrollment (gated by `ceph_netbird_enabled`) |
+| 4 | `os_tuning` | Kernel sysctl, TCP buffers, optional centralized logging |
+| 5 | `hardware_tuning` | I/O scheduler, readahead, udev rules, optional CPU governor |
+| 6 | `ceph_deploy` | cephadm bootstrap, join, placement, OSDs, RGW, monitoring |
+| 7 | `ceph_tuning` | Recovery throttling, scrub window, CRUSH, telemetry, audit |
+| 8 | `security` | nftables firewall, SSH hardening |
+| -- | `networkd` | Bond + VLAN config under systemd-networkd; applied on its own, one node at a time |
+| -- | `ceph_backup` | Scheduled cluster-state backup timer on the bootstrap node |
+| -- | `ceph_destroy` | Complete cluster teardown (safety-gated) |
+| -- | `s3_bench` | Parallel S3 benchmark against local RGW |
 
 ## Playbooks
 
 | Playbook | Description |
 |----------|-------------|
-| `site.yml` | Full pipeline: baseline + tune + deploy + tune + harden |
-| `provision.yml` | Bare-metal provisioning (Austin, `-i` provision inventory) |
+| `site.yml` | Full pipeline: baseline + netbird + tune + deploy + tune + harden |
+| `provision.yml` | Bare-metal provisioning (sietch, `-i` provision inventory) |
+| `reprovision.yml` | Hetzner installimage reprovision (spice; destructive, canary first) |
 | `baseline.yml` | OS baseline (users, packages, hosts) |
+| `netbird.yml` | NetBird overlay enrollment |
 | `tune-os.yml` | Kernel/sysctl tuning |
 | `tune-hardware.yml` | Disk I/O tuning |
 | `deploy-ceph.yml` | Ceph cluster deployment (tags: prerequisites, bootstrap, join, placement, lvm, osds, crush, rgw, monitoring, verify) |
@@ -96,6 +129,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | `rotate-ssh-key.yml` | Distribute current ansible-iac pubkey from 1P to nodes |
 | `migrate-networkd.yml` | One-shot networkd/bridge migration (rolling, noout-gated) |
 | `hardware-inventory.yml` | Hardware facts to JSON |
+| `add-node.yml` | Reimage one spice node the operator has already put into Hetzner rescue by hand (no Robot API) |
+| `backup-ceph.yml` | Install the scheduled cluster-state backup timer |
+| `upgrade-ceph.yml` | Health-gated cephadm cluster upgrade; explicit target image required, never run by converge |
 
 ## mise Tasks
 
@@ -118,9 +154,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | `rotate-ssh-key` | Distribute current ansible-iac pubkey from 1P to nodes |
 | `hardware-inventory` | Capture hardware facts to JSON |
 | `migrate-networkd` | One-shot networkd/bridge migration (rolling, noout-gated) |
+| `netbird` | Enroll nodes into the NetBird overlay (reads the setup key from 1P) |
+| `reprovision` | Hetzner installimage reprovision (destructive -- canary first) |
+| `backup-timer` | Install the scheduled cluster-state backup timer on the bootstrap node |
 
-Inventory + secrets-template scaffolding live in `yucca/tf/` -- run
-`tofu apply` in `tf/deployment/staging/austin/ceph/` to (re-)render
+Inventory + secrets-template scaffolding live in `yucca/tf/` -- apply the
+cluster's stack under `tf/deployment/<partition>/<region>/ceph/`, then run
+`scripts/render-inventories.sh <partition> <region>` to (re-)render
 `inventories/<partition>-<region>/<cluster>/inventory.ini` and `secrets.yml.tpl`.
 
 ## Documentation
@@ -144,7 +184,13 @@ Inventory + secrets-template scaffolding live in `yucca/tf/` -- run
 
 ## Known Limitations
 
-- **Single-network topology**: public = cluster network on sietch.
-- **Self-signed TLS**: RGW clients need `--no-verify-ssl`. Production needs real certs.
+- **Single-network topology on sietch**: public = cluster network (both
+  `10.10.10.0/24`). spice splits them across fabric VLANs -- public
+  `10.40.20.0/23` on VLAN 120, cluster `10.40.22.0/23` on VLAN 122 at MTU 9000.
+- **spice still routes over its 1G WAN**: the default route and the ansible/SSH
+  path are the 1G `enp197s0`, not the 25G bond. Ceph itself never touches it
+  (daemons are pinned to the fabric networks), but a WAN outage still costs
+  reachability.
+- **Self-signed TLS**: RGW clients need `--no-verify-ssl`, on both clusters.
 - **`ops` user is password-only**: no SSH keys installed; password sourced from 1P. Intended as an interactive console or recovery account, not for automation.
 - **DNS not managed**: `s3.<domain>` and `*.s3.<domain>` records must exist externally.
