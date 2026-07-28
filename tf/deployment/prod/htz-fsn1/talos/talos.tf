@@ -22,6 +22,13 @@ locals {
   pod_cidr     = "10.250.0.0/17"   # 10.250.0.0 – 10.250.127.255
   service_cidr = "10.250.128.0/17" # 10.250.128.0 – 10.250.255.255
 
+  # Jumbo on the fabric bonds/VLANs (and Cilium's explicit datapath MTU). The
+  # switch L2 is 9216 end to end and the IRBs 9202 (core-fabric); 9000 on the
+  # hosts is the conventional value under both. Public NICs (Hetzner, DHCP) and
+  # wt0 (WireGuard WAN) stay at their own MTUs — Cilium no longer auto-detects
+  # (auto-detect once clamped the datapath to wt0's 1280).
+  fabric_mtu = 9000
+
   # Factory installer (keeps the schematic's extensions) — one schematic for every
   # node (all metal now); consulted on install/upgrade.
   install_image = "factory.talos.dev/metal-installer/${local.talos_schematic_id}:v${local.c.talos_version}"

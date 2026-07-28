@@ -1,8 +1,8 @@
 # Cilium CNI — installed post-bootstrap in the same apply (helm provider bound to
 # the bootstrap CP, providers.tf). Talos set cni:none + proxy:disabled, so nodes
-# go Ready only once this lands the datapath. Geneve tunnel routing spans the two
-# routed fabric VLANs (kube/kube-cp); worker east-west still rides the 50G fabric
-# (cilium-values.yaml.tftpl).
+# go Ready only once this lands the datapath. Native routing at the fabric MTU
+# spans the two routed VLANs (kube/kube-cp) via the spine IRBs + Cilium iBGP
+# PodCIDR advertisements (cilium-values.yaml.tftpl).
 resource "helm_release" "cilium" {
   name       = "cilium"
   namespace  = "kube-system"
@@ -12,6 +12,7 @@ resource "helm_release" "cilium" {
 
   values = [templatefile("${path.module}/cilium-values.yaml.tftpl", {
     pod_cidr               = local.pod_cidr
+    fabric_mtu             = local.fabric_mtu
     kube_proxy_replacement = true
     hubble                 = var.cluster.hubble
   })]
@@ -20,7 +21,14 @@ resource "helm_release" "cilium" {
   timeout         = 600
   cleanup_on_fail = true
 
-  depends_on = [talos_cluster_kubeconfig.this]
+  # The machineconfig applies must land first: Cilium's explicit MTU assumes
+  # the bonds are already at fabric_mtu (a 9000 datapath over still-1500 bonds
+  # blackholes east-west until the node config catches up).
+  depends_on = [
+    talos_cluster_kubeconfig.this,
+    talos_machine_configuration_apply.cp,
+    talos_machine_configuration_apply.worker,
+  ]
 }
 
 # Full health gate AFTER the CNI is in — now node-Ready is achievable.

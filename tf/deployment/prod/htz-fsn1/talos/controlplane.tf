@@ -31,6 +31,7 @@ locals {
           interfaces = [{
             interface = "bond0"
             dhcp      = false
+            mtu       = local.fabric_mtu # jumbo fabric (switch L2 9216, IRBs 9202)
             # Bond members selected by NIC driver (cp_bond_driver, ixgbe) — exactly
             # the two 10G SFP+ ports; the onboard 1G public NIC is e1000e.
             bond = {
@@ -45,6 +46,7 @@ locals {
             }
             vlans = [{
               vlanId    = module.addr_site.kube_cp_vlan_id # 11
+              mtu       = local.fabric_mtu
               addresses = ["${n.cp_ip}/${local.kube_cp_prefix}"]
               # The workers live one IRB away — pin the return route so
               # apiserver→kubelet + geneve ride the fabric, not the mesh.

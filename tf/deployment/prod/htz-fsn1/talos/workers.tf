@@ -31,6 +31,7 @@ locals {
           interfaces = [{
             interface = "bond0"
             dhcp      = false
+            mtu       = local.fabric_mtu # jumbo fabric (switch L2 9216, IRBs 9202)
             # Bond members selected by NIC driver (worker_bond_driver, e.g. bnxt_en) —
             # robust across per-node PCI naming; falls back to explicit Talos names.
             bond = {
@@ -45,6 +46,7 @@ locals {
             }
             vlans = [{
               vlanId    = module.addr_site.kube_vlan_id # 10
+              mtu       = local.fabric_mtu
               addresses = ["${w.fabric_ip}/${local.kube_prefix}"]
               # kube-cp (apiserver + API VIP) lives one IRB away — pin the route so
               # kubelet→apiserver + geneve to the CPs ride the fabric, not the mesh.

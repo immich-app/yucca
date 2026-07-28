@@ -1,23 +1,31 @@
 # Cilium for the prod cluster. Talos sets cni:none + proxy:disabled, so nodes
 # stay NotReady until this lands the datapath.
 #
-# TUNNEL (geneve) routing — see the routingMode block below for the full why:
-# the cluster spans two L2 domains (CPs on the kube-cp VLAN, workers on the kube
-# VLAN) routed by the spine IRBs, which autoDirectNodeRoutes (same-L2-only) can't
-# span. Worker↔worker east-west still rides the 50G fabric, just encapsulated.
+# TUNNEL (geneve) routing at jumbo MTU. The cluster spans two L2 domains — CPs
+# on the kube-cp VLAN (11), workers on the kube VLAN (10) — routed by the spine
+# IRBs. A geneve overlay carries pod↔pod (and host↔pod, e.g. apiserver→pod
+# webhooks) over the routed node-to-node path with the pod identity in-band —
+# which autoDirectNodeRoutes (same-L2 only) can't span. The jumbo MTU (below),
+# the spine LB ECMP (core-fabric), and DSR (loadBalancer, below) are retained
+# and independent of the routing mode.
 #
 # securityContext + cgroup blocks are MANDATORY on Talos. Ref: Talos "Deploying Cilium".
 
 ipam:
   mode: kubernetes
 
-# Tunnel (geneve) routing. The cluster spans two L2 domains — CPs on the kube-cp
-# VLAN (11), workers on the kube VLAN (10) — routed by the spine's IRBs.
-# autoDirectNodeRoutes only works within one L2; a geneve overlay carries pod↔pod
-# over the routed node-to-node path instead. East-west still rides the fabric,
-# just encapsulated (~50B overhead, negligible at 50G).
+# Tunnel (geneve) routing — see the header. East-west (incl. host↔pod across
+# the two VLANs) rides the fabric encapsulated; geneve overhead is ~50B, so at
+# the jumbo MTU below pods still get ~8950 (vs the 1230 the old auto-detected
+# MTU clamped us to over wt0).
 routingMode: tunnel
 tunnelProtocol: geneve
+
+# Explicit datapath MTU (the fabric bond/VLAN MTU; switch L2 is 9216, IRBs
+# 9202). NEVER auto-detect: Cilium's detection takes the lowest MTU across its
+# devices, and wt0 (NetBird's WireGuard, 1280) once clamped every pod route to
+# 1230. In tunnel mode pods get this minus the ~50B geneve header.
+MTU: ${fabric_mtu}
 
 # Masquerade pod traffic to non-pod destinations (internet, node IPs); pod↔pod is
 # tunnelled so it isn't masqueraded. ip-masq-agent excludes only the pod CIDR, so
@@ -44,6 +52,20 @@ ipMasqAgent:
 # announcements off so Cilium doesn't ARP for VIPs it shouldn't.
 l2announcements:
   enabled: false
+
+# DSR (direct server return) for LoadBalancer/NodePort TCP: the node a flow
+# lands on (spine ECMP) geneve-dispatches it to the backend's node, and THAT
+# node replies straight to the client sourced from the VIP — no SNAT, no
+# hairpin back through the ingress node, client IPs preserved. This decouples
+# ECMP width from pod placement, so LB services can run externalTrafficPolicy:
+# Cluster (every worker advertises the VIP) without a second hop's SNAT.
+# VIP-sourced replies leave via the fabric on whichever node emits them — the
+# lb-return-route DaemonSet's policy routing runs on all workers. hybrid =
+# DSR for TCP, SNAT for UDP (avoids UDP MTU pitfalls); geneve dispatch is the
+# supported DSR mode under tunnel/geneve routing.
+loadBalancer:
+  mode: hybrid
+  dsrDispatch: geneve
 
 # NORTH-SOUTH — the worker BGP speakers peer the spine's VLAN-10 IRB (10.40.10.1, iBGP
 # AS 402421) and advertise LoadBalancer /32s from the public pools; the core reaches
