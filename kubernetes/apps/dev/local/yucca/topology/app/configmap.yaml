@@ -1,0 +1,51 @@
+---
+# Dev copy of the fleet topology that Flux renders per cluster in the real
+# clusters (kubernetes/apps/base/topology). Written out LITERALLY because the
+# dev/local entry point runs no postBuild substitution — there is no
+# cluster-settings ConfigMap here, so ${VAR} tokens would reach the services
+# verbatim and fail the schema at boot.
+#
+# Not the same as the in-image packages/*/topology.dev.json fixture, which
+# targets `mise dev` (compose, everything on localhost): in k3d the services
+# talk to each other over cluster DNS.
+#
+# Tilt applies this file directly too (see the Tiltfile) — k3d-with-Flux and
+# k3d-with-Tilt must agree, so keep it the single dev source of truth.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yucca-topology
+  namespace: yucca
+data:
+  topology.json: |
+    {
+      "schema_version": 1,
+      "default_site": "local",
+      "sites": [
+        {
+          "code": "local",
+          "display_name": "Local development",
+          "description": "Compose/k3d development site",
+          "rest_url": "http://yucca-michael:3010",
+          "default_cluster": "local-dev",
+          "clusters": [
+            {
+              "code": "local-dev",
+              "display_name": "Local development storage",
+              "active": true,
+              "rgw_admin_endpoint": "http://rook-ceph-rgw-yucca.rook-ceph.svc:80",
+              "s3": {
+                "endpoint": "http://rook-ceph-rgw-yucca.rook-ceph.svc:80",
+                "region": "us-east-1",
+                "force_path_style": true,
+                "access_key_env": "S3_ACCESS_KEY_ID",
+                "secret_key_env": "S3_SECRET_ACCESS_KEY",
+                "backend_source": "dns",
+                "backend_dns_host": "rook-ceph-rgw-yucca.rook-ceph.svc",
+                "probe_bucket": "michael-rgw-healthcheck"
+              }
+            }
+          ]
+        }
+      ]
+    }

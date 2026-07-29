@@ -4,7 +4,8 @@
 # from any other compromised pod must not reach them. Egress is deliberately
 # NOT restricted in this pass (external RGW/OIDC/Polar egress needs FQDN rules
 # — a CiliumNetworkPolicy follow-up). Flow inventory:
-#   envoy (envoy-system)      → yucca-api:3020, web:5173, michael:3010 (HTTPRoutes)
+#   envoy (envoy-system)      → yucca-api:3020, web:5173, michael:3010,
+#                               meta:8080 (HTTPRoutes)
 #   yucca-api → michael       = hairpin via the ingress VIP, so it ARRIVES as
 #                               envoy traffic — no direct pod-to-pod allow needed
 #   web (SSR)                 → yucca-api:3020
@@ -73,6 +74,27 @@ spec:
               app.kubernetes.io/name: envoy
       ports:
         - { port: 5173, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-meta
+  namespace: yucca
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: meta
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: envoy
+      ports:
+        - { port: 8080, protocol: TCP }
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

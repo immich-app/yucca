@@ -1,0 +1,82 @@
+# The discovery pointer: a static nginx serving exactly
+# /.well-known/yucca.json — the one URL a client can hard-code. The JSON names
+# the API root, and yucca-api's /meta serves everything else (sites, rest_url,
+# config). Deliberately a separate pod from yucca-api: the pointer must stay
+# reachable on a stable vendor host (meta.futo.cloud) independent of whichever
+# domain the API currently lives on.
+
+# 2 replicas + a PDB (templates/pdb.yaml): the pointer is the first thing every
+# client touches, and it costs ~nothing to run two.
+replicas: 2
+
+# Tiny: nginx serving one 60-byte file. The limit looks oversized for that
+# because nginx's stock `worker_processes auto` forks one worker per HOST cpu
+# (~48 on the father workers, measured ~0.6MiB private each) — the image's
+# autotune entrypoint can't help, it bails on a read-only rootfs since it
+# rewrites /etc/nginx/nginx.conf. Headroom is cheaper than a custom nginx.conf.
+resources:
+  requests: { cpu: 10m, memory: 32Mi }
+  limits: { memory: 256Mi }
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: yucca-meta
+
+# Unprivileged upstream nginx: listens on 8080 as uid 101 and relocates every
+# runtime path (pid, *_temp) under /tmp, so it runs unchanged with the chart's
+# read-only rootfs. Pinned to the 1.29 minor — patch releases roll in on pull.
+image:
+  repository: docker.io/nginxinc/nginx-unprivileged
+  tag: 1.29-alpine
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 8080
+
+service:
+  type: ClusterIP
+
+# WHOLESALE override of the library chart's uid/gid 1000 default: this image's
+# user is 101, and kubelet can't verify runAsNonRoot against a named user.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+# Serialized verbatim (as JSON) into the ConfigMap that becomes
+# /.well-known/yucca.json. The real clusters override meta_url from the
+# HelmRelease (https://${APP_DOMAIN}/api/meta); this default points at the dev
+# port-forward, which is where a browser-side client reaches yucca-api in k3d.
+wellKnown:
+  meta_url: http://localhost:3020/api/meta
+
+volumes:
+  # Mounted as a DIRECTORY (not subPath) so a ConfigMap edit propagates into
+  # the running pod — nginx reopens the file per request, no restart needed.
+  - name: well-known
+    configMap:
+      name: yucca-meta
+  # nginx-unprivileged keeps its temp paths in /tmp (already an emptyDir from
+  # the library chart), but the image still creates /var/cache/nginx and the
+  # rootfs is read-only. A tmpfs here keeps startup quiet.
+  - name: cache
+    emptyDir: {}
+
+volumeMounts:
+  - name: well-known
+    mountPath: /usr/share/nginx/html/.well-known
+    readOnly: true
+  - name: cache
+    mountPath: /var/cache/nginx
+
+# Probe the real artifact, not the port: a missing/unreadable ConfigMap mount
+# would otherwise leave a pod Ready while serving 404 to every client.
+startupProbe:
+  httpGet: { path: /.well-known/yucca.json, port: http }
+  periodSeconds: 2
+  failureThreshold: 30
+readinessProbe:
+  httpGet: { path: /.well-known/yucca.json, port: http }
+  periodSeconds: 10

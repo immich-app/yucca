@@ -26,6 +26,28 @@ data:
   # admin OIDC redirect URIs derive from this (see base yucca-admin-api HR).
   YUCCA_ADMIN_HOST: admin.father.fsn.htz.yucca.futo.network
 
+  # ─── Fleet topology ──────────────────────────────────────────────────
+  # Rendered into the yucca-topology ConfigMap (apps/base/topology), which
+  # yucca-api/admin-api/metrics-worker parse at boot. SITE_CODE and
+  # STORAGE_CLUSTER_CODE are IDENTIFIERS, not labels: they end up in repository
+  # rows and restic JWT claims, so changing one after launch orphans data.
+  # Codes are immutable internal identifiers; display names are presentation.
+  SITE_CODE: father
+  SITE_DISPLAY_NAME: "Hetzner Falkenstein-1"
+  SITE_DESCRIPTION: "Located in Falkenstein, Germany"
+  STORAGE_CLUSTER_CODE: father-spice
+  STORAGE_CLUSTER_DISPLAY_NAME: "Spice"
+  # Immutable origin for pre-placement database rows. Never repoint these when
+  # the active write cluster changes.
+  LEGACY_SITE_CODE: father
+  LEGACY_STORAGE_CLUSTER_CODE: father-spice
+  # The vendor-stable discovery host: clients hard-code
+  # https://${META_HOST}/.well-known/yucca.json and learn everything else from
+  # there, so it must NOT move with the product domain. Own cert
+  # (meta-domain.yaml) — futo.cloud is outside the *.backups.futo.cloud
+  # wildcard; A record in tf/deployment/prod/global/dns.
+  META_HOST: meta.futo.cloud
+
   # ─── Ingress entry points ────────────────────────────────────────────
   # App gateway (web/api): public pool-a VIP, BGP-advertised /32 covered by the
   # 69.48.224.0/24 transit aggregate. lb: public selects pool-a.

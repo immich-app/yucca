@@ -12,8 +12,8 @@ set -euo pipefail
 # Charts are role-grouped: apps/* (services), platform/* (operators/CRs),
 # lib/yucca-common (shared library), dev/mock-oidc (dev-only). Paths below are
 # relative to charts/.
-LIB_CONSUMERS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/web apps/michael dev/mock-oidc)
-ALL_CHARTS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/web apps/michael dev/mock-oidc platform/cnpg-cluster platform/ceph-objectuser platform/rook-ceph-cluster)
+LIB_CONSUMERS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/web apps/meta apps/michael dev/mock-oidc)
+ALL_CHARTS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/web apps/meta apps/michael dev/mock-oidc platform/cnpg-cluster platform/ceph-objectuser platform/rook-ceph-cluster)
 
 echo "==> helm dependency build (yucca-common consumers)"
 for c in "${LIB_CONSUMERS[@]}"; do
@@ -40,6 +40,70 @@ echo "==> kustomize build (Flux entrypoints)"
 # restrictor would reject even though Flux allows it.
 kb() { kustomize build --load-restrictor=LoadRestrictionsNone "$@"; }
 CLUSTERS=(staging/austin prod/htz-fsn1 dev/local)
+
+echo "==> topology substitution safety"
+# The real-cluster topology is a JSON document after Flux postBuild
+# substitution. Reject characters that would escape its JSON string literals,
+# and enforce the immutable internal-code convention before Flux sees them.
+node <<'NODE'
+const fs = require('node:fs');
+const environments = [
+  'kubernetes/clusters/staging/austin',
+  'kubernetes/clusters/prod/htz-fsn1',
+];
+for (const directory of environments) {
+  const files = [`${directory}/cluster-settings.yaml`, `${directory}/cluster-settings.generated.yaml`];
+  const text = files.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+  const value = (key) => {
+    const match = text.match(new RegExp(`^\\s*${key}:\\s*(.+)$`, 'm'));
+    if (!match) throw new Error(`${directory}: missing ${key}`);
+    const raw = match[1].trim().replace(/\s+#.*$/, '');
+    return raw.startsWith('"') ? JSON.parse(raw) : raw;
+  };
+  const site = value('SITE_CODE');
+  const cluster = value('STORAGE_CLUSTER_CODE');
+  const legacySite = value('LEGACY_SITE_CODE');
+  const legacyCluster = value('LEGACY_STORAGE_CLUSTER_CODE');
+  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(site)) throw new Error(`${directory}: invalid SITE_CODE ${site}`);
+  if (!cluster.startsWith(`${site}-`) || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(cluster)) {
+    throw new Error(`${directory}: STORAGE_CLUSTER_CODE ${cluster} must start with ${site}-`);
+  }
+  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(legacySite)) {
+    throw new Error(`${directory}: invalid LEGACY_SITE_CODE ${legacySite}`);
+  }
+  if (
+    !legacyCluster.startsWith(`${legacySite}-`) ||
+    !/^[a-z0-9][a-z0-9-]{0,63}$/.test(legacyCluster)
+  ) {
+    throw new Error(`${directory}: LEGACY_STORAGE_CLUSTER_CODE ${legacyCluster} must start with ${legacySite}-`);
+  }
+  for (const key of [
+    'SITE_DISPLAY_NAME',
+    'SITE_DESCRIPTION',
+    'STORAGE_CLUSTER_DISPLAY_NAME',
+    'GW_HOST',
+    'S3_ENDPOINT',
+    'S3_HOST',
+  ]) {
+    const label = value(key);
+    if (/["\\\u0000-\u001f]/.test(label)) {
+      throw new Error(`${directory}: ${key} contains a character that is unsafe for topology JSON substitution`);
+    }
+  }
+  for (const key of ['GW_HOST', 'S3_HOST']) {
+    const host = value(key);
+    if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(host)) {
+      throw new Error(`${directory}: invalid ${key} ${host}`);
+    }
+  }
+  const s3Url = new URL(value('S3_ENDPOINT'));
+  if (!['http:', 'https:'].includes(s3Url.protocol)) {
+    throw new Error(`${directory}: S3_ENDPOINT must use HTTP(S)`);
+  }
+}
+NODE
+echo "    OK  topology identifiers and labels"
+
 for c in "${CLUSTERS[@]}"; do
   kb "kubernetes/clusters/$c" >/dev/null && echo "    OK  kubernetes/clusters/$c"
   kb "kubernetes/apps/$c" >/dev/null && echo "    OK  kubernetes/apps/$c"

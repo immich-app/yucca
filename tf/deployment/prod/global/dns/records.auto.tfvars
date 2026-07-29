@@ -31,6 +31,18 @@ records = {
     values  = ["69.48.224.6"]
     comment = "Yucca prod restic gateway - michael (tf/deployment/prod/global/dns)"
   }
+  # Discovery pointer: /.well-known/yucca.json, served by the yucca-meta pod off
+  # the SAME app gateway VIP as backups.futo.cloud. Deliberately not under
+  # backups. — shipped clients hard-code this host, so it must survive the
+  # product domain changing. Outside the *.backups.futo.cloud wildcard, so the
+  # app-domain cert carries it as an extra SAN (kubernetes/apps/prod/htz-fsn1/
+  # infra/envoy.yaml patches it in from META_HOST). proxied false: same DNS-01
+  # + no-Cloudflare-in-the-path reasoning as the two records above.
+  "meta.futo.cloud" = {
+    type    = "A"
+    values  = ["69.48.224.5"]
+    comment = "Yucca meta discovery pointer (tf/deployment/prod/global/dns)"
+  }
 
   "s3.prod.fsn1.htz.futo.cloud" = {
     type = "A"

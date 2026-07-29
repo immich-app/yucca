@@ -3,26 +3,20 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: yucca-admin-api
+  name: yucca-meta
   namespace: flux-system
 spec:
-  dependsOn:
-    - name: yucca-database
-    # Mounted at /etc/yucca and validated on access — it must exist first.
-    - name: yucca-topology
-      readyExpr: >-
-        dep.metadata.generation == dep.status.observedGeneration &&
-        dep.status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'True') &&
-        dep.status.lastAppliedRevision == self.status.lastAttemptedRevision
+  # No dependsOn: the pointer is a static file, and it should come up (and stay
+  # up) even when the API behind the URL it advertises is down.
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
-      name: yucca-admin-api
+      name: yucca-meta
       namespace: yucca
   interval: 1h
   retryInterval: 2m
   timeout: 10m
-  path: ./kubernetes/apps/base/yucca-admin-api
+  path: ./kubernetes/apps/base/meta
   prune: true
   wait: true
   sourceRef:

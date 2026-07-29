@@ -50,3 +50,28 @@ spec:
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
   targetNamespace: envoy-system
+  # PROD-ONLY: the discovery pointer lives on ${META_HOST} = meta.futo.cloud,
+  # which is outside the *.${APP_DOMAIN} wildcard the base cert covers (staging's
+  # META_HOST is under its app domain, so staging needs none of this).
+  #
+  # Deliberately an extra SAN on the EXISTING cert rather than a second
+  # certificateRef on the gateway listener: Gateway API makes a listener whose
+  # certificateRef can't be resolved Programmed=False, so a new ref would take
+  # the whole https listener (web + api) down for as long as it takes
+  # cert-manager to issue — an outage designed into a routine merge. Editing
+  # dnsNames instead just triggers a reissue; the old Secret keeps serving
+  # throughout and the listener never changes.
+  #
+  # NB: kustomize applies this patch, THEN postBuild substitutes — which is why
+  # a ${VAR} in the patch value resolves. Coupling accepted: a meta.futo.cloud
+  # DNS-01 failure now blocks renewal of the app cert too, but both names sit in
+  # the same Cloudflare zone behind the same token, so they fail together anyway.
+  patches:
+    - target:
+        group: cert-manager.io
+        kind: Certificate
+        name: app-domain
+      patch: |-
+        - op: add
+          path: /spec/dnsNames/-
+          value: ${META_HOST}
