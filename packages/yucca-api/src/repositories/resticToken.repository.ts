@@ -34,6 +34,15 @@ export class ResticTokenRepository {
       .executeTakeFirst();
   }
 
+  getByRepository(repositoryId: string) {
+    return this.db
+      .selectFrom('resticTokens')
+      .select(['jti', 'repositoryId', 'connectionId', 'mintedBy', 'label', 'expiresAt', 'revokedAt', 'createdAt'])
+      .where('repositoryId', '=', repositoryId)
+      .orderBy('createdAt', 'desc')
+      .execute();
+  }
+
   getActiveByRepository(repositoryId: string) {
     return this.db
       .selectFrom('resticTokens')

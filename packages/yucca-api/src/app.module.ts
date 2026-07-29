@@ -4,11 +4,12 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
-import { MetaController } from './controllers/meta.controller';
 import { ConnectionController } from './controllers/connection.controller';
 import { IntrospectionController } from './controllers/introspection.controller';
+import { MetaController } from './controllers/meta.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
+import { ResticTokenController } from './controllers/resticToken.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { ConnectionRepository } from './repositories/connection.repository';
@@ -29,10 +30,11 @@ import { UserAllowlistRepository } from './repositories/userAllowlist.repository
 import { AuthService } from './services/auth.service';
 import { ConnectionService } from './services/connection.service';
 import { DatabaseService } from './services/database.service';
-import { MetaService } from './services/meta.service';
 import { IntrospectionService } from './services/introspection.service';
+import { MetaService } from './services/meta.service';
 import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
+import { ResticTokenService } from './services/resticToken.service';
 import { TopologyService } from './services/topology.service';
 import { getKyselyConfig } from './utils/database';
 
@@ -52,6 +54,7 @@ export const controllers = [
   IntrospectionController,
   MetricsController,
   RepositoryController,
+  ResticTokenController,
 ];
 
 export const providers = [
@@ -60,10 +63,8 @@ export const providers = [
   StorageRepository,
   TopologyRepository,
   SettingsRepository,
-  ConnectionRepository,
   DatabaseRepository,
-  ResticTokenRepository,
-  RevocationRepository,
+  ConnectionRepository,
   CryptoRepository,
   OidcRepository,
   UserRepository,
@@ -71,15 +72,18 @@ export const providers = [
   RepositoryRepository,
   RepositoryMetricsRepository,
   RepositoryMetricsHistoryRepository,
+  ResticTokenRepository,
+  RevocationRepository,
   SessionRepository,
+  ConnectionService,
+  IntrospectionService,
   DatabaseService,
   MetaService,
   TopologyService,
   MetricsService,
   RepositoryService,
+  ResticTokenService,
   AuthService,
-  ConnectionService,
-  IntrospectionService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },
 ];

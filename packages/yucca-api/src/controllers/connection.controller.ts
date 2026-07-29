@@ -6,6 +6,8 @@ import {
   ConnectionCreateRequestDto,
   ConnectionListResponseDto,
   ConnectionResponseDto,
+  ConnectionResticRequestDto,
+  ConnectionResticResponseDto,
   ConnectionUpdateRequestDto,
 } from 'src/dto/connection.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
@@ -27,6 +29,13 @@ export class ConnectionController {
   @ApiOkResponse({ type: ConnectionResponseDto })
   createConnection(@Auth() auth: AuthDto, @Body() dto: ConnectionCreateRequestDto): Promise<ConnectionResponseDto> {
     return this.connections.create(auth, dto);
+  }
+
+  @Post('/restic')
+  @AuthRoute()
+  @ApiOkResponse({ type: ConnectionResticResponseDto })
+  createRestic(@Auth() auth: AuthDto, @Body() dto: ConnectionResticRequestDto): Promise<ConnectionResticResponseDto> {
+    return this.connections.createRestic(auth, dto);
   }
 
   @Patch('/:id')

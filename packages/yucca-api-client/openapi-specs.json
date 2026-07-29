@@ -193,6 +193,37 @@
         ]
       }
     },
+    "/api/connections/restic": {
+      "post": {
+        "operationId": "createRestic",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionResticRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResticResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Connection"
+        ]
+      }
+    },
     "/api/connections/{id}": {
       "patch": {
         "operationId": "updateConnection",
@@ -592,6 +623,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResticUrlRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -606,6 +647,59 @@
         },
         "tags": [
           "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/restic-tokens": {
+      "get": {
+        "operationId": "listResticTokens",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResticTokenListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/restic-tokens/{jti}": {
+      "delete": {
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "jti",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ResticToken"
         ]
       }
     }
@@ -873,6 +967,139 @@
           "connection"
         ]
       },
+      "ConnectionResticRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Repository name (defaults to a generated one)."
+          },
+          "worm": {
+            "type": "boolean",
+            "description": "Enable write-once (WORM) on the repository."
+          },
+          "expiresIn": {
+            "type": "string",
+            "description": "Token lifetime (e.g. \"90d\"), capped at RESTIC_JWT_MAX_EXPIRES_IN."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human label for the minted access key."
+          }
+        }
+      },
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastBackup": {
+            "type": "string"
+          },
+          "lastSuccessfulBackup": {
+            "type": "string"
+          },
+          "lastBackupDuration": {
+            "type": "number"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
+      "RepositoryWithMetricsDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "siteCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable internal site code the repository lives in"
+          },
+          "storageClusterCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable, globally unique internal storage cluster code"
+          },
+          "connectionId": {
+            "type": "string"
+          },
+          "connectionType": {
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
+          }
+        },
+        "required": [
+          "id",
+          "worm",
+          "name",
+          "siteCode",
+          "storageClusterCode",
+          "connectionId",
+          "connectionType",
+          "metrics"
+        ]
+      },
+      "ConnectionResticResponseDto": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionDto"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryWithMetricsDto"
+          },
+          "url": {
+            "type": "string",
+            "description": "rest: URL with the embedded restic JWT."
+          },
+          "jti": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection",
+          "repository",
+          "url",
+          "jti",
+          "expiresAt"
+        ]
+      },
       "ConnectionUpdateRequestDto": {
         "type": "object",
         "properties": {
@@ -1004,95 +1231,15 @@
           "site": {
             "type": "string",
             "description": "Internal site code from /meta; defaults to default_site"
+          },
+          "connectionId": {
+            "type": "string",
+            "description": "Owned connection to create the repository under (defaults to the session/default connection)."
           }
         },
         "required": [
           "name",
           "worm"
-        ]
-      },
-      "RepositoryMetricsDto": {
-        "type": "object",
-        "properties": {
-          "lastBackup": {
-            "type": "string"
-          },
-          "lastSuccessfulBackup": {
-            "type": "string"
-          },
-          "lastBackupDuration": {
-            "type": "number"
-          },
-          "sizeBytes": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "sizeBytes"
-        ]
-      },
-      "RepositoryMeterDto": {
-        "type": "object",
-        "properties": {
-          "sizeBytes": {
-            "type": "number"
-          },
-          "objectCount": {
-            "type": "number"
-          },
-          "lastUpdated": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "sizeBytes",
-          "objectCount"
-        ]
-      },
-      "RepositoryWithMetricsDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "worm": {
-            "type": "boolean"
-          },
-          "name": {
-            "type": "string"
-          },
-          "siteCode": {
-            "type": "string",
-            "nullable": true,
-            "description": "Stable internal site code the repository lives in"
-          },
-          "storageClusterCode": {
-            "type": "string",
-            "nullable": true,
-            "description": "Stable, globally unique internal storage cluster code"
-          },
-          "connectionId": {
-            "type": "string"
-          },
-          "connectionType": {
-            "type": "string"
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/RepositoryMetricsDto"
-          },
-          "meter": {
-            "$ref": "#/components/schemas/RepositoryMeterDto"
-          }
-        },
-        "required": [
-          "id",
-          "worm",
-          "name",
-          "siteCode",
-          "storageClusterCode",
-          "connectionId",
-          "connectionType",
-          "metrics"
         ]
       },
       "RepositoryCreateResponseDto": {
@@ -1153,15 +1300,92 @@
           "repository"
         ]
       },
+      "ResticUrlRequestDto": {
+        "type": "object",
+        "properties": {
+          "expiresIn": {
+            "type": "string",
+            "description": "Token lifetime (e.g. \"90d\"). Revocable connection types only; defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human label for this access key (shown in the token list)."
+          }
+        }
+      },
       "RepositoryCreateResticUrlDto": {
         "type": "object",
         "properties": {
           "url": {
+            "type": "string",
+            "description": "rest: URL with the embedded restic JWT; paste into `restic -r`."
+          },
+          "jti": {
+            "type": "string",
+            "description": "The minted token id, for revocation."
+          },
+          "expiresAt": {
             "type": "string"
           }
         },
         "required": [
-          "url"
+          "url",
+          "jti",
+          "expiresAt"
+        ]
+      },
+      "ResticTokenDto": {
+        "type": "object",
+        "properties": {
+          "jti": {
+            "type": "string"
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "connectionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mintedBy": {
+            "type": "string",
+            "description": "'user' or 'admin'"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jti",
+          "repositoryId",
+          "mintedBy",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "ResticTokenListResponseDto": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResticTokenDto"
+            }
+          }
+        },
+        "required": [
+          "tokens"
         ]
       }
     }

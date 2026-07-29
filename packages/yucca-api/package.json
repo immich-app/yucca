@@ -35,6 +35,7 @@
     "kysely": "catalog:",
     "kysely-postgres-js": "catalog:",
     "luxon": "catalog:",
+    "ms": "catalog:",
     "nestjs-kysely": "catalog:",
     "openid-client": "catalog:",
     "postgres": "catalog:",
