@@ -20,10 +20,12 @@ export class ResticTokenRepository {
     return this.db.selectFrom('resticTokens').selectAll().where('jti', '=', jti).executeTakeFirst();
   }
 
+  // Explicit columns: this feeds the user-facing ResticTokenDto verbatim, so keep
+  // the selection in lockstep with it (no selectAll — it would leak userId/revokedBy).
   getByRepository(repositoryId: string) {
     return this.db
       .selectFrom('resticTokens')
-      .selectAll()
+      .select(['jti', 'repositoryId', 'connectionId', 'mintedBy', 'label', 'expiresAt', 'revokedAt', 'createdAt'])
       .where('repositoryId', '=', repositoryId)
       .orderBy('createdAt', 'desc')
       .execute();

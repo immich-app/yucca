@@ -86,6 +86,10 @@ msgstr "Copy command"
 msgid "Copy URL"
 msgstr "Copy URL"
 
+#: src/lib/components/connections/ResticResultModal.svelte
+msgid "Couldn't copy — select the text manually"
+msgstr "Couldn't copy — select the text manually"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 msgid "Create"
 msgstr "Create"

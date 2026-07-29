@@ -81,9 +81,11 @@ func TestRevokeTakesEffectAfterFreshTTL(t *testing.T) {
 }
 
 // Redis outage: a previously-valid jti is honored (grace) until the grace TTL,
-// then denied as unavailable.
+// then denied as unavailable. The grace window is generous (2s) so a scheduler
+// stall on a loaded CI machine can't expire it between the seed and the check.
 func TestGraceHonorsPreviouslyValidThenDenies(t *testing.T) {
-	mr, r := newTestValidator(t, time.Nanosecond, 50*time.Millisecond)
+	const graceTTL = 2 * time.Second
+	mr, r := newTestValidator(t, time.Nanosecond, graceTTL)
 	if err := mr.Set(keyFor("jti"), "1"); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +104,7 @@ func TestGraceHonorsPreviouslyValidThenDenies(t *testing.T) {
 	}
 
 	// Past the grace window: fail closed.
-	time.Sleep(60 * time.Millisecond)
+	time.Sleep(graceTTL + 100*time.Millisecond)
 	if d, err := r.Check(context.Background(), "jti"); d != DecisionUnavailable || err == nil {
 		t.Fatalf("expected DecisionUnavailable after grace, got %v/%v", d, err)
 	}

@@ -105,6 +105,22 @@ describe('Self-serve restic (e2e)', () => {
         .send({ expiresIn: '400d' })
         .expect(400);
     });
+
+    it('defaults to the long-lived restic TTL (revocable type)', async () => {
+      await testUtils.setFeatureOverride(user.id, 'connection-restic', true);
+
+      const { body } = await request(app.getHttpServer())
+        .post('/api/connections/restic')
+        .set('Cookie', cookie())
+        .send({})
+        .expect(201);
+
+      // RESTIC_JWT_EXPIRES_IN default: 90d — long-lived is safe here because
+      // restic tokens are revocable (validity-checked by michael).
+      const days = (new Date(body.expiresAt).getTime() - Date.now()) / 86_400_000;
+      expect(days).toBeGreaterThan(89.9);
+      expect(days).toBeLessThan(90.1);
+    });
   });
 
   describe('token management', () => {

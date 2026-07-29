@@ -21,14 +21,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Decision is the outcome of a validity check.
+// Decision is the outcome of a validity check. The zero value is deliberately
+// DecisionInvalid (deny): any future code path that leaks a zero Decision fails
+// closed, never open.
 type Decision int
 
 const (
-	// DecisionValid — the marker was confirmed present (fresh cache or Redis).
-	DecisionValid Decision = iota
 	// DecisionInvalid — the marker was confirmed absent: revoked or never issued.
-	DecisionInvalid
+	DecisionInvalid Decision = iota
+	// DecisionValid — the marker was confirmed present (fresh cache or Redis).
+	DecisionValid
 	// DecisionGrace — Redis is unreachable, but a previously-valid jti is still
 	// inside its grace window. Allowed, degraded.
 	DecisionGrace

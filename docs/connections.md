@@ -82,9 +82,13 @@ live token; michael treats **present = valid, absent = revoked/unknown → denie
   bounded **grace** window elapses (`REVOCATION_GRACE_MS`, default 5 min), then
   fails **closed**. A jti never confirmed valid (revoked, unknown, or first-seen
   during the outage) is denied immediately — bounded grace, then deny.
-- `yucca-metrics-worker` re-asserts markers from the DB every 5 min (valid,
-  unrevoked, unexpired tokens of revocable types), so Redis stays ephemeral: a
-  flush heals within one tick.
+- `yucca-metrics-worker` reconciles markers with the DB at bootstrap and every
+  5 min, in **both directions**: it re-asserts markers for valid (unrevoked,
+  unexpired) tokens of revocable types, and **deletes** stale markers for
+  revoked-but-unexpired tokens (healing a revoke whose inline `DEL` failed). So
+  Redis stays ephemeral: a flush or divergence heals within one tick. Residual
+  window: a *restarted* (empty-but-reachable) Redis denies valid restic tokens
+  until the next reconcile tick — grace only covers *unreachable* Redis.
 
 michael enforces validity only where `REDIS_ADDR` is set (primary regions);
 `REVOCABLE_CONNECTION_TYPES` (default `restic`) mirrors the descriptor's
@@ -100,8 +104,11 @@ A user with the `connection-restic` flag can stand up a restic backup in one cal
   `{ connection, repository, url, jti, expiresAt }`. Idempotent on the connection
   (reused across repositories). Gated on `connection-restic` (403 without).
 - **`POST /repository/:id/restic`** — mint a URL for an existing repository.
-  Optional `expiresIn` (default `RESTIC_JWT_EXPIRES_IN` = 90d, capped at
-  `RESTIC_JWT_MAX_EXPIRES_IN` = 365d) and `label`.
+  Optional `expiresIn` and `label`. **Long-lived tokens are revocable-only**: for
+  restic repositories the default is `RESTIC_JWT_EXPIRES_IN` (90d), capped at
+  `RESTIC_JWT_MAX_EXPIRES_IN` (365d); for non-revocable types (immich — michael
+  never validity-checks them) the token keeps the short session-JWT lifetime
+  (`JWT_EXPIRES_IN`, 1d) and a custom `expiresIn` is rejected.
 - **`GET /repository/:id/restic-tokens`** — list a repository's minted tokens
   (owner-scoped).
 - **`DELETE /restic-tokens/:jti`** — revoke your own token (owner-scoped; unknown

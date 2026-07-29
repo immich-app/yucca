@@ -72,13 +72,21 @@ export class RepositoryService {
     return { repository: await this.repositoryRepository.update(id, dto) };
   }
 
-  // Mint a long-lived restic access URL for a repository. `expiresIn` defaults to
-  // RESTIC_JWT_EXPIRES_IN and is capped at RESTIC_JWT_MAX_EXPIRES_IN; `label` is a
-  // human tag shown in the token list. Returns the rest: URL, jti, and expiry.
+  // Mint a restic access URL for a repository. Long-lived tokens are only safe for
+  // *revocable* connection types (michael validity-checks them): those default to
+  // RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN. Non-revocable types
+  // (immich) can never be revoked, so they keep the short session-JWT lifetime and
+  // reject a custom expiresIn outright. `label` is a human tag for the token list.
   async createUrl(auth: AuthDto, id: string, opts: ResticUrlRequestDto = {}) {
     const repository = await this.get(auth, id);
 
-    const expiresIn = this.resolveExpiresIn(opts.expiresIn);
+    const revocable = isRevocableConnectionType(repository.connectionType);
+    if (!revocable && opts.expiresIn) {
+      throw new BadRequestException(
+        `Custom expiresIn requires a revocable connection type; ${repository.connectionType} tokens cannot be revoked`,
+      );
+    }
+    const expiresIn = revocable ? this.resolveExpiresIn(opts.expiresIn) : env.JWT_EXPIRES_IN;
 
     const jti = this.crypto.randomUUID();
     const token = await this.jwt.signAsync(
@@ -108,7 +116,7 @@ export class RepositoryService {
 
     // Only revocable connection types (restic) carry a Redis validity marker;
     // michael skips the check for the rest, so writing one would be dead weight.
-    if (isRevocableConnectionType(repository.connectionType)) {
+    if (revocable) {
       await this.revocation.markValid(jti, expiresAt);
     }
 
@@ -126,10 +134,17 @@ export class RepositoryService {
     if (!requested) {
       return env.RESTIC_JWT_EXPIRES_IN;
     }
-    const requestedMs = ms(requested as StringValue);
+    // ms() throws (a raw Error) on strings longer than 100 chars — never let user
+    // input reach it unchecked, even though the DTO regex already narrows the shape.
+    let requestedMs: number | undefined;
+    try {
+      requestedMs = ms(requested as StringValue);
+    } catch {
+      requestedMs = undefined;
+    }
     const cap = ms(env.RESTIC_JWT_MAX_EXPIRES_IN);
     if (!requestedMs || requestedMs <= 0) {
-      throw new BadRequestException(`Invalid expiresIn '${requested}'`);
+      throw new BadRequestException(`Invalid expiresIn '${requested.slice(0, 40)}'`);
     }
     if (requestedMs > cap) {
       throw new BadRequestException(`expiresIn exceeds the ${env.RESTIC_JWT_MAX_EXPIRES_IN} cap`);

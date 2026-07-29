@@ -68,7 +68,7 @@
 
 <Stack gap={4}>
   <HStack class="justify-between">
-    <Heading size="small">{$t`Connections`}</Heading>
+    <Heading tag="h1" size="small">{$t`Connections`}</Heading>
     {#if canRestic}
       <Button shape="round" leadingIcon={mdiPlus} onclick={openCreate}
         >{$t`New restic backup`}</Button
@@ -101,7 +101,10 @@
           </Text>
         </HStack>
       </CardHeader>
-      {#if isRestic && repos.length > 0}
+      <!-- Self-serve restic surface (repo list + access-key management) is
+           invisible without the connection-restic flag; the card above stays,
+           so an admin-provisioned connection's billed usage remains visible. -->
+      {#if isRestic && canRestic && repos.length > 0}
         <CardBody>
           <Stack gap={0} class="divide-y rounded-2xl border overflow-hidden">
             {#each repos as repo (repo.id)}

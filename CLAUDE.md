@@ -164,9 +164,11 @@ contract, regenerate rather than editing the client.
   `billableBytes(type, size, objects) = max(size, objects * minObjectSizeBytes)` (immich floor 0; non-immich
   1 MiB — an aggregate approximation, RadosGW gives no per-object histogram). `GET /connections` returns the
   rollup. **Self-serve restic** (flagged): `POST /connections/restic` creates connection+repo+long-lived URL
-  in one shot; `POST /repository/:id/restic` mints for an existing repo (`expiresIn` capped by
-  `RESTIC_JWT_MAX_EXPIRES_IN`, default 365d); `GET /repository/:id/restic-tokens` + `DELETE /restic-tokens/:jti`
-  are owner-scoped. See `docs/connections.md`.
+  in one shot; `POST /repository/:id/restic` mints for an existing repo — **long-lived is revocable-only**
+  (restic: default `RESTIC_JWT_EXPIRES_IN` 90d, `expiresIn` capped by `RESTIC_JWT_MAX_EXPIRES_IN` 365d;
+  immich: short `JWT_EXPIRES_IN` lifetime, custom `expiresIn` rejected — michael never validity-checks
+  non-revocable types, so they must not be long-lived); `GET /repository/:id/restic-tokens` +
+  `DELETE /restic-tokens/:jti` are owner-scoped. See `docs/connections.md`.
 - **Restic-token revocation** = **cached validity, bounded grace** (not a fail-open denylist). Redis holds a
   positive marker `yucca:restic:valid:<jti>` per live token; michael treats present = valid, **absent =
   revoked/unknown → denied**. Mint writes the marker (revocable types only — michael **skips** non-revocable

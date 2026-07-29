@@ -1147,7 +1147,7 @@
         "properties": {
           "expiresIn": {
             "type": "string",
-            "description": "Token lifetime (e.g. \"90d\"). Defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN."
+            "description": "Token lifetime (e.g. \"90d\"). Revocable connection types only; defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN."
           },
           "label": {
             "type": "string",
@@ -1186,7 +1186,7 @@
             "type": "string"
           },
           "connectionId": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "mintedBy": {
@@ -1194,7 +1194,7 @@
             "description": "'user' or 'admin'"
           },
           "label": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "expiresAt": {

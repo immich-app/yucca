@@ -135,6 +135,20 @@ describe('RepositoryController (e2e)', () => {
         jti: expect.any(String),
         expiresAt: expect.any(String),
       });
+
+      // Non-revocable (immich) tokens keep the short session-JWT lifetime (~1d) —
+      // michael never validity-checks them, so they must not be long-lived.
+      const hours = (new Date(body.expiresAt as string).getTime() - Date.now()) / 3_600_000;
+      expect(hours).toBeGreaterThan(23);
+      expect(hours).toBeLessThan(25);
+    });
+
+    it('rejects a custom expiresIn for a non-revocable (immich) repository', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/repository/${repository.id}/restic`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .send({ expiresIn: '30d' })
+        .expect(400);
     });
 
     it('embeds jti + connection claims and records the token', async () => {

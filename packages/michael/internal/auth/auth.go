@@ -23,7 +23,7 @@ type Auth struct {
 	WriteOnce  bool   `json:"writeOnce"`
 	// Optional claims: legacy tokens carry neither. Jti identifies the token
 	// for revocation; Connection is the connection *type* (immich/restic).
-	Jti      string `json:"jti"`
+	Jti        string `json:"jti"`
 	Connection string `json:"connection"`
 }
 

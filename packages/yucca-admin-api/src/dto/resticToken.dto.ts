@@ -12,13 +12,13 @@ export class ResticTokenDto {
   @ApiProperty()
   userId!: string;
 
-  @ApiProperty({ required: false, nullable: true })
+  @ApiProperty({ type: 'string', required: false, nullable: true })
   connectionId!: string | null;
 
   @ApiProperty({ description: "'user' or 'admin'" })
   mintedBy!: string;
 
-  @ApiProperty({ required: false, nullable: true })
+  @ApiProperty({ type: 'string', required: false, nullable: true })
   label!: string | null;
 
   @ApiProperty({ type: 'string' })
@@ -27,7 +27,7 @@ export class ResticTokenDto {
   @ApiProperty({ type: 'string', required: false, nullable: true })
   revokedAt!: Date | null;
 
-  @ApiProperty({ required: false, nullable: true })
+  @ApiProperty({ type: 'string', required: false, nullable: true })
   revokedBy!: string | null;
 
   @ApiProperty({ type: 'string' })

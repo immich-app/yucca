@@ -224,6 +224,12 @@ func LoadConfig() Config {
 		log.Fatal().Msg("REVOCATION_GRACE_MS must be >= REVOCATION_FRESH_TTL_MS")
 	}
 	revocableTypes := parseCSVSet(envOr("REVOCABLE_CONNECTION_TYPES", "restic"))
+	if redisAddr != "" && len(revocableTypes) == 0 {
+		// An empty set would silently skip every validity check while logging
+		// "checking enabled" — a misconfiguration, not a supported mode. To
+		// disable checking, unset REDIS_ADDR instead.
+		log.Fatal().Msg("REVOCABLE_CONNECTION_TYPES must not be empty when REDIS_ADDR is set")
+	}
 
 	return Config{
 		Port:                     port,

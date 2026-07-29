@@ -141,7 +141,7 @@ export type RepositoryUpdateResponseDto = {
     repository: RepositoryWithMetricsDto;
 };
 export type ResticUrlRequestDto = {
-    /** Token lifetime (e.g. "90d"). Defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN. */
+    /** Token lifetime (e.g. "90d"). Revocable connection types only; defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN. */
     expiresIn?: string;
     /** Human label for this access key (shown in the token list). */
     label?: string;
@@ -156,10 +156,10 @@ export type RepositoryCreateResticUrlDto = {
 export type ResticTokenDto = {
     jti: string;
     repositoryId: string;
-    connectionId?: object | null;
+    connectionId?: string | null;
     /** 'user' or 'admin' */
     mintedBy: string;
-    label?: object | null;
+    label?: string | null;
     expiresAt: string;
     revokedAt?: string | null;
     createdAt: string;

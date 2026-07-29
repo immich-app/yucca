@@ -151,10 +151,10 @@ func TestAuthSuccess(t *testing.T) {
 
 func TestAuthOptionalClaims(t *testing.T) {
 	cases := []struct {
-		name         string
-		jti          any
+		name           string
+		jti            any
 		connection     any
-		wantJti      string
+		wantJti        string
 		wantConnection string
 	}{
 		{name: "present", jti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", connection: "restic", wantJti: "3f1f0d05-9a48-4a9e-8fb2-6f19f3f5f2aa", wantConnection: "restic"},

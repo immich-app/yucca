@@ -25,7 +25,8 @@ export class ResticTokenService {
   }
 
   // DB first, then Redis: a Redis failure surfaces (the admin must know the
-  // revoke has not propagated to michael yet — reconcile will retry it).
+  // revoke has not propagated to michael yet). The metrics-worker reconcile
+  // sweeps stale markers for revoked tokens, so a failed DEL heals within a tick.
   async revoke(auth: AuthDto, jti: string): Promise<void> {
     const existing = await this.resticTokens.get(jti);
     if (!existing) {

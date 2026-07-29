@@ -8,11 +8,16 @@ import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
 
 const keyFor = (jti: string) => `yucca:restic:valid:${jti}`;
 
-// Re-asserts the Redis "validity" markers from the DB on an interval. michael
-// treats a present marker as valid and an absent one as revoked/unknown, so this
-// is what keeps Redis safely ephemeral: a restart that loses every marker is
-// healed within one tick, and the markers only ever cover currently-valid
-// (minted, not revoked, not expired) tokens of revocable connection types.
+// Reconciles the Redis "validity" markers with the DB, in BOTH directions.
+// michael treats a present marker as valid and an absent one as revoked/unknown:
+// - assert markers for currently-valid (minted, unrevoked, unexpired) tokens of
+//   revocable connection types — heals a non-persistent Redis losing everything;
+// - delete markers for revoked-but-unexpired tokens — heals a revoke whose
+//   inline DEL failed (Redis blip between the DB write and the marker delete),
+//   which would otherwise keep honoring the token until its natural expiry.
+// Runs eagerly at bootstrap (a restarted Redis is reachable-but-empty, so grace
+// does not cover it — the sooner markers are re-seeded, the shorter the deny
+// window for valid restic tokens) and every 5 minutes thereafter.
 @Injectable()
 export class RevocationSyncService implements OnApplicationBootstrap, OnModuleDestroy {
   private client?: Redis;
@@ -23,9 +28,7 @@ export class RevocationSyncService implements OnApplicationBootstrap, OnModuleDe
   ) {}
 
   async onApplicationBootstrap() {
-    if (env.NODE_ENV === 'development') {
-      await this.sync();
-    }
+    await this.sync();
   }
 
   private getClient() {
@@ -43,7 +46,8 @@ export class RevocationSyncService implements OnApplicationBootstrap, OnModuleDe
     try {
       const unexpired = await this.resticTokens.getValidUnexpired();
       const valid = unexpired.filter((token) => isRevocableConnectionType(token.connectionType));
-      if (valid.length === 0) {
+      const revoked = await this.resticTokens.getRevokedUnexpired();
+      if (valid.length === 0 && revoked.length === 0) {
         return;
       }
 
@@ -55,9 +59,13 @@ export class RevocationSyncService implements OnApplicationBootstrap, OnModuleDe
           pipeline.set(keyFor(token.jti), '1', 'EXAT', exat);
         }
       }
+      // Sweep stale markers for revoked tokens (DEL of an absent key is a no-op).
+      for (const token of revoked) {
+        pipeline.del(keyFor(token.jti));
+      }
       await pipeline.exec();
 
-      this.logger.info(`Reconciled ${valid.length} valid restic tokens into Redis`);
+      this.logger.info(`Reconciled restic validity into Redis (${valid.length} valid, ${revoked.length} revoked)`);
     } catch (error) {
       this.logger.error(error, 'Failed to reconcile restic validity into Redis');
     }

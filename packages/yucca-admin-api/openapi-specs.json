@@ -1524,7 +1524,7 @@
             "type": "string"
           },
           "connectionId": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "mintedBy": {
@@ -1532,7 +1532,7 @@
             "description": "'user' or 'admin'"
           },
           "label": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "expiresAt": {
@@ -1543,7 +1543,7 @@
             "nullable": true
           },
           "revokedBy": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "createdAt": {

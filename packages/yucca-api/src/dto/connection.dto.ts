@@ -1,6 +1,6 @@
 import { ConnectionTypes } from '@common/server';
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayNotEmpty, IsBoolean, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayNotEmpty, IsBoolean, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 import { RepositoryWithMetricsDto } from 'src/dto/repository.dto';
 
 export class ConnectionDto {
@@ -44,12 +44,14 @@ export class ConnectionCreateRequestDto {
 
   @ApiProperty()
   @IsString()
+  @MaxLength(120)
   name!: string;
 }
 
 export class ConnectionUpdateRequestDto {
   @ApiProperty()
   @IsString()
+  @MaxLength(120)
   name!: string;
 }
 
@@ -72,6 +74,7 @@ export class ConnectionResticRequestDto {
   @ApiProperty({ required: false, description: 'Repository name (defaults to a generated one).' })
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   name?: string;
 
   @ApiProperty({ required: false, description: 'Enable write-once (WORM) on the repository.' })
@@ -81,12 +84,13 @@ export class ConnectionResticRequestDto {
 
   @ApiProperty({ required: false, description: 'Token lifetime (e.g. "90d"), capped at RESTIC_JWT_MAX_EXPIRES_IN.' })
   @IsOptional()
-  @IsString()
+  @Matches(/^\d+\s*(ms|s|m|h|d|w|y)$/i, { message: 'expiresIn must be a duration like "30d", "12h"' })
   expiresIn?: string;
 
   @ApiProperty({ required: false, description: 'Human label for the minted access key.' })
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   label?: string;
 }
 

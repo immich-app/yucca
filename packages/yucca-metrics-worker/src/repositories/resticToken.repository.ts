@@ -21,4 +21,17 @@ export class ResticTokenRepository {
       .where('resticTokens.expiresAt', '>', new Date())
       .execute();
   }
+
+  // Tokens that must NOT be honored but could still have a marker: revoked while
+  // unexpired (a marker's EXAT is the token expiry, so anything past expiresAt has
+  // self-cleaned). Deliberately NO connections join — a token orphaned by a
+  // connection delete still needs its stale marker swept.
+  getRevokedUnexpired() {
+    return this.db
+      .selectFrom('resticTokens')
+      .select(['jti'])
+      .where('revokedAt', 'is not', null)
+      .where('expiresAt', '>', new Date())
+      .execute();
+  }
 }

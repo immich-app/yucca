@@ -97,7 +97,7 @@
         {#each tokens as token (token.jti)}
           <HStack class="justify-between p-3">
             <Stack gap={0}>
-              <Text>{(token.label as string | null) ?? $t`Access key`}</Text>
+              <Text>{token.label ?? $t`Access key`}</Text>
               <Text size="tiny" color="muted">
                 {$t`Created ${formatDate(token.createdAt)} · expires ${formatDate(token.expiresAt)}`}
               </Text>

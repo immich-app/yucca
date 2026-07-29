@@ -37,7 +37,7 @@ const schema = z.object({
     .default('90d')
     .transform((value): StringValue => value as StringValue),
 
-  // Revocation denylist writes; unset disables them (loud warn at startup).
+  // Restic-token validity marker writes; unset disables them (loud warn at startup).
   REDIS_URL: z.string().optional(),
 
   OIDC_ADMIN_ISSUER: z.url().transform((url) => new URL(url)),

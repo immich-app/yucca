@@ -86,10 +86,16 @@ export class RepositoryService {
 
     let expiresIn = env.RESTIC_JWT_EXPIRES_IN;
     if (dto.expiresIn) {
-      const requested = ms(dto.expiresIn as StringValue);
+      // ms() throws a raw Error on >100-char strings; never let it escape as a 500.
+      let requested: number | undefined;
+      try {
+        requested = ms(dto.expiresIn as StringValue);
+      } catch {
+        requested = undefined;
+      }
       const cap = ms(env.RESTIC_JWT_MAX_EXPIRES_IN);
       if (!requested || requested <= 0) {
-        throw new BadRequestException(`Invalid expiresIn '${dto.expiresIn}'`);
+        throw new BadRequestException(`Invalid expiresIn '${dto.expiresIn.slice(0, 40)}'`);
       }
       if (requested > cap) {
         throw new BadRequestException(`expiresIn exceeds the ${env.RESTIC_JWT_MAX_EXPIRES_IN} cap`);

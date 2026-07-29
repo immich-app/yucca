@@ -25,8 +25,14 @@
   const initCommand = $derived(`restic -r "${url}" init`);
 
   const copy = async (value: string) => {
-    await navigator.clipboard.writeText(value);
-    toastManager.info($t`Copied to clipboard`);
+    try {
+      await navigator.clipboard.writeText(value);
+      toastManager.info($t`Copied to clipboard`);
+    } catch {
+      // Insecure context or clipboard permission denied — the <Code> block is
+      // select-all, so manual copy still works.
+      toastManager.danger($t`Couldn't copy — select the text manually`);
+    }
   };
 </script>
 
