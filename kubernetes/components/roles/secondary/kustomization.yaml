@@ -9,7 +9,14 @@
 # cluster-settings fragment.
 #
 # No partition spans two regions yet, so no overlay currently selects this role —
-# it is built ahead of need (per plan §2.2). The region-local Ceph object-users
+# it is built ahead of need (per plan §2.2).
+#
+# REVOCATION PRECONDITION: a secondary michael deployed with
+# TOKEN_INTROSPECTION_URL unset accepts every signature-valid restic token,
+# revoked ones included. Do NOT point real restic traffic at a secondary until
+# its michael reaches the primary's introspection endpoint over a private path
+# (NetBird / internal gateway: the public route is 404'd at the app gateway);
+# the L1/L2 verdict caches make the cross-region hop cheap. The region-local Ceph object-users
 # (charts/platform/ceph-objectuser) join here once per-region in-cluster Rook
 # lands; today both real clusters reach an EXTERNAL Ceph (sietch) over S3, so no
 # CephObjectStoreUser CR is reconciled on-cluster and none exists under

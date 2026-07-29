@@ -91,15 +91,34 @@ func (c *Client) CreateRepository(ctx context.Context, name string, worm bool, o
 	return &out.Repository, nil
 }
 
+// MintedURL is the result of minting a repository token: the restic rest: URL
+// plus the token's identity (jti) and expiry, for auditing/revocation.
+type MintedURL struct {
+	URL       string `json:"url"`
+	Jti       string `json:"jti"`
+	ExpiresAt string `json:"expiresAt"`
+}
+
+// URLOptions tunes the minted token; zero values use the server defaults.
+type URLOptions struct {
+	ExpiresIn string // duration like "30d"; capped server-side
+	Label     string // audit label stored on the token
+}
+
 // RepositoryURL mints a restic rest: URL (embedded repository token) for id.
-func (c *Client) RepositoryURL(ctx context.Context, id string) (string, error) {
-	var out struct {
-		URL string `json:"url"`
+func (c *Client) RepositoryURL(ctx context.Context, id string, opts URLOptions) (*MintedURL, error) {
+	body := map[string]any{}
+	if opts.ExpiresIn != "" {
+		body["expiresIn"] = opts.ExpiresIn
 	}
-	if err := c.postJSON(ctx, "/api/repository/"+id+"/url", nil, &out); err != nil {
-		return "", err
+	if opts.Label != "" {
+		body["label"] = opts.Label
 	}
-	return out.URL, nil
+	var out MintedURL
+	if err := c.postJSON(ctx, "/api/repository/"+id+"/url", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 type repositoryPage struct {

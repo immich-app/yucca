@@ -23,8 +23,7 @@ ports:
 service:
   type: ClusterIP
 
-# Michael reads the same topology as the API. Every declared storage cluster
-# is therefore routable before the API can mint a token for it.
+# Michael reads the same topology as the API, so every declared storage cluster is routable.
 volumes:
   - name: topology
     configMap:
@@ -34,13 +33,11 @@ volumeMounts:
     mountPath: /etc/yucca
     readOnly: true
 
-# OPT-IN dev verification key — the public half of the project's well-known
-# local-dev keypair (see charts/yucca-api/values.yaml + .mise/tasks/*/env).
-# Renders into the Secret ONLY when useDevKeypair is true (dev/local overlay).
-# Default false: with no key provided the Secret doesn't render and the pod
-# fails loudly, instead of silently trusting tokens anyone can mint with the
-# committed private half. Prod provides the real key via ExternalSecret.
+# OPT-IN dev fixtures: the public half of the local-dev keypair plus the dev
+# token-introspection secret, rendered into the Secret only when useDevKeypair is true.
+# Prod provides the real values via the TF-provisioned yucca-michael Secret.
 useDevKeypair: false
+devTokenIntrospectionSecret: dev-introspection-secret
 devJwtPublicKey: |
   -----BEGIN PUBLIC KEY-----
   MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpLmwUSBO0p7P1UvGReVxFTvAsCfg
@@ -50,6 +47,15 @@ devJwtPublicKey: |
 env:
   - name: RESTIC_API_PORT
     value: "3010"
+  # Restic-token introspection (dev): postgres truth via yucca-api's internal
+  # endpoint; the shared secret arrives via the chart Secret (dev fixture below).
+  # Real overlays substitute per-cluster (primary sets the URL; secondaries
+  # leave it unset = validity checking disabled).
+  - name: TOKEN_INTROSPECTION_URL
+    value: http://yucca-api:3020/api/internal/restic-tokens
+  # Shared platform valkey: michael's L2 token-verdict cache (optional).
+  - name: REDIS_ADDR
+    value: yucca-redis:6379
   - name: LOG_LEVEL
     value: debug
   # S3 object store = Rook-Ceph RGW. michael creates one bucket per restic

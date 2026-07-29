@@ -8,6 +8,7 @@ import { AllowlistController } from './controllers/allowlist.controller';
 import { AuthController } from './controllers/auth.controller';
 import { FeaturesController } from './controllers/features.controller';
 import { RepositoryController } from './controllers/repository.controller';
+import { ResticTokenController } from './controllers/resticToken.controller';
 import { SessionController } from './controllers/session.controller';
 import { SettingsController } from './controllers/settings.controller';
 import { UserController } from './controllers/user.controller';
@@ -18,6 +19,8 @@ import { DatabaseRepository } from './repositories/database.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
+import { ResticTokenRepository } from './repositories/resticToken.repository';
+import { RevocationRepository } from './repositories/revocation.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { SettingsRepository } from './repositories/settings.repository';
 import { StorageRepository } from './repositories/storage.repository';
@@ -29,6 +32,7 @@ import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
 import { FeaturesService } from './services/features.service';
 import { RepositoryService } from './services/repository.service';
+import { ResticTokenService } from './services/resticToken.service';
 import { SessionService } from './services/session.service';
 import { SettingsService } from './services/settings.service';
 import { TopologyService } from './services/topology.service';
@@ -53,6 +57,7 @@ export const controllers = [
   UserController,
   SessionController,
   RepositoryController,
+  ResticTokenController,
   AllowlistController,
   SettingsController,
   FeaturesController,
@@ -61,7 +66,9 @@ export const controllers = [
 export const providers = [
   WideContextRepository,
   LoggerRepository,
+  ConnectionRepository,
   DatabaseRepository,
+  FeatureFlagRepository,
   DatabaseService,
   OidcRepository,
   UserRepository,
@@ -71,16 +78,17 @@ export const providers = [
   SettingsRepository,
   StorageRepository,
   TopologyRepository,
-  ConnectionRepository,
-  FeatureFlagRepository,
+  ResticTokenRepository,
+  RevocationRepository,
   AllowlistService,
   AuthService,
+  FeaturesService,
+  ResticTokenService,
   UserService,
   SessionService,
   SettingsService,
   TopologyService,
   RepositoryService,
-  FeaturesService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },
 ];

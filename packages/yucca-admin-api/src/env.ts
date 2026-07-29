@@ -20,15 +20,20 @@ const schema = z.object({
     .default('24h')
     .transform((value): StringValue => value as StringValue),
 
-  // Restic repository tokens (POST /repository/:id/url): signed with
-  // yucca-api's key so michael accepts them. Optional — the endpoint returns
-  // 501 until configured.
   RESTIC_JWT_PRIVATE_KEY: z.string().optional(),
   RESTIC_JWT_EXPIRES_IN: z
     .string()
     .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "1d", "30m", "3600s"')
     .default('1d')
     .transform((value): StringValue => value as StringValue),
+
+  RESTIC_JWT_MAX_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "90d", "30m", "3600s"')
+    .default('90d')
+    .transform((value): StringValue => value as StringValue),
+
+  REDIS_URL: z.string().optional(),
 
   TOPOLOGY_FILE: z.string().default('./topology.dev.json'),
   LEGACY_SITE_CODE: z.string(),

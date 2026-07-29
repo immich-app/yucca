@@ -15,6 +15,7 @@ import (
 	"michael/internal/config"
 	"michael/internal/handlers"
 	"michael/internal/metrics"
+	"michael/internal/revocation"
 	"michael/internal/storage"
 	"michael/internal/version"
 
@@ -98,6 +99,22 @@ func main() {
 	}
 
 	srv := handlers.NewClusterServer(stores, cfg.S3DefaultCluster, cfg.JWTPublicKey, m)
+	if cfg.TokenIntrospectionURL != "" {
+		introspector := revocation.NewHTTPIntrospector(
+			cfg.TokenIntrospectionURL, cfg.TokenIntrospectionSecret, cfg.TokenIntrospectionTimeout)
+		var l2 *revocation.RedisVerdictCache
+		if cfg.RedisAddr != "" {
+			l2 = revocation.NewRedisVerdictCache(cfg.RedisAddr, cfg.RedisTimeout, cfg.VerdictCacheTTL)
+		}
+		srv.Validator = revocation.NewLayeredValidator(introspector, l2, cfg.RevocationFreshTTL, cfg.RevocationGraceTTL)
+		srv.RevocableTypes = handlers.DefaultRevocableTypes()
+		log.Info().Str("introspection_url", cfg.TokenIntrospectionURL).
+			Bool("verdict_cache", cfg.RedisAddr != "").
+			Dur("fresh_ttl", cfg.RevocationFreshTTL).Dur("grace_ttl", cfg.RevocationGraceTTL).
+			Msg("restic token validity checking enabled")
+	} else {
+		log.Info().Msg("TOKEN_INTROSPECTION_URL not set; restic token validity checking disabled")
+	}
 
 	httpSrv := &http.Server{
 		Addr:    addr,

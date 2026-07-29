@@ -48,6 +48,10 @@ const schema = z.object({
   API_ROOT: z.string().default('http://localhost:3020/api'),
   LEGACY_SITE_CODE: z.string(),
   LEGACY_STORAGE_CLUSTER_CODE: z.string(),
+
+  TOKEN_INTROSPECTION_SECRET: z.string().optional(),
+
+  REDIS_URL: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);

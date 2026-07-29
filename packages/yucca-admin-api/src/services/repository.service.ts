@@ -1,5 +1,8 @@
-import { Injectable, InternalServerErrorException, NotImplementedException } from '@nestjs/common';
+import { isRevocableConnectionType } from '@common/server';
+import { BadRequestException, Injectable, InternalServerErrorException, NotImplementedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import ms, { StringValue } from 'ms';
+import { randomUUID } from 'node:crypto';
 import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
@@ -8,11 +11,13 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  RepositoryUrlRequestDto,
   RepositoryUrlResponseDto,
 } from 'src/dto/repository.dto';
 import { env } from 'src/env';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
+import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
@@ -29,6 +34,7 @@ export class RepositoryService {
     private readonly repositories: RepositoryRepository,
     private readonly users: UserRepository,
     private readonly connections: ConnectionRepository,
+    private readonly resticTokens: ResticTokenRepository,
     private readonly jwt: JwtService,
     private readonly topology: TopologyRepository,
   ) {}
@@ -72,29 +78,58 @@ export class RepositoryService {
     return { repository };
   }
 
-  async url(id: string): Promise<RepositoryUrlResponseDto> {
+  async url(id: string, dto: RepositoryUrlRequestDto = {}): Promise<RepositoryUrlResponseDto> {
     if (!env.RESTIC_JWT_PRIVATE_KEY) {
       throw new NotImplementedException('RESTIC_JWT_PRIVATE_KEY is not configured');
     }
     const repository = await this.repositories.get(id);
     const site = this.topology.getSite(repository.siteCode);
+
+    if (dto.expiresIn && !isRevocableConnectionType(repository.connectionType)) {
+      throw new BadRequestException(
+        `Custom expiresIn requires a revocable connection type; ${repository.connectionType} tokens cannot be revoked`,
+      );
+    }
+
+    let expiresIn = env.RESTIC_JWT_EXPIRES_IN;
+    if (dto.expiresIn) {
+      if (ms(dto.expiresIn as StringValue) > ms(env.RESTIC_JWT_MAX_EXPIRES_IN)) {
+        throw new BadRequestException(`expiresIn exceeds the ${env.RESTIC_JWT_MAX_EXPIRES_IN} cap`);
+      }
+      expiresIn = dto.expiresIn as StringValue;
+    }
+
+    const jti = randomUUID();
     const token = await this.jwt.signAsync(
       {
         user: repository.user.id,
         repository: repository.id,
         writeOnce: repository.worm,
         storageCluster: repository.storageClusterCode,
+        jti,
         connection: repository.connectionType,
       },
-      { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn: env.RESTIC_JWT_EXPIRES_IN },
+      { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn },
     );
+
+    const { exp } = this.jwt.decode<{ exp: number }>(token);
+    const expiresAt = new Date(exp * 1000);
+    await this.resticTokens.create({
+      jti,
+      repositoryId: repository.id,
+      userId: repository.user.id,
+      connectionId: repository.connectionId,
+      mintedBy: 'admin',
+      label: dto.label ?? null,
+      expiresAt,
+    });
 
     const url = new URL(site.rest_url);
     url.username = 'restic';
     url.password = token;
     url.pathname = repository.id;
 
-    return { url: `rest:${url.href}` };
+    return { url: `rest:${url.href}`, jti, expiresAt };
   }
 
   async update(id: string, dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto> {

@@ -1,6 +1,6 @@
 import { ConnectionTypes } from '@common/server';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 import { CursorPaginationDto } from 'src/dto/pagination.dto';
 
 export class RepositoryOwnerDto {
@@ -116,14 +116,33 @@ export class RepositoryCreateRequestDto {
   connectionType?: string;
 }
 
+export class RepositoryUrlRequestDto {
+  @ApiProperty({ required: false, description: "Token TTL like '30d'; defaults to RESTIC_JWT_EXPIRES_IN, capped" })
+  @IsOptional()
+  @MaxLength(20)
+  @Matches(/^\d+\s*(ms|s|m|h|d|w|y)$/i, { message: 'expiresIn must be a duration like "30d", "12h"' })
+  expiresIn?: string;
+
+  @ApiProperty({ required: false, description: 'Label stored on the token for auditing' })
+  @IsOptional()
+  @IsString()
+  label?: string;
+}
+
 export class RepositoryCreateResponseDto {
   @ApiProperty()
   repository!: RepositoryAdminDto;
 }
 
 export class RepositoryUrlResponseDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'restic rest: URL with an embedded repository token' })
   url!: string;
+
+  @ApiProperty({ description: 'jti of the embedded token, for auditing and revocation' })
+  jti!: string;
+
+  @ApiProperty({ type: 'string', description: 'expiry of the embedded token' })
+  expiresAt!: Date;
 }
 
 export class RepositoryUpdateRequestDto {

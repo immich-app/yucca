@@ -1,0 +1,15 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.envoyproxy.io/httproutefilter_v1alpha1.json
+# Gateway-level kill switch for yucca-api's service-to-service surface
+# (/api/internal/*, e.g. michael's token introspection): the web HTTPRoute
+# short-circuits those paths to a bare 404 before they ever reach the pod.
+# The in-app shared-secret check remains as the second wall (defense in depth
+# against path-normalization quirks), but the public internet never gets to
+# talk to the route at all.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: HTTPRouteFilter
+metadata:
+  name: internal-404
+spec:
+  directResponse:
+    statusCode: 404
