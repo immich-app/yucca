@@ -92,6 +92,26 @@ export const testUtils = {
     return new RepositoryRepository(db).create({ name, worm, userId, connectionId });
   },
 
+  getResticToken: (jti: string) => {
+    return getDb().selectFrom('resticTokens').selectAll().where('jti', '=', jti).executeTakeFirst();
+  },
+
+  expireResticToken: async (jti: string) => {
+    await getDb()
+      .updateTable('resticTokens')
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where('jti', '=', jti)
+      .execute();
+  },
+
+  revokeResticToken: async (jti: string, revokedBy = 'test-admin') => {
+    await getDb()
+      .updateTable('resticTokens')
+      .set({ revokedAt: new Date(), revokedBy })
+      .where('jti', '=', jti)
+      .execute();
+  },
+
   setFeatureOverride: (userId: string, flag: string, value: boolean, setBy = 'test-admin') => {
     return getDb()
       .insertInto('userFeatureFlagOverride')

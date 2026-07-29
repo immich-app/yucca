@@ -4,6 +4,8 @@ import type { CryptoRepository } from 'src/repositories/crypto.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { RepositoryRepository } from 'src/repositories/repository.repository';
+import type { ResticTokenRepository } from 'src/repositories/resticToken.repository';
+import type { RevocationRepository } from 'src/repositories/revocation.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { SettingsRepository } from 'src/repositories/settings.repository';
 import type { TopologyRepository } from 'src/repositories/topology.repository';
@@ -15,6 +17,28 @@ export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 export const newCryptoRepositoryMock = (): jest.Mocked<RepositoryInterface<CryptoRepository>> => {
   return {
     randomHex: jest.fn(),
+    randomUUID: jest.fn(),
+    secretsMatch: jest.fn(),
+  };
+};
+
+export const newResticTokenRepositoryMock = (): jest.Mocked<RepositoryInterface<ResticTokenRepository>> => {
+  return {
+    create: jest.fn(),
+    getByConnection: jest.fn(),
+    get: jest.fn(),
+    getWithOwner: jest.fn(),
+    getByRepository: jest.fn(),
+    getActiveByRepository: jest.fn().mockResolvedValue([]),
+    getActiveByConnection: jest.fn().mockResolvedValue([]),
+    revoke: jest.fn(),
+  };
+};
+
+export const newRevocationRepositoryMock = (): jest.Mocked<RepositoryInterface<RevocationRepository>> => {
+  return {
+    invalidateVerdict: jest.fn(),
+    onModuleDestroy: jest.fn(),
   };
 };
 
@@ -121,6 +145,7 @@ export const newWideContextRepositoryMock = (): jest.Mocked<RepositoryInterface<
 });
 
 export const newJwtServiceMock = () => ({
+  decode: jest.fn(),
   signAsync: jest.fn(),
   verifyAsync: jest.fn(),
 });
@@ -140,6 +165,8 @@ export const newMocks = () => {
     user: newUserRepositoryMock(),
     userAllowlist: newUserAllowlistRepositoryMock(),
     repository: newRepositoryRepositoryMock(),
+    resticTokens: newResticTokenRepositoryMock(),
+    revocation: newRevocationRepositoryMock(),
     settings: newSettingsRepositoryMock(),
     topology: newTopologyRepositoryMock(),
     logger: newLoggerRepositoryMock(),

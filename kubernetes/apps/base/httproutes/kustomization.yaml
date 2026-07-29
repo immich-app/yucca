@@ -6,3 +6,4 @@ resources:
   - ./gw.yaml
   - ./meta.yaml
   - ./redirect.yaml
+  - ./internal-404.yaml

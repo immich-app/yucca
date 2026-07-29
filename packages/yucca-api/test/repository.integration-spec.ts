@@ -141,7 +141,7 @@ describe('RepositoryController (e2e)', () => {
       });
     });
 
-    it('embeds the connection claim', async () => {
+    it('embeds jti + connection claims and records the token', async () => {
       const { body } = await request(app.getHttpServer())
         .post(`/api/repository/${repository.id}/restic`)
         .set('Cookie', `yucca-access-token=${session.accessToken}`)
@@ -155,7 +155,18 @@ describe('RepositoryController (e2e)', () => {
         repository: repository.id,
         writeOnce: false,
         connection: 'immich',
+        jti: expect.any(String),
       });
+
+      const row = await testUtils.getResticToken(claims.jti as string);
+      expect(row).toMatchObject({
+        repositoryId: repository.id,
+        userId: user.id,
+        connectionId: repository.connectionId,
+        mintedBy: 'user',
+        revokedAt: null,
+      });
+      expect(row!.expiresAt.getTime()).toBe((claims.exp as number) * 1000);
     });
   });
 

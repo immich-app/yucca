@@ -668,6 +668,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryUrlRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -682,6 +692,93 @@
         },
         "tags": [
           "Repository"
+        ]
+      }
+    },
+    "/api/restic-tokens": {
+      "get": {
+        "operationId": "listResticTokens",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 50,
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "repositoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "required": false,
+            "in": "query",
+            "description": "true = only unexpired, unrevoked tokens",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResticTokenListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ResticToken"
+        ]
+      }
+    },
+    "/api/restic-tokens/{jti}": {
+      "delete": {
+        "operationId": "revokeResticToken",
+        "parameters": [
+          {
+            "name": "jti",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ResticToken"
         ]
       }
     },
@@ -835,6 +932,88 @@
         },
         "tags": [
           "Allowlist"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "listSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{scope}": {
+      "put": {
+        "operationId": "setSettings",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsValueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsEntryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Settings"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteSettings",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Settings"
         ]
       }
     },
@@ -1268,6 +1447,14 @@
           "worm": {
             "type": "boolean"
           },
+          "siteCode": {
+            "type": "string",
+            "description": "Stable internal site code"
+          },
+          "storageClusterCode": {
+            "type": "string",
+            "description": "Stable, globally unique internal storage cluster code"
+          },
           "connectionId": {
             "type": "string"
           },
@@ -1285,6 +1472,8 @@
           "id",
           "name",
           "worm",
+          "siteCode",
+          "storageClusterCode",
           "connectionId",
           "connectionType",
           "user",
@@ -1322,6 +1511,10 @@
           "worm": {
             "type": "boolean"
           },
+          "site": {
+            "type": "string",
+            "description": "Internal site code to place the repository in; defaults to the topology default site"
+          },
           "connectionType": {
             "type": "string",
             "enum": [
@@ -1357,15 +1550,39 @@
           "repository"
         ]
       },
+      "RepositoryUrlRequestDto": {
+        "type": "object",
+        "properties": {
+          "expiresIn": {
+            "type": "string",
+            "description": "Token TTL like '30d'; defaults to RESTIC_JWT_EXPIRES_IN, capped"
+          },
+          "label": {
+            "type": "string",
+            "description": "Label stored on the token for auditing"
+          }
+        }
+      },
       "RepositoryUrlResponseDto": {
         "type": "object",
         "properties": {
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "restic rest: URL with an embedded repository token"
+          },
+          "jti": {
+            "type": "string",
+            "description": "jti of the embedded token, for auditing and revocation"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "expiry of the embedded token"
           }
         },
         "required": [
-          "url"
+          "url",
+          "jti",
+          "expiresAt"
         ]
       },
       "RepositoryUpdateRequestDto": {
@@ -1388,6 +1605,72 @@
         },
         "required": [
           "repository"
+        ]
+      },
+      "ResticTokenDto": {
+        "type": "object",
+        "properties": {
+          "jti": {
+            "type": "string"
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "connectionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "mintedBy": {
+            "type": "string",
+            "description": "'user' or 'admin'"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "revokedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jti",
+          "repositoryId",
+          "userId",
+          "mintedBy",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "ResticTokenListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResticTokenDto"
+            }
+          },
+          "nextCursor": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "AllowlistEntryDto": {
@@ -1506,6 +1789,63 @@
         },
         "required": [
           "count"
+        ]
+      },
+      "SettingsValueDto": {
+        "type": "object",
+        "properties": {
+          "restic_pack_size_mib": {
+            "type": "number"
+          },
+          "connections_math": {
+            "type": "string",
+            "description": "Client-evaluated expression: integers, cores, min, max, + - * /"
+          }
+        }
+      },
+      "SettingsEntryDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "description": "'global', 'site:<code>' or 'cluster:<code>'"
+          },
+          "value": {
+            "$ref": "#/components/schemas/SettingsValueDto"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "value",
+          "updatedAt"
+        ]
+      },
+      "SettingsListResponseDto": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingsEntryDto"
+            }
+          }
+        },
+        "required": [
+          "settings"
+        ]
+      },
+      "SettingsEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/SettingsEntryDto"
+          }
+        },
+        "required": [
+          "entry"
         ]
       },
       "FeatureFlagDefDto": {

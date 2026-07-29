@@ -4,7 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
+import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
+import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
+import { RevocationRepository } from 'src/repositories/revocation.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -15,6 +18,9 @@ export class RepositoryService {
     private readonly wideContext: WideContextRepository,
     private readonly connection: ConnectionRepository,
     private readonly topology: TopologyRepository,
+    private readonly crypto: CryptoRepository,
+    private readonly resticTokens: ResticTokenRepository,
+    private readonly revocation: RevocationRepository,
   ) {}
 
   async create(auth: AuthDto, { site: siteCode, ...dto }: RepositoryCreateRequestDto) {
@@ -63,13 +69,24 @@ export class RepositoryService {
     const repository = await this.get(auth, id);
 
     const site = this.topology.getSite(repository.siteCode);
-
+    const jti = this.crypto.randomUUID();
     const token = await this.jwt.signAsync({
       user: auth.id,
       repository: repository.id,
       writeOnce: repository.worm,
       storageCluster: repository.storageClusterCode,
+      jti,
       connection: repository.connectionType,
+    });
+
+    const { exp } = this.jwt.decode<{ exp: number }>(token);
+    await this.resticTokens.create({
+      jti,
+      repositoryId: repository.id,
+      userId: auth.id,
+      connectionId: repository.connectionId,
+      mintedBy: 'user',
+      expiresAt: new Date(exp * 1000),
     });
 
     this.wideContext.addContext('repositoryId', repository.id);
@@ -88,6 +105,10 @@ export class RepositoryService {
       throw new BadRequestException('Refusing to delete write-only repository');
     }
 
+    const active = await this.resticTokens.getActiveByRepository(id);
     await this.repositoryRepository.delete(id);
+    for (const token of active) {
+      await this.revocation.invalidateVerdict(token.jti);
+    }
   }
 }

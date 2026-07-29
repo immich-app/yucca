@@ -157,6 +157,25 @@ persistence, secrets) are where a future prod cluster overlay diverges. Notably:
   fixtures** (the same keypair lives in `.mise/tasks/*/env`); they must become
   `ExternalSecret`s backed by the org's 1Password (External Secrets Operator)
   before prod.
+- **`redis` (valkey)** is the **generic shared platform cache**: deliberately
+  ephemeral (no persistence; every tenant must tolerate a flush), keys namespaced
+  `yucca:<service>:<purpose>:*`. Its first tenant is michael's restic-token
+  **verdict cache** (`yucca:michael:verdict:<jti>`, short TTL): the source of
+  truth is postgres via yucca-api's internal introspection endpoint
+  (`TOKEN_INTROSPECTION_URL` + shared secret), michael layers a per-process
+  cache (fresh 60 s / grace 30 min) over this valkey L2, and the apis DEL the
+  L2 key on revoke so revocations land within ~a minute (a missed DEL self-heals
+  via the entry's TTL: there is no reconcile job). A valkey restart or outage
+  is a cache miss that falls through to introspection: harmless; only a
+  sustained *introspection* outage degrades (previously-valid tokens honored for
+  the grace window, then fail closed; immich and other non-revocable types are
+  skipped entirely via `REVOCABLE_CONNECTION_TYPES` and never affected). Future
+  tenants: michael rate limiting. **Primary-region only** until a secondary
+  consumer exists; secondaries run `michael` with `TOKEN_INTROSPECTION_URL`
+  unset (validity checking off). Wired into `components/roles/primary` only;
+  `allow-ingress-redis` in `networkpolicies.yaml` restricts 6379 to the tenants
+  (apis + michael), and `allow-ingress-yucca-api` additionally admits michael
+  on 3020 for introspection.
 
 ## Real OIDC credentials in dev (`.env` + 1Password)
 

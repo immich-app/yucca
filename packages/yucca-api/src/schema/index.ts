@@ -6,6 +6,7 @@ import { RepositoryMeterTable } from './tables/repositoryMeter.table';
 import { RepositoryMeterHistoryTable } from './tables/repositoryMeterHistory.table';
 import { RepositoryMetricsTable } from './tables/repositoryMetrics.table';
 import { RepositoryMetricsHistoryTable } from './tables/repositoryMetricsHistory.table';
+import { ResticTokenTable } from './tables/resticToken.table';
 import { SessionTable } from './tables/session.table';
 import { SettingsTable } from './tables/settings.table';
 import { UserTable } from './tables/user.table';
@@ -24,6 +25,7 @@ export class ImmichDatabase {
     RepositoryMetricsHistoryTable,
     RepositoryMeterTable,
     RepositoryMeterHistoryTable,
+    ResticTokenTable,
     UserAllowlistTable,
     SettingsTable,
     UserFeatureFlagOverrideTable,
@@ -44,6 +46,7 @@ export interface DB {
   repositoryMetricsHistory: RepositoryMetricsHistoryTable;
   repositoryMeter: RepositoryMeterTable;
   repositoryMeterHistory: RepositoryMeterHistoryTable;
+  resticTokens: ResticTokenTable;
   userAllowlist: UserAllowlistTable;
   settings: SettingsTable;
   userFeatureFlagOverride: UserFeatureFlagOverrideTable;

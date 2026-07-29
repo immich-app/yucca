@@ -10,7 +10,10 @@ import (
 	"michael/internal/auth"
 	"michael/internal/cluster"
 	"michael/internal/metrics"
+	"michael/internal/revocation"
 	"michael/internal/storage"
+
+	"michael/internal/httputil"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -20,14 +23,21 @@ import (
 )
 
 type Server struct {
-	// Clusters holds one Storage per storage cluster this michael fronts, keyed
-	// by cluster code. A request's token selects one of them.
+	// Clusters holds one Storage per storage cluster this michael fronts, keyed by cluster code.
 	Clusters map[string]storage.Storage
-	// DefaultCluster is the code served to tokens carrying no storageCluster
-	// claim — every token minted before multi-cluster routing existed.
+	// DefaultCluster is the code served to tokens carrying no storageCluster claim.
 	DefaultCluster string
 	JWTPublicKey   *ecdsa.PublicKey
 	Metrics        *metrics.Metrics
+	// Optional restic-token validity checks (nil = disabled).
+	Validator revocation.Validator
+	// Connection types whose tokens are validity-checked; absent types are skipped (non-revocable, e.g. immich).
+	RevocableTypes map[string]bool
+}
+
+// DefaultRevocableTypes mirrors the connection-type registry: only restic is revocable today.
+func DefaultRevocableTypes() map[string]bool {
+	return map[string]bool{"restic": true}
 }
 
 // NewServer builds a single-cluster server: everything is served from s under
@@ -126,6 +136,8 @@ func (s *Server) Handler() http.Handler {
 
 	r.Route("/{path}", func(r chi.Router) {
 		r.Use(verifier.Middleware())
+		// The verifier caches whole tokens, so revocation is re-checked per request.
+		r.Use(s.revocationMiddleware)
 		r.Use(authLogContext)
 		if s.Metrics != nil {
 			r.Use(metrics.CaptureAuth)
@@ -161,6 +173,46 @@ func (s *Server) Handler() http.Handler {
 	return r
 }
 
+func (s *Server) countRevocation(ctx context.Context, outcome string) {
+	if s.Metrics != nil {
+		s.Metrics.RevocationChecks.Add(ctx, 1, metrics.RevocationCheckOption(outcome))
+	}
+}
+
+func (s *Server) revocationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.Validator == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		a := auth.FromContext(r.Context())
+		if !s.RevocableTypes[a.Connection] {
+			s.countRevocation(r.Context(), "skipped")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		decision, err := s.Validator.Check(r.Context(), a.Jti)
+		switch decision {
+		case revocation.DecisionValid:
+			s.countRevocation(r.Context(), "allowed")
+			next.ServeHTTP(w, r)
+		case revocation.DecisionGrace:
+			hlog.FromRequest(r).Warn().Err(err).Msg("validity store unreachable; honoring cached-valid token within grace")
+			s.countRevocation(r.Context(), "grace")
+			next.ServeHTTP(w, r)
+		case revocation.DecisionUnavailable:
+			hlog.FromRequest(r).Warn().Err(err).Msg("validity store unreachable and no grace; denying")
+			s.countRevocation(r.Context(), "unavailable")
+			httputil.WriteError(w, r, http.StatusUnauthorized, "Token validity could not be verified")
+		default: // DecisionInvalid
+			s.countRevocation(r.Context(), "revoked")
+			httputil.WriteError(w, r, http.StatusUnauthorized, "Token revoked")
+		}
+	})
+}
+
 func validateBlobType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		blobType := chi.URLParam(r, "type")
@@ -187,10 +239,7 @@ func authLogContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := auth.FromContext(r.Context())
 		route := chi.RouteContext(r.Context()).RoutePattern()
-		// Mutate the request logger in place instead of deriving a new one:
-		// the AccessHandler completion line logs through the outer request's
-		// logger pointer, so this is what puts user/repository on access logs.
-		// method is omitted — the access line already carries it.
+		// Mutate the request logger in place so the AccessHandler completion line carries user/repository.
 		hlog.FromRequest(r).UpdateContext(func(c zerolog.Context) zerolog.Context {
 			return c.Str("user", a.User).Str("repository", a.Repository).Str("route", route)
 		})

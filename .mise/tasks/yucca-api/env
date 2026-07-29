@@ -31,3 +31,6 @@ export TOPOLOGY_FILE=${TOPOLOGY_FILE:-./topology.dev.json}
 export API_ROOT=${API_ROOT:-http://localhost:3020/api}
 export LEGACY_SITE_CODE=${LEGACY_SITE_CODE:-local}
 export LEGACY_STORAGE_CLUSTER_CODE=${LEGACY_STORAGE_CLUSTER_CODE:-local-dev}
+
+export REDIS_URL=${REDIS_URL:-redis://localhost:6379}
+export TOKEN_INTROSPECTION_SECRET=${TOKEN_INTROSPECTION_SECRET:-dev-introspection-secret}

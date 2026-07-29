@@ -28,7 +28,7 @@ import (
 // re-minted on every start, never persisted).
 type RepoMinter interface {
 	CreateRepository(ctx context.Context, name string, worm bool, opts adminapi.CreateRepositoryOptions) (*adminapi.Repository, error)
-	RepositoryURL(ctx context.Context, id string) (string, error)
+	RepositoryURL(ctx context.Context, id string, opts adminapi.URLOptions) (*adminapi.MintedURL, error)
 }
 
 // StartOptions shape the load each droplet runs.
@@ -124,11 +124,11 @@ func (s *Session) Start(ctx context.Context, minter RepoMinter, opts StartOption
 	}
 	urls := make(map[string]string, len(clients))
 	for _, cl := range clients {
-		u, err := minter.RepositoryURL(ctx, cl.RepoID)
+		minted, err := minter.RepositoryURL(ctx, cl.RepoID, adminapi.URLOptions{Label: "yuctl benchwide"})
 		if err != nil {
 			return fmt.Errorf("mint URL for repo %s (%s): %w", cl.RepoName, cl.RepoID, err)
 		}
-		urls[cl.Name] = u
+		urls[cl.Name] = minted.URL
 	}
 
 	capBytes := opts.MaxTransfer
@@ -472,11 +472,11 @@ func (s *Session) Cleanup(ctx context.Context, minter RepoMinter, force bool) er
 		}
 		var lcs []bench.LoadgenClient
 		for _, cl := range mine {
-			u, err := minter.RepositoryURL(ctx, cl.RepoID)
+			minted, err := minter.RepositoryURL(ctx, cl.RepoID, adminapi.URLOptions{Label: "yuctl benchwide"})
 			if err != nil {
 				return fmt.Errorf("mint URL for %s: %w", cl.RepoName, err)
 			}
-			lcs = append(lcs, bench.LoadgenClient{Name: cl.Name, Repo: u, Password: cl.Password})
+			lcs = append(lcs, bench.LoadgenClient{Name: cl.Name, Repo: minted.URL, Password: cl.Password})
 		}
 		cfg := bench.LoadgenConfig{Op: bench.LoadgenOpCleanup, Clients: lcs, Workdir: Workdir}
 		raw, err := json.Marshal(cfg)

@@ -12,6 +12,17 @@ services:
       MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-miniominio}
       _MINIO_DRIVE_ACTIVE_MONITORING: off
 
+  redis:
+    image: valkey/valkey:8-alpine@sha256:a038175878d66b9d274fbf8be73c0305e93798b83917647f167e18cef3c71eec
+    command: valkey-server --save '' --appendonly no
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 1s
+      timeout: 5s
+      retries: 30
+
   database:
     image: postgres:18@sha256:8ff36f3c66371cba71d20ceedccfc3de9669a68737607888c4ef0af93abe8e39
     environment:

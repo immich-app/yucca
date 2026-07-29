@@ -87,3 +87,9 @@ data:
   # openebs/diskpools.yaml) — Postgres replicates itself; Mayastor is for
   # workloads without app-level replication.
   DB_STORAGE_CLASS: openebs-hostpath
+
+  # Restic-token introspection: michael consults yucca-api (postgres truth) on
+  # cache miss. Primary regions only: secondaries have no local yucca-api.
+  TOKEN_INTROSPECTION_URL: "http://yucca-api:3020/api/internal/restic-tokens"
+  # Shared platform valkey (michael's L2 token-verdict cache + api invalidation).
+  REDIS_ADDR: "yucca-redis:6379"
