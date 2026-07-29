@@ -464,3 +464,10 @@ ceph_netbird_enabled: true
 # operators `netbird ssh ops@<node>` and sudo. `mise run netbird` sets the
 # per-peer management flag via the API.
 ceph_netbird_ssh_server: true
+
+# === Host logs ===
+# Vector tails journald on every node and ships it to o11y's VictoriaLogs over
+# the overlay (vmauth.o11y.futo.network), tagged cluster/site/env to match the
+# metrics. Needs the ceph-to-o11y-gateway NetBird policy for the route; see
+# roles/vector and logging.yml.
+ceph_vector_enabled: true

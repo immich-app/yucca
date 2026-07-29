@@ -100,6 +100,10 @@ run = "scripts/ansible-play.sh status.yml"
 description = "Detect configuration drift from expected state"
 run = "scripts/ansible-play.sh drift.yml"
 
+[tasks.logs]
+description = "Ship ceph node journald to o11y over the overlay (vector)"
+run = "scripts/ansible-play.sh logging.yml"
+
 [tasks.netbird]
 description = "Enroll ceph nodes into NetBird (reads the setup key from 1Password)"
 run = """

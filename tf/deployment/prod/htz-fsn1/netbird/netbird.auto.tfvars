@@ -122,6 +122,25 @@ policies = {
     }]
   }
 
+  # Ceph nodes -> o11y's prod mesh gateway, same destination and port as the
+  # talos policy above: vector on each node ships journald to the UNAUTHENTICATED
+  # mesh vmauth (vmauth.o11y.futo.network:443) and this ACL is the only gate.
+  # The gateway resource is a single /32 (10.69.0.10), so the client route this
+  # grants cannot overlap the ceph fabric (10.40.0.0/16) and replication stays on
+  # the 25G bond. o11y's pod-egress range is a DIFFERENT resource group, so it is
+  # not granted here.
+  ceph-to-o11y-gateway = {
+    description = "Ceph nodes -> o11y prod mesh gateway (unauth vmauth log ingest)."
+    rules = [{
+      name          = "ceph-to-o11y-gateway"
+      protocol      = "tcp"
+      bidirectional = false
+      sources       = ["ceph"]
+      destinations  = ["o11y_k8s_gateway"]
+      ports         = ["443"]
+    }]
+  }
+
   # Talos nodes reach the routed site subnets (esp. the kube fabric net 10.40.10/24)
   # via the mgmt route peers — this is how the cloud CPs' apiserver reaches the
   # bare-metal worker kubelets.
