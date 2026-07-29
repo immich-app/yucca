@@ -20,6 +20,7 @@ export const testUtils = {
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
     await db.deleteFrom('userAllowlist').execute();
+    await db.deleteFrom('settings').execute();
   },
 
   createAllowlistEntry: ({
@@ -70,7 +71,11 @@ export const testUtils = {
     userId: string,
     { name = 'My Repository', worm = false }: Partial<{ name: string; worm: boolean }> = {},
   ) => {
-    return getDb().insertInto('repositories').values({ userId, name, worm }).returningAll().executeTakeFirstOrThrow();
+    return getDb()
+      .insertInto('repositories')
+      .values({ userId, name, worm, siteCode: 'local', storageClusterCode: 'local-dev' })
+      .returningAll()
+      .executeTakeFirstOrThrow();
   },
 
   getUser: (id: string) => {
