@@ -1,22 +1,29 @@
 ---
 # Phase 5: Create OSDs via cephadm orch service spec
 #
-# Renders a multi-document OSD service spec (one document per host, see
+# Renders a multi-document OSD service spec (one document per host TYPE, see
 # templates/osd-spec.yml.j2) and applies via `ceph orch apply osd`. Cephadm
 # handles per-disk LUKS provisioning, LVM creation, daemon deployment, and
-# CRUSH placement internally — the role no longer iterates disks.
+# CRUSH placement internally; the role no longer iterates disks.
 #
 # Hardware-shape independence: the template's Jinja conditionals handle
 # both sietch (SAS expander + dual-SSD-VG) and NVMe-RAID hosts (PCI-ATA + single
 # NVMe-RAID VG + LV-backed SSD OSD) without per-shape branching here.
 #
 # Required host_vars (per host, in inventories/<cluster>/host_vars/<host>.yml):
-#   ceph_hdd_osds   — list of {path_phy, db} mappings per HDD
-#   ceph_ssd_osds   — list of {path_phy + partition} (SAS shape) or {lv} (NVMe-RAID shape)
-#   sas_path_prefix — REQUIRED for sietch; OMITTED for NVMe-RAID-shape hosts
+#   ceph_hdd_osds   : list of {path_phy, db} mappings per HDD
+#   ceph_ssd_osds   : list of {path_phy + partition} (SAS shape) or {lv} (NVMe-RAID shape)
+#   sas_path_prefix : REQUIRED for sietch; OMITTED for NVMe-RAID-shape hosts
 #
-# Idempotent: re-applying the same spec is a no-op when OSDs match. New
-# disks (e.g. populating an empty bay later) are picked up automatically.
+# Idempotent: re-applying the same spec is a no-op when OSDs match.
+#
+# Whether cephadm acts on the spec depends on ceph_osd_spec_unmanaged. Left
+# false (sietch) the spec is managed and cephadm picks up new disks on its own,
+# which is the behaviour this role has always had. Set true (spice) the spec is
+# registered but inert, because reconciling a managed spec costs a ceph-volume
+# lvm+raw list per host on every serve-loop pass and that dominated the loop at
+# 48 hosts. Provisioning from an inert spec then needs the explicit window
+# below.
 
 - name: Render OSD service spec on bootstrap node
   ansible.builtin.template:
@@ -48,73 +55,173 @@
     'Scheduled' in (orch_apply.stdout | default(''))
     or 'created' in (orch_apply.stdout | default('') | lower)
 
-- name: Wait for cephadm to provision all expected OSDs
-  ansible.builtin.shell: |
-    set -o pipefail
-    EXPECTED={{
-      (groups['ceph_nodes'] | intersect(ansible_play_hosts))
-        | map('extract', hostvars)
-        | map(attribute='ceph_hdd_osds', default=[])
-        | map('length') | sum
-      +
-      (groups['ceph_nodes'] | intersect(ansible_play_hosts))
-        | map('extract', hostvars)
-        | map(attribute='ceph_ssd_osds', default=[])
-        | map('length') | sum
-    }}
-    echo "Expecting $EXPECTED OSDs across the nodes in this run"
-    for i in $(seq 1 180); do
-      ACTUAL=$(ceph osd stat --format json 2>/dev/null \
-        | python3 -c "import sys, json; print(json.load(sys.stdin).get('num_osds', 0))" \
-        2>/dev/null || echo 0)
-      echo "  attempt $i: $ACTUAL/$EXPECTED OSDs created"
-      if [ "$ACTUAL" -ge "$EXPECTED" ]; then
-        echo "All expected OSDs provisioned"
-        exit 0
-      fi
-      sleep 10
-    done
-    echo "WARNING: only $ACTUAL of $EXPECTED OSDs provisioned after 30 minutes"
-    exit 1
-  args:
-    executable: /bin/bash
-  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
-  run_once: true
-  changed_when: false
-  timeout: 1920
+# Provisioning window.
+#
+# An unmanaged spec creates nothing, so a cluster that sets
+# ceph_osd_spec_unmanaged has to hand cephadm a bounded interval in which to
+# build the OSDs: set-managed, wait, set-unmanaged. Opt in with
+# `-e ceph_osd_allow_spec_provisioning=true`.
+#
+# INITIAL PROVISIONING ONLY. Do not open this window to rebuild a replaced
+# disk. With one blank disk and one free db slot cephadm may recreate the OSD
+# without its block.db (Ceph tracker #68436, open against 18.2.4), which on the
+# NVMe-RAID shape means block.db silently colocated on the 22TB HDD instead of
+# the vg0 db-slot LV. docs/runbooks/replace-disk.md drives ceph-volume directly
+# for exactly that reason.
+#
+# `always` closes the window even if a wait times out, so a failed run cannot
+# leave the specs managed and the serve loop crawling.
+- name: Provision OSDs from the service spec
+  vars:
+    spec_window: >-
+      {{ (ceph_osd_spec_unmanaged | default(false))
+         and (ceph_osd_allow_spec_provisioning | default(false)) }}
+    spec_inert: >-
+      {{ (ceph_osd_spec_unmanaged | default(false))
+         and not (ceph_osd_allow_spec_provisioning | default(false)) }}
+  block:
+    - name: Open the managed provisioning window
+      ansible.builtin.shell: |
+        set -o pipefail
+        ceph orch ls --service-type osd --format json \
+          | python3 -c 'import sys, json; [print(s["service_name"]) for s in json.load(sys.stdin)]' \
+          | xargs -rn1 ceph orch set-managed
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      run_once: true
+      changed_when: true
+      when: spec_window | bool
 
-- name: Wait for OSDs to come up
-  ansible.builtin.shell: |
-    set -o pipefail
-    for i in $(seq 1 180); do
-      up=$(ceph osd stat --format json 2>/dev/null |
-        python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('num_up_osds',0))" \
-        2>/dev/null || echo 0)
-      total=$(ceph osd stat --format json 2>/dev/null |
-        python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('num_osds',0))" \
-        2>/dev/null || echo 0)
-      echo "OSDs: $up/$total up"
-      if [ "$up" -eq "$total" ] && [ "$total" -gt 0 ]; then
-        echo "All OSDs up"; exit 0
-      fi
-      sleep 10
-    done
-    echo "WARNING: Not all OSDs up after 30 minutes"
-    exit 1
-  args:
-    executable: /bin/bash
-  delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
-  run_once: true
-  changed_when: false
-  timeout: 1920
+    - name: Wait for cephadm to provision all expected OSDs
+      ansible.builtin.shell: |
+        set -o pipefail
+        EXPECTED={{
+          (groups['ceph_nodes'] | intersect(ansible_play_hosts))
+            | map('extract', hostvars)
+            | map(attribute='ceph_hdd_osds', default=[])
+            | map('length') | sum
+          +
+          (groups['ceph_nodes'] | intersect(ansible_play_hosts))
+            | map('extract', hostvars)
+            | map(attribute='ceph_ssd_osds', default=[])
+            | map('length') | sum
+        }}
+        echo "Expecting $EXPECTED OSDs across the nodes in this run"
+        for i in $(seq 1 180); do
+          ACTUAL=$(ceph osd stat --format json 2>/dev/null \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('num_osds', 0))" \
+            2>/dev/null || echo 0)
+          echo "  attempt $i: $ACTUAL/$EXPECTED OSDs created"
+          if [ "$ACTUAL" -ge "$EXPECTED" ]; then
+            echo "All expected OSDs provisioned"
+            exit 0
+          fi
+          sleep 10
+        done
+        echo "WARNING: only $ACTUAL of $EXPECTED OSDs provisioned after 30 minutes"
+        exit 1
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      run_once: true
+      changed_when: false
+      timeout: 1920
+      when: not (spec_inert | bool)
 
-# Safety net: if any OSD comes up with reweight=0 (rare with orch apply,
-# but possible if a noin flag was set externally before this run), fix it.
+    - name: Wait for OSDs to come up
+      ansible.builtin.shell: |
+        set -o pipefail
+        for i in $(seq 1 180); do
+          up=$(ceph osd stat --format json 2>/dev/null |
+            python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('num_up_osds',0))" \
+            2>/dev/null || echo 0)
+          total=$(ceph osd stat --format json 2>/dev/null |
+            python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('num_osds',0))" \
+            2>/dev/null || echo 0)
+          echo "OSDs: $up/$total up"
+          if [ "$up" -eq "$total" ] && [ "$total" -gt 0 ]; then
+            echo "All OSDs up"; exit 0
+          fi
+          sleep 10
+        done
+        echo "WARNING: Not all OSDs up after 30 minutes"
+        exit 1
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      run_once: true
+      changed_when: false
+      timeout: 1920
+      when: not (spec_inert | bool)
+
+  always:
+    - name: Close the managed provisioning window
+      ansible.builtin.shell: |
+        set -o pipefail
+        ceph orch ls --service-type osd --format json \
+          | python3 -c 'import sys, json; [print(s["service_name"]) for s in json.load(sys.stdin)]' \
+          | xargs -rn1 ceph orch set-unmanaged
+      args:
+        executable: /bin/bash
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      run_once: true
+      changed_when: true
+      when: spec_window | bool
+
+# Safety net: an OSD that comes up at reweight 0 because a noin flag was set
+# before this run never takes data until something reweights it back.
+#
+# "up with reweight 0" is ambiguous, though -- it is equally the signature of a
+# drain (`ceph orch osd rm`, or the plain `ceph osd out` that replace-disk.md
+# step 2 prescribes), and nothing in the osdmap distinguishes the two. Guessing
+# wrong is expensive in one direction only: reweighting a draining OSD back to
+# 1.0 refills the disk you are removing, silently and mid-drain, whereas failing
+# to fix a genuinely stuck OSD leaves it visibly at reweight 0 in `ceph osd
+# tree`. So this task corrects an OSD only when it can name the cause:
+#
+#   in the cephadm removal queue  -> skip, cephadm is draining it
+#   noin set                      -> reweight to 1.0, the documented cause
+#   neither                       -> warn and leave alone; someone outed it
+#
+# noin is read before the "clear noin flag" task below unsets it. A `destroyed`
+# OSD needs no special case: it is not `up`, so the status filter passes over it.
 
 - name: Fix any OSDs stuck at reweight 0
   ansible.builtin.shell: |
     set -o pipefail
+    # OSD ids cephadm is currently draining. Tolerates an empty queue, a
+    # non-JSON message, and either the bare-list or {"osds": [...]} shape.
+    DRAINING=$(ceph orch osd rm status --format json 2>/dev/null | python3 -c "
+    import sys, json
+    try:
+        data = json.loads(sys.stdin.read() or '[]')
+    except ValueError:
+        data = []
+    if isinstance(data, dict):
+        data = data.get('osds', [])
+    print(' '.join(str(o['osd_id']) for o in data
+                   if isinstance(o, dict) and o.get('osd_id') is not None))
+    " 2>/dev/null || true)
+    echo "cephadm removal queue: ${DRAINING:-<empty>}"
+
+    # Is noin set? Prefer the flags_set list; fall back to the comma string for
+    # older releases that do not emit it. Anything unparseable reads as "not
+    # set", which routes to the warn-only path rather than to reweighting.
+    NOIN=$(ceph osd dump --format json 2>/dev/null | python3 -c "
+    import sys, json
+    try:
+        d = json.load(sys.stdin)
+    except ValueError:
+        print('no'); sys.exit(0)
+    flags = d.get('flags_set') or [f for f in (d.get('flags') or '').split(',') if f]
+    print('yes' if 'noin' in flags else 'no')
+    " 2>/dev/null || echo no)
+    echo "noin flag set: ${NOIN:-no}"
+
     FIXED=0
+    SKIPPED=0
+    LEFT=0
     for osd_id in $(ceph osd tree --format json 2>/dev/null | python3 -c "
     import sys, json
     tree = json.load(sys.stdin)
@@ -123,12 +230,32 @@
            and node.get('reweight', 1) == 0:
             print(node['id'])
     "); do
-      echo "Reweighting osd.$osd_id from 0 to 1.0"
+      case " $DRAINING " in
+        *" $osd_id "*)
+          echo "Skipping osd.$osd_id - draining via ceph orch osd rm"
+          SKIPPED=$((SKIPPED + 1))
+          continue
+          ;;
+      esac
+      if [ "$NOIN" != "yes" ]; then
+        echo "WARNING: osd.$osd_id is up at reweight 0 but noin is not set." \
+             "Leaving it alone - this is what a manual 'ceph osd out $osd_id'" \
+             "looks like. If it is genuinely stuck, run 'ceph osd in $osd_id'."
+        LEFT=$((LEFT + 1))
+        continue
+      fi
+      echo "Reweighting osd.$osd_id from 0 to 1.0 (noin was set)"
       ceph osd reweight "$osd_id" 1.0
       FIXED=$((FIXED + 1))
     done
+    if [ "$SKIPPED" -ne 0 ]; then
+      echo "Left $SKIPPED draining OSDs alone"
+    fi
+    if [ "$LEFT" -ne 0 ]; then
+      echo "Left $LEFT out-looking OSDs alone (see warnings above)"
+    fi
     if [ "$FIXED" -eq 0 ]; then
-      echo "All up OSDs have proper reweight"
+      echo "Reweighted nothing"
     else
       echo "Fixed $FIXED OSDs with reweight=0"
     fi
@@ -138,6 +265,15 @@
   run_once: true
   register: reweight_fix
   changed_when: "'Fixed' in reweight_fix.stdout"
+
+# Without this the warnings sit unread inside reweight_fix. An OSD left at
+# reweight 0 holds no data, so it is worth putting in front of the operator
+# even though it is deliberately not an error.
+- name: Surface OSDs left at reweight 0
+  ansible.builtin.debug:
+    msg: "{{ reweight_fix.stdout_lines | select('search', '^WARNING:') | list }}"
+  run_once: true
+  when: reweight_fix.stdout is defined and 'WARNING:' in reweight_fix.stdout
 
 - name: Show OSD tree
   ansible.builtin.command: ceph osd tree
@@ -172,9 +308,9 @@
 # Defensive: clear the noin flag if it's set. The current spec-apply flow
 # doesn't set noin (cephadm orch handles backfill rollout gracefully), but
 # a prior failed run of this role's older imperative OSD-creation flow may
-# have set it and not unset it. Unset is idempotent — no-op when already off.
+# have set it and not unset it. Unset is idempotent: a no-op when already off.
 
-- name: Defensive — clear noin flag if set
+- name: Defensive - clear noin flag if set
   ansible.builtin.command: ceph osd unset noin
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
   run_once: true

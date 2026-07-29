@@ -1,30 +1,50 @@
 # Hardware Reference
 
-Audience: Ops, procurement, capacity planning. Per-node hardware facts that
-differ across clusters live in
-`ansible/ceph/inventories/<partition>-<region>/<cluster>/host_vars/`
-(bond_ip, SAS path prefix, SSD PHY positions, HDD-to-block.db mappings) --
-those files are committed and are authoritative for physical topology.
+Audience: Ops, procurement, capacity planning. Covers both live clusters:
+**sietch** (staging, Austin, 3 nodes) and **spice** (production, Hetzner
+FSN1-DC24, 48 nodes).
 
-For where this fits in the tool mesh, see [architecture.md](architecture.md).
+Per-node hardware facts live in
+`ansible/ceph/inventories/<partition>-<region>/<cluster>/host_vars/` (bond_ip,
+host_index, SAS path prefix, SSD PHY positions, HDD-to-block.db mappings) --
+those files are committed and are authoritative for physical topology. On
+spice the uniform parts moved up to `group_vars/all/vars.yml`; see the
+host_vars schema section below.
+
+For where this fits in the tool mesh, see [architecture.md](architecture.md);
+for SSH targets, vaults, and per-cluster procedure differences, see
+[cluster-profiles.md](cluster-profiles.md).
 
 ## Network topology
 
-Clusters use a **single-network** design today -- public and cluster
-traffic share one subnet. Production will separate them; see
-[security-model.md](security-model.md) for the threat-model implications.
+The two clusters differ here more than anywhere else. sietch is flat -- public
+and cluster traffic share one subnet. spice splits them across VLANs on a
+bonded 25G fabric. See [security-model.md](security-model.md) for the
+threat-model implications of each.
 
-| Cluster  | Subnet            | Connection                                                             |
-|----------|-------------------|------------------------------------------------------------------------|
-| sietch   | `10.10.10.0/24`   | 2x 10GbE bonded active-backup (eno1 + eno2) per node; private switch   |
+| Cluster  | Networks                                                                                                          | Connection                                                                                     |
+|----------|-------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| sietch   | public = cluster = `10.10.10.0/24`                                                                                | 2x 25GbE Mellanox ConnectX bonded active-backup (eno1np0 + eno2np1) per node; private switch    |
+| spice    | public `10.40.20.0/23` (VLAN 120), cluster `10.40.22.0/23` (VLAN 122, MTU 9000), host-mgmt `10.40.24.0/24` (VLAN 124) | 2x 25GbE Intel E810 in an LACP bond to the leaf, VLAN sub-interfaces; plus a separate 1G WAN     |
 
-A Hetzner NVMe-RAID host attaches over a public /32 with a single NIC
-and direct SSH (no bond, no ProxyJump).
+On spice the 1G WAN (`enp197s0`, igb) stays on ifupdown exactly as installimage
+configured it and holds the default route; only the bond and its VLANs are
+networkd-managed (`networkd_replace_ifupdown: false`). That split is deliberate:
+the WAN is the reachability link, so a networkd error on the fabric cannot cost
+access to the node. Ansible connects over the WAN address; Ceph daemons never
+bind it. Per-host fabric addresses are `10.40.2x.<host_index>`, derived in
+`group_vars` rather than written out 48 times.
 
-Per-node connection IPs (`bond_ip`) are declared in
-`tf/deployment/staging/austin/ceph/clusters.auto.tfvars` and rendered by TF into the
-cluster's `inventory.ini`. They're also mirrored into `host_vars/` for use
-by roles that need the IP as a variable (e.g., cephadm public-network
+Jumbo frames are enabled on VLAN 122 only. That path is closed, homogeneous,
+and entirely ours, so the packet/interrupt savings on replication and recovery
+actually land. VLAN 120 carries RGW traffic to heterogeneous S3 clients and the
+~1400-MTU NetBird overlay, where a jumbo mismatch is a partial blackhole (small
+ops fine, large PUT/GET hang) for near-zero gain.
+
+Per-node connection IPs (`bond_ip`) are declared in the cluster's
+`tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars` and rendered by
+TF into the cluster's `inventory.ini`. They're also mirrored into `host_vars/`
+for use by roles that need the IP as a variable (e.g., cephadm public-network
 resolution, dashboard URL construction).
 
 ## sietch -- Dell R730xd (Austin)
@@ -39,7 +59,7 @@ resolution, dashboard URL construction).
 | SSD OSDs | Partition 6 on each boot SSD (colocated, no separate block.db) |
 | Block.db | 6x 240GB LVs per SSD (partition 5, LVM VG) |
 | HBA | Broadcom/LSI SAS3008 IT mode (mpt3sas, no RAID) |
-| Network | 2x 10GbE bonded active-backup (eno1 + eno2) |
+| Network | 2x 25GbE Mellanox ConnectX bonded active-backup (eno1np0 + eno2np1) |
 | Boot | UEFI, dual ESP (one per SSD, rsync-mirrored) |
 | OS | Debian 12 Bookworm (debootstrap provisioned) |
 | Provisioning | Live image -> `provision.yml` -> debootstrap |
@@ -55,14 +75,32 @@ resolution, dashboard URL construction).
 | 5 | ~1.4 TB | Ceph block.db LVs (LVM VG) |
 | 6 | ~2 TB | SSD OSD data (ceph-volume) |
 
-## Hetzner NVMe-RAID shape (e.g. SX295)
+## spice -- Hetzner SX295 (FSN1-DC24, Falkenstein)
 
-The roles also support a Hetzner-style single-box shape for future
-hosting-provider clusters: NVMe boot drives in installimage RAID-1
-(`vg0`), HDD OSDs over onboard SATA with per-HDD block.db LVs on the NVMe
-VG, and a single LV-backed SSD OSD carved from the NVMe remainder.
-Provisioning is rescue mode -> `installimage/autosetup` + `post-install.sh`,
-booting Debian 12 Bookworm.
+48 nodes, 15 OSDs each: 720 OSDs total (672 HDD + 48 NVMe-backed). That is an
+OSD count, not a disk count -- the physical disks are 672 HDD + 96 NVMe = 768.
+Confusing the two badly overstates spindle count.
+
+| Component | Spec |
+|-----------|------|
+| Chassis | Hetzner SX295, 48 nodes across 4 racks in FSN1-DC24 |
+| HDD OSDs | 14x 22TB SATA per node, on 3 AHCI controllers (`pci-0000:45:00.0` x8, `:46:00.0` x2, `:87:00.0` x4), addressed by-path |
+| Boot NVMe | 2x 7.68TB NVMe in mdraid-1 -> `vg0` (`nvme0n1` + `nvme1n1`) |
+| vg0 OS LVs | swap 32G, `/` 100G, `/var` 200G, `/var/log` 50G; `/boot` is a 1G ext4 partition outside the VG |
+| Block.db | 14x 128G `db-slotN` LVs on `vg0` |
+| SSD OSD | one `ssd-osd` LV, `vg0` free minus a 512 GiB reserve |
+| Network | 2x 25GbE Intel E810 (`enp193s0f0/f1`, ice) in an LACP bond; 1G WAN `enp197s0` (igb) |
+| Boot | BIOS (`reprovision_boot_mode: bios`), grub |
+| OS | Debian 12 Bookworm (Hetzner installimage) |
+| Provisioning | Rescue mode -> `installimage -a -c /autosetup -x post-install.sh` (`reprovision_hetzner` role) |
+| Remote hands | No IPMI, one KVM for 48 nodes -- physical work is a Hetzner ticket, and drives are identified by **serial**, not bay |
+
+installimage builds the mdraid-1, `vg0`, and the OS LVs. It does not create the
+`db-slot` or `ssd-osd` LVs: those are carved at converge by
+`ceph_deploy/lvm-setup.yml`'s NVMe-RAID branch. The `-x post-install.sh` chroot
+step is deliberately limited to seeding root and `ansible-iac` SSH keys -- no
+apt, no `lvcreate` -- because those are the steps that broke installimage on
+the SX295 precedent.
 
 > **Why Bookworm and not Trixie:** upstream Ceph Tentacle's Debian
 > repository at `download.ceph.com/debian-tentacle/dists/` publishes only
@@ -70,11 +108,16 @@ booting Debian 12 Bookworm.
 > autosetup `IMAGE` line MUST select a Bookworm tarball until upstream
 > ships Trixie packages.
 
+The E810 needs the `firmware-misc-nonfree` DDP package. Without it the NIC boots
+into Safe Mode, whose crippled classifier drops LACP and LLDP control frames, so
+the bond never aggregates. `baseline` installs it and reboots once to load it.
+
 ## host_vars schema by hardware shape
 
 Storage topologies differ across hardware shapes, and so does the
 `host_vars/<host>.yml` schema. When adding a new cluster, pick the schema
-that matches the hardware -- don't copy an existing cluster's.
+that matches the hardware -- don't copy an existing cluster's. sietch uses the
+first schema, spice the second.
 
 ### sietch-shape (SAS expander + dual-SSD-VG)
 
@@ -116,9 +159,26 @@ ceph_ssd_osds:
 
 The role uses `path_phy` directly as the by-path identifier (no composition
 needed -- operator authors the full string). For SSD OSDs, `lv` field is
-used (`/dev/<lv>`) instead of `path_phy + partition`. `lvm-setup.yml` is
-**skipped** on this shape (gated `when: sas_path_prefix is defined`) --
-LVM is owned by the Hetzner installimage post-install script.
+used (`/dev/<lv>`) instead of `path_phy + partition`.
+
+`lvm-setup.yml` branches rather than skipping: `sas_path_prefix is undefined`
+selects the NVMe-RAID path, which asserts `vg0` exists (installimage made it)
+and then creates the `db-slotN` LVs plus the `ssd-osd` LV from the remainder
+minus `ceph_ssd_osd_reserve_gib`. It never shrinks an existing LV -- truncating
+a live block.db corrupts the OSD.
+
+On spice these keys live in `group_vars` rather than in 48 host_vars files,
+because the by-path map is identical on 47 of the 48 nodes;
+`spice-ceph-miguel` overrides `ceph_hdd_osds` in its own host_vars (one HDD on
+a different AHCI controller). The per-node files carry only `bond_ip`,
+`host_index`, `hetzner_server_number`, and the `mon` flag. Prefer that split
+whenever a fleet is uniform: 48 near-identical files would have buried the
+one-node exception.
+
+The `{path_phy, db}` pairing is presentational either way. A cephadm OSD spec
+has no per-disk block.db field, so the template emits two independent path
+arrays and ceph-volume pairs them in its own order. Resolve a real pairing with
+`cephadm ceph-volume lvm list`, never from the inventory.
 
 ### Decision rule for new clusters
 

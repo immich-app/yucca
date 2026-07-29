@@ -318,8 +318,8 @@ template's Jinja conditional, not the role logic.
 - `templates/rgw-spec.yaml.j2` + `tasks/rgw.yml`'s `ceph orch apply -i`
   task -- RGW daemon placement spec.
 - `templates/osd-spec.yml.j2` + `tasks/osds.yml`'s
-  `ceph orch apply osd -i` task -- OSD service spec; per-host documents
-  in a multi-doc YAML; Jinja conditional handles sietch-shape vs
+  `ceph orch apply osd -i` task -- OSD service spec; one document per host
+  *type* in a multi-doc YAML; Jinja conditional handles sietch-shape vs
   NVMe-RAID-shape path composition.
 
 **Template skeleton:**
@@ -336,6 +336,20 @@ spec:
   <kind-specific fields>
 {% endfor %}
 ```
+
+One document per host is the simple form, and it is what `rgw-spec.yaml.j2`
+does. Watch it at scale: cephadm reconciles every managed spec on every
+serve-loop pass, so N specs across N hosts makes the loop cost scale with the
+fleet. If the hosts are uniform, bucket them by their rendered field values and
+emit one document per bucket with a multi-host `placement.hosts` --
+`osd-spec.yml.j2` does this behind `ceph_osd_spec_group_by_layout`.
+
+Decide the bucketing when the cluster is built, not after. A daemon's owning
+service is fixed at creation (for OSDs, in the LVM tag
+`ceph.osdspec_affinity`), and `ceph orch ls` fabricates a service for any
+daemon whose spec has gone missing, so re-bucketing a live cluster adds specs
+without moving daemons onto them. Where a cluster is already deployed, the
+mitigation for loop cost is `unmanaged`, not re-bucketing.
 
 **Apply pattern in tasks/*.yml:**
 

@@ -5,7 +5,7 @@ hetzner_server_number: 3014576
 host_index: 38
 mon: false
 # OVERRIDE of the group_vars ceph_hdd_osds: miguel has one HDD on 46:00.0-ata-4
-# (not 87:00.0-ata-4 like the other 46 nodes) -- verified 2026-07-10. host_vars
+# (not 87:00.0-ata-4 like the other 47 nodes) -- verified 2026-07-10. host_vars
 # fully replaces the group_var, so the whole 14-disk map is repeated here.
 ceph_hdd_osds:
   - { path_phy: pci-0000:45:00.0-ata-1, db: vg0/db-slot0 }

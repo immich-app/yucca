@@ -59,16 +59,20 @@ not in Austin. Sequence spice work per node unless you have a reason not to.
 
 ## Inventory files
 
-sietch's `inventory.ini` is rendered by Terraform (`ceph-cluster` module,
-`rendered_files` output) and is not committed; only `group_vars/` and
-`host_vars/` are in the repo. Render it before running a playbook against
-sietch:
+Neither cluster's `inventory.ini` is committed. `ansible/ceph/.gitignore`
+excludes `inventory.ini`, `inventory-destroy.ini`, `inventory-provision.ini`,
+and `secrets.yml.tpl` for every cluster; only `group_vars/` and `host_vars/`
+are in the repo. Render before running a playbook:
 
 ```bash
-ansible/ceph/scripts/render-inventories.sh staging austin
+ansible/ceph/scripts/render-inventories.sh staging austin    # sietch
+ansible/ceph/scripts/render-inventories.sh prod htz-fsn1     # spice
 ```
 
 The script is read-only against state, but it reads the stack's `render`
 output, so a `terragrunt apply` must have run for that output to reflect the
-current cluster spec. spice's `inventory.ini` is committed; the same script
-renders it with `prod htz-fsn1`.
+current cluster spec. A rendered file that predates a `clusters.auto.tfvars`
+change is stale in a way nothing warns you about -- a `secrets.yml.tpl` missing
+a `vault_*` entry that `group_vars` references fails the play at runtime with
+`AnsibleUndefinedVariable`, not at render time. Re-render after any cluster
+spec change lands.
