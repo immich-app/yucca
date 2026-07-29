@@ -261,16 +261,20 @@
       when: inventory_hostname in groups['ceph_bootstrap']
       changed_when: false
 
+    # Expect the declared quorum, not one MON per node. ceph_mon holds the hosts
+    # whose `roles` include "mon": every node on a small cluster, a pinned subset
+    # on a large one (spice runs 5 across 48). Comparing against ceph_nodes read
+    # as permanent drift on any cluster that pins its quorum.
     - name: Record MON drift
       ansible.builtin.set_fact:
         drift_results: >-
           {{ drift_results + [{
             'category': 'ceph',
             'item': 'MON count',
-            'expected': groups['ceph_nodes'] | length | string,
+            'expected': groups['ceph_mon'] | length | string,
             'actual': mon_count.stdout | trim,
             'match': (mon_count.stdout | trim)
-                     == (groups['ceph_nodes'] | length | string)
+                     == (groups['ceph_mon'] | length | string)
           }] }}
       when: inventory_hostname in groups['ceph_bootstrap']
 
