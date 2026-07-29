@@ -10,6 +10,8 @@ type RepositoryRow = {
   remoteId: string;
   backendId: string;
   retentionPolicy: RetentionPolicy | null;
+  siteCode: string | null;
+  storageClusterCode: string | null;
 };
 
 @Injectable()
@@ -24,6 +26,8 @@ export class RepositoryRepository {
         remoteId: repository.remoteId,
         backendId: repository.backendId,
         retentionPolicy: repository.retentionPolicy === null ? null : JSON.stringify(repository.retentionPolicy),
+        siteCode: repository.siteCode,
+        storageClusterCode: repository.storageClusterCode,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -54,6 +58,8 @@ export class RepositoryRepository {
         remoteId: row.remoteId,
         backendId: row.backendId,
         retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
+        siteCode: row.siteCode,
+        storageClusterCode: row.storageClusterCode,
       };
     }
   }
@@ -65,6 +71,8 @@ export class RepositoryRepository {
       remoteId: row.remoteId,
       backendId: row.backendId,
       retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
+      siteCode: row.siteCode,
+      storageClusterCode: row.storageClusterCode,
     }));
   }
 

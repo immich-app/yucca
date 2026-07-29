@@ -10,7 +10,8 @@
 #     (hostmap.cjs); the playwright browser via --host-resolver-rules.
 #   - yucca-api's topology is patched (e2e-only) to a localhost rest_url,
 #     because restic runs on this host (the cluster keeps the in-cluster name
-#     for real use).
+#     for real use); the orchestrator discovers everything through the meta
+#     pod's well-known pointer, exercising the real discovery chain.
 #
 # Prereq: mise k3d:up && mise tilt:up   (cluster healthy, context k3d-yucca)
 set -euo pipefail
@@ -48,6 +49,7 @@ mise run yucca-sdk:orchestration-ui:build >/dev/null
 echo "==> port-forward k3d services to the e2e host ports"
 kubectl port-forward -n yucca svc/yucca-michael  3010:3010  >/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
+kubectl port-forward -n yucca svc/yucca-meta      8080:8080 >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 # web on :36033 (orchestration-api + the web e2e target) AND :5173 (yucca-api's
 # OIDC redirect_uri, which the OIDC callback follows).
 kubectl port-forward -n yucca svc/yucca-web      36033:5173 >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
@@ -67,6 +69,8 @@ kubectl port-forward -n yucca svc/yucca-api 3020:3020 >>/tmp/yucca-e2e-pf.log 2>
 sleep 5
 
 echo "==> launch orchestration-api as a separate local process (:22676)"
+# Discovery runs the real chain: meta pod well-known -> /api/meta -> api_root.
+FUTO_BACKUPS_WELL_KNOWN_URL="http://localhost:8080/.well-known/yucca.json" \
 NODE_OPTIONS="--require $HERE/hostmap.cjs" \
   mise run yucca-sdk:orchestration-api:dev >/tmp/yucca-e2e-orch.log 2>&1 & ORCH_PID=$!
 for _ in $(seq 1 40); do

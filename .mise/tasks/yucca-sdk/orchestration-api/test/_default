@@ -2,5 +2,4 @@
 #MISE description="Test yucca-sdk/orchestration-api"
 set -e
 
-# pnpm --filter @futo-org/backups-orchestrator-api test "$@"
-echo No tests provided.
+pnpm --filter @futo-org/backups-orchestrator-api test "$@"

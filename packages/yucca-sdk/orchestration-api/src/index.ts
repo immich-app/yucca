@@ -4,3 +4,4 @@ export * from './orchestrationApi.module';
 export { LoggingRepository } from './repositories/logging.repository';
 export { ModuleConfigRepository } from './repositories/moduleConfig.repository';
 export { YuccaService } from './services/yucca.service';
+export { yuccaWellKnown, type Meta, type MetaConfig, type MetaSite } from './wellKnown';

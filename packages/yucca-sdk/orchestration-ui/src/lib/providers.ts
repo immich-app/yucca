@@ -18,6 +18,8 @@ export class MockProvider extends BaseProvider {
           id: 'repo1',
           name: 'My Repository',
           worm: false,
+          siteCode: 'local',
+          storageClusterCode: 'local-dev',
           metrics: {
             sizeBytes: 1337,
           },

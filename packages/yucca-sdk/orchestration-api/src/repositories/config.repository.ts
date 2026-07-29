@@ -5,6 +5,9 @@ import { randomBytes } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 import { ConfigurationKey } from '../enum';
 import { DB } from '../schema';
+import { yuccaWellKnown } from '../wellKnown';
+
+export type ResticPlacement = { siteCode: string | null; storageClusterCode: string | null };
 
 @Injectable()
 export class ConfigRepository {
@@ -111,8 +114,18 @@ export class ConfigRepository {
     return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
   }
 
-  async getResticOptionRestConnections() {
-    const concurrency = await this.getOptional(ConfigurationKey.ResticOptionRestConnections);
-    return concurrency ? Number.parseInt(concurrency) : availableParallelism();
+  async getResticOptions(
+    placement: ResticPlacement,
+  ): Promise<{ connections: number; packSizeMib: number | undefined }> {
+    const siteCode = placement.siteCode ?? undefined;
+    const clusterCode = placement.storageClusterCode ?? undefined;
+    const cores = availableParallelism();
+
+    const override = await this.getOptional(ConfigurationKey.ResticOptionRestConnections);
+    const connections = override
+      ? Number.parseInt(override)
+      : ((await yuccaWellKnown.getConnections(cores, siteCode, clusterCode)) ?? cores);
+
+    return { connections, packSizeMib: await yuccaWellKnown.getPackSizeMib(siteCode, clusterCode) };
   }
 }

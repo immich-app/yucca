@@ -1,12 +1,11 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { createEventSource, EventSourceClient } from 'eventsource-client';
-import { yuccaWellKnown } from '../backends/yucca.backend';
 import { REPOSITORY_DEFAULT_CLOUD_UUID } from '../const';
 import { BackendType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
-import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { yuccaWellKnown } from '../wellKnown';
 import { TelemetryService } from './telemetry.service';
 
 @Injectable()
@@ -14,12 +13,11 @@ export class AuthService {
   constructor(
     readonly config: ConfigRepository,
     readonly backend: BackendRepository,
-    readonly moduleConfig: ModuleConfigRepository,
     readonly events: EventsGateway,
     readonly telemetry: TelemetryService,
   ) {}
 
-  private async waitForDeviceFlow(events: EventSourceClient, url?: string) {
+  private async waitForDeviceFlow(events: EventSourceClient) {
     for await (const { data } of events) {
       const { type, accessToken } = JSON.parse(data);
 
@@ -28,7 +26,6 @@ export class AuthService {
           await this.backend.updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
             type: BackendType.Yucca,
             accessToken,
-            url,
           });
 
           this.telemetry.submitStructuredLog('Connected FUTO Backups backend', {
@@ -63,8 +60,7 @@ export class AuthService {
   }
 
   async oidcDeviceFlow(): Promise<{ userCode: string; verificationUri: string }> {
-    const overrideEndpoint = this.moduleConfig.get().yuccaProductionApi;
-    const endpoint = overrideEndpoint ?? (await yuccaWellKnown.getBaseUrl());
+    const endpoint = await yuccaWellKnown.getBaseUrl();
 
     const events: EventSourceClient = createEventSource({
       url: new URL('/api/auth/oidc/device', endpoint),
@@ -77,7 +73,7 @@ export class AuthService {
       clearTimeout(connectTimeout);
       const { userCode, verificationUri } = JSON.parse(data);
 
-      void this.waitForDeviceFlow(events, overrideEndpoint).catch((error) => {
+      void this.waitForDeviceFlow(events).catch((error) => {
         this.telemetry.submitStructuredLog('Device flow authentication errored', { error });
         this.events.publish({ type: 'DeviceFlowFailure' });
       });
