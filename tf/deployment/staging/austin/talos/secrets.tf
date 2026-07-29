@@ -149,6 +149,15 @@ resource "kubernetes_namespace_v1" "netbird" {
 
 # ─── App Secrets (namespace: yucca) ─────────────────────────────────────
 
+# Shared secret authenticating michael's token-introspection calls against
+# yucca-api (GET /internal/restic-tokens/:jti). Generated in-state — rotation is
+# harmless (michael briefly degrades to its grace window), so no 1P record.
+resource "random_password" "token_introspection" {
+  count   = local.provision_secrets ? 1 : 0
+  length  = 48
+  special = false
+}
+
 # yucca-api: signs JWTs with the generated private key + its OIDC client creds.
 resource "kubernetes_secret_v1" "yucca_api" {
   count = local.provision_secrets ? 1 : 0
@@ -157,10 +166,11 @@ resource "kubernetes_secret_v1" "yucca_api" {
     namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
   }
   data = {
-    JWT_PRIVATE_KEY       = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
-    OIDC_CLIENT_ID        = var.yucca_oidc_client_id
-    OIDC_CLIENT_SECRET    = var.yucca_oidc_client_secret
-    OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_device_client_id
+    JWT_PRIVATE_KEY            = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
+    OIDC_CLIENT_ID             = var.yucca_oidc_client_id
+    OIDC_CLIENT_SECRET         = var.yucca_oidc_client_secret
+    OIDC_DEVICE_CLIENT_ID      = var.yucca_oidc_device_client_id
+    TOKEN_INTROSPECTION_SECRET = random_password.token_introspection[0].result
   }
 }
 
@@ -198,9 +208,10 @@ resource "kubernetes_secret_v1" "yucca_michael" {
     namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
   }
   data = {
-    JWT_PUBLIC_KEY       = tls_private_key.yucca_jwt[0].public_key_pem
-    S3_ACCESS_KEY_ID     = var.yucca_rgw_access_key_id
-    S3_SECRET_ACCESS_KEY = var.yucca_rgw_secret_access_key
+    JWT_PUBLIC_KEY             = tls_private_key.yucca_jwt[0].public_key_pem
+    S3_ACCESS_KEY_ID           = var.yucca_rgw_access_key_id
+    S3_SECRET_ACCESS_KEY       = var.yucca_rgw_secret_access_key
+    TOKEN_INTROSPECTION_SECRET = random_password.token_introspection[0].result
   }
 }
 

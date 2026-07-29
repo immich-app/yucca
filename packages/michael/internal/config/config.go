@@ -47,15 +47,26 @@ type Config struct {
 	LogLevel            zerolog.Level
 	LogPretty           bool
 
-	// Restic-token validity checking. Empty RedisAddr disables it (e.g.
-	// secondary regions, which have no local validity-marker population path).
-	RedisAddr          string
-	RedisTimeout       time.Duration
+	// Restic-token validity checking. The source of truth is yucca-api's
+	// internal introspection endpoint; empty TokenIntrospectionURL disables
+	// checking entirely (e.g. secondary regions, which have no local yucca-api).
+	TokenIntrospectionURL     string
+	TokenIntrospectionSecret  string
+	TokenIntrospectionTimeout time.Duration
+	// Optional shared L2 verdict cache (generic platform valkey). Empty
+	// RedisAddr = per-process caching only.
+	RedisAddr       string
+	RedisTimeout    time.Duration
+	VerdictCacheTTL time.Duration
+	// Per-process cache horizons: fresh = serve without lookup (revocation
+	// latency bound), grace = keep honoring previously-valid tokens while the
+	// backends are unreachable, then fail closed.
 	RevocationFreshTTL time.Duration
 	RevocationGraceTTL time.Duration
 	// Connection types whose tokens are validity-checked. Non-revocable types
-	// (e.g. immich, which has no validity marker) are skipped so an absent marker
-	// never wrongly denies them. Mirrors @common/server ConnectionTypeInfos.revocable.
+	// (e.g. immich, which has no introspection state worth consulting) are
+	// skipped so an unknown jti never wrongly denies them. Mirrors
+	// @common/server ConnectionTypeInfos.revocable.
 	RevocableConnectionTypes map[string]bool
 }
 
@@ -192,77 +203,69 @@ func LoadConfig() Config {
 		}
 	}
 
+	introspectionURL := os.Getenv("TOKEN_INTROSPECTION_URL")
+	introspectionSecret := os.Getenv("TOKEN_INTROSPECTION_SECRET")
+	if introspectionURL != "" && introspectionSecret == "" {
+		log.Fatal().Msg("TOKEN_INTROSPECTION_SECRET is required when TOKEN_INTROSPECTION_URL is set")
+	}
+	introspectionTimeout := durationEnvMS("TOKEN_INTROSPECTION_TIMEOUT_MS", 2000*time.Millisecond)
+
 	redisAddr := os.Getenv("REDIS_ADDR")
-	redisTimeout := 50 * time.Millisecond
-	if v := os.Getenv("REDIS_TIMEOUT_MS"); v != "" {
-		ms, err := strconv.Atoi(v)
-		if err != nil || ms < 1 {
-			log.Fatal().Msg("REDIS_TIMEOUT_MS must be a positive number")
-		}
-		redisTimeout = time.Duration(ms) * time.Millisecond
-	}
-	// Fresh: how long a confirmed decision is served without touching Redis, so
-	// a revoke takes effect within this window. Grace: how long a previously-valid
-	// jti keeps working while Redis is unreachable, before michael fails closed.
-	revocationFreshTTL := 60 * time.Second
-	if v := os.Getenv("REVOCATION_FRESH_TTL_MS"); v != "" {
-		ms, err := strconv.Atoi(v)
-		if err != nil || ms < 1 {
-			log.Fatal().Msg("REVOCATION_FRESH_TTL_MS must be a positive number")
-		}
-		revocationFreshTTL = time.Duration(ms) * time.Millisecond
-	}
-	revocationGraceTTL := 300 * time.Second
-	if v := os.Getenv("REVOCATION_GRACE_MS"); v != "" {
-		ms, err := strconv.Atoi(v)
-		if err != nil || ms < 1 {
-			log.Fatal().Msg("REVOCATION_GRACE_MS must be a positive number")
-		}
-		revocationGraceTTL = time.Duration(ms) * time.Millisecond
-	}
+	redisTimeout := durationEnvMS("REDIS_TIMEOUT_MS", 50*time.Millisecond)
+	verdictCacheTTL := durationEnvMS("VERDICT_CACHE_TTL_MS", 5*time.Minute)
+
+	// Fresh: how long a confirmed verdict is served without any lookup — the
+	// revocation-latency bound. Grace: how long a previously-valid jti keeps
+	// working while the backends are unreachable, before michael fails closed.
+	revocationFreshTTL := durationEnvMS("REVOCATION_FRESH_TTL_MS", 60*time.Second)
+	revocationGraceTTL := durationEnvMS("REVOCATION_GRACE_MS", 30*time.Minute)
 	if revocationGraceTTL < revocationFreshTTL {
 		log.Fatal().Msg("REVOCATION_GRACE_MS must be >= REVOCATION_FRESH_TTL_MS")
 	}
 	revocableTypes := parseCSVSet(envOr("REVOCABLE_CONNECTION_TYPES", "restic"))
-	if redisAddr != "" && len(revocableTypes) == 0 {
+	if introspectionURL != "" && len(revocableTypes) == 0 {
 		// An empty set would silently skip every validity check while logging
 		// "checking enabled" — a misconfiguration, not a supported mode. To
-		// disable checking, unset REDIS_ADDR instead.
-		log.Fatal().Msg("REVOCABLE_CONNECTION_TYPES must not be empty when REDIS_ADDR is set")
+		// disable checking, unset TOKEN_INTROSPECTION_URL instead.
+		log.Fatal().Msg("REVOCABLE_CONNECTION_TYPES must not be empty when TOKEN_INTROSPECTION_URL is set")
 	}
 
 	return Config{
-		Port:                     port,
-		JWTPublicKey:             jwtPublicKey,
-		S3AccessKeyID:            s3AccessKeyID,
-		S3SecretAccessKey:        s3SecretAccessKey,
-		S3Region:                 s3Region,
-		S3Endpoint:               s3Endpoint,
-		S3ForcePathStyle:         s3ForcePathStyle,
-		S3BackendSource:          backendSource,
-		S3BackendFile:            backendFile,
-		S3BackendDNSHost:         backendDNSHost,
-		S3BackendScheme:          backendScheme,
-		S3BackendPort:            backendPort,
-		S3BackendPinHost:         backendPinHost,
-		S3TLSSkipVerify:          tlsSkipVerify,
-		S3ProbeBucket:            probeBucket,
-		S3EjectThreshold:         ejectThreshold,
-		S3ReconcileInterval:      reconcileInterval,
-		OTLPMetricsEndpoint:      otlpEndpoint,
-		OTLPMetricsURLPath:       otlpURLPath,
-		OTLPMetricsInterval:      otlpInterval,
-		OTLPEnabled:              otlpEndpoint != "",
-		OTLPLogsEndpoint:         otlpLogsEndpoint,
-		OTLPLogsURLPath:          otlpLogsURLPath,
-		OTLPLogsEnabled:          otlpLogsEndpoint != "",
-		LogLevel:                 logLevel,
-		LogPretty:                logPretty,
-		RedisAddr:                redisAddr,
-		RedisTimeout:             redisTimeout,
-		RevocationFreshTTL:       revocationFreshTTL,
-		RevocationGraceTTL:       revocationGraceTTL,
-		RevocableConnectionTypes: revocableTypes,
+		Port:                      port,
+		JWTPublicKey:              jwtPublicKey,
+		S3AccessKeyID:             s3AccessKeyID,
+		S3SecretAccessKey:         s3SecretAccessKey,
+		S3Region:                  s3Region,
+		S3Endpoint:                s3Endpoint,
+		S3ForcePathStyle:          s3ForcePathStyle,
+		S3BackendSource:           backendSource,
+		S3BackendFile:             backendFile,
+		S3BackendDNSHost:          backendDNSHost,
+		S3BackendScheme:           backendScheme,
+		S3BackendPort:             backendPort,
+		S3BackendPinHost:          backendPinHost,
+		S3TLSSkipVerify:           tlsSkipVerify,
+		S3ProbeBucket:             probeBucket,
+		S3EjectThreshold:          ejectThreshold,
+		S3ReconcileInterval:       reconcileInterval,
+		OTLPMetricsEndpoint:       otlpEndpoint,
+		OTLPMetricsURLPath:        otlpURLPath,
+		OTLPMetricsInterval:       otlpInterval,
+		OTLPEnabled:               otlpEndpoint != "",
+		OTLPLogsEndpoint:          otlpLogsEndpoint,
+		OTLPLogsURLPath:           otlpLogsURLPath,
+		OTLPLogsEnabled:           otlpLogsEndpoint != "",
+		LogLevel:                  logLevel,
+		LogPretty:                 logPretty,
+		TokenIntrospectionURL:     introspectionURL,
+		TokenIntrospectionSecret:  introspectionSecret,
+		TokenIntrospectionTimeout: introspectionTimeout,
+		RedisAddr:                 redisAddr,
+		RedisTimeout:              redisTimeout,
+		VerdictCacheTTL:           verdictCacheTTL,
+		RevocationFreshTTL:        revocationFreshTTL,
+		RevocationGraceTTL:        revocationGraceTTL,
+		RevocableConnectionTypes:  revocableTypes,
 	}
 }
 
@@ -271,6 +274,19 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// durationEnvMS reads a positive integer-millisecond env var with a default.
+func durationEnvMS(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	ms, err := strconv.Atoi(v)
+	if err != nil || ms < 1 {
+		log.Fatal().Str("key", key).Msg("must be a positive number of milliseconds")
+	}
+	return time.Duration(ms) * time.Millisecond
 }
 
 // parseCSVSet turns "restic, s3" into {"restic":true,"s3":true}, trimming blanks.

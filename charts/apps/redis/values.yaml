@@ -1,7 +1,8 @@
-# Single replica, deliberately ephemeral: the only data is revoked restic-token
-# jtis, and the metrics-worker reconcile re-seeds them within one 5-minute tick
-# after any restart. michael fails open, so redis being down degrades to
-# "revocations delayed", never to "backups broken". No persistence, no PDB.
+# Shared platform valkey — a generic ephemeral cache (keys namespaced
+# yucca:<service>:<purpose>:*; every tenant must tolerate a flush). First
+# tenant: michael's restic-token verdict cache, where a restart or outage is a
+# harmless cache miss (michael falls through to yucca-api introspection).
+# Single replica, no persistence, no PDB — by design.
 replicas: 1
 
 resources:

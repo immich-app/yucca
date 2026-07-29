@@ -12,6 +12,16 @@ export class ResticTokenRepository {
     return this.db.insertInto('resticTokens').values(token).returningAll().executeTakeFirstOrThrow();
   }
 
+  getActiveByUser(userId: string) {
+    return this.db
+      .selectFrom('resticTokens')
+      .select(['jti'])
+      .where('userId', '=', userId)
+      .where('revokedAt', 'is', null)
+      .where('expiresAt', '>', new Date())
+      .execute();
+  }
+
   get(jti: string) {
     return this.db
       .selectFrom('resticTokens')

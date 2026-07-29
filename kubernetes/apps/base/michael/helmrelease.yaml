@@ -40,7 +40,12 @@ spec:
     env:
       - name: RESTIC_API_PORT
         value: "3010"
-      # Empty on secondaries (no local marker store) — disables validity checking.
+      # Empty on secondaries (no local yucca-api) — disables validity checking.
+      # The shared secret rides the TF-provisioned yucca-michael Secret.
+      - name: TOKEN_INTROSPECTION_URL
+        value: ${TOKEN_INTROSPECTION_URL:=}
+      # Shared platform valkey — michael's L2 token-verdict cache (optional;
+      # empty on secondaries, which run no valkey).
       - name: REDIS_ADDR
         value: ${REDIS_ADDR:=}
       - name: LOG_LEVEL

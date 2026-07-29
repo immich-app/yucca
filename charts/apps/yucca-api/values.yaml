@@ -38,6 +38,9 @@ oidcLogoutRedirectUri: http://localhost:5173
 secretData:
   OIDC_CLIENT_ID: "client ID"
   OIDC_CLIENT_SECRET: "client secret"
+  # Shared secret for michael's token-introspection calls (dev fixture; prod
+  # gets a generated value via the TF-provisioned yucca-api Secret).
+  TOKEN_INTROSPECTION_SECRET: dev-introspection-secret
 
 # OPT-IN dev signing key. The project's well-known local-dev ES256 keypair
 # (the same one committed in .mise/tasks/*/env; michael verifies with the

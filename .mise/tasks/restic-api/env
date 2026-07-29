@@ -19,3 +19,9 @@ export S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-miniominio}
 export S3_REGION=${S3_REGION:-minio}
 export S3_ENDPOINT=${S3_ENDPOINT:-http://localhost:9000}
 export S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-true}
+
+# Restic-token validity checking (compose dev): introspect against the local
+# yucca-api; shared platform valkey as the L2 verdict cache.
+export TOKEN_INTROSPECTION_URL=${TOKEN_INTROSPECTION_URL:-http://localhost:3020/api/internal/restic-tokens}
+export TOKEN_INTROSPECTION_SECRET=${TOKEN_INTROSPECTION_SECRET:-dev-introspection-secret}
+export REDIS_ADDR=${REDIS_ADDR:-localhost:6379}

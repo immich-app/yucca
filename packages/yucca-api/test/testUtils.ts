@@ -77,6 +77,14 @@ export const testUtils = {
     };
   },
 
+  expireResticToken: async (jti: string) => {
+    await getDb()
+      .updateTable('resticTokens')
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where('jti', '=', jti)
+      .execute();
+  },
+
   getResticToken: (jti: string) => {
     return getDb().selectFrom('resticTokens').selectAll().where('jti', '=', jti).executeTakeFirst();
   },

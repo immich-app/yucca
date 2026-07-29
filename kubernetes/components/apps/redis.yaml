@@ -6,9 +6,11 @@ metadata:
   name: redis
   namespace: flux-system
 spec:
-  # Restic-token validity marker store (valkey). Primary-role only: secondaries
-  # have no local marker population path (no DB, no reconcile), so michael
-  # there runs with REDIS_ADDR unset (validity checking disabled).
+  # Shared platform valkey — generic ephemeral cache, deliberately without
+  # persistence (tenants must tolerate a flush). Current tenants: michael's
+  # token verdict cache (+ the apis' revoke-time invalidation); future michael
+  # rate limiting. Keys namespaced yucca:<service>:<purpose>:*. Primary-role
+  # only until a secondary-region consumer shows up.
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

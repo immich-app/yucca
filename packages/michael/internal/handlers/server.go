@@ -24,9 +24,10 @@ type Server struct {
 	Storage      storage.Storage
 	JWTPublicKey *ecdsa.PublicKey
 	Metrics      *metrics.Metrics
-	// Optional restic-token validity checks (nil = disabled). A present Redis
-	// marker means valid; an absent one means revoked/unknown → denied. A Redis
-	// outage honors previously-valid tokens for a bounded grace window, then denies.
+	// Optional restic-token validity checks (nil = disabled). Layered: a
+	// per-process cache, an optional shared Redis verdict cache, and yucca-api's
+	// introspection endpoint (postgres = truth). A backend outage honors
+	// previously-valid tokens for a bounded grace window, then denies.
 	Validator revocation.Validator
 	// Connection types whose tokens are validity-checked (the `connection` JWT
 	// claim). A token whose type is absent from this set is skipped — non-revocable

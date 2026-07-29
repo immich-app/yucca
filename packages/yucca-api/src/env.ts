@@ -59,7 +59,12 @@ const schema = z.object({
     .default('365d')
     .transform((value): StringValue => value as StringValue),
 
-  // Restic-token validity marker writes; unset disables them (loud warn at startup).
+  // Shared secret for michael's token-introspection calls
+  // (GET /internal/restic-tokens/:jti). Unset disables the endpoint (501).
+  TOKEN_INTROSPECTION_SECRET: z.string().optional(),
+
+  // Verdict-cache invalidation pushes on revoke; unset degrades propagation to
+  // the cache TTL (loud warn at startup).
   REDIS_URL: z.string().optional(),
 });
 

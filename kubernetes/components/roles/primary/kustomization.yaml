@@ -18,6 +18,6 @@ resources:
   - ../../apps/web.yaml
   - ../../apps/michael.yaml
   - ../../apps/yucca-metrics-worker.yaml
-  # Validity marker store (valkey). Primary-only: secondaries have no local
-  # population path — their michael runs with validity checking disabled.
+  # Shared platform valkey (generic ephemeral cache; michael's token verdict
+  # cache is the first tenant). Primary-only until a secondary consumer exists.
   - ../../apps/redis.yaml

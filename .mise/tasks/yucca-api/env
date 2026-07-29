@@ -30,3 +30,4 @@ export OIDC_DEVICE_CLIENT_ID=${OIDC_DEVICE_CLIENT_ID:-device client ID}
 export RESTIC_ENDPOINT=${RESTIC_ENDPOINT:-http://localhost:3010}
 
 export REDIS_URL=${REDIS_URL:-redis://localhost:6379}
+export TOKEN_INTROSPECTION_SECRET=${TOKEN_INTROSPECTION_SECRET:-dev-introspection-secret}

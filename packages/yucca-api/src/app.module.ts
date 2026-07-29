@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
 import { ConnectionController } from './controllers/connection.controller';
+import { IntrospectionController } from './controllers/introspection.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { ResticTokenController } from './controllers/resticToken.controller';
@@ -27,6 +28,7 @@ import { UserAllowlistRepository } from './repositories/userAllowlist.repository
 import { AuthService } from './services/auth.service';
 import { ConnectionService } from './services/connection.service';
 import { DatabaseService } from './services/database.service';
+import { IntrospectionService } from './services/introspection.service';
 import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
 import { ResticTokenService } from './services/resticToken.service';
@@ -44,6 +46,7 @@ export const imports = [
 export const controllers = [
   AuthController,
   ConnectionController,
+  IntrospectionController,
   MetricsController,
   RepositoryController,
   ResticTokenController,
@@ -67,6 +70,7 @@ export const providers = [
   RevocationRepository,
   SessionRepository,
   ConnectionService,
+  IntrospectionService,
   DatabaseService,
   MetricsService,
   RepositoryService,

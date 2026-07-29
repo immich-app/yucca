@@ -13,7 +13,7 @@ import { testUtils } from './testUtils';
 const decodeClaims = (jwt: string): Record<string, unknown> =>
   JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
 
-const validKey = (jti: string) => `yucca:restic:valid:${jti}`;
+const verdictKey = (jti: string) => `yucca:michael:verdict:${jti}`;
 
 describe('Self-serve restic (e2e)', () => {
   let app: INestApplication<App>;
@@ -81,11 +81,6 @@ describe('Self-serve restic (e2e)', () => {
       expect(days).toBeGreaterThan(29.9);
       expect(days).toBeLessThan(30.1);
 
-      // restic is revocable → a validity marker exists for michael.
-      if (redis) {
-        expect(await redis.exists(validKey(body.jti))).toBe(1);
-      }
-
       // Re-running reuses the same restic connection (idempotent on the connection).
       const { body: second } = await request(app.getHttpServer())
         .post('/api/connections/restic')
@@ -145,7 +140,12 @@ describe('Self-serve restic (e2e)', () => {
         expect.objectContaining({ jti: created.jti, label: 'first', mintedBy: 'user', revokedAt: null }),
       ]);
 
-      // Revoke, then the DB row is revoked and the Redis marker is gone.
+      // Simulate michael having cached a verdict for this token; the revoke
+      // must invalidate it so the next check falls through to introspection.
+      if (redis) {
+        await redis.set(verdictKey(created.jti), '1', 'EX', 300);
+      }
+
       await request(app.getHttpServer())
         .delete(`/api/restic-tokens/${created.jti}`)
         .set('Cookie', cookie())
@@ -155,10 +155,45 @@ describe('Self-serve restic (e2e)', () => {
       expect(row!.revokedAt).not.toBeNull();
       expect(row!.revokedBy).toBe(`user:${user.id}`);
       if (redis) {
-        expect(await redis.exists(validKey(created.jti))).toBe(0);
+        expect(await redis.exists(verdictKey(created.jti))).toBe(0);
       }
 
       // Idempotent-ish: revoking again still 204s (already revoked).
+      await request(app.getHttpServer())
+        .delete(`/api/restic-tokens/${created.jti}`)
+        .set('Cookie', cookie())
+        .expect(204);
+    });
+
+    it('deleting a repository invalidates its cached verdicts', async () => {
+      const created = await createRestic();
+      if (redis) {
+        await redis.set(verdictKey(created.jti), '1', 'EX', 300);
+      }
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${created.repository.id}`)
+        .set('Cookie', cookie())
+        .expect(200);
+
+      if (redis) {
+        expect(await redis.exists(verdictKey(created.jti))).toBe(0);
+      }
+    });
+
+    it('a false override is a kill-switch for new credentials (mint 403s, revoke still works)', async () => {
+      const created = await createRestic();
+
+      // Flag revoked after the connection/repo exist.
+      await testUtils.setFeatureOverride(user.id, 'connection-restic', false);
+
+      await request(app.getHttpServer())
+        .post(`/api/repository/${created.repository.id}/restic`)
+        .set('Cookie', cookie())
+        .send({})
+        .expect(403);
+
+      // Revocation is never gated.
       await request(app.getHttpServer())
         .delete(`/api/restic-tokens/${created.jti}`)
         .set('Cookie', cookie())
@@ -169,14 +204,19 @@ describe('Self-serve restic (e2e)', () => {
       const created = await createRestic();
       const other = await testUtils.createUser('other', 'other@example.com', 'other-sub');
 
+      if (redis) {
+        await redis.set(verdictKey(created.jti), '1', 'EX', 300);
+      }
+
       await request(app.getHttpServer())
         .delete(`/api/restic-tokens/${created.jti}`)
         .set('Cookie', `yucca-access-token=${other.session.accessToken}`)
         .expect(404);
 
-      // Still valid for the owner.
+      // The failed revoke must not have invalidated the owner's cached verdict.
       if (redis) {
-        expect(await redis.exists(validKey(created.jti))).toBe(1);
+        expect(await redis.exists(verdictKey(created.jti))).toBe(1);
+        await redis.del(verdictKey(created.jti));
       }
     });
   });

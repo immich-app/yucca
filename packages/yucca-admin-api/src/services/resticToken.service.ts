@@ -24,9 +24,9 @@ export class ResticTokenService {
     });
   }
 
-  // DB first, then Redis: a Redis failure surfaces (the admin must know the
-  // revoke has not propagated to michael yet). The metrics-worker reconcile
-  // sweeps stale markers for revoked tokens, so a failed DEL heals within a tick.
+  // DB first (the source of truth), then a best-effort invalidation of
+  // michael's shared verdict cache. A missed DEL self-heals when the cached
+  // verdict's short TTL lapses.
   async revoke(auth: AuthDto, jti: string): Promise<void> {
     const existing = await this.resticTokens.get(jti);
     if (!existing) {
@@ -36,11 +36,11 @@ export class ResticTokenService {
     const revoked = await this.resticTokens.revoke(jti, auth.sub);
     if (!revoked) {
       // Already revoked — idempotent, but still make sure Redis agrees.
-      await this.revocation.markInvalid(jti);
+      await this.revocation.invalidateVerdict(jti);
       return;
     }
 
     this.logger.info(`Revoked restic token ${jti} (minted ${existing.mintedBy}, by ${auth.sub})`);
-    await this.revocation.markInvalid(jti);
+    await this.revocation.invalidateVerdict(jti);
   }
 }

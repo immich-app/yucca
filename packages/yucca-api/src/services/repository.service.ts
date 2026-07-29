@@ -1,4 +1,4 @@
-import { isRevocableConnectionType } from '@common/server';
+import { connectionTypeFlag, isRevocableConnectionType } from '@common/server';
 import { WideContextRepository } from '@common/server/otel';
 import { BadRequestException, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -12,6 +12,7 @@ import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { ResticApiRepository } from 'src/repositories/resticApi.repository';
 import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
 import { RevocationRepository } from 'src/repositories/revocation.repository';
+import { FeatureNotEnabledException } from 'src/utils/exceptions';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RepositoryService {
@@ -26,27 +27,42 @@ export class RepositoryService {
     private readonly revocation: RevocationRepository,
   ) {}
 
+  // Self-service credential creation under a flagged connection type (restic)
+  // requires the flag: a false override is a kill-switch for NEW repositories
+  // and tokens. Deliberately NOT enforced on revoke/list — a kill-switch must
+  // never prevent revoking existing credentials.
+  private requireTypeFlag(auth: AuthDto, connectionType: string) {
+    const flag = connectionTypeFlag(connectionType);
+    if (flag && !auth.features[flag]) {
+      throw new FeatureNotEnabledException(flag);
+    }
+  }
+
   async create(auth: AuthDto, dto: RepositoryCreateRequestDto) {
     const { connectionId: requestedConnectionId, ...values } = dto;
 
     // An explicit connectionId must be one the caller owns; otherwise sessions
     // bound to a connection (device-flow logins) own their repos, and web /
     // pre-connection sessions fall back to the default connection.
-    let connectionId: string;
+    let connection: { id: string; type: string };
     if (requestedConnectionId) {
-      const connection = await this.connection.getById(requestedConnectionId);
-      if (!connection || connection.userId !== auth.id) {
+      const owned = await this.connection.getById(requestedConnectionId);
+      if (!owned || owned.userId !== auth.id) {
         throw new UnauthorizedException();
       }
-      connectionId = connection.id;
+      connection = owned;
     } else if (auth.connectionId) {
-      connectionId = auth.connectionId;
+      const bound = await this.connection.getById(auth.connectionId);
+      if (!bound) {
+        throw new UnauthorizedException();
+      }
+      connection = bound;
     } else {
-      const defaultConnection = await this.connection.getOrCreateDefault(auth.id);
-      connectionId = defaultConnection.id;
+      connection = await this.connection.getOrCreateDefault(auth.id);
     }
+    this.requireTypeFlag(auth, connection.type);
 
-    return this.repositoryRepository.create({ userId: auth.id, connectionId, ...values });
+    return this.repositoryRepository.create({ userId: auth.id, connectionId: connection.id, ...values });
   }
 
   async get(auth: AuthDto, id: string) {
@@ -79,6 +95,7 @@ export class RepositoryService {
   // reject a custom expiresIn outright. `label` is a human tag for the token list.
   async createUrl(auth: AuthDto, id: string, opts: ResticUrlRequestDto = {}) {
     const repository = await this.get(auth, id);
+    this.requireTypeFlag(auth, repository.connectionType);
 
     const revocable = isRevocableConnectionType(repository.connectionType);
     if (!revocable && opts.expiresIn) {
@@ -113,12 +130,6 @@ export class RepositoryService {
       label: opts.label ?? null,
       expiresAt,
     });
-
-    // Only revocable connection types (restic) carry a Redis validity marker;
-    // michael skips the check for the rest, so writing one would be dead weight.
-    if (revocable) {
-      await this.revocation.markValid(jti, expiresAt);
-    }
 
     this.wideContext.addContext('repositoryId', repository.id);
 
@@ -163,6 +174,13 @@ export class RepositoryService {
       throw new BadRequestException('Refusing to delete write-only repository');
     }
 
+    // The FK cascade removes the token rows (introspection then answers
+    // inactive), but michael's shared verdict cache would keep honoring them
+    // for its TTL — invalidate, exactly like the revoke path.
+    const active = await this.resticTokens.getActiveByRepository(id);
     await this.repositoryRepository.delete(id);
+    for (const token of active) {
+      await this.revocation.invalidateVerdict(token.jti);
+    }
   }
 }

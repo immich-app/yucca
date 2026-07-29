@@ -1,21 +1,34 @@
-// Package revocation front-runs a positive Redis "validity" marker
-// (yucca:restic:valid:<jti>) written on mint and cleared on revoke. michael
-// treats a present marker as valid and an absent marker as invalid (revoked or
-// never-issued) — the inverse of a denylist, which is what makes it safe for
-// long-lived tokens: a lost marker denies rather than silently permits.
+// Package revocation decides whether a restic token jti may currently be used.
 //
-// Redis lookups sit on the hot path, so decisions are cached in memory with two
-// horizons. Within the short *fresh* TTL a jti is served straight from cache. If
-// Redis is unreachable on a miss, a previously-valid jti is still honored until
-// its longer *grace* TTL elapses — bounded grace, then deny. A jti that was
-// never confirmed valid (revoked, unknown, or first-seen during an outage) is
-// denied immediately. The caller maps the decision to allow/deny.
+// The source of truth is postgres (resticTokens), fronted by yucca-api's
+// internal introspection endpoint. michael layers two caches over it:
+//
+//	L1: per-process two-horizon cache — a confirmed verdict is served without
+//	    any lookup for the *fresh* TTL, and a previously-valid jti is honored
+//	    for the longer *grace* TTL when every backend is unreachable
+//	    (bounded grace, then deny).
+//	L2: optional shared Redis verdict cache (yucca:michael:verdict:<jti>,
+//	    short TTL) — read-through on L1 miss, written back after
+//	    introspection. The APIs best-effort DEL the key on revoke, so a
+//	    revocation propagates to every replica within ~the L1 fresh TTL; a
+//	    missed DEL self-heals when the entry's TTL lapses. Redis is pure
+//	    cache: any miss or error falls through to introspection.
+//
+// A jti never confirmed valid (revoked, unknown, or first seen during an
+// outage) is denied immediately — absence of proof is denial, never approval.
 package revocation
 
 import (
 	"container/list"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -27,15 +40,15 @@ import (
 type Decision int
 
 const (
-	// DecisionInvalid — the marker was confirmed absent: revoked or never issued.
+	// DecisionInvalid — confirmed not active: revoked, expired, or never issued.
 	DecisionInvalid Decision = iota
-	// DecisionValid — the marker was confirmed present (fresh cache or Redis).
+	// DecisionValid — confirmed active (L1 fresh, L2, or introspection).
 	DecisionValid
-	// DecisionGrace — Redis is unreachable, but a previously-valid jti is still
+	// DecisionGrace — backends unreachable, but a previously-valid jti is still
 	// inside its grace window. Allowed, degraded.
 	DecisionGrace
-	// DecisionUnavailable — Redis is unreachable and no valid grace entry exists.
-	// Denied (fail closed, bounded).
+	// DecisionUnavailable — backends unreachable and no valid grace entry
+	// exists. Denied (fail closed, bounded).
 	DecisionUnavailable
 )
 
@@ -44,25 +57,72 @@ type Validator interface {
 	Check(ctx context.Context, jti string) (Decision, error)
 }
 
+// Introspector answers the authoritative question: is this jti active?
+type Introspector interface {
+	Active(ctx context.Context, jti string) (bool, error)
+}
+
 const cacheSize = 8192
 
-func keyFor(jti string) string {
-	return "yucca:restic:valid:" + jti
+// HTTPIntrospector calls yucca-api's internal introspection endpoint
+// (GET {base}/{jti} with a shared-secret header).
+type HTTPIntrospector struct {
+	base   string
+	secret string
+	client *http.Client
 }
 
-type RedisValidator struct {
-	client   *redis.Client
-	timeout  time.Duration
-	freshTTL time.Duration
-	graceTTL time.Duration
-	cache    *resultCache
+func NewHTTPIntrospector(base, secret string, timeout time.Duration) *HTTPIntrospector {
+	return &HTTPIntrospector{
+		base:   strings.TrimRight(base, "/"),
+		secret: secret,
+		client: &http.Client{Timeout: timeout},
+	}
 }
 
-// NewRedisValidator builds a validator. freshTTL is how long a confirmed
-// decision is served without touching Redis; graceTTL (≥ freshTTL) is how long a
-// previously-valid jti keeps being honored while Redis is unreachable.
-func NewRedisValidator(addr string, timeout, freshTTL, graceTTL time.Duration) *RedisValidator {
-	return &RedisValidator{
+func (h *HTTPIntrospector) Active(ctx context.Context, jti string) (bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.base+"/"+url.PathEscape(jti), nil)
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("X-Introspection-Secret", h.secret)
+
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		// Auth/config errors and 5xx alike: no verdict — the caller degrades to
+		// grace semantics rather than treating this as revoked.
+		return false, fmt.Errorf("introspection returned status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Active bool `json:"active"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&body); err != nil {
+		return false, fmt.Errorf("introspection response: %w", err)
+	}
+	return body.Active, nil
+}
+
+func verdictKey(jti string) string {
+	return "yucca:michael:verdict:" + jti
+}
+
+// RedisVerdictCache is the optional shared L2: cached verdicts with a short
+// TTL, DELed by the APIs on revoke. Strictly a cache — errors and misses both
+// mean "ask the source".
+type RedisVerdictCache struct {
+	client  *redis.Client
+	timeout time.Duration
+	ttl     time.Duration
+}
+
+func NewRedisVerdictCache(addr string, timeout, ttl time.Duration) *RedisVerdictCache {
+	return &RedisVerdictCache{
 		client: redis.NewClient(&redis.Options{
 			Addr:         addr,
 			DialTimeout:  timeout,
@@ -70,45 +130,150 @@ func NewRedisValidator(addr string, timeout, freshTTL, graceTTL time.Duration) *
 			WriteTimeout: timeout,
 			MaxRetries:   1,
 		}),
-		timeout:  timeout,
-		freshTTL: freshTTL,
-		graceTTL: graceTTL,
-		cache:    newResultCache(cacheSize),
+		timeout: timeout,
+		ttl:     ttl,
 	}
 }
 
-func (r *RedisValidator) Check(ctx context.Context, jti string) (Decision, error) {
-	now := time.Now()
-	if valid, ok := r.cache.getFresh(jti, now); ok {
-		if valid {
-			return DecisionValid, nil
-		}
-		return DecisionInvalid, nil
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, r.timeout)
+// get returns (active, found, age, error) where age is how long ago the entry
+// was written (derived from its remaining TTL) — the time since the last
+// AUTHORITATIVE confirmation, which the caller uses to anchor its grace
+// horizon. redis.Nil is a miss, not an error.
+func (c *RedisVerdictCache) get(ctx context.Context, jti string) (bool, bool, time.Duration, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
-	n, err := r.client.Exists(ctx, keyFor(jti)).Result()
+	pipe := c.client.Pipeline()
+	getCmd := pipe.Get(ctx, verdictKey(jti))
+	ttlCmd := pipe.PTTL(ctx, verdictKey(jti))
+	if _, err := pipe.Exec(ctx); err != nil && err != redis.Nil {
+		return false, false, 0, err
+	}
+
+	v, err := getCmd.Result()
+	if err == redis.Nil {
+		return false, false, 0, nil
+	}
 	if err != nil {
-		// Redis unreachable: honor a previously-valid jti within grace, else deny.
-		// The error is NOT cached, so the next request retries Redis.
-		if r.cache.graceValid(jti, now) {
+		return false, false, 0, err
+	}
+
+	age := time.Duration(0)
+	if remaining, err := ttlCmd.Result(); err == nil && remaining > 0 && remaining < c.ttl {
+		age = c.ttl - remaining
+	}
+	return v == "1", true, age, nil
+}
+
+// set is best-effort: a failed write only costs a future cache miss.
+func (c *RedisVerdictCache) set(ctx context.Context, jti string, active bool) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	v := "0"
+	if active {
+		v = "1"
+	}
+	_ = c.client.Set(ctx, verdictKey(jti), v, c.ttl).Err()
+}
+
+func (c *RedisVerdictCache) Close() error {
+	return c.client.Close()
+}
+
+// defaultSourceBackoff is how long the validator waits after a failed
+// introspection call before dialing the source again. Requests inside the
+// window resolve straight from grace semantics instead of stacking up behind
+// the introspection timeout — an outage must not turn restic's request
+// concurrency into a control-plane storm.
+const defaultSourceBackoff = 5 * time.Second
+
+// LayeredValidator is L1 → L2 → introspection with bounded-grace-then-deny.
+type LayeredValidator struct {
+	source        Introspector
+	l2            *RedisVerdictCache // nil = disabled
+	freshTTL      time.Duration
+	graceTTL      time.Duration
+	cache         *resultCache
+	sourceBackoff time.Duration
+	// Unix nanos of the last source failure (0 = healthy); shared across
+	// requests so one failed dial silences the rest of the backoff window.
+	lastSourceFailure atomic.Int64
+}
+
+// NewLayeredValidator builds the validator. l2 may be nil (no shared cache).
+// freshTTL is how long a confirmed verdict is served without any lookup;
+// graceTTL (≥ freshTTL) is how long a previously-valid jti keeps being honored
+// while both L2 and the introspection source are unreachable.
+func NewLayeredValidator(source Introspector, l2 *RedisVerdictCache, freshTTL, graceTTL time.Duration) *LayeredValidator {
+	return &LayeredValidator{
+		source:        source,
+		l2:            l2,
+		freshTTL:      freshTTL,
+		graceTTL:      graceTTL,
+		cache:         newResultCache(cacheSize),
+		sourceBackoff: defaultSourceBackoff,
+	}
+}
+
+func (v *LayeredValidator) Check(ctx context.Context, jti string) (Decision, error) {
+	now := time.Now()
+	if active, ok := v.cache.getFresh(jti, now); ok {
+		return toDecision(active), nil
+	}
+
+	// L2: a hit is authoritative-enough (short TTL, revoke-DELed). Errors and
+	// misses both fall through to the source. The grace horizon is anchored to
+	// when the entry was WRITTEN (its authoritative confirmation), not to this
+	// cache read — so REVOCATION_GRACE_MS is a true end-to-end bound.
+	if v.l2 != nil {
+		if active, found, age, err := v.l2.get(ctx, jti); err == nil && found {
+			v.cache.put(jti, active, now.Add(v.freshTTL), now.Add(v.graceTTL-age))
+			return toDecision(active), nil
+		}
+	}
+
+	// Inside the post-failure backoff window, don't dial a source we just saw
+	// fail — resolve from grace semantics immediately.
+	if last := v.lastSourceFailure.Load(); last != 0 && now.Sub(time.Unix(0, last)) < v.sourceBackoff {
+		if v.cache.graceValid(jti, now) {
+			return DecisionGrace, fmt.Errorf("introspection in failure backoff")
+		}
+		return DecisionUnavailable, fmt.Errorf("introspection in failure backoff")
+	}
+
+	active, err := v.source.Active(ctx, jti)
+	if err != nil {
+		// Source unreachable: honor a previously-valid jti within grace, else
+		// deny. The verdict is NOT cached, but the failure gates further dials
+		// for the backoff window.
+		v.lastSourceFailure.Store(now.UnixNano())
+		if v.cache.graceValid(jti, now) {
 			return DecisionGrace, err
 		}
 		return DecisionUnavailable, err
 	}
+	v.lastSourceFailure.Store(0)
 
-	valid := n > 0
-	r.cache.put(jti, valid, now.Add(r.freshTTL), now.Add(r.graceTTL))
-	if valid {
-		return DecisionValid, nil
+	v.cache.put(jti, active, now.Add(v.freshTTL), now.Add(v.graceTTL))
+	if v.l2 != nil {
+		v.l2.set(ctx, jti, active)
 	}
-	return DecisionInvalid, nil
+	return toDecision(active), nil
 }
 
-func (r *RedisValidator) Close() error {
-	return r.client.Close()
+func (v *LayeredValidator) Close() error {
+	if v.l2 != nil {
+		return v.l2.Close()
+	}
+	return nil
+}
+
+func toDecision(active bool) Decision {
+	if active {
+		return DecisionValid
+	}
+	return DecisionInvalid
 }
 
 // resultCache is a bounded LRU of jti → validity with two per-entry horizons
@@ -160,7 +325,7 @@ func (c *resultCache) getFresh(jti string, now time.Time) (bool, bool) {
 }
 
 // graceValid reports whether a previously-valid entry is still within grace —
-// the only case where an unreachable Redis is allowed to pass a request.
+// the only case where unreachable backends are allowed to pass a request.
 func (c *resultCache) graceValid(jti string, now time.Time) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()

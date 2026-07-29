@@ -65,35 +65,55 @@ cases. Exact per-object billing (S3 `ListObjects`) is a documented future option
 
 *(This produces billable-bytes only. Pricing/plan/quota is a separate later layer.)*
 
-## Revocation: cached validity, bounded grace
+## Revocation: postgres truth, layered caches, bounded grace
 
-restic tokens are long-lived, so revocation is a **positive validity check**, not
-a fail-open denylist. Redis holds a marker `yucca:restic:valid:<jti>` for every
-live token; michael treats **present = valid, absent = revoked/unknown → denied**.
+restic tokens are long-lived, so their liveness is checked against the **source
+of truth — postgres** (`resticTokens`), fronted by yucca-api's internal
+introspection endpoint and two cache layers in michael:
 
-- **Mint** (`yucca-api` / `yucca-admin-api`) writes the marker with an EXAT that
-  tracks the token's expiry — but only for **revocable** types (restic). michael
-  **skips** the check for non-revocable types (immich, whose access rides the
-  device-flow session), so an absent marker never wrongly denies them.
-- **Revoke** deletes the marker. michael honors its short in-memory **fresh**
-  cache (`REVOCATION_FRESH_TTL_MS`, default 60 s), so a revoke takes effect within
-  that window.
-- **Redis outage**: michael keeps honoring a *previously-valid* jti until a
-  bounded **grace** window elapses (`REVOCATION_GRACE_MS`, default 5 min), then
-  fails **closed**. A jti never confirmed valid (revoked, unknown, or first-seen
-  during the outage) is denied immediately — bounded grace, then deny.
-- `yucca-metrics-worker` reconciles markers with the DB at bootstrap and every
-  5 min, in **both directions**: it re-asserts markers for valid (unrevoked,
-  unexpired) tokens of revocable types, and **deletes** stale markers for
-  revoked-but-unexpired tokens (healing a revoke whose inline `DEL` failed). So
-  Redis stays ephemeral: a flush or divergence heals within one tick. Residual
-  window: a *restarted* (empty-but-reachable) Redis denies valid restic tokens
-  until the next reconcile tick — grace only covers *unreachable* Redis.
+```
+michael request ──> L1 (per-process, fresh 60s / grace 30min)
+                      └miss──> L2 (shared valkey, yucca:michael:verdict:<jti>, TTL 5min)
+                                 └miss/error──> GET yucca-api /internal/restic-tokens/:jti  (postgres)
+```
 
-michael enforces validity only where `REDIS_ADDR` is set (primary regions);
-`REVOCABLE_CONNECTION_TYPES` (default `restic`) mirrors the descriptor's
-`revocable` set. Secondary regions have no marker-population path and run with
-validity checking off.
+- **Introspection** (`GET /internal/restic-tokens/:jti`, shared-secret header
+  `X-Introspection-Secret`) answers `{active}`: minted, unrevoked, unexpired,
+  **owner enabled** (disabling an account kills its credentials; re-enabling
+  restores unexpired ones). Unknown, malformed, revoked, expired, and
+  disabled-owner jtis all answer `active:false`.
+  The route is **unreachable from the public internet**: the gateway
+  short-circuits `/api/internal/*` to a bare 404 (`HTTPRouteFilter
+  internal-404` shadowing the `/api` rule), so only pod-to-pod traffic —
+  admitted by `allow-ingress-yucca-api` — ever reaches it; the shared secret
+  is the second wall, not the only one.
+- **Mint** writes only the postgres row — no cache writes; the first request
+  populates the caches read-through.
+- **Revoke** flips the DB row, then best-effort **DELs the L2 verdict key** —
+  the revoke lands on every michael replica within ~the L1 fresh TTL
+  (`REVOCATION_FRESH_TTL_MS`, default 60 s). A *missed* DEL self-heals when the
+  L2 entry's TTL (`VERDICT_CACHE_TTL_MS`, default 5 min) lapses and the next
+  miss re-asks postgres — no reconcile job exists or is needed.
+- **Valkey restart/outage is harmless**: L2 is pure cache — a miss or error
+  falls through to introspection. (This is why the old marker model's
+  restart-deny-window and reconcile cron are gone.)
+- **Introspection outage** (yucca-api/postgres unreachable): michael keeps
+  honoring a *previously-valid* jti until a bounded **grace** window elapses
+  (`REVOCATION_GRACE_MS`, default 30 min), then fails **closed**. The horizon is
+  anchored to the last *authoritative* confirmation (L2 hits carry the entry's
+  age via PTTL), so 30 min is a true end-to-end bound; repeated failures are
+  also debounced (a short backoff gates introspection dials, so an outage never
+  turns restic's request concurrency into a control-plane storm). A jti never
+  confirmed valid is denied immediately — bounded grace, then deny.
+- michael **skips** the check entirely for non-revocable types (immich, whose
+  access rides the device-flow session): `REVOCABLE_CONNECTION_TYPES` (default
+  `restic`) mirrors the descriptor's `revocable` set.
+
+michael enforces validity only where `TOKEN_INTROSPECTION_URL` is set (primary
+regions — secondaries have no local yucca-api and run with checking off). The
+valkey is the **generic shared platform cache** (`charts/apps/redis`, ephemeral
+by design, keys namespaced `yucca:<service>:<purpose>:*`); the verdict cache is
+its first tenant, with michael rate limiting a likely second.
 
 ## Self-serve restic
 
@@ -112,11 +132,15 @@ A user with the `connection-restic` flag can stand up a restic backup in one cal
 - **`GET /repository/:id/restic-tokens`** — list a repository's minted tokens
   (owner-scoped).
 - **`DELETE /restic-tokens/:jti`** — revoke your own token (owner-scoped; unknown
-  or other-owner jtis 404 identically, so ownership isn't leaked). Clears the
-  validity marker.
+  or other-owner jtis 404 identically, so ownership isn't leaked). Invalidates
+  michael's cached verdict.
 
 The `/connections` surface (list, create, adopt, manage) is open to **every**
-authenticated user; only the individual non-default *type* is flag-gated. Admin
+authenticated user; the individual non-default *type* is flag-gated on every
+**credential-creating** operation — creating a connection of the type, creating
+a repository under one, and minting a URL — so a `false` override is a real
+kill-switch for new self-service credentials (existing tokens keep working until
+revoked or expired; **revoke and list are deliberately never gated**). Admin
 provisioning (`yucca-admin-api`, yuctl) bypasses the flag (admin authority).
 
 ## Web UI
@@ -142,5 +166,6 @@ reminder. Per-repository access keys are listed/revoked/re-minted in `ManageToke
 | Connection + self-serve restic API | `packages/yucca-api/src/{controllers,services}/` |
 | Web Connections page + restic modals | `packages/web/src/routes/dashboard/connections/`, `packages/web/src/lib/components/connections/` |
 | Billing rollup | `packages/yucca-metrics-worker/` |
-| Validity check (michael) | `packages/michael/internal/revocation/` |
+| Validity check (michael: L1/L2/introspection) | `packages/michael/internal/revocation/` |
+| Introspection endpoint | `packages/yucca-api/src/controllers/introspection.controller.ts` |
 | Admin provisioning | `packages/yucca-admin-api/`, `packages/yuctl/` |

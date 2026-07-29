@@ -3,11 +3,9 @@
 set -e
 source "$(dirname "$0")/../env"
 
-# The RGW spec needs real RADOS credentials; the rest (revocation reconcile)
-# only needs the compose Postgres + Redis, so it always runs.
 if [[ -z "${RADOS_ENDPOINT:-}" || -z "${RADOS_ACCESS_KEY_ID:-}" || -z "${RADOS_SECRET_ACCESS_KEY:-}" ]]; then
-  echo "RADOS_* not set; skipping the RGW integration spec (running the rest)"
-  pnpm --filter yucca-metrics-worker test:integration --testPathIgnorePatterns=rgw "$@"
-else
-  pnpm --filter yucca-metrics-worker test:integration "$@"
+  echo "RADOS_* not set; skipping yucca-metrics-worker integration tests"
+  exit 0
 fi
+
+pnpm --filter yucca-metrics-worker test:integration "$@"

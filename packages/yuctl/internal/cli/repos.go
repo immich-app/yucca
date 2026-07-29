@@ -135,8 +135,9 @@ func newReposURLCmd() *cobra.Command {
 		Use:   "url <repository-id>",
 		Short: "Mint a restic rest: URL for a repository",
 		Long: "Mint a restic rest: URL with an embedded repository token. --ttl requests a\n" +
-			"custom lifetime (capped server-side, default cap 90d); the printed jti can be\n" +
-			"revoked at any time with `yuctl tokens revoke <jti>`.",
+			"custom lifetime (revocable types only, e.g. restic; capped server-side, default\n" +
+			"cap 90d). restic-connection jtis can be revoked at any time with\n" +
+			"`yuctl tokens revoke <jti>`; immich tokens are unrevocable and stay short-lived.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

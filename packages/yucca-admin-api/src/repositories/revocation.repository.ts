@@ -3,23 +3,20 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { env } from 'src/env';
 
-const keyFor = (jti: string) => `yucca:restic:valid:${jti}`;
+const keyFor = (jti: string) => `yucca:michael:verdict:${jti}`;
 
-// Maintains the Redis "validity" markers michael checks per request: a present
-// key means the token is valid, an absent key means revoked or unknown. This is
-// the inverse of the old denylist and is what makes revocation safe for
-// long-lived tokens — a lost marker denies rather than silently permits.
-//
-// The DB (resticTokens) stays the source of truth; the metrics-worker reconcile
-// re-asserts markers from it, so Redis itself is ephemeral. Only revocable
-// connection types (restic) get markers — michael skips the check for the rest.
+// Pushes revocations into michael's shared verdict cache (generic platform
+// valkey): deleting the cached verdict forces michael's next post-fresh check
+// back to introspection, which reads the DB truth. Best-effort by design — a
+// missed DEL self-heals when the verdict entry's short TTL lapses, so a Redis
+// hiccup delays propagation by minutes, never breaks correctness.
 @Injectable()
 export class RevocationRepository implements OnModuleDestroy {
   private client?: Redis;
 
   constructor(private readonly logger: LoggerRepository) {
     if (!env.REDIS_URL) {
-      this.logger.warn('REDIS_URL is not set — restic token validity will not propagate to michael');
+      this.logger.warn('REDIS_URL is not set — revocations propagate to michael only via verdict-cache TTL expiry');
     }
   }
 
@@ -28,26 +25,17 @@ export class RevocationRepository implements OnModuleDestroy {
     return this.client;
   }
 
-  // Call on mint. The marker expires with the token (EXAT), so a lapsed token
-  // needs no explicit cleanup.
-  async markValid(jti: string, expiresAt: Date) {
+  // Call after the DB revoke. Failure is logged, not thrown: the DB is already
+  // authoritative and the stale cache entry expires within its TTL.
+  async invalidateVerdict(jti: string) {
     if (!env.REDIS_URL) {
       return;
     }
-    const exat = Math.ceil(expiresAt.getTime() / 1000);
-    if (exat <= Math.floor(Date.now() / 1000)) {
-      return;
+    try {
+      await this.getClient().del(keyFor(jti));
+    } catch (error) {
+      this.logger.warn(`Failed to invalidate michael verdict cache for ${jti} (self-heals via TTL): ${String(error)}`);
     }
-    await this.getClient().set(keyFor(jti), '1', 'EXAT', exat);
-  }
-
-  // Call on revoke. Deleting the marker makes michael treat the jti as invalid
-  // within its fresh-cache TTL.
-  async markInvalid(jti: string) {
-    if (!env.REDIS_URL) {
-      return;
-    }
-    await this.getClient().del(keyFor(jti));
   }
 
   onModuleDestroy() {

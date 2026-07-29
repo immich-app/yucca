@@ -5,3 +5,4 @@ resources:
   - ./web.yaml
   - ./gw.yaml
   - ./redirect.yaml
+  - ./internal-404.yaml

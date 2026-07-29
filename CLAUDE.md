@@ -114,8 +114,8 @@ to victoria-*).
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Shares the same DB + JWT validation. |
 | `michael` | Go | **Production** restic REST backend — S3 proxy implementing restic's HTTP protocol, with JWT (ECDSA pubkey) verification, WORM enforcement, multi-backend pool/DNS load-balancing. Deployed in k8s (`kubernetes/apps/base/michael`). |
 | `restic-api` | NestJS | Earlier TypeScript implementation of the same restic backend, kept as a **reference** (`mise restic-api:dev-reference`); not in the deployed app set. |
-| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, **rolls usage up per connection into `connectionMetrics` (with the per-type billing floor)**, emits OTel gauges; **also re-asserts restic-token validity markers into Redis** so they survive a Redis restart. |
-| `redis` (valkey) | — | Ephemeral restic-token **validity marker** store michael checks per request (present = valid, absent = revoked). In-repo chart `charts/apps/redis`; primary-region only (secondaries have no marker-population path and run with validity checking off). |
+| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, **rolls usage up per connection into `connectionMetrics` (with the per-type billing floor)**, emits OTel gauges. |
+| `redis` (valkey) | — | **Generic shared platform cache** (ephemeral by design; keys namespaced `yucca:<service>:<purpose>:*`). First tenant: michael's restic-token **verdict cache** (`yucca:michael:verdict:<jti>`, DELed by the APIs on revoke); future: michael rate limiting. In-repo chart `charts/apps/redis`; primary-region only. |
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). Used by compose and k3d when no real issuer is configured. |
 | `common` (`@common/server`) | TS lib | Shared OTel init, pino logger repository, logging interceptor, **the feature-flag registry (`FeatureFlags`) and connection types (`ConnectionTypes`)**. |
 
@@ -169,14 +169,16 @@ contract, regenerate rather than editing the client.
   immich: short `JWT_EXPIRES_IN` lifetime, custom `expiresIn` rejected — michael never validity-checks
   non-revocable types, so they must not be long-lived); `GET /repository/:id/restic-tokens` +
   `DELETE /restic-tokens/:jti` are owner-scoped. See `docs/connections.md`.
-- **Restic-token revocation** = **cached validity, bounded grace** (not a fail-open denylist). Redis holds a
-  positive marker `yucca:restic:valid:<jti>` per live token; michael treats present = valid, **absent =
-  revoked/unknown → denied**. Mint writes the marker (revocable types only — michael **skips** non-revocable
-  types like immich via `REVOCABLE_CONNECTION_TYPES`, so an absent marker never wrongly denies them); revoke
-  deletes it (takes effect within michael's fresh cache `REVOCATION_FRESH_TTL_MS`, default 60s). On a Redis
-  outage michael honors a previously-valid jti until `REVOCATION_GRACE_MS` (default 5min) then fails **closed**.
-  `yucca-metrics-worker` re-asserts valid markers from the DB every 5min (Redis stays ephemeral). Enforced only
-  where `REDIS_ADDR` is set (primary regions). yuctl: `tokens list/revoke`, `repos url --ttl`.
+- **Restic-token revocation** = **postgres truth + layered caches, bounded grace**. michael checks a token's
+  liveness (revocable types only — `REVOCABLE_CONNECTION_TYPES`, default `restic`; immich is skipped) through:
+  L1 per-process cache (`REVOCATION_FRESH_TTL_MS` 60s fresh / `REVOCATION_GRACE_MS` 30min grace) → shared
+  valkey **verdict cache** (`yucca:michael:verdict:<jti>`, `VERDICT_CACHE_TTL_MS` 5min, read-through; errors
+  fall through) → yucca-api's internal introspection endpoint (`GET /internal/restic-tokens/:jti`, shared
+  secret `TOKEN_INTROSPECTION_SECRET`, answers `{active}` from `resticTokens`). Mint writes only the DB row;
+  revoke flips the row then best-effort **DELs the L2 key** (lands within ~L1 fresh; a missed DEL self-heals
+  via L2 TTL — no reconcile job). Valkey restart/outage = cache miss → postgres, harmless. Introspection outage:
+  previously-valid jtis honored for the grace window, then **fail closed**. Enforced only where
+  `TOKEN_INTROSPECTION_URL` is set (primary regions). yuctl: `tokens list/revoke`, `repos url --ttl`.
 
 ### Database
 

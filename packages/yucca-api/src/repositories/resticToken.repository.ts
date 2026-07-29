@@ -20,6 +20,22 @@ export class ResticTokenRepository {
     return this.db.selectFrom('resticTokens').selectAll().where('jti', '=', jti).executeTakeFirst();
   }
 
+  // Token + its owner's account state, for introspection: a credential is only
+  // as alive as the account behind it.
+  getWithOwner(jti: string) {
+    return this.db
+      .selectFrom('resticTokens')
+      .innerJoin('users', 'users.id', 'resticTokens.userId')
+      .select([
+        'resticTokens.jti',
+        'resticTokens.revokedAt',
+        'resticTokens.expiresAt',
+        'users.disabled as ownerDisabled',
+      ])
+      .where('resticTokens.jti', '=', jti)
+      .executeTakeFirst();
+  }
+
   // Explicit columns: this feeds the user-facing ResticTokenDto verbatim, so keep
   // the selection in lockstep with it (no selectAll — it would leak userId/revokedBy).
   getByRepository(repositoryId: string) {
@@ -28,6 +44,16 @@ export class ResticTokenRepository {
       .select(['jti', 'repositoryId', 'connectionId', 'mintedBy', 'label', 'expiresAt', 'revokedAt', 'createdAt'])
       .where('repositoryId', '=', repositoryId)
       .orderBy('createdAt', 'desc')
+      .execute();
+  }
+
+  getActiveByRepository(repositoryId: string) {
+    return this.db
+      .selectFrom('resticTokens')
+      .select(['jti'])
+      .where('repositoryId', '=', repositoryId)
+      .where('revokedAt', 'is', null)
+      .where('expiresAt', '>', new Date())
       .execute();
   }
 

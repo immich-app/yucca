@@ -95,18 +95,26 @@ func main() {
 	}
 
 	srv := handlers.NewServer(store, cfg.JWTPublicKey, m)
-	if cfg.RedisAddr != "" {
-		srv.Validator = revocation.NewRedisValidator(cfg.RedisAddr, cfg.RedisTimeout, cfg.RevocationFreshTTL, cfg.RevocationGraceTTL)
+	if cfg.TokenIntrospectionURL != "" {
+		introspector := revocation.NewHTTPIntrospector(
+			cfg.TokenIntrospectionURL, cfg.TokenIntrospectionSecret, cfg.TokenIntrospectionTimeout)
+		var l2 *revocation.RedisVerdictCache
+		if cfg.RedisAddr != "" {
+			l2 = revocation.NewRedisVerdictCache(cfg.RedisAddr, cfg.RedisTimeout, cfg.VerdictCacheTTL)
+		}
+		srv.Validator = revocation.NewLayeredValidator(introspector, l2, cfg.RevocationFreshTTL, cfg.RevocationGraceTTL)
 		srv.RevocableTypes = cfg.RevocableConnectionTypes
 		revocableTypes := make([]string, 0, len(cfg.RevocableConnectionTypes))
 		for t := range cfg.RevocableConnectionTypes {
 			revocableTypes = append(revocableTypes, t)
 		}
-		log.Info().Str("addr", cfg.RedisAddr).Dur("fresh_ttl", cfg.RevocationFreshTTL).Dur("grace_ttl", cfg.RevocationGraceTTL).
+		log.Info().Str("introspection_url", cfg.TokenIntrospectionURL).
+			Bool("verdict_cache", cfg.RedisAddr != "").
+			Dur("fresh_ttl", cfg.RevocationFreshTTL).Dur("grace_ttl", cfg.RevocationGraceTTL).
 			Strs("revocable_types", revocableTypes).
 			Msg("restic token validity checking enabled")
 	} else {
-		log.Info().Msg("REDIS_ADDR not set; restic token validity checking disabled")
+		log.Info().Msg("TOKEN_INTROSPECTION_URL not set; restic token validity checking disabled")
 	}
 
 	httpSrv := &http.Server{

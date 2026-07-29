@@ -12,6 +12,20 @@ spec:
   hostnames:
     - "${APP_DOMAIN}"
   rules:
+    # /api/internal/* is service-to-service only (michael's token introspection,
+    # pod-to-pod). Longest-prefix matching shadows the /api rule below, so the
+    # public gateway answers a bare 404 (internal-404.yaml) without ever
+    # touching yucca-api.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/internal
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: internal-404
     - matches:
         - path:
             type: PathPrefix

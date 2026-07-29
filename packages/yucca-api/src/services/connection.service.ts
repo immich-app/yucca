@@ -79,10 +79,20 @@ export class ConnectionService {
       connectionId: connection.id,
     });
 
-    const { url, jti, expiresAt } = await this.repositoryService.createUrl(auth, repository.id, {
-      expiresIn: dto.expiresIn,
-      label: dto.label,
-    });
+    let minted: { url: string; jti: string; expiresAt: Date };
+    try {
+      minted = await this.repositoryService.createUrl(auth, repository.id, {
+        expiresIn: dto.expiresIn,
+        label: dto.label,
+      });
+    } catch (error) {
+      // Compensate: don't leave a credential-less orphan repository behind (a
+      // retry would create yet another one). Best-effort — the repo is harmless
+      // if this also fails.
+      await this.repositories.delete(repository.id).catch(() => {});
+      throw error;
+    }
+    const { url, jti, expiresAt } = minted;
 
     const rows = await this.connections.getByUserWithRepositoryCounts(auth.id);
     const row = rows.find((r) => r.id === connection.id);
@@ -127,7 +137,7 @@ export class ConnectionService {
     const active = await this.resticTokens.getActiveByConnection(id);
     for (const token of active) {
       await this.resticTokens.revoke(token.jti, `connection-delete:${auth.id}`);
-      await this.revocation.markInvalid(token.jti);
+      await this.revocation.invalidateVerdict(token.jti);
     }
 
     await this.connections.delete(id);

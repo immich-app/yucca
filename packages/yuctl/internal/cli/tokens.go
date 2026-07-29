@@ -80,9 +80,9 @@ func newTokensRevokeCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "revoke <jti>",
 		Short: "Revoke a minted restic token",
-		Long: "Revoke a minted restic token by jti. michael rejects it within its check\n" +
-			"cache TTL (seconds); the DB row is the durable record and the reconcile cron\n" +
-			"re-seeds Redis if it was unreachable at revoke time.",
+		Long: "Revoke a minted restic token by jti. The DB row is the source of truth;\n" +
+			"michael's cached verdict is invalidated so the revoke lands within about a\n" +
+			"minute (a missed invalidation self-heals when the cache entry's TTL lapses).",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, _, err := flags.allowlistClient(cmd)

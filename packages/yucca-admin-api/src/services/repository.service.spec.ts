@@ -24,7 +24,6 @@ describe(RepositoryService.name, () => {
   let users: { [k: string]: jest.Mock };
   let connections: { [k: string]: jest.Mock };
   let resticTokens: { [k: string]: jest.Mock };
-  let revocation: { [k: string]: jest.Mock };
   let jwt: JwtService;
   let sut: RepositoryService;
 
@@ -33,14 +32,12 @@ describe(RepositoryService.name, () => {
     users = { getBySub: jest.fn(), create: jest.fn() };
     connections = { getByUser: jest.fn(), getOrCreateByType: jest.fn().mockResolvedValue({ id: 'connection-id' }) };
     resticTokens = { create: jest.fn() };
-    revocation = { markValid: jest.fn(), markInvalid: jest.fn() };
     jwt = newJwtService();
     sut = new RepositoryService(
       repositories as never,
       users as never,
       connections as never,
       resticTokens as never,
-      revocation as never,
       jwt,
     );
   });
@@ -147,9 +144,6 @@ describe(RepositoryService.name, () => {
         label: null,
         expiresAt,
       });
-
-      // restic is revocable → a validity marker is written for michael.
-      expect(revocation.markValid).toHaveBeenCalledWith(jti, expiresAt);
     });
 
     it('should honor a custom TTL and label under the cap', async () => {
@@ -165,9 +159,21 @@ describe(RepositoryService.name, () => {
       expect(resticTokens.create).toHaveBeenCalledWith(expect.objectContaining({ label: 'manual test' }));
     });
 
+    it('should reject a custom TTL for a non-revocable (immich) repository', async () => {
+      restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
+      restic.RESTIC_ENDPOINT = 'https://gw.example.net';
+      repositories.get.mockResolvedValue({ ...repositoryRow, connectionType: 'immich' });
+
+      await expect(sut.url(repositoryRow.id, { expiresIn: '30d' })).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Custom expiresIn requires a revocable connection type; immich tokens cannot be revoked"`,
+      );
+      expect(resticTokens.create).not.toHaveBeenCalled();
+    });
+
     it('should reject a TTL above the cap', async () => {
       restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
       restic.RESTIC_ENDPOINT = 'https://gw.example.net';
+      repositories.get.mockResolvedValue(repositoryRow);
 
       await expect(sut.url(repositoryRow.id, { expiresIn: '365d' })).rejects.toThrowErrorMatchingInlineSnapshot(
         `"expiresIn exceeds the 90d cap"`,

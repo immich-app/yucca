@@ -11,9 +11,9 @@ export class ResticTokenService {
   ) {}
 
   // Owner-scoped revoke: a user can only revoke their own tokens. Unknown or
-  // other-owner jtis 404 identically, so ownership isn't leaked. Clearing the
-  // Redis validity marker makes michael treat the token as invalid within its
-  // fresh-cache TTL. Idempotent.
+  // other-owner jtis 404 identically, so ownership isn't leaked. The DB is the
+  // source of truth; invalidating michael's shared verdict cache makes the
+  // revoke land within its fresh-cache TTL. Idempotent.
   async revoke(auth: AuthDto, jti: string): Promise<void> {
     const token = await this.resticTokens.get(jti);
     if (!token || token.userId !== auth.id) {
@@ -21,6 +21,6 @@ export class ResticTokenService {
     }
 
     await this.resticTokens.revoke(jti, `user:${auth.id}`);
-    await this.revocation.markInvalid(jti);
+    await this.revocation.invalidateVerdict(jti);
   }
 }

@@ -6,6 +6,8 @@ import {
   UserUpdateRequestDto,
   UserUpdateResponseDto,
 } from 'src/dto/user.dto';
+import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
+import { RevocationRepository } from 'src/repositories/revocation.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
@@ -15,6 +17,8 @@ export class UserService {
   constructor(
     private readonly users: UserRepository,
     private readonly sessions: SessionRepository,
+    private readonly resticTokens: ResticTokenRepository,
+    private readonly revocation: RevocationRepository,
   ) {}
 
   list(query: UserListQueryDto): Promise<UserListResponseDto> {
@@ -30,6 +34,15 @@ export class UserService {
       await this.sessions.deleteByUser(id);
     }
     await this.users.update(id, dto);
+    if (dto.disabled === true) {
+      // Introspection refuses a disabled owner's tokens (rows stay untouched, so
+      // re-enabling restores them); invalidating the cached verdicts makes the
+      // disable land within ~michael's L1 fresh TTL instead of the L2 TTL.
+      const active = await this.resticTokens.getActiveByUser(id);
+      for (const token of active) {
+        await this.revocation.invalidateVerdict(token.jti);
+      }
+    }
     return { user: await this.users.get(id) };
   }
 

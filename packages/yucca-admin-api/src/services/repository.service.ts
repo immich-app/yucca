@@ -18,7 +18,6 @@ import { env } from 'src/env';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
-import { RevocationRepository } from 'src/repositories/revocation.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
 
@@ -38,7 +37,6 @@ export class RepositoryService {
     private readonly users: UserRepository,
     private readonly connections: ConnectionRepository,
     private readonly resticTokens: ResticTokenRepository,
-    private readonly revocation: RevocationRepository,
     private readonly jwt: JwtService,
   ) {}
 
@@ -78,10 +76,19 @@ export class RepositoryService {
   }
 
   // Mirrors yucca-api's createUrl: a restic rest: URL with an embedded JWT
-  // that michael verifies against yucca-api's public key.
+  // that michael verifies against yucca-api's public key. Custom lifetimes are
+  // revocable-types-only, same as the user API: michael never checks
+  // non-revocable (immich) tokens, so those must stay short-lived.
   async url(id: string, dto: RepositoryUrlRequestDto = {}): Promise<RepositoryUrlResponseDto> {
     if (!env.RESTIC_JWT_PRIVATE_KEY || !env.RESTIC_ENDPOINT) {
       throw new NotImplementedException('RESTIC_JWT_PRIVATE_KEY / RESTIC_ENDPOINT are not configured');
+    }
+
+    const target = await this.repositories.get(id);
+    if (dto.expiresIn && !isRevocableConnectionType(target.connectionType)) {
+      throw new BadRequestException(
+        `Custom expiresIn requires a revocable connection type; ${target.connectionType} tokens cannot be revoked`,
+      );
     }
 
     let expiresIn = env.RESTIC_JWT_EXPIRES_IN;
@@ -103,7 +110,7 @@ export class RepositoryService {
       expiresIn = dto.expiresIn as StringValue;
     }
 
-    const repository = await this.repositories.get(id);
+    const repository = target;
     const jti = randomUUID();
     const token = await this.jwt.signAsync(
       {
@@ -128,11 +135,6 @@ export class RepositoryService {
       label: dto.label ?? null,
       expiresAt,
     });
-
-    // Only revocable connection types (restic) carry a Redis validity marker.
-    if (isRevocableConnectionType(repository.connectionType)) {
-      await this.revocation.markValid(jti, expiresAt);
-    }
 
     const url = new URL(env.RESTIC_ENDPOINT);
     url.username = 'restic';

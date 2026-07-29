@@ -12,12 +12,12 @@ import (
 
 // Repository mirrors the admin-api RepositoryAdminDto (the fields yuctl needs).
 type Repository struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Worm         bool   `json:"worm"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Worm           bool   `json:"worm"`
 	ConnectionID   string `json:"connectionId"`
 	ConnectionType string `json:"connectionType"`
-	User         struct {
+	User           struct {
 		ID    string `json:"id"`
 		Email string `json:"email"`
 	} `json:"user"`
@@ -67,7 +67,7 @@ func (c *Client) postJSON(ctx context.Context, path string, body, out any) error
 // CreateRepositoryOptions targets CreateRepository at a specific owner and
 // connection type; zero values keep the admin-service-user default.
 type CreateRepositoryOptions struct {
-	UserID       string
+	UserID         string
 	ConnectionType string
 }
 

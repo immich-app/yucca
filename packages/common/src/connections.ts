@@ -45,12 +45,13 @@ export interface ConnectionTypeInfo {
    */
   minObjectSizeBytes: number;
   /**
-   * Whether tokens of this type are individually revocable. Revocable types maintain a Redis
-   * "validity" marker per minted token that michael checks per request (present = valid, absent =
-   * revoked/unknown → denied). Non-revocable types (immich, whose access rides the device-flow
-   * session) keep NO marker, so michael must **skip** the validity check for them — otherwise the
-   * absent marker would wrongly deny every request. michael mirrors this set via
-   * `REVOCABLE_CONNECTION_TYPES` (default `restic`).
+   * Whether tokens of this type are individually revocable. Revocable types are liveness-checked
+   * by michael against postgres (via yucca-api's introspection endpoint, cached per-process and in
+   * the shared verdict cache). Non-revocable types (immich, whose access rides the device-flow
+   * session) have no liveness state, so michael must **skip** the check for them — an unknown jti
+   * would otherwise wrongly deny every request. michael mirrors this set via
+   * `REVOCABLE_CONNECTION_TYPES` (default `restic`), and only revocable types may mint long-lived
+   * tokens.
    */
   revocable: boolean;
 }
@@ -76,8 +77,8 @@ export const connectionTypeInfo = (type: string): ConnectionTypeInfo | undefined
   (ConnectionTypeInfos as Record<string, ConnectionTypeInfo | undefined>)[type];
 
 /**
- * Whether a connection type's tokens are individually revocable — i.e. michael maintains and
- * checks a per-token validity marker for it. Unknown types are treated as non-revocable (skip).
+ * Whether a connection type's tokens are individually revocable — i.e. michael liveness-checks
+ * them via introspection. Unknown types are treated as non-revocable (skip).
  */
 export const isRevocableConnectionType = (type: string): boolean => connectionTypeInfo(type)?.revocable ?? false;
 
