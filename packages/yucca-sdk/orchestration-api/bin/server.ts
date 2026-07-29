@@ -20,7 +20,9 @@ async function bootstrap() {
             },
           ],
           hooks: {
-            async createDatabaseBackup() {},
+            async createDatabaseBackup() {
+              return 'dev-database-backup.sql';
+            },
             async enterMaintenanceRollback() {
               return {
                 jwt: 'abc',
