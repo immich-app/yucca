@@ -1,0 +1,52 @@
+---
+# Fluent Bit: ship each node's journald to o11y's VictoriaLogs over the NetBird
+# overlay. Endpoint-only, like the netbird role: no listeners, no aggregation
+# tier, one agent per node writing straight to the mesh vmauth.
+ceph_fluentbit_enabled: false
+
+# Pinned + dpkg-held, same rationale as netbird: the log path is operational
+# infrastructure and the journald field mapping is version-coupled.
+ceph_fluentbit_version: "3.2.10"
+
+ceph_fluentbit_key_url: https://packages.fluentbit.io/fluentbit.key
+ceph_fluentbit_repo: >-
+  deb [signed-by=/etc/apt/keyrings/fluentbit.gpg]
+  https://packages.fluentbit.io/debian/bookworm bookworm main
+
+# o11y ingest. VictoriaLogs' native journald endpoint (/insert/journald) is NOT
+# routed by o11y's mesh vmauth; /insert/jsonline is, and is what VictoriaLogs
+# documents for Fluent Bit. The host must resolve to the gateway VIP: o11y
+# distributes its DNS zone only to the operator + o11y-router groups, so ceph
+# nodes get a hosts entry instead (the same thing father does in CoreDNS).
+# Envoy routes by Host/SNI, so pointing at the bare IP would not match.
+ceph_fluentbit_o11y_host: vmauth.o11y.futo.network
+ceph_fluentbit_o11y_vip: "10.69.0.10"
+ceph_fluentbit_o11y_port: 443
+
+# Stamped on every line so logs join the metrics tags. site/env match the
+# vmagent external_labels for spice.
+ceph_fluentbit_cluster_label: "{{ cluster_name }}"
+ceph_fluentbit_site_label: htz-fsn1
+ceph_fluentbit_env_label: prod
+
+# Strip_Underscores is on, so journald's _HOSTNAME/_SYSTEMD_UNIT arrive as
+# HOSTNAME/SYSTEMD_UNIT. That matters twice: VictoriaLogs reserves the leading
+# underscore for its own fields (_msg/_time/_stream), and these names are what
+# the stream fields below reference. ceph writes to journald directly via
+# libsystemd (_TRANSPORT=journal, not through podman), so SYSLOG_IDENTIFIER is
+# the daemon type: ceph-mon / ceph-mgr / ceph-osd / radosgw.
+ceph_fluentbit_stream_fields: "HOSTNAME,SYSLOG_IDENTIFIER"
+
+# Drop-at-source. The fleet emits ~2.4M lines/hour and the OSDs are nearly
+# silent (~200/hr for all 15); the volume is mon/mgr status chatter. These two
+# account for most of it and carry no diagnostic value. Anything not matched
+# still ships, including the mon cluster health channel.
+ceph_fluentbit_drop_regex: '(pgmap v[0-9]+|_set_new_cache_sizes)'
+
+# Filesystem buffering so an o11y or overlay outage queues locally instead of
+# dropping. Retry_Limit False = retry forever rather than discard on failure.
+ceph_fluentbit_buffer_limit: 512M
+
+# Fluent Bit's own metrics, for the netops vmagent to scrape. The scrape job is
+# a follow-up, not in this change.
+ceph_fluentbit_http_port: 2020

@@ -1,0 +1,112 @@
+---
+# Install Fluent Bit (pinned) and ship journald to o11y over the NetBird overlay.
+# Convergeable: install is pin+hold, config is templated, restart is a handler.
+
+- name: Assert the node is on the overlay
+  # No route to the gateway VIP without it. Fail here with a clear signal rather
+  # than let fluent-bit spin on connection refused.
+  ansible.builtin.command: netbird status
+  register: ceph_fluentbit_nb
+  changed_when: false
+  failed_when: "'Management: Connected' not in ceph_fluentbit_nb.stdout"
+
+- name: Ensure keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Install the Fluent Bit apt signing key
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -fsSL {{ ceph_fluentbit_key_url }} | gpg --dearmor -o /etc/apt/keyrings/fluentbit.gpg
+  args:
+    creates: /etc/apt/keyrings/fluentbit.gpg
+    executable: /bin/bash
+
+- name: Add the Fluent Bit apt repository
+  ansible.builtin.copy:
+    content: "{{ ceph_fluentbit_repo }}\n"
+    dest: /etc/apt/sources.list.d/fluentbit.list
+    mode: '0644'
+  register: ceph_fluentbit_repo_file
+
+- name: Update apt cache
+  # Always refresh after a repo add: a cache_valid_time skip installs against a
+  # stale index (same lesson as ceph_deploy/prerequisites).
+  ansible.builtin.apt:
+    update_cache: true
+  changed_when: false
+
+- name: Query the installed fluent-bit version
+  ansible.builtin.command: dpkg-query -W -f='${Version}' fluent-bit
+  register: ceph_fluentbit_installed
+  changed_when: false
+  failed_when: false
+
+- name: Unhold fluent-bit only when the pinned version differs (keeps converge clean)
+  ansible.builtin.dpkg_selections:
+    name: fluent-bit
+    selection: install
+  when: (ceph_fluentbit_installed.stdout | default('')) != ceph_fluentbit_version
+
+- name: Install Fluent Bit at the pinned version
+  ansible.builtin.apt:
+    name: "fluent-bit={{ ceph_fluentbit_version }}"
+    state: present
+    allow_downgrade: true
+
+- name: Hold fluent-bit at the pinned version
+  ansible.builtin.dpkg_selections:
+    name: fluent-bit
+    selection: hold
+
+# o11y publishes its mesh DNS zone only to the operator + o11y-router groups, so
+# the ceph peers cannot resolve the gateway name. Envoy routes by Host/SNI, so
+# pointing at the bare IP would not match the route - hence a hosts entry.
+- name: Resolve the o11y gateway name locally
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '\s{{ ceph_fluentbit_o11y_host | regex_escape }}$'
+    line: "{{ ceph_fluentbit_o11y_vip }} {{ ceph_fluentbit_o11y_host }}"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create the buffer + cursor directory
+  ansible.builtin.file:
+    path: /var/lib/fluent-bit/storage
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Template the fluent-bit config
+  ansible.builtin.template:
+    src: fluent-bit.conf.j2
+    dest: /etc/fluent-bit/fluent-bit.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fluent-bit
+
+- name: Enable and start fluent-bit
+  ansible.builtin.systemd:
+    name: fluent-bit
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Apply any pending restart before verifying
+  # The health check below is only meaningful against the new config, so the
+  # handler has to run here rather than at end-of-play.
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify fluent-bit is up (its own metrics endpoint responds)
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ ceph_fluentbit_http_port }}/api/v1/metrics/prometheus"
+    return_content: false
+  register: ceph_fluentbit_health
+  retries: 6
+  delay: 5
+  until: ceph_fluentbit_health.status == 200

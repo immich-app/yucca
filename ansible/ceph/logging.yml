@@ -6,7 +6,7 @@
 # so does the mon cluster channel (mon_cluster_log_to_journald true). There is
 # no second source to collect.
 #
-# Gated by ceph_vector_enabled (spice: group_vars true). Requires the node to be
+# Gated by ceph_fluentbit_enabled (spice: group_vars true). Requires the node to be
 # a NetBird peer AND the ceph-to-o11y-gateway policy to be applied - without the
 # policy there is no route to the gateway VIP and the role fails at the health
 # check rather than silently buffering.
@@ -16,10 +16,10 @@
 - name: Host log shipping
   hosts: ceph_nodes
   become: true
-  serial: "{{ vector_serial | default('25%') }}"
+  serial: "{{ fluentbit_serial | default('25%') }}"
   max_fail_percentage: 0
   tasks:
-    - name: Ship journald via the vector role
+    - name: Ship journald via the fluentbit role
       ansible.builtin.import_role:
-        name: vector
-      when: ceph_vector_enabled | default(false) | bool
+        name: fluentbit
+      when: ceph_fluentbit_enabled | default(false) | bool

@@ -1,5 +1,5 @@
 ---
-- name: Restart vector
+- name: Restart fluent-bit
   ansible.builtin.systemd:
-    name: vector
+    name: fluent-bit
     state: restarted
