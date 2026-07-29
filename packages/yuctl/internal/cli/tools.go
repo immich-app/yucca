@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"yuctl/internal/adminapi"
 	"yuctl/internal/bench"
 	yctx "yuctl/internal/context"
 	"yuctl/internal/discovery"
@@ -203,7 +204,7 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 		repoID := f.repoID
 		if repoID == "" {
 			name := fmt.Sprintf("yucca-bench-%s-%s", cfg.Label, time.Now().Format("20060102-150405"))
-			repo, err := client.CreateRepository(ctx, name, false)
+			repo, err := client.CreateRepository(ctx, name, false, adminapi.CreateRepositoryOptions{})
 			if err != nil {
 				return fmt.Errorf("create benchmark repository: %w", err)
 			}

@@ -1,5 +1,6 @@
+import { ConnectionTypes } from '@common/server';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CursorPaginationDto } from 'src/dto/pagination.dto';
 
 export class RepositoryOwnerDto {
@@ -50,6 +51,12 @@ export class RepositoryAdminDto {
   storageClusterCode!: string;
 
   @ApiProperty()
+  connectionId!: string;
+
+  @ApiProperty()
+  connectionType!: string;
+
+  @ApiProperty()
   user!: RepositoryOwnerDto;
 
   @ApiProperty()
@@ -98,6 +105,15 @@ export class RepositoryCreateRequestDto {
   @IsOptional()
   @IsString()
   site?: string;
+
+  @ApiProperty({
+    required: false,
+    enum: ConnectionTypes,
+    description: "Connection type for the owning connection; defaults to 'restic' (manual use)",
+  })
+  @IsOptional()
+  @IsIn(ConnectionTypes)
+  connectionType?: string;
 }
 
 export class RepositoryCreateResponseDto {
@@ -106,7 +122,7 @@ export class RepositoryCreateResponseDto {
 }
 
 export class RepositoryUrlResponseDto {
-  @ApiProperty({ description: 'restic rest: URL with an embedded repository token' })
+  @ApiProperty()
   url!: string;
 }
 

@@ -410,4 +410,3 @@ func (s *Session) sampleNode(ctx context.Context, pod RunnerPod, seconds int) (*
 	}
 	return &best, nil
 }
-

@@ -53,8 +53,8 @@ type LoadgenConfig struct {
 	DurationSeconds int64 `json:"durationSeconds"` // 0 = until killed
 	MaxUploadBytes  int64 `json:"maxUploadBytes"`  // droplet wire-TX cap; 0 = uncapped
 
-	Tag       string `json:"tag"`
-	ResticBin string `json:"resticBin"`
+	Tag        string `json:"tag"`
+	ResticBin  string `json:"resticBin"`
 	StatusPath string `json:"statusPath"`
 }
 

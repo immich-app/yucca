@@ -16,6 +16,12 @@ export class RepositoryDto {
 
   @ApiProperty({ type: 'string', nullable: true, description: 'Stable, globally unique internal storage cluster code' })
   storageClusterCode!: string | null;
+
+  @ApiProperty()
+  connectionId!: string;
+
+  @ApiProperty()
+  connectionType!: string;
 }
 
 export class RepositoryMetricsDto {

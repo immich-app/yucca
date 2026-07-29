@@ -232,18 +232,28 @@ func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {
 
 // --- Cached metric helpers (hot-path allocation avoidance) ---
 
-type blobAttrKey struct{ user, repository, blobType string }
+// connectionLabel bounds the label to the connection *type*; legacy tokens
+// without the claim report "unknown". Never label by connection instance id.
+func connectionLabel(a auth.Auth) string {
+	if a.Connection == "" {
+		return "unknown"
+	}
+	return a.Connection
+}
+
+type blobAttrKey struct{ user, repository, connection, blobType string }
 
 var blobAttrCache sync.Map
 
 func BlobMetricOption(a auth.Auth, blobType string) otelmetric.MeasurementOption {
-	key := blobAttrKey{a.User, a.Repository, blobType}
+	key := blobAttrKey{a.User, a.Repository, connectionLabel(a), blobType}
 	if v, ok := blobAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
 	opt := otelmetric.WithAttributeSet(attribute.NewSet(
 		attribute.String("customerId", a.User),
 		attribute.String("repositoryId", a.Repository),
+		attribute.String("connection", connectionLabel(a)),
 		attribute.String("type", blobType),
 	))
 	blobAttrCache.Store(key, opt)
@@ -291,6 +301,7 @@ type httpUserAttrKey struct {
 	status     int
 	user       string
 	repository string
+	connection string
 }
 
 var httpUserAttrCache sync.Map
@@ -298,11 +309,11 @@ var httpUserAttrCache sync.Map
 // HttpUserMetricOption is HttpMetricOption plus the request's verified
 // identity. Used for the request count/error counters only — the duration and
 // TTFB histograms stay route-scoped to keep bucket-series cardinality down.
-func HttpUserMetricOption(method, route string, status int, user, repository string) otelmetric.MeasurementOption {
+func HttpUserMetricOption(method, route string, status int, user, repository, connection string) otelmetric.MeasurementOption {
 	if user == "" {
 		return HttpMetricOption(method, route, status)
 	}
-	key := httpUserAttrKey{method, route, status, user, repository}
+	key := httpUserAttrKey{method, route, status, user, repository, connection}
 	if v, ok := httpUserAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
@@ -312,6 +323,7 @@ func HttpUserMetricOption(method, route string, status int, user, repository str
 		attribute.Int("status", status),
 		attribute.String("customerId", user),
 		attribute.String("repositoryId", repository),
+		attribute.String("connection", connection),
 	))
 	httpUserAttrCache.Store(key, opt)
 	return opt
@@ -464,6 +476,7 @@ func BlobMiddleware(m *Metrics) func(http.Handler) http.Handler {
 type authCapture struct {
 	user       string
 	repository string
+	connection string
 }
 
 type authCaptureKey struct{}
@@ -477,6 +490,7 @@ func CaptureAuth(next http.Handler) http.Handler {
 			a := auth.FromContext(r.Context())
 			h.user = a.User
 			h.repository = a.Repository
+			h.connection = connectionLabel(a)
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -508,7 +522,7 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 			}
 
 			attrs := HttpMetricOption(r.Method, route, status)
-			countAttrs := HttpUserMetricOption(r.Method, route, status, capture.user, capture.repository)
+			countAttrs := HttpUserMetricOption(r.Method, route, status, capture.user, capture.repository, capture.connection)
 
 			m.RequestDuration.Record(r.Context(), duration, attrs)
 			if !ww.FirstByte.IsZero() {

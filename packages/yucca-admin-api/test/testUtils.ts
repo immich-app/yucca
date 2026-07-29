@@ -16,9 +16,10 @@ function getDb() {
 export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
-    await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
+    await db.deleteFrom('connections').execute();
+    await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('users').execute();
     await db.deleteFrom('userAllowlist').execute();
     await db.deleteFrom('settings').execute();
@@ -75,13 +76,31 @@ export const testUtils = {
     return getDb().insertInto('sessions').values({ userId, accessToken }).returningAll().executeTakeFirstOrThrow();
   },
 
-  createRepository: (
+  createConnection: (
     userId: string,
-    { name = 'My Repository', worm = false }: Partial<{ name: string; worm: boolean }> = {},
+    { type = 'immich', name = 'Immich' }: Partial<{ type: string; name: string }> = {},
   ) => {
-    return getDb()
+    return getDb().insertInto('connections').values({ userId, type, name }).returningAll().executeTakeFirstOrThrow();
+  },
+
+  createRepository: async (
+    userId: string,
+    {
+      name = 'My Repository',
+      worm = false,
+      connectionId,
+    }: Partial<{ name: string; worm: boolean; connectionId: string }> = {},
+  ) => {
+    const db = getDb();
+    if (!connectionId) {
+      const connection =
+        (await db.selectFrom('connections').selectAll().where('userId', '=', userId).executeTakeFirst()) ??
+        (await testUtils.createConnection(userId));
+      connectionId = connection.id;
+    }
+    return db
       .insertInto('repositories')
-      .values({ userId, name, worm, siteCode: 'local', storageClusterCode: 'local-dev' })
+      .values({ userId, name, worm, connectionId, siteCode: 'local', storageClusterCode: 'local-dev' })
       .returningAll()
       .executeTakeFirstOrThrow();
   },

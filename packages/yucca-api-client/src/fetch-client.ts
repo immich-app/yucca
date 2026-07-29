@@ -19,6 +19,7 @@ export type AuthDto = {
     name: string;
     email: string;
     sessionId: string;
+    connectionId?: string | null;
     features: {
         [key: string]: boolean;
     };
@@ -54,6 +55,31 @@ export type MetaResponseDto = {
     config: MetaConfigDto;
     default_site: string;
     sites: MetaSiteDto[];
+};
+export type ConnectionDto = {
+    id: string;
+    "type": "immich" | "restic";
+    name: string;
+    createdAt: string;
+    lastSeenAt?: string | null;
+    repositoryCount: number;
+};
+export type ConnectionListResponseDto = {
+    connections: ConnectionDto[];
+};
+export type ConnectionCreateRequestDto = {
+    "type": "immich" | "restic";
+    name: string;
+};
+export type ConnectionResponseDto = {
+    connection: ConnectionDto;
+};
+export type ConnectionUpdateRequestDto = {
+    name: string;
+};
+export type ConnectionAdoptRequestDto = {
+    /** Repositories to move from the default connection to this one */
+    repositoryIds: string[];
 };
 export type SubmitBackupEndRequestDto = {
     success: boolean;
@@ -105,6 +131,8 @@ export type RepositoryWithMetricsDto = {
     siteCode: string | null;
     /** Stable, globally unique internal storage cluster code */
     storageClusterCode: string | null;
+    connectionId: string;
+    connectionType: string;
     metrics: RepositoryMetricsDto;
     meter?: RepositoryMeterDto;
 };
@@ -156,8 +184,14 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/device", {
+export function oidcDeviceFlow({ connectionType, connectionName }: {
+    connectionType?: string;
+    connectionName?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/device${QS.query(QS.explode({
+        connection_type: connectionType,
+        connection_name: connectionName
+    }))}`, {
         ...opts
     }));
 }
@@ -168,6 +202,44 @@ export function getMeta(opts?: Oazapfts.RequestOpts) {
     }>("/api/meta", {
         ...opts
     }));
+}
+export function listConnections(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConnectionListResponseDto;
+    }>("/api/connections", {
+        ...opts
+    }));
+}
+export function createConnection(connectionCreateRequestDto: ConnectionCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConnectionResponseDto;
+    }>("/api/connections", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: connectionCreateRequestDto
+    })));
+}
+export function updateConnection(id: string, connectionUpdateRequestDto: ConnectionUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/connections/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: connectionUpdateRequestDto
+    })));
+}
+export function deleteConnection(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/connections/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
+export function adoptRepositories(id: string, connectionAdoptRequestDto: ConnectionAdoptRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/connections/${encodeURIComponent(id)}/adopt`, oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: connectionAdoptRequestDto
+    })));
 }
 export function submitMetricBackupStart(repositoryId: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/backup/start`, {

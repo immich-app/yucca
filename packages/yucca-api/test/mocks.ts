@@ -1,4 +1,5 @@
 import type { LoggerRepository, WideContextRepository } from '@common/server/otel';
+import type { ConnectionRepository } from 'src/repositories/connection.repository';
 import type { CryptoRepository } from 'src/repositories/crypto.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
@@ -46,6 +47,7 @@ export const newUserRepositoryMock = (): jest.Mocked<RepositoryInterface<UserRep
     create: jest.fn(),
     getByAccessToken: jest.fn(),
     getBySub: jest.fn(),
+    getFeatureOverrides: jest.fn().mockResolvedValue([]),
     update: jest.fn(),
   };
 };
@@ -63,6 +65,19 @@ export const newRepositoryRepositoryMock = (): jest.Mocked<RepositoryInterface<R
     create: jest.fn(),
     get: jest.fn(),
     getByUser: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
+};
+
+export const newConnectionRepositoryMock = (): jest.Mocked<RepositoryInterface<ConnectionRepository>> => {
+  return {
+    create: jest.fn(),
+    getById: jest.fn(),
+    getByUser: jest.fn(),
+    getByUserTypeName: jest.fn(),
+    getOrCreateDefault: jest.fn(),
+    touchLastSeen: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
   };
@@ -117,6 +132,7 @@ export const newMetricServiceMock = () => ({
 
 export const newMocks = () => {
   return {
+    connection: newConnectionRepositoryMock(),
     crypto: newCryptoRepositoryMock(),
     database: newDatabaseRepositoryMock(),
     oidc: newOidcRepositoryMock(),

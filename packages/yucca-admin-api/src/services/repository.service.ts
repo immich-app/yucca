@@ -11,14 +11,12 @@ import {
   RepositoryUrlResponseDto,
 } from 'src/dto/repository.dto';
 import { env } from 'src/env';
+import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
 
-// Owner of admin-created repositories when no userId is given (e.g. yuctl
-// bench repos). A plain DB row — it can never log in (the sub is not a real
-// OIDC subject).
 const serviceUser = {
   sub: 'yucca-admin-service',
   name: 'Admin service',
@@ -30,6 +28,7 @@ export class RepositoryService {
   constructor(
     private readonly repositories: RepositoryRepository,
     private readonly users: UserRepository,
+    private readonly connections: ConnectionRepository,
     private readonly jwt: JwtService,
     private readonly topology: TopologyRepository,
   ) {}
@@ -51,13 +50,21 @@ export class RepositoryService {
     const cluster = this.topology.getActiveCluster(site);
 
     let userId = dto.userId;
-    if (!userId) {
+    let connection: { type: string; name: string };
+    if (userId) {
+      const type = dto.connectionType ?? 'restic';
+      const names: Record<string, string> = { restic: 'Manual restic', immich: 'Immich' };
+      connection = { type, name: names[type] ?? type };
+    } else {
       const user = (await this.users.getBySub(serviceUser.sub)) ?? (await this.users.create(serviceUser));
       userId = user.id;
+      connection = { type: 'restic', name: 'admin' };
     }
+    const { id: connectionId } = await this.connections.getOrCreateByType(userId, connection.type, connection.name);
     const repository = await this.repositories.create({
       name: dto.name,
       userId,
+      connectionId,
       worm: dto.worm ?? false,
       siteCode: site.code,
       storageClusterCode: cluster.code,
@@ -65,8 +72,6 @@ export class RepositoryService {
     return { repository };
   }
 
-  // Mirrors yucca-api's createUrl: a restic rest: URL with an embedded JWT
-  // that michael verifies against yucca-api's public key.
   async url(id: string): Promise<RepositoryUrlResponseDto> {
     if (!env.RESTIC_JWT_PRIVATE_KEY) {
       throw new NotImplementedException('RESTIC_JWT_PRIVATE_KEY is not configured');
@@ -79,6 +84,7 @@ export class RepositoryService {
         repository: repository.id,
         writeOnce: repository.worm,
         storageCluster: repository.storageClusterCode,
+        connection: repository.connectionType,
       },
       { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn: env.RESTIC_JWT_EXPIRES_IN },
     );

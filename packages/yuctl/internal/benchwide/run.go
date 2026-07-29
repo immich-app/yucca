@@ -27,7 +27,7 @@ import (
 // creation and restic-URL minting (URLs embed short-lived JWTs, so they are
 // re-minted on every start, never persisted).
 type RepoMinter interface {
-	CreateRepository(ctx context.Context, name string, worm bool) (*adminapi.Repository, error)
+	CreateRepository(ctx context.Context, name string, worm bool, opts adminapi.CreateRepositoryOptions) (*adminapi.Repository, error)
 	RepositoryURL(ctx context.Context, id string) (string, error)
 }
 
@@ -243,7 +243,7 @@ func (s *Session) ensureClients(ctx context.Context, minter RepoMinter, droplets
 				continue
 			}
 			repoName := fmt.Sprintf("yucca-benchdo-%s-%s", strings.TrimPrefix(name, "yucca-bench-"), time.Now().Format("20060102-150405"))
-			repo, err := minter.CreateRepository(ctx, repoName, false)
+			repo, err := minter.CreateRepository(ctx, repoName, false, adminapi.CreateRepositoryOptions{})
 			if err != nil {
 				return nil, fmt.Errorf("create repository %s: %w", repoName, err)
 			}

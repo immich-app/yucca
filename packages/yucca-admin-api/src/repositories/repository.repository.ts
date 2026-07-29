@@ -31,6 +31,7 @@ export class RepositoryRepository {
     const rows = await this.db
       .selectFrom('repositories')
       .innerJoin('users', 'users.id', 'repositories.userId')
+      .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .select([
         'repositories.id',
@@ -38,6 +39,8 @@ export class RepositoryRepository {
         'repositories.worm',
         'repositories.siteCode',
         'repositories.storageClusterCode',
+        'repositories.connectionId',
+        'connections.type as connectionType',
       ])
       .select(ownerJson)
       .select(metricsJson)
@@ -54,6 +57,7 @@ export class RepositoryRepository {
     return this.db
       .selectFrom('repositories')
       .innerJoin('users', 'users.id', 'repositories.userId')
+      .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .where('repositories.id', '=', id)
       .select([
@@ -62,6 +66,8 @@ export class RepositoryRepository {
         'repositories.worm',
         'repositories.siteCode',
         'repositories.storageClusterCode',
+        'repositories.connectionId',
+        'connections.type as connectionType',
       ])
       .select(ownerJson)
       .select(metricsJson)

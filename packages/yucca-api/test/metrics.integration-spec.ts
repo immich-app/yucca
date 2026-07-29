@@ -133,6 +133,8 @@ describe('MetricsController (e2e)', () => {
         repository: {
           id: repository.id,
           userId: user.id,
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: expect.any(String),
           siteCode: 'local',
