@@ -30,74 +30,121 @@
     - (telemetry_status.stdout | from_json).enabled | default(true)
   changed_when: true
 
-# --- OSD tuning (check-then-set pattern) ---
+# --- Ceph config model ---
+#
+# Merge the three layers, diff against the live mon database, apply only what
+# differs. The diff is a script rather than a Jinja comparison because
+# `ceph config dump` reports every value as a string (604800.000000 for an int
+# option, "true" for a bool) while the model holds real YAML types, and the
+# `float` filter returns 0.0 for anything non-numeric -- which would read
+# "balanced" and "high_recovery_ops" as equal.
 
-- name: Read current OSD config values
-  ansible.builtin.shell: |
-    set -o pipefail
-    echo "recovery_max_active=$(ceph config get osd osd_recovery_max_active)"
-    echo "recovery_sleep_hdd=$(ceph config get osd osd_recovery_sleep_hdd)"
-    echo "max_backfills=$(ceph config get osd osd_max_backfills)"
-    echo "scrub_begin_hour=$(ceph config get osd osd_scrub_begin_hour)"
-    echo "scrub_end_hour=$(ceph config get osd osd_scrub_end_hour)"
-    echo "deep_scrub_interval=$(ceph config get osd osd_deep_scrub_interval)"
-    echo "bluestore_block_db_size=$(ceph config get osd bluestore_block_db_size)"
-    echo "mon_target_pg_per_osd=$(ceph config get mgr mon_target_pg_per_osd)"
-  args:
-    executable: /bin/bash
-  register: current_osd_config
+- name: Merge Ceph config layers
+  ansible.builtin.set_fact:
+    ceph_config_effective: >-
+      {{ ceph_config_defaults
+         | combine(ceph_config_cluster, ceph_config_host, recursive=True) }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Diff declared Ceph config against the mon database
+  ansible.builtin.script: ceph_config_diff.py
+  environment:
+    CEPH_CONFIG_MODEL: >-
+      {{ {'desired': ceph_config_effective,
+          'prune': ceph_config_prune,
+          'gate_keys': ceph_config_gate_keys} | to_json }}
+  register: ceph_config_plan
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
-- name: Parse current OSD config
+- name: Parse Ceph config plan
   ansible.builtin.set_fact:
-    osd_cfg: >-
-      {{ dict(current_osd_config.stdout_lines
-              | map('split', '=')
-              | map('list')) }}
+    ceph_config_changes: "{{ ceph_config_plan.stdout | from_json }}"
   when: inventory_hostname in groups['ceph_bootstrap']
 
+- name: Report pending Ceph config changes
+  ansible.builtin.debug:
+    msg: >-
+      {{ ceph_config_changes.set | length }} option(s) to set,
+      {{ ceph_config_changes.rm | length }} superseded entry(ies) to remove
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+# Gate keys sort first (the script orders them), so
+# osd_mclock_override_recovery_settings lands before the recovery limits it
+# gates rather than depending on dict ordering in the model.
 - name: Apply Ceph config values
-  ansible.builtin.command: >
-    ceph config set {{ item.section }} {{ item.key }} {{ item.value }}
-  loop:
-    - section: osd
-      key: osd_recovery_max_active
-      value: "{{ ceph_osd_recovery_max_active }}"
-      current: "{{ osd_cfg.recovery_max_active | default('') | float }}"
-    - section: osd
-      key: osd_recovery_sleep_hdd
-      value: "{{ ceph_osd_recovery_sleep_hdd }}"
-      current: "{{ osd_cfg.recovery_sleep_hdd | default('') | float }}"
-    - section: osd
-      key: osd_max_backfills
-      value: "{{ ceph_osd_max_backfills }}"
-      current: "{{ osd_cfg.max_backfills | default('') | float }}"
-    - section: osd
-      key: osd_scrub_begin_hour
-      value: "{{ ceph_osd_scrub_begin_hour }}"
-      current: "{{ osd_cfg.scrub_begin_hour | default('') | float }}"
-    - section: osd
-      key: osd_scrub_end_hour
-      value: "{{ ceph_osd_scrub_end_hour }}"
-      current: "{{ osd_cfg.scrub_end_hour | default('') | float }}"
-    - section: osd
-      key: osd_deep_scrub_interval
-      value: "{{ ceph_osd_deep_scrub_interval }}"
-      current: "{{ osd_cfg.deep_scrub_interval | default('') | float }}"
-    - section: osd
-      key: bluestore_block_db_size
-      value: "{{ ceph_bluestore_block_db_size }}"
-      current: "{{ osd_cfg.bluestore_block_db_size | default('') | float }}"
-    - section: global
-      key: mon_target_pg_per_osd
-      value: "{{ ceph_mon_target_pg_per_osd }}"
-      current: "{{ osd_cfg.mon_target_pg_per_osd | default('') | float }}"
+  ansible.builtin.command:
+    argv: ["ceph", "config", "set", "{{ item.who }}", "{{ item.key }}", "{{ item.value }}"]
+  loop: "{{ ceph_config_changes.set | default([]) }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+  loop_control:
+    label: "{{ item.who }}/{{ item.key }}: {{ item.current | default('unset') }} -> {{ item.value }}"
+  changed_when: true
+
+# Safety interlock for the prune below. The recovery limits are moving from
+# `global` to `osd`, and under mclock an `osd`-section write can be reverted.
+# If that happened and we removed the `global` copy anyway, the effective value
+# would fall through to the mclock default of 1000 concurrent backfills. So
+# confirm the running daemons actually report the declared values first; a
+# mismatch fails the play with `global` still in place, which is the safe state.
+- name: Verify gated options landed on a running OSD
+  ansible.builtin.shell: |
+    set -o pipefail
+    OSD=$(ceph osd tree -f json | python3 -c "
+    import sys, json
+    up = [n['id'] for n in json.load(sys.stdin)['nodes']
+          if n.get('type') == 'osd' and n.get('status') == 'up']
+    print(up[0] if up else '')
+    ")
+    [ -n "$OSD" ] || { echo 'no OSD is up to verify against'; exit 1; }
+    export CEPH_VERIFY_OSD="$OSD"
+    ceph tell osd."$OSD" config show | python3 -c "
+    import json, os, sys
+    expected = json.loads(os.environ['CEPH_EXPECTED_GATED'])
+    running = json.load(sys.stdin)
+    osd = os.environ['CEPH_VERIFY_OSD']
+    bad = []
+    for key, want in expected.items():
+        got = running.get(key)
+        if got is None:
+            bad.append(f'{key}: not reported by osd.{osd}')
+            continue
+        if str(got) == str(want):
+            continue
+        try:
+            if float(got) == float(want):
+                continue
+        except (TypeError, ValueError):
+            pass
+        bad.append(f'{key}: osd.{osd} runs {got}, model declares {want}')
+    if bad:
+        print('\n'.join(bad))
+        sys.exit(1)
+    print(f'osd.{osd} runs the declared values for: ' + ', '.join(expected))
+    "
+  args:
+    executable: /bin/bash
+  environment:
+    CEPH_EXPECTED_GATED: >-
+      {{ (ceph_config_effective.osd | default({}))
+         | dict2items
+         | selectattr('key', 'in', ceph_config_gated_options)
+         | items2dict | to_json }}
+  register: ceph_config_verify
   when:
     - inventory_hostname in groups['ceph_bootstrap']
-    - item.current | float != item.value | float
+    - ceph_config_changes.rm | default([]) | length > 0
+  changed_when: false
+
+- name: Remove superseded Ceph config entries
+  ansible.builtin.command:
+    argv: ["ceph", "config", "rm", "{{ item.section }}", "{{ item.name }}"]
+  loop: "{{ ceph_config_changes.rm | default([]) }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - ceph_config_verify is succeeded
   loop_control:
-    label: "{{ item.key }}"
+    label: "{{ item.section }}/{{ item.name }} (was {{ item.current }})"
   changed_when: true
 
 # --- Crash daemon ---

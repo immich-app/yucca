@@ -7,22 +7,85 @@
 # contact/org attached; leaderboard off). Set false per-cluster to opt out.
 ceph_telemetry_enabled: true
 
-# OSD recovery throttling (also in cluster-spec.yml.j2 initial config,
-# but re-asserted here for idempotency after config changes)
-ceph_osd_recovery_max_active: 1
-ceph_osd_recovery_sleep_hdd: 0.1
-ceph_osd_max_backfills: 1
+# === Ceph config model ===
+#
+# One map instead of a scalar per option. Keys are anything `ceph config set`
+# accepts as its `<who>`: a section (`global`, `osd`, `mon`), a single daemon
+# (`osd.5`), or a section plus a mask (`osd/class:hdd`, `osd/host:<node>`).
+# Ceph resolves those most-specific-first on its own, so per-class and per-host
+# tuning needs no Ansible machinery -- it is another key in this map.
+#
+# Per-host Ceph settings belong here rather than in Ansible host_vars: these
+# tasks run only on the bootstrap node, because the mon config database is
+# cluster-wide state, so another host's host_vars are not in scope. host_vars
+# stays for facts about the machine -- host_index, bond_ip, the disk map.
+#
+# Three layers, merged in tasks/main.yml:
+#   ceph_config_defaults   role                    - safe on any cluster
+#   ceph_config_cluster    group_vars/all/vars.yml - cluster shape
+#   ceph_config_host       group_vars/all/vars.yml - per-host/class exceptions
+# Merged with combine(recursive=True), so a cluster overriding one option keeps
+# the rest of the section instead of replacing it wholesale.
+ceph_config_defaults:
+  global:
+    mon_target_pg_per_osd: 100
+  osd:
+    # Recovery/backfill. Conservative values sized for a small cluster on a
+    # shared network; a cluster with a dedicated replication fabric should raise
+    # them in its own ceph_config_cluster.
+    osd_recovery_max_active: 1
+    osd_recovery_sleep_hdd: 0.1
+    osd_max_backfills: 1
+    # Required for the three options above to stick. Under the mclock scheduler
+    # (the default since Reef) an operator-set recovery limit is reverted to the
+    # mclock default unless this gate is on, and that default is 1000, not 1.
+    # tasks/main.yml applies gate keys ahead of the options they gate and will
+    # not prune the superseded `global` entries until the running OSD values are
+    # confirmed, so a rejected write cannot quietly uncap backfill.
+    osd_mclock_override_recovery_settings: true
+    # Scrub window -- 2-6 AM, deep scrub weekly.
+    osd_scrub_begin_hour: 2
+    osd_scrub_end_hour: 6
+    osd_deep_scrub_interval: 604800
+    # BlueStore block.db: 0 means use the entire LV.
+    bluestore_block_db_size: 0
 
-# Scrub window
-ceph_osd_scrub_begin_hour: 2
-ceph_osd_scrub_end_hour: 6
-ceph_osd_deep_scrub_interval: 604800    # 7 days
+ceph_config_cluster: {}
+ceph_config_host: {}
 
-# PG autoscaler
-ceph_mon_target_pg_per_osd: 100
+# Options whose write is gated by another option. Applied first, in this order,
+# ahead of everything else in the model.
+ceph_config_gate_keys:
+  - osd_mclock_override_recovery_settings
 
-# BlueStore block.db: 0 means use the entire LV
-ceph_bluestore_block_db_size: 0
+# Options the gate keys above unlock, confirmed against a running OSD before any
+# prune. These are the ones where a silently-reverted write is dangerous rather
+# than cosmetic: both fall back to the mclock default of 1000.
+#
+# osd_recovery_sleep_hdd is deliberately absent. mclock forces the recovery-sleep
+# options to 0 whatever the database says, so a running OSD reports 0.000000
+# against a declared 0.1 and would fail this check forever. The declared value
+# still matters if a cluster is moved back to the wpq scheduler, so it stays in
+# the model; it just cannot be verified against a live daemon under mclock.
+ceph_config_gated_options:
+  - osd_max_backfills
+  - osd_recovery_max_active
+
+# One-time reconciliation: entries this model now owns in another section,
+# left behind by an earlier bootstrap. cephadm bootstrap wrote the recovery
+# throttles into `global` while this role writes `osd`. `osd` wins, so the stale
+# `global` copies changed no behaviour, but they read as intent and sent more
+# than one investigation down the wrong path.
+#
+# This is an explicit allowlist and has to stay one. The mon database also holds
+# keys owned by other systems -- cephadm's per-host osd_memory_target masks, the
+# dashboard credentials, the telemetry channels, container_image -- so pruning
+# "everything the model does not declare" would be destructive. Entries already
+# absent are skipped rather than failing.
+ceph_config_prune:
+  - {section: global, name: osd_recovery_max_active}
+  - {section: global, name: osd_recovery_sleep_hdd}
+  - {section: global, name: osd_max_backfills}
 
 # Log rotation retention (days)
 ceph_log_retention_days: 30
