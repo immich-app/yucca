@@ -19,6 +19,9 @@
 - name: NetBird overlay enrollment (endpoints only; gated by ceph_netbird_enabled)
   import_playbook: netbird.yml
 
+- name: Host log shipping (journald to o11y; gated by ceph_fluentbit_enabled)
+  import_playbook: logging.yml
+
 - name: OS tuning (sysctl, TCP buffers)
   import_playbook: tune-os.yml
 

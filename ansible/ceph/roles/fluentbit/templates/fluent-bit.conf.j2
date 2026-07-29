@@ -3,15 +3,11 @@
 
 [SERVICE]
     Flush                     5
-    Daemon                    Off
     Log_Level                 info
-    Parsers_File              parsers.conf
     HTTP_Server               On
     HTTP_Listen               0.0.0.0
     HTTP_Port                 {{ ceph_fluentbit_http_port }}
     storage.path              /var/lib/fluent-bit/storage
-    storage.sync              normal
-    storage.checksum          off
     storage.backlog.mem_limit 64M
 
 [INPUT]
@@ -19,11 +15,11 @@
     Tag               host.*
     # Cursor survives restarts, so a reboot resumes instead of re-reading.
     DB                /var/lib/fluent-bit/journal.db
-    DB.Sync           normal
     # VictoriaLogs reserves _-prefixed names for _msg/_time/_stream.
     Strip_Underscores On
+    # First start skips the existing journal (1.9G/node) rather than
+    # backfilling it into o11y.
     Read_From_Tail    On
-    Max_Entries       5000
     storage.type      filesystem
 
 # ~2.4M lines/hour fleet-wide is nearly all mon/mgr status chatter. The mon

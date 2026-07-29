@@ -28,7 +28,6 @@
     content: "{{ ceph_fluentbit_repo }}\n"
     dest: /etc/apt/sources.list.d/fluentbit.list
     mode: '0644'
-  register: ceph_fluentbit_repo_file
 
 - name: Update apt cache
   # Always refresh after a repo add: a cache_valid_time skip installs against a
