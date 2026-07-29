@@ -49,8 +49,8 @@ External dependencies are minimal and explicit:
   is the only remote hands short of a support ticket.
 - **NetBird overlay** -- spice nodes are enrolled peers. Human SSH is
   SSO-gated through NetBird's own server; CI reaches the nodes over the
-  overlay. Ansible still connects over the WAN address, which holds the
-  default route.
+  overlay. Ansible connects over the WAN address, which holds the default
+  route.
 
 ---
 

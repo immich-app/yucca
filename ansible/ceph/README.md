@@ -187,10 +187,11 @@ cluster's stack under `tf/deployment/<partition>/<region>/ceph/`, then run
 - **Single-network topology on sietch**: public = cluster network (both
   `10.10.10.0/24`). spice splits them across fabric VLANs -- public
   `10.40.20.0/23` on VLAN 120, cluster `10.40.22.0/23` on VLAN 122 at MTU 9000.
-- **spice still routes over its 1G WAN**: the default route and the ansible/SSH
-  path are the 1G `enp197s0`, not the 25G bond. Ceph itself never touches it
-  (daemons are pinned to the fabric networks), but a WAN outage still costs
-  reachability.
+- **spice reachability depends on its 1G WAN**: the default route and the
+  ansible/SSH path are the 1G `enp197s0`, not the 25G bond. The split is
+  deliberate -- Ceph never touches the WAN (daemons are pinned to the fabric
+  networks), and a networkd error on the fabric cannot cost access to a node --
+  but a WAN outage costs reachability.
 - **Self-signed TLS**: RGW clients need `--no-verify-ssl`, on both clusters.
 - **`ops` user is password-only**: no SSH keys installed; password sourced from 1P. Intended as an interactive console or recovery account, not for automation.
 - **DNS not managed**: `s3.<domain>` and `*.s3.<domain>` records must exist externally.
