@@ -1,15 +1,10 @@
 ---
 # Ship each ceph node's journald to o11y's VictoriaLogs over the NetBird overlay.
+# journald is the whole source: cephadm daemons write there via libsystemd
+# (log_to_journald true, log_to_file false), and so does the mon cluster channel.
 #
-# Everything the cluster logs is already in journald: cephadm's daemons write
-# there directly via libsystemd (log_to_journald true, log_to_file false), and
-# so does the mon cluster channel (mon_cluster_log_to_journald true). There is
-# no second source to collect.
-#
-# Gated by ceph_fluentbit_enabled (spice: group_vars true). Requires the node to be
-# a NetBird peer AND the ceph-to-o11y-gateway policy to be applied - without the
-# policy there is no route to the gateway VIP and the role fails at the health
-# check rather than silently buffering.
+# Needs the node enrolled in NetBird and the ceph-to-o11y-gateway policy applied;
+# without the policy there is no route to the gateway VIP.
 #
 #   Canary:   mise run logs -- --limit spice-ceph-adelia
 #   Fleet:    mise run logs

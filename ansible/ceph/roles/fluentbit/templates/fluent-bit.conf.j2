@@ -1,12 +1,5 @@
 # Managed by ansible (roles/fluentbit) - do not edit on the node.
-#
-# journald -> drop the known-noise streams -> tag with the metrics identity ->
-# o11y VictoriaLogs over the NetBird overlay.
-#
-# Why /insert/jsonline and not the journald endpoint: VictoriaLogs' native
-# journald ingest is not routed by o11y's mesh vmauth, and opening it is an
-# o11y-side change. /insert/jsonline is routed, and is the path VictoriaLogs
-# documents for Fluent Bit.
+# journald -> drop noise -> tag -> o11y VictoriaLogs over the NetBird overlay.
 
 [SERVICE]
     Flush                     5
@@ -24,26 +17,22 @@
 [INPUT]
     Name              systemd
     Tag               host.*
-    # Cursor persists across restarts, so a reboot resumes rather than
-    # re-reading the journal from the top.
+    # Cursor survives restarts, so a reboot resumes instead of re-reading.
     DB                /var/lib/fluent-bit/journal.db
     DB.Sync           normal
-    # Leading underscores stripped: VictoriaLogs reserves _-prefixed field
-    # names for its own (_msg/_time/_stream).
+    # VictoriaLogs reserves _-prefixed names for _msg/_time/_stream.
     Strip_Underscores On
     Read_From_Tail    On
     Max_Entries       5000
     storage.type      filesystem
 
-# Most of the fleet's ~2.4M lines/hour is mon/mgr status chatter with no
-# diagnostic value. Dropping it here keeps it off the overlay and out of
-# retention. The mon cluster health channel is deliberately NOT matched.
+# ~2.4M lines/hour fleet-wide is nearly all mon/mgr status chatter. The mon
+# cluster health channel is not matched.
 [FILTER]
     Name    grep
     Match   host.*
     Exclude MESSAGE {{ ceph_fluentbit_drop_regex }}
 
-# Same identity tags the metrics pipeline stamps, so logs and metrics join.
 [FILTER]
     Name   record_modifier
     Match  host.*
@@ -56,7 +45,7 @@
     Match                    host.*
     Host                     {{ ceph_fluentbit_o11y_host }}
     Port                     {{ ceph_fluentbit_o11y_port }}
-    # Real Let's Encrypt cert on the gateway, so verification stays on.
+    # Real Let's Encrypt cert on the gateway.
     TLS                      On
     TLS.Verify               On
     URI                      /insert/jsonline?_msg_field=MESSAGE&_time_field=date&_stream_fields={{ ceph_fluentbit_stream_fields }}
@@ -64,6 +53,6 @@
     Json_date_format         iso8601
     Json_date_key            date
     compress                 gzip
-    # Retry forever rather than discard: an overlay flap should queue, not lose.
+    # Retry forever: an overlay flap should queue, not lose.
     Retry_Limit              False
     storage.total_limit_size {{ ceph_fluentbit_buffer_limit }}

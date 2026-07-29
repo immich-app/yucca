@@ -466,8 +466,7 @@ ceph_netbird_enabled: true
 ceph_netbird_ssh_server: true
 
 # === Host logs ===
-# Fluent Bit tails journald on every node and ships it to o11y's VictoriaLogs over
-# the overlay (vmauth.o11y.futo.network), tagged cluster/site/env to match the
-# metrics. Needs the ceph-to-o11y-gateway NetBird policy for the route; see
-# roles/fluentbit and logging.yml.
+# Fluent Bit ships journald to o11y's VictoriaLogs over the overlay, tagged
+# cluster/site/env to match the metrics. Needs the ceph-to-o11y-gateway NetBird
+# policy for the route. See roles/fluentbit and logging.yml.
 ceph_fluentbit_enabled: true

@@ -1,10 +1,9 @@
 ---
 # Install Fluent Bit (pinned) and ship journald to o11y over the NetBird overlay.
-# Convergeable: install is pin+hold, config is templated, restart is a handler.
 
 - name: Assert the node is on the overlay
-  # No route to the gateway VIP without it. Fail here with a clear signal rather
-  # than let fluent-bit spin on connection refused.
+  # Without it there is no route to the gateway VIP, and fluent-bit would spin
+  # on connection refused instead of failing here.
   ansible.builtin.command: netbird status
   register: ceph_fluentbit_nb
   changed_when: false
@@ -33,7 +32,7 @@
 
 - name: Update apt cache
   # Always refresh after a repo add: a cache_valid_time skip installs against a
-  # stale index (same lesson as ceph_deploy/prerequisites).
+  # stale index.
   ansible.builtin.apt:
     update_cache: true
   changed_when: false
@@ -61,9 +60,6 @@
     name: fluent-bit
     selection: hold
 
-# o11y publishes its mesh DNS zone only to the operator + o11y-router groups, so
-# the ceph peers cannot resolve the gateway name. Envoy routes by Host/SNI, so
-# pointing at the bare IP would not match the route - hence a hosts entry.
 - name: Resolve the o11y gateway name locally
   ansible.builtin.lineinfile:
     path: /etc/hosts
@@ -98,8 +94,7 @@
     daemon_reload: true
 
 - name: Apply any pending restart before verifying
-  # The health check below is only meaningful against the new config, so the
-  # handler has to run here rather than at end-of-play.
+  # The health check below has to run against the new config, not the old one.
   ansible.builtin.meta: flush_handlers
 
 - name: Verify fluent-bit is up (its own metrics endpoint responds)

@@ -123,12 +123,11 @@ policies = {
   }
 
   # Ceph nodes -> o11y's prod mesh gateway, same destination and port as the
-  # talos policy above: vector on each node ships journald to the UNAUTHENTICATED
-  # mesh vmauth (vmauth.o11y.futo.network:443) and this ACL is the only gate.
-  # The gateway resource is a single /32 (10.69.0.10), so the client route this
-  # grants cannot overlap the ceph fabric (10.40.0.0/16) and replication stays on
-  # the 25G bond. o11y's pod-egress range is a DIFFERENT resource group, so it is
-  # not granted here.
+  # talos policy above. Fluent Bit on each node ships journald to the
+  # unauthenticated mesh vmauth, and this ACL is the only gate. The gateway
+  # resource is one /32 (10.69.0.10), so this route cannot overlap the ceph
+  # fabric (10.40.0.0/16) and replication stays on the 25G bond. o11y's
+  # pod-egress range is a separate resource group and is not granted here.
   ceph-to-o11y-gateway = {
     description = "Ceph nodes -> o11y prod mesh gateway (unauth vmauth log ingest)."
     rules = [{
