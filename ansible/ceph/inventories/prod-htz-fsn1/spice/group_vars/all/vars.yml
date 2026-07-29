@@ -261,6 +261,64 @@ ceph_hdd_osds:
 ceph_ssd_osds:
   - { lv: vg0/ssd-osd }
 
+# === Ceph config overrides (see roles/ceph_tuning/defaults for the model) ===
+#
+# --- Deep scrub interval: 7 days -> 28 days ---
+# The role default (7d) is unachievable at this size and was never close. Deep
+# scrubbing 1.1 PiB inside the 02:00-06:00 window needs ~12 GB/s sustained, or
+# ~18 MB/s per HDD every night without pause. At 28 days it is ~3.1 GB/s over
+# 112 hours of window, about 4.6 MB/s per disk, which the fleet does comfortably.
+#
+# The consequence of the old value was not slow scrubbing, it was permanent
+# overrun: a PG past its deadline scrubs regardless of the window, so 2139 of
+# 4096 PGs were overdue and scrubbing around the clock, and the cluster ran
+# 1626 concurrent scrubs that mostly could not finish. Raising the interval put
+# the overdue count to zero immediately -- the work was not drained, it stopped
+# being demanded. Health warnings still fire at 1.75x the interval
+# (mon_warn_pg_not_deep_scrubbed_ratio), so ~49 days.
+#
+# osd_scrub_max_interval (shallow) stays at the 7-day default: shallow scrub is
+# cheap and keeps a weekly consistency signal.
+#
+# --- Scrub reservation and scheduling ---
+# Since 19.2.0 a replica QUEUES a scrub reservation request instead of denying
+# it when at capacity. With EC 16+4 a scrub needs 20 shard reservations at once,
+# and the cluster has 672x6 = 4032 remote slots, so only ~212 PGs can hold a
+# full set. The rest acquire partial sets and wait forever. Measured on
+# 2026-07-29: of 40 sampled PGs in "scrubbing" state, 37 were still reserving
+# and had issued no reads -- disks sat at 4-8% utilisation while 1565 PGs
+# claimed to be scrubbing. disable_reservation_queuing restores pre-Squid
+# grant-or-fail, so a primary that cannot assemble 20 backs off and frees what
+# it holds. Concurrency converged from 1565 to ~190.
+#
+# UPSTREAM REMOVES THIS OPTION IN THE NEXT RELEASE (its own config help says so).
+# Re-check on any Ceph upgrade: if it disappears, the deadlock returns silently.
+# Context: https://www.mail-archive.com/ceph-users@ceph.io/msg28007.html
+#
+# osd_max_scrubs is load-bearing BECAUSE of the above: under grant-or-fail it
+# sets sustainable concurrency directly (672*6/19 ~ 212 PGs; at the default 3 it
+# would be ~106). It did nothing while queuing was enabled.
+#
+# --- Provisional, kept pending evidence ---
+# osd_scrub_cost is upstream's recommended fix for mclock costing each scrub op
+# at 50 MiB against a 150 MiB/s budget. Measured effect here was +4.5%, inside
+# noise. osd_deep_scrub_stride and the custom mclock profile likewise showed
+# small gains under conditions that no longer apply. All three are kept for now
+# rather than reverted mid-incident; they are candidates to drop once the
+# cluster is quiet enough to A/B them properly. The custom profile is the one to
+# revisit first -- it makes us the owner of the client and recovery reservations
+# too, which the built-in profiles would otherwise manage.
+ceph_config_cluster:
+  osd:
+    osd_deep_scrub_interval: 2419200          # 28 days
+    osd_scrub_disable_reservation_queuing: true
+    osd_max_scrubs: 6
+    osd_scrub_cost: 50                        # provisional
+    osd_deep_scrub_stride: 2097152            # provisional, 2 MiB
+    osd_mclock_profile: custom                # provisional
+    osd_mclock_scheduler_background_recovery_res: 0.2
+    osd_mclock_scheduler_background_best_effort_res: 0.3
+
 # === RGW ===
 # EC 16+4, HOST failure domain -- capacity-max profile (80% usable, m=4) for the
 # beta behind michael. Host domain trades rack-loss protection for capacity: a
