@@ -37,6 +37,12 @@ tf/
 # + kubeconform via `mise k8s:validate` instead.
 charts/
 
+# yuctl warp manifests: Go-templated YAML embedded into the binary (//go:embed
+# in internal/warp/session.go). Worth ignoring rather than fixing up, because
+# prettier --write rewrites `{{ .Name }}` to `{ { .Name } }` (legal YAML, read
+# as a nested flow mapping) and text/template then emits it literally.
+packages/yuctl/internal/warp/manifests/
+
 # auto-generated
 yaak/
 CHANGELOG.md
