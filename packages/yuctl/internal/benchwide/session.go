@@ -1,11 +1,14 @@
-// Package benchdo deploys and drives a fleet of DigitalOcean droplets running
-// real restic clients against michael — the external-user data path, over the
-// public internet. It is the droplet-shaped sibling of internal/warp (fleet
-// lifecycle: deploy/start/status/stop/cleanup/undeploy) built on the bench
-// agent's loadgen mode: every droplet runs a detached supervisor looping
-// seeded generate→backup cycles per client, hard-capped at the droplet's
-// transfer allowance so a forgotten run cannot burn into paid overage.
-package benchdo
+// Package benchwide deploys and drives a fleet of cloud VMs — across
+// providers (DigitalOcean, Hetzner, …; see internal/provider) — running real
+// restic clients against michael, the external-user data path over the public
+// internet. It is the VM-shaped sibling of internal/warp (fleet lifecycle:
+// deploy/start/status/stop/cleanup/undeploy) built on the bench agent's
+// loadgen mode: every host runs a detached supervisor looping seeded
+// generate→backup cycles per client, hard-capped at the host's transfer
+// allowance so a forgotten run cannot burn into paid overage. Each provider is
+// a separate, independently-addressable fleet (state keyed by partition ×
+// provider), so multiple providers can load michael concurrently.
+package benchwide
 
 import (
 	"bytes"
@@ -23,22 +26,22 @@ import (
 	"time"
 
 	yctx "yuctl/internal/context"
-	"yuctl/internal/do"
+	"yuctl/internal/provider"
 )
 
 const (
-	// Workdir is the droplet-side scratch root: datasets, restic caches, the
+	// Workdir is the host-side scratch root: datasets, restic caches, the
 	// loadgen config (transient) and status file, and the agent log.
 	Workdir    = "/var/tmp/yucca-bench-do"
 	statusPath = Workdir + "/status.json"
 	configPath = Workdir + "/loadgen.json"
 	agentLog   = Workdir + "/agent.log"
 
-	// Tag marks every fleet droplet; partition-scoped so staging and prod
-	// fleets can coexist in the account without undeploy crossing streams.
-	tagPrefix = "yuctl-bench-do-"
-
-	sshUser = "root"
+	// tagPrefix starts every fleet tag; the provider slug and partition are
+	// appended (yuctl-bench-<provider>-<partition>) so staging/prod fleets and
+	// different providers coexist in one account without undeploy crossing
+	// streams.
+	tagPrefix = "yuctl-bench-"
 )
 
 // Client is one restic identity: its admin-api repository and password,
@@ -60,35 +63,38 @@ type RunInfo struct {
 	Params    map[string]string `json:"params"`
 }
 
-// State is the local fleet record (0600 — it holds repo passwords). Droplet
-// existence itself is never trusted from here: the DO tag listing is the
-// source of truth, so fleets survive yuctl crashes and state loss only costs
-// repo passwords, not orphaned droplets.
+// State is the local fleet record (0600 — it holds repo passwords). Host
+// existence itself is never trusted from here: the provider's tag listing is
+// the source of truth, so fleets survive yuctl crashes and state loss only
+// costs repo passwords, not orphaned hosts.
 type State struct {
 	Partition     string    `json:"partition"`
+	Provider      string    `json:"provider"`
 	CreatedAt     time.Time `json:"createdAt"`
-	KeyID         int       `json:"keyId"`
+	KeyID         string    `json:"keyId"`
 	KeyName       string    `json:"keyName"`
 	SizeSlug      string    `json:"sizeSlug"`
 	PriceHourly   float64   `json:"priceHourly"`
-	TransferBytes int64     `json:"transferBytes"` // per-droplet allowance
+	TransferBytes int64     `json:"transferBytes"` // per-host allowance
 	Clients       []Client  `json:"clients"`
 	Run           *RunInfo  `json:"run,omitempty"`
 }
 
-// Session is the resolved handle for one bench-do command invocation.
+// Session is the resolved handle for one bench-wide command invocation,
+// scoped to one provider × partition fleet.
 type Session struct {
 	Partition string
-	DO        *do.Client
+	Provider  provider.Provider
 	State     *State
 
-	dir string // ${XDG_CONFIG_HOME}/yuctl/bench-do
+	providerName string // slug used in the fleet tag + local filenames
+	dir          string // ${XDG_CONFIG_HOME}/yuctl/bench-wide
 }
 
-// NewSession builds the DO client (op token) and loads any persisted fleet
-// state for the partition.
-func NewSession(ctx context.Context, partition string) (*Session, error) {
-	doc, err := do.NewClient(ctx)
+// NewSession builds the named provider's client (env/op token) and loads any
+// persisted fleet state for the partition.
+func NewSession(ctx context.Context, partition, providerName string) (*Session, error) {
+	prov, err := provider.New(ctx, providerName)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +102,7 @@ func NewSession(ctx context.Context, partition string) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Session{Partition: partition, DO: doc, dir: filepath.Join(base, "bench-do")}
+	s := &Session{Partition: partition, Provider: prov, providerName: prov.Name(), dir: filepath.Join(base, "bench-wide")}
 	if err := os.MkdirAll(filepath.Join(s.dir, "cm"), 0o700); err != nil {
 		return nil, fmt.Errorf("create ssh control dir: %w", err)
 	}
@@ -106,20 +112,23 @@ func NewSession(ctx context.Context, partition string) (*Session, error) {
 	return s, nil
 }
 
-// Tag is the fleet's droplet tag.
-func (s *Session) Tag() string { return tagPrefix + s.Partition }
+// slug is the provider×partition key used in the tag and local filenames.
+func (s *Session) slug() string { return s.providerName + "-" + s.Partition }
+
+// Tag is the fleet's provider tag/label.
+func (s *Session) Tag() string { return tagPrefix + s.slug() }
 
 func (s *Session) statePath() string {
-	return filepath.Join(s.dir, "fleet-"+s.Partition+".json")
+	return filepath.Join(s.dir, "fleet-"+s.slug()+".json")
 }
 
 // PrivateKeyPath is where the fleet's ephemeral ssh private key lives.
 func (s *Session) PrivateKeyPath() string {
-	return filepath.Join(s.dir, "id_ed25519-"+s.Partition)
+	return filepath.Join(s.dir, "id_ed25519-"+s.slug())
 }
 
 func (s *Session) knownHostsPath() string {
-	return filepath.Join(s.dir, "known_hosts-"+s.Partition)
+	return filepath.Join(s.dir, "known_hosts-"+s.slug())
 }
 
 func (s *Session) loadState() error {
@@ -168,7 +177,7 @@ func (s *Session) clearFleetState() error {
 		os.Remove(s.statePath())
 		return nil
 	}
-	s.State.KeyID = 0
+	s.State.KeyID = ""
 	s.State.KeyName = ""
 	s.State.Run = nil
 	return s.SaveState()
@@ -231,7 +240,7 @@ func (s *Session) sshRun(ctx context.Context, ip, script string, stdin []byte) (
 // implement their own retry cadence (waitSSH), where nesting retries would
 // multiply the delays.
 func (s *Session) sshRunOnce(ctx context.Context, ip, script string, stdin []byte) (string, error) {
-	cmd := exec.CommandContext(ctx, "ssh", s.sshArgs(sshUser+"@"+ip, script)...)
+	cmd := exec.CommandContext(ctx, "ssh", s.sshArgs(s.Provider.SSHUser()+"@"+ip, script)...)
 	if stdin != nil {
 		cmd.Stdin = bytes.NewReader(stdin)
 	}
@@ -252,20 +261,21 @@ func tailStr(v string, n int) string {
 	return v
 }
 
-// Droplets returns the live fleet from the DO tag listing.
-func (s *Session) Droplets(ctx context.Context) ([]do.Droplet, error) {
-	return s.DO.ListByTag(ctx, s.Tag())
+// Droplets returns the live fleet from the provider's tag listing. (Named for
+// the historical DO fleet; a host is a host on any provider.)
+func (s *Session) Droplets(ctx context.Context) ([]provider.Host, error) {
+	return s.Provider.List(ctx, s.Tag())
 }
 
-// eachDroplet runs fn against every droplet in parallel — staggered by 150ms
-// each so a big fleet doesn't fire all its port-22 SYNs in one burst (see
-// sshArgs) — and returns the first error (all droplets are still attempted).
-func eachDroplet(droplets []do.Droplet, fn func(d do.Droplet) error) error {
+// eachDroplet runs fn against every host in parallel — staggered by 150ms each
+// so a big fleet doesn't fire all its port-22 SYNs in one burst (see sshArgs)
+// — and returns the first error (all hosts are still attempted).
+func eachDroplet(hosts []provider.Host, fn func(d provider.Host) error) error {
 	var wg sync.WaitGroup
-	errs := make([]error, len(droplets))
-	for i, d := range droplets {
+	errs := make([]error, len(hosts))
+	for i, d := range hosts {
 		wg.Add(1)
-		go func(i int, d do.Droplet) {
+		go func(i int, d provider.Host) {
 			defer wg.Done()
 			time.Sleep(time.Duration(i) * 150 * time.Millisecond)
 			errs[i] = fn(d)

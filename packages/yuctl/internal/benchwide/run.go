@@ -1,4 +1,4 @@
-package benchdo
+package benchwide
 
 import (
 	"bufio"
@@ -19,8 +19,8 @@ import (
 
 	"yuctl/internal/adminapi"
 	"yuctl/internal/bench"
-	"yuctl/internal/do"
 	"yuctl/internal/netdev"
+	"yuctl/internal/provider"
 )
 
 // RepoMinter is the slice of the admin-api client Start needs: repository
@@ -115,7 +115,7 @@ func (s *Session) Start(ctx context.Context, minter RepoMinter, opts StartOption
 		return err
 	}
 	if len(droplets) == 0 {
-		return fmt.Errorf("no fleet droplets; run `yuctl tools bench-do deploy` first")
+		return fmt.Errorf("no fleet droplets; run `yuctl tools bench-wide deploy` first")
 	}
 
 	clients, err := s.ensureClients(ctx, minter, droplets, opts.ClientsPerDroplet)
@@ -138,11 +138,11 @@ func (s *Session) Start(ctx context.Context, minter RepoMinter, opts StartOption
 	if capBytes <= 0 {
 		// State was lost but droplets exist: re-derive the allowance rather
 		// than ever running uncapped into paid overage.
-		size, err := s.DO.GetSize(ctx, droplets[0].SizeSlug)
+		size, err := s.Provider.ResolveSize(ctx, droplets[0].SizeSlug)
 		if err != nil {
 			return fmt.Errorf("no recorded transfer allowance and size lookup failed: %w", err)
 		}
-		capBytes = size.TransferBytes()
+		capBytes = size.TransferBytes
 		s.State.TransferBytes = capBytes
 		s.State.SizeSlug = size.Slug
 	}
@@ -154,7 +154,7 @@ func (s *Session) Start(ctx context.Context, minter RepoMinter, opts StartOption
 		Str("cap_pool", bench.FormatBytes(capBytes*int64(len(droplets)))).
 		Msg("launching load (kill previous, then detach the agent)")
 
-	err = eachDroplet(droplets, func(d do.Droplet) error {
+	err = eachDroplet(droplets, func(d provider.Host) error {
 		var mine []bench.LoadgenClient
 		for _, cl := range clients {
 			if cl.Droplet == d.Name {
@@ -214,7 +214,7 @@ func (s *Session) Start(ctx context.Context, minter RepoMinter, opts StartOption
 	if err := s.SaveState(); err != nil {
 		return err
 	}
-	log.Info().Msg("all droplets launched; `yuctl tools bench-do watch` for the live dashboard")
+	log.Info().Msg("all droplets launched; `yuctl tools bench-wide watch` for the live dashboard")
 	return nil
 }
 
@@ -228,7 +228,7 @@ func durationLabel(d time.Duration) string {
 // ensureClients reconciles the persisted client list against the live fleet:
 // one repository per (droplet, slot), created on first use and reused across
 // restarts (fresh seeds keep reuse dedup-proof).
-func (s *Session) ensureClients(ctx context.Context, minter RepoMinter, droplets []do.Droplet, perDroplet int) ([]Client, error) {
+func (s *Session) ensureClients(ctx context.Context, minter RepoMinter, droplets []provider.Host, perDroplet int) ([]Client, error) {
 	existing := map[string]Client{}
 	for _, cl := range s.State.Clients {
 		existing[cl.Name] = cl
@@ -242,7 +242,7 @@ func (s *Session) ensureClients(ctx context.Context, minter RepoMinter, droplets
 				out = append(out, cl)
 				continue
 			}
-			repoName := fmt.Sprintf("yucca-benchdo-%s-%s", strings.TrimPrefix(name, "yucca-bench-do-"), time.Now().Format("20060102-150405"))
+			repoName := fmt.Sprintf("yucca-benchdo-%s-%s", strings.TrimPrefix(name, "yucca-bench-"), time.Now().Format("20060102-150405"))
 			repo, err := minter.CreateRepository(ctx, repoName, false)
 			if err != nil {
 				return nil, fmt.Errorf("create repository %s: %w", repoName, err)
@@ -274,7 +274,7 @@ func (s *Session) Stop(ctx context.Context) (*Result, error) {
 		return nil, nil
 	}
 	log.Info().Int("droplets", len(droplets)).Msg("stopping load on all droplets")
-	if err := eachDroplet(droplets, func(d do.Droplet) error {
+	if err := eachDroplet(droplets, func(d provider.Host) error {
 		_, err := s.sshRun(ctx, d.PublicIP, killScript, nil)
 		return err
 	}); err != nil {
@@ -317,7 +317,7 @@ type DropletResult struct {
 	Clients     []bench.LoadgenClientStatus `json:"clients,omitempty"`
 }
 
-func (s *Session) collect(ctx context.Context, droplets []do.Droplet) (*Result, error) {
+func (s *Session) collect(ctx context.Context, droplets []provider.Host) (*Result, error) {
 	res := &Result{Partition: s.Partition, Created: time.Now().UTC(), Label: "run"}
 	if s.State.Run != nil {
 		res.Label = s.State.Run.Label
@@ -326,7 +326,7 @@ func (s *Session) collect(ctx context.Context, droplets []do.Droplet) (*Result, 
 		res.Params = s.State.Run.Params
 	}
 	var mu sync.Mutex
-	err := eachDroplet(droplets, func(d do.Droplet) error {
+	err := eachDroplet(droplets, func(d provider.Host) error {
 		out, err := s.sshRun(ctx, d.PublicIP, "cat "+statusPath+" 2>/dev/null || true", nil)
 		if err != nil {
 			return err
@@ -392,7 +392,7 @@ func (s *Session) Status(ctx context.Context, sampleSeconds int) (*StatusReport,
 		sampleSeconds, statusPath)
 
 	var mu sync.Mutex
-	_ = eachDroplet(droplets, func(d do.Droplet) error {
+	_ = eachDroplet(droplets, func(d provider.Host) error {
 		ds := DropletStatus{Name: d.Name, Region: d.Region, IP: d.PublicIP}
 		out, err := s.sshRun(ctx, d.PublicIP, script, nil)
 		if err != nil {
@@ -458,14 +458,14 @@ func (s *Session) Cleanup(ctx context.Context, minter RepoMinter, force bool) er
 	}
 	if !force {
 		if running, err := s.anyLoadRunning(ctx, droplets); err == nil && running {
-			return fmt.Errorf("load is still running; `yuctl tools bench-do stop` first (or --force)")
+			return fmt.Errorf("load is still running; `yuctl tools bench-wide stop` first (or --force)")
 		}
 	}
 	byDroplet := map[string][]Client{}
 	for _, cl := range s.State.Clients {
 		byDroplet[cl.Droplet] = append(byDroplet[cl.Droplet], cl)
 	}
-	return eachDroplet(droplets, func(d do.Droplet) error {
+	return eachDroplet(droplets, func(d provider.Host) error {
 		mine := byDroplet[d.Name]
 		if len(mine) == 0 {
 			return nil
@@ -489,9 +489,9 @@ func (s *Session) Cleanup(ctx context.Context, minter RepoMinter, force bool) er
 
 // streamCleanup runs the agent cleanup op over a live ssh session, logging
 // its event stream.
-func (s *Session) streamCleanup(ctx context.Context, d do.Droplet, cfg []byte) error {
+func (s *Session) streamCleanup(ctx context.Context, d provider.Host, cfg []byte) error {
 	cmd := exec.CommandContext(ctx, "ssh",
-		s.sshArgs(sshUser+"@"+d.PublicIP, "$HOME/"+bench.RemoteBinDir+"/bench-agent --loadgen")...)
+		s.sshArgs(s.Provider.SSHUser()+"@"+d.PublicIP, "$HOME/"+bench.RemoteBinDir+"/bench-agent --loadgen")...)
 	cmd.Stdin = strings.NewReader(string(cfg))
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()

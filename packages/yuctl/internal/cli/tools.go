@@ -23,7 +23,7 @@ func newToolsCmd() *cobra.Command {
 		Use:   "tools",
 		Short: "Operational tooling for the selected context",
 	}
-	tools.AddCommand(newBenchCmd(), newBenchDoCmd(), newWarpCmd())
+	tools.AddCommand(newBenchCmd(), newBenchWideCmd(), newWarpCmd())
 	return tools
 }
 

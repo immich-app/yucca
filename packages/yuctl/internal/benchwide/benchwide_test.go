@@ -1,4 +1,4 @@
-package benchdo
+package benchwide
 
 import (
 	"regexp"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestDropletName(t *testing.T) {
-	s := &Session{Partition: "staging"}
+	s := &Session{Partition: "staging", providerName: "do"}
 	if got := s.dropletName(7); got != "yucca-bench-do-staging-07" {
 		t.Fatalf("dropletName = %q", got)
 	}

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"yuctl/internal/bench"
-	"yuctl/internal/benchdo"
+	"yuctl/internal/benchwide"
 )
 
 // benchDoView renders StatusReports as a styled dashboard; watch mode feeds
@@ -28,14 +28,14 @@ func (v *benchDoView) push(combined float64) {
 	}
 }
 
-func (v *benchDoView) render(r *benchdo.StatusReport, sampledAt time.Time, sampleSec int, watching bool) string {
+func (v *benchDoView) render(r *benchwide.StatusReport, sampledAt time.Time, sampleSec int, watching bool) string {
 	var b strings.Builder
 
-	b.WriteString(warpBadge.Render("BENCH-DO") + " " + warpTitle.Render(v.label) + "\n")
+	b.WriteString(warpBadge.Render("BENCH-WIDE") + " " + warpTitle.Render(v.label) + "\n")
 
 	if len(r.Droplets) == 0 {
 		b.WriteString(warpWarnSt.Render("no droplets deployed") +
-			warpDimSt.Render("  — yuctl tools bench-do deploy") + "\n")
+			warpDimSt.Render("  — yuctl tools bench-wide deploy") + "\n")
 		return warpFrame.Render(strings.TrimRight(b.String(), "\n"))
 	}
 
@@ -148,7 +148,7 @@ func (v *benchDoView) render(r *benchdo.StatusReport, sampledAt time.Time, sampl
 
 // shortClient drops the shared fleet prefix so tables stay narrow.
 func shortClient(name string) string {
-	return strings.TrimPrefix(name, "yucca-bench-do-")
+	return strings.TrimPrefix(name, "yucca-bench-")
 }
 
 func phaseCell(phase string) string {
@@ -172,7 +172,7 @@ func errCell6(n int) string {
 
 // stateCell colors the droplet's agent state, flagging a dead agent while a
 // run is recorded.
-func stateCell(d benchdo.DropletStatus, state string) string {
+func stateCell(d benchwide.DropletStatus, state string) string {
 	switch {
 	case !d.Reachable:
 		return warpErrSt.Render("unreachable")
@@ -189,7 +189,7 @@ func stateCell(d benchdo.DropletStatus, state string) string {
 	}
 }
 
-func saveBenchDoResult(path string, r *benchdo.Result) error {
+func saveBenchDoResult(path string, r *benchwide.Result) error {
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func saveBenchDoResult(path string, r *benchdo.Result) error {
 	return os.WriteFile(path, append(b, '\n'), 0o644)
 }
 
-func renderBenchDoResult(w io.Writer, r *benchdo.Result) {
+func renderBenchDoResult(w io.Writer, r *benchwide.Result) {
 	fmt.Fprintf(w, "\n%s  partition=%s  elapsed=%s\n", r.Label, r.Partition, bench.FormatDuration(r.ElapsedSeconds))
 	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "DROPLET\tREGION\tSTATE\tWIRE TX\tCLIENT\tCYCLES\tUPLOADED\tERRORS")
