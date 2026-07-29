@@ -62,13 +62,37 @@ describe(AuthService.name, () => {
     });
 
     it('should return user if one is found', async () => {
-      mocks.user.getByAccessToken.mockResolvedValue(mockUser);
+      mocks.user.getByAccessToken.mockResolvedValue({ ...mockUser, featureOverrides: [] });
       await expect(
         sut.authenticate({
           cookie: 'yucca-access-token=my-token',
         }),
-      ).resolves.toBe(mockUser);
+      ).resolves.toEqual({ ...mockUser, features: { 'connection-restic': false } });
       expect(mocks.wideContext.addContext).toHaveBeenCalledWith('customerId', mockUser.id);
+    });
+
+    it('should resolve feature overrides over registry defaults', async () => {
+      mocks.user.getByAccessToken.mockResolvedValue({
+        ...mockUser,
+        featureOverrides: [{ flag: 'connection-restic', value: true }],
+      });
+      await expect(
+        sut.authenticate({
+          cookie: 'yucca-access-token=my-token',
+        }),
+      ).resolves.toEqual(expect.objectContaining({ features: { 'connection-restic': true } }));
+    });
+
+    it('should ignore overrides for flags not in the registry', async () => {
+      mocks.user.getByAccessToken.mockResolvedValue({
+        ...mockUser,
+        featureOverrides: [{ flag: 'no-longer-a-flag', value: true }],
+      });
+      await expect(
+        sut.authenticate({
+          cookie: 'yucca-access-token=my-token',
+        }),
+      ).resolves.toEqual(expect.objectContaining({ features: { 'connection-restic': false } }));
     });
   });
 

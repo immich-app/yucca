@@ -482,13 +482,20 @@
           },
           "sessionId": {
             "type": "string"
+          },
+          "features": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
           }
         },
         "required": [
           "id",
           "name",
           "email",
-          "sessionId"
+          "sessionId",
+          "features"
         ]
       },
       "MetaConfigDto": {

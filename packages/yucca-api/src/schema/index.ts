@@ -8,6 +8,7 @@ import { SessionTable } from './tables/session.table';
 import { SettingsTable } from './tables/settings.table';
 import { UserTable } from './tables/user.table';
 import { UserAllowlistTable } from './tables/userAllowlist.table';
+import { UserFeatureFlagOverrideTable } from './tables/userFeatureFlagOverride.table';
 
 @Database({ name: 'yucca' })
 export class ImmichDatabase {
@@ -21,6 +22,7 @@ export class ImmichDatabase {
     RepositoryMeterHistoryTable,
     UserAllowlistTable,
     SettingsTable,
+    UserFeatureFlagOverrideTable,
   ];
 
   functions = [];
@@ -38,4 +40,5 @@ export interface DB {
   repositoryMeterHistory: RepositoryMeterHistoryTable;
   userAllowlist: UserAllowlistTable;
   settings: SettingsTable;
+  userFeatureFlagOverride: UserFeatureFlagOverrideTable;
 }

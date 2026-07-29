@@ -86,7 +86,14 @@ describe('UserController (e2e)', () => {
         .expect(200);
 
       expect(body).toEqual({
-        user: { id: user.id, sub: user.sub, name: 'carol', email: user.email, disabled: false },
+        user: {
+          id: user.id,
+          sub: user.sub,
+          name: 'carol',
+          email: user.email,
+          disabled: false,
+          createdAt: expect.any(String),
+        },
       });
     });
   });

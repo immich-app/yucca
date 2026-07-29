@@ -54,7 +54,19 @@ describe('AuthController (e2e)', () => {
           name: user.name,
           email: user.email,
           sessionId: session.id,
+          features: { 'connection-restic': false },
         });
+    });
+
+    it('reflects feature overrides in the auth response', async () => {
+      await testUtils.setFeatureOverride(user.id, 'connection-restic', true);
+
+      const { body } = await request(app.getHttpServer())
+        .get('/api/auth')
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(200);
+
+      expect(body.features).toEqual({ 'connection-restic': true });
     });
 
     it('rejects a disabled user with an existing session', async () => {

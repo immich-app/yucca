@@ -330,6 +330,113 @@
         ]
       }
     },
+    "/api/user/{id}/features": {
+      "get": {
+        "operationId": "getUserFeatures",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserFeaturesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/user/{id}/features/{flag}": {
+      "put": {
+        "operationId": "setUserFeature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "flag",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureOverrideSetRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureOverrideDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      },
+      "delete": {
+        "operationId": "clearUserFeature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "flag",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
     "/api/session/{id}": {
       "delete": {
         "operationId": "deleteSession",
@@ -701,9 +808,9 @@
         ]
       }
     },
-    "/api/settings": {
+    "/api/features": {
       "get": {
-        "operationId": "listSettings",
+        "operationId": "listFeatures",
         "parameters": [],
         "responses": {
           "200": {
@@ -711,23 +818,53 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SettingsListResponseDto"
+                  "$ref": "#/components/schemas/FeatureFlagListResponseDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "Settings"
+          "Features"
         ]
       }
     },
-    "/api/settings/{scope}": {
-      "put": {
-        "operationId": "setSettings",
+    "/api/features/{flag}/users": {
+      "get": {
+        "operationId": "listFeatureUsers",
         "parameters": [
           {
-            "name": "scope",
+            "name": "flag",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureUsersResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Features"
+        ]
+      }
+    },
+    "/api/features/{flag}/enable-batch": {
+      "post": {
+        "operationId": "enableFeatureBatch",
+        "parameters": [
+          {
+            "name": "flag",
             "required": true,
             "in": "path",
             "schema": {
@@ -740,7 +877,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SettingsValueDto"
+                "$ref": "#/components/schemas/FeatureEnableBatchRequestDto"
               }
             }
           }
@@ -751,35 +888,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SettingsEntryResponseDto"
+                  "$ref": "#/components/schemas/FeatureEnableBatchResponseDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "Settings"
-        ]
-      },
-      "delete": {
-        "operationId": "deleteSettings",
-        "parameters": [
-          {
-            "name": "scope",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Settings"
+          "Features"
         ]
       }
     }
@@ -951,6 +1067,69 @@
           "items"
         ]
       },
+      "FeatureOverrideDto": {
+        "type": "object",
+        "properties": {
+          "flag": {
+            "type": "string"
+          },
+          "value": {
+            "type": "boolean"
+          },
+          "setBy": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "object",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flag",
+          "value",
+          "setBy",
+          "updatedAt"
+        ]
+      },
+      "UserFeaturesResponseDto": {
+        "type": "object",
+        "properties": {
+          "features": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Resolved flags: override, else registry default"
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureOverrideDto"
+            }
+          }
+        },
+        "required": [
+          "features",
+          "overrides"
+        ]
+      },
+      "FeatureOverrideSetRequestDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
       "RepositoryOwnerDto": {
         "type": "object",
         "properties": {
@@ -1013,14 +1192,6 @@
           "worm": {
             "type": "boolean"
           },
-          "siteCode": {
-            "type": "string",
-            "description": "Stable internal site code"
-          },
-          "storageClusterCode": {
-            "type": "string",
-            "description": "Stable, globally unique internal storage cluster code"
-          },
           "user": {
             "$ref": "#/components/schemas/RepositoryOwnerDto"
           },
@@ -1032,8 +1203,6 @@
           "id",
           "name",
           "worm",
-          "siteCode",
-          "storageClusterCode",
           "user",
           "metrics"
         ]
@@ -1068,10 +1237,6 @@
           },
           "worm": {
             "type": "boolean"
-          },
-          "site": {
-            "type": "string",
-            "description": "Internal site code to place the repository in; defaults to the topology default site"
           }
         },
         "required": [
@@ -1252,61 +1417,123 @@
           "count"
         ]
       },
-      "SettingsValueDto": {
+      "FeatureFlagDefDto": {
         "type": "object",
         "properties": {
-          "restic_pack_size_mib": {
-            "type": "number"
+          "key": {
+            "type": "string"
           },
-          "connections_math": {
+          "default": {
+            "type": "boolean",
+            "description": "Registry default when no override exists"
+          },
+          "stage": {
             "type": "string",
-            "description": "Client-evaluated expression: integers, cores, min, max, + - * /"
+            "description": "experimental | beta | ga | retired"
+          },
+          "description": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string"
+          },
+          "overrides": {
+            "type": "number",
+            "description": "Number of users with an override for this flag"
           }
-        }
+        },
+        "required": [
+          "key",
+          "default",
+          "stage",
+          "description",
+          "since",
+          "overrides"
+        ]
       },
-      "SettingsEntryDto": {
+      "FeatureFlagListResponseDto": {
         "type": "object",
         "properties": {
-          "scope": {
-            "type": "string",
-            "description": "'global', 'site:<code>' or 'cluster:<code>'"
+          "flags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagDefDto"
+            }
+          }
+        },
+        "required": [
+          "flags"
+        ]
+      },
+      "FeatureUserDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
           },
           "value": {
-            "$ref": "#/components/schemas/SettingsValueDto"
+            "type": "boolean"
+          },
+          "setBy": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "object",
+            "nullable": true
           },
           "updatedAt": {
             "type": "string"
           }
         },
         "required": [
-          "scope",
+          "userId",
+          "email",
           "value",
+          "setBy",
           "updatedAt"
         ]
       },
-      "SettingsListResponseDto": {
+      "FeatureUsersResponseDto": {
         "type": "object",
         "properties": {
-          "settings": {
+          "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/SettingsEntryDto"
+              "$ref": "#/components/schemas/FeatureUserDto"
             }
           }
         },
         "required": [
-          "settings"
+          "items"
         ]
       },
-      "SettingsEntryResponseDto": {
+      "FeatureEnableBatchRequestDto": {
         "type": "object",
         "properties": {
-          "entry": {
-            "$ref": "#/components/schemas/SettingsEntryDto"
+          "count": {
+            "type": "number",
+            "description": "Enable for this many not-yet-overridden users, oldest first"
           }
         },
         "required": [
-          "entry"
+          "count"
+        ]
+      },
+      "FeatureEnableBatchResponseDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureUserDto"
+            }
+          }
+        },
+        "required": [
+          "enabled"
         ]
       }
     }

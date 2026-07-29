@@ -1,3 +1,4 @@
+import { resolveFeatures } from '@common/server';
 import { LoggerRepository, WideContextRepository } from '@common/server/otel';
 import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { parse } from 'cookie';
@@ -36,14 +37,15 @@ export class AuthService {
       throw new UnauthorizedException(`Missing ${CookieName.AccessToken} cookie`);
     }
 
-    const user = await this.user.getByAccessToken(accessToken);
-    if (!user) {
+    const row = await this.user.getByAccessToken(accessToken);
+    if (!row) {
       throw new UnauthorizedException(`Invalid access token`);
     }
 
-    this.wideContext.addContext('customerId', user.id);
+    this.wideContext.addContext('customerId', row.id);
 
-    return user;
+    const { featureOverrides, ...user } = row;
+    return { ...user, features: resolveFeatures(featureOverrides) };
   }
 
   async logout(auth: AuthDto): Promise<URL | void> {
