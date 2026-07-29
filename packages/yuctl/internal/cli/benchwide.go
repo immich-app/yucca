@@ -15,26 +15,29 @@ import (
 
 	"yuctl/internal/adminapi"
 	"yuctl/internal/bench"
-	"yuctl/internal/benchdo"
+	"yuctl/internal/benchwide"
+	"yuctl/internal/provider"
 )
 
-// benchDoFlags are shared by every bench-do subcommand.
+// benchDoFlags are shared by every bench-wide subcommand.
 type benchDoFlags struct {
-	yes bool
+	yes      bool
+	provider string
 }
 
 func (f *benchDoFlags) register(c *cobra.Command) {
-	c.PersistentFlags().BoolVar(&f.yes, "yes", false, "skip the droplet-creation confirmation prompt")
+	c.PersistentFlags().BoolVar(&f.yes, "yes", false, "skip the host-creation confirmation prompt")
+	c.PersistentFlags().StringVar(&f.provider, "provider", "do", "cloud provider for this fleet ("+strings.Join(provider.Names(), " | ")+")")
 }
 
-// session opens the fleet session for the selected partition. The label
-// describes the target for display ("prod · yuctl-bench-do-prod").
-func (f *benchDoFlags) session(ctx context.Context) (*benchdo.Session, string, error) {
+// session opens the fleet session for the selected partition + provider. The
+// label describes the target for display ("prod · yuctl-bench-do-prod").
+func (f *benchDoFlags) session(ctx context.Context) (*benchwide.Session, string, error) {
 	cc, err := requireContext()
 	if err != nil {
 		return nil, "", err
 	}
-	s, err := benchdo.NewSession(ctx, cc.Partition)
+	s, err := benchwide.NewSession(ctx, cc.Partition, f.provider)
 	if err != nil {
 		return nil, "", err
 	}
@@ -42,7 +45,7 @@ func (f *benchDoFlags) session(ctx context.Context) (*benchdo.Session, string, e
 }
 
 // minter runs the admin-api login flow and returns the repo-minting client.
-func (f *benchDoFlags) minter(ctx context.Context, cmd *cobra.Command, admin *adminFlags) (benchdo.RepoMinter, error) {
+func (f *benchDoFlags) minter(ctx context.Context, cmd *cobra.Command, admin *adminFlags) (benchwide.RepoMinter, error) {
 	cc, err := requireContext()
 	if err != nil {
 		return nil, err
@@ -76,7 +79,7 @@ func (f *benchDoFlags) confirm(cmd *cobra.Command) func(string) bool {
 	}
 	return func(plan string) bool {
 		out := cmd.ErrOrStderr()
-		fmt.Fprintln(out, "\nbench-do will "+plan)
+		fmt.Fprintln(out, "\nbench-wide will "+plan)
 		fmt.Fprint(out, "\nProceed? [y/N] ")
 		sc := bufio.NewScanner(cmd.InOrStdin())
 		if !sc.Scan() {
@@ -87,17 +90,19 @@ func (f *benchDoFlags) confirm(cmd *cobra.Command) func(string) bool {
 	}
 }
 
-func newBenchDoCmd() *cobra.Command {
+func newBenchWideCmd() *cobra.Command {
 	f := &benchDoFlags{}
 	cmd := &cobra.Command{
-		Use:   "bench-do",
-		Short: "Restic client fleet on DigitalOcean droplets writing against michael",
-		Long: "Deploys a fleet of DigitalOcean droplets (project yucca-bench, per-fleet\n" +
-			"ephemeral ssh key) and runs real restic clients on them — the external-user\n" +
-			"path over the public internet into michael. Each client loops seeded\n" +
-			"generate→backup cycles against its own admin-api-minted repository at a\n" +
-			"chosen pack (object) size. Every droplet's agent hard-stops at the size's\n" +
-			"transfer allowance so a forgotten run cannot burn into paid overage.",
+		Use:   "bench-wide",
+		Short: "Restic client fleet across cloud providers writing against michael",
+		Long: "Deploys a fleet of cloud VMs on a chosen --provider (DigitalOcean, Hetzner;\n" +
+			"OVH later) with a per-fleet ephemeral ssh key and runs real restic clients\n" +
+			"on them — the external-user path over the public internet into michael. Each\n" +
+			"client loops seeded generate→backup cycles against its own admin-api-minted\n" +
+			"repository at a chosen pack (object) size. Every host's agent hard-stops at\n" +
+			"the size's transfer allowance so a forgotten run cannot burn into paid\n" +
+			"overage. Fleets are per provider × partition, so several providers can load\n" +
+			"michael at once (run deploy/start per --provider).",
 	}
 	f.register(cmd)
 	cmd.AddCommand(
@@ -112,16 +117,16 @@ func newBenchDoCmd() *cobra.Command {
 	return cmd
 }
 
-func benchDoDeployFlags(c *cobra.Command, o *benchdo.DeployOptions) {
+func benchDoDeployFlags(c *cobra.Command, o *benchwide.DeployOptions) {
 	c.Flags().IntVar(&o.Droplets, "droplets", 3, "fleet size")
-	c.Flags().StringSliceVar(&o.Regions, "do-region", []string{"fra1", "ams3", "lon1", "nyc3"}, "DO regions, round-robined across the fleet")
-	c.Flags().StringVar(&o.Size, "do-size", "s-2vcpu-4gb", "droplet size slug")
-	c.Flags().StringVar(&o.Image, "image", "ubuntu-24-04-x64", "droplet image slug")
+	c.Flags().StringSliceVar(&o.Regions, "region", nil, "regions, round-robined across the fleet (default: the provider's)")
+	c.Flags().StringVar(&o.Size, "size", "", "instance size slug (default: the provider's)")
+	c.Flags().StringVar(&o.Image, "image", "", "image slug (default: the provider's)")
 	c.Flags().StringVar(&o.AgentBin, "agent-bin", "", "local linux/amd64 bench-agent binary (default: the embedded one)")
 }
 
 func newBenchDoDeployCmd(f *benchDoFlags) *cobra.Command {
-	o := benchdo.DeployOptions{}
+	o := benchwide.DeployOptions{}
 	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Create (or converge) the droplet fleet and push the agent + restic",
@@ -140,7 +145,7 @@ func newBenchDoDeployCmd(f *benchDoFlags) *cobra.Command {
 
 func newBenchDoStartCmd(f *benchDoFlags) *cobra.Command {
 	admin := &adminFlags{}
-	d := benchdo.DeployOptions{}
+	d := benchwide.DeployOptions{}
 	var (
 		objSize     string
 		cycleSize   string
@@ -149,7 +154,7 @@ func newBenchDoStartCmd(f *benchDoFlags) *cobra.Command {
 		maxTransfer string
 		autoDeploy  bool
 	)
-	o := benchdo.StartOptions{}
+	o := benchwide.StartOptions{}
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start (or gracefully restart) the restic load on the fleet",
@@ -157,7 +162,7 @@ func newBenchDoStartCmd(f *benchDoFlags) *cobra.Command {
 			"fresh restic URLs, and launches the detached load supervisor on every\n" +
 			"droplet. A second start kills the previous load first and relaunches with\n" +
 			"the new parameters. The load ends when --duration elapses, the per-droplet\n" +
-			"transfer cap is hit, or `bench-do stop`.",
+			"transfer cap is hit, or `bench-wide stop`.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			var err error
@@ -204,12 +209,12 @@ func newBenchDoStartCmd(f *benchDoFlags) *cobra.Command {
 	}
 	cmd.Flags().IntVar(&o.ClientsPerDroplet, "clients-per-droplet", 1, "restic clients per droplet (each with its own repository)")
 	cmd.Flags().StringVar(&objSize, "obj-size", "16MiB", "restic pack size — the object size michael sees (4..128 MiB)")
-	cmd.Flags().StringVar(&cycleSize, "size", "8GiB", "dataset per client per cycle (freshly seeded every cycle)")
+	cmd.Flags().StringVar(&cycleSize, "cycle-size", "8GiB", "dataset per client per cycle (freshly seeded every cycle)")
 	cmd.Flags().StringVar(&fileSize, "file-size", "64MiB", "size of each generated file")
 	cmd.Flags().IntVar(&o.Connections, "connections", 5, "rest.connections per client")
 	cmd.Flags().IntVar(&o.ReadConcurrency, "read-concurrency", 4, "restic backup read concurrency")
 	cmd.Flags().StringVar(&o.Compression, "compression", "off", "restic compression (bench data is incompressible)")
-	cmd.Flags().StringVar(&duration, "duration", "1h", "run length (e.g. 2h; 0 = non-stop until bench-do stop)")
+	cmd.Flags().StringVar(&duration, "duration", "1h", "run length (e.g. 2h; 0 = non-stop until bench-wide stop)")
 	cmd.Flags().StringVar(&maxTransfer, "max-transfer", "", "per-droplet wire-TX cap (default: the droplet size's transfer allowance)")
 	cmd.Flags().StringVar(&o.Label, "label", "run", "label stored in the results")
 	cmd.Flags().Uint64Var(&o.Seed, "seed", 0, "dataset seed (0 = random)")
@@ -317,7 +322,7 @@ func newBenchDoStopCmd(f *benchDoFlags) *cobra.Command {
 				return err
 			}
 			if out == "" {
-				out = fmt.Sprintf("bench-do-%s-%s.json", res.Label, time.Now().Format("20060102-150405"))
+				out = fmt.Sprintf("bench-wide-%s-%s.json", res.Label, time.Now().Format("20060102-150405"))
 			}
 			if err := saveBenchDoResult(out, res); err != nil {
 				return err
@@ -327,7 +332,7 @@ func newBenchDoStopCmd(f *benchDoFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&out, "out", "", "local results file (default bench-do-<label>-<timestamp>.json)")
+	cmd.Flags().StringVar(&out, "out", "", "local results file (default bench-wide-<label>-<timestamp>.json)")
 	return cmd
 }
 
@@ -336,7 +341,7 @@ func newBenchDoCleanupCmd(f *benchDoFlags) *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "cleanup",
-		Short: "Forget and prune every bench-do snapshot (run before undeploy)",
+		Short: "Forget and prune every bench-wide snapshot (run before undeploy)",
 		Long: "Runs restic forget+prune for every client repository, from its droplet —\n" +
 			"the repos themselves persist (admin-api deletion is unimplemented) but end\n" +
 			"~empty. Needs the fleet still deployed and a `yuctl login` session.",
