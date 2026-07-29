@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 # L3 on {{ networkd_bond_name }}.{{ vlan.id }}: {{ vlan.address }}
-# Gateway .1 is the leaf IRB, but the default route stays on the 1G WAN until the
-# fabric cutover, so no Gateway (no default route) is set here.
+# Gateway .1 is the leaf IRB, but the default route belongs to the WAN NIC, so
+# this file sets no Gateway.
 
 [Match]
 Name={{ networkd_bond_name }}.{{ vlan.id }}

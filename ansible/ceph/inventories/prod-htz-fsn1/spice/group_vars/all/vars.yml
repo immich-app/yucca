@@ -18,11 +18,10 @@ cluster_domain: prod.fsn1.htz.futo.cloud
 # 10.40.22.<host_index> (host_index from spice-hosts.yaml; gateway .1 = leaf IRB).
 # A third fabric VLAN, FSN1-C1-HOST-MGMT (124, 10.40.24.0/24), is the in-band
 # host-management path: the leaf trunks it to every server bond and the fabric
-# advertises 10.40.24.0/24 into the NetBird overlay, so it is the intended
-# ansible/SSH reach once the WAN is retired.
-# The DEFAULT ROUTE stays on the 1G WAN for now (Hetzner gateway); ansible reaches
-# nodes over their WAN address until the fabric is cut over. Revisit if/when the
-# default route moves off the WAN (to Ceph Public or Host-Mgmt).
+# advertises 10.40.24.0/24 into the NetBird overlay, so hosts answer on the
+# overlay as well as on their WAN address.
+# The DEFAULT ROUTE stays on the 1G WAN (Hetzner gateway); the fabric never
+# carries it. Ansible reaches nodes over their WAN address.
 public_network: 10.40.20.0/23     # VLAN 120 (Ceph Public)
 cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
 # Per-host Ceph BIND address on the fabric public VLAN. Derived from host_index the
@@ -59,8 +58,8 @@ bond_mode: "802.3ad"
 # it (static IP + default route), and let networkd manage ONLY the bond + VLANs.
 # The WAN is never migrated, so a networkd error can't cost us the reachability
 # link (the painbox failure). networkd's commit leaves networking.service enabled
-# and an Unmanaged=yes guard fences oob_nic off. Flip to true only if the default
-# route ever moves onto the fabric and the WAN is retired.
+# and an Unmanaged=yes guard fences oob_nic off. This stays false -- the WAN keeps
+# the default route.
 networkd_replace_ifupdown: false
 # Enable the networkd role (defaults false, so it is a no-op unless set). spice's
 # 25G fabric bond + VLANs are networkd-managed, so a reprovisioned node must bring
@@ -73,7 +72,7 @@ networkd_enabled: true
 bond_interfaces:
   - enp193s0f0
   - enp193s0f1
-# 1G WAN (igb, PCI 0000:c5:00.0); holds the default route until the fabric cutover.
+# 1G WAN (igb, PCI 0000:c5:00.0); holds the default route.
 oob_nic: enp197s0
 fabric_public_vlan: 120
 fabric_private_vlan: 122
@@ -88,8 +87,7 @@ chrony_ntp_servers:
 
 # Tagged VLAN sub-interfaces on the 25G LACP bond (consumed by the networkd role).
 # Addresses derive from host_index; masks match each network (public/private /23,
-# host-mgmt /24). No Gateway here -- the default route stays on the 1G WAN until
-# fabric cutover.
+# host-mgmt /24). No Gateway here -- the default route stays on the 1G WAN.
 # Jumbo (MTU 9000) is enabled on VLAN 122 (Ceph PRIVATE / OSD replication) ONLY.
 # That is a closed, homogeneous, all-under-our-control path where jumbo's packet/
 # interrupt savings on replication+recovery actually pay off. VLAN 120 (Ceph public,

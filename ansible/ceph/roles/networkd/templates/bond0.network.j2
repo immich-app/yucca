@@ -15,10 +15,10 @@ LinkLocalAddressing=no
 IPv6AcceptRA=no
 
 [Link]
-# The fabric is NOT the boot-critical path -- the 1G WAN carries connectivity
-# until cutover, and the leaf may not have LACP up yet -- so a carrier-less bond
-# must not stall boot via systemd-networkd-wait-online. (The VLAN sub-interfaces
-# are RequiredForOnline=no too.) Raise to 'carrier' after the fabric is cut over.
+# The fabric is NOT the boot-critical path -- the WAN carries connectivity, and
+# the leaf may not have LACP up yet -- so a carrier-less bond must not stall boot
+# via systemd-networkd-wait-online. (The VLAN sub-interfaces are
+# RequiredForOnline=no too.)
 RequiredForOnline=no
 {% else %}
 # Bond L3: {{ bond_ip }}/24 via {{ gateway }}

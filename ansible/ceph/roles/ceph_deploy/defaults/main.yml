@@ -44,7 +44,7 @@ ceph_mgr_count: 3
 # default raises "HostVarsVars object has no attribute ceph_service_ip" and aborts
 # the deploy), whereas group_vars resolve through hostvars per host. spice sets it
 # to the fabric ceph_public_ip; sietch (flat) to bond_ip. It is NOT the ansible/SSH
-# connection address (that stays bond_ip / ansible_host until the WAN is retired).
+# connection address (that is bond_ip / ansible_host).
 #
 # CIDR(s) cephadm restricts daemon binds to, injected as the `networks:` field of
 # the RGW + monitoring service specs. mon/mgr/OSD already bind per public_network/
