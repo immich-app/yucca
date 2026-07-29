@@ -1,0 +1,45 @@
+---
+# Drift checks for ceph_tuning. Read-only. Bootstrap node only -- these read
+# cluster-wide state from the mon config database, not per-host state.
+# Included by drift.yml via include_role + tasks_from -- see the precedence
+# note in roles/os_tuning/tasks/drift.yml.
+#
+# KNOWN GAP: `ceph config get osd <key>` resolves the section hierarchy, so a
+# value set on `global` reads back identically to one set on `osd`, and a value
+# the model does not own at all still reports a match. It also rejects masks
+# outright (`ceph config get osd/class:hdd ...` -> EINVAL), so per-class and
+# per-host settings are invisible here. Comparing against `ceph config dump`
+# matched on (section, mask, name) is the fix; it lands with the ceph_tuning
+# data model rather than here, so this pass stays behaviour-preserving.
+
+- name: Check Ceph config values
+  ansible.builtin.command: "ceph config get osd {{ item.key }}"
+  loop:
+    - key: osd_recovery_max_active
+      expected: "{{ ceph_osd_recovery_max_active }}"
+    - key: osd_max_backfills
+      expected: "{{ ceph_osd_max_backfills }}"
+    - key: osd_scrub_begin_hour
+      expected: "{{ ceph_osd_scrub_begin_hour }}"
+    - key: osd_scrub_end_hour
+      expected: "{{ ceph_osd_scrub_end_hour }}"
+  register: ceph_config_checks
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Record Ceph config drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'ceph-config',
+        'item': item.item.key,
+        'expected': item.item.expected | string,
+        'actual': item.stdout | trim,
+        'match': (item.stdout | trim) == (item.item.expected | string)
+      }] }}
+  loop: "{{ ceph_config_checks.results | default([]) }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+  loop_control:
+    label: "{{ item.item.key | default('skipped') }}"

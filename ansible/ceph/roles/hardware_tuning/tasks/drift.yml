@@ -1,0 +1,94 @@
+---
+# Drift checks for hardware_tuning. Read-only.
+# Included by drift.yml via include_role + tasks_from -- see the precedence
+# note in roles/os_tuning/tasks/drift.yml.
+
+- name: Check HDD I/O scheduler
+  ansible.builtin.shell: |
+    set -o pipefail
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                 | awk '$2==1 && $3=="disk" {print $1}' | head -1); do
+      BDEV=$(basename "$dev")
+      cat /sys/block/$BDEV/queue/scheduler \
+        | grep -oP '\[\K[^\]]+'
+    done
+  args:
+    executable: /bin/bash
+  register: hdd_sched
+  changed_when: false
+
+- name: Record HDD scheduler drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'hardware',
+        'item': 'HDD I/O scheduler',
+        'expected': ceph_hdd_scheduler,
+        'actual': hdd_sched.stdout | trim | default('none'),
+        'match': (hdd_sched.stdout | trim | default('none'))
+                 == ceph_hdd_scheduler
+      }] }}
+
+- name: Check SSD I/O scheduler
+  ansible.builtin.shell: |
+    set -o pipefail
+    for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
+                 | awk '$2==0 && $3=="disk" {print $1}' | head -1); do
+      BDEV=$(basename "$dev")
+      cat /sys/block/$BDEV/queue/scheduler \
+        | grep -oP '\[\K[^\]]+'
+    done
+  args:
+    executable: /bin/bash
+  register: ssd_sched
+  changed_when: false
+
+- name: Record SSD scheduler drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'hardware',
+        'item': 'SSD I/O scheduler',
+        'expected': ceph_ssd_scheduler,
+        'actual': ssd_sched.stdout | trim | default('none'),
+        'match': (ssd_sched.stdout | trim | default('none'))
+                 == ceph_ssd_scheduler
+      }] }}
+
+# SATA link power management
+# Every AHCI port matters here, not a representative one: a single port
+# back on min_power_with_partial is enough to stall an OSD, so report the
+# distribution when the ports disagree.
+- name: Check SATA link power management policy
+  ansible.builtin.shell: |
+    set -o pipefail
+    GLOB=/sys/class/scsi_host/host*/link_power_management_policy
+    DISTINCT=$(cat $GLOB 2>/dev/null | sort -u | grep -c .)
+    if [ "$DISTINCT" -eq 0 ]; then
+      # No LPM-capable ports (SAS controllers expose scsi_host without the
+      # attribute). The role skips these too, so there is nothing to drift.
+      echo n/a
+    elif [ "$DISTINCT" -eq 1 ]; then
+      cat $GLOB 2>/dev/null | sort -u
+    else
+      cat $GLOB 2>/dev/null | sort | uniq -c \
+        | awk '{printf "%s=%s ", $2, $1}' | sed 's/^/mixed: /; s/ $//'
+    fi
+  args:
+    executable: /bin/bash
+  register: sata_lpm
+  changed_when: false
+  when: ceph_sata_link_pm_enabled | bool
+
+- name: Record SATA link power management drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'hardware',
+        'item': 'SATA link power mgmt',
+        'expected': ceph_sata_link_pm_policy,
+        'actual': sata_lpm.stdout | trim | default('n/a'),
+        'match': (sata_lpm.stdout | trim | default('n/a'))
+                 in [ceph_sata_link_pm_policy, 'n/a']
+      }] }}
+  when: ceph_sata_link_pm_enabled | bool

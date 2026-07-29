@@ -1,0 +1,26 @@
+---
+# Drift checks for security. Read-only.
+# Included by drift.yml via include_role + tasks_from -- see the precedence
+# note in roles/os_tuning/tasks/drift.yml.
+
+- name: Check nftables policy
+  ansible.builtin.shell: |
+    set -o pipefail
+    nft list chain inet filter input 2>/dev/null \
+      | grep -c 'policy drop' || echo 0
+  args:
+    executable: /bin/bash
+  register: nft_policy
+  changed_when: false
+
+- name: Record firewall drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'security',
+        'item': 'nftables policy drop',
+        'expected': 'enabled',
+        'actual': 'enabled' if (nft_policy.stdout | trim | int > 0)
+                  else 'missing',
+        'match': (nft_policy.stdout | trim | int > 0)
+      }] }}
