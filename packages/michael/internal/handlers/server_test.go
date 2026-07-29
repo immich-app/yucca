@@ -124,13 +124,9 @@ func (m *mockStorage) DeleteObject(ctx context.Context, bucket, key string) erro
 	return nil
 }
 
-// newTestServer creates a Server with mock storage and returns it.
+// newTestServer creates a single-cluster Server with mock storage.
 func newTestServer(store *mockStorage) *Server {
-	return &Server{
-		Storage:      store,
-		JWTPublicKey: testPublicKey,
-		Metrics:      nil,
-	}
+	return NewServer(store, testPublicKey, nil)
 }
 
 // doRequest creates and executes a request against the test server with a real JWT auth header.
@@ -139,13 +135,18 @@ func doRequest(t *testing.T, srv *Server, method, path string, body io.Reader, a
 	req := httptest.NewRequest(method, path, body)
 
 	// Generate a real JWT for the auth middleware
-	token := makeJWT(t, jwt.MapClaims{
+	claims := jwt.MapClaims{
 		"user":       a.User,
 		"repository": a.Repository,
 		"writeOnce":  a.WriteOnce,
 		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
-	})
-	req.Header.Set("Authorization", makeBasicAuth(token))
+	}
+	// Omitted rather than empty when unset, so the default path under test is
+	// the shape of a token minted before multi-cluster routing existed.
+	if a.StorageCluster != "" {
+		claims["storageCluster"] = a.StorageCluster
+	}
+	req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, claims)))
 
 	for k, v := range headers {
 		req.Header.Set(k, v)

@@ -17,13 +17,18 @@ type BackendStatsProvider interface {
 	Stats() []storage.BackendStat
 }
 
-// RegisterBackendMetrics wires per-backend S3 load-balancer metrics onto meter.
-// All instruments are observable: a single registered callback reads the
-// provider's snapshot each collection cycle and emits one series per backend
-// (tagged with a "backend" attribute), so the storage hot path stays free of
-// any OTel calls. The cumulative counters (requests/errors/bytes) are reported
-// as observable counters since the pool already keeps monotonic atomics.
-func RegisterBackendMetrics(meter otelmetric.Meter, provider BackendStatsProvider) error {
+// RegisterBackendMetrics wires per-backend S3 load-balancer metrics onto meter,
+// one provider per storage cluster keyed by cluster code. All instruments are
+// observable: a single registered callback reads every provider's snapshot each
+// collection cycle and emits one series per backend (tagged with "cluster" and
+// "backend" attributes), so the storage hot path stays free of any OTel calls.
+// The cumulative counters (requests/errors/bytes) are reported as observable
+// counters since the pool already keeps monotonic atomics.
+//
+// The "cluster" attribute is what keeps two clusters' gateways apart: endpoints
+// are per-cluster addresses and nothing stops two clusters resolving the same
+// one (e.g. both behind the same in-cluster service name in dev).
+func RegisterBackendMetrics(meter otelmetric.Meter, providers map[string]BackendStatsProvider) error {
 	requests, err := meter.Int64ObservableCounter("s3.backend.requests",
 		otelmetric.WithDescription("Total S3 requests routed to each backend gateway"))
 	if err != nil {
@@ -59,16 +64,19 @@ func RegisterBackendMetrics(meter otelmetric.Meter, provider BackendStatsProvide
 
 	_, err = meter.RegisterCallback(
 		func(_ context.Context, o otelmetric.Observer) error {
-			for _, s := range provider.Stats() {
-				attrs := otelmetric.WithAttributeSet(attribute.NewSet(
-					attribute.String("backend", s.Endpoint),
-				))
-				o.ObserveInt64(requests, s.Requests, attrs)
-				o.ObserveInt64(requestErrors, s.Errors, attrs)
-				o.ObserveInt64(downloaded, s.DownloadedBytes, attrs)
-				o.ObserveInt64(uploaded, s.UploadedBytes, attrs)
-				o.ObserveInt64(inflight, s.Inflight, attrs)
-				o.ObserveInt64(healthy, boolToInt64(s.Healthy), attrs)
+			for code, provider := range providers {
+				for _, s := range provider.Stats() {
+					attrs := otelmetric.WithAttributeSet(attribute.NewSet(
+						attribute.String("cluster", code),
+						attribute.String("backend", s.Endpoint),
+					))
+					o.ObserveInt64(requests, s.Requests, attrs)
+					o.ObserveInt64(requestErrors, s.Errors, attrs)
+					o.ObserveInt64(downloaded, s.DownloadedBytes, attrs)
+					o.ObserveInt64(uploaded, s.UploadedBytes, attrs)
+					o.ObserveInt64(inflight, s.Inflight, attrs)
+					o.ObserveInt64(healthy, boolToInt64(s.Healthy), attrs)
+				}
 			}
 			return nil
 		},

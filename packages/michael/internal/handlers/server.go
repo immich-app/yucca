@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"michael/internal/auth"
+	"michael/internal/cluster"
 	"michael/internal/metrics"
 	"michael/internal/storage"
 
@@ -19,17 +20,72 @@ import (
 )
 
 type Server struct {
-	Storage      storage.Storage
-	JWTPublicKey *ecdsa.PublicKey
-	Metrics      *metrics.Metrics
+	// Clusters holds one Storage per storage cluster this michael fronts, keyed
+	// by cluster code. A request's token selects one of them.
+	Clusters map[string]storage.Storage
+	// DefaultCluster is the code served to tokens carrying no storageCluster
+	// claim — every token minted before multi-cluster routing existed.
+	DefaultCluster string
+	JWTPublicKey   *ecdsa.PublicKey
+	Metrics        *metrics.Metrics
 }
 
+// NewServer builds a single-cluster server: everything is served from s under
+// the default cluster code.
 func NewServer(s storage.Storage, jwtPublicKey *ecdsa.PublicKey, m *metrics.Metrics) *Server {
+	return NewClusterServer(map[string]storage.Storage{cluster.DefaultCode: s}, cluster.DefaultCode, jwtPublicKey, m)
+}
+
+// NewClusterServer builds a server fronting several storage clusters, routing
+// each request by its token's storageCluster claim.
+func NewClusterServer(clusters map[string]storage.Storage, defaultCluster string, jwtPublicKey *ecdsa.PublicKey, m *metrics.Metrics) *Server {
 	return &Server{
-		Storage:      s,
-		JWTPublicKey: jwtPublicKey,
-		Metrics:      m,
+		Clusters:       clusters,
+		DefaultCluster: defaultCluster,
+		JWTPublicKey:   jwtPublicKey,
+		Metrics:        m,
 	}
+}
+
+type clusterCtxKey struct{}
+
+// resolveCluster maps the request's token to the storage cluster serving it. An
+// absent (or empty) storageCluster claim means the default cluster; a claim
+// naming a cluster this michael does not front is an error rather than a
+// fallback — silently serving a repository from the wrong cluster would look
+// like data loss to the client.
+func (s *Server) resolveCluster(ctx context.Context) (string, storage.Storage, bool) {
+	code := auth.FromContext(ctx).StorageCluster
+	if code == "" {
+		code = s.DefaultCluster
+	}
+	store, ok := s.Clusters[code]
+	return code, store, ok
+}
+
+// clusterMiddleware resolves the request's storage cluster once, up front, and
+// rejects unknown ones for every route at the same place — so no handler can
+// forget to fail closed.
+func (s *Server) clusterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		code, store, ok := s.resolveCluster(r.Context())
+		if !ok {
+			hlog.FromRequest(r).Warn().Str("cluster", code).Msg("token names an unknown storage cluster")
+			if s.Metrics != nil {
+				s.Metrics.UnknownCluster.Add(r.Context(), 1, metrics.ClusterOption(code))
+			}
+			writeError(w, r, http.StatusBadRequest, "Unknown storage cluster")
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), clusterCtxKey{}, store)))
+	})
+}
+
+// store returns the storage cluster this request routes to. clusterMiddleware
+// has already resolved it and rejected unknown clusters, so by the time a
+// handler runs the lookup has succeeded.
+func (s *Server) store(ctx context.Context) storage.Storage {
+	return ctx.Value(clusterCtxKey{}).(storage.Storage)
 }
 
 func (s *Server) Handler() http.Handler {
@@ -75,6 +131,9 @@ func (s *Server) Handler() http.Handler {
 			r.Use(metrics.CaptureAuth)
 			r.Use(metrics.BlobMiddleware(s.Metrics))
 		}
+		// After CaptureAuth, so a request rejected for naming an unknown cluster
+		// is still attributed to the identity that sent it.
+		r.Use(s.clusterMiddleware)
 
 		r.Post("/", s.createRepository)
 		r.Delete("/", s.deleteRepository)

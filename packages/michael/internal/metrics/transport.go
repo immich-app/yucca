@@ -61,13 +61,15 @@ func NewTransportMetrics(meter otelmetric.Meter) (*TransportMetrics, error) {
 }
 
 // Wrap returns rt instrumented with per-request httptrace hooks, labeled with
-// the backend's address.
-func (t *TransportMetrics) Wrap(backend string, rt http.RoundTripper) http.RoundTripper {
-	return &tracedTransport{tm: t, backend: backend, rt: rt}
+// the backend's address and the storage cluster it belongs to. The cluster
+// label is what keeps two clusters apart when their gateways share an address.
+func (t *TransportMetrics) Wrap(cluster, backend string, rt http.RoundTripper) http.RoundTripper {
+	return &tracedTransport{tm: t, cluster: cluster, backend: backend, rt: rt}
 }
 
 type tracedTransport struct {
 	tm      *TransportMetrics
+	cluster string
 	backend string
 	rt      http.RoundTripper
 }
@@ -79,20 +81,20 @@ func (t *tracedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	trace := &httptrace.ClientTrace{
 		ConnectDone: func(_, _ string, err error) {
 			if err == nil {
-				t.tm.dials.Add(ctx, 1, backendOption(t.backend))
+				t.tm.dials.Add(ctx, 1, backendOption(t.cluster, t.backend))
 			}
 		},
 		GotConn: func(info httptrace.GotConnInfo) {
-			t.tm.conns.Add(ctx, 1, connOption(t.backend, info.Reused))
+			t.tm.conns.Add(ctx, 1, connOption(t.cluster, t.backend, info.Reused))
 		},
 		TLSHandshakeStart: func() { tlsStart = time.Now() },
 		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
 			if err == nil && !tlsStart.IsZero() {
-				t.tm.tlsDuration.Record(ctx, time.Since(tlsStart).Seconds(), backendOption(t.backend))
+				t.tm.tlsDuration.Record(ctx, time.Since(tlsStart).Seconds(), backendOption(t.cluster, t.backend))
 			}
 		},
 		GotFirstResponseByte: func() {
-			t.tm.ttfb.Record(ctx, time.Since(start).Seconds(), ttfbOption(t.backend, req.Method))
+			t.tm.ttfb.Record(ctx, time.Since(start).Seconds(), ttfbOption(t.cluster, t.backend, req.Method))
 		},
 	}
 	return t.rt.RoundTrip(req.WithContext(httptrace.WithClientTrace(ctx, trace)))
@@ -100,30 +102,38 @@ func (t *tracedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // --- cached attribute options (hot path, same pattern as HttpMetricOption) ---
 
+type backendAttrKey struct{ cluster, backend string }
+
 var backendAttrCache sync.Map
 
-func backendOption(backend string) otelmetric.MeasurementOption {
-	if v, ok := backendAttrCache.Load(backend); ok {
+func backendOption(cluster, backend string) otelmetric.MeasurementOption {
+	key := backendAttrKey{cluster, backend}
+	if v, ok := backendAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
-	opt := otelmetric.WithAttributeSet(attribute.NewSet(attribute.String("backend", backend)))
-	backendAttrCache.Store(backend, opt)
+	opt := otelmetric.WithAttributeSet(attribute.NewSet(
+		attribute.String("cluster", cluster),
+		attribute.String("backend", backend),
+	))
+	backendAttrCache.Store(key, opt)
 	return opt
 }
 
 type connAttrKey struct {
+	cluster string
 	backend string
 	reused  bool
 }
 
 var connAttrCache sync.Map
 
-func connOption(backend string, reused bool) otelmetric.MeasurementOption {
-	key := connAttrKey{backend, reused}
+func connOption(cluster, backend string, reused bool) otelmetric.MeasurementOption {
+	key := connAttrKey{cluster, backend, reused}
 	if v, ok := connAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
 	opt := otelmetric.WithAttributeSet(attribute.NewSet(
+		attribute.String("cluster", cluster),
 		attribute.String("backend", backend),
 		attribute.Bool("reused", reused),
 	))
@@ -132,18 +142,20 @@ func connOption(backend string, reused bool) otelmetric.MeasurementOption {
 }
 
 type ttfbAttrKey struct {
+	cluster string
 	backend string
 	method  string
 }
 
 var ttfbAttrCache sync.Map
 
-func ttfbOption(backend, method string) otelmetric.MeasurementOption {
-	key := ttfbAttrKey{backend, method}
+func ttfbOption(cluster, backend, method string) otelmetric.MeasurementOption {
+	key := ttfbAttrKey{cluster, backend, method}
 	if v, ok := ttfbAttrCache.Load(key); ok {
 		return v.(otelmetric.MeasurementOption)
 	}
 	opt := otelmetric.WithAttributeSet(attribute.NewSet(
+		attribute.String("cluster", cluster),
 		attribute.String("backend", backend),
 		attribute.String("method", method),
 	))
