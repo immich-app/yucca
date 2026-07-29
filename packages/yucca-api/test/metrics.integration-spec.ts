@@ -135,6 +135,8 @@ describe('MetricsController (e2e)', () => {
           userId: user.id,
           worm: false,
           name: expect.any(String),
+          siteCode: 'local',
+          storageClusterCode: 'local-dev',
           metrics: expect.objectContaining({
             sizeBytes: 4096,
             lastBackup: expect.any(String),

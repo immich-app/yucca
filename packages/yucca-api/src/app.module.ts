@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
+import { MetaController } from './controllers/meta.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { env } from './env';
@@ -14,14 +15,18 @@ import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryMetricsRepository } from './repositories/repositoryMetrics.repository';
 import { RepositoryMetricsHistoryRepository } from './repositories/repositoryMetricsHistory.repository';
-import { ResticApiRepository } from './repositories/resticApi.repository';
 import { SessionRepository } from './repositories/session.repository';
+import { SettingsRepository } from './repositories/settings.repository';
+import { StorageRepository } from './repositories/storage.repository';
+import { TopologyRepository } from './repositories/topology.repository';
 import { UserRepository } from './repositories/user.repository';
 import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
 import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
+import { MetaService } from './services/meta.service';
 import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
+import { TopologyService } from './services/topology.service';
 import { getKyselyConfig } from './utils/database';
 
 export const imports = [
@@ -33,12 +38,14 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, MetricsController, RepositoryController];
+export const controllers = [AuthController, MetaController, MetricsController, RepositoryController];
 
 export const providers = [
   WideContextRepository,
   LoggerRepository,
-  ResticApiRepository,
+  StorageRepository,
+  TopologyRepository,
+  SettingsRepository,
   DatabaseRepository,
   CryptoRepository,
   OidcRepository,
@@ -49,6 +56,8 @@ export const providers = [
   RepositoryMetricsHistoryRepository,
   SessionRepository,
   DatabaseService,
+  MetaService,
+  TopologyService,
   MetricsService,
   RepositoryService,
   AuthService,

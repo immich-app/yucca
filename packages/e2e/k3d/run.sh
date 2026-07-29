@@ -8,8 +8,9 @@
 # No /etc/hosts / sudo required:
 #   - the jest suite resolves the in-cluster OIDC issuer host via a dns preload
 #     (hostmap.cjs); the playwright browser via --host-resolver-rules.
-#   - yucca-api is told (e2e-only) to emit localhost restic URLs, because restic
-#     runs on this host (the chart keeps the in-cluster name for real use).
+#   - yucca-api's topology is patched (e2e-only) to a localhost rest_url,
+#     because restic runs on this host (the cluster keeps the in-cluster name
+#     for real use).
 #
 # Prereq: mise k3d:up && mise tilt:up   (cluster healthy, context k3d-yucca)
 set -euo pipefail
@@ -30,9 +31,13 @@ cleanup() {
   [ -n "$ORCH_PID" ] && kill "$ORCH_PID" 2>/dev/null || true
   pkill -f "pnpm --filter @futo-org/backups-orchestrator-api dev" 2>/dev/null || true
   for p in "${PF_PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done
-  # Restore the chart default (in-cluster michael) on yucca-api. If this run is
-  # SIGKILLed the override survives — the next run reapplies + reverts it.
-  kubectl -n yucca set env deploy/yucca-api RESTIC_ENDPOINT- >/dev/null 2>&1 || true
+  # Restore the in-cluster rest_url in the topology. If this run is SIGKILLed
+  # the override survives — the next run reapplies + reverts it.
+  if [ -n "${ORIG_TOPOLOGY:-}" ]; then
+    kubectl -n yucca create configmap yucca-topology --from-literal=topology.json="$ORIG_TOPOLOGY" \
+      --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+    kubectl -n yucca rollout restart deploy/yucca-api >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 
@@ -51,8 +56,12 @@ kubectl port-forward -n yucca svc/yucca-web      5173:5173  >>/tmp/yucca-e2e-pf.
 # yucca-api ships via OTLP.
 kubectl port-forward -n yucca svc/victoria-logs  9428:9428  >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 
-echo "==> e2e-only: yucca-api emits localhost restic URLs (restic runs on this host)"
-kubectl -n yucca set env deploy/yucca-api RESTIC_ENDPOINT="http://localhost:3010" >/dev/null
+echo "==> e2e-only: topology rest_url -> localhost (restic runs on this host)"
+ORIG_TOPOLOGY="$(kubectl -n yucca get configmap yucca-topology -o jsonpath='{.data.topology\.json}')"
+kubectl -n yucca create configmap yucca-topology \
+  --from-literal=topology.json="${ORIG_TOPOLOGY//yucca-michael/localhost}" \
+  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+kubectl -n yucca rollout restart deploy/yucca-api >/dev/null
 kubectl -n yucca rollout status deploy/yucca-api --timeout=120s >/dev/null
 kubectl port-forward -n yucca svc/yucca-api 3020:3020 >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 sleep 5

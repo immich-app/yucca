@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "default_site": "local",
+  "sites": [
+    {
+      "code": "local",
+      "display_name": "Local development",
+      "description": "Compose/k3d development site",
+      "rest_url": "http://localhost:3010",
+      "default_cluster": "local-dev",
+      "clusters": [{ "code": "local-dev", "display_name": "Local development storage", "active": true }]
+    }
+  ]
+}

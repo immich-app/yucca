@@ -20,7 +20,9 @@ Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
 # Dev restic minting: the same dev keypair signs repo tokens (michael's dev
 # public key matches), pointed at the local michael.
 export RESTIC_JWT_PRIVATE_KEY=${RESTIC_JWT_PRIVATE_KEY:-$JWT_PRIVATE_KEY}
-export RESTIC_ENDPOINT=${RESTIC_ENDPOINT:-http://localhost:3010}
+export TOPOLOGY_FILE=${TOPOLOGY_FILE:-./topology.dev.json}
+export LEGACY_SITE_CODE=${LEGACY_SITE_CODE:-local}
+export LEGACY_STORAGE_CLUSTER_CODE=${LEGACY_STORAGE_CLUSTER_CODE:-local-dev}
 
 export OIDC_ADMIN_ISSUER=${OIDC_ISSUER:-http://localhost:8092}
 export OIDC_ADMIN_CLIENT_ID=${OIDC_CLIENT_ID:-client ID}

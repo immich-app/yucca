@@ -6,18 +6,23 @@ describe('RgwRepository (integration)', () => {
   let repository: RgwRepository;
 
   const s3 = new AwsClient({
-    accessKeyId: env.RADOS_ACCESS_KEY_ID,
-    secretAccessKey: env.RADOS_SECRET_ACCESS_KEY,
+    accessKeyId: env.RADOS_ACCESS_KEY_ID!,
+    secretAccessKey: env.RADOS_SECRET_ACCESS_KEY!,
     service: 's3',
     region: 'rgw',
   });
 
   const suffix = `${Date.now()}`;
   const buckets = [`yucca-it-${suffix}-a`, `yucca-it-${suffix}-b`];
-  const bucketUrl = (bucket: string) => new URL(`/${bucket}`, env.RADOS_ENDPOINT).toString();
+  const bucketUrl = (bucket: string) => new URL(`/${bucket}`, env.RADOS_ENDPOINT!).toString();
 
   beforeAll(async () => {
-    repository = new RgwRepository();
+    repository = new RgwRepository({
+      clusterCode: 'test',
+      endpoint: env.RADOS_ENDPOINT!,
+      accessKeyId: env.RADOS_ACCESS_KEY_ID!,
+      secretAccessKey: env.RADOS_SECRET_ACCESS_KEY!,
+    });
 
     for (const bucket of buckets) {
       const response = await s3.fetch(bucketUrl(bucket), { method: 'PUT' });

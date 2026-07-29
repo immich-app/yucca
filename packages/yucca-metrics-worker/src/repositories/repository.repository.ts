@@ -8,6 +8,6 @@ export class RepositoryRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
 
   getAll() {
-    return this.db.selectFrom('repositories').select(['id', 'userId']).execute();
+    return this.db.selectFrom('repositories').select(['id', 'userId', 'siteCode', 'storageClusterCode']).execute();
   }
 }

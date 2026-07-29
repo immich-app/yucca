@@ -23,6 +23,7 @@ export const testUtils = {
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
     await db.deleteFrom('userAllowlist').execute();
+    await db.deleteFrom('settings').execute();
   },
 
   createAllowlistEntry: ({
@@ -94,6 +95,8 @@ export const testUtils = {
       name,
       worm,
       userId,
+      siteCode: 'local',
+      storageClusterCode: 'local-dev',
     });
   },
 };
