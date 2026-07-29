@@ -55,6 +55,19 @@ export class ConnectionRepository {
       .executeTakeFirst();
   }
 
+  async getOrCreateByType(userId: string, type: string, name: string) {
+    const existing = await this.db
+      .selectFrom('connections')
+      .selectAll()
+      .where('userId', '=', userId)
+      .where('type', '=', type)
+      .orderBy('createdAt', 'asc')
+      .orderBy('id', 'asc')
+      .executeTakeFirst();
+
+    return existing ?? (await this.create({ userId, type, name }));
+  }
+
   async getOrCreateDefault(userId: string) {
     const existing = await this.db
       .selectFrom('connections')

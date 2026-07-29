@@ -80,6 +80,48 @@ export type ConnectionCreateRequestDto = {
 export type ConnectionResponseDto = {
     connection: ConnectionDto;
 };
+export type ConnectionResticRequestDto = {
+    /** Repository name (defaults to a generated one). */
+    name?: string;
+    /** Enable write-once (WORM) on the repository. */
+    worm?: boolean;
+    /** Token lifetime (e.g. "90d"), capped at RESTIC_JWT_MAX_EXPIRES_IN. */
+    expiresIn?: string;
+    /** Human label for the minted access key. */
+    label?: string;
+};
+export type RepositoryMetricsDto = {
+    lastBackup?: string;
+    lastSuccessfulBackup?: string;
+    lastBackupDuration?: number;
+    sizeBytes: number;
+};
+export type RepositoryMeterDto = {
+    sizeBytes: number;
+    objectCount: number;
+    lastUpdated?: string;
+};
+export type RepositoryWithMetricsDto = {
+    id: string;
+    worm: boolean;
+    name: string;
+    /** Stable internal site code the repository lives in */
+    siteCode: string | null;
+    /** Stable, globally unique internal storage cluster code */
+    storageClusterCode: string | null;
+    connectionId: string;
+    connectionType: string;
+    metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
+};
+export type ConnectionResticResponseDto = {
+    connection: ConnectionDto;
+    repository: RepositoryWithMetricsDto;
+    /** rest: URL with the embedded restic JWT. */
+    url: string;
+    jti: string;
+    expiresAt: string;
+};
 export type ConnectionUpdateRequestDto = {
     name: string;
 };
@@ -117,30 +159,8 @@ export type RepositoryCreateRequestDto = {
     worm: boolean;
     /** Internal site code from /meta; defaults to default_site */
     site?: string;
-};
-export type RepositoryMetricsDto = {
-    lastBackup?: string;
-    lastSuccessfulBackup?: string;
-    lastBackupDuration?: number;
-    sizeBytes: number;
-};
-export type RepositoryMeterDto = {
-    sizeBytes: number;
-    objectCount: number;
-    lastUpdated?: string;
-};
-export type RepositoryWithMetricsDto = {
-    id: string;
-    worm: boolean;
-    name: string;
-    /** Stable internal site code the repository lives in */
-    siteCode: string | null;
-    /** Stable, globally unique internal storage cluster code */
-    storageClusterCode: string | null;
-    connectionId: string;
-    connectionType: string;
-    metrics: RepositoryMetricsDto;
-    meter?: RepositoryMeterDto;
+    /** Owned connection to create the repository under (defaults to the session/default connection). */
+    connectionId?: string;
 };
 export type RepositoryCreateResponseDto = {
     repository: RepositoryWithMetricsDto;
@@ -158,8 +178,32 @@ export type RepositoryUpdateRequestDto = {
 export type RepositoryUpdateResponseDto = {
     repository: RepositoryWithMetricsDto;
 };
+export type ResticUrlRequestDto = {
+    /** Token lifetime (e.g. "90d"). Revocable connection types only; defaults to RESTIC_JWT_EXPIRES_IN, capped at RESTIC_JWT_MAX_EXPIRES_IN. */
+    expiresIn?: string;
+    /** Human label for this access key (shown in the token list). */
+    label?: string;
+};
 export type RepositoryCreateResticUrlDto = {
+    /** rest: URL with the embedded restic JWT; paste into `restic -r`. */
     url: string;
+    /** The minted token id, for revocation. */
+    jti: string;
+    expiresAt: string;
+};
+export type ResticTokenDto = {
+    jti: string;
+    repositoryId: string;
+    connectionId?: string | null;
+    /** 'user' or 'admin' */
+    mintedBy: string;
+    label?: string | null;
+    expiresAt: string;
+    revokedAt?: string | null;
+    createdAt: string;
+};
+export type ResticTokenListResponseDto = {
+    tokens: ResticTokenDto[];
 };
 export function getAuth(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -225,6 +269,16 @@ export function createConnection(connectionCreateRequestDto: ConnectionCreateReq
         ...opts,
         method: "POST",
         body: connectionCreateRequestDto
+    })));
+}
+export function createRestic(connectionResticRequestDto: ConnectionResticRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConnectionResticResponseDto;
+    }>("/api/connections/restic", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: connectionResticRequestDto
     })));
 }
 export function updateConnection(id: string, connectionUpdateRequestDto: ConnectionUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
@@ -330,12 +384,27 @@ export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
         method: "DELETE"
     }));
 }
-export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
+export function createResticUrl(id: string, resticUrlRequestDto: ResticUrlRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: RepositoryCreateResticUrlDto;
-    }>(`/api/repository/${encodeURIComponent(id)}/restic`, {
+    }>(`/api/repository/${encodeURIComponent(id)}/restic`, oazapfts.json({
         ...opts,
-        method: "POST"
+        method: "POST",
+        body: resticUrlRequestDto
+    })));
+}
+export function listResticTokens(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ResticTokenListResponseDto;
+    }>(`/api/repository/${encodeURIComponent(id)}/restic-tokens`, {
+        ...opts
+    }));
+}
+export function revoke(jti: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/restic-tokens/${encodeURIComponent(jti)}`, {
+        ...opts,
+        method: "DELETE"
     }));
 }

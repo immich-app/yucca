@@ -49,6 +49,17 @@ const schema = z.object({
   LEGACY_SITE_CODE: z.string(),
   LEGACY_STORAGE_CLUSTER_CODE: z.string(),
 
+  RESTIC_JWT_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "90d", "8760h"')
+    .default('90d')
+    .transform((value): StringValue => value as StringValue),
+  RESTIC_JWT_MAX_EXPIRES_IN: z
+    .string()
+    .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "365d"')
+    .default('365d')
+    .transform((value): StringValue => value as StringValue),
+
   TOKEN_INTROSPECTION_SECRET: z.string().optional(),
 
   REDIS_URL: z.string().optional(),
