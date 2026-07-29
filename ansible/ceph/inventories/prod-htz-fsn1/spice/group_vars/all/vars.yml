@@ -47,11 +47,10 @@ ceph_bind_networks:
   - "{{ public_network }}"
 
 # Alert delivery. Without a receiver the ~89 Prometheus rules fire into
-# alertmanager's null route, which is how osd.35's failing disk and two degraded
-# bonds all went unnoticed until a scrub tripped HEALTH_ERR (2026-07-27). The URL
-# is a Zulip incoming webhook whose alertmanager integration accepts the standard
-# webhook payload; it carries an API key, so it lives in 1Password and arrives
-# through secrets.yml.tpl rather than being written here.
+# alertmanager's null route and nothing reaches an operator. The URL is a Zulip
+# incoming webhook whose alertmanager integration accepts the standard webhook
+# payload; it carries an API key, so it lives in 1Password and arrives through
+# secrets.yml.tpl rather than being written here.
 ceph_alertmanager_webhook_urls:
   - "{{ vault_alertmanager_webhook_url }}"
 # Bond of the two 25G NICs, LACP to match the leaf ae<k> aggregate (cluster-fabric).
