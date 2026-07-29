@@ -1,0 +1,53 @@
+---
+# Drift checks for baseline. Read-only.
+# Included by drift.yml via include_role + tasks_from -- see the precedence
+# note in roles/os_tuning/tasks/drift.yml.
+
+# ssh-hardening.yml writes "PasswordAuthentication no" as a literal, not from a
+# variable, so the expectation is a literal here too. If that ever becomes
+# tunable, this check has to read the variable instead.
+- name: Check PasswordAuthentication
+  ansible.builtin.shell: |
+    set -o pipefail
+    sshd -T 2>/dev/null | grep -i passwordauthentication \
+      | awk '{print $2}'
+  args:
+    executable: /bin/bash
+  register: ssh_pwauth
+  changed_when: false
+
+- name: Record SSH drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'security',
+        'item': 'SSH PasswordAuthentication',
+        'expected': 'no',
+        'actual': ssh_pwauth.stdout | trim,
+        'match': (ssh_pwauth.stdout | trim) == 'no'
+      }] }}
+
+# Compare against the cluster's declared baseline_ops_sudo rather than assuming
+# a password is required. users.yml renders the file as
+# "<user> ALL=(ALL) <baseline_ops_sudo>", so strip that prefix and compare the
+# sudo spec directly; a missing file yields an empty string and reads as drift.
+- name: Check ops sudo config
+  ansible.builtin.shell: |
+    set -o pipefail
+    sed -n 's/^{{ baseline_ops_user }} ALL=(ALL) //p' \
+      /etc/sudoers.d/{{ baseline_ops_user }} 2>/dev/null | head -1
+  args:
+    executable: /bin/bash
+  register: ops_sudo
+  changed_when: false
+
+- name: Record sudo drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'security',
+        'item': 'ops sudo spec',
+        'expected': baseline_ops_sudo,
+        'actual': ops_sudo.stdout | trim | default('missing', true),
+        'match': (ops_sudo.stdout | trim) == (baseline_ops_sudo | trim)
+      }] }}

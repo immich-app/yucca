@@ -2,6 +2,10 @@
 # Drift detection: compares expected Ansible state against live cluster.
 # Read-only. No changes. Reports mismatches.
 #
+# Each role owns its own checks in roles/<role>/tasks/drift.yml and appends to
+# the drift_results accumulator; this play sequences them and renders the
+# report. Adding a tunable means touching one role directory, not two files.
+#
 # Usage:
 #   scripts/ansible-play.sh drift.yml
 #   mise run drift
@@ -13,211 +17,45 @@
 
   vars:
     drift_results: []
-  vars_files:
-    - roles/baseline/defaults/main.yml
-    - roles/os_tuning/defaults/main.yml
-    - roles/hardware_tuning/defaults/main.yml
-    - roles/ceph_tuning/defaults/main.yml
-    - roles/security/defaults/main.yml
 
   tasks:
-    # --- Collect all checks ---
+    # --- Per-role checks ---
+    #
+    # include_role, NOT vars_files. vars_files loads a role's defaults at
+    # precedence 14, above inventory group_vars (4) and host_vars (9), so every
+    # check compared the live host against the role default and a cluster that
+    # legitimately overrode a value would be reported as drifting. include_role
+    # loads defaults at precedence 2, where normal layering applies.
+    #
+    # Order is deliberate: it reproduces the report sequence this play emitted
+    # when the checks were inline, so the two can be diffed. security before
+    # baseline, and ceph_tuning after the cluster-state block below, for the
+    # same reason. Reorder freely once that comparison is no longer useful.
 
-    # sysctl
-    - name: Check sysctl values
-      ansible.builtin.shell: |
-        set -o pipefail
-        sysctl -n {{ item.key }} 2>/dev/null | tr -d ' '
-      args:
-        executable: /bin/bash
-      loop:
-        - key: vm.swappiness
-          expected: "{{ ceph_sysctl_vm_swappiness }}"
-        - key: vm.min_free_kbytes
-          expected: "{{ ceph_sysctl_vm_min_free_kbytes }}"
-        - key: vm.zone_reclaim_mode
-          expected: "{{ ceph_sysctl_vm_zone_reclaim_mode }}"
-        - key: fs.aio-max-nr
-          expected: "{{ ceph_sysctl_fs_aio_max_nr }}"
-        - key: kernel.pid_max
-          expected: "{{ ceph_sysctl_kernel_pid_max }}"
-      register: sysctl_checks
-      changed_when: false
-      loop_control:
-        label: "{{ item.key }}"
+    - name: OS tuning checks
+      ansible.builtin.include_role:
+        name: os_tuning
+        tasks_from: drift
 
-    - name: Record sysctl drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'sysctl',
-            'item': item.item.key,
-            'expected': item.item.expected | string,
-            'actual': item.stdout | trim,
-            'match': (item.stdout | trim) == (item.item.expected | string)
-          }] }}
-      loop: "{{ sysctl_checks.results }}"
-      loop_control:
-        label: "{{ item.item.key }}"
+    - name: Hardware tuning checks
+      ansible.builtin.include_role:
+        name: hardware_tuning
+        tasks_from: drift
 
-    # I/O scheduler
-    - name: Check HDD I/O scheduler
-      ansible.builtin.shell: |
-        set -o pipefail
-        for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
-                     | awk '$2==1 && $3=="disk" {print $1}' | head -1); do
-          BDEV=$(basename "$dev")
-          cat /sys/block/$BDEV/queue/scheduler \
-            | grep -oP '\[\K[^\]]+'
-        done
-      args:
-        executable: /bin/bash
-      register: hdd_sched
-      changed_when: false
+    - name: Security checks
+      ansible.builtin.include_role:
+        name: security
+        tasks_from: drift
 
-    - name: Record HDD scheduler drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'hardware',
-            'item': 'HDD I/O scheduler',
-            'expected': ceph_hdd_scheduler,
-            'actual': hdd_sched.stdout | trim | default('none'),
-            'match': (hdd_sched.stdout | trim | default('none'))
-                     == ceph_hdd_scheduler
-          }] }}
+    - name: Baseline checks
+      ansible.builtin.include_role:
+        name: baseline
+        tasks_from: drift
 
-    - name: Check SSD I/O scheduler
-      ansible.builtin.shell: |
-        set -o pipefail
-        for dev in $(lsblk -dnpo NAME,ROTA,TYPE \
-                     | awk '$2==0 && $3=="disk" {print $1}' | head -1); do
-          BDEV=$(basename "$dev")
-          cat /sys/block/$BDEV/queue/scheduler \
-            | grep -oP '\[\K[^\]]+'
-        done
-      args:
-        executable: /bin/bash
-      register: ssd_sched
-      changed_when: false
-
-    - name: Record SSD scheduler drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'hardware',
-            'item': 'SSD I/O scheduler',
-            'expected': ceph_ssd_scheduler,
-            'actual': ssd_sched.stdout | trim | default('none'),
-            'match': (ssd_sched.stdout | trim | default('none'))
-                     == ceph_ssd_scheduler
-          }] }}
-
-    # SATA link power management
-    # Every AHCI port matters here, not a representative one: a single port
-    # back on min_power_with_partial is enough to stall an OSD, so report the
-    # distribution when the ports disagree.
-    - name: Check SATA link power management policy
-      ansible.builtin.shell: |
-        set -o pipefail
-        GLOB=/sys/class/scsi_host/host*/link_power_management_policy
-        DISTINCT=$(cat $GLOB 2>/dev/null | sort -u | grep -c .)
-        if [ "$DISTINCT" -eq 0 ]; then
-          # No LPM-capable ports (SAS controllers expose scsi_host without the
-          # attribute). The role skips these too, so there is nothing to drift.
-          echo n/a
-        elif [ "$DISTINCT" -eq 1 ]; then
-          cat $GLOB 2>/dev/null | sort -u
-        else
-          cat $GLOB 2>/dev/null | sort | uniq -c \
-            | awk '{printf "%s=%s ", $2, $1}' | sed 's/^/mixed: /; s/ $//'
-        fi
-      args:
-        executable: /bin/bash
-      register: sata_lpm
-      changed_when: false
-      when: ceph_sata_link_pm_enabled | bool
-
-    - name: Record SATA link power management drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'hardware',
-            'item': 'SATA link power mgmt',
-            'expected': ceph_sata_link_pm_policy,
-            'actual': sata_lpm.stdout | trim | default('n/a'),
-            'match': (sata_lpm.stdout | trim | default('n/a'))
-                     in [ceph_sata_link_pm_policy, 'n/a']
-          }] }}
-      when: ceph_sata_link_pm_enabled | bool
-
-    # nftables
-    - name: Check nftables policy
-      ansible.builtin.shell: |
-        set -o pipefail
-        nft list chain inet filter input 2>/dev/null \
-          | grep -c 'policy drop' || echo 0
-      args:
-        executable: /bin/bash
-      register: nft_policy
-      changed_when: false
-
-    - name: Record firewall drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'security',
-            'item': 'nftables policy drop',
-            'expected': 'enabled',
-            'actual': 'enabled' if (nft_policy.stdout | trim | int > 0)
-                      else 'missing',
-            'match': (nft_policy.stdout | trim | int > 0)
-          }] }}
-
-    # SSH hardening
-    - name: Check PasswordAuthentication
-      ansible.builtin.shell: |
-        set -o pipefail
-        sshd -T 2>/dev/null | grep -i passwordauthentication \
-          | awk '{print $2}'
-      args:
-        executable: /bin/bash
-      register: ssh_pwauth
-      changed_when: false
-
-    - name: Record SSH drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'security',
-            'item': 'SSH PasswordAuthentication',
-            'expected': 'no',
-            'actual': ssh_pwauth.stdout | trim,
-            'match': (ssh_pwauth.stdout | trim) == 'no'
-          }] }}
-
-    # sudo config
-    - name: Check ops sudo config
-      ansible.builtin.shell: |
-        grep -c 'NOPASSWD' /etc/sudoers.d/ops 2>/dev/null || echo 0
-      args:
-        executable: /bin/bash
-      register: ops_sudo
-      changed_when: false
-
-    - name: Record sudo drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'security',
-            'item': 'ops sudo requires password',
-            'expected': 'yes',
-            'actual': 'no (NOPASSWD)' if (ops_sudo.stdout | trim | int > 0)
-                      else 'yes',
-            'match': (ops_sudo.stdout | trim | int == 0)
-          }] }}
-
-    # --- Ceph cluster checks (bootstrap only) ---
+    # --- Cluster state (bootstrap only) ---
+    #
+    # These assert live cluster shape rather than a declared config value, so
+    # they read no role defaults and stay at play level.
 
     - name: Check OSD status
       ansible.builtin.shell: |
@@ -321,38 +159,11 @@
           }] }}
       when: inventory_hostname in groups['ceph_bootstrap']
 
-    # Ceph config values
-    - name: Check Ceph config values
-      ansible.builtin.command: "ceph config get osd {{ item.key }}"
-      loop:
-        - key: osd_recovery_max_active
-          expected: "{{ ceph_osd_recovery_max_active }}"
-        - key: osd_max_backfills
-          expected: "{{ ceph_osd_max_backfills }}"
-        - key: osd_scrub_begin_hour
-          expected: "{{ ceph_osd_scrub_begin_hour }}"
-        - key: osd_scrub_end_hour
-          expected: "{{ ceph_osd_scrub_end_hour }}"
-      register: ceph_config_checks
-      when: inventory_hostname in groups['ceph_bootstrap']
-      changed_when: false
-      loop_control:
-        label: "{{ item.key }}"
-
-    - name: Record Ceph config drift
-      ansible.builtin.set_fact:
-        drift_results: >-
-          {{ drift_results + [{
-            'category': 'ceph-config',
-            'item': item.item.key,
-            'expected': item.item.expected | string,
-            'actual': item.stdout | trim,
-            'match': (item.stdout | trim) == (item.item.expected | string)
-          }] }}
-      loop: "{{ ceph_config_checks.results | default([]) }}"
-      when: inventory_hostname in groups['ceph_bootstrap']
-      loop_control:
-        label: "{{ item.item.key | default('skipped') }}"
+    # Last, to match the previous report order (see the ordering note above).
+    - name: Ceph tuning checks
+      ansible.builtin.include_role:
+        name: ceph_tuning
+        tasks_from: drift
 
     # --- Report ---
 
