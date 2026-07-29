@@ -12,9 +12,11 @@ kind: Component
 resources:
   - ../../apps/namespace.yaml
   - ../../apps/networkpolicies.yaml
+  - ../../apps/topology.yaml
   - ../../apps/yucca-database.yaml
   - ../../apps/yucca-api.yaml
   - ../../apps/yucca-admin-api.yaml
   - ../../apps/web.yaml
+  - ../../apps/meta.yaml
   - ../../apps/michael.yaml
   - ../../apps/yucca-metrics-worker.yaml

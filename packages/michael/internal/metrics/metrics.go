@@ -51,6 +51,7 @@ type Metrics struct {
 	StorageErrors   otelmetric.Int64Counter
 	AuthCacheHits   otelmetric.Int64Counter
 	AuthCacheMisses otelmetric.Int64Counter
+	UnknownCluster  otelmetric.Int64Counter
 }
 
 // durationBuckets replaces the SDK default histogram boundaries, which are
@@ -138,6 +139,16 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating auth_cache_misses counter: %w", err)
 	}
 
+	// A token naming a storage cluster this michael does not front means a
+	// routing/config mismatch between the API that minted the token and this
+	// deployment — every such request is rejected, so this must be alertable
+	// rather than buried in the generic 4xx count.
+	unknownCluster, err := meter.Int64Counter("storage.cluster.unknown",
+		otelmetric.WithDescription("Requests rejected because the token named a storage cluster michael does not front"))
+	if err != nil {
+		return nil, fmt.Errorf("creating unknown_cluster counter: %w", err)
+	}
+
 	return &Metrics{
 		RequestedBytes:  requestedBytes,
 		DownloadedBytes: downloadedBytes,
@@ -150,7 +161,24 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		StorageErrors:   storageErrors,
 		AuthCacheHits:   authCacheHits,
 		AuthCacheMisses: authCacheMisses,
+		UnknownCluster:  unknownCluster,
 	}, nil
+}
+
+var clusterAttrCache sync.Map
+
+// ClusterOption labels a measurement with a storage cluster code. Cluster codes
+// are validated against a narrow charset before reaching here, so this stays
+// bounded even though the value originates in a token claim.
+func ClusterOption(code string) otelmetric.MeasurementOption {
+	if v, ok := clusterAttrCache.Load(code); ok {
+		return v.(otelmetric.MeasurementOption)
+	}
+	opt := otelmetric.WithAttributeSet(attribute.NewSet(
+		attribute.String("cluster", code),
+	))
+	clusterAttrCache.Store(code, opt)
+	return opt
 }
 
 type storageErrAttrKey struct{ operation, blobType string }

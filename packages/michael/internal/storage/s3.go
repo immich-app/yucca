@@ -88,18 +88,26 @@ func NewS3StorageForEndpoint(cfg config.Config, endpoint string) *S3Storage {
 	})
 }
 
-// NewS3StorageWithOptions builds an S3Storage with explicit per-backend options
-// (host-pinned dialing and/or TLS skip-verify) layered on the cfg credentials.
+// NewS3StorageWithOptions builds an S3Storage for the default storage cluster
+// with explicit per-backend options (host-pinned dialing and/or TLS
+// skip-verify) layered on the cfg credentials.
 func NewS3StorageWithOptions(cfg config.Config, opts S3Options) *S3Storage {
+	return NewS3StorageForCluster(cfg.DefaultCluster(), opts)
+}
+
+// NewS3StorageForCluster builds an S3Storage against one storage cluster's
+// credentials, region, and path-style. Each cluster michael fronts has its own
+// object-user, so credentials cannot be shared across clusters.
+func NewS3StorageForCluster(cc config.ClusterConfig, opts S3Options) *S3Storage {
 	s3opts := s3.Options{
-		Region: cfg.S3Region,
+		Region: cc.S3Region,
 		Credentials: credentials.NewStaticCredentialsProvider(
-			cfg.S3AccessKeyID,
-			cfg.S3SecretAccessKey,
+			cc.S3AccessKeyID,
+			cc.S3SecretAccessKey,
 			"",
 		),
 		BaseEndpoint: aws.String(opts.Endpoint),
-		UsePathStyle: cfg.S3ForcePathStyle,
+		UsePathStyle: cc.S3ForcePathStyle,
 	}
 	s3opts.HTTPClient = buildHTTPClient(opts)
 	return &S3Storage{client: s3.New(s3opts)}

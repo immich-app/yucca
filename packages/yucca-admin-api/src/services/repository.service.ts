@@ -12,6 +12,7 @@ import {
 } from 'src/dto/repository.dto';
 import { env } from 'src/env';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
+import { TopologyRepository } from 'src/repositories/topology.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
 
@@ -30,6 +31,7 @@ export class RepositoryService {
     private readonly repositories: RepositoryRepository,
     private readonly users: UserRepository,
     private readonly jwt: JwtService,
+    private readonly topology: TopologyRepository,
   ) {}
 
   list(query: RepositoryListQueryDto): Promise<RepositoryListResponseDto> {
@@ -45,6 +47,9 @@ export class RepositoryService {
   }
 
   async create(dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
+    const site = this.topology.getSite(dto.site);
+    const cluster = this.topology.getActiveCluster(site);
+
     let userId = dto.userId;
     if (!userId) {
       const user = (await this.users.getBySub(serviceUser.sub)) ?? (await this.users.create(serviceUser));
@@ -54,6 +59,8 @@ export class RepositoryService {
       name: dto.name,
       userId,
       worm: dto.worm ?? false,
+      siteCode: site.code,
+      storageClusterCode: cluster.code,
     });
     return { repository };
   }
@@ -61,16 +68,22 @@ export class RepositoryService {
   // Mirrors yucca-api's createUrl: a restic rest: URL with an embedded JWT
   // that michael verifies against yucca-api's public key.
   async url(id: string): Promise<RepositoryUrlResponseDto> {
-    if (!env.RESTIC_JWT_PRIVATE_KEY || !env.RESTIC_ENDPOINT) {
-      throw new NotImplementedException('RESTIC_JWT_PRIVATE_KEY / RESTIC_ENDPOINT are not configured');
+    if (!env.RESTIC_JWT_PRIVATE_KEY) {
+      throw new NotImplementedException('RESTIC_JWT_PRIVATE_KEY is not configured');
     }
     const repository = await this.repositories.get(id);
+    const site = this.topology.getSite(repository.siteCode);
     const token = await this.jwt.signAsync(
-      { user: repository.user.id, repository: repository.id, writeOnce: repository.worm },
+      {
+        user: repository.user.id,
+        repository: repository.id,
+        writeOnce: repository.worm,
+        storageCluster: repository.storageClusterCode,
+      },
       { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn: env.RESTIC_JWT_EXPIRES_IN },
     );
 
-    const url = new URL(env.RESTIC_ENDPOINT);
+    const url = new URL(site.rest_url);
     url.username = 'restic';
     url.password = token;
     url.pathname = repository.id;

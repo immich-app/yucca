@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
-import { ResticApiRepository } from 'src/repositories/resticApi.repository';
+import { TopologyRepository } from 'src/repositories/topology.repository';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RepositoryService {
@@ -12,11 +12,19 @@ export class RepositoryService {
     private readonly jwt: JwtService,
     private readonly repositoryRepository: RepositoryRepository,
     private readonly wideContext: WideContextRepository,
-    private readonly resticApi: ResticApiRepository,
+    private readonly topology: TopologyRepository,
   ) {}
 
-  create(auth: AuthDto, dto: RepositoryCreateRequestDto) {
-    return this.repositoryRepository.create({ userId: auth.id, ...dto });
+  create(auth: AuthDto, { site: siteCode, ...dto }: RepositoryCreateRequestDto) {
+    const site = this.topology.getSite(siteCode);
+    const cluster = this.topology.getActiveCluster(site);
+
+    return this.repositoryRepository.create({
+      userId: auth.id,
+      ...dto,
+      siteCode: site.code,
+      storageClusterCode: cluster.code,
+    });
   }
 
   async get(auth: AuthDto, id: string) {
@@ -45,15 +53,18 @@ export class RepositoryService {
   async createUrl(auth: AuthDto, id: string) {
     const repository = await this.get(auth, id);
 
+    const site = this.topology.getSite(repository.siteCode);
+
     const token = await this.jwt.signAsync({
       user: auth.id,
       repository: repository.id,
       writeOnce: repository.worm,
+      storageCluster: repository.storageClusterCode,
     });
 
     this.wideContext.addContext('repositoryId', repository.id);
 
-    const url = this.resticApi.getEndpoint();
+    const url = new URL(site.rest_url);
     url.username = 'restic';
     url.password = token;
     url.pathname = repository.id;

@@ -1,0 +1,34 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-meta
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/apps/meta
+      # Repackage on every git revision — the in-repo charts keep a static
+      # version, so the default ChartVersion strategy never ships template edits.
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: ${CHART_SOURCE:=flux-system}
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    # Stock upstream nginx — no image override here (nothing to stamp with
+    # ${YUCCA_IMAGE_TAG}); the chart pins the tag.
+    #
+    # The whole point of the pod: hand a client the API root it should ask for
+    # everything else. Rendered into the chart's ConfigMap and served at
+    # /.well-known/yucca.json.
+    wellKnown:
+      meta_url: https://${APP_DOMAIN}/api/meta

@@ -43,6 +43,12 @@ export class RepositoryAdminDto {
   @ApiProperty()
   worm!: boolean;
 
+  @ApiProperty({ type: 'string', description: 'Stable internal site code' })
+  siteCode!: string;
+
+  @ApiProperty({ type: 'string', description: 'Stable, globally unique internal storage cluster code' })
+  storageClusterCode!: string;
+
   @ApiProperty()
   user!: RepositoryOwnerDto;
 
@@ -84,6 +90,14 @@ export class RepositoryCreateRequestDto {
   @IsOptional()
   @IsBoolean()
   worm?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description: 'Internal site code to place the repository in; defaults to the topology default site',
+  })
+  @IsOptional()
+  @IsString()
+  site?: string;
 }
 
 export class RepositoryCreateResponseDto {

@@ -8,6 +8,7 @@ import { AllowlistController } from './controllers/allowlist.controller';
 import { AuthController } from './controllers/auth.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { SessionController } from './controllers/session.controller';
+import { SettingsController } from './controllers/settings.controller';
 import { UserController } from './controllers/user.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
@@ -15,6 +16,8 @@ import { DatabaseRepository } from './repositories/database.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { SessionRepository } from './repositories/session.repository';
+import { SettingsRepository } from './repositories/settings.repository';
+import { TopologyRepository } from './repositories/topology.repository';
 import { UserRepository } from './repositories/user.repository';
 import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
 import { AllowlistService } from './services/allowlist.service';
@@ -22,6 +25,7 @@ import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
 import { RepositoryService } from './services/repository.service';
 import { SessionService } from './services/session.service';
+import { SettingsService } from './services/settings.service';
 import { UserService } from './services/user.service';
 import { getKyselyConfig } from './utils/database';
 
@@ -44,6 +48,7 @@ export const controllers = [
   SessionController,
   RepositoryController,
   AllowlistController,
+  SettingsController,
 ];
 
 export const providers = [
@@ -56,10 +61,13 @@ export const providers = [
   UserAllowlistRepository,
   SessionRepository,
   RepositoryRepository,
+  SettingsRepository,
+  TopologyRepository,
   AllowlistService,
   AuthService,
   UserService,
   SessionService,
+  SettingsService,
   RepositoryService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },

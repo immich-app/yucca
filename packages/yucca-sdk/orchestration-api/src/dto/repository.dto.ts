@@ -35,6 +35,12 @@ export class RepositoryDto {
 
   @ApiProperty({ type: String })
   name!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  siteCode!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  storageClusterCode!: string | null;
 }
 
 export class RepositoryMetricsDto {
@@ -116,6 +122,11 @@ export class RepositoryCreateRequestDto {
   @ApiProperty({ type: Boolean })
   @IsBoolean()
   worm!: boolean;
+
+  @ApiProperty({ type: String, required: false, description: 'Internal site code from environment metadata' })
+  @IsOptional()
+  @IsString()
+  site?: string;
 
   @ApiProperty({ type: [String], required: false })
   @IsOptional()

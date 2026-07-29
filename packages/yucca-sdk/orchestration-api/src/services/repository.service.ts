@@ -24,7 +24,7 @@ import {
   RepositoryWithMetricsDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
-import { ResticTagPrefix, TaskType } from '../enum';
+import { BackendType, ResticTagPrefix, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
@@ -110,6 +110,7 @@ export class RepositoryService {
     const id = randomUUID();
 
     const endpoint = await backend.getResticEndpoint(remote.id);
+    this.config.registerResticPlacement(endpoint, remote.siteCode, remote.storageClusterCode);
     const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
     await this.restic.init(endpoint, key);
 
@@ -118,6 +119,8 @@ export class RepositoryService {
       remoteId: remote.id,
       backendId,
       retentionPolicy: DEFAULT_RETENTION_POLICY,
+      siteCode: remote.siteCode,
+      storageClusterCode: remote.storageClusterCode,
     });
 
     const paths = dto.paths ?? [];
@@ -179,7 +182,7 @@ export class RepositoryService {
     const localPaths = await this.repositoryPath.getAll();
     const localMetrics = await this.repositoryLocalMetrics.getAll();
 
-    for (const { id, remoteId, backendId, retentionPolicy } of localRepositories) {
+    for (const { id, remoteId, backendId, retentionPolicy, siteCode, storageClusterCode } of localRepositories) {
       const remoteRepository = remoteRepositories[backendId][remoteId];
 
       const configuration: RepositoryConfigurationDto = {
@@ -190,6 +193,12 @@ export class RepositoryService {
       const metrics = localMetrics.find((entry) => entry.id === id);
 
       if (remoteRepository) {
+        if (remoteRepository.siteCode !== siteCode || remoteRepository.storageClusterCode !== storageClusterCode) {
+          await this.repository.update(id, {
+            siteCode: remoteRepository.siteCode,
+            storageClusterCode: remoteRepository.storageClusterCode,
+          });
+        }
         repositories.push({
           ...remoteRepository,
           id,
@@ -210,6 +219,8 @@ export class RepositoryService {
           id,
           name: 'Unknown',
           worm: false,
+          siteCode,
+          storageClusterCode,
           ...(await this.getLocalRepository(id, configuration, metrics)),
           backends: {
             primary: {
@@ -388,20 +399,35 @@ export class RepositoryService {
   ): Promise<{ endpoint: string; key: Uint8Array }> {
     let backendId: string;
     let remoteId: string;
+    let localId: string | undefined;
+    let siteCode: string | null = null;
+    let storageClusterCode: string | null = null;
     if (typeof repository === 'string') {
       const localRepository = await this.repository.get(repository);
       if (!localRepository) {
         throw new NotFoundException('Repository not found locally');
       }
 
+      localId = localRepository.id;
       backendId = localRepository.backendId;
       remoteId = localRepository.remoteId;
+      siteCode = localRepository.siteCode;
+      storageClusterCode = localRepository.storageClusterCode;
     } else {
       ({ backendId, remoteId } = repository);
     }
 
-    const { backend } = await this.getBackendOrThrow(backendId);
+    const { backend, configuration } = await this.getBackendOrThrow(backendId);
+    if ((!siteCode || !storageClusterCode) && configuration.type === BackendType.Yucca) {
+      const { repository: remote } = await backend.getRepository(remoteId);
+      siteCode = remote.siteCode;
+      storageClusterCode = remote.storageClusterCode;
+      if (localId) {
+        await this.repository.update(localId, { siteCode, storageClusterCode });
+      }
+    }
     const endpoint = await backend.getResticEndpoint(remoteId);
+    this.config.registerResticPlacement(endpoint, siteCode, storageClusterCode);
 
     const key = await this.config.deriveEncryptionKey(`repository-${remoteId}`);
 
@@ -729,6 +755,7 @@ export class RepositoryService {
       const localId = randomUUID();
 
       const endpoint = await backend.getResticEndpoint(remote.id);
+      this.config.registerResticPlacement(endpoint, remote.siteCode, remote.storageClusterCode);
       const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
       await this.restic.keyList(endpoint, key);
 
@@ -750,6 +777,8 @@ export class RepositoryService {
         remoteId: remote.id,
         backendId,
         retentionPolicy: DEFAULT_RETENTION_POLICY,
+        siteCode: remote.siteCode,
+        storageClusterCode: remote.storageClusterCode,
       });
 
       const repository: LocalRepositoryDto = {
@@ -802,12 +831,15 @@ export class RepositoryService {
     });
 
     const endpoint = await backend.getResticEndpoint(remote.id);
+    this.config.registerResticPlacement(endpoint, remote.siteCode, remote.storageClusterCode);
     const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
     await this.restic.init(endpoint, key);
 
     await this.repository.update(id, {
       remoteId: remote.id,
       backendId: dto.backendId,
+      siteCode: remote.siteCode,
+      storageClusterCode: remote.storageClusterCode,
     });
 
     const { id: _, ...repository }: LocalRepositoryDto = {

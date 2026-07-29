@@ -4,4 +4,5 @@ kind: Kustomization
 resources:
   - ./web.yaml
   - ./gw.yaml
+  - ./meta.yaml
   - ./redirect.yaml

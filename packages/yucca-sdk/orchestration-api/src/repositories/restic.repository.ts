@@ -11,7 +11,7 @@ export class ResticRepository {
 
   async init(repository: string, key: Uint8Array) {
     await init()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .run();
@@ -28,7 +28,8 @@ export class ResticRepository {
     const write = createSampledLogWriter(logStream);
 
     return await backup()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
+      .packSize(await this.config.getResticPackSizeMib(repository))
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .tag(...tags)
@@ -49,7 +50,7 @@ export class ResticRepository {
     const write = createSampledLogWriter(logStream);
 
     let command = restore()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
@@ -66,7 +67,7 @@ export class ResticRepository {
 
   async ls(repository: string, key: Uint8Array, snapshotId: string, path: string) {
     return await ls()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
@@ -76,7 +77,7 @@ export class ResticRepository {
 
   async stats(repository: string, key: Uint8Array) {
     return await stats()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .modeRawData()
@@ -85,7 +86,7 @@ export class ResticRepository {
 
   async snapshots(repository: string, key: Uint8Array) {
     return await snapshots()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .run();
@@ -93,7 +94,7 @@ export class ResticRepository {
 
   async snapshot(repository: string, key: Uint8Array, snapshotId: string) {
     return await snapshots()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
@@ -102,7 +103,7 @@ export class ResticRepository {
 
   async forget(repository: string, key: Uint8Array, snapshotId: string, prune = true, signal?: AbortSignal) {
     return await forget()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
@@ -113,7 +114,7 @@ export class ResticRepository {
 
   async forgetByPolicy(repository: string, key: Uint8Array, policy: RetentionPolicy, signal?: AbortSignal) {
     return await forget()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .signal(signal)
@@ -129,7 +130,8 @@ export class ResticRepository {
 
   async prune(repository: string, key: Uint8Array, signal?: AbortSignal) {
     return await prune()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
+      .packSize(await this.config.getResticPackSizeMib(repository))
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .signal(signal)
@@ -138,7 +140,7 @@ export class ResticRepository {
 
   async keyList(repository: string, key: Uint8Array) {
     return await keyList()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))
       .run();
@@ -146,7 +148,7 @@ export class ResticRepository {
 
   async unlockAll(repository: string, key: Uint8Array) {
     return await unlock()
-      .option(`rest.connections=${await this.config.getResticOptionRestConnections()}`)
+      .option(`rest.connections=${await this.config.getResticOptionRestConnections(repository)}`)
       .removeAll()
       .repository(repository)
       .password(Buffer.from(key).toString('hex'))

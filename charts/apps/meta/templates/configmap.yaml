@@ -1,0 +1,15 @@
+{{- /*
+The served document. Chart-owned (rather than a raw manifest in the Flux tree)
+so `helm template charts/apps/meta` is a complete, runnable rendering and dev
+needs no second source of truth: the per-cluster value arrives through the
+HelmRelease, which postBuild-substitutes ${APP_DOMAIN} exactly like a raw
+ConfigMap would have.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yucca-common.fullname" . }}
+  labels:
+    {{- include "yucca-common.labels" . | nindent 4 }}
+data:
+  yucca.json: {{ .Values.wellKnown | toJson | quote }}

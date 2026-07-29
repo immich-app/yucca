@@ -12,9 +12,20 @@ const schema = z.object({
   POSTGRES_DATABASE: z.string(),
   POSTGRES_SSL: z.union([z.enum(['require', 'allow', 'prefer', 'verify-full']), z.boolean()]).default(false),
 
-  RADOS_ENDPOINT: z.url().transform((url) => new URL(url)),
-  RADOS_ACCESS_KEY_ID: z.string(),
-  RADOS_SECRET_ACCESS_KEY: z.string(),
+  TOPOLOGY_FILE: z.string().default('./topology.dev.json'),
+  LEGACY_SITE_CODE: z.string(),
+  LEGACY_STORAGE_CLUSTER_CODE: z.string(),
+
+  // Fallback RGW admin credentials, used for any topology cluster without a
+  // per-cluster RADOS_ACCESS_KEY_ID_<CODE>/RADOS_SECRET_ACCESS_KEY_<CODE> pair.
+  RADOS_ACCESS_KEY_ID: z.string().optional(),
+  RADOS_SECRET_ACCESS_KEY: z.string().optional(),
+
+  // Only used by the integration test harness to reach RGW directly.
+  RADOS_ENDPOINT: z
+    .url()
+    .transform((url) => new URL(url))
+    .optional(),
 });
 
 export const env = schema.parse(process.env);

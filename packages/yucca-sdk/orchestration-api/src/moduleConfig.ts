@@ -28,6 +28,10 @@ export type ImmichIntegration = {
 export type ModuleConfig = {
   statePath: string;
   yuccaProductionApi?: string;
+  // Discovery entry point ({"meta_url": ...} pointer); defaults to production
+  // (YUCCA_WELL_KNOWN). Host apps typically feed this from
+  // FUTO_BACKUPS_WELL_KNOWN_URL to target staging or a local dev stack.
+  wellKnownUrl?: string;
   externalBaseUrl?: string;
   requireWsAuth?: boolean;
   requireLock?: boolean;

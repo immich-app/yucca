@@ -20,6 +20,23 @@ data:
   # from this (see base yucca-admin-api HR).
   YUCCA_ADMIN_HOST: admin.luke.aus.int.yucca.futo.network
 
+  # ─── Fleet topology ──────────────────────────────────────────────────
+  # Rendered into the yucca-topology ConfigMap (apps/base/topology), which
+  # Codes are immutable internal identifiers; display names are presentation.
+  SITE_CODE: luke
+  SITE_DISPLAY_NAME: "Austin"
+  SITE_DESCRIPTION: "Located in Austin, Texas, USA"
+  STORAGE_CLUSTER_CODE: luke-sietch
+  STORAGE_CLUSTER_DISPLAY_NAME: "Sietch"
+  # Immutable origin for pre-placement database rows. Never repoint these when
+  # the active write cluster changes.
+  LEGACY_SITE_CODE: luke
+  LEGACY_STORAGE_CLUSTER_CODE: luke-sietch
+  # Discovery host for the staging fleet. Unlike prod's meta.futo.cloud this
+  # one sits UNDER the app domain, so the existing *.${APP_DOMAIN} wildcard
+  # cert and DNS record already cover it — no extra cert/record needed.
+  META_HOST: meta.staging.backups.futo.cloud
+
   # ─── Ingress entry point ─────────────────────────────────────────────
   # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
   # the 10.10.10.15 control-plane API VIP). Public IP is the NAT in front of it,

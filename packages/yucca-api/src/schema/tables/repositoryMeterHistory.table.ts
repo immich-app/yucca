@@ -15,6 +15,9 @@ export class RepositoryMeterHistoryTable {
   @Column({ type: 'bigint' })
   objectCount!: number;
 
+  @Column({ type: 'text' })
+  storageClusterCode!: string;
+
   @Column({ type: 'timestamp with time zone', default: () => 'now()' })
   timestamp!: Generated<Date>;
 }

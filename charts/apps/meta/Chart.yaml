@@ -1,0 +1,13 @@
+apiVersion: v2
+name: meta
+description: Yucca .well-known discovery pointer (static nginx)
+type: application
+version: 0.1.0
+# Upstream nginx, not a yucca image — this chart is deliberately OUT of the
+# release-please single-version scheme (release-please-config.json lists the
+# other apps' Chart.yaml, not this one). The tag in values.yaml is what ships.
+appVersion: "1.29"
+dependencies:
+  - name: yucca-common
+    version: 0.2.0
+    repository: "file://../../lib/yucca-common"

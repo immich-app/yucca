@@ -1,14 +1,20 @@
 package config
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"michael/internal/cluster"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -36,6 +42,15 @@ type Config struct {
 	S3ProbeBucket       string // sentinel bucket for active health probes
 	S3EjectThreshold    int    // consecutive transport failures before ejection
 	S3ReconcileInterval time.Duration
+
+	// S3DefaultCluster is the code of the storage cluster the flat S3_* fields
+	// above describe. Requests whose token carries no storageCluster claim are
+	// served from it.
+	S3DefaultCluster string
+	// Clusters is every storage cluster this michael fronts, the default one
+	// first, followed by any declared in S3_CLUSTERS_FILE.
+	Clusters []ClusterConfig
+
 	OTLPMetricsEndpoint string
 	OTLPMetricsURLPath  string
 	OTLPMetricsInterval time.Duration
@@ -45,6 +60,52 @@ type Config struct {
 	OTLPLogsEnabled     bool
 	LogLevel            zerolog.Level
 	LogPretty           bool
+}
+
+// ClusterConfig is everything needed to talk to ONE storage cluster: its S3
+// endpoint and credentials plus that cluster's own backend-pool settings. The
+// flat S3_* environment variables describe the default cluster; S3_CLUSTERS_FILE
+// declares any additional ones.
+type ClusterConfig struct {
+	Code              string
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3Region          string
+	S3Endpoint        string
+	S3ForcePathStyle  bool
+
+	S3BackendSource     string // "" | "file" | "dns"
+	S3BackendFile       string
+	S3BackendDNSHost    string
+	S3BackendScheme     string
+	S3BackendPort       string
+	S3BackendPinHost    bool
+	S3TLSSkipVerify     bool
+	S3ProbeBucket       string
+	S3EjectThreshold    int
+	S3ReconcileInterval time.Duration
+}
+
+// DefaultCluster returns the cluster described by the flat S3_* configuration.
+func (c Config) DefaultCluster() ClusterConfig {
+	return ClusterConfig{
+		Code:                c.S3DefaultCluster,
+		S3AccessKeyID:       c.S3AccessKeyID,
+		S3SecretAccessKey:   c.S3SecretAccessKey,
+		S3Region:            c.S3Region,
+		S3Endpoint:          c.S3Endpoint,
+		S3ForcePathStyle:    c.S3ForcePathStyle,
+		S3BackendSource:     c.S3BackendSource,
+		S3BackendFile:       c.S3BackendFile,
+		S3BackendDNSHost:    c.S3BackendDNSHost,
+		S3BackendScheme:     c.S3BackendScheme,
+		S3BackendPort:       c.S3BackendPort,
+		S3BackendPinHost:    c.S3BackendPinHost,
+		S3TLSSkipVerify:     c.S3TLSSkipVerify,
+		S3ProbeBucket:       c.S3ProbeBucket,
+		S3EjectThreshold:    c.S3EjectThreshold,
+		S3ReconcileInterval: c.S3ReconcileInterval,
+	}
 }
 
 func LoadConfig() Config {
@@ -147,6 +208,11 @@ func LoadConfig() Config {
 		log.Fatal().Str("value", backendSource).Msg("S3_BACKEND_SOURCE must be '', 'file', or 'dns'")
 	}
 
+	defaultCluster := envOr("S3_DEFAULT_CLUSTER", cluster.DefaultCode)
+	if !cluster.IsValidCode(defaultCluster) {
+		log.Fatal().Str("value", defaultCluster).Msgf("S3_DEFAULT_CLUSTER must match %s", cluster.CodePattern)
+	}
+
 	otlpEndpoint := os.Getenv("OTLP_METRICS_ENDPOINT")
 	otlpURLPath := os.Getenv("OTLP_METRICS_URL_PATH")
 	otlpInterval := 1000 * time.Millisecond
@@ -180,7 +246,7 @@ func LoadConfig() Config {
 		}
 	}
 
-	return Config{
+	cfg := Config{
 		Port:                port,
 		JWTPublicKey:        jwtPublicKey,
 		S3AccessKeyID:       s3AccessKeyID,
@@ -198,6 +264,7 @@ func LoadConfig() Config {
 		S3ProbeBucket:       probeBucket,
 		S3EjectThreshold:    ejectThreshold,
 		S3ReconcileInterval: reconcileInterval,
+		S3DefaultCluster:    defaultCluster,
 		OTLPMetricsEndpoint: otlpEndpoint,
 		OTLPMetricsURLPath:  otlpURLPath,
 		OTLPMetricsInterval: otlpInterval,
@@ -208,6 +275,278 @@ func LoadConfig() Config {
 		LogLevel:            logLevel,
 		LogPretty:           logPretty,
 	}
+
+	cfg.Clusters = []ClusterConfig{cfg.DefaultCluster()}
+	if path := os.Getenv("S3_TOPOLOGY_FILE"); path != "" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			log.Fatal().Err(err).Str("path", path).Msg("failed to read S3_TOPOLOGY_FILE")
+		}
+		clusters, err := ParseTopologyClusters(data, os.Getenv("SITE_CODE"), cfg.DefaultCluster(), os.Getenv)
+		if err != nil {
+			log.Fatal().Err(err).Str("path", path).Msg("invalid S3_TOPOLOGY_FILE")
+		}
+		cfg.Clusters = clusters
+	} else if path := os.Getenv("S3_CLUSTERS_FILE"); path != "" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			log.Fatal().Err(err).Str("path", path).Msg("failed to read S3_CLUSTERS_FILE")
+		}
+		extra, err := ParseClusters(data, cfg.DefaultCluster(), os.Getenv)
+		if err != nil {
+			log.Fatal().Err(err).Str("path", path).Msg("invalid S3_CLUSTERS_FILE")
+		}
+		cfg.Clusters = append(cfg.Clusters, extra...)
+	}
+
+	return cfg
+}
+
+// clustersFile is the S3_CLUSTERS_FILE document: the storage clusters michael
+// fronts IN ADDITION to the default one configured by the flat S3_* variables.
+type clustersFile struct {
+	Clusters []clusterEntry `json:"clusters"`
+}
+
+type topologyFile struct {
+	SchemaVersion int            `json:"schema_version"`
+	DefaultSite   string         `json:"default_site"`
+	Sites         []topologySite `json:"sites"`
+}
+
+type topologySite struct {
+	Code           string            `json:"code"`
+	DisplayName    string            `json:"display_name"`
+	Description    string            `json:"description"`
+	RestURL        string            `json:"rest_url"`
+	DefaultCluster string            `json:"default_cluster"`
+	Clusters       []topologyCluster `json:"clusters"`
+}
+
+type topologyCluster struct {
+	Code             string        `json:"code"`
+	DisplayName      string        `json:"display_name"`
+	Active           bool          `json:"active"`
+	RGWAdminEndpoint string        `json:"rgw_admin_endpoint"`
+	S3               *clusterEntry `json:"s3"`
+}
+
+// clusterEntry is one cluster in S3_CLUSTERS_FILE. Credentials are named
+// indirectly — the entry gives the NAMES of the environment variables holding
+// them — so the file can be a plain ConfigMap while the secrets stay in a k8s
+// Secret. Pointer fields distinguish "absent, inherit the default cluster" from
+// an explicit false.
+type clusterEntry struct {
+	Code           string `json:"code"`
+	Endpoint       string `json:"endpoint"`
+	Region         string `json:"region"`
+	ForcePathStyle *bool  `json:"force_path_style"`
+	AccessKeyEnv   string `json:"access_key_env"`
+	SecretKeyEnv   string `json:"secret_key_env"`
+
+	// Backend pool. These deliberately do NOT inherit from the default cluster:
+	// inheriting a DNS host or backend file would silently point this cluster at
+	// the default cluster's gateways. Absent means single-endpoint mode.
+	BackendSource  string `json:"backend_source"`
+	BackendFile    string `json:"backend_file"`
+	BackendDNSHost string `json:"backend_dns_host"`
+	// Scheme/port default to those parsed from this entry's own endpoint.
+	BackendScheme string `json:"backend_scheme"`
+	BackendPort   string `json:"backend_port"`
+	PinHost       *bool  `json:"pin_host"`
+
+	TLSSkipVerify       *bool  `json:"tls_skip_verify"`
+	ProbeBucket         string `json:"probe_bucket"`
+	EjectThreshold      int    `json:"eject_threshold"`
+	ReconcileIntervalMS int    `json:"reconcile_interval_ms"`
+}
+
+// ParseClusters decodes the S3_CLUSTERS_FILE contents into the additional
+// clusters michael should front. def supplies the fallback for the knobs an
+// entry leaves unset, and getenv resolves the credential env-var names. Unknown
+// JSON fields are rejected: a typo'd key would otherwise silently leave a
+// cluster on an inherited default.
+func ParseClusters(data []byte, def ClusterConfig, getenv func(string) string) ([]ClusterConfig, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	var doc clustersFile
+	if err := dec.Decode(&doc); err != nil {
+		return nil, fmt.Errorf("decode clusters: %w", err)
+	}
+
+	seen := map[string]struct{}{def.Code: {}}
+	out := make([]ClusterConfig, 0, len(doc.Clusters))
+	for i, e := range doc.Clusters {
+		cc, err := e.toConfig(def, getenv)
+		if err != nil {
+			return nil, fmt.Errorf("clusters[%d]: %w", i, err)
+		}
+		if _, dup := seen[cc.Code]; dup {
+			return nil, fmt.Errorf("clusters[%d]: duplicate cluster code %q", i, cc.Code)
+		}
+		seen[cc.Code] = struct{}{}
+		out = append(out, cc)
+	}
+	return out, nil
+}
+
+// ParseTopologyClusters selects one site's clusters from the shared fleet
+// topology. Every cluster, including the default, must carry a non-secret s3
+// block whose credential fields name environment variables. This keeps API
+// placement and michael routing on one declarative cluster list.
+func ParseTopologyClusters(
+	data []byte,
+	siteCode string,
+	def ClusterConfig,
+	getenv func(string) string,
+) ([]ClusterConfig, error) {
+	if !cluster.IsValidCode(siteCode) {
+		return nil, fmt.Errorf("SITE_CODE %q must match %s", siteCode, cluster.CodePattern)
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	var doc topologyFile
+	if err := dec.Decode(&doc); err != nil {
+		return nil, fmt.Errorf("decode topology: %w", err)
+	}
+
+	var site *topologySite
+	for i := range doc.Sites {
+		if doc.Sites[i].Code == siteCode {
+			if site != nil {
+				return nil, fmt.Errorf("duplicate site code %q", siteCode)
+			}
+			site = &doc.Sites[i]
+		}
+	}
+	if site == nil {
+		return nil, fmt.Errorf("site %q is not declared", siteCode)
+	}
+	if site.DefaultCluster != def.Code {
+		return nil, fmt.Errorf(
+			"site %q default_cluster %q does not match S3_DEFAULT_CLUSTER %q",
+			siteCode,
+			site.DefaultCluster,
+			def.Code,
+		)
+	}
+
+	seen := make(map[string]struct{}, len(site.Clusters))
+	byCode := make(map[string]ClusterConfig, len(site.Clusters))
+	for i, declared := range site.Clusters {
+		if declared.S3 == nil {
+			return nil, fmt.Errorf("site %q clusters[%d] %q has no s3 configuration", siteCode, i, declared.Code)
+		}
+		entry := *declared.S3
+		entry.Code = declared.Code
+		cc, err := entry.toConfig(def, getenv)
+		if err != nil {
+			return nil, fmt.Errorf("site %q clusters[%d]: %w", siteCode, i, err)
+		}
+		if _, duplicate := seen[cc.Code]; duplicate {
+			return nil, fmt.Errorf("site %q has duplicate cluster code %q", siteCode, cc.Code)
+		}
+		if !strings.HasPrefix(cc.Code, siteCode+"-") {
+			return nil, fmt.Errorf("cluster code %q must start with %q", cc.Code, siteCode+"-")
+		}
+		seen[cc.Code] = struct{}{}
+		byCode[cc.Code] = cc
+	}
+
+	defaultConfig, ok := byCode[def.Code]
+	if !ok {
+		return nil, fmt.Errorf("site %q default_cluster %q is not declared", siteCode, def.Code)
+	}
+	out := []ClusterConfig{defaultConfig}
+	for _, declared := range site.Clusters {
+		if declared.Code != def.Code {
+			out = append(out, byCode[declared.Code])
+		}
+	}
+	return out, nil
+}
+
+func (e clusterEntry) toConfig(def ClusterConfig, getenv func(string) string) (ClusterConfig, error) {
+	if !cluster.IsValidCode(e.Code) {
+		return ClusterConfig{}, fmt.Errorf("code %q must match %s", e.Code, cluster.CodePattern)
+	}
+	if e.Endpoint == "" {
+		return ClusterConfig{}, fmt.Errorf("cluster %q: endpoint is required", e.Code)
+	}
+	if e.AccessKeyEnv == "" || e.SecretKeyEnv == "" {
+		return ClusterConfig{}, fmt.Errorf("cluster %q: access_key_env and secret_key_env are required", e.Code)
+	}
+	accessKey := getenv(e.AccessKeyEnv)
+	if accessKey == "" {
+		return ClusterConfig{}, fmt.Errorf("cluster %q: %s is unset or empty", e.Code, e.AccessKeyEnv)
+	}
+	secretKey := getenv(e.SecretKeyEnv)
+	if secretKey == "" {
+		return ClusterConfig{}, fmt.Errorf("cluster %q: %s is unset or empty", e.Code, e.SecretKeyEnv)
+	}
+
+	switch e.BackendSource {
+	case "":
+		// single-endpoint mode
+	case "file":
+		if e.BackendFile == "" {
+			return ClusterConfig{}, fmt.Errorf("cluster %q: backend_file is required when backend_source=file", e.Code)
+		}
+	case "dns":
+		if e.BackendDNSHost == "" {
+			return ClusterConfig{}, fmt.Errorf("cluster %q: backend_dns_host is required when backend_source=dns", e.Code)
+		}
+	default:
+		return ClusterConfig{}, fmt.Errorf("cluster %q: backend_source must be '', 'file', or 'dns'", e.Code)
+	}
+
+	if e.EjectThreshold < 0 {
+		return ClusterConfig{}, fmt.Errorf("cluster %q: eject_threshold must be >= 1", e.Code)
+	}
+	if e.ReconcileIntervalMS < 0 {
+		return ClusterConfig{}, fmt.Errorf("cluster %q: reconcile_interval_ms must be >= 1", e.Code)
+	}
+
+	scheme, port := schemeAndPort(e.Endpoint)
+	cc := ClusterConfig{
+		Code:                e.Code,
+		S3AccessKeyID:       accessKey,
+		S3SecretAccessKey:   secretKey,
+		S3Region:            firstNonEmpty(e.Region, def.S3Region),
+		S3Endpoint:          e.Endpoint,
+		S3ForcePathStyle:    boolOr(e.ForcePathStyle, def.S3ForcePathStyle),
+		S3BackendSource:     e.BackendSource,
+		S3BackendFile:       e.BackendFile,
+		S3BackendDNSHost:    e.BackendDNSHost,
+		S3BackendScheme:     firstNonEmpty(e.BackendScheme, scheme),
+		S3BackendPort:       firstNonEmpty(e.BackendPort, port),
+		S3BackendPinHost:    boolOr(e.PinHost, def.S3BackendPinHost),
+		S3TLSSkipVerify:     boolOr(e.TLSSkipVerify, def.S3TLSSkipVerify),
+		S3ProbeBucket:       firstNonEmpty(e.ProbeBucket, def.S3ProbeBucket),
+		S3EjectThreshold:    def.S3EjectThreshold,
+		S3ReconcileInterval: def.S3ReconcileInterval,
+	}
+	if e.EjectThreshold > 0 {
+		cc.S3EjectThreshold = e.EjectThreshold
+	}
+	if e.ReconcileIntervalMS > 0 {
+		cc.S3ReconcileInterval = time.Duration(e.ReconcileIntervalMS) * time.Millisecond
+	}
+	return cc, nil
+}
+
+func firstNonEmpty(v, fallback string) string {
+	if v != "" {
+		return v
+	}
+	return fallback
+}
+
+func boolOr(v *bool, fallback bool) bool {
+	if v != nil {
+		return *v
+	}
+	return fallback
 }
 
 func envOr(key, fallback string) string {

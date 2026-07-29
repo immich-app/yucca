@@ -1,0 +1,56 @@
+---
+# The fleet topology, GitOps-owned: which sites exist, the restic gateway that
+# fronts each one, and the Ceph clusters behind it. yucca-api, yucca-admin-api
+# and yucca-metrics-worker all mount this at /etc/yucca. The Node services
+# validate it on access and hot-reload projected updates; michael validates it
+# at boot and is rolled by the chart's topology checksum.
+#
+# Today every cluster is single-site: the site IS this region, and its one
+# storage cluster is the active one. A second Ceph cluster in a region means a
+# second `clusters` entry (active: false until it takes writes); a second REGION
+# means a second `sites` entry, which is a cross-cluster edit and doesn't belong
+# in a per-cluster substitution — expect this file to grow a real template then.
+#
+# NB: the ${VAR} tokens are Flux postBuild substitutions, not shell/JSON — the
+# literal JSON braces around them pass through untouched.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yucca-topology
+data:
+  topology.json: |
+    {
+      "schema_version": 1,
+      "default_site": "${SITE_CODE}",
+      "sites": [
+        {
+          "code": "${SITE_CODE}",
+          "display_name": "${SITE_DISPLAY_NAME}",
+          "description": "${SITE_DESCRIPTION}",
+          "rest_url": "https://${GW_HOST}",
+          "default_cluster": "${STORAGE_CLUSTER_CODE}",
+          "clusters": [
+            {
+              "code": "${STORAGE_CLUSTER_CODE}",
+              "display_name": "${STORAGE_CLUSTER_DISPLAY_NAME}",
+              "active": true,
+              "rgw_admin_endpoint": "${S3_ENDPOINT}",
+              "s3": {
+                "endpoint": "${S3_ENDPOINT}",
+                "region": "us-east-1",
+                "force_path_style": true,
+                "access_key_env": "S3_ACCESS_KEY_ID",
+                "secret_key_env": "S3_SECRET_ACCESS_KEY",
+                "backend_source": "dns",
+                "backend_dns_host": "${S3_HOST}",
+                "pin_host": true,
+                "tls_skip_verify": true,
+                "probe_bucket": "michael-rgw-healthcheck",
+                "eject_threshold": 3,
+                "reconcile_interval_ms": 5000
+              }
+            }
+          ]
+        }
+      ]
+    }

@@ -9,4 +9,9 @@
   (dict "name" "POSTGRES_PASSWORD" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "password")))
 )) }}
 {{- $_ := set .Values "envFrom" (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .)))) }}
+{{- $topology := (lookup "v1" "ConfigMap" .Release.Namespace "yucca-topology") | default dict }}
+{{- $topologyData := (get $topology "data") | default dict }}
+{{- $_ := set .Values "podAnnotations" (merge
+  (dict "yucca.futo.org/topology-checksum" (sha256sum (toJson $topologyData)))
+  (.Values.podAnnotations | default dict)) }}
 {{- include "yucca-common.deployment" . }}

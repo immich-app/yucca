@@ -5,7 +5,7 @@ import { Gauge } from '@opentelemetry/api';
 import { env } from 'src/env';
 import { MeterRepository } from 'src/repositories/meter.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
-import { RgwRepository } from 'src/repositories/rgw.repository';
+import { RgwFleetRepository } from 'src/repositories/rgwFleet.repository';
 
 @Injectable()
 export class MetricsService implements OnApplicationBootstrap {
@@ -14,7 +14,7 @@ export class MetricsService implements OnApplicationBootstrap {
 
   constructor(
     private logger: LoggerRepository,
-    private rgw: RgwRepository,
+    private fleet: RgwFleetRepository,
     private meter: MeterRepository,
     private repositories: RepositoryRepository,
     metricService: MetricService,
@@ -35,31 +35,72 @@ export class MetricsService implements OnApplicationBootstrap {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async sync() {
-    this.logger.info('Syncing from RadosGW...');
+    const repositories = await this.repositories.getAll().catch((error: unknown) => {
+      this.logger.error(error, 'Failed to list repositories; skipping sync');
+      return null;
+    });
+    if (!repositories) {
+      return;
+    }
+    const repositoryById = new Map(repositories.map((repository) => [repository.id, repository]));
 
+    // Each cluster syncs independently: one unreachable RGW must not stop the
+    // meters of the others.
+    let clusters: ReturnType<RgwFleetRepository['clusters']>;
     try {
-      const repositories = await this.repositories.getAll();
-      const customerByRepository = new Map(repositories.map((repository) => [repository.id, repository.userId]));
+      clusters = this.fleet.clusters();
+    } catch (error) {
+      this.logger.error(error, 'Failed to load cluster topology; skipping sync');
+      return;
+    }
 
-      let count = 0;
-      for await (const { bucket: repositoryId, bytes, objects } of this.rgw.getBucketStats()) {
-        count++;
+    for (const { siteCode, clusterCode, rgw } of clusters) {
+      this.logger.info(`Syncing from RadosGW (site ${siteCode}, cluster ${clusterCode})...`);
 
-        const customerId = customerByRepository.get(repositoryId);
-        if (!customerId) {
-          this.logger.warn(`RGW bucket "${repositoryId}" has no matching repository; skipping`);
-          continue;
+      try {
+        let count = 0;
+        for await (const { bucket: repositoryId, bytes, objects } of rgw.getBucketStats()) {
+          count++;
+
+          const repository = repositoryById.get(repositoryId);
+          if (!repository) {
+            this.logger.warn(
+              `RGW bucket "${repositoryId}" (cluster ${clusterCode}) has no matching repository; skipping`,
+            );
+            continue;
+          }
+          if (repository.siteCode !== siteCode || repository.storageClusterCode !== clusterCode) {
+            this.logger.warn(
+              `RGW bucket "${repositoryId}" is in ${siteCode}/${clusterCode}, but its repository is assigned to ` +
+                `${repository.siteCode}/${repository.storageClusterCode}; skipping`,
+            );
+            continue;
+          }
+
+          await this.meter.record(repositoryId, {
+            sizeBytes: bytes,
+            objectCount: objects,
+            storageClusterCode: clusterCode,
+          });
+
+          this.repositorySizeBytes.record(bytes, {
+            repositoryId,
+            customerId: repository.userId,
+            site: siteCode,
+            cluster: clusterCode,
+          });
+          this.repositoryObjectCount.record(objects, {
+            repositoryId,
+            customerId: repository.userId,
+            site: siteCode,
+            cluster: clusterCode,
+          });
         }
 
-        await this.meter.record(repositoryId, { sizeBytes: bytes, objectCount: objects });
-
-        this.repositorySizeBytes.record(bytes, { repositoryId, customerId });
-        this.repositoryObjectCount.record(objects, { repositoryId, customerId });
+        this.logger.info(`Synced stats for ${count} buckets from cluster ${clusterCode}`);
+      } catch (error) {
+        this.logger.error(error, `Failed to sync metrics from RadosGW cluster ${clusterCode}`);
       }
-
-      this.logger.info(`Synced stats for ${count} buckets`);
-    } catch (error) {
-      this.logger.error(error, 'Failed to sync metrics from RadosGW');
     }
   }
 }

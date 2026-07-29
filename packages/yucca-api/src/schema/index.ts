@@ -5,6 +5,7 @@ import { RepositoryMeterHistoryTable } from './tables/repositoryMeterHistory.tab
 import { RepositoryMetricsTable } from './tables/repositoryMetrics.table';
 import { RepositoryMetricsHistoryTable } from './tables/repositoryMetricsHistory.table';
 import { SessionTable } from './tables/session.table';
+import { SettingsTable } from './tables/settings.table';
 import { UserTable } from './tables/user.table';
 import { UserAllowlistTable } from './tables/userAllowlist.table';
 
@@ -19,6 +20,7 @@ export class ImmichDatabase {
     RepositoryMeterTable,
     RepositoryMeterHistoryTable,
     UserAllowlistTable,
+    SettingsTable,
   ];
 
   functions = [];
@@ -35,4 +37,5 @@ export interface DB {
   repositoryMeter: RepositoryMeterTable;
   repositoryMeterHistory: RepositoryMeterHistoryTable;
   userAllowlist: UserAllowlistTable;
+  settings: SettingsTable;
 }

@@ -18,6 +18,7 @@ apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
   - ../../apps/namespace.yaml
+  - ../../apps/topology.yaml
   # Policies referencing apps a secondary doesn't run are inert (selectors
   # match nothing); the default-deny + michael/db rules are what matter here.
   - ../../apps/networkpolicies.yaml

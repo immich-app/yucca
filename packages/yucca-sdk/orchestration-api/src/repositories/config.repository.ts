@@ -5,10 +5,33 @@ import { randomBytes } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 import { ConfigurationKey } from '../enum';
 import { DB } from '../schema';
+import { yuccaWellKnown } from '../wellKnown';
 
 @Injectable()
 export class ConfigRepository {
+  private readonly placementByResticTarget = new Map<string, { siteCode: string; clusterCode: string }>();
+
   constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
+
+  private resticTargetKey(repository: string): string {
+    if (!repository.startsWith('rest:')) {
+      return repository;
+    }
+    const url = new URL(repository.slice('rest:'.length));
+    url.username = '';
+    url.password = '';
+    return url.href;
+  }
+
+  registerResticPlacement(repository: string, siteCode: string | null, clusterCode: string | null): void {
+    if (siteCode && clusterCode) {
+      this.placementByResticTarget.set(this.resticTargetKey(repository), { siteCode, clusterCode });
+    }
+  }
+
+  private placement(repository: string) {
+    return this.placementByResticTarget.get(this.resticTargetKey(repository));
+  }
 
   async bootstrap() {
     const hasKey = await this.hasEncryptionKey();
@@ -111,8 +134,28 @@ export class ConfigRepository {
     return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
   }
 
-  async getResticOptionRestConnections() {
+  // Precedence: explicit local override > the environment's /meta
+  // connections_math (evaluated for this machine) > local core count.
+  async getResticOptionRestConnections(repository = '') {
     const concurrency = await this.getOptional(ConfigurationKey.ResticOptionRestConnections);
-    return concurrency ? Number.parseInt(concurrency) : availableParallelism();
+    if (concurrency) {
+      return Number.parseInt(concurrency);
+    }
+
+    const placement = this.placement(repository);
+    const cores = availableParallelism();
+    const fromMeta = placement
+      ? await yuccaWellKnown.getConnections(cores, placement.siteCode, placement.clusterCode)
+      : await yuccaWellKnown.getConnections(cores);
+    return fromMeta ?? availableParallelism();
+  }
+
+  // Server-advertised restic --pack-size (MiB); undefined leaves restic's
+  // default in place (e.g. when discovery is unreachable).
+  getResticPackSizeMib(repository = ''): Promise<number | undefined> {
+    const placement = this.placement(repository);
+    return placement
+      ? yuccaWellKnown.getPackSizeMib(placement.siteCode, placement.clusterCode)
+      : yuccaWellKnown.getPackSizeMib();
   }
 }

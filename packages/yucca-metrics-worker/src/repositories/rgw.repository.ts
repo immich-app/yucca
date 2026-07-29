@@ -1,20 +1,29 @@
-import { Injectable } from '@nestjs/common';
 import { AwsClient } from 'aws4fetch';
-import { env } from 'src/env';
 
 type RgwUsageCategory = { num_objects?: number; size_actual?: number };
 type RgwBucketEntry = { bucket: string; usage?: Record<string, RgwUsageCategory> };
 
 export type BucketStats = { bucket: string; objects: number; bytes: number };
 
-@Injectable()
+export type RgwRepositoryOptions = {
+  clusterCode: string;
+  endpoint: URL;
+  accessKeyId: string;
+  secretAccessKey: string;
+};
+
+// One instance per topology storage cluster — constructed by RgwFleetRepository
+// (or directly in tests), not by Nest DI.
 export class RgwRepository {
-  private aws = new AwsClient({
-    accessKeyId: env.RADOS_ACCESS_KEY_ID,
-    secretAccessKey: env.RADOS_SECRET_ACCESS_KEY,
-    service: 's3',
-    region: 'rgw',
-  });
+  readonly clusterCode: string;
+  private readonly endpoint: URL;
+  private readonly aws: AwsClient;
+
+  constructor({ clusterCode, endpoint, accessKeyId, secretAccessKey }: RgwRepositoryOptions) {
+    this.clusterCode = clusterCode;
+    this.endpoint = endpoint;
+    this.aws = new AwsClient({ accessKeyId, secretAccessKey, service: 's3', region: 'rgw' });
+  }
 
   async *getBucketStats(): AsyncGenerator<BucketStats> {
     const entries: RgwBucketEntry[] = await this.adminRequest('/admin/bucket', { format: 'json', stats: 'true' });
@@ -66,7 +75,7 @@ export class RgwRepository {
   }
 
   private async adminRequest(path: string, query: Record<string, string>): Promise<any> {
-    const url = new URL(env.RADOS_ENDPOINT.href);
+    const url = new URL(this.endpoint.href);
     url.pathname = path;
     url.search = new URLSearchParams(query).toString();
 

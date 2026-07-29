@@ -60,6 +60,11 @@ yuctl
 ├── users
 │   ├── list                        list users in the partition's PRIMARY region
 │   └── view-dashboard              open the grafana per-user drill-down (--id or --email)
+├── config                          scoped config overrides (served to clients via /api/meta)
+│   ├── list                        list every settings scope (global / site:* / cluster:*)
+│   ├── get                         print one scope's overrides (--site / --cluster)
+│   ├── set key=value ...           merge keys into a scope (read-modify-write PUT)
+│   └── unset key ... | --all       remove keys, or clear the whole scope
 └── tools
     ├── bench                       restic e2e benchmark against michael, run from a mgmt host
     │   ├── compare <a> <b>         render before/after deltas from two results files
@@ -159,6 +164,28 @@ operator machine:
 `users list` reuses the cached session (running the same login flow when it is
 missing or expired) and calls `GET /api/user` (cursor-paginated via
 `nextCursor`, `--limit` page size).
+
+## `config` — scoped config overrides
+
+Edits the mutable configuration the fleet serves to clients via the public
+`GET /api/meta` endpoint (yucca-api): a scoped `settings` table where scopes
+are `global`, `site:<region_code>`, or `cluster:<storage cluster code>`.
+Values are validated by the admin-api against the settings registry
+(`restic_pack_size_mib`, `connections_math`); unknown keys and invalid
+expressions are rejected with a 400 that yuctl surfaces verbatim.
+
+```bash
+yuctl config list                                            # all scopes, one line each
+yuctl config set restic_pack_size_mib=32                     # global scope
+yuctl config set --site htz-fsn1 'connections_math=min(16, cores * 2)'
+yuctl config get --site htz-fsn1
+yuctl config unset --site htz-fsn1 connections_math          # remove one key
+yuctl config unset --cluster father-spice --all              # clear a whole scope
+```
+
+`set` is read-modify-write: it merges the given keys into the scope's current
+overrides and PUTs the result, so unrelated keys survive. Site and cluster
+codes are validated server-side against the GitOps topology file.
 
 ## `tools bench` — michael end-to-end benchmark
 

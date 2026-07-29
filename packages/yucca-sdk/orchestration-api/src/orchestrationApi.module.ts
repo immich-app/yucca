@@ -49,6 +49,7 @@ import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
 import { TelemetryService } from './services/telemetry.service';
 import { YuccaService } from './services/yucca.service';
+import { yuccaWellKnown } from './wellKnown';
 
 export const controllers = [
   AuthController,
@@ -115,6 +116,7 @@ class OrchestrationConfigModule {
           useFactory: async (...args: any[]): Promise<ModuleConfig> => {
             const config = await options.useFactory(...args);
             config.statePath ??= resolve(homedir(), '.yucca');
+            yuccaWellKnown.configure(config.wellKnownUrl);
             return config as ModuleConfig;
           },
         },

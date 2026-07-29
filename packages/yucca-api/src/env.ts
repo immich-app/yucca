@@ -44,7 +44,10 @@ const schema = z.object({
   OIDC_DEVICE_ALLOW_INSECURE: z.coerce.boolean().default(false),
   OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
 
-  RESTIC_ENDPOINT: z.string().default('http://localhost:3010'),
+  TOPOLOGY_FILE: z.string().default('./topology.dev.json'),
+  API_ROOT: z.string().default('http://localhost:3020/api'),
+  LEGACY_SITE_CODE: z.string(),
+  LEGACY_STORAGE_CLUSTER_CODE: z.string(),
 });
 
 export const env = schema.parse(process.env);

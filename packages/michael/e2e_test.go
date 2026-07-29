@@ -16,6 +16,10 @@
 //  4. Fails one proxy and proves active-probe ejection + that the workflow keeps
 //     working through the survivor, then restores it and proves reinstatement.
 //  5. Proves passive ejection (consecutive request failures) independently.
+//
+// A second test reuses the same harness for claim-based cluster routing: the two
+// proxies become two SEPARATE storage clusters, and the token's storageCluster
+// claim decides which one serves each request.
 package main
 
 import (
@@ -87,12 +91,24 @@ func envOrE2E(key, fallback string) string {
 
 func e2eJWT(t *testing.T, repo string, writeOnce bool) string {
 	t.Helper()
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+	return e2eJWTForCluster(t, repo, writeOnce, "")
+}
+
+// e2eJWTForCluster mints a token carrying an explicit storageCluster claim.
+// An empty storageCluster omits the claim entirely — the shape of a token
+// minted before multi-cluster routing existed.
+func e2eJWTForCluster(t *testing.T, repo string, writeOnce bool, storageCluster string) string {
+	t.Helper()
+	claims := jwt.MapClaims{
 		"user":       e2eUser,
 		"repository": repo,
 		"writeOnce":  writeOnce,
 		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
-	})
+	}
+	if storageCluster != "" {
+		claims["storageCluster"] = storageCluster
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 	signed, err := token.SignedString(e2ePrivateKey)
 	if err != nil {
 		t.Fatalf("sign jwt: %v", err)
@@ -471,4 +487,107 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	}
 	resp = do(t, client, http.MethodDelete, srv.URL+"/"+repo+"/config", auth, nil)
 	resp.Body.Close()
+}
+
+// totalRequests sums the requests every backend in a pool has served.
+func totalRequests(p *storage.Pool) int64 {
+	var n int64
+	for _, s := range p.Stats() {
+		n += s.Requests
+	}
+	return n
+}
+
+// TestE2E_ClusterRoutingAgainstRealRGW proves claim-based routing end-to-end:
+// michael fronts TWO storage clusters (each a one-backend pool over its own TCP
+// proxy to the real RGW) and the token's storageCluster claim decides which one
+// serves the request. Both proxies reach the same Ceph — what is under test is
+// which cluster's pool the traffic went through, which the per-pool request
+// counters show exactly.
+func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
+	cfg := e2eConfig(t)
+	target := targetHostPort(t, cfg.S3Endpoint)
+
+	pa := newTCPProxy(t, target)
+	pb := newTCPProxy(t, target)
+	defer pa.close()
+	defer pb.close()
+
+	defaultRepo := uuid.NewString()
+	spiceRepo := uuid.NewString()
+	defer cleanupBucket(t, cfg, defaultRepo)
+	defer cleanupBucket(t, cfg, spiceRepo)
+
+	defaultPool := newE2EPool(t, cfg, []string{pa.url()}, 2, defaultRepo)
+	spicePool := newE2EPool(t, cfg, []string{pb.url()}, 2, spiceRepo)
+
+	srv := httptest.NewServer(handlers.NewClusterServer(map[string]storage.Storage{
+		"default": defaultPool,
+		"spice":   spicePool,
+	}, "default", cfg.JWTPublicKey, nil).Handler())
+	defer srv.Close()
+	client := srv.Client()
+
+	// A repository is a bucket, so each cluster gets its own to write into.
+	runWorkflow := func(repo, auth string) {
+		t.Helper()
+		resp := do(t, client, http.MethodPost, srv.URL+"/"+repo+"/?create=true", auth, nil)
+		mustStatus(t, resp, http.StatusOK, "create repo")
+		resp.Body.Close()
+
+		data := []byte("cluster routing payload for " + repo)
+		resp = do(t, client, http.MethodPost, srv.URL+"/"+repo+"/config", auth, data)
+		mustStatus(t, resp, http.StatusOK, "save config")
+		resp.Body.Close()
+
+		resp = do(t, client, http.MethodGet, srv.URL+"/"+repo+"/config", auth, nil)
+		mustStatus(t, resp, http.StatusOK, "get config")
+		got, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if !bytes.Equal(got, data) {
+			t.Fatalf("config roundtrip mismatch on %s: %q", repo, got)
+		}
+	}
+
+	// ---- A token with NO claim must be served by the default cluster ----
+	beforeDefault, beforeSpice := totalRequests(defaultPool), totalRequests(spicePool)
+	runWorkflow(defaultRepo, e2eJWT(t, defaultRepo, false))
+	if totalRequests(defaultPool) <= beforeDefault {
+		t.Fatal("a token with no storageCluster claim did not reach the default cluster")
+	}
+	if got := totalRequests(spicePool); got != beforeSpice {
+		t.Fatalf("a token with no claim leaked %d requests to the non-default cluster", got-beforeSpice)
+	}
+	t.Log("legacy (claimless) token routed to the default cluster")
+
+	// ---- A token claiming "spice" must be served by that cluster ----
+	beforeDefault, beforeSpice = totalRequests(defaultPool), totalRequests(spicePool)
+	runWorkflow(spiceRepo, e2eJWTForCluster(t, spiceRepo, false, "spice"))
+	if totalRequests(spicePool) <= beforeSpice {
+		t.Fatal("a token claiming spice did not reach the spice cluster")
+	}
+	if got := totalRequests(defaultPool); got != beforeDefault {
+		t.Fatalf("a token claiming spice leaked %d requests to the default cluster", got-beforeDefault)
+	}
+	t.Log("storageCluster=spice routed to the spice cluster")
+
+	// ---- A claim naming a cluster michael doesn't front must fail closed ----
+	beforeDefault, beforeSpice = totalRequests(defaultPool), totalRequests(spicePool)
+	unknown := e2eJWTForCluster(t, defaultRepo, false, "sietch")
+	resp := do(t, client, http.MethodGet, srv.URL+"/"+defaultRepo+"/config", unknown, nil)
+	mustStatus(t, resp, http.StatusBadRequest, "unknown cluster")
+	resp.Body.Close()
+	if totalRequests(defaultPool) != beforeDefault || totalRequests(spicePool) != beforeSpice {
+		t.Fatal("a request for an unknown cluster reached a real cluster")
+	}
+	t.Log("unknown storageCluster rejected with 400 and no backend traffic")
+
+	// ---- cleanup (buckets removed by the deferred cleanups) ----
+	for repo, auth := range map[string]string{
+		defaultRepo: e2eJWT(t, defaultRepo, false),
+		spiceRepo:   e2eJWTForCluster(t, spiceRepo, false, "spice"),
+	} {
+		resp := do(t, client, http.MethodDelete, srv.URL+"/"+repo+"/config", auth, nil)
+		resp.Body.Close()
+	}
 }

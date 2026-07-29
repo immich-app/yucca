@@ -1,0 +1,1 @@
+../../../yucca-api/src/repositories/settings.repository.ts

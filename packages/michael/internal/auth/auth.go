@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"michael/internal/cluster"
 	"michael/internal/httputil"
 
 	"github.com/go-chi/chi/v5"
@@ -21,6 +22,10 @@ type Auth struct {
 	User       string `json:"user"`
 	Repository string `json:"repository"`
 	WriteOnce  bool   `json:"writeOnce"`
+	// StorageCluster selects which of the storage clusters this michael fronts
+	// serves the request. Optional: tokens minted before multi-cluster carry no
+	// such claim and are routed to the default cluster.
+	StorageCluster string `json:"storageCluster"`
 }
 
 type contextKey string
@@ -196,6 +201,19 @@ func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, time.Time, 
 		return Auth{}, time.Time{}, &authError{http.StatusBadRequest, "writeOnce must be a boolean"}
 	}
 	auth.WriteOnce = writeOnce
+
+	// Optional: absent (or explicitly empty) means the default cluster, which is
+	// what every token minted before multi-cluster routing looks like.
+	if raw, present := claims["storageCluster"]; present && raw != nil {
+		storageCluster, ok := raw.(string)
+		if !ok {
+			return Auth{}, time.Time{}, &authError{http.StatusBadRequest, "storageCluster must be a string"}
+		}
+		if storageCluster != "" && !cluster.IsValidCode(storageCluster) {
+			return Auth{}, time.Time{}, &authError{http.StatusBadRequest, "storageCluster must match " + cluster.CodePattern}
+		}
+		auth.StorageCluster = storageCluster
+	}
 
 	var exp time.Time
 	if expTime, _ := claims.GetExpirationTime(); expTime != nil {

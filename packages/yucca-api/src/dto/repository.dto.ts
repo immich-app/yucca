@@ -10,6 +10,12 @@ export class RepositoryDto {
 
   @ApiProperty()
   name!: string;
+
+  @ApiProperty({ type: 'string', nullable: true, description: 'Stable internal site code the repository lives in' })
+  siteCode!: string | null;
+
+  @ApiProperty({ type: 'string', nullable: true, description: 'Stable, globally unique internal storage cluster code' })
+  storageClusterCode!: string | null;
 }
 
 export class RepositoryMetricsDto {
@@ -53,6 +59,11 @@ export class RepositoryCreateRequestDto {
   @ApiProperty()
   @IsBoolean()
   worm!: boolean;
+
+  @ApiProperty({ required: false, description: 'Internal site code from /meta; defaults to default_site' })
+  @IsOptional()
+  @IsString()
+  site?: string;
 }
 
 export class RepositoryCreateResponseDto {

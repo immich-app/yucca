@@ -5,7 +5,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { KyselyModule } from 'nestjs-kysely';
 import { MeterRepository } from './repositories/meter.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
-import { RgwRepository } from './repositories/rgw.repository';
+import { RgwFleetRepository } from './repositories/rgwFleet.repository';
+import { TopologyRepository } from './repositories/topology.repository';
 import { MetricsService } from './services/metrics.service';
 import { getKyselyConfig } from './utils/database';
 
@@ -14,7 +15,8 @@ export const imports = [KyselyModule.forRoot(getKyselyConfig()), ScheduleModule.
 export const providers = [
   WideContextRepository,
   LoggerRepository,
-  RgwRepository,
+  TopologyRepository,
+  RgwFleetRepository,
   MeterRepository,
   RepositoryRepository,
   MetricsService,

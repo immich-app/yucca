@@ -103,6 +103,27 @@
         ]
       }
     },
+    "/api/meta": {
+      "get": {
+        "operationId": "getMeta",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Meta"
+        ]
+      }
+    },
     "/api/metrics/submit/{repositoryId}/backup/start": {
       "post": {
         "operationId": "submitMetricBackupStart",
@@ -470,6 +491,127 @@
           "sessionId"
         ]
       },
+      "MetaConfigDto": {
+        "type": "object",
+        "properties": {
+          "restic_pack_size_mib": {
+            "type": "number"
+          },
+          "connections_math": {
+            "type": "string",
+            "description": "Client-evaluated expression: integers, cores, min, max, + - * /"
+          }
+        },
+        "required": [
+          "restic_pack_size_mib",
+          "connections_math"
+        ]
+      },
+      "MetaConfigOverridesDto": {
+        "type": "object",
+        "properties": {
+          "restic_pack_size_mib": {
+            "type": "number"
+          },
+          "connections_math": {
+            "type": "string",
+            "description": "Client-evaluated expression: integers, cores, min, max, + - * /"
+          }
+        }
+      },
+      "MetaClusterDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "cluster_config": {
+            "description": "Per-cluster overrides of the global and site config",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetaConfigOverridesDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "display_name",
+          "cluster_config"
+        ]
+      },
+      "MetaSiteDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "rest_url": {
+            "type": "string"
+          },
+          "default_cluster": {
+            "type": "string"
+          },
+          "site_config": {
+            "description": "Per-site overrides of the global config",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetaConfigOverridesDto"
+              }
+            ]
+          },
+          "clusters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetaClusterDto"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "display_name",
+          "description",
+          "rest_url",
+          "default_cluster",
+          "site_config",
+          "clusters"
+        ]
+      },
+      "MetaResponseDto": {
+        "type": "object",
+        "properties": {
+          "api_root": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/components/schemas/MetaConfigDto"
+          },
+          "default_site": {
+            "type": "string"
+          },
+          "sites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetaSiteDto"
+            }
+          }
+        },
+        "required": [
+          "api_root",
+          "config",
+          "default_site",
+          "sites"
+        ]
+      },
       "SubmitBackupEndRequestDto": {
         "type": "object",
         "properties": {
@@ -571,6 +713,10 @@
           },
           "worm": {
             "type": "boolean"
+          },
+          "site": {
+            "type": "string",
+            "description": "Internal site code from /meta; defaults to default_site"
           }
         },
         "required": [
@@ -628,6 +774,16 @@
           "name": {
             "type": "string"
           },
+          "siteCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable internal site code the repository lives in"
+          },
+          "storageClusterCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable, globally unique internal storage cluster code"
+          },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
           },
@@ -639,6 +795,8 @@
           "id",
           "worm",
           "name",
+          "siteCode",
+          "storageClusterCode",
           "metrics"
         ]
       },

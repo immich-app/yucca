@@ -32,7 +32,13 @@ export class RepositoryRepository {
       .selectFrom('repositories')
       .innerJoin('users', 'users.id', 'repositories.userId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
-      .select(['repositories.id', 'repositories.name', 'repositories.worm'])
+      .select([
+        'repositories.id',
+        'repositories.name',
+        'repositories.worm',
+        'repositories.siteCode',
+        'repositories.storageClusterCode',
+      ])
       .select(ownerJson)
       .select(metricsJson)
       .orderBy('repositories.id', 'asc')
@@ -50,7 +56,13 @@ export class RepositoryRepository {
       .innerJoin('users', 'users.id', 'repositories.userId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .where('repositories.id', '=', id)
-      .select(['repositories.id', 'repositories.name', 'repositories.worm'])
+      .select([
+        'repositories.id',
+        'repositories.name',
+        'repositories.worm',
+        'repositories.siteCode',
+        'repositories.storageClusterCode',
+      ])
       .select(ownerJson)
       .select(metricsJson)
       .executeTakeFirstOrThrow();

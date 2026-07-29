@@ -40,6 +40,7 @@
     "rxjs": "catalog:",
     "socket.io": "catalog:",
     "tail": "catalog:",
+    "zod": "catalog:",
     "@futo-org/backups-api-client": "workspace:^"
   },
   "devDependencies": {

@@ -60,8 +60,21 @@ spec:
       # numeric id via postBuild substitution gets coerced to a float and breaks.
       - name: OIDC_DEVICE_ISSUER
         value: ${OIDC_ISSUER}
-      - name: RESTIC_ENDPOINT
-        value: https://${GW_HOST}
+      # Fleet topology (the yucca-topology ConfigMap the chart mounts at
+      # /etc/yucca) — the per-site rest_url in it replaces the old single
+      # RESTIC_ENDPOINT.
+      - name: TOPOLOGY_FILE
+        value: /etc/yucca/topology.json
+      # Pinned origin of rows created before placement columns existed. These
+      # are deliberately separate from the topology's mutable active target.
+      - name: LEGACY_SITE_CODE
+        value: ${LEGACY_SITE_CODE}
+      - name: LEGACY_STORAGE_CLUSTER_CODE
+        value: ${LEGACY_STORAGE_CLUSTER_CODE}
+      # Absolute base of this API, as advertised to clients through /meta and
+      # the .well-known pointer — must match what the meta pod hands out.
+      - name: API_ROOT
+        value: https://${APP_DOMAIN}/api
       # Beta email allowlist: comma-separated domains that may sign up without
       # an allowlist entry. Empty default = allowlist/invite-code only.
       - name: ALLOWED_EMAIL_DOMAINS

@@ -7,6 +7,15 @@ metadata:
   namespace: flux-system
 spec:
   # michael load-balances across the RGW daemons itself now (no HAProxy hop).
+  dependsOn:
+    - name: yucca-topology
+      # A merely Ready dependency may still be on the previous Git revision.
+      # Michael loads topology only at boot, so its Helm render (and checksum)
+      # must happen after the matching topology revision has been applied.
+      readyExpr: >-
+        dep.metadata.generation == dep.status.observedGeneration &&
+        dep.status.conditions.filter(e, e.type == 'Ready').all(e, e.status == 'True') &&
+        dep.status.lastAppliedRevision == self.status.lastAttemptedRevision
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
