@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.24.0](https://github.com/immich-app/yucca/compare/v0.23.1...v0.24.0) (2026-07-29)
+
+
+### Features
+
+* **michael:** change url ([#363](https://github.com/immich-app/yucca/issues/363)) ([a0c7054](https://github.com/immich-app/yucca/commit/a0c70541d5443932ee158bf0e32eaa5cf28d3466))
+* **yuctl:** more benchmarking ([#371](https://github.com/immich-app/yucca/issues/371)) ([6e4d6cc](https://github.com/immich-app/yucca/commit/6e4d6ccfcbe1b847dc09251dfc297702268a2fe2))
+
+
+### Bug Fixes
+
+* **ceph:** take osd specs out of the cephadm serve loop ([#364](https://github.com/immich-app/yucca/issues/364)) ([3104a35](https://github.com/immich-app/yucca/commit/3104a35d78158bd8555eb88a47d6cbeeaf16dafa))
+* **ci:** exempt the go-templated yuctl warp manifests from prettier ([#370](https://github.com/immich-app/yucca/issues/370)) ([b5c36d3](https://github.com/immich-app/yucca/commit/b5c36d3e97237195a35aebe896065e5746c3f0c6))
+
 ## [0.23.1](https://github.com/immich-app/yucca/compare/v0.23.0...v0.23.1) (2026-07-28)
 
 
