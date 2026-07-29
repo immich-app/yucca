@@ -249,6 +249,7 @@
 - name: Create realm {{ ceph_rgw_realm }}
   ansible.builtin.command: >
     radosgw-admin realm create --rgw-realm={{ ceph_rgw_realm }} --default
+  register: realm_created
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - "ceph_rgw_realm not in (realm_list.stdout | default(''))"
@@ -276,6 +277,7 @@
     --rgw-zonegroup={{ ceph_rgw_zonegroup }}
     --endpoints={{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}
     --master --default
+  register: zonegroup_created
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - "ceph_rgw_zonegroup not in (zonegroup_list.stdout | default(''))"
@@ -321,6 +323,7 @@
     --rgw-zone={{ ceph_rgw_zone }}
     --endpoints={{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}
     --master --default
+  register: zone_created
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - "ceph_rgw_zone not in (zone_list.stdout | default(''))"
@@ -336,15 +339,22 @@
     zone = json.loads(subprocess.check_output(
         ['radosgw-admin', 'zone', 'get', '--rgw-zone', '{{ ceph_rgw_zone }}']))
     changed = False
-    for pt in zone.get('placement_targets', []):
-        if pt['name'] == 'default-placement':
-            if (pt.get('data_pool') != '{{ ceph_rgw_data_pool }}' or
-                pt.get('index_pool') != '{{ ceph_rgw_index_pool }}' or
-                pt.get('data_extra_pool') != '{{ ceph_rgw_extra_pool }}'):
-                pt['data_pool'] = '{{ ceph_rgw_data_pool }}'
-                pt['index_pool'] = '{{ ceph_rgw_index_pool }}'
-                pt['data_extra_pool'] = '{{ ceph_rgw_extra_pool }}'
-                changed = True
+    # Zone pools live under 'placement_pools' as {key, val} entries -- NOT
+    # 'placement_targets', which is a zonegroup key and carries no pools. Inside
+    # val, index_pool and data_extra_pool sit at the top level while data_pool is
+    # nested one deeper, per storage class.
+    for pp in zone.get('placement_pools', []):
+        if pp.get('key') != 'default-placement':
+            continue
+        val = pp.setdefault('val', {})
+        sc = val.setdefault('storage_classes', {}).setdefault('STANDARD', {})
+        if (sc.get('data_pool') != '{{ ceph_rgw_data_pool }}' or
+            val.get('index_pool') != '{{ ceph_rgw_index_pool }}' or
+            val.get('data_extra_pool') != '{{ ceph_rgw_extra_pool }}'):
+            sc['data_pool'] = '{{ ceph_rgw_data_pool }}'
+            val['index_pool'] = '{{ ceph_rgw_index_pool }}'
+            val['data_extra_pool'] = '{{ ceph_rgw_extra_pool }}'
+            changed = True
     if not changed:
         sys.exit(0)
     subprocess.run(
@@ -362,7 +372,7 @@
 #
 # The dashboard connects to RGW using the node's hostname or IP in the
 # Host header. RGW validates the Host header during S3 signature
-# verification — if the hostname isn't in the zonegroup's hostnames
+# verification: if the hostname isn't in the zonegroup's hostnames
 # list, signature verification fails with SignatureDoesNotMatch (403).
 # Adding all node hostnames and IPs ensures both dashboard and direct
 # client access work regardless of which address is used.
@@ -403,12 +413,69 @@
   changed_when: "'CHANGED' in zonegroup_hostnames.stdout"
 
 # --- Step 11: Commit period ---
+#
+# Committing a period is not free: it notifies every RGW watching
+# realms.<realm-id>.control (48 of them on spice). Each one pauses its beast
+# frontend and cancels in-flight connections, so live requests abort with 500s
+# and 409s, and under load the teardown can trip a use-after-free in the
+# frontend teardown path; five RGWs segfaulted that way on 2026-07-27.
+#
+# `period update --commit` is also not idempotent: it bumps the epoch even when
+# the period content is unchanged (epoch 3 -> 4 on 2026-07-27 differed by that
+# single field and nothing else). So only commit when there is something to
+# commit: either a task above changed the realm/zonegroup/zone, or the
+# committed period has drifted from the live zonegroup.
+#
+# The drift probe repairs a run that changed config but died before committing.
+# Its reach is the zonegroup only (creation, api_name, hostnames, endpoints),
+# because that is all the period map carries. Zone params such as placement
+# pools live outside the period, so they are not self-healing here.
+
+- name: Check whether the committed period matches the live zonegroup
+  ansible.builtin.shell: |
+    set -e
+    python3 -c "
+    import json, subprocess, sys
+    try:
+        zg = json.loads(subprocess.check_output(
+            ['radosgw-admin', 'zonegroup', 'get',
+             '--rgw-zonegroup', '{{ ceph_rgw_zonegroup }}']))
+        period = json.loads(subprocess.check_output(
+            ['radosgw-admin', 'period', 'get', '--rgw-realm', '{{ ceph_rgw_realm }}']))
+        committed = next(
+            (g for g in period.get('period_map', {}).get('zonegroups', [])
+             if g.get('id') == zg.get('id')), None)
+        print('MATCH' if committed == zg else 'DRIFT')
+    except Exception as exc:
+        # Fail open on purpose: an unreadable period is not evidence that it is
+        # in sync, and a spurious commit is safer than silent config drift.
+        print('DRIFT')
+        sys.stderr.write('period drift check failed: %s\n' % exc)
+    "
+  args:
+    executable: /bin/bash
+  register: period_drift
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+  # Read-only probe, so let it run under --check too; otherwise check mode
+  # would skip it and the gate below would report a commit that isn't needed.
+  check_mode: false
 
 - name: Commit the period
   ansible.builtin.command: >
     radosgw-admin period update --commit --rgw-realm={{ ceph_rgw_realm }}
-  when: inventory_hostname in groups['ceph_bootstrap']
-  changed_when: false
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - >-
+      (realm_created.changed | default(false)) or
+      (zonegroup_created.changed | default(false)) or
+      (set_api_name.changed | default(false)) or
+      (zone_created.changed | default(false)) or
+      (zone_placement.changed | default(false)) or
+      (zonegroup_hostnames.changed | default(false)) or
+      ('MATCH' not in (period_drift.stdout | default('')))
+  changed_when: true
 
 # --- Step 11.5: rgw_dns_name for virtual-hosted bucket addressing ---
 #
@@ -439,7 +506,7 @@
 # service spec template below. cephadm distributes the combined PEM to
 # every RGW daemon container on apply.
 #
-# Idempotent via `creates:` — the openssl run only fires if the cert file
+# Idempotent via `creates:`; the openssl run only fires if the cert file
 # is absent. To rotate: delete /etc/ceph/rgw-ssl.{crt,key} on the bootstrap
 # node and re-run the role.
 #
@@ -513,7 +580,7 @@
 # We render a YAML service spec rather than using `ceph orch apply rgw
 # <realm> <zone> --placement=... --port=...` because the command-line
 # form doesn't accept cert content. The YAML spec supports both
-# `ssl: true` and inline `rgw_frontend_ssl_certificate` — cephadm
+# `ssl: true` and inline `rgw_frontend_ssl_certificate`, and cephadm
 # distributes the cert to every RGW container.
 #
 # Placement is pinned to groups['ceph_nodes'] (not ansible_play_batch)
@@ -787,7 +854,7 @@
   changed_when: false
   failed_when: false
 
-- name: Create S3 service user with predetermined keys — {{ ceph_rgw_s3_user_uid }}
+- name: Create S3 service user with predetermined keys for {{ ceph_rgw_s3_user_uid }}
   ansible.builtin.command: >
     radosgw-admin user create
     --uid={{ ceph_rgw_s3_user_uid }}
@@ -817,7 +884,7 @@
   changed_when: false
   failed_when: false
 
-- name: Create metrics-worker RGW user with predetermined keys — {{ ceph_rgw_metrics_user_uid }}
+- name: Create metrics-worker RGW user with predetermined keys for {{ ceph_rgw_metrics_user_uid }}
   ansible.builtin.command: >
     radosgw-admin user create
     --uid={{ ceph_rgw_metrics_user_uid }}
