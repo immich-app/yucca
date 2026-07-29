@@ -20,37 +20,41 @@ unconditionally makes every play dirty and obscures real drift.
 only if different. The comparison is the key -- raw `ceph config set` with
 `changed_when: true` is a lie.
 
-Canonical example -- `roles/ceph_tuning/tasks/main.yml`:
+Canonical example -- `roles/ceph_tuning/tasks/main.yml`, which diffs the whole
+declared model against `ceph config dump` and loops only over what came back
+different:
 
 ```yaml
-- name: Read current OSD config values
-  ansible.builtin.shell: |
-    set -o pipefail
-    echo "recovery_max_active=$(ceph config get osd osd_recovery_max_active)"
-    # ...
-  register: current_osd_config
+- name: Diff declared Ceph config against the mon database
+  ansible.builtin.script: ceph_config_diff.py
+  environment:
+    CEPH_CONFIG_MODEL: "{{ {'desired': ceph_config_effective, ...} | to_json }}"
+  register: ceph_config_plan
   changed_when: false
 
 - name: Apply Ceph config values
-  ansible.builtin.command: >
-    ceph config set {{ item.section }} {{ item.key }} {{ item.value }}
-  loop:
-    - { section: osd, key: osd_recovery_max_active, value: "{{ ... }}",
-        current: "{{ osd_cfg.recovery_max_active | default('') | float }}" }
-  when: item.current | float != item.value | float
+  ansible.builtin.command:
+    argv: ["ceph", "config", "set", "{{ item.who }}", "{{ item.key }}", "{{ item.value }}"]
+  loop: "{{ ceph_config_changes.set | default([]) }}"
   changed_when: true
 ```
 
 Other instances: `rgw.yml` (zonegroup hostnames), `crush-rules.yml`
 (rule existence), `monitoring.yml` (module enable check).
 
-### Float comparison gotcha
+### Comparing Ceph config values
 
-`ceph config get osd osd_recovery_sleep_hdd` returns `0.100000`, but the
-Ansible variable is `0.1`. String comparison fails; integer comparison
-truncates. Always cast both sides to `| float` before comparing. Affects
-any Ceph config value returned with trailing zeros
-(`osd_recovery_sleep_hdd`, `osd_deep_scrub_interval`, etc.).
+A dump reports every value as a string, and not in the form the model wrote it:
+`604800.000000` for an int option, `0.100000` for `0.1`, `true` for a bool. So a
+plain string comparison produces false drift.
+
+Casting both sides with `| float` fixes the numeric cases and breaks the rest:
+Ansible's `float` filter returns `0.0` for anything non-numeric, so
+`osd_mclock_profile: balanced` and `osd_mclock_profile: high_recovery_ops` both
+cast to `0.0` and compare equal. Once a model can hold strings and bools as well
+as numbers, the comparison has to be typed -- exact match first, numeric match
+second, unequal otherwise. `ceph_config_diff.py` does this; do not reintroduce a
+Jinja `| float` comparison over arbitrary config values.
 
 ---
 
@@ -424,14 +428,85 @@ never claimed by auto-discovery.
 # BAD -- in a role's tasks/main.yml
 - ansible.builtin.command: ceph config set osd osd_recovery_max_active 1
 
-# GOOD -- value comes from defaults, overridable via group_vars
-- ansible.builtin.command: >
-    ceph config set osd osd_recovery_max_active
-    {{ ceph_osd_recovery_max_active }}
+# GOOD -- the value is data, layered by cluster
+ceph_config_cluster:
+  osd:
+    osd_recovery_max_active: 3
 ```
 
 Roles use `defaults/main.yml` for all tunables. Site-specific values live
 in `inventories/<partition>-<region>/<cluster>/group_vars/all/vars.yml`.
+
+### Where a tunable belongs
+
+Three layers, lowest to highest. Ansible's own precedence does the work; no
+`hash_behaviour` change is needed or wanted.
+
+| Layer | Lives in | Holds |
+|---|---|---|
+| Role default | `roles/<role>/defaults/main.yml` | safe on any cluster |
+| Per-cluster | `<inventory>/group_vars/all/vars.yml` | cluster shape |
+| Per-host | `<inventory>/host_vars/<host>.yml` | machine exceptions |
+
+Which layer is available depends on **where the change is applied**, and the
+two tuning surfaces differ:
+
+**OS and hardware tuning** is applied on each node by a role that runs against
+every host, so all three layers work directly. `host_vars` is the right place
+for a per-machine exception.
+
+**Ceph tuning is different.** Those tasks run only on the bootstrap node,
+because the mon config database is cluster-wide state -- another host's
+`host_vars` is not in scope there. Per-host Ceph settings go in the
+`ceph_config` model instead, keyed by Ceph's own mask syntax:
+
+```yaml
+ceph_config_cluster:
+  osd:                              # every OSD
+    osd_max_backfills: 8
+  osd/class:hdd:                    # only HDD-backed OSDs
+    osd_recovery_max_active: 3
+ceph_config_host:
+  osd/host:spice-ceph-alyssa:       # one node
+    osd_scrub_load_threshold: 5
+```
+
+Ceph resolves those most-specific-first on its own (`global` -> `osd` ->
+`osd/class:hdd` -> `osd/host:x` -> `osd.N`), which is why this does not need
+Ansible machinery. cephadm already uses the same mechanism for its per-host
+`osd_memory_target` autotune. Reserve `host_vars` for facts about the machine:
+`host_index`, `bond_ip`, the disk map.
+
+Merging uses `combine(recursive=True)`, so a cluster overriding one option keeps
+the rest of the section. A plain `host_vars` override of a dict or list replaces
+it wholesale -- which is why `spice-ceph-miguel` has to repeat all fourteen
+entries of `ceph_hdd_osds` to change one.
+
+### Reading Ceph config back: `dump`, not `get`
+
+```bash
+# BAD -- resolves the section hierarchy
+ceph config get osd osd_max_backfills      # returns global's value as if it were osd's
+ceph config get osd/class:hdd osd_max_backfills   # EINVAL, masks not accepted
+
+# GOOD -- exact (section, mask, name) rows
+ceph config dump -f json
+```
+
+`ceph config get` answers "what would a daemon in this section see", which is
+not the same question as "what does this model own". A value living in `global`
+reads back identically to one in `osd`, so an idempotency check built on it
+concludes it has nothing to do and never writes. That is exactly how spice ended
+up with its recovery throttles in `global`, untouched by the role that claimed
+to own them, for the cluster's whole life. It also rejects masks outright, which
+would make every per-class and per-host setting invisible.
+
+`roles/ceph_tuning/files/ceph_config_diff.py` does this comparison for both the
+converge and the drift check, so the two cannot disagree about what differs.
+Comparison is typed there rather than in Jinja because a dump reports every
+value as a string (`604800.000000` for an int, `true` for a bool) and the
+`float` filter returns `0.0` for anything non-numeric -- which would read
+`balanced` and `high_recovery_ops` as equal.
 
 ### Using `ansible_play_batch` / `ansible_play_hosts` for placement specs
 

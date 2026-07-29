@@ -4,42 +4,77 @@
 # Included by drift.yml via include_role + tasks_from -- see the precedence
 # note in roles/os_tuning/tasks/drift.yml.
 #
-# KNOWN GAP: `ceph config get osd <key>` resolves the section hierarchy, so a
-# value set on `global` reads back identically to one set on `osd`, and a value
-# the model does not own at all still reports a match. It also rejects masks
-# outright (`ceph config get osd/class:hdd ...` -> EINVAL), so per-class and
-# per-host settings are invisible here. Comparing against `ceph config dump`
-# matched on (section, mask, name) is the fix; it lands with the ceph_tuning
-# data model rather than here, so this pass stays behaviour-preserving.
+# Compares against `ceph config dump` matched on (section, mask, name), reusing
+# the diff engine tasks/main.yml applies with, so drift and converge cannot
+# disagree about what counts as a difference. `ceph config get osd <key>` cannot
+# do this job: it resolves the section hierarchy, so a value living in `global`
+# reads back identically to one in `osd` and an option the model does not own at
+# all still reports a match. It also rejects masks outright
+# (`ceph config get osd/class:hdd ...` returns EINVAL), which would make every
+# per-class and per-host setting invisible.
 
-- name: Check Ceph config values
-  ansible.builtin.command: "ceph config get osd {{ item.key }}"
-  loop:
-    - key: osd_recovery_max_active
-      expected: "{{ ceph_osd_recovery_max_active }}"
-    - key: osd_max_backfills
-      expected: "{{ ceph_osd_max_backfills }}"
-    - key: osd_scrub_begin_hour
-      expected: "{{ ceph_osd_scrub_begin_hour }}"
-    - key: osd_scrub_end_hour
-      expected: "{{ ceph_osd_scrub_end_hour }}"
-  register: ceph_config_checks
+- name: Merge Ceph config layers
+  ansible.builtin.set_fact:
+    ceph_config_effective: >-
+      {{ ceph_config_defaults
+         | combine(ceph_config_cluster, ceph_config_host, recursive=True) }}
+  when: inventory_hostname in groups['ceph_bootstrap']
+
+- name: Diff declared Ceph config against the mon database
+  ansible.builtin.script: ceph_config_diff.py
+  environment:
+    CEPH_CONFIG_MODEL: >-
+      {{ {'desired': ceph_config_effective,
+          'prune': ceph_config_prune,
+          'gate_keys': ceph_config_gate_keys} | to_json }}
+  register: ceph_config_plan
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
-  loop_control:
-    label: "{{ item.key }}"
 
 - name: Record Ceph config drift
   ansible.builtin.set_fact:
     drift_results: >-
       {{ drift_results + [{
         'category': 'ceph-config',
-        'item': item.item.key,
-        'expected': item.item.expected | string,
-        'actual': item.stdout | trim,
-        'match': (item.stdout | trim) == (item.item.expected | string)
+        'item': item.who ~ '/' ~ item.key,
+        'expected': item.value | string,
+        'actual': item.current | default('unset', true) | string,
+        'match': false
       }] }}
-  loop: "{{ ceph_config_checks.results | default([]) }}"
+  loop: "{{ (ceph_config_plan.stdout | from_json).set | default([]) }}"
   when: inventory_hostname in groups['ceph_bootstrap']
   loop_control:
-    label: "{{ item.item.key | default('skipped') }}"
+    label: "{{ item.who }}/{{ item.key }}"
+
+# A superseded entry is drift in its own right: the value is still live in a
+# section the model does not own, so converging would leave it behind.
+- name: Record superseded Ceph config drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'ceph-config',
+        'item': item.section ~ '/' ~ item.name ~ ' (superseded)',
+        'expected': 'absent',
+        'actual': item.current | string,
+        'match': false
+      }] }}
+  loop: "{{ (ceph_config_plan.stdout | from_json).rm | default([]) }}"
+  when: inventory_hostname in groups['ceph_bootstrap']
+  loop_control:
+    label: "{{ item.section }}/{{ item.name }}"
+
+# One OK line when the model is fully converged, so the report shows the check
+# ran rather than silently contributing nothing.
+- name: Record Ceph config in sync
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'ceph-config',
+        'item': 'declared options',
+        'expected': 'in sync',
+        'actual': 'in sync',
+        'match': true
+      }] }}
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_config_plan.stdout | from_json).in_sync | default(false)

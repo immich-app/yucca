@@ -98,8 +98,12 @@ sudo ceph -s
 - **Different serial numbers**: acceptable -- `by-path` is used for OSD
   slot identity, not `by-id`.
 - **Backfill thundering herd**: if you skipped step 1, the new OSDs enter
-  the cluster and backfill aggressively. Throttle with
-  `ceph_osd_recovery_max_active` in vars.yml if you see client-IO impact.
+  the cluster and backfill aggressively. Throttle via `ceph_config_cluster`
+  in vars.yml (`osd.osd_recovery_max_active`, `osd.osd_max_backfills`) if you
+  see client-IO impact. Under the mclock scheduler those need
+  `osd_mclock_override_recovery_settings: true` alongside them, which the role
+  default already sets; confirm a change landed with
+  `ceph tell osd.<id> config get <option>`, not `ceph config get`.
 
 ## References
 

@@ -87,5 +87,9 @@ jobs:
 
       # Byte-compile the helper scripts so a broken generator is caught here,
       # not mid-provision. (shellcheck above covers the *.sh scripts.)
+      # Covers roles/*/files/*.py too: those ship to the nodes via
+      # ansible.builtin.script, so a syntax error there fails mid-converge.
       - name: Compile Python scripts
-        run: mise exec -- python -m py_compile scripts/*.py
+        run: |
+          mise exec -- python -m py_compile \
+            $(find scripts roles -name '*.py' -not -path '*/__pycache__/*')
