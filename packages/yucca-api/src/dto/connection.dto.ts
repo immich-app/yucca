@@ -20,6 +20,15 @@ export class ConnectionDto {
 
   @ApiProperty()
   repositoryCount!: number;
+
+  @ApiProperty({ description: 'Rolled-up storage across this connection’s repositories (RGW size).' })
+  sizeBytes!: number;
+
+  @ApiProperty({ description: 'Rolled-up object count across this connection’s repositories.' })
+  objectCount!: number;
+
+  @ApiProperty({ description: 'Billed bytes: per-object min-size floor applied (immich exempt).' })
+  billableBytes!: number;
 }
 
 export class ConnectionListResponseDto {

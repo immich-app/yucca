@@ -19,6 +19,11 @@ describe(MetricsService.name, () => {
     getGauge: jest.fn((name: string) => (name === 'rgw_repository_size_bytes' ? sizeGauge : objectGauge)),
   };
 
+  const connectionMetrics = {
+    getRollups: jest.fn().mockResolvedValue([]),
+    upsert: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -56,6 +61,7 @@ describe(MetricsService.name, () => {
       fleet as never,
       meter as never,
       repositories as never,
+      connectionMetrics as never,
       metricService as never,
     );
     await service.sync();
@@ -84,6 +90,7 @@ describe(MetricsService.name, () => {
       fleet as never,
       meter as never,
       repositories as never,
+      connectionMetrics as never,
       metricService as never,
     );
 
