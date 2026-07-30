@@ -77,6 +77,32 @@
     group: root
     mode: '0750'
 
+- name: Install the bind-address wait helper
+  ansible.builtin.copy:
+    src: fluent-bit-wait-for-bind.sh
+    dest: /usr/local/sbin/fluent-bit-wait-for-bind.sh
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart fluent-bit
+
+- name: Ensure the fluent-bit drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/fluent-bit.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Wait for the bind address before starting fluent-bit
+  ansible.builtin.template:
+    src: fluent-bit-dropin.conf.j2
+    dest: /etc/systemd/system/fluent-bit.service.d/10-wait-for-bind.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fluent-bit
+
 - name: Template the fluent-bit config
   ansible.builtin.template:
     src: fluent-bit.conf.j2
