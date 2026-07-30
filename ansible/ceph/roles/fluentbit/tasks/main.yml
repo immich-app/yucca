@@ -1,0 +1,133 @@
+---
+# Install Fluent Bit (pinned) and ship journald to o11y over the NetBird overlay.
+
+- name: Assert the node is on the overlay
+  # Without it there is no route to the gateway VIP, and fluent-bit would spin
+  # on connection refused instead of failing here.
+  ansible.builtin.command: netbird status
+  register: ceph_fluentbit_nb
+  changed_when: false
+  failed_when: "'Management: Connected' not in ceph_fluentbit_nb.stdout"
+
+- name: Assert the o11y gateway name resolves
+  # o11y's mesh DNS zone serves this name to the ceph group. Without it
+  # fluent-bit starts and silently ships nothing, so check before we get there.
+  # This sits beside the overlay assert so both preconditions fail before the
+  # role mutates apt state on the node.
+  ansible.builtin.command: getent hosts {{ ceph_fluentbit_o11y_host }}
+  register: ceph_fluentbit_dns
+  changed_when: false
+  failed_when: ceph_fluentbit_dns.rc != 0
+
+- name: Ensure keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Install the Fluent Bit apt signing key
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -fsSL {{ ceph_fluentbit_key_url }} | gpg --dearmor -o /etc/apt/keyrings/fluentbit.gpg
+  args:
+    creates: /etc/apt/keyrings/fluentbit.gpg
+    executable: /bin/bash
+
+- name: Add the Fluent Bit apt repository
+  ansible.builtin.copy:
+    content: "{{ ceph_fluentbit_repo }}\n"
+    dest: /etc/apt/sources.list.d/fluentbit.list
+    mode: '0644'
+
+- name: Update apt cache
+  # Always refresh after a repo add: a cache_valid_time skip installs against a
+  # stale index.
+  ansible.builtin.apt:
+    update_cache: true
+  changed_when: false
+
+- name: Query the installed fluent-bit version
+  ansible.builtin.command: dpkg-query -W -f='${Version}' fluent-bit
+  register: ceph_fluentbit_installed
+  changed_when: false
+  failed_when: false
+
+- name: Unhold fluent-bit only when the pinned version differs (keeps converge clean)
+  ansible.builtin.dpkg_selections:
+    name: fluent-bit
+    selection: install
+  when: (ceph_fluentbit_installed.stdout | default('')) != ceph_fluentbit_version
+
+- name: Install Fluent Bit at the pinned version
+  ansible.builtin.apt:
+    name: "fluent-bit={{ ceph_fluentbit_version }}"
+    state: present
+    allow_downgrade: true
+
+- name: Hold fluent-bit at the pinned version
+  ansible.builtin.dpkg_selections:
+    name: fluent-bit
+    selection: hold
+
+- name: Create the buffer + cursor directory
+  ansible.builtin.file:
+    path: /var/lib/fluent-bit/storage
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Install the bind-address wait helper
+  ansible.builtin.copy:
+    src: fluent-bit-wait-for-bind.sh
+    dest: /usr/local/sbin/fluent-bit-wait-for-bind.sh
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart fluent-bit
+
+- name: Ensure the fluent-bit drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/fluent-bit.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Wait for the bind address before starting fluent-bit
+  ansible.builtin.template:
+    src: fluent-bit-dropin.conf.j2
+    dest: /etc/systemd/system/fluent-bit.service.d/10-wait-for-bind.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fluent-bit
+
+- name: Template the fluent-bit config
+  ansible.builtin.template:
+    src: fluent-bit.conf.j2
+    dest: /etc/fluent-bit/fluent-bit.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fluent-bit
+
+- name: Enable and start fluent-bit
+  ansible.builtin.systemd:
+    name: fluent-bit
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Apply any pending restart before verifying
+  # The health check below has to run against the new config, not the old one.
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify fluent-bit is up (its own metrics endpoint responds)
+  ansible.builtin.uri:
+    url: "http://{{ ceph_fluentbit_http_listen }}:{{ ceph_fluentbit_http_port }}/api/v1/metrics/prometheus"
+    return_content: false
+  register: ceph_fluentbit_health
+  retries: 6
+  delay: 5
+  until: ceph_fluentbit_health.status == 200

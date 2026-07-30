@@ -1,0 +1,10 @@
+# Managed by ansible (roles/fluentbit) - do not edit on the node.
+#
+# fluent-bit ignores the result of its HTTP listener bind and keeps running. If
+# it starts before the fabric address is up, the bind fails and the metrics
+# endpoint stays dead until someone restarts the unit. The shipped unit orders
+# only After=network.target. The bond and its VLANs set RequiredForOnline=no by
+# design, because the fabric must not stall boot, so ordering after
+# network-online.target would not help either.
+[Service]
+ExecStartPre=/usr/local/sbin/fluent-bit-wait-for-bind.sh {{ ceph_fluentbit_http_listen }} {{ ceph_fluentbit_bind_wait_secs }}

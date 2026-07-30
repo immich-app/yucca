@@ -1,0 +1,59 @@
+# Managed by ansible (roles/fluentbit) - do not edit on the node.
+# journald -> drop noise -> tag -> o11y VictoriaLogs over the NetBird overlay.
+
+[SERVICE]
+    Flush                     5
+    Log_Level                 info
+    HTTP_Server               On
+    HTTP_Listen               {{ ceph_fluentbit_http_listen }}
+    HTTP_Port                 {{ ceph_fluentbit_http_port }}
+    storage.path              /var/lib/fluent-bit/storage
+    storage.backlog.mem_limit 64M
+
+[INPUT]
+    Name              systemd
+    Tag               host.*
+    # Cursor survives restarts, so a reboot resumes instead of re-reading.
+    DB                /var/lib/fluent-bit/journal.db
+    # VictoriaLogs reserves _-prefixed names for _msg/_time/_stream.
+    Strip_Underscores On
+    # First start skips the existing journal (1.9G/node) rather than
+    # backfilling it into o11y.
+    Read_From_Tail    On
+    storage.type      filesystem
+
+# ~2.4M lines/hour fleet-wide is nearly all mon/mgr status chatter. The mon
+# cluster health channel is not matched.
+[FILTER]
+    Name    grep
+    Match   host.*
+    Exclude MESSAGE {{ ceph_fluentbit_drop_regex }}
+
+[FILTER]
+    Name   record_modifier
+    Match  host.*
+    Record cluster {{ ceph_fluentbit_cluster_label }}
+    Record site {{ ceph_fluentbit_site_label }}
+    Record env {{ ceph_fluentbit_env_label }}
+
+[OUTPUT]
+    Name                     http
+    Match                    host.*
+    Host                     {{ ceph_fluentbit_o11y_host }}
+    Port                     {{ ceph_fluentbit_o11y_port }}
+    # Real Let's Encrypt cert on the gateway. TLS.Verify alone is chain-only:
+    # verify_hostname defaults off, so without it any publicly-trusted cert for
+    # any name would pass.
+    TLS                      On
+    TLS.Verify               On
+    tls.verify_hostname      on
+    URI                      /insert/jsonline?_msg_field=MESSAGE&_time_field=date&_stream_fields={{ ceph_fluentbit_stream_fields }}
+    Format                   json_lines
+    Json_date_format         iso8601
+    Json_date_key            date
+    compress                 zstd
+    # Retry forever, so Fluent Bit never discards a chunk for running out of
+    # retries: an overlay flap queues to disk. The queue is still bounded. At
+    # total_limit_size Fluent Bit drops its oldest chunks to make room.
+    Retry_Limit              False
+    storage.total_limit_size {{ ceph_fluentbit_buffer_limit }}

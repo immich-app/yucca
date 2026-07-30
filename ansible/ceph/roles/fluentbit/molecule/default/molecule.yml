@@ -1,0 +1,38 @@
+---
+# Template-rendering scenario, same shape as roles/security and
+# roles/ceph_deploy: `mise run test` runs `molecule verify` only, never a
+# converge. That is what makes this role testable at all -- tasks/main.yml
+# installs a pinned .deb from an apt repo, asserts the node is on the NetBird
+# overlay, resolves an o11y name over mesh DNS and starts a systemd unit, none
+# of which exist in a test environment. The rendered config is the part that
+# breaks silently, so the rendered config is what gets exercised.
+driver:
+  name: default
+
+platforms:
+  - name: molecule-fluentbit-test
+    image: debian:bookworm
+    pre_build_image: true
+
+provisioner:
+  name: ansible
+  inventory:
+    hosts:
+      all:
+        hosts:
+          molecule-fluentbit-test:
+            # Nothing is provisioned: the default driver hands out no
+            # connection, so without this molecule tries to ssh a hostname
+            # that does not exist. Rendering happens on the controller.
+            ansible_connection: local
+            hostname_short: molecule-fluentbit-test
+            # spice fabric address. The role binds fluent-bit's metrics
+            # endpoint to it rather than 0.0.0.0, so verify needs a real one.
+            bond_ip: 10.40.20.99
+        children:
+          ceph_nodes:
+            hosts:
+              molecule-fluentbit-test:
+
+verifier:
+  name: ansible

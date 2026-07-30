@@ -1,8 +1,8 @@
 ---
-# Full site playbook: tune → deploy → tune ceph → harden
+# Full site playbook: tune -> deploy -> tune ceph -> harden -> ship logs
 #
 # Runs all post-provision steps in the correct dependency order.
-# Provisioning is a separate concern — run provision.yml first.
+# Provisioning is a separate concern; run provision.yml first.
 #
 # Workflow:
 #   1. Boot nodes from Debian live image
@@ -33,3 +33,6 @@
 
 - name: Security hardening (nftables, SSH)
   import_playbook: harden.yml
+
+- name: Host log shipping (journald to o11y; gated by ceph_fluentbit_enabled)
+  import_playbook: logging.yml
