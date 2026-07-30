@@ -137,6 +137,8 @@
         - '^[[:space:]]*Name[[:space:]]+http$'
         - '^[[:space:]]*TLS[[:space:]]+On$'
         - '^[[:space:]]*TLS\.Verify[[:space:]]+On$'
+        # Chain validation alone accepts any trusted cert for any name.
+        - '^[[:space:]]*tls\.verify_hostname[[:space:]]+on$'
         - '^[[:space:]]*compress[[:space:]]+zstd$'
         - '^[[:space:]]*Format[[:space:]]+json_lines$'
 

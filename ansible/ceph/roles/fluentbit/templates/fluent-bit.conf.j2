@@ -41,9 +41,12 @@
     Match                    host.*
     Host                     {{ ceph_fluentbit_o11y_host }}
     Port                     {{ ceph_fluentbit_o11y_port }}
-    # Real Let's Encrypt cert on the gateway.
+    # Real Let's Encrypt cert on the gateway. TLS.Verify alone is chain-only:
+    # verify_hostname defaults off, so without it any publicly-trusted cert for
+    # any name would pass.
     TLS                      On
     TLS.Verify               On
+    tls.verify_hostname      on
     URI                      /insert/jsonline?_msg_field=MESSAGE&_time_field=date&_stream_fields={{ ceph_fluentbit_stream_fields }}
     Format                   json_lines
     Json_date_format         iso8601
