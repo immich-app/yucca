@@ -140,6 +140,9 @@
         # Chain validation alone accepts any trusted cert for any name.
         - '^[[:space:]]*tls\.verify_hostname[[:space:]]+on$'
         - '^[[:space:]]*compress[[:space:]]+zstd$'
+        # Silences the per-flush ack without hiding failures, which out_http
+        # logs at error/warn.
+        - '^[[:space:]]*log_level[[:space:]]+warn$'
         - '^[[:space:]]*Format[[:space:]]+json_lines$'
 
     - name: Verify the URI carries the VictoriaLogs field mapping

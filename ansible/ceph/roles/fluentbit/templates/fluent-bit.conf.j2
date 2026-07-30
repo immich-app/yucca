@@ -52,6 +52,12 @@
     Json_date_format         iso8601
     Json_date_key            date
     compress                 zstd
+    # Per-plugin level, not the service level. out_http logs every successful
+    # flush at info (http.c:348) and every non-2xx at error (http.c:326), with a
+    # warn when it drops a 4xx chunk (http.c:331). Raising just this plugin to
+    # warn silences the acks, which are ~4% of everything we ship, and keeps all
+    # failure signal. The agent still logs at info everywhere else.
+    log_level                warn
     # Retry forever, so Fluent Bit never discards a chunk for running out of
     # retries: an overlay flap queues to disk. The queue is still bounded. At
     # total_limit_size Fluent Bit drops its oldest chunks to make room.
