@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.25.0](https://github.com/immich-app/yucca/compare/v0.24.0...v0.25.0) (2026-07-30)
+
+
+### Features
+
+* **ceph:** make cluster config a layered, mask-aware model ([#377](https://github.com/immich-app/yucca/issues/377)) ([ce575b1](https://github.com/immich-app/yucca/commit/ce575b111310f2903e736b9e12fd781725e6a379))
+* **k8s:** fleet topology and meta discovery groundwork ([#380](https://github.com/immich-app/yucca/issues/380)) ([046aacb](https://github.com/immich-app/yucca/commit/046aacb6b18bc936208d9ff4434bc3e32d5ffdcc))
+* **michael:** storage-cluster routing ([#383](https://github.com/immich-app/yucca/issues/383)) ([597506a](https://github.com/immich-app/yucca/commit/597506abcc01890133aa2f9b61fa2e5c71c3d18f))
+* **o11y:** add spice block.db and BlueFS headroom dashboard ([#376](https://github.com/immich-app/yucca/issues/376)) ([672cf49](https://github.com/immich-app/yucca/commit/672cf49aad6aea4586b124a4c2006e1bc71cf83e))
+* **orchestrator:** meta discovery and placement ([#385](https://github.com/immich-app/yucca/issues/385)) ([1039337](https://github.com/immich-app/yucca/commit/1039337b1394326cfdb1d84d30b42eb2fa40934c))
+* **yucca-admin-api:** scoped settings ([#382](https://github.com/immich-app/yucca/issues/382)) ([51ea175](https://github.com/immich-app/yucca/commit/51ea175933bab80c3a0b43e8e6579d0fa7985a1e))
+* **yucca:** multi-site placement and public /meta ([#381](https://github.com/immich-app/yucca/issues/381)) ([5a73550](https://github.com/immich-app/yucca/commit/5a735505734c2a4fc292a57b48b4e08fddab78eb))
+* **yuctl:** config commands ([#384](https://github.com/immich-app/yucca/issues/384)) ([7911c3b](https://github.com/immich-app/yucca/commit/7911c3bf11800f637bcbdd0367786f11940828a4))
+
+
+### Bug Fixes
+
+* **ceph:** compare drift against declared config, not role defaults ([#373](https://github.com/immich-app/yucca/issues/373)) ([ee7fd68](https://github.com/immich-app/yucca/commit/ee7fd688001e9c94ea17253ea725f98f8c95af72))
+* **ceph:** expect the declared MON quorum in drift detection ([#374](https://github.com/immich-app/yucca/issues/374)) ([65d75e2](https://github.com/immich-app/yucca/commit/65d75e2d28b0dd13584257214ed2a7b0b40e50d2))
+* **ceph:** only commit the rgw period when something changed ([#372](https://github.com/immich-app/yucca/issues/372)) ([c606d25](https://github.com/immich-app/yucca/commit/c606d25c8e9569e8274b8a1ad150795d9177d794))
+* **orchestrator:** dev backup hook return type ([#393](https://github.com/immich-app/yucca/issues/393)) ([7306bc4](https://github.com/immich-app/yucca/commit/7306bc4b4d67a1d2dd664241e44ae6e2e4368025))
+
 ## [0.24.0](https://github.com/immich-app/yucca/compare/v0.23.1...v0.24.0) (2026-07-29)
 
 

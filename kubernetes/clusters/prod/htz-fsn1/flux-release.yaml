@@ -19,5 +19,5 @@ metadata:
 spec:
   interval: 1m
   ref:
-    tag: v0.24.0 # x-release-please-version
+    tag: v0.25.0 # x-release-please-version
   url: https://github.com/immich-app/yucca.git
