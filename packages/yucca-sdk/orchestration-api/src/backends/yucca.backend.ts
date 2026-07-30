@@ -13,40 +13,11 @@ import {
   submitStructuredLog,
   updateRepository,
 } from '@futo-org/backups-api-client';
-import { YUCCA_WELL_KNOWN } from '../const';
 import { BackendType, CookieName } from '../enum';
 import { LoggingRepository } from '../repositories/logging.repository';
 import { BackendConfiguration } from '../schema/tables/backend.table';
+import { yuccaWellKnown } from '../wellKnown';
 import { Backend } from './backend';
-
-type WellKnown = {
-  backends: Record<string, { displayName: string; api: string }>;
-  defaultBackend: string;
-};
-
-class YuccaWellKnown {
-  private data?: WellKnown;
-
-  async get() {
-    this.data ??= await fetch(YUCCA_WELL_KNOWN, { signal: AbortSignal.timeout(8000) }).then((response) =>
-      response.json(),
-    );
-
-    return this.data! as WellKnown;
-  }
-
-  async getBaseUrlById(id: string) {
-    const { backends } = await this.get();
-    return backends[id].api;
-  }
-
-  async getBaseUrl() {
-    const { backends, defaultBackend } = await this.get();
-    return backends[defaultBackend].api;
-  }
-}
-
-export const yuccaWellKnown = new YuccaWellKnown();
 
 export class YuccaBackend extends Backend {
   private readonly logger = LoggingRepository.create(YuccaBackend.name);
@@ -57,11 +28,7 @@ export class YuccaBackend extends Backend {
 
   private async getRequestOptions() {
     return {
-      baseUrl:
-        this.configuration.url ??
-        (this.configuration.uuid
-          ? await yuccaWellKnown.getBaseUrlById(this.configuration.uuid)
-          : await yuccaWellKnown.getBaseUrl()),
+      baseUrl: this.configuration.url ?? (await yuccaWellKnown.getBaseUrl()),
       headers: {
         cookie: `${CookieName.YuccaAccessToken}=${this.configuration.accessToken}`,
       },

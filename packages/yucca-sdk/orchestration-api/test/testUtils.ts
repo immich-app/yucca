@@ -54,7 +54,6 @@ export async function createTestingModule(): Promise<TestContext> {
         provide: ModuleConfigProvider,
         useValue: {
           statePath,
-          yuccaProductionApi: 'http://test:3000',
           requireLock: false,
           requireWsAuth: false,
         },

@@ -113,6 +113,8 @@ export type ImportRecoveryKeyRequest = {
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
+    /** Internal site code from environment metadata */
+    site?: string;
     paths?: string[];
 };
 export type RepositoryMetricsDto = {
@@ -143,6 +145,8 @@ export type LocalRepositoryDto = {
     id: string;
     worm: boolean;
     name: string;
+    siteCode: string | null;
+    storageClusterCode: string | null;
     metrics: RepositoryMetricsDto;
     meter?: RepositoryMeterDto;
     backends?: RepositoryBackendsDto;
@@ -166,12 +170,15 @@ export type SnapshotDto = {
     id: string;
     time: string;
     paths: string[];
+    tags?: string[];
     summary?: SnapshotSummaryDto;
 };
 export type InspectedLocalRepositoryDto = {
     id: string;
     worm: boolean;
     name: string;
+    siteCode: string | null;
+    storageClusterCode: string | null;
     metrics: RepositoryMetricsDto;
     meter?: RepositoryMeterDto;
     backends?: RepositoryBackendsDto;

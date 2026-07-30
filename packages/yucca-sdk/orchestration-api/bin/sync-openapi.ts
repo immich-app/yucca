@@ -7,9 +7,7 @@ import { ORCHESTRATION_PORT, OrchestrationApiModule } from '../src';
 async function main() {
   const app = await NestFactory.create<NestApplication>(
     OrchestrationApiModule.forRootAsync({
-      useFactory: () => ({
-        yuccaProductionApi: 'http://localhost',
-      }),
+      useFactory: () => ({}),
     }),
   );
 

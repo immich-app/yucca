@@ -42,6 +42,8 @@ export class LocalBackend extends Backend {
         id,
         name: dto.name,
         worm: dto.worm,
+        siteCode: null,
+        storageClusterCode: null,
         metrics: {
           sizeBytes: 0,
         },
@@ -55,6 +57,8 @@ export class LocalBackend extends Backend {
         id,
         name: dto.name ?? 'new name',
         worm: false,
+        siteCode: null,
+        storageClusterCode: null,
         metrics: {
           sizeBytes: 0,
         },
@@ -83,6 +87,8 @@ export class LocalBackend extends Backend {
                   id: files[index],
                   name: 'Unknown',
                   worm: false,
+                  siteCode: null,
+                  storageClusterCode: null,
                   metrics: {
                     sizeBytes: 0, // in local cache
                   },

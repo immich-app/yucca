@@ -6,4 +6,8 @@ export class RepositoryTable {
   backendId!: string;
 
   retentionPolicy!: string | null;
+
+  siteCode!: string | null;
+
+  storageClusterCode!: string | null;
 }

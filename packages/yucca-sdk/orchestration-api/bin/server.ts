@@ -6,7 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(
     OrchestrationApiModule.forRootAsync({
       useFactory: () => ({
-        yuccaProductionApi: 'http://localhost:36033',
+        wellKnownUrl: process.env.FUTO_BACKUPS_WELL_KNOWN_URL,
         developmentMode: true,
         immichIntegration: {
           dataFolders: ['upload', 'profile', 'library', 'backups', 'thumbs', 'encoded-video'],
