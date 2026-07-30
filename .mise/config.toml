@@ -28,7 +28,7 @@ uv = "0.9.18"
 
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
 opentofu = "1.11.5"
-terragrunt = "0.99.4"
+terragrunt = "0.99.5"
 # ansible/mgmt convergence (mgmt:ansible task, run from CI on prod apply).
 "pipx:ansible-core" = "2.18.1"
 [tasks.dev]
