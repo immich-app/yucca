@@ -59,14 +59,13 @@
     name: fluent-bit
     selection: hold
 
-- name: Resolve the o11y gateway name locally
-  ansible.builtin.lineinfile:
-    path: /etc/hosts
-    regexp: '\s{{ ceph_fluentbit_o11y_host | regex_escape }}$'
-    line: "{{ ceph_fluentbit_o11y_vip }} {{ ceph_fluentbit_o11y_host }}"
-    owner: root
-    group: root
-    mode: '0644'
+- name: Assert the o11y gateway name resolves
+  # Served by o11y's mesh DNS zone, distributed to the ceph group. Without it
+  # fluent-bit starts and silently fails to ship, so check before we get there.
+  ansible.builtin.command: getent hosts {{ ceph_fluentbit_o11y_host }}
+  register: ceph_fluentbit_dns
+  changed_when: false
+  failed_when: ceph_fluentbit_dns.rc != 0
 
 - name: Create the buffer + cursor directory
   ansible.builtin.file:

@@ -12,10 +12,10 @@ ceph_fluentbit_repo: >-
   https://packages.fluentbit.io/debian/bookworm bookworm main
 
 # /insert/journald is not routed by o11y's mesh vmauth; /insert/jsonline is.
-# Needs a hosts entry: o11y distributes its DNS zone only to the operator and
-# o11y-router groups, and Envoy routes by Host/SNI so the bare IP would not match.
+# The name resolves over the mesh: o11y distributes its DNS zone to the ceph
+# group (immich-app/yucca-o11y#153). Envoy routes by Host/SNI, so connect by
+# name, not by the gateway IP.
 ceph_fluentbit_o11y_host: vmauth.o11y.futo.network
-ceph_fluentbit_o11y_vip: "10.69.0.10"
 ceph_fluentbit_o11y_port: 443
 
 # Match the vmagent external_labels for spice, so logs and metrics join.
