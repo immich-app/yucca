@@ -43,6 +43,10 @@ charts/
 # as a nested flow mapping) and text/template then emits it literally.
 packages/yuctl/internal/warp/manifests/
 
+# Grafana dashboard exports: machine-generated JSON, round-tripped through
+# the Grafana UI — not worth format churn.
+o11y/dashboards/
+
 # auto-generated
 yaak/
 CHANGELOG.md
