@@ -73,6 +73,23 @@ of truth is the Flux tree under `kubernetes/`, not a separate manifest.
 Forwarded ports: `5173` web · `3020` yucca-api · `3030` yucca-admin-api · `3010` michael ·
 `8092` mock-oidc · `9000` ceph rgw (S3) · `8428` victoria-metrics · `9428` victoria-logs.
 
+**Running integration and e2e locally** (both need Docker/OrbStack running first):
+
+```bash
+# integration: cluster infra only, apps boot on the host against it
+mise k3d:up && mise tilt:ci-infra && mise test:integration:k3d
+
+# e2e: full in-cluster stack, then the jest + playwright suites drive it
+mise k3d:up && mise tilt:ci && mise test:e2e:k3d
+```
+
+`test:integration:k3d` and the e2e `run.sh` port-forward the cluster to the localhost ports the
+suites expect and resolve the `oidc.localhost` issuer via `packages/e2e/k3d/hostmap.cjs` (node) and
+`--host-resolver-rules` (the playwright browser). Notes: a Docker restart leaves a stale RGW whose
+CephObjectStoreUser reconcile fails (`rgw-admin-ops-user` errors); `mise k3d:reset` for a fresh
+cluster is faster than repairing it. The `it-works` playwright test occasionally flakes with a
+transient 500 on the first cold dashboard load; rerun it.
+
 ### Infrastructure (terragrunt / ansible)
 
 ```bash
