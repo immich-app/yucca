@@ -18,7 +18,7 @@ tilt = "0.34.5"
 # GitHub runners, 3.14 on dev machines) doesn't matter.
 kubeconform = "0.8.0"
 kustomize = "5.8.1"            # flux-local shells out to it
-flux2 = "2.7.5"                # ...and to the flux CLI
+flux2 = "2.9.3"                # ...and to the flux CLI
 uv = "0.9.18"
 
 # github backend: the aqua backend fails to verify cosign v3's sigstore
