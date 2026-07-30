@@ -469,4 +469,10 @@ ceph_netbird_ssh_server: true
 # Fluent Bit ships journald to o11y's VictoriaLogs over the overlay, tagged
 # cluster/site/env to match the metrics. Needs the ceph-to-o11y-gateway NetBird
 # policy for the route. See roles/fluentbit and logging.yml.
-ceph_fluentbit_enabled: true
+#
+# OFF until the canary proves the path end to end. Nothing has shipped a log
+# through it yet, and site.yml carries logging.yml, so flipping this on lands
+# fluent-bit on all 48 nodes at the next converge. Canary first:
+#   mise run logs -- --limit spice-ceph-adelia -e ceph_fluentbit_enabled=true
+# then flip this to true in its own change.
+ceph_fluentbit_enabled: false
