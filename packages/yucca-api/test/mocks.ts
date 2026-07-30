@@ -2,7 +2,10 @@ import type { LoggerRepository, WideContextRepository } from '@common/server/ote
 import type { CryptoRepository } from 'src/repositories/crypto.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
+import type { RepositoryRepository } from 'src/repositories/repository.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
+import type { SettingsRepository } from 'src/repositories/settings.repository';
+import type { TopologyRepository } from 'src/repositories/topology.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
 import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
 
@@ -55,6 +58,36 @@ export const newUserAllowlistRepositoryMock = (): jest.Mocked<RepositoryInterfac
   };
 };
 
+export const newRepositoryRepositoryMock = (): jest.Mocked<RepositoryInterface<RepositoryRepository>> => {
+  return {
+    create: jest.fn(),
+    get: jest.fn(),
+    getByUser: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
+};
+
+export const newSettingsRepositoryMock = (): jest.Mocked<RepositoryInterface<SettingsRepository>> => {
+  return {
+    getAll: jest.fn(),
+    get: jest.fn(),
+    set: jest.fn(),
+    delete: jest.fn(),
+  };
+};
+
+export const newTopologyRepositoryMock = (): jest.Mocked<RepositoryInterface<TopologyRepository>> => {
+  return {
+    load: jest.fn(),
+    get: jest.fn(),
+    getSite: jest.fn(),
+    hasSite: jest.fn(),
+    hasCluster: jest.fn(),
+    getActiveCluster: jest.fn(),
+  };
+};
+
 export const newLoggerRepositoryMock = (): jest.Mocked<RepositoryInterface<LoggerRepository>> => {
   return {
     debug: jest.fn(),
@@ -90,6 +123,9 @@ export const newMocks = () => {
     session: newSessionRepositoryMock(),
     user: newUserRepositoryMock(),
     userAllowlist: newUserAllowlistRepositoryMock(),
+    repository: newRepositoryRepositoryMock(),
+    settings: newSettingsRepositoryMock(),
+    topology: newTopologyRepositoryMock(),
     logger: newLoggerRepositoryMock(),
     wideContext: newWideContextRepositoryMock(),
     jwt: newJwtServiceMock(),

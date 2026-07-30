@@ -20,6 +20,38 @@ export type AuthDto = {
     email: string;
     sessionId: string;
 };
+export type MetaConfigDto = {
+    restic_pack_size_mib: number;
+    /** Client-evaluated expression: integers, cores, min, max, + - * / */
+    connections_math: string;
+};
+export type MetaConfigOverridesDto = {
+    restic_pack_size_mib?: number;
+    /** Client-evaluated expression: integers, cores, min, max, + - * / */
+    connections_math?: string;
+};
+export type MetaClusterDto = {
+    code: string;
+    display_name: string;
+    /** Per-cluster overrides of the global and site config */
+    cluster_config: MetaConfigOverridesDto;
+};
+export type MetaSiteDto = {
+    code: string;
+    display_name: string;
+    description: string;
+    rest_url: string;
+    default_cluster: string;
+    /** Per-site overrides of the global config */
+    site_config: MetaConfigOverridesDto;
+    clusters: MetaClusterDto[];
+};
+export type MetaResponseDto = {
+    api_root: string;
+    config: MetaConfigDto;
+    default_site: string;
+    sites: MetaSiteDto[];
+};
 export type SubmitBackupEndRequestDto = {
     success: boolean;
     durationMs: number;
@@ -48,6 +80,8 @@ export type RepositoryMetricsHistoryListResponseDto = {
 export type RepositoryCreateRequestDto = {
     name: string;
     worm: boolean;
+    /** Internal site code from /meta; defaults to default_site */
+    site?: string;
 };
 export type RepositoryMetricsDto = {
     lastBackup?: string;
@@ -64,6 +98,10 @@ export type RepositoryWithMetricsDto = {
     id: string;
     worm: boolean;
     name: string;
+    /** Stable internal site code the repository lives in */
+    siteCode: string | null;
+    /** Stable, globally unique internal storage cluster code */
+    storageClusterCode: string | null;
     metrics: RepositoryMetricsDto;
     meter?: RepositoryMeterDto;
 };
@@ -117,6 +155,14 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
 }
 export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/device", {
+        ...opts
+    }));
+}
+export function getMeta(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: MetaResponseDto;
+    }>("/api/meta", {
         ...opts
     }));
 }

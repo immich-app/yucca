@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run unit tests for yucca-metrics-worker"
+set -e
+source "$(dirname "$0")/../env"
+
+pnpm --filter yucca-metrics-worker test "$@"

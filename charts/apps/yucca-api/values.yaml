@@ -25,6 +25,20 @@ ports:
 service:
   type: ClusterIP
 
+# The GitOps-owned topology document (sites + storage clusters), validated and
+# hot-reloaded on access — see TOPOLOGY_FILE below. Rendered per cluster by
+# kubernetes/apps/base/topology; dev/k3d gets the literal copy from
+# kubernetes/apps/dev/local/yucca/topology. Same mount in yucca-admin-api and
+# yucca-metrics-worker.
+volumes:
+  - name: topology
+    configMap:
+      name: yucca-topology
+volumeMounts:
+  - name: topology
+    mountPath: /etc/yucca
+    readOnly: true
+
 # CNPG-managed postgres Cluster name (see umbrella chart)
 postgresClusterName: yucca-db
 
@@ -78,8 +92,14 @@ env:
     value: "device client ID"
   - name: OIDC_DEVICE_ALLOW_INSECURE
     value: "true"
-  - name: RESTIC_ENDPOINT
-    value: http://yucca-michael:3010
+  # Fleet topology — replaces the old single RESTIC_ENDPOINT: the restic
+  # gateway is now a per-site field in this file (rest_url), not one global URL.
+  - name: TOPOLOGY_FILE
+    value: /etc/yucca/topology.json
+  - name: LEGACY_SITE_CODE
+    value: local
+  - name: LEGACY_STORAGE_CLUSTER_CODE
+    value: local-dev
   # mock-oidc issues <sub>@example.test for any sub, so dev logins pass the
   # beta email allowlist.
   - name: ALLOWED_EMAIL_DOMAINS

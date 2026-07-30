@@ -14,4 +14,10 @@ export class RepositoryTable {
 
   @Column({ type: 'text' })
   name!: string;
+
+  @Column({ type: 'text' })
+  siteCode!: string;
+
+  @Column({ type: 'text' })
+  storageClusterCode!: string;
 }

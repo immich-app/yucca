@@ -22,12 +22,24 @@ ports:
 # CNPG-managed postgres Cluster name (shares yucca-api's database)
 postgresClusterName: yucca-db
 
-# Rook-Ceph RGW endpoint + the object-user Secret holding AccessKey/SecretKey.
-# A dedicated RGW user (charts/ceph-objectuser via the yucca-metrics-object-user
-# release) with admin read caps, so the worker can pull per-bucket stats from the
-# RGW admin API — michael is a plain S3 user without those caps.
-radosEndpoint: http://rook-ceph-rgw-yucca.rook-ceph.svc:80
+# RGW admin endpoints come from the hot-reloaded topology file (ConfigMap
+# yucca-topology, rgw_admin_endpoint per storage cluster). The object-user Secret holds the
+# fallback AccessKey/SecretKey pair — a dedicated RGW user (charts/ceph-objectuser
+# via the yucca-metrics-object-user release) with admin read caps, so the worker
+# can pull per-bucket stats from the RGW admin API — michael is a plain S3 user
+# without those caps. Per-cluster creds override via
+# RADOS_ACCESS_KEY_ID_<CODE>/RADOS_SECRET_ACCESS_KEY_<CODE> keys in that same
+# Secret (envFrom exposes them under those exact names).
 radosSecretName: rook-ceph-object-user-yucca-metrics
+
+volumes:
+  - name: topology
+    configMap:
+      name: yucca-topology
+volumeMounts:
+  - name: topology
+    mountPath: /etc/yucca
+    readOnly: true
 
 # Static dev secrets (overridden in dev via the yucca-dev-env extraEnvFrom
 # layer, in prod via ExternalSecret)
@@ -42,6 +54,10 @@ extraEnvFrom: []
 env:
   - name: NODE_ENV
     value: development
+  - name: LEGACY_SITE_CODE
+    value: local
+  - name: LEGACY_STORAGE_CLUSTER_CODE
+    value: local-dev
   - name: YUCCA_METRICS_WORKER_PORT
     value: "3040"
   - name: LOG_LEVEL

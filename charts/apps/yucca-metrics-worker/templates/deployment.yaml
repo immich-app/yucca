@@ -1,5 +1,5 @@
 {{- $_ := set .Values "env" (concat .Values.env (list
-  (dict "name" "RADOS_ENDPOINT" "value" .Values.radosEndpoint)
+  (dict "name" "TOPOLOGY_FILE" "value" "/etc/yucca/topology.json")
   (dict "name" "RADOS_ACCESS_KEY_ID" "valueFrom" (dict "secretKeyRef" (dict "name" .Values.radosSecretName "key" "AccessKey")))
   (dict "name" "RADOS_SECRET_ACCESS_KEY" "valueFrom" (dict "secretKeyRef" (dict "name" .Values.radosSecretName "key" "SecretKey")))
   (dict "name" "POSTGRES_HOST" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "host")))
@@ -14,6 +14,13 @@ the worker needs is explicit env above — deployments that null secretData
 (staging/prod) provide no Secret at all, and Optional=false would wedge the
 pod in CreateContainerConfigError. */}}
 {{- $_ := set .Values "envFrom" (concat
-  (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .) "optional" true)))
+  (list
+    (dict "secretRef" (dict "name" (include "yucca-common.fullname" .) "optional" true))
+    (dict "secretRef" (dict "name" .Values.radosSecretName)))
   (.Values.extraEnvFrom | default (list))) }}
+{{- $topology := (lookup "v1" "ConfigMap" .Release.Namespace "yucca-topology") | default dict }}
+{{- $topologyData := (get $topology "data") | default dict }}
+{{- $_ := set .Values "podAnnotations" (merge
+  (dict "yucca.futo.org/topology-checksum" (sha256sum (toJson $topologyData)))
+  (.Values.podAnnotations | default dict)) }}
 {{- include "yucca-common.deployment" . }}
