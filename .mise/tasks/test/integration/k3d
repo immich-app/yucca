@@ -64,11 +64,11 @@ else
   echo "==> rook-ceph-object-user-yucca-metrics not found; RGW integration tests will skip"
 fi
 
-# The deployed mock-oidc advertises its in-cluster name as the issuer; the dns
-# preload resolves it to the port-forward for every node process (jest + the
-# apps it boots). Same split-horizon glue as the e2e runner.
-export OIDC_ISSUER=http://yucca-mock-oidc:8092
-export OIDC_DEVICE_ISSUER=http://yucca-mock-oidc:8092
+# The deployed mock-oidc advertises http://oidc.localhost:8092 as its issuer; the
+# dns preload resolves that name to the port-forward for every node process (jest
+# + the apps it boots). Same split-horizon glue as the e2e runner.
+export OIDC_ISSUER=http://oidc.localhost:8092
+export OIDC_DEVICE_ISSUER=http://oidc.localhost:8092
 export NODE_OPTIONS="--require $PWD/packages/e2e/k3d/hostmap.cjs${NODE_OPTIONS:+ ${NODE_OPTIONS}}"
 
 echo "==> run the integration suites"
