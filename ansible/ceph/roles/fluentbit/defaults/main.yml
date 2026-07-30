@@ -33,8 +33,18 @@ ceph_fluentbit_stream_fields: "HOSTNAME,SYSLOG_IDENTIFIER"
 # cluster health channel is not matched.
 ceph_fluentbit_drop_regex: '(pgmap v[0-9]+|_set_new_cache_sizes)'
 
-# Queue locally through an o11y or overlay outage instead of dropping.
+# Disk queue for the o11y output. Retries never give up, but the queue is
+# bounded: once it is full Fluent Bit drops its OLDEST chunks to make room. So
+# this sizes the o11y/overlay outage a node rides out before the earliest logs
+# are lost, not a guarantee that none are.
 ceph_fluentbit_buffer_limit: 512M
 
-# Fluent Bit's own metrics. The vmagent scrape job is a follow-up.
+# Fluent Bit's own metrics. The vmagent scrape job is a follow-up, and needs an
+# nftables rule with it: the security role opens each exporter port explicitly
+# (node/mgr/ceph_exporter) and has none for this one, so the endpoint is only
+# reachable from the node itself until that lands.
 ceph_fluentbit_http_port: 2020
+# Bind the fabric VLAN-120 address, not 0.0.0.0: the 1G WAN is excluded by not
+# listening on it at all, not by the nftables drop policy, and the fabric is where
+# vmagent scrapes. Tradeoff: NetBird peers cannot reach the endpoint directly.
+ceph_fluentbit_http_listen: "{{ ceph_public_ip }}"

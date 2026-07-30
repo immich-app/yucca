@@ -5,7 +5,7 @@
     Flush                     5
     Log_Level                 info
     HTTP_Server               On
-    HTTP_Listen               0.0.0.0
+    HTTP_Listen               {{ ceph_fluentbit_http_listen }}
     HTTP_Port                 {{ ceph_fluentbit_http_port }}
     storage.path              /var/lib/fluent-bit/storage
     storage.backlog.mem_limit 64M
@@ -49,6 +49,8 @@
     Json_date_format         iso8601
     Json_date_key            date
     compress                 zstd
-    # Retry forever: an overlay flap should queue, not lose.
+    # Retry forever, so no chunk is discarded for exhausting retries: an overlay
+    # flap queues to disk. The queue is still bounded -- at total_limit_size the
+    # oldest chunks are dropped to make room for new ones.
     Retry_Limit              False
     storage.total_limit_size {{ ceph_fluentbit_buffer_limit }}
