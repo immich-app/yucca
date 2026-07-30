@@ -49,6 +49,7 @@ func NewRootCmd() *cobra.Command {
 		newCephCmd(),
 		newInfraCmd(),
 		newUsersCmd(),
+		newConfigCmd(),
 		newToolsCmd(),
 	)
 	return root
