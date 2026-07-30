@@ -34,18 +34,18 @@ ceph_fluentbit_stream_fields: "HOSTNAME,SYSLOG_IDENTIFIER"
 ceph_fluentbit_drop_regex: '(pgmap v[0-9]+|_set_new_cache_sizes)'
 
 # Disk queue for the o11y output. Retries never give up, but the queue is
-# bounded: once it is full Fluent Bit drops its OLDEST chunks to make room. So
-# this sizes the o11y/overlay outage a node rides out before the earliest logs
-# are lost, not a guarantee that none are.
+# bounded: when it fills, Fluent Bit drops its oldest chunks to make room.
+# This sizes how long a node rides out an o11y or overlay outage. It does not
+# guarantee that nothing is lost.
 ceph_fluentbit_buffer_limit: 512M
 
 # Fluent Bit's own metrics. The security role opens this port from the trusted
 # networks alongside the other exporters, so it is reachable once harden.yml has
 # converged. Only the vmagent scrape job itself is still a follow-up.
 ceph_fluentbit_http_port: 2020
-# Bind the fabric VLAN-120 address, not 0.0.0.0: the 1G WAN is excluded by not
-# listening on it at all, not by the nftables drop policy, and the fabric is where
-# vmagent scrapes. Tradeoff: NetBird peers cannot reach the endpoint directly.
+# Bind the fabric VLAN-120 address, not 0.0.0.0. Do not listen on the 1G WAN at
+# all: the bind is the control here, not the nftables drop policy. The fabric is
+# where vmagent scrapes. Tradeoff: NetBird peers cannot reach the endpoint.
 ceph_fluentbit_http_listen: "{{ ceph_public_ip }}"
 # How long the ExecStartPre drop-in waits for that address at boot. LACP and
 # MLAG convergence on the 25G bond is seconds; this is slack, not a real budget.

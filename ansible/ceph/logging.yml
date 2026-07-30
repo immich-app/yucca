@@ -16,11 +16,12 @@
   hosts: ceph_nodes
   become: true
   serial: "{{ fluentbit_serial | default('25%') }}"
-  # No blast-radius control here (unlike baseline.yml): a node that will not ship
-  # logs cannot degrade the cluster, so isolated failures ride along and the rest
-  # of the fleet still converges. Evaluated per batch, so at the 25% default (12
-  # nodes on spice) this rides out 2 failures and halts at 3 - one dead node is a
-  # node problem, a third of a batch is the gateway, the policy, or the package.
+  # No blast-radius control here, unlike baseline.yml: a node that will not ship
+  # logs cannot degrade the cluster. Isolated failures ride along and the rest of
+  # the fleet still converges.
+  # Ansible evaluates this per batch. At the 25% default, 12 nodes on spice, it
+  # rides out 2 failures and halts at 3. One dead node is a node problem. A third
+  # of a batch is the gateway, the policy, or the package.
   # A wholly failed batch halts regardless, and failed hosts still fail the run.
   max_fail_percentage: 20
   tasks:

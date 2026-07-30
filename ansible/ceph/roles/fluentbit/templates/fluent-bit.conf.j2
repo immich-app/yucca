@@ -52,8 +52,8 @@
     Json_date_format         iso8601
     Json_date_key            date
     compress                 zstd
-    # Retry forever, so no chunk is discarded for exhausting retries: an overlay
-    # flap queues to disk. The queue is still bounded -- at total_limit_size the
-    # oldest chunks are dropped to make room for new ones.
+    # Retry forever, so Fluent Bit never discards a chunk for running out of
+    # retries: an overlay flap queues to disk. The queue is still bounded. At
+    # total_limit_size Fluent Bit drops its oldest chunks to make room.
     Retry_Limit              False
     storage.total_limit_size {{ ceph_fluentbit_buffer_limit }}

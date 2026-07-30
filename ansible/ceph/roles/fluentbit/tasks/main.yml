@@ -10,10 +10,10 @@
   failed_when: "'Management: Connected' not in ceph_fluentbit_nb.stdout"
 
 - name: Assert the o11y gateway name resolves
-  # Served by o11y's mesh DNS zone, distributed to the ceph group. Without it
-  # fluent-bit starts and silently fails to ship, so check before we get there.
-  # Kept beside the overlay assert so both preconditions fail before we mutate
-  # apt state on the node.
+  # o11y's mesh DNS zone serves this name to the ceph group. Without it
+  # fluent-bit starts and silently ships nothing, so check before we get there.
+  # This sits beside the overlay assert so both preconditions fail before the
+  # role mutates apt state on the node.
   ansible.builtin.command: getent hosts {{ ceph_fluentbit_o11y_host }}
   register: ceph_fluentbit_dns
   changed_when: false
