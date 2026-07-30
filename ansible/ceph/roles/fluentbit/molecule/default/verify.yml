@@ -1,0 +1,179 @@
+---
+# Verify fluent-bit.conf.j2 renders the pipeline o11y depends on: journald in,
+# noise dropped, cluster/site/env stamped on, jsonline out over TLS.
+#
+# The load-bearing check is the grep filter's Exclude regex. It is tested as
+# behaviour -- matched against real journal lines -- not as a string compare,
+# because what matters is which lines it eats. Rewording the regex stays green;
+# widening it until it swallows cluster health lines does not.
+
+- name: Verify fluentbit template rendering
+  hosts: all
+  gather_facts: false
+
+  # Load the role defaults so the shipped drop regex, labels, endpoint and
+  # stream fields are the values under test. vars_files outranks inventory
+  # vars, so the host-supplied bind address is applied below via set_fact
+  # (which outranks vars_files).
+  vars_files:
+    - ../../defaults/main.yml
+
+  vars:
+    cluster_name: spice
+
+    # Journal lines the filter must drop: mon/mgr status chatter, ~2.4M
+    # lines/hour fleet-wide, the reason the filter exists.
+    fluentbit_noise_pgmap: >-
+      pgmap v60974: 12289 pgs: 12289 active+clean; 41 TiB data, 62 TiB used
+    fluentbit_noise_cache: >-
+      bluestore(/var/lib/ceph/osd/ceph-155) _set_new_cache_sizes cache_size
+      1020054731 meta 0.45 kv 0.45 data 0.10
+
+    # The line the filter must never drop. Eating this blinds o11y to
+    # HEALTH_ERR while the dashboards stay green.
+    fluentbit_health_err: >-
+      mon.spice-ceph-01@0(leader).log v18446 log_channel(cluster) log [ERR] :
+      overall HEALTH_ERR 1 osds down
+
+  tasks:
+    - name: Bind the metrics endpoint to the fabric address
+      # Host-supplied in prod (inventory/group_vars), not a role default:
+      # 0.0.0.0 would put fluent-bit's metrics endpoint on the WAN NIC.
+      ansible.builtin.set_fact:
+        ceph_fluentbit_http_listen: "{{ bond_ip }}"
+
+    - name: Render fluent-bit.conf.j2
+      ansible.builtin.template:
+        src: "../../templates/fluent-bit.conf.j2"
+        dest: /tmp/molecule-fluent-bit.conf
+        mode: '0644'
+
+    - name: Verify the systemd input reads from the tail with a persistent cursor
+      # Read_From_Tail keeps first start from backfilling ~1.9G of journal into
+      # o11y; the DB keeps a reboot from re-reading it; filesystem storage is
+      # what lets the buffer outlive a restart.
+      ansible.builtin.command: grep -cE '{{ item }}' /tmp/molecule-fluent-bit.conf
+      register: input_check
+      failed_when: input_check.stdout | int < 1
+      changed_when: false
+      loop:
+        - '^[[:space:]]*Name[[:space:]]+systemd$'
+        - '^[[:space:]]*Strip_Underscores[[:space:]]+On$'
+        - '^[[:space:]]*Read_From_Tail[[:space:]]+On$'
+        - '^[[:space:]]*storage\.type[[:space:]]+filesystem$'
+        - '^[[:space:]]*DB[[:space:]]+/var/lib/fluent-bit/'
+
+    - name: Verify the noise filter is a grep exclude on MESSAGE
+      ansible.builtin.command: grep -cE '{{ item }}' /tmp/molecule-fluent-bit.conf
+      register: filter_check
+      failed_when: filter_check.stdout | int < 1
+      changed_when: false
+      loop:
+        - '^[[:space:]]*Name[[:space:]]+grep$'
+        - '^[[:space:]]*Exclude[[:space:]]+MESSAGE[[:space:]]+[^[:space:]]'
+
+    - name: Read back the rendered config
+      ansible.builtin.slurp:
+        src: /tmp/molecule-fluent-bit.conf
+      register: fluentbit_rendered
+
+    - name: Extract the Exclude regex from the rendered config
+      # From the file, not from the variable: what fluent-bit loads is what
+      # gets tested, template mangling included.
+      ansible.builtin.set_fact:
+        fluentbit_exclude_regex: >-
+          {{ (fluentbit_rendered.content | b64decode
+              | regex_search('^[ \t]*Exclude[ \t]+MESSAGE[ \t]+(\S.*)$', '\1', multiline=True)
+              | first | default('')) | trim }}
+
+    - name: Assert the Exclude regex was found
+      ansible.builtin.assert:
+        that:
+          - fluentbit_exclude_regex | length > 0
+        fail_msg: "No 'Exclude MESSAGE <regex>' line in the rendered config"
+        success_msg: "Exclude regex: {{ fluentbit_exclude_regex }}"
+
+    - name: Assert the Exclude regex drops the mon/mgr status chatter
+      ansible.builtin.assert:
+        that:
+          - fluentbit_noise_pgmap is search(fluentbit_exclude_regex)
+          - fluentbit_noise_cache is search(fluentbit_exclude_regex)
+        fail_msg: >-
+          Exclude regex {{ fluentbit_exclude_regex }} no longer drops pgmap /
+          _set_new_cache_sizes lines. o11y takes the full 2.4M lines/hour.
+        success_msg: "Exclude regex drops pgmap and _set_new_cache_sizes lines"
+
+    - name: Assert the Exclude regex never drops a cluster health line
+      # The failure mode we most fear: HEALTH_ERR filtered out at the node, so
+      # o11y stays quiet while the cluster is degraded.
+      ansible.builtin.assert:
+        that:
+          - fluentbit_health_err is not search(fluentbit_exclude_regex)
+        fail_msg: >-
+          Exclude regex {{ fluentbit_exclude_regex }} matches a
+          log_channel(cluster) [ERR] line. Health logs would be dropped at the
+          node and never reach o11y.
+        success_msg: "Exclude regex leaves log_channel(cluster) health lines alone"
+
+    - name: Verify the record_modifier stamps cluster, site and env
+      # Joins logs to the vmagent external_labels; without them a line cannot
+      # be traced back to a cluster.
+      ansible.builtin.command: grep -cE '{{ item }}' /tmp/molecule-fluent-bit.conf
+      register: record_check
+      failed_when: record_check.stdout | int < 1
+      changed_when: false
+      loop:
+        - '^[[:space:]]*Name[[:space:]]+record_modifier$'
+        - '^[[:space:]]*Record[[:space:]]+cluster[[:space:]]+{{ cluster_name }}$'
+        - '^[[:space:]]*Record[[:space:]]+site[[:space:]]+[^[:space:]]+$'
+        - '^[[:space:]]*Record[[:space:]]+env[[:space:]]+[^[:space:]]+$'
+
+    - name: Verify the output ships to o11y over verified TLS
+      ansible.builtin.command: grep -cE '{{ item }}' /tmp/molecule-fluent-bit.conf
+      register: output_check
+      failed_when: output_check.stdout | int < 1
+      changed_when: false
+      loop:
+        - '^[[:space:]]*Name[[:space:]]+http$'
+        - '^[[:space:]]*TLS[[:space:]]+On$'
+        - '^[[:space:]]*TLS\.Verify[[:space:]]+On$'
+        - '^[[:space:]]*compress[[:space:]]+zstd$'
+        - '^[[:space:]]*Format[[:space:]]+json_lines$'
+
+    - name: Verify the URI carries the VictoriaLogs field mapping
+      # /insert/journald is not routed by the mesh vmauth, and VictoriaLogs
+      # needs the field mapping on the query string: wrong mapping means the
+      # lines land untimed, unlabelled or not at all.
+      ansible.builtin.command: grep -cF -- '{{ item }}' /tmp/molecule-fluent-bit.conf
+      register: uri_check
+      failed_when: uri_check.stdout | int < 1
+      changed_when: false
+      loop:
+        - '/insert/jsonline'
+        - '_msg_field=MESSAGE'
+        - '_time_field=date'
+        - '_stream_fields=HOSTNAME,SYSLOG_IDENTIFIER'
+
+    - name: Verify the metrics endpoint is NOT bound to 0.0.0.0
+      ansible.builtin.command: grep -cE '^[[:space:]]*HTTP_Listen[[:space:]]+0\.0\.0\.0[[:space:]]*$' /tmp/molecule-fluent-bit.conf
+      register: listen_any_check
+      failed_when: listen_any_check.stdout | int != 0
+      changed_when: false
+
+    - name: Verify the metrics endpoint binds the fabric address
+      ansible.builtin.command: grep -cE '^[[:space:]]*HTTP_Listen[[:space:]]+{{ bond_ip | regex_escape }}[[:space:]]*$' /tmp/molecule-fluent-bit.conf
+      register: listen_fabric_check
+      failed_when: listen_fabric_check.stdout | int < 1
+      changed_when: false
+
+    - name: Re-render fluent-bit.conf.j2 to assert idempotence
+      ansible.builtin.template:
+        src: "../../templates/fluent-bit.conf.j2"
+        dest: /tmp/molecule-fluent-bit.conf
+        mode: '0644'
+      register: rerender
+      failed_when: rerender is changed
+
+    - name: Report success
+      ansible.builtin.debug:
+        msg: "fluentbit template validated successfully"
