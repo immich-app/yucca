@@ -9,6 +9,16 @@
   changed_when: false
   failed_when: "'Management: Connected' not in ceph_fluentbit_nb.stdout"
 
+- name: Assert the o11y gateway name resolves
+  # Served by o11y's mesh DNS zone, distributed to the ceph group. Without it
+  # fluent-bit starts and silently fails to ship, so check before we get there.
+  # Kept beside the overlay assert so both preconditions fail before we mutate
+  # apt state on the node.
+  ansible.builtin.command: getent hosts {{ ceph_fluentbit_o11y_host }}
+  register: ceph_fluentbit_dns
+  changed_when: false
+  failed_when: ceph_fluentbit_dns.rc != 0
+
 - name: Ensure keyrings directory exists
   ansible.builtin.file:
     path: /etc/apt/keyrings
@@ -59,14 +69,6 @@
     name: fluent-bit
     selection: hold
 
-- name: Assert the o11y gateway name resolves
-  # Served by o11y's mesh DNS zone, distributed to the ceph group. Without it
-  # fluent-bit starts and silently fails to ship, so check before we get there.
-  ansible.builtin.command: getent hosts {{ ceph_fluentbit_o11y_host }}
-  register: ceph_fluentbit_dns
-  changed_when: false
-  failed_when: ceph_fluentbit_dns.rc != 0
-
 - name: Create the buffer + cursor directory
   ansible.builtin.file:
     path: /var/lib/fluent-bit/storage
@@ -97,7 +99,7 @@
 
 - name: Verify fluent-bit is up (its own metrics endpoint responds)
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ ceph_fluentbit_http_port }}/api/v1/metrics/prometheus"
+    url: "http://{{ ceph_fluentbit_http_listen }}:{{ ceph_fluentbit_http_port }}/api/v1/metrics/prometheus"
     return_content: false
   register: ceph_fluentbit_health
   retries: 6
