@@ -46,6 +46,7 @@ func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	store := s.store(r.Context())
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
@@ -89,7 +90,7 @@ func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		go func(prefix string) {
 			defer wg.Done()
-			if err := s.Storage.ListObjects(ctx, a.Repository, prefix, emit); err != nil {
+			if err := store.ListObjects(ctx, a.Repository, prefix, emit); err != nil {
 				errOnce.Do(func() {
 					listErr = err
 					cancel()
@@ -133,9 +134,9 @@ func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
 	key := blobType + "/" + name
-	size, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
+	size, err := s.store(r.Context()).HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
-		writeError(w, r,http.StatusNotFound, "Not Found")
+		writeError(w, r, http.StatusNotFound, "Not Found")
 		return
 	}
 
@@ -150,13 +151,13 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	key := blobType + "/" + name
 	rangeHeader := r.Header.Get("Range")
-	obj, err := s.Storage.GetObject(r.Context(), a.Repository, key, rangeHeader)
+	obj, err := s.store(r.Context()).GetObject(r.Context(), a.Repository, key, rangeHeader)
 	if err != nil {
 		hlog.FromRequest(r).Error().Err(err).Str("repository", a.Repository).Str("key", key).Msg("get blob failed: backend storage error")
 		if s.Metrics != nil {
 			s.Metrics.StorageErrors.Add(r.Context(), 1, metrics.StorageErrorOption("get", metrics.BlobType(r)))
 		}
-		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
+		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
@@ -169,21 +170,21 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	blobType := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
 	key := blobType + "/" + name
-	err := s.Storage.PutObject(r.Context(), a.Repository, key, r.Body, r.ContentLength, true, name)
+	err := s.store(r.Context()).PutObject(r.Context(), a.Repository, key, r.Body, r.ContentLength, true, name)
 	if err != nil {
 		if errors.Is(err, storage.ErrPreconditionFailed) {
-			writeError(w, r,http.StatusForbidden, "Blob already exists")
+			writeError(w, r, http.StatusForbidden, "Blob already exists")
 			return
 		}
 		if errors.Is(err, storage.ErrChecksumMismatch) {
-			writeError(w, r,http.StatusBadRequest, "Content hash does not match blob name")
+			writeError(w, r, http.StatusBadRequest, "Content hash does not match blob name")
 			return
 		}
 		hlog.FromRequest(r).Error().Err(err).Str("repository", a.Repository).Str("key", key).Msg("save blob failed: backend storage error")
 		if s.Metrics != nil {
 			s.Metrics.StorageErrors.Add(r.Context(), 1, metrics.StorageErrorOption("put", metrics.BlobType(r)))
 		}
-		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
+		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
@@ -201,12 +202,12 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 
 	if a.WriteOnce && blobType != "locks" {
-		writeError(w, r,http.StatusForbidden, "Not permitted to write to WORM repository")
+		writeError(w, r, http.StatusForbidden, "Not permitted to write to WORM repository")
 		return
 	}
 
 	key := blobType + "/" + name
-	size, err := s.Storage.HeadObject(r.Context(), a.Repository, key)
+	size, err := s.store(r.Context()).HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
 		// Idempotent delete: restic removes blobs it isn't sure were uploaded
 		// (e.g. cleanup after a failed save) — an already-absent blob is success.
@@ -215,13 +216,13 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hlog.FromRequest(r).Error().Err(err).Msg("head blob for delete failed")
-		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
+		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 
-	if err := s.Storage.DeleteObject(r.Context(), a.Repository, key); err != nil {
+	if err := s.store(r.Context()).DeleteObject(r.Context(), a.Repository, key); err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("delete blob failed")
-		writeError(w, r,http.StatusInternalServerError, "An error occurred with the storage server")
+		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
 		return
 	}
 

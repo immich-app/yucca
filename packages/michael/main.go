@@ -85,15 +85,19 @@ func main() {
 		log.Info().Str("endpoint", cfg.OTLPMetricsEndpoint).Msg("OpenTelemetry metrics enabled")
 	}
 
-	store, pool := buildStorage(cfg, tm)
+	stores, pools := buildClusters(cfg, tm)
 
-	if pool != nil && meterProvider != nil {
-		if err := metrics.RegisterBackendMetrics(meter, pool); err != nil {
+	if len(pools) > 0 && meterProvider != nil {
+		providers := make(map[string]metrics.BackendStatsProvider, len(pools))
+		for code, p := range pools {
+			providers[code] = p
+		}
+		if err := metrics.RegisterBackendMetrics(meter, providers); err != nil {
 			log.Fatal().Err(err).Msg("failed to register backend metrics")
 		}
 	}
 
-	srv := handlers.NewServer(store, cfg.JWTPublicKey, m)
+	srv := handlers.NewClusterServer(stores, cfg.S3DefaultCluster, cfg.JWTPublicKey, m)
 
 	httpSrv := &http.Server{
 		Addr:    addr,
@@ -104,8 +108,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Drive the backend pool's reconcile/probe loop until shutdown.
-	if pool != nil {
+	// Drive each backend pool's reconcile/probe loop until shutdown.
+	for _, pool := range pools {
 		go pool.Run(ctx)
 	}
 
@@ -141,45 +145,64 @@ func main() {
 	log.Info().Msg("shutdown complete")
 }
 
-// buildStorage returns the Storage handed to the server. With no backend source
+// buildClusters builds one Storage per storage cluster michael fronts, keyed by
+// cluster code, plus the subset of those that are load-balancing pools (returned
+// concretely so the caller can register their metrics and run their reconcile
+// loops). A single-cluster deployment yields exactly one entry, under
+// cfg.S3DefaultCluster.
+func buildClusters(cfg config.Config, tm *metrics.TransportMetrics) (map[string]storage.Storage, map[string]*storage.Pool) {
+	stores := make(map[string]storage.Storage, len(cfg.Clusters))
+	pools := make(map[string]*storage.Pool)
+	for _, cc := range cfg.Clusters {
+		store, pool := buildStorage(cc, tm)
+		stores[cc.Code] = store
+		if pool != nil {
+			pools[cc.Code] = pool
+		}
+	}
+	log.Info().Int("clusters", len(stores)).Str("default", cfg.S3DefaultCluster).Msg("storage clusters ready")
+	return stores, pools
+}
+
+// buildStorage returns the Storage for one cluster. With no backend source
 // configured it is a single S3 client (legacy behavior) and pool is nil. With
 // source=file or source=dns it is a load-balancing Pool, also returned
 // concretely so the caller can register its metrics and run its reconcile loop.
-func buildStorage(cfg config.Config, tm *metrics.TransportMetrics) (storage.Storage, *storage.Pool) {
-	if cfg.S3BackendSource == "" {
-		return storage.NewS3StorageWithOptions(cfg, storage.S3Options{
-			Endpoint:      cfg.S3Endpoint,
-			TLSSkipVerify: cfg.S3TLSSkipVerify,
-			Wrap:          transportWrap(tm, cfg.S3Endpoint),
+func buildStorage(cc config.ClusterConfig, tm *metrics.TransportMetrics) (storage.Storage, *storage.Pool) {
+	if cc.S3BackendSource == "" {
+		return storage.NewS3StorageForCluster(cc, storage.S3Options{
+			Endpoint:      cc.S3Endpoint,
+			TLSSkipVerify: cc.S3TLSSkipVerify,
+			Wrap:          transportWrap(tm, cc.Code, cc.S3Endpoint),
 		}), nil
 	}
 
-	resolver := buildResolver(cfg)
-	factory := backendFactory(cfg, tm)
+	resolver := buildResolver(cc)
+	factory := backendFactory(cc, tm)
 	pool, err := storage.NewPool(storage.PoolConfig{
-		EjectThreshold:    cfg.S3EjectThreshold,
-		ProbeBucket:       cfg.S3ProbeBucket,
-		ReconcileInterval: cfg.S3ReconcileInterval,
-	}, factory, resolver, log.Logger)
+		EjectThreshold:    cc.S3EjectThreshold,
+		ProbeBucket:       cc.S3ProbeBucket,
+		ReconcileInterval: cc.S3ReconcileInterval,
+	}, factory, resolver, log.Logger.With().Str("cluster", cc.Code).Logger())
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to initialize S3 backend pool")
+		log.Fatal().Err(err).Str("cluster", cc.Code).Msg("failed to initialize S3 backend pool")
 	}
-	log.Info().Str("source", resolver.Describe()).Msg("S3 load-balancing pool enabled")
+	log.Info().Str("cluster", cc.Code).Str("source", resolver.Describe()).Msg("S3 load-balancing pool enabled")
 	return pool, pool
 }
 
 // backendFactory builds the per-backend Storage constructor for the pool. In
 // pin-host mode each resolved backend is a gateway IP that michael dials
-// directly while still signing/Host-ing with cfg.S3Endpoint (replacing the
+// directly while still signing/Host-ing with the cluster endpoint (replacing the
 // HAProxy hop); otherwise the resolved endpoint is used as the S3 endpoint
 // as-is.
-func backendFactory(cfg config.Config, tm *metrics.TransportMetrics) storage.BackendFactory {
-	if !cfg.S3BackendPinHost {
+func backendFactory(cc config.ClusterConfig, tm *metrics.TransportMetrics) storage.BackendFactory {
+	if !cc.S3BackendPinHost {
 		return func(endpoint string) (storage.Storage, error) {
-			return storage.NewS3StorageWithOptions(cfg, storage.S3Options{
+			return storage.NewS3StorageForCluster(cc, storage.S3Options{
 				Endpoint:      endpoint,
-				TLSSkipVerify: cfg.S3TLSSkipVerify,
-				Wrap:          transportWrap(tm, endpoint),
+				TLSSkipVerify: cc.S3TLSSkipVerify,
+				Wrap:          transportWrap(tm, cc.Code, endpoint),
 			}), nil
 		}
 	}
@@ -196,35 +219,35 @@ func backendFactory(cfg config.Config, tm *metrics.TransportMetrics) storage.Bac
 			}
 			dial = net.JoinHostPort(u.Hostname(), port)
 		}
-		return storage.NewS3StorageWithOptions(cfg, storage.S3Options{
-			Endpoint:      cfg.S3Endpoint,
+		return storage.NewS3StorageForCluster(cc, storage.S3Options{
+			Endpoint:      cc.S3Endpoint,
 			DialAddr:      dial,
-			TLSSkipVerify: cfg.S3TLSSkipVerify,
-			Wrap:          transportWrap(tm, dial),
+			TLSSkipVerify: cc.S3TLSSkipVerify,
+			Wrap:          transportWrap(tm, cc.Code, dial),
 		}), nil
 	}
 }
 
 // transportWrap returns the metrics wrapper for one backend's transport, or
 // nil when metrics are disabled.
-func transportWrap(tm *metrics.TransportMetrics, backend string) func(http.RoundTripper) http.RoundTripper {
+func transportWrap(tm *metrics.TransportMetrics, cluster, backend string) func(http.RoundTripper) http.RoundTripper {
 	if tm == nil {
 		return nil
 	}
 	return func(rt http.RoundTripper) http.RoundTripper {
-		return tm.Wrap(backend, rt)
+		return tm.Wrap(cluster, backend, rt)
 	}
 }
 
-func buildResolver(cfg config.Config) storage.Resolver {
-	switch cfg.S3BackendSource {
+func buildResolver(cc config.ClusterConfig) storage.Resolver {
+	switch cc.S3BackendSource {
 	case "file":
-		return storage.NewFileResolver(cfg.S3BackendFile)
+		return storage.NewFileResolver(cc.S3BackendFile)
 	case "dns":
-		return storage.NewDNSResolver(cfg.S3BackendDNSHost, cfg.S3BackendScheme, cfg.S3BackendPort)
+		return storage.NewDNSResolver(cc.S3BackendDNSHost, cc.S3BackendScheme, cc.S3BackendPort)
 	default:
 		// LoadConfig already validated the source, so this is unreachable.
-		log.Fatal().Str("source", cfg.S3BackendSource).Msg("unknown backend source")
+		log.Fatal().Str("cluster", cc.Code).Str("source", cc.S3BackendSource).Msg("unknown backend source")
 		return nil
 	}
 }

@@ -23,6 +23,17 @@ ports:
 service:
   type: ClusterIP
 
+# Michael reads the same topology as the API. Every declared storage cluster
+# is therefore routable before the API can mint a token for it.
+volumes:
+  - name: topology
+    configMap:
+      name: yucca-topology
+volumeMounts:
+  - name: topology
+    mountPath: /etc/yucca
+    readOnly: true
+
 # OPT-IN dev verification key — the public half of the project's well-known
 # local-dev keypair (see charts/yucca-api/values.yaml + .mise/tasks/*/env).
 # Renders into the Secret ONLY when useDevKeypair is true (dev/local overlay).
@@ -45,6 +56,16 @@ env:
   # repository, so it needs a full RGW user (CephObjectStoreUser via
   # charts/ceph-objectuser), NOT a bucket-scoped ObjectBucketClaim. Rook writes
   # the user's keys into this namespace as rook-ceph-object-user-<store>-<user>.
+  # Must match the dev topology's cluster code (ConfigMap yucca-topology /
+  # topology.dev.json): yucca-api mints restic tokens with
+  # storageCluster=local-dev,
+  # and michael fails closed on cluster codes it does not front.
+  - name: S3_DEFAULT_CLUSTER
+    value: local-dev
+  - name: SITE_CODE
+    value: local
+  - name: S3_TOPOLOGY_FILE
+    value: /etc/yucca/topology.json
   - name: S3_ENDPOINT
     value: http://rook-ceph-rgw-yucca.rook-ceph.svc:80
   - name: S3_ACCESS_KEY_ID

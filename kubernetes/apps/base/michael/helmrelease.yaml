@@ -42,6 +42,15 @@ spec:
         value: "3010"
       - name: LOG_LEVEL
         value: info
+      # Must match the cluster's STORAGE_CLUSTER_CODE (topology ConfigMap):
+      # yucca-api mints restic tokens with a storageCluster claim, and michael
+      # fails closed on cluster codes it does not front.
+      - name: S3_DEFAULT_CLUSTER
+        value: ${STORAGE_CLUSTER_CODE}
+      - name: SITE_CODE
+        value: ${SITE_CODE}
+      - name: S3_TOPOLOGY_FILE
+        value: /etc/yucca/topology.json
       - name: S3_ENDPOINT
         value: ${S3_ENDPOINT}
       - name: S3_REGION
