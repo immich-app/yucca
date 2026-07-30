@@ -23,9 +23,17 @@ ceph_fluentbit_cluster_label: "{{ cluster_name }}"
 ceph_fluentbit_site_label: htz-fsn1
 ceph_fluentbit_env_label: prod
 
-# Strip_Underscores is on, so _HOSTNAME/_SYSTEMD_UNIT arrive without the leading
-# underscore VictoriaLogs reserves for _msg/_time/_stream. SYSLOG_IDENTIFIER is
-# the ceph daemon type: ceph-mon, ceph-mgr, ceph-osd, radosgw.
+# Field names these must match, confirmed against fluent-bit v5.0.9 source
+# (plugins/in_systemd/systemd.c). Strip_Underscores drops exactly one leading
+# underscore, and only when the key starts with one (:408), so journald's
+# _HOSTNAME arrives as HOSTNAME while MESSAGE and SYSLOG_IDENTIFIER are already
+# underscore-free and pass through unchanged. That matters because VictoriaLogs
+# reserves _-prefixed names for _msg/_time/_stream.
+# The plugin's `lowercase` option defaults to false (:757) and the role does not
+# set it. If a future version flips that default, every field here arrives
+# lowercased, these stream fields match nothing, and logs still ship with no
+# stream identity - so re-check it on a version bump.
+# SYSLOG_IDENTIFIER is the ceph daemon type: ceph-mon, ceph-mgr, ceph-osd, radosgw.
 ceph_fluentbit_stream_fields: "HOSTNAME,SYSLOG_IDENTIFIER"
 
 # The fleet emits ~2.4M lines/hour, nearly all mon/mgr status chatter (all 15
