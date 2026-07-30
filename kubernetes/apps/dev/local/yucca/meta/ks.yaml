@@ -2,14 +2,14 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: yucca-admin-api
+  name: yucca-meta
   namespace: flux-system
 spec:
   targetNamespace: yucca
   commonMetadata:
     labels:
-      app.kubernetes.io/name: yucca-admin-api
-  path: ./kubernetes/apps/dev/local/yucca/yucca-admin-api/app
+      app.kubernetes.io/name: yucca-meta
+  path: ./kubernetes/apps/dev/local/yucca/meta/app
   prune: true
   wait: true
   interval: 1h
@@ -18,8 +18,3 @@ spec:
   sourceRef:
     kind: GitRepository
     name: yucca
-  dependsOn:
-    - name: yucca-database
-    - name: yucca-mock-oidc
-    # ConfigMap mounted at /etc/yucca and parsed at boot.
-    - name: yucca-topology

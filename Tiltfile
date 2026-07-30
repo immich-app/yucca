@@ -73,6 +73,17 @@ if DEV_ENV:
     k8s_resource(objects=['yucca-dev-env:secret'], new_name='dev-env', labels=['helm'])
 
 # ---------------------------------------------------------------------------
+# Fleet topology. The real clusters get this ConfigMap from Flux with the
+# per-cluster values substituted in (kubernetes/apps/base/topology); Tilt
+# deploys only HelmReleases, so the dev copy — the same file the dev-mirror
+# Flux tree applies — is applied here by hand. yucca-api, yucca-admin-api and
+# yucca-metrics-worker mount it and parse it at boot, so it has to exist before
+# they start (see their APP_WIRING deps below).
+# ---------------------------------------------------------------------------
+k8s_yaml('kubernetes/apps/dev/local/yucca/topology/app/configmap.yaml')
+k8s_resource(objects=['yucca-topology:configmap'], new_name='yucca-topology', labels=['app'])
+
+# ---------------------------------------------------------------------------
 # Images. Built locally and injected into each app's Helm release via image_keys
 # (image.repository/image.tag). Edits are live-synced into the running pods.
 # ---------------------------------------------------------------------------
@@ -228,12 +239,13 @@ docker_build(
 # ---------------------------------------------------------------------------
 local_resource(
     'helm-deps',
-    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/michael/charts charts/dev/mock-oidc/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/michael charts/dev/mock-oidc; do (cd $d && helm dependency build); done',
+    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/dev/mock-oidc/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/meta charts/apps/michael charts/dev/mock-oidc; do (cd $d && helm dependency build); done',
     deps=[
         'charts/apps/yucca-api',
         'charts/apps/yucca-admin-api',
         'charts/apps/yucca-metrics-worker',
         'charts/apps/web',
+        'charts/apps/meta',
         'charts/apps/michael',
         'charts/dev/mock-oidc',
         'charts/lib/yucca-common',
@@ -260,10 +272,14 @@ APP_WIRING = {
     # dev_env: receives the .env override Secret (see load_dev_env above).
     # dev_keypair: render the well-known dev JWT fixture into the chart Secret
     # (the chart default is useDevKeypair=false so real overlays fail loudly).
-    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael'], 'dev_env': True, 'dev_keypair': True},
-    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc'], 'dev_keypair': True},
-    'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user'], 'dev_env': True},
+    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
+    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_keypair': True},
+    'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user', 'yucca-topology'], 'dev_env': True},
     'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
+    # Stock upstream nginx serving the .well-known pointer — nothing to build,
+    # nothing to wait for (it's a static file, deliberately independent of the
+    # API whose URL it advertises).
+    'yucca-meta':             {'build': None,                 'deps': []},
     'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user'], 'dev_keypair': True},
     'yucca-mock-oidc':        {'build': 'mock-oidc-provider', 'deps': []},
     'yucca-database':         {'build': None,                 'deps': ['cloudnative-pg']},
@@ -456,19 +472,21 @@ local_resource(
 kubectl port-forward -n yucca svc/yucca-api 3020:3020 &
 kubectl port-forward -n yucca svc/yucca-admin-api 3030:3030 &
 kubectl port-forward -n yucca svc/yucca-web 5173:5173 &
+kubectl port-forward -n yucca svc/yucca-meta 8081:8080 &
 kubectl port-forward -n yucca svc/yucca-michael 3010:3010 &
 kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 &
 kubectl port-forward -n rook-ceph svc/rook-ceph-rgw-yucca 9000:80 &
 kubectl port-forward -n yucca svc/victoria-metrics 8428:8428 &
 kubectl port-forward -n yucca svc/victoria-logs 9428:9428 &
 wait''',
-    resource_deps=['yucca-api', 'yucca-web', 'yucca-michael', 'yucca-mock-oidc'],
+    resource_deps=['yucca-api', 'yucca-web', 'yucca-michael', 'yucca-mock-oidc', 'yucca-meta'],
     labels=['app'],
     links=[
         link('http://localhost:5173', 'web'),
         link('http://localhost:3020', 'yucca-api'),
         link('http://localhost:3030', 'yucca-admin-api'),
         link('http://localhost:3010', 'michael'),
+        link('http://localhost:8081/.well-known/yucca.json', 'meta (.well-known)'),
         link('http://localhost:8092', 'mock-oidc'),
         link('http://localhost:9000', 'ceph rgw (s3)'),
         link('http://localhost:8428', 'victoria-metrics'),
