@@ -91,6 +91,68 @@
       or (ceph_alertmanager_webhook_urls | default([]) | length) > 0
   changed_when: false
 
+# --- Step 2.55: Correct the alertmanager route tree ---
+#
+# Without this the webhook configured above is never reached. cephadm's shipped
+# alertmanager.yml.j2 gives the 'ceph-dashboard' child route no matchers, so it
+# matches every alert, and emits its `continue: true` only when an SNMP gateway
+# is configured. Alertmanager dispatches to the parent's receiver ONLY when no
+# child matched, so every alert terminates at 'ceph-dashboard' and 'default' --
+# where default_webhook_urls land -- never fires. Notifications report success
+# the whole time, so the failure is silent.
+#
+# cephadm renders service configs through a template that first checks the mon
+# config-key store (mgr/cephadm/<name minus .j2>), falling back to the packaged
+# one. Storing a corrected copy there is the supported override; see the header
+# of files/alertmanager.yml.j2 for the diff against upstream.
+#
+# Gated on a webhook actually being configured: a cluster with no receiver has
+# nothing to deliver and is left on the stock template.
+- name: Stage corrected alertmanager config template
+  ansible.builtin.copy:
+    src: alertmanager.yml.j2
+    dest: /etc/ceph/alertmanager.yml.j2
+    owner: root
+    group: root
+    mode: '0644'
+  register: alertmanager_template_file
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+
+# check-then-set: config-key set always "succeeds", so compare first or every
+# run reports changed and a real drift is invisible.
+- name: Read the stored alertmanager config template
+  ansible.builtin.command: >
+    ceph config-key get mgr/cephadm/services/alertmanager/alertmanager.yml
+  register: alertmanager_template_stored
+  changed_when: false
+  failed_when: false
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+
+- name: Store the corrected alertmanager config template
+  ansible.builtin.command: >
+    ceph config-key set mgr/cephadm/services/alertmanager/alertmanager.yml
+    -i /etc/ceph/alertmanager.yml.j2
+  register: alertmanager_template_set
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+    - (alertmanager_template_stored.stdout | default('')) !=
+      (lookup('ansible.builtin.file', role_path ~ '/files/alertmanager.yml.j2'))
+  changed_when: true
+
+# Only on a real change: cephadm re-renders the config at redeploy, so without
+# this the corrected template sits unused until some other event triggers one.
+- name: Redeploy alertmanager to pick up the corrected template
+  ansible.builtin.command: ceph orch redeploy alertmanager
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - alertmanager_template_set is changed
+  changed_when: true
+
 # --- Step 2.6: Pin the mgr dashboard + prometheus module bind to the fabric ---
 #
 # The dashboard (8443) and the prometheus mgr module (9283) run INSIDE the active
