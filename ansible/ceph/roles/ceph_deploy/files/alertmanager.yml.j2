@@ -1,0 +1,78 @@
+# LOCAL OVERRIDE of cephadm's alertmanager.yml.j2, stored in the mon config-key
+# store at mgr/cephadm/services/alertmanager/alertmanager.yml.
+#
+# WHY: upstream's route tree makes `default_webhook_urls` dead config. The
+# 'ceph-dashboard' child route carries NO matchers, so it matches every alert,
+# and its `continue: true` is emitted ONLY inside the `snmp_gateway_urls`
+# conditional. Alertmanager returns the parent node only when NO child matched,
+# so with no SNMP gateway every alert stops at 'ceph-dashboard' and the
+# 'default' receiver -- the one operator webhooks land in -- never fires.
+# Symptom: notifications succeed, nothing reaches the operator.
+#
+# FIX: give 'ceph-dashboard' an unconditional `continue: true` and add an
+# explicit sibling route to 'default'. Both then receive every alert. Note that
+# `continue: true` ALONE is not sufficient: the parent receiver is still skipped
+# once any child matches, which is why the sibling is required.
+#
+# Re-check on every Ceph upgrade -- this pins a copy of an upstream template.
+# Diff against the shipped one:
+#   podman exec <mgr> cat /usr/share/ceph/mgr/cephadm/templates/services/alertmanager/alertmanager.yml.j2
+# {{ cephadm_managed }}
+# See https://prometheus.io/docs/alerting/configuration/ for documentation.
+
+global:
+  resolve_timeout: 5m
+{% if not secure %}
+  http_config:
+    tls_config:
+{% if security_enabled %}
+      ca_file: root_cert.pem
+      cert_file: alertmanager.crt
+      key_file: alertmanager.key
+{% else %}
+      insecure_skip_verify: true
+{% endif %}
+{% endif %}
+
+route:
+  receiver: 'default'
+  routes:
+    - group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'ceph-dashboard'
+      continue: true
+    - group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'default'
+{% if snmp_gateway_urls %}
+      continue: true
+    - receiver: 'snmp-gateway'
+      repeat_interval: 1h
+      group_interval: 10s
+      group_by: ['alertname']
+      match_re:
+        oid: "(1.3.6.1.4.1.50495.).*"
+{% endif %}
+
+receivers:
+- name: 'default'
+  webhook_configs:
+{% for url in default_webhook_urls %}
+  - url: '{{ url }}'
+{% endfor %}
+- name: 'ceph-dashboard'
+  webhook_configs:
+{% for url in dashboard_urls %}
+  - url: '{{ url }}/api/prometheus_receiver'
+{% endfor %}
+{% if snmp_gateway_urls %}
+- name: 'snmp-gateway'
+  webhook_configs:
+{% for url in snmp_gateway_urls %}
+  - url: '{{ url }}'
+{% endfor %}
+{% endif %}
