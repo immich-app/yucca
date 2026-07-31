@@ -1,6 +1,6 @@
 export { default as BackendsList } from './components/backends/BackendsList.svelte';
 export { default as BackupsList } from './components/backups/BackupsList.svelte';
-export { default as ViewLogModal } from './components/backups/dialogs/ViewLogModal.svelte';
+export { default as ViewStatusModal } from './components/backups/dialogs/ViewStatusModal.svelte';
 export { default as Dashboard } from './components/dashboard/Dashboard.svelte';
 export { default as ImmichBackupsPage } from './components/integrations/immich/ImmichBackupsPage.svelte';
 export { default as ImmichManageBackup } from './components/integrations/immich/ImmichManageBackup.svelte';

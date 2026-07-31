@@ -1,9 +1,9 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
+  import StackListItem from "$lib/components/ui/StackListItem.svelte";
   import type { FilesystemListingResponseDto } from "$lib/fetch-client";
   import {
     Button,
-    HStack,
     IconButton,
     modalManager,
     Text,
@@ -58,26 +58,29 @@
 
   {#if paths.size > 0}
     {#each [...paths] as path (path)}
-      <HStack gap={2} class="px-4 py-3">
+      <StackListItem>
         <Text class="grow truncate" title={path}>{path}</Text>
-        <IconButton
-          icon={mdiClose}
-          aria-label="Remove"
-          size="tiny"
-          variant="ghost"
-          onclick={() => paths.delete(path)}
-        />
-      </HStack>
+
+        {#snippet trailing()}
+          <IconButton
+            icon={mdiClose}
+            aria-label="Remove"
+            size="tiny"
+            variant="ghost"
+            onclick={() => paths.delete(path)}
+          />
+        {/snippet}
+      </StackListItem>
     {/each}
   {:else if empty}
-    <HStack class="px-4 py-3">
+    <StackListItem>
       <Text color="secondary">{@render empty()}</Text>
-    </HStack>
+    </StackListItem>
   {/if}
 
-  <HStack class="px-4 py-2">
+  <StackListItem>
     <Button size="small" variant="ghost" onclick={openPicker}>
       {paths.size > 0 ? addLabel : manageLabel}
     </Button>
-  </HStack>
+  </StackListItem>
 </StackList>

@@ -44,29 +44,23 @@
 >
   <ModalBody>
     <StackList>
-      <StackListItem onclick={onFutoBackups}>
+      <StackListItem title="FUTO Backups" onclick={onFutoBackups}>
         {#snippet icon()}
-          <Icon icon={mdiShieldCheck} size="36px" />
+          <Icon icon={mdiShieldCheck} />
         {/snippet}
 
-        <Stack gap={0}>
-          <Text class="font-bold">FUTO Backups</Text>
-          <Text>Simple, hosted backups.</Text>
-        </Stack>
+        Simple, hosted backups.
 
         {#snippet trailing()}
           <Icon icon={mdiChevronRight} />
         {/snippet}
       </StackListItem>
-      <StackListItem onclick={onLocalBackups}>
+      <StackListItem title="Local Storage" onclick={onLocalBackups}>
         {#snippet icon()}
-          <Icon icon={mdiHarddisk} size="36px" />
+          <Icon icon={mdiHarddisk} />
         {/snippet}
 
-        <Stack gap={0}>
-          <Text class="font-bold">Local Storage</Text>
-          <Text>A folder on this computer.</Text>
-        </Stack>
+        A folder on this computer.
 
         {#snippet trailing()}
           <Icon icon={mdiChevronRight} />

@@ -5,9 +5,9 @@
   import { getRunActions } from "$lib/services/runHistory.service";
   import { Icon } from "@immich/ui";
   import {
-    mdiAlertCircleOutline,
-    mdiCheckCircleOutline,
-    mdiLoading,
+    mdiCloudCheckOutline,
+    mdiCloudOffOutline,
+    mdiCloudSyncOutline,
   } from "@mdi/js";
 
   type Props = {
@@ -16,30 +16,56 @@
 
   const { run }: Props = $props();
   const { ViewLog } = $derived(getRunActions(run));
+
+  const nouns = {
+    restore: { name: "restore", running: "Restore", done: "Restored" },
+    forget: { name: "prune", running: "Prune", done: "Pruned" },
+    backup: { name: "backup", running: "Backup", done: "Backed up" },
+  };
+
+  const noun = $derived(
+    run.type === "restore" || run.type === "forget"
+      ? nouns[run.type]
+      : nouns.backup,
+  );
+
+  const status = $derived.by(() => {
+    switch (run.status) {
+      case "failed": {
+        return {
+          title: `Failed ${noun.name}`,
+          color: "danger",
+          icon: mdiCloudOffOutline,
+        } as const;
+      }
+      case "incomplete": {
+        return {
+          title: `${noun.running} in progress`,
+          color: "primary",
+          icon: mdiCloudSyncOutline,
+        } as const;
+      }
+      default: {
+        return {
+          title: `Successful ${noun.name}`,
+          color: "success",
+          icon: mdiCloudCheckOutline,
+        } as const;
+      }
+    }
+  });
 </script>
 
-<StackListItem actions={[ViewLog]}>
+<StackListItem title={status.title} color={status.color} actions={[ViewLog]}>
   {#snippet icon()}
-    {#if run.status === "complete"}
-      <Icon icon={mdiCheckCircleOutline} class="text-success-500" />
-    {:else if run.status === "failed"}
-      <Icon icon={mdiAlertCircleOutline} class="text-danger-500" />
-    {:else}
-      <Icon icon={mdiLoading} class="animate-spin opacity-60" />
-    {/if}
+    <Icon icon={status.icon} />
   {/snippet}
 
   {#if run.status === "incomplete"}
-    {#if run.type === "restore"}Restoring{:else if run.type === "forget"}Pruning{:else}Backing
-      up{/if} &middot; started
-    <RelativeTime time={run.start} />
+    Started <RelativeTime time={run.start} />
   {:else if run.status === "failed"}
-    {#if run.type === "restore"}Restore{:else if run.type === "forget"}Prune{:else}Backup{/if}
-    failed
-    {#if run.end}<RelativeTime time={run.end} />{/if}
+    Attempted {#if run.end}<RelativeTime time={run.end} />{/if}
   {:else}
-    {#if run.type === "restore"}Restored{:else if run.type === "forget"}Pruned{:else}Backed
-      up{/if}
-    {#if run.end}<RelativeTime time={run.end} />{/if}
+    {noun.done} {#if run.end}<RelativeTime time={run.end} />{/if}
   {/if}
 </StackListItem>

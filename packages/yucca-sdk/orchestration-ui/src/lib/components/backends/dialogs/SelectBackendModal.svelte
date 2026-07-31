@@ -63,29 +63,31 @@
 
       <Suspense query={backends}>
         <StackList>
-          <StackListItem {disabled} onclick={onFutoBackups}>
+          <StackListItem
+            {disabled}
+            title="FUTO Backups"
+            onclick={onFutoBackups}
+          >
             {#snippet icon()}
-              <Icon icon={mdiShieldCheck} size="36px" />
+              <Icon icon={mdiShieldCheck} />
             {/snippet}
 
-            <Stack gap={0}>
-              <Text class="font-bold">FUTO Backups</Text>
-              <Text>Simple, hosted backups.</Text>
-            </Stack>
+            Simple, hosted backups.
 
             {#snippet trailing()}
               <Icon icon={mdiChevronRight} />
             {/snippet}
           </StackListItem>
-          <StackListItem {disabled} onclick={onLocalBackups}>
+          <StackListItem
+            {disabled}
+            title="Local Storage"
+            onclick={onLocalBackups}
+          >
             {#snippet icon()}
-              <Icon icon={mdiHarddisk} size="36px" />
+              <Icon icon={mdiHarddisk} />
             {/snippet}
 
-            <Stack gap={0}>
-              <Text class="font-bold">Local Storage</Text>
-              <Text>A folder on this computer.</Text>
-            </Stack>
+            A folder on this computer.
 
             {#snippet trailing()}
               <Icon icon={mdiChevronRight} />
@@ -96,18 +98,16 @@
             {#if backend.type === "local"}
               <StackListItem
                 {disabled}
+                title="Existing Local Storage"
                 onclick={() => {
                   onSelect(backend.id);
                 }}
               >
                 {#snippet icon()}
-                  <Icon icon={mdiHarddisk} size="36px" />
+                  <Icon icon={mdiHarddisk} />
                 {/snippet}
 
-                <Stack gap={0}>
-                  <Text class="font-bold">Existing Local Storage</Text>
-                  <Text>{backend.description}</Text>
-                </Stack>
+                {backend.description}
 
                 {#snippet trailing()}
                   <Icon icon={mdiChevronRight} />

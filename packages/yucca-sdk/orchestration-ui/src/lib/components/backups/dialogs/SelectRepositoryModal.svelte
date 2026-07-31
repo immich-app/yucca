@@ -59,22 +59,19 @@
           {@const accessible = repository.snapshots !== undefined}
 
           <StackListItem
+            title={repository.name}
+            color={accessible ? "primary" : "danger"}
             onclick={accessible ? () => onSelect(repository.id) : undefined}
           >
-            <Stack gap={0} class="grow min-w-0">
-              <Text>{repository.name}</Text>
-              <Text size="small" color={accessible ? "secondary" : "danger"}>
-                {#if !accessible}
-                  Can't access, is your recovery key correct?
-                {:else if repository.snapshots.length}
-                  Last backup: {new Date(
-                    repository.snapshots[0].time,
-                  ).toLocaleDateString()}
-                {:else}
-                  No backups yet
-                {/if}
-              </Text>
-            </Stack>
+            {#if !accessible}
+              Can't access, is your recovery key correct?
+            {:else if repository.snapshots.length}
+              Last backup: {new Date(
+                repository.snapshots[0].time,
+              ).toLocaleDateString()}
+            {:else}
+              No backups yet
+            {/if}
 
             {#snippet trailing()}
               {#if accessible}

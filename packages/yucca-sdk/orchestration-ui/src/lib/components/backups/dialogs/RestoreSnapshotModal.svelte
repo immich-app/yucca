@@ -16,7 +16,7 @@
     Text,
   } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
-  import ViewLogModal from "./ViewLogModal.svelte";
+  import ViewStatusModal from "./ViewStatusModal.svelte";
 
   type Props = {
     repository: string;
@@ -47,7 +47,7 @@
         onSuccess: ({ logId }) => {
           onClose();
 
-          modalManager.open(ViewLogModal, {
+          modalManager.open(ViewStatusModal, {
             logId,
           });
         },
