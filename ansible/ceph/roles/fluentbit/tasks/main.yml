@@ -53,10 +53,15 @@
   failed_when: false
 
 - name: Unhold fluent-bit only when the pinned version differs (keeps converge clean)
+  # rc != 0 means dpkg has never seen the package. That is every fresh node.
+  # dpkg_selections fails hard on an unknown package, and there is no hold to
+  # release before the first install, so skip it there.
   ansible.builtin.dpkg_selections:
     name: fluent-bit
     selection: install
-  when: (ceph_fluentbit_installed.stdout | default('')) != ceph_fluentbit_version
+  when:
+    - ceph_fluentbit_installed.rc == 0
+    - ceph_fluentbit_installed.stdout != ceph_fluentbit_version
 
 - name: Install Fluent Bit at the pinned version
   ansible.builtin.apt:
