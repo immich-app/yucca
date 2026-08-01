@@ -82,14 +82,27 @@
     - inventory_hostname in groups['ceph_bootstrap']
     - (ceph_bind_networks | default([]) | length) > 0
       or (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+  register: monitoring_spec_render
 
+# `ceph orch apply -i` exits 0 even when the mgr rejects the spec, so rc alone
+# proves nothing. cephadm parses every document in the file before it applies
+# any of them, so one rejected document discards the whole apply. The result is
+# a silent no-op that reads as a successful converge. Seen 2026-07-31: a
+# `networks:` key on the ceph-exporter document failed the apply while the play
+# reported ok, so an updated alertmanager webhook URL never reached the cluster.
 - name: Apply monitoring service spec
   ansible.builtin.command: ceph orch apply -i /etc/ceph/monitoring-spec.yaml
   when:
     - inventory_hostname in groups['ceph_bootstrap']
     - (ceph_bind_networks | default([]) | length) > 0
       or (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+  register: monitoring_spec_apply
   changed_when: false
+  failed_when:
+    - monitoring_spec_apply.rc != 0
+      or 'Error' in (monitoring_spec_apply.stderr | default(''))
+      or 'Invalid argument' in (monitoring_spec_apply.stderr | default(''))
+      or 'Error' in (monitoring_spec_apply.stdout | default(''))
 
 # --- Step 2.6: Pin the mgr dashboard + prometheus module bind to the fabric ---
 #
@@ -162,6 +175,182 @@
     - (ceph_bind_networks | default([]) | length) > 0
   register: mgr_module_bind
   changed_when: "'CHANGED' in (mgr_module_bind.stdout | default(''))"
+
+# --- Step 2.7: Monitoring config overrides (derived from the shipped template) ---
+#
+# cephadm renders every monitoring config from a Jinja template.
+# TemplateMgr.render() reads the mon config-key store at
+# mgr/cephadm/services/<path> before the packaged template (cephadm/template.py:
+# `store_name = name.rstrip('.j2')`). cephadm renders a stored value as Jinja
+# with the same context, so an override keeps the dynamic parts intact: service
+# discovery URLs, TLS branches, fsid.
+#
+# These overrides are derived, not pinned. The task reads the template that the
+# running mgr ships and injects a small block at an asserted anchor. It does not
+# commit a copy of the upstream file. A committed copy goes stale on every Ceph
+# upgrade and someone has to re-diff it by hand. Deriving picks up an upgraded
+# template on the next converge. The cost is a dependency on an anchor string,
+# so each injection asserts its anchor and fails the play rather than storing a
+# config built on a guess.
+#
+# Two overrides, independently gated. Each flag's default carries the why:
+# ceph_alertmanager_fix_route_tree, ceph_prometheus_drop_description_label.
+- name: Derive and store the cephadm monitoring config overrides
+  ansible.builtin.shell: |
+    set -o pipefail
+    python3 - <<'PYEOF'
+    import json, os, subprocess, sys, tempfile
+
+    TEMPLATE_DIR = "/usr/share/ceph/mgr/cephadm/templates/services"
+
+    # `config-key get` may not round-trip a trailing newline. Compare on a
+    # normalized form, or every converge reports a spurious change.
+    def norm(s):
+        return s.rstrip("\n")
+
+    # Each override: the cephadm template path, the anchor we inject after, the
+    # text to inject, and a sanity predicate over the upstream source. The
+    # predicate guards against a future Ceph release having already made the
+    # change, which would otherwise double up.
+    OVERRIDES = []
+
+    if {{ ceph_alertmanager_fix_route_tree | bool | ternary('True', 'False') }}:
+        OVERRIDES.append({
+            "service": "alertmanager",
+            "template": "alertmanager/alertmanager.yml.j2",
+            "key": "mgr/cephadm/services/alertmanager/alertmanager.yml",
+            "anchor": "      receiver: 'ceph-dashboard'\n",
+            "inject": (
+                "      continue: true\n"
+                "    - group_by: ['alertname']\n"
+                "      group_wait: 10s\n"
+                "      group_interval: 10s\n"
+                "      repeat_interval: 1h\n"
+                "      receiver: 'default'\n"
+            ),
+            # Upstream routes to 'default' exactly once (the parent receiver).
+            # A second occurrence means upstream already added the sibling.
+            "expect": lambda src: src.count("receiver: 'default'") == 1,
+            "expect_msg": ("upstream already routes to 'default' more than once; "
+                           "the route-tree bug may be fixed upstream"),
+        })
+
+    if {{ ceph_prometheus_drop_description_label | bool | ternary('True', 'False') }}:
+        OVERRIDES.append({
+            "service": "prometheus",
+            "template": "prometheus/prometheus.yml.j2",
+            "key": "mgr/cephadm/services/prometheus/prometheus.yml",
+            "anchor": "\nalerting:\n",
+            "inject": (
+                "  alert_relabel_configs:\n"
+                "    # yucca: ceph_pool_metadata carries a `description` label (the\n"
+                "    # EC profile) that shadows the same-named annotation in any\n"
+                "    # receiver that resolves by field name.\n"
+                "    - regex: 'description'\n"
+                "      action: labeldrop\n"
+            ),
+            "expect": lambda src: "alert_relabel_configs" not in src,
+            "expect_msg": "upstream already defines alert_relabel_configs; merge by hand",
+        })
+
+    if not OVERRIDES:
+        print("ok (no overrides enabled)")
+        raise SystemExit(0)
+
+    fsid = subprocess.check_output(["ceph", "fsid"]).decode().strip()
+    mgrs = json.loads(subprocess.check_output(
+        ["ceph", "orch", "ps", "--daemon-type", "mgr", "--format", "json"]))
+    active = [d for d in mgrs if d.get("is_active")] or mgrs
+    container = "ceph-%s-mgr-%s" % (fsid, active[0]["daemon_id"].replace(".", "-"))
+
+    changed = []
+    for o in OVERRIDES:
+        upstream = subprocess.check_output([
+            "podman", "exec", container, "cat",
+            "%s/%s" % (TEMPLATE_DIR, o["template"]),
+        ]).decode()
+
+        n = upstream.count(o["anchor"])
+        if n != 1:
+            sys.stderr.write(
+                "ERROR: %s: expected exactly 1 anchor in the shipped template, "
+                "found %d. Upstream layout changed; review before re-running.\n"
+                % (o["service"], n))
+            raise SystemExit(1)
+        if not o["expect"](upstream):
+            sys.stderr.write("ERROR: %s: %s\n" % (o["service"], o["expect_msg"]))
+            raise SystemExit(1)
+
+        desired = upstream.replace(o["anchor"], o["anchor"] + o["inject"], 1)
+        current = subprocess.run(
+            ["ceph", "config-key", "get", o["key"]],
+            capture_output=True).stdout.decode()
+
+        if norm(current) == norm(desired):
+            continue
+
+        # `ceph config-key set <key>` does not read stdin. Given no value
+        # argument it stores an empty value and exits 0. That silently deletes
+        # the override and drops cephadm back to the packaged template. Pass the
+        # value with `-i <file>`.
+        with tempfile.NamedTemporaryFile("w", suffix=".j2", delete=False) as fh:
+            fh.write(desired)
+            tmp = fh.name
+        try:
+            subprocess.run(["ceph", "config-key", "set", o["key"], "-i", tmp],
+                           check=True)
+        finally:
+            os.unlink(tmp)
+
+        # Read back. An override that silently failed to store is worse than no
+        # override: cephadm falls back to upstream and the repair disappears
+        # with the play still reporting success.
+        back = subprocess.run(
+            ["ceph", "config-key", "get", o["key"]],
+            capture_output=True).stdout.decode()
+        if norm(back) != norm(desired):
+            sys.stderr.write(
+                "ERROR: %s: stored %d bytes but read back %d. The override did "
+                "not persist; cephadm will use the packaged template.\n"
+                % (o["service"], len(desired), len(back)))
+            raise SystemExit(1)
+
+        changed.append(o["service"])
+
+    print("CHANGED " + " ".join(changed) if changed else "ok")
+    PYEOF
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_alertmanager_fix_route_tree | bool)
+      or (ceph_prometheus_drop_description_label | bool)
+  register: monitoring_overrides
+  changed_when: "'CHANGED' in (monitoring_overrides.stdout | default(''))"
+  tags: [alert_rendering]
+
+# cephadm only re-renders a monitoring config when it redeploys the daemon, so
+# the config-key writes above are inert until each daemon is redeployed. Gated on
+# that specific service having changed, so a steady-state converge bounces
+# nothing and a prometheus-only change does not interrupt alert delivery.
+#
+# alertmanager also redeploys when the service spec itself changed. cephadm saves
+# a new spec but does NOT redeploy on a `user_data` change -- the webhook URL is
+# not part of the daemon's dependency hash, so the running alertmanager keeps
+# serving the old config indefinitely. Observed 2026-07-31: spec saved at
+# 19:04:12, daemon still 15m old and still rendering the previous URL six minutes
+# later. Without this, changing the receiver URL is a no-op until something else
+# happens to bounce the daemon.
+- name: Redeploy monitoring daemons whose override or spec changed
+  ansible.builtin.command: "ceph orch redeploy {{ item }}"
+  loop: "{{ ['alertmanager', 'prometheus'] }}"
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - item in (monitoring_overrides.stdout | default(''))
+      or (item == 'alertmanager'
+          and (monitoring_spec_render.changed | default(false)))
+  changed_when: true
+  tags: [alert_rendering]
 
 # --- Step 3: Configure dashboard integrations ---
 # The dashboard runs on the active mgr and reaches these services on the fabric;

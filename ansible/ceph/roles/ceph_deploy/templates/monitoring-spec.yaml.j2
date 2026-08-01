@@ -65,12 +65,16 @@ networks:
 {% endfor %}
 {% endif %}
 ---
+# Do not add `networks:` here. ceph-exporter is the one monitoring service whose
+# spec class does not accept it:
+#   CephExporterSpec  networks=False
+#   MonitoringSpec / AlertManagerSpec / PrometheusSpec / GrafanaSpec  networks=True
+# cephadm parses every document in this file before it applies any of them, so a
+# `networks` key on this document fails the whole apply with
+#   ServiceSpec: __init__() got an unexpected keyword argument 'networks'
+# and updates no service in the file. `ceph orch apply -i` still exits 0, so only
+# the mgr log records the failure. See the failed_when on the apply task in
+# tasks/monitoring.yml.
 service_type: ceph-exporter
 placement:
   host_pattern: '*'
-{% if ceph_bind_networks | default([]) | length > 0 %}
-networks:
-{% for net in ceph_bind_networks %}
-  - {{ net }}
-{% endfor %}
-{% endif %}
