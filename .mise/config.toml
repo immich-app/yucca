@@ -19,7 +19,7 @@ tilt = "0.34.5"
 kubeconform = "0.8.0"
 kustomize = "5.8.1"            # flux-local shells out to it
 flux2 = "2.7.5"                # ...and to the flux CLI
-uv = "0.9.18"
+uv = "0.12.0"
 
 # github backend: the aqua backend fails to verify cosign v3's sigstore
 # bundles ("No bundle found in attestation").
