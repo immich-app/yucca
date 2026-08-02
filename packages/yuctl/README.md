@@ -121,6 +121,14 @@ the repo-wide `op run` convention and interactive desktop-unlock UX. kube/talos
 configs are written to 0600 temp files (`op.ReadToTempFile`) and removed after
 use. Override the binary with `OP_BIN`.
 
+Every `op read` is pinned to an **account** — `--account team-futo`, overridable
+with `OP_ACCOUNT` — because operators typically have more than one account
+signed in and `op`'s *default* account is whatever it feels like: the vault
+lookup then fails, or the desktop app prompts for the wrong account
+(`authorization prompt dismissed`). When `OP_SERVICE_ACCOUNT_TOKEN` is set (CI)
+the flag is dropped: the token already pins the account and `op` rejects both.
+Same convention as `.mise/tasks/*` and the `Tiltfile`.
+
 ## Context
 
 `yuctl select staging@austin` validates the target against discovery and writes

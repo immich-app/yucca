@@ -14,6 +14,8 @@ import (
 	"strings"
 )
 
+const DefaultAccount = "team-futo"
+
 // Binary is the op CLI executable name; overridable for tests via OP_BIN.
 func binary() string {
 	if v := os.Getenv("OP_BIN"); v != "" {
@@ -22,17 +24,36 @@ func binary() string {
 	return "op"
 }
 
+func account() string {
+	if v := os.Getenv("OP_ACCOUNT"); v != "" {
+		return v
+	}
+	return DefaultAccount
+}
+
+func accountFlag() []string {
+	if os.Getenv("OP_SERVICE_ACCOUNT_TOKEN") != "" {
+		return nil
+	}
+	return []string{"--account", account()}
+}
+
 // Read resolves a single `op://...` reference to its plaintext value via
 // `op read`. The trailing newline op prints is trimmed.
 func Read(ctx context.Context, ref string) (string, error) {
 	if !strings.HasPrefix(ref, "op://") {
 		return "", fmt.Errorf("not an op:// reference: %q", ref)
 	}
-	cmd := exec.CommandContext(ctx, binary(), "read", "--no-newline", ref)
+	args := append([]string{"read", "--no-newline"}, accountFlag()...)
+	cmd := exec.CommandContext(ctx, binary(), append(args, ref)...)
 	cmd.Stderr = os.Stderr
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
+		if flag := accountFlag(); flag != nil {
+			return "", fmt.Errorf("op read %s (account %s — unlock 1Password and approve the prompt, "+
+				"or set OP_ACCOUNT): %w", ref, flag[1], err)
+		}
 		return "", fmt.Errorf("op read %s: %w", ref, err)
 	}
 	return out.String(), nil
