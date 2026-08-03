@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Insertable, Kysely, sql, Updateable } from 'kysely';
+import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
 import { UserTable } from 'src/schema/tables/user.table';
@@ -22,7 +23,21 @@ export class UserRepository {
       .where('accessToken', '=', accessToken)
       .innerJoin('users', 'users.id', 'sessions.userId')
       .where('users.disabled', '=', false)
-      .select(['users.id', 'users.sub', 'users.name', 'users.email', 'sessions.id as sessionId'])
+      .select((eb) => [
+        'users.id',
+        'users.sub',
+        'users.name',
+        'users.email',
+        'sessions.id as sessionId',
+        jsonArrayFrom(
+          eb
+            .selectFrom('userFeatureFlagOverride')
+            .select(['flag', 'value'])
+            .whereRef('userFeatureFlagOverride.userId', '=', 'users.id'),
+        )
+          .$castTo<{ flag: string; value: boolean }[]>()
+          .as('featureOverrides'),
+      ])
       .executeTakeFirst();
   }
 

@@ -19,6 +19,9 @@ export type AuthDto = {
     name: string;
     email: string;
     sessionId: string;
+    features: {
+        [key: string]: boolean;
+    };
 };
 export type MetaConfigDto = {
     restic_pack_size_mib: number;

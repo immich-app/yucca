@@ -19,6 +19,7 @@ function getDb() {
 export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
+    await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
@@ -68,6 +69,15 @@ export const testUtils = {
       user,
       session,
     };
+  },
+
+  setFeatureOverride: (userId: string, flag: string, value: boolean, setBy = 'test-admin') => {
+    return getDb()
+      .insertInto('userFeatureFlagOverride')
+      .values({ userId, flag, value, setBy })
+      .onConflict((oc) => oc.columns(['userId', 'flag']).doUpdateSet({ value, updatedAt: new Date() }))
+      .returningAll()
+      .executeTakeFirstOrThrow();
   },
 
   getUserBySub: (sub: string) => {
