@@ -54,6 +54,7 @@ describe('AuthController (e2e)', () => {
           name: user.name,
           email: user.email,
           sessionId: session.id,
+          connectionId: null,
           features: { 'connection-restic': false },
         });
     });

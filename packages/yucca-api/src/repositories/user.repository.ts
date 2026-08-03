@@ -22,6 +22,7 @@ export class UserRepository {
       .selectFrom('sessions')
       .where('accessToken', '=', accessToken)
       .innerJoin('users', 'users.id', 'sessions.userId')
+      .leftJoin('connections', 'connections.id', 'sessions.connectionId')
       .where('users.disabled', '=', false)
       .select((eb) => [
         'users.id',
@@ -29,6 +30,8 @@ export class UserRepository {
         'users.name',
         'users.email',
         'sessions.id as sessionId',
+        'sessions.connectionId as connectionId',
+        'connections.lastSeenAt as connectionLastSeenAt',
         jsonArrayFrom(
           eb
             .selectFrom('userFeatureFlagOverride')
@@ -39,6 +42,14 @@ export class UserRepository {
           .as('featureOverrides'),
       ])
       .executeTakeFirst();
+  }
+
+  getFeatureOverrides(userId: string) {
+    return this.db
+      .selectFrom('userFeatureFlagOverride')
+      .select(['flag', 'value'])
+      .where('userId', '=', userId)
+      .execute();
   }
 
   update(id: string, user: Updateable<UserTable>) {

@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, Scope, UnauthorizedException } from '@
 import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
+import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
 
@@ -12,15 +13,23 @@ export class RepositoryService {
     private readonly jwt: JwtService,
     private readonly repositoryRepository: RepositoryRepository,
     private readonly wideContext: WideContextRepository,
+    private readonly connection: ConnectionRepository,
     private readonly topology: TopologyRepository,
   ) {}
 
-  create(auth: AuthDto, { site: siteCode, ...dto }: RepositoryCreateRequestDto) {
+  async create(auth: AuthDto, { site: siteCode, ...dto }: RepositoryCreateRequestDto) {
     const site = this.topology.getSite(siteCode);
     const cluster = this.topology.getActiveCluster(site);
 
+    let connectionId = auth.connectionId;
+    if (!connectionId) {
+      const connection = await this.connection.getOrCreateDefault(auth.id);
+      connectionId = connection.id;
+    }
+
     return this.repositoryRepository.create({
       userId: auth.id,
+      connectionId,
       ...dto,
       siteCode: site.code,
       storageClusterCode: cluster.code,
@@ -60,6 +69,7 @@ export class RepositoryService {
       repository: repository.id,
       writeOnce: repository.worm,
       storageCluster: repository.storageClusterCode,
+      connection: repository.connectionType,
     });
 
     this.wideContext.addContext('repositoryId', repository.id);

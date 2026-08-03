@@ -8,6 +8,8 @@ const mockAuth: AuthDto = {
   email: 'user@example.com',
   name: 'user',
   sessionId: 'session',
+  connectionId: null,
+  features: {},
 };
 
 const mockUser = {
@@ -16,6 +18,7 @@ const mockUser = {
   name: 'user',
   sub: 'oidc-sub',
   sessionId: 'session',
+  connectionId: null,
 };
 
 describe(AuthService.name, () => {
@@ -33,6 +36,7 @@ describe(AuthService.name, () => {
       mocks.crypto,
       mocks.session as never,
       mocks.wideContext,
+      mocks.connection as never,
     );
     allowedEmailDomains = env.ALLOWED_EMAIL_DOMAINS;
     env.ALLOWED_EMAIL_DOMAINS = [];
@@ -234,6 +238,7 @@ describe(AuthService.name, () => {
       expect(mocks.session.create).toHaveBeenCalledWith({
         userId: mockUser.id,
         accessToken,
+        kind: 'web',
       });
     });
 
@@ -268,7 +273,89 @@ describe(AuthService.name, () => {
       expect(mocks.session.create).toHaveBeenCalledWith({
         userId: mockUser.id,
         accessToken,
+        kind: 'web',
       });
+    });
+  });
+
+  describe('oidcDeviceFlow', () => {
+    const claims = { sub: 'oidc-sub', name: 'name', email: 'user@example.com' };
+    const accessToken = 'device-token';
+
+    beforeEach(() => {
+      mocks.oidc.deviceFlow.mockResolvedValue({
+        userCode: 'CODE',
+        verificationUri: 'http://verify',
+        claims: Promise.resolve(claims),
+      } as never);
+      mocks.user.getBySub.mockResolvedValue({ ...mockUser, disabled: false } as never);
+      mocks.crypto.randomHex.mockReturnValue(accessToken);
+      mocks.connection.getOrCreateDefault.mockResolvedValue({ id: 'default-connection' } as never);
+    });
+
+    it('binds the default connection for legacy clients (no connection params)', async () => {
+      await expect(sut.oidcDeviceFlow(jest.fn())).resolves.toEqual({ accessToken });
+
+      expect(mocks.connection.getOrCreateDefault).toHaveBeenCalledWith(mockUser.id);
+      expect(mocks.connection.touchLastSeen).toHaveBeenCalledWith('default-connection');
+      expect(mocks.session.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        accessToken,
+        connectionId: 'default-connection',
+        kind: 'device',
+      });
+    });
+
+    it('rejects a restic connection without the connection-restic flag', async () => {
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'restic', 'my-laptop')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Feature 'connection-restic' is not enabled for this account"`,
+      );
+      expect(mocks.session.create).not.toHaveBeenCalled();
+    });
+
+    it('binds a named immich instance for everyone (no flag needed)', async () => {
+      mocks.connection.getByUserTypeName.mockResolvedValue(void 0);
+      mocks.connection.create.mockResolvedValue({ id: 'immich-home' } as never);
+
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'immich', 'home-server')).resolves.toEqual({ accessToken });
+
+      expect(mocks.connection.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        type: 'immich',
+        name: 'home-server',
+      });
+      expect(mocks.session.create).toHaveBeenCalledWith(
+        expect.objectContaining({ connectionId: 'immich-home', kind: 'device' }),
+      );
+    });
+
+    it('creates a restic connection instance when connection-restic is on', async () => {
+      mocks.user.getFeatureOverrides.mockResolvedValue([{ flag: 'connection-restic', value: true }]);
+      mocks.connection.getByUserTypeName.mockResolvedValue(void 0);
+      mocks.connection.create.mockResolvedValue({ id: 'restic-connection' } as never);
+
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'restic', 'my-laptop')).resolves.toEqual({ accessToken });
+
+      expect(mocks.connection.create).toHaveBeenCalledWith({ userId: mockUser.id, type: 'restic', name: 'my-laptop' });
+      expect(mocks.session.create).toHaveBeenCalledWith(
+        expect.objectContaining({ connectionId: 'restic-connection', kind: 'device' }),
+      );
+    });
+
+    it('reuses an existing connection instance by (type, name)', async () => {
+      mocks.user.getFeatureOverrides.mockResolvedValue([{ flag: 'connection-restic', value: true }]);
+      mocks.connection.getByUserTypeName.mockResolvedValue({ id: 'existing-restic' } as never);
+
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'restic', 'my-laptop')).resolves.toEqual({ accessToken });
+
+      expect(mocks.connection.create).not.toHaveBeenCalled();
+      expect(mocks.session.create).toHaveBeenCalledWith(expect.objectContaining({ connectionId: 'existing-restic' }));
+    });
+
+    it('rejects unknown connection types', async () => {
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'winamp')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Unknown connection type 'winamp'"`,
+      );
     });
   });
 

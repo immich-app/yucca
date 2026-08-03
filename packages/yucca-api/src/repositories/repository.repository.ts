@@ -32,10 +32,12 @@ export class RepositoryRepository {
   get(id: string) {
     return this.db
       .selectFrom('repositories')
+      .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
       .where('repositories.id', '=', id)
       .selectAll('repositories')
+      .select('connections.type as connectionType')
       .select(metricsJson)
       .select(meterJson)
       .executeTakeFirstOrThrow();
@@ -44,10 +46,12 @@ export class RepositoryRepository {
   getByUser(userId: string) {
     return this.db
       .selectFrom('repositories')
+      .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
-      .where('userId', '=', userId)
+      .where('repositories.userId', '=', userId)
       .selectAll('repositories')
+      .select('connections.type as connectionType')
       .select(metricsJson)
       .select(meterJson)
       .execute();
@@ -60,5 +64,13 @@ export class RepositoryRepository {
 
   async delete(id: string) {
     await this.db.deleteFrom('repositories').where('id', '=', id).execute();
+  }
+
+  getByIds(ids: string[]) {
+    return this.db.selectFrom('repositories').selectAll().where('id', 'in', ids).execute();
+  }
+
+  async reparent(ids: string[], connectionId: string) {
+    await this.db.updateTable('repositories').set({ connectionId }).where('id', 'in', ids).execute();
   }
 }

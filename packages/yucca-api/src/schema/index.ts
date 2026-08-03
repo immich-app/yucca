@@ -1,4 +1,5 @@
 import { Database } from '@immich/sql-tools';
+import { ConnectionTable } from './tables/connection.table';
 import { RepositoryTable } from './tables/repository.table';
 import { RepositoryMeterTable } from './tables/repositoryMeter.table';
 import { RepositoryMeterHistoryTable } from './tables/repositoryMeterHistory.table';
@@ -15,6 +16,7 @@ export class ImmichDatabase {
   tables = [
     SessionTable,
     UserTable,
+    ConnectionTable,
     RepositoryTable,
     RepositoryMetricsTable,
     RepositoryMetricsHistoryTable,
@@ -33,6 +35,7 @@ export class ImmichDatabase {
 export interface DB {
   users: UserTable;
   sessions: SessionTable;
+  connections: ConnectionTable;
   repositories: RepositoryTable;
   repositoryMetrics: RepositoryMetricsTable;
   repositoryMetricsHistory: RepositoryMetricsHistoryTable;

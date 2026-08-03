@@ -92,7 +92,26 @@
     "/api/auth/oidc/device": {
       "get": {
         "operationId": "oidcDeviceFlow",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "connection_type",
+            "required": false,
+            "in": "query",
+            "description": "immich | restic",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "connection_name",
+            "required": false,
+            "in": "query",
+            "description": "Instance name, e.g. a hostname",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -121,6 +140,143 @@
         },
         "tags": [
           "Meta"
+        ]
+      }
+    },
+    "/api/connections": {
+      "get": {
+        "operationId": "listConnections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Connection"
+        ]
+      },
+      "post": {
+        "operationId": "createConnection",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Connection"
+        ]
+      }
+    },
+    "/api/connections/{id}": {
+      "patch": {
+        "operationId": "updateConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Connection"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteConnection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Connection"
+        ]
+      }
+    },
+    "/api/connections/{id}/adopt": {
+      "post": {
+        "operationId": "adoptRepositories",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionAdoptRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Connection"
         ]
       }
     },
@@ -483,6 +639,10 @@
           "sessionId": {
             "type": "string"
           },
+          "connectionId": {
+            "type": "string",
+            "nullable": true
+          },
           "features": {
             "type": "object",
             "additionalProperties": {
@@ -617,6 +777,111 @@
           "config",
           "default_site",
           "sites"
+        ]
+      },
+      "ConnectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "immich",
+              "restic"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "repositoryCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "createdAt",
+          "repositoryCount"
+        ]
+      },
+      "ConnectionListResponseDto": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionDto"
+            }
+          }
+        },
+        "required": [
+          "connections"
+        ]
+      },
+      "ConnectionCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "immich",
+              "restic"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name"
+        ]
+      },
+      "ConnectionResponseDto": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionDto"
+          }
+        },
+        "required": [
+          "connection"
+        ]
+      },
+      "ConnectionUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ConnectionAdoptRequestDto": {
+        "type": "object",
+        "properties": {
+          "repositoryIds": {
+            "description": "Repositories to move from the default connection to this one",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "repositoryIds"
         ]
       },
       "SubmitBackupEndRequestDto": {
@@ -791,6 +1056,12 @@
             "nullable": true,
             "description": "Stable, globally unique internal storage cluster code"
           },
+          "connectionId": {
+            "type": "string"
+          },
+          "connectionType": {
+            "type": "string"
+          },
           "metrics": {
             "$ref": "#/components/schemas/RepositoryMetricsDto"
           },
@@ -804,6 +1075,8 @@
           "name",
           "siteCode",
           "storageClusterCode",
+          "connectionId",
+          "connectionType",
           "metrics"
         ]
       },

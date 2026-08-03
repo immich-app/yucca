@@ -13,6 +13,7 @@ import { SettingsController } from './controllers/settings.controller';
 import { UserController } from './controllers/user.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
+import { ConnectionRepository } from './repositories/connection.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
 import { OidcRepository } from './repositories/oidc.repository';
@@ -70,6 +71,7 @@ export const providers = [
   SettingsRepository,
   StorageRepository,
   TopologyRepository,
+  ConnectionRepository,
   FeatureFlagRepository,
   AllowlistService,
   AuthService,

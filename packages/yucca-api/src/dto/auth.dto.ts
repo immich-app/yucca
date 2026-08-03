@@ -13,6 +13,9 @@ export class AuthDto {
   @ApiProperty()
   sessionId!: string;
 
+  @ApiProperty({ type: 'string', required: false, nullable: true })
+  connectionId!: string | null;
+
   @ApiProperty({ type: 'object', additionalProperties: { type: 'boolean' } })
   features!: Record<string, boolean>;
 }

@@ -15,6 +15,8 @@ const repositoryRow = {
   worm: false,
   siteCode: 'local',
   storageClusterCode: 'local-dev',
+  connectionId: '00000000-0000-0000-0000-00000000000c',
+  connectionType: 'restic',
   user: { id: '00000000-0000-0000-0000-00000000000u', name: 'u', email: 'u@x', disabled: false },
   metrics: { sizeBytes: 0, lastStarted: null, lastBackup: null, lastSuccessfulBackup: null, lastBackupDuration: null },
 };
@@ -32,6 +34,7 @@ describe(RepositoryService.name, () => {
   let repositories: { [k: string]: jest.Mock };
   let users: { [k: string]: jest.Mock };
   let topology: { [k: string]: jest.Mock };
+  let connections: { [k: string]: jest.Mock };
   let jwt: JwtService;
   let sut: RepositoryService;
 
@@ -44,8 +47,9 @@ describe(RepositoryService.name, () => {
       hasSite: jest.fn(),
       hasCluster: jest.fn(),
     };
+    connections = { getByUser: jest.fn(), getOrCreateByType: jest.fn().mockResolvedValue({ id: 'connection-id' }) };
     jwt = newJwtService();
-    sut = new RepositoryService(repositories as never, users as never, jwt, topology as never);
+    sut = new RepositoryService(repositories as never, users as never, connections as never, jwt, topology as never);
   });
 
   describe('create', () => {
@@ -55,9 +59,11 @@ describe(RepositoryService.name, () => {
       await expect(sut.create({ name: 'bench', userId: repositoryRow.user.id })).resolves.toEqual({
         repository: repositoryRow,
       });
+      expect(connections.getOrCreateByType).toHaveBeenCalledWith(repositoryRow.user.id, 'restic', 'Manual restic');
       expect(repositories.create).toHaveBeenCalledWith({
         name: 'bench',
         userId: repositoryRow.user.id,
+        connectionId: 'connection-id',
         worm: false,
         siteCode: 'local',
         storageClusterCode: 'local-dev',
@@ -73,6 +79,7 @@ describe(RepositoryService.name, () => {
 
       expect(users.getBySub).toHaveBeenCalledWith('yucca-admin-service');
       expect(users.create).not.toHaveBeenCalled();
+      expect(connections.getOrCreateByType).toHaveBeenCalledWith('service-user-id', 'restic', 'admin');
       expect(repositories.create).toHaveBeenCalledWith(expect.objectContaining({ userId: 'service-user-id' }));
     });
 
@@ -87,6 +94,7 @@ describe(RepositoryService.name, () => {
       expect(repositories.create).toHaveBeenCalledWith({
         name: 'bench',
         userId: 'new-service-user',
+        connectionId: 'connection-id',
         worm: true,
         siteCode: 'local',
         storageClusterCode: 'local-dev',
@@ -136,6 +144,7 @@ describe(RepositoryService.name, () => {
         repository: repositoryRow.id,
         writeOnce: false,
         storageCluster: 'local-dev',
+        connection: repositoryRow.connectionType,
       });
     });
 
