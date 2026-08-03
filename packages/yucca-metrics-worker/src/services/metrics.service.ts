@@ -1,8 +1,10 @@
+import { billableBytes } from '@common/server';
 import { LoggerRepository, MetricService } from '@common/server/otel';
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Gauge } from '@opentelemetry/api';
 import { env } from 'src/env';
+import { ConnectionMetricsRepository } from 'src/repositories/connectionMetrics.repository';
 import { MeterRepository } from 'src/repositories/meter.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { RgwFleetRepository } from 'src/repositories/rgwFleet.repository';
@@ -11,12 +13,14 @@ import { RgwFleetRepository } from 'src/repositories/rgwFleet.repository';
 export class MetricsService implements OnApplicationBootstrap {
   private readonly repositorySizeBytes: Gauge;
   private readonly repositoryObjectCount: Gauge;
+  private readonly connectionBillableBytes: Gauge;
 
   constructor(
     private logger: LoggerRepository,
     private fleet: RgwFleetRepository,
     private meter: MeterRepository,
     private repositories: RepositoryRepository,
+    private connectionMetrics: ConnectionMetricsRepository,
     metricService: MetricService,
   ) {
     this.repositorySizeBytes = metricService.getGauge('rgw_repository_size_bytes', {
@@ -24,6 +28,9 @@ export class MetricsService implements OnApplicationBootstrap {
     });
     this.repositoryObjectCount = metricService.getGauge('rgw_repository_object_count', {
       description: 'Number of objects in the repository',
+    });
+    this.connectionBillableBytes = metricService.getGauge('connection_billable_bytes', {
+      description: 'Billable bytes rolled up per connection (min-object-size floor applied)',
     });
   }
 
@@ -100,5 +107,27 @@ export class MetricsService implements OnApplicationBootstrap {
         this.logger.error(error, `Failed to sync metrics from RadosGW cluster ${clusterCode}`);
       }
     }
+
+    await this.rollupConnections();
+  }
+
+  private async rollupConnections() {
+    const rollups = await this.connectionMetrics.getRollups();
+
+    for (const { connectionId, type, sizeBytes, objectCount, repositoryCount } of rollups) {
+      const billable = billableBytes(type, sizeBytes, objectCount);
+
+      await this.connectionMetrics.upsert({
+        connectionId,
+        sizeBytes,
+        objectCount,
+        billableBytes: billable,
+        repositoryCount,
+      });
+
+      this.connectionBillableBytes.record(billable, { connectionId, connectionType: type });
+    }
+
+    this.logger.info(`Rolled up ${rollups.length} connections`);
   }
 }

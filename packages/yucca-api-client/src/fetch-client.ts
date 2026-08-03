@@ -63,6 +63,12 @@ export type ConnectionDto = {
     createdAt: string;
     lastSeenAt?: string | null;
     repositoryCount: number;
+    /** Rolled-up storage across this connection’s repositories (RGW size). */
+    sizeBytes: number;
+    /** Rolled-up object count across this connection’s repositories. */
+    objectCount: number;
+    /** Billed bytes: per-object min-size floor applied (immich exempt). */
+    billableBytes: number;
 };
 export type ConnectionListResponseDto = {
     connections: ConnectionDto[];
