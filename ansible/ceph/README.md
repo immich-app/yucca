@@ -180,7 +180,7 @@ cluster's stack under `tf/deployment/<partition>/<region>/ceph/`, then run
 | [docs/security-model.md](docs/security-model.md) | InfoSec -- encryption, users, firewall |
 | [docs/capacity-planning.md](docs/capacity-planning.md) | Managers -- costs, formulas, growth |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | SRE/on-call -- symptom/diagnosis/fix |
-| [docs/runbooks/](docs/runbooks/) | Ops -- add/replace node, replace disk, rotate certs/secrets/SSH/SA token, remote hands, bad-tofu-apply recovery, backup/restore |
+| [docs/runbooks/](docs/runbooks/) | Ops -- add/replace node, replace disk, triage a dead root filesystem, rotate certs/secrets/SSH/SA token, remote hands, bad-tofu-apply recovery, backup/restore |
 
 ## Known Limitations
 
