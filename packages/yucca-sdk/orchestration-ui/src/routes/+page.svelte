@@ -1,15 +1,31 @@
 <script lang="ts">
   import OnboardingGate from "$lib/components/onboarding/OnboardingGate.svelte";
+  import UpsellModal from "$lib/components/onboarding/upsell/UpsellModal.svelte";
   import ImmichTestUi from "$lib/components/test/ImmichTestUi.svelte";
   import TestUi from "$lib/components/test/TestUi.svelte";
   import { resetOrchestrator } from "$lib/fetch-client";
   import { options } from "$lib/options";
-  import { Button, Checkbox, Heading, HStack, Stack, Text } from "@immich/ui";
+  import {
+    Button,
+    Checkbox,
+    Heading,
+    HStack,
+    modalManager,
+    Stack,
+    Text,
+  } from "@immich/ui";
   import { onMount } from "svelte";
 
   let mock: true | false | "immich" = $state(false);
 
   const { advanced, testUiRestore } = options;
+
+  const onUpsellModal = () =>
+    void modalManager.open(UpsellModal, {
+      price: "$1",
+      onGetStarted: () => void 0,
+      onLearnMore: () => void 0,
+    });
 
   async function onReset() {
     await resetOrchestrator();
@@ -44,6 +60,7 @@
       <Button onclick={() => (mock = "immich")} disabled={mock === "immich"}
         >Immich</Button
       >
+      <Button onclick={onUpsellModal}>Upsell modal</Button>
       <Button onclick={onReset} color="warning">Reset</Button>
     </HStack>
 

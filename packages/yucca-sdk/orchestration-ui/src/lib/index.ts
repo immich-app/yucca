@@ -7,6 +7,7 @@ export { default as ImmichManageBackup } from './components/integrations/immich/
 export { default as ImmichOnboardingRestoreFlow } from './components/integrations/immich/ImmichOnboardingRestoreFlow.svelte';
 export { default as ImmichOnboardingSetupFlow } from './components/integrations/immich/ImmichOnboardingSetupFlow.svelte';
 export { default as OnboardingGate } from './components/onboarding/OnboardingGate.svelte';
+export { default as UpsellModal } from './components/onboarding/upsell/UpsellModal.svelte';
 export { default as ScheduleList } from './components/schedules/ScheduleList.svelte';
 export { default as VisualisationGauge } from './components/ui/VisualisationGauge.svelte';
 export { default as VisualisationSegmentedBar } from './components/ui/VisualisationSegmentedBar.svelte';
