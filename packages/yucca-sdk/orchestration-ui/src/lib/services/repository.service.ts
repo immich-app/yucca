@@ -38,6 +38,9 @@ export const repositoryKeys = {
     ['repositories', id, 'check-import', backendId] as const,
 };
 
+const isBackupRepository = (repository: LocalRepositoryDto) =>
+  (repository as { connectionType?: string }).connectionType !== 'restic';
+
 export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
   createQuery(
     () => ({
@@ -45,8 +48,12 @@ export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
       queryFn: () =>
         getProvider()
           .getRepositories()
-          .then(({ repositories }) => repositories),
-      initialData,
+          .then(({ repositories }) =>
+            repositories.filter((repository) => isBackupRepository(repository)),
+          ),
+      initialData: initialData?.filter((repository) =>
+        isBackupRepository(repository),
+      ),
     }),
     () => queryClient,
   );
