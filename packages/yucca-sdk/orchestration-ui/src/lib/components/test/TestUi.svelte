@@ -118,7 +118,7 @@
 
   <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
     {#if route === "dashboard"}
-      <Dashboard local onNavigate={(target) => (route = target)} />
+      <Dashboard local onViewBackups={() => (route = "backups")} />
     {:else if route === "backups"}
       <BackupsList local />
     {:else if route === "config"}

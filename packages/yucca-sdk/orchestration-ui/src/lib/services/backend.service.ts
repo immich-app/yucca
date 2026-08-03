@@ -40,8 +40,11 @@ export const useDeviceFlow = (uid: string) =>
         window.open(response.verificationUri, '_blank');
         return response;
       },
+      gcTime: Infinity,
+      retry: 0,
       refetchOnReconnect: false,
       refetchOnWindowFocus: false,
+      refetchOnMount: true,
     }),
     () => queryClient,
   );

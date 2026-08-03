@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Typecheck standalone-app (svelte + server)"
+set -e
+
+pnpm --filter @futo-org/backups-standalone check
+pnpm --filter @futo-org/backups-standalone exec tsc -p tsconfig.server.json --noEmit

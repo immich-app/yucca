@@ -1,0 +1,52 @@
+{
+  "name": "@futo-org/backups-standalone",
+  "repository": "https://github.com/immich-app/yucca",
+  "description": "Backups orchestrator packaged as a standalone single-process app",
+  "version": "0.25.0",
+  "license": "Source First License 1.1",
+  "private": true,
+  "type": "module",
+  "files": [
+    "build",
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite dev --port 36067",
+    "dev:server": "tsx watch src/server/main.ts",
+    "build:ui": "vite build",
+    "build:server": "tsc -p tsconfig.server.json && echo '{\"type\":\"commonjs\"}' > dist/package.json",
+    "build": "npm run build:ui && npm run build:server",
+    "start": "node dist/main.js",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "prepare": "svelte-kit sync || echo ''"
+  },
+  "dependencies": {
+    "@futo-org/backups-orchestrator-api": "workspace:^",
+    "@nestjs/common": "catalog:",
+    "@nestjs/core": "catalog:",
+    "@nestjs/platform-express": "catalog:",
+    "@nestjs/platform-socket.io": "catalog:",
+    "@nestjs/schedule": "catalog:",
+    "@nestjs/swagger": "catalog:",
+    "@nestjs/websockets": "catalog:",
+    "express": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@futo-org/backups-orchestrator-ui": "workspace:^",
+    "@immich/ui": "catalog:",
+    "@mdi/js": "catalog:",
+    "@sveltejs/adapter-static": "catalog:",
+    "@sveltejs/kit": "catalog:",
+    "@sveltejs/vite-plugin-svelte": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@types/express": "catalog:",
+    "@types/node": "catalog:",
+    "svelte": "catalog:",
+    "svelte-check": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

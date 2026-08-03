@@ -9,5 +9,5 @@
 
 <Dashboard
   initialData={data.initialData.repositories}
-  onNavigate={(route) => goto(`/dashboard/${route}`)}
+  onViewBackups={() => goto("/dashboard/backups")}
 />

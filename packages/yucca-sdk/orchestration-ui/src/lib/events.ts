@@ -15,7 +15,7 @@ export class SocketEvent<T> extends Event {
 }
 
 function createSocket() {
-  socket = io(defaults.baseUrl, {
+  socket = io(defaults.baseUrl || undefined, {
     path: '/api/yucca/socket.io',
     transports: ['websocket'],
     autoConnect: false,
