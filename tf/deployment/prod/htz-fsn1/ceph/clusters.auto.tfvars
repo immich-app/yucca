@@ -51,22 +51,22 @@ clusters = {
     # upgrade or the deadlock returns silently.
     # https://www.mail-archive.com/ceph-users@ceph.io/msg28007.html
     #
-    # osd_scrub_cost, osd_deep_scrub_stride and the custom mclock profile are
-    # provisional: measured gains were inside noise, under conditions that no
-    # longer apply. Drop them once the cluster is quiet enough to A/B properly,
-    # the profile first (it makes us owner of the client/recovery reservations).
+    # osd_scrub_cost and osd_deep_scrub_stride are provisional: measured gains
+    # were inside noise, under conditions that no longer apply. Drop them once
+    # the cluster is quiet enough to A/B properly. The custom mclock profile
+    # from the same incident is already gone: the cluster runs `balanced` (set
+    # live; the old model still said custom and would have re-imposed it on
+    # converge). balanced owns the scheduler reservations, so no _res overrides.
     ceph_config = {
       global = {
         osd_deep_scrub_interval = "2419200" # 28 days
       }
       osd = {
-        osd_scrub_disable_reservation_queuing           = "true"
-        osd_max_scrubs                                  = "6"
-        osd_scrub_cost                                  = "50"      # provisional
-        osd_deep_scrub_stride                           = "2097152" # provisional, 2 MiB
-        osd_mclock_profile                              = "custom"  # provisional
-        osd_mclock_scheduler_background_recovery_res    = "0.2"
-        osd_mclock_scheduler_background_best_effort_res = "0.3"
+        osd_scrub_disable_reservation_queuing = "true"
+        osd_max_scrubs                        = "6"
+        osd_scrub_cost                        = "50"      # provisional
+        osd_deep_scrub_stride                 = "2097152" # provisional, 2 MiB
+        osd_mclock_profile                    = "balanced"
       }
     }
     hosts = [
