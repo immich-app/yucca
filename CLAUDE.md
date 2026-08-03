@@ -114,9 +114,10 @@ to victoria-*).
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Shares the same DB + JWT validation. |
 | `michael` | Go | **Production** restic REST backend — S3 proxy implementing restic's HTTP protocol, with JWT (ECDSA pubkey) verification, WORM enforcement, multi-backend pool/DNS load-balancing. Deployed in k8s (`kubernetes/apps/base/michael`). |
 | `restic-api` | NestJS | Earlier TypeScript implementation of the same restic backend, kept as a **reference** (`mise restic-api:dev-reference`); not in the deployed app set. |
-| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, emits OTel gauges. |
+| `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, **rolls usage up per connection into `connectionMetrics` (with the per-type billing floor)**, emits OTel gauges. |
+| `redis` (valkey) |  | **Generic shared platform cache** (ephemeral by design; keys namespaced `yucca:<service>:<purpose>:*`). First tenant: michael's restic-token **verdict cache** (`yucca:michael:verdict:<jti>`, DELed by the APIs on revoke); future: michael rate limiting. In-repo chart `charts/apps/redis`; primary-region only. |
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). Used by compose and k3d when no real issuer is configured. |
-| `common` (`@common/server`) | TS lib | Shared OTel init, pino logger repository, logging interceptor. |
+| `common` (`@common/server`) | TS lib | Shared OTel init, pino logger repository, logging interceptor, **the feature-flag registry (`FeatureFlags`) and connection types (`ConnectionTypes`)**. |
 
 **Frontend** (`packages/web`) is **SvelteKit 5 + Tailwind 4**, using `@immich/ui`, lingui i18n
 (`mise web:lingui:*` to extract/compile — compiled locales are generated, not edited), and the
@@ -133,6 +134,51 @@ generated API client. It also embeds the orchestration UI (`@futo-org/backups-or
 `packages/yucca-api-client/src/fetch-client.ts` (published as `@futo-org/backups-api-client`,
 consumed by web). `fetch-client.ts` is generated (eslint-ignored). When you change an API
 contract, regenerate rather than editing the client.
+
+### Connections, feature flags, and restic-token revocation
+
+- **Connections** (`connections` table) make "what backs up this account" first-class: a user has N
+  connection instances of type `immich` or `restic`. Every repository has a `connectionId`
+  (NOT NULL); device-flow sessions bind to a connection via `?connection_type=&connection_name=` on
+  `/auth/oidc/device`. Existing repos were backfilled onto a default `immich` connection; instance
+  attribution is client-driven via `POST /connections/:id/adopt` (moves default-connection repos to a
+  named instance), never guessed server-side. The in-repo orchestrator (`yucca-sdk`) does this on
+  device-flow login: it registers as an `immich` connection named after its external host, then
+  best-effort adopts its existing repositories onto that instance. The `/connections` API surface
+  (list, create, adopt, manage, including multiple `immich` instances) is open to **every**
+  authenticated user.
+- **Feature flags** = registry in code (`@common/server` `FeatureFlags`), strict-boolean per-user
+  overrides in `userFeatureFlagOverride`. Resolution is `override ?? registry default`; the default
+  flips at GA via a release (code-only defaults). Flags gate self-service use of the individual
+  non-default connection *type*, not the whole surface: `connection-restic`
+  (`experimental`, default off): `immich` needs none. The mapping lives in `@common/server`
+  `ConnectionTypeFlags`/`connectionTypeFlag()`, checked in `ConnectionService.create` and the device
+  flow; admin-provisioned connections bypass it (admin authority). `@RequireFeature` remains as the
+  generic route-level guard for future whole-route gating. Manage from yuctl: `users features
+  set/clear`, `features enable-batch`. **Boundary rule:** env/cluster-settings = deployment config
+  (ops-owned, per-partition); feature flags = per-user product gating (admin-owned, runtime).
+- **Per-type descriptor + billing** live in the code registry (`@common/server` `ConnectionTypeInfos`):
+  each type declares its metering tiers, `reportsActivity`, `minObjectSizeBytes` (billing floor), and
+  `revocable`. Billing keys off the always-available **storage** tier: `yucca-metrics-worker` rolls each
+  connection's per-repo RadosGW readings up into `connectionMetrics` and computes
+  `billableBytes(type, size, objects) = max(size, objects * minObjectSizeBytes)` (immich floor 0; non-immich
+  1 MiB, an aggregate approximation, RadosGW gives no per-object histogram). `GET /connections` returns the
+  rollup. **Self-serve restic** (flagged): `POST /connections/restic` creates connection+repo+long-lived URL
+  in one shot; `POST /repository/:id/restic` mints for an existing repo, **long-lived is revocable-only**
+  (restic: default `RESTIC_JWT_EXPIRES_IN` 90d, `expiresIn` capped by `RESTIC_JWT_MAX_EXPIRES_IN` 365d;
+  immich: short `JWT_EXPIRES_IN` lifetime, custom `expiresIn` rejected: michael never validity-checks
+  non-revocable types, so they must not be long-lived); `GET /repository/:id/restic-tokens` +
+  `DELETE /restic-tokens/:jti` are owner-scoped. See `docs/connections.md`.
+- **Restic-token revocation** = **postgres truth + layered caches, bounded grace**. michael checks a token's
+  liveness (revocable types only: `REVOCABLE_CONNECTION_TYPES`, default `restic`; immich is skipped) through:
+  L1 per-process cache (`REVOCATION_FRESH_TTL_MS` 60s fresh / `REVOCATION_GRACE_MS` 30min grace) → shared
+  valkey **verdict cache** (`yucca:michael:verdict:<jti>`, `VERDICT_CACHE_TTL_MS` 5min, read-through; errors
+  fall through) → yucca-api's internal introspection endpoint (`GET /internal/restic-tokens/:jti`, shared
+  secret `TOKEN_INTROSPECTION_SECRET`, answers `{active}` from `resticTokens`). Mint writes only the DB row;
+  revoke flips the row then best-effort **DELs the L2 key** (lands within ~L1 fresh; a missed DEL self-heals
+  via L2 TTL, no reconcile job). Valkey restart/outage = cache miss → postgres, harmless. Introspection outage:
+  previously-valid jtis honored for the grace window, then **fail closed**. Enforced only where
+  `TOKEN_INTROSPECTION_URL` is set (primary regions). yuctl: `tokens list/revoke`, `repos url --ttl`.
 
 ### Database
 
@@ -188,6 +234,11 @@ release tag into both prod pins (`kubernetes/clusters/prod/htz-fsn1/{flux-releas
   trailing commas, width 120.
 - Generated files are eslint-ignored: `**/fetch-client.ts`, `packages/web/src/locales`, `dist`,
   `build`, `.svelte-kit`.
+- **Default to zero comments.** No narration, no restating what the code already says; make the
+  code self-explanatory instead. Add a comment only in the rare case it captures something the
+  code cannot (a why, a constraint, a gotcha) that a reader would otherwise miss.
+- **Match the package you are in.** Read the surrounding code first and follow its existing
+  style and patterns; write code that looks like what is already there, not your own conventions.
 
 ### Naming
 
