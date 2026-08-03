@@ -22,7 +22,13 @@ export class ConnectionService {
   async list(auth: AuthDto): Promise<ConnectionListResponseDto> {
     const rows = await this.connections.getByUserWithRepositoryCounts(auth.id);
     return {
-      connections: rows.map((row) => ({ ...row, repositoryCount: Number(row.repositoryCount ?? 0) })),
+      connections: rows.map((row) => ({
+        ...row,
+        repositoryCount: Number(row.repositoryCount ?? 0),
+        sizeBytes: Number(row.sizeBytes ?? 0),
+        objectCount: Number(row.objectCount ?? 0),
+        billableBytes: Number(row.billableBytes ?? 0),
+      })),
     };
   }
 
@@ -43,7 +49,7 @@ export class ConnectionService {
       throw new FeatureNotEnabledException(flag);
     }
     const connection = await this.connections.create({ userId: auth.id, type: dto.type, name: dto.name });
-    return { connection: { ...connection, repositoryCount: 0 } };
+    return { connection: { ...connection, repositoryCount: 0, sizeBytes: 0, objectCount: 0, billableBytes: 0 } };
   }
 
   async update(auth: AuthDto, id: string, dto: ConnectionUpdateRequestDto) {

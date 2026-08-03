@@ -29,7 +29,9 @@ export class ConnectionRepository {
   getByUserWithRepositoryCounts(userId: string) {
     return this.db
       .selectFrom('connections')
+      .leftJoin('connectionMetrics', 'connectionMetrics.connectionId', 'connections.id')
       .selectAll('connections')
+      .select(['connectionMetrics.sizeBytes', 'connectionMetrics.objectCount', 'connectionMetrics.billableBytes'])
       .select((eb) =>
         eb
           .selectFrom('repositories')

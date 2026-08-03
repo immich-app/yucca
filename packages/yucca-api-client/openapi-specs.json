@@ -804,6 +804,18 @@
           },
           "repositoryCount": {
             "type": "number"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "description": "Rolled-up storage across this connection’s repositories (RGW size)."
+          },
+          "objectCount": {
+            "type": "number",
+            "description": "Rolled-up object count across this connection’s repositories."
+          },
+          "billableBytes": {
+            "type": "number",
+            "description": "Billed bytes: per-object min-size floor applied (immich exempt)."
           }
         },
         "required": [
@@ -811,7 +823,10 @@
           "type",
           "name",
           "createdAt",
-          "repositoryCount"
+          "repositoryCount",
+          "sizeBytes",
+          "objectCount",
+          "billableBytes"
         ]
       },
       "ConnectionListResponseDto": {
