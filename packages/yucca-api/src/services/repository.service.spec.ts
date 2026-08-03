@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { AuthDto } from 'src/dto/auth.dto';
+import { env } from 'src/env';
 import { RepositoryService } from 'src/services/repository.service';
 import { Mocks, newMocks } from '../../test/mocks';
 
@@ -67,7 +68,7 @@ describe(RepositoryService.name, () => {
   });
 
   describe('createUrl', () => {
-    it('mints a URL and records the restic token', async () => {
+    it('mints a URL from the site rest_url with a storageCluster claim', async () => {
       mocks.repository.get.mockResolvedValue({
         id: repoId,
         userId: auth.id,
@@ -83,25 +84,21 @@ describe(RepositoryService.name, () => {
       mocks.jwt.decode.mockReturnValue({ exp: 1_700_000_000 });
       mocks.resticTokens.create.mockResolvedValue({} as never);
 
-      const { url } = await sut.createUrl(auth, repoId);
+      const { url, jti } = await sut.createUrl(auth, repoId);
 
       expect(mocks.topology.getSite).toHaveBeenCalledWith('father');
-      expect(mocks.jwt.signAsync).toHaveBeenCalledWith({
-        user: auth.id,
-        repository: repoId,
-        writeOnce: true,
-        storageCluster: 'father-spice',
-        jti: 'jti-x',
-        connection: 'immich',
-      });
-      expect(mocks.resticTokens.create).toHaveBeenCalledWith({
-        jti: 'jti-x',
-        repositoryId: repoId,
-        userId: auth.id,
-        connectionId: 'conn',
-        mintedBy: 'user',
-        expiresAt: new Date(1_700_000_000 * 1000),
-      });
+      expect(mocks.jwt.signAsync).toHaveBeenCalledWith(
+        {
+          user: auth.id,
+          repository: repoId,
+          writeOnce: true,
+          storageCluster: 'father-spice',
+          jti: 'jti-x',
+          connection: 'immich',
+        },
+        { expiresIn: env.JWT_EXPIRES_IN },
+      );
+      expect(jti).toBe('jti-x');
       expect(url).toBe(`rest:https://restic:signed-token@rest.htz-fsn1.backups.futo.cloud/${repoId}`);
     });
   });

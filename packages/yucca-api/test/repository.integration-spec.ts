@@ -138,7 +138,21 @@ describe('RepositoryController (e2e)', () => {
         url: expect.stringMatching(
           /^rest:http:\/\/restic:[\w-]*\.[\w-]*\.[\w-]*@[\w.:]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/,
         ),
+        jti: expect.any(String),
+        expiresAt: expect.any(String),
       });
+
+      const hours = (new Date(body.expiresAt as string).getTime() - Date.now()) / 3_600_000;
+      expect(hours).toBeGreaterThan(23);
+      expect(hours).toBeLessThan(25);
+    });
+
+    it('rejects a custom expiresIn for a non-revocable (immich) repository', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/repository/${repository.id}/restic`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .send({ expiresIn: '30d' })
+        .expect(400);
     });
 
     it('embeds jti + connection claims and records the token', async () => {

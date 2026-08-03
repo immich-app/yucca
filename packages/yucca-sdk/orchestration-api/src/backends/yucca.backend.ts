@@ -68,7 +68,7 @@ export class YuccaBackend extends Backend {
   }
 
   async getResticEndpoint(id: string) {
-    const { url } = await createResticUrl(id, await this.getRequestOptions());
+    const { url } = await createResticUrl(id, {}, await this.getRequestOptions());
     return url;
   }
 
