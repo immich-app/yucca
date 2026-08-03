@@ -23,9 +23,9 @@ env:
   - name: PORT
     value: "80"
   # iss claim / discovery base — must match yucca-api's OIDC_ISSUER
-  # (http://yucca-mock-oidc:8092) so issued tokens validate in-cluster.
+  # (http://oidc.localhost:8092) so issued tokens validate in-cluster.
   - name: ISSUER
-    value: http://yucca-mock-oidc:8092
+    value: http://oidc.localhost:8092
   - name: CLIENT_ID
     value: "client ID"
   - name: CLIENT_SECRET

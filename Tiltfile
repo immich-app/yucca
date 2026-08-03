@@ -72,6 +72,22 @@ if DEV_ENV:
     }))
     k8s_resource(objects=['yucca-dev-env:secret'], new_name='dev-env', labels=['helm'])
 
+# CoreDNS rewrite so the cluster resolves the same OIDC issuer name the browser
+# does. The dev issuer is `oidc.localhost` (charts/apps/yucca-api,
+# charts/dev/mock-oidc): browsers map any *.localhost to loopback (RFC 6761, in
+# Chrome/Firefox/Arc/Edge), so no /etc/hosts is needed on the host; here we point
+# the same name at the in-cluster mock so yucca-api's discovery + issuer check
+# agree. k3d/k3s auto-imports the `coredns-custom` ConfigMap (*.override).
+k8s_yaml(encode_yaml({
+    'apiVersion': 'v1',
+    'kind': 'ConfigMap',
+    'metadata': {'name': 'coredns-custom', 'namespace': 'kube-system'},
+    'data': {
+        'oidc.override': 'rewrite name oidc.localhost yucca-mock-oidc.yucca.svc.cluster.local\n',
+    },
+}))
+k8s_resource(objects=['coredns-custom:configmap'], new_name='coredns-oidc', labels=['helm'])
+
 # ---------------------------------------------------------------------------
 # Fleet topology. The real clusters get this ConfigMap from Flux with the
 # per-cluster values substituted in (kubernetes/apps/base/topology); Tilt
@@ -471,17 +487,22 @@ for app in LOCAL_APPS:
 # ---------------------------------------------------------------------------
 local_resource(
     'port-forwards',
+    # Each tunnel runs in a reconnect loop: a raw `kubectl port-forward` dies when
+    # the pod behind the service is replaced (every live_update image rebuild), and
+    # does NOT re-establish itself. The `while` loop reconnects within ~1s, so the
+    # host ports stay up across rebuilds instead of needing a manual restart.
     serve_cmd='''trap 'kill 0' EXIT
-kubectl port-forward -n yucca svc/yucca-api 3020:3020 &
-kubectl port-forward -n yucca svc/yucca-admin-api 3030:3030 &
-kubectl port-forward -n yucca svc/yucca-web 5173:5173 &
-kubectl port-forward -n yucca svc/yucca-meta 8081:8080 &
-kubectl port-forward -n yucca svc/yucca-michael 3010:3010 &
-kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 &
-kubectl port-forward -n rook-ceph svc/rook-ceph-rgw-yucca 9000:80 &
-kubectl port-forward -n yucca svc/victoria-metrics 8428:8428 &
-kubectl port-forward -n yucca svc/victoria-logs 9428:9428 &
-kubectl port-forward -n yucca svc/yucca-redis 6379:6379 &
+pf() { while true; do kubectl port-forward -n "$1" "svc/$2" "$3" 2>/dev/null; sleep 1; done; }
+pf yucca yucca-api 3020:3020 &
+pf yucca yucca-admin-api 3030:3030 &
+pf yucca yucca-web 5173:5173 &
+pf yucca yucca-meta 8081:8080 &
+pf yucca yucca-michael 3010:3010 &
+pf yucca yucca-mock-oidc 8092:8092 &
+pf rook-ceph rook-ceph-rgw-yucca 9000:80 &
+pf yucca victoria-metrics 8428:8428 &
+pf yucca victoria-logs 9428:9428 &
+pf yucca yucca-redis 6379:6379 &
 wait''',
     resource_deps=['yucca-api', 'yucca-web', 'yucca-michael', 'yucca-mock-oidc', 'yucca-meta'],
     labels=['app'],

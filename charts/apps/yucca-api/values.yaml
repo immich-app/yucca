@@ -43,7 +43,7 @@ volumeMounts:
 postgresClusterName: yucca-db
 
 # OIDC provider in-cluster service
-oidcIssuer: http://yucca-mock-oidc:8092
+oidcIssuer: http://oidc.localhost:8092
 oidcRedirectUri: http://localhost:5173/api/auth/oidc/callback
 oidcLogoutRedirectUri: http://localhost:5173
 
@@ -90,7 +90,7 @@ env:
   # Device-flow OIDC (required by yucca-api env schema; points at mock-oidc's
   # registered device client).
   - name: OIDC_DEVICE_ISSUER
-    value: http://yucca-mock-oidc:8092
+    value: http://oidc.localhost:8092
   - name: OIDC_DEVICE_CLIENT_ID
     value: "device client ID"
   - name: OIDC_DEVICE_ALLOW_INSECURE

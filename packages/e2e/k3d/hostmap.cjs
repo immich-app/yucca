@@ -1,8 +1,6 @@
-// e2e-against-k3d glue: the deployed yucca-api advertises its OIDC issuer as the
-// in-cluster name http://yucca-mock-oidc:8092. Host-side fetch() (undici) in the
-// jest e2e must resolve that name to the kubectl port-forward on localhost.
+// Resolve the OIDC issuer host to the kubectl port-forward for host-side jest fetch (undici).
 const dns = require('dns');
-const MAP = { 'yucca-mock-oidc': '127.0.0.1' };
+const MAP = { 'oidc.localhost': '127.0.0.1', 'yucca-mock-oidc': '127.0.0.1' };
 const origLookup = dns.lookup;
 dns.lookup = function (hostname, options, callback) {
   if (typeof options === 'function') {
