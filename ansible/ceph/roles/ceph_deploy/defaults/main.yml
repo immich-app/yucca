@@ -119,3 +119,35 @@ ceph_rgw_ingress_count: 3
 # verify.yml warns that alert delivery is not configured. TODO(operator): set the
 # destination for spice.
 ceph_alertmanager_webhook_urls: []
+
+# Repair cephadm's alertmanager route tree so `default_webhook_urls` is live.
+#
+# WHY: upstream's 'ceph-dashboard' child route carries no matchers, so it
+# matches every alert. Its `continue: true` is emitted only inside the
+# snmp_gateway_urls conditional. Alertmanager falls back to the parent receiver
+# only when no child matched. On a cluster with no SNMP gateway, every alert
+# therefore stops at 'ceph-dashboard' and never reaches 'default', which is
+# where the webhooks above land. Notifications report success; nothing arrives.
+#
+# Required whenever ceph_alertmanager_webhook_urls is non-empty, because without
+# it that setting is inert. It stays a separate flag because it rewrites a
+# cephadm-managed config, so setting a webhook URL never rewrites that config on
+# its own.
+ceph_alertmanager_fix_route_tree: false
+
+# Drop the `description` label from alerts before they reach alertmanager.
+#
+# WHY: `ceph_pool_metadata` carries a label named `description`, whose value is
+# the pool's EC profile (`ec:16+4`, `replica:3`). Three rules join that metric
+# with group_left and inherit the label: CephPGsUnclean, CephPGsInactive,
+# CephPoolGrowthWarning. Zulip's alertmanager integration resolves its `desc`
+# field against labels first and annotations second. With `desc=description`
+# those three alerts render as the string `ec:16+4` instead of their annotation.
+#
+# The label is incidental pool metadata. Nothing routes, silences or groups on
+# it. This relabels alerts only, so the metric keeps the label and dashboards
+# are unaffected.
+#
+# Only meaningful when the receiver resolves annotations by name. Harmless
+# otherwise, but defaults false so no cluster changes alert content implicitly.
+ceph_prometheus_drop_description_label: false

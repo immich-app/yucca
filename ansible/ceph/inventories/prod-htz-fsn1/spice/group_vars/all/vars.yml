@@ -50,8 +50,20 @@ ceph_bind_networks:
 # incoming webhook whose alertmanager integration accepts the standard webhook
 # payload; it carries an API key, so it lives in 1Password and arrives through
 # secrets.yml.tpl rather than being written here.
+#
+# The URL carries `desc=description`, set on the 1Password item. Zulip's
+# alertmanager integration renders one field per alert and defaults it to
+# `alertname`. Without the parameter every alert arrives as a bare identifier,
+# with no host and no value. `description` is the only field that names a host.
 ceph_alertmanager_webhook_urls:
   - "{{ vault_alertmanager_webhook_url }}"
+# Without this the URL above is inert. Someone repaired the route tree by hand on
+# the live cluster and the repair was tracked nowhere until 2026-07-31, so a
+# reprovision would have come up with alert delivery silently dead.
+ceph_alertmanager_fix_route_tree: true
+# Companion to `desc=description`: without it CephPGsUnclean, CephPGsInactive
+# and CephPoolGrowthWarning render as `ec:16+4`.
+ceph_prometheus_drop_description_label: true
 # Bond of the two 25G NICs, LACP to match the leaf ae<k> aggregate (cluster-fabric).
 bond_mode: "802.3ad"
 # COEXISTENCE: keep the 1G WAN (oob_nic) on ifupdown exactly as installimage set
