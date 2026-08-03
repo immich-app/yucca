@@ -437,6 +437,36 @@
         ]
       }
     },
+    "/api/user/{id}/connections": {
+      "get": {
+        "operationId": "listUserConnections",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
     "/api/session/{id}": {
       "delete": {
         "operationId": "deleteSession",
@@ -1130,6 +1160,52 @@
           "value"
         ]
       },
+      "ConnectionAdminDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "immich | restic"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "type",
+          "name",
+          "createdAt"
+        ]
+      },
+      "ConnectionListResponseDto": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionAdminDto"
+            }
+          }
+        },
+        "required": [
+          "connections"
+        ]
+      },
       "RepositoryOwnerDto": {
         "type": "object",
         "properties": {
@@ -1192,6 +1268,12 @@
           "worm": {
             "type": "boolean"
           },
+          "connectionId": {
+            "type": "string"
+          },
+          "connectionType": {
+            "type": "string"
+          },
           "user": {
             "$ref": "#/components/schemas/RepositoryOwnerDto"
           },
@@ -1203,6 +1285,8 @@
           "id",
           "name",
           "worm",
+          "connectionId",
+          "connectionType",
           "user",
           "metrics"
         ]
@@ -1237,6 +1321,14 @@
           },
           "worm": {
             "type": "boolean"
+          },
+          "connectionType": {
+            "type": "string",
+            "enum": [
+              "immich",
+              "restic"
+            ],
+            "description": "Connection type for the owning connection; defaults to 'restic' (manual use)"
           }
         },
         "required": [
@@ -1269,8 +1361,7 @@
         "type": "object",
         "properties": {
           "url": {
-            "type": "string",
-            "description": "restic rest: URL with an embedded repository token"
+            "type": "string"
           }
         },
         "required": [

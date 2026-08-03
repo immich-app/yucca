@@ -3,7 +3,9 @@ import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryService } from 'src/services/repository.service';
 import { Mocks, newMocks } from '../../test/mocks';
 
-const auth = { id: 'b6b7c231-6dc0-4bdc-82c1-92677b1e6c1c' } as AuthDto;
+const auth = { id: 'b6b7c231-6dc0-4bdc-82c1-92677b1e6c1c', features: {} } as AuthDto;
+
+const repoId = 'e2b47875-91a9-4c67-a3cd-fd6c0a5b6d11';
 
 const site = {
   code: 'father',
@@ -24,6 +26,7 @@ describe(RepositoryService.name, () => {
       mocks.jwt as never,
       mocks.repository as never,
       mocks.wideContext as never,
+      mocks.connection as never,
       mocks.topology as never,
     );
   });
@@ -32,6 +35,7 @@ describe(RepositoryService.name, () => {
     it('stamps the resolved site and its active cluster', async () => {
       mocks.topology.getSite.mockReturnValue(site);
       mocks.topology.getActiveCluster.mockReturnValue(site.clusters[0]);
+      mocks.connection.getOrCreateDefault.mockResolvedValue({ id: 'conn', type: 'immich' } as never);
       mocks.repository.create.mockResolvedValue({ id: 'repo' } as never);
 
       await sut.create(auth, { name: 'backup', worm: false, site: 'father' });
@@ -39,6 +43,7 @@ describe(RepositoryService.name, () => {
       expect(mocks.topology.getSite).toHaveBeenCalledWith('father');
       expect(mocks.repository.create).toHaveBeenCalledWith({
         userId: auth.id,
+        connectionId: 'conn',
         name: 'backup',
         worm: false,
         siteCode: 'father',
@@ -46,12 +51,14 @@ describe(RepositoryService.name, () => {
       });
     });
 
-    it('rejects an unknown site', () => {
+    it('rejects an unknown site', async () => {
       mocks.topology.getSite.mockImplementation(() => {
         throw new BadRequestException("Unknown site 'nowhere'");
       });
 
-      expect(() => sut.create(auth, { name: 'backup', worm: false, site: 'nowhere' })).toThrow(BadRequestException);
+      await expect(sut.create(auth, { name: 'backup', worm: false, site: 'nowhere' })).rejects.toThrow(
+        BadRequestException,
+      );
       expect(mocks.repository.create).not.toHaveBeenCalled();
     });
   });
@@ -59,27 +66,28 @@ describe(RepositoryService.name, () => {
   describe('createUrl', () => {
     it('mints a URL from the site rest_url with a storageCluster claim', async () => {
       mocks.repository.get.mockResolvedValue({
-        id: 'e2b47875-91a9-4c67-a3cd-fd6c0a5b6d11',
+        id: repoId,
         userId: auth.id,
         worm: true,
         siteCode: 'father',
         storageClusterCode: 'father-spice',
+        connectionId: 'conn',
+        connectionType: 'immich',
       } as never);
       mocks.topology.getSite.mockReturnValue(site);
       mocks.jwt.signAsync.mockResolvedValue('signed-token');
 
-      const { url } = await sut.createUrl(auth, 'e2b47875-91a9-4c67-a3cd-fd6c0a5b6d11');
+      const { url } = await sut.createUrl(auth, repoId);
 
       expect(mocks.topology.getSite).toHaveBeenCalledWith('father');
       expect(mocks.jwt.signAsync).toHaveBeenCalledWith({
         user: auth.id,
-        repository: 'e2b47875-91a9-4c67-a3cd-fd6c0a5b6d11',
+        repository: repoId,
         writeOnce: true,
         storageCluster: 'father-spice',
+        connection: 'immich',
       });
-      expect(url).toBe(
-        'rest:https://restic:signed-token@rest.htz-fsn1.backups.futo.cloud/e2b47875-91a9-4c67-a3cd-fd6c0a5b6d11',
-      );
+      expect(url).toBe(`rest:https://restic:signed-token@rest.htz-fsn1.backups.futo.cloud/${repoId}`);
     });
   });
 });

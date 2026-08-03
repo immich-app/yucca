@@ -1,6 +1,6 @@
-import { resolveFeatures } from '@common/server';
+import { connectionTypeFlag, isConnectionType, resolveFeatures } from '@common/server';
 import { LoggerRepository, WideContextRepository } from '@common/server/otel';
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { parse } from 'cookie';
 import EventIterator from 'event-iterator';
 import { Request } from 'express';
@@ -10,12 +10,13 @@ import { from } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
 import { CookieName } from 'src/enum';
 import { env } from 'src/env';
+import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
-import { EmailNotAllowedException } from 'src/utils/exceptions';
+import { EmailNotAllowedException, FeatureNotEnabledException } from 'src/utils/exceptions';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly crypto: CryptoRepository,
     private readonly session: SessionRepository,
     private readonly wideContext: WideContextRepository,
+    private readonly connection: ConnectionRepository,
   ) {}
 
   async authenticate(headers: IncomingHttpHeaders): Promise<AuthDto> {
@@ -44,7 +46,12 @@ export class AuthService {
 
     this.wideContext.addContext('customerId', row.id);
 
-    const { featureOverrides, ...user } = row;
+    const { connectionLastSeenAt, featureOverrides, ...user } = row;
+
+    if (user.connectionId && (!connectionLastSeenAt || Date.now() - connectionLastSeenAt.getTime() > 300_000)) {
+      await this.connection.touchLastSeen(user.connectionId);
+    }
+
     return { ...user, features: resolveFeatures(featureOverrides) };
   }
 
@@ -104,6 +111,7 @@ export class AuthService {
     await this.session.create({
       userId: user.id,
       accessToken,
+      kind: 'web',
     });
 
     return {
@@ -140,6 +148,8 @@ export class AuthService {
         name: claims.name,
         email: claims.email,
       });
+
+      await this.connection.getOrCreateDefault(user.id);
     }
 
     return user;
@@ -170,8 +180,36 @@ export class AuthService {
     throw new EmailNotAllowedException();
   }
 
+  private async resolveDeviceConnection(
+    userId: string,
+    features: Record<string, boolean>,
+    connectionType?: string,
+    connectionName?: string,
+  ): Promise<string> {
+    if (!connectionType) {
+      const connection = await this.connection.getOrCreateDefault(userId);
+      return connection.id;
+    }
+
+    if (!isConnectionType(connectionType)) {
+      throw new BadRequestException(`Unknown connection type '${connectionType}'`);
+    }
+
+    const flag = connectionTypeFlag(connectionType);
+    if (flag && !features[flag]) {
+      throw new FeatureNotEnabledException(flag);
+    }
+
+    const name = connectionName?.trim() || connectionType;
+    const existing = await this.connection.getByUserTypeName(userId, connectionType, name);
+    const connection = existing ?? (await this.connection.create({ userId, type: connectionType, name }));
+    return connection.id;
+  }
+
   async oidcDeviceFlow(
     callback: (data: { userCode: string; verificationUri: string }) => void,
+    connectionType?: string,
+    connectionName?: string,
   ): Promise<{ accessToken: string }> {
     const { userCode, verificationUri, claims: pendingClaims } = await this.oidc.deviceFlow();
 
@@ -189,11 +227,22 @@ export class AuthService {
 
     this.wideContext.addContext('customerId', user.id);
 
+    const overrides = await this.user.getFeatureOverrides(user.id);
+    const connectionId = await this.resolveDeviceConnection(
+      user.id,
+      resolveFeatures(overrides),
+      connectionType,
+      connectionName,
+    );
+    await this.connection.touchLastSeen(connectionId);
+
     const accessToken = this.crypto.randomHex(32);
 
     await this.session.create({
       userId: user.id,
       accessToken,
+      connectionId,
+      kind: 'device',
     });
 
     return {
@@ -201,23 +250,31 @@ export class AuthService {
     };
   }
 
-  oidcDeviceFlowObservable() {
+  oidcDeviceFlowObservable(connectionType?: string, connectionName?: string) {
     return from(
       new EventIterator<MessageEvent>(
         (queue) =>
-          void this.oidcDeviceFlow((data) =>
-            queue.push({
-              data: {
-                type: 'START',
-                ...data,
-              },
-            } as MessageEvent),
+          void this.oidcDeviceFlow(
+            (data) =>
+              queue.push({
+                data: {
+                  type: 'START',
+                  ...data,
+                },
+              } as MessageEvent),
+            connectionType,
+            connectionName,
           )
             .then(({ accessToken }) => queue.push({ data: { type: 'SUCCESS', accessToken } } as MessageEvent))
             .catch((error) => {
               this.wideContext.setErrorCause(error);
               this.logger.error('oidcDeviceFlow error:', error);
-              const reason = error instanceof EmailNotAllowedException ? 'EMAIL_NOT_ALLOWED' : 'UNKNOWN';
+              let reason = 'UNKNOWN';
+              if (error instanceof EmailNotAllowedException) {
+                reason = 'EMAIL_NOT_ALLOWED';
+              } else if (error instanceof FeatureNotEnabledException) {
+                reason = 'FEATURE_NOT_ENABLED';
+              }
               queue.push({ data: { type: 'FAILURE', reason } } as MessageEvent);
             })
             .finally(() => queue.stop()),

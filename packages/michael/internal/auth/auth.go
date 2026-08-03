@@ -22,10 +22,11 @@ type Auth struct {
 	User       string `json:"user"`
 	Repository string `json:"repository"`
 	WriteOnce  bool   `json:"writeOnce"`
-	// StorageCluster selects which of the storage clusters this michael fronts
-	// serves the request. Optional: tokens minted before multi-cluster carry no
-	// such claim and are routed to the default cluster.
+	// StorageCluster selects which storage cluster this michael fronts serves the
+	// request; absent on tokens minted before multi-cluster (routed to default).
 	StorageCluster string `json:"storageCluster"`
+	Jti            string `json:"jti"`
+	Connection     string `json:"connection"`
 }
 
 type contextKey string
@@ -202,8 +203,6 @@ func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, time.Time, 
 	}
 	auth.WriteOnce = writeOnce
 
-	// Optional: absent (or explicitly empty) means the default cluster, which is
-	// what every token minted before multi-cluster routing looks like.
 	if raw, present := claims["storageCluster"]; present && raw != nil {
 		storageCluster, ok := raw.(string)
 		if !ok {
@@ -213,6 +212,12 @@ func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, time.Time, 
 			return Auth{}, time.Time{}, &authError{http.StatusBadRequest, "storageCluster must match " + cluster.CodePattern}
 		}
 		auth.StorageCluster = storageCluster
+	}
+	if jti, ok := claims["jti"].(string); ok {
+		auth.Jti = jti
+	}
+	if connection, ok := claims["connection"].(string); ok {
+		auth.Connection = connection
 	}
 
 	var exp time.Time

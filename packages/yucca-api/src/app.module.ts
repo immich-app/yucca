@@ -5,10 +5,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
 import { MetaController } from './controllers/meta.controller';
+import { ConnectionController } from './controllers/connection.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
+import { ConnectionRepository } from './repositories/connection.repository';
 import { CryptoRepository } from './repositories/crypto.repository';
 import { DatabaseRepository } from './repositories/database.repository';
 import { OidcRepository } from './repositories/oidc.repository';
@@ -22,6 +24,7 @@ import { TopologyRepository } from './repositories/topology.repository';
 import { UserRepository } from './repositories/user.repository';
 import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
 import { AuthService } from './services/auth.service';
+import { ConnectionService } from './services/connection.service';
 import { DatabaseService } from './services/database.service';
 import { MetaService } from './services/meta.service';
 import { MetricsService } from './services/metrics.service';
@@ -38,7 +41,7 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, MetaController, MetricsController, RepositoryController];
+export const controllers = [AuthController, MetaController, ConnectionController, MetricsController, RepositoryController];
 
 export const providers = [
   WideContextRepository,
@@ -46,6 +49,7 @@ export const providers = [
   StorageRepository,
   TopologyRepository,
   SettingsRepository,
+  ConnectionRepository,
   DatabaseRepository,
   CryptoRepository,
   OidcRepository,
@@ -61,6 +65,7 @@ export const providers = [
   MetricsService,
   RepositoryService,
   AuthService,
+  ConnectionService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },
 ];

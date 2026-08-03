@@ -44,6 +44,8 @@ export class LocalBackend extends Backend {
         worm: dto.worm,
         siteCode: null,
         storageClusterCode: null,
+        connectionId: '',
+        connectionType: 'local',
         metrics: {
           sizeBytes: 0,
         },
@@ -59,6 +61,8 @@ export class LocalBackend extends Backend {
         worm: false,
         siteCode: null,
         storageClusterCode: null,
+        connectionId: '',
+        connectionType: 'local',
         metrics: {
           sizeBytes: 0,
         },
@@ -89,6 +93,8 @@ export class LocalBackend extends Backend {
                   worm: false,
                   siteCode: null,
                   storageClusterCode: null,
+                  connectionId: '',
+                  connectionType: 'local',
                   metrics: {
                     sizeBytes: 0, // in local cache
                   },

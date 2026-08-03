@@ -11,7 +11,7 @@ describe('RepositoryController (e2e)', () => {
   let app: INestApplication<App>;
   let user: { id: string; name: string; email: string; sub: string };
   let session: { id: string; accessToken: string };
-  let repository: { id: string };
+  let repository: { id: string; connectionId: string };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -48,6 +48,8 @@ describe('RepositoryController (e2e)', () => {
         repository: {
           id: expect.any(String),
           userId: user.id,
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: 'My Repository',
           siteCode: 'local',
@@ -70,6 +72,8 @@ describe('RepositoryController (e2e)', () => {
         repository: {
           id: repository.id,
           userId: user.id,
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: expect.any(String),
           siteCode: 'local',
@@ -110,6 +114,8 @@ describe('RepositoryController (e2e)', () => {
         repository: {
           id: repository.id,
           userId: user.id,
+          connectionId: expect.any(String),
+          connectionType: 'immich',
           worm: false,
           name: 'Updated Name',
           siteCode: 'local',
@@ -132,6 +138,23 @@ describe('RepositoryController (e2e)', () => {
         url: expect.stringMatching(
           /^rest:http:\/\/restic:[\w-]*\.[\w-]*\.[\w-]*@[\w.:]+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/,
         ),
+      });
+    });
+
+    it('embeds the connection claim', async () => {
+      const { body } = await request(app.getHttpServer())
+        .post(`/api/repository/${repository.id}/restic`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(201);
+
+      const token = new URL((body.url as string).slice('rest:'.length)).password;
+      const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()) as Record<string, unknown>;
+
+      expect(claims).toMatchObject({
+        user: user.id,
+        repository: repository.id,
+        writeOnce: false,
+        connection: 'immich',
       });
     });
   });

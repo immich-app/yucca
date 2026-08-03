@@ -6,13 +6,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	neturl "net/url"
+	"strconv"
 )
 
 // Repository mirrors the admin-api RepositoryAdminDto (the fields yuctl needs).
 type Repository struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Worm bool   `json:"worm"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Worm           bool   `json:"worm"`
+	ConnectionID   string `json:"connectionId"`
+	ConnectionType string `json:"connectionType"`
+	User           struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+	} `json:"user"`
 }
 
 func (c *Client) postJSON(ctx context.Context, path string, body, out any) error {
@@ -56,12 +64,27 @@ func (c *Client) postJSON(ctx context.Context, path string, body, out any) error
 	return nil
 }
 
-// CreateRepository creates a repository owned by the admin service user.
-func (c *Client) CreateRepository(ctx context.Context, name string, worm bool) (*Repository, error) {
+// CreateRepositoryOptions targets CreateRepository at a specific owner and
+// connection type; zero values keep the admin-service-user default.
+type CreateRepositoryOptions struct {
+	UserID         string
+	ConnectionType string
+}
+
+// CreateRepository creates a repository. Without options it is owned by the
+// admin service user; with UserID it is provisioned onto that user (default
+// connection type: restic / "Manual restic").
+func (c *Client) CreateRepository(ctx context.Context, name string, worm bool, opts CreateRepositoryOptions) (*Repository, error) {
 	var out struct {
 		Repository Repository `json:"repository"`
 	}
 	body := map[string]any{"name": name, "worm": worm}
+	if opts.UserID != "" {
+		body["userId"] = opts.UserID
+	}
+	if opts.ConnectionType != "" {
+		body["connectionType"] = opts.ConnectionType
+	}
 	if err := c.postJSON(ctx, "/api/repository", body, &out); err != nil {
 		return nil, err
 	}
@@ -77,4 +100,38 @@ func (c *Client) RepositoryURL(ctx context.Context, id string) (string, error) {
 		return "", err
 	}
 	return out.URL, nil
+}
+
+type repositoryPage struct {
+	Items      []Repository `json:"items"`
+	NextCursor *string      `json:"nextCursor"`
+}
+
+// ListRepositories lists repositories (optionally for one user), following
+// cursor pagination.
+func (c *Client) ListRepositories(ctx context.Context, userID string, limit int) ([]Repository, error) {
+	var all []Repository
+	cursor := ""
+	for {
+		q := neturl.Values{}
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		if limit > 0 {
+			q.Set("limit", strconv.Itoa(limit))
+		}
+		if userID != "" {
+			q.Set("userId", userID)
+		}
+		var page repositoryPage
+		if err := c.getJSON(ctx, "/api/repository", q, &page); err != nil {
+			return nil, err
+		}
+		all = append(all, page.Items...)
+		if page.NextCursor == nil || *page.NextCursor == "" {
+			break
+		}
+		cursor = *page.NextCursor
+	}
+	return all, nil
 }

@@ -328,19 +328,19 @@ func TestBlobMetricOptionDifferentKeys(t *testing.T) {
 
 func TestHttpUserMetricOption(t *testing.T) {
 	// Empty user delegates to the route-scoped option.
-	anon := HttpUserMetricOption("GET", "/foo", 200, "", "")
+	anon := HttpUserMetricOption("GET", "/foo", 200, "", "", "immich")
 	if anon != HttpMetricOption("GET", "/foo", 200) {
 		t.Fatal("expected empty user to reuse the route-scoped option")
 	}
 
-	a := HttpUserMetricOption("GET", "/foo", 200, "u1", "r1")
+	a := HttpUserMetricOption("GET", "/foo", 200, "u1", "r1", "immich")
 	if a == anon {
 		t.Fatal("expected per-user option to differ from the route-scoped one")
 	}
-	if a != HttpUserMetricOption("GET", "/foo", 200, "u1", "r1") {
+	if a != HttpUserMetricOption("GET", "/foo", 200, "u1", "r1", "immich") {
 		t.Fatal("expected cached HttpUserMetricOption to return the same object")
 	}
-	if a == HttpUserMetricOption("GET", "/foo", 200, "u2", "r2") {
+	if a == HttpUserMetricOption("GET", "/foo", 200, "u2", "r2", "immich") {
 		t.Fatal("different users should produce different options")
 	}
 }
@@ -439,5 +439,23 @@ func TestBlobMiddlewareUnwraps(t *testing.T) {
 
 	if mrw.BytesWritten != 5 {
 		t.Fatalf("expected 5 bytes written, got %d", mrw.BytesWritten)
+	}
+}
+
+func TestBlobMetricOptionConnectionInCacheKey(t *testing.T) {
+	// Same user+repo but different connection types must not share a cache entry.
+	a := BlobMetricOption(auth.Auth{User: "u1", Repository: "r1", Connection: "immich"}, "data")
+	b := BlobMetricOption(auth.Auth{User: "u1", Repository: "r1", Connection: "restic"}, "data")
+	if a == b {
+		t.Fatal("different connections should produce different options")
+	}
+}
+
+func TestConnectionLabelUnknownForLegacyTokens(t *testing.T) {
+	if got := connectionLabel(auth.Auth{}); got != "unknown" {
+		t.Fatalf("expected unknown, got %s", got)
+	}
+	if got := connectionLabel(auth.Auth{Connection: "restic"}); got != "restic" {
+		t.Fatalf("expected restic, got %s", got)
 	}
 }

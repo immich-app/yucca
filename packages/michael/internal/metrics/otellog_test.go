@@ -24,7 +24,7 @@ func (e *memoryExporter) Export(_ context.Context, records []sdklog.Record) erro
 	return nil
 }
 
-func (e *memoryExporter) Shutdown(_ context.Context) error { return nil }
+func (e *memoryExporter) Shutdown(_ context.Context) error   { return nil }
 func (e *memoryExporter) ForceFlush(_ context.Context) error { return nil }
 
 func (e *memoryExporter) Records() []sdklog.Record {

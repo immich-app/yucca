@@ -102,3 +102,24 @@ func (c *Client) EnableFeatureBatch(ctx context.Context, flag string, count int)
 	}
 	return out.Enabled, nil
 }
+
+// Connection mirrors the admin-api ConnectionAdminDto.
+type Connection struct {
+	ID         string  `json:"id"`
+	UserID     string  `json:"userId"`
+	Type       string  `json:"type"`
+	Name       string  `json:"name"`
+	CreatedAt  string  `json:"createdAt"`
+	LastSeenAt *string `json:"lastSeenAt"`
+}
+
+// GetUserConnections lists a user's connection instances.
+func (c *Client) GetUserConnections(ctx context.Context, userID string) ([]Connection, error) {
+	var out struct {
+		Connections []Connection `json:"connections"`
+	}
+	if err := c.getJSON(ctx, "/api/user/"+url.PathEscape(userID)+"/connections", nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Connections, nil
+}

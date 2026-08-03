@@ -1,4 +1,5 @@
 import { Kysely } from 'kysely';
+import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
@@ -19,9 +20,10 @@ function getDb() {
 export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
-    await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
+    await db.deleteFrom('connections').execute();
+    await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('users').execute();
     await db.deleteFrom('userAllowlist').execute();
     await db.deleteFrom('settings').execute();
@@ -51,6 +53,7 @@ export const testUtils = {
     const db = getDb();
     const userRepository = new UserRepository(db);
     const sessionRepository = new SessionRepository(db);
+    const connectionRepository = new ConnectionRepository(db);
     const cryptoRepository = new CryptoRepository();
 
     const user = await userRepository.create({
@@ -58,6 +61,8 @@ export const testUtils = {
       email,
       sub,
     });
+
+    const connection = await connectionRepository.getOrCreateDefault(user.id);
 
     const accessToken = cryptoRepository.randomHex(16);
     const session = await sessionRepository.create({
@@ -68,7 +73,23 @@ export const testUtils = {
     return {
       user,
       session,
+      connection,
     };
+  },
+
+  createConnection: (userId: string, type: string, name: string) => {
+    const db = getDb();
+    return new ConnectionRepository(db).create({ userId, type, name });
+  },
+
+  createRepositoryForConnection: (
+    userId: string,
+    connectionId: string,
+    name = 'Connection Repository',
+    worm = false,
+  ) => {
+    const db = getDb();
+    return new RepositoryRepository(db).create({ name, worm, userId, connectionId });
   },
 
   setFeatureOverride: (userId: string, flag: string, value: boolean, setBy = 'test-admin') => {
@@ -100,6 +121,7 @@ export const testUtils = {
   createRepository: async (userId: string, name = 'My Repository', worm = false) => {
     const db = getDb();
     const repositoryRepository = new RepositoryRepository(db);
+    const connection = await new ConnectionRepository(db).getOrCreateDefault(userId);
 
     return await repositoryRepository.create({
       name,
@@ -107,6 +129,7 @@ export const testUtils = {
       userId,
       siteCode: 'local',
       storageClusterCode: 'local-dev',
+      connectionId: connection.id,
     });
   },
 };

@@ -1,4 +1,5 @@
 import { Column, ForeignKeyColumn, type Generated, Table } from '@immich/sql-tools';
+import { ConnectionTable } from './connection.table';
 import { UserTable } from './user.table';
 
 @Table({ name: 'repositories' })
@@ -20,4 +21,7 @@ export class RepositoryTable {
 
   @Column({ type: 'text' })
   storageClusterCode!: string;
+
+  @ForeignKeyColumn(() => ConnectionTable, { onUpdate: 'CASCADE', onDelete: 'RESTRICT', index: true })
+  connectionId!: string;
 }
