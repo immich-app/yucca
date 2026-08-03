@@ -42,8 +42,18 @@ locals {
       roles          = h.roles
       hostname_short = "${var.cluster_name}-${var.role_in_hostname}-${module.names.resolved[i]}"
       fqdn           = "${var.cluster_name}-${var.role_in_hostname}-${module.names.resolved[i]}.${var.domain}"
+      ceph_config    = h.ceph_config
     }
   ]
+
+  # Per-host config -> `<section>/host:<hostname>`, the form `ceph config set`
+  # takes. Composed here so a tfvars entry names the host, not the mask syntax.
+  ceph_config_host = merge([
+    for h in local.hosts_computed : {
+      for section, options in h.ceph_config :
+      "${section}/host:${h.hostname_short}" => options
+    }
+  ]...)
 
   bootstrap_host = (
     length([for h in local.hosts_computed : h if h.bootstrap]) > 0

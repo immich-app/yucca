@@ -4,7 +4,7 @@
 # resolves via op inject, SSH connectivity, Python on targets.
 #
 # Target inventory + secrets template are located via CEPH_ENV (path to
-# the TF-rendered inventory file — TF is the authoritative source of
+# the TF-rendered inventory file; TF is the authoritative source of
 # cluster identity, declared in tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars).
 set -euo pipefail
 
@@ -60,6 +60,7 @@ echo "--- Controller ---"
 check "ansible-play.sh wrapper executable" test -x scripts/ansible-play.sh
 check "Inventory file (TF-rendered) present" test -f "$INV"
 check "Secrets template (TF-rendered) present" test -f "$TEMPLATE"
+check "Ceph config (TF-rendered) present" test -f "${INV_DIR}/group_vars/all/ceph-config.generated.yml"
 check "SSH private key exists" test -f "$SSH_KEY"
 check "SSH public key exists" test -f "${SSH_KEY}.pub"
 check "Ansible installed" ansible --version
@@ -107,8 +108,8 @@ echo ""
 echo "=== Results ==="
 echo "  Passed: $PASS  Failed: $FAIL  Warnings: $WARN"
 if [ "$FAIL" -gt 0 ]; then
-  echo "  Pre-flight FAILED — fix issues above before proceeding."
+  echo "  Pre-flight FAILED: fix issues above before proceeding."
   exit 1
 else
-  echo "  Pre-flight OK — safe to proceed."
+  echo "  Pre-flight OK: safe to proceed."
 fi

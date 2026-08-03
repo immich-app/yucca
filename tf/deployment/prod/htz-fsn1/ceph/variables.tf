@@ -14,11 +14,16 @@ variable "clusters" {
     # the cluster's alertmanager gets a real receiver. See the ceph-cluster
     # module's alertmanager_webhook variable.
     alertmanager_webhook = optional(bool, false)
+    # -> group_vars/all/ceph-config.generated.yml (`ceph_config_cluster`).
+    # See the ceph-cluster module's ceph_config variable.
+    ceph_config = optional(map(map(string)), {})
     hosts = list(object({
       name      = optional(string)
       bond_ip   = string
       bootstrap = optional(bool, false)
       roles     = optional(list(string), ["mon", "mgr", "osd", "rgw"])
+      # -> `<section>/host:<hostname>` in ceph_config_host.
+      ceph_config = optional(map(map(string)), {})
     }))
   }))
 }

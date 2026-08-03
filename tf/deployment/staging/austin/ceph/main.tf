@@ -14,6 +14,7 @@ module "cluster" {
   hosts            = each.value.hosts
 
   provision_profile = each.value.provision_profile
+  ceph_config       = each.value.ceph_config
 
   # Password items (<CLUSTER>_CEPH_*) are created at the stack level in
   # secrets.tf (mirrors tf/deployment/staging/talos), using this module's

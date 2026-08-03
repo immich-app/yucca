@@ -39,6 +39,21 @@
 # `float` filter returns 0.0 for anything non-numeric -- which would read
 # "balanced" and "high_recovery_ops" as equal.
 
+# A render that predates the TF ceph_config model lacks the generated file;
+# the model would then fall back to role defaults and REVERT cluster tuning
+# (e.g. spice's deep scrub interval back to 7d). Fail instead of converging.
+- name: Require the TF-rendered ceph config (guards against a stale render)
+  ansible.builtin.assert:
+    that: >-
+      lookup('ansible.builtin.file',
+             inventory_dir ~ '/group_vars/all/ceph-config.generated.yml',
+             errors='ignore') is truthy
+    fail_msg: >-
+      {{ inventory_dir }}/group_vars/all/ceph-config.generated.yml is missing.
+      Re-render: scripts/render-inventories.sh <partition> <region>
+      (after the stack has been applied).
+  when: inventory_hostname in groups['ceph_bootstrap']
+
 - name: Merge Ceph config layers
   ansible.builtin.set_fact:
     ceph_config_effective: >-

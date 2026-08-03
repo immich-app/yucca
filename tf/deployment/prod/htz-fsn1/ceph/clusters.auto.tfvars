@@ -31,6 +31,44 @@ clusters = {
     # SPICE_CEPH_ALERTMANAGER_WEBHOOK_URL is provisioned out of band (Zulip
     # incoming webhook) and referenced, never generated. See secrets.tf.
     alertmanager_webhook = true
+
+    # === Ceph config (-> group_vars/all/ceph-config.generated.yml) ===
+    # Desired state for `ceph config set`, merged over the ceph_tuning defaults.
+    #
+    # Deep scrub at 7d (the role default) is unachievable at this size: the
+    # 02:00-06:00 window cannot carry it, so PGs ran permanently overdue and
+    # scrubbed around the clock. 28d fits. Shallow scrub stays at 7d.
+    #
+    # `global`, not `osd`: the active mgr emits PG_NOT_DEEP_SCRUBBED from its own
+    # copy, so an `osd` entry leaves the check on the 7-day default. It lived in
+    # `osd` until 2026-08-03 and warned at 12.25 days with nothing overdue.
+    #
+    # Since 19.2.0 a replica queues a scrub reservation instead of denying it.
+    # EC 16+4 needs 20 shard reservations at once against 4032 remote slots, so
+    # most PGs hold partial sets and wait forever. disable_reservation_queuing
+    # restores grant-or-fail; osd_max_scrubs only means anything once it does.
+    # UPSTREAM REMOVES THAT OPTION IN THE NEXT RELEASE -- re-check on any Ceph
+    # upgrade or the deadlock returns silently.
+    # https://www.mail-archive.com/ceph-users@ceph.io/msg28007.html
+    #
+    # osd_scrub_cost, osd_deep_scrub_stride and the custom mclock profile are
+    # provisional: measured gains were inside noise, under conditions that no
+    # longer apply. Drop them once the cluster is quiet enough to A/B properly,
+    # the profile first (it makes us owner of the client/recovery reservations).
+    ceph_config = {
+      global = {
+        osd_deep_scrub_interval = "2419200" # 28 days
+      }
+      osd = {
+        osd_scrub_disable_reservation_queuing           = "true"
+        osd_max_scrubs                                  = "6"
+        osd_scrub_cost                                  = "50"      # provisional
+        osd_deep_scrub_stride                           = "2097152" # provisional, 2 MiB
+        osd_mclock_profile                              = "custom"  # provisional
+        osd_mclock_scheduler_background_recovery_res    = "0.2"
+        osd_mclock_scheduler_background_best_effort_res = "0.3"
+      }
+    }
     hosts = [
       { name = "adelia", bond_ip = "178.63.139.248", bootstrap = true, roles = ["mon", "mgr", "osd", "rgw"] }, # srv 3008187 host_index 4  MON
       { name = "alexus", bond_ip = "178.63.139.254", roles = ["osd", "rgw"] },                                 # srv 3008189 host_index 5

@@ -1,22 +1,22 @@
-# Rendered Ansible artifacts (inventory files + secrets template).
+# Rendered Ansible artifacts (inventory files, secrets template, ceph config).
 #
 # These are exposed as module OUTPUTS (`rendered_files` / `inventory_dirname`),
-# NOT written by tofu via `local_file`. A local wrapper —
-# ansible/ceph/scripts/render-inventories.sh — reads the output and writes the
+# NOT written by tofu via `local_file`. A local wrapper
+# (ansible/ceph/scripts/render-inventories.sh) reads the output and writes the
 # files into the operator's own checkout.
 #
 # WHY: `local_file` stores the destination filename in state. With a shared
 # remote backend that path is machine/checkout-specific, so it coupled the
 # state to whichever git worktree last ran apply (get_repo_root() resolves to
 # the *worktree* root). Any apply from a different checkout then saw the
-# filename change and force-replaced every file — destroying the previous
+# filename change and force-replaced every file, destroying the previous
 # worktree's rendered files and rebinding shared state to the new path.
 # Keeping rendered content in outputs (and writing it locally) removes
 # filesystem paths from shared state entirely.
 
 locals {
   # Inventory directory name: <partition>-<region>/<cluster> (e.g. staging-austin/sietch).
-  # Region-scoped dir + friendly cluster leaf — matches the committed Ansible
+  # Region-scoped dir + friendly cluster leaf, matching the committed Ansible
   # inventory layout (ansible/ceph/inventories/<partition>-<region>/<cluster>/).
   inventory_dirname = "${var.partition}-${var.region}/${var.cluster_name}"
 
@@ -30,12 +30,27 @@ locals {
     ansible_ssh_key  = var.ansible_ssh_key
   }
 
+  # Encoded here, not in the template: `yamlencode` inside a heredoc defeats
+  # `tofu fmt`'s brace counting and it reindents the rest of the block.
+  _ceph_config_yaml = yamlencode({
+    ceph_config_cluster = var.ceph_config
+    ceph_config_host    = local.ceph_config_host
+  })
+
   # filename => rendered content. inventory-provision.ini is only produced when
   # a provision_profile is set (e.g., sietch's debian-live; installimage-provisioned clusters are null).
+  # ceph-config.generated.yml sits beside the committed vars.yml, same split as
+  # ansible/mgmt's users.generated.yml and kubernetes/'s cluster-settings.
   rendered_files = merge(
     {
       "inventory.ini"         = templatefile("${path.module}/templates/inventory.ini.tftpl", local._inventory_template_vars)
       "inventory-destroy.ini" = templatefile("${path.module}/templates/inventory-destroy.ini.tftpl", local._inventory_template_vars)
+      "group_vars/all/ceph-config.generated.yml" = templatefile("${path.module}/templates/ceph-config.generated.yml.tftpl", {
+        partition    = var.partition
+        region       = var.region
+        cluster_name = var.cluster_name
+        config_yaml  = local._ceph_config_yaml
+      })
       "secrets.yml.tpl" = templatefile("${path.module}/templates/secrets.yml.tpl.tftpl", {
         cluster_name  = var.cluster_name
         vault         = var.vault

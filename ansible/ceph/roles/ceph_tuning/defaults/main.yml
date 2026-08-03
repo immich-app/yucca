@@ -29,6 +29,12 @@ ceph_telemetry_enabled: true
 ceph_config_defaults:
   global:
     mon_target_pg_per_osd: 100
+    # `global`, not `osd`: the active mgr emits PG_NOT_DEEP_SCRUBBED from its
+    # own copy of this option, so an `osd` entry moves the OSD schedule and
+    # leaves the health check warning against the old interval. A cluster that
+    # widens this overrides it here, in `global`.
+    # docs.ceph.com/en/tentacle/rados/operations/health-checks/
+    osd_deep_scrub_interval: 604800
   osd:
     # Recovery/backfill. Conservative values sized for a small cluster on a
     # shared network; a cluster with a dedicated replication fabric should raise
@@ -43,10 +49,9 @@ ceph_config_defaults:
     # not prune the superseded `global` entries until the running OSD values are
     # confirmed, so a rejected write cannot quietly uncap backfill.
     osd_mclock_override_recovery_settings: true
-    # Scrub window -- 2-6 AM, deep scrub weekly.
+    # Scrub window -- 2-6 AM. osd_deep_scrub_interval lives in `global` above.
     osd_scrub_begin_hour: 2
     osd_scrub_end_hour: 6
-    osd_deep_scrub_interval: 604800
     # BlueStore block.db: 0 means use the entire LV.
     bluestore_block_db_size: 0
 
@@ -86,6 +91,10 @@ ceph_config_prune:
   - {section: global, name: osd_recovery_max_active}
   - {section: global, name: osd_recovery_sleep_hdd}
   - {section: global, name: osd_max_backfills}
+  # osd_deep_scrub_interval moved to `global`. Unlike the three above, a leftover
+  # here DOES change behaviour: `osd` is more specific, so it would hold the OSDs
+  # on the old interval. Set runs before rm, so the value never dips.
+  - {section: osd, name: osd_deep_scrub_interval}
 
 # Log rotation retention (days)
 ceph_log_retention_days: 30

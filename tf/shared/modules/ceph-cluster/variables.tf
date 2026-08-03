@@ -54,12 +54,16 @@ variable "hosts" {
       - bond_ip:    primary IP address ansible connects to
       - bootstrap:  (optional) true for the cephadm bootstrap node; exactly one per cluster
       - roles:      list of Ceph roles (mon, mgr, osd, rgw); informational
+      - ceph_config: (optional) per-host Ceph config keyed by section
+                    ({ osd = { osd_max_backfills = "4" } }); rendered into
+                    ceph_config_host as `<section>/host:<hostname_short>`.
   EOT
   type = list(object({
-    name      = optional(string)
-    bond_ip   = string
-    bootstrap = optional(bool, false)
-    roles     = optional(list(string), ["mon", "mgr", "osd", "rgw"])
+    name        = optional(string)
+    bond_ip     = string
+    bootstrap   = optional(bool, false)
+    roles       = optional(list(string), ["mon", "mgr", "osd", "rgw"])
+    ceph_config = optional(map(map(string)), {})
   }))
 
   validation {
@@ -91,6 +95,25 @@ variable "provision_profile" {
     condition     = var.provision_profile == null || contains(["debian-live"], var.provision_profile)
     error_message = "provision_profile must be null or 'debian-live'."
   }
+}
+
+variable "ceph_config" {
+  description = <<-EOT
+    Cluster-level Ceph config, rendered into
+    group_vars/all/ceph-config.generated.yml as `ceph_config_cluster`, the
+    middle of the three layers roles/ceph_tuning merges.
+
+    Keys are whatever `ceph config set` takes as its <who>: a section
+    (`global`, `osd`), one daemon (`osd.5`), or a section plus a mask
+    (`osd/class:hdd`). Values are strings, because ceph_config_diff.py compares
+    them exact-then-numeric against `ceph config dump`, which reports every
+    option as a string.
+
+    Which section an option goes in is load-bearing, and not always the one its
+    name suggests. See roles/ceph_tuning/defaults/main.yml.
+  EOT
+  type        = map(map(string))
+  default     = {}
 }
 
 variable "name_seed" {
