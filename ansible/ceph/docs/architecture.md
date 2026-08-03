@@ -247,8 +247,24 @@ to whichever worktree applied last. `scripts/render-inventories.sh <partition>
 | `inventory-destroy.ini`                    | Destroy-mode inventory (same credentials; separate file as a speed bump)                 |
 | `inventory-provision.ini`                  | Provisioning inventory (only when `provision_profile != null`; uses live-image creds; the profile names the template, not the output) |
 | `secrets.yml.tpl`                          | `vault_*: op://<vault>/<CLUSTER>_CEPH_*/password` pointers, consumed by `op inject -f`   |
+| `group_vars/all/ceph-config.generated.yml` | `ceph_config_cluster` + `ceph_config_host` for `ceph_tuning`, from the cluster's `ceph_config` and its hosts' `ceph_config` |
+| `group_vars/all/operators.yml`             | `ops_authorized_keys` from the identity registry                                          |
 
-All four are in `ansible/ceph/.gitignore` for every cluster. Re-render with
+All of them are in `ansible/ceph/.gitignore` for every cluster.
+
+`ceph-config.generated.yml` lands in the same directory as the committed
+`vars.yml`, which is the same split `ansible/mgmt` uses (`users.generated.yml`
+beside `main.yml`) and `kubernetes/` uses (`cluster-settings.generated.yaml`
+beside `cluster-settings.yaml`): TF owns desired state, the committed file holds
+what TF has no opinion about.
+
+That split is load-bearing rather than stylistic. Ansible reads **every** file in
+`group_vars/all/` and merges them per key, last file wins, with no deep merge
+(default `hash_behaviour = replace`) -- and files load alphabetically, so
+`vars.yml` sorts after `ceph-config.generated.yml`. A `ceph_config_cluster` left
+behind in `vars.yml` would take the whole map and the rendered file would stop
+having any effect, silently. The two keys are owned by TF exclusively; `vars.yml`
+carries a pointer comment where the block used to be. Re-render with
 `mise run tf:apply` followed by `scripts/render-inventories.sh` for the
 partition + region you applied (`staging austin`, `prod htz-fsn1`). The script
 is read-only against state, so the apply has to come first for the `render`
@@ -514,6 +530,9 @@ inventories/
     inventory.ini                     TF-generated, gitignored
     inventory-destroy.ini             TF-generated, gitignored
     secrets.yml.tpl                   TF-generated, gitignored
+    group_vars/all/ceph-config.generated.yml
+                                      TF-generated, gitignored; ceph_config_cluster
+                                      + ceph_config_host for the ceph_tuning model
     group_vars/all/vars.yml           committed; carries the fabric VLANs, the
                                       EC profile, and the shared OSD device map
     host_vars/                        48 files, committed
@@ -556,6 +575,10 @@ flowchart TB
 - **group_vars/all/vars.yml** sets cluster-wide values: network topology,
   Ceph release, RGW config, monitoring ports, plus the `vault_*` ->
   consumable-name aliases (`ops_password: "{{ vault_ops_password }}"`).
+- **group_vars/all/ceph-config.generated.yml** (TF-rendered) carries
+  `ceph_config_cluster` and `ceph_config_host` -- the `ceph config set` desired
+  state. Same precedence tier as `vars.yml`; the two never name the same key,
+  because group_vars merging is last-file-wins per key rather than deep.
 - **host_vars** provides per-node physical topology.
 - **extra-vars from @tmpfile** carries op-injected `vault_ops_password`,
   `vault_ceph_dashboard_password`, `vault_grafana_admin_password`,

@@ -16,6 +16,7 @@ module "cluster" {
   provision_profile = each.value.provision_profile
 
   alertmanager_webhook = each.value.alertmanager_webhook
+  ceph_config          = each.value.ceph_config
 
   # Password items (<CLUSTER>_CEPH_*) are created at the stack level in
   # secrets.tf (mirrors tf/deployment/staging/talos), using this module's

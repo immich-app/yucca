@@ -5,21 +5,22 @@ ansible.*.log
 .ansible/
 .ansible_facts_cache/
 
-# Transient outputs — benchmark results, hardware inventory snapshots, backups, exports
+# Transient outputs: benchmark results, hardware inventory snapshots, backups, exports
 bench/
 hardware/
 backups/
 exports/
 
-# TF-generated artifacts — do not commit; re-render with `tofu apply` in tf/deployment/<partition>/<region>/ceph/
+# TF-generated artifacts; do not commit. Re-render with `tofu apply` in tf/deployment/<partition>/<region>/ceph/
 # Inventories are region-scoped with a friendly cluster leaf: inventories/<partition>-<region>/<cluster>/
 inventories/*/*/inventory.ini
 inventories/*/*/inventory-provision.ini
 inventories/*/*/inventory-destroy.ini
 inventories/*/*/secrets.yml.tpl
 inventories/*/*/group_vars/all/operators.yml
+inventories/*/*/group_vars/all/ceph-config.generated.yml
 
-# host_vars IS committed (per-node hardware facts — stable, part of the inventory
+# host_vars IS committed (per-node hardware facts are stable, part of the inventory
 # source of truth). Operator-local overrides use host_vars/*.local.yml if needed.
 inventories/*/*/host_vars/*.local.yml
 
