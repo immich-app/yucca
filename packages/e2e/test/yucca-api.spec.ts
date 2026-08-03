@@ -123,7 +123,7 @@ describe('Repository', () => {
   });
 
   it('should generate usable URL for restic', async () => {
-    const { url } = await createResticUrl(repository.id, requestOpts);
+    const { url } = await createResticUrl(repository.id, {}, requestOpts);
     await init().repository(url).insecureNoPassword().run();
   });
 });

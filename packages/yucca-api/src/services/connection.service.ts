@@ -6,13 +6,18 @@ import {
   ConnectionCreateRequestDto,
   ConnectionListResponseDto,
   ConnectionResponseDto,
+  ConnectionResticRequestDto,
+  ConnectionResticResponseDto,
   ConnectionUpdateRequestDto,
 } from 'src/dto/connection.dto';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
 import { RevocationRepository } from 'src/repositories/revocation.repository';
+import { RepositoryService } from 'src/services/repository.service';
 import { FeatureNotEnabledException } from 'src/utils/exceptions';
+
+const RESTIC_TYPE = 'restic';
 
 @Injectable({ scope: Scope.REQUEST })
 export class ConnectionService {
@@ -21,6 +26,7 @@ export class ConnectionService {
     private readonly repositories: RepositoryRepository,
     private readonly resticTokens: ResticTokenRepository,
     private readonly revocation: RevocationRepository,
+    private readonly repositoryService: RepositoryService,
   ) {}
 
   async list(auth: AuthDto): Promise<ConnectionListResponseDto> {
@@ -54,6 +60,50 @@ export class ConnectionService {
     }
     const connection = await this.connections.create({ userId: auth.id, type: dto.type, name: dto.name });
     return { connection: { ...connection, repositoryCount: 0, sizeBytes: 0, objectCount: 0, billableBytes: 0 } };
+  }
+
+  async createRestic(auth: AuthDto, dto: ConnectionResticRequestDto): Promise<ConnectionResticResponseDto> {
+    const flag = connectionTypeFlag(RESTIC_TYPE);
+    if (flag && !auth.features[flag]) {
+      throw new FeatureNotEnabledException(flag);
+    }
+
+    const connection = await this.connections.getOrCreateByType(auth.id, RESTIC_TYPE, 'Restic');
+
+    const repository = await this.repositoryService.create(auth, {
+      name: dto.name ?? `restic-${new Date().toISOString().slice(0, 10)}`,
+      worm: dto.worm ?? false,
+      connectionId: connection.id,
+    });
+
+    let minted: { url: string; jti: string; expiresAt: Date };
+    try {
+      minted = await this.repositoryService.createUrl(auth, repository.id, {
+        expiresIn: dto.expiresIn,
+        label: dto.label,
+      });
+    } catch (error) {
+      await this.repositories.delete(repository.id).catch(() => {});
+      throw error;
+    }
+    const { url, jti, expiresAt } = minted;
+
+    const rows = await this.connections.getByUserWithRepositoryCounts(auth.id);
+    const row = rows.find((r) => r.id === connection.id);
+
+    return {
+      connection: {
+        ...connection,
+        repositoryCount: Number(row?.repositoryCount ?? 1),
+        sizeBytes: Number(row?.sizeBytes ?? 0),
+        objectCount: Number(row?.objectCount ?? 0),
+        billableBytes: Number(row?.billableBytes ?? 0),
+      },
+      repository,
+      url,
+      jti,
+      expiresAt,
+    };
   }
 
   async update(auth: AuthDto, id: string, dto: ConnectionUpdateRequestDto) {

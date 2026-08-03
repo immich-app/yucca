@@ -9,6 +9,8 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  ResticTokenListResponseDto,
+  ResticUrlRequestDto,
 } from 'src/dto/repository.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { RepositoryService } from 'src/services/repository.service';
@@ -59,8 +61,19 @@ export class RepositoryController {
   @Post('/:id/restic')
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryCreateResticUrlDto })
-  async createResticUrl(@Auth() auth: AuthDto, @Param('id') id: string): Promise<RepositoryCreateResticUrlDto> {
-    return this.repository.createUrl(auth, id);
+  async createResticUrl(
+    @Auth() auth: AuthDto,
+    @Param('id') id: string,
+    @Body() dto: ResticUrlRequestDto,
+  ): Promise<RepositoryCreateResticUrlDto> {
+    return this.repository.createUrl(auth, id, dto);
+  }
+
+  @Get('/:id/restic-tokens')
+  @AuthRoute()
+  @ApiOkResponse({ type: ResticTokenListResponseDto })
+  listResticTokens(@Auth() auth: AuthDto, @Param('id') id: string): Promise<ResticTokenListResponseDto> {
+    return this.repository.listResticTokens(auth, id);
   }
 
   @Delete('/:id')

@@ -8,7 +8,6 @@ import { controllers, imports, providers } from '../src/app.module';
 import { newMetricServiceMock } from './mocks';
 import { testUtils } from './testUtils';
 
-// The service-to-service token introspection michael calls on cache miss.
 describe('IntrospectionController (e2e)', () => {
   let app: INestApplication<App>;
   let user: { id: string };
@@ -41,15 +40,13 @@ describe('IntrospectionController (e2e)', () => {
   });
 
   const mintToken = async () => {
-    const connection = await testUtils.createConnection(user.id, 'restic', 'manual');
-    const repository = await testUtils.createRepositoryForConnection(user.id, connection.id);
+    await testUtils.setFeatureOverride(user.id, 'connection-restic', true);
     const { body } = await request(app.getHttpServer())
-      .post(`/api/repository/${repository.id}/restic`)
+      .post('/api/connections/restic')
       .set('Cookie', cookie())
+      .send({})
       .expect(201);
-    const jwt = new URL((body.url as string).slice('rest:'.length)).password;
-    const claims = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString()) as { jti: string };
-    return { jti: claims.jti, repository };
+    return body as { jti: string; repository: { id: string } };
   };
 
   const introspect = (jti: string, withSecret = secret) =>
@@ -68,7 +65,7 @@ describe('IntrospectionController (e2e)', () => {
     const { body: live } = await introspect(jti).expect(200);
     expect(live).toEqual({ active: true });
 
-    await testUtils.revokeResticToken(jti);
+    await request(app.getHttpServer()).delete(`/api/restic-tokens/${jti}`).set('Cookie', cookie()).expect(204);
 
     const { body: revoked } = await introspect(jti).expect(200);
     expect(revoked).toEqual({ active: false });
