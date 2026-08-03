@@ -20,3 +20,6 @@ resources:
   - ../../apps/meta.yaml
   - ../../apps/michael.yaml
   - ../../apps/yucca-metrics-worker.yaml
+  # Shared platform valkey (generic ephemeral cache; michael's token verdict
+  # cache is the first tenant). Primary-only until a secondary consumer exists.
+  - ../../apps/redis.yaml

@@ -23,3 +23,7 @@ export S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-true}
 # yucca-api mints restic tokens with storageCluster=local, and michael fails
 # closed on cluster codes it does not front.
 export S3_DEFAULT_CLUSTER=${S3_DEFAULT_CLUSTER:-local-dev}
+
+export TOKEN_INTROSPECTION_URL=${TOKEN_INTROSPECTION_URL:-http://localhost:3020/api/internal/restic-tokens}
+export TOKEN_INTROSPECTION_SECRET=${TOKEN_INTROSPECTION_SECRET:-dev-introspection-secret}
+export REDIS_ADDR=${REDIS_ADDR:-localhost:6379}

@@ -35,6 +35,7 @@ describe(RepositoryService.name, () => {
   let users: { [k: string]: jest.Mock };
   let topology: { [k: string]: jest.Mock };
   let connections: { [k: string]: jest.Mock };
+  let resticTokens: { [k: string]: jest.Mock };
   let jwt: JwtService;
   let sut: RepositoryService;
 
@@ -48,8 +49,16 @@ describe(RepositoryService.name, () => {
       hasCluster: jest.fn(),
     };
     connections = { getByUser: jest.fn(), getOrCreateByType: jest.fn().mockResolvedValue({ id: 'connection-id' }) };
+    resticTokens = { create: jest.fn() };
     jwt = newJwtService();
-    sut = new RepositoryService(repositories as never, users as never, connections as never, jwt, topology as never);
+    sut = new RepositoryService(
+      repositories as never,
+      users as never,
+      connections as never,
+      resticTokens as never,
+      jwt,
+      topology as never,
+    );
   });
 
   describe('create', () => {
@@ -129,7 +138,7 @@ describe(RepositoryService.name, () => {
       restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
       repositories.get.mockResolvedValue(repositoryRow);
 
-      const { url } = await sut.url(repositoryRow.id);
+      const { url, jti, expiresAt } = await sut.url(repositoryRow.id);
       expect(url.startsWith('rest:https://restic:')).toBe(true);
 
       const parsed = new URL(url.slice('rest:'.length));
@@ -144,8 +153,55 @@ describe(RepositoryService.name, () => {
         repository: repositoryRow.id,
         writeOnce: false,
         storageCluster: 'local-dev',
+        jti,
         connection: repositoryRow.connectionType,
       });
+      expect(expiresAt.getTime()).toBe((claims as { exp: number }).exp * 1000);
+
+      expect(resticTokens.create).toHaveBeenCalledWith({
+        jti,
+        repositoryId: repositoryRow.id,
+        userId: repositoryRow.user.id,
+        connectionId: repositoryRow.connectionId,
+        mintedBy: 'admin',
+        label: null,
+        expiresAt,
+      });
+    });
+
+    it('should honor a custom TTL and label under the cap', async () => {
+      restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
+      restic.RESTIC_ENDPOINT = 'https://gw.example.net';
+      repositories.get.mockResolvedValue(repositoryRow);
+
+      const before = Date.now();
+      const { expiresAt } = await sut.url(repositoryRow.id, { expiresIn: '30d', label: 'manual test' });
+      const days = (expiresAt.getTime() - before) / 86_400_000;
+      expect(days).toBeGreaterThan(29.9);
+      expect(days).toBeLessThan(30.1);
+      expect(resticTokens.create).toHaveBeenCalledWith(expect.objectContaining({ label: 'manual test' }));
+    });
+
+    it('should reject a custom TTL for a non-revocable (immich) repository', async () => {
+      restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
+      restic.RESTIC_ENDPOINT = 'https://gw.example.net';
+      repositories.get.mockResolvedValue({ ...repositoryRow, connectionType: 'immich' });
+
+      await expect(sut.url(repositoryRow.id, { expiresIn: '30d' })).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Custom expiresIn requires a revocable connection type; immich tokens cannot be revoked"`,
+      );
+      expect(resticTokens.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject a TTL above the cap', async () => {
+      restic.RESTIC_JWT_PRIVATE_KEY = env.JWT_PRIVATE_KEY;
+      restic.RESTIC_ENDPOINT = 'https://gw.example.net';
+      repositories.get.mockResolvedValue(repositoryRow);
+
+      await expect(sut.url(repositoryRow.id, { expiresIn: '365d' })).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"expiresIn exceeds the 90d cap"`,
+      );
+      expect(resticTokens.create).not.toHaveBeenCalled();
     });
 
     it('should use the stamped cluster code when present', async () => {

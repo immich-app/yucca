@@ -8,6 +8,7 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  RepositoryUrlRequestDto,
   RepositoryUrlResponseDto,
 } from 'src/dto/repository.dto';
 import { AuthRoute } from 'src/middleware/auth.guard';
@@ -41,8 +42,8 @@ export class RepositoryController {
   @Post('/:id/url')
   @AuthRoute()
   @ApiOkResponse({ type: RepositoryUrlResponseDto })
-  repositoryUrl(@Param('id') id: string): Promise<RepositoryUrlResponseDto> {
-    return this.repository.url(id);
+  repositoryUrl(@Param('id') id: string, @Body() dto: RepositoryUrlRequestDto): Promise<RepositoryUrlResponseDto> {
+    return this.repository.url(id, dto);
   }
 
   @Patch('/:id')

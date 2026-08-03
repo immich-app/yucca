@@ -50,6 +50,8 @@ func NewRootCmd() *cobra.Command {
 		newInfraCmd(),
 		newUsersCmd(),
 		newConfigCmd(),
+		newReposCmd(),
+		newTokensCmd(),
 		newFeaturesCmd(),
 		newToolsCmd(),
 	)

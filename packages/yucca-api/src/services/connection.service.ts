@@ -10,6 +10,8 @@ import {
 } from 'src/dto/connection.dto';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
+import { ResticTokenRepository } from 'src/repositories/resticToken.repository';
+import { RevocationRepository } from 'src/repositories/revocation.repository';
 import { FeatureNotEnabledException } from 'src/utils/exceptions';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -17,6 +19,8 @@ export class ConnectionService {
   constructor(
     private readonly connections: ConnectionRepository,
     private readonly repositories: RepositoryRepository,
+    private readonly resticTokens: ResticTokenRepository,
+    private readonly revocation: RevocationRepository,
   ) {}
 
   async list(auth: AuthDto): Promise<ConnectionListResponseDto> {
@@ -69,6 +73,12 @@ export class ConnectionService {
     const withCount = repositories.find((row) => row.id === id);
     if (Number(withCount?.repositoryCount ?? 0) > 0) {
       throw new BadRequestException('Connection still owns repositories; adopt or delete them first');
+    }
+
+    const active = await this.resticTokens.getActiveByConnection(id);
+    for (const token of active) {
+      await this.resticTokens.revoke(token.jti, `connection-delete:${auth.id}`);
+      await this.revocation.invalidateVerdict(token.jti);
     }
 
     await this.connections.delete(id);

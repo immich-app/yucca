@@ -60,6 +60,17 @@ type Config struct {
 	OTLPLogsEnabled     bool
 	LogLevel            zerolog.Level
 	LogPretty           bool
+
+	// Restic-token validity checking; empty TokenIntrospectionURL disables it (e.g. secondary regions with no local yucca-api).
+	TokenIntrospectionURL     string
+	TokenIntrospectionSecret  string
+	TokenIntrospectionTimeout time.Duration
+	// Optional shared L2 verdict cache (valkey); empty RedisAddr = per-process caching only.
+	RedisAddr          string
+	RedisTimeout       time.Duration
+	VerdictCacheTTL    time.Duration
+	RevocationFreshTTL time.Duration
+	RevocationGraceTTL time.Duration
 }
 
 // ClusterConfig is everything needed to talk to ONE storage cluster: its S3
@@ -246,34 +257,59 @@ func LoadConfig() Config {
 		}
 	}
 
+	introspectionURL := os.Getenv("TOKEN_INTROSPECTION_URL")
+	introspectionSecret := os.Getenv("TOKEN_INTROSPECTION_SECRET")
+	if introspectionURL != "" && introspectionSecret == "" {
+		log.Fatal().Msg("TOKEN_INTROSPECTION_SECRET is required when TOKEN_INTROSPECTION_URL is set")
+	}
+	introspectionTimeout := durationEnvMS("TOKEN_INTROSPECTION_TIMEOUT_MS", 2000*time.Millisecond)
+
+	redisAddr := os.Getenv("REDIS_ADDR")
+	redisTimeout := durationEnvMS("REDIS_TIMEOUT_MS", 50*time.Millisecond)
+	verdictCacheTTL := durationEnvMS("VERDICT_CACHE_TTL_MS", 5*time.Minute)
+
+	revocationFreshTTL := durationEnvMS("REVOCATION_FRESH_TTL_MS", 60*time.Second)
+	revocationGraceTTL := durationEnvMS("REVOCATION_GRACE_MS", 30*time.Minute)
+	if revocationGraceTTL < revocationFreshTTL {
+		log.Fatal().Msg("REVOCATION_GRACE_MS must be >= REVOCATION_FRESH_TTL_MS")
+	}
+
 	cfg := Config{
-		Port:                port,
-		JWTPublicKey:        jwtPublicKey,
-		S3AccessKeyID:       s3AccessKeyID,
-		S3SecretAccessKey:   s3SecretAccessKey,
-		S3Region:            s3Region,
-		S3Endpoint:          s3Endpoint,
-		S3ForcePathStyle:    s3ForcePathStyle,
-		S3BackendSource:     backendSource,
-		S3BackendFile:       backendFile,
-		S3BackendDNSHost:    backendDNSHost,
-		S3BackendScheme:     backendScheme,
-		S3BackendPort:       backendPort,
-		S3BackendPinHost:    backendPinHost,
-		S3TLSSkipVerify:     tlsSkipVerify,
-		S3ProbeBucket:       probeBucket,
-		S3EjectThreshold:    ejectThreshold,
-		S3ReconcileInterval: reconcileInterval,
-		S3DefaultCluster:    defaultCluster,
-		OTLPMetricsEndpoint: otlpEndpoint,
-		OTLPMetricsURLPath:  otlpURLPath,
-		OTLPMetricsInterval: otlpInterval,
-		OTLPEnabled:         otlpEndpoint != "",
-		OTLPLogsEndpoint:    otlpLogsEndpoint,
-		OTLPLogsURLPath:     otlpLogsURLPath,
-		OTLPLogsEnabled:     otlpLogsEndpoint != "",
-		LogLevel:            logLevel,
-		LogPretty:           logPretty,
+		Port:                      port,
+		JWTPublicKey:              jwtPublicKey,
+		S3AccessKeyID:             s3AccessKeyID,
+		S3SecretAccessKey:         s3SecretAccessKey,
+		S3Region:                  s3Region,
+		S3Endpoint:                s3Endpoint,
+		S3ForcePathStyle:          s3ForcePathStyle,
+		S3BackendSource:           backendSource,
+		S3BackendFile:             backendFile,
+		S3BackendDNSHost:          backendDNSHost,
+		S3BackendScheme:           backendScheme,
+		S3BackendPort:             backendPort,
+		S3BackendPinHost:          backendPinHost,
+		S3TLSSkipVerify:           tlsSkipVerify,
+		S3ProbeBucket:             probeBucket,
+		S3EjectThreshold:          ejectThreshold,
+		S3ReconcileInterval:       reconcileInterval,
+		S3DefaultCluster:          defaultCluster,
+		OTLPMetricsEndpoint:       otlpEndpoint,
+		OTLPMetricsURLPath:        otlpURLPath,
+		OTLPMetricsInterval:       otlpInterval,
+		OTLPEnabled:               otlpEndpoint != "",
+		OTLPLogsEndpoint:          otlpLogsEndpoint,
+		OTLPLogsURLPath:           otlpLogsURLPath,
+		OTLPLogsEnabled:           otlpLogsEndpoint != "",
+		LogLevel:                  logLevel,
+		LogPretty:                 logPretty,
+		TokenIntrospectionURL:     introspectionURL,
+		TokenIntrospectionSecret:  introspectionSecret,
+		TokenIntrospectionTimeout: introspectionTimeout,
+		RedisAddr:                 redisAddr,
+		RedisTimeout:              redisTimeout,
+		VerdictCacheTTL:           verdictCacheTTL,
+		RevocationFreshTTL:        revocationFreshTTL,
+		RevocationGraceTTL:        revocationGraceTTL,
 	}
 
 	cfg.Clusters = []ClusterConfig{cfg.DefaultCluster()}
@@ -554,6 +590,19 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// durationEnvMS reads a positive integer-millisecond env var with a default.
+func durationEnvMS(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	ms, err := strconv.Atoi(v)
+	if err != nil || ms < 1 {
+		log.Fatal().Str("key", key).Msg("must be a positive number of milliseconds")
+	}
+	return time.Duration(ms) * time.Millisecond
 }
 
 // schemeAndPort extracts the scheme and port from an endpoint URL, used to

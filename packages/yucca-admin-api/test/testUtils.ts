@@ -16,6 +16,7 @@ function getDb() {
 export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
+    await db.deleteFrom('resticTokens').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('connections').execute();
@@ -70,6 +71,10 @@ export const testUtils = {
       })
       .returningAll()
       .executeTakeFirstOrThrow();
+  },
+
+  getResticToken: (jti: string) => {
+    return getDb().selectFrom('resticTokens').selectAll().where('jti', '=', jti).executeTakeFirst();
   },
 
   createSession: (userId: string, accessToken: string = randomUUID()) => {

@@ -213,11 +213,11 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 			// them ~empty and the yucca-bench- prefix marks them for later.
 			log.Info().Str("id", repo.ID).Str("name", name).Msg("created benchmark repository (persists after the run)")
 		}
-		url, err := client.RepositoryURL(ctx, repoID)
+		minted, err := client.RepositoryURL(ctx, repoID, adminapi.URLOptions{Label: "yuctl bench"})
 		if err != nil {
 			return fmt.Errorf("mint repository URL: %w", err)
 		}
-		cfg.Repo = url
+		cfg.Repo = minted.URL
 		if cfg.Password == "" {
 			cfg.Password = randHex(16)
 			// Logged on purpose: it guards a throwaway repo of random bytes,
