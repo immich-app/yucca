@@ -14,8 +14,8 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: src/routes/dashboard/connections/+page.svelte
-#~ msgid "{0} objects"
-#~ msgstr "{0} objects"
+msgid "{0} objects"
+msgstr "{0} objects"
 
 #: src/routes/dashboard/connections/+page.svelte
 msgid "{0} repositories"
@@ -26,72 +26,72 @@ msgstr "{0} repositories"
 #~ msgstr "{num, plural, one {# item} other {# items}}"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "1 year"
-#~ msgstr "1 year"
+msgid "1 year"
+msgstr "1 year"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "30 days"
-#~ msgstr "30 days"
+msgid "30 days"
+msgstr "30 days"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "90 days"
-#~ msgstr "90 days"
+msgid "90 days"
+msgstr "90 days"
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "A connection is a client that backs up this account — an Immich instance or a restic repository."
 #~ msgstr "A connection is a client that backs up this account — an Immich instance or a restic repository."
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "A label for this repository."
-#~ msgstr "A label for this repository."
+msgid "A label for this repository."
+msgstr "A label for this repository."
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Access key"
-#~ msgstr "Access key"
+msgid "Access key"
+msgstr "Access key"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Access key lifetime"
-#~ msgstr "Access key lifetime"
+msgid "Access key lifetime"
+msgstr "Access key lifetime"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Access key revoked"
-#~ msgstr "Access key revoked"
+msgid "Access key revoked"
+msgstr "Access key revoked"
 
 #: src/routes/dashboard/connections/+page.svelte
-#~ msgid "Access keys"
-#~ msgstr "Access keys"
+msgid "Access keys"
+msgstr "Access keys"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Access keys — {0}"
 #~ msgstr "Access keys — {0}"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Access keys: {0}"
-#~ msgstr "Access keys: {0}"
+msgid "Access keys: {0}"
+msgstr "Access keys: {0}"
 
 #: src/routes/dashboard/connections/+page.svelte
-#~ msgid "Add {0} connection"
-#~ msgstr "Add {0} connection"
+msgid "Add {0} connection"
+msgstr "Add {0} connection"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
-#~ msgid "Automatic"
-#~ msgstr "Automatic"
+msgid "Automatic"
+msgstr "Automatic"
 
 #: src/routes/dashboard/connections/+page.svelte
 msgid "billed"
 msgstr "billed"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
-#~ msgid "Cancel"
-#~ msgstr "Cancel"
+msgid "Cancel"
+msgstr "Cancel"
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Choose a strong repository password"
-#~ msgstr "Choose a strong repository password"
+msgid "Choose a strong repository password"
+msgstr "Choose a strong repository password"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Close"
-#~ msgstr "Close"
+msgid "Close"
+msgstr "Close"
 
 #: src/routes/dashboard/connections/+page.svelte
 #: src/routes/dashboard/connections/+page.svelte
@@ -106,23 +106,24 @@ msgstr "Connections"
 msgid "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
 msgstr "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
 
+#: src/lib/components/connections/NewConnectionModal.svelte
 #: src/routes/login/invite/+page.svelte
 msgid "Continue"
 msgstr "Continue"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copied"
-#~ msgstr "Copied"
+msgid "Copied"
+msgstr "Copied"
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copied to clipboard"
-#~ msgstr "Copied to clipboard"
+msgid "Copied to clipboard"
+msgstr "Copied to clipboard"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copy"
-#~ msgstr "Copy"
+msgid "Copy"
+msgstr "Copy"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Copy command"
@@ -137,64 +138,64 @@ msgstr "Continue"
 #~ msgstr "Couldn't copy — select the text manually"
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Couldn't copy. Select the text manually"
-#~ msgstr "Couldn't copy. Select the text manually"
+msgid "Couldn't copy. Select the text manually"
+msgstr "Couldn't copy. Select the text manually"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Create"
-#~ msgstr "Create"
+msgid "Create"
+msgstr "Create"
 
 #: src/routes/dashboard/backups/+page.svelte
 #~ msgid "Create new backup"
 #~ msgstr "Create new backup"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Created {0} · expires {1}"
-#~ msgstr "Created {0} · expires {1}"
+msgid "Created {0} · expires {1}"
+msgstr "Created {0} · expires {1}"
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Done"
-#~ msgstr "Done"
+msgid "Done"
+msgstr "Done"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "e.g. laptop"
-#~ msgstr "e.g. laptop"
+msgid "e.g. laptop"
+msgstr "e.g. laptop"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "e.g. my laptop"
-#~ msgstr "e.g. my laptop"
+msgid "e.g. my laptop"
+msgstr "e.g. my laptop"
 
 #: src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
 msgstr "Enter an invite code to continue."
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Expired"
-#~ msgstr "Expired"
+msgid "Expired"
+msgstr "Expired"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Failed to create restic backup"
-#~ msgstr "Failed to create restic backup"
+msgid "Failed to create restic backup"
+msgstr "Failed to create restic backup"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Failed to load access keys"
-#~ msgstr "Failed to load access keys"
+msgid "Failed to load access keys"
+msgstr "Failed to load access keys"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Failed to mint a new access key"
-#~ msgstr "Failed to mint a new access key"
+msgid "Failed to mint a new access key"
+msgstr "Failed to mint a new access key"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Failed to revoke access key"
-#~ msgstr "Failed to revoke access key"
+msgid "Failed to revoke access key"
+msgstr "Failed to revoke access key"
 
 #: src/routes/+page.svelte
 #~ msgid "From the {0}: {1}"
 #~ msgstr "From the {0}: {1}"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
-#~ msgstr "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
+msgid "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
+msgstr "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "How long the URL stays valid, e.g. 90d. Blank uses the default."
@@ -205,8 +206,8 @@ msgstr "Enter an invite code to continue."
 #~ msgstr "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Initialize the repository"
-#~ msgstr "Initialize the repository"
+msgid "Initialize the repository"
+msgstr "Initialize the repository"
 
 #: src/routes/login/invite/+page.svelte
 #: src/routes/login/invite/+page.svelte
@@ -215,8 +216,8 @@ msgid "Invite code"
 msgstr "Invite code"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Key label"
-#~ msgstr "Key label"
+msgid "Key label"
+msgstr "Key label"
 
 #: src/routes/+page.svelte
 #: src/routes/+page.svelte
@@ -228,17 +229,17 @@ msgid "Logout"
 msgstr "Logout"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Name"
-#~ msgstr "Name"
+msgid "Name"
+msgstr "Name"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "New access key"
-#~ msgstr "New access key"
+msgid "New access key"
+msgstr "New access key"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #: src/routes/dashboard/connections/+page.svelte
-#~ msgid "New connection"
-#~ msgstr "New connection"
+msgid "New connection"
+msgstr "New connection"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #: src/routes/dashboard/connections/+page.svelte
@@ -246,12 +247,12 @@ msgstr "Logout"
 #~ msgstr "New restic backup"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "New restic repository"
-#~ msgstr "New restic repository"
+msgid "New restic repository"
+msgstr "New restic repository"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "No access keys yet."
-#~ msgstr "No access keys yet."
+msgid "No access keys yet."
+msgstr "No access keys yet."
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "No connections yet."
@@ -262,56 +263,56 @@ msgstr "Logout"
 #~ msgstr "No expiry"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
-#~ msgid "Pick what you want to back up. Each connection type works a little differently."
-#~ msgstr "Pick what you want to back up. Each connection type works a little differently."
+msgid "Pick what you want to back up. Each connection type works a little differently."
+msgstr "Pick what you want to back up. Each connection type works a little differently."
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Prevent this repository from being deleted or overwritten."
-#~ msgstr "Prevent this repository from being deleted or overwritten."
+msgid "Prevent this repository from being deleted or overwritten."
+msgstr "Prevent this repository from being deleted or overwritten."
 
 #: src/routes/+page.svelte
 #~ msgid "Purchase Immich"
 #~ msgstr "Purchase Immich"
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Repository"
-#~ msgstr "Repository"
+msgid "Repository"
+msgstr "Repository"
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Repository URL"
-#~ msgstr "Repository URL"
+msgid "Repository URL"
+msgstr "Repository URL"
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Restic backup ready"
-#~ msgstr "Restic backup ready"
+msgid "Restic backup ready"
+msgstr "Restic backup ready"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "restic will ask you to set a password when you initialize. Keep it safe — it encrypts your backups and cannot be recovered."
 #~ msgstr "restic will ask you to set a password when you initialize. Keep it safe — it encrypts your backups and cannot be recovered."
 
 #: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
-#~ msgstr "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
+msgid "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
+msgstr "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Revoke"
-#~ msgstr "Revoke"
+msgid "Revoke"
+msgstr "Revoke"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Revoked"
-#~ msgstr "Revoked"
+msgid "Revoked"
+msgstr "Revoked"
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Shown in the access-key list."
-#~ msgstr "Shown in the access-key list."
+msgid "Shown in the access-key list."
+msgstr "Shown in the access-key list."
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "This connection type can't be added from here — see the note above."
 #~ msgstr "This connection type can't be added from here — see the note above."
 
 #: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Write-once (WORM)"
-#~ msgstr "Write-once (WORM)"
+msgid "Write-once (WORM)"
+msgstr "Write-once (WORM)"
 
 #: src/routes/login/invite/+page.svelte
 msgid "Your email isn't part of the beta yet."
