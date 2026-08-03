@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.26.0](https://github.com/immich-app/yucca/compare/v0.25.0...v0.26.0) (2026-08-03)
+
+
+### Features
+
+* **all:** connections ([#390](https://github.com/immich-app/yucca/issues/390)) ([55ece2f](https://github.com/immich-app/yucca/commit/55ece2fbaf286ec05696fea9746d00b8954ff452))
+* **ceph:** move the ceph config model into terraform, deep scrub interval to global ([#410](https://github.com/immich-app/yucca/issues/410)) ([5e047f0](https://github.com/immich-app/yucca/commit/5e047f0215d7e0e52a5a99fa1f9976f43662bc41))
+* **ceph:** ship spice host logs to o11y over netbird ([#378](https://github.com/immich-app/yucca/issues/378)) ([957afec](https://github.com/immich-app/yucca/commit/957afec6e3b08124e630886e6f2dc502fa708150))
+* **o11y:** add spice recovery/backfill throughput dashboard ([#402](https://github.com/immich-app/yucca/issues/402)) ([6ef5c24](https://github.com/immich-app/yucca/commit/6ef5c243e9c0d679c00292aa4b154132f5c254b7))
+* **web:** connections ui ([#415](https://github.com/immich-app/yucca/issues/415)) ([8feda20](https://github.com/immich-app/yucca/commit/8feda20065a195d42b6c46362ae3b57df30c5620))
+* **yucca:** per-connection billing rollup ([#391](https://github.com/immich-app/yucca/issues/391)) ([b427a70](https://github.com/immich-app/yucca/commit/b427a7045be1d1a0887e8dda24998b7cba0337ff))
+* **yucca:** per-user feature flags ([#389](https://github.com/immich-app/yucca/issues/389)) ([94a5df9](https://github.com/immich-app/yucca/commit/94a5df966756015cd8d00119cd1e2745b24153da))
+
+
+### Bug Fixes
+
+* **ceph:** align the spice mclock model with the live cluster ([#411](https://github.com/immich-app/yucca/issues/411)) ([caf120d](https://github.com/immich-app/yucca/commit/caf120d8e55a4ed86e0541413442e57cad565753))
+* **ceph:** deliver alertmanager alerts to the configured receiver ([#404](https://github.com/immich-app/yucca/issues/404)) ([7cfb064](https://github.com/immich-app/yucca/commit/7cfb06494b8cd393766f070f026cb1de6c595f7b))
+* **ceph:** repair the monitoring path from spec apply to Zulip message ([#408](https://github.com/immich-app/yucca/issues/408)) ([5d60aae](https://github.com/immich-app/yucca/commit/5d60aae2fd76d57286ba9c2c1baaa1da93f35924))
+* **ceph:** skip the dpkg unhold on nodes where the package is absent ([#403](https://github.com/immich-app/yucca/issues/403)) ([cbf9114](https://github.com/immich-app/yucca/commit/cbf9114b28e577bf122e90ae58bd560212723e26))
+* **ceph:** widen spice deep scrub interval and unblock scrub scheduling ([#387](https://github.com/immich-app/yucca/issues/387)) ([289a2ee](https://github.com/immich-app/yucca/commit/289a2ee03b0a6098e8b779cef846d860d051729c))
+* **k8s:** drop deadlocking topology readyExpr ([#401](https://github.com/immich-app/yucca/issues/401)) ([c606637](https://github.com/immich-app/yucca/commit/c606637450b292fbf010b9a5be105c6b9975344e))
+
 ## [0.25.0](https://github.com/immich-app/yucca/compare/v0.24.0...v0.25.0) (2026-07-30)
 
 
