@@ -16,6 +16,7 @@ function getDb() {
 export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
+    await db.deleteFrom('userFeatureFlagOverride').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('users').execute();
@@ -55,10 +56,17 @@ export const testUtils = {
     email,
     sub,
     disabled = false,
-  }: Partial<{ name: string; email: string; sub: string; disabled: boolean }> = {}) => {
+    createdAt,
+  }: Partial<{ name: string; email: string; sub: string; disabled: boolean; createdAt: Date }> = {}) => {
     return getDb()
       .insertInto('users')
-      .values({ name, email: email ?? `${randomUUID()}@example.test`, sub: sub ?? randomUUID(), disabled })
+      .values({
+        name,
+        email: email ?? `${randomUUID()}@example.test`,
+        sub: sub ?? randomUUID(),
+        disabled,
+        ...(createdAt ? { createdAt } : {}),
+      })
       .returningAll()
       .executeTakeFirstOrThrow();
   },

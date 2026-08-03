@@ -16,4 +16,7 @@ export class UserTable {
 
   @Column({ type: 'boolean', default: () => 'false' })
   disabled!: Generated<boolean>;
+
+  @Column({ type: 'timestamp with time zone', default: () => 'now()' })
+  createdAt!: Generated<Date>;
 }

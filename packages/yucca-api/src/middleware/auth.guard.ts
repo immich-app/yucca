@@ -1,6 +1,8 @@
+import { FeatureFlagKey } from '@common/server';
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   Scope,
   SetMetadata,
@@ -15,6 +17,10 @@ import { AuthService } from 'src/services/auth.service';
 
 export const AuthRoute = (options = {}): MethodDecorator => {
   return applyDecorators(SetMetadata(MetadataKey.Auth, options));
+};
+
+export const RequireFeature = (flag: FeatureFlagKey): MethodDecorator => {
+  return applyDecorators(SetMetadata(MetadataKey.Feature, flag));
 };
 
 export interface AuthRequest extends Request {
@@ -41,6 +47,12 @@ export class AuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<AuthRequest>();
     request.auth = await this.service.authenticate(request.headers);
+
+    const feature = this.reflector.getAllAndOverride<FeatureFlagKey | undefined>(MetadataKey.Feature, targets);
+    if (feature && !request.auth.features[feature]) {
+      throw new ForbiddenException(`Feature '${feature}' is not enabled for this account`);
+    }
+
     return true;
   }
 }
