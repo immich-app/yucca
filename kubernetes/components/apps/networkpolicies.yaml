@@ -8,6 +8,7 @@
 #                               meta:8080 (HTTPRoutes)
 #   yucca-api → michael       = hairpin via the ingress VIP, so it ARRIVES as
 #                               envoy traffic — no direct pod-to-pod allow needed
+#   michael → yucca-api:3020  = token introspection (pod-to-pod, allowed below)
 #   web (SSR)                 → yucca-api:3020
 #   api/admin-api/worker      → CNPG pods :5432 (yucca-db-rw/-ro)
 #   CNPG replication          → CNPG pods :5432 (pod↔pod)
@@ -51,6 +52,11 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: web
+        # michael's restic-token introspection (TOKEN_INTROSPECTION_URL,
+        # GET /internal/restic-tokens/:jti on cache miss).
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: michael
       ports:
         - { port: 3020, protocol: TCP }
 ---
@@ -118,6 +124,30 @@ spec:
               app.kubernetes.io/name: envoy
       ports:
         - { port: 3010, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-redis
+  namespace: yucca
+spec:
+  # Shared platform valkey (no auth): reachable only from its tenants. Current
+  # tenants: michael (token verdict cache, future rate limiting) and the apis
+  # (revoke-time verdict invalidation). Keys are namespaced
+  # yucca:<service>:<purpose>:*.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [yucca-api, yucca-admin-api, michael]
+      ports:
+        - { port: 6379, protocol: TCP }
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

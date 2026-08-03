@@ -6,6 +6,7 @@ import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
 import { MetaController } from './controllers/meta.controller';
 import { ConnectionController } from './controllers/connection.controller';
+import { IntrospectionController } from './controllers/introspection.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { env } from './env';
@@ -17,6 +18,8 @@ import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryMetricsRepository } from './repositories/repositoryMetrics.repository';
 import { RepositoryMetricsHistoryRepository } from './repositories/repositoryMetricsHistory.repository';
+import { ResticTokenRepository } from './repositories/resticToken.repository';
+import { RevocationRepository } from './repositories/revocation.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { SettingsRepository } from './repositories/settings.repository';
 import { StorageRepository } from './repositories/storage.repository';
@@ -27,6 +30,7 @@ import { AuthService } from './services/auth.service';
 import { ConnectionService } from './services/connection.service';
 import { DatabaseService } from './services/database.service';
 import { MetaService } from './services/meta.service';
+import { IntrospectionService } from './services/introspection.service';
 import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
 import { TopologyService } from './services/topology.service';
@@ -41,7 +45,14 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, MetaController, ConnectionController, MetricsController, RepositoryController];
+export const controllers = [
+  AuthController,
+  MetaController,
+  ConnectionController,
+  IntrospectionController,
+  MetricsController,
+  RepositoryController,
+];
 
 export const providers = [
   WideContextRepository,
@@ -51,6 +62,8 @@ export const providers = [
   SettingsRepository,
   ConnectionRepository,
   DatabaseRepository,
+  ResticTokenRepository,
+  RevocationRepository,
   CryptoRepository,
   OidcRepository,
   UserRepository,
@@ -66,6 +79,7 @@ export const providers = [
   RepositoryService,
   AuthService,
   ConnectionService,
+  IntrospectionService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },
 ];

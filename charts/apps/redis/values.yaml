@@ -1,0 +1,39 @@
+# Shared platform valkey: a generic ephemeral cache (keys namespaced
+# yucca:<service>:<purpose>:*; every tenant must tolerate a flush). First
+# tenant: michael's restic-token verdict cache, where a restart or outage is a
+# harmless cache miss (michael falls through to yucca-api introspection).
+# Single replica, no persistence, no PDB: by design.
+replicas: 1
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 512Mi }
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: yucca-redis
+
+image:
+  repository: valkey/valkey
+  tag: 8-alpine@sha256:a038175878d66b9d274fbf8be73c0305e93798b83917647f167e18cef3c71eec
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: redis
+    containerPort: 6379
+
+service:
+  type: ClusterIP
+
+# No persistence (--save '' --appendonly no); --dir /tmp keeps valkey happy on
+# the chart's read-only rootfs (yucca-common always mounts a /tmp emptyDir), so
+# the default hardened securityContext applies unchanged.
+command: [valkey-server]
+args: ["--save", "", "--appendonly", "no", "--dir", "/tmp"]
+
+startupProbe:
+  tcpSocket: { port: redis }
+  periodSeconds: 2
+  failureThreshold: 30
+readinessProbe:
+  tcpSocket: { port: redis }
+  periodSeconds: 10

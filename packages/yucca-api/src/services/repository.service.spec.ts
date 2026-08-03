@@ -28,6 +28,9 @@ describe(RepositoryService.name, () => {
       mocks.wideContext as never,
       mocks.connection as never,
       mocks.topology as never,
+      mocks.crypto as never,
+      mocks.resticTokens as never,
+      mocks.revocation as never,
     );
   });
 
@@ -64,7 +67,7 @@ describe(RepositoryService.name, () => {
   });
 
   describe('createUrl', () => {
-    it('mints a URL from the site rest_url with a storageCluster claim', async () => {
+    it('mints a URL and records the restic token', async () => {
       mocks.repository.get.mockResolvedValue({
         id: repoId,
         userId: auth.id,
@@ -75,7 +78,10 @@ describe(RepositoryService.name, () => {
         connectionType: 'immich',
       } as never);
       mocks.topology.getSite.mockReturnValue(site);
+      mocks.crypto.randomUUID.mockReturnValue('jti-x');
       mocks.jwt.signAsync.mockResolvedValue('signed-token');
+      mocks.jwt.decode.mockReturnValue({ exp: 1_700_000_000 });
+      mocks.resticTokens.create.mockResolvedValue({} as never);
 
       const { url } = await sut.createUrl(auth, repoId);
 
@@ -85,7 +91,16 @@ describe(RepositoryService.name, () => {
         repository: repoId,
         writeOnce: true,
         storageCluster: 'father-spice',
+        jti: 'jti-x',
         connection: 'immich',
+      });
+      expect(mocks.resticTokens.create).toHaveBeenCalledWith({
+        jti: 'jti-x',
+        repositoryId: repoId,
+        userId: auth.id,
+        connectionId: 'conn',
+        mintedBy: 'user',
+        expiresAt: new Date(1_700_000_000 * 1000),
       });
       expect(url).toBe(`rest:https://restic:signed-token@rest.htz-fsn1.backups.futo.cloud/${repoId}`);
     });

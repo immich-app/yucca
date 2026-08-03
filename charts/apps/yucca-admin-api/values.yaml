@@ -67,14 +67,14 @@ env:
     value: debug
   - name: OIDC_ADMIN_ALLOW_INSECURE
     value: "true"
-  # Fleet topology — replaces the old single RESTIC_ENDPOINT: the restic
-  # gateway is now a per-site field in this file (rest_url), not one global URL.
   - name: TOPOLOGY_FILE
     value: /etc/yucca/topology.json
   - name: LEGACY_SITE_CODE
     value: local
   - name: LEGACY_STORAGE_CLUSTER_CODE
     value: local-dev
+  - name: REDIS_URL
+    value: redis://yucca-redis:6379
   - name: OTEL_METRICS
     value: http://victoria-metrics:8428/opentelemetry/v1/metrics
   - name: OTEL_LOGGING

@@ -239,7 +239,7 @@ docker_build(
 # ---------------------------------------------------------------------------
 local_resource(
     'helm-deps',
-    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/dev/mock-oidc/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/meta charts/apps/michael charts/dev/mock-oidc; do (cd $d && helm dependency build); done',
+    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/apps/redis/charts charts/dev/mock-oidc/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/meta charts/apps/michael charts/apps/redis charts/dev/mock-oidc; do (cd $d && helm dependency build); done',
     deps=[
         'charts/apps/yucca-api',
         'charts/apps/yucca-admin-api',
@@ -247,6 +247,7 @@ local_resource(
         'charts/apps/web',
         'charts/apps/meta',
         'charts/apps/michael',
+        'charts/apps/redis',
         'charts/dev/mock-oidc',
         'charts/lib/yucca-common',
     ],
@@ -300,6 +301,8 @@ APP_WIRING = {
     'cloudnative-pg':         {'build': None,                 'deps': []},
     'rook-ceph-operator':     {'build': None,                 'deps': []},
     'yucca-victoria-metrics': {'build': None,                 'deps': []},
+    # Shared platform valkey (upstream image, no build).
+    'yucca-redis':            {'build': None,                 'deps': []},
     'yucca-victoria-logs':    {'build': None,                 'deps': []},
 }
 
@@ -478,6 +481,7 @@ kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 &
 kubectl port-forward -n rook-ceph svc/rook-ceph-rgw-yucca 9000:80 &
 kubectl port-forward -n yucca svc/victoria-metrics 8428:8428 &
 kubectl port-forward -n yucca svc/victoria-logs 9428:9428 &
+kubectl port-forward -n yucca svc/yucca-redis 6379:6379 &
 wait''',
     resource_deps=['yucca-api', 'yucca-web', 'yucca-michael', 'yucca-mock-oidc', 'yucca-meta'],
     labels=['app'],

@@ -61,20 +61,18 @@ spec:
       - name: OIDC_DEVICE_ISSUER
         value: ${OIDC_ISSUER}
       # Fleet topology (the yucca-topology ConfigMap the chart mounts at
-      # /etc/yucca) — the per-site rest_url in it replaces the old single
-      # RESTIC_ENDPOINT.
+      # /etc/yucca); the per-site rest_url in it replaces the old single RESTIC_ENDPOINT.
       - name: TOPOLOGY_FILE
         value: /etc/yucca/topology.json
-      # Pinned origin of rows created before placement columns existed. These
-      # are deliberately separate from the topology's mutable active target.
+      # Pinned origin of rows created before placement columns existed.
       - name: LEGACY_SITE_CODE
         value: ${LEGACY_SITE_CODE}
       - name: LEGACY_STORAGE_CLUSTER_CODE
         value: ${LEGACY_STORAGE_CLUSTER_CODE}
-      # Absolute base of this API, as advertised to clients through /meta and
-      # the .well-known pointer — must match what the meta pod hands out.
       - name: API_ROOT
         value: https://${APP_DOMAIN}/api
+      - name: REDIS_URL
+        value: redis://yucca-redis:6379
       # Beta email allowlist: comma-separated domains that may sign up without
       # an allowlist entry. Empty default = allowlist/invite-code only.
       - name: ALLOWED_EMAIL_DOMAINS

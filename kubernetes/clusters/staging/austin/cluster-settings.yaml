@@ -59,3 +59,9 @@ data:
   # ─── Storage ─────────────────────────────────────────────────────────
   # CNPG database PVs: node-local NVMe via the overlay's spare-disk SC.
   DB_STORAGE_CLASS: openebs-spare-disk
+
+  # Restic-token introspection: michael consults yucca-api (postgres truth) on
+  # cache miss. Primary regions only: secondaries have no local yucca-api.
+  TOKEN_INTROSPECTION_URL: "http://yucca-api:3020/api/internal/restic-tokens"
+  # Shared platform valkey (michael's L2 token-verdict cache + api invalidation).
+  REDIS_ADDR: "yucca-redis:6379"
