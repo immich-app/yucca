@@ -10,7 +10,7 @@ gh = "2.25.0"
 k3d = "5.8.3"
 kubectl = "1.32.2"
 helm = "3.17.0"
-tilt = "0.34.5"
+tilt = "0.37.6"
 
 # Static validation of the k8s surface (mise run k8s:validate, used by CI).
 # flux-local runs via `uvx` (see .mise/tasks/k8s/validate): uv auto-fetches a
