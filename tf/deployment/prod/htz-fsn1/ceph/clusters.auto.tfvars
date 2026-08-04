@@ -35,38 +35,39 @@ clusters = {
     # === Ceph config (-> group_vars/all/ceph-config.generated.yml) ===
     # Desired state for `ceph config set`, merged over the ceph_tuning defaults.
     #
-    # Deep scrub at 7d (the role default) is unachievable at this size: the
-    # 02:00-06:00 window cannot carry it, so PGs ran permanently overdue and
-    # scrubbed around the clock. 28d fits. Shallow scrub stays at 7d.
+    # Deep scrub at 28d, not the role's 7d. Shallow stays at 7d.
     #
-    # `global`, not `osd`: the active mgr emits PG_NOT_DEEP_SCRUBBED from its own
-    # copy, so an `osd` entry leaves the check on the 7-day default. It lived in
-    # `osd` until 2026-08-03 and warned at 12.25 days with nothing overdue.
+    # osd_deep_scrub_interval goes in `global`, not `osd`. The active mgr reads
+    # its own copy for PG_NOT_DEEP_SCRUBBED, so an `osd` entry leaves the health
+    # check on the 7-day default.
     #
-    # Since 19.2.0 a replica queues a scrub reservation instead of denying it.
-    # EC 16+4 needs 20 shard reservations at once against 4032 remote slots, so
-    # most PGs hold partial sets and wait forever. disable_reservation_queuing
-    # restores grant-or-fail; osd_max_scrubs only means anything once it does.
-    # UPSTREAM REMOVES THAT OPTION IN THE NEXT RELEASE -- re-check on any Ceph
-    # upgrade or the deadlock returns silently.
-    # https://www.mail-archive.com/ceph-users@ceph.io/msg28007.html
+    # Two settings gate scrub scheduling. Both must be open or scrubbing stops.
     #
-    # osd_scrub_cost and osd_deep_scrub_stride are provisional: measured gains
-    # were inside noise, under conditions that no longer apply. Drop them once
-    # the cluster is quiet enough to A/B properly. The custom mclock profile
-    # from the same incident is already gone: the cluster runs `balanced` (set
-    # live; the old model still said custom and would have re-imposed it on
-    # converge). balanced owns the scheduler reservations, so no _res overrides.
+    # 1. Window off (0/0 = all day), overriding the role's 02:00-06:00. Tentacle
+    # has no `overdue` urgency, so the window gates a scrub however overdue it
+    # is. Client load here is hour-of-day independent, so the window protects
+    # nothing.
+    #
+    # 2. osd_scrub_during_recovery. The role default (false) does not scale with
+    # EC width: a recovering OSD refuses scrub reservations, and a k16+m4 PG
+    # needs all 20 shards free, so any nontrivial rebalance stops scrubbing
+    # outright. Costs roughly 4x recovery throughput while scrubs run.
+    #
+    # osd_scrub_cost and osd_deep_scrub_stride are upstream defaults. They and
+    # osd_scrub_disable_reservation_queuing (removed) came from the squid scrub
+    # thread: https://www.mail-archive.com/ceph-users@ceph.io/msg28007.html
     ceph_config = {
       global = {
         osd_deep_scrub_interval = "2419200" # 28 days
       }
       osd = {
-        osd_scrub_disable_reservation_queuing = "true"
-        osd_max_scrubs                        = "6"
-        osd_scrub_cost                        = "50"      # provisional
-        osd_deep_scrub_stride                 = "2097152" # provisional, 2 MiB
-        osd_mclock_profile                    = "balanced"
+        osd_scrub_begin_hour      = "0" # 0/0 = no window
+        osd_scrub_end_hour        = "0"
+        osd_scrub_during_recovery = "true"
+        osd_max_scrubs            = "6"
+        osd_scrub_cost            = "52428800" # upstream default
+        osd_deep_scrub_stride     = "524288"   # upstream default, 512 KiB
+        osd_mclock_profile        = "high_recovery_ops"
       }
     }
     hosts = [
