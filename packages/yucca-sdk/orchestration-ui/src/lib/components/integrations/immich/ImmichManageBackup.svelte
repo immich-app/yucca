@@ -19,6 +19,7 @@
   } from "$lib/services/schedule.service";
   import RepositoryRunHistoryPage from "$lib/components/backups/run-history/RepositoryRunHistoryPage.svelte";
   import RepositorySnapshotsPage from "$lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte";
+  import ImmichBackupSettings from "./ImmichBackupSettings.svelte";
   import { Container, Stack } from "@immich/ui";
   import ImmichManageBackupOverview from "./ImmichManageBackupOverview.svelte";
 
@@ -50,11 +51,13 @@
       : undefined,
   );
 
-  const { ViewRecoveryKey, Configure, BackUpNow } = $derived(
-    getBackupPageActions(repository?.id),
+  let view = $state<"overview" | "attempts" | "snapshots" | "settings">(
+    "overview",
   );
 
-  let view = $state<"overview" | "attempts" | "snapshots">("overview");
+  const { ViewRecoveryKey, Configure } = $derived(
+    getBackupPageActions(repository?.id, () => (view = "settings")),
+  );
 </script>
 
 <OnEvents
@@ -75,6 +78,12 @@
       </div>
     </Container>
   </PageLayout>
+{:else if view === "settings"}
+  <PageLayout title="Backup settings" onBack={() => (view = "overview")}>
+    <div class="mt-4">
+      <ImmichBackupSettings />
+    </div>
+  </PageLayout>
 {:else if view === "snapshots" && repository}
   <PageLayout title="Snapshots" onBack={() => (view = "overview")}>
     <Container size="medium" center>
@@ -84,7 +93,7 @@
     </Container>
   </PageLayout>
 {:else}
-  <PageLayout title="Backups" actions={[ViewRecoveryKey, Configure, BackUpNow]}>
+  <PageLayout title="Backups" actions={[ViewRecoveryKey, Configure]}>
     <Container size="medium" center>
       {#if repository && schedule}
         <Stack class="mt-4" gap={6}>

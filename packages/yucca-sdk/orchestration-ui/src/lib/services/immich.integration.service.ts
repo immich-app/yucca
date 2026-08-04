@@ -12,11 +12,17 @@ import {
   useRepositoryEventHandler,
 } from './repository.service';
 
-export const getBackupPageActions = (repositoryId?: string) => {
+export const getBackupPageActions = (
+  repositoryId?: string,
+  onConfigure?: () => void,
+) => {
   const Configure: ActionItem = {
     title: 'Configure',
     icon: mdiCogOutline,
-    onAction: () => modalManager.show(ImmichConfigureBackup, {}),
+    onAction: () =>
+      onConfigure
+        ? onConfigure()
+        : void modalManager.show(ImmichConfigureBackup, {}),
   };
 
   const ViewRecoveryKey: ActionItem = {

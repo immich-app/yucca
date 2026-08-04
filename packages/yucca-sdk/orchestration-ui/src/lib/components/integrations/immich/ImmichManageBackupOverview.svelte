@@ -3,18 +3,14 @@
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import type { LocalRepositoryDto, ScheduleDto } from "$lib/fetch-client";
-  import {
-    handlePauseSchedule,
-    handleResumeSchedule,
-  } from "$lib/services/schedule.service";
-  import { FormatBytes, Icon, IconButton } from "@immich/ui";
+  import { handleCreateBackup } from "$lib/services/repository.service";
+  import { Button, FormatBytes, Icon } from "@immich/ui";
   import {
     mdiAlert,
     mdiArchiveOutline,
     mdiCheck,
+    mdiCloudUploadOutline,
     mdiInformation,
-    mdiPauseCircleOutline,
-    mdiPlayCircleOutline,
   } from "@mdi/js";
   import cronstrue from "cronstrue";
 
@@ -36,13 +32,6 @@
       : ({ color: "success", icon: mdiCheck } as const);
   });
 
-  function togglePause() {
-    if (schedule!.paused) {
-      handleResumeSchedule(schedule!.id, "Immich");
-    } else {
-      handlePauseSchedule(schedule!.id, "Immich");
-    }
-  }
 </script>
 
 <StackList>
@@ -61,12 +50,15 @@
     </span>
 
     {#snippet trailing()}
-      <IconButton
+      <Button
         variant="ghost"
-        onclick={togglePause}
-        aria-label={schedule.paused ? "Resume backups" : "Pause backups"}
-        icon={schedule.paused ? mdiPlayCircleOutline : mdiPauseCircleOutline}
-      />
+        size="small"
+        class="whitespace-nowrap"
+        leadingIcon={mdiCloudUploadOutline}
+        onclick={() => void handleCreateBackup(repository.id)}
+      >
+        Back up now
+      </Button>
     {/snippet}
 
     {#snippet footer()}
