@@ -106,7 +106,6 @@
 
 <OnEvents {onRunUpdate} />
 
-<!-- the modal header only carries the close button; the title lives in the body -->
 <Modal
   size="medium"
   {onClose}
