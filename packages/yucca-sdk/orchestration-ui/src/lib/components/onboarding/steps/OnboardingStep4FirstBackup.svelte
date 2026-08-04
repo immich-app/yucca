@@ -7,9 +7,15 @@
     schedule: string;
     storageLocation: string;
     onStartBackup: () => void;
+    loading?: boolean;
   };
 
-  const { schedule, storageLocation, onStartBackup }: Props = $props();
+  const {
+    schedule,
+    storageLocation,
+    onStartBackup,
+    loading = false,
+  }: Props = $props();
 
   const settings = $derived([
     {
@@ -35,6 +41,7 @@
   title="Start your first backup"
   description="Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard."
   actionLabel="Start backup"
+  actionLoading={loading}
   onAction={onStartBackup}
 >
   <Stack gap={4}>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, Heading, Stack, Text } from "@immich/ui";
+  import { Button, Heading, HStack, Stack, Text } from "@immich/ui";
   import type { Snippet } from "svelte";
   import UpsellFutoBackupsBadge from "../upsell/UpsellFutoBackupsBadge.svelte";
 
@@ -9,6 +9,9 @@
     actionLabel: string;
     onAction: () => void;
     actionDisabled?: boolean;
+    actionLoading?: boolean;
+    secondaryLabel?: string;
+    onSecondary?: () => void;
     children?: Snippet;
   };
 
@@ -18,6 +21,9 @@
     actionLabel,
     onAction,
     actionDisabled = false,
+    actionLoading = false,
+    secondaryLabel,
+    onSecondary,
     children,
   }: Props = $props();
 </script>
@@ -34,12 +40,26 @@
     {@render children()}
   {/if}
 
-  <Button
-    shape="round"
-    class="self-start"
-    disabled={actionDisabled}
-    onclick={onAction}
-  >
-    {actionLabel}
-  </Button>
+  <HStack gap={2}>
+    <Button
+      shape="round"
+      disabled={actionDisabled}
+      loading={actionLoading}
+      onclick={onAction}
+    >
+      {actionLabel}
+    </Button>
+
+    {#if secondaryLabel && onSecondary}
+      <Button
+        shape="round"
+        variant="ghost"
+        color="secondary"
+        disabled={actionLoading}
+        onclick={onSecondary}
+      >
+        {secondaryLabel}
+      </Button>
+    {/if}
+  </HStack>
 </Stack>

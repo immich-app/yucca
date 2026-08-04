@@ -5,9 +5,10 @@
 
   type Props = {
     onContinue: () => void;
+    onImportKey?: () => void;
   };
 
-  const { onContinue }: Props = $props();
+  const { onContinue, onImportKey }: Props = $props();
 
   const steps = [
     "Connect FUTO account",
@@ -21,6 +22,8 @@
   description="Your subscription is active. Finish setup to create your recovery key and start backing up your Immich library."
   actionLabel="Continue"
   onAction={onContinue}
+  secondaryLabel="Import key"
+  onSecondary={onImportKey}
 >
   <Stack gap={3}>
     {#each steps as step, index (step)}

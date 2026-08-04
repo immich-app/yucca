@@ -21,7 +21,7 @@
   const shell = $derived(
     configured
       ? `hover:bg-subtle hover:text-primary flex w-full cursor-pointer place-items-center gap-4 rounded-e-full ps-5 py-3 text-start ${active ? "bg-primary/10 text-primary" : ""}`
-      : "border-primary/40 from-white via-blue-100 to-purple-100 dark:from-transparent dark:via-blue-500/10 dark:to-purple-500/15 mx-4 mb-2 flex cursor-pointer place-items-center gap-4 rounded-xl border bg-gradient-to-r px-4 py-2.5 text-start",
+      : "border-primary/40 from-white via-blue-100 to-purple-100 dark:from-transparent dark:via-blue-500/10 dark:to-purple-500/15 flex w-full cursor-pointer place-items-center gap-4 rounded-xl border bg-gradient-to-r px-4 py-2.5 text-start",
   );
 </script>
 
@@ -42,7 +42,7 @@
   </Text>
 {/snippet}
 
-<div class={className ?? ""}>
+<div class="{configured ? '' : 'mx-4 mb-2'} {className ?? ''}">
   {#if href}
     <a {href} {onclick} class={shell}>
       {@render body()}

@@ -5,9 +5,10 @@
 
   type Props = {
     onConnect: () => void;
+    onLocalStorage?: () => void;
   };
 
-  const { onConnect }: Props = $props();
+  const { onConnect, onLocalStorage }: Props = $props();
 
   const outcomes = [
     "Link this server to your FUTO Backups subscription",
@@ -21,6 +22,8 @@
   description="Connect your FUTO account to this Immich server so FUTO Backups can store your encrypted backups."
   actionLabel="Connect account"
   onAction={onConnect}
+  secondaryLabel="Use local storage"
+  onSecondary={onLocalStorage}
 >
   <Stack gap={3}>
     <Text fontWeight="semi-bold" size="small">This will:</Text>

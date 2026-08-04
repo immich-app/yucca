@@ -6,9 +6,10 @@
   type Props = {
     code: string;
     onContinue: () => void;
+    loading?: boolean;
   };
 
-  const { code, onContinue }: Props = $props();
+  const { code, onContinue, loading = false }: Props = $props();
 
   let saved = $state(false);
 </script>
@@ -18,6 +19,7 @@
   description="You'll need this key to restore your encrypted backups. Save it somewhere safe before continuing. FUTO cannot recover this key if it is lost."
   actionLabel="Continue"
   actionDisabled={!saved}
+  actionLoading={loading}
   onAction={onContinue}
 >
   <Stack gap={4}>
