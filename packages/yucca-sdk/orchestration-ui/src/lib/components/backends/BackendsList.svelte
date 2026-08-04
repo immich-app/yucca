@@ -15,9 +15,10 @@
 
   type Props = {
     repository?: LocalRepositoryDto;
+    actions?: boolean;
   };
 
-  const { repository }: Props = $props();
+  const { repository, actions = false }: Props = $props();
 
   const { advanced } = options;
   const query = useBackends();
@@ -40,13 +41,11 @@
 
 <Suspense {query}>
   <StackList>
-    {#snippet title()}
-      {#if repository}
+    {#if repository}
+      {#snippet title()}
         Where your backup is stored
-      {:else}
-        Configured backends
-      {/if}
-    {/snippet}
+      {/snippet}
+    {/if}
 
     {#each query.data as backend (backend.id)}
       {@const repositoryBackend = repositoryBackends.find(
@@ -59,7 +58,7 @@
     {/each}
   </StackList>
 
-  {#if $advanced}
+  {#if actions || $advanced}
     <HStack>
       <Button
         size="small"

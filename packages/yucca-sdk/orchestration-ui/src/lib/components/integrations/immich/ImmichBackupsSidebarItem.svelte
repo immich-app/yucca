@@ -1,6 +1,13 @@
 <script lang="ts">
   import OnEvents from "$lib/components/util/OnEvents.svelte";
-  import { useImmichBackupSummary } from "$lib/services/immich.integration.service";
+  import {
+    useIntegrationEventHandler,
+    useIntegrations,
+  } from "$lib/services/integrations.service";
+  import {
+    useRepositories,
+    useRepositoryEventHandler,
+  } from "$lib/services/repository.service";
   import ImmichBackupsCard from "./ImmichBackupsCard.svelte";
 
   type Props = {
@@ -11,17 +18,47 @@
 
   const { href = "/backups", onclick, class: className }: Props = $props();
 
-  const summary = useImmichBackupSummary();
+  const integrations = useIntegrations();
+  const repositories = useRepositories();
+
+  const { onIntegrationUpdate } = useIntegrationEventHandler();
+  const { onRepositoryCreate, onRepositoryUpdate, onRepositoryDelete } =
+    useRepositoryEventHandler();
+
+  const repository = $derived.by(() => {
+    const integration = integrations.data?.immichIntegration;
+
+    return integration
+      ? repositories.data?.find((entry) => entry.id === integration.id)
+      : undefined;
+  });
+
+  const lastBackup = $derived(repository?.metrics.lastBackup ?? undefined);
+
+  const failed = $derived(
+    Boolean(
+      lastBackup && lastBackup !== repository?.metrics.lastSuccessfulBackup,
+    ),
+  );
+
+  const sizeBytes = $derived(
+    repository?.meter?.sizeBytes ?? repository?.metrics.sizeBytes,
+  );
 </script>
 
-<OnEvents {...summary.events} />
+<OnEvents
+  {onIntegrationUpdate}
+  {onRepositoryCreate}
+  {onRepositoryUpdate}
+  {onRepositoryDelete}
+/>
 
-{#if !summary.isLoading}
+{#if !integrations.isLoading && !repositories.isLoading}
   <ImmichBackupsCard
-    configured={summary.configured}
-    lastBackup={summary.lastBackup}
-    failed={summary.failed}
-    sizeBytes={summary.sizeBytes}
+    configured={Boolean(repository)}
+    {lastBackup}
+    {failed}
+    {sizeBytes}
     {href}
     {onclick}
     class={className}

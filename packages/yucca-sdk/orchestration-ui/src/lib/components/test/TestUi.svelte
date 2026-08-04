@@ -19,7 +19,7 @@
     mdiCog,
     mdiViewDashboard,
   } from "@mdi/js";
-  import BackendsList from "../backends/BackendsList.svelte";
+  import GlobalSettings from "../settings/GlobalSettings.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
   import Dashboard from "../dashboard/Dashboard.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
@@ -123,7 +123,7 @@
       <BackupsList local />
     {:else if route === "config"}
       {#if !mock}
-        <BackendsList />
+        <GlobalSettings />
       {/if}
     {:else if route === "schedules"}
       {#if !mock}

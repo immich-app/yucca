@@ -45,7 +45,10 @@
   import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
   import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
   import OnEvents from "../util/OnEvents.svelte";
-  import { useImmichBackupSummary } from "$lib/services/immich.integration.service";
+  import {
+    useIntegrationEventHandler,
+    useIntegrations,
+  } from "$lib/services/integrations.service";
 
   type Props = {
     onExit: () => void;
@@ -56,7 +59,9 @@
 
   let route = $state<"photos" | "settings">("photos");
 
-  const summary = useImmichBackupSummary();
+  const integrations = useIntegrations();
+  const { onIntegrationUpdate } = useIntegrationEventHandler();
+  const configured = $derived(Boolean(integrations.data?.immichIntegration));
 
   const sampleQuestions = [
     {
@@ -80,7 +85,7 @@
   setProvider(orchestrationApiProvider);
 </script>
 
-<OnEvents {...summary.events} />
+<OnEvents {onIntegrationUpdate} />
 
 <AppShell class="h-full">
   <AppShellHeader>
@@ -193,7 +198,7 @@
     <div class="flex h-full flex-col pt-4 pr-2">
       {#if route === "settings"}
         <ImmichBackupsNavButton
-          configured={summary.configured}
+          {configured}
           active
           onclick={() => {}}
         />

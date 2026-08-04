@@ -672,8 +672,8 @@
       bind:value={settingsSearch}
     />
 
-    <ImmichSettingsBackupContents onSave={() => void 0} />
-    <SettingsSchedule onSave={() => void 0} onReset={() => void 0} />
+    <ImmichSettingsBackupContents />
+    <SettingsSchedule />
     <ImmichSettingsStorage />
     <SettingsNotifications onSave={() => void 0} />
     <SettingsBilling onManageBilling={() => void 0} />
