@@ -61,9 +61,7 @@
       return "running";
     }
 
-    return run.status === "failed" || log.errors.length > 0
-      ? "failed"
-      : "complete";
+    return run.status === "failed" ? "failed" : "complete";
   });
 
   const duration = $derived(
@@ -148,6 +146,10 @@
           {#if log.summary.bytes_restored !== undefined}
             &middot; <FormatBytes bytes={log.summary.bytes_restored} /> restored
           {/if}
+        {:else if type === "forget"}
+          {log.pruned.removed.toLocaleString()}
+          {log.pruned.removed === 1 ? "backup" : "backups"} removed &middot;
+          {log.pruned.kept.toLocaleString()} kept
         {/if}
       {/snippet}
 

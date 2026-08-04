@@ -131,6 +131,13 @@
       {:else if duration}
         <Text color="muted">Completed in {duration}</Text>
       {/if}
+
+      {#if backupState === "complete" && errors.length > 0}
+        <Text color="warning">
+          Completed with {errors.length}
+          {errors.length === 1 ? "warning" : "warnings"}.
+        </Text>
+      {/if}
     </Stack>
   </Stack>
 
@@ -143,9 +150,9 @@
     />
   {/if}
 
-  {#if backupState === "failed"}
+  {#if terminal && (errors.length > 0 || (backupState === "failed" && onRetry))}
     <HStack gap={4} class="items-center">
-      {#if onRetry}
+      {#if backupState === "failed" && onRetry}
         <Button shape="round" onclick={onRetry}>Try again</Button>
       {/if}
 
@@ -164,7 +171,9 @@
       <Scrollable class="max-h-32">
         <Stack gap={1}>
           {#each errors as error, index (index)}
-            <Alert color="danger">{error}</Alert>
+            <Alert color={backupState === "failed" ? "danger" : "warning"}>
+              {error}
+            </Alert>
           {/each}
         </Stack>
       </Scrollable>
