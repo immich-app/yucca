@@ -1,13 +1,7 @@
 <script lang="ts">
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import { FormatBytes, Icon, Stack, Text } from "@immich/ui";
-  import {
-    mdiChevronRight,
-    mdiCloudAlertOutline,
-    mdiCloudUpload,
-    mdiInformationOutline,
-  } from "@mdi/js";
-  import ImmichBackupsUpsellPopover from "./ImmichBackupsUpsellPopover.svelte";
+  import { mdiChevronRight, mdiCloudAlertOutline, mdiCloudUpload } from "@mdi/js";
 
   type Props = {
     configured: boolean;
@@ -29,22 +23,8 @@
     class: className,
   }: Props = $props();
 
-  let showUpsell = $state(false);
-
-  const toggleUpsell = (event: MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-    showUpsell = !showUpsell;
-  };
-
-  const setUp = () => {
-    showUpsell = false;
-    onclick?.();
-  };
-
-  const shell = $derived(
-    `border-primary/25 hover:bg-primary/5 flex w-full items-center gap-3 rounded-xl border ps-3 py-2.5 text-start transition-colors ${configured ? "pe-3" : "pe-10"}`,
-  );
+  const shell =
+    "border-primary/25 hover:bg-primary/5 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-start transition-colors";
 </script>
 
 {#snippet body()}
@@ -80,14 +60,7 @@
   {/if}
 {/snippet}
 
-<div class="relative {className ?? ''}">
-  {#if showUpsell}
-    <ImmichBackupsUpsellPopover
-      onSetUp={setUp}
-      onClose={() => (showUpsell = false)}
-    />
-  {/if}
-
+<div class={className ?? ""}>
   {#if href}
     <a {href} {onclick} class={shell}>
       {@render body()}
@@ -95,18 +68,6 @@
   {:else}
     <button type="button" {onclick} class={shell}>
       {@render body()}
-    </button>
-  {/if}
-
-  {#if !configured}
-    <button
-      type="button"
-      onclick={toggleUpsell}
-      aria-label="About FUTO Backups"
-      aria-expanded={showUpsell}
-      class="text-primary absolute end-3 top-1/2 -translate-y-1/2"
-    >
-      <Icon icon={mdiInformationOutline} size="1.25em" />
     </button>
   {/if}
 </div>

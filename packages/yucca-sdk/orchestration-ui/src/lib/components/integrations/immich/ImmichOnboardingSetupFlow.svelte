@@ -18,22 +18,26 @@
   import ImmichConfigureBackup from "./ImmichConfigureBackup.svelte";
   import ImmichConfirmDefaultBackup from "./ImmichConfirmDefaultBackup.svelte";
 
-  type Props = {
-    onExit: () => void;
-    children: Snippet;
-  };
-
-  const { onExit, children }: Props = $props();
-
-  let code = $state("");
-  let backendId = $state("");
-  let status: OnboardingStatusResponseDto | undefined = $state();
-  let stage:
+  type Stage =
+    | `idle`
     | `welcome`
     | `telemetry`
     | `key-${"intro" | "save" | "confirm" | "import"}`
     | `backup-${"service" | "confirm" | "create"}`
-    | `finished` = $state("welcome");
+    | `finished`;
+
+  type Props = {
+    fallback: Snippet<[() => void]>;
+    children: Snippet;
+  };
+
+  const { fallback, children }: Props = $props();
+
+  let code = $state("");
+  let backendId = $state("");
+  let status: OnboardingStatusResponseDto | undefined = $state();
+  let stage: Stage = $state("idle");
+  let resume: Stage = $state("welcome");
 
   onMount(() => {
     handleOnboardingStatus().then(async (data) => {
@@ -44,18 +48,21 @@
       }
 
       if (data.hasOnboardedKey) {
-        stage =
-          data.hasTelemetry === "none"
-            ? "telemetry"
-            : data.hasBackup
-              ? "finished"
-              : "backup-service";
+        if (data.hasBackup) {
+          stage = "finished";
+          return;
+        }
+
+        resume = data.hasTelemetry === "none" ? "telemetry" : "backup-service";
       } else {
         const { recoveryKey } = await handleCurrentRecoveryKey();
         code = recoveryKey;
       }
     });
   });
+
+  const onStart = () => (stage = resume);
+  const onCancel = () => (stage = "idle");
 
   const onConfirmKey = async () => {
     await handleConfirmRecoveryKey();
@@ -69,16 +76,23 @@
 </script>
 
 {#if status === undefined || status.status === "not-ready"}
-  <LoadingSpinner />
-{:else if status.status === "error"}
-  <OnboardingBootstrapError error={status.error} onQuit={onExit} />
+  <div class="flex h-full items-center justify-center p-8">
+    <LoadingSpinner />
+  </div>
 {:else if stage === "finished"}
   {@render children()}
+{:else}
+  {@render fallback(onStart)}
+{/if}
+
+{#if status?.status === "error" && stage !== "idle"}
+  <OnboardingBootstrapError error={status.error} onQuit={onCancel} />
 {:else if stage === "welcome"}
   <OnboardingStageWelcome
-    onNext={() => (stage = status?.hasTelemetry === "none" ? "telemetry" : "key-intro")}
+    onNext={() =>
+      (stage = status?.hasTelemetry === "none" ? "telemetry" : "key-intro")}
     onImportKey={() => (stage = "key-import")}
-    onCancel={onExit}
+    {onCancel}
   />
 {:else if stage === "telemetry"}
   <OnboardingStageTelemetry
@@ -88,44 +102,41 @@
           ? "finished"
           : "backup-service"
         : "key-intro")}
-    onCancel={onExit}
+    {onCancel}
   />
 {:else if stage === "key-import"}
   <OnboardingStageKeyImport
     onStart={() => (stage = "welcome")}
     onImported={() => (stage = "key-confirm")}
-    onCancel={onExit}
+    {onCancel}
   />
 {:else if stage === "key-intro"}
-  <OnboardingStageKeyIntro
-    onNext={() => (stage = "key-save")}
-    onCancel={onExit}
-  />
+  <OnboardingStageKeyIntro onNext={() => (stage = "key-save")} {onCancel} />
 {:else if stage === "key-save"}
   <OnboardingStageSaveKey
     {code}
     onNext={() => (stage = "key-confirm")}
-    onCancel={onExit}
+    {onCancel}
   />
 {:else if stage === "key-confirm"}
   <OnboardingStageKeyConfirm
     {code}
     onBack={() => (stage = "key-save")}
-    onCancel={onExit}
+    {onCancel}
     {onConfirmKey}
   />
 {:else if stage === "backup-service"}
-  <OnboardingStageBackupServices onNext={onSelectBackend} onCancel={onExit} />
+  <OnboardingStageBackupServices onNext={onSelectBackend} {onCancel} />
 {:else if stage === "backup-confirm"}
   <ImmichConfirmDefaultBackup
     onCustomize={() => (stage = "backup-create")}
     onConfirm={() => (stage = "finished")}
-    onCancel={onExit}
+    {onCancel}
   />
 {:else if stage === "backup-create"}
   <ImmichConfigureBackup
     onFinish={() => (stage = "finished")}
-    onCancel={onExit}
+    {onCancel}
     {backendId}
   />
 {/if}

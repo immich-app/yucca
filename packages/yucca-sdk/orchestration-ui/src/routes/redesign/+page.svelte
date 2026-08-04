@@ -50,8 +50,8 @@
   } from "@mdi/js";
   import { onDestroy, onMount } from "svelte";
   import FakeModal from "../../test-mocks/FakeModal.svelte";
-  import ImmichBackupsCard from "../../test-mocks/immich/ImmichBackupsCard.svelte";
-  import ImmichBackupsNavButton from "../../test-mocks/immich/ImmichBackupsNavButton.svelte";
+  import ImmichBackupsCard from "$lib/components/integrations/immich/ImmichBackupsCard.svelte";
+  import ImmichBackupsNavButton from "$lib/components/integrations/immich/ImmichBackupsNavButton.svelte";
   import MockImmichSettingsMenu from "../../test-mocks/immich/MockImmichSettingsMenu.svelte";
   import MockImmichSidebar from "../../test-mocks/immich/MockImmichSidebar.svelte";
   import MockPagination from "../../test-mocks/MockPagination.svelte";

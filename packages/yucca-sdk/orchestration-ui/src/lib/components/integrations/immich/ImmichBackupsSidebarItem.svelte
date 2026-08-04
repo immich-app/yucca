@@ -1,21 +1,15 @@
 <script lang="ts">
   import OnEvents from "$lib/components/util/OnEvents.svelte";
-  import { useImmichBackupSummary } from "./summary";
-  import ImmichBackupsNavButton from "./ImmichBackupsNavButton.svelte";
+  import { useImmichBackupSummary } from "$lib/services/immich.integration.service";
+  import ImmichBackupsCard from "./ImmichBackupsCard.svelte";
 
   type Props = {
-    active?: boolean;
     href?: string;
     onclick?: () => void;
     class?: string;
   };
 
-  const {
-    active = false,
-    href = "/backups",
-    onclick,
-    class: className,
-  }: Props = $props();
+  const { href = "/backups", onclick, class: className }: Props = $props();
 
   const summary = useImmichBackupSummary();
 </script>
@@ -23,9 +17,11 @@
 <OnEvents {...summary.events} />
 
 {#if !summary.isLoading}
-  <ImmichBackupsNavButton
+  <ImmichBackupsCard
     configured={summary.configured}
-    {active}
+    lastBackup={summary.lastBackup}
+    failed={summary.failed}
+    sizeBytes={summary.sizeBytes}
     {href}
     {onclick}
     class={className}
