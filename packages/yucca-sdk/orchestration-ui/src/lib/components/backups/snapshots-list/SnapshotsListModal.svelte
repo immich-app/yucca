@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { Modal, ModalBody } from "@immich/ui";
-  import RepositorySnapshotsList from "./RepositorySnapshotsList.svelte";
+  import RepositorySnapshotsPage from "./RepositorySnapshotsPage.svelte";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -13,6 +13,6 @@
 
 <Modal title={`Snapshots for ${repository.name}`} size="giant" {onClose}>
   <ModalBody>
-    <RepositorySnapshotsList {repository} />
+    <RepositorySnapshotsPage {repository} />
   </ModalBody>
 </Modal>

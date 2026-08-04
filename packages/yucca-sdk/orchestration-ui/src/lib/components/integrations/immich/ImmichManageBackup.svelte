@@ -17,6 +17,8 @@
     useScheduleEventHandler,
     useSchedules,
   } from "$lib/services/schedule.service";
+  import RepositoryRunHistoryPage from "$lib/components/backups/run-history/RepositoryRunHistoryPage.svelte";
+  import RepositorySnapshotsPage from "$lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte";
   import { Container, Stack } from "@immich/ui";
   import ImmichManageBackupOverview from "./ImmichManageBackupOverview.svelte";
 
@@ -51,6 +53,8 @@
   const { ViewRecoveryKey, Configure, BackUpNow } = $derived(
     getBackupPageActions(repository?.id),
   );
+
+  let view = $state<"overview" | "attempts" | "snapshots">("overview");
 </script>
 
 <OnEvents
@@ -63,15 +67,41 @@
   {onIntegrationUpdate}
 />
 
-<PageLayout title="Backups" actions={[ViewRecoveryKey, Configure, BackUpNow]}>
-  <Container size="medium" center>
-    {#if repository && schedule}
-      <Stack class="mt-4" gap={6}>
-        <ImmichManageBackupOverview {repository} {schedule} />
-        <BackendsList {repository} />
-        <RepositoryRunHistory {repository} />
-        <RepositorySnapshotsList {repository} immich limit={5} />
-      </Stack>
-    {/if}
-  </Container>
-</PageLayout>
+{#if view === "attempts" && repository}
+  <PageLayout title="Backup attempts" onBack={() => (view = "overview")}>
+    <Container size="medium" center>
+      <div class="mt-4">
+        <RepositoryRunHistoryPage {repository} />
+      </div>
+    </Container>
+  </PageLayout>
+{:else if view === "snapshots" && repository}
+  <PageLayout title="Snapshots" onBack={() => (view = "overview")}>
+    <Container size="medium" center>
+      <div class="mt-4">
+        <RepositorySnapshotsPage {repository} immich />
+      </div>
+    </Container>
+  </PageLayout>
+{:else}
+  <PageLayout title="Backups" actions={[ViewRecoveryKey, Configure, BackUpNow]}>
+    <Container size="medium" center>
+      {#if repository && schedule}
+        <Stack class="mt-4" gap={6}>
+          <ImmichManageBackupOverview {repository} {schedule} />
+          <BackendsList {repository} />
+          <RepositoryRunHistory
+            {repository}
+            onViewAll={() => (view = "attempts")}
+          />
+          <RepositorySnapshotsList
+            {repository}
+            immich
+            limit={5}
+            onViewAll={() => (view = "snapshots")}
+          />
+        </Stack>
+      {/if}
+    </Container>
+  </PageLayout>
+{/if}

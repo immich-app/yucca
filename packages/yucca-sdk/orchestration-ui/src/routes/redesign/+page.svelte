@@ -54,7 +54,7 @@
   import ImmichBackupsNavButton from "$lib/components/integrations/immich/ImmichBackupsNavButton.svelte";
   import MockImmichSettingsMenu from "../../test-mocks/immich/MockImmichSettingsMenu.svelte";
   import MockImmichSidebar from "../../test-mocks/immich/MockImmichSidebar.svelte";
-  import MockPagination from "../../test-mocks/MockPagination.svelte";
+  import MockPagination from "$lib/components/ui/Pagination.svelte";
 
   let demoState = $state<BackupStatusState>("running");
   let demoProgress = $state(0);
