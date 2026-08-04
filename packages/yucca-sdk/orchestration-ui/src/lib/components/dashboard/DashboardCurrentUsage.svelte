@@ -3,7 +3,7 @@
   import VisualisationGauge from "../ui/VisualisationGauge.svelte";
 </script>
 
-<Card>
+<Card class="border-primary-100 shadow-none">
   <CardBody>
     <VisualisationGauge title="Current Usage" content="$-/mo" />
   </CardBody>

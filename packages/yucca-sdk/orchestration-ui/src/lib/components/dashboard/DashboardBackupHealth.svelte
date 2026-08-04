@@ -41,7 +41,7 @@
   );
 </script>
 
-<Card>
+<Card class="border-primary-100 shadow-none">
   <CardHeader>
     <HStack class="justify-between">
       <CardTitle>Your Backups</CardTitle>

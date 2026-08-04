@@ -21,7 +21,7 @@
   );
 </script>
 
-<Card>
+<Card class="border-primary-100 shadow-none">
   <CardBody>
     <VisualisationGauge
       title="Daily Backup Time"

@@ -64,13 +64,13 @@
 />
 
 <PageLayout title="Backups" actions={[ViewRecoveryKey, Configure, BackUpNow]}>
-  <Container size="large" center>
+  <Container size="medium" center>
     {#if repository && schedule}
-      <Stack class="mt-4" gap={8}>
+      <Stack class="mt-4" gap={6}>
         <ImmichManageBackupOverview {repository} {schedule} />
         <BackendsList {repository} />
         <RepositoryRunHistory {repository} />
-        <RepositorySnapshotsList {repository} immich />
+        <RepositorySnapshotsList {repository} immich limit={5} />
       </Stack>
     {/if}
   </Container>

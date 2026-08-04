@@ -8,41 +8,47 @@
     useSnapshotEventHandler,
     useSnapshots,
   } from "$lib/services/snapshot.service";
-  import { Button, HStack, Text } from "@immich/ui";
+  import { Button, HStack } from "@immich/ui";
   import RepositorySnapshotsListItem from "./RepositorySnapshotsListItem.svelte";
 
   type Props = {
     repository: LocalRepositoryDto;
     immich?: boolean;
+    limit?: number;
+    onViewAll?: () => void;
   };
 
-  let { repository, immich = false }: Props = $props();
+  let { repository, immich = false, limit, onViewAll }: Props = $props();
 
   const { advanced } = options;
   // svelte-ignore state_referenced_locally
   const query = useSnapshots(repository.id);
   const { onRunUpdate } = useSnapshotEventHandler();
+
+  const isEmpty = $derived(query.data?.length === 0);
 </script>
 
 <OnEvents {onRunUpdate} />
 
-<StackList {query}>
+<StackList {query} {isEmpty} empty="No backups yet">
   {#snippet title()}
     Snapshots
   {/snippet}
 
-  {#snippet children(snapshots)}
-    {#if snapshots.length === 0}
-      <Text class="text-center py-6" color="muted">No backups yet</Text>
-    {:else}
-      {#each snapshots as snapshot (snapshot.id)}
-        <RepositorySnapshotsListItem
-          repositoryId={repository.id}
-          {snapshot}
-          {immich}
-        />
-      {/each}
+  {#snippet action()}
+    {#if onViewAll}
+      <Button variant="ghost" size="small" onclick={onViewAll}>View all</Button>
     {/if}
+  {/snippet}
+
+  {#snippet children(snapshots)}
+    {#each limit ? snapshots.slice(0, limit) : snapshots as snapshot (snapshot.id)}
+      <RepositorySnapshotsListItem
+        repositoryId={repository.id}
+        {snapshot}
+        {immich}
+      />
+    {/each}
   {/snippet}
 </StackList>
 

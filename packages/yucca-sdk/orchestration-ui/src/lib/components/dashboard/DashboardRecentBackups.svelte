@@ -1,25 +1,15 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
+  import { Icon, modalManager, type ActionItem } from "@immich/ui";
   import {
-    Card,
-    CardBody,
-    CardHeader,
-    CardTitle,
-    ContextMenuButton,
-    HStack,
-    Icon,
-    modalManager,
-    Text,
-    type ActionItem,
-  } from "@immich/ui";
-  import {
-    mdiAlertCircleOutline,
-    mdiCheckCircleOutline,
-    mdiDotsVertical,
+    mdiCloudCheckOutline,
+    mdiCloudOffOutline,
     mdiHistory,
   } from "@mdi/js";
-  import RelativeTime from "../util/RelativeTime.svelte";
   import MetricsHistoryModal from "../backups/metrics-history/MetricsHistoryModal.svelte";
+  import StackList from "../ui/StackList.svelte";
+  import StackListItem from "../ui/StackListItem.svelte";
+  import RelativeTime from "../util/RelativeTime.svelte";
 
   type Props = {
     repositories: LocalRepositoryDto[];
@@ -38,67 +28,42 @@
       .slice(0, 5),
   );
 
-  const getActions = (repository: LocalRepositoryDto): ActionItem[] => [
-    {
-      title: "View history",
-      icon: mdiHistory,
-      onAction: () =>
-        void modalManager.open(MetricsHistoryModal, { repository }),
-    },
-  ];
+  const getActions = (repository: LocalRepositoryDto): ActionItem[] =>
+    local
+      ? []
+      : [
+          {
+            title: "View history",
+            icon: mdiHistory,
+            onAction: () =>
+              void modalManager.open(MetricsHistoryModal, { repository }),
+          },
+        ];
 </script>
 
-<Card>
-  <CardHeader>
-    <CardTitle>Recent Backups</CardTitle>
-  </CardHeader>
-  <CardBody>
-    {#if recentAttempts.length === 0}
-      <Text color="secondary">
-        Completed backups will appear here once your first backup runs.
-      </Text>
-    {:else}
-      <div>
-        {#each recentAttempts as repo, index (repo.id)}
-          {#if index > 0}
-            <hr
-              style="border: none; border-top: 1px solid var(--immich-ui-default-border);"
-            />
-          {/if}
-          <HStack class="justify-between py-2">
-            <HStack class="gap-2">
-              {#if repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup}
-                <Icon
-                  icon={mdiCheckCircleOutline}
-                  size="16"
-                  class="text-success-500"
-                />
-              {:else}
-                <Icon
-                  icon={mdiAlertCircleOutline}
-                  size="16"
-                  class="text-danger-500"
-                />
-              {/if}
-              <Text>{repo.name}</Text>
-            </HStack>
-            <HStack class="gap-1">
-              <Text color="secondary" size="small">
-                <RelativeTime time={repo.metrics.lastBackup!} />
-              </Text>
-              {#if !local}
-                <ContextMenuButton
-                  icon={mdiDotsVertical}
-                  aria-label="Options"
-                  items={getActions(repo)}
-                  variant="ghost"
-                  color="secondary"
-                />
-              {/if}
-            </HStack>
-          </HStack>
-        {/each}
-      </div>
-    {/if}
-  </CardBody>
-</Card>
+<StackList
+  isEmpty={recentAttempts.length === 0}
+  empty="Completed backups will appear here once your first backup runs."
+>
+  {#snippet title()}
+    Recent backups
+  {/snippet}
+
+  {#each recentAttempts as repository (repository.id)}
+    {@const successful =
+      repository.metrics.lastBackup === repository.metrics.lastSuccessfulBackup}
+
+    <StackListItem
+      title={repository.name}
+      color={successful ? "success" : "danger"}
+      actions={getActions(repository)}
+    >
+      {#snippet icon()}
+        <Icon icon={successful ? mdiCloudCheckOutline : mdiCloudOffOutline} />
+      {/snippet}
+
+      {successful ? "Backed up" : "Attempted"}
+      <RelativeTime time={repository.metrics.lastBackup!} />
+    </StackListItem>
+  {/each}
+</StackList>
