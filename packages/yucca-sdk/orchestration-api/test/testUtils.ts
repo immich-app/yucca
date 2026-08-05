@@ -16,9 +16,6 @@ import { BackendRepository } from 'src/repositories/backend.repository';
 import { ResticRepository } from 'src/repositories/restic.repository';
 import { newResticRepositoryMock } from './mocks';
 
-// EventsGateway published events through on()/off() until those were removed
-// along with its internal emitter; onInternalEvent is the hook that replaced
-// them, so the test module routes it into a bus the helpers below subscribe to.
 type GatewayListener = (event: GatewayEvent) => void;
 
 export interface TestEventBus {
@@ -30,10 +27,8 @@ export interface TestEventBus {
 function createEventBus(): TestEventBus {
   const listeners = new Set<GatewayListener>();
   return {
-    // Iterate a copy: a listener that unsubscribes itself (waitForEvent does)
-    // would otherwise mutate the set mid-iteration.
     emit: (event) => {
-      for (const listener of [...listeners]) {
+      for (const listener of listeners) {
         listener(event);
       }
     },

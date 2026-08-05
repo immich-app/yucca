@@ -23,10 +23,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  // The Yucca backend resolves its base URL through .well-known discovery when
-  // the configuration carries no url. Unstubbed that rejects, and
-  // submitStructuredLog swallows the rejection, so the submission never reaches
-  // the api client and the waits below simply time out.
+  // Without this the backend resolves its base URL by fetching the real
+  // production .well-known over the network.
   jest.spyOn(yuccaWellKnown, 'getBaseUrl').mockResolvedValue('http://yucca.test');
   ctx.database.prepare("DELETE FROM config WHERE key = 'telemetry'").run();
   await ctx.module.get(BackendRepository).updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
