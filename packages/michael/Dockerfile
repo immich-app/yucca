@@ -26,6 +26,35 @@ RUN go mod download
 COPY packages/michael/ ./
 RUN CGO_ENABLED=0 go build -o /michael .
 
+# IP->ASN database, for labelling traffic with its source network. Baked in
+# rather than fetched at pod start: the data plane must not gain a boot-time
+# dependency on a third-party host. DB-IP's free ASN database is MaxMind-DB
+# format (what internal/geoip reads) and needs no license key, but the monthly
+# file has no "latest" alias — so try this month, then last month, in case the
+# build runs before the new one is published.
+#
+# A miss is deliberately NOT fatal: michael starts, logs a warning, and reports
+# every source network as "unknown". Blocking every michael deploy on db-ip.com
+# being reachable would be the wrong trade.
+#
+# Contains information from the DB-IP IP to ASN Lite database, licensed CC BY 4.0
+# <https://db-ip.com/db/download/ip-to-asn-lite>.
+FROM ${ALPINE_IMAGE} AS asndb
+RUN apk add --no-cache curl
+RUN set -eu; \
+    year=$(date -u +%Y); month=$(date -u +%m); \
+    prev=$(( ${month#0} - 1 )); prev_year=$year; \
+    if [ "$prev" -eq 0 ]; then prev=12; prev_year=$(( year - 1 )); fi; \
+    : > /asn.mmdb; \
+    for stamp in "$year-$month" "$(printf '%s-%02d' "$prev_year" "$prev")"; do \
+      if curl -fsS "https://download.db-ip.com/free/dbip-asn-lite-$stamp.mmdb.gz" | gunzip > /asn.mmdb; then \
+        echo "ASN database: dbip-asn-lite-$stamp"; \
+        exit 0; \
+      fi; \
+      : > /asn.mmdb; \
+    done; \
+    echo "WARNING: no ASN database available; michael will not attribute traffic to source networks" >&2
+
 FROM ${ALPINE_IMAGE}
 
 RUN apk add --no-cache dumb-init \
@@ -34,6 +63,7 @@ RUN apk add --no-cache dumb-init \
 USER michael
 
 COPY --from=builder /michael /usr/local/bin/michael
+COPY --from=asndb /asn.mmdb /etc/michael/asn.mmdb
 
 ENV RESTIC_API_PORT=8080
 EXPOSE 8080
