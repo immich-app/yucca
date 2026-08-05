@@ -149,10 +149,11 @@ persistence, secrets) are where a future prod cluster overlay diverges. Notably:
   in [`ansible/ceph`](../ansible/ceph) / [`tf/`](../tf)) — not this Rook cluster.
 - The Rook-Ceph dev cluster is single-node/single-replica and synthesizes a
   loopback block device (k3d has no spare disk). See
-  [`charts/platform/rook-ceph-cluster`](../charts/platform/rook-ceph-cluster). `michael`'s S3
-  credentials come from a full RGW user
-  ([`charts/platform/ceph-objectuser`](../charts/platform/ceph-objectuser)) whose Secret Rook
-  writes into the `yucca` namespace.
+  [`charts/platform/rook-ceph-cluster`](../charts/platform/rook-ceph-cluster). `michael` has
+  **no** S3 credentials: the APIs create one RGW user per repository (with the
+  `provisioner` object-user's admin caps,
+  [`charts/platform/ceph-objectuser`](../charts/platform/ceph-objectuser)) and seal its keys
+  into each restic token. See [`docs/storage-credentials.md`](../docs/storage-credentials.md).
 - The dev keypair/secrets committed in chart `secretData` are **well-known
   fixtures** (the same keypair lives in `.mise/tasks/*/env`); they must become
   `ExternalSecret`s backed by the org's 1Password (External Secrets Operator)
