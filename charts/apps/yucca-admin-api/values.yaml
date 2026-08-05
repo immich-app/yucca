@@ -34,8 +34,10 @@ volumeMounts:
 # CNPG-managed postgres Cluster name (shares yucca-api's database)
 postgresClusterName: yucca-db
 
-# OIDC provider in-cluster service (must match the issuer mock-oidc advertises)
-oidcIssuer: http://yucca-mock-oidc:8092
+# Must match the issuer mock-oidc advertises. oidc.localhost resolves to the
+# mock-oidc service in-cluster (coredns rewrite, see Tiltfile) and to loopback in
+# a host browser, so the same issuer string works from both sides.
+oidcIssuer: http://oidc.localhost:8092
 oidcRedirectUri: http://localhost:3030/api/auth/oidc/callback
 oidcLogoutRedirectUri: http://localhost:3030
 
