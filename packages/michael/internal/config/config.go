@@ -51,6 +51,14 @@ type Config struct {
 	// first, followed by any declared in S3_CLUSTERS_FILE.
 	Clusters []ClusterConfig
 
+	// ASNDatabasePath is the MaxMind-format IP→ASN database used to label
+	// traffic with its source network. The image bakes one in; a deployment
+	// without it still serves, with every source network reported as unknown.
+	ASNDatabasePath string
+	// ClientIPHeader is the header the gateway writes the observed client
+	// address into. Only its LAST entry is trusted — see geoip.ClientAddr.
+	ClientIPHeader string
+
 	OTLPMetricsEndpoint string
 	OTLPMetricsURLPath  string
 	OTLPMetricsInterval time.Duration
@@ -213,6 +221,9 @@ func LoadConfig() Config {
 		log.Fatal().Str("value", defaultCluster).Msgf("S3_DEFAULT_CLUSTER must match %s", cluster.CodePattern)
 	}
 
+	asnDatabasePath := envOr("ASN_DB_PATH", "/etc/michael/asn.mmdb")
+	clientIPHeader := envOr("CLIENT_IP_HEADER", "X-Forwarded-For")
+
 	otlpEndpoint := os.Getenv("OTLP_METRICS_ENDPOINT")
 	otlpURLPath := os.Getenv("OTLP_METRICS_URL_PATH")
 	otlpInterval := 1000 * time.Millisecond
@@ -265,6 +276,8 @@ func LoadConfig() Config {
 		S3EjectThreshold:    ejectThreshold,
 		S3ReconcileInterval: reconcileInterval,
 		S3DefaultCluster:    defaultCluster,
+		ASNDatabasePath:     asnDatabasePath,
+		ClientIPHeader:      clientIPHeader,
 		OTLPMetricsEndpoint: otlpEndpoint,
 		OTLPMetricsURLPath:  otlpURLPath,
 		OTLPMetricsInterval: otlpInterval,

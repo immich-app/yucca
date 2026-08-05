@@ -9,6 +9,7 @@ import (
 
 	"michael/internal/auth"
 	"michael/internal/cluster"
+	"michael/internal/geoip"
 	"michael/internal/metrics"
 	"michael/internal/storage"
 
@@ -28,6 +29,10 @@ type Server struct {
 	DefaultCluster string
 	JWTPublicKey   *ecdsa.PublicKey
 	Metrics        *metrics.Metrics
+	// ResolveClient identifies the source network of a request, for the traffic
+	// metrics and the access log. Optional: nil leaves both unattributed, which
+	// is what the tests and any deployment without an ASN database get.
+	ResolveClient func(*http.Request) geoip.Client
 }
 
 // NewServer builds a single-cluster server: everything is served from s under
@@ -94,6 +99,10 @@ func (s *Server) Handler() http.Handler {
 	r.Use(hlog.RequestIDHandler("request_id", "X-Request-Id"))
 	r.Use(hlog.RemoteAddrHandler("remote_ip"))
 	r.Use(hlog.UserAgentHandler("user_agent"))
+	if s.ResolveClient != nil {
+		r.Use(geoip.Middleware(s.ResolveClient))
+		r.Use(clientLogContext)
+	}
 	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 		route := chi.RouteContext(r.Context()).RoutePattern()
 		if route == "" {
@@ -110,6 +119,9 @@ func (s *Server) Handler() http.Handler {
 	r.Use(chimw.Recoverer)
 	if s.Metrics != nil {
 		r.Use(metrics.Middleware(s.Metrics))
+		if s.ResolveClient != nil {
+			r.Use(metrics.TrafficMiddleware(s.Metrics))
+		}
 	}
 
 	var onLookup func(hit bool)
@@ -179,6 +191,21 @@ func validateBlobName(next http.Handler) http.Handler {
 			writeError(w, r, http.StatusBadRequest, "Invalid blob name")
 			return
 		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// clientLogContext puts the source network on every log line for the request.
+// client_ip is the address behind the gateway — remote_ip is the gateway's own
+// — and it lives on the log rather than on a metric label because per-address
+// series are unbounded; drilling from a busy AS to the addresses inside it is a
+// VictoriaLogs query.
+func clientLogContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c := geoip.FromContext(r.Context())
+		hlog.FromRequest(r).UpdateContext(func(ctx zerolog.Context) zerolog.Context {
+			return ctx.Str("client_ip", c.IP).Str("asn", c.ASN).Str("as_org", c.Org)
+		})
 		next.ServeHTTP(w, r)
 	})
 }

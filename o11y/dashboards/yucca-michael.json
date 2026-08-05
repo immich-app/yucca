@@ -68,7 +68,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -132,7 +134,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -195,7 +199,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -251,7 +257,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -306,7 +314,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -362,7 +372,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -449,7 +461,9 @@
       "id": 9,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -528,7 +542,9 @@
       "id": 10,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -607,7 +623,9 @@
       "id": 11,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -702,7 +720,9 @@
       "id": 12,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -781,7 +801,9 @@
       "id": 18,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -879,7 +901,9 @@
       "id": 19,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -912,6 +936,324 @@
         "w": 24,
         "x": 0,
         "y": 31
+      },
+      "id": 39,
+      "panels": [],
+      "title": "Source networks (who is talking to us)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "description": "Request-body bytes/s from each client autonomous system \u2014 backup uploads. Sources on-net (NetBird, the internal gateway VIP) report as `private`; public addresses the ASN database does not resolve report as `unknown`.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 40,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(15, sum by (asn, asOrg) (rate({__name__=\"traffic.uploaded_bytes\"}[$__rate_interval])))",
+          "legendFormat": "{{asn}} {{asOrg}}"
+        }
+      ],
+      "title": "Ingress by source network (top 15)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "description": "Response bytes/s to each client autonomous system \u2014 restores and repository reads.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 41,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(15, sum by (asn, asOrg) (rate({__name__=\"traffic.downloaded_bytes\"}[$__rate_interval])))",
+          "legendFormat": "{{asn}} {{asOrg}}"
+        }
+      ],
+      "title": "Egress by source network (top 15)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "description": "Every request, including the unauthenticated and rejected ones the blobs.* family never sees \u2014 a flood from one network moves almost no bytes.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 42,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "topk(15, sum by (asn, asOrg) (rate({__name__=\"traffic.requests\"}[$__rate_interval])))",
+          "legendFormat": "{{asn}} {{asOrg}}"
+        }
+      ],
+      "title": "Requests/s by source network (top 15)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "description": "Per-ADDRESS drill-down for the networks above. Addresses are deliberately not a metric label (unbounded cardinality), so this reads them off the access log; `bytes` is response bytes, the same `size` field the log line carries.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "unit": "bytes"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "requests"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 43,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "bytes"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "queryType": "raw_logs",
+          "expr": "{kubernetes.container_name=\"michael\"} cluster:=\"$cluster\" client_ip:* | stats by (client_ip, asn, as_org) count() as requests, sum(size) as bytes | sort by (bytes) desc | limit 25"
+        }
+      ],
+      "title": "Top source addresses (selected range)",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
       },
       "id": 20,
       "panels": [],
@@ -967,12 +1309,14 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 49
       },
       "id": 21,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1057,12 +1401,14 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 32
+        "y": 49
       },
       "id": 22,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1137,12 +1483,14 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 40
+        "y": 57
       },
       "id": 23,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1217,12 +1565,14 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 40
+        "y": 57
       },
       "id": 24,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1262,7 +1612,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 65
       },
       "id": 13,
       "panels": [],
@@ -1318,12 +1668,14 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 49
+        "y": 66
       },
       "id": 14,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1407,12 +1759,14 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 49
+        "y": 66
       },
       "id": 15,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1486,12 +1840,14 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 57
+        "y": 74
       },
       "id": 16,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1565,12 +1921,14 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 57
+        "y": 74
       },
       "id": 17,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1602,7 +1960,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 65
+        "y": 82
       },
       "id": 25,
       "panels": [],
@@ -1658,12 +2016,14 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 66
+        "y": 83
       },
       "id": 26,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1738,12 +2098,14 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 66
+        "y": 83
       },
       "id": 27,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1817,12 +2179,14 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 74
+        "y": 91
       },
       "id": 28,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1896,12 +2260,14 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 74
+        "y": 91
       },
       "id": 29,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1935,7 +2301,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 82
+        "y": 99
       },
       "panels": []
     },
@@ -1951,7 +2317,7 @@
         "h": 5,
         "w": 4,
         "x": 0,
-        "y": 83
+        "y": 100
       },
       "fieldConfig": {
         "defaults": {
@@ -1986,7 +2352,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -2014,7 +2382,7 @@
         "h": 5,
         "w": 4,
         "x": 4,
-        "y": 83
+        "y": 100
       },
       "fieldConfig": {
         "defaults": {
@@ -2049,7 +2417,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -2077,7 +2447,7 @@
         "h": 5,
         "w": 4,
         "x": 8,
-        "y": 83
+        "y": 100
       },
       "fieldConfig": {
         "defaults": {
@@ -2108,7 +2478,9 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -2136,7 +2508,7 @@
         "h": 8,
         "w": 8,
         "x": 12,
-        "y": 83
+        "y": 100
       },
       "fieldConfig": {
         "defaults": {
@@ -2187,7 +2559,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 88
+        "y": 105
       },
       "fieldConfig": {
         "defaults": {
@@ -2238,7 +2610,7 @@
         "h": 8,
         "w": 4,
         "x": 20,
-        "y": 83
+        "y": 100
       },
       "fieldConfig": {
         "defaults": {
@@ -2283,7 +2655,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 96
+        "y": 113
       },
       "id": 30,
       "panels": [],
@@ -2303,7 +2675,7 @@
         "h": 14,
         "w": 24,
         "x": 0,
-        "y": 97
+        "y": 114
       },
       "id": 31,
       "options": {
@@ -2335,7 +2707,11 @@
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["yucca", "michael", "prod"],
+  "tags": [
+    "yucca",
+    "michael",
+    "prod"
+  ],
   "templating": {
     "list": [
       {

@@ -12,6 +12,7 @@ import (
 
 	"michael/internal/auth"
 	"michael/internal/config"
+	"michael/internal/geoip"
 	"michael/internal/version"
 
 	"github.com/go-chi/chi/v5"
@@ -52,6 +53,14 @@ type Metrics struct {
 	AuthCacheHits   otelmetric.Int64Counter
 	AuthCacheMisses otelmetric.Int64Counter
 	UnknownCluster  otelmetric.Int64Counter
+
+	// Traffic counters, labelled by the SOURCE NETWORK instead of the identity:
+	// the blobs.* family answers "which customer moved this", these answer
+	// "which network did it come from", including for requests that never
+	// authenticated.
+	TrafficUploadedBytes   otelmetric.Int64Counter
+	TrafficDownloadedBytes otelmetric.Int64Counter
+	TrafficRequests        otelmetric.Int64Counter
 }
 
 // durationBuckets replaces the SDK default histogram boundaries, which are
@@ -149,6 +158,28 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating unknown_cluster counter: %w", err)
 	}
 
+	trafficUploadedBytes, err := meter.Int64Counter("traffic.uploaded_bytes",
+		otelmetric.WithDescription("Total request-body bytes received, by source autonomous system"),
+		otelmetric.WithUnit("By"))
+	if err != nil {
+		return nil, fmt.Errorf("creating traffic_uploaded_bytes counter: %w", err)
+	}
+
+	trafficDownloadedBytes, err := meter.Int64Counter("traffic.downloaded_bytes",
+		otelmetric.WithDescription("Total response bytes sent, by source autonomous system"),
+		otelmetric.WithUnit("By"))
+	if err != nil {
+		return nil, fmt.Errorf("creating traffic_downloaded_bytes counter: %w", err)
+	}
+
+	// Byte counters alone hide the abuse case this is here to catch: a flood of
+	// rejected requests from one network moves almost no bytes.
+	trafficRequests, err := meter.Int64Counter("traffic.requests",
+		otelmetric.WithDescription("Total HTTP requests received, by source autonomous system"))
+	if err != nil {
+		return nil, fmt.Errorf("creating traffic_requests counter: %w", err)
+	}
+
 	return &Metrics{
 		RequestedBytes:  requestedBytes,
 		DownloadedBytes: downloadedBytes,
@@ -162,6 +193,10 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		AuthCacheHits:   authCacheHits,
 		AuthCacheMisses: authCacheMisses,
 		UnknownCluster:  unknownCluster,
+
+		TrafficUploadedBytes:   trafficUploadedBytes,
+		TrafficDownloadedBytes: trafficDownloadedBytes,
+		TrafficRequests:        trafficRequests,
 	}, nil
 }
 
@@ -178,6 +213,29 @@ func ClusterOption(code string) otelmetric.MeasurementOption {
 		attribute.String("cluster", code),
 	))
 	clusterAttrCache.Store(code, opt)
+	return opt
+}
+
+type asnAttrKey struct{ asn, org string }
+
+var asnAttrCache sync.Map
+
+// ASNOption labels a measurement with the source network of the request. The
+// AS number is the label that matters; the organization rides along because it
+// is a function of the number and so costs no extra series, and a board legend
+// reading "AS3320 Deutsche Telekom" beats one reading "AS3320". Address-level
+// attribution deliberately stays OUT of the labels — unbounded — and lives on
+// the access log line instead.
+func ASNOption(asn, org string) otelmetric.MeasurementOption {
+	key := asnAttrKey{asn, org}
+	if v, ok := asnAttrCache.Load(key); ok {
+		return v.(otelmetric.MeasurementOption)
+	}
+	opt := otelmetric.WithAttributeSet(attribute.NewSet(
+		attribute.String("asn", asn),
+		attribute.String("asOrg", org),
+	))
+	asnAttrCache.Store(key, opt)
 	return opt
 }
 
@@ -465,6 +523,40 @@ func BlobMiddleware(m *Metrics) func(http.Handler) http.Handler {
 			}
 			if downloaded := mrw.BytesWritten - beforeBytes; downloaded > 0 {
 				m.DownloadedBytes.Add(r.Context(), downloaded, attrs)
+			}
+		})
+	}
+}
+
+// TrafficMiddleware counts requests and bytes per source network. Unlike
+// BlobMiddleware it wraps the WHOLE router and counts every outcome —
+// unauthenticated, rejected, errored — because "which network is sending this"
+// has to answer for traffic that never reached a repository.
+//
+// Must run after Middleware so w is already a *ResponseWriter, and after
+// geoip.Middleware so the source network is resolved.
+func TrafficMiddleware(m *Metrics) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cr := &countingReadCloser{ReadCloser: r.Body}
+			r.Body = cr
+
+			mrw, ok := w.(*ResponseWriter)
+			if !ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			beforeBytes := mrw.BytesWritten
+			next.ServeHTTP(mrw, r)
+
+			attrs := ASNOption(geoip.FromContext(r.Context()).Labels())
+			m.TrafficRequests.Add(r.Context(), 1, attrs)
+			if cr.n > 0 {
+				m.TrafficUploadedBytes.Add(r.Context(), cr.n, attrs)
+			}
+			if downloaded := mrw.BytesWritten - beforeBytes; downloaded > 0 {
+				m.TrafficDownloadedBytes.Add(r.Context(), downloaded, attrs)
 			}
 		})
 	}

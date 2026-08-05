@@ -112,7 +112,7 @@ to victoria-*).
 |---|---|---|
 | `yucca-api` | NestJS | User-facing API. Owns auth (OIDC code + device flow, ES256 JWTs), repositories, **the database schema + migrations**. |
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Shares the same DB + JWT validation. |
-| `michael` | Go | **Production** restic REST backend — S3 proxy implementing restic's HTTP protocol, with JWT (ECDSA pubkey) verification, WORM enforcement, multi-backend pool/DNS load-balancing. Deployed in k8s (`kubernetes/apps/base/michael`). |
+| `michael` | Go | **Production** restic REST backend — S3 proxy implementing restic's HTTP protocol, with JWT (ECDSA pubkey) verification, WORM enforcement, multi-backend pool/DNS load-balancing. Also attributes traffic to the client's autonomous system (`internal/geoip`, `traffic.*` metrics — see `o11y/README.md`). Deployed in k8s (`kubernetes/apps/base/michael`). |
 | `restic-api` | NestJS | Earlier TypeScript implementation of the same restic backend, kept as a **reference** (`mise restic-api:dev-reference`); not in the deployed app set. |
 | `yucca-metrics-worker` | NestJS | Cron worker (every 5 min): reads bucket usage from RadosGW, writes meter tables, **rolls usage up per connection into `connectionMetrics` (with the per-type billing floor)**, emits OTel gauges. |
 | `redis` (valkey) |  | **Generic shared platform cache** (ephemeral by design; keys namespaced `yucca:<service>:<purpose>:*`). First tenant: michael's restic-token **verdict cache** (`yucca:michael:verdict:<jti>`, DELed by the APIs on revoke); future: michael rate limiting. In-repo chart `charts/apps/redis`; primary-region only. |
