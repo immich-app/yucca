@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# Render the o11y bundle into <output-dir>: each o11y/dashboards/*.json becomes
-# a self-contained GrafanaDashboard CR (the JSON embedded as gzip+base64 via
-# spec.gzipJson) filed under a single GrafanaFolder, and GrafanaAlertRuleGroup
-# CRs from o11y/alerts are copied through verbatim. CI pushes this bundle as the
-# OCI artifact; o11y applies it with a Flux OCIRepository + Kustomization (no
-# kustomization.yaml needed: the kustomize-controller generates one for plain
-# manifests). The o11y/ sources remain the source of truth; these manifests are
-# build output, so do not commit them. See o11y/README.md.
+# Render the o11y bundle into <output-dir>: dashboards/*.json -> GrafanaDashboard
+# CRs (gzip+base64 spec.gzipJson) under one GrafanaFolder; alerts (already
+# GrafanaAlertRuleGroup CRs) copied verbatim. CI pushes the bundle as an OCI
+# artifact; o11y applies it via Flux OCIRepository + Kustomization (no
+# kustomization.yaml — kustomize-controller generates one). o11y/ is the source
+# of truth; this output is build product, never committed. See o11y/README.md.
 set -euo pipefail
 
 usage='usage: render-o11y-manifests.sh <output-dir> <github-repository>'

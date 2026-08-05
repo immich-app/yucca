@@ -12,11 +12,9 @@ dashboard:
   enabled: false
 
 storage:
-  # Rook does NOT auto-select loop devices via useAllDevices (even with
-  # allowLoopDevices on the operator) — they must be named explicitly. This is
-  # the loop device attached by the DaemonSet below. A HIGH minor number: the
-  # kernel hands out the lowest free loop devices, so k3s/containerd will have
-  # claimed loop0..N on a fresh node — loop100 is reliably ours.
+  # Rook does NOT auto-select loop devices via useAllDevices (even with allowLoopDevices)
+  # — must be named explicitly; attached by the DaemonSet below. High minor on purpose:
+  # k3s/containerd claim the lowest free loop0..N, so loop100 is reliably ours.
   device: /dev/loop100
 
 # S3 object store (CephObjectStore + RGW).

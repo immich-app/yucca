@@ -14,7 +14,6 @@ import (
 	"yuctl/internal/adminapi"
 )
 
-// newUsersCmd builds the `users` subtree.
 func newUsersCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "users",
@@ -28,7 +27,6 @@ func newUsersCmd() *cobra.Command {
 	return cmd
 }
 
-// newUsersFeaturesCmd builds `users features`: per-user feature-flag overrides.
 func newUsersFeaturesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "features",
@@ -153,7 +151,6 @@ func newUsersFeaturesClearCmd() *cobra.Command {
 	return c
 }
 
-// newUsersConnectionsCmd builds `users connections`.
 func newUsersConnectionsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "connections",
@@ -311,8 +308,6 @@ func newUsersListCmd() *cobra.Command {
 	return c
 }
 
-// newUsersAllowlistCmd builds the `users allowlist` subtree (beta email
-// allowlist + invites).
 func newUsersAllowlistCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "allowlist",

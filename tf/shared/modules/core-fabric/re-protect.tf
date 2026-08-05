@@ -1,15 +1,8 @@
-# Control-plane (RE) protection filters, bound on lo0 (see interfaces.tf). Restrict
-# management (SSH 22 / NETCONF 830) AND BGP (179) to trusted sources, dropping each
-# everywhere else (incl. the transit), while accepting all other RE-bound traffic.
-# Generated when transit is configured (the spine then has Internet adjacency).
-#
-# BGP scoping added after a 2026-07-06 external scan found TCP/179 accepting
-# handshakes from the whole internet on the loopback + transit interface: the
-# session only ESTABLISHES with a configured neighbor, but an open listener is a
-# needless RST/resource-exhaustion surface. Trusted 179 sources = the eBGP transit
-# peers + the node iBGP subnet (workers peer the kube-VLAN IRB). Established
-# sessions we initiate return to an ephemeral port (default-accept), so this only
-# gates inbound connections TO 179.
+# RE-protection filters on lo0 (interfaces.tf): SSH 22 / NETCONF 830 + BGP 179
+# restricted to trusted sources, everything else RE-bound accepted. Only with
+# transit configured. BGP scoping added after a 2026-07-06 external scan found
+# TCP/179 open to the internet (needless RST/exhaustion surface). Trusted 179 =
+# eBGP transit peers + node iBGP subnet; only gates inbound TO 179.
 locals {
   bgp_trusted_v4 = concat(
     [for t in var.transits : "${t.peer_v4}/32"],
@@ -88,9 +81,8 @@ resource "junos_firewall_filter" "protect_re6" {
       action = "discard"
     }
   }
-  # v6 BGP: only the transit peers speak it (the node iBGP is v4-only). Omit the
-  # accept term entirely if there are somehow no v6 peers, so we never emit an
-  # empty source-address match (which would accept from anywhere).
+  # v6 BGP = transit peers only (node iBGP is v4-only). Omit the accept term when
+  # no v6 peers — an empty source-address match would accept from anywhere.
   dynamic "term" {
     for_each = length(local.bgp_trusted_v6) > 0 ? [1] : []
     content {

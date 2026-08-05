@@ -1,17 +1,11 @@
 ---
-# Early SSH lockdown. Runs in baseline (right after iac-access authorizes the iac
-# key on root), NOT gated behind the harden stage -- so a freshly installimaged
-# node is never left with root PASSWORD login exposed on the public WAN before
-# harden runs (installimage ships PermitRootLogin yes + a root password). The
-# security role's 50-hardening.conf applies the FULL sshd hardening later; this is
-# the security-critical subset only (root key-only, no password auth, locked root
-# password), using the SAME values so the two drop-ins never disagree.
-#
-# Safe on both clusters and idempotent on live nodes: ansible reaches every node
-# by KEY (root on spice, ansible-iac on sietch) and iac-access has already
-# authorized the key on root, so disabling password auth and locking the root
-# password cannot lock anyone out. The Validate->Reload handler chain reloads
-# (never restarts) only on change, after sshd -t passes.
+# Early SSH lockdown, right after iac-access -- NOT deferred to harden, so an
+# installimaged node (PermitRootLogin yes + root password) is never left
+# root-password-open on the WAN mid-campaign. Security-critical subset only
+# (root key-only, no password auth, locked root password) with the SAME values
+# as the security role's 50-hardening.conf so the drop-ins never disagree.
+# Lockout-safe: ansible connects by key and iac-access already authorized it on
+# root. Handler chain reloads (never restarts) only after sshd -t passes.
 
 - name: Deploy the baseline SSH lockdown drop-in
   ansible.builtin.copy:

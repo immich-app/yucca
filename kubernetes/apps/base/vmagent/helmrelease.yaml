@@ -17,9 +17,8 @@ spec:
     remediation:
       retries: 2
   values:
-    # `vmagent-<name>` Service => vmagent-yucca (matches VMAGENT_OTLP). The
-    # k8s-stack chart bundles the VM operator, so this one release gives us the
-    # CRDs + operator + a VMAgent. yucca_staging is a METRICS REMOTE CLUSTER:
+    # `vmagent-<name>` Service => vmagent-yucca (matches VMAGENT_OTLP). k8s-stack bundles
+    # the VM operator (CRDs + operator + VMAgent in one release). METRICS REMOTE CLUSTER:
     # only the agent runs here; storage/query/alerting live at o11y.
     fullnameOverride: yucca
     global:
@@ -48,10 +47,9 @@ spec:
     vmagent:
       enabled: true
       spec:
-        # Stamp the remote-cluster identity on EVERY series: cluster (short
-        # cluster name), site, env. Relabel (not externalLabels): externalLabels
-        # only tags scraped data, leaving OTLP-pushed app metrics untagged. This
-        # applies to all data (scraped + ingested) before remote-write.
+        # Stamp cluster/site/env on EVERY series. Relabel, not externalLabels:
+        # externalLabels only tags scraped data, leaving OTLP-pushed app metrics
+        # untagged; relabel covers scraped + ingested before remote-write.
         inlineRelabelConfig:
           - target_label: cluster
             replacement: ${METRICS_CLUSTER_LABEL}

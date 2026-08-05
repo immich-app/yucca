@@ -38,11 +38,8 @@ variable "repository" {
   type        = string
 }
 
-# The approval-gate Environments and their REQUIRED reviewers. There is NO
-# default on purpose: an apply cannot succeed until the operator supplies real
-# reviewer identities (see reviewers.auto.tfvars.example), and the validation
-# below rejects any environment with zero reviewers. That is what keeps the CI
-# gate fail-CLOSED -- a gate with no reviewer would apply prod with -auto-approve.
+# NO default on purpose (see reviewers.auto.tfvars.example) and the validation
+# rejects zero-reviewer environments — this keeps the CI gate fail-CLOSED.
 variable "environment_reviewers" {
   description = <<-EOT
     Map of GitHub Environment name -> required reviewers. Keys MUST match the CI

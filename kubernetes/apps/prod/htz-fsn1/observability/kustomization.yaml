@@ -1,12 +1,10 @@
 ---
-# prod@htz-fsn1 observability overlay — the shared components/infra/observability
-# slice, with the remote-write egress repointed at o11y's MESH vmauth
-# (vmauth.o11y.futo.network → 10.69.0.10 over NetBird, unauthenticated: the
-# NetBird ACL `yucca-prod-htz-fsn1-talos → o11y-production-k8s-gateway:443` is
-# the only gate; the mesh-unauth vmauth 401s requests that DO carry a bearer,
-# so the token wiring must go, not just be ignored). Staging keeps the authed
-# public futostatus path. Pods resolve the mesh name via the coredns hosts
-# entry (../coredns.yaml) — the NetBird DNS zone is not distributed to nodes.
+# components/infra/observability with remote-write repointed at o11y's MESH vmauth
+# (vmauth.o11y.futo.network → 10.69.0.10 over NetBird; ACL `yucca-prod-htz-fsn1-talos →
+# o11y-production-k8s-gateway:443` is the only gate). The mesh-unauth vmauth 401s
+# requests that DO carry a bearer — token wiring must be removed, not ignored. Staging
+# keeps the authed public futostatus path. Mesh name resolves via the coredns hosts
+# entry (../coredns.yaml); the NetBird DNS zone is not distributed to nodes.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

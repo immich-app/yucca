@@ -1,7 +1,6 @@
-// Package netdev parses /proc/net/dev counter snapshots. Shared by everything
-// that measures NIC throughput from that file — the warp status sampler and
-// the bench-do agent/orchestrator — so virtual-interface filtering stays in
-// one place.
+// Package netdev parses /proc/net/dev snapshots — shared by the warp status
+// sampler and bench-do agent/orchestrator so virtual-interface filtering stays
+// in one place.
 package netdev
 
 import (

@@ -31,7 +31,6 @@ func TestCountingReader(t *testing.T) {
 		t.Fatalf("expected counter at 5, got %d", cr.n)
 	}
 
-	// Read remaining bytes into a larger buffer
 	buf2 := make([]byte, 32)
 	n, err = cr.Read(buf2)
 	if err != nil {
@@ -279,7 +278,6 @@ func (ew *errWriter) Write(p []byte) (int, error) {
 	return 0, io.ErrClosedPipe
 }
 
-// fakeResponseWriter is a minimal http.ResponseWriter for testing.
 type fakeResponseWriter struct {
 	header map[string][]string
 	buf    bytes.Buffer
@@ -289,7 +287,6 @@ func (f *fakeResponseWriter) Header() http.Header         { return http.Header(f
 func (f *fakeResponseWriter) Write(p []byte) (int, error) { return f.buf.Write(p) }
 func (f *fakeResponseWriter) WriteHeader(int)             {}
 
-// readFromResponseWriter implements both http.ResponseWriter and io.ReaderFrom.
 type readFromResponseWriter struct {
 	header         map[string][]string
 	buf            bytes.Buffer

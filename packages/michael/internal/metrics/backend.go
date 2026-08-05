@@ -11,23 +11,17 @@ import (
 )
 
 // BackendStatsProvider yields a per-backend snapshot. *storage.Pool implements
-// it. Kept as an interface so the metrics layer doesn't depend on the pool's
-// internals and can be tested with a stub.
+// it; interface keeps metrics decoupled from pool internals (stub-testable).
 type BackendStatsProvider interface {
 	Stats() []storage.BackendStat
 }
 
-// RegisterBackendMetrics wires per-backend S3 load-balancer metrics onto meter,
-// one provider per storage cluster keyed by cluster code. All instruments are
-// observable: a single registered callback reads every provider's snapshot each
-// collection cycle and emits one series per backend (tagged with "cluster" and
-// "backend" attributes), so the storage hot path stays free of any OTel calls.
-// The cumulative counters (requests/errors/bytes) are reported as observable
-// counters since the pool already keeps monotonic atomics.
-//
-// The "cluster" attribute is what keeps two clusters' gateways apart: endpoints
-// are per-cluster addresses and nothing stops two clusters resolving the same
-// one (e.g. both behind the same in-cluster service name in dev).
+// RegisterBackendMetrics wires per-backend S3 load-balancer metrics, one
+// provider per cluster code. All instruments are observable — one callback
+// reads snapshots per collection, keeping the storage hot path free of OTel
+// calls; cumulative counters ride the pool's monotonic atomics. The "cluster"
+// attribute disambiguates gateways two clusters may resolve identically (e.g.
+// same in-cluster service name in dev).
 func RegisterBackendMetrics(meter otelmetric.Meter, providers map[string]BackendStatsProvider) error {
 	requests, err := meter.Int64ObservableCounter("s3.backend.requests",
 		otelmetric.WithDescription("Total S3 requests routed to each backend gateway"))

@@ -38,13 +38,7 @@ export function attachMeterToS3GetObject(
   };
 }
 
-/**
- * Process S3 object as web response
- *
- * References:
- * http#ServeContent
- * https://pkg.go.dev/net/http#ServeContent
- */
+// Modeled on Go's http#ServeContent: https://pkg.go.dev/net/http#ServeContent
 export function respondWithObject({ stream, object }: S3RemoteObject, request: Request, response: Response) {
   if (request.headers['if-none-match'] === object.ETag) {
     return response.send(HttpStatus.NOT_MODIFIED);

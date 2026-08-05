@@ -124,9 +124,8 @@ func TestRenderSecretAndNamespace(t *testing.T) {
 	}
 }
 
-// The kill patterns must never match the `sh -c <killScript>` process itself
-// (its command line contains the pattern text) — a self-match SIGTERMs the
-// exec with code 143. This is why they use the [b]racket trick.
+// Kill patterns must never match the `sh -c <killScript>` process itself (its
+// command line contains the pattern; self-match = exit 143) — hence the [b]racket trick.
 func TestKillScriptNoSelfMatch(t *testing.T) {
 	patterns := regexp.MustCompile(`-f '([^']+)'`).FindAllStringSubmatch(killScript, -1)
 	if len(patterns) != 4 {

@@ -3,29 +3,27 @@
 set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
 
-# OpenTofu's Go binary doesn't read the macOS keychain, so the OVH S3 backend's
-# cert fails to verify locally ("unknown authority"). Point it at the system CA
-# bundle on macOS; Linux/CI reads its trust store fine and is left alone.
+# OpenTofu doesn't read the macOS keychain, so the OVH S3 backend cert fails to
+# verify locally — point at the system CA bundle; Linux/CI is fine untouched.
 if [ -z "${SSL_CERT_FILE:-}" ] && [ "$(uname -s)" = "Darwin" ] && [ -f /etc/ssl/cert.pem ]; then
   export SSL_CERT_FILE=/etc/ssl/cert.pem AWS_CA_BUNDLE=/etc/ssl/cert.pem
 fi
 
 mise run infra:providers
 
-# Resolve a (read-scoped) service-account token. CI provides one in
-# OP_SERVICE_ACCOUNT_TOKEN; locally we read it from the vault via an interactive
-# team-futo sign-in. Exporting it makes every downstream `op`/`op run` use that
-# SA (and the right account) — plan stays read-only, so no write escalation.
+# Read-scoped SA token: CI provides OP_SERVICE_ACCOUNT_TOKEN; locally read it
+# via a team-futo sign-in. Exported so every downstream `op` uses that SA — plan
+# is read-only, no write escalation.
 if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
   OP_SERVICE_ACCOUNT_TOKEN=$(op read --account "${OP_ACCOUNT:-team-futo}" \
     "op://yucca_tf_prod/yucca_futo_1pass_service_account/password")
   export OP_SERVICE_ACCOUNT_TOKEN
 fi
 
-# Render the NETCONF SSH key from 1Password to a 0600 temp file (op run can't
-# write files). DETERMINISTIC path: the value is recorded in the saved plan, so
-# the gated apply (a different runner) must render to the identical path or
-# tofu rejects the plan ("Mismatch between input and plan variable value").
+# NETCONF SSH key from 1P to a 0600 temp file (op run can't write files).
+# DETERMINISTIC path: it's recorded in the saved plan, so the gated apply must
+# render the identical path or tofu rejects the plan ("Mismatch between input
+# and plan variable value").
 KEYF="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/netconf-terraform-key"
 rm -f "$KEYF"; ( umask 077; : > "$KEYF" ); trap 'rm -f "$KEYF"' EXIT
 op read "op://yucca_tf_prod/NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY/password" > "$KEYF"
@@ -37,10 +35,9 @@ SITE="${SITE:-htz-fsn1}"
 # provider rejects having both set ("service_account_token and account are set").
 unset OP_ACCOUNT
 
-# When CI sets TG_PLAN, persist the diff to that (absolute) path so the gated
-# apply can consume the EXACT reviewed plan (terragrunt runs tofu inside a
-# .terragrunt-cache dir, so a relative -out would be unreachable -- pass an
-# absolute path). Local `tf:plan` leaves TG_PLAN unset -> a plain read-only plan.
+# TG_PLAN (CI): persist the diff to that ABSOLUTE path for the gated apply
+# (terragrunt runs tofu inside .terragrunt-cache — a relative -out is
+# unreachable). Unset locally -> plain read-only plan.
 PLAN_OUT=()
 [ -n "${TG_PLAN:-}" ] && PLAN_OUT=(-out="$TG_PLAN")
 

@@ -1,24 +1,12 @@
-# yucca-api Docker image
-# Built on/for Alpine Linux
-#
-# mise is used as a command runner only
-# node.js & pnpm pinned in image =(
-#   (node.js 26 will remove yarn v1 fixing corepack install)
-#
-# References:
-# ===========
-# https://docs.nestjs.com/deployment
-# https://mise.jdx.dev/mise-cookbook/docker.html
-# https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md
-# https://pnpm.io/cli/deploy
+# mise is a command runner only; node.js & pnpm pinned in-image (node 26 removes yarn v1, fixing corepack install).
+# Refs: https://docs.nestjs.com/deployment · https://mise.jdx.dev/mise-cookbook/docker.html
+#       https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md · https://pnpm.io/cli/deploy
 
 ARG ALPINE_VERSION=3.23
-# Pinned alpine runtime base. NOTE: this digest is alpine:3.23's, so it must NOT
-# be appended to the node/golang base tags (which reuse ${ALPINE_VERSION}).
+# NOTE: this digest is alpine:3.23's — do NOT append it to the node/golang base tags (they reuse ${ALPINE_VERSION}).
 ARG ALPINE_IMAGE=alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
 
-# Manifest stage: strips everything except package.jsons + workspace files so
-# the pnpm-install layer below is cached on lockfile/manifest changes only.
+# Manifest stage: only package.jsons + workspace files survive, so the pnpm-install layer caches on manifest changes.
 FROM ${ALPINE_IMAGE} AS manifests
 WORKDIR /src
 COPY . ./

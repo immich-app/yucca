@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run all integration tests against the local k3d stack's infra"
 #MISE dir="{{config_root}}"
-# Kube replacement for the compose-backed `mise docker:start && mise test:integration`:
-# the tests boot the apps on this host but take their infrastructure — postgres
-# (CNPG), S3 (Ceph RGW), the OIDC provider and the victoria pair — from the k3d
-# cluster, port-forwarded to the same localhost ports the compose flow used.
-#
+# Kube replacement for the compose-backed test:integration flow: apps boot on
+# this host; infra (CNPG postgres, Ceph RGW S3, OIDC, victoria pair) comes from
+# k3d, port-forwarded to the same localhost ports compose used.
 # Prereq: mise k3d:up && mise tilt:ci-infra   (apps not required)
 set -euo pipefail
 

@@ -1,6 +1,5 @@
-# NetBox — creates the whole fabric representation: the site, manufacturers/roles/
-# device-types, the switch chassis (spine pair + each cluster's leaf pair, with vme
-# mgmt IPs), VLANs, prefixes, and gateway IPs — all from the addressing module.
+# NetBox fabric representation (site, device-types, chassis, VLANs, prefixes,
+# gateway IPs), all derived from the addressing module.
 module "netbox" {
   source = "../../../../shared/modules/fabric-netbox"
 
@@ -34,9 +33,8 @@ module "netbox" {
     }
   }
 
-  # Everything that is NOT a fabric VLAN but is real, routed address space.
-  # Pod/service CIDRs mirror the talos stack (talos.tf locals); the public carves
-  # mirror the Cilium LB pools + node-egress + transit config in this stack.
+  # Routed non-VLAN space. Pod/service CIDRs mirror talos.tf locals; public
+  # carves mirror the Cilium LB pools + node-egress + transit config.
   extra_prefixes = {
     lb_internal = { prefix = module.addr_site.lb_internal_cidr, description = "father internal (NetBird-only) LoadBalancer VIPs — Cilium lb-internal pool, iBGP /32s to the spine" }
     pods        = { prefix = "10.250.0.0/17", description = "father pod CIDR (Cilium, geneve over the kube VLAN)", status = "container" }

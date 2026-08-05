@@ -44,11 +44,10 @@ func (f *adminFlags) httpClient() *http.Client {
 	return hc
 }
 
-// deriveAdminURL builds the admin-api origin for the partition's primary
-// region from its k8s discovery payload: the Talos API endpoint lives at
-// kube.<cluster>.<region>.<provider>.yucca.futo.network, and the admin-api is
-// published on the same NetBird overlay zone as admin.<...> (the
-// YUCCA_ADMIN_HOST cluster-setting follows the same convention).
+// deriveAdminURL builds the primary region's admin-api origin from its k8s
+// payload: Talos API = kube.<cluster>.<region>.<provider>.yucca.futo.network;
+// admin-api = admin.<same NetBird overlay zone> (YUCCA_ADMIN_HOST follows the
+// same convention).
 func deriveAdminURL(topo *discovery.Topology, partition, region string) (string, error) {
 	k8s := topo.Kubernetes(partition, region)
 	if k8s == nil || k8s.APIEndpoint == "" {
@@ -81,9 +80,8 @@ func (f *adminFlags) resolveAdminURL(topo *discovery.Topology, cc *yctx.Context)
 	return deriveAdminURL(topo, cc.Partition, primary)
 }
 
-// adminLogin returns an authenticated admin-api client, reusing the cached
-// per-partition session when valid and running the browser loopback flow
-// otherwise.
+// adminLogin returns an authed admin-api client: cached per-partition session
+// when valid, else the browser loopback flow.
 func (f *adminFlags) adminLogin(ctx context.Context, cmd *cobra.Command, cc *yctx.Context, topo *discovery.Topology) (*adminapi.Client, *adminapi.Token, error) {
 	adminURL, err := f.resolveAdminURL(topo, cc)
 	if err != nil {

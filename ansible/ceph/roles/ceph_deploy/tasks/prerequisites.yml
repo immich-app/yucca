@@ -24,11 +24,9 @@
     mode: '0644'
 
 - name: Update apt cache
-  # Always refresh — no cache_valid_time. Hetzner installimage runs apt
-  # during install, leaving the cache "fresh" (~minutes old) but without the
-  # Ceph repo's Packages file. cache_valid_time=3600 here would skip refresh
-  # and apt install would only see Debian's older cephadm (16.x) → version
-  # pin fails. Always-refresh is the safe default for any new repo addition.
+  # Always refresh, no cache_valid_time: installimage leaves a "fresh" cache
+  # without the Ceph repo's Packages file, so a skipped refresh only sees
+  # Debian's cephadm 16.x and the version pin fails.
   ansible.builtin.apt:
     update_cache: true
 
@@ -55,10 +53,9 @@
     mode: '0644'
   notify: Restart sshd
 
-# Apply the kex change NOW. Handlers flush at end of play, so an aborted run
-# leaves the drop-in on disk with the old sshd still offering sntrup761 -- the
-# very hang this task exists to prevent then keeps killing the runs that would
-# have flushed the handler (2026-07-16..20: four days unapplied on spice; hung
-# CI sessions and three mgr serve loops before a manual fleet sshd restart).
+# Apply the kex change NOW, not at end-of-play handler flush: an aborted run
+# leaves sshd still offering sntrup761 and the resulting hang keeps killing the
+# runs that would have flushed it (2026-07-16..20 on spice: four days unapplied,
+# hung CI sessions + three mgr serve loops until a manual fleet sshd restart).
 - name: Flush handlers so the running sshd stops offering sntrup761
   ansible.builtin.meta: flush_handlers

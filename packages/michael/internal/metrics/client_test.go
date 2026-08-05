@@ -15,9 +15,8 @@ import (
 	"go.opentelemetry.io/otel/metric/noop"
 )
 
-// observation is one ObserveInt64 call captured from a collection cycle. The
-// option is retained rather than decoded: each client's label set is built once
-// and held on its tracker entry, so it can be compared by identity.
+// observation is one captured ObserveInt64 call. The option is retained, not
+// decoded: each label set is built once per tracker entry, so identity-comparable.
 type observation struct {
 	value int64
 	opt   otelmetric.ObserveOption
@@ -95,9 +94,9 @@ func TestClientAttrsBuiltOncePerClient(t *testing.T) {
 	}
 }
 
-// TestClientAttrsReclaimedOnEviction is the memory bound: the label set lives on
-// the tracker entry, so an idle client leaves nothing behind. A cache keyed by
-// identity would instead retain every client-repository pair ever seen.
+// TestClientAttrsReclaimedOnEviction is the memory bound: label set lives on
+// the entry, so an idle client leaves nothing (an identity-keyed cache would
+// retain every pair ever seen).
 func TestClientAttrsReclaimedOnEviction(t *testing.T) {
 	tr := &clientTracker{}
 	now := time.Now()
@@ -197,9 +196,8 @@ func TestClientTrackerEvictsIdleClients(t *testing.T) {
 }
 
 // TestClientTrackerEvictionDoesNotSplitClient drives the eviction race by hand:
-// a request arrives after a collection has decided an entry is idle. The client
-// must end up on ONE entry — an orphan kept alive by the in-flight request while
-// later requests build a replacement would under-report its concurrency.
+// a request lands after a collection deems the entry idle. The client must end
+// on ONE entry — an orphan/replacement split would under-report concurrency.
 func TestClientTrackerEvictionDoesNotSplitClient(t *testing.T) {
 	tr := &clientTracker{}
 	key := clientAttrKey{"u1", "r1", "restic"}
@@ -241,13 +239,11 @@ func TestClientTrackerEvictionDoesNotSplitClient(t *testing.T) {
 	}
 }
 
-// TestClientTrackerEvictionKeepsRequestsAttached drives eviction and entry
-// against each other for real, with the clock always past the TTL so every
-// collection tries to evict. The invariant it checks is what the retire
-// handshake buys: an entry is only ever retired while idle, so a request that
-// is outstanding on a state must still find that state in the map. Deleting on
-// the idle read alone breaks this — the request is left updating an orphan
-// while later requests build a successor, splitting the client's concurrency.
+// TestClientTrackerEvictionKeepsRequestsAttached races eviction against enter
+// with the clock always past TTL. Invariant (what the retire handshake buys):
+// entries retire only while idle, so an outstanding request still finds its
+// state in the map. Deleting on the idle read alone would orphan it and split
+// the client's concurrency.
 func TestClientTrackerEvictionKeepsRequestsAttached(t *testing.T) {
 	tr := &clientTracker{}
 	key := clientAttrKey{"u1", "r1", "restic"}
@@ -399,10 +395,9 @@ func TestMiddlewareTracksConcurrency(t *testing.T) {
 	}
 }
 
-// TestMiddlewareAccountsOutOnPanic covers the path chi's Recoverer owns: it is
-// mounted outside this middleware, so a handler panic unwinds past us. Without
-// a deferred exit the request stays counted forever, pinning the client's peak
-// above zero and blocking idle eviction for the life of the process.
+// TestMiddlewareAccountsOutOnPanic: chi's Recoverer is mounted outside us, so a
+// handler panic unwinds past this middleware; without the deferred exit the
+// request stays counted forever, pinning peak >0 and blocking idle eviction.
 func TestMiddlewareAccountsOutOnPanic(t *testing.T) {
 	m, err := NewMetrics(noop.NewMeterProvider().Meter("test"))
 	if err != nil {
@@ -436,9 +431,8 @@ func TestMiddlewareAccountsOutOnPanic(t *testing.T) {
 	}
 }
 
-// TestMiddlewareSkipsUnauthenticated guards the tracker against unauthenticated
-// traffic, which has no identity to attribute and would otherwise accumulate
-// under an empty key.
+// TestMiddlewareSkipsUnauthenticated: unauthenticated traffic has no identity
+// and must not accumulate under an empty key.
 func TestMiddlewareSkipsUnauthenticated(t *testing.T) {
 	m, err := NewMetrics(noop.NewMeterProvider().Meter("test"))
 	if err != nil {

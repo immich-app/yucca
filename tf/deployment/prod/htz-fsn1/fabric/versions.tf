@@ -21,9 +21,8 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
-    # Stores the generated provisioning key in 1Password (the env vault). Auth via
-    # the service-account token in OP_SERVICE_ACCOUNT_TOKEN (apply escalates to the
-    # write-capable SA stored in the vault; see the `infra:*` mise tasks).
+    # Stores the provisioning key in 1P; auth via OP_SERVICE_ACCOUNT_TOKEN
+    # (infra:* tasks escalate to the write SA).
     onepassword = {
       source  = "1Password/onepassword"
       version = "~> 2.1"

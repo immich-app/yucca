@@ -12,10 +12,8 @@ kubectl = "1.32.2"
 helm = "3.17.0"
 tilt = "0.34.5"
 
-# Static validation of the k8s surface (mise run k8s:validate, used by CI).
-# flux-local runs via `uvx` (see .mise/tasks/k8s/validate): uv auto-fetches a
-# Python matching its requires-python, so the host's Python version (3.12 on
-# GitHub runners, 3.14 on dev machines) doesn't matter.
+# k8s:validate tooling. flux-local runs via `uvx` (.mise/tasks/k8s/validate):
+# uv auto-fetches a matching Python, so the host's Python version doesn't matter.
 kubeconform = "0.8.0"
 kustomize = "5.8.1"            # flux-local shells out to it
 flux2 = "2.7.5"                # ...and to the flux CLI
@@ -83,10 +81,8 @@ description = "Lint dashboards"
 run = "for f in o11y/dashboards/*.json; do dashboard-linter lint --strict \"$f\"; done"
 
 # ─── Infrastructure (tf + ansible) ──────────────────────────────────────────
-# tf:* tasks wrap terragrunt with tf/op-run.sh, which injects secrets from
-# tf/.env via 1Password (op run) and appends a clear "unlock 1Password" hint
-# when op can't authorize, instead of letting terragrunt die on empty creds.
-# No literal secrets in the .env file — just op:// references.
+# tf:* wrap terragrunt with tf/op-run.sh: injects secrets from tf/.env (op://
+# refs only) via `op run`, and prints an "unlock 1Password" hint on auth failure.
 
 [tasks."tf:init"]
 description = "Terragrunt init for a given stack (default: deployment/staging/austin/ceph)"

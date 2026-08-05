@@ -1,19 +1,13 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# prod@htz-fsn1 entry points — TWO layers, so a fresh cluster can't deadlock:
-# the 2026-07 rebuild proved a flat tree wedges itself (kustomize-controller
-# server-side dry-runs every object, so any CR whose CRD is missing blocks the
-# WHOLE apply — including the HelmReleases that would install those CRDs).
-#
-#   cluster-infra  operators/CRD providers (apps/prod/htz-fsn1/infra) — wait: true,
-#                  so Ready ⇒ operators running ⇒ CRDs registered.
-#   cluster-apps   everything else (CRs + workloads) — dependsOn cluster-infra.
-#
-# Substitution precedence (last wins): cluster-settings-generated (TF) ->
-# cluster-settings (human) -> image-versions (release-please-stamped prod
-# image pin; see image-versions.yaml); keys are disjoint by design. Injected
-# into the NESTED Kustomizations via the patches block (both layers' direct
-# objects use no ${vars} themselves).
+# prod@htz-fsn1 entry points — TWO layers so a fresh cluster can't deadlock: the 2026-07
+# rebuild proved a flat tree wedges (kustomize-controller server-side dry-runs every
+# object; any CR with a missing CRD blocks the WHOLE apply, including the HelmReleases
+# that would install those CRDs). cluster-infra = operators/CRD providers (wait: true ⇒
+# Ready ⇒ CRDs registered); cluster-apps = everything else, dependsOn cluster-infra.
+# Substitution precedence (last wins): cluster-settings-generated (TF) → cluster-settings
+# (human) → image-versions (release-please-stamped prod pin); keys disjoint by design.
+# Injected into the NESTED Kustomizations via the patches block.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -33,9 +27,8 @@ spec:
   # carries healthChecks on its HelmRelease, so wait covers operator readiness.
   wait: true
   timeout: 10m
-  # Direct objects (the nested Kustomization CRs) now carry substitutable
-  # source refs (${MANIFEST_SOURCE}), so this layer substitutes them itself
-  # too — the patches block below still covers the NESTED layers.
+  # The nested Kustomization CRs carry ${MANIFEST_SOURCE} refs, so this layer
+  # substitutes them itself; the patches block below covers the NESTED layers.
   postBuild:
     substituteFrom:
       - kind: ConfigMap
@@ -70,9 +63,8 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  # Fast retry: CRD registration can trail the infra layer's Ready by moments
-  # (mayastor's diskpool operator creates its CRD at startup) — without
-  # retryInterval a dry-run failure waits the full 1h interval.
+  # CRD registration can trail infra Ready (mayastor diskpool CRD is created at
+  # startup); without retryInterval a dry-run failure waits the full 1h interval.
   retryInterval: 2m
   dependsOn:
     - name: cluster-infra

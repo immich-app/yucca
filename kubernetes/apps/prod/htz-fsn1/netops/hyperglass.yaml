@@ -1,10 +1,7 @@
-# hyperglass — looking glass for the fabric (BGP route lookups, ping, traceroute
-# from the switches' vantage point). Internal VIP:
-# http://lg.father.fsn.htz.yucca.futo.network
-#
-# devices.yaml is NOT here: it embeds the netops password (netmiko can't key-auth
-# through hyperglass config), so it's a Secret the talos stack renders from
-# op://yucca_tf_prod/NETOPS_FABRIC_PASSWORD (netops-secrets.tf).
+# hyperglass — fabric looking glass (BGP/ping/traceroute from the switches). Internal
+# VIP: http://lg.father.fsn.htz.yucca.futo.network. devices.yaml is a Secret, NOT here:
+# it embeds the netops password (netmiko can't key-auth through hyperglass config);
+# talos stack renders it from op://yucca_tf_prod/NETOPS_FABRIC_PASSWORD (netops-secrets.tf).
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,23 +1,15 @@
-# Cilium for the prod cluster. Talos sets cni:none + proxy:disabled, so nodes
-# stay NotReady until this lands the datapath.
+# Prod Cilium. Talos sets cni:none + proxy:disabled; nodes NotReady until this lands.
 #
-# TUNNEL (geneve) routing. The cluster spans two L2 domains — CPs on the kube-cp
-# VLAN (11), workers on the kube VLAN (10) — routed by the spine IRBs. A geneve
-# overlay carries pod↔pod (and host↔pod, e.g. apiserver→pod webhooks) over the
-# routed node-to-node path with the pod identity in-band — which
-# autoDirectNodeRoutes (same-L2 only) can't span. The spine LB ECMP (core-fabric)
-# and DSR (loadBalancer, below) are independent of the routing mode and retained.
+# Geneve tunnel routing: cluster spans two L2 domains (CPs VLAN 11, workers VLAN
+# 10, routed by spine IRBs) — autoDirectNodeRoutes is same-L2 only. Spine LB ECMP
+# + DSR are independent of routing mode.
 #
-# MTU: auto-detected (NOT set). Cilium takes the lowest MTU across its devices,
-# which is wt0 (NetBird's WireGuard, 1280) → ~1230 pod MTU. This is DELIBERATE:
-# a single cluster-wide MTU governs the whole pod datapath, and pods egress the
-# 1280 mesh tunnel to reach o11y (vmauth on 10.69.0.10 via wt0). Forcing a jumbo
-# MTU (tried 2026-07-28) black-holes every pod's large frames over WireGuard
-# (PMTUD doesn't survive WG+NAT) and takes o11y remote-write down. The fabric's
-# 1500-bound flows (client↔michael, michael↔RGW) don't benefit from jumbo pods
-# anyway, so there is no reason to raise it past the mesh ceiling.
+# MTU: auto-detected, DELIBERATE — lowest device MTU is wt0 (WireGuard 1280) →
+# ~1230 pod MTU; pods egress wt0 to o11y (vmauth 10.69.0.10). Forcing jumbo
+# (tried 2026-07-28) black-holes large frames over WG+NAT (PMTUD dies) and takes
+# o11y remote-write down; fabric flows are 1500-bound anyway.
 #
-# securityContext + cgroup blocks are MANDATORY on Talos. Ref: Talos "Deploying Cilium".
+# securityContext + cgroup blocks are MANDATORY on Talos ("Deploying Cilium").
 
 ipam:
   mode: kubernetes
@@ -25,17 +17,12 @@ ipam:
 routingMode: tunnel
 tunnelProtocol: geneve
 
-# Masquerade pod traffic to non-pod destinations (internet, node IPs); pod↔pod is
-# tunnelled so it isn't masqueraded. ip-masq-agent excludes only the pod CIDR, so
-# node-IP traffic egressing wt0 (NetBird, the operator plane) is still SNAT'd to
-# the node's mesh address (which WireGuard accepts). Requires BPF masquerade on.
+# ip-masq-agent excludes only the pod CIDR, so traffic egressing wt0 is SNAT'd
+# to the node's mesh address (WireGuard accepts it). Requires BPF masquerade.
 enableIPv4Masquerade: true
-# netkit datapath (replaces veth; zero-overhead netns crossing, tcx attachments).
-# Needs kernel >= 6.8 + BPF host routing — both hold here (Talos 6.18, KPR + BPF
-# masquerade). NOT switchable in place: every node was rolled onto netkit
-# (drain → label → reboot, via a transitional label-gated CiliumNodeConfig) on
-# 2026-07-27 before this became the cluster-wide default. bpf.tproxy must stay
-# off (broken under netkit, cilium#39892).
+# netkit needs kernel ≥6.8 + BPF host routing (both hold). NOT switchable in
+# place — nodes were rolled (drain → label → reboot) on 2026-07-27. bpf.tproxy
+# must stay off (broken under netkit, cilium#39892).
 bpf:
   datapathMode: netkit
   masquerade: true
@@ -46,35 +33,26 @@ ipMasqAgent:
       - ${pod_cidr}
     masqLinkLocal: false
 
-# LoadBalancer VIPs are advertised into the fabric via BGP (below), not L2 — keep L2
-# announcements off so Cilium doesn't ARP for VIPs it shouldn't.
+# VIPs advertised via BGP, not L2 — keep L2 announcements off (no ARP for VIPs).
 l2announcements:
   enabled: false
 
-# DSR (direct server return) for LoadBalancer/NodePort TCP: the node a flow
-# lands on (spine ECMP) geneve-dispatches it to the backend's node, and THAT
-# node replies straight to the client sourced from the VIP — no SNAT, no
-# hairpin back through the ingress node, client IPs preserved. This decouples
-# ECMP width from pod placement, so LB services can run externalTrafficPolicy:
-# Cluster (every worker advertises the VIP) without a second hop's SNAT.
-# VIP-sourced replies leave via the fabric on whichever node emits them — the
-# lb-return-route DaemonSet's policy routing runs on all workers. hybrid =
-# DSR for TCP, SNAT for UDP (avoids UDP MTU pitfalls); geneve dispatch is the
-# supported DSR mode under tunnel/geneve routing.
+# DSR: backend node replies straight to the client sourced from the VIP — no
+# SNAT/hairpin, client IPs preserved; lets LB services run externalTrafficPolicy:
+# Cluster. VIP-sourced replies need the lb-return-route DaemonSet's policy
+# routing (all workers). hybrid = DSR TCP / SNAT UDP (UDP MTU pitfalls); geneve
+# dispatch is the supported DSR mode under geneve routing.
 loadBalancer:
   mode: hybrid
   dsrDispatch: geneve
 
-# NORTH-SOUTH — the worker BGP speakers peer the spine's VLAN-10 IRB (10.40.10.1, iBGP
-# AS 402421) and advertise LoadBalancer /32s from the public pools; the core reaches
-# each VIP via its /32 and they're covered by the transit 69.48.224.0/24 advertisement.
-# The CiliumBGPClusterConfig / PeerConfig / Advertisement + LoadBalancerIPPools are
-# applied as CRs (bgp/*.yaml), not templated here. Peering is on the fabric — worker-only.
+# North-south: worker speakers peer the spine VLAN-10 IRB (10.40.10.1, iBGP AS
+# 402421), advertising LB /32s covered by the transit 69.48.224.0/24. BGP CRs +
+# LoadBalancerIPPools live in bgp/*.yaml, not here. Worker-only peering.
 bgpControlPlane:
   enabled: true
 
-# kube-proxy replacement → Talos KubePrism (localhost:7445), stable apiserver
-# endpoint with no kube-proxy.
+# kube-proxy replacement → Talos KubePrism (localhost:7445).
 kubeProxyReplacement: ${kube_proxy_replacement}
 %{ if kube_proxy_replacement ~}
 k8sServiceHost: localhost

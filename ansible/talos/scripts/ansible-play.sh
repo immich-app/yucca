@@ -1,25 +1,10 @@
 #!/usr/bin/env bash
-# ansible-play.sh — secrets-resolving wrapper around ansible-playbook for
-# the talos subtree. Mirrors ansible/ceph/scripts/ansible-play.sh but
-# treats the secrets.yml.tpl file as optional — present when TF has
-# rendered it (with `op://` references), absent otherwise.
-#
-# When secrets.yml.tpl is present:
-#   - Fails fast if no 1P session is available
-#   - Renders the template via `op inject` into a short-lived tmpfile
-#     (mode 600, trap-cleaned on EXIT/INT/TERM)
-#   - Execs ansible-playbook with --extra-vars @tmpfile
-#
-# When secrets.yml.tpl is absent:
-#   - Skips the op-inject step entirely
-#   - Execs ansible-playbook directly (no --extra-vars injection)
-#
-# Usage:
-#   TALOS_ENV=inventories/<cluster>/inventory.ini scripts/ansible-play.sh <playbook.yml> [ansible args...]
-#
-# Environment:
-#   TALOS_ENV                     required — path to inventory.ini for the target cluster
-#   OP_SERVICE_ACCOUNT_TOKEN      optional — CI headless auth (else op desktop session)
+# Secrets-resolving ansible-playbook wrapper for the talos subtree. Mirrors
+# ansible/ceph/scripts/ansible-play.sh but secrets.yml.tpl is OPTIONAL: when
+# present, fail fast without a 1P session, `op inject` into a trap-cleaned 0600
+# tmpfile, exec with --extra-vars @tmpfile; when absent, exec directly.
+# Usage: TALOS_ENV=inventories/<cluster>/inventory.ini scripts/ansible-play.sh <playbook.yml> [args...]
+#   TALOS_ENV required; OP_SERVICE_ACCOUNT_TOKEN optional (CI headless auth).
 set -euo pipefail
 
 : "${TALOS_ENV:?TALOS_ENV must be set to the target cluster inventory.ini}"

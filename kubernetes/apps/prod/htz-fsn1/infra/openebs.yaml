@@ -1,14 +1,11 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# OpenEBS on father — the SHARED apps/base/openebs (same chart + values as
-# staging), specialized via the OPENEBS_* cluster-settings: Mayastor ON (the
-# openebs-replicated SC + DiskPools next door on the r-mayastor partitions),
-# LocalPV on the u-localpv xfs partition (CNPG's node-local PG volumes — CNPG
-# replicates at the Postgres layer, deliberately not block-level).
-# targetNamespace `openebs` (father predates the shared base's openebs-system;
-# the helm release + Mayastor state live there — renaming would churn storage).
-# Talos prereqs (hugepages, nvme_tcp, /var/mnt rbind, firewall ports, volumes)
-# live in the talos stack.
+# OpenEBS on father — the SHARED apps/base/openebs, specialized via OPENEBS_*
+# cluster-settings: Mayastor ON (openebs-replicated SC + DiskPools on r-mayastor),
+# LocalPV on the u-localpv xfs partition (CNPG node-local; Postgres-layer replication,
+# deliberately not block). targetNamespace `openebs`: father predates the shared base's
+# openebs-system and the helm release + Mayastor state live there — renaming would churn
+# storage. Talos prereqs (hugepages, nvme_tcp, /var/mnt rbind, firewall, volumes) live in the talos stack.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:

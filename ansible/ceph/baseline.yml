@@ -16,10 +16,9 @@
   hosts: ceph_nodes
   become: true
   gather_facts: false
-  # Blast-radius control: converge in small batches (serial) and halt the whole
-  # roll if any node in a batch fails (max_fail_percentage:0) or the batch
-  # degrades the cluster (the ceph-health gate). deploy-ceph stays big-bang (its
-  # bootstrap needs all nodes at once); this governs the day-2 converge plays.
+  # Blast-radius control: small serial batches, halt on any node failure or
+  # cluster degradation (health gate). deploy-ceph stays big-bang (bootstrap
+  # needs all nodes); this governs the day-2 converge plays.
   serial: "{{ ceph_converge_serial | default('10%') }}"
   max_fail_percentage: 0
 

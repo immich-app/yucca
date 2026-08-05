@@ -33,7 +33,6 @@ type contextKey string
 
 const authContextKey contextKey = "auth"
 
-// NewContext returns a new context with the given Auth value.
 func NewContext(ctx context.Context, a Auth) context.Context {
 	return context.WithValue(ctx, authContextKey, a)
 }
@@ -53,10 +52,9 @@ const (
 	defaultCacheTTL = 5 * time.Minute
 )
 
-// Verifier authenticates requests, caching verified tokens so the hot path is
-// a map lookup instead of an ECDSA verify per request (restic reuses one token
-// for a whole session). Only signature-valid tokens enter the cache, and
-// entries expire with the token's exp claim.
+// Verifier authenticates requests, caching verified tokens (restic reuses one
+// per session) so the hot path is a map lookup, not an ECDSA verify. Only
+// signature-valid tokens enter; entries expire with the token's exp claim.
 type Verifier struct {
 	publicKey *ecdsa.PublicKey
 	cache     *tokenCache
@@ -112,7 +110,6 @@ func (v *Verifier) Middleware() func(http.Handler) http.Handler {
 				return
 			}
 
-			// Validate path param matches auth repository
 			path := chi.URLParam(r, "path")
 			if path != "" && path != auth.Repository {
 				httputil.WriteError(w, r, http.StatusBadRequest, "Repository mismatch")
@@ -182,7 +179,6 @@ func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, time.Time, 
 		return Auth{}, time.Time{}, &authError{http.StatusUnauthorized, "Invalid JWT claims"}
 	}
 
-	// Extract and validate auth fields
 	auth := Auth{}
 
 	user, ok := claims["user"].(string)

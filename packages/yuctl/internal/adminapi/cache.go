@@ -9,9 +9,8 @@ import (
 	yctx "yuctl/internal/context"
 )
 
-// tokenCachePath returns the per-partition token cache file inside the yuctl
-// config dir. Partition-scoped because each partition has its own primary
-// region / admin-api.
+// tokenCachePath: per-partition token cache in the yuctl config dir (each
+// partition has its own primary region / admin-api).
 func tokenCachePath(partition string) (string, error) {
 	dir, err := yctx.Dir()
 	if err != nil {

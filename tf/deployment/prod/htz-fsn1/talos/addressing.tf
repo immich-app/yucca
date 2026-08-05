@@ -1,8 +1,6 @@
-# Site IP plan — the single source of truth (same module the fabric + netbird
-# stacks read). Gives us, derived from site_id (40):
-#   addr_site.kube_cidr     10.40.10.0/24  — fabric VLAN 10, worker east-west (50G)
-#   addr_site.kube_cp_cidr  10.40.11.0/24  — fabric VLAN 11, CP etcd + API VIP
-# Nothing is hardcoded here; addresses below are cidrhost() offsets into these.
+# Site IP plan (same module the fabric + netbird stacks read); nothing hardcoded.
+#   kube_cidr    10.40.10.0/24  VLAN 10, worker east-west (50G)
+#   kube_cp_cidr 10.40.11.0/24  VLAN 11, CP etcd + API VIP
 module "addr_site" {
   source  = "../../../../shared/modules/fabric-addressing"
   site_id = var.site_id

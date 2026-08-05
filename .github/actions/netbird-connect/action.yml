@@ -30,15 +30,11 @@ inputs:
 runs:
   using: composite
   steps:
-    # Install a PINNED NetBird release and verify its SHA256 against an in-repo
-    # pin before executing anything -- never `curl | sh`. This runner holds the
-    # prod-write 1Password SA token and overlay access to the live nodes, so a
-    # compromised pkgs.netbird.io/install.sh would run as root here.
-    #
-    # To bump: pick a version, then read the published checksums and copy the
-    # `netbird_<ver>_linux_<arch>.tar.gz` lines into SHA256 below:
-    #   curl -fsSL \
-    #     https://github.com/netbirdio/netbird/releases/download/v<ver>/netbird_<ver>_checksums.txt
+    # Pinned release, SHA256-verified against the in-repo pin before executing
+    # anything — never `curl | sh` (this runner holds the prod-write 1P SA token
+    # + overlay access, so a compromised pkgs.netbird.io/install.sh runs as root).
+    # Bump: copy the netbird_<ver>_linux_<arch>.tar.gz lines from
+    # .../releases/download/v<ver>/netbird_<ver>_checksums.txt into SHA256 below.
     - name: Install NetBird client (pinned + SHA256-verified)
       shell: bash
       env:

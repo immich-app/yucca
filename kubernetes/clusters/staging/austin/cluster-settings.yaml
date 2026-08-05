@@ -1,9 +1,7 @@
 ---
-# Per-cluster, HUMAN-managed settings. Injected into every child Kustomization
-# via the cluster-apps postBuild.substituteFrom patch (see apps.yaml). Neither CI
-# nor TF touch this file — image tags live in image-versions (CI), and derived
-# topology lives in cluster-settings.generated.yaml (TF). Keys here are disjoint
-# from those two.
+# Human-managed settings, injected into every child Kustomization via the cluster-apps
+# postBuild.substituteFrom patch (see apps.yaml). Keys disjoint from image-versions (CI)
+# and cluster-settings.generated.yaml (TF).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,8 +10,7 @@ metadata:
 data:
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
-  # Beta gate: these email domains may sign up without an allowlist entry;
-  # everyone else needs a `yuctl users allowlist` entry or invite code.
+  # Beta gate: these domains sign up freely; others need `yuctl users allowlist` or invite code.
   ALLOWED_EMAIL_DOMAINS: futo.org
 
   # admin-api host on the NetBird overlay; the admin OIDC redirect URIs derive
@@ -32,16 +29,14 @@ data:
   # the active write cluster changes.
   LEGACY_SITE_CODE: luke
   LEGACY_STORAGE_CLUSTER_CODE: luke-sietch
-  # Discovery host for the staging fleet. Unlike prod's meta.futo.cloud this
-  # one sits UNDER the app domain, so the existing *.${APP_DOMAIN} wildcard
-  # cert and DNS record already cover it — no extra cert/record needed.
+  # Staging discovery host sits UNDER the app domain (unlike prod's meta.futo.cloud),
+  # so the *.${APP_DOMAIN} wildcard cert + DNS record already cover it.
   META_HOST: meta.staging.backups.futo.cloud
 
   # ─── Ingress entry point ─────────────────────────────────────────────
-  # Internal VIP the in-cluster LB/Gateway announces (Cilium L2; distinct from
-  # the 10.10.10.15 control-plane API VIP). Public IP is the NAT in front of it,
-  # which staging.backups.futo.cloud resolves to publicly. The lb label is
-  # ignored here (the pool matches by IP annotation, no serviceSelector).
+  # Internal VIP the Gateway announces (Cilium L2; distinct from the 10.10.10.15 CP API
+  # VIP); public IP is the NAT in front, which staging.backups.futo.cloud resolves to.
+  # lb label ignored here (pool matches by IP annotation, no serviceSelector).
   INGRESS_LB_LABEL: internal
   INGRESS_VIP: 10.10.10.16
   INGRESS_PUBLIC_IP: 97.77.242.205

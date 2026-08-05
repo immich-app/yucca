@@ -1,18 +1,10 @@
 ---
-# Create VLAN-tagged sub-interfaces on bond0 and L2 bridges for VM
-# attachment. Idempotent (template module compares content); the
-# `networkctl reload` handler fires only if any unit file actually
-# changed.
-#
-# Pre-conditions:
-#   - bond0 exists and is up (Ceph storage cluster brought it up)
-#   - systemd-networkd is the active link manager
-#   - VLANs 50/51 are tagged on the upstream switch port
-#
-# Failure modes intentionally NOT handled:
-#   - Switch not tagging VLANs → bridges come up but VMs see no
-#     traffic. Caught by post-deploy verification, not by this role.
-#   - bond0 missing → role refuses to render (pre-flight below).
+# VLAN sub-interfaces on bond0 + L2 bridges for VM attachment. Idempotent; the
+# networkctl-reload handler fires only on unit-file change. Pre-conditions:
+# bond0 up (Ceph brought it up), networkd active, VLANs 50/51 tagged on the
+# switch port. Untagged switch VLANs are NOT detected here (bridges come up, VMs
+# see no traffic -- caught by post-deploy verification); missing bond0 refuses
+# to render (pre-flight below).
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:

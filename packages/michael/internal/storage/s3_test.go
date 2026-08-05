@@ -15,10 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
-// readOnly hides any io.Seeker the underlying reader implements, so the value
-// handed to the S3 SDK is a plain, non-seekable stream — exactly what michael
-// proxies in production (restic's r.Body, further wrapped in an io.TeeReader
-// for hashing). The SDK cannot rewind it to retry.
+// readOnly hides io.Seeker so the SDK gets a plain non-seekable stream — what
+// michael proxies in prod (restic's r.Body wrapped in a TeeReader for hashing).
+// The SDK cannot rewind it to retry.
 type readOnly struct{ r io.Reader }
 
 func (ro readOnly) Read(p []byte) (int, error) { return ro.r.Read(p) }
@@ -99,9 +98,8 @@ func TestIsNotFound(t *testing.T) {
 }
 
 func TestListObjects_PaginatesAllPages(t *testing.T) {
-	// Restic's REST listing has no pagination, so ListObjects must walk every
-	// ListObjectsV2 page — a repo past 1000 keys otherwise gets silently
-	// truncated and restic reports the tail packs as missing.
+	// Restic's REST listing has no pagination: ListObjects must walk every
+	// ListObjectsV2 page or a >1000-key repo silently truncates (tail packs "missing").
 	var tokens []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("continuation-token")
@@ -177,18 +175,13 @@ func TestListObjects_EmptyListing(t *testing.T) {
 	}
 }
 
-// TestPutObject_NonSeekableBodyOn503_NoRewindRetry reproduces the production
-// throughput collapse: michael streams restic's non-seekable pack body straight
-// into S3 PutObject, and when the gateway returns a retryable 5xx the SDK's
-// default retryer tries to rewind the body to resend it — which fails with
-// "failed to rewind transport stream for retry, request stream is not seekable"
-// and surfaces as an opaque 500 to restic. Under load this hit ~28% of requests
-// and stalled the whole fleet.
-//
-// The desired behaviour (asserted here) is: no rewind is ever attempted, exactly
-// one upload is made, and the caller gets the clean underlying backend error —
-// which restic retries at the pack level (its own body IS seekable). RED before
-// the s3.go RetryMaxAttempts=1 fix, GREEN after.
+// TestPutObject_NonSeekableBodyOn503_NoRewindRetry reproduces the prod
+// throughput collapse: on a retryable 5xx the SDK retryer rewound restic's
+// non-seekable pack body — "failed to rewind transport stream for retry" —
+// surfacing as an opaque 500 (~28% of requests under load, fleet stalled).
+// Asserts: no rewind attempted, exactly one upload, clean underlying backend
+// error (restic retries the pack; its body IS seekable). RED before the s3.go
+// RetryMaxAttempts=1 fix, GREEN after.
 func TestPutObject_NonSeekableBodyOn503_NoRewindRetry(t *testing.T) {
 	var puts int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -279,10 +272,9 @@ func TestProbe_UnhealthyOnConnRefused(t *testing.T) {
 }
 
 func TestNewS3StorageWithOptions_PinsDialAndPreservesHost(t *testing.T) {
-	// A stand-in gateway. We point DialAddr at it but give the SDK an
-	// unresolvable signing host — if the request arrives, the pin worked, and
-	// the recorded Host proves signing/Host used the signing endpoint, not the
-	// dial IP. This is exactly the HAProxy-replacement behavior.
+	// Stand-in gateway: DialAddr points here, the signing host is unresolvable —
+	// arrival proves the pin; the recorded Host proves signing used the
+	// endpoint, not the dial IP (HAProxy-replacement behavior).
 	var gotHost string
 	hit := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

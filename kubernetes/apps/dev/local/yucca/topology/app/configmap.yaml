@@ -1,16 +1,10 @@
 ---
-# Dev copy of the fleet topology that Flux renders per cluster in the real
-# clusters (kubernetes/apps/base/topology). Written out LITERALLY because the
-# dev/local entry point runs no postBuild substitution — there is no
-# cluster-settings ConfigMap here, so ${VAR} tokens would reach the services
-# verbatim and fail the schema at boot.
-#
-# Not the same as the in-image packages/*/topology.dev.json fixture, which
-# targets `mise dev` (compose, everything on localhost): in k3d the services
-# talk to each other over cluster DNS.
-#
-# Tilt applies this file directly too (see the Tiltfile) — k3d-with-Flux and
-# k3d-with-Tilt must agree, so keep it the single dev source of truth.
+# Dev copy of the fleet topology (real clusters: kubernetes/apps/base/topology). LITERAL
+# because the dev/local entry point runs no postBuild substitution — ${VAR} tokens would
+# reach the services verbatim and fail the boot schema. Distinct from the in-image
+# packages/*/topology.dev.json fixture (that targets `mise dev`/localhost; k3d uses
+# cluster DNS). Tilt applies this file directly too (Tiltfile) — keep it the single dev
+# source of truth for both k3d-with-Flux and k3d-with-Tilt.
 apiVersion: v1
 kind: ConfigMap
 metadata:

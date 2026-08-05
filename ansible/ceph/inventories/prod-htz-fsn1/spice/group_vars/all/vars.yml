@@ -1,11 +1,6 @@
 ---
-# Cluster-wide Ansible config for spice (prod / htz-fsn1, 48x SX295).
-# Committed. Hand-maintained. Adapted from the painbox (SX295/Hetzner) precedent
-# with the network reshaped onto the bonded-25G fabric VLANs.
-#
-# The cluster is deployed and serving production traffic. Every value here lands
-# on 48 live nodes, so converge one node at a time (--limit) and watch cluster
-# health between batches unless you have a specific reason not to.
+# spice (prod / htz-fsn1, 48x SX295). Hand-maintained; adapted from painbox precedent.
+# LIVE PROD: converge one node at a time (--limit), watch cluster health between batches.
 
 # === Naming ===
 cluster_name: spice
@@ -13,74 +8,45 @@ cluster_role: ceph
 cluster_domain: prod.fsn1.htz.futo.cloud
 
 # === Network ===
-# Ceph public/cluster traffic runs on the bonded 25G fabric VLANs (NetBox
-# FSN1-C1-PUBLIC / FSN1-C1-PRIVATE). Per-host IPs are 10.40.20.<host_index> /
-# 10.40.22.<host_index> (host_index from spice-hosts.yaml; gateway .1 = leaf IRB).
-# A third fabric VLAN, FSN1-C1-HOST-MGMT (124, 10.40.24.0/24), is the in-band
-# host-management path: the leaf trunks it to every server bond and the fabric
-# advertises 10.40.24.0/24 into the NetBird overlay, so hosts answer on the
-# overlay as well as on their WAN address.
-# The DEFAULT ROUTE stays on the 1G WAN (Hetzner gateway); the fabric never
-# carries it. Ansible reaches nodes over their WAN address.
+# Ceph traffic rides the bonded-25G fabric VLANs (NetBox FSN1-C1-PUBLIC/-PRIVATE);
+# per-host IPs 10.40.20/22.<host_index>, gateway .1 = leaf IRB. VLAN 124 (10.40.24.0/24)
+# is in-band host-mgmt, advertised into the NetBird overlay. Default route stays on the
+# 1G WAN; ansible connects over WAN.
 public_network: 10.40.20.0/23     # VLAN 120 (Ceph Public)
 cluster_network: 10.40.22.0/23    # VLAN 122 (Ceph Private)
-# Per-host Ceph BIND address on the fabric public VLAN. Derived from host_index the
-# same way as networkd_bond_vlans below (a per-host host_var, so it resolves per
-# host at play time). Lives INSIDE public_network -- unlike bond_ip, the 1G WAN
-# address used only for the ansible/SSH connection (ansible_host). (No
-# ceph_cluster_ip var: OSD replication binds to the cluster_network CIDR, which
-# cephadm resolves to each node's bond0.122 address on its own.)
+# Fabric bind address, inside public_network (bond_ip = WAN, SSH only). No ceph_cluster_ip:
+# OSD replication binds the cluster_network CIDR, cephadm resolves bond0.122 itself.
 ceph_public_ip: "10.40.20.{{ host_index }}"    # bond0.120, inside public_network
-# The address Ceph point-services advertise + bind on (mon --mon-ip, cephadm
-# host-add, dashboard monitoring URLs) = the fabric public IP. Ceph never touches
-# the WAN. A group_var, NOT a role default, because join/rgw/monitoring read it via
-# hostvars[<host>], which does not expose role defaults; here it resolves per host
-# to 10.40.20.<host_index>. sietch is flat with no ceph_public_ip, so there it
-# falls back to bond_ip (already inside its public_network).
+# Advertise/bind address for mon --mon-ip, cephadm host-add, dashboard URLs. Must be a
+# group_var (join/rgw/monitoring read it via hostvars[], which skips role defaults);
+# sietch has no ceph_public_ip and falls back to bond_ip.
 ceph_service_ip: "{{ ceph_public_ip | default(bond_ip) }}"
-# Fabric-only bind opt-in: cephadm restricts the RGW + monitoring daemon binds to
-# these CIDR(s) so nothing Ceph listens on the 1G WAN (mon/mgr/OSD already bind
-# public_network/cluster_network). The role default is empty (flat clusters bind
-# every interface, unchanged); spice pins the fabric public network.
+# Restrict RGW + monitoring binds to the fabric so nothing Ceph listens on the WAN
+# (mon/mgr/OSD already bind public/cluster_network). Role default empty = bind all (flat clusters).
 ceph_bind_networks:
   - "{{ public_network }}"
 
-# Alert delivery. Without a receiver the ~89 Prometheus rules fire into
-# alertmanager's null route and nothing reaches an operator. The URL is a Zulip
-# incoming webhook whose alertmanager integration accepts the standard webhook
-# payload; it carries an API key, so it lives in 1Password and arrives through
-# secrets.yml.tpl rather than being written here.
-#
-# The URL carries `desc=description`, set on the 1Password item. Zulip's
-# alertmanager integration renders one field per alert and defaults it to
-# `alertname`. Without the parameter every alert arrives as a bare identifier,
-# with no host and no value. `description` is the only field that names a host.
+# Zulip incoming webhook (API key -> 1P via secrets.yml.tpl); without a receiver the ~89
+# rules fire into alertmanager's null route. URL must carry `desc=description` (set on the
+# 1P item) or Zulip renders each alert as a bare alertname with no host/value.
 ceph_alertmanager_webhook_urls:
   - "{{ vault_alertmanager_webhook_url }}"
-# Without this the URL above is inert. Someone repaired the route tree by hand on
-# the live cluster and the repair was tracked nowhere until 2026-07-31, so a
-# reprovision would have come up with alert delivery silently dead.
+# Route tree was hand-repaired on the live cluster, untracked until 2026-07-31; without
+# this a reprovision comes up with alert delivery silently dead.
 ceph_alertmanager_fix_route_tree: true
 # Companion to `desc=description`: without it CephPGsUnclean, CephPGsInactive
 # and CephPoolGrowthWarning render as `ec:16+4`.
 ceph_prometheus_drop_description_label: true
 # Bond of the two 25G NICs, LACP to match the leaf ae<k> aggregate (cluster-fabric).
 bond_mode: "802.3ad"
-# COEXISTENCE: keep the 1G WAN (oob_nic) on ifupdown exactly as installimage set
-# it (static IP + default route), and let networkd manage ONLY the bond + VLANs.
-# The WAN is never migrated, so a networkd error can't cost us the reachability
-# link (the painbox failure). networkd's commit leaves networking.service enabled
-# and an Unmanaged=yes guard fences oob_nic off. This stays false -- the WAN keeps
-# the default route.
+# Keep the 1G WAN (oob_nic) on ifupdown as installimage set it; networkd manages ONLY
+# bond+VLANs (Unmanaged=yes fences oob_nic). A networkd error must not cost the
+# reachability link (the painbox failure). Stays false.
 networkd_replace_ifupdown: false
-# Enable the networkd role (defaults false, so it is a no-op unless set). spice's
-# 25G fabric bond + VLANs are networkd-managed, so a reprovisioned node must bring
-# them up from the repo alone; committed here so the live state is reproducible
-# (previously supplied ad-hoc via -e). Safe: networkd_replace_ifupdown:false fences
-# the 1G WAN. Roll one node at a time on any live reconverge.
+# Role default is false; committed so a reprovisioned node brings up the fabric from the
+# repo alone (was ad-hoc -e). Roll one node at a time on any live reconverge.
 networkd_enabled: true
-# The two Intel E800 (ice) 25G ports, verified uniform across all 48 SX295 nodes
-# (PCI 0000:c1:00.0 / .1). Consumed by the networkd role as the bond0 members.
+# Two Intel E800 (ice) 25G ports, uniform across all 48 SX295 (PCI 0000:c1:00.0/.1).
 bond_interfaces:
   - enp193s0f0
   - enp193s0f1
@@ -90,32 +56,23 @@ fabric_public_vlan: 120
 fabric_private_vlan: 122
 fabric_mgmt_vlan: 124
 dns_server: 185.12.64.1            # Hetzner recursive (reachable via WAN default route)
-# Time sync: Hetzner's own NTP (low-latency from FSN1, consistent across all 48).
-# Ceph mon quorum is skew-sensitive; pin the source rather than the distro pool.
+# Mon quorum is skew-sensitive: pin Hetzner NTP (low-latency from FSN1), not the distro pool.
 chrony_ntp_servers:
   - ntp1.hetzner.de
   - ntp2.hetzner.de
   - ntp3.hetzner.de
 
-# Tagged VLAN sub-interfaces on the 25G LACP bond (consumed by the networkd role).
-# Addresses derive from host_index; masks match each network (public/private /23,
-# host-mgmt /24). No Gateway here -- the default route stays on the 1G WAN.
-# Jumbo (MTU 9000) is enabled on VLAN 122 (Ceph PRIVATE / OSD replication) ONLY.
-# That is a closed, homogeneous, all-under-our-control path where jumbo's packet/
-# interrupt savings on replication+recovery actually pay off. VLAN 120 (Ceph public,
-# where RGW faces heterogeneous 1500 S3 clients + the ~1400 NetBird overlay) and
-# VLAN 124 (mgmt) stay at 1500: jumbo on a client-facing path is a partial-blackhole
-# risk (small ops fine, large PUT/GET hang) for near-zero gain. The bond ceiling and
-# both 25G members auto-raise to the max child MTU so the jumbo VLAN is not capped.
-# PAIRED REQUIREMENT: the leaf server-LAG + the VLAN 122 IRB must be >= 9000 on the
-# QFX side before the cluster network passes jumbo; validate with a bidirectional
-# `ping -M do -s 8972` matrix on 10.40.22.0/23 + green ceph health before relying on it.
+# VLANs on the LACP bond; addresses derive from host_index, no Gateway (default route
+# stays on WAN). Jumbo (9000) on VLAN 122 (OSD replication, closed L2) ONLY -- VLANs
+# 120/124 face 1500 clients/overlay where jumbo risks partial blackholes (large PUT/GET
+# hang). Bond + members auto-raise to max child MTU. PAIRED REQUIREMENT: QFX leaf
+# server-LAG + VLAN 122 IRB must be >= 9000 first; validate with a bidirectional
+# `ping -M do -s 8972` matrix on 10.40.22.0/23 + green ceph health.
 networkd_bond_vlans:
   - id: "{{ fabric_public_vlan }}"     # 120 - Ceph public  (10.40.20.0/23)
     address: "10.40.20.{{ host_index }}/23"
-    # Return route to the kube workers (michael S3 clients): the spine holds a
-    # second IRB on this VLAN (10.40.21.254, fabric stack public_routing) and
-    # routes kube<->cls1-public. The leaf keeps the .1 host gateway.
+    # Return route to kube workers (michael S3 clients) via the spine's second IRB on
+    # this VLAN (10.40.21.254, fabric stack public_routing); leaf keeps the .1 gateway.
     routes:
       - { to: "10.40.10.0/24", via: "10.40.21.254" }
   - id: "{{ fabric_private_vlan }}"    # 122 - Ceph private (10.40.22.0/23)
@@ -124,18 +81,15 @@ networkd_bond_vlans:
   - id: "{{ fabric_mgmt_vlan }}"       # 124 - Host mgmt    (10.40.24.0/24)
     address: "10.40.24.{{ host_index }}/24"
 
-# Cluster-specific packages, merged with baseline_diag_packages. Spice hardware:
-# Intel E800 (ice) 25G NICs on an LACP fabric; direct-attach SATA HDDs + NVMe (no
-# SAS expander / Mellanox, so none of sietch's mstflint/ledmon/sg3-utils here).
+# Merged with baseline_diag_packages. No SAS expander / Mellanox on spice, so none of
+# sietch's mstflint/ledmon/sg3-utils.
 baseline_extra_packages:
   - lldpd                 # LLDP neighbor/switch discovery on the 25G fabric
   - ethtool               # NIC/bond link, driver, and 25G speed inspection
   - tcpdump               # packet capture for fabric/network debugging
-  # Intel E810 (ice) DDP package (intel/ice/ddp/ice.pkg). WITHOUT it the NIC boots
-  # into Safe Mode, whose crippled classifier drops LACP/LLDP control frames -> the
-  # 25G bond never aggregates. The minimal Debian image omits it; baseline installs
-  # it and (nic-firmware.yml) reboots once to load the DDP. Needs the non-free-firmware
-  # apt component (present in the Hetzner Debian base).
+  # Intel E810 (ice) DDP package. Without it the NIC boots into Safe Mode, which drops
+  # LACP/LLDP control frames -> the 25G bond never aggregates. Minimal Debian omits it;
+  # nic-firmware.yml reboots once to load the DDP. Needs the non-free-firmware apt component.
   - firmware-misc-nonfree
 timezone: UTC
 
@@ -167,9 +121,7 @@ ceph_rgw_s3_user_access_key: "{{ vault_s3_restic_access_key }}"
 ceph_rgw_s3_user_secret_key: "{{ vault_s3_restic_secret_key }}"
 
 # === Reprovision (installimage; reprovision_hetzner role) ===
-# Most knobs live in roles/reprovision_hetzner/defaults; override the operator-
-# facing ones here. These were verified against the fleet during the build-out;
-# re-inspect before trusting them on a different batch of hardware:
+# Verified against this fleet; re-inspect before trusting on different hardware:
 #   mise run reprovision -- --limit <host> -e confirm_wipe=true -e reprovision_mode=inspect
 reprovision_boot_mode: bios          # SX295 painbox precedent = BIOS (verified)
 reprovision_expect_nvme: 2
@@ -177,14 +129,11 @@ reprovision_expect_sata: 14
 # reprovision_image: override only if an inspect run shows a different image path/name.
 
 # === Storage (SX295: 2x NVMe RAID-1 OS + 14x SATA HDD per node) ===
-# block.db LVs carved from the NVMe RAID-1 vg0 at converge by ceph_deploy's
-# lvm-setup (NVMe-RAID branch): 14x 128G db-slots + one ssd-osd LV from the vg0
-# remainder minus reserve. HDDs become OSDs with block.db on those LVs.
-# Consumed ONLY by ceph_destroy's partition-6 SSD-OSD wipe (sietch's dual-SSD
-# shape). spice is NVMe-RAID: the ssd-osd is a vg0 LV removed by the generic VG/PV
-# cleanup, and the NVMe carries no partition 6, so this pattern is a deliberate
-# no-match here (the SSD-partition wipe finds nothing). cleanup.yml references it
-# unconditionally, so it must stay defined; the value is a don't-care on spice.
+# ceph_deploy lvm-setup (NVMe-RAID branch) carves vg0: 14x 128G db-slots + one ssd-osd LV
+# from the remainder minus reserve; HDDs become OSDs with block.db on those LVs.
+# Consumed ONLY by ceph_destroy's partition-6 SSD-OSD wipe (sietch dual-SSD shape).
+# Deliberate no-match on spice (ssd-osd is a vg0 LV, no partition 6), but cleanup.yml
+# references it unconditionally so it must stay defined.
 ssd_model_pattern: "__no_ssd_osd_partitions_on_nvme_raid__"
 ceph_db_vg: vg0                   # single NVMe-RAID VG created by installimage
 ceph_db_lv_size: "128G"
@@ -192,69 +141,34 @@ ceph_db_lvs_per_node: 14
 ceph_ssd_osd_lv: ssd-osd          # NVMe-backed OSD LV (fast replicated pool)
 ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expansion
 
-# Keep the OSD specs registered but inert. cephadm reconciles every MANAGED spec
-# on every serve-loop pass, and each pass costs a ceph-volume lvm list + raw list
-# per host; at spice's size that pinned one full loop iteration at ~35 minutes
-# (measured 2026-07-28: nine consecutive intervals, 33m57s to 35m43s), so every
-# orchestrator action -- an OSD drain, a daemon restart -- inherited up to 35
-# minutes of latency before cephadm even looked at it. Unmanaged specs are
-# skipped, and upstream sanctions this for drivegroups ("use the unmanaged
-# parameter" to disable automatic creation on available devices).
-#
-# The specs stay complete and applied, so they remain the record of intent; they
-# just do not act on their own. Creating OSDs from them is gated behind
-# ceph_osd_allow_spec_provisioning (osds.yml), which is for INITIAL provisioning
-# only. Rebuilding a replaced disk goes through ceph-volume by hand -- see
-# docs/runbooks/replace-disk.md. Ceph tracker #68436: re-managing a spec after a
-# disk swap can recreate the OSD without its block.db, which on spice silently
-# colocates block.db on the 22TB HDD instead of the vg0 db-slot LV.
+# Keep OSD specs registered but unmanaged: cephadm reconciles every MANAGED spec each
+# serve-loop pass (ceph-volume lvm list + raw list per host), which pinned the loop at
+# ~35 min at spice's size (measured 2026-07-28) and delayed every orchestrator action by
+# up to that. Unmanaged specs are skipped (upstream-sanctioned for drivegroups). Specs
+# stay applied as the record of intent; creating OSDs from them is gated behind
+# ceph_osd_allow_spec_provisioning (osds.yml, INITIAL provisioning only). Rebuild a
+# replaced disk via ceph-volume by hand -- docs/runbooks/replace-disk.md. Ceph tracker
+# #68436: re-managing a spec after a disk swap can recreate the OSD without its block.db
+# (silently colocated on the 22TB HDD).
 ceph_osd_spec_unmanaged: true
 
-# Collapsing the per-host specs into one per host TYPE is the shape upstream
-# expects, and spice is the obvious candidate: 47 of 48 nodes share a by-path
-# map, so it would render 3 documents instead of 96. It stays OFF here anyway,
-# because the collapse cannot be retrofitted onto a cluster that is already
-# built.
-#
-# An OSD's owning service is not a property of the spec, it is written into the
-# OSD's LVM tags at creation time from CEPH_VOLUME_OSDSPEC_AFFINITY
-# (`ceph.osdspec_affinity=spice-ceph-<host>-<class>`, on the data and db LVs
-# alike). Applying the collapsed specs would not move the 720 existing daemons
-# onto them, and `ceph orch ls` fabricates a service for any daemon whose spec
-# is missing (cephadm describe_service: "new unmanaged service"), so removing
-# the old 96 would only make them reappear synthesized. The end state is 99
-# entries instead of 96, no daemon changed, nothing gained -- the serve-loop
-# cost this was meant to address is already gone via ceph_osd_spec_unmanaged,
-# which cephadm honours regardless of how many specs exist.
-#
-# Re-attributing for real means retagging ~1440 LVs across 48 live hosts, or
-# destroying and rebuilding 720 OSDs. Neither is worth a cosmetic win. Turn
-# this on for a NEW cluster, where the OSDs are tagged with the collapsed names
-# from the start; leave it off for one that already has per-host specs deployed.
+# Per-TYPE spec collapse: NEW clusters only; cannot be retrofitted. Owning service is
+# baked into LVM tags at creation (ceph.osdspec_affinity=spice-ceph-<host>-<class>), so
+# collapsed specs would not adopt the 720 existing daemons and `ceph orch ls` would
+# re-synthesize the removed per-host specs (net: 99 entries, nothing moved). Real
+# re-attribution = retagging ~1440 LVs or rebuilding 720 OSDs; serve-loop cost is
+# already solved by ceph_osd_spec_unmanaged.
 ceph_osd_spec_group_by_layout: false
 
-# OSD device map (by-path, consumed by ceph_deploy/osd-spec.yml.j2, NVMe-RAID shape:
-# no sas_path_prefix -> data path is /dev/disk/by-path/<path_phy>, db is /dev/<db>).
-# The 14x 22TB SATA HDDs sit on 3 AHCI controllers; the by-path layout is IDENTICAL
-# across 47 of the 48 nodes (verified 2026-07-10), so it lives here as a group_var
-# instead of 48 host_vars. Exception: spice-ceph-miguel has one disk on
-# 46:00.0-ata-4 (not 87:00.0-ata-4) and overrides ceph_hdd_osds in its host_vars.
-# db-slotN and ssd-osd LVs are carved from vg0 at deploy by lvm-setup.
-#
-# The {path_phy, db} grouping below is PRESENTATIONAL, not a binding. A cephadm
-# OSD spec has no per-disk block.db syntax: osd-spec.yml.j2 loops this list twice
-# and emits data_devices.paths and db_devices.paths as two independent arrays,
-# so ceph-volume pairs them in whatever order it happens to process. On spice it
-# walked the two lists in opposite directions, and every disk ended up on slot
-# 13-N rather than slot N (verified on alyssa, 2026-07-27). That is harmless:
-# all 14 slots are identical 128G LVs on the same vg0 mirror, so only their
-# count and size matter, not which HDD gets which.
-#
-# Do NOT read a row below as "this disk uses this slot" when diagnosing. Resolve
-# the real pairing with `cephadm ceph-volume lvm list`. To pin a pairing (e.g.
-# rebuilding one replaced disk), create the OSD explicitly rather than via the
-# spec: ceph-volume lvm create --data <by-path> --block.db <vg/db-slot>.
-# See docs/runbooks/replace-disk.md.
+# OSD device map (by-path, ceph_deploy/osd-spec.yml.j2, NVMe-RAID shape). Layout is
+# IDENTICAL across 47/48 nodes (verified 2026-07-10); exception spice-ceph-miguel (one
+# disk on 46:00.0-ata-4, overrides ceph_hdd_osds in host_vars).
+# The {path_phy, db} pairing below is PRESENTATIONAL: the spec emits data/db paths as two
+# independent arrays and ceph-volume pairs them in its own order (reversed on spice --
+# slot 13-N; verified on alyssa 2026-07-27). Harmless: all 14 slots are identical 128G
+# vg0 LVs. Do NOT read a row as "this disk uses this slot"; resolve real pairings with
+# `cephadm ceph-volume lvm list`, pin one with `ceph-volume lvm create --data <by-path>
+# --block.db <vg/db-slot>`. See docs/runbooks/replace-disk.md.
 ceph_hdd_osds:
   - { path_phy: pci-0000:45:00.0-ata-1, db: vg0/db-slot0 }
   - { path_phy: pci-0000:45:00.0-ata-2, db: vg0/db-slot1 }
@@ -274,21 +188,16 @@ ceph_ssd_osds:
   - { lv: vg0/ssd-osd }
 
 # === Ceph config overrides ===
-#
-# Moved. Terraform renders `ceph_config_cluster` and `ceph_config_host` into
-# group_vars/all/ceph-config.generated.yml from clusters.auto.tfvars; edit it
-# there, then scripts/render-inventories.sh prod htz-fsn1.
-#
-# Do NOT reintroduce either key here: group_vars merges per key, last file
-# wins, and vars.yml sorts after the generated file.
+# Moved: TF renders ceph_config_cluster/_host into group_vars/all/ceph-config.generated.yml
+# from clusters.auto.tfvars; edit there + scripts/render-inventories.sh prod htz-fsn1.
+# Do NOT reintroduce either key here (group_vars merge per key, last file wins,
+# vars.yml sorts after the generated file).
 
 # === RGW ===
-# EC 16+4, HOST failure domain -- capacity-max profile (80% usable, m=4) for the
-# beta behind michael. Host domain trades rack-loss protection for capacity: a
-# destroyed rack means data loss, accepted because the beta is wipeable and the
-# API tier is already single-rack. Rationale + alternatives in Brain Box
-# spice-ec-profile-analysis.md. Hold m=4 (host domain is the only durability
-# left); do not widen past k+m=20.
+# EC 16+4, HOST failure domain: capacity-max (80% usable). Rack loss = data loss,
+# accepted (beta wipeable, API tier single-rack); rationale in Brain Box
+# spice-ec-profile-analysis.md. Hold m=4 (host domain is the only durability left);
+# do not widen past k+m=20.
 ceph_rgw_realm: spice
 ceph_rgw_zonegroup: eu-central-1
 ceph_rgw_zonegroup_api_name: eu-central-1
@@ -298,12 +207,9 @@ ceph_rgw_ec_k: 16
 ceph_rgw_ec_m: 4
 ceph_rgw_ec_failure_domain: host
 ceph_rgw_ec_device_class: hdd
-# Start the bulk EC data pool near its autoscaler target. The role default (128)
-# is sized for ~36 OSDs; spice has 672 HDD OSDs on a 20-chunk pool. pg_num 4096
-# => ~122 PG-shards/OSD ( pg_num * (k+m) / osds ), inside the recommended 100-250
-# per OSD for large BlueStore clusters (default target 100, docs recommend 200;
-# >500 hurts). 2048 would be only ~61/OSD (too low); 4096 is the right power of 2.
-# Starting low would PG-split during the first fill.
+# Role default 128 is sized for ~36 OSDs; spice has 672 HDD OSDs on a 20-chunk pool.
+# 4096 => ~122 PG-shards/OSD (pg_num*(k+m)/osds), inside the 100-250 sweet spot; 2048
+# would be ~61 (too low). Starting low would PG-split during the first fill.
 ceph_pg_init_data: 4096
 ceph_rgw_data_pool: "{{ ceph_rgw_zone }}.rgw.buckets.data"
 ceph_rgw_index_pool: "{{ ceph_rgw_zone }}.rgw.buckets.index"
@@ -311,22 +217,15 @@ ceph_rgw_extra_pool: "{{ ceph_rgw_zone }}.rgw.buckets.non-ec"
 ceph_rgw_dns_name: s3.{{ cluster_domain }}
 ceph_rgw_replicated_size: 3
 ceph_rgw_replicated_min_size: 2
-# Bootstrap default for any pool that does not pin its own size (footgun guard:
-# an ad-hoc or future pool on a prod cluster should not land at single-replica
-# 2/1). Applied via cluster-spec.yml.j2 at cephadm bootstrap; role default is
-# 2/1 so sietch is unchanged. Named RGW pools still pin their own size above.
+# Footgun guard: pools that don't pin a size must not land at 2/1 on prod. Applied via
+# cluster-spec.yml.j2 at bootstrap; role default stays 2/1 so sietch is unchanged.
 ceph_osd_pool_default_size: 3
 ceph_osd_pool_default_min_size: 2
 # --- Device-class CRUSH pool placement ---
-# crush-rules.yml creates replicated_ssd/replicated_hdd but binds nothing; every
-# replicated pool otherwise falls to the default class-agnostic rule, so the
-# omap-heavy bucket index lands on HDD (~98.5% of weight) while the 48-OSD NVMe
-# ssd-osd tier sits idle. Pin the latency-sensitive index/metadata/mgr pools to
-# the SSD tier; keep the bulk non-EC pool on HDD. The EC data pool is pinned to
-# hdd via ceph_rgw_ec_device_class (the EC profile), not here. OSD device classes
-# are forced at creation in osd-spec.yml.j2 (ssd-osd -> ssd, HDD -> hdd), and
-# verify.yml asserts every intended pool carries its rule and the ssd class has
-# live OSDs.
+# crush-rules.yml creates replicated_ssd/hdd but binds nothing; without these pins the
+# omap-heavy index lands on HDD (~98.5% of weight) while the 48-OSD NVMe tier idles.
+# EC data pool is pinned to hdd via the EC profile, not here. Device classes are forced
+# at OSD creation (osd-spec.yml.j2); verify.yml asserts rules + live ssd OSDs.
 ceph_rgw_ssd_crush_rule: replicated_ssd
 ceph_rgw_hdd_crush_rule: replicated_hdd
 ceph_rgw_ssd_pools:
@@ -340,13 +239,10 @@ ceph_rgw_hdd_pools:
   - "{{ ceph_rgw_extra_pool }}"
 ceph_rgw_count_per_host: 1
 ceph_rgw_port: 443
-# RGW/beast terminates TLS on 443 with a 10-year self-signed cert: rgw.yml
-# generates /etc/ceph/rgw-ssl.{crt,key} and cephadm distributes it to every RGW
-# daemon via the service spec. Clients reach RGW over the fabric / NetBird, so the
-# cert SANs cover the s3.<domain> name (+ wildcard for virtual-hosted buckets) and
-# each node's fabric IP (ceph_service_ip). Self-signed: clients trust-on-first-use
-# or pin the CA. Falkenstein/Saxony/DE matches the FSN1 site (cosmetic for a
-# self-signed cert; only the CN + SANs are validated).
+# beast terminates TLS on 443 with a 10-year self-signed cert: rgw.yml generates
+# /etc/ceph/rgw-ssl.{crt,key}, cephadm distributes it via the service spec. SANs cover
+# s3.<domain> (+ wildcard for virtual-hosted buckets) and each node's fabric IP.
+# Clients trust-on-first-use or pin the CA; subject locality is cosmetic.
 ceph_rgw_ssl: true
 ceph_rgw_ssl_cert_days: 3650   # 10 years
 ceph_rgw_ssl_cert_subject_c: DE
@@ -356,32 +252,22 @@ ceph_rgw_ssl_cert_subject_o: FUTO
 ceph_rgw_ssl_cert_email: yucca@futo.org
 ceph_rgw_scheme: "{{ 'https' if ceph_rgw_ssl else 'http' }}"
 # --- RGW ingress: health-checked S3 VIP (haproxy + keepalived, TLS terminate) ---
-# A cephadm ingress service puts a keepalived floating VIP with haproxy health
-# checks in front of the 48 RGW daemons, in TLS TERMINATION mode (haproxy
-# `mode http`: haproxy terminates the client TLS on the VIP with the reused RGW
-# self-signed cert, then re-encrypts to each beast backend). Without it a dead RGW
-# node blackholes ~1/48 of S3 connections; with it the node is health-checked out
-# of the VIP. The VIP sits on the fabric public network (10.40.20.0/23, bond0.120);
-# NetBird already advertises 10.40.20.0/23 into the overlay, so the VIP is
-# reachable, and DNS points s3.<domain> at it (that DNS cutover is a separate TF
-# apply that MUST follow the ingress being live, not precede it). The VIP is added
-# to the RGW cert SAN (rgw.yml) so a client hitting it validates; virtual-hosted
-# buckets keep working because mode http forwards the Host header to the wildcard
-# cert. Terminate (not L4 passthrough) because passthrough needs a post-20.2.2
-# cephadm field (use_tcp_mode_over_rgw) absent on the pinned 20.2.2.
-#
-# Preconditions are satisfied here: ceph_bind_networks non-empty (VIP:443 vs beast
-# per-node-IP:443 are distinct sockets) and ceph_rgw_ssl true (cert exists).
+# keepalived VIP + haproxy health checks in front of the 48 RGWs; without it a dead node
+# blackholes ~1/48 of S3 connections. TLS TERMINATION mode (haproxy `mode http`,
+# reused RGW cert, re-encrypt to beast) -- L4 passthrough needs use_tcp_mode_over_rgw,
+# absent on pinned cephadm 20.2.2. VIP lives on 10.40.20.0/23 (NetBird already
+# advertises it); the s3.<domain> DNS cutover is a separate TF apply that MUST follow
+# the ingress being live. VIP is in the RGW cert SAN (rgw.yml); virtual-hosted buckets
+# keep working (Host header forwarded to wildcard cert). Preconditions satisfied:
+# ceph_bind_networks non-empty (VIP:443 vs per-node beast :443 distinct) + ceph_rgw_ssl.
 ceph_rgw_ingress_enabled: true
 ceph_rgw_ingress_vip: "10.40.20.250"
 ceph_rgw_ingress_vip_prefix: 23   # matches public_network 10.40.20.0/23
 ceph_rgw_s3_user_uid: svc-yucca-restic
 ceph_rgw_s3_user_display_name: "yucca/restic service account"
-# Metrics-worker RGW admin user (read-only): the yucca-metrics-worker service
-# reads bucket usage from RadosGW. Keys are TF-minted (SPICE_METRICS_WORKER_*)
-# and injected via secrets.yml.tpl as vault_metrics_worker_*; rgw.yml (Step 14.5)
-# creates the user with these caps. Without this block the RGW phase fails with
-# AnsibleUndefinedVariable. Mirror of the sietch definition.
+# Read-only RGW admin user for yucca-metrics-worker bucket-usage reads. Keys are
+# TF-minted (SPICE_METRICS_WORKER_*) via secrets.yml.tpl; rgw.yml (Step 14.5) creates
+# the user. Without this block the RGW phase fails AnsibleUndefinedVariable. Mirrors sietch.
 ceph_rgw_metrics_user_uid: metrics-worker
 ceph_rgw_metrics_user_display_name: "yucca/metrics-worker RGW admin (read-only)"
 ceph_rgw_metrics_user_access_key: "{{ vault_metrics_worker_access_key }}"
@@ -395,47 +281,34 @@ ceph_alertmanager_port: 9093
 # ceph_grafana_admin_user/password are defined once in the Secret aliases block above.
 
 # === Security / firewall ===
-# Spice is fabric-only: every Ceph daemon binds the 25G fabric (mon/mgr/OSD via
-# public_network/cluster_network; RGW + monitoring via ceph_bind_networks) and
-# never listens on the 1G WAN. RGW is therefore scoped to the trusted networks
-# rather than left world-open (ceph_firewall_rgw_any_source defaults true for
-# flat/dev clusters; spice pins it closed).
+# Fabric-only cluster: nothing Ceph listens on the WAN, so scope RGW to trusted
+# networks (default true is for flat/dev clusters).
 ceph_firewall_rgw_any_source: false
-# The private replication VLAN is a closed L2 (cluster nodes only): accept it
-# wholesale so established OSD flows survive firewall (re)activation instead
-# of dying on the drop policy (see the security role defaults for the full
-# rationale; 2026-07-20 incident).
-# wt0 is the NetBird overlay: NetBird's own policy engine (default-deny,
-# group-scoped, enforced in its own nftables table) is the access-control
-# plane for mesh traffic, so this firewall must not second-guess it per port.
-# In particular netbird-ssh DNATs overlay :22 to :22022 on the netbird
-# address, which a dport allow-list here would silently drop post-DNAT. Inert on
-# a node with no wt0, which is how it shipped ahead of the peer rollout; all 48
-# are enrolled now.
+# bond0.122: closed L2, accepted wholesale so established OSD flows survive firewall
+# (re)activation instead of dying on the drop policy (2026-07-20 incident; full
+# rationale in security role defaults).
+# wt0: NetBird's own default-deny policy engine is the access-control plane for mesh
+# traffic -- a per-port allow-list here would silently drop netbird-ssh post-DNAT
+# (overlay :22 -> :22022). Inert on nodes without wt0; all 48 enrolled now.
 ceph_firewall_trusted_ifaces:
   - bond0.122
   - wt0
 
 # === NetBird ===
-# Spice nodes are NetBird endpoint peers (group yucca-prod-htz-fsn1-ceph):
-# operator + CI SSH arrives over the overlay, governed by NetBird policies.
+# Endpoint peers (group yucca-prod-htz-fsn1-ceph); operator + CI SSH over the overlay.
 # Fresh enrollment: `mise run netbird` (canary --limit spice-ceph-philip first);
-# converge of enrolled nodes is key-free. See roles/netbird.
+# enrolled-node converge is key-free. See roles/netbird.
 ceph_netbird_enabled: true
-# Human SSH is SSO/policy-gated via NetBird's own server (overlay :22 -> :22022,
-# wt0-scoped so cephadm/ansible key SSH on fabric+WAN are untouched). Root off:
-# operators `netbird ssh ops@<node>` and sudo. `mise run netbird` sets the
-# per-peer management flag via the API.
+# SSO/policy-gated human SSH via NetBird's server (overlay :22 -> :22022, wt0-scoped;
+# cephadm/ansible key SSH on fabric+WAN untouched). Root off: `netbird ssh ops@<node>`
+# + sudo. `mise run netbird` sets the per-peer flag via the API.
 ceph_netbird_ssh_server: true
 
 # === Host logs ===
-# Fluent Bit ships journald to o11y's VictoriaLogs over the overlay, tagged
-# cluster/site/env to match the metrics. Needs the ceph-to-o11y-gateway NetBird
-# policy for the route. See roles/fluentbit and logging.yml.
-#
-# OFF until the canary proves the path end to end. Nothing has shipped a log
-# through it yet, and site.yml carries logging.yml, so flipping this on lands
-# fluent-bit on all 48 nodes at the next converge. Canary first:
+# Fluent Bit ships journald to o11y VictoriaLogs over the overlay (needs the
+# ceph-to-o11y-gateway NetBird policy). See roles/fluentbit and logging.yml.
+# OFF until the canary proves the path end to end -- site.yml carries logging.yml, so
+# flipping this lands fluent-bit on all 48 at the next converge. Canary:
 #   mise run logs -- --limit spice-ceph-adelia -e ceph_fluentbit_enabled=true
-# then flip this to true in its own change.
+# then flip in its own change.
 ceph_fluentbit_enabled: false

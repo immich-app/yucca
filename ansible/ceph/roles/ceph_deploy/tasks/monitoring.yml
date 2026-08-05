@@ -1,12 +1,8 @@
 ---
 # Phase 5.8: Monitoring stack - dashboard integration
-#
-# cephadm auto-deploys the full monitoring stack (node-exporter,
-# ceph-exporter, prometheus, alertmanager, grafana) during bootstrap.
-# This task file only:
-#   1. Ensures the prometheus mgr module is enabled
-#   2. Waits for all monitoring daemons to come up
-#   3. Configures dashboard integration URLs and credentials
+# cephadm auto-deploys the stack (node-/ceph-exporter, prometheus, alertmanager,
+# grafana) at bootstrap; here we only enable the prometheus mgr module, wait for
+# daemons, and wire dashboard URLs/credentials.
 
 # --- Step 1: Enable prometheus mgr module ---
 
@@ -63,13 +59,10 @@
   changed_when: false
 
 # --- Step 2.5: Re-spec the monitoring stack (fabric bind + alert delivery) ---
-# cephadm auto-deployed the stack binding all interfaces and with NO alertmanager
-# receiver. Re-apply the spec to (a) restrict the bind to ceph_bind_networks
-# (fabric-only on spice, so ceph never listens on the WAN) and (b) route alerts to
-# ceph_alertmanager_webhook_urls. Placement matches cephadm's defaults, so no
-# daemon relocates. Each piece is independently gated in the template, and the
-# whole re-spec is SKIPPED when BOTH are empty (flat clusters with no alerting, like
-# sietch) - the auto-deployed stack is then left exactly as cephadm shipped it.
+# Auto-deployed stack binds all interfaces with NO alertmanager receiver; re-spec
+# restricts binds to ceph_bind_networks and routes alerts to
+# ceph_alertmanager_webhook_urls. Placement matches cephadm defaults (no daemon
+# relocates); skipped entirely when BOTH are empty (sietch keeps the stock stack).
 - name: Render monitoring service spec (fabric bind + alert receiver)
   ansible.builtin.template:
     src: monitoring-spec.yaml.j2
@@ -84,12 +77,10 @@
       or (ceph_alertmanager_webhook_urls | default([]) | length) > 0
   register: monitoring_spec_render
 
-# `ceph orch apply -i` exits 0 even when the mgr rejects the spec, so rc alone
-# proves nothing. cephadm parses every document in the file before it applies
-# any of them, so one rejected document discards the whole apply. The result is
-# a silent no-op that reads as a successful converge. Seen 2026-07-31: a
-# `networks:` key on the ceph-exporter document failed the apply while the play
-# reported ok, so an updated alertmanager webhook URL never reached the cluster.
+# `ceph orch apply -i` exits 0 even when the mgr rejects the spec, and one bad
+# document discards the whole multi-doc apply -- a silent no-op that reads as a
+# successful converge (2026-07-31: `networks:` on the ceph-exporter doc dropped
+# an updated webhook URL). Hence the stderr/stdout failed_when.
 - name: Apply monitoring service spec
   ansible.builtin.command: ceph orch apply -i /etc/ceph/monitoring-spec.yaml
   when:
@@ -105,22 +96,12 @@
       or 'Error' in (monitoring_spec_apply.stdout | default(''))
 
 # --- Step 2.55: Correct the alertmanager route tree ---
-#
-# Without this the webhook configured above is never reached. cephadm's shipped
-# alertmanager.yml.j2 gives the 'ceph-dashboard' child route no matchers, so it
-# matches every alert, and emits its `continue: true` only when an SNMP gateway
-# is configured. Alertmanager dispatches to the parent's receiver ONLY when no
-# child matched, so every alert terminates at 'ceph-dashboard' and 'default' --
-# where default_webhook_urls land -- never fires. Notifications report success
-# the whole time, so the failure is silent.
-#
-# cephadm renders service configs through a template that first checks the mon
-# config-key store (mgr/cephadm/<name minus .j2>), falling back to the packaged
-# one. Storing a corrected copy there is the supported override; see the header
-# of files/alertmanager.yml.j2 for the diff against upstream.
-#
-# Gated on a webhook actually being configured: a cluster with no receiver has
-# nothing to deliver and is left on the stock template.
+# Stock cephadm alertmanager.yml.j2 gives the 'ceph-dashboard' child route no
+# matchers and `continue: true` only with an SNMP gateway, so every alert
+# terminates there and 'default' (where the webhook lands) never fires --
+# silently. Fix = store a corrected copy in the mon config-key store
+# (mgr/cephadm/<name minus .j2>), cephadm's supported override; diff vs upstream
+# in the header of files/alertmanager.yml.j2. Gated on a webhook being configured.
 - name: Stage corrected alertmanager config template
   ansible.builtin.copy:
     src: alertmanager.yml.j2
@@ -167,34 +148,16 @@
   changed_when: true
 
 # --- Step 2.6: Pin the mgr dashboard + prometheus module bind to the fabric ---
-#
-# The dashboard (8443) and the prometheus mgr module (9283) run INSIDE the active
-# ceph-mgr, not as standalone cephadm daemons, so the monitoring re-spec above
-# does not reach them -- they bind :: (every interface, WAN included) and are
-# closed only by nftables. Pin each mgr instance's own server_addr to that
-# instance's fabric IP (ceph_service_ip) so whichever mgr is active listens on
-# the fabric, never the WAN.
-#
-# PER-INSTANCE, not global: the active mgr fails over across the mgr hosts and
-# each host has a DIFFERENT fabric IP (ceph_service_ip = 10.40.20.<index>). A
-# single global mgr/dashboard/server_addr would bind a foreign IP after failover
-# and the dashboard could not start. Ceph resolves the localized key
-# mgr/<module>/<mgr_id>/server_addr ahead of the global one (the module reads it
-# via get_localized_module_option), and each mgr reads ITS OWN value when its
-# module starts serving (on mgr start / failover), so per-instance binding is
-# inherently failover-safe. The mgr_id is the cephadm daemon name (<host>.<rand>,
-# e.g. spice-ceph-adelia.abcdef), NOT hostname_short -- it is discovered at
-# runtime from `ceph orch ps`, and the daemon's host is mapped back to that
-# host's ceph_service_ip.
-#
-# TIMING: the new bind takes effect the next time each mgr (re)starts its module
-# (mgr restart, failover, or upgrade); nftables keeps the WAN closed until then.
-# We deliberately do NOT force a live module reload (disable/enable) -- that would
-# drop the dashboard mid-converge for no durability gain, and the per-instance
-# config can never leave the dashboard unbindable the way a global one could.
-#
-# Opt-in: only when ceph_bind_networks is non-empty. sietch (empty) is a no-op
-# and keeps cephadm's bind-all default.
+# Dashboard (8443) + prometheus module (9283) run INSIDE the mgr, so the re-spec
+# above misses them; unpinned they bind :: (WAN included), closed only by nftables.
+# PER-INSTANCE keys (mgr/<module>/<mgr_id>/server_addr), not global: mgr fails
+# over across hosts with different fabric IPs, and a global key would bind a
+# foreign IP post-failover, leaving the dashboard unable to start. The localized
+# key wins and each mgr reads its own on module start -> failover-safe. mgr_id is
+# the cephadm daemon name (<host>.<rand>), NOT hostname_short; discovered from
+# `ceph orch ps`. Takes effect on next module (re)start; deliberately no forced
+# disable/enable (would drop the dashboard mid-converge for no gain). Opt-in via
+# ceph_bind_networks; sietch (empty) keeps bind-all.
 - name: Pin mgr dashboard + prometheus module bind to the fabric (per mgr instance)
   ansible.builtin.shell: |
     set -o pipefail
@@ -239,24 +202,14 @@
   changed_when: "'CHANGED' in (mgr_module_bind.stdout | default(''))"
 
 # --- Step 2.7: Monitoring config overrides (derived from the shipped template) ---
-#
-# cephadm renders every monitoring config from a Jinja template.
-# TemplateMgr.render() reads the mon config-key store at
-# mgr/cephadm/services/<path> before the packaged template (cephadm/template.py:
-# `store_name = name.rstrip('.j2')`). cephadm renders a stored value as Jinja
-# with the same context, so an override keeps the dynamic parts intact: service
-# discovery URLs, TLS branches, fsid.
-#
-# These overrides are derived, not pinned. The task reads the template that the
-# running mgr ships and injects a small block at an asserted anchor. It does not
-# commit a copy of the upstream file. A committed copy goes stale on every Ceph
-# upgrade and someone has to re-diff it by hand. Deriving picks up an upgraded
-# template on the next converge. The cost is a dependency on an anchor string,
-# so each injection asserts its anchor and fails the play rather than storing a
-# config built on a guess.
-#
-# Two overrides, independently gated. Each flag's default carries the why:
-# ceph_alertmanager_fix_route_tree, ceph_prometheus_drop_description_label.
+# TemplateMgr.render() reads mgr/cephadm/services/<path> from the config-key
+# store before the packaged template (template.py: name.rstrip('.j2')) and still
+# renders it as Jinja, so dynamic parts (discovery URLs, TLS, fsid) survive.
+# Overrides are DERIVED, not pinned: read the running mgr's template, inject at
+# an asserted anchor -- a committed upstream copy would go stale on every Ceph
+# upgrade. Anchor mismatch fails the play rather than storing a guess. Two
+# overrides, independently gated; the why lives on each flag's default
+# (ceph_alertmanager_fix_route_tree, ceph_prometheus_drop_description_label).
 - name: Derive and store the cephadm monitoring config overrides
   ansible.builtin.shell: |
     set -o pipefail
@@ -391,18 +344,12 @@
   changed_when: "'CHANGED' in (monitoring_overrides.stdout | default(''))"
   tags: [alert_rendering]
 
-# cephadm only re-renders a monitoring config when it redeploys the daemon, so
-# the config-key writes above are inert until each daemon is redeployed. Gated on
-# that specific service having changed, so a steady-state converge bounces
-# nothing and a prometheus-only change does not interrupt alert delivery.
-#
-# alertmanager also redeploys when the service spec itself changed. cephadm saves
-# a new spec but does NOT redeploy on a `user_data` change -- the webhook URL is
-# not part of the daemon's dependency hash, so the running alertmanager keeps
-# serving the old config indefinitely. Observed 2026-07-31: spec saved at
-# 19:04:12, daemon still 15m old and still rendering the previous URL six minutes
-# later. Without this, changing the receiver URL is a no-op until something else
-# happens to bounce the daemon.
+# cephadm re-renders monitoring configs only on redeploy, so the config-key
+# writes above are inert until then; gated per service so steady-state bounces
+# nothing. alertmanager also redeploys on spec change: cephadm saves a new spec
+# but does NOT redeploy on a `user_data` change (webhook URL is outside the
+# dependency hash), so a receiver-URL change is otherwise a no-op indefinitely
+# (observed 2026-07-31).
 - name: Redeploy monitoring daemons whose override or spec changed
   ansible.builtin.command: "ceph orch redeploy {{ item }}"
   loop: "{{ ['alertmanager', 'prometheus'] }}"
@@ -448,12 +395,10 @@
 
 # --- Step 4: Set Grafana admin credentials ---
 
-# The Grafana admin LOGIN password is seeded by cephadm only at first deploy,
-# and nothing reconciled it, so it drifted from the vault. That broke both
-# direct login at :3000 and the dashboard Grafana API calls below (which
-# authenticate as this same admin user). Enforce it from the vault on every
-# converge. reset-admin-password writes Grafana's sqlite DB on the host volume,
-# so the change persists across container restarts and redeploys.
+# The Grafana admin password is seeded only at first deploy and drifted from the
+# vault, breaking :3000 login and the dashboard API calls below. Enforce from the
+# vault every converge; reset-admin-password writes the sqlite DB on the host
+# volume, so it survives restarts/redeploys.
 - name: Find Grafana container
   ansible.builtin.shell: >
     set -o pipefail;
@@ -482,13 +427,10 @@
     - grafana_container.stdout | default('') | length > 0
   register: grafana_pw_reset
   changed_when: false
-  # grafana-cli exits 0 when there is NO admin user to reset (it prints
-  # "specify a user-id" over an empty user list), so rc alone green-lights a
-  # no-op and the vault password never lands (spice, 2026-07-21: fresh
-  # tentacle grafana ships disable_initial_admin_creation, user table empty,
-  # this task "ok" on every converge). The admin is seeded by
-  # initial_admin_password in the monitoring spec; if it is still absent,
-  # fail loudly instead.
+  # grafana-cli exits 0 with NO admin user to reset ("specify a user-id"), so rc
+  # alone green-lights a no-op (spice 2026-07-21: tentacle grafana ships
+  # disable_initial_admin_creation, empty user table, task "ok" forever). Admin
+  # is seeded by initial_admin_password in the monitoring spec; fail loudly if absent.
   failed_when: >-
     (grafana_pw_reset.rc | default(1)) != 0
     or 'specify a user-id'
@@ -515,11 +457,9 @@
 
 # --- Step 4.5: Provision custom Grafana dashboards ---
 
-# Dashboards committed under files/grafana-dashboards/ are uploaded via the
-# Grafana API as the (now seeded) admin, so they live in the repo instead of
-# hand-uploads that a fresh cluster silently lacks (spice shipped without the
-# RGW capacity dashboard until 2026-07-21). overwrite keeps them converged;
-# the cephadm file-provisioned stock dashboards are untouched.
+# files/grafana-dashboards/ uploaded via the API so a fresh cluster doesn't
+# silently lack hand-uploads (spice missed the RGW capacity dashboard until
+# 2026-07-21). overwrite keeps them converged; stock dashboards untouched.
 - name: Upload custom Grafana dashboards
   ansible.builtin.uri:
     url: "https://{{ hostvars[groups['ceph_bootstrap'][0]]['ceph_service_ip'] }}:{{ ceph_grafana_port }}/api/dashboards/db"

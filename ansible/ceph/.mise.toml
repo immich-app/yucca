@@ -5,11 +5,10 @@ python = "3.12"
 # Project-local virtualenv for all Python tooling
 VIRTUAL_ENV = "{{config_root}}/.venv"
 PATH = "{{config_root}}/.venv/bin:{{env.PATH}}"
-# Note: CEPH_ENV is intentionally NOT declared here. mise's [env] block
-# overrides shell-exported values, which silently sends operators to the
-# wrong cluster. Operators must export CEPH_ENV once per shell session:
+# CEPH_ENV deliberately NOT declared here: mise [env] overrides shell exports,
+# silently sending operators to the wrong cluster. Export it per shell session:
 #   export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
-# Inventory files are TF-generated — `mise run tf:apply` (from yucca root) if missing.
+# Inventories are TF-generated (`mise run tf:apply` from yucca root if missing).
 
 [tasks.setup]
 description = "Bootstrap development environment"
@@ -130,7 +129,6 @@ description = "Full deploy: baseline → tune → deploy → tune ceph → harde
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
-# Rotate ansible.log before a full deploy
 if [ -f ansible.log ] && [ "$(wc -c < ansible.log)" -gt 1048576 ]; then
   mv ansible.log "ansible.$(date +%Y%m%dT%H%M%S).log"
   echo "Rotated ansible.log (>1MB)"

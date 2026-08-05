@@ -19,10 +19,9 @@ spec:
     kind: GitRepository
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
-  # The nested vmagent/victoria-logs-collector Kustomizations are applied by
-  # THIS Kustomization, not cluster-apps, so its substituteFrom patch doesn't
-  # reach them — re-apply it here or their ${vars} ship unsubstituted (the
-  # 17h victoria-logs-collector crash loop on father).
+  # The nested Kustomizations are applied by THIS one, not cluster-apps, so its
+  # substituteFrom patch doesn't reach them — re-apply it here or their ${vars} ship
+  # unsubstituted (the 17h victoria-logs-collector crash loop on father).
   patches:
     - target:
         group: kustomize.toolkit.fluxcd.io

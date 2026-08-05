@@ -27,11 +27,9 @@
 - name: Set ops user password
   ansible.builtin.user:
     name: "{{ baseline_ops_user }}"
-    # password_hash draws a RANDOM salt by default, so the hash differs every run
-    # and the user module rewrites /etc/shadow (reporting 'changed') on every
-    # converge. Derive a STABLE salt from the password (one-way sha256, so the
-    # public salt in /etc/shadow leaks nothing) to make the hash deterministic and
-    # the task idempotent, while still reconciling an out-of-band password change.
+    # Stable salt (sha256 of the password; salt is public anyway) so the hash is
+    # deterministic -- a random salt would rewrite /etc/shadow ('changed') every
+    # converge. Still reconciles an out-of-band password change.
     password: "{{ ops_password | password_hash('sha512', salt=(ops_password | hash('sha256'))[:16]) }}"
   no_log: true
 

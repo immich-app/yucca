@@ -12,7 +12,6 @@ import (
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 )
 
-// zerologLevel maps zerolog level strings to OTEL severity.
 var zerologLevel = map[string]otellog.Severity{
 	"trace": otellog.SeverityTrace,
 	"debug": otellog.SeverityDebug,
@@ -53,7 +52,6 @@ func SetupLogProvider(cfg config.Config) (*sdklog.LoggerProvider, error) {
 	return provider, nil
 }
 
-// NewOTLPLogWriter creates a writer that bridges zerolog JSON output to OTEL logs.
 func NewOTLPLogWriter(provider *sdklog.LoggerProvider) *OTLPLogWriter {
 	return &OTLPLogWriter{
 		logger:   provider.Logger("michael"),
@@ -71,7 +69,6 @@ func (w *OTLPLogWriter) Write(p []byte) (int, error) {
 
 	var record otellog.Record
 
-	// Severity
 	if lvl, ok := entry["level"].(string); ok {
 		if sev, found := zerologLevel[lvl]; found {
 			record.SetSeverity(sev)
@@ -79,19 +76,16 @@ func (w *OTLPLogWriter) Write(p []byte) (int, error) {
 		}
 	}
 
-	// Timestamp
 	if ts, ok := entry["time"].(string); ok {
 		if t, err := time.Parse(time.RFC3339, ts); err == nil {
 			record.SetTimestamp(t)
 		}
 	}
 
-	// Message
 	if msg, ok := entry["message"].(string); ok {
 		record.SetBody(otellog.StringValue(msg))
 	}
 
-	// All other fields as attributes
 	attrs := make([]otellog.KeyValue, 0, len(entry))
 	for k, v := range entry {
 		switch k {

@@ -55,7 +55,6 @@ echo "Inventory: $INV"
 echo "Template:  $TEMPLATE"
 echo ""
 
-# Controller checks
 echo "--- Controller ---"
 check "ansible-play.sh wrapper executable" test -x scripts/ansible-play.sh
 check "Inventory file (TF-rendered) present" test -f "$INV"
@@ -68,7 +67,6 @@ check "op CLI installed" op --version
 check "1Password session live" op account get
 echo ""
 
-# Secrets resolve
 echo "--- Secrets ---"
 SECRETS_TEST="$(mktemp --suffix=-secrets-test.yml)"
 trap 'rm -f "$SECRETS_TEST"' EXIT INT TERM
@@ -77,7 +75,6 @@ check "Resolved file has non-empty vault_ops_password" \
   grep -qE '^vault_ops_password: \S+' "$SECRETS_TEST"
 echo ""
 
-# Target connectivity
 echo "--- Target connectivity ---"
 for host in $(ansible-inventory -i "$INV" --list 2>/dev/null \
   | python3 -c "
@@ -104,7 +101,6 @@ for h in hosts:
 done
 echo ""
 
-# Summary
 echo "=== Results ==="
 echo "  Passed: $PASS  Failed: $FAIL  Warnings: $WARN"
 if [ "$FAIL" -gt 0 ]; then

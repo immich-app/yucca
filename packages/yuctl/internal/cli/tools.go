@@ -135,10 +135,9 @@ func newBenchCleanupCmd() *cobra.Command {
 	return cmd
 }
 
-// runBench resolves the context (host from discovery, repository via admin-api
-// unless supplied) and drives the run. Context/topology are resolved lazily so
-// a --from-here run with an explicit --repo needs neither state creds nor a
-// selected context (e.g. yuctl invoked directly on a mgmt host).
+// runBench resolves context (host from discovery, repo via admin-api unless
+// supplied) and drives the run. Lazy resolution: --from-here + explicit --repo
+// needs neither state creds nor a selected context (yuctl on a mgmt host).
 func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error {
 	ctx := cmd.Context()
 
@@ -185,9 +184,9 @@ func (f *benchFlags) runBench(cmd *cobra.Command, defaultPhases []string) error 
 	}
 
 	if cfg.Repo == "" {
-		// Topology is only needed to derive the admin URL; an explicit
-		// --admin-url / $YUCTL_ADMIN_API_URL skips state access entirely
-		// (the context file alone names the token-cache partition).
+		// Topology only derives the admin URL; explicit --admin-url /
+		// $YUCTL_ADMIN_API_URL skips state access (context file alone names
+		// the token-cache partition).
 		if f.admin.adminURL == "" && os.Getenv("YUCTL_ADMIN_API_URL") == "" {
 			if err := loadTopo(); err != nil {
 				return err

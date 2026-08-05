@@ -1,8 +1,7 @@
-// Package op is a thin wrapper around the 1Password CLI (`op`). It resolves
-// `op://vault/item/field` references to their secret values, matching the
-// repo-wide `op run` convention (interactive desktop unlock or a service-account
-// token via OP_SERVICE_ACCOUNT_TOKEN). yuctl never embeds secrets; the discovery
-// contract only ever carries `op://` reference strings, resolved here on demand.
+// Package op thinly wraps the 1Password CLI: resolves `op://vault/item/field`
+// refs on demand, matching the repo-wide `op run` convention (desktop unlock
+// or OP_SERVICE_ACCOUNT_TOKEN). yuctl never embeds secrets; the discovery
+// contract only carries `op://` refs.
 package op
 
 import (
@@ -59,9 +58,8 @@ func Read(ctx context.Context, ref string) (string, error) {
 	return out.String(), nil
 }
 
-// ReadToTempFile resolves a reference and writes the value to a freshly created
-// 0600 temp file, returning its path. Used for kubeconfig/talosconfig that
-// downstream tools (talosctl, kubectl) need on disk. The caller owns cleanup.
+// ReadToTempFile resolves a ref into a fresh 0600 temp file (kubeconfig/
+// talosconfig for talosctl/kubectl); the caller owns cleanup.
 func ReadToTempFile(ctx context.Context, ref, pattern string) (string, error) {
 	val, err := Read(ctx, ref)
 	if err != nil {

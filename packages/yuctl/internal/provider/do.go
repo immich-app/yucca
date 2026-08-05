@@ -8,9 +8,8 @@ import (
 	"yuctl/internal/do"
 )
 
-// doProvider adapts the DigitalOcean client (internal/do) to Provider. It owns
-// no logic of its own — just the Host/Size translation and the int⇄string id
-// bridging Provider's opaque ids require.
+// doProvider adapts internal/do to Provider: just Host/Size translation and
+// the int⇄string id bridging opaque ids require, no logic of its own.
 type doProvider struct{ c *do.Client }
 
 func newDO(ctx context.Context) (Provider, error) {

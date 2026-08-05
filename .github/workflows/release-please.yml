@@ -1,12 +1,12 @@
 name: Release Please
 
 on:
-  workflow_dispatch: # For manual runs
+  workflow_dispatch:
   release: # To update release PRs when one is merged
     types: [published]
   pull_request: # To handle the release label being removed
     types: [unlabeled]
-  push: # Standard workflow
+  push:
     branches:
       - main
 

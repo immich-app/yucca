@@ -9,8 +9,7 @@ spec:
   chart:
     spec:
       chart: charts/apps/yucca-api
-      # Repackage on every git revision — the in-repo charts keep a static
-      # version, so the default ChartVersion strategy never ships template edits.
+      # In-repo charts keep a static version; Revision repackages every git rev (ChartVersion would never ship template edits).
       reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
@@ -28,18 +27,16 @@ spec:
     replicas: ${API_REPLICAS}
     image:
       repository: ghcr.io/immich-app/yucca/yucca-api
-      # Substituted from the image-versions ConfigMap: staging's is rewritten
-      # in-cluster to the latest CI build (flux-operator ResourceSet), prod's is
-      # release-please-stamped in git. If unset, the empty default lets the
-      # chart fall back to v<appVersion> — the matching release image.
+      # From the image-versions ConfigMap (staging: rewritten in-cluster by the flux-operator
+      # ResourceSet to latest CI build; prod: release-please-stamped in git). Empty default →
+      # chart falls back to v<appVersion>, the matching release image.
       tag: ${YUCCA_IMAGE_TAG:=}
     # Migration Job assumes the dev image layout; dist-only prod image migrates
     # at boot. Re-enable once the Job has a prod-compatible command.
     migration:
       enabled: false
-    # secretData nulled: the chart's dev fixture (JWT + OIDC placeholders) is
-    # replaced by the TF-provisioned `yucca-api` Secret (JWT_PRIVATE_KEY +
-    # OIDC_CLIENT_ID/SECRET), picked up via the chart's envFrom: secretRef.
+    # Dev fixture replaced by the TF-provisioned `yucca-api` Secret (JWT_PRIVATE_KEY +
+    # OIDC_CLIENT_ID/SECRET) via the chart's envFrom: secretRef.
     secretData: null
     # Real IdP (no mock-oidc). Chart maps these onto explicit env (which beats
     # envFrom). Redirects target the staging ingress domain.
@@ -60,9 +57,8 @@ spec:
       # numeric id via postBuild substitution gets coerced to a float and breaks.
       - name: OIDC_DEVICE_ISSUER
         value: ${OIDC_ISSUER}
-      # Fleet topology (the yucca-topology ConfigMap the chart mounts at
-      # /etc/yucca) — the per-site rest_url in it replaces the old single
-      # RESTIC_ENDPOINT.
+      # yucca-topology ConfigMap mounted at /etc/yucca — per-site rest_url replaces
+      # the old single RESTIC_ENDPOINT.
       - name: TOPOLOGY_FILE
         value: /etc/yucca/topology.json
       # Pinned origin of rows created before placement columns existed. These

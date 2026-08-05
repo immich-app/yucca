@@ -14,15 +14,14 @@ permissions:
 
 env:
   IMAGE_PREFIX: ghcr.io/immich-app/yucca
-  # Monotonic monorepo build tag (all 5 apps ship together). The staging
-  # ResourceSetInputProvider picks the highest 0.0.<n> from GHCR and deploys it
-  # in-cluster — pull-based, so CI never needs cluster/Tailscale access.
+  # Monotonic monorepo tag (all 5 apps ship together); staging's
+  # ResourceSetInputProvider deploys the highest 0.0.<n> from GHCR — pull-based,
+  # CI never needs cluster access.
   BUILD_TAG: 0.0.${{ github.run_number }}
 
 jobs:
   # ── Build + push every app image (the ONLY delivery action CI performs) ──
-  # Release commits build like any other — they're the stamped tree the release
-  # tag points at, and they additionally push v<version> image tags (below).
+  # Release commits build like any other, plus v<version> image tags (below).
   build:
     name: Build ${{ matrix.app.name }}
     runs-on: ubuntu-latest
@@ -54,11 +53,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Release commits (release-please merges) additionally get the release
-      # image tag, v<version> from the stamped root package.json — the same tag
-      # release-please pins into prod's pin files in that very commit. Prod's
-      # rollout stalls harmlessly (old pods keep serving) until this build
-      # pushes; no retag/promote workflow needed.
+      # Release commits also get v<version> (stamped root package.json) — the tag
+      # release-please pins into prod in that very commit. Prod's rollout stalls
+      # harmlessly (old pods keep serving) until this pushes; no retag/promote.
       - name: Compute release image tag
         id: release
         if: "startsWith(github.event.head_commit.message, 'chore(main): release')"
@@ -81,16 +78,14 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
 
-  # Staging deploys automatically: the flux-operator ResourceSetInputProvider in
+  # Staging deploys itself: the ResourceSetInputProvider in
   # kubernetes/apps/staging/flux-system/ detects the new ${BUILD_TAG} in GHCR and
-  # rolls it out in-cluster. Outcome is visible as a GitHub commit status
-  # (notification-controller Provider), not as a job here. No GHA step needed.
+  # rolls it out; outcome shows as a GitHub commit status (notification-controller
+  # Provider), not a job here.
 
-  # Production promotion is the release-please PR itself: it stamps the new
-  # tag into both prod pins (kubernetes/clusters/prod/htz-fsn1/
-  # {flux-release,image-versions}.yaml, extra-files), so merging it commits
-  # the promotion through normal review — no promote workflow, no bot push to
-  # main. Prod Flux pulls the pins from main and the app tree + charts from
-  # the tag; images are the v<version> tags pushed by the build job above on
-  # that same release commit. Rollback = revert the two stamped lines in a
-  # normal PR.
+  # Prod promotion = the release-please PR: it stamps the tag into both prod pins
+  # (kubernetes/clusters/prod/htz-fsn1/{flux-release,image-versions}.yaml,
+  # extra-files) — merging IS the promotion, through normal review. Prod Flux
+  # pulls pins from main, app tree + charts from the tag; images are the
+  # v<version> tags from the build job on that same release commit. Rollback =
+  # revert the two stamped lines in a normal PR.

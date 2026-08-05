@@ -1,21 +1,9 @@
-# App + observability secrets, provisioned directly by TF (no ESO / 1Password
-# Connect). This stack is already the 1P integration point, so it owns the
-# cluster's secret material end-to-end:
-#
-#   • JWT keypair  — GENERATED here (tls_private_key), written to 1P as the
-#                    source-of-truth record, and split into the two app Secrets
-#                    (yucca-api signs with the private key, michael verifies
-#                    with the public one — they MUST be the same pair).
-#   • OIDC / RGW   — externally issued, human-managed in 1P; read via TF_VAR
-#                    (op:// refs in tf/.env) and written into the app Secrets.
-#   • vmauth token — shared o11y credential (shared_tf_staging), for vmagent egress.
-#
-# Each Secret is named after its chart's fullnameOverride so the chart's own
-# `secretData` fixture (nulled in the staging HelmRelease) cedes the name and
-# the app's existing `envFrom` picks this Secret up unchanged.
-#
-# Gated on cni == "cilium" (same as flux.tf) so the kubernetes/onepassword
-# providers only engage for a real in-cluster deployment.
+# App + o11y secrets provisioned by TF (no ESO / 1P Connect). JWT keypair is
+# GENERATED here (1P = source of truth; yucca-api signs, michael verifies — must
+# be the same pair); OIDC/RGW are human-managed in 1P, read via TF_VAR (op://
+# refs in tf/.env). Secret names = chart fullnameOverride so the chart's nulled
+# secretData cedes the name and envFrom picks these up. Gated on cni == "cilium"
+# (same as flux.tf).
 
 locals {
   provision_secrets = local.cluster_spec.cni == "cilium"
@@ -23,24 +11,19 @@ locals {
 
 # ─── JWT keypair (generated) ────────────────────────────────────────────
 
-# ES256 (P-256) keypair. private_key_pem_pkcs8 emits the PKCS#8 `BEGIN PRIVATE
-# KEY` form the app expects; public_key_pem emits the SPKI `BEGIN PUBLIC KEY`
-# form michael verifies with.
+# ES256 keypair: PKCS#8 private form for the app, SPKI public form for michael.
 resource "tls_private_key" "yucca_jwt" {
   count       = local.provision_secrets ? 1 : 0
   algorithm   = "ECDSA"
   ecdsa_curve = "P256"
 
-  # NO prevent_destroy — deliberately: this resource is count-gated (flipping
-  # cni would plan a destroy) and staging clusters are rebuildable by design;
-  # the 1P YUCCA_JWT_KEYPAIR record is the survives-state-loss source of truth.
-  # Revisit when the prod app secrets stack lands — prod's key SHOULD be
-  # prevent_destroy'd.
+  # NO prevent_destroy, deliberately: count-gated (cni flip plans a destroy) and
+  # staging is rebuildable; 1P YUCCA_JWT_KEYPAIR is the source of truth. Prod's
+  # key SHOULD be prevent_destroy'd.
 }
 
-# Source-of-truth record in 1Password. Survives state loss and is visible/
-# shareable; the cluster Secrets below are created from the tls resource
-# directly (no read-back), so 1P and the cluster never diverge on first apply.
+# 1P source-of-truth record (survives state loss); cluster Secrets come from the
+# tls resource directly, so 1P and cluster never diverge on first apply.
 data "onepassword_vault" "staging" {
   count = local.provision_secrets ? 1 : 0
   name  = "yucca_tf_staging"
@@ -64,9 +47,8 @@ resource "onepassword_item" "yucca_jwt" {
   }
 }
 
-# ES256 keypair for yucca-admin-api's CLI session JWTs (yuctl login). Separate
-# trust domain from yucca_jwt on purpose: admin-api both signs and verifies,
-# and nothing else may accept these tokens.
+# admin-api CLI-session JWTs (yuctl login). Separate trust domain from yucca_jwt
+# on purpose — nothing else may accept these tokens.
 resource "tls_private_key" "yucca_admin_jwt" {
   count       = local.provision_secrets ? 1 : 0
   algorithm   = "ECDSA"
@@ -92,8 +74,7 @@ resource "onepassword_item" "yucca_admin_jwt" {
 }
 
 # ─── Cluster access (recorded in 1P) ────────────────────────────────────
-# kubeconfig + talosconfig, so operators fetch them with `op read` instead of
-# pulling TF state.
+# Operators fetch kubeconfig/talosconfig with `op read`, not TF state.
 resource "onepassword_item" "kubeconfig" {
   count    = local.provision_secrets ? 1 : 0
   vault    = data.onepassword_vault.staging[0].uuid
@@ -111,9 +92,8 @@ resource "onepassword_item" "talosconfig" {
 }
 
 # ─── Namespaces ─────────────────────────────────────────────────────────
-# Created here so the Secrets have a home at bootstrap, before Flux reconciles.
-# Flux's overlays also declare these Namespaces; a bare Namespace is safe under
-# dual ownership (server-side apply ensures-exists from whichever arrives first).
+# Created pre-Flux so Secrets have a home at bootstrap. Flux also declares them;
+# bare Namespaces are safe under dual ownership (SSA ensure-exists).
 
 resource "kubernetes_namespace_v1" "yucca" {
   count = local.provision_secrets ? 1 : 0
@@ -175,9 +155,8 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     JWT_PRIVATE_KEY          = tls_private_key.yucca_admin_jwt[0].private_key_pem_pkcs8
     OIDC_ADMIN_CLIENT_ID     = var.yucca_oidc_admin_client_id
     OIDC_ADMIN_CLIENT_SECRET = var.yucca_oidc_admin_client_secret
-    # Restic repository tokens (POST /repository/:id/url, used by yuctl tools
-    # bench): deliberately the yucca_jwt SIGNING key — michael only accepts
-    # tokens from that keypair. Admin session JWTs stay on yucca_admin_jwt.
+    # Restic repo tokens (yuctl tools bench): deliberately the yucca_jwt SIGNING
+    # key — michael only accepts that keypair. Sessions stay on yucca_admin_jwt.
     RESTIC_JWT_PRIVATE_KEY = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
   }
 
@@ -189,8 +168,7 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
   }
 }
 
-# michael: verifies yucca-api's JWTs with the public key + RGW S3 creds for the
-# restic object store (reached via the in-cluster HAProxy → bare-metal Ceph).
+# michael: JWT public key + RGW S3 creds (in-cluster HAProxy → bare-metal Ceph).
 resource "kubernetes_secret_v1" "yucca_michael" {
   count = local.provision_secrets ? 1 : 0
   metadata {
@@ -204,10 +182,9 @@ resource "kubernetes_secret_v1" "yucca_michael" {
   }
 }
 
-# yucca-metrics-worker: a separate RGW user WITH admin caps, so the worker can
-# pull per-bucket usage from the sietch RGW admin API (michael's plain S3 user
-# can't). Keys are AccessKey/SecretKey to match the chart's radosSecretName
-# lookup. Injected via TF_VAR from 1P now; moves to the yucca_tf_staging vault.
+# yucca-metrics-worker: separate RGW user WITH admin caps (michael's plain S3
+# user can't read the admin API). AccessKey/SecretKey match the chart's
+# radosSecretName lookup. Moves to the yucca_tf_staging vault.
 resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
   count = local.provision_secrets ? 1 : 0
   metadata {
@@ -234,8 +211,7 @@ resource "kubernetes_secret_v1" "vmagent_remote_write" {
 }
 
 # ─── cert-manager Secret (namespace: cert-manager) ──────────────────────
-# Cloudflare API token for the Let's Encrypt DNS-01 ClusterIssuer (same 1P
-# item the dns stack uses — Zone:Read + DNS:Edit on futo.cloud).
+# Cloudflare token for DNS-01 (same 1P item as the dns stack; Zone:Read + DNS:Edit on futo.cloud).
 resource "kubernetes_secret_v1" "cloudflare_api_token" {
   count = local.provision_secrets ? 1 : 0
   metadata {
@@ -247,8 +223,8 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
   }
 
   lifecycle {
-    # "" default keeps credential-less validate clean; never let it reach the
-    # cluster (cert-manager would silently stop renewing).
+    # "" default keeps validate clean; must never reach the cluster
+    # (cert-manager silently stops renewing).
     precondition {
       condition     = length(var.cloudflare_api_token) > 0
       error_message = "cloudflare_api_token is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."
@@ -257,10 +233,9 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
 }
 
 # ─── NetBird operator Secret (namespace: netbird) ───────────────────────
-# Management API token (service user yucca-staging-k8s-operator) the operator
-# authenticates with. Key name NB_API_KEY matches the chart's default
-# netbirdAPI.keyFromSecret. Minted by the staging/netbird stack; read here via
-# TF_VAR from 1P. The operator HelmRelease (Flux) mounts this Secret.
+# Mgmt API token (service user yucca-staging-k8s-operator), minted by the
+# staging/netbird stack. NB_API_KEY matches the chart's netbirdAPI.keyFromSecret;
+# mounted by the operator HelmRelease.
 resource "kubernetes_secret_v1" "netbird_mgmt_api_key" {
   count = local.provision_secrets ? 1 : 0
   metadata {

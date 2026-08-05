@@ -19,19 +19,11 @@ ceph_ssd_nr_requests: 0         # NVMe/SSD defaults are fine
 # BlueStore manages discard for OSD devices internally.
 ceph_enable_fstrim_timer: true
 
-# SATA link power management (ALPM).
-#
-# The AMD FCH AHCI ports come up as min_power_with_partial, which lets the SATA
-# PHY drop into Partial/Slumber between I/Os. Waking it costs milliseconds, and
-# on 2026-07-24 that surfaced as a BlueStore slow-op alert on osd.155 (curtis
-# sdk): PHYRdyChg/CommWake in dmesg, drive itself healthy.
-#
-# An OSD HDD is never idle enough for the power saving to be worth the wake
-# latency, so pin the link to max_performance. Applied live and persisted via
-# the same udev rules file as the block-device tuning.
-#
-# NOTE: writing this attribute schedules a libata EH cycle on the port, so roll
-# it out per node (serial: 1) rather than fleet-wide in one pass.
+# SATA link power management (ALPM): AMD FCH AHCI ports default to
+# min_power_with_partial; the ms-scale PHY wake surfaced as a BlueStore slow-op
+# alert (osd.155, curtis sdk, 2026-07-24: PHYRdyChg/CommWake in dmesg, healthy
+# drive). Pin max_performance; persisted via the block-tuning udev rules. NOTE:
+# writing the attribute schedules a libata EH cycle per port -- roll out serial: 1.
 ceph_sata_link_pm_enabled: true
 ceph_sata_link_pm_policy: max_performance
 

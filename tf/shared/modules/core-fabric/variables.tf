@@ -1,11 +1,7 @@
-# core-fabric — the shared site spine VC (corenetsw). Carries the VC config, the
-# 100G->4x25G breakout, and the L2 stretch of each cluster's VLANs over the
-# spine<->leaf LAG. The spine has NO IRBs (gateways live on the cluster leaves).
-#
-# NOTE: the spine is shared across all clusters. Today it carries cluster 1's
-# VLANs; as clusters are added, extend the vlans/trunk membership here (the
-# vlan ids below are wired to cluster 1's addressing). The configured (aliased)
-# junos provider for the spine VC is passed in by the stack.
+# core-fabric — shared site spine VC (corenetsw): VC config, breakouts, L2
+# stretch of cluster VLANs over the spine↔leaf LAG. Cluster gateways live on the
+# leaves. Shared across clusters — extend vlans/trunk membership as clusters are
+# added (vlan ids below are wired to cluster 1). Aliased junos provider passed in.
 
 variable "public_vlan_id" {
   type        = number

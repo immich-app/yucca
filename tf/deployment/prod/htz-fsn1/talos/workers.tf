@@ -1,17 +1,8 @@
 # ── Bare-metal workers ───────────────────────────────────────────────────────
-# Applied over apid to nodes already in Talos maintenance mode at their fabric_ip
-# or maint_ip (see below). After the install+reboot they keep that fabric IP and
-# join the NetBird mesh (operator/backup plane only).
-#
-#   bond0 (2×25G LACP) → vlan 10 (kube) = fabric_ip — nodeIP + worker east-west (50G)
-#   route to kube-cp (apiserver + VIP) via the kube IRB (10.40.10.1) — the fabric
-#   path to the control plane; the old wt0 (NetBird) route is retired
-#   route to cls1-public (spice RGW) via the same IRB — michael's S3 data path
-#   default route via the Hetzner public NIC (DHCP) for egress
-#
-# Workers are PROVISIONED to maintenance mode out of band — see the runbook
-# (./README.md): Hetzner rescue → dd the Talos metal image → reboot. This stack
-# assumes they're already there.
+# bond0 (2×25G LACP) → vlan 10 (kube) = fabric_ip (nodeIP + east-west 50G);
+# routes to kube-cp and cls1-public (spice RGW, michael S3) via the kube IRB
+# 10.40.10.1; default route via the Hetzner public NIC. Nodes are provisioned to
+# maintenance mode out of band (runbook ./README.md: rescue → dd → reboot).
 
 locals {
   kube_prefix = split("/", local.kube_cidr)[1] # 24
@@ -32,8 +23,7 @@ locals {
             interface = "bond0"
             dhcp      = false
             mtu       = local.fabric_mtu # jumbo fabric (switch L2 9216, IRBs 9202)
-            # Bond members selected by NIC driver (worker_bond_driver, e.g. bnxt_en) —
-            # robust across per-node PCI naming; falls back to explicit Talos names.
+            # Members by NIC driver (robust across PCI naming); explicit names as fallback.
             bond = {
               mode           = "802.3ad"
               lacpRate       = "fast"
@@ -48,11 +38,10 @@ locals {
               vlanId    = module.addr_site.kube_vlan_id # 10
               mtu       = local.fabric_mtu
               addresses = ["${w.fabric_ip}/${local.kube_prefix}"]
-              # kube-cp (apiserver + API VIP) lives one IRB away — pin the route so
-              # kubelet→apiserver + geneve to the CPs ride the fabric, not the mesh.
+              # Pin fabric routes so kubelet→apiserver + geneve ride the fabric, not the mesh.
               routes = concat(
                 [{ network = local.kube_cp_cidr, gateway = local.kube_gateway }],
-                # spice RGW frontend — spine routes kube↔cls1-public (michael S3 path).
+                # spice RGW (michael S3 path).
                 [{ network = local.cls1_public_cidr, gateway = local.kube_gateway }],
                 var.cluster.worker_default_route_via_fabric ? [
                   { network = "0.0.0.0/0", gateway = local.kube_gateway },
@@ -67,43 +56,36 @@ locals {
   ] }
 }
 
-# Keyed by HOSTNAME, not list position: removing or reordering a worker in
-# tfvars must never shift another node's resource address — with count, a shift
-# destroyed (= RESET, wiping Mayastor/localpv data) every displaced live node.
-# Matches the talos-baremetal module's worker_node_map pattern.
+# Keyed by HOSTNAME, not list position — with count, a tfvars reorder destroyed
+# (= RESET, wiping Mayastor/localpv data) every displaced live node.
 resource "talos_machine_configuration_apply" "worker" {
   for_each = local.worker_node_map
 
   client_configuration        = talos_machine_secrets.this.client_configuration
   machine_configuration_input = data.talos_machine_configuration.worker.machine_configuration
-  # The FIRST apply targets the maintenance-mode node at its Hetzner public IP (DHCP,
-  # provisioned=false); the config brings up bond0.10 at fabric_ip + joins NetBird and
-  # the node reboots into the cluster. Every later apply targets the LIVE node at its
-  # fabric IP (over the NetBird kube route) — the maintenance endpoint no longer
-  # exists once installed. Flip provisioned in tfvars per worker as it comes up.
+  # provisioned=false: first apply targets the maintenance node at maint_ip;
+  # later applies target the live node at fabric_ip (maint endpoint is gone once
+  # installed). Flip provisioned in tfvars per worker as it comes up.
   node           = each.value.provisioned ? each.value.fabric_ip : each.value.maint_ip
   endpoint       = each.value.provisioned ? each.value.fabric_ip : each.value.maint_ip
   config_patches = local.worker_node_patches[each.key]
   apply_mode     = "auto"
 
-  # reset=false: decommissioning a Mayastor-bearing node must be a deliberate
-  # `talosctl reset`, never a terraform destroy side effect (a removed tfvars
-  # entry now just reboots the node out of management). NB: on_destroy is read
-  # from STATE, so this protects only after it has been applied once.
+  # reset=false: decommission must be a deliberate `talosctl reset`, never a TF
+  # destroy side effect. NB: on_destroy is read from STATE — protects only after
+  # one apply.
   on_destroy = {
     reboot   = true
     reset    = false
     graceful = false
   }
 
-  # Workers join only after the apiserver is up (bootstrap), or they sit in
-  # maintenance waiting for it.
+  # Workers must not race the apiserver (they'd sit in maintenance).
   depends_on = [talos_machine_bootstrap.this]
 
   lifecycle {
-    # worker_netbird_patch is silently OMITTED when the setup key is "" (the
-    # credential-less validate default) — an env-less apply would strip NetBird
-    # from the live worker configs. Fail loudly instead.
+    # Empty setup key silently omits the netbird patch — an env-less apply would
+    # strip NetBird from live workers. Fail loudly.
     precondition {
       condition     = length(var.netbird_talos_setup_key) > 0
       error_message = "netbird_talos_setup_key is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."

@@ -1,40 +1,27 @@
-# Per-environment NetBird (Cloud) objects. One NetBird Cloud account backs every
-# env/site; objects are namespaced "<NAME_PREFIX>_<KEY>" (UPPER_SNAKE) so they
-# coexist. Groups are created first; setup keys, policies, and networks resolve
-# their logical group keys to NetBird-assigned group IDs.
-#
-# The netbird + onepassword providers are configured by the calling stack (this
-# module only declares the dependency in versions.tf).
+# Per-env NetBird (Cloud) objects; one account backs every env/site, names
+# namespaced by name_prefix. Providers are configured by the calling stack.
 
 locals {
-  # DERIVED NetBird object names are normalized to lowercase-kebab: lowercased,
-  # underscores → hyphens. e.g. name_prefix "yucca_prod_htz-fsn1" + key "mgmt" →
-  # "yucca-prod-htz-fsn1-mgmt"; key "k8s_operator" → "yucca-prod-htz-fsn1-k8s-operator".
-  # An explicit `name` override is taken VERBATIM, for objects that must keep an
-  # exact pre-existing name (e.g. one created outside this module).
-  # NB: the 1Password setup-key item TITLES are deliberately NOT kebab — they stay
-  # UPPER_SNAKE (see setup_key_op_titles below) because CI / ansible / the talos
-  # stack read them by string via op:// refs.
+  # Derived names normalize to lowercase-kebab; explicit `name` override is taken
+  # VERBATIM (pre-existing objects). 1P setup-key TITLES stay UPPER_SNAKE
+  # (setup_key_op_titles) — CI/ansible/talos read them via op:// refs.
   group_names = {
     for k, g in var.groups : k => coalesce(g.name, lower(replace("${var.name_prefix}_${k}", "_", "-")))
   }
 
-  # UPPER_SNAKE 1Password item titles for the minted setup keys, kept stable
-  # (decoupled from the now-kebab NetBird object name) so external op:// consumers
-  # keep resolving. e.g. key "mgmt" → "NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY".
+  # UPPER_SNAKE 1P titles, stable and decoupled from the kebab NetBird name so
+  # op:// consumers keep resolving. e.g. "mgmt" → NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY.
   setup_key_op_titles = {
     for k, s in var.setup_keys : k => "NETBIRD_${upper(replace("${var.name_prefix}_${k}", "-", "_"))}_SETUP_KEY"
   }
 
-  # Logical key → NetBird group ID, covering both the groups this layer owns and
-  # any external_groups handed in from another layer (e.g. prod global → site).
+  # Logical key → group ID; owned groups + external_groups from another layer.
   group_ids = merge(
     { for k, g in netbird_group.this : k => g.id },
     var.external_groups,
   )
 
-  # Flatten networks → resources as "<network_key>/<resource_key>" so each routed
-  # subnet/host is its own netbird_network_resource instance.
+  # Flatten networks → resources keyed "<network_key>/<resource_key>".
   network_resources = merge([
     for nk, n in var.networks : {
       for rk, r in n.resources : "${nk}/${rk}" => {
@@ -48,15 +35,12 @@ locals {
     }
   ]...)
 
-  # Groups this layer owns that are flagged `resource = true` ("yucca tags"): the
-  # destinations of the auto-generated yucca→resources policy. `resource = true`
-  # means yucca-reachable — a peer/node group (its peers) or a network-resource
-  # tag (its routed resources). Flagged groups are picked up here automatically.
+  # `resource = true` = yucca-reachable (peer group or network-resource tag);
+  # these become destinations of the auto-generated yucca→resources policy.
   resource_group_keys = [for k, g in var.groups : k if g.resource]
   resource_group_ids  = [for k in local.resource_group_keys : netbird_group.this[k].id]
 
-  # Manage the yucca→resources policy only when this layer owns ≥1 resource group
-  # and a users group is configured (var.yucca_users_group != null).
+  # Policy managed only with ≥1 resource group and a configured users group.
   manage_resource_policy = var.yucca_users_group != null && length(local.resource_group_keys) > 0
 }
 
@@ -103,13 +87,9 @@ resource "netbird_policy" "this" {
 }
 
 # ─── yucca users → every yucca-tagged group (auto-derived) ───────────────
-# Members of the account-wide `yucca` users group reach every group flagged
-# `resource = true` in this layer — its peers (e.g. SSH to the mgmt/talos nodes)
-# AND any network resources tagged into it. Destinations are derived from those
-# groups (local.resource_group_ids), so flagging a new group covers it without
-# touching a policy. bidirectional = false → yucca users only INITIATE the
-# connection (this policy never makes the tagged groups a source). The users
-# group is looked up by name (it lives outside this stack).
+# Account-wide `yucca` users reach every resource=true group (peers + tagged
+# resources); flagging a new group covers it without policy edits.
+# bidirectional=false: users only INITIATE. Users group lives outside this stack.
 data "netbird_group" "yucca_users" {
   count = local.manage_resource_policy ? 1 : 0
   name  = var.yucca_users_group
@@ -134,11 +114,8 @@ resource "netbird_policy" "yucca_to_resources" {
 }
 
 # ─── Networks (routed access into a site's underlying subnets) ───────────
-# A Network groups one or more resources (subnets/hosts) reachable through a set
-# of routing peers (router.peer_groups — e.g. a site's mgmt nodes). resources[*]
-# .groups controls which peers may reach that subnet. The Network's display name
-# is the lowercase-kebab map key (or `name` override) — e.g. key "HTZ-FSN1" →
-# "htz-fsn1". The map key itself is unchanged (resources address by network_id).
+# Resources reachable via router.peer_groups; resources[*].groups controls who
+# may reach each subnet. Display name = lowercase-kebab map key (or override).
 resource "netbird_network" "this" {
   for_each    = var.networks
   name        = coalesce(each.value.name, lower(replace(each.key, "_", "-")))
@@ -167,8 +144,7 @@ resource "netbird_network_resource" "this" {
 }
 
 # ─── Setup keys → 1Password (source of truth for the plaintext key) ──────
-# Operators retrieve a key with `op read`/the desktop app instead of digging
-# through TF state. Per-env vault: dev → yucca_tf_dev, etc.
+# Operators use `op read`, not TF state. Per-env vault (dev → yucca_tf_dev, …).
 data "onepassword_vault" "env" {
   name = var.vault
 }
@@ -177,10 +153,8 @@ resource "onepassword_item" "setup_key" {
   for_each = var.setup_keys
 
   vault = data.onepassword_vault.env.uuid
-  # Title stays UPPER_SNAKE (decoupled from the now-kebab NetBird setup-key name)
-  # so external op:// consumers (CI, ansible, talos) keep resolving, and so multiple
-  # sites writing to the SAME vault (prod: global + every site → yucca_tf_prod)
-  # never collide. e.g. key "mgmt" → NETBIRD_YUCCA_PROD_HTZ_FSN1_MGMT_SETUP_KEY.
+  # UPPER_SNAKE title: op:// consumers keep resolving, and multiple sites writing
+  # the SAME vault (prod: global + every site → yucca_tf_prod) never collide.
   title    = local.setup_key_op_titles[each.key]
   category = "password"
   password = netbird_setup_key.this[each.key].key

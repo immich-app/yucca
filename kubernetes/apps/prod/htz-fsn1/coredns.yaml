@@ -1,13 +1,8 @@
-# coredns for the father cluster — OWNED HERE, not by Talos.
-#
-# Talos's bootstrap-manifest reconciliation kept reverting the worker-affinity pin
-# (any CP machineconfig change re-applied the stock deployment and coredns drifted
-# back onto the CPs, where worker pods can't reliably reach it — the CP<->worker
-# pod-to-pod path rides the flaky mgmt NetBird route). cluster.coreDNS.disabled=true
-# (talos stack) stops Talos from managing these objects; this manifest is the source
-# of truth. Snapshotted from the Talos-rendered objects + the nodeAffinity pin.
-# To be adopted by Flux when GitOps lands on father. Upgrades of the coredns image
-# are ours to do now.
+# coredns for father — OWNED HERE, not by Talos: bootstrap-manifest reconciliation kept
+# reverting the worker-affinity pin (coredns drifted back onto the CPs, which worker pods
+# reach only over the flaky mgmt NetBird route). cluster.coreDNS.disabled=true (talos
+# stack) stops Talos managing these objects; snapshotted from the Talos-rendered objects
+# + the nodeAffinity pin. Adopt into Flux when GitOps lands; coredns image upgrades are ours now.
 apiVersion: v1
 kind: ServiceAccount
 metadata:

@@ -1,7 +1,5 @@
-# Cluster renamed yucca-staging → luke (Star Wars theme). Move the existing module
-# instance to the new for_each key so it's a state rename, NOT a destroy+recreate —
-# preserving machine-secrets/kubeconfig so the kubernetes/helm providers keep working
-# (cluster_name + node hostnames still update as a rolling config change).
+# yucca-staging → luke rename: state move, NOT destroy+recreate (preserves
+# machine-secrets/kubeconfig; hostnames update as a rolling config change).
 moved {
   from = module.cluster["yucca-staging"]
   to   = module.cluster["luke"]
@@ -32,9 +30,8 @@ module "cluster" {
   disable_kube_proxy           = each.value.disable_kube_proxy
   enable_hubble_firewall_ports = each.value.hubble
 
-  # When the CNI is installed after bootstrap (cilium/none), don't require
-  # node-Ready in the bootstrap health gate — it'd deadlock with no CNI yet.
-  # The post-CNI health check below enforces full readiness once Cilium is in.
+  # Out-of-band CNI: requiring node-Ready pre-CNI would deadlock; the post-CNI
+  # health check enforces full readiness.
   health_skip_kubernetes_checks = each.value.cni != "flannel"
 
   enable_ingress_firewall = each.value.enable_ingress_firewall
@@ -46,8 +43,7 @@ module "cluster" {
   nodes          = each.value.nodes
   config_patches = each.value.config_patches
 
-  # Node-level NetBird overlay: append the ExtensionServiceConfig for the
-  # siderolabs/netbird extension (no-op when the key is empty).
+  # NetBird ExtensionServiceConfig; no-op when the key is empty.
   netbird_setup_key = var.netbird_talos_setup_key
 }
 

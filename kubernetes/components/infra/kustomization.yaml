@@ -1,12 +1,8 @@
-# Role-INDEPENDENT per-cluster infrastructure. Every cluster overlay pulls this
-# in via `components: [../../../components/infra, ...]`, regardless of whether
-# the region is primary or secondary. These are the platform layers the apps sit
-# on: the CNPG operator, node-local storage (OpenEBS LocalPV), the network/ingress stack
-# (cert-manager, cilium-lb, envoy gateway/proxy, httproutes, netbird-operator),
-# and observability agents (vmagent, victoria-logs-collector).
-#
-# Each entry is itself a kustomize Kustomization of Flux Kustomizations pointing
-# at apps/base/<x>; the Component just accumulates them into the overlay.
+# Role-INDEPENDENT per-cluster infrastructure, pulled in by every overlay (primary or
+# secondary) via `components: [../../../components/infra, ...]`: CNPG operator, OpenEBS
+# LocalPV, network/ingress (cert-manager, cilium-lb, envoy, httproutes, netbird-operator),
+# observability agents. Each entry is a kustomize Kustomization of Flux Kustomizations
+# over apps/base/<x>; the Component just accumulates them.
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:

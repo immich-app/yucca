@@ -11,21 +11,16 @@ locals {
   kube_cidr    = "10.${var.site_id}.${var.kube_octet}.0/24"
   kube_vlan_id = var.kube_octet
 
-  # Site-global Kubernetes control-plane VLAN ("kube-cp") — a fabric VLAN like
-  # `kube`: holds the bare-metal control-plane nodes (etcd CP↔CP + apiserver) and
-  # the cluster's API VIP. Workers do NOT join it — the spine routes kube↔kube-cp
-  # via its two IRBs. (Historically this was an isolated Hetzner Cloud private
-  # subnet for the cloud CP VMs + API LB; same CIDR, now on the switches.)
+  # kube-cp fabric VLAN: CP nodes (etcd + apiserver) + the API VIP. Workers do
+  # NOT join it — the spine routes kube↔kube-cp via its IRBs.
   #   kube-cp  10.<site>.<kube_cp_octet>.0/24  -> vlan <kube_cp_octet> (gw .1 = spine IRB)
   kube_cp_cidr    = "10.${var.site_id}.${var.kube_cp_octet}.0/24"
   kube_cp_vlan_id = var.kube_cp_octet
   kube_cp_gateway = cidrhost(local.kube_cp_cidr, 1) # .1 — spine IRB
 
-  # Internal (NetBird-only) Kubernetes LoadBalancer VIP range. Like kube-cp it is
-  # NEVER a switch VLAN: Cilium assigns VIPs from it and the workers advertise the
-  # /32s to the spine over iBGP; NetBird peers reach them via the mgmt route peers
-  # (routed resource) -> spine -> worker. Carved from the site supernet for
-  # collision-free IPAM only.
+  # Internal (NetBird-only) LB VIP range — NEVER a switch VLAN: Cilium assigns
+  # VIPs, workers advertise /32s via iBGP; peers reach them mgmt route → spine →
+  # worker. Carved from the supernet for collision-free IPAM only.
   #   lb-internal  10.<site>.12.0/24
   lb_internal_cidr = "10.${var.site_id}.12.0/24"
 
@@ -46,10 +41,8 @@ locals {
   public_vlan_id  = local.has_cluster ? var.cluster_id * 100 + 20 : null
   private_vlan_id = local.has_cluster ? var.cluster_id * 100 + 22 : null
 
-  # Host-management network: a /24 within the cluster /20 at block idx 8 (octet
-  # base+8 -> 10.40.24.0/24 for cls1). Dedicated SSH/management plane for the
-  # cluster's hosts + the mgmt nodes, isolated from the public/private data nets.
-  #   vlan id = cluster_id*100 + 24 (cls1 -> 124); octet 24 == role suffix.
+  # Host-mgmt /24 at block idx 8 (base+8 -> 10.40.24.0/24 for cls1): SSH/mgmt
+  # plane, isolated from the data nets. vlan id = cluster_id*100 + 24 (cls1 -> 124).
   host_mgmt_cidr    = local.has_cluster ? cidrsubnet(local.cluster_supernet, 4, 8) : null
   host_mgmt_vlan_id = local.has_cluster ? var.cluster_id * 100 + 24 : null
 

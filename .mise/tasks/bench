@@ -3,31 +3,13 @@
 #MISE depends=["docker:start", "restic-api:build", "michael:build"]
 #MISE dir="{{config_root}}"
 #
-# Benchmark restic-compatible backends using the real restic CLI.
+# Benchmark restic-compatible backends (restic-api and/or michael) with the real
+# restic CLI; default runs both and prints a comparison table. Needs MinIO up
+# (mise docker:start) + restic/node/perl; compare mode also pnpm deps + go.
 #
-# Supports restic-api (Node.js/NestJS) and michael (Go), with an optional
-# comparison mode that runs both sequentially and prints a side-by-side table.
-#
-# Prerequisites:
-#   - MinIO running                    (mise docker:start)
-#   - restic, node, perl installed     (mise install)
-#   - For --compare: pnpm deps + go    (mise install:deps)
-#
-# Usage:
-#   # Benchmark both backends and compare (default):
-#   mise bench
-#
-#   # Benchmark a single backend:
-#   mise bench -- --backend restic-api
-#   mise bench -- --backend michael
-#
-# Options:
-#   --backend NAME       Benchmark only one backend: restic-api | michael
-#   --small-files N      Number of small files   (default: 1000)
-#   --medium-files N     Number of medium files   (default: 1000)
-#   --large-files N      Number of large files    (default: 100)
-#   --large-size-mb N    Size of each large file  (default: 100)
-#   --no-cleanup         Keep S3 buckets after run
+# Usage: mise bench [-- --backend restic-api|michael]
+# Options: --backend NAME | --small-files N | --medium-files N | --large-files N
+#          | --large-size-mb N | --no-cleanup (keep S3 buckets)
 #
 set -euo pipefail
 
@@ -232,7 +214,6 @@ start_backend() {
   local name="$1"
   echo "  $(dim "Starting ${name}...")"
 
-  # Ensure port is free before starting
   lsof -ti ":$API_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
   local elapsed=0
   while nc -z "$API_HOST" "$API_PORT" 2>/dev/null; do
@@ -285,7 +266,6 @@ stop_backend() {
   # Also kill anything still on the port (child processes)
   lsof -ti ":$API_PORT" -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
 
-  # Wait for port to free up
   local elapsed=0
   while nc -z "$API_HOST" "$API_PORT" 2>/dev/null; do
     sleep 0.2
@@ -365,7 +345,6 @@ run_throughput() {
 
   init_repo
 
-  # init
   local t0 t1
   t0=$(now_ms)
   if ! restic init -q 2>"$restic_log"; then
@@ -376,7 +355,6 @@ run_throughput() {
   t1=$(now_ms)
   echo "    init:        $(elapsed_s "$t0" "$t1")s"
 
-  # backup
   t0=$(now_ms)
   if ! restic backup -q "$data_dir" 2>"$restic_log"; then
     echo "    $(red 'ERROR: restic backup failed')"
@@ -397,7 +375,6 @@ run_throughput() {
     echo "    $(dim "             ~${ms_per_file} ms/file")"
   fi
 
-  # restore
   local restore_dir="$BENCH_DIR/restore_${RANDOM}"
   mkdir -p "$restore_dir"
   t0=$(now_ms)
@@ -429,7 +406,6 @@ run_throughput() {
   echo "    incremental: ${incr_s}s  (no new data)"
   save_result "${tag}_incr_s" "$incr_s"
 
-  # memory
   if [[ -n "${API_PID:-}" ]]; then
     echo "    memory:      $(fmt_mem_mb "$(mem_rss_kb)") current, $(fmt_mem_mb "$(mem_peak_kb)") peak"
   fi
@@ -453,7 +429,6 @@ run_suite() {
   echo "$(bold '════════════════════════════════════════════════════════════')"
   echo ""
 
-  # memory baseline
   stop_mem_monitor
   echo "0" > "$BENCH_DIR/.mem_peak"
   start_mem_monitor
@@ -482,7 +457,6 @@ run_suite() {
     "large  (${LARGE_COUNT} x ${LARGE_SIZE_MB} MB = $(human_size $large_bytes))" \
     "$BENCH_DIR/data/large" "$large_bytes" "$LARGE_COUNT"
 
-  # save final memory
   save_result "mem_peak_kb" "$(mem_peak_kb)"
 }
 
@@ -580,7 +554,6 @@ print_comparison() {
   echo "$(bold '════════════════════════════════════════════════════════════════════════════════')"
   echo ""
 
-  # Header
   printf '  %-24s %16s %16s %10s\n' "" "restic-api" "michael" "delta"
   printf '  %-24s %16s %16s %10s\n' "" "──────────" "───────" "─────"
 

@@ -27,10 +27,9 @@ type CleanupOptions struct {
 	Timeout    time.Duration
 }
 
-// Cleanup purges warp test buckets via a hostNetwork Job running `mc` inside
-// the cluster — the RGW IPs are fabric-internal, so the deletes must run from
-// the worker vantage, with the same creds secret the runners use. Note a mass
-// delete is itself a load event (RGW GC churns afterwards).
+// Cleanup purges warp buckets via a hostNetwork `mc` Job in-cluster — RGW IPs
+// are fabric-internal, so deletes run from the worker vantage with the runners'
+// creds secret. A mass delete is itself a load event (RGW GC churns after).
 func (s *Session) Cleanup(ctx context.Context, opts CleanupOptions) error {
 	if len(opts.Prefixes) == 0 {
 		opts.Prefixes = []string{"yuctl-warp-"}

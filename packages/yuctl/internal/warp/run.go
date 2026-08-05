@@ -51,17 +51,14 @@ func (o *StartOptions) defaults() {
 	}
 }
 
-// killScript terminates the loop wrappers first so they cannot respawn warp,
-// then the warp processes. The [b]racket trick keeps each pattern from
-// matching the `sh -c` process running this very script (whose command line
-// contains the pattern text) — a self-match SIGTERMs the exec and fails it
-// with exit 143. Trailing `true` absorbs pkill's exit 1 on no-match.
+// killScript kills loop wrappers first (no respawn), then warp. The [b]racket
+// keeps patterns from matching this script's own `sh -c` line (self-match
+// SIGTERMs the exec, exit 143); trailing `true` absorbs pkill's no-match exit 1.
 const killScript = `pkill -f 'warp-[p]ut-loop' 2>/dev/null; pkill -f 'warp-[g]et-loop' 2>/dev/null; sleep 1; ` +
 	`pkill -f '/warp [p]ut' 2>/dev/null; pkill -f '/warp [g]et' 2>/dev/null; true`
 
-// Start launches (or gracefully relaunches) the load on every runner pod. Any
-// warp processes already running are killed first, so start is idempotent and
-// doubles as "restart with new parameters".
+// Start (re)launches load on every runner pod, killing running warp first —
+// idempotent, doubles as "restart with new parameters".
 func (s *Session) Start(ctx context.Context, opts StartOptions) error {
 	opts.defaults()
 
@@ -132,9 +129,8 @@ func (s *Session) Start(ctx context.Context, opts StartOptions) error {
 				`--objects=%d --obj.size=%s --duration=%s --concurrent=%d --noclear --no-color >> /tmp/warp-get.log 2>&1`,
 				hostList, tlsFlags, opts.BucketPrefix, pod.Name, opts.GetObjects, opts.GetObjSize, runDuration, get)
 
-			// Kill and launch are separate execs: the launch script's literal
-			// "/warp put ..." text would otherwise match the kill patterns in
-			// the same command line and SIGTERM the script itself.
+			// Separate execs: launch's literal "/warp put ..." would otherwise
+			// match the kill patterns in the same command line and SIGTERM the script.
 			if _, err := s.podExec(ctx, pod.Name, killScript); err != nil {
 				if s.podGone(ctx, pod.Name) {
 					log.Warn().Str("pod", pod.Name).Msg("pod terminated mid-start; skipping it")
@@ -377,9 +373,9 @@ func (s *Session) Status(ctx context.Context, sampleSeconds int) (*StatusReport,
 	return report, nil
 }
 
-// sampleNode reads /proc/net/dev twice and returns the busiest physical
-// interface's rates. Virtual interfaces (CNI veth/lxc/cilium, loopback,
-// tunnels) are excluded so the number reflects the host NIC / bond.
+// sampleNode reads /proc/net/dev twice, returning the busiest physical
+// interface's rates; virtual ifaces (veth/lxc/cilium, lo, tunnels) excluded so
+// the number reflects the host NIC/bond.
 func (s *Session) sampleNode(ctx context.Context, pod RunnerPod, seconds int) (*NodeThroughput, error) {
 	out, err := s.podExec(ctx, pod.Name,
 		fmt.Sprintf(`cat /proc/net/dev; sleep %d; echo ---SAMPLE---; cat /proc/net/dev`, seconds))

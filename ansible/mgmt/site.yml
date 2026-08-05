@@ -1,18 +1,11 @@
 ---
-# Configure the Hetzner FSN1 management hosts after they are reprovisioned
-# to Debian 13 ("trixie") via Hetzner robot auto-install.
-#
-# Connection: freshly-reprovisioned hosts are reached over their PUBLIC IP
-# (bootstrap); once a host has joined the NetBird overlay (the netbird role),
-# later runs reconnect over its NetBird IP automatically — see the first play.
-#
-# Canonical entrypoint is `mise run mgmt:ansible` (renders the inventory from
-# Terraform, then runs this). It passes the provisioning key + the NetBird
-# "mgmt" setup key (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<REGION>_MGMT_SETUP_KEY).
-#
-# NOTE: the networkd role (25G VLAN sub-interfaces) is gated on
-# mgmt_networkd_enabled (default false) because the 25G fabric link is
-# currently unreliable. Enable it once the fabric is up.
+# Configure the FSN1 mgmt hosts after Robot auto-install of Debian 13 (trixie).
+# Fresh hosts are reached over their PUBLIC IP (bootstrap); once NetBird-joined,
+# later runs reconnect over the NetBird IP (first play). Canonical entrypoint:
+# `mise run mgmt:ansible` (renders inventory from TF; passes the provisioning key
+# + op://yucca_tf_prod/NETBIRD_YUCCA_PROD_<REGION>_MGMT_SETUP_KEY).
+# networkd role (25G VLANs) gated on mgmt_networkd_enabled (default false: the
+# 25G fabric link is currently unreliable).
 
 # ── Prefer NetBird, fall back to the public IP ───────────────────────────────
 # Runs entirely on the control node (no target connection), so it's safe before

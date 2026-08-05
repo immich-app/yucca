@@ -9,8 +9,7 @@ spec:
   chart:
     spec:
       chart: charts/apps/yucca-metrics-worker
-      # Repackage on every git revision — the in-repo charts keep a static
-      # version, so the default ChartVersion strategy never ships template edits.
+      # In-repo charts keep a static version; Revision repackages every git rev (ChartVersion would never ship template edits).
       reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
@@ -26,32 +25,25 @@ spec:
   values:
     image:
       repository: ghcr.io/immich-app/yucca/yucca-metrics-worker
-      # Substituted from the image-versions ConfigMap: staging's is rewritten
-      # in-cluster to the latest CI build (flux-operator ResourceSet), prod's is
-      # release-please-stamped in git. If unset, the empty default lets the
-      # chart fall back to v<appVersion> — the matching release image.
+      # From the image-versions ConfigMap (staging: rewritten in-cluster by the flux-operator
+      # ResourceSet to latest CI build; prod: release-please-stamped in git). Empty default →
+      # chart falls back to v<appVersion>, the matching release image.
       tag: ${YUCCA_IMAGE_TAG:=}
     # Shares yucca-api's CNPG database; the chart reads creds from the
     # <cluster>-app Secret (yucca-db-app), which CNPG manages.
     postgresClusterName: yucca-db
-    # Per-bucket usage comes from the bare-metal RGW admin API of every storage
-    # cluster in the topology file (ConfigMap yucca-topology, rgw_admin_endpoint
-    # per cluster). It serves HTTPS behind a self-signed cert, so the worker
-    # skips TLS verification (NODE_TLS_REJECT_UNAUTHORIZED below), mirroring
-    # michael's S3_TLS_SKIP_VERIFY. The fallback admin credentials
-    # (AccessKey/SecretKey) are TF-provisioned into the yucca-metrics-rgw Secret
-    # (tf .../secrets.tf), like yucca-michael — not managed in this repo;
-    # additional clusters get RADOS_*_<CODE> env pairs.
+    # Per-bucket usage from each storage cluster's RGW admin API (topology
+    # rgw_admin_endpoint). Self-signed HTTPS → NODE_TLS_REJECT_UNAUTHORIZED below
+    # (mirrors michael's S3_TLS_SKIP_VERIFY). Fallback admin creds TF-provisioned into
+    # the yucca-metrics-rgw Secret (tf .../secrets.tf); extra clusters get RADOS_*_<CODE> pairs.
     radosSecretName: yucca-metrics-rgw
-    # Drop the chart's dev-fixture POLAR_* placeholder Secret (same pattern as
-    # the yucca-api/michael/admin-api HelmReleases) — real billing creds arrive
-    # via ExternalSecret when Polar integration lands; until then rendering the
-    # placeholders into a prod Secret invites silently-broken billing.
+    # Drop the dev-fixture POLAR_* placeholders (same pattern as the other HRs); real
+    # billing creds arrive via ExternalSecret when Polar lands — placeholders in a prod
+    # Secret invite silently-broken billing.
     secretData: null
-    # Full replacement of the chart's dev env: production mode, OTLP metrics to
-    # the in-cluster vmagent. Logs are collected node-side by
-    # victoria-logs-collector (pod stdout), so no OTEL_LOGGING push here.
-    # RADOS_* and POSTGRES_* are appended by the chart from the Secrets above.
+    # Full replacement of the chart's dev env. Logs are collected node-side by
+    # victoria-logs-collector (stdout) — no OTEL_LOGGING push. RADOS_*/POSTGRES_* are
+    # appended by the chart from the Secrets above.
     env:
       - name: NODE_ENV
         value: production

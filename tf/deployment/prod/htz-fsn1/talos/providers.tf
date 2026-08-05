@@ -1,8 +1,6 @@
-# helm + kubernetes bind to ONE cluster: the bootstrap CP's directly-reachable
-# apiserver (over the NetBird kube-cp route) — up immediately after bootstrap and
-# in the cert SANs, unlike the VIP which only settles once etcd elects a holder.
-# Creds come from the Talos-minted admin kubeconfig (known after
-# talos_cluster_kubeconfig applies).
+# helm/kubernetes dial the bootstrap CP's apiserver directly (up right after
+# bootstrap, in cert SANs — the VIP only settles on etcd election); creds from
+# the Talos-minted admin kubeconfig.
 provider "helm" {
   kubernetes = {
     host                   = local.operator_endpoint

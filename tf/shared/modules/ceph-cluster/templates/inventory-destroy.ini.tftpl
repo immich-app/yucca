@@ -2,18 +2,10 @@
 # DESTROY inventory — Ceph ${cluster_name} cluster @ ${domain}
 # TF-GENERATED — do not edit by hand. Source: tf/deployment/<partition>/<region>/ceph/
 #
-# Mirrors inventory.ini but lives as a separate file so destroy runs require
-# an explicit CEPH_ENV override — a speed bump against accidentally running
-# destroy-ceph.yml against the wrong inventory. The playbook enforces two
-# additional safety gates at run time:
-#   -e yes_destroy_ceph=true
-#   -e destroy_target_domain=${domain}
-#
-# Usage:
-#   CEPH_ENV=inventories/<cluster>/inventory-destroy.ini \
-#     scripts/ansible-play.sh destroy-ceph.yml \
-#     -e yes_destroy_ceph=true \
-#     -e destroy_target_domain=${domain}
+# Separate file so destroy runs need an explicit CEPH_ENV override. Playbook
+# gates: -e yes_destroy_ceph=true -e destroy_target_domain=${domain}
+# Usage: CEPH_ENV=inventories/<cluster>/inventory-destroy.ini \
+#   scripts/ansible-play.sh destroy-ceph.yml -e yes_destroy_ceph=true -e destroy_target_domain=${domain}
 #
 [ceph_nodes]
 %{ for h in hosts ~}

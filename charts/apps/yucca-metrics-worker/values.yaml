@@ -22,14 +22,11 @@ ports:
 # CNPG-managed postgres Cluster name (shares yucca-api's database)
 postgresClusterName: yucca-db
 
-# RGW admin endpoints come from the hot-reloaded topology file (ConfigMap
-# yucca-topology, rgw_admin_endpoint per storage cluster). The object-user Secret holds the
-# fallback AccessKey/SecretKey pair — a dedicated RGW user (charts/ceph-objectuser
-# via the yucca-metrics-object-user release) with admin read caps, so the worker
-# can pull per-bucket stats from the RGW admin API — michael is a plain S3 user
-# without those caps. Per-cluster creds override via
-# RADOS_ACCESS_KEY_ID_<CODE>/RADOS_SECRET_ACCESS_KEY_<CODE> keys in that same
-# Secret (envFrom exposes them under those exact names).
+# RGW admin endpoints come from the hot-reloaded topology file (rgw_admin_endpoint per
+# cluster). Secret holds the fallback AccessKey/SecretKey — a dedicated RGW user
+# (charts/ceph-objectuser, yucca-metrics-object-user release) with admin read caps for
+# per-bucket stats (michael's plain S3 user lacks them). Per-cluster overrides:
+# RADOS_ACCESS_KEY_ID_<CODE>/RADOS_SECRET_ACCESS_KEY_<CODE> in the same Secret (envFrom).
 radosSecretName: rook-ceph-object-user-yucca-metrics
 
 volumes:

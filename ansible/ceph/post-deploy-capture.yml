@@ -1,23 +1,11 @@
 ---
-# post-deploy-capture.yml — snapshot bootstrap-side secrets into 1Password.
-#
-# Captures:
-#   /etc/ceph/rgw-ssl.crt         -> <CLUSTER>_CEPH_RGW_TLS_CERT
-#   /etc/ceph/rgw-ssl.key         -> <CLUSTER>_CEPH_RGW_TLS_KEY
+# Snapshot bootstrap-side secrets into 1Password (idempotent create/update):
+#   /etc/ceph/rgw-ssl.{crt,key} -> <CLUSTER>_CEPH_RGW_TLS_{CERT,KEY}
 #   /etc/ceph/ceph.client.admin.keyring -> <CLUSTER>_CEPH_CLIENT_ADMIN_KEYRING
-#
-# Idempotent: creates item if missing, updates if content drifted.
-#
-# Belt-and-suspenders only. The cluster continues to run from on-node
-# copies; the 1P copies exist for disaster recovery (e.g., laurel dies +
-# filesystem loss + you want to restore the RGW cert to a new bootstrap
-# node without re-trusting it in every S3 client).
-#
-# Usage:
-#   scripts/ansible-play.sh post-deploy-capture.yml
-#
-# Requires: superuser SA read access from controller (already required by
-# mise run tf:* tasks), op CLI on controller, 1P session live.
+# DR belt-and-suspenders only (restore the RGW cert to a new bootstrap node
+# without re-trusting every S3 client); the cluster runs from on-node copies.
+# Usage: scripts/ansible-play.sh post-deploy-capture.yml
+# Requires superuser SA read access + op CLI + live 1P session on the controller.
 
 - name: Capture bootstrap-side secrets to 1Password
   hosts: ceph_bootstrap

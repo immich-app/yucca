@@ -1,21 +1,15 @@
 name: s3-dns-roster-validate
 
-# Static gate: the prod S3 RGW DNS roster (the A-records for
-# s3.prod.fsn1.htz.futo.cloud + the wildcard, in tf/deployment/prod/global/dns)
-# is a hand-maintained round-robin over every in-service spice ceph node's fabric
-# IP. Nothing links it to the ceph stack, so adding/replacing/removing a node can
-# silently blackhole the endpoint (a stale IP that routes nowhere) or drop capacity
-# (a live node left out of rotation). Without this gate the mismatch first surfaces
-# in production, after the DNS apply.
-#
-# tf/scripts/check-s3-dns-roster.py reconstructs the expected roster from the ceph
+# Static gate: the prod S3 DNS roster (A-records for s3.prod.fsn1.htz.futo.cloud
+# + wildcard, tf/deployment/prod/global/dns) is a hand-maintained round-robin over
+# in-service spice nodes' fabric IPs, with no link to the ceph stack — a node
+# add/replace/remove can silently blackhole the endpoint (stale IP) or drop
+# capacity (node left out), surfacing only in prod after the DNS apply.
+# tf/scripts/check-s3-dns-roster.py rebuilds the expected roster from the ceph
 # source of truth (clusters.auto.tfvars in-service set + spice-hosts.yaml
-# host_index -> fabric IP) and fails on any divergence. Credential-free and
-# stdlib-only: no remote state, no provider, no 1Password, no host connection.
-#
-# Its own workflow (not a job in infra.yml or ci.yml) so the path filter below is
-# workflow-scoped: it fires only when the DNS roster or a ceph roster input
-# changes, mirroring ansible-ceph-validate.yml.
+# host_index -> fabric IP) and fails on divergence. Credential-free, stdlib-only.
+# Own workflow so the path filter stays workflow-scoped (mirrors
+# ansible-ceph-validate.yml).
 
 on:
   pull_request:
@@ -29,8 +23,7 @@ on:
     branches: [main]
     paths: *paths
 
-# Read-only: checkout only. No writes through the token, no deploy credentials,
-# no 1Password.
+# Read-only: no token writes, no deploy credentials, no 1Password.
 permissions:
   contents: read
 
@@ -48,7 +41,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Stdlib-only Python; ubuntu-latest ships python3. No mise/tool install
-      # needed, so this gate stays fast and dependency-free.
+      # Stdlib-only; ubuntu-latest ships python3 — no mise/tool install needed.
       - name: Roster drift check
         run: tf/scripts/check-s3-dns-roster.py

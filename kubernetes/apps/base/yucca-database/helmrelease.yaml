@@ -9,8 +9,7 @@ spec:
   chart:
     spec:
       chart: charts/platform/cnpg-cluster
-      # Repackage on every git revision — the in-repo charts keep a static
-      # version, so the default ChartVersion strategy never ships template edits.
+      # In-repo charts keep a static version; Revision repackages every git rev (ChartVersion would never ship template edits).
       reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
@@ -23,10 +22,9 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
-  # HA across the 3 control-planes: CNPG runs a primary + 2 streaming replicas
-  # and spreads them one-per-node via its default pod anti-affinity. This base
-  # is consumed only by the real clusters (staging/production) — local dev uses
-  # the separate dev-mirror tree, which keeps the chart's 1-instance default.
+  # HA across the 3 control-planes: primary + 2 streaming replicas, one-per-node via
+  # CNPG's default anti-affinity. Real clusters only — local dev uses the dev-mirror
+  # tree (chart's 1-instance default).
   # TODO: point backups at object storage; consider synchronous replication.
   values:
     instances: 3
@@ -36,9 +34,7 @@ spec:
     resources:
       requests: { cpu: 500m, memory: 1Gi }
       limits: { memory: 8Gi }
-    # Node-local NVMe (no replicated block storage). CNPG provides HA at the app
-    # layer: primary + 2 streaming replicas, spread one-per-node by its default
-    # anti-affinity, each binding a local PV on its node (WaitForFirstConsumer).
-    # Per-cluster class: staging = openebs-spare-disk (overlay SC), prod =
-    # openebs-hostpath (chart localpv class) — set in each cluster-settings.
+    # Node-local NVMe — CNPG is the HA layer; each instance binds a local PV
+    # (WaitForFirstConsumer). Per-cluster class via cluster-settings: staging =
+    # openebs-spare-disk (overlay SC), prod = openebs-hostpath (chart localpv class).
     storageClass: ${DB_STORAGE_CLASS}

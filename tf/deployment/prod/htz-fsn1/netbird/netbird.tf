@@ -9,26 +9,18 @@ provider "netbird" {}
 provider "onepassword" {}
 
 locals {
-  # Routed subnets for the HTZ-FSN1 Network. The mgmt nodes (router peers) expose
-  # these to the overlay. ADDRESSES ARE PROPAGATED from the fabric-addressing plan
-  # (addressing.tf) — not hardcoded — so the cluster definition stays the single
-  # source of truth. Every resource is tagged into this site's own "resources"
-  # group (flagged `resource = true` in netbird.auto.tfvars), so the module-
-  # generated yucca→resources policy governs access — and resources never appear
-  # as a policy source, so they can't reach each other.
-  # NB: the `kube-cp` VLAN is deliberately NOT in this map — it's routed by its
-  # own network below (via the CPs, the talos_cp group), keeping the API plane's
-  # mesh path independent of the mgmt routers.
-  # The cls1 (ceph) networks are tagged `ceph_nets`, NOT `resources`: yucca users
-  # still reach them (resource=true group ⇒ yucca→resources policy destination),
-  # but the talos-to-resources policy doesn't — the workers' RGW path is the
-  # FABRIC (spine routes kube↔cls1-public), and a NetBird client route here
-  # would shadow the machineconfig fabric route (policy-routing table wins).
+  # Routed subnets, exposed by the mgmt router peers. Addresses PROPAGATE from
+  # fabric-addressing (addressing.tf), never hardcoded. Default tag "resources"
+  # (resource=true) ⇒ yucca→resources policy governs access; resources are never
+  # a policy source. kube-cp is deliberately NOT here — routed by its own network
+  # below via the CPs. cls1 nets are tagged ceph_nets, NOT resources: the
+  # talos-to-resources policy must not cover them — workers reach RGW via the
+  # FABRIC, and a NetBird client route would shadow the machineconfig fabric
+  # route (policy-routing table wins).
   routed = {
     mgmt = { address = module.addr_site.mgmt_cidr, description = "OOB / vme management network" }
-    # Internal LB VIPs (Grafana + netops UIs): NetBird peer -> mgmt router -> spine
-    # (iBGP /32 from the workers) -> worker. The mgmt hosts carry a static route for
-    # this range via the spine IRB (10.40.10.1).
+    # Internal LB VIPs: peer → mgmt router → spine (iBGP /32) → worker; mgmt
+    # hosts carry a static route for this range via the spine IRB (10.40.10.1).
     lb_internal    = { address = module.addr_site.lb_internal_cidr, description = "father internal LoadBalancer VIPs (netops UIs)" }
     kube           = { address = module.addr_site.kube_cidr, description = "Site-global kube node network (fabric)" }
     cls1_public    = { address = module.addr_cls1.public_cidr, description = "cls1 public cluster network", groups = ["ceph_nets"] }
@@ -49,18 +41,13 @@ locals {
       }
     }
 
-    # father's control-plane VLAN (kube-cp), routed via the CPs ONLY (the talos_cp
-    # group — the CP-only subset of talos). They're the only peers on that VLAN.
-    # Router must NOT be the whole `talos` group: the bare-metal workers are also
-    # `talos`, and a routing peer doesn't install a client route for its own
-    # network — so if the workers were routers they'd never get the kube-cp mesh
-    # route. (Worker→apiserver traffic itself rides the fabric — a static route via
-    # the spine IRB pinned in the machine config — not this mesh route.) This is
-    # how OPERATOR/CI peers reach the API VIP (10.40.11.5) + the CPs. masquerade so
-    # return traffic is SNAT'd to the CP's kube-cp address.
-    # CP membership comes from the talos_cp setup key (netbird.auto.tfvars, auto_groups
-    # [talos, talos_cp]); the talos stack joins CPs with it and workers with the plain
-    # `talos` key, so re-provisioning keeps the split.
+    # kube-cp VLAN routed via CPs ONLY (talos_cp, the CP subset). Router must NOT
+    # be the whole `talos` group: a routing peer doesn't install a client route
+    # for its own network, so worker-as-router would never get the kube-cp mesh
+    # route (worker→apiserver rides the fabric anyway). This is how operator/CI
+    # peers reach the API VIP 10.40.11.5 + CPs; masquerade SNATs returns to the
+    # CP's kube-cp address. CP/worker split is kept by the talos_cp vs talos
+    # setup keys (netbird.auto.tfvars).
     "yucca-fsn-father-kube-cp" = {
       description = "father control-plane VLAN (kube-cp), routed via the CPs (talos_cp)."
       router      = { peer_groups = ["talos_cp"], masquerade = true }
@@ -75,10 +62,9 @@ locals {
   }
 }
 
-# o11y's prod mesh gateway group (owned by the yucca-o11y repo's netbird TF) —
-# destination of the talos-to-o11y-gateway policy (netbird.auto.tfvars): the
-# observability agents remote-write to the mesh vmauth
-# (vmauth.o11y.futo.network → the gateway VIP behind o11y's routing peers).
+# o11y prod mesh gateway group (owned by yucca-o11y's netbird TF) — destination
+# of the talos-to-o11y-gateway policy; agents remote-write to
+# vmauth.o11y.futo.network behind o11y's routing peers.
 data "netbird_group" "o11y_k8s_gateway" {
   name = "o11y-production-k8s-gateway"
 }

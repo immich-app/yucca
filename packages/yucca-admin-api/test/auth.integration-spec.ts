@@ -182,7 +182,6 @@ describe('AuthController (e2e)', () => {
       );
       const code = loopback.searchParams.get('code')!;
 
-      // Wrong verifier is rejected; the right one yields a Bearer session.
       await request(app.getHttpServer())
         .post('/api/auth/cli/token')
         .send({ code, codeVerifier: 'wrong-verifier' })

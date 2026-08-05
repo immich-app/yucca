@@ -2,13 +2,9 @@
 # Master toggle — role is a no-op when false.
 talos_vms_enabled: false
 
-# Libvirt domain + qcow2 + NVRAM file name prefix.
-# Default scopes to "sietch-talos" so VMs end up as sietch-talos-cp1,
-# sietch-talos-worker1, etc. — aligns with the monorepo FQDN scheme
-# `<cluster>-<role>-<name>.<domain>` (e.g. sietch-talos-cp1.staging.austin.int.futo.cloud)
-# and matches the *_TALOS_* 1P secret-prefix convention. Read from
-# group_vars `talos_domain_prefix` when present so a future second
-# cluster can override without role edits.
+# Domain/qcow2/NVRAM name prefix (sietch-talos-cp1 etc., matching the
+# <cluster>-<role>-<name> FQDN scheme and *_TALOS_* 1P prefixes). Reads
+# group_vars talos_domain_prefix so a second cluster overrides without role edits.
 talos_vms_domain_prefix: "{{ talos_domain_prefix | default('sietch-talos') }}"
 
 # Active profile selector. Full = 3 CP + 3 workers (1 CP + 1 worker per
@@ -33,16 +29,10 @@ talos_vms_primary_bridge: "{{ vlan_compute_bridge | default('br-vlan50') }}"
 # template only when item.role == 'worker'; CPs stay single-NIC.
 talos_vms_secondary_bridge: "{{ vlan_services_bridge | default('br-vlan51') }}"
 
-# UEFI / OVMF paths. Pinned explicitly (not via `<os firmware='efi'>`
-# shorthand) because libvirt's expansion of that shorthand into stored
-# XML differs from the template every run, triggering re-define on
-# every provision-vms run; a re-define on a stopped VM wipes per-VM
-# NVRAM state.
-#
-# Defaults track Debian Bookworm's `ovmf` package layout. Verify on
-# the actual hypervisor with `dpkg -L ovmf | grep -E 'CODE|VARS'` if
-# upstream changes the filename. The 4M variant (vs legacy 2M) is
-# Bookworm's default for ovmf 2022.11+.
+# OVMF paths pinned explicitly, NOT `<os firmware='efi'>`: libvirt's shorthand
+# expansion differs from the template every run, forcing a re-define each
+# provision-vms -- and a re-define on a stopped VM wipes its NVRAM. Tracks
+# Bookworm's ovmf layout (4M variant); verify with `dpkg -L ovmf | grep -E 'CODE|VARS'`.
 talos_vms_ovmf_code_path: "/usr/share/OVMF/OVMF_CODE_4M.fd"
 talos_vms_ovmf_vars_template: "/usr/share/OVMF/OVMF_VARS_4M.fd"
 talos_vms_nvram_dir: "/var/lib/libvirt/qemu/nvram"

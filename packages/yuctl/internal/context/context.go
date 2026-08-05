@@ -1,7 +1,6 @@
 // Package context persists the operator's selected topology to
-// ${XDG_CONFIG_HOME:-~/.config}/yuctl/context.json. It is the small bit of
-// sticky state that lets `yuctl select prod@htz-fsn1` be followed by
-// `yuctl ceph get health` without re-specifying the target each time.
+// ${XDG_CONFIG_HOME:-~/.config}/yuctl/context.json — the sticky state letting
+// `yuctl select prod@htz-fsn1` be followed by `yuctl ceph get health`.
 package context
 
 import (
@@ -42,9 +41,8 @@ func Path() (string, error) {
 	return filepath.Join(dir, "context.json"), nil
 }
 
-// Load reads the persisted context. A missing file is not an error: it returns
-// a zero Context and (nil), so commands can detect "nothing selected" via
-// Context.Partition == "".
+// Load reads the persisted context. Missing file = zero Context, nil error;
+// "nothing selected" is Context.Partition == "".
 func Load() (*Context, error) {
 	p, err := Path()
 	if err != nil {

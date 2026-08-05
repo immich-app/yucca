@@ -1,11 +1,9 @@
-# flux-instance values — mirrors yucca-o11y's deployment/modules/kubernetes/helm
-# values.yaml (controller tuning), with the sync pointed at this repo's
-# per-environment cluster path. ${env} is templated by Terraform.
+# flux-instance values — mirrors yucca-o11y's controller tuning; sync points at
+# this repo's per-env cluster path. ${env} templated by Terraform.
 instance:
   cluster:
-    # Flux's default policies: only flux controllers reach source-controller's
-    # artifact server / the notification webhook receiver. Without them any pod
-    # can pull rendered manifests (which embed substituted cluster settings).
+    # Without the default policies any pod can pull rendered manifests
+    # (which embed substituted cluster settings).
     networkPolicy: true
   components:
     - source-controller
@@ -17,10 +15,9 @@ instance:
     url: https://github.com/immich-app/yucca.git
     ref: refs/heads/${git_ref}
     path: kubernetes/clusters/${env}
-    # 1m so a push to main (e.g. the gated prod pin) reconciles within ~a minute
-    # without a webhook. The cluster is LAN-only, so GitHub can't reach a Receiver.
+    # 1m: LAN-only cluster, GitHub can't reach a webhook Receiver.
     interval: 1m
-    # No pullSecret: yucca is a public repo, so Flux reads it unauthenticated.
+    # No pullSecret — public repo.
   kustomize:
     patches:
       - # Increase the number of workers
@@ -93,10 +90,8 @@ instance:
         target:
           kind: Deployment
           name: helm-controller
-      - # Watch ConfigMaps/Secrets referenced by Kustomizations/HelmReleases, so
-        # a change to the RS-generated image-versions ConfigMap triggers an
-        # immediate reconcile (event-driven substitution) instead of waiting on
-        # each Kustomization's interval. Matches yucca-o11y.
+      - # Watch referenced ConfigMaps/Secrets so an image-versions change
+        # reconciles immediately instead of on interval. Matches yucca-o11y.
         patch: |-
           - op: add
             path: /spec/template/spec/containers/0/args/-
