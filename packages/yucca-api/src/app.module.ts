@@ -4,8 +4,8 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
 import { AuthController } from './controllers/auth.controller';
-import { MetaController } from './controllers/meta.controller';
 import { ConnectionController } from './controllers/connection.controller';
+import { MetaController } from './controllers/meta.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { env } from './env';
@@ -41,7 +41,13 @@ export const imports = [
   KyselyModule.forRoot(getKyselyConfig()),
 ];
 
-export const controllers = [AuthController, MetaController, ConnectionController, MetricsController, RepositoryController];
+export const controllers = [
+  AuthController,
+  MetaController,
+  ConnectionController,
+  MetricsController,
+  RepositoryController,
+];
 
 export const providers = [
   WideContextRepository,
