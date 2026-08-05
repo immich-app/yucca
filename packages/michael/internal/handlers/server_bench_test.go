@@ -104,15 +104,17 @@ func benchResolver(b *testing.B) func(*http.Request) geoip.Client {
 	return func(r *http.Request) geoip.Client { return db.Resolve(r, "X-Forwarded-For") }
 }
 
-// blobSizes brackets the real workload. restic packs default to a few MiB, so
-// 4MiB is the representative case; 1KiB is the worst case for RELATIVE overhead
-// (fixed per-request cost with almost no bytes to amortize it over).
+// blobSizes brackets the real workload. 16MiB is the representative case: it is
+// this deployment's restic pack size (yucca-api DEFAULT_CONFIG
+// restic_pack_size_mib, and yuctl's --pack-size default). 1KiB is the worst case
+// for RELATIVE overhead — fixed per-request cost with almost no bytes to
+// amortize it over.
 var blobSizes = []struct {
 	name string
 	size int
 }{
 	{"1KiB", 1 << 10},
-	{"4MiB", 4 << 20},
+	{"16MiB", 16 << 20},
 }
 
 func BenchmarkServeBlob(b *testing.B) {
