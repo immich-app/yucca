@@ -29,5 +29,11 @@ spec:
   #    (else a node has nothing to serve) — is a machine-config change, so it
   #    lives in the talos TF stacks, not here.
   values:
+    service:
+      registry:
+        # Below the NodePort range (30000-32767) so it can't collide with an
+        # allocated NodePort; kept private by the Talos default-deny host firewall
+        # (see the talos stacks' spegel-registry rule — fabric + pod CIDR only).
+        hostPort: 29999
     spegel:
       containerdRegistryConfigPath: /etc/cri/conf.d/hosts

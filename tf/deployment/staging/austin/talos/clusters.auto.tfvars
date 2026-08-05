@@ -78,17 +78,19 @@ clusters = {
                 discard_unpacked_layers = false
       EOT
       ,
-      # Open the Spegel registry hostPort (30020) so a node can fetch unpacked layers
-      # from the peer that has them (advertised as PEER_IP:30020). Sources: the node
-      # subnet + pod CIDR (10.244.0.0/16, module default). The host ingress firewall is
-      # default-deny (enable_ingress_firewall = true).
+      # Open the Spegel registry hostPort (29999) + nodePort fallback (30021) so a node
+      # can fetch unpacked layers from the peer that has them (advertised as
+      # PEER_IP:29999). Sources: the node subnet + pod CIDR (10.244.0.0/16, module
+      # default) ONLY — with the default-deny host firewall (enable_ingress_firewall =
+      # true) the port is never reachable off the private LAN.
       <<-EOT
       apiVersion: v1alpha1
       kind: NetworkRuleConfig
       name: spegel-registry
       portSelector:
         ports:
-          - 30020
+          - 29999
+          - 30021
         protocol: tcp
       ingress:
         - subnet: 10.10.10.0/24
