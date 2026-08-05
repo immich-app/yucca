@@ -43,7 +43,10 @@
         {local}
         {onViewBackups}
       />
-      <DashboardInstall />
+
+      {#if !local}
+        <DashboardInstall />
+      {/if}
     </Stack>
     <Stack direction="row" gap={4}>
       <DashboardAvgBackupTime repositories={query.data} />
