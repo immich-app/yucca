@@ -105,7 +105,7 @@
     </Button>
   </HStack>
 
-  {#if PasswordCredential && false}
+  {#if /* intentionally hide this to not overcrowd the modal */ PasswordCredential && false}
     <Button
       leadingIcon={mdiAsterisk}
       variant="outline"
