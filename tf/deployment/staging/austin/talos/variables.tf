@@ -210,3 +210,16 @@ variable "clusters" {
     config_patches = optional(list(string), [])
   }))
 }
+
+variable "sietch_provisioner_access_key" {
+  description = "Sietch RGW admin access key for the yucca APIs (creates one S3 user per repository)."
+  type        = string
+  default     = ""
+}
+
+variable "sietch_provisioner_secret_key" {
+  description = "Sietch RGW admin secret key for the yucca APIs."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

@@ -220,3 +220,16 @@ variable "vmauth_remote_write_password" {
   sensitive   = true
   default     = ""
 }
+
+variable "spice_provisioner_access_key" {
+  description = "Spice RGW admin access key for the yucca APIs (creates one S3 user per repository)."
+  type        = string
+  default     = ""
+}
+
+variable "spice_provisioner_secret_key" {
+  description = "Spice RGW admin secret key for the yucca APIs."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

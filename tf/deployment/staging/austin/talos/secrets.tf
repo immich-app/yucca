@@ -149,6 +149,47 @@ resource "kubernetes_namespace_v1" "netbird" {
 
 # ─── App Secrets (namespace: yucca) ─────────────────────────────────────
 
+# Per-repository storage credentials. STORAGE_CREDENTIAL_KEY encrypts the RGW
+# secret keys at rest in postgres; STORAGE_CREDENTIAL_SEAL_KEY is shared with
+# michael and seals them into each restic token. Both are 32-byte AES-256 keys.
+# prevent_destroy: losing the at-rest key orphans every repository's stored
+# credential, and losing the seal key invalidates every token in flight.
+resource "random_bytes" "yucca_storage_credential_key" {
+  count  = local.provision_secrets ? 1 : 0
+  length = 32
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "random_bytes" "yucca_storage_seal_key" {
+  count  = local.provision_secrets ? 1 : 0
+  length = 32
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "onepassword_item" "yucca_storage_keys" {
+  count    = local.provision_secrets ? 1 : 0
+  vault    = data.onepassword_vault.staging.uuid
+  title    = "YUCCA_STORAGE_CREDENTIAL_KEYS"
+  category = "password"
+
+  password = random_bytes.yucca_storage_credential_key[0].base64
+
+  section {
+    label = "keys"
+    field {
+      label = "seal_key"
+      type  = "STRING"
+      value = random_bytes.yucca_storage_seal_key[0].base64
+    }
+  }
+}
+
 # yucca-api: signs JWTs with the generated private key + its OIDC client creds.
 resource "kubernetes_secret_v1" "yucca_api" {
   count = local.provision_secrets ? 1 : 0
@@ -161,6 +202,10 @@ resource "kubernetes_secret_v1" "yucca_api" {
     OIDC_CLIENT_ID        = var.yucca_oidc_client_id
     OIDC_CLIENT_SECRET    = var.yucca_oidc_client_secret
     OIDC_DEVICE_CLIENT_ID = var.yucca_oidc_device_client_id
+    # Per-repository storage credentials: sealed at rest with the first key,
+    # sealed into restic tokens with the second (michael holds only the second).
+    STORAGE_CREDENTIAL_KEY      = random_bytes.yucca_storage_credential_key[0].base64
+    STORAGE_CREDENTIAL_SEAL_KEY = random_bytes.yucca_storage_seal_key[0].base64
   }
 }
 
@@ -179,6 +224,10 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     # bench): deliberately the yucca_jwt SIGNING key — michael only accepts
     # tokens from that keypair. Admin session JWTs stay on yucca_admin_jwt.
     RESTIC_JWT_PRIVATE_KEY = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
+    # Same storage-credential keys as yucca-api: admin-created repositories and
+    # admin-minted restic URLs go through the identical provisioning path.
+    STORAGE_CREDENTIAL_KEY      = random_bytes.yucca_storage_credential_key[0].base64
+    STORAGE_CREDENTIAL_SEAL_KEY = random_bytes.yucca_storage_seal_key[0].base64
   }
 
   lifecycle {
@@ -198,9 +247,8 @@ resource "kubernetes_secret_v1" "yucca_michael" {
     namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
   }
   data = {
-    JWT_PUBLIC_KEY       = tls_private_key.yucca_jwt[0].public_key_pem
-    S3_ACCESS_KEY_ID     = var.yucca_rgw_access_key_id
-    S3_SECRET_ACCESS_KEY = var.yucca_rgw_secret_access_key
+    JWT_PUBLIC_KEY              = tls_private_key.yucca_jwt[0].public_key_pem
+    STORAGE_CREDENTIAL_SEAL_KEY = random_bytes.yucca_storage_seal_key[0].base64
   }
 }
 
@@ -217,6 +265,28 @@ resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
   data = {
     AccessKey = var.sietch_metrics_worker_access_key
     SecretKey = var.sietch_metrics_worker_secret_key
+  }
+}
+
+# yucca-api / yucca-admin-api: the RGW user with users+buckets admin caps, used
+# to create one S3 user per repository. Keys are AccessKey/SecretKey to match
+# the charts' radosSecretName lookup, as with yucca-metrics-rgw.
+resource "kubernetes_secret_v1" "yucca_provisioner_rgw" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name      = "yucca-provisioner-rgw"
+    namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
+  }
+  data = {
+    AccessKey = var.sietch_provisioner_access_key
+    SecretKey = var.sietch_provisioner_secret_key
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(var.sietch_provisioner_access_key) > 0 && length(var.sietch_provisioner_secret_key) > 0
+      error_message = "sietch provisioner RGW keys are empty — run applies through tf/op-run.sh."
+    }
   }
 }
 
