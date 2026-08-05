@@ -76,12 +76,21 @@
   let loaded = false;
 
   const parse = (cron: string) => {
+    // notes
+    // cron rewritten on write
+    // - minute discarded
+    // - weekly/monthly forced to set date
+    //   => need server-determined date for load distribution
     const [minute, hour, day, , weekday] = cron.split(" ");
 
     return {
       hour: /^\d+$/.test(hour ?? "") ? hour : "3",
       minute: /^\d+$/.test(minute ?? "") ? Number(minute) : 0,
-      frequency: (day !== "*" ? "monthly" : weekday !== "*" ? "weekly" : "daily") as Frequency,
+      frequency: (day !== "*"
+        ? "monthly"
+        : weekday !== "*"
+          ? "weekly"
+          : "daily") as Frequency,
     };
   };
 
