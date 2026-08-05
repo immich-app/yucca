@@ -45,16 +45,41 @@ type clientConcurrency struct {
 	lastSeen atomic.Int64 // unix nanos, stamped when a request finishes
 }
 
+// retired marks an entry a collection has taken out of service. It is a state
+// of cur rather than a separate flag so that closing the entry and observing it
+// idle are one atomic step — otherwise a request arriving between the two would
+// be accounted against an entry already on its way out of the map.
+const retired = -1
+
 // enter accounts for a request starting, raising the high-water mark if this
-// request is the most concurrent one yet in the current window.
-func (c *clientConcurrency) enter() {
-	cur := c.cur.Add(1)
+// request is the most concurrent one yet in the current window. It reports
+// false if the entry has been retired, leaving the caller to take a fresh one.
+func (c *clientConcurrency) enter() bool {
+	for {
+		cur := c.cur.Load()
+		if cur == retired {
+			return false
+		}
+		if c.cur.CompareAndSwap(cur, cur+1) {
+			c.raisePeak(cur + 1)
+			return true
+		}
+	}
+}
+
+func (c *clientConcurrency) raisePeak(cur int64) {
 	for {
 		peak := c.peak.Load()
 		if cur <= peak || c.peak.CompareAndSwap(peak, cur) {
 			return
 		}
 	}
+}
+
+// retire closes the entry to new requests, and only succeeds while nothing is
+// outstanding.
+func (c *clientConcurrency) retire() bool {
+	return c.cur.CompareAndSwap(0, retired)
 }
 
 func (c *clientConcurrency) exit(now time.Time) {
@@ -67,14 +92,30 @@ type clientTracker struct {
 }
 
 // enter loads before storing so the hot path is a single map read; the label
-// set is only built when a client is seen for the first time.
+// set is only built when a client is seen for the first time. Losing the race
+// against a collection that retired the entry costs one more iteration, after
+// which the replacement is what every later request shares — the client must
+// not end up split across an orphan and a successor, which would under-report
+// its concurrency.
 func (t *clientTracker) enter(key clientAttrKey) *clientConcurrency {
-	v, ok := t.states.Load(key)
-	if !ok {
-		v, _ = t.states.LoadOrStore(key, &clientConcurrency{attrs: clientAttrs(key)})
+	for {
+		v, ok := t.states.Load(key)
+		if !ok {
+			v, _ = t.states.LoadOrStore(key, newClientConcurrency(key))
+		}
+		state := v.(*clientConcurrency)
+		if state.enter() {
+			return state
+		}
+		t.states.CompareAndSwap(key, state, newClientConcurrency(key))
 	}
-	state := v.(*clientConcurrency)
-	state.enter()
+}
+
+// newClientConcurrency stamps lastSeen so a brand-new entry cannot look idle to
+// a collection landing before its first request is accounted in.
+func newClientConcurrency(key clientAttrKey) *clientConcurrency {
+	state := &clientConcurrency{attrs: clientAttrs(key)}
+	state.lastSeen.Store(time.Now().UnixNano())
 	return state
 }
 
@@ -91,8 +132,13 @@ func (t *clientTracker) observe(o otelmetric.Observer, gauge otelmetric.Int64Obs
 		cur := state.cur.Load()
 		peak := state.peak.Swap(cur)
 
+		// Retire before deleting, and delete only the entry that was retired: a
+		// request arriving in between either wins (retire fails, the entry stays)
+		// or is handed the replacement it swapped in.
 		if cur == 0 && peak == 0 && now.UnixNano()-state.lastSeen.Load() > int64(clientIdleTTL) {
-			t.states.Delete(key)
+			if state.retire() {
+				t.states.CompareAndDelete(key, state)
+			}
 			return true
 		}
 

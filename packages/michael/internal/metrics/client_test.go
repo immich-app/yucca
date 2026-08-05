@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -192,6 +193,124 @@ func TestClientTrackerEvictsIdleClients(t *testing.T) {
 	tr.states.Range(func(any, any) bool { count++; return true })
 	if count != 0 {
 		t.Fatalf("expected the tracker map to be empty, got %d entries", count)
+	}
+}
+
+// TestClientTrackerEvictionDoesNotSplitClient drives the eviction race by hand:
+// a request arrives after a collection has decided an entry is idle. The client
+// must end up on ONE entry — an orphan kept alive by the in-flight request while
+// later requests build a replacement would under-report its concurrency.
+func TestClientTrackerEvictionDoesNotSplitClient(t *testing.T) {
+	tr := &clientTracker{}
+	key := clientAttrKey{"u1", "r1", "restic"}
+
+	tr.enter(key).exit(time.Now())
+	v, _ := tr.states.Load(key)
+	idle := v.(*clientConcurrency)
+
+	// The collection retires the entry, then the request lands before the map
+	// delete would have run.
+	if !idle.retire() {
+		t.Fatal("expected an idle entry to retire")
+	}
+	racing := tr.enter(key)
+	if racing == idle {
+		t.Fatal("expected the retired entry to be replaced, not reused")
+	}
+
+	// The delete now arrives; it must not take the replacement with it.
+	tr.states.CompareAndDelete(key, idle)
+
+	current, ok := tr.states.Load(key)
+	if !ok {
+		t.Fatal("expected the replacement to survive the delete")
+	}
+	if current.(*clientConcurrency) != racing {
+		t.Fatal("expected the map to hold the entry the request is using")
+	}
+
+	// A later request must join the same entry rather than start a third one.
+	if next := tr.enter(key); next != racing {
+		t.Fatal("expected later requests to share the replacement")
+	}
+	if cur := racing.cur.Load(); cur != 2 {
+		t.Fatalf("expected both requests on one entry, got %d", cur)
+	}
+	if peak := peakFor(t, tr, collect(t, tr, time.Now()), key); peak != 2 {
+		t.Fatalf("expected the peak to see both requests, got %d", peak)
+	}
+}
+
+// TestClientTrackerEvictionKeepsRequestsAttached drives eviction and entry
+// against each other for real, with the clock always past the TTL so every
+// collection tries to evict. The invariant it checks is what the retire
+// handshake buys: an entry is only ever retired while idle, so a request that
+// is outstanding on a state must still find that state in the map. Deleting on
+// the idle read alone breaks this — the request is left updating an orphan
+// while later requests build a successor, splitting the client's concurrency.
+func TestClientTrackerEvictionKeepsRequestsAttached(t *testing.T) {
+	tr := &clientTracker{}
+	key := clientAttrKey{"u1", "r1", "restic"}
+	gauge := testGauge(t)
+
+	var orphaned atomic.Int64
+	done := make(chan struct{})
+	var collectors, requests sync.WaitGroup
+
+	// Collect for as long as requests are arriving, so the two actually overlap.
+	collectors.Add(1)
+	go func() {
+		defer collectors.Done()
+		obs := &recordingObserver{}
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				tr.observe(obs, gauge, time.Now().Add(2*clientIdleTTL))
+				obs.got = obs.got[:0]
+			}
+		}
+	}()
+
+	for i := 0; i < 4; i++ {
+		requests.Add(1)
+		go func() {
+			defer requests.Done()
+			for n := 0; n < 20000; n++ {
+				state := tr.enter(key)
+				if v, ok := tr.states.Load(key); !ok || v.(*clientConcurrency) != state {
+					orphaned.Add(1)
+				}
+				state.exit(time.Now())
+			}
+		}()
+	}
+
+	requests.Wait()
+	close(done)
+	collectors.Wait()
+
+	if got := orphaned.Load(); got != 0 {
+		t.Fatalf("expected outstanding requests to stay attached to the mapped entry, got %d orphaned", got)
+	}
+}
+
+func TestClientConcurrencyRetireRequiresIdle(t *testing.T) {
+	c := &clientConcurrency{}
+	if !c.enter() {
+		t.Fatal("expected enter to succeed on a fresh entry")
+	}
+	if c.retire() {
+		t.Fatal("expected retire to fail while a request is outstanding")
+	}
+
+	c.exit(time.Now())
+	if !c.retire() {
+		t.Fatal("expected retire to succeed once idle")
+	}
+	if c.enter() {
+		t.Fatal("expected enter to fail on a retired entry")
 	}
 }
 
