@@ -84,6 +84,21 @@ export class RepositoryRepository {
     return this.get(id);
   }
 
+  getStorageOwner(id: string) {
+    return this.db
+      .selectFrom('repositories')
+      .select(['id', 'storageClusterCode', 'storageAccessKeyId', 'storageSecretAccessKey'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+  }
+
+  async setStorageCredentials(
+    id: string,
+    credentials: Pick<RepositoryTable, 'storageAccessKeyId' | 'storageSecretAccessKey'>,
+  ) {
+    await this.db.updateTable('repositories').where('id', '=', id).set(credentials).execute();
+  }
+
   async delete(id: string) {
     await this.db.deleteFrom('repositories').where('id', '=', id).execute();
   }

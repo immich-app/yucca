@@ -27,6 +27,16 @@ export OIDC_LOGOUT_REDIRECT_URI=${OIDC_LOGOUT_REDIRECT_URI:-http://localhost:360
 export OIDC_DEVICE_ISSUER=${OIDC_DEVICE_ISSUER:-http://localhost:8092}
 export OIDC_DEVICE_CLIENT_ID=${OIDC_DEVICE_CLIENT_ID:-device client ID}
 
+# Well-known local-dev keys. STORAGE_CREDENTIAL_SEAL_KEY is shared with michael
+# (.mise/tasks/restic-api/env); STORAGE_CREDENTIAL_KEY never leaves the API.
+export STORAGE_CREDENTIAL_KEY=${STORAGE_CREDENTIAL_KEY:-eXVjY2EtZGV2LXN0b3JhZ2UtY3JlZGVudGlhbC1rZXk=}
+export STORAGE_CREDENTIAL_SEAL_KEY=${STORAGE_CREDENTIAL_SEAL_KEY:-eXVjY2EtZGV2LW1pY2hhZWwtc2VhbC1rZXktMDAwMDA=}
+
+# The compose stack stores into MinIO, which has no RGW admin API, so every
+# repository is handed the MinIO root credentials instead of its own user.
+export STORAGE_STATIC_ACCESS_KEY_ID=${STORAGE_STATIC_ACCESS_KEY_ID:-${S3_ACCESS_KEY_ID:-minio}}
+export STORAGE_STATIC_SECRET_ACCESS_KEY=${STORAGE_STATIC_SECRET_ACCESS_KEY:-${S3_SECRET_ACCESS_KEY:-miniominio}}
+
 export TOPOLOGY_FILE=${TOPOLOGY_FILE:-./topology.dev.json}
 export API_ROOT=${API_ROOT:-http://localhost:3020/api}
 export LEGACY_SITE_CODE=${LEGACY_SITE_CODE:-local}

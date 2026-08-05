@@ -52,7 +52,7 @@ func benchServer(b *testing.B, blob []byte, resolve func(*http.Request) geoip.Cl
 		},
 	}
 
-	srv := NewServer(store, testPublicKey, m)
+	srv := NewServer(store, testPublicKey, testSealKeys, m)
 	srv.ResolveClient = resolve
 	return srv
 }
@@ -63,10 +63,11 @@ func benchServer(b *testing.B, blob []byte, resolve func(*http.Request) geoip.Cl
 func benchRequest(b *testing.B) *http.Request {
 	b.Helper()
 	token := makeJWTForBench(b, jwt.MapClaims{
-		"user":       testUser,
-		"repository": testRepository,
-		"writeOnce":  false,
-		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		"user":               testUser,
+		"repository":         testRepository,
+		"writeOnce":          false,
+		"storageCredentials": sealedFor(b, testRepository),
+		"exp":                jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	})
 	r := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/data/"+testBlobName, nil)
 	r.Header.Set("Authorization", makeBasicAuth(token))

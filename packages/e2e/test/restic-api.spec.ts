@@ -1,3 +1,4 @@
+import { parseStorageCredentialKeys, sealStorageCredentials } from '@common/server';
 import {
   backup,
   cache,
@@ -34,12 +35,20 @@ import { env } from 'src/env';
 
 const password = 'password';
 
+const sealKey = parseStorageCredentialKeys(env.STORAGE_CREDENTIAL_SEAL_KEY)[0];
+
+// These suites drive michael's protocol directly rather than going through
+// yucca-api (yucca-api.spec covers that path), so they seal their own.
 function generateRepoUrl(repository: string, writeOnce: boolean) {
   const token = jwt.sign(
     {
       user: randomUUID(),
       repository,
       writeOnce,
+      storageCredentials: sealStorageCredentials(sealKey, repository, {
+        accessKeyId: env.S3_ACCESS_KEY_ID,
+        secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+      }),
     },
     env.JWT_PRIVATE_KEY,
     { algorithm: 'ES256' },

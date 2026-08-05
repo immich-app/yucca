@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"michael/internal/auth"
+	"michael/internal/credentials"
 	"michael/internal/geoip"
 	"michael/internal/metrics"
 	"michael/internal/storage"
@@ -34,6 +35,20 @@ const (
 	testUser       = "00000000-0000-0000-0000-000000000001"
 	testRepository = "00000000-0000-0000-0000-000000000002"
 )
+
+var testSealKeys = [][]byte{bytes.Repeat([]byte{0x2a}, 32)}
+
+func sealedFor(t testing.TB, repository string) string {
+	t.Helper()
+	sealed, err := credentials.Seal(testSealKeys[0], repository, credentials.Credentials{
+		AccessKeyID:     "AKIAREPO",
+		SecretAccessKey: "s3cret",
+	})
+	if err != nil {
+		t.Fatalf("failed to seal storage credentials: %v", err)
+	}
+	return sealed
+}
 
 func makeJWT(t *testing.T, claims jwt.MapClaims) string {
 	t.Helper()
@@ -129,7 +144,7 @@ func (m *mockStorage) DeleteObject(ctx context.Context, bucket, key string) erro
 
 // newTestServer creates a single-cluster Server with mock storage.
 func newTestServer(store *mockStorage) *Server {
-	return NewServer(store, testPublicKey, nil)
+	return NewServer(store, testPublicKey, testSealKeys, nil)
 }
 
 // doRequest creates and executes a request against the test server with a real JWT auth header.
@@ -139,10 +154,11 @@ func doRequest(t *testing.T, srv *Server, method, path string, body io.Reader, a
 
 	// Generate a real JWT for the auth middleware
 	claims := jwt.MapClaims{
-		"user":       a.User,
-		"repository": a.Repository,
-		"writeOnce":  a.WriteOnce,
-		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		"user":               a.User,
+		"repository":         a.Repository,
+		"writeOnce":          a.WriteOnce,
+		"storageCredentials": sealedFor(t, a.Repository),
+		"exp":                jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	}
 	// Omitted rather than empty when unset, so the default path under test is
 	// the shape of a token minted before multi-cluster routing existed.
@@ -356,7 +372,7 @@ func TestUploadBodySurvivesTrafficAccounting(t *testing.T) {
 		},
 	}
 
-	srv := NewServer(store, testPublicKey, m)
+	srv := NewServer(store, testPublicKey, testSealKeys, m)
 	srv.ResolveClient = func(*http.Request) geoip.Client {
 		return geoip.Client{IP: "203.0.113.7", ASN: "AS64496", Org: "Example Transit"}
 	}

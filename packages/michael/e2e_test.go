@@ -44,6 +44,7 @@ import (
 	"time"
 
 	"michael/internal/config"
+	michaelcreds "michael/internal/credentials"
 	"michael/internal/handlers"
 	"michael/internal/storage"
 
@@ -71,14 +72,25 @@ func e2eEnv(t *testing.T, key string) string {
 	return v
 }
 
+// The harness's object-user keys reach michael the way real ones do: sealed
+// into the token.
+var e2eSealKeys = [][]byte{bytes.Repeat([]byte{0x2a}, 32)}
+
+func e2eCredentials(t *testing.T) michaelcreds.Credentials {
+	t.Helper()
+	return michaelcreds.Credentials{
+		AccessKeyID:     e2eEnv(t, "S3_ACCESS_KEY_ID"),
+		SecretAccessKey: e2eEnv(t, "S3_SECRET_ACCESS_KEY"),
+	}
+}
+
 func e2eConfig(t *testing.T) config.Config {
 	return config.Config{
-		JWTPublicKey:      e2ePublicKey,
-		S3AccessKeyID:     e2eEnv(t, "S3_ACCESS_KEY_ID"),
-		S3SecretAccessKey: e2eEnv(t, "S3_SECRET_ACCESS_KEY"),
-		S3Region:          envOrE2E("S3_REGION", "us-east-1"),
-		S3Endpoint:        e2eEnv(t, "S3_ENDPOINT"),
-		S3ForcePathStyle:  true,
+		JWTPublicKey:     e2ePublicKey,
+		StorageSealKeys:  e2eSealKeys,
+		S3Region:         envOrE2E("S3_REGION", "us-east-1"),
+		S3Endpoint:       e2eEnv(t, "S3_ENDPOINT"),
+		S3ForcePathStyle: true,
 	}
 }
 
@@ -99,11 +111,16 @@ func e2eJWT(t *testing.T, repo string, writeOnce bool) string {
 // minted before multi-cluster routing existed.
 func e2eJWTForCluster(t *testing.T, repo string, writeOnce bool, storageCluster string) string {
 	t.Helper()
+	sealed, err := michaelcreds.Seal(e2eSealKeys[0], repo, e2eCredentials(t))
+	if err != nil {
+		t.Fatalf("seal storage credentials: %v", err)
+	}
 	claims := jwt.MapClaims{
-		"user":       e2eUser,
-		"repository": repo,
-		"writeOnce":  writeOnce,
-		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		"user":               e2eUser,
+		"repository":         repo,
+		"writeOnce":          writeOnce,
+		"storageCredentials": sealed,
+		"exp":                jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	}
 	if storageCluster != "" {
 		claims["storageCluster"] = storageCluster
@@ -281,10 +298,10 @@ func mustStatus(t *testing.T, resp *http.Response, want int, what string) {
 
 // rawClient builds an S3 client straight to the real RGW (not via the proxies),
 // used only for test bucket cleanup.
-func rawClient(cfg config.Config) *s3.Client {
+func rawClient(cfg config.Config, creds michaelcreds.Credentials) *s3.Client {
 	return s3.New(s3.Options{
 		Region:       cfg.S3Region,
-		Credentials:  credentials.NewStaticCredentialsProvider(cfg.S3AccessKeyID, cfg.S3SecretAccessKey, ""),
+		Credentials:  credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, ""),
 		BaseEndpoint: aws.String(cfg.S3Endpoint),
 		UsePathStyle: true,
 	})
@@ -292,7 +309,7 @@ func rawClient(cfg config.Config) *s3.Client {
 
 func cleanupBucket(t *testing.T, cfg config.Config, bucket string) {
 	t.Helper()
-	c := rawClient(cfg)
+	c := rawClient(cfg, e2eCredentials(t))
 	ctx := context.Background()
 	out, err := c.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: aws.String(bucket)})
 	if err == nil {
@@ -347,7 +364,7 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	}
 	t.Logf("pool up: 2 backends healthy against real RGW (%s)", cfg.S3Endpoint)
 
-	srv := httptest.NewServer(handlers.NewServer(pool, cfg.JWTPublicKey, nil).Handler())
+	srv := httptest.NewServer(handlers.NewServer(pool, cfg.JWTPublicKey, cfg.StorageSealKeys, nil).Handler())
 	defer srv.Close()
 	client := srv.Client()
 	auth := e2eJWT(t, repo, false)
@@ -524,7 +541,7 @@ func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 	srv := httptest.NewServer(handlers.NewClusterServer(map[string]storage.Storage{
 		"default": defaultPool,
 		"spice":   spicePool,
-	}, "default", cfg.JWTPublicKey, nil).Handler())
+	}, "default", cfg.JWTPublicKey, cfg.StorageSealKeys, nil).Handler())
 	defer srv.Close()
 	client := srv.Client()
 

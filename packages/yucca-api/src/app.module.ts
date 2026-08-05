@@ -17,6 +17,7 @@ import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { RepositoryMetricsRepository } from './repositories/repositoryMetrics.repository';
 import { RepositoryMetricsHistoryRepository } from './repositories/repositoryMetricsHistory.repository';
+import { RgwAdminRepository } from './repositories/rgwAdmin.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { SettingsRepository } from './repositories/settings.repository';
 import { StorageRepository } from './repositories/storage.repository';
@@ -29,6 +30,7 @@ import { DatabaseService } from './services/database.service';
 import { MetaService } from './services/meta.service';
 import { MetricsService } from './services/metrics.service';
 import { RepositoryService } from './services/repository.service';
+import { StorageCredentialService } from './services/storageCredential.service';
 import { TopologyService } from './services/topology.service';
 import { getKyselyConfig } from './utils/database';
 
@@ -62,6 +64,7 @@ export const providers = [
   UserRepository,
   UserAllowlistRepository,
   RepositoryRepository,
+  RgwAdminRepository,
   RepositoryMetricsRepository,
   RepositoryMetricsHistoryRepository,
   SessionRepository,
@@ -70,6 +73,7 @@ export const providers = [
   TopologyService,
   MetricsService,
   RepositoryService,
+  StorageCredentialService,
   AuthService,
   ConnectionService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },

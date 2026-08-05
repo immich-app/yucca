@@ -22,6 +22,11 @@ terraform {
       source  = "1Password/onepassword"
       version = "~> 2.1"
     }
+    # Storage-credential key generation (secrets.tf).
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
     # App JWT keypair generation (secrets.tf).
     tls = {
       source  = "hashicorp/tls"

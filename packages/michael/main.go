@@ -86,7 +86,7 @@ func main() {
 		log.Info().Str("endpoint", cfg.OTLPMetricsEndpoint).Msg("OpenTelemetry metrics enabled")
 	}
 
-	stores, pools := buildClusters(cfg, tm)
+	stores, pools := buildClusters(cfg, tm, credentialLookup(m))
 
 	if len(pools) > 0 && meterProvider != nil {
 		providers := make(map[string]metrics.BackendStatsProvider, len(pools))
@@ -109,7 +109,7 @@ func main() {
 		log.Info().Str("path", cfg.ASNDatabasePath).Msg("ASN database loaded")
 	}
 
-	srv := handlers.NewClusterServer(stores, cfg.S3DefaultCluster, cfg.JWTPublicKey, m)
+	srv := handlers.NewClusterServer(stores, cfg.S3DefaultCluster, cfg.JWTPublicKey, cfg.StorageSealKeys, m)
 	srv.ResolveClient = func(r *http.Request) geoip.Client {
 		return asnDB.Resolve(r, cfg.ClientIPHeader)
 	}
@@ -169,11 +169,15 @@ func main() {
 // concretely so the caller can register their metrics and run their reconcile
 // loops). A single-cluster deployment yields exactly one entry, under
 // cfg.S3DefaultCluster.
-func buildClusters(cfg config.Config, tm *metrics.TransportMetrics) (map[string]storage.Storage, map[string]*storage.Pool) {
+func buildClusters(
+	cfg config.Config,
+	tm *metrics.TransportMetrics,
+	onCredentialLookup func(hit bool),
+) (map[string]storage.Storage, map[string]*storage.Pool) {
 	stores := make(map[string]storage.Storage, len(cfg.Clusters))
 	pools := make(map[string]*storage.Pool)
 	for _, cc := range cfg.Clusters {
-		store, pool := buildStorage(cc, tm)
+		store, pool := buildStorage(cc, tm, onCredentialLookup)
 		stores[cc.Code] = store
 		if pool != nil {
 			pools[cc.Code] = pool
@@ -187,17 +191,22 @@ func buildClusters(cfg config.Config, tm *metrics.TransportMetrics) (map[string]
 // configured it is a single S3 client (legacy behavior) and pool is nil. With
 // source=file or source=dns it is a load-balancing Pool, also returned
 // concretely so the caller can register its metrics and run its reconcile loop.
-func buildStorage(cc config.ClusterConfig, tm *metrics.TransportMetrics) (storage.Storage, *storage.Pool) {
+func buildStorage(
+	cc config.ClusterConfig,
+	tm *metrics.TransportMetrics,
+	onCredentialLookup func(hit bool),
+) (storage.Storage, *storage.Pool) {
 	if cc.S3BackendSource == "" {
 		return storage.NewS3StorageForCluster(cc, storage.S3Options{
-			Endpoint:      cc.S3Endpoint,
-			TLSSkipVerify: cc.S3TLSSkipVerify,
-			Wrap:          transportWrap(tm, cc.Code, cc.S3Endpoint),
+			Endpoint:           cc.S3Endpoint,
+			TLSSkipVerify:      cc.S3TLSSkipVerify,
+			Wrap:               transportWrap(tm, cc.Code, cc.S3Endpoint),
+			OnCredentialLookup: onCredentialLookup,
 		}), nil
 	}
 
 	resolver := buildResolver(cc)
-	factory := backendFactory(cc, tm)
+	factory := backendFactory(cc, tm, onCredentialLookup)
 	pool, err := storage.NewPool(storage.PoolConfig{
 		EjectThreshold:    cc.S3EjectThreshold,
 		ProbeBucket:       cc.S3ProbeBucket,
@@ -215,13 +224,18 @@ func buildStorage(cc config.ClusterConfig, tm *metrics.TransportMetrics) (storag
 // directly while still signing/Host-ing with the cluster endpoint (replacing the
 // HAProxy hop); otherwise the resolved endpoint is used as the S3 endpoint
 // as-is.
-func backendFactory(cc config.ClusterConfig, tm *metrics.TransportMetrics) storage.BackendFactory {
+func backendFactory(
+	cc config.ClusterConfig,
+	tm *metrics.TransportMetrics,
+	onCredentialLookup func(hit bool),
+) storage.BackendFactory {
 	if !cc.S3BackendPinHost {
 		return func(endpoint string) (storage.Storage, error) {
 			return storage.NewS3StorageForCluster(cc, storage.S3Options{
-				Endpoint:      endpoint,
-				TLSSkipVerify: cc.S3TLSSkipVerify,
-				Wrap:          transportWrap(tm, cc.Code, endpoint),
+				Endpoint:           endpoint,
+				TLSSkipVerify:      cc.S3TLSSkipVerify,
+				Wrap:               transportWrap(tm, cc.Code, endpoint),
+				OnCredentialLookup: onCredentialLookup,
 			}), nil
 		}
 	}
@@ -239,11 +253,27 @@ func backendFactory(cc config.ClusterConfig, tm *metrics.TransportMetrics) stora
 			dial = net.JoinHostPort(u.Hostname(), port)
 		}
 		return storage.NewS3StorageForCluster(cc, storage.S3Options{
-			Endpoint:      cc.S3Endpoint,
-			DialAddr:      dial,
-			TLSSkipVerify: cc.S3TLSSkipVerify,
-			Wrap:          transportWrap(tm, cc.Code, dial),
+			Endpoint:           cc.S3Endpoint,
+			DialAddr:           dial,
+			TLSSkipVerify:      cc.S3TLSSkipVerify,
+			Wrap:               transportWrap(tm, cc.Code, dial),
+			OnCredentialLookup: onCredentialLookup,
 		}), nil
+	}
+}
+
+// credentialLookup returns the per-credential client cache hook, or nil when
+// metrics are disabled.
+func credentialLookup(m *metrics.Metrics) func(hit bool) {
+	if m == nil {
+		return nil
+	}
+	return func(hit bool) {
+		if hit {
+			m.CredentialCacheHits.Add(context.Background(), 1)
+			return
+		}
+		m.CredentialCacheMisses.Add(context.Background(), 1)
 	}
 }
 

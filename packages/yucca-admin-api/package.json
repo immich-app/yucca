@@ -28,6 +28,7 @@
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
     "@opentelemetry/api": "catalog:",
+    "aws4fetch": "catalog:",
     "class-validator": "catalog:",
     "cookie": "catalog:",
     "event-iterator": "catalog:",

@@ -2,7 +2,8 @@
 #MISE description="tilt ci for the infra subset only (no app images) — what integration tests need"
 #MISE dir="{{config_root}}"
 # The closure of every non-app resource: chart repos, operators, the Ceph dev
-# cluster + RGW user, CNPG database, mock-oidc and the victoria pair. Skipping
+# cluster + its RGW users (michael's bucket owner and the APIs' provisioner
+# admin), CNPG database, mock-oidc and the victoria pair. Skipping
 # the four heavy app images (yucca-api/admin/web/michael) saves ~10 min in CI;
 # integration tests boot those apps on the host themselves.
 set -euo pipefail
@@ -15,5 +16,5 @@ fi
 exec tilt ci --timeout 1800s \
   rook-release-repo helm-deps \
   cloudnative-pg rook-ceph-operator rook-ceph-cluster \
-  yucca-object-user yucca-database yucca-mock-oidc \
+  yucca-object-user yucca-provisioner-object-user yucca-database yucca-mock-oidc \
   yucca-victoria-metrics yucca-victoria-logs

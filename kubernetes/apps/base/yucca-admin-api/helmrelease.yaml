@@ -33,6 +33,10 @@ spec:
       tag: ${YUCCA_IMAGE_TAG:=}
     # secretData nulled: replaced by the TF-provisioned `yucca-admin-api` Secret
     # (OIDC_ADMIN_CLIENT_ID/SECRET) via the chart's envFrom: secretRef.
+    # RGW admin keys for per-repository S3 users: TF-provisioned into the
+    # yucca-provisioner-rgw Secret (tf .../talos/secrets.tf), like
+    # yucca-metrics-rgw. Additional clusters get RADOS_*_<CODE> pairs in it.
+    radosSecretName: yucca-provisioner-rgw
     secretData: null
     # Not publicly routed — reached over the NetBird overlay at
     # ${YUCCA_ADMIN_HOST} (per-cluster, from cluster-settings). Admin auth uses

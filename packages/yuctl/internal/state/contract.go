@@ -54,13 +54,18 @@ type Kubernetes struct {
 // CephCluster is one entry of the ceph payload's ceph_clusters map. A region may
 // have one-or-more, keyed by friendly name (e.g. "sietch").
 type CephCluster struct {
-	ClusterName      string            `json:"cluster_name"`
-	FQDN             string            `json:"fqdn"`
-	RGWS3Endpoint    string            `json:"rgw_s3_endpoint"`
-	HealthCredRef    string            `json:"health_cred_ref"`    // op:// reference
-	S3AdminCredRefs  map[string]string `json:"s3_admin_cred_refs"` // op:// references
-	SecretItemTitles map[string]string `json:"secret_item_titles"` // purpose → 1P item title
-	BootstrapHost    string            `json:"bootstrap_host"`
+	ClusterName     string            `json:"cluster_name"`
+	FQDN            string            `json:"fqdn"`
+	RGWS3Endpoint   string            `json:"rgw_s3_endpoint"`
+	HealthCredRef   string            `json:"health_cred_ref"`    // op:// reference
+	S3AdminCredRefs map[string]string `json:"s3_admin_cred_refs"` // op:// references
+	// Full users+buckets RGW admin, and the S3 user owning pre-migration
+	// buckets. Both are maps of {access_key, secret_key} to op:// references.
+	S3ProvisionerCredRefs map[string]string `json:"s3_provisioner_cred_refs"`
+	S3MigratorCredRefs    map[string]string `json:"s3_migrator_cred_refs"`
+	S3OwnerCredRefs       map[string]string `json:"s3_owner_cred_refs"`
+	SecretItemTitles      map[string]string `json:"secret_item_titles"` // purpose → 1P item title
+	BootstrapHost         string            `json:"bootstrap_host"`
 }
 
 // DNS is the dns stack payload.

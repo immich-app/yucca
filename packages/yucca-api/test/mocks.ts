@@ -4,11 +4,13 @@ import type { CryptoRepository } from 'src/repositories/crypto.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { RepositoryRepository } from 'src/repositories/repository.repository';
+import type { RgwAdminRepository } from 'src/repositories/rgwAdmin.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { SettingsRepository } from 'src/repositories/settings.repository';
 import type { TopologyRepository } from 'src/repositories/topology.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
 import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
+import type { StorageCredentialService } from 'src/services/storageCredential.service';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 
@@ -65,8 +67,30 @@ export const newRepositoryRepositoryMock = (): jest.Mocked<RepositoryInterface<R
     create: jest.fn(),
     get: jest.fn(),
     getByUser: jest.fn(),
+    getByIds: jest.fn(),
+    getStorageOwner: jest.fn(),
+    setStorageCredentials: jest.fn(),
+    reparent: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+  };
+};
+
+export const newRgwAdminRepositoryMock = (): jest.Mocked<RepositoryInterface<RgwAdminRepository>> => {
+  return {
+    supports: jest.fn().mockReturnValue(true),
+    ensureUser: jest.fn(),
+    rotateKeys: jest.fn(),
+    revokeKeys: jest.fn(),
+  };
+};
+
+export const newStorageCredentialServiceMock = (): jest.Mocked<RepositoryInterface<StorageCredentialService>> => {
+  return {
+    ensure: jest.fn().mockResolvedValue({ accessKeyId: 'access', secretAccessKey: 'secret' }),
+    rotate: jest.fn(),
+    revoke: jest.fn(),
+    seal: jest.fn().mockReturnValue('sealed'),
   };
 };
 
@@ -97,6 +121,7 @@ export const newTopologyRepositoryMock = (): jest.Mocked<RepositoryInterface<Top
     load: jest.fn(),
     get: jest.fn(),
     getSite: jest.fn(),
+    getCluster: jest.fn(),
     hasSite: jest.fn(),
     hasCluster: jest.fn(),
     getActiveCluster: jest.fn(),
@@ -140,6 +165,8 @@ export const newMocks = () => {
     user: newUserRepositoryMock(),
     userAllowlist: newUserAllowlistRepositoryMock(),
     repository: newRepositoryRepositoryMock(),
+    rgwAdmin: newRgwAdminRepositoryMock(),
+    storageCredential: newStorageCredentialServiceMock(),
     settings: newSettingsRepositoryMock(),
     topology: newTopologyRepositoryMock(),
     logger: newLoggerRepositoryMock(),

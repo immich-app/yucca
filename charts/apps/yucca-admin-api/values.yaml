@@ -31,6 +31,13 @@ volumeMounts:
     mountPath: /etc/yucca
     readOnly: true
 
+# RGW user with users+buckets admin caps: the API creates one S3 user per
+# repository with it, so michael never needs a cluster-wide credential. In dev
+# Rook writes the keys here as rook-ceph-object-user-<store>-<user>; prod points
+# this at the TF-provisioned yucca-provisioner-rgw Secret. Per-cluster overrides
+# ride in the same Secret as RADOS_ACCESS_KEY_ID_<CODE>/RADOS_SECRET_ACCESS_KEY_<CODE>.
+radosSecretName: rook-ceph-object-user-yucca-provisioner
+
 # CNPG-managed postgres Cluster name (shares yucca-api's database)
 postgresClusterName: yucca-db
 
@@ -51,6 +58,11 @@ secretData:
 # provide a real key gets a loud missing-JWT_PRIVATE_KEY crash instead of
 # silently signing admin tokens with a public fixture.
 useDevKeypair: false
+# The dev storage-credential keys, under the same opt-in. The seal half is
+# shared with michael (charts/apps/michael/values.yaml); the at-rest half never
+# leaves the APIs.
+devStorageCredentialKey: eXVjY2EtZGV2LXN0b3JhZ2UtY3JlZGVudGlhbC1rZXk=
+devStorageSealKey: eXVjY2EtZGV2LW1pY2hhZWwtc2VhbC1rZXktMDAwMDA=
 devJwtPrivateKey: |
   -----BEGIN PRIVATE KEY-----
   MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgCla79+Sip4o2hZ1K

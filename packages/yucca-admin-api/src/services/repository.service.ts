@@ -6,6 +6,8 @@ import {
   RepositoryGetResponseDto,
   RepositoryListQueryDto,
   RepositoryListResponseDto,
+  RepositoryStorageCredentialsRequestDto,
+  RepositoryStorageCredentialsResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
   RepositoryUrlResponseDto,
@@ -15,6 +17,7 @@ import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
 import { UserRepository } from 'src/repositories/user.repository';
+import { StorageCredentialService, storageUserId } from 'src/services/storageCredential.service';
 import { resolveLimit } from 'src/utils/pagination';
 
 const serviceUser = {
@@ -31,6 +34,7 @@ export class RepositoryService {
     private readonly connections: ConnectionRepository,
     private readonly jwt: JwtService,
     private readonly topology: TopologyRepository,
+    private readonly storageCredentials: StorageCredentialService,
   ) {}
 
   list(query: RepositoryListQueryDto): Promise<RepositoryListResponseDto> {
@@ -69,6 +73,12 @@ export class RepositoryService {
       siteCode: site.code,
       storageClusterCode: cluster.code,
     });
+    await this.storageCredentials.ensure({
+      id: repository.id,
+      storageClusterCode: repository.storageClusterCode,
+      storageAccessKeyId: null,
+      storageSecretAccessKey: null,
+    });
     return { repository };
   }
 
@@ -78,6 +88,7 @@ export class RepositoryService {
     }
     const repository = await this.repositories.get(id);
     const site = this.topology.getSite(repository.siteCode);
+    const credentials = await this.storageCredentials.ensure(await this.repositories.getStorageOwner(id));
     const token = await this.jwt.signAsync(
       {
         user: repository.user.id,
@@ -85,6 +96,7 @@ export class RepositoryService {
         writeOnce: repository.worm,
         storageCluster: repository.storageClusterCode,
         connection: repository.connectionType,
+        storageCredentials: this.storageCredentials.seal(repository.id, credentials),
       },
       { privateKey: env.RESTIC_JWT_PRIVATE_KEY, algorithm: 'ES256', expiresIn: env.RESTIC_JWT_EXPIRES_IN },
     );
@@ -95,6 +107,22 @@ export class RepositoryService {
     url.pathname = repository.id;
 
     return { url: `rest:${url.href}` };
+  }
+
+  // Drives `yuctl repos migrate-storage-credentials`.
+  async provisionStorageCredentials(
+    id: string,
+    dto: RepositoryStorageCredentialsRequestDto,
+  ): Promise<RepositoryStorageCredentialsResponseDto> {
+    const owner = await this.repositories.getStorageOwner(id);
+    const credentials = dto.rotate
+      ? await this.storageCredentials.rotate(owner)
+      : await this.storageCredentials.ensure(owner);
+    return {
+      storageUserId: storageUserId(id),
+      storageClusterCode: owner.storageClusterCode,
+      accessKeyId: credentials.accessKeyId,
+    };
   }
 
   async update(id: string, dto: RepositoryUpdateRequestDto): Promise<RepositoryUpdateResponseDto> {

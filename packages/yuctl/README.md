@@ -41,6 +41,7 @@ packages/yuctl/
     context/                  # ~/.config/yuctl/context.json {partition,region,ceph_cluster}
     k8s/                      # talosctl upgrade wrapper
     ceph/                     # RGW/dashboard health probe
+    rgw/                      # RadosGW admin ops + bucket-ownership calls
     adminapi/                 # CLI loopback login + Bearer admin-api client
 ```
 
@@ -60,6 +61,8 @@ yuctl
 ├── users
 │   ├── list                        list users in the partition's PRIMARY region
 │   └── view-dashboard              open the grafana per-user drill-down (--id or --email)
+├── repos
+│   └── migrate-storage-credentials  give each repository its own RGW user and hand its bucket over
 ├── config                          scoped config overrides (served to clients via /api/meta)
 │   ├── list                        list every settings scope (global / site:* / cluster:*)
 │   ├── get                         print one scope's overrides (--site / --cluster)
@@ -89,6 +92,26 @@ yuctl
 
 Global flags: `--log-level` (trace|debug|info|warn|error), `--log-format`
 (pretty|json).
+
+## Storage-credential migration
+
+`repos migrate-storage-credentials` is the one-time cutover behind
+[`docs/storage-credentials.md`](../../docs/storage-credentials.md): every
+repository gets its own RGW user, and its bucket is handed over to it, so
+michael can stop holding a cluster-wide S3 credential.
+
+```sh
+yuctl ceph select spice
+yuctl repos migrate-storage-credentials --dry-run   # report what would move
+yuctl repos migrate-storage-credentials
+```
+
+It talks to the admin API (provisioning) and to the RGW directly, using the
+selected ceph cluster's `s3_migrator_cred_refs` (bucket admin) and
+`s3_owner_cred_refs` (the current bucket owner, which has to sign the
+ownership-controls call) from discovery. Neither is the credential the APIs
+hold online — that one has no bucket admin at all. Idempotent, and it re-reads each bucket
+afterwards rather than trusting the link.
 
 ## State-reading approach
 

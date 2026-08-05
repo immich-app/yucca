@@ -135,3 +135,20 @@ func (c *Client) ListRepositories(ctx context.Context, userID string, limit int)
 	}
 	return all, nil
 }
+
+// StorageCredentials carries no secret: it never leaves the API.
+type StorageCredentials struct {
+	StorageUserID      string `json:"storageUserId"`
+	StorageClusterCode string `json:"storageClusterCode"`
+	AccessKeyID        string `json:"accessKeyId"`
+}
+
+// rotate issues a fresh key pair, invalidating the credentials any
+// already-minted token carries.
+func (c *Client) ProvisionStorageCredentials(ctx context.Context, id string, rotate bool) (*StorageCredentials, error) {
+	var out StorageCredentials
+	if err := c.postJSON(ctx, "/api/repository/"+id+"/storage-credentials", map[string]any{"rotate": rotate}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
