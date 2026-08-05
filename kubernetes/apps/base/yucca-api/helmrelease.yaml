@@ -40,6 +40,10 @@ spec:
     # secretData nulled: the chart's dev fixture (JWT + OIDC placeholders) is
     # replaced by the TF-provisioned `yucca-api` Secret (JWT_PRIVATE_KEY +
     # OIDC_CLIENT_ID/SECRET), picked up via the chart's envFrom: secretRef.
+    # RGW admin keys for per-repository S3 users: TF-provisioned into the
+    # yucca-provisioner-rgw Secret (tf .../talos/secrets.tf), like
+    # yucca-metrics-rgw. Additional clusters get RADOS_*_<CODE> pairs in it.
+    radosSecretName: yucca-provisioner-rgw
     secretData: null
     # Real IdP (no mock-oidc). Chart maps these onto explicit env (which beats
     # envFrom). Redirects target the staging ingress domain.

@@ -1,3 +1,4 @@
+import { parseStorageCredentialKeys } from '@common/server';
 import type { StringValue } from 'ms';
 import { z } from 'zod';
 
@@ -43,6 +44,22 @@ const schema = z.object({
   OIDC_DEVICE_CLIENT_ID: z.string(),
   OIDC_DEVICE_ALLOW_INSECURE: z.coerce.boolean().default(false),
   OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
+
+  // At rest only. First key seals, the rest stay accepted so a rotation is a
+  // two-step deploy.
+  STORAGE_CREDENTIAL_KEY: z.string().transform(parseStorageCredentialKeys),
+  // Shared with michael: seals the credentials carried by a restic token.
+  STORAGE_CREDENTIAL_SEAL_KEY: z.string().transform(parseStorageCredentialKeys),
+
+  // Per-cluster overrides are read straight from the environment as
+  // RADOS_ACCESS_KEY_ID_<CLUSTER_CODE>, as in yucca-metrics-worker.
+  RADOS_ACCESS_KEY_ID: z.string().optional(),
+  RADOS_SECRET_ACCESS_KEY: z.string().optional(),
+
+  // Fallback for clusters with no rgw_admin_endpoint (MinIO has no admin API):
+  // every repository is handed these keys instead of its own.
+  STORAGE_STATIC_ACCESS_KEY_ID: z.string().optional(),
+  STORAGE_STATIC_SECRET_ACCESS_KEY: z.string().optional(),
 
   TOPOLOGY_FILE: z.string().default('./topology.dev.json'),
   API_ROOT: z.string().default('http://localhost:3020/api'),

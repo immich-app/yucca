@@ -1,0 +1,32 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-provisioner-object-user
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/platform/ceph-objectuser
+      sourceRef:
+        kind: GitRepository
+        name: yucca
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # RGW admin the APIs use to create one S3 user per repository, so michael can
+    # hold no storage credentials at all. Rook writes its keys to
+    # rook-ceph-object-user-yucca-provisioner. In prod this user is `users=*`
+    # only and bucket ops belong to a separate operator-held `yucca-migrator`;
+    # the dev lab collapses both into one so the integration suites have a single
+    # credential to reach for.
+    userName: provisioner
+    capabilities:
+      user: '*'
+      bucket: '*'

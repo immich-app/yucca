@@ -24,4 +24,12 @@ export class RepositoryTable {
 
   @ForeignKeyColumn(() => ConnectionTable, { onUpdate: 'CASCADE', onDelete: 'RESTRICT', index: true })
   connectionId!: string;
+
+  @Column({ type: 'text', nullable: true })
+  storageAccessKeyId!: string | null;
+
+  // Sealed with STORAGE_CREDENTIAL_KEY, never the key michael holds: a database
+  // dump is not enough to reach the bucket.
+  @Column({ type: 'text', nullable: true })
+  storageSecretAccessKey!: string | null;
 }

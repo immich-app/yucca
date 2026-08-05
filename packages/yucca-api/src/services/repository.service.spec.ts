@@ -28,6 +28,7 @@ describe(RepositoryService.name, () => {
       mocks.wideContext as never,
       mocks.connection as never,
       mocks.topology as never,
+      mocks.storageCredential as never,
     );
   });
 
@@ -36,7 +37,7 @@ describe(RepositoryService.name, () => {
       mocks.topology.getSite.mockReturnValue(site);
       mocks.topology.getActiveCluster.mockReturnValue(site.clusters[0]);
       mocks.connection.getOrCreateDefault.mockResolvedValue({ id: 'conn', type: 'immich' } as never);
-      mocks.repository.create.mockResolvedValue({ id: 'repo' } as never);
+      mocks.repository.create.mockResolvedValue({ id: 'repo', storageClusterCode: 'father-spice' } as never);
 
       await sut.create(auth, { name: 'backup', worm: false, site: 'father' });
 
@@ -48,6 +49,12 @@ describe(RepositoryService.name, () => {
         worm: false,
         siteCode: 'father',
         storageClusterCode: 'father-spice',
+      });
+      expect(mocks.storageCredential.ensure).toHaveBeenCalledWith({
+        id: 'repo',
+        storageClusterCode: 'father-spice',
+        storageAccessKeyId: null,
+        storageSecretAccessKey: null,
       });
     });
 
@@ -75,6 +82,12 @@ describe(RepositoryService.name, () => {
         connectionType: 'immich',
       } as never);
       mocks.topology.getSite.mockReturnValue(site);
+      mocks.repository.getStorageOwner.mockResolvedValue({
+        id: repoId,
+        storageClusterCode: 'father-spice',
+        storageAccessKeyId: 'access',
+        storageSecretAccessKey: 'sealed-at-rest',
+      } as never);
       mocks.jwt.signAsync.mockResolvedValue('signed-token');
 
       const { url } = await sut.createUrl(auth, repoId);
@@ -86,6 +99,7 @@ describe(RepositoryService.name, () => {
         writeOnce: true,
         storageCluster: 'father-spice',
         connection: 'immich',
+        storageCredentials: 'sealed',
       });
       expect(url).toBe(`rest:https://restic:signed-token@rest.htz-fsn1.backups.futo.cloud/${repoId}`);
     });
