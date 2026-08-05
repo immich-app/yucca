@@ -95,7 +95,7 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Same DB + JWT validation. |
 | `michael` | Go | **Production** restic REST backend — S3 proxy with JWT verification, WORM enforcement, backend pooling. Holds **no S3 credentials**: each token carries its repository's own, sealed. |
 | `restic-api` | NestJS | Earlier TS implementation of the restic backend, kept as **reference**; not deployed. |
-| `yucca-metrics-worker` | NestJS | 5-min cron: RadosGW usage → meter tables → per-connection rollup (`connectionMetrics`, billing floor), OTel gauges. |
+| `yucca-metrics-worker` | NestJS | 5-min cron: RadosGW usage → meter tables → per-connection rollup (`connectionMetrics`, billing floor), OTel gauges incl. orphaned-bucket storage. |
 | `redis` (valkey) | | Shared platform cache (ephemeral; keys `yucca:<service>:<purpose>:*`). Primary-region only. |
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). |
 | `common` (`@common/server`) | TS lib | OTel init, pino repository, **feature-flag registry + connection-type registry**. |

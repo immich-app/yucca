@@ -111,11 +111,11 @@ Deleting a repository revokes its RGW user's keys and drops the row. It does
 WORM repository refuses deletion outright. What is left is a bucket owned by a
 keyless `yucca-repo-<id>` user with no row referring to it.
 
-Those strays are discoverable rather than automatic: `yuctl repos orphans` diffs
-RGW's buckets against the repository list and reports what it finds (the
-metrics-worker already logs the same buckets as `has no matching repository`),
-and `yuctl repos purge <id>` reclaims one behind `--yes`, refusing anything the
-database still knows about. Deleting a *user* is blocked while they own any
+Those strays are discoverable rather than automatic. `yucca-metrics-worker`
+reports them every cycle as `rgw_orphaned_bucket_count` and `rgw_orphaned_bytes`,
+labelled by site and cluster and recorded even at zero so the series can be
+alerted on. `yuctl repos orphans` then names them, and `yuctl repos purge <id>`
+reclaims one behind `--yes`, refusing anything the database still knows about. Deleting a *user* is blocked while they own any
 repository, so the order is always repositories first.
 
 ## The admin identities
