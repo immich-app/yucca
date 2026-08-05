@@ -1,17 +1,9 @@
 ---
-# Stage the Talos base image on each hypervisor. The base raw image
-# is immutable and shared by every VM — each VM gets a thin qcow2
-# overlay (talos_vms role) backed by this single file.
-#
-# Idempotency model:
-#   - .raw exists  → role is a no-op (no download, no decompress).
-#   - .raw missing, .zst exists with matching checksum → decompress only.
-#   - neither → download (checksum-verified) + decompress.
-#
-# Why pin the .zst checksum (not the .raw): verifying the compressed
-# artifact at download time fails fast (no wasted decompress CPU).
-# Image Factory publishes no checksum sidecar on the free tier —
-# compute it yourself: `curl -sL <talos_image_url> | sha256sum`.
+# Stage the immutable Talos base raw image (VMs get thin qcow2 overlays via
+# talos_vms). Idempotency: .raw exists -> no-op; .zst with matching checksum ->
+# decompress only; neither -> checksum-verified download + decompress. Checksum
+# is pinned on the .zst (fails fast at download, no wasted decompress); Image
+# Factory publishes no sidecar -- compute via `curl -sL <talos_image_url> | sha256sum`.
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:

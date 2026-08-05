@@ -12,9 +12,8 @@ const (
 
 var DefaultPhases = []string{PhaseGenerate, PhaseBackup, PhaseIncremental, PhaseCheck, PhaseRestore}
 
-// Config is the full agent instruction set, sent over the ssh session's stdin
-// so the repository URL (which embeds the JWT) and password never appear in
-// argv or shell history on the management host.
+// Config is the full agent instruction set, sent over ssh stdin so the repo
+// URL (embeds the JWT) and password never hit argv or shell history.
 type Config struct {
 	Repo     string `json:"repo"`
 	Password string `json:"password"`

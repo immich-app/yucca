@@ -1,15 +1,10 @@
-# Cilium BGP (north-south LoadBalancer VIPs). The worker speakers iBGP-peer the spine's
-# kube-VLAN IRB (10.40.10.1, AS 402421) and advertise LoadBalancer /32s from the two
-# public pools; the spine ECMPs each VIP per-flow across ALL advertising workers
-# (multipath + forwarding-table load-balance, fabric side: tf/.../core-fabric/
-# bgp-nodes.tf) and it's covered by the transit 69.48.224.0/24 advertisement.
-# With Cilium DSR (loadBalancer.mode hybrid, talos cilium values) the gw LB
-# Service runs externalTrafficPolicy: Cluster: every worker advertises the VIP,
-# the spine ECMPs the /32 across all of them, the landing node dispatches to a
-# backend, and the backend's node replies straight to the client from the VIP —
-# no SNAT hop, client IP preserved, ECMP width independent of pod placement.
-# NOTE: applied to the father cluster directly for now; to be adopted into the Flux tree
-# once GitOps is bootstrapped on prod.
+# Cilium BGP (north-south LB VIPs). Workers iBGP-peer the spine kube-VLAN IRB
+# (10.40.10.1, AS 402421), advertise LB /32s (covered by the transit 69.48.224.0/24);
+# spine ECMPs per-flow across all advertising workers (fabric side: tf/.../core-fabric/bgp-nodes.tf).
+# DSR (loadBalancer.mode hybrid, talos cilium values) + externalTrafficPolicy: Cluster on gw:
+# backend node replies direct from the VIP — no SNAT, client IP preserved, ECMP width
+# independent of pod placement.
+# NOTE: applied to father directly for now; adopt into the Flux tree once GitOps is bootstrapped on prod.
 ---
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
@@ -18,11 +13,9 @@ metadata:
 spec:
   # Skip the network/broadcast addresses — .0 is dropped by upstream routers.
   allowFirstLastIPs: "No"
-  # Pool-a is the DEFAULT public pool: every LB service EXCEPT ones labeled
-  # lb=internal (NetBird-only VIP from lb-internal, must never draw a public IP)
-  # or lb=public-b (explicit opt-in to pool-b below). Disjoint selectors keep
-  # pool assignment deterministic — with identical selectors Cilium picks
-  # arbitrarily between matching pools.
+  # Default public pool: everything except lb=internal (must never draw a public IP)
+  # or lb=public-b. Selectors must stay disjoint — identical selectors make Cilium
+  # pick between pools arbitrarily.
   serviceSelector:
     matchExpressions:
       - { key: lb, operator: NotIn, values: ["internal", "public-b"] }
@@ -42,10 +35,9 @@ spec:
   blocks:
     - cidr: 69.48.224.64/26
 ---
-# Internal (NetBird-only) VIPs — 10.40.12.0/24 (fabric-addressing lb_internal).
-# Advertised to the spine over the same iBGP (CILIUM-NODES-IN accepts the range)
-# but NOT covered by the transit advertisement, so unreachable from the internet;
-# NetBird peers reach it via the mgmt route (netbird stack lb_internal resource).
+# Internal (NetBird-only) VIPs — 10.40.12.0/24 (fabric-addressing lb_internal). Advertised
+# over the same iBGP (CILIUM-NODES-IN accepts it) but not in the transit advert, so
+# internet-unreachable; NetBird peers use the mgmt route (netbird stack lb_internal).
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:

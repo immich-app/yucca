@@ -1,10 +1,6 @@
-# Upstream IP-transit eBGP uplinks on the spine (e.g. Core-Backbone), supporting
-# MULTIPLE transits for multi-homing. Each transit is its own external BGP group
-# (v4 + v6 neighbors); import is DEFAULT-ONLY (the QFX FIB can't hold a full table).
-#   • prepend (export): advertise our prefix with our AS prepended N times.
-#   • local_pref (import): local-preference on the received default (highest = the
-#     outbound default route).
-# Policies derive as <UPPER-NAME>-OUT / -IN.
+# Transit eBGP uplinks (multi-homing capable); import is DEFAULT-ONLY — the QFX
+# FIB can't hold a full table. prepend (export) / local_pref (import) steer
+# primary vs backup. Policies derive as <UPPER-NAME>-OUT / -IN.
 
 locals {
   advertised = toset([for name, t in var.transits : t.advertise])
@@ -16,9 +12,8 @@ resource "junos_routing_options" "this" {
   autonomous_system {
     number = tostring(var.local_as)
   }
-  # Install every equal-cost next-hop in the PFE (per-flow hashed) — the other
-  # half of the cilium-nodes ECMP, see bgp-nodes.tf. Only wired when node iBGP
-  # is enabled; requires local_as (this resource) to be set alongside it.
+  # Other half of the cilium-nodes ECMP (bgp-nodes.tf): install every equal-cost
+  # next-hop in the PFE. Only wired with node iBGP; requires local_as.
   dynamic "forwarding_table" {
     for_each = var.node_bgp == null ? [] : [1]
     content {

@@ -1,17 +1,9 @@
 ---
-# Freeze the load-bearing host packages at their installed version.
-#
-# We deliberately do NOT run unattended-upgrades: an apt upgrade that moved the
-# cephadm container runtime (podman + ecosystem) or the time source (chrony, which
-# mon quorum depends on) out from under a live cluster is exactly the kind of
-# uncoordinated change we avoid. Instead we HOLD what matters (dpkg selection) so
-# `apt upgrade` skips them; upgrading them becomes a deliberate, health-gated act
-# (unhold -> upgrade -> re-hold, ideally through the serial converge). Diagnostic
-# and ops tools are intentionally not held (a version drift there is harmless).
-#
-# Runs last in the baseline role so every held package is already installed.
-# Idempotent: dpkg_selections only reports changed when the selection differs.
-# Set baseline_held_packages: [] to disable holds entirely.
+# dpkg-hold the load-bearing packages (podman ecosystem, chrony) so `apt upgrade`
+# cannot move them under a live cluster; upgrading = deliberate unhold -> upgrade
+# -> re-hold via the serial converge (full rationale on baseline_held_packages).
+# Runs last in the role so everything held is already installed;
+# baseline_held_packages: [] disables.
 
 - name: Freeze load-bearing packages at their installed version (dpkg hold)
   ansible.builtin.dpkg_selections:

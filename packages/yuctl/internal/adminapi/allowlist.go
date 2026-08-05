@@ -96,7 +96,6 @@ func (c *Client) AddAllowlistEntry(ctx context.Context, email string, staged boo
 	return &out.Entry, nil
 }
 
-// RemoveAllowlistEntry removes an email from the allowlist.
 func (c *Client) RemoveAllowlistEntry(ctx context.Context, email string) error {
 	return c.deleteReq(ctx, "/api/allowlist/"+url.PathEscape(email))
 }

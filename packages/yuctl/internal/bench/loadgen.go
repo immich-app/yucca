@@ -14,13 +14,11 @@ import (
 	"yuctl/internal/netdev"
 )
 
-// Loadgen is the bench-do agent mode: a supervisor that runs one continuous
-// restic backup loop per client until the duration elapses, the droplet's
-// transfer cap is hit, or it is killed. Unlike the bench mode it is built to
-// run detached (nohup) on a droplet: progress goes to a status file the
-// orchestrator samples over ssh, not to a live event stream.
+// Loadgen is the bench-do agent mode: a supervisor looping one continuous
+// restic backup per client until duration elapses, the droplet's transfer cap
+// hits, or it is killed. Runs detached (nohup): progress goes to a status file
+// sampled over ssh, not a live event stream.
 
-// LoadgenOps.
 const (
 	LoadgenOpLoad    = "load"
 	LoadgenOpCleanup = "cleanup"
@@ -33,9 +31,8 @@ type LoadgenClient struct {
 	Password string `json:"password"`
 }
 
-// LoadgenConfig is the full instruction set for one droplet's agent. It is
-// written to a 0600 file the agent deletes after reading (load) or piped over
-// stdin (cleanup) — the repo URLs embed JWTs and must never hit argv.
+// LoadgenConfig: one droplet's full instruction set — a 0600 file the agent
+// deletes after reading (load) or stdin (cleanup); repo URLs embed JWTs, never argv.
 type LoadgenConfig struct {
 	Op      string          `json:"op"` // load (default) | cleanup
 	Clients []LoadgenClient `json:"clients"`
@@ -159,9 +156,8 @@ func physicalTX() (int64, bool) {
 	return int64(netdev.PhysicalTotals(netdev.Parse(string(b))).TX), true
 }
 
-// RunLoadgen supervises the client loops. It returns nil on a clean end
-// (duration elapsed or cap hit — both are recorded in the status file) and an
-// error only for setup failures.
+// RunLoadgen supervises the client loops; nil on a clean end (duration/cap —
+// recorded in the status file), error only for setup failures.
 func RunLoadgen(ctx context.Context, cfg LoadgenConfig) error {
 	if err := cfg.defaults(); err != nil {
 		return err
@@ -251,9 +247,9 @@ func RunLoadgen(ctx context.Context, cfg LoadgenConfig) error {
 	return state.write(cfg.StatusPath)
 }
 
-// clientLoop is one client's endless generate→backup cycle. Every cycle uses
-// a fresh seed so nothing dedups against earlier uploads; errors back off and
-// retry rather than killing the whole droplet's load.
+// clientLoop: one client's endless generate→backup cycle, fresh seed each pass
+// (nothing dedups against earlier uploads); errors back off and retry, never
+// kill the droplet's load.
 func clientLoop(ctx context.Context, cfg LoadgenConfig, idx int, cl LoadgenClient, state *loadgenState) {
 	dataDir := filepath.Join(cfg.Workdir, cl.Name, "data")
 	r := &Restic{
@@ -276,9 +272,8 @@ func clientLoop(ctx context.Context, cfg LoadgenConfig, idx int, cl LoadgenClien
 		}
 	}
 
-	// Init retries for as long as the run does: a load-test client giving up
-	// on transient server errors (e.g. 500s under the very load being
-	// generated) would silently thin the fleet. fail() paces the retries.
+	// Init retries as long as the run does: giving up on transient 500s (under
+	// the very load being generated) would silently thin the fleet; fail() paces.
 	for {
 		_, err := r.EnsureInit(ctx)
 		if err == nil {
@@ -344,9 +339,9 @@ func clientLoop(ctx context.Context, cfg LoadgenConfig, idx int, cl LoadgenClien
 	}
 }
 
-// RunLoadgenCleanup forgets and prunes every bench-do snapshot in each
-// client's repository, streaming bench Events (it runs synchronously over the
-// orchestrator's ssh session, unlike the detached load mode).
+// RunLoadgenCleanup forgets+prunes every bench-do snapshot per client,
+// streaming bench Events (synchronous over the orchestrator's ssh, unlike
+// the detached load mode).
 func RunLoadgenCleanup(ctx context.Context, cfg LoadgenConfig, emit func(Event)) error {
 	if err := cfg.defaults(); err != nil {
 		return err

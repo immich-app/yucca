@@ -1,19 +1,11 @@
 ---
-# Reusable Ceph-health checkpoint for the rolling converge plays. Imported as a
-# pre_task and post_task on each serial converge play (baseline / tune-os /
-# tune-hardware / tune-ceph / harden).
-#
-# It probes the cluster via the bootstrap node and, ONLY when a live cluster
-# answers, halts the roll if the cluster is HEALTH_ERR (inactive / unavailable
-# PGs). It is a deliberate no-op during the initial bootstrap ordering
-# (baseline -> tune -> deploy-ceph), where `ceph health` cannot run yet: the
-# probe is failed_when:false and the assert is gated on the probe having
-# succeeded, so a not-yet-Ceph node just skips the gate.
-#
-# Combined with serial + max_fail_percentage:0 on the play, a batch that takes
-# data offline (a bad ruleset, a wrong sysctl, a firewall that fences the fabric)
-# halts the rollout at the next checkpoint instead of propagating to all nodes.
-# run_once makes it one check per serial batch, delegated to the bootstrap host.
+# Reusable Ceph-health checkpoint, imported pre+post on each serial converge
+# play (baseline / tune-* / harden). Halts the roll on HEALTH_ERR, but ONLY when
+# a live cluster answers -- during initial bootstrap `ceph health` cannot run, so
+# the probe is failed_when:false and the assert is gated on it succeeding.
+# With serial + max_fail_percentage:0, a batch that takes data offline halts at
+# the next checkpoint instead of propagating fleet-wide. One check per batch
+# (run_once, delegated to the bootstrap host).
 
 - name: Probe Ceph health (no-op until the cluster is live)
   ansible.builtin.command: ceph health --format json

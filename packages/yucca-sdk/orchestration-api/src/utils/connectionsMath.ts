@@ -2,8 +2,7 @@
 //   expr   := term (('+' | '-') term)*
 //   term   := factor (('*' | '/') factor)*
 //   factor := integer | 'cores' | ('min' | 'max') '(' expr ',' expr ')' | '(' expr ')'
-// Clients substitute their local CPU count for `cores` and fall back to a
-// default when an expression fails to parse.
+// Clients substitute their local CPU count for `cores`; on parse failure they fall back to a default.
 
 type Token = { kind: 'number'; value: number } | { kind: 'ident'; value: string } | { kind: 'symbol'; value: string };
 

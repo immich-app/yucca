@@ -22,10 +22,9 @@ import (
 
 // GET /{path}/{type}
 //
-// Streams the restic v2 JSON array as listing pages arrive instead of
-// buffering the whole repo listing. data/ (the bulk of a repo, hex-named) fans
-// out across 16 hex prefixes: RGW scans them in parallel and each shard lands
-// on its own pool backend.
+// Streams the restic v2 JSON array as pages arrive (no full-listing buffer).
+// data/ fans out across 16 hex prefixes: RGW scans in parallel, each shard on
+// its own pool backend.
 func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 

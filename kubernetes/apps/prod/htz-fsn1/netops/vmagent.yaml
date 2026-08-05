@@ -1,7 +1,5 @@
-# vmagent — the single scrape + fan-out point. Scrapes at 10s (high granularity)
-# and remote-writes to BOTH the in-cluster VictoriaMetrics (30d buffer) and
-# o11y's mesh vmauth (long-term tier, over NetBird, unauth). Also scrapes the
-# spice ceph fleet (cluster=spice) over the fabric.
+# vmagent — single scrape (10s) + fan-out: remote-writes to in-cluster VM (30d buffer)
+# AND o11y mesh vmauth (long-term, NetBird, unauth). Also scrapes spice over the fabric.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -39,31 +37,25 @@ data:
   scrape.yml: |
     global:
       scrape_interval: 10s
-      # Site/env identity tags. `cluster` is deliberately NOT here: vmagent
-      # applies external_labels OVER target labels (unlike Prometheus's
-      # fill-gaps semantics — it relabeled all 48 spice targets to
-      # cluster=netops), so each job stamps its own cluster label instead.
+      # No `cluster` here: vmagent applies external_labels OVER target labels (unlike
+      # Prometheus — it relabeled all 48 spice targets to cluster=netops), so each job
+      # stamps its own cluster label.
       external_labels:
         site: htz-fsn1
         env: prod
     scrape_configs:
-      # The fabric switches (spine + cls1 leaf) via junos_exporter. The exporter
-      # polls the switches synchronously per scrape and burns ~20s/device in its
-      # SSH layer (the raw RPC is ~2s — known exporter quirk, revisit), so this job
-      # runs at 60s with a generous timeout. 60s counter resolution is plenty for
-      # bandwidth dashboards; sFlow is the upgrade path if we ever need seconds.
+      # Fabric switches via junos_exporter. Exporter burns ~20s/device in its SSH layer
+      # (raw RPC ~2s — known quirk), hence 60s interval + long timeout; sFlow covers
+      # seconds-granularity needs.
       - job_name: junos
         scrape_interval: 60s
         scrape_timeout: 55s
         static_configs:
           - labels: { cluster: netops }
             targets: ["junos-exporter.netops.svc:9326"]
-      # sflow-rt: seconds-granularity per-port fabric rates (the spine exports
-      # counter samples every 5s; the prometheus app serves them PRE-RATED — the
-      # sflow_* series are already per-second gauges, no rate() needed). The
-      # datasource label is the SNMP ifIndex (persistent on Junos); the relabels
-      # map it to the port name (regenerate from `show snmp mib walk ifDescr`
-      # after channelization changes).
+      # sflow-rt: per-port fabric rates, 5s samples served PRE-RATED (sflow_* are
+      # per-second gauges, no rate()). datasource = SNMP ifIndex (persistent on Junos);
+      # regenerate the port relabels from `show snmp mib walk ifDescr` after channelization changes.
       - job_name: sflow
         scrape_interval: 5s
         metrics_path: /prometheus/metrics/ALL/ifinoctets,ifoutoctets,ifinutilization,ifoututilization,ifinerrors,ifouterrors,ifindiscards,ifoutdiscards,ifinpkts,ifoutpkts/txt
@@ -124,12 +116,9 @@ data:
         relabel_configs:
           - { target_label: cluster, replacement: netops }
       # ─── spice (bare-metal Ceph) ────────────────────────────────────────
-      # All 48 nodes' fabric VLAN-120 IPs (host_index 4-51; roster
-      # tf/.../ceph/spice-hosts.yaml — same list the s3 DNS records pin),
-      # reached over the spine-routed kube↔cls1-public path. cluster=spice is
-      # stamped per-target (see the external_labels note: vmagent would
-      # override it from globals). 30s: 48 node-exporters at the global 10s
-      # would triple the sample volume for no operational gain.
+      # All 48 nodes' fabric VLAN-120 IPs (host_index 4-51; roster tf/.../ceph/spice-hosts.yaml,
+      # same list as the s3 DNS records), via the spine-routed kube↔cls1-public path.
+      # cluster=spice stamped per-target (see external_labels note). 30s: 10s would 3x sample volume.
       - job_name: ceph-node-exporter
         scrape_interval: 30s
         static_configs:
@@ -159,11 +148,9 @@ data:
               "10.40.20.40:9926", "10.40.20.41:9926", "10.40.20.42:9926", "10.40.20.43:9926", "10.40.20.44:9926", "10.40.20.45:9926",
               "10.40.20.46:9926", "10.40.20.47:9926", "10.40.20.48:9926", "10.40.20.49:9926", "10.40.20.50:9926", "10.40.20.51:9926"
             ]
-      # Cluster-level metrics (health, pools) from the mgr prometheus module.
-      # mgr is count:3 with cephadm-chosen placement that MOVES on redeploy, so
-      # scrape :9283 on every node: only mgr hosts answer (active = full set,
-      # standby = tiny), the rest refuse — one RST per interval, and
-      # up{job="ceph-mgr"} tracks where the mgrs actually live.
+      # mgr prometheus module (health, pools). mgr placement moves on redeploy, so scrape
+      # :9283 everywhere: only mgr hosts answer (active=full, standby=tiny), rest RST;
+      # up{job="ceph-mgr"} tracks where mgrs live.
       - job_name: ceph-mgr
         scrape_interval: 30s
         static_configs:
@@ -201,8 +188,7 @@ spec:
             # Pick up ConfigMap edits without a pod restart.
             - -promscrape.configCheckInterval=1m
             - -remoteWrite.url=http://victoria-metrics.netops.svc:8428/api/v1/write
-            # o11y long-term tier: the unauth mesh vmauth over NetBird (same
-            # path as the observability agents; NetBird ACL is the only gate).
+            # o11y long-term tier: unauth mesh vmauth over NetBird (NetBird ACL is the only gate).
             - -remoteWrite.url=https://vmauth.o11y.futo.network/insert/0/prometheus/api/v1/write
             # Bound each URL's spill so two queues fit the 2Gi buffer emptyDir.
             - -remoteWrite.maxDiskUsagePerURL=900MB
@@ -215,8 +201,7 @@ spec:
             - { name: buffer, mountPath: /buffer }
           resources:
             requests: { cpu: 50m, memory: 256Mi }
-            # 512Mi OOM-looped every ~8min once the 12 k8s + 5 static targets
-            # were all scraping (269 restarts over 6 days).
+            # 512Mi OOM-looped ~8min with all targets scraping (269 restarts / 6 days).
             limits: { memory: 4Gi }
       volumes:
         - name: config

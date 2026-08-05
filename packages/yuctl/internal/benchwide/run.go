@@ -23,9 +23,8 @@ import (
 	"yuctl/internal/provider"
 )
 
-// RepoMinter is the slice of the admin-api client Start needs: repository
-// creation and restic-URL minting (URLs embed short-lived JWTs, so they are
-// re-minted on every start, never persisted).
+// RepoMinter: the admin-api slice Start needs — repo creation + restic-URL
+// minting (URLs embed short-lived JWTs; re-minted each start, never persisted).
 type RepoMinter interface {
 	CreateRepository(ctx context.Context, name string, worm bool, opts adminapi.CreateRepositoryOptions) (*adminapi.Repository, error)
 	RepositoryURL(ctx context.Context, id string) (string, error)
@@ -78,18 +77,15 @@ func (o *StartOptions) defaults() {
 	}
 }
 
-// killScript stops the loadgen everywhere it can respawn from: the agent
-// supervisor first, then any in-flight restic. The [b]racket keeps the pkill
-// pattern from matching this very script's command line.
+// killScript stops loadgen everywhere it respawns from: supervisor first, then
+// restic. The [b]racket keeps pkill from matching this script's own command line.
 const killScript = `pkill -f 'bench-agent --[l]oadgen' 2>/dev/null; sleep 1; pkill -x restic 2>/dev/null; true`
 
-// prepScript and launchScript are one droplet's start, as two SEPARATE ssh
-// execs. They must not be merged: prep runs the kill patterns, and launch's
-// command line spells out "bench-agent --loadgen" verbatim — in one script
-// the pkill would match its own shell's command line and SIGTERM it mid-run
-// (same trap warp's split kill/launch avoids). Neither script carries
-// secrets — they ride ssh argv, visible in remote ps; the config travels
-// over prep's stdin into a 0600 file the agent deletes after reading.
+// prepScript and launchScript must stay two SEPARATE ssh execs: merged, prep's
+// pkill would match launch's verbatim "bench-agent --loadgen" on its own
+// shell's command line and SIGTERM it mid-run (same trap warp's split avoids).
+// Neither carries secrets (they ride argv, visible in remote ps); the config
+// travels over prep's stdin into a 0600 file the agent deletes after reading.
 func prepScript() string {
 	return fmt.Sprintf("umask 077; mkdir -p %s; cat > %s; %s; rm -f %s",
 		Workdir, configPath, killScript, statusPath)
@@ -101,10 +97,9 @@ func launchScript() string {
 		bench.RemoteBinDir, configPath, agentLog)
 }
 
-// Start (re)launches the load on every droplet: ensures one repository per
-// client via the admin-api, re-mints restic URLs, and hands each droplet a
-// LoadgenConfig over ssh stdin (secrets never in argv). A second start is a
-// graceful restart with new parameters.
+// Start (re)launches load on every droplet: one repo per client via admin-api,
+// re-minted restic URLs, LoadgenConfig over ssh stdin (secrets never in argv).
+// A second start = graceful restart with new parameters.
 func (s *Session) Start(ctx context.Context, minter RepoMinter, opts StartOptions) error {
 	opts.defaults()
 	if opts.PackSizeMiB < 4 || opts.PackSizeMiB > 128 {
@@ -291,9 +286,8 @@ func (s *Session) Stop(ctx context.Context) (*Result, error) {
 	return res, nil
 }
 
-// Result is the fleet-aggregated outcome of a run, written to a local JSON on
-// stop. Client numbers are restic's post-dedup data_added; droplet wire TX is
-// what the transfer allowance actually saw.
+// Result: fleet-aggregated run outcome, written to local JSON on stop. Client
+// numbers = restic post-dedup data_added; droplet wire TX = what the allowance saw.
 type Result struct {
 	Label          string            `json:"label"`
 	Partition      string            `json:"partition"`

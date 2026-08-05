@@ -7,11 +7,9 @@ cluster_role: ceph
 cluster_domain: staging.austin.int.futo.cloud
 public_network: 10.10.10.0/24
 cluster_network: 10.10.10.0/24
-# The address Ceph point-services advertise + bind on (mon --mon-ip, cephadm
-# host-add, dashboard monitoring URLs). Flat cluster: no ceph_public_ip, so this
-# resolves to bond_ip (10.10.10.9x) - identical to the pre-fabric behavior. A
-# group_var, NOT a role default, because it is read via hostvars[<host>] which
-# does not expose role defaults.
+# Advertise/bind address (mon --mon-ip, cephadm host-add, dashboard URLs). Flat
+# cluster: resolves to bond_ip. Must be a group_var -- hostvars[] does not expose
+# role defaults.
 ceph_service_ip: "{{ ceph_public_ip | default(bond_ip) }}"
 gateway: 10.10.10.1
 dns_server: 10.10.10.1
@@ -34,10 +32,8 @@ timezone: UTC
 # which requires the ops password).
 baseline_ops_sudo: "NOPASSWD:ALL"
 
-# Cluster-specific packages, merged with the baseline role's universal
-# baseline_diag_packages. These match sietch's hardware: Mellanox ConnectX 25G
-# NICs (eno1np0/eno2np1) and SAS-expander drive enclosures. A different cluster
-# declares its own set (or none).
+# Merged with baseline_diag_packages; matches sietch hardware (Mellanox ConnectX
+# 25G, SAS-expander enclosures).
 baseline_extra_packages:
   - lldpd       # LLDP neighbor/switch discovery on the 25G fabric
   - mstflint    # Mellanox ConnectX firmware query/update
@@ -45,29 +41,23 @@ baseline_extra_packages:
   - ledmon      # SAS enclosure drive-fault LEDs (ledctl)
   - sg3-utils   # SCSI enclosure management (sg_ses)
 
-# Deploy keypair path on the controller. Both {path} and {path}.pub must
-# exist before running provision.yml (the preflight play in provision.yml
-# enforces this). ansible-iac's authorized_keys on every node is populated
-# by a file lookup at provision time — rotating the key on the controller
-# automatically propagates on the next re-provision.
+# Deploy keypair on the controller; {path} and {path}.pub must both exist
+# (provision.yml preflight enforces). authorized_keys comes from a file lookup at
+# provision time, so a controller-side rotation propagates on next re-provision.
 provision_iac_ssh_key_path: "~/.ssh/id_ed25519_sietch"
 
 # 1P vault for cluster secret lookups (e.g., rotate-ssh-key.yml reads pubkey from here).
 cluster_secrets_vault: yucca_tf_staging
 
-# Secret aliases — vault_* vars populated by scripts/ansible-play.sh via op inject
-#
-# Note: the deploy public key is NOT a secret — it's public data and lives
-# at {{ provision_iac_ssh_key_path }}.pub on the controller. Reading it via
-# file lookup avoids drift between vault and disk.
+# Secret aliases — vault_* populated by scripts/ansible-play.sh via op inject.
+# The deploy PUBLIC key is not a secret: read from {{ provision_iac_ssh_key_path }}.pub
+# on disk to avoid vault/disk drift.
 ops_password: "{{ vault_ops_password }}"
 ceph_dashboard_user: admin
 ceph_dashboard_password: "{{ vault_ceph_dashboard_password }}"
 
-# S3 svc-user (yucca-restic consumer) — TF+1P-predetermined keys passed to
-# `radosgw-admin user create --access-key=... --secret-key=...` so the Yucca
-# app can be pre-configured with matching credentials. Rotation path documented
-# in docs/runbooks/rotate-secrets.md.
+# S3 svc-user (yucca-restic): TF+1P-predetermined keys passed to radosgw-admin
+# user create. Rotation: docs/runbooks/rotate-secrets.md.
 ceph_rgw_s3_user_access_key: "{{ vault_s3_restic_access_key }}"
 ceph_rgw_s3_user_secret_key: "{{ vault_s3_restic_secret_key }}"
 
@@ -113,15 +103,12 @@ ceph_rgw_metrics_user_secret_key: "{{ vault_metrics_worker_secret_key }}"
 ceph_rgw_metrics_user_caps: "buckets=read;usage=read;metadata=read;users=read"
 
 # --- RGW DNS + TLS ---
-# Virtual-hosted S3 support: setting rgw_dns_name tells RGW to strip this
-# suffix from the Host header and treat the remainder as the bucket name.
-# Requires matching DNS: both s3.<domain> and *.s3.<domain> should resolve
-# to the cluster nodes (round-robin A, or VIP/LB in prod).
+# Virtual-hosted S3: RGW strips this suffix from Host to get the bucket name.
+# Requires s3.<domain> AND *.s3.<domain> resolving to the cluster nodes.
 ceph_rgw_dns_name: s3.staging.austin.int.futo.cloud
 
-# Self-signed wildcard cert handed to cephadm via service spec.
-# cephadm distributes to all RGW daemons. To rotate, delete
-# /etc/ceph/rgw-ssl.{crt,key} on the bootstrap node and re-run the role.
+# Self-signed wildcard cert distributed by cephadm via the service spec. Rotate:
+# delete /etc/ceph/rgw-ssl.{crt,key} on the bootstrap node, re-run the role.
 ceph_rgw_ssl: true
 ceph_rgw_ssl_cert_days: 3650  # 10 years
 ceph_rgw_ssl_cert_subject_c: US

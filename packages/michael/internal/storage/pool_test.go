@@ -458,9 +458,8 @@ func (s *slowProbeStore) Probe(ctx context.Context, _ string) error {
 	return ctx.Err()
 }
 
-// Probes must run concurrently and be bounded by probeTimeout: N unreachable
-// backends cost one timeout, not N — serial unbounded probes once pushed pool
-// init past the kubelet startup budget and crash-looped the deployment.
+// Probes run concurrently, bounded by probeTimeout: N unreachable backends cost
+// one timeout, not N (serial unbounded probes once crash-looped startup).
 func TestPool_ProbesConcurrentAndBounded(t *testing.T) {
 	const n = 8
 	eps := make([]string, n)

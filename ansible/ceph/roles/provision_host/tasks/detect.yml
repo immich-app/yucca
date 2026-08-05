@@ -1,14 +1,8 @@
 ---
-# Phase 1: Detect state
-#
-# Confirms we're running on a Debian live image (not an installed OS)
-# and booted in UEFI mode, snapshots the current disk layout, then runs
-# the full SSD pre-flight: model-pattern discovery, rotational-flag
-# check, minimum-size floor, and capture of model/serial/size facts.
-# SSD pre-flight lives here (not in disks.yml) so that a bad hardware
-# configuration fails BEFORE any destructive disk work begins, and so
-# that ssd1_dev/ssd2_dev/ssd1_serial/ssd2_serial are available to every
-# later phase unconditionally (including the resume path in disks.yml).
+# Phase 1: assert live image + UEFI boot, snapshot disks, full SSD pre-flight
+# (model pattern, rotational flag, size floor, model/serial/size facts). Lives
+# HERE, not disks.yml, so bad hardware fails BEFORE destructive work and the
+# ssd*_dev/_serial facts exist for every later phase, resume path included.
 
 - name: Verify host is booted from a Debian live image
   ansible.builtin.stat:

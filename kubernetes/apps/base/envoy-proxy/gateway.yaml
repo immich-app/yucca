@@ -1,10 +1,9 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/gateway_v1.json
-# HTTPS on 443 (the wildcard cert covers the apex + every subdomain: web/api/gw)
-# plus a bare HTTP listener on 80 that exists ONLY to serve the 301 redirect
-# (redirect.yaml in httproutes) — without it, plain-http requests to the VIP get
-# connection-refused. Per-host routing is in the HTTPRoutes (which live with the
-# app services). Routes may attach from any namespace.
+# HTTPS on 443 (wildcard cert covers apex + every subdomain) plus a bare :80 listener
+# that exists ONLY for the 301 redirect (redirect.yaml) — without it plain-http hits
+# connection-refused. Per-host routing lives in the HTTPRoutes (beside the app
+# services); routes may attach from any namespace.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:

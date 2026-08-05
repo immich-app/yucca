@@ -21,14 +21,11 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
-// These benchmarks answer one question: what does labelling traffic by source
-// network cost per request? Every variant runs the SAME router with the SAME
-// instrumented meter; the only thing that varies is whether ResolveClient is
-// set, which is exactly the switch that mounts geoip.Middleware +
-// metrics.TrafficMiddleware.
-//
-// Against the committed three-network fixture the lookup is optimistic; export
-// MICHAEL_BENCH_ASN_DB=/path/to/dbip-asn-lite.mmdb to measure a real database.
+// One question: what does source-network labelling cost per request? Same
+// router + instrumented meter throughout; only ResolveClient varies (the switch
+// mounting geoip.Middleware + metrics.TrafficMiddleware). The three-network
+// fixture is optimistic; export MICHAEL_BENCH_ASN_DB=/path/to/dbip-asn-lite.mmdb
+// to measure a real database.
 
 // benchServer builds a server over an instrumented meter (NOT noop — the
 // aggregation work is part of what we are measuring) serving a fixed blob.
@@ -57,9 +54,8 @@ func benchServer(b *testing.B, blob []byte, resolve func(*http.Request) geoip.Cl
 	return srv
 }
 
-// benchRequest builds one reusable authenticated blob GET. The token is signed
-// once: michael caches verified tokens, so re-signing per iteration would
-// benchmark ECDSA instead of the request path.
+// benchRequest builds one reusable authed blob GET, signed once — michael
+// caches verified tokens; re-signing per iteration would benchmark ECDSA.
 func benchRequest(b *testing.B) *http.Request {
 	b.Helper()
 	token := makeJWTForBench(b, jwt.MapClaims{
@@ -104,11 +100,9 @@ func benchResolver(b *testing.B) func(*http.Request) geoip.Client {
 	return func(r *http.Request) geoip.Client { return db.Resolve(r, "X-Forwarded-For") }
 }
 
-// blobSizes brackets the real workload. 16MiB is the representative case: it is
-// this deployment's restic pack size (yucca-api DEFAULT_CONFIG
-// restic_pack_size_mib, and yuctl's --pack-size default). 1KiB is the worst case
-// for RELATIVE overhead — fixed per-request cost with almost no bytes to
-// amortize it over.
+// blobSizes brackets the workload: 16MiB = this deployment's restic pack size
+// (yucca-api DEFAULT_CONFIG restic_pack_size_mib, yuctl --pack-size default);
+// 1KiB = worst case for RELATIVE overhead (nothing to amortize over).
 var blobSizes = []struct {
 	name string
 	size int
@@ -118,9 +112,8 @@ var blobSizes = []struct {
 }
 
 func BenchmarkServeBlob(b *testing.B) {
-	// The access log would otherwise dominate and swamp the signal; michael runs
-	// at info in prod, but writing a line per iteration to a benchmark's stderr
-	// measures the logger, not the handler.
+	// Mute the access log (info in prod): a line per iteration would measure
+	// the logger, not the handler.
 	silenceLogs(b)
 
 	for _, size := range blobSizes {
@@ -183,9 +176,8 @@ func BenchmarkServeBlobParallel(b *testing.B) {
 	}
 }
 
-// BenchmarkSourceNetworkChain attributes the end-to-end delta to the three
-// pieces the feature adds, stacked cumulatively over a no-op handler. Read the
-// deltas between adjacent rows: each is one middleware's per-request cost.
+// BenchmarkSourceNetworkChain stacks the three added middlewares cumulatively
+// over a no-op handler; adjacent-row deltas = each middleware's per-request cost.
 func BenchmarkSourceNetworkChain(b *testing.B) {
 	silenceLogs(b)
 

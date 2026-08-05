@@ -47,9 +47,8 @@ func (c *Client) DeleteSettings(ctx context.Context, scope string) error {
 	return c.deleteReq(ctx, "/api/settings/"+scope)
 }
 
-// doJSON is the generic JSON round-trip: like postJSON, but with an explicit
-// method and with the response body included in non-2xx errors so admin-api
-// validation messages reach the operator.
+// doJSON: generic JSON round-trip — explicit method, and non-2xx errors include
+// the response body so admin-api validation messages reach the operator.
 func (c *Client) doJSON(ctx context.Context, method, path string, body, out any) error {
 	u := c.baseURL + path
 	var reader io.Reader

@@ -1,11 +1,10 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# cluster-apps entry point — the flux-instance sync (installed by the TF helm
-# module) points here (kubernetes/clusters/staging/austin). A single
-# Kustomization over kubernetes/apps/staging/austin, plus one patch that gives
-# EVERY child Kustomization a postBuild.substituteFrom over the three disjoint
-# settings ConfigMaps. Precedence (last wins): cluster-settings-generated (TF) ->
-# cluster-settings (human) -> image-versions (CI); keys are disjoint by design.
+# cluster-apps entry point (the flux-instance sync from the TF helm module points here).
+# One Kustomization over kubernetes/apps/staging/austin + a patch giving EVERY child
+# Kustomization postBuild.substituteFrom over the three settings ConfigMaps. Precedence
+# (last wins): cluster-settings-generated (TF) → cluster-settings (human) →
+# image-versions (CI); keys are disjoint by design.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -21,9 +20,8 @@ spec:
     name: flux-system
     namespace: flux-system
   wait: false
-  # Direct objects (the nested Kustomization CRs) carry substitutable source
-  # refs (${MANIFEST_SOURCE:=flux-system}); staging keeps the default, but the
-  # substitution pass must run for the default to resolve.
+  # Nested Kustomization CRs carry ${MANIFEST_SOURCE:=flux-system}; staging keeps the
+  # default, but the substitution pass must run for the default to resolve.
   postBuild:
     substituteFrom:
       - kind: ConfigMap

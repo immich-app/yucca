@@ -55,10 +55,9 @@ func (s *Session) dropletName(n int) string {
 	return fmt.Sprintf("yucca-bench-%s-%02d", s.slug(), n)
 }
 
-// Deploy converges the fleet: creates missing droplets (confirmed, with the
-// hourly cost and transfer pool spelled out), trims surplus ones, files
-// everything under the yucca-bench project, waits for ssh, and pushes the
-// bench agent + pinned restic everywhere.
+// Deploy converges the fleet: creates missing droplets (confirmed, hourly cost
+// + transfer pool spelled out), trims surplus, files under yucca-bench, waits
+// for ssh, pushes bench agent + pinned restic.
 func (s *Session) Deploy(ctx context.Context, opts DeployOptions) error {
 	opts.defaults(s.Provider.Defaults())
 
@@ -243,10 +242,9 @@ func (s *Session) ensureKey(ctx context.Context) (string, error) {
 	return keyID, s.SaveState()
 }
 
-// waitSSH retries a no-op ssh until the droplet accepts the fleet key. Fresh
-// droplets take a little while between "active" and sshd+key readiness.
-// Single-shot probes (the loop is the retry) with the latest failure surfaced
-// periodically, so a stuck droplet is visible instead of a silent hang.
+// waitSSH retries a no-op ssh until the fleet key is accepted (fresh droplets
+// lag between "active" and sshd+key readiness). Single-shot probes — the loop
+// is the retry — with the latest failure surfaced periodically, not a silent hang.
 func (s *Session) waitSSH(ctx context.Context, d provider.Host, timeout time.Duration) error {
 	start := time.Now()
 	deadline := start.Add(timeout)
@@ -302,9 +300,9 @@ func (s *Session) pushBinaries(ctx context.Context, ip, agentBin, resticBin stri
 	return err
 }
 
-// Undeploy destroys the whole fleet: droplets by tag, the DO ssh key, and the
-// local key/known_hosts/state files. Repositories (and their data) persist —
-// run `bench-do cleanup` first to prune them while the droplets still exist.
+// Undeploy destroys the fleet: droplets by tag, DO ssh key, local
+// key/known_hosts/state. Repositories persist — `bench-do cleanup` first,
+// while the droplets still exist.
 func (s *Session) Undeploy(ctx context.Context, force bool) error {
 	droplets, err := s.Droplets(ctx)
 	if err != nil {

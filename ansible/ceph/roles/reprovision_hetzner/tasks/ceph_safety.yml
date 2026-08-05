@@ -1,27 +1,14 @@
 ---
-# Day-2 safety gate for a live-cluster reimage.
-#
-# WHY THIS MATTERS ON SPICE: a reimage zeroes the OS NVMe (prepare-os-disks.sh),
-# and on the NVMe-RAID shape the 14 HDD OSD block.db LVs AND the ssd-osd data LV
-# all live on that NVMe (vg0). So reimaging a spice node DESTROYS every OSD on it
-# -- it is NOT a data-preserving operation. This gate refuses to proceed unless a
-# healthy cluster confirms the node's OSDs are safe to stop.
-#
+# Day-2 safety gate for a live-cluster reimage. On the NVMe-RAID shape a reimage
+# zeroes vg0 = all 14 block.db LVs + the ssd-osd LV, so it DESTROYS every OSD on
+# the node; a healthy cluster must confirm ok-to-stop first.
 # Modes (reprovision_ceph_safety):
-#   auto (default) - delegate to a peer admin/mon host and probe the cluster. If a
-#                    live cluster is reachable and this node has OSDs in it, enforce
-#                    the real checks; if no cluster answers (initial bootstrap),
-#                    permit. Default-on precisely when there is something to protect.
-#   strict         - always enforce; if the cluster cannot be reached to verify,
-#                    REFUSE (fail closed). Use for a deliberate day-2 reimage.
-#   permissive     - skip all checks. Explicit escape hatch for the initial
-#                    bootstrap, or a known-dead node when no peer can verify it.
-#
-# Enforced checks (auto-when-reachable and strict):
-#   - cluster is not HEALTH_ERR (no inactive/unavailable PGs)
-#   - `ceph osd ok-to-stop <this node's osd ids>` returns ok
-# On pass, noout is set on this node's OSDs so the reimage window does not trigger
-# a premature rebalance; it clears when the old OSDs are purged on re-add.
+#   auto (default) - probe via a peer mon; enforce when a live cluster holds this
+#                    node's OSDs, permit when nothing answers (initial bootstrap).
+#   strict         - always enforce; unverifiable = REFUSE (deliberate day-2 reimage).
+#   permissive     - skip all checks (bootstrap / known-dead-node escape hatch).
+# Enforced: not HEALTH_ERR + `ceph osd ok-to-stop <ids>`. On pass, noout is set on
+# this node's OSDs (no premature rebalance); clears when old OSDs purge on re-add.
 
 - name: Ceph-safety - resolve mode and admin delegate
   ansible.builtin.set_fact:

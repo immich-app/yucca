@@ -1,7 +1,6 @@
 ---
-# Per-cluster, HUMAN-managed settings for prod@htz-fsn1. Neither CI nor TF
-# touch this file. Keys are disjoint from cluster-settings.generated.yaml (TF)
-# and image-versions.yaml (CI).
+# Human-managed settings for prod@htz-fsn1; keys disjoint from
+# cluster-settings.generated.yaml (TF) and image-versions.yaml (CI).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,17 +8,15 @@ metadata:
   namespace: flux-system
 data:
   # ─── Release pinning ─────────────────────────────────────────────────
-  # App-tree manifests + in-repo charts build from the flux-release
-  # GitRepository (release-please tag, see flux-release.yaml). Staging keeps
-  # the ${...:=flux-system} defaults and tracks main.
+  # Manifests + charts build from the flux-release GitRepository (release-please
+  # tag, see flux-release.yaml); staging keeps the ${...:=flux-system} defaults (main).
   MANIFEST_SOURCE: flux-release
   CHART_SOURCE: flux-release
 
   # Production Zitadel instance; clients in 1P (CUSTOMER_ZITADEL_OAUTH_*).
   OIDC_ISSUER: https://external-prod-r5dlf0.us1.zitadel.cloud
 
-  # Beta gate: these email domains may sign up without an allowlist entry;
-  # everyone else needs a `yuctl users allowlist` entry or invite code.
+  # Beta gate: these domains sign up freely; others need `yuctl users allowlist` or invite code.
   ALLOWED_EMAIL_DOMAINS: futo.org
 
   # admin-api host on the NetBird overlay (netops gateway wildcard); the
@@ -27,11 +24,9 @@ data:
   YUCCA_ADMIN_HOST: admin.father.fsn.htz.yucca.futo.network
 
   # ─── Fleet topology ──────────────────────────────────────────────────
-  # Rendered into the yucca-topology ConfigMap (apps/base/topology), which
-  # yucca-api/admin-api/metrics-worker parse at boot. SITE_CODE and
-  # STORAGE_CLUSTER_CODE are IDENTIFIERS, not labels: they end up in repository
-  # rows and restic JWT claims, so changing one after launch orphans data.
-  # Codes are immutable internal identifiers; display names are presentation.
+  # Rendered into the yucca-topology ConfigMap (apps/base/topology), parsed at boot.
+  # SITE_CODE / STORAGE_CLUSTER_CODE are immutable identifiers (repository rows +
+  # restic JWT claims — changing one orphans data); display names are presentation.
   SITE_CODE: father
   SITE_DISPLAY_NAME: "Hetzner Falkenstein-1"
   SITE_DESCRIPTION: "Located in Falkenstein, Germany"
@@ -41,11 +36,9 @@ data:
   # the active write cluster changes.
   LEGACY_SITE_CODE: father
   LEGACY_STORAGE_CLUSTER_CODE: father-spice
-  # The vendor-stable discovery host: clients hard-code
-  # https://${META_HOST}/.well-known/yucca.json and learn everything else from
-  # there, so it must NOT move with the product domain. Own cert
-  # (meta-domain.yaml) — futo.cloud is outside the *.backups.futo.cloud
-  # wildcard; A record in tf/deployment/prod/global/dns.
+  # Vendor-stable discovery host — clients hard-code /.well-known/yucca.json, must NOT
+  # move with the product domain. Own cert (meta-domain.yaml; outside the
+  # *.backups.futo.cloud wildcard); A record in tf/deployment/prod/global/dns.
   META_HOST: meta.futo.cloud
 
   # ─── Ingress entry points ────────────────────────────────────────────
@@ -57,9 +50,8 @@ data:
   # externalTrafficPolicy: Local + one envoy per worker → spine ECMP.
   GW_PARENT_GATEWAY: gw
   GW_VIP: 69.48.224.6
-  # Internal (NetBird-zone) twin of the gw VIP: on-net clients (mgmt hosts,
-  # yuctl tools bench) can't reach the public aggregate from inside Hetzner.
-  # DNS: netbird dns.tf `gw` record; pool: lb-gw-internal in cilium-bgp.yaml.
+  # Internal twin of the gw VIP: on-net clients can't reach the public aggregate from
+  # inside Hetzner. DNS: netbird dns.tf `gw`; pool: lb-gw-internal in cilium-bgp.yaml.
   GW_INT_VIP: 10.40.12.17
   GW_INT_HOST: gw.father.fsn.htz.yucca.futo.network
   GW_PROXY_REPLICAS: "3"
@@ -83,7 +75,6 @@ data:
   OPENEBS_MAYASTOR_ETCD_BASEPATH: /var/mnt/openebs/etcd
 
   # ─── Storage ─────────────────────────────────────────────────────────
-  # CNPG database PVs: LOCAL volumes on the u-localpv partition (see
-  # openebs/diskpools.yaml) — Postgres replicates itself; Mayastor is for
-  # workloads without app-level replication.
+  # CNPG PVs: node-local u-localpv (see openebs/diskpools.yaml) — Postgres replicates
+  # itself; Mayastor is for workloads without app-level replication.
   DB_STORAGE_CLASS: openebs-hostpath

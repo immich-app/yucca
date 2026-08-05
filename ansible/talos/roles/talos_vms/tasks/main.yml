@@ -1,15 +1,8 @@
 ---
-# Create per-VM qcow2 overlays, render libvirt domain XML, define +
-# start each VM. Three phases (overlay, define, start) so progress
-# fans out across all VMs at each phase rather than fully provisioning
-# one VM before starting the next — easier to debug if a phase fails
-# for a single VM.
-#
-# Idempotency:
-#   - qcow2 overlays use `creates:` (qemu-img is not idempotent on its
-#     own; -F + creates: gives us the right semantics).
-#   - community.libvirt.virt define is a no-op if the active XML matches.
-#   - state=running is a no-op when the VM is already running.
+# Per-VM qcow2 overlays -> domain XML define -> start, in three fan-out phases
+# (easier to debug a single-VM phase failure). Idempotent: overlays via
+# `creates:` (qemu-img isn't idempotent alone), virt define no-ops on matching
+# XML, state=running no-ops when running.
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:

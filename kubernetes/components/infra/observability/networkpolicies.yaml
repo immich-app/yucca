@@ -1,9 +1,7 @@
 ---
-# Ingress-only network policies for observability. Inbound surface: OTLP
-# metric pushes from the yucca apps into the vmagent (vmagent-yucca:8429) and
-# the apiserver's calls to the VM-operator admission webhook. The
-# victoria-logs-collector DaemonSet tails logs node-side and only pushes
-# outward — no ingress needed.
+# Ingress-only policies for observability. Inbound surface: OTLP pushes from yucca apps
+# to vmagent (vmagent-yucca:8429) + apiserver → VM-operator admission webhook.
+# victoria-logs-collector tails node-side and only pushes outward — no ingress needed.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

@@ -1,10 +1,8 @@
 ---
-# Ingress-only network policies for netops. The stack is deliberately
-# self-contained (its own gateway/envoy pods, vmagent, VictoriaMetrics all live
-# HERE), so one intra-namespace allow covers every internal flow; the only
-# cross-boundary ingress is the gateway VIP (10.40.12.16) and the spine's raw
-# sFlow stream (10.40.12.14). These pods mount fabric credentials (netops-ssh,
-# hyperglass password) — nothing else in the cluster gets to talk to them.
+# Ingress-only policies for netops. Stack is self-contained (own gateway/envoy, vmagent,
+# VictoriaMetrics), so one intra-namespace allow covers internal flows; the only
+# cross-boundary ingress is the gateway VIP (10.40.12.16) and the spine's sFlow stream
+# (10.40.12.14). These pods mount fabric credentials — nothing else may talk to them.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -34,11 +32,9 @@ metadata:
   name: allow-ingress-gateway
   namespace: netops
 spec:
-  # The front door: NetBird peers hit the internal VIP, which DNATs to the
-  # envoy pods' data-plane container ports (envoy-gateway maps listener 443 to
-  # a 10xxx containerPort, so no port pin here). 0.0.0.0/0 is safe: the VIP is
-  # in the lb-internal pool — excluded from the transit advertisement and
-  # reachable only over the NetBird mgmt route.
+  # NetBird peers hit the internal VIP, DNAT'd to the envoy data-plane ports
+  # (envoy-gateway maps listener 443 to a 10xxx containerPort — no port pin).
+  # 0.0.0.0/0 is safe: lb-internal VIP, excluded from transit, NetBird mgmt route only.
   podSelector:
     matchLabels:
       app.kubernetes.io/name: envoy
@@ -54,11 +50,10 @@ metadata:
   name: allow-ingress-sflow-collector
   namespace: netops
 spec:
-  # The spine streams sFlow datagrams at 10.40.12.14 (see sflow-rt.yaml). Kept
-  # DELIBERATELY wide: with externalTrafficPolicy Cluster the stream can arrive
-  # SNAT'd to a node IP, and this feed has already been lost silently once
-  # (2026-07-06) — a clever source filter risks repeating that for zero gain
-  # (the VIP itself is internal-only).
+  # Spine streams sFlow to 10.40.12.14 (see sflow-rt.yaml). DELIBERATELY wide: with
+  # externalTrafficPolicy Cluster the stream can arrive SNAT'd to a node IP, and the feed
+  # was silently lost once (2026-07-06) — a source filter risks repeating that for zero
+  # gain (the VIP is internal-only).
   podSelector:
     matchLabels:
       app: sflow-rt

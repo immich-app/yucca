@@ -25,9 +25,8 @@ type UpgradeOptions struct {
 	Nodes []string
 }
 
-// TalosUpgrade resolves the talosconfig referenced by the kubernetes payload and
-// runs `talosctl upgrade` against each control-plane node. The temp talosconfig
-// is removed on return. With DryRun the commands are only logged.
+// TalosUpgrade resolves the payload's talosconfig and runs `talosctl upgrade`
+// per control-plane node; temp talosconfig removed on return, DryRun only logs.
 func TalosUpgrade(ctx context.Context, k state.Kubernetes, opts UpgradeOptions, logger zerolog.Logger) error {
 	nodes := opts.Nodes
 	if len(nodes) == 0 {
@@ -81,11 +80,9 @@ func endpointHost(endpoint string) string {
 			host = host[len(p):]
 		}
 	}
-	// drop any path
 	if i := indexByte(host, '/'); i >= 0 {
 		host = host[:i]
 	}
-	// drop any port
 	if i := indexByte(host, ':'); i >= 0 {
 		host = host[:i]
 	}

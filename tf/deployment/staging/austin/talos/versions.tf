@@ -23,8 +23,7 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
-    # Writes the generated keypair into 1Password (yucca_tf_staging) as the
-    # source-of-truth record. Auth via OP_SERVICE_ACCOUNT_TOKEN (op run).
+    # Writes the keypair to yucca_tf_staging; auth via OP_SERVICE_ACCOUNT_TOKEN.
     onepassword = {
       source  = "1Password/onepassword"
       version = "~> 2.1"

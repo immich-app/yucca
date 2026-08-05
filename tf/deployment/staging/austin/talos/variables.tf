@@ -3,21 +3,15 @@
 variable "flux_operator_version" {
   description = "Chart version for flux-operator + flux-instance (OCI ghcr.io/controlplaneio-fluxcd/charts). Mirrors yucca-o11y."
   type        = string
-  # 0.53.0+: 0.50.0's built-in eventSources patch targets versions[1] of the
-  # notification CRD, which current Flux 2.x collapsed to one version → the
-  # FluxInstance build fails ("doc is missing path …/eventSources/…/enum/-") and
-  # no controllers install. 0.53.0 handles the single-version CRD.
+  # Need ≥0.53.0: 0.50.0's eventSources patch targets versions[1] of the
+  # notification CRD (now single-version) → FluxInstance build fails, no controllers.
   default = "0.53.0"
 }
 
-# Commit-status Provider auth via a GitHub App (no PAT). notification-controller
-# mints + rotates installation tokens from these. yucca is a public repo with
-# public images, so NO git-sync or GHCR pull secret is needed.
-#
-# TEMPORARY: fed from the SHARED `push-o-matic` app (op://shared_tf/
-# GITHUB_APP_IMMICH_PUSH_O_MATIC) — see tf/.env. The dedicated least-privilege
-# "yucca-flux" app ("Commit statuses: write" only) isn't created yet; repoint
-# the tf/.env refs to it when it is.
+# Commit-status Provider auth via a GitHub App (no PAT); public repo/images, so
+# no git-sync or GHCR pull secret. TEMPORARY: shared `push-o-matic` app
+# (op://shared_tf/GITHUB_APP_IMMICH_PUSH_O_MATIC); repoint tf/.env to the
+# dedicated "yucca-flux" app (Commit statuses: write only) once created.
 variable "flux_github_app_id" {
   description = "GitHub App ID (numeric) for the commit-status Provider. Injected via TF_VAR from 1P (push-o-matic, op://shared_tf)."
   type        = string
@@ -38,14 +32,10 @@ variable "flux_github_app_private_key" {
 }
 
 # ─── App secrets (secrets.tf) ───────────────────────────────────────────
-#
-# Externally-issued / human-managed secrets. Live in 1P (yucca_tf_staging_manual
-# for app creds, shared_tf_staging for the shared vmauth token) and are injected via
-# TF_VAR from op:// refs in tf/.env. Empty defaults keep `tofu validate` clean
-# and let the staging slice deploy before the real values are populated — the
-# apps come up, just without working OIDC / object storage / metrics egress.
-#
-# The JWT keypair is NOT here: TF generates it (tls_private_key in secrets.tf).
+# Human-managed secrets in 1P (yucca_tf_staging_manual app creds, shared_tf_staging
+# vmauth token), injected via TF_VAR from op:// refs in tf/.env. Empty defaults
+# keep validate clean and let the slice deploy before values exist. JWT keypair
+# is NOT here — TF generates it (secrets.tf).
 
 # yucca-api OIDC client (registered out-of-band in the staging IdP).
 variable "yucca_oidc_client_id" {
@@ -68,9 +58,8 @@ variable "yucca_oidc_device_client_id" {
   default     = ""
 }
 
-# yucca-admin-api OIDC client (separate registration from yucca-api): the
-# internal-tooling app on auth.internal.futo.org, shared with prod
-# (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in shared_tf).
+# yucca-admin-api OIDC: the internal-tooling app on auth.internal.futo.org,
+# shared with prod (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in shared_tf).
 variable "yucca_oidc_admin_client_id" {
   description = "OIDC client ID for yucca-admin-api (internal-tooling app). Injected via TF_VAR from 1P."
   type        = string
@@ -84,12 +73,10 @@ variable "yucca_oidc_admin_client_secret" {
   default     = ""
 }
 
-# michael S3 credentials — the `svc-yucca-restic` RGW user on the bare-metal
-# Ceph (sietch / dev Ceph), created by the ceph Ansible with predetermined keys;
-# duplicated into yucca_tf_staging (op://yucca_tf_staging/SIETCH_CEPH_S3_SVC_
-# YUCCA_RESTIC_{ACCESS,SECRET}_KEY) so the staging SA can read them. michael
-# reaches the endpoint via the in-cluster HAProxy fronting
-# s3.dev.austin.int.futo.cloud. Not manual, not Rook-generated.
+# michael S3 creds — svc-yucca-restic RGW user on sietch, created by ceph
+# Ansible with predetermined keys; duplicated into yucca_tf_staging
+# (SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_{ACCESS,SECRET}_KEY) for the staging SA.
+# Endpoint via in-cluster HAProxy → s3.dev.austin.int.futo.cloud.
 variable "yucca_rgw_access_key_id" {
   description = "RGW (S3) access key for michael (svc-yucca-restic). Injected via TF_VAR from 1P."
   type        = string
@@ -116,9 +103,8 @@ variable "sietch_metrics_worker_secret_key" {
   default     = ""
 }
 
-# Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
-# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the shared_tf_staging vault (the
-# `remote-clusters` VMUser authenticates remote clusters with it).
+# vmagent remote-write bearer = shared_tf_staging VICTORIAMETRICS_VMAUTH_PASSWORD
+# (the `remote-clusters` VMUser).
 variable "vmauth_remote_write_password" {
   description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (shared_tf_staging/VICTORIAMETRICS_VMAUTH_PASSWORD)."
   type        = string
@@ -126,8 +112,7 @@ variable "vmauth_remote_write_password" {
   default     = ""
 }
 
-# Cloudflare API token for the cert-manager DNS-01 ClusterIssuer (futo.cloud
-# zone). Same 1P item the dns stack uses. Injected via TF_VAR from 1P.
+# cert-manager DNS-01 token (futo.cloud); same 1P item as the dns stack.
 variable "cloudflare_api_token" {
   description = "Cloudflare API token (Zone:Read + DNS:Edit on futo.cloud) for cert-manager DNS-01. Injected via TF_VAR from 1P."
   type        = string
@@ -136,14 +121,10 @@ variable "cloudflare_api_token" {
 }
 
 # ─── NetBird ────────────────────────────────────────────────────────────
-#
-# Setup key for the node-level siderolabs/netbird system extension (Part A) and
-# the API token for the in-cluster NetBird operator (Part B). Both are minted by
-# the staging/netbird stack and stored in the yucca_tf_staging vault; injected
-# here via TF_VAR from op:// refs in tf/.env. Empty defaults keep `tofu validate`
-# clean and let the slice deploy before the netbird stack has been applied.
+# Node-extension setup key + operator API token, both minted by the
+# staging/netbird stack (yucca_tf_staging vault), injected via TF_VAR. Empty
+# defaults let the slice deploy before that stack is applied.
 
-# Per-node overlay: each Talos node joins NetBird via the extension's NB_SETUP_KEY.
 variable "netbird_talos_setup_key" {
   description = "NetBird setup key for the node-level siderolabs/netbird extension (group YUCCA_STAGING_TALOS). Injected via TF_VAR from 1P (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_TALOS_SETUP_KEY)."
   type        = string
@@ -151,7 +132,6 @@ variable "netbird_talos_setup_key" {
   default     = ""
 }
 
-# In-cluster operator: NetBird Management API personal access token (service user).
 variable "netbird_operator_api_token" {
   description = "NetBird API token for the in-cluster kubernetes operator (service user yucca-staging-k8s-operator). Bootstrapped into the netbird-mgmt-api-key Secret. Injected via TF_VAR from 1P (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_K8S_OPERATOR_API_TOKEN)."
   type        = string
@@ -178,9 +158,7 @@ variable "clusters" {
 
     allow_scheduling_on_control_planes = optional(bool, true)
 
-    # CNI: "flannel" (Talos bundled) | "cilium" (cni:none + Cilium via Helm) |
-    # "none". When "cilium", set cilium_version; kube-proxy replacement +
-    # Hubble are controlled below.
+    # CNI: "flannel" (Talos bundled) | "cilium" (cni:none + Helm, set cilium_version) | "none".
     cni                = optional(string, "flannel")
     disable_kube_proxy = optional(bool, false)
     cilium_version     = optional(string)

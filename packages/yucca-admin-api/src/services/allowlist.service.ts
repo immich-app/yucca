@@ -72,8 +72,7 @@ export class AllowlistService {
     try {
       return await this.allowlist.create({ email, inviteCode: generateInviteCode(), invited });
     } catch (error) {
-      // A generated code colliding with an existing one is astronomically
-      // unlikely (~50 bits) — retry once, then let the error propagate.
+      // Code collision is astronomically unlikely (~50 bits) — retry once, then propagate.
       if (isUniqueViolation(error)) {
         return await this.allowlist.create({ email, inviteCode: generateInviteCode(), invited });
       }

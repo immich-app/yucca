@@ -1,11 +1,9 @@
 ---
-# envoy-system on father — needed by the cherry-picked envoy.yaml (the full
-# components/infra, whose network/namespace.yaml normally owns this, stays off
-# until launch). Content matches the component copy, so enabling components/infra
-# later is a clean handover (same field manager, no fight); REMOVE this file at
-# that point alongside envoy.yaml. The cert-manager namespace is NOT declared
-# here — the talos TF stack creates it (secrets.tf) to bootstrap the
-# cloudflare-api-token Secret, and declaring it twice would race TF.
+# envoy-system on father — needed by the cherry-picked envoy.yaml (components/infra,
+# whose network/namespace.yaml normally owns this, stays off until launch). Content
+# matches the component copy so enabling it later is a clean handover; REMOVE this file
+# then, alongside envoy.yaml. cert-manager ns is NOT declared here — the talos TF stack
+# creates it (secrets.tf) to bootstrap cloudflare-api-token; declaring it twice would race TF.
 apiVersion: v1
 kind: Namespace
 metadata:

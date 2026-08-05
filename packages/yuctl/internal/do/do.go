@@ -1,7 +1,6 @@
-// Package do wraps the DigitalOcean API (godo) for the bench-do droplet
-// fleet: token resolution via 1Password, the yucca-bench project, ephemeral
-// SSH keys, and tagged droplet lifecycle. Nothing here knows about restic or
-// michael — it is pure fleet plumbing.
+// Package do wraps godo for the bench-do droplet fleet: 1P token resolution,
+// the yucca-bench project, ephemeral SSH keys, tagged droplet lifecycle. Pure
+// fleet plumbing — knows nothing of restic or michael.
 package do
 
 import (
@@ -83,7 +82,6 @@ func (c *Client) EnsureProject(ctx context.Context) (string, error) {
 	return p.ID, nil
 }
 
-// AssignDroplets files droplets under the project.
 func (c *Client) AssignDroplets(ctx context.Context, projectID string, dropletIDs []int) error {
 	if len(dropletIDs) == 0 {
 		return nil
@@ -146,9 +144,8 @@ type Size struct {
 	MemoryMB    int
 	DiskGB      int
 	PriceHourly float64
-	// TransferTB is DO's included outbound transfer for the size. DO markets
-	// it as "TB"; we bill the cap conservatively as decimal TB (1e12 bytes)
-	// so the auto-stop errs on the early side.
+	// TransferTB: DO's included outbound transfer. Marketed as "TB"; billed
+	// conservatively as decimal TB (1e12 bytes) so auto-stop errs early.
 	TransferTB float64
 }
 

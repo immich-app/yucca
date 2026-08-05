@@ -1,11 +1,6 @@
-# Render the ansible/mgmt inventory for a site from Terraform's sources of truth:
-#   • fabric-addressing — VLAN ids + per-host VLAN addresses
-#   • identity          — server login users (+ keys + sudo)
-#   • mgmt-hosts.yaml   — the host roster (IPs, NICs, host index, OOB octet)
-#
-# Lightweight by design (local provider only, no backend/secrets), so it can run
-# just-in-time in the ansible CI job (and locally) via `mise run mgmt:ansible`.
-# Outputs are gitignored — TF is the single source of truth, not the rendered files.
+# Render the ansible/mgmt inventory from TF sources of truth (fabric-addressing,
+# identity, mgmt-hosts.yaml). Local provider only, no backend/secrets — runs
+# just-in-time via `mise run mgmt:ansible`. Outputs are gitignored.
 
 locals {
   cfg     = yamldecode(file("${path.module}/../../deployment/${var.partition}/${var.region}/mgmt-hosts.yaml"))
@@ -45,11 +40,9 @@ resource "local_file" "hosts" {
   })}"
 }
 
-# Per-host L3 so the node can forward the NetBird-routed site subnets:
-#   • OOB 1G NIC on the management LAN (10.40.5.0/24 — the switch vme)
-#   • tagged VLAN sub-interfaces on the 25G NIC (public/private/api)
-# Addresses/ids come from the addressing module; bootstrap is the public IP
-# (site.yml reconnects over NetBird once the host joins).
+# Per-host L3 for forwarding the NetBird-routed site subnets: OOB 1G NIC on the
+# mgmt LAN + tagged VLANs on the 25G NIC. Bootstrap over the public IP (site.yml
+# reconnects over NetBird once joined).
 resource "local_file" "host_vars" {
   for_each = local.hosts
   filename = "${local.inv_dir}/host_vars/${each.key}.yml"
@@ -64,9 +57,8 @@ resource "local_file" "host_vars" {
       { id = module.addressing.public_vlan_id, address = "${cidrhost(module.addressing.public_cidr, each.value.host_index)}/${local.pub_mask}" },
       { id = module.addressing.private_vlan_id, address = "${cidrhost(module.addressing.private_cidr, each.value.host_index)}/${local.priv_mask}" },
       { id = module.addressing.host_mgmt_vlan_id, address = "${cidrhost(module.addressing.host_mgmt_cidr, each.value.host_index)}/${local.host_mgmt_mask}" },
-      # lb_internal route: the mgmt hosts are the NetBird routing peers for the
+      # lb_internal route: mgmt hosts are the NetBird routing peers for the
       # internal LB VIPs; the spine (kube IRB .1) carries the /32s via iBGP.
-      # Previously a hand-applied networkd drop-in — owned here now.
       { id = module.addressing.kube_vlan_id, address = "${cidrhost(module.addressing.kube_cidr, each.value.host_index)}/${local.kube_mask}", routes = [
         { to = module.addressing.lb_internal_cidr, via = cidrhost(module.addressing.kube_cidr, 1) },
       ] },

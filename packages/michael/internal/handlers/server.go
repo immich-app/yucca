@@ -24,14 +24,12 @@ type Server struct {
 	// Clusters holds one Storage per storage cluster this michael fronts, keyed
 	// by cluster code. A request's token selects one of them.
 	Clusters map[string]storage.Storage
-	// DefaultCluster is the code served to tokens carrying no storageCluster
-	// claim — every token minted before multi-cluster routing existed.
+	// DefaultCluster serves tokens without a storageCluster claim (pre-multi-cluster mints).
 	DefaultCluster string
 	JWTPublicKey   *ecdsa.PublicKey
 	Metrics        *metrics.Metrics
-	// ResolveClient identifies the source network of a request, for the traffic
-	// metrics and the access log. Optional: nil leaves both unattributed, which
-	// is what the tests and any deployment without an ASN database get.
+	// ResolveClient identifies the source network (traffic metrics + access
+	// log). nil = unattributed (tests, deployments without an ASN DB).
 	ResolveClient func(*http.Request) geoip.Client
 }
 
@@ -54,11 +52,9 @@ func NewClusterServer(clusters map[string]storage.Storage, defaultCluster string
 
 type clusterCtxKey struct{}
 
-// resolveCluster maps the request's token to the storage cluster serving it. An
-// absent (or empty) storageCluster claim means the default cluster; a claim
-// naming a cluster this michael does not front is an error rather than a
-// fallback — silently serving a repository from the wrong cluster would look
-// like data loss to the client.
+// resolveCluster maps the token to its storage cluster. Empty claim = default;
+// an unknown cluster is an error, NOT a fallback — silently serving from the
+// wrong cluster would look like data loss.
 func (s *Server) resolveCluster(ctx context.Context) (string, storage.Storage, bool) {
 	code := auth.FromContext(ctx).StorageCluster
 	if code == "" {
@@ -68,9 +64,8 @@ func (s *Server) resolveCluster(ctx context.Context) (string, storage.Storage, b
 	return code, store, ok
 }
 
-// clusterMiddleware resolves the request's storage cluster once, up front, and
-// rejects unknown ones for every route at the same place — so no handler can
-// forget to fail closed.
+// clusterMiddleware resolves the cluster once, rejecting unknown ones for every
+// route in one place — no handler can forget to fail closed.
 func (s *Server) clusterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		code, store, ok := s.resolveCluster(r.Context())
@@ -86,9 +81,8 @@ func (s *Server) clusterMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// store returns the storage cluster this request routes to. clusterMiddleware
-// has already resolved it and rejected unknown clusters, so by the time a
-// handler runs the lookup has succeeded.
+// store returns this request's storage cluster; clusterMiddleware already
+// resolved it and rejected unknowns.
 func (s *Server) store(ctx context.Context) storage.Storage {
 	return ctx.Value(clusterCtxKey{}).(storage.Storage)
 }
@@ -195,11 +189,9 @@ func validateBlobName(next http.Handler) http.Handler {
 	})
 }
 
-// clientLogContext puts the source network on every log line for the request.
-// client_ip is the address behind the gateway — remote_ip is the gateway's own
-// — and it lives on the log rather than on a metric label because per-address
-// series are unbounded; drilling from a busy AS to the addresses inside it is a
-// VictoriaLogs query.
+// clientLogContext puts the source network on every log line. client_ip is the
+// address behind the gateway (remote_ip is the gateway's); it's a log field not
+// a metric label — per-address series are unbounded, drill down via VictoriaLogs.
 func clientLogContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c := geoip.FromContext(r.Context())
@@ -214,10 +206,9 @@ func authLogContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := auth.FromContext(r.Context())
 		route := chi.RouteContext(r.Context()).RoutePattern()
-		// Mutate the request logger in place instead of deriving a new one:
-		// the AccessHandler completion line logs through the outer request's
-		// logger pointer, so this is what puts user/repository on access logs.
-		// method is omitted — the access line already carries it.
+		// Mutate the request logger in place: AccessHandler logs through the
+		// outer logger pointer — this puts user/repository on access lines.
+		// method omitted (access line carries it).
 		hlog.FromRequest(r).UpdateContext(func(c zerolog.Context) zerolog.Context {
 			return c.Str("user", a.User).Str("repository", a.Repository).Str("route", route)
 		})

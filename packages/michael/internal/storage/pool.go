@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// probeTimeout bounds a single health probe. Without it a probe against an
-// unreachable (blackholed, not refused) backend runs to the 30s dial timeout.
+// probeTimeout bounds a probe; a blackholed (not refused) backend otherwise
+// runs to the 30s dial timeout.
 const probeTimeout = 5 * time.Second
 
 // ErrNoBackends is returned when the pool has no backend to route a request to.
@@ -40,9 +40,8 @@ type BackendStat struct {
 	UploadedBytes   int64
 }
 
-// backend holds one endpoint's client plus lock-free counters. A *backend is
-// stable for its lifetime — reconcile swaps the Pool's slice but reuses the
-// same *backend for endpoints that persist, so its atomics survive.
+// backend holds one endpoint's client plus lock-free counters. reconcile swaps
+// the slice but reuses the same *backend for persisting endpoints, so atomics survive.
 type backend struct {
 	endpoint string
 	store    Storage
@@ -58,19 +57,15 @@ type backend struct {
 	uploadedBytes   atomic.Int64
 }
 
-// PoolConfig holds the tunables for a Pool.
 type PoolConfig struct {
 	EjectThreshold    int           // consecutive transport failures before ejection
 	ProbeBucket       string        // sentinel bucket name for active health probes
 	ReconcileInterval time.Duration // how often Run re-resolves and probes
 }
 
-// Pool implements Storage by load-balancing requests across a set of
-// interchangeable S3 gateway backends. It picks the backend with the fewest
-// outstanding requests, ejects backends after consecutive transport failures,
-// and actively probes to reinstate them. The pool never retries a failed
-// request — it records the failure and returns it, leaving retries to the
-// client (restic).
+// Pool implements Storage across interchangeable S3 gateways: least-outstanding
+// pick, ejection after consecutive transport failures, active probes to
+// reinstate. Never retries a failed request — restic retries.
 type Pool struct {
 	backends    atomic.Pointer[[]*backend]
 	factory     BackendFactory
@@ -148,10 +143,9 @@ func (p *Pool) Reconcile(ctx context.Context) error {
 	return err
 }
 
-// applyEndpoints diffs the desired endpoint set against the current backends,
-// reusing existing *backend objects (preserving their health/counters) and
-// constructing new ones for added endpoints. New backends start unhealthy; the
-// probe in this same reconcile promotes the live ones.
+// applyEndpoints diffs desired vs current, reusing existing *backend objects
+// (health/counters preserved). New backends start unhealthy until this
+// reconcile's probe promotes them.
 func (p *Pool) applyEndpoints(endpoints []string) {
 	current := p.snapshot()
 	byEndpoint := make(map[string]*backend, len(current))
@@ -191,11 +185,9 @@ func (p *Pool) applyEndpoints(endpoints []string) {
 	p.backends.Store(&next)
 }
 
-// probeAll actively checks every backend, ejecting those that fail the probe
-// and reinstating (clearing the passive failure streak of) those that pass.
-// Probes run concurrently with a per-probe timeout, so a reconcile costs
-// max(probe) rather than sum — N unreachable backends once serialized N×30s
-// dial timeouts into pool init and crash-looped startup.
+// probeAll probes every backend concurrently (eject on fail, reinstate + clear
+// streak on pass); reconcile costs max(probe) not sum — N unreachable backends
+// once serialized N×30s dials and crash-looped startup.
 func (p *Pool) probeAll(ctx context.Context) {
 	var wg sync.WaitGroup
 	for _, b := range p.snapshot() {
@@ -229,10 +221,8 @@ func (p *Pool) probeOne(ctx context.Context, b *backend) {
 	}
 }
 
-// pick selects the healthy backend with the fewest outstanding requests. Ties
-// are broken by a rotating offset so equal-load backends are used round-robin.
-// If nothing is healthy it fails open to the least-loaded backend overall,
-// degrading rather than refusing service.
+// pick selects the healthy backend with fewest outstanding requests (rotating
+// tie-break); if none healthy, fails open to least-loaded overall.
 func (p *Pool) pick() *backend {
 	bs := p.snapshot()
 	n := len(bs)
@@ -263,10 +253,9 @@ func (p *Pool) pick() *backend {
 	return fallback
 }
 
-// recordResult updates a backend's counters and passive-ejection state after a
-// completed operation. A transport failure increments the consecutive-failure
-// streak and ejects once it crosses the threshold; any non-transport outcome
-// (success, or a normal 4xx like a missing blob) proves liveness and resets it.
+// recordResult updates counters and passive ejection: transport failure bumps
+// the streak (eject at threshold); any non-transport outcome (incl. normal 4xx)
+// proves liveness and resets it.
 func (p *Pool) recordResult(b *backend, err error) {
 	b.requests.Add(1)
 	if isBackendFailure(err) {
@@ -357,8 +346,7 @@ func (p *Pool) PutObject(ctx context.Context, bucket, key string, body io.Reader
 	if b == nil {
 		return ErrNoBackends
 	}
-	// The body is fully consumed and uploaded before PutObject returns, so the
-	// upload — the large transfer — is accounted end-to-end here.
+	// Body fully uploads before return, so the transfer is accounted end-to-end.
 	b.inflight.Add(1)
 	err := b.store.PutObject(ctx, bucket, key, body, contentLength, writeOnce, sha256Hex)
 	b.inflight.Add(-1)
@@ -374,8 +362,7 @@ func (p *Pool) GetObject(ctx context.Context, bucket, key, rangeHeader string) (
 	if b == nil {
 		return nil, ErrNoBackends
 	}
-	// The SDK returns headers here but the body is streamed by the caller after
-	// we return, so inflight must stay counted until the body is closed.
+	// Caller streams the body after we return; inflight stays counted until Close.
 	b.inflight.Add(1)
 	obj, err := b.store.GetObject(ctx, bucket, key, rangeHeader)
 	if err != nil {
@@ -387,10 +374,8 @@ func (p *Pool) GetObject(ctx context.Context, bucket, key, rangeHeader string) (
 	return obj, nil
 }
 
-// poolBody wraps a GetObject body so that closing it releases the inflight slot,
-// records downloaded bytes, and reports any mid-stream read failure toward the
-// backend's health (a read error from a dead gateway has no HTTP status and so
-// counts as a transport failure).
+// poolBody: Close releases the inflight slot, records downloaded bytes, and
+// counts mid-stream read errors toward health (no HTTP status ⇒ transport failure).
 type poolBody struct {
 	io.ReadCloser
 	pool    *Pool

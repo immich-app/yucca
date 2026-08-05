@@ -1,14 +1,7 @@
 ---
-# Phase 5: Clean up LVM, device signatures, and leftover Ceph state on all nodes
-#
-# Order matters:
-#   1. Close dm-crypt/LUKS mappings (devices are locked until closed)
-#   2. Remove device-mapper entries
-#   3. Remove LVM volume groups and physical volumes
-#   4. Wipe device signatures (HDD and SSD OSD partitions)
-#   5. Clean stale LVM metadata files
-#   6. Reset failed systemd units
-#   7. Remove Ceph directories
+# Phase 5: Clean up LVM, device signatures, and leftover Ceph state on all nodes.
+# ORDER MATTERS: LUKS close (devices locked until closed) -> DM entries -> VGs/PVs
+# -> wipe signatures -> stale LVM metadata -> reset failed units -> remove dirs.
 
 # --- Step 1: Close dm-crypt LUKS mappings ---
 # ceph-volume --dmcrypt creates LUKS volumes on OSD devices. These persist after
@@ -122,9 +115,8 @@
   changed_when: "'Removing orphaned PV' in pv_cleanup_ssd.stdout"
 
 # --- Step 5: Wipe device signatures ---
-# Wipe ALL rotational (HDD) devices that have any filesystem/LVM/LUKS signatures.
-# Every HDD in these servers is a Ceph OSD - no ambiguity about which to wipe.
-# Only wipes devices that actually have signatures (idempotent on clean disks).
+# Wipes ALL rotational devices with signatures: every HDD in these servers is a
+# Ceph OSD, no ambiguity. Idempotent on clean disks.
 - name: Wipe HDD device signatures
   ansible.builtin.shell: |
     set -o pipefail
@@ -172,8 +164,7 @@
   changed_when: "'Wiping' in ssd_zap.stdout"
 
 # --- Step 6: Clean stale LVM metadata ---
-# ceph-volume operations generate LVM archive/backup files that accumulate across
-# cluster lifecycles. Hundreds of ceph-* files can build up in /etc/lvm/.
+# ceph-volume accumulates hundreds of ceph-* archive/backup files in /etc/lvm/.
 - name: Remove stale Ceph LVM archive and backup files
   ansible.builtin.shell: |
     REMOVED=0

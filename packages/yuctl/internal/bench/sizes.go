@@ -1,7 +1,6 @@
-// Package bench drives restic end-to-end benchmarks against michael: an
-// orchestrator on the dev machine pushes an agent (yucca-bench itself, built
-// for linux) plus a pinned restic binary to a management host, runs
-// write/incremental/restore phases there, and reports results locally.
+// Package bench drives restic e2e benchmarks against michael: the orchestrator
+// pushes an agent (yucca-bench built for linux) + pinned restic to a management
+// host, runs write/incremental/restore there, reports locally.
 package bench
 
 import (

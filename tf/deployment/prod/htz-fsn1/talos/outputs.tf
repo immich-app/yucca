@@ -11,9 +11,8 @@ output "cluster_summary" {
   }
 }
 
-# DNS hint: api_dns_name resolves to the Talos-elected VIP on the kube-cp VLAN
-# (the API is reachable only over the NetBird kube-cp route; the netbird stack's
-# yucca.futo.network zone serves the record). No public A record exists.
+# api_dns_name → the Talos-elected VIP, served by the netbird stack's
+# yucca.futo.network zone; no public A record.
 output "api_dns_record" {
   description = "The internal record: <api_dns_name> → <API VIP> (NetBird DNS)."
   value       = "${local.api_dns_name} A ${local.api_vip}"
@@ -30,8 +29,6 @@ output "talos_metal_image_url" {
   value       = local.talos_metal_image_url
 }
 
-# NO kubeconfig/talosconfig outputs — deliberately. They're mirrored to 1P
-# (secrets.tf; titles in discovery.tf locals) and operators `op read` them.
-# Root outputs are copied wholesale into every terraform_remote_state consumer's
-# state (the netbird stack reads this stack's state for discovery), so sensitive
-# outputs here would duplicate cluster-admin creds into a second state object.
+# NO kubeconfig/talosconfig outputs, deliberately: root outputs are copied into
+# every terraform_remote_state consumer's state (netbird stack), duplicating
+# cluster-admin creds. Operators `op read` the 1P records (secrets.tf).

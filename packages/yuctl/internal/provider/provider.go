@@ -1,11 +1,9 @@
-// Package provider abstracts the cloud that hosts a bench-wide fleet so the
-// fleet lifecycle (deploy/start/status/stop/cleanup/undeploy) is identical
-// across providers. Each provider is pure VM plumbing — create/list/destroy
-// tagged hosts, upload an ephemeral ssh key, resolve a size's price and
-// transfer allowance — and knows nothing about restic or michael.
-//
-// Implementations live beside this file (do.go, hetzner.go); New resolves a
-// provider by name. OVH slots in as another implementation + New case.
+// Package provider abstracts the cloud hosting a bench-wide fleet so the
+// lifecycle (deploy/start/status/stop/cleanup/undeploy) is provider-identical.
+// Each provider is pure VM plumbing (create/list/destroy tagged hosts,
+// ephemeral ssh key, size price + transfer allowance), restic/michael-agnostic.
+// Implementations live beside this file (do.go, hetzner.go); New resolves by
+// name — OVH slots in as another implementation + New case.
 package provider
 
 import (
@@ -44,13 +42,11 @@ type Defaults struct {
 	Image   string
 }
 
-// Provider is one cloud's fleet plumbing. Everything is keyed on an opaque
-// fleet tag so a yuctl crash never orphans billable hosts — the provider's own
-// tag/label listing is the source of truth, not local state.
+// Provider is one cloud's fleet plumbing, keyed on an opaque fleet tag — the
+// provider's tag listing is truth, so a yuctl crash never orphans billable hosts.
 type Provider interface {
-	// Name is the stable provider slug (do, hetzner, ovh) — part of the fleet
-	// tag and the local state filename, so fleets on different providers (and
-	// partitions) coexist in one account without undeploy crossing streams.
+	// Name: stable slug (do, hetzner, ovh) — part of the fleet tag and state
+	// filename, so per-provider/partition fleets coexist without undeploy crossing streams.
 	Name() string
 	// SSHUser is the login the provider's default image ships (root, ubuntu…).
 	SSHUser() string
@@ -63,9 +59,8 @@ type Provider interface {
 	EnsureKey(ctx context.Context, name, publicKey string) (keyID string, err error)
 	DeleteKey(ctx context.Context, keyID string) error
 
-	// Create makes the named hosts in one region with the fleet tag + ssh key.
-	// (DO multi-creates per region; Hetzner creates one per call — both honour
-	// the same signature.)
+	// Create makes the named hosts in one region with the fleet tag + ssh key
+	// (DO multi-creates per region; Hetzner one per call — same signature).
 	Create(ctx context.Context, names []string, region, size, image, tag, keyID string) ([]Host, error)
 	// List returns every host carrying the tag, sorted by name.
 	List(ctx context.Context, tag string) ([]Host, error)
@@ -77,9 +72,8 @@ type Provider interface {
 	// listing to empty.
 	DeleteByTag(ctx context.Context, tag string) error
 
-	// AssignProject files the fleet under a provider-native grouping
-	// (DO project). Best-effort and provider-specific; a no-op returning nil
-	// where the concept does not exist.
+	// AssignProject files the fleet under a provider-native grouping (DO
+	// project); best-effort, no-op nil where the concept doesn't exist.
 	AssignProject(ctx context.Context, hosts []Host) error
 }
 

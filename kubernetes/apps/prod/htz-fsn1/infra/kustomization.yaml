@@ -1,11 +1,9 @@
 ---
-# prod@htz-fsn1 INFRA layer — the CRD/operator providers (cert-manager,
-# envoy-gateway + Gateway API, OpenEBS/mayastor) + their namespaces. Applied by
-# the `cluster-infra` Flux Kustomization (clusters/prod/htz-fsn1/apps.yaml),
-# which `cluster-apps` dependsOn: everything here must be READY (healthChecks →
-# operators running → CRDs registered) before the app layer's custom resources
-# (Certificates, Gateways, EnvoyProxy, DiskPools) are even dry-run — the flat
-# single-layer tree deadlocked on exactly that during the 2026-07 rebuild.
+# prod@htz-fsn1 INFRA layer — CRD/operator providers + namespaces, applied by the
+# `cluster-infra` Kustomization (clusters/prod/htz-fsn1/apps.yaml) that `cluster-apps`
+# dependsOn: everything here must be READY (healthChecks → operators → CRDs registered)
+# before the app layer's CRs are even dry-run — the flat single-layer tree deadlocked
+# on exactly that during the 2026-07 rebuild.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

@@ -19,13 +19,10 @@
   gather_facts: true
 
   pre_tasks:
-    # Fail fast if the inventory was not rendered from TF. The ceph_deploy role
-    # gates every phase on the ceph_bootstrap/ceph_mon/ceph_join groups and indexes
-    # groups['ceph_bootstrap'][0]; against a hand-written stopgap inventory that
-    # lacks them the role would error mid-run or, worse, fall through to placing a
-    # MON on every host. render-inventories.sh emits these groups from TF state
-    # (bootstrap = exactly one host, mon = an odd quorum including the bootstrap
-    # node) - refuse to deploy against anything else.
+    # Fail fast on a non-TF-rendered inventory: without the ceph_bootstrap/mon/
+    # join groups the role errors mid-run or, worse, places a MON on every host.
+    # render-inventories.sh emits them from TF state (bootstrap = exactly one
+    # host, mon = odd quorum including bootstrap).
     - name: Assert the TF-rendered placement groups are present and sane  # noqa: run-once[task]
       ansible.builtin.assert:
         that:
@@ -44,11 +41,9 @@
           join={{ groups['ceph_join'] | default([]) | length }}.
       run_once: true
 
-    # Per host: the address the mon/OSD/RGW bind (ceph_service_ip) must be live on
-    # a local interface before bootstrap. For spice this is the fabric IP on
-    # bond0.120; a node whose VLAN sub-interface did not come back after a reboot
-    # would otherwise fail deep inside cephadm bootstrap/join. gather_facts is on,
-    # so ansible_all_ipv4_addresses is populated.
+    # ceph_service_ip must be live locally before bootstrap: a VLAN sub-interface
+    # that didn't come back after reboot would otherwise fail deep inside cephadm
+    # bootstrap/join.
     - name: Assert the Ceph service IP is live on this node (fabric/bond up)
       ansible.builtin.assert:
         that:

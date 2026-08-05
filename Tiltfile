@@ -1,19 +1,11 @@
-# Yucca local dev on k3d + Tilt + Helm.
-#
-# Source of truth = the Flux tree under kubernetes/. Tilt derives EVERYTHING it
-# deploys from there (see discover_apps below):
-#   - GitRepository-sourced HelmReleases -> the in-repo charts/<svc>, rendered
-#     with their dev defaults (charts/*/values.yaml) and live-updated with the
-#     locally-built images.
-#   - HelmRepository-sourced HelmReleases (cnpg, rook, victoria-*) -> installed
-#     at the exact chart version + values pinned in the HelmRelease, from the
-#     HelmRepositories declared in kubernetes/apps/dev/local/repos/.
-# APP_WIRING below carries only the dev-specific concerns Flux doesn't have:
-# which locally-built image to inject, deploy ordering, and pod-readiness quirks.
-#
-# Service names are pinned via fullnameOverride in each chart, so in-cluster DNS
-# is identical whether a chart is rendered here (release == resource name) or by
-# Flux (per-app release names).
+# Yucca local dev on k3d + Tilt + Helm. Source of truth = the Flux tree under
+# kubernetes/ (see discover_apps): GitRepository-sourced HelmReleases -> in-repo
+# charts/<svc> with dev defaults + locally-built live-updated images;
+# HelmRepository-sourced (cnpg, rook, victoria-*) -> exact pinned version/values,
+# repos from kubernetes/apps/dev/local/repos/. APP_WIRING carries only the dev
+# concerns Flux doesn't have: image to inject, ordering, pod-readiness quirks.
+# fullnameOverride pins service names, so in-cluster DNS is identical whether a
+# chart is rendered here or by Flux.
 
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
 load('ext://namespace', 'namespace_create')
@@ -23,14 +15,10 @@ allow_k8s_contexts('k3d-yucca')
 
 namespace_create('yucca')
 
-# ---------------------------------------------------------------------------
-# Optional dev secrets: a gitignored .env at the repo root (KEY=VALUE; values
-# may be 1Password `op://` references, resolved here via `op read`). When
-# present it becomes the yucca-dev-env Secret, layered onto yucca-api as the
-# last envFrom source (last source wins for duplicate keys). read_file watches
-# the path, so creating/editing .env retriggers automatically. Absent .env
-# (CI, fresh clones) leaves the committed mock-oidc dev fixtures in charge.
-# ---------------------------------------------------------------------------
+# Optional dev secrets: gitignored root .env (op:// refs resolved via `op read`)
+# becomes the yucca-dev-env Secret, layered onto yucca-api as the LAST envFrom
+# source (last wins). read_file watches the path, so .env edits retrigger.
+# Absent .env (CI, fresh clones): committed mock-oidc dev fixtures stay in charge.
 
 # Env vars the chart pins as explicit container env — explicit env always
 # beats envFrom, so these .env keys must override through Helm values instead.
@@ -50,14 +38,13 @@ def load_dev_env():
             continue
         key, _, value = line.partition('=')
         env[key.strip()] = value.strip().strip('"').strip("'")
-    # OP_ACCOUNT picks the 1Password account on multi-account machines. It's
-    # loader config, not app env, so it never reaches the cluster.
+    # OP_ACCOUNT is loader config (multi-account machines), never reaches the cluster.
     account = env.pop('OP_ACCOUNT', '')
     for key in env.keys():
         if env[key].startswith('op://'):
             cmd = ['op', 'read', '--no-newline'] + (['--account', account] if account else []) + [env[key]]
-            # quiet/echo_off: keep resolved secrets out of the Tilt log. Fails
-            # loudly (aborting the Tiltfile) if op is missing or signed out.
+            # quiet/echo_off keeps secrets out of the Tilt log; aborts if op is
+            # missing or signed out.
             env[key] = str(local(cmd, quiet=True, echo_off=True))
     return env
 
@@ -72,21 +59,15 @@ if DEV_ENV:
     }))
     k8s_resource(objects=['yucca-dev-env:secret'], new_name='dev-env', labels=['helm'])
 
-# ---------------------------------------------------------------------------
-# Fleet topology. The real clusters get this ConfigMap from Flux with the
-# per-cluster values substituted in (kubernetes/apps/base/topology); Tilt
-# deploys only HelmReleases, so the dev copy — the same file the dev-mirror
-# Flux tree applies — is applied here by hand. yucca-api, yucca-admin-api and
-# yucca-metrics-worker mount it and parse it at boot, so it has to exist before
-# they start (see their APP_WIRING deps below).
-# ---------------------------------------------------------------------------
+# Fleet topology ConfigMap: real clusters get it from Flux (kubernetes/apps/base/
+# topology); Tilt deploys only HelmReleases, so the dev-mirror copy is applied by
+# hand. yucca-api/admin-api/metrics-worker parse it at boot -> it must exist
+# before they start (APP_WIRING deps).
 k8s_yaml('kubernetes/apps/dev/local/yucca/topology/app/configmap.yaml')
 k8s_resource(objects=['yucca-topology:configmap'], new_name='yucca-topology', labels=['app'])
 
-# ---------------------------------------------------------------------------
-# Images. Built locally and injected into each app's Helm release via image_keys
-# (image.repository/image.tag). Edits are live-synced into the running pods.
-# ---------------------------------------------------------------------------
+# Images: built locally, injected via image_keys (image.repository/image.tag),
+# edits live-synced into the running pods.
 docker_build(
     'yucca-api',
     context='.',
@@ -233,10 +214,8 @@ docker_build(
     ],
 )
 
-# ---------------------------------------------------------------------------
-# First-party Helm charts that depend on the yucca-common library need their
-# subchart snapshot built before `helm upgrade` can render them.
-# ---------------------------------------------------------------------------
+# Charts depending on the yucca-common library need their subchart snapshot
+# built before `helm upgrade` can render them.
 local_resource(
     'helm-deps',
     cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/dev/mock-oidc/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/meta charts/apps/michael charts/dev/mock-oidc; do (cd $d && helm dependency build); done',
@@ -250,8 +229,7 @@ local_resource(
         'charts/dev/mock-oidc',
         'charts/lib/yucca-common',
     ],
-    # `helm dependency build` rewrites these; if Tilt watches them we re-enter
-    # an infinite rebuild loop.
+    # `helm dependency build` rewrites these; watching them = infinite rebuild loop.
     ignore=[
         'charts/**/charts',
         'charts/**/charts/**',
@@ -262,39 +240,32 @@ local_resource(
     labels=['helm'],
 )
 
-# ---------------------------------------------------------------------------
-# Deploy everything the Flux tree declares. The HelmRelease tree is the source
-# of truth for WHAT runs (apps, operators, chart versions, remote values); the
-# map below carries only the DEV concerns Flux doesn't know about.
-# ---------------------------------------------------------------------------
+# The HelmRelease tree is the source of truth for WHAT runs; this map carries
+# only the dev concerns Flux doesn't know about.
 APP_WIRING = {
     # name (== HelmRelease metadata.name)  build image ref   resource_deps
-    # dev_env: receives the .env override Secret (see load_dev_env above).
-    # dev_keypair: render the well-known dev JWT fixture into the chart Secret
-    # (the chart default is useDevKeypair=false so real overlays fail loudly).
+    # dev_env: gets the .env override Secret. dev_keypair: render the well-known
+    # dev JWT fixture (chart default useDevKeypair=false so real overlays fail loudly).
     'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
     'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_keypair': True},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user', 'yucca-topology'], 'dev_env': True},
     'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
-    # Stock upstream nginx serving the .well-known pointer — nothing to build,
-    # nothing to wait for (it's a static file, deliberately independent of the
-    # API whose URL it advertises).
+    # Stock nginx serving the .well-known pointer — static file, deliberately
+    # independent of the API whose URL it advertises.
     'yucca-meta':             {'build': None,                 'deps': []},
     'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user'], 'dev_keypair': True},
     'yucca-mock-oidc':        {'build': 'mock-oidc-provider', 'deps': []},
     'yucca-database':         {'build': None,                 'deps': ['cloudnative-pg']},
-    # The CephObjectStoreUser creates no pods (just a Secret once Rook mints the
-    # RGW user), so Tilt's pod tracking would hang at "pending". Mark ready on
-    # apply; michael still waits on this resource for ordering.
+    # CephObjectStoreUser creates no pods (just a Secret), so pod tracking would
+    # hang at "pending" — ready on apply; michael still waits on it for ordering.
     'yucca-object-user':      {'build': None,                 'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore'},
-    # Shares charts/platform/ceph-objectuser with yucca-object-user; its userName/caps
-    # come from the HelmRelease values, so dev must apply them (dev_values) or
-    # both releases would default to userName=michael and collide.
+    # Shares charts/platform/ceph-objectuser; userName/caps come from HelmRelease
+    # values, so dev must apply them (dev_values) or both releases would default
+    # to userName=michael and collide.
     'yucca-metrics-object-user': {'build': None,              'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore', 'dev_values': True},
-    # Rook spins up transient mon/osd "canary" pods and deletes them; Tilt's
-    # pod tracking misreads those deletions as failures. Ignore pod readiness
-    # here — real convergence is still gated downstream (object-user -> michael
-    # only go ready once the RGW + user secret actually exist).
+    # Rook's transient mon/osd canary pod deletions read as failures to Tilt's pod
+    # tracking — ignore readiness; convergence is still gated downstream
+    # (object-user -> michael go ready only once the RGW + user secret exist).
     'rook-ceph-cluster':      {'build': None,                 'deps': ['rook-ceph-operator'], 'pod_readiness': 'ignore'},
     # Remote-chart operators/infra (HelmRepository-sourced).
     'cloudnative-pg':         {'build': None,                 'deps': []},
@@ -335,9 +306,8 @@ def discover_apps():
     for path in listdir('kubernetes/apps', recursive=True):
         if not path.endswith('/helmrelease.yaml'):
             continue
-        # The o11y-style GitOps tree (apps/base + the real-cluster overlays
-        # apps/<partition>/<region>) is reconciled by Flux on the real clusters —
-        # Tilt deploys only the local dev-mirror tree under apps/dev/local/.
+        # apps/base + real-cluster overlays are Flux's; Tilt deploys only the
+        # dev-mirror tree under apps/dev/local/.
         if '/apps/dev/local/' not in path:
             continue
         hr = read_yaml(path)
@@ -347,9 +317,8 @@ def discover_apps():
         namespace = hr['metadata'].get('namespace', 'yucca')
         chart_ref = hr['spec'].get('chartRef', {})
         if chart_ref:
-            # OCI-pinned remote chart (chartRef -> OCIRepository, no spec.chart):
-            # helm installs oci:// chart URLs natively, so no helm_repo resource
-            # is involved — repo='' marks these in the install loop below.
+            # OCI-pinned remote chart: helm installs oci:// URLs natively, no
+            # helm_repo involved — repo='' marks these in the install loop.
             if chart_ref.get('kind') != 'OCIRepository':
                 fail("HelmRelease '%s' (%s): unsupported chartRef kind '%s'" % (name, path, chart_ref.get('kind')))
             oci = oci_repos.get(chart_ref['name'])
@@ -368,10 +337,9 @@ def discover_apps():
         source = chart_spec.get('sourceRef', {})
         chart = chart_spec.get('chart', '')
         if source.get('kind') == 'GitRepository' and chart.startswith('charts/'):
-            # In-repo chart: dev renders it with its values.yaml defaults; the
-            # HelmRelease's .spec.values are the prod-side overrides. Apps that
-            # opt in via dev_values (two releases sharing one chart, where the
-            # defaults aren't enough to tell them apart) get them in dev too.
+            # In-repo chart: dev renders values.yaml defaults (.spec.values are the
+            # prod-side overrides); dev_values apps get them in dev too (two
+            # releases sharing one chart need them to differ).
             local_apps.append(struct(name=name, namespace=namespace, chart=chart, values=hr['spec'].get('values', {})))
         elif source.get('kind') == 'HelmRepository':
             # Remote chart: dev installs the exact version + values Flux would.
@@ -392,9 +360,7 @@ def wiring_for(app):
     return wiring
 
 LOCAL_APPS, REMOTE_APPS = discover_apps()
-# Guard against a silently-empty deploy: if the dev-mirror allow-list path ever
-# moves again, discover_apps() would return nothing and Tilt would come up empty
-# instead of failing loudly here.
+# Guard against a silently-empty deploy if the dev-mirror allow-list path moves.
 if not LOCAL_APPS and not REMOTE_APPS:
     fail("discover_apps() found no HelmReleases under kubernetes/apps/dev/local/ — has the dev-mirror tree moved?")
 HELM_REPOS = discover_helm_repos()
@@ -427,13 +393,11 @@ for app in LOCAL_APPS:
     builds = [wiring['build']] if wiring['build'] else []
     flags = ['--timeout=10m']
     extra_deps = []
-    # Dev deviations from the hardened chart defaults (which target the real
-    # clusters' restricted-PSS namespaces): the `dev` image stages run as ROOT
-    # with a root-owned /app (no USER directive — prod stages drop privileges),
-    # live_update syncs source into /app, and the dev watchers/air build into
-    # /app at boot — so dev pods keep the image's user and a WRITABLE rootfs.
-    # One replica is enough (live_update would sync N pods, and the
-    # port-forwards hit one anyway).
+    # Dev deviations from the hardened (restricted-PSS) chart defaults: `dev`
+    # image stages run as ROOT with root-owned /app (no USER; prod stages drop
+    # privileges), live_update + watchers/air build into /app — so dev pods keep
+    # the image's user and a WRITABLE rootfs. One replica (live_update would sync
+    # N pods; port-forwards hit one anyway).
     if wiring['build']:
         flags += ['--set-json', 'podSecurityContext={"seccompProfile":{"type":"RuntimeDefault"}}']
         flags += ['--set-json', 'containerSecurityContext={"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false,"capabilities":{"drop":["ALL"]}}']
@@ -462,10 +426,8 @@ for app in LOCAL_APPS:
         pod_readiness=wiring.get('pod_readiness', ''),
     )
 
-# ---------------------------------------------------------------------------
-# Port-forwards. helm_resource bundles a release into one Tilt resource, so a
-# single local_resource with raw kubectl tunnels gives each service its own.
-# ---------------------------------------------------------------------------
+# Port-forwards: helm_resource bundles a release into one Tilt resource, so raw
+# kubectl tunnels give each service its own.
 local_resource(
     'port-forwards',
     serve_cmd='''trap 'kill 0' EXIT

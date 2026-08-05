@@ -1,25 +1,14 @@
 //go:build e2e
 
-// Package e2e test: proves the load-balancing Pool works end-to-end against the
-// REAL Ceph RGW running in the local k3d cluster.
-//
-// The harness (.mise/tasks/michael/test/e2e) port-forwards svc/rook-ceph-rgw-yucca
-// to S3_ENDPOINT and exports the michael object-user credentials. This test then:
-//
-//  1. Fronts that single real RGW with TWO in-process transparent TCP proxies.
-//     Both forward to the same Ceph store, so they are interchangeable backends —
-//     exactly the production model (multiple RGW gateways, one object store).
-//  2. Builds the michael Pool over the two proxy endpoints and runs the full
-//     restic blob workflow through michael's real HTTP handler stack. Data really
-//     lands in k3d's Ceph.
-//  3. Asserts traffic spreads across both backends (least-outstanding balancing).
-//  4. Fails one proxy and proves active-probe ejection + that the workflow keeps
-//     working through the survivor, then restores it and proves reinstatement.
-//  5. Proves passive ejection (consecutive request failures) independently.
-//
-// A second test reuses the same harness for claim-based cluster routing: the two
-// proxies become two SEPARATE storage clusters, and the token's storageCluster
-// claim decides which one serves each request.
+// Package e2e test: proves the load-balancing Pool end-to-end against the REAL
+// Ceph RGW in the local k3d cluster. Harness (.mise/tasks/michael/test/e2e)
+// port-forwards svc/rook-ceph-rgw-yucca to S3_ENDPOINT and exports the michael
+// object-user credentials. Two in-process transparent TCP proxies front the one
+// RGW as interchangeable backends (the production model: many gateways, one
+// store); tests run the restic workflow through michael's real handler stack
+// and prove least-outstanding balancing, active-probe ejection/reinstatement,
+// passive ejection, and claim-based cluster routing (proxies as two SEPARATE
+// clusters selected by the storageCluster claim).
 package main
 
 import (
@@ -94,9 +83,8 @@ func e2eJWT(t *testing.T, repo string, writeOnce bool) string {
 	return e2eJWTForCluster(t, repo, writeOnce, "")
 }
 
-// e2eJWTForCluster mints a token carrying an explicit storageCluster claim.
-// An empty storageCluster omits the claim entirely — the shape of a token
-// minted before multi-cluster routing existed.
+// e2eJWTForCluster mints a token with an explicit storageCluster claim; empty
+// omits the claim entirely (pre-multi-cluster token shape).
 func e2eJWTForCluster(t *testing.T, repo string, writeOnce bool, storageCluster string) string {
 	t.Helper()
 	claims := jwt.MapClaims{
@@ -118,11 +106,9 @@ func e2eJWTForCluster(t *testing.T, repo string, writeOnce bool, storageCluster 
 
 // --- controllable transparent TCP proxy ---
 
-// tcpProxy forwards raw TCP to a target. Failing it both refuses NEW
-// connections and tears down LIVE ones — the latter matters because the S3
-// client keeps keep-alive connections pooled, and dropping only new connections
-// would let a probe sail through a reused connection. Together this faithfully
-// simulates a dead gateway (transport failure on every request).
+// tcpProxy forwards raw TCP. Failing it refuses NEW connections AND tears down
+// LIVE ones — pooled keep-alive connections would otherwise let a probe sail
+// through; together this simulates a dead gateway (transport failure everywhere).
 type tcpProxy struct {
 	ln     net.Listener
 	target string
@@ -305,7 +291,6 @@ func cleanupBucket(t *testing.T, cfg config.Config, bucket string) {
 	}
 }
 
-// healthyCount returns how many backends in the pool are currently healthy.
 func healthyCount(p *storage.Pool) int {
 	n := 0
 	for _, s := range p.Stats() {
@@ -489,7 +474,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	resp.Body.Close()
 }
 
-// totalRequests sums the requests every backend in a pool has served.
 func totalRequests(p *storage.Pool) int64 {
 	var n int64
 	for _, s := range p.Stats() {
@@ -498,12 +482,9 @@ func totalRequests(p *storage.Pool) int64 {
 	return n
 }
 
-// TestE2E_ClusterRoutingAgainstRealRGW proves claim-based routing end-to-end:
-// michael fronts TWO storage clusters (each a one-backend pool over its own TCP
-// proxy to the real RGW) and the token's storageCluster claim decides which one
-// serves the request. Both proxies reach the same Ceph — what is under test is
-// which cluster's pool the traffic went through, which the per-pool request
-// counters show exactly.
+// TestE2E_ClusterRoutingAgainstRealRGW: michael fronts TWO clusters (one-backend
+// pools over separate proxies to the same RGW); the storageCluster claim picks
+// the pool, proven by per-pool request counters.
 func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 	cfg := e2eConfig(t)
 	target := targetHostPort(t, cfg.S3Endpoint)

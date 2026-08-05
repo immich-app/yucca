@@ -4,8 +4,7 @@ import { env } from 'src/env';
 import { Mocks, newMocks } from '../../test/mocks';
 import { AuthService } from './auth.service';
 
-// Real JwtService over the local-dev keypair: the CLI-flow tests exercise
-// actual ES256 mint/verify rather than mocked crypto.
+// Real JwtService over the local-dev keypair: CLI-flow tests exercise actual ES256 mint/verify, not mocked crypto.
 const newJwtService = () =>
   new JwtService({
     privateKey: env.JWT_PRIVATE_KEY,

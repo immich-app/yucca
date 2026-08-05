@@ -66,10 +66,9 @@ func (o *DeployOptions) defaults() {
 	}
 }
 
-// Deploy creates (or converges) the loadtest namespace, the creds secret
-// (copied from the product's RGW credentials), and the hostNetwork runner
-// Deployment sized from the discovered workers. Idempotent: every manifest is
-// server-side applied, then the rollout is awaited.
+// Deploy converges the loadtest namespace, creds secret (copied from the
+// product's RGW credentials), and hostNetwork runner Deployment sized from
+// discovered workers. Idempotent: server-side apply, then rollout awaited.
 func (s *Session) Deploy(ctx context.Context, opts DeployOptions) error {
 	opts.defaults()
 
@@ -154,10 +153,9 @@ func (s *Session) Deploy(ctx context.Context, opts DeployOptions) error {
 	return nil
 }
 
-// rebalance heals a skewed spread: node drains (e.g. rolling reboots) evict
-// runners onto the remaining workers and nothing moves them back — the spread
-// constraint only acts at scheduling time. Surplus pods on overloaded workers
-// are deleted so the scheduler respreads them onto the underloaded ones.
+// rebalance heals a skewed spread: drains evict runners and nothing moves them
+// back (the spread constraint acts only at scheduling time) — surplus pods on
+// overloaded workers are deleted so the scheduler respreads them.
 func (s *Session) rebalance(ctx context.Context, workers []Worker, podsPerNode int, replicas int32) error {
 	pods, err := s.RunnerPods(ctx)
 	if err != nil {
@@ -194,9 +192,8 @@ func (s *Session) rebalance(ctx context.Context, workers []Worker, podsPerNode i
 	return s.waitRollout(ctx, replicas)
 }
 
-// waitRollout polls the Deployment until every replica is updated and ready,
-// logging progress whenever the ready count changes (and periodically so long
-// waits — image pulls, scheduling — never look hung).
+// waitRollout polls until every replica is updated+ready, logging on
+// ready-count change and periodically so long waits never look hung.
 func (s *Session) waitRollout(ctx context.Context, replicas int32) error {
 	start := time.Now()
 	lastReady := int32(-1)

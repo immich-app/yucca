@@ -25,10 +25,8 @@ resource "junos_interface_physical" "member" {
   }
 }
 
-# Server bonds (LACP trunks). Jumbo L2 (matches ae0 + the spine): the aggregate
-# carries the physical MTU; 802.3ad members inherit it, so no per-member mtu (see
-# the `member` resource above). This raises the L2 ceiling on the whole trunk;
-# per-VLAN L3 stays governed by the IRBs, so the 1500 VLANs (120/124) are untouched.
+# Server bonds (LACP trunks), jumbo L2: 802.3ad members inherit the aggregate's
+# MTU (no per-member mtu). Per-VLAN L3 stays governed by the IRBs — 1500 VLANs untouched.
 resource "junos_interface_physical" "server_lag" {
   for_each = local.server_lag_names
   name     = each.value
@@ -41,8 +39,7 @@ resource "junos_interface_physical" "server_lag" {
   trunk        = true
   vlan_members = local.trunk_members
 
-  # jeremmfr commits per-resource: a trunk member is rejected if the VLAN isn't
-  # on the box yet, so create the VLANs first.
+  # jeremmfr commits per-resource: trunk member rejected until the VLAN exists.
   depends_on = [junos_vlan.this]
 }
 
@@ -73,9 +70,8 @@ resource "junos_interface_logical" "irb_public" {
   }
 }
 
-# Cluster (Ceph replication) gateway. Jumbo L3 on this VLAN only: the .1 gateway's
-# IP MTU matches the hosts' 9000 (< the 9216 L2 ceiling on the bonds/uplink). Set
-# per-unit (family inet mtu) so the public/mgmt IRBs stay at their 1500 default.
+# Ceph-replication gateway, jumbo L3 on this VLAN only (gateway IP MTU = hosts'
+# 9000, set per-unit so public/mgmt IRBs stay at 1500).
 resource "junos_interface_logical" "irb_private" {
   name = "irb.${var.private_vlan_id}"
   family_inet {
@@ -87,8 +83,7 @@ resource "junos_interface_logical" "irb_private" {
   }
 }
 
-# Host-management gateway. Isolated from the data nets by NO-CROSS-VLAN (the mgmt
-# nodes + hosts reach each other intra-VLAN, so SSH is unaffected by the block).
+# Host-mgmt gateway, isolated by NO-CROSS-VLAN (intra-VLAN SSH unaffected).
 resource "junos_interface_logical" "irb_host_mgmt" {
   name = "irb.${var.host_mgmt_vlan_id}"
   family_inet {

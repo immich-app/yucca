@@ -2,13 +2,9 @@
 # PROVISION inventory — Ceph ${cluster_name} cluster @ ${domain}
 # TF-GENERATED — do not edit by hand. Source: tf/deployment/<partition>/<region>/ceph/
 #
-# Runs against the Debian 12 live image on each node BEFORE the first boot
-# into the installed OS. Credentials are the live image's user/pass, not
-# the ansible-iac key (which isn't on the box yet).
-#
-# Uses the same inventory_hostname as inventory.ini so host_vars/ auto-load
-# (bond_ip, hostname_short, SAS path, etc.). Only SSH credentials differ.
-#
+# Runs against the Debian 12 live image BEFORE first boot; creds = the live
+# image's user/pass (the ansible-iac key isn't on the box yet). Same
+# inventory_hostname as inventory.ini so host_vars/ auto-load.
 # Usage:
 #   CEPH_ENV=inventories/<cluster>/inventory-provision.ini \
 #     scripts/ansible-play.sh provision.yml -e confirm_wipe=true

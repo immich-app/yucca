@@ -1,16 +1,9 @@
 ---
-# cephadm-orchestrated Ceph upgrade: preflight gate, record-for-rollback,
-# start, bounded poll, and post-convergence assertions. Imported by
-# upgrade-ceph.yml. Every task here is a cluster op: run_once and delegated to
-# the bootstrap node (groups['ceph_bootstrap'][0]), matching the repo idiom
-# (deploy-ceph.yml / tune-ceph.yml / roles/ceph_deploy). Read-only probes are
-# changed_when:false; only `ceph orch upgrade start` reports changed.
-#
-# Target selection (one is REQUIRED, asserted in the playbook, no default):
-#   ceph_upgrade_target_image  -- full image ref, e.g.
-#                                 quay.io/ceph/ceph:v20.2.2 (preferred: exact,
-#                                 digest-pinnable, and what rollback consumes)
-#   ceph_upgrade_version       -- e.g. 20.2.2 (cephadm resolves the image)
+# cephadm Ceph upgrade flow (imported by upgrade-ceph.yml): preflight gate,
+# record-for-rollback, start, bounded poll, post assertions. All cluster ops
+# run_once on ceph_bootstrap[0]; only `orch upgrade start` reports changed.
+# Target (one REQUIRED, asserted in the playbook): ceph_upgrade_target_image
+# (preferred -- exact, what rollback consumes) or ceph_upgrade_version.
 
 # --- Resolve the upgrade target into a single `ceph orch upgrade start` arg ---
 - name: Resolve upgrade target argument
@@ -100,10 +93,8 @@
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
 
 # --- Record current state for rollback -----------------------------------
-# The exact rollback target is the image the daemons are running NOW. Capture
-# the distinct container image refs across all daemons plus the daemon-version
-# map, print them, and stash to a fact so an operator can copy the prior image
-# into `ceph orch upgrade start --image <prior>` (see runbook header).
+# Rollback target = the image running NOW. Capture + print so an operator can
+# feed it to `ceph orch upgrade start --image <prior>` (see runbook header).
 - name: Record -- current daemon versions
   ansible.builtin.command: ceph versions --format json
   register: _ceph_up_versions_pre
@@ -146,9 +137,8 @@
   run_once: true
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
 
-# Idempotency: if the target image is already the sole running image and the
-# cluster is version-converged, there is nothing to do. Skip start + poll so a
-# re-run is a clean no-op instead of a spurious upgrade cycle.
+# Skip start + poll when the target is already the sole image and versions are
+# converged, so a re-run is a clean no-op.
 - name: Decide whether an upgrade is needed
   ansible.builtin.set_fact:
     _ceph_upgrade_needed: >-
@@ -185,11 +175,9 @@
   run_once: true
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
 
-# --- Poll to completion (bounded) ----------------------------------------
-# ceph_upgrade_poll_retries * ceph_upgrade_poll_delay bounds the wait
-# (default 120 * 30s = 60 min). We stop polling when the orchestrator reports
-# in_progress=false (done) OR is_paused=true (cephadm auto-pauses on a failed
-# step), then assert-not-paused below so a stall fails the play loudly.
+# --- Poll to completion (bounded: retries * delay, default 60 min) --------
+# Stop on in_progress=false (done) OR is_paused=true (cephadm auto-pauses on a
+# failed step); the assert below turns a pause/stall into a loud failure.
 - name: Poll orchestrator upgrade status until complete or paused
   ansible.builtin.command: ceph orch upgrade status --format json
   register: _ceph_up_poll

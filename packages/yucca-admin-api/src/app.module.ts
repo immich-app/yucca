@@ -39,8 +39,7 @@ export const imports = [
   JwtModule.register({
     global: true,
     privateKey: env.JWT_PRIVATE_KEY,
-    // Verification key derived from the signing key: CLI session JWTs are
-    // minted and validated by this same service.
+    // Verification key derived from the signing key: CLI session JWTs are minted and validated by this service.
     publicKey: createPublicKey(env.JWT_PRIVATE_KEY).export({ type: 'spki', format: 'pem' }).toString(),
     signOptions: { algorithm: 'ES256', expiresIn: env.JWT_EXPIRES_IN },
     verifyOptions: { algorithms: ['ES256'] },

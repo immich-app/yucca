@@ -35,10 +35,9 @@ spec:
     image:
       repository: ghcr.io/immich-app/yucca/yucca-api # TODO: confirm prod registry
       tag: 0.0.1
-    # Disabled: the migration Job currently assumes the DEV image layout (it
-    # runs `pnpm install` + sql-tools from the source tree), which a dist-only
-    # prod image doesn't have. Re-enable once the Job has a prod-compatible
-    # command. Dev migrates at boot either way.
+    # Migration Job assumes the DEV image layout (`pnpm install` + sql-tools from source);
+    # dist-only prod images lack it. Re-enable once the Job has a prod-compatible command;
+    # dev migrates at boot either way.
     migration:
       enabled: false
     # TODO(prod): real OIDC issuer/redirect URLs, ingress, probes, replicas,

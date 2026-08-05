@@ -50,7 +50,6 @@ for cluster in "${targets[@]}"; do
 
   echo "=== $cluster → $priv (vault: $vault) ==="
 
-  # Compare fingerprints if the key is already on disk
   if [ -f "$priv" ]; then
     disk_fp=$(ssh-keygen -l -f "$priv" 2>/dev/null | awk '{print $2}' || echo "?")
     onep_fp=$(op read "op://$vault/$item/public_key" | ssh-keygen -l -f /dev/stdin 2>/dev/null | awk '{print $2}' || echo "?")
@@ -66,12 +65,9 @@ for cluster in "${targets[@]}"; do
     fi
   fi
 
-  # Write private + public side by side.
-  # ?ssh-format=openssh is REQUIRED: the 1P item is an SSH_KEY whose private-key
-  # field otherwise reads back as PKCS#8 (-----BEGIN PRIVATE KEY-----), which
-  # macOS ssh tolerates for ed25519 but Ubuntu's OpenSSH (e.g. CI runners)
-  # rejects with "Load key: invalid format". OpenSSH format is accepted
-  # everywhere.
+  # ?ssh-format=openssh is REQUIRED: the SSH_KEY item otherwise reads back as
+  # PKCS#8, which macOS ssh tolerates for ed25519 but Ubuntu OpenSSH (CI
+  # runners) rejects with "Load key: invalid format".
   umask 077
   op read "op://$vault/$item/private_key?ssh-format=openssh" > "$priv"
   op read "op://$vault/$item/public_key"  > "$pub"

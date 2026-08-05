@@ -1,29 +1,16 @@
 #!/bin/bash
-# Clear stale mdraid metadata (from a previous install, on ANY disk) and fully
-# wipe the OS NVMe disks, in the Hetzner rescue ramdisk BEFORE installimage.
-#
-# WHY: installimage's new NVMe RAID is auto-named rescue:0 / rescue:1. If a previous
-# install left mdraid superblocks with the SAME names on OTHER disks (the stor-test
-# boxes carried RAID across the SATA HDDs), the installed OS's initramfs sees
-# DUPLICATE array names, cannot assemble root at boot, and never comes back on the
-# network. So stale superblocks must be cleared on EVERY disk.
-#
-# HOW (robust): mdadm --zero-superblock is silently reverted while an array is still
-# assembled, so we (1) stop arrays in a loop until /proc/mdstat is empty, and
-# (2) zero the superblock regions with RAW dd at BOTH ends of each member (metadata
-# 1.2 at the front, 1.0 at the tail) - raw writes cannot be refused by a live array -
-# plus wipefs, re-stopping after each member in case a degraded array re-assembles.
-#
-# SAFETY: the mdraid-superblock clearing only touches devices that ACTUALLY carry a
-# superblock (a no-op on the bluestore OSD HDDs, which are LVM with no mdraid). The
-# extra destructive wipe (vgremove/pvremove/sgdisk/partprobe) is OS-NVMe-only.
-#
-# DO NOT read this as "a reimage preserves OSDs". On the NVMe-RAID shape (spice) the
-# HDD OSD block.db LVs AND the ssd-osd data LV live on the OS NVMe (vg0) this script
-# zeroes, so a reimage DESTROYS every OSD on the node even though the HDD data
-# devices themselves are untouched (an OSD is unusable once its block.db is gone).
-# The tasks/ceph_safety.yml gate must clear the node (ceph osd ok-to-stop) first.
-# Mirrors provision_host/tasks/disks.yml.
+# Clear stale mdraid metadata on ANY disk + fully wipe the OS NVMes, in rescue
+# BEFORE installimage. WHY: installimage names the new RAID rescue:0/1; stale
+# superblocks with the SAME names elsewhere (stor-test boxes carried RAID on the
+# SATA HDDs) give the initramfs duplicate array names -> root never assembles,
+# node never comes back. HOW: mdadm --zero-superblock is silently reverted while
+# an array is assembled, so stop-loop until /proc/mdstat is empty, then raw dd at
+# BOTH ends of each member (metadata 1.2 front, 1.0 tail) + wipefs, re-stopping
+# per member. SAFETY: superblock clearing only touches devices that carry one
+# (no-op on the LVM bluestore HDDs); the vgremove/pvremove/sgdisk wipe is
+# OS-NVMe-only. NOT data-preserving on the NVMe-RAID shape: vg0 holds every
+# block.db + the ssd-osd LV, so a reimage DESTROYS all OSDs on the node --
+# ceph_safety.yml (ok-to-stop) must clear it first. Mirrors provision_host/tasks/disks.yml.
 set -uo pipefail
 echo "=== prepare-os-disks: starting ==="
 

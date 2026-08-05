@@ -1,9 +1,6 @@
-# node-names — the shared name inventory for auto-naming nodes/hosts. Resolves a
-# per-slot list of names: an explicit override where given, else a deterministic
-# pick from the wordlist. Names are unique within a cluster (the shuffle is seeded
-# by cluster_name; explicit names are excluded from the pool so they can't collide).
-# Position-indexed: slot[i] with no explicit name gets result[i], so appending
-# slots at the tail is stable (existing slots keep their names across applies).
+# Shared name inventory: explicit override per slot, else deterministic wordlist
+# pick (shuffle seeded by cluster_name; explicit names excluded from the pool).
+# Position-indexed — appending slots at the tail is stable, inserting is not.
 terraform {
   required_version = ">= 1.6"
   required_providers {

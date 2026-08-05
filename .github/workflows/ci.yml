@@ -26,8 +26,7 @@ jobs:
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
         env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
+          # Token avoids GitHub API rate limits on mise tool downloads (4 parallel jobs).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
@@ -46,14 +45,12 @@ jobs:
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
         env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
+          # Token avoids GitHub API rate limits on mise tool downloads (4 parallel jobs).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # helm template + kubeconform per chart, then flux-local builds the whole
-      # kubernetes/ tree the way Flux would. No cluster involved. One retry:
-      # flux-local downloads third-party charts (rook is still a classic
-      # HelmRepository) and a transient network reset shouldn't fail the build.
+      # helm template + kubeconform per chart, then flux-local builds kubernetes/
+      # as Flux would (no cluster). One retry: flux-local fetches third-party
+      # charts and a transient network reset shouldn't fail the build.
       - name: Validate charts + Flux tree
         run: mise run k8s:validate || { echo "::warning::k8s:validate failed once (transient chart fetch?); retrying"; mise run k8s:validate; }
 
@@ -69,19 +66,16 @@ jobs:
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
         env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
+          # Token avoids GitHub API rate limits on mise tool downloads (4 parallel jobs).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
-      # The stack (Ceph image, dev images, k3s) is heavy; the stock runner has
-      # ~14GB free, so drop the biggest unused toolchains up front.
+      # Heavy stack; the stock runner has ~14GB free — drop unused toolchains.
       - name: Free runner disk space
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
 
-      # Tests boot the apps on the runner; only the infra (CNPG postgres, Ceph
-      # RGW, mock-oidc, victoria) comes from the cluster — so skip the four
-      # heavy app images entirely.
+      # Apps boot on the runner; only infra (CNPG, Ceph RGW, mock-oidc, victoria)
+      # comes from the cluster — the four heavy app images are skipped.
       - name: Stand up k3d infra
         run: |
           mise k3d:up
@@ -102,8 +96,7 @@ jobs:
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
         env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
+          # Token avoids GitHub API rate limits on mise tool downloads (4 parallel jobs).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
@@ -113,10 +106,9 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter web exec playwright install --with-deps chromium
 
-      # Full stack on k3d, then the whole e2e surface — the jest suites
-      # (it-works, restic-api, yucca-api, orchestration-api) AND the web
-      # Playwright test — via the same runner developers use locally.
-      # orchestration-api runs as a separate host process by design.
+      # Full k3d stack, then the whole e2e surface (jest suites + web Playwright)
+      # via the same runner devs use locally; orchestration-api runs as a
+      # separate host process by design.
       - name: Stand up the full k3d stack
         run: |
           mise k3d:up

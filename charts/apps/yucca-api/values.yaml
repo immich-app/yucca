@@ -8,9 +8,7 @@ resources:
   requests: { cpu: 250m, memory: 512Mi }
   limits: { memory: 4Gi }
 
-# Stable in-cluster name, independent of the Helm release name. This keeps
-# service DNS identical whether rendered by Tilt (dev) or Flux (prod, per-app
-# release names).
+# Stable in-cluster DNS regardless of release name — identical under Tilt (dev) and Flux (prod).
 fullnameOverride: yucca-api
 
 image:
@@ -25,11 +23,9 @@ ports:
 service:
   type: ClusterIP
 
-# The GitOps-owned topology document (sites + storage clusters), validated and
-# hot-reloaded on access — see TOPOLOGY_FILE below. Rendered per cluster by
-# kubernetes/apps/base/topology; dev/k3d gets the literal copy from
-# kubernetes/apps/dev/local/yucca/topology. Same mount in yucca-admin-api and
-# yucca-metrics-worker.
+# GitOps-owned topology doc (hot-reloaded; see TOPOLOGY_FILE). Rendered by
+# kubernetes/apps/base/topology (dev/k3d: literal copy under apps/dev/local/yucca/topology).
+# Same mount in yucca-admin-api and yucca-metrics-worker.
 volumes:
   - name: topology
     configMap:
@@ -53,12 +49,9 @@ secretData:
   OIDC_CLIENT_ID: "client ID"
   OIDC_CLIENT_SECRET: "client secret"
 
-# OPT-IN dev signing key. The project's well-known local-dev ES256 keypair
-# (the same one committed in .mise/tasks/*/env; michael verifies with the
-# matching public half) renders into the Secret ONLY when useDevKeypair is
-# true — set by the dev/local overlay. Default false: an overlay that forgets
-# to provide a real key gets a loud missing-JWT_PRIVATE_KEY crash instead of
-# silently signing production tokens with a public fixture.
+# Opt-in dev ES256 keypair (same as .mise/tasks/*/env; michael holds the public half),
+# rendered only when useDevKeypair=true (set by dev/local overlay). Default false so an
+# overlay missing a real key crashes on JWT_PRIVATE_KEY instead of signing with a public fixture.
 useDevKeypair: false
 devJwtPrivateKey: |
   -----BEGIN PRIVATE KEY-----
@@ -67,12 +60,9 @@ devJwtPrivateKey: |
   Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
   -----END PRIVATE KEY-----
 
-# Extra envFrom sources appended AFTER the chart's own secret — for duplicate
-# keys the last source wins, so this is the override hook. Tilt points it at
-# the yucca-dev-env Secret (built from a gitignored root .env, op:// refs
-# resolved via the 1Password CLI); prod can point it at an ExternalSecret.
-# NB: explicit `env` entries below always beat envFrom — env vars the chart
-# pins there (OIDC_ISSUER & co) are overridden via their Helm values instead.
+# Appended AFTER the chart's own secret — last envFrom source wins, so this is the
+# override hook (Tilt: yucca-dev-env Secret from gitignored .env; prod: ExternalSecret).
+# NB: explicit `env` entries below always beat envFrom — override those via Helm values.
 extraEnvFrom: []
 
 env:

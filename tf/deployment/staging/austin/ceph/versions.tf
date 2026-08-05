@@ -9,10 +9,8 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
-    # Enabled for staging: the module's secrets.tf creates the SIETCH_CEPH_*
-    # password items in yucca_tf_staging (manage_secrets = true in main.tf).
-    # Token via OP_SERVICE_ACCOUNT_TOKEN: infra.yml apply uses the write SA
-    # OP_TF_YUCCA_STAGING_ENV_WRITE; local runs use a superuser SA token.
+    # secrets.tf creates SIETCH_CEPH_* items in yucca_tf_staging. Token via
+    # OP_SERVICE_ACCOUNT_TOKEN (CI: OP_TF_YUCCA_STAGING_ENV_WRITE; local: superuser SA).
     onepassword = {
       source  = "1Password/onepassword"
       version = "~> 2.1"

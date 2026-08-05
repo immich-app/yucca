@@ -1,34 +1,19 @@
 ---
-# Phase 3: Disk preparation
+# Phase 3: Disk preparation (DESTRUCTIVE). Consumes ssd1_dev/ssd2_dev from
+# detect.yml; partitions both SSDs (ESP/boot/root/swap/ceph-db/ceph-osd), RAID1
+# for boot/root/swap, filesystems, block.db LVM, mounts under /mnt.
 #
-# SSD discovery and validation already happened in detect.yml — this
-# phase consumes ssd1_dev/ssd2_dev (plus serials/sizes/models) and does
-# the destructive work: partitions both SSDs identically with an
-# ESP/boot/root/swap/ceph-db/ceph-osd layout, creates RAID1 arrays for
-# boot/root/swap, creates filesystems, sets up LVM for Ceph block.db,
-# and mounts everything under /mnt.
+# Resume semantics:
+#   1. Fast path: /mnt already mounted on /dev/md/root -> skip the whole block
+#      (recovers a post-disks crash, e.g. mid-debootstrap, by re-running).
+#   2. Opportunistic remount: /dev/md/root exists, nothing mounted (skip_reboot
+#      inspection or rescue) -> remount, read marker; hostname match = resume,
+#      missing/foreign marker = unmount and full wipe.
 #
-# Resume semantics come in two flavors:
-#
-#   1. Fast path — /mnt is already mounted on /dev/md/root. The whole
-#      disks block is skipped and we move on to the install phase. This
-#      lets a post-disks crash (e.g. during debootstrap) be recovered by
-#      just re-running the playbook.
-#
-#   2. Opportunistic remount — /dev/md/root exists but nothing is
-#      mounted (happens after a skip_reboot canary inspection where the
-#      operator unmounted by hand, or after a rescue). We remount
-#      /dev/md/root, read the marker, and if the marker hostname matches
-#      inventory_hostname we finish mounting /mnt/boot + ESP and
-#      continue on the resume path. If the marker is missing or belongs
-#      to a different host, we unmount and fall through to a full wipe.
-#
-# The destructive subpath itself is also defensive about udev
-# re-assembling old mdraid: we stop arrays, then dd-zero the first 4 MB
-# (metadata 1.2) AND the last 4 MB (metadata 1.0) of every RAID member
-# partition before wipefs, so there is no superblock left for udev's
-# `mdadm --incremental` to latch onto during the tiny race window
-# between partprobe and mdadm --create.
+# Destructive path defends against udev re-assembling old mdraid: stop arrays,
+# then dd-zero first 4 MB (metadata 1.2) AND last 4 MB (metadata 1.0) of every
+# RAID member so `mdadm --incremental` has no superblock to latch onto in the
+# partprobe -> mdadm --create race window.
 
 # --- State check --------------------------------------------------------
 
@@ -44,17 +29,9 @@
   failed_when: false
 
 # --- Opportunistic remount + marker validation --------------------------
-#
-# If /dev/md/root exists but /mnt is not mounted (e.g. previous run was
-# rescued mid-flight, or a skip_reboot run was unmounted by hand), try
-# to remount and validate the on-disk marker. The marker has to match
-# inventory_hostname to be considered legitimate — otherwise we assume
-# this is an old install of a differently-named host and proceed with
-# the wipe.
-#
-# This is the keystone of the marker-driven resume path. Without it,
-# we'd re-wipe a perfectly provisioned system on every commit run after
-# a skip_reboot inspection.
+# Marker must match inventory_hostname or we treat it as a foreign install and
+# wipe. Keystone of the resume path: without it every commit run after a
+# skip_reboot inspection would re-wipe a provisioned system.
 
 - name: Opportunistic remount + marker validation
   when:
@@ -146,16 +123,10 @@
 - name: Prepare disks
   when: not disks_prepared
   block:
-    # SSD discovery + validation already happened in detect.yml. The
-    # facts ssd1_dev / ssd2_dev / ssd1_serial / ssd2_serial are set
-    # there and consumed throughout the rest of this file.
-
     # ----- Stop any lingering mdraid arrays and clear PVs -----
-    #
-    # The previous install may have left arrays under any name (homehost
-    # prefix from a different hostname, /dev/md0..md127, etc.) that the
-    # live image's udev auto-assembled at boot. Walking /proc/mdstat and
-    # using --stop --scan catches them all, regardless of naming.
+    # A previous install may have arrays under any name (foreign homehost,
+    # md0..md127) auto-assembled by the live image's udev; --stop --scan plus a
+    # /proc/mdstat walk catches them all.
 
     - name: Stop all assembled mdraid arrays
       ansible.builtin.shell: |
@@ -170,12 +141,8 @@
       changed_when: false
 
     # ----- Deactivate and remove any lingering LVM state -----
-    #
-    # Same idea as the mdraid cleanup: a previous install left a VG with
-    # PVs at partition 5 of each SSD. The live image's lvmetad/udev will
-    # auto-activate it, holding the partition device, and the subsequent
-    # wipefs/sgdisk pass would otherwise fail to clear the PV signature.
-    # vgchange -an + vgremove + pvremove is the explicit teardown.
+    # lvmetad/udev auto-activates a leftover VG on partition 5, holding the
+    # device so wipefs/sgdisk could not clear the PV signature.
 
     - name: Deactivate any auto-activated VGs
       ansible.builtin.shell: |
@@ -241,10 +208,8 @@
         - "{{ ssd2_dev }}"
       changed_when: false
 
-    # NOTE: partition-name concatenation assumes SAS-style device names
-    # (sda1, sdb2). R730xd rear SSDs use a SAS HBA, not NVMe. If this role
-    # is ever adapted for NVMe SSDs, add a part_sep fact ("" for SAS,
-    # "p" for NVMe) and interpose it in the paths below.
+    # Partition-name concatenation assumes SAS-style names (sda1); R730xd rear
+    # SSDs are SAS HBA. For NVMe, add a part_sep fact ("" SAS / "p" NVMe).
     - name: Wait for partition device nodes to appear
       ansible.builtin.wait_for:
         path: "{{ item }}"
@@ -265,15 +230,10 @@
         - "{{ ssd2_dev }}6"
 
     # ----- Post-partprobe mdraid cleanup -----
-    #
-    # After partprobe, udev rescans the new partition table. Because we
-    # recreate identical partition layouts on a re-provision, mdraid
-    # superblocks from the previous install are still at the same byte
-    # offsets — udev runs `mdadm --incremental` on each partition and
-    # re-assembles the old md arrays. Unless we explicitly stop them
-    # again here AND destroy the on-disk superblocks, the partitions
-    # remain "device busy" and mdadm --create fails with
-    # "not suitable for this array".
+    # Identical re-provision layouts leave old superblocks at the same offsets,
+    # so post-partprobe udev `mdadm --incremental` re-assembles them; without
+    # stopping AND destroying superblocks, mdadm --create fails
+    # ("device busy" / "not suitable for this array").
 
     - name: Stop any mdraid arrays auto-assembled by udev after partprobe
       ansible.builtin.shell: |
@@ -285,12 +245,9 @@
         executable: /bin/bash
       changed_when: false
 
-    # Even with the stop above, there's a tiny race window where udev
-    # could re-assemble between the stop and the wipefs below. Destroy
-    # the on-disk superblock regions directly so re-assembly becomes
-    # impossible: zero the first 4 MB (catches mdraid metadata 1.2 at
-    # offset 4 KB) AND the last 4 MB (catches mdraid metadata 1.0 in
-    # the last 8 KB) of every RAID member partition.
+    # udev can re-assemble in the stop->wipefs race; zero first 4 MB (metadata
+    # 1.2 at 4 KB) AND last 4 MB (metadata 1.0 in the last 8 KB) of every RAID
+    # member so re-assembly is impossible.
     - name: Zero mdraid superblock regions on RAID member partitions
       ansible.builtin.shell: |
         set -e
@@ -306,10 +263,7 @@
       changed_when: true
 
     # ----- Clear partition-level stale signatures -----
-    #
-    # wipefs is the catch-all for any non-mdraid signatures (LVM PV
-    # labels on partition 5, vfat on partition 1, etc.) that weren't
-    # covered by the dd-zero above.
+    # wipefs catch-all for non-mdraid signatures (LVM PV on part 5, vfat on part 1).
 
     - name: Wipe partition signatures on SSD1
       ansible.builtin.command: "wipefs -af {{ ssd1_dev }}{{ item }}"
@@ -322,13 +276,9 @@
       changed_when: true
 
     # ----- Final mdraid cleanup before array creation -----
-    #
-    # wipefs and dd-zero removed the on-disk superblocks, but udev may
-    # have already re-assembled stale arrays from signatures it saw
-    # *before* the wipe. We must: (1) stop anything udev auto-assembled,
-    # (2) let udev finish processing the wipe events, (3) remove the
-    # mdadm assemble cache so nothing tries to re-appear. Without this,
-    # mdadm --create fails with "Device or resource busy".
+    # udev may have re-assembled from pre-wipe signatures: stop arrays, settle
+    # udev, remove the mdadm assemble cache (/run/mdadm/map), else mdadm --create
+    # fails "Device or resource busy".
 
     - name: Final mdraid stop + udev settle before array creation
       ansible.builtin.shell: |
@@ -482,6 +432,5 @@
         opts: umask=0077
         state: ephemeral
 
-# Resume-path SSD rediscovery removed: detect.yml now sets ssd1_dev /
-# ssd2_dev / ssd1_serial / ssd2_serial unconditionally on every run,
-# so the resume path inherits them automatically.
+# Resume-path SSD rediscovery removed: detect.yml sets the ssd*_dev/_serial
+# facts unconditionally, so the resume path inherits them.

@@ -1,13 +1,10 @@
-// Package discovery resolves the live yucca topology by reading Terraform state
-// objects directly from the shared `yucca-tf-state` S3 bucket and parsing each
-// stack's `discovery` output (see internal/state). It never shells out to
-// `terragrunt output`, so it works without a checkout, provider plugins, or
-// `terragrunt init`.
-//
-// Stack enumeration is auto-detected: it prefers walking a local
-// `tf/deployment` tree (cheap, offline, and authoritative for *which* stacks
-// exist), and falls back to a `ListObjectsV2` sweep of the bucket. Either way,
-// live values come from a `GetObject` on each `terraform.tfstate`.
+// Package discovery resolves the live yucca topology by reading Terraform
+// state straight from the shared `yucca-tf-state` S3 bucket and parsing each
+// stack's `discovery` output (see internal/state) — never `terragrunt output`,
+// so no checkout, provider plugins, or init needed. Stack enumeration prefers
+// walking a local `tf/deployment` tree (cheap, offline, authoritative for
+// WHICH stacks exist), falling back to a ListObjectsV2 sweep; live values
+// always come from GetObject on each terraform.tfstate.
 package discovery
 
 import (
@@ -41,9 +38,8 @@ const (
 	s3Endpoint = "https://s3.eu-west-par.io.cloud.ovh.net/"
 	s3Region   = "eu-west-par"
 
-	// Default 1Password references for the state-bucket credentials. These match
-	// the AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY lines in tf/.env. Overridable
-	// via the env vars below for `op run` / CI contexts.
+	// Default 1P refs for the state-bucket creds (match the AWS_* lines in
+	// tf/.env); overridable via the env vars below for `op run`/CI.
 	defaultAccessKeyRef = "op://yucca_tf/TF_STATE_S3_ACCESS_KEY/password"
 	defaultSecretKeyRef = "op://yucca_tf/TF_STATE_S3_SECRET_KEY/password"
 )
@@ -73,10 +69,8 @@ type Client struct {
 	log zerolog.Logger
 }
 
-// NewClient builds the S3 client. Credentials come from AWS_ACCESS_KEY_ID /
-// AWS_SECRET_ACCESS_KEY when already present (e.g. under `op run`), otherwise
-// they are resolved from 1Password via `op read` (refs overridable through
-// YUCTL_TF_STATE_ACCESS_KEY_REF / YUCTL_TF_STATE_SECRET_KEY_REF).
+// NewClient builds the S3 client: AWS_ACCESS_KEY_ID/SECRET when present (op
+// run), else `op read` (refs overridable via YUCTL_TF_STATE_{ACCESS,SECRET}_KEY_REF).
 func NewClient(ctx context.Context, logger zerolog.Logger) (*Client, error) {
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
@@ -124,11 +118,9 @@ func envOr(key, fallback string) string {
 // resolveConcurrency bounds the parallel GetObject fan-out in Resolve.
 const resolveConcurrency = 8
 
-// Resolve discovers stacks (local tree preferred, else bucket listing), reads
-// each state object, and returns the populated topology. Stacks whose state has
-// no `discovery` output yet are skipped with a debug log. State objects are
-// fetched concurrently; results keep the (sorted) enumeration order so the
-// topology stays deterministic.
+// Resolve discovers stacks (local tree preferred, else bucket listing) and
+// fetches states concurrently; stacks without a `discovery` output are skipped
+// (debug log). Results keep sorted enumeration order — deterministic topology.
 func (c *Client) Resolve(ctx context.Context) (*Topology, error) {
 	stacks, src, err := c.enumerate(ctx)
 	if err != nil {
@@ -223,9 +215,8 @@ func isDir(p string) bool {
 	return err == nil && info.IsDir()
 }
 
-// enumerateLocal walks tf/deployment finding every directory that contains a
-// terragrunt.hcl and sits at depth >= 2 (partition/region/<stack...>). The root
-// terragrunt.hcl (depth 0) is ignored.
+// enumerateLocal walks tf/deployment for terragrunt.hcl dirs at depth >= 2
+// (partition/region/<stack...>); the root terragrunt.hcl is ignored.
 func enumerateLocal(root string) ([]Stack, error) {
 	var stacks []Stack
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {

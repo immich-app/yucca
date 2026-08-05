@@ -1,38 +1,18 @@
 ---
-# Phase 4.5: Ensure Ceph block.db LVM is set up on each node (sietch-shape only)
-#
-# This task is sietch-shape-specific: it assumes dual SAS-attached SSDs each
-# with partition 5 -> its own VG, with 6 db-slot LVs per VG (12 total). It
-# ensures PVs, VGs, and LVs exist. Idempotent - skips if already present.
-# Provides a recovery path if the LVM was destroyed by `mise run destroy`.
-#
-# Painbox-shape (Hetzner SX295, NVMe RAID-1 -> single vg0 with all LVs created
-# by installimage post-install) skips the whole block - its host_vars don't
-# define `sas_path_prefix` so the gate below short-circuits.
-#
-# Required host_vars (sietch-shape only):
-#   sas_path_prefix  - by-path prefix for SSD discovery (e.g., pci-0000:02:00.0-sas-exp...)
-#   ssd1_phy, ssd2_phy - PHY slot numbers for the two SSDs
-#   ceph_db_vg1, ceph_db_vg2 - VG names for SSD1/SSD2 partition 5
-#
-# VG mapping: ceph_db_vg1 on SSD1 partition 5, ceph_db_vg2 on SSD2 partition 5
-# LV naming: db-slot0..5 on VG1, db-slot6..11 on VG2 (one per HDD OSD)
-
-# NVMe-RAID shape (spice): a single vg0 on the NVMe RAID-1 already carries the
-# OS LVs from installimage. Create the block.db LVs (one per HDD OSD) + one
-# ssd-osd LV here at converge, before osds.yml. This replaces painbox's fragile
-# installimage -x chroot post-install with an idempotent, observable ansible
-# step. Gated on ceph_db_lvs_per_node (spice sets it; genuinely
-# externally-managed hosts do not).
+# Phase 4.5: Ceph block.db LVM per node. Also the recovery path after
+# `mise run destroy`. Two shapes, gated on host_vars:
+# - sietch (sas_path_prefix + ssd1/2_phy + ceph_db_vg1/2): dual SAS SSDs,
+#   part5 -> own VG, db-slot0..5 on VG1 / 6..11 on VG2 (one per HDD OSD).
+# - spice NVMe-RAID (ceph_db_lvs_per_node, no sas_path_prefix): single vg0 from
+#   installimage; db LVs + ssd-osd created here at converge, before osds.yml
+#   (replaces painbox's fragile installimage -x chroot post-install).
 - name: Set up LVM (NVMe-RAID single-vg0 topology)
   when:
     - sas_path_prefix is undefined
     - ceph_db_lvs_per_node is defined
-  # DATA SAFETY: never let lvol SHRINK an existing LV -- reconciling a drifted
-  # db-slot down would truncate a live block.db and corrupt the OSD. shrink:false
-  # means lvol still creates and may grow, but leaves a larger existing LV alone
-  # (the old shell skipped existing LVs entirely). opts -Wy wipes stale signatures
-  # on (re)created LVs, preserving the destroy->recreate recovery-path freshness.
+  # DATA SAFETY: shrink:false -- shrinking a drifted db-slot would truncate a
+  # live block.db and corrupt the OSD (create/grow still allowed). -Wy wipes
+  # stale signatures on (re)created LVs (destroy->recreate freshness).
   module_defaults:
     community.general.lvol:
       shrink: false
@@ -50,12 +30,9 @@
         state: present
       loop: "{{ range(0, ceph_db_lvs_per_node | int) | list }}"
 
-    # ssd-osd is sized as (vg0 free - reserve); lvol has no "free minus N GiB"
-    # primitive, so compute the GiB with a read-only shell and feed it to lvol.
-    # Gate the compute + create on the LV being absent: once ssd-osd exists, vg0
-    # free == reserve, so recomputing would yield <= 0 and the original shell's
-    # FATAL guard would (correctly) refuse -- and an unforced lvol resize would
-    # fail. The existence check preserves that idempotency exactly.
+    # lvol has no "free minus N GiB" primitive; compute via shell. Gate on the
+    # LV being absent: once ssd-osd exists, vg0 free == reserve, so a recompute
+    # would yield <= 0 and trip the FATAL guard.
     - name: Check whether the ssd-osd LV already exists on vg0
       ansible.builtin.command: lvs {{ ceph_db_vg }}/{{ ceph_ssd_osd_lv }}
       register: vg0_ssd_check
@@ -143,10 +120,9 @@
       changed_when: false
       failed_when: false
 
-    # lvg runs "pvcreate -f" but not "--yes", so it will not clear a stale
-    # foreign (ceph/ext) signature on a reused partition. Preserve the original
-    # wipefs -af, gated exactly as before on the VG being absent, so we never
-    # wipe a live PV. lvg then creates the PV+VG idempotently.
+    # lvg runs "pvcreate -f" without "--yes", so it won't clear a stale foreign
+    # (ceph/ext) signature on a reused partition; wipefs -af first, gated on the
+    # VG being absent so a live PV is never wiped.
     - name: Wipe stale signatures on SSD1 partition 5
       ansible.builtin.command: wipefs -af {{ ssd1_dev.stdout }}5
       when: vg1_check.rc != 0
@@ -169,9 +145,7 @@
         pvs: "{{ ssd2_dev.stdout }}5"
         state: present
 
-    # Fixed slots first, then the 100%FREE remainder, so the remainder LV only
-    # claims the space left after the fixed LVs (matches the sequential order of
-    # the original single-loop shell).
+    # Fixed slots first so the 100%FREE remainder only claims what is left.
     - name: Create fixed-size block.db LVs on VG1 (slots 0-4 at 240G)
       community.general.lvol:
         vg: "{{ ceph_db_vg1 }}"
@@ -203,11 +177,9 @@
         state: present
 
     # --- SSD OSD data LVs (partition 6) ---
-    # part6 of each SSD is the SSD-class OSD data device. cephadm cannot deploy
-    # an OSD on a bare partition (only a whole disk or an LV), so wrap each
-    # part6 in its own VG + a 100%FREE LV that ceph_ssd_osds references as
-    # `<vg>/osd-ssd`. Gated on ceph_ssd_vg1/2: clusters that want no SSD tier
-    # simply omit those vars and these tasks no-op.
+    # cephadm can't deploy an OSD on a bare partition (whole disk or LV only):
+    # wrap each part6 in a VG + 100%FREE LV referenced as `<vg>/osd-ssd`.
+    # Gated on ceph_ssd_vg1/2; clusters without an SSD tier omit them.
     - name: Check if SSD OSD VG1 exists
       ansible.builtin.shell: vgs {{ ceph_ssd_vg1 }} 2>/dev/null
       register: ssd_vg1_check

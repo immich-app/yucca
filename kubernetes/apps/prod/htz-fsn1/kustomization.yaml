@@ -1,15 +1,12 @@
 ---
-# prod@htz-fsn1 cluster overlay — father: the APP layer (custom resources +
-# workloads). The CRD/operator providers live in ./infra, applied by the
-# `cluster-infra` Flux Kustomization that this layer dependsOn — see
-# infra/kustomization.yaml for why (fresh-cluster dry-run deadlock).
-#
-# SCOPE: cluster baseline (coredns, Cilium BGP LB config, netops, OpenEBS
-# pools) + the yucca platform/app set. components/infra stays off WHOLESALE —
-# its storage layer collides with the prod-owned openebs (infra/openebs.yaml,
-# targetNamespace `openebs`) and netbird-operator has no prod service user —
-# so the platform pieces are cherry-picked: operators in ./infra
-# (cluster-infra layer), issuer/proxies/routes/observability in ./platform.
+# prod@htz-fsn1 (father) APP layer (CRs + workloads); CRD/operator providers live in
+# ./infra via the `cluster-infra` Kustomization this layer dependsOn — see
+# infra/kustomization.yaml (fresh-cluster dry-run deadlock). SCOPE: cluster baseline
+# (coredns, Cilium BGP LB, netops, OpenEBS pools) + the yucca platform/app set.
+# components/infra stays off WHOLESALE: its storage layer collides with the prod-owned
+# openebs (infra/openebs.yaml, targetNamespace `openebs`) and netbird-operator has no
+# prod service user — pieces are cherry-picked: operators in ./infra,
+# issuer/proxies/routes/observability in ./platform.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

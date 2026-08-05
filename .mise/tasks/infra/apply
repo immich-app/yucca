@@ -3,20 +3,17 @@
 set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
 
-# OpenTofu's Go binary doesn't read the macOS keychain, so the OVH S3 backend's
-# cert fails to verify locally ("unknown authority"). Point it at the system CA
-# bundle on macOS; Linux/CI reads its trust store fine and is left alone.
+# OpenTofu doesn't read the macOS keychain, so the OVH S3 backend cert fails to
+# verify locally — point at the system CA bundle; Linux/CI is fine untouched.
 if [ -z "${SSL_CERT_FILE:-}" ] && [ "$(uname -s)" = "Darwin" ] && [ -f /etc/ssl/cert.pem ]; then
   export SSL_CERT_FILE=/etc/ssl/cert.pem AWS_CA_BUNDLE=/etc/ssl/cert.pem
 fi
 
 mise run infra:providers
 
-# Escalate to the write-capable service-account token, which is itself stored in
-# the vault: CI hands us a read-scoped token in OP_SERVICE_ACCOUNT_TOKEN (locally
-# we sign in to team-futo), and we use it to read the write SA, then run the apply
-# as that SA so the onepassword provider can create/update items. One GitHub
-# secret (the read token) is enough; the write privilege lives in 1Password.
+# Escalate to the write SA stored in-vault: read it with the read-scoped token
+# (CI's OP_SERVICE_ACCOUNT_TOKEN, or a team-futo sign-in locally) and apply as
+# it. One GitHub secret suffices; the write privilege lives in 1Password.
 ACCT=(); [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && ACCT=(--account "${OP_ACCOUNT:-team-futo}")
 OP_SERVICE_ACCOUNT_TOKEN=$(op read "${ACCT[@]}" \
   "op://yucca_tf_prod/yucca_futo_1pass_service_account_write/password")
@@ -37,11 +34,9 @@ SITE="${SITE:-htz-fsn1}"
 unset OP_ACCOUNT
 STACK_DIR="tf/deployment/prod/$SITE/fabric"
 
-# Bind the apply to the reviewed plan. When CI passes TG_PLAN pointing at the
-# saved plan artifact, apply THAT file (no fresh re-plan, no -auto-approve): tofu
-# fails closed if the saved plan is stale relative to current state. Strip any
-# -auto-approve the caller passed (meaningless with a plan file). Local/manual
-# runs leave TG_PLAN unset and keep the interactive/`-auto-approve` behaviour.
+# When CI passes TG_PLAN, apply THAT file (no re-plan, no -auto-approve; tofu
+# fails closed on a stale plan) and strip any -auto-approve (meaningless with a
+# plan file). Unset TG_PLAN (local runs) keeps interactive/-auto-approve behaviour.
 APPLY_ARGS=("$@")
 if [ -n "${TG_PLAN:-}" ]; then
   [ -f "$TG_PLAN" ] || { echo "infra:apply: TG_PLAN set but plan file missing: $TG_PLAN" >&2; exit 1; }
@@ -49,17 +44,15 @@ if [ -n "${TG_PLAN:-}" ]; then
   APPLY_ARGS=("${filtered[@]}" "$TG_PLAN")
 fi
 
-# jeremmfr/junos is concurrency-safe (per-resource CRUD); reads/refresh run in
-# parallel and commits serialize on the per-device config lock (handled by the
-# provider). The device NETCONF connection-limit is raised to 250.
+# jeremmfr/junos is concurrency-safe (commits serialize on the per-device config
+# lock); device NETCONF connection-limit raised to 250.
 OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "$STACK_DIR" apply -parallelism=4 "${APPLY_ARGS[@]}"
 
-# Confirm the dangling `commit confirmed` jeremmfr leaves on the last commit per
-# device: its per-resource "confirm" is `commit check`, which does NOT cancel the
-# rollback on our Junos, so without this the last change auto-reverts. A plain
-# `commit` confirms it. This runs ONLY after a successful apply (set -e): a
-# mgmt-breaking apply errors above and skips this, so the dangling commit rolls
-# back and restores management. Nothing pending → `commit` is a harmless no-op.
+# Confirm jeremmfr's dangling `commit confirmed`: its "confirm" is `commit
+# check`, which does NOT cancel the rollback on our Junos — without a plain
+# `commit` the last change auto-reverts. Runs ONLY after a successful apply
+# (set -e), so a mgmt-breaking apply skips it and the rollback restores
+# management; nothing pending -> harmless no-op.
 echo "==> confirming commit-confirmed on managed switches"
 IPS=$(OP_ENV_FILE=tf/.env.prod "$ROOT/tf/op-run.sh" terragrunt --working-dir "$STACK_DIR" output -json switch_mgmt_ips | tr -d '[]" ' | tr ',' '\n')
 KH=$(mktemp); trap 'rm -f "$KEYF" "$KH"' EXIT

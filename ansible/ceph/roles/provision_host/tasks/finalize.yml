@@ -1,28 +1,13 @@
 ---
-# Phase 9: Finalize
-#
-# 1. Write the provisioning marker to /mnt/etc/ceph-provisioned.json
-#    (skipped on marker-driven resume — provisioning_done guards it)
-# 2. Sync the primary ESP to the backup ESP on SSD2
-#    (also skipped on resume)
-# 3. If provision_skip_reboot is true, stop here — /mnt stays mounted
-#    with chroot bind mounts active for canary inspection. Operator
-#    can `chroot /mnt` to verify, unmount manually, reboot when ready.
-# 4. Otherwise include unmount.yml to tear down the chroot bind mounts
-#    and the /mnt hierarchy in reverse order (shared with the rescue
-#    path in main.yml).
-# 5. Trigger a reboot via systemd-run (fire-and-forget — the live
-#    image will disappear, so ansible cannot wait on SSH here).
-#
-# A separate post-reboot verification play runs from localhost after
-# this one completes.
+# Phase 9: Finalize. Write the provisioning marker + mirror the ESP to SSD2
+# (both skipped on resume via provisioning_done -- the marker IS the marker; an
+# existing one must not get a bumped timestamp). Then: provision_skip_reboot
+# stops here with /mnt + chroot binds mounted for canary inspection; otherwise
+# unmount.yml tears down in reverse order (shared with main.yml's rescue) and a
+# systemd-run reboot fires-and-forgets (the live image disappears, so ansible
+# cannot wait on SSH). Post-reboot verification is a separate localhost play.
 
 # --- Write marker + mirror ESP (skipped on resume via marker gate) -----
-#
-# Both of these tasks are gated on `not provisioning_done` because the
-# marker file IS the marker — if it already exists, we wrote it on a
-# previous run and don't want to bump the timestamp. The ESP mirror
-# is similarly idempotent on re-run and would just waste time.
 
 - name: Write marker and mirror ESP
   when: not provisioning_done

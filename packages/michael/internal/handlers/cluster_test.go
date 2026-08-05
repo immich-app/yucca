@@ -146,9 +146,8 @@ func TestClusterRoutingUnknownClusterRejected(t *testing.T) {
 	}
 }
 
-// A well-formed claim naming a cluster is still rejected on a single-cluster
-// michael unless it matches that michael's default code — the legacy-token path
-// must not be a wildcard.
+// A well-formed claim is rejected on single-cluster michael unless it matches
+// the default code — the legacy-token path must not be a wildcard.
 func TestClusterRoutingSingleClusterRejectsForeignClaim(t *testing.T) {
 	srv := newTestServer(&mockStorage{})
 

@@ -1,20 +1,12 @@
-# Per-environment NetBird (Cloud) groups, access policies, and device auth
-# (setup) keys. One NetBird Cloud account backs every env; the module namespaces
-# every object as "yucca_<env>_<name>" so they coexist.
-#
-# Auth (both injected by `op run --env-file=tf/.env` via the mise tf:* tasks):
-#   • netbird     — admin PAT from NB_PAT (op://shared_tf/NETBIRD_TF_PAT).
-#                   management_url defaults to https://api.netbird.io (Cloud).
-#   • onepassword — OP_SERVICE_ACCOUNT_TOKEN (same op run session); writes the
-#                   minted setup keys into the yucca_tf_<env> vault.
+# Staging NetBird layer; objects namespaced "yucca_<env>_<name>".
+# Auth via op run: netbird = NB_PAT (op://shared_tf/NETBIRD_TF_PAT);
+# onepassword = OP_SERVICE_ACCOUNT_TOKEN, writes setup keys to yucca_tf_<env>.
 provider "netbird" {}
 provider "onepassword" {}
 
-# Existing NetBird groups owned outside this stack (the staging nodes live in the
-# "Liberty Park" infra groups today). Looked up by name and handed to the module
-# as external_groups so policies can reference them by logical key without
-# managing them. The "yucca" users group is the global access group (see
-# prod/global for the account-wide yucca→yucca policy).
+# Externally-owned groups (staging nodes live in the "Liberty Park" infra
+# groups), passed as external_groups so policies reference them unmanaged.
+# Account-wide yucca→yucca policy: see prod/global.
 data "netbird_group" "lp_compute" {
   name = "Liberty Park Compute"
 }
@@ -51,15 +43,10 @@ module "netbird" {
 }
 
 # ─── In-cluster operator service account + API token ────────────────────
-# The NetBird Kubernetes operator authenticates to the Management API with a
-# personal access token. We mint a dedicated service user (auto-joined to the
-# k8s_operator group) and a 365-day token, then stash the plaintext in the
-# yucca_tf_staging vault — the staging/talos stack reads it from there (via
-# TF_VAR) and bootstraps it into the netbird-mgmt-api-key Secret. The operator
-# itself creates per-workload setup keys via this token, so no setup key is
-# pre-provisioned for it.
-#
-# NB: NetBird PATs always expire — `tf:apply` past the expiry re-mints the token.
+# Dedicated service user + 365-day PAT, stashed in yucca_tf_staging; the
+# staging/talos stack bootstraps it into the netbird-mgmt-api-key Secret. The
+# operator mints its own setup keys with it. PATs always expire — `tf:apply`
+# past expiry re-mints.
 resource "netbird_user" "k8s_operator" {
   is_service_user = true
   name            = "yucca-${var.partition}-k8s-operator"

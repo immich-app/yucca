@@ -26,7 +26,6 @@ export const useSwagger = (app: INestApplication, { write }: { write: boolean })
   SwaggerModule.setup('doc', app, specification, customOptions);
 
   if (write) {
-    // Generate API Documentation only in development mode
     const outputPath = resolve(process.cwd(), '../yucca-api-client/openapi-specs.json');
     writeFileSync(outputPath, JSON.stringify(specification, null, 2), { encoding: 'utf8' });
   }

@@ -1,23 +1,12 @@
-# Talos host ingress firewall — ported from yucca-o11y, slimmed for a flat
-# private LAN (no public NIC, no NodePort ingress controller yet).
-#
-# Default action is `block`; each rule re-opens one host-bound service to
-# trusted sources only. This governs HOST-network ports only — ClusterIP and
-# pod-to-pod traffic ride the CNI overlay (opened below) and aren't subject to
-# these rules.
-#
-# Rule split by role: apid/kubelet/overlay run everywhere; trustd/apiserver/etcd
-# are control-plane services. On this compact cluster every node is a CP, but
-# keeping the split correct means adding workers later Just Works.
-#
-# ⚠️ The host running `tf apply` MUST have a source IP within local.operator_allow
-# (the node subnet + trusted_cidrs + Tailscale ranges). apid (50000) is how the
-# provider bootstraps and health-checks; if the operator's source IP isn't
-# allowed, those steps hang.
+# Talos host ingress firewall (ported from yucca-o11y). Default block; rules
+# re-open host-bound services to trusted sources. Governs HOST-network ports
+# only — ClusterIP/pod traffic rides the CNI overlay. Split by role so adding
+# workers later Just Works.
+# ⚠️ The `tf apply` host MUST be in local.operator_allow — apid (50000) is how
+# the provider bootstraps/health-checks; otherwise those steps hang.
 
 locals {
-  # Tailscale CGNAT ranges — allowed on operator-facing rules so a tailnet
-  # client reaching nodes via a source-preserving subnet router isn't dropped.
+  # Tailscale CGNAT ranges — so a source-preserving subnet-router client isn't dropped.
   tailscale_cidrs = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"]
 
   # Intra-cluster trust (node-to-node + declared operator subnets).
@@ -26,8 +15,7 @@ locals {
   # Operator entrypoints (talosctl + apiserver) additionally trust Tailscale.
   operator_allow = concat(local.firewall_allow, var.trust_tailscale ? local.tailscale_cidrs : [])
 
-  # kubelet additionally trusts the pod CIDR (same-node pod→kubelet scrape
-  # skips the CNI masquerade and would otherwise be dropped).
+  # kubelet also trusts the pod CIDR (same-node pod→kubelet scrape skips masquerade).
   kubelet_allow = concat(local.firewall_allow, [var.pod_cidr])
 
   # CNI overlay + health ports, selected by var.cni.
@@ -49,8 +37,7 @@ locals {
           portSelector = { ports = [8472], protocol = "udp" }
           ingress      = [for c in local.firewall_allow : { subnet = c }]
         }),
-        # cilium-health connectivity probes (TCP; ICMP probes are best-effort
-        # and not opened — TCP health is authoritative).
+        # cilium-health TCP probes (ICMP not opened — TCP health is authoritative).
         yamlencode({
           apiVersion   = "v1alpha1"
           kind         = "NetworkRuleConfig"

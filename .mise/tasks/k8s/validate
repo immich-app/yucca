@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 #MISE description="Statically validate the k8s surface (charts + Flux tree)"
 #MISE dir="{{config_root}}"
-# Renders every chart (helm template + kubeconform) and builds the whole Flux
-# tree the way Flux would (flux-local --enable-helm). No cluster needed; this
-# is the CI gate for kubernetes/ and charts/ changes.
-#
-# NB: don't run this while Tilt is converging — Tilt's helm-deps resource
-# rebuilds charts/*/charts/ (rm -rf + dependency build) and races the renders.
+# Renders every chart (helm template + kubeconform) + builds the Flux tree as
+# Flux would (flux-local --enable-helm). No cluster; the CI gate for kubernetes/
+# + charts/. NB: don't run while Tilt is converging — its helm-deps resource
+# rebuilds charts/*/charts/ and races the renders.
 set -euo pipefail
 
 # Charts are role-grouped: apps/* (services), platform/* (operators/CRs),
@@ -32,12 +30,10 @@ for c in "${ALL_CHARTS[@]}"; do
 done
 
 echo "==> kustomize build (Flux entrypoints)"
-# partition/region GitOps tree: per-cluster entry points (clusters/<p>/<r>) +
-# app overlays (apps/<p>/<r>, which compose components/{infra,roles/<role>}).
-# LoadRestrictionsNone mirrors how Flux's kustomize-controller builds within a
-# single git artifact: the role Components reference ../../apps/<app>.yaml
-# (a sibling subtree under components/), which the CLI's default RootOnly
-# restrictor would reject even though Flux allows it.
+# Entry points clusters/<p>/<r> + overlays apps/<p>/<r> (composing
+# components/{infra,roles/<role>}). LoadRestrictionsNone mirrors Flux's
+# kustomize-controller within one git artifact: role Components reference
+# ../../apps/<app>.yaml, which the CLI's default RootOnly restrictor rejects.
 kb() { kustomize build --load-restrictor=LoadRestrictionsNone "$@"; }
 CLUSTERS=(staging/austin prod/htz-fsn1 dev/local)
 
@@ -113,10 +109,9 @@ done
 kb kubernetes/apps/dev/local/repos >/dev/null && echo "    OK  kubernetes/apps/dev/local/repos"
 
 echo "==> prod guardrails (no dev IdP behind the primary app set)"
-# The prod cluster-settings carry a placeholder dev OIDC issuer until the real
-# IdP exists; this gate makes it mechanically impossible to enable the yucca
-# workload set (components/roles/primary) against it. Staging legitimately uses
-# the dev issuer, so only prod overlays are checked.
+# Prod cluster-settings carry a placeholder dev OIDC issuer until the real IdP
+# exists; make enabling roles/primary against it mechanically impossible.
+# Staging legitimately uses the dev issuer — only prod overlays are checked.
 for kz in kubernetes/apps/prod/*/kustomization.yaml; do
   region_dir=$(basename "$(dirname "$kz")")
   settings="kubernetes/clusters/prod/$region_dir/cluster-settings.yaml"

@@ -1,10 +1,7 @@
-# Switch fabric: the shared spine core + each cluster's leaf pair, plus login
-# (users/keys/rights) on every VC. Add a cluster by adding its leaf provider
-# (providers.tf), a cluster-fabric + login module here, and its serials in tfvars.
-#
-# Login is driven by the central identity registry (shared/modules/identity):
-# members of fabric-mapped groups (e.g. `fabric-admins` -> super-user) become
-# login users on every VC. Manage people/groups there, not here.
+# Switch fabric: shared spine core + per-cluster leaf pairs + login on every VC.
+# New cluster = leaf provider (providers.tf) + cluster-fabric/login modules here
+# + serials in tfvars. Login users come from shared/modules/identity
+# (fabric-mapped groups) — manage people/groups there, not here.
 
 module "identity" {
   source = "../../../../shared/modules/identity"
@@ -22,33 +19,28 @@ module "core" {
 
   vc_member_serials = var.spine_vc_serials
 
-  # Port 0 carries the father control-plane breakout at 10G (the CPs' Intel 82599
-  # NICs are 10G-only; needs the QSFP+ 4x10G breakout cables — see cp_node_lags);
-  # ports 1-3 stay 25G (workers + mgmt + spares).
+  # Port 0 = father CP breakout at 10G (CPs' 82599 NICs are 10G-only, QSFP+
+  # 4x10G breakout cables); ports 1-3 stay 25G.
   breakout_ports = { 0 = "10g", 1 = "25g", 2 = "25g", 3 = "25g" }
 
-  # father's bare-metal kube workers hang off the core (channelized 25G breakouts of
-  # port 2, one leg per VC member). Each ae bundles the two ports cabled to one node
-  # (pairs derived from LLDP — consecutive MACs on the node's dual-port Broadcom NIC):
+  # Worker LAGs: 25G breakouts of port 2, one leg per VC member; pairs derived
+  # from LLDP (consecutive MACs on each node's dual-port Broadcom NIC):
   #   ae1 = ...46:a1:3a/3b   ae2 = ...47:05:c4/c5   ae3 = ...4e:86:c5/c6
   node_lags = {
     ae1 = ["et-0/0/2:2", "et-1/0/2:3"]
     ae2 = ["et-0/0/2:3", "et-1/0/2:2"]
     ae3 = ["et-0/0/2:1", "et-1/0/2:1"]
   }
-  # Spine routes kube ↔ cls1-public (same pattern as kube↔kube-cp): the workers'
-  # fabric path to the spice RGW frontend (michael S3 traffic, not via NetBird).
-  # IRB = last usable /23 address; the leaf keeps the .1 host gateway.
+  # Spine routes kube ↔ cls1-public: workers' fabric path to the spice RGW
+  # (michael S3, never NetBird). IRB = last usable /23 address; leaf keeps .1.
   public_routing = {
     cidr = module.addr_cls1.public_cidr
     ip   = "${cidrhost(module.addr_cls1.public_cidr, 510)}/${module.addr_cls1.prefixlen}"
   }
 
-  # father's bare-metal control planes: port-0 breakout legs at 10G (xe-), one leg
-  # per VC member, trunking the kube-cp VLAN. Pairing VERIFIED 2026-07-15 via MAC
-  # learning against the maintenance-mode nodes (NIC port 1 → FPC 0, port 2 →
-  # FPC 1, same leg index on both members):
-  #   ae4 = harlan …0a:fe:c8/ca   ae5 = imelda …09:68:68/6a   ae6 = roscoe …65:07:40/42
+  # CP LAGs: port-0 10G breakout legs (xe-), one per VC member, trunking kube-cp.
+  # Pairing VERIFIED 2026-07-15 via MAC learning (NIC port 1 → FPC 0, port 2 →
+  # FPC 1): ae4 = harlan …0a:fe:c8/ca  ae5 = imelda …09:68:68/6a  ae6 = roscoe …65:07:40/42
   cp_node_lags = {
     ae4 = ["xe-0/0/0:2", "xe-1/0/0:2"]
     ae5 = ["xe-0/0/0:1", "xe-1/0/0:1"]
@@ -61,22 +53,18 @@ module "core" {
     cidr    = module.addr_site.kube_cp_cidr
   }
 
-  # Cilium node iBGP for LoadBalancer VIPs — the spine gets its first IRB (the kube net's
-  # .1 gateway) and dynamic-peers the workers from the kube subnet, accepting the LB /32s
-  # they advertise (covered by the transit aggregate, so reachable north-south). The
-  # concrete LB pool ranges live only in the Cilium LoadBalancerIPPools.
+  # Cilium node iBGP: spine dynamic-peers workers from the kube subnet, accepting
+  # LB /32s (covered by the transit aggregate). Concrete pool ranges live only in
+  # the Cilium LoadBalancerIPPools.
   node_bgp = {
     peer_range = module.addr_site.kube_cidr
-    # Internal (NetBird-only) LB VIPs — accepted from the nodes but NOT in the
-    # transit-advertised space, so they are reachable on-net only.
+    # Internal LB VIPs: accepted but NOT transit-advertised — on-net only.
     accept_prefixes = [module.addr_site.lb_internal_cidr]
   }
 
-  # sFlow → the in-cluster sflow-rt collector (netops, VIP .14 in lb_internal —
-  # reachable on the spine via the Cilium iBGP /32). Counter samples every 5s =
-  # the seconds-granularity bandwidth feed; every up physical port is listed
-  # (sFlow attaches to members, not ae bundles): worker bonds (et-*/0/2:*), mgmt
-  # hosts (et-*/0/3:0), transit (et-0/0/27), leaf uplink ae0 (et-*/0/30,31).
+  # sFlow → in-cluster sflow-rt (netops, VIP .14 in lb_internal via Cilium iBGP
+  # /32). sFlow attaches to member ports, not ae bundles: worker bonds
+  # (et-*/0/2:*), mgmt (et-*/0/3:0), transit (et-0/0/27), leaf uplink (et-*/0/30,31).
   sflow = {
     collector = cidrhost(module.addr_site.lb_internal_cidr, 14)
     agent_id  = "69.48.224.254"
@@ -91,19 +79,17 @@ module "core" {
     ]
   }
 
-  # Worker internet egress via the fabric (40G transit vs 1 GbE eth0): each worker SNATs
-  # to a public /32 and default-routes via the core; these are the return routes. The
-  # node SNAT + default route live in kubernetes/.../node-egress (must match these IPs).
+  # Worker internet egress via fabric: each worker SNATs to a public /32; these
+  # are the return routes. Node SNAT + default route live in
+  # kubernetes/.../node-egress and MUST match these IPs.
   node_egress = {
     "10.40.10.11" = "69.48.224.241"
     "10.40.10.12" = "69.48.224.242"
     "10.40.10.13" = "69.48.224.243"
   }
 
-  # Upstream IP-transit. Today: one transit (Core-Backbone), primary/default
-  # (prepend 0). Add a second entry with prepend>0 + a lower local_pref to
-  # multi-home (the prepended one is the backup; see core-fabric/transit.tf —
-  # prepend/local_pref need a provider regen to apply).
+  # One transit today (Core-Backbone). Multi-home: add an entry with prepend>0 +
+  # lower local_pref (core-fabric/transit.tf; those knobs need a provider regen).
   local_as = 402421
   transits = {
     core-backbone = {
@@ -139,15 +125,13 @@ module "cluster_cls1" {
   vc_member_serials = var.cls1_leaf_serials
 }
 
-# Default DNS resolvers (Cloudflare + Quad9, dual-stack). Set here, not on core,
-# so a single resource owns the whole `system` container per switch.
+# Resolvers set here, not on core: one resource must own the whole `system` container per switch.
 locals {
   fabric_name_servers = ["1.1.1.1", "9.9.9.9", "2606:4700:4700::1111", "2620:fe::fe"]
 
-  # Read-only service login for the netops stack (junos_exporter metrics, hyperglass
-  # looking glass, oxidized config backup — kubernetes/apps/prod/htz-fsn1/netops/).
-  # `network` grants ping/traceroute (the looking glass); no configure rights. The
-  # private key lives ONLY in the cluster (Secret) + 1Password, never in git.
+  # Read-only login for netops (exporter/hyperglass/oxidized —
+  # kubernetes/apps/prod/htz-fsn1/netops/). `network` = ping/traceroute; no
+  # configure. Private key ONLY in cluster Secret + 1P, never git.
   netops_classes = {
     netops-ro = { permissions = ["view", "view-configuration", "network"] }
   }

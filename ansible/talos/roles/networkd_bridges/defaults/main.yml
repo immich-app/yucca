@@ -17,14 +17,10 @@ networkd_bridges_config_dir: /etc/systemd/network
 # 50- here lands AFTER bond0 exists, before any 70-* anyone may add.
 networkd_bridges_prefix: "50"
 
-# Drop-in directory for the parent (bond0) .network file. systemd-
-# networkd reads `<basename>.d/*.conf` automatically when present.
-# We render `<dropin_dir>/10-talos-vlans.conf` containing the
-# `[Network] VLAN=bond0.50 / VLAN=bond0.51` directives — without
-# these, networkd never instantiates the kernel sub-interfaces from
-# the .netdev files alone (a key gotcha). The default tracks the Ceph
-# deployment's `20-bond0.network` basename; override if the prefix
-# changes upstream.
+# Parent (bond0) .network drop-in dir. We render 10-talos-vlans.conf with
+# `[Network] VLAN=bond0.50/.51` -- KEY GOTCHA: networkd never instantiates VLAN
+# sub-interfaces from .netdev files alone; they must be declared on the parent.
+# Default tracks the Ceph deployment's `20-bond0.network` basename.
 networkd_bridges_parent_dropin_dir: "/etc/systemd/network/20-bond0.network.d"
 networkd_bridges_parent_dropin_filename: "10-talos-vlans.conf"
 

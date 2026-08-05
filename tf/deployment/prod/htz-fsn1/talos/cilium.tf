@@ -1,8 +1,5 @@
-# Cilium CNI — installed post-bootstrap in the same apply (helm provider bound to
-# the bootstrap CP, providers.tf). Talos set cni:none + proxy:disabled, so nodes
-# go Ready only once this lands the datapath. Tunnel (geneve) routing spans the
-# two routed VLANs (kube/kube-cp) via the spine IRBs; MTU is auto-detected
-# (wt0-limited) — see cilium-values.yaml.tftpl.
+# Cilium CNI, post-bootstrap in the same apply; nodes go Ready only once this
+# lands. Geneve routing + wt0-limited auto MTU: see cilium-values.yaml.tftpl.
 resource "helm_release" "cilium" {
   name       = "cilium"
   namespace  = "kube-system"

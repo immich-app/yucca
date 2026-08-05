@@ -11,10 +11,9 @@ ceph_fluentbit_repo: >-
   deb [signed-by=/etc/apt/keyrings/fluentbit.gpg]
   https://packages.fluentbit.io/debian/bookworm bookworm main
 
-# /insert/journald is not routed by o11y's mesh vmauth; /insert/jsonline is.
-# The name resolves over the mesh: o11y distributes its DNS zone to the ceph
-# group (immich-app/yucca-o11y#153). Envoy routes by Host/SNI, so connect by
-# name, not by the gateway IP.
+# vmauth routes /insert/jsonline, NOT /insert/journald. Name resolves over the
+# mesh (o11y DNS zone -> ceph group, immich-app/yucca-o11y#153); Envoy routes by
+# Host/SNI, so connect by name, never the gateway IP.
 ceph_fluentbit_o11y_host: vmauth.o11y.futo.network
 ceph_fluentbit_o11y_port: 443
 
@@ -23,38 +22,28 @@ ceph_fluentbit_cluster_label: "{{ cluster_name }}"
 ceph_fluentbit_site_label: htz-fsn1
 ceph_fluentbit_env_label: prod
 
-# Field names these must match, confirmed against fluent-bit v5.0.9 source
-# (plugins/in_systemd/systemd.c). Strip_Underscores drops exactly one leading
-# underscore, and only when the key starts with one (:408), so journald's
-# _HOSTNAME arrives as HOSTNAME while MESSAGE and SYSLOG_IDENTIFIER are already
-# underscore-free and pass through unchanged. That matters because VictoriaLogs
-# reserves _-prefixed names for _msg/_time/_stream.
-# The plugin's `lowercase` option defaults to false (:757) and the role does not
-# set it. If a future version flips that default, every field here arrives
-# lowercased, these stream fields match nothing, and logs still ship with no
-# stream identity - so re-check it on a version bump.
-# SYSLOG_IDENTIFIER is the ceph daemon type: ceph-mon, ceph-mgr, ceph-osd, radosgw.
+# Confirmed against fluent-bit v5.0.9 source (plugins/in_systemd/systemd.c):
+# Strip_Underscores drops exactly one LEADING underscore (:408), so _HOSTNAME ->
+# HOSTNAME (VictoriaLogs reserves _-prefixed names). `lowercase` defaults false
+# (:757); if a future version flips it these fields match nothing and logs ship
+# with no stream identity -- RE-CHECK on any version bump.
+# SYSLOG_IDENTIFIER = ceph daemon type (ceph-mon/-mgr/-osd, radosgw).
 ceph_fluentbit_stream_fields: "HOSTNAME,SYSLOG_IDENTIFIER"
 
-# The fleet emits ~2.4M lines/hour, nearly all mon/mgr status chatter (all 15
-# OSDs on a node emit ~200/hr). These two patterns are most of it. The mon
-# cluster health channel is not matched.
+# Fleet emits ~2.4M lines/hr, nearly all mon/mgr chatter; these two patterns are
+# most of it. The mon cluster health channel is not matched.
 ceph_fluentbit_drop_regex: '(pgmap v[0-9]+|_set_new_cache_sizes)'
 
-# Disk queue for the o11y output. Retries never give up, but the queue is
-# bounded: when it fills, Fluent Bit drops its oldest chunks to make room.
-# This sizes how long a node rides out an o11y or overlay outage. It does not
-# guarantee that nothing is lost.
+# Bounded disk queue (oldest chunks dropped when full): sizes how long a node
+# rides out an o11y/overlay outage, not a no-loss guarantee.
 ceph_fluentbit_buffer_limit: 512M
 
-# Fluent Bit's own metrics. The security role opens this port from the trusted
-# networks alongside the other exporters, so it is reachable once harden.yml has
-# converged. Only the vmagent scrape job itself is still a follow-up.
+# Own metrics port; security role opens it from trusted networks once harden.yml
+# converges. vmagent scrape job still a follow-up.
 ceph_fluentbit_http_port: 2020
-# Bind the fabric VLAN-120 address, not 0.0.0.0. Do not listen on the 1G WAN at
-# all: the bind is the control here, not the nftables drop policy. The fabric is
-# where vmagent scrapes. Tradeoff: NetBird peers cannot reach the endpoint.
+# Bind the fabric VLAN-120 address, never 0.0.0.0/WAN -- the bind is the control,
+# not the nftables drop policy. Tradeoff: NetBird peers cannot reach the endpoint.
 ceph_fluentbit_http_listen: "{{ ceph_public_ip }}"
-# How long the ExecStartPre drop-in waits for that address at boot. LACP and
-# MLAG convergence on the 25G bond is seconds; this is slack, not a real budget.
+# ExecStartPre wait for that address at boot; LACP/MLAG converge in seconds, this
+# is slack.
 ceph_fluentbit_bind_wait_secs: 60
