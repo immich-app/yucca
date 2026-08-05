@@ -1,6 +1,6 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
-  import StackListItem from "$lib/components/ui/StackListItem.svelte";
+  import StackListOption from "$lib/components/ui/StackListOption.svelte";
   import {
     handleSetupLocalStorage,
     handleStartYuccaLogin,
@@ -15,7 +15,7 @@
     Stack,
     Text,
   } from "@immich/ui";
-  import { mdiChevronRight, mdiHarddisk, mdiShieldCheck } from "@mdi/js";
+  import { mdiHarddisk, mdiShieldCheck } from "@mdi/js";
 
   type Props = {
     restore?: boolean;
@@ -44,28 +44,20 @@
 >
   <ModalBody>
     <StackList>
-      <StackListItem title="FUTO Backups" onclick={onFutoBackups}>
+      <StackListOption title="FUTO Backups" onclick={onFutoBackups}>
         {#snippet icon()}
           <Icon icon={mdiShieldCheck} />
         {/snippet}
 
         Simple, hosted backups.
-
-        {#snippet trailing()}
-          <Icon icon={mdiChevronRight} />
-        {/snippet}
-      </StackListItem>
-      <StackListItem title="Local Storage" onclick={onLocalBackups}>
+      </StackListOption>
+      <StackListOption title="Local Storage" onclick={onLocalBackups}>
         {#snippet icon()}
           <Icon icon={mdiHarddisk} />
         {/snippet}
 
         A folder on this computer.
-
-        {#snippet trailing()}
-          <Icon icon={mdiChevronRight} />
-        {/snippet}
-      </StackListItem>
+      </StackListOption>
     </StackList>
   </ModalBody>
   <ModalFooter>

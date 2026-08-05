@@ -1,19 +1,17 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
-  import StackListItem from "$lib/components/ui/StackListItem.svelte";
+  import StackListOption from "$lib/components/ui/StackListOption.svelte";
   import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
   import Suspense from "$lib/components/util/Suspense.svelte";
   import { useInspectRepositories } from "$lib/services/repository.service";
   import {
     Button,
     HStack,
-    Icon,
     Modal,
     ModalBody,
     ModalFooter,
     Stack,
   } from "@immich/ui";
-  import { mdiChevronRight } from "@mdi/js";
   import type { Snippet } from "svelte";
 
   type Props = {
@@ -60,10 +58,10 @@
           {#each sortedRepositories ?? [] as repository (repository.id)}
             {@const accessible = repository.snapshots !== undefined}
 
-            <StackListItem
+            <StackListOption
               title={repository.name}
-              color={accessible ? "primary" : "danger"}
-              onclick={accessible ? () => onSelect(repository.id) : undefined}
+              disabled={!accessible}
+              onclick={() => onSelect(repository.id)}
             >
               {#if !accessible}
                 Can't access, is your recovery key correct?
@@ -74,13 +72,7 @@
               {:else}
                 No backups yet
               {/if}
-
-              {#snippet trailing()}
-                {#if accessible}
-                  <Icon icon={mdiChevronRight} />
-                {/if}
-              {/snippet}
-            </StackListItem>
+            </StackListOption>
           {/each}
 
           {#if (sortedRepositories ?? []).length === 0}

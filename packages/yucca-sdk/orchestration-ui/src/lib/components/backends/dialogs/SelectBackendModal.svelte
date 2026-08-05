@@ -1,6 +1,6 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
-  import StackListItem from "$lib/components/ui/StackListItem.svelte";
+  import StackListOption from "$lib/components/ui/StackListOption.svelte";
   import Suspense from "$lib/components/util/Suspense.svelte";
   import {
     handleSetupLocalStorage,
@@ -16,7 +16,7 @@
     ModalFooter,
     Stack,
   } from "@immich/ui";
-  import { mdiChevronRight, mdiHarddisk, mdiShieldCheck } from "@mdi/js";
+  import { mdiHarddisk, mdiShieldCheck } from "@mdi/js";
   import type { Snippet } from "svelte";
 
   type Props = {
@@ -61,18 +61,18 @@
       {@render leadingContent?.()}
 
       <StackList>
-        <StackListItem {disabled} title="FUTO Backups" onclick={onFutoBackups}>
+        <StackListOption
+          {disabled}
+          title="FUTO Backups"
+          onclick={onFutoBackups}
+        >
           {#snippet icon()}
             <Icon icon={mdiShieldCheck} />
           {/snippet}
 
           Simple, hosted backups.
-
-          {#snippet trailing()}
-            <Icon icon={mdiChevronRight} />
-          {/snippet}
-        </StackListItem>
-        <StackListItem
+        </StackListOption>
+        <StackListOption
           {disabled}
           title="Local Storage"
           onclick={onLocalBackups}
@@ -82,17 +82,13 @@
           {/snippet}
 
           A folder on this computer.
-
-          {#snippet trailing()}
-            <Icon icon={mdiChevronRight} />
-          {/snippet}
-        </StackListItem>
+        </StackListOption>
 
         <Suspense query={backends}>
           {#snippet children(available)}
             {#each available as backend (backend.id)}
               {#if backend.type === "local"}
-                <StackListItem
+                <StackListOption
                   {disabled}
                   title="Existing Local Storage"
                   onclick={() => {
@@ -104,11 +100,7 @@
                   {/snippet}
 
                   {backend.description}
-
-                  {#snippet trailing()}
-                    <Icon icon={mdiChevronRight} />
-                  {/snippet}
-                </StackListItem>
+                </StackListOption>
               {/if}
             {/each}
           {/snippet}

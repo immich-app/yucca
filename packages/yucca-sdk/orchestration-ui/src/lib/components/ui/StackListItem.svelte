@@ -22,8 +22,6 @@
     footer?: Snippet;
     footerColor?: Color;
     actions?: ActionItem[];
-    disabled?: boolean;
-    onclick?: () => void;
   };
 
   const {
@@ -36,8 +34,6 @@
     footer,
     footerColor = "primary",
     actions = [],
-    disabled = false,
-    onclick,
   }: Props = $props();
 
   const tints: Record<Color, string> = {
@@ -48,7 +44,7 @@
   };
 </script>
 
-{#snippet body()}
+<div>
   <HStack gap={4} class={`${className} items-center px-5 py-4`}>
     {#if icon}
       <div
@@ -81,24 +77,12 @@
       />
     {/if}
   </HStack>
-{/snippet}
-
-<div>
-  {#if onclick}
-    <button
-      {onclick}
-      {disabled}
-      type="button"
-      class="block w-full text-left hover:bg-subtle disabled:opacity-60"
-    >
-      {@render body()}
-    </button>
-  {:else}
-    {@render body()}
-  {/if}
 
   {#if footer}
-    <HStack gap={2} class={`items-center border-t px-5 py-3 ${tints[footerColor]}`}>
+    <HStack
+      gap={2}
+      class={`items-center border-t px-5 py-3 ${tints[footerColor]}`}
+    >
       {@render footer()}
     </HStack>
   {/if}
