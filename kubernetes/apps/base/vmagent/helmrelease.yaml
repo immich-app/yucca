@@ -129,9 +129,10 @@ spec:
       enabled: true
       spec:
         # Stamp the remote-cluster identity on EVERY series: cluster (short
-        # cluster name), site, env. Relabel (not externalLabels): externalLabels
-        # only tags scraped data, leaving OTLP-pushed app metrics untagged. This
-        # applies to all data (scraped + ingested) before remote-write.
+        # cluster name), site, env, project. Relabel (not externalLabels):
+        # externalLabels only tags scraped data, leaving OTLP-pushed app
+        # metrics untagged. This applies to all data (scraped + ingested)
+        # before remote-write.
         inlineRelabelConfig:
           - target_label: cluster
             replacement: ${METRICS_CLUSTER_LABEL}
@@ -139,6 +140,8 @@ spec:
             replacement: ${METRICS_SITE_LABEL}
           - target_label: env
             replacement: ${METRICS_ENV_LABEL}
+          - target_label: project
+            replacement: yucca
         # Ship to o11y's vmauth (the `remote-clusters` VMUser proxies
         # /insert/0/.* -> vminsert), authenticating with the shared bearer token
         # (TF-provisioned `vmagent-remote-write` Secret from o11y_tf_staging).
