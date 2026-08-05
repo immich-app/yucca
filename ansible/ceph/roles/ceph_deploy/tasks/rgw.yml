@@ -917,6 +917,101 @@
   register: metrics_caps
   changed_when: "'CHANGED' in metrics_caps.stdout"
 
+# --- Step 14.6: Provisioner RGW admin user (read-write) ---
+#
+# The RGW admin the yucca APIs use to create one S3 user per repository, so a
+# restic token can carry credentials scoped to its own bucket and michael needs
+# none of its own. Keys are TF-minted in 1P
+# (<CLUSTER>_PROVISIONER_{ACCESS,SECRET}_KEY). max-buckets=0: this user manages
+# other users' buckets through the admin API and owns none itself.
+
+- name: Check if provisioner RGW user exists
+  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_provisioner_user_uid }}"
+  register: provisioner_user_check
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Create provisioner RGW user with predetermined keys for {{ ceph_rgw_provisioner_user_uid }}
+  ansible.builtin.command: >
+    radosgw-admin user create
+    --uid={{ ceph_rgw_provisioner_user_uid }}
+    --display-name='{{ ceph_rgw_provisioner_user_display_name }}'
+    --access-key='{{ ceph_rgw_provisioner_user_access_key }}'
+    --secret-key='{{ ceph_rgw_provisioner_user_secret_key }}'
+    --max-buckets=0
+  register: provisioner_user_create
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - provisioner_user_check.rc != 0
+  changed_when: true
+  no_log: true
+
+- name: Ensure provisioner RGW user has users and buckets admin caps
+  ansible.builtin.shell: |
+    set -o pipefail
+    CAPS=$(radosgw-admin user info --uid={{ ceph_rgw_provisioner_user_uid }} --format json 2>/dev/null \
+      | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('caps',[])))")
+    if [ "$CAPS" -lt 1 ]; then
+      radosgw-admin caps add --uid={{ ceph_rgw_provisioner_user_uid }} \
+        --caps='{{ ceph_rgw_provisioner_user_caps }}' >/dev/null 2>&1
+      echo "CHANGED"
+    else
+      echo "OK"
+    fi
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: provisioner_caps
+  changed_when: "'CHANGED' in provisioner_caps.stdout"
+
+# --- Step 14.7: Migrator RGW admin user (bucket ops) ---
+#
+# Hands buckets over to their repository's user during
+# `yuctl repos migrate-storage-credentials`. Split from the provisioner so the
+# credential the APIs hold online cannot touch buckets at all; this one lives in
+# 1Password and is only ever used by an operator.
+
+- name: Check if migrator RGW user exists
+  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_migrator_user_uid }}"
+  register: migrator_user_check
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Create migrator RGW user with predetermined keys for {{ ceph_rgw_migrator_user_uid }}
+  ansible.builtin.command: >
+    radosgw-admin user create
+    --uid={{ ceph_rgw_migrator_user_uid }}
+    --display-name='{{ ceph_rgw_migrator_user_display_name }}'
+    --access-key='{{ ceph_rgw_migrator_user_access_key }}'
+    --secret-key='{{ ceph_rgw_migrator_user_secret_key }}'
+    --max-buckets=0
+  register: migrator_user_create
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - migrator_user_check.rc != 0
+  changed_when: true
+  no_log: true
+
+- name: Ensure migrator RGW user has bucket admin caps
+  ansible.builtin.shell: |
+    set -o pipefail
+    CAPS=$(radosgw-admin user info --uid={{ ceph_rgw_migrator_user_uid }} --format json 2>/dev/null \
+      | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('caps',[])))")
+    if [ "$CAPS" -lt 1 ]; then
+      radosgw-admin caps add --uid={{ ceph_rgw_migrator_user_uid }} \
+        --caps='{{ ceph_rgw_migrator_user_caps }}' >/dev/null 2>&1
+      echo "CHANGED"
+    else
+      echo "OK"
+    fi
+  args:
+    executable: /bin/bash
+  when: inventory_hostname in groups['ceph_bootstrap']
+  register: migrator_caps
+  changed_when: "'CHANGED' in migrator_caps.stdout"
+
 # --- Step 15: Converge S3 user keys to the 1P canonical key (gated rotation) ---
 #
 # For clusters that predate the predetermined-keys pattern, the user exists

@@ -80,6 +80,15 @@ locals {
     # 1P contract, which is named by cluster, not by the ceph subsystem.
     metrics_worker_access = "${upper(var.cluster_name)}_METRICS_WORKER_ACCESS_KEY"
     metrics_worker_secret = "${upper(var.cluster_name)}_METRICS_WORKER_SECRET_KEY"
+    # RGW admin (users + buckets) keys for the yucca APIs, which create one S3
+    # user per repository. Titled by cluster for the same reason as the
+    # metrics-worker pair above.
+    provisioner_access = "${upper(var.cluster_name)}_PROVISIONER_ACCESS_KEY"
+    provisioner_secret = "${upper(var.cluster_name)}_PROVISIONER_SECRET_KEY"
+    # Bucket-only RGW admin for the storage-credential migration. Split from the
+    # provisioner so the credential the APIs hold online cannot reach buckets.
+    migrator_access = "${upper(var.cluster_name)}_MIGRATOR_ACCESS_KEY"
+    migrator_secret = "${upper(var.cluster_name)}_MIGRATOR_SECRET_KEY"
     },
     # Alertmanager receiver URL. Opt-in per cluster, and provisioned OUT OF BAND:
     # the value is an externally-issued webhook (Zulip/Opsgenie/etc), not a
