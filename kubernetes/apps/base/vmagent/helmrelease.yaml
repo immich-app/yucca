@@ -39,12 +39,92 @@ spec:
       enabled: false
     defaultDashboards:
       enabled: false
+    # `enabled`, not kube-prometheus-stack's `create` — the chart ignores the
+    # latter and was quietly shipping all 38 VMRules.
     defaultRules:
-      create: false
+      enabled: false
     prometheus-node-exporter:
-      enabled: false
+      enabled: true
+      # Host-network OS metrics from every node, control-planes included (the
+      # Talos ingress firewall opens :9100 to cluster subnets).
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
     kube-state-metrics:
-      enabled: false
+      enabled: true
+    # Talos runs the control-plane as host-network static pods labelled
+    # k8s-app (not kubeadm's `component`), serving self-signed certs; null the
+    # chart's selector key so the merged map doesn't keep both labels and
+    # match nothing. Reachability (bind-address 0.0.0.0 + host firewall) comes
+    # from the talos machine configs (tf).
+    kubeControllerManager:
+      service:
+        selector:
+          component: null
+          k8s-app: kube-controller-manager
+      vmScrape:
+        spec:
+          jobLabel: app.kubernetes.io/component
+          endpoints:
+            - port: http-metrics
+              scheme: https
+              bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tlsConfig:
+                insecureSkipVerify: true
+    kubeScheduler:
+      service:
+        selector:
+          component: null
+          k8s-app: kube-scheduler
+      vmScrape:
+        spec:
+          jobLabel: app.kubernetes.io/component
+          endpoints:
+            - port: http-metrics
+              scheme: https
+              bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tlsConfig:
+                insecureSkipVerify: true
+    # Talos etcd is a host service (no pods to select) — static CP IPs from
+    # cluster-settings, hitting the plain-HTTP metrics listener the machine
+    # config opens on :2381 (client port 2379 needs etcd client certs).
+    kubeEtcd:
+      endpoints: ${METRICS_ETCD_ENDPOINTS:=[]}
+      service:
+        port: 2381
+        targetPort: 2381
+      vmScrape:
+        spec:
+          jobLabel: app.kubernetes.io/component
+          endpoints:
+            - port: http-metrics
+              scheme: http
+    kubeApiServer:
+      vmScrape:
+        spec:
+          jobLabel: component
+          namespaceSelector:
+            matchNames:
+              - default
+          selector:
+            matchLabels:
+              component: apiserver
+              provider: kubernetes
+          endpoints:
+            - port: https
+              scheme: https
+              bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tlsConfig:
+                caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                serverName: kubernetes
+              # The apiserver's per-verb/resource histograms dwarf the rest of
+              # its exposition; drop the buckets (sums/counts survive, so mean
+              # latencies remain) before remote-write to o11y.
+              metricRelabelConfigs:
+                - action: drop
+                  source_labels: [__name__]
+                  regex: (apiserver_request_duration_seconds_bucket|apiserver_request_body_size_bytes_bucket|apiserver_response_sizes_bucket|apiserver_request_sli_duration_seconds_bucket|apiserver_watch_events_sizes_bucket|apiserver_storage_list_duration_seconds_bucket|etcd_request_duration_seconds_bucket)
     vmagent:
       enabled: true
       spec:
