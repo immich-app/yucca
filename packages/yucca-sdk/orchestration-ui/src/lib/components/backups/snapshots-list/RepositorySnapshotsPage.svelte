@@ -2,7 +2,9 @@
   import ListToolbar from "$lib/components/ui/ListToolbar.svelte";
   import Pagination from "$lib/components/ui/Pagination.svelte";
   import StackList from "$lib/components/ui/StackList.svelte";
+  import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import type { LocalRepositoryDto, SnapshotDto } from "$lib/fetch-client";
   import {
     useSnapshotEventHandler,
@@ -93,8 +95,8 @@
 <Stack gap={4}>
   <ListToolbar placeholder="Search snapshots" {search} {onSearch} {sort} />
 
-  <StackList {query} isEmpty={filtered.length === 0} empty="No snapshots found">
-    {#snippet children()}
+  <StackList>
+    <Suspense {query}>
       {#each visible as snapshot (snapshot.id)}
         <RepositorySnapshotsListItem
           repositoryId={repository.id}
@@ -102,7 +104,11 @@
           {immich}
         />
       {/each}
-    {/snippet}
+
+      {#if filtered.length === 0}
+        <StackListPlaceholder>No snapshots found</StackListPlaceholder>
+      {/if}
+    </Suspense>
   </StackList>
 
   <Pagination page={current} {pageCount} onChange={(next) => (page = next)} />

@@ -15,7 +15,6 @@
     ModalBody,
     ModalFooter,
     Stack,
-    Text,
   } from "@immich/ui";
   import { mdiChevronRight, mdiHarddisk, mdiShieldCheck } from "@mdi/js";
   import type { Snippet } from "svelte";
@@ -61,62 +60,60 @@
     <Stack>
       {@render leadingContent?.()}
 
-      <Suspense query={backends}>
-        <StackList>
-          <StackListItem
-            {disabled}
-            title="FUTO Backups"
-            onclick={onFutoBackups}
-          >
-            {#snippet icon()}
-              <Icon icon={mdiShieldCheck} />
-            {/snippet}
+      <StackList>
+        <StackListItem {disabled} title="FUTO Backups" onclick={onFutoBackups}>
+          {#snippet icon()}
+            <Icon icon={mdiShieldCheck} />
+          {/snippet}
 
-            Simple, hosted backups.
+          Simple, hosted backups.
 
-            {#snippet trailing()}
-              <Icon icon={mdiChevronRight} />
-            {/snippet}
-          </StackListItem>
-          <StackListItem
-            {disabled}
-            title="Local Storage"
-            onclick={onLocalBackups}
-          >
-            {#snippet icon()}
-              <Icon icon={mdiHarddisk} />
-            {/snippet}
+          {#snippet trailing()}
+            <Icon icon={mdiChevronRight} />
+          {/snippet}
+        </StackListItem>
+        <StackListItem
+          {disabled}
+          title="Local Storage"
+          onclick={onLocalBackups}
+        >
+          {#snippet icon()}
+            <Icon icon={mdiHarddisk} />
+          {/snippet}
 
-            A folder on this computer.
+          A folder on this computer.
 
-            {#snippet trailing()}
-              <Icon icon={mdiChevronRight} />
-            {/snippet}
-          </StackListItem>
+          {#snippet trailing()}
+            <Icon icon={mdiChevronRight} />
+          {/snippet}
+        </StackListItem>
 
-          {#each backends.data as backend}
-            {#if backend.type === "local"}
-              <StackListItem
-                {disabled}
-                title="Existing Local Storage"
-                onclick={() => {
-                  onSelect(backend.id);
-                }}
-              >
-                {#snippet icon()}
-                  <Icon icon={mdiHarddisk} />
-                {/snippet}
+        <Suspense query={backends}>
+          {#snippet children(available)}
+            {#each available as backend (backend.id)}
+              {#if backend.type === "local"}
+                <StackListItem
+                  {disabled}
+                  title="Existing Local Storage"
+                  onclick={() => {
+                    onSelect(backend.id);
+                  }}
+                >
+                  {#snippet icon()}
+                    <Icon icon={mdiHarddisk} />
+                  {/snippet}
 
-                {backend.description}
+                  {backend.description}
 
-                {#snippet trailing()}
-                  <Icon icon={mdiChevronRight} />
-                {/snippet}
-              </StackListItem>
-            {/if}
-          {/each}
-        </StackList>
-      </Suspense>
+                  {#snippet trailing()}
+                    <Icon icon={mdiChevronRight} />
+                  {/snippet}
+                </StackListItem>
+              {/if}
+            {/each}
+          {/snippet}
+        </Suspense>
+      </StackList>
     </Stack>
   </ModalBody>
   <ModalFooter>

@@ -8,6 +8,7 @@
   } from "@mdi/js";
   import MetricsHistoryModal from "../backups/metrics-history/MetricsHistoryModal.svelte";
   import StackList from "../ui/StackList.svelte";
+  import StackListPlaceholder from "../ui/StackListPlaceholder.svelte";
   import StackListItem from "../ui/StackListItem.svelte";
   import RelativeTime from "../util/RelativeTime.svelte";
 
@@ -41,13 +42,16 @@
         ];
 </script>
 
-<StackList
-  isEmpty={recentAttempts.length === 0}
-  empty="Completed backups will appear here once your first backup runs."
->
+<StackList>
   {#snippet title()}
     Recent backups
   {/snippet}
+
+  {#if recentAttempts.length === 0}
+    <StackListPlaceholder>
+      Completed backups will appear here once your first backup runs.
+    </StackListPlaceholder>
+  {/if}
 
   {#each recentAttempts as repository (repository.id)}
     {@const successful =

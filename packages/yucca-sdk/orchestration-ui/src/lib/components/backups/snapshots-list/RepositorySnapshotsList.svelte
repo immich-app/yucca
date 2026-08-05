@@ -1,6 +1,8 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
+  import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { options } from "$lib/options";
   import { handlePruneRepository } from "$lib/services/repository.service";
@@ -24,32 +26,36 @@
   // svelte-ignore state_referenced_locally
   const query = useSnapshots(repository.id);
   const { onRunUpdate } = useSnapshotEventHandler();
-
-  const isEmpty = $derived(query.data?.length === 0);
 </script>
 
 <OnEvents {onRunUpdate} />
 
-<StackList {query} {isEmpty} empty="No backups yet">
+<StackList>
   {#snippet title()}
     Snapshots
   {/snippet}
 
   {#snippet action()}
-    {#if onViewAll}
+    {#if onViewAll && query.data?.length}
       <Button variant="ghost" size="small" onclick={onViewAll}>View all</Button>
     {/if}
   {/snippet}
 
-  {#snippet children(snapshots)}
-    {#each limit ? snapshots.slice(0, limit) : snapshots as snapshot (snapshot.id)}
-      <RepositorySnapshotsListItem
-        repositoryId={repository.id}
-        {snapshot}
-        {immich}
-      />
-    {/each}
-  {/snippet}
+  <Suspense {query}>
+    {#snippet children(snapshots)}
+      {#each limit ? snapshots.slice(0, limit) : snapshots as snapshot (snapshot.id)}
+        <RepositorySnapshotsListItem
+          repositoryId={repository.id}
+          {snapshot}
+          {immich}
+        />
+      {/each}
+
+      {#if snapshots.length === 0}
+        <StackListPlaceholder>No backups yet</StackListPlaceholder>
+      {/if}
+    {/snippet}
+  </Suspense>
 </StackList>
 
 {#if $advanced}

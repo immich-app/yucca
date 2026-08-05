@@ -17,6 +17,7 @@
   import SettingsNotifications from "$lib/components/settings/SettingsNotifications.svelte";
   import SettingsSchedule from "$lib/components/settings/SettingsSchedule.svelte";
   import StackList from "$lib/components/ui/StackList.svelte";
+  import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
   import {
     Badge,
@@ -383,16 +384,20 @@
 
       {@render storedAt(undefined)}
 
-      <StackList empty="No recent backups" isEmpty>
+      <StackList>
         {#snippet title()}
           Recent backup attempts
         {/snippet}
+
+        <StackListPlaceholder>No recent backups</StackListPlaceholder>
       </StackList>
 
-      <StackList empty="No backups yet" isEmpty>
+      <StackList>
         {#snippet title()}
           Snapshots
         {/snippet}
+
+        <StackListPlaceholder>No backups yet</StackListPlaceholder>
       </StackList>
     </Stack>
   </Container>

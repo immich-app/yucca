@@ -1,6 +1,8 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
+  import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import { useInspectRepositories } from "$lib/services/repository.service";
   import {
     Button,
@@ -10,7 +12,6 @@
     ModalBody,
     ModalFooter,
     Stack,
-    Text,
   } from "@immich/ui";
   import { mdiChevronRight } from "@mdi/js";
   import type { Snippet } from "svelte";
@@ -54,38 +55,38 @@
     <Stack>
       {@render leadingContent?.()}
 
-      <StackList {query}>
-        {#each sortedRepositories ?? [] as repository (repository.id)}
-          {@const accessible = repository.snapshots !== undefined}
+      <StackList>
+        <Suspense {query}>
+          {#each sortedRepositories ?? [] as repository (repository.id)}
+            {@const accessible = repository.snapshots !== undefined}
 
-          <StackListItem
-            title={repository.name}
-            color={accessible ? "primary" : "danger"}
-            onclick={accessible ? () => onSelect(repository.id) : undefined}
-          >
-            {#if !accessible}
-              Can't access, is your recovery key correct?
-            {:else if repository.snapshots.length}
-              Last backup: {new Date(
-                repository.snapshots[0].time,
-              ).toLocaleDateString()}
-            {:else}
-              No backups yet
-            {/if}
-
-            {#snippet trailing()}
-              {#if accessible}
-                <Icon icon={mdiChevronRight} />
+            <StackListItem
+              title={repository.name}
+              color={accessible ? "primary" : "danger"}
+              onclick={accessible ? () => onSelect(repository.id) : undefined}
+            >
+              {#if !accessible}
+                Can't access, is your recovery key correct?
+              {:else if repository.snapshots.length}
+                Last backup: {new Date(
+                  repository.snapshots[0].time,
+                ).toLocaleDateString()}
+              {:else}
+                No backups yet
               {/if}
-            {/snippet}
-          </StackListItem>
-        {/each}
 
-        {#if (sortedRepositories ?? []).length === 0}
-          <StackListItem>
-            <Text color="muted">No backups found.</Text>
-          </StackListItem>
-        {/if}
+              {#snippet trailing()}
+                {#if accessible}
+                  <Icon icon={mdiChevronRight} />
+                {/if}
+              {/snippet}
+            </StackListItem>
+          {/each}
+
+          {#if (sortedRepositories ?? []).length === 0}
+            <StackListPlaceholder>No backups found.</StackListPlaceholder>
+          {/if}
+        </Suspense>
       </StackList>
     </Stack>
   </ModalBody>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
+  import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import {
@@ -20,26 +22,30 @@
   // svelte-ignore state_referenced_locally
   const query = useRunHistory(repository.id);
   const { onRunCreate, onRunUpdate } = useRunEventHandler();
-
-  const isEmpty = $derived(query.data?.length === 0);
 </script>
 
 <OnEvents {onRunCreate} {onRunUpdate} />
 
-<StackList {query} {isEmpty} empty="No recent backups">
+<StackList>
   {#snippet title()}
     Recent backup attempts
   {/snippet}
 
   {#snippet action()}
-    {#if onViewAll}
+    {#if onViewAll && query.data?.length}
       <Button variant="ghost" size="small" onclick={onViewAll}>View all</Button>
     {/if}
   {/snippet}
 
-  {#snippet children(runs)}
-    {#each runs.slice(0, limit) as run (run.id)}
-      <RepositoryRunHistoryItem {run} />
-    {/each}
-  {/snippet}
+  <Suspense {query}>
+    {#snippet children(runs)}
+      {#each runs.slice(0, limit) as run (run.id)}
+        <RepositoryRunHistoryItem {run} />
+      {/each}
+
+      {#if runs.length === 0}
+        <StackListPlaceholder>No recent backups</StackListPlaceholder>
+      {/if}
+    {/snippet}
+  </Suspense>
 </StackList>

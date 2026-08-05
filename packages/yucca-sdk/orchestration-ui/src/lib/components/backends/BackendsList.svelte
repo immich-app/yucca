@@ -39,37 +39,37 @@
 
 <OnEvents {onBackendCreate} />
 
-<Suspense {query}>
-  <StackList>
-    {#if repository}
-      {#snippet title()}
-        Where your backup is stored
-      {/snippet}
-    {/if}
+{#snippet heading()}
+  Where your backup is stored
+{/snippet}
 
-    {#each query.data as backend (backend.id)}
-      {@const repositoryBackend = repositoryBackends.find(
-        ({ id }) => backend.id === id,
-      )}
+<StackList title={repository ? heading : undefined}>
+  <Suspense {query}>
+    {#snippet children(backends)}
+      {#each backends as backend (backend.id)}
+        {@const repositoryBackend = repositoryBackends.find(
+          ({ id }) => backend.id === id,
+        )}
 
-      {#if typeof repository === typeof repositoryBackend}
-        <BackendItem {repository} {backend} {repositoryBackend} />
-      {/if}
-    {/each}
-  </StackList>
+        {#if typeof repository === typeof repositoryBackend}
+          <BackendItem {repository} {backend} {repositoryBackend} />
+        {/if}
+      {/each}
+    {/snippet}
+  </Suspense>
+</StackList>
 
-  {#if actions || $advanced}
-    <HStack>
-      <Button
-        size="small"
-        variant="outline"
-        onclick={() => handleStartYuccaLogin()}>Login with FUTO Backups</Button
-      >
-      <Button
-        size="small"
-        variant="outline"
-        onclick={() => handleSetupLocalStorage()}>New local storage</Button
-      >
-    </HStack>
-  {/if}
-</Suspense>
+{#if actions || $advanced}
+  <HStack>
+    <Button
+      size="small"
+      variant="outline"
+      onclick={() => handleStartYuccaLogin()}>Login with FUTO Backups</Button
+    >
+    <Button
+      size="small"
+      variant="outline"
+      onclick={() => handleSetupLocalStorage()}>New local storage</Button
+    >
+  </HStack>
+{/if}
