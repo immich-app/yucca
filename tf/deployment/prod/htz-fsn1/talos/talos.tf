@@ -213,8 +213,22 @@ locals {
         # /etc/hosts) whenever the entry set changes (e.g. a node add).
         env = { HOSTS_REVISION = substr(sha256(jsonencode(local.cp_host_entries)), 0, 12) }
       }
+      # Metrics exposure for the in-cluster vmagent: controller-manager and
+      # scheduler default to binding 127.0.0.1, and etcd's client port needs
+      # client certs — open a plain metrics listener instead. All three ports
+      # (10257/10259/2381) are gated to cluster subnets by the host firewall
+      # (control-plane-metrics rule).
+      controllerManager = {
+        extraArgs = { "bind-address" = "0.0.0.0" }
+      }
+      scheduler = {
+        extraArgs = { "bind-address" = "0.0.0.0" }
+      }
       # Pin etcd to the kube-cp VLAN so CP↔CP etcd stays off the mesh + public NICs.
-      etcd = { advertisedSubnets = [local.kube_cp_cidr] }
+      etcd = {
+        advertisedSubnets = [local.kube_cp_cidr]
+        extraArgs         = { "listen-metrics-urls" = "http://0.0.0.0:2381" }
+      }
     }
   })
 
