@@ -9,8 +9,6 @@ import (
 func testDefaultCluster() ClusterConfig {
 	return ClusterConfig{
 		Code:                "default",
-		S3AccessKeyID:       "default-key",
-		S3SecretAccessKey:   "default-secret",
 		S3Region:            "us-east-1",
 		S3Endpoint:          "https://s3.default.example",
 		S3ForcePathStyle:    true,
@@ -62,8 +60,6 @@ func TestParseClustersFull(t *testing.T) {
 
 	want := ClusterConfig{
 		Code:                "spice",
-		S3AccessKeyID:       "spice-key",
-		S3SecretAccessKey:   "spice-secret",
 		S3Region:            "spice-1",
 		S3Endpoint:          "https://s3.spice.example:8443",
 		S3ForcePathStyle:    false,
@@ -140,21 +136,6 @@ func TestParseClustersErrors(t *testing.T) {
 			wantErr: "endpoint is required",
 		},
 		{
-			name:    "missing credential env names",
-			doc:     `{"clusters":[{"code":"spice","endpoint":"http://a"}]}`,
-			wantErr: "access_key_env and secret_key_env are required",
-		},
-		{
-			name:    "credential env unset",
-			doc:     `{"clusters":[{"code":"spice","endpoint":"http://a","access_key_env":"MISSING","secret_key_env":"S"}]}`,
-			wantErr: "MISSING is unset or empty",
-		},
-		{
-			name:    "credential env empty",
-			doc:     `{"clusters":[{"code":"spice","endpoint":"http://a","access_key_env":"K","secret_key_env":"EMPTY"}]}`,
-			wantErr: "EMPTY is unset or empty",
-		},
-		{
 			name:    "unknown backend source",
 			doc:     `{"clusters":[{"code":"spice","endpoint":"http://a","access_key_env":"K","secret_key_env":"S","backend_source":"consul"}]}`,
 			wantErr: "backend_source must be",
@@ -191,6 +172,20 @@ func TestParseClustersErrors(t *testing.T) {
 				t.Errorf("error %q does not mention %q", err, c.wantErr)
 			}
 		})
+	}
+}
+
+// Credential env names are accepted for compatibility but no longer resolved:
+// michael takes its credentials from the request's token.
+func TestParseClustersWithoutCredentialEnvNames(t *testing.T) {
+	doc := `{"clusters":[{"code":"spice","endpoint":"http://s3.spice.example"}]}`
+
+	got, err := ParseClusters([]byte(doc), testDefaultCluster(), testEnv(nil))
+	if err != nil {
+		t.Fatalf("ParseClusters: %v", err)
+	}
+	if len(got) != 1 || got[0].Code != "spice" {
+		t.Fatalf("unexpected clusters: %+v", got)
 	}
 }
 
@@ -255,7 +250,7 @@ func TestParseTopologyClusters(t *testing.T) {
 	if len(got) != 2 || got[0].Code != "father-spice" || got[1].Code != "father-pepper" {
 		t.Fatalf("unexpected topology clusters: %+v", got)
 	}
-	if got[1].S3AccessKeyID != "pepper-key" || got[1].S3Endpoint != "https://s3.pepper.example" {
+	if got[1].S3Endpoint != "https://s3.pepper.example" {
 		t.Fatalf("additional cluster configuration was not resolved: %+v", got[1])
 	}
 }
@@ -275,8 +270,6 @@ func TestParseTopologyClustersRejectsMismatch(t *testing.T) {
 
 func TestDefaultClusterFromFlatConfig(t *testing.T) {
 	cfg := Config{
-		S3AccessKeyID:       "key",
-		S3SecretAccessKey:   "secret",
 		S3Region:            "us-east-1",
 		S3Endpoint:          "https://s3.example",
 		S3ForcePathStyle:    true,
@@ -296,7 +289,7 @@ func TestDefaultClusterFromFlatConfig(t *testing.T) {
 	if got.Code != "sietch" {
 		t.Errorf("expected code sietch, got %q", got.Code)
 	}
-	if got.S3Endpoint != cfg.S3Endpoint || got.S3AccessKeyID != cfg.S3AccessKeyID || got.S3BackendDNSHost != cfg.S3BackendDNSHost {
+	if got.S3Endpoint != cfg.S3Endpoint || got.S3Region != cfg.S3Region || got.S3BackendDNSHost != cfg.S3BackendDNSHost {
 		t.Errorf("flat S3_* config not carried into the default cluster: %+v", got)
 	}
 }

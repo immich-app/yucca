@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"michael/internal/cluster"
+	"michael/internal/credentials"
 	"michael/internal/httputil"
 
 	"github.com/go-chi/chi/v5"
@@ -27,6 +28,9 @@ type Auth struct {
 	StorageCluster string `json:"storageCluster"`
 	Jti            string `json:"jti"`
 	Connection     string `json:"connection"`
+	// michael has no credentials of its own, so a token without these reaches no
+	// storage at all.
+	Credentials credentials.Credentials `json:"-"`
 }
 
 type contextKey string
@@ -59,15 +63,18 @@ const (
 // entries expire with the token's exp claim.
 type Verifier struct {
 	publicKey *ecdsa.PublicKey
+	sealKeys  [][]byte
 	cache     *tokenCache
 	onLookup  func(hit bool)
 }
 
 // NewVerifier builds a Verifier. onLookup, if non-nil, is called with the
-// cache outcome of every authenticated request.
-func NewVerifier(publicKey *ecdsa.PublicKey, onLookup func(hit bool)) *Verifier {
+// cache outcome of every authenticated request; a hit reuses the credentials
+// opened for the session's first request, so a restic run decrypts them once.
+func NewVerifier(publicKey *ecdsa.PublicKey, sealKeys [][]byte, onLookup func(hit bool)) *Verifier {
 	return &Verifier{
 		publicKey: publicKey,
+		sealKeys:  sealKeys,
 		cache:     newTokenCache(cacheSize),
 		onLookup:  onLookup,
 	}
@@ -86,7 +93,7 @@ func (v *Verifier) authenticate(r *http.Request) (Auth, *authError) {
 	}
 	v.lookup(false)
 
-	a, exp, err := extractAuth(r, v.publicKey)
+	a, exp, err := extractAuth(r, v.publicKey, v.sealKeys)
 	if err != nil {
 		return Auth{}, err
 	}
@@ -120,13 +127,14 @@ func (v *Verifier) Middleware() func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), authContextKey, auth)
+			ctx = credentials.NewContext(ctx, auth.Credentials)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func Middleware(publicKey *ecdsa.PublicKey) func(http.Handler) http.Handler {
-	return NewVerifier(publicKey, nil).Middleware()
+func Middleware(publicKey *ecdsa.PublicKey, sealKeys [][]byte) func(http.Handler) http.Handler {
+	return NewVerifier(publicKey, sealKeys, nil).Middleware()
 }
 
 type authError struct {
@@ -140,7 +148,7 @@ func (e *authError) Error() string {
 
 // extractAuth verifies the request's token and returns the Auth plus the
 // token's exp claim (zero if absent).
-func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, time.Time, *authError) {
+func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey, sealKeys [][]byte) (Auth, time.Time, *authError) {
 	header := r.Header.Get("Authorization")
 	if header == "" {
 		return Auth{}, time.Time{}, &authError{http.StatusUnauthorized, "Missing Authorization header"}
@@ -213,6 +221,16 @@ func extractAuth(r *http.Request, publicKey *ecdsa.PublicKey) (Auth, time.Time, 
 		}
 		auth.StorageCluster = storageCluster
 	}
+	sealed, ok := claims["storageCredentials"].(string)
+	if !ok || sealed == "" {
+		return Auth{}, time.Time{}, &authError{http.StatusUnauthorized, "Token carries no storage credentials"}
+	}
+	creds, err := credentials.Open(sealKeys, auth.Repository, sealed)
+	if err != nil {
+		return Auth{}, time.Time{}, &authError{http.StatusUnauthorized, "Invalid storage credentials"}
+	}
+	auth.Credentials = creds
+
 	if jti, ok := claims["jti"].(string); ok {
 		auth.Jti = jti
 	}

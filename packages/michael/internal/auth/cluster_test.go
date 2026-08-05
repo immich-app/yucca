@@ -18,7 +18,7 @@ func authRequest(t *testing.T, claims jwt.MapClaims) *http.Request {
 }
 
 func TestAuthStorageClusterAbsent(t *testing.T) {
-	a, _, err := extractAuth(authRequest(t, validClaims()), testPublicKey)
+	a, _, err := extractAuth(authRequest(t, validClaims()), testPublicKey, testSealKeys)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestAuthStorageClusterValid(t *testing.T) {
 	for _, code := range []string{"spice", "sietch-2", "a", strings.Repeat("x", 64)} {
 		claims := validClaims()
 		claims["storageCluster"] = code
-		a, _, err := extractAuth(authRequest(t, claims), testPublicKey)
+		a, _, err := extractAuth(authRequest(t, claims), testPublicKey, testSealKeys)
 		if err != nil {
 			t.Fatalf("code %q: unexpected error: %v", code, err)
 		}
@@ -56,7 +56,7 @@ func TestAuthStorageClusterInvalid(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			claims := validClaims()
 			claims["storageCluster"] = value
-			_, _, err := extractAuth(authRequest(t, claims), testPublicKey)
+			_, _, err := extractAuth(authRequest(t, claims), testPublicKey, testSealKeys)
 			if err == nil {
 				t.Fatal("expected an error for a malformed storageCluster claim")
 			}
@@ -71,7 +71,7 @@ func TestAuthStorageClusterInvalid(t *testing.T) {
 // only in storageCluster must not share an entry — a collision would serve one
 // user's repository out of another cluster.
 func TestVerifierCacheKeepsClustersDistinct(t *testing.T) {
-	v := NewVerifier(testPublicKey, nil)
+	v := NewVerifier(testPublicKey, testSealKeys, nil)
 
 	for _, code := range []string{"spice", "sietch", ""} {
 		claims := validClaims()
@@ -99,7 +99,7 @@ func TestVerifierCachesStorageCluster(t *testing.T) {
 	req := authRequest(t, claims)
 
 	var lookups []bool
-	v := NewVerifier(testPublicKey, func(hit bool) { lookups = append(lookups, hit) })
+	v := NewVerifier(testPublicKey, testSealKeys, func(hit bool) { lookups = append(lookups, hit) })
 
 	for range 2 {
 		a, err := v.authenticate(req)
@@ -122,7 +122,7 @@ func TestVerifierDoesNotCacheInvalidCluster(t *testing.T) {
 	claims["storageCluster"] = "NOT VALID"
 	req := authRequest(t, claims)
 
-	v := NewVerifier(testPublicKey, nil)
+	v := NewVerifier(testPublicKey, testSealKeys, nil)
 	for range 2 {
 		if _, err := v.authenticate(req); err == nil {
 			t.Fatal("expected an error for a malformed storageCluster claim")
@@ -137,7 +137,7 @@ func TestAuthMiddlewarePassesStorageCluster(t *testing.T) {
 	var got Auth
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(Middleware(testPublicKey))
+		r.Use(Middleware(testPublicKey, testSealKeys))
 		r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
 			got = FromContext(r.Context())
 			w.WriteHeader(http.StatusOK)
@@ -158,7 +158,7 @@ func TestAuthMiddlewarePassesStorageCluster(t *testing.T) {
 func TestAuthStorageClusterNullClaim(t *testing.T) {
 	claims := validClaims()
 	claims["storageCluster"] = nil
-	a, _, err := extractAuth(authRequest(t, claims), testPublicKey)
+	a, _, err := extractAuth(authRequest(t, claims), testPublicKey, testSealKeys)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

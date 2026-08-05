@@ -33,9 +33,11 @@ spec:
       # release-please-stamped in git. If unset, the empty default lets the
       # chart fall back to v<appVersion> — the matching release image.
       tag: ${YUCCA_IMAGE_TAG:=}
-    # secretData nulled: the chart's dev JWT_PUBLIC_KEY fixture is replaced by
-    # the TF-provisioned `yucca-michael` Secret (JWT_PUBLIC_KEY + S3 creds),
-    # which the chart's `envFrom: secretRef: yucca-michael` picks up unchanged.
+    # secretData nulled: the chart's dev fixtures are replaced by the
+    # TF-provisioned `yucca-michael` Secret (JWT_PUBLIC_KEY +
+    # STORAGE_CREDENTIAL_SEAL_KEY), which the chart's
+    # `envFrom: secretRef: yucca-michael` picks up unchanged. No S3 credentials
+    # live here any more: each restic token carries its repository's own.
     secretData: null
     env:
       - name: RESTIC_API_PORT

@@ -15,10 +15,11 @@ import (
 	"github.com/rs/zerolog"
 
 	"michael/internal/config"
+	"michael/internal/credentials"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	"github.com/aws/aws-sdk-go-v2/credentials"
+	awscreds "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -51,8 +52,17 @@ type Storage interface {
 	DeleteObject(ctx context.Context, bucket, key string) error
 }
 
+// ErrNoCredentials is fatal to the request by design: there is no fallback
+// credential to serve it with.
+var ErrNoCredentials = errors.New("no storage credentials on request")
+
+// S3Storage owns one endpoint's HTTP transport, and caches an SDK client per
+// credential pair on top of it.
 type S3Storage struct {
-	client *s3.Client
+	base        s3.Options
+	clients     *clientCache
+	probeClient *s3.Client
+	onLookup    func(hit bool)
 }
 
 func NewS3Storage(cfg config.Config) *S3Storage {
@@ -75,12 +85,13 @@ type S3Options struct {
 	TLSSkipVerify bool
 	// Wrap, when set, wraps the backend's transport (e.g. with per-backend
 	// client metrics).
-	Wrap func(http.RoundTripper) http.RoundTripper
+	Wrap               func(http.RoundTripper) http.RoundTripper
+	OnCredentialLookup func(hit bool)
 }
 
 // NewS3StorageForEndpoint builds an S3Storage bound to a specific endpoint,
-// reusing the credentials/region/path-style from cfg. The load-balancing pool
-// uses this to stamp out one client per backend gateway.
+// reusing the region/path-style from cfg. The load-balancing pool uses this to
+// stamp out one backend per gateway.
 func NewS3StorageForEndpoint(cfg config.Config, endpoint string) *S3Storage {
 	return NewS3StorageWithOptions(cfg, S3Options{
 		Endpoint:      endpoint,
@@ -90,27 +101,59 @@ func NewS3StorageForEndpoint(cfg config.Config, endpoint string) *S3Storage {
 
 // NewS3StorageWithOptions builds an S3Storage for the default storage cluster
 // with explicit per-backend options (host-pinned dialing and/or TLS
-// skip-verify) layered on the cfg credentials.
+// skip-verify).
 func NewS3StorageWithOptions(cfg config.Config, opts S3Options) *S3Storage {
 	return NewS3StorageForCluster(cfg.DefaultCluster(), opts)
 }
 
 // NewS3StorageForCluster builds an S3Storage against one storage cluster's
-// credentials, region, and path-style. Each cluster michael fronts has its own
-// object-user, so credentials cannot be shared across clusters.
+// region and path-style. Credentials are not part of it: they come from the
+// token on each request.
 func NewS3StorageForCluster(cc config.ClusterConfig, opts S3Options) *S3Storage {
-	s3opts := s3.Options{
-		Region: cc.S3Region,
-		Credentials: credentials.NewStaticCredentialsProvider(
-			cc.S3AccessKeyID,
-			cc.S3SecretAccessKey,
-			"",
-		),
+	base := s3.Options{
+		Region:       cc.S3Region,
 		BaseEndpoint: aws.String(opts.Endpoint),
 		UsePathStyle: cc.S3ForcePathStyle,
+		HTTPClient:   buildHTTPClient(opts),
 	}
-	s3opts.HTTPClient = buildHTTPClient(opts)
-	return &S3Storage{client: s3.New(s3opts)}
+
+	probeOptions := base
+	probeOptions.Credentials = aws.AnonymousCredentials{}
+
+	return &S3Storage{
+		base:        base,
+		clients:     newClientCache(clientCacheSize),
+		probeClient: s3.New(probeOptions),
+		onLookup:    opts.OnCredentialLookup,
+	}
+}
+
+// All clients share the backend's transport, so a new credential costs an
+// options struct, not a connection pool.
+func (s *S3Storage) client(ctx context.Context) (*s3.Client, error) {
+	creds, ok := credentials.FromContext(ctx)
+	if !ok {
+		return nil, ErrNoCredentials
+	}
+
+	key := creds.Fingerprint()
+	if client, ok := s.clients.get(key); ok {
+		s.lookup(true)
+		return client, nil
+	}
+	s.lookup(false)
+
+	options := s.base
+	options.Credentials = awscreds.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, "")
+	client := s3.New(options)
+	s.clients.put(key, client)
+	return client, nil
+}
+
+func (s *S3Storage) lookup(hit bool) {
+	if s.onLookup != nil {
+		s.onLookup(hit)
+	}
 }
 
 // buildHTTPClient builds the HTTP client for one backend. Always custom (never
@@ -163,7 +206,7 @@ func buildHTTPClient(opts S3Options) *http.Client {
 func (s *S3Storage) Probe(ctx context.Context, bucket string) error {
 	// Single-shot: a probe must not be silently retried by the SDK, or a dead
 	// gateway would look slow-but-alive and add latency to every reconcile.
-	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{
+	_, err := s.probeClient.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(bucket),
 	}, func(o *s3.Options) {
 		o.RetryMaxAttempts = 1
@@ -175,7 +218,11 @@ func (s *S3Storage) Probe(ctx context.Context, bucket string) error {
 }
 
 func (s *S3Storage) CheckBucket(ctx context.Context, bucket string) (bool, error) {
-	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{
+	client, err := s.client(ctx)
+	if err != nil {
+		return false, err
+	}
+	_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(bucket),
 	})
 	if err != nil {
@@ -194,7 +241,11 @@ func (s *S3Storage) CheckBucket(ctx context.Context, bucket string) (bool, error
 }
 
 func (s *S3Storage) CreateBucket(ctx context.Context, bucket string) error {
-	_, err := s.client.CreateBucket(ctx, &s3.CreateBucketInput{
+	client, err := s.client(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = client.CreateBucket(ctx, &s3.CreateBucketInput{
 		Bucket: aws.String(bucket),
 	})
 	if err != nil {
@@ -204,7 +255,11 @@ func (s *S3Storage) CreateBucket(ctx context.Context, bucket string) error {
 }
 
 func (s *S3Storage) HeadObject(ctx context.Context, bucket, key string) (int64, error) {
-	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
+	client, err := s.client(ctx)
+	if err != nil {
+		return 0, err
+	}
+	out, err := client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -218,6 +273,11 @@ func (s *S3Storage) HeadObject(ctx context.Context, bucket, key string) (int64, 
 }
 
 func (s *S3Storage) GetObject(ctx context.Context, bucket, key, rangeHeader string) (*S3Object, error) {
+	client, err := s.client(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -226,7 +286,7 @@ func (s *S3Storage) GetObject(ctx context.Context, bucket, key, rangeHeader stri
 		input.Range = aws.String(rangeHeader)
 	}
 
-	out, err := s.client.GetObject(ctx, input)
+	out, err := client.GetObject(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -250,6 +310,11 @@ func (s *S3Storage) GetObject(ctx context.Context, bucket, key, rangeHeader stri
 }
 
 func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.Reader, contentLength int64, writeOnce bool, sha256Hex string) error {
+	client, err := s.client(ctx)
+	if err != nil {
+		return err
+	}
+
 	var uploadBody io.Reader = body
 	var hasher *sha256Writer
 
@@ -277,7 +342,7 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 	// large fraction of PUTs. With retries off, a transient gateway error
 	// surfaces cleanly and restic retries the pack itself (its body IS
 	// seekable). See TestPutObject_NonSeekableBodyOn503_NoRewindRetry.
-	_, err := s.client.PutObject(ctx, input, s3.WithAPIOptions(
+	_, err = client.PutObject(ctx, input, s3.WithAPIOptions(
 		v4.SwapComputePayloadSHA256ForUnsignedPayloadMiddleware,
 	), func(o *s3.Options) {
 		o.RetryMaxAttempts = 1
@@ -319,7 +384,12 @@ func (w *sha256Writer) Write(p []byte) (n int, err error) {
 // page (1000 keys each). Names are full object keys; callers strip what they
 // need. An fn error aborts the walk.
 func (s *S3Storage) ListObjects(ctx context.Context, bucket, prefix string, fn func(BlobInfo) error) error {
-	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
+	client, err := s.client(ctx)
+	if err != nil {
+		return err
+	}
+
+	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
 	})
@@ -341,7 +411,11 @@ func (s *S3Storage) ListObjects(ctx context.Context, bucket, prefix string, fn f
 }
 
 func (s *S3Storage) DeleteObject(ctx context.Context, bucket, key string) error {
-	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+	client, err := s.client(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
