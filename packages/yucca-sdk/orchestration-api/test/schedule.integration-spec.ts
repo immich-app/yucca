@@ -51,7 +51,7 @@ describe('Schedule', () => {
       repositories: [],
     });
 
-    const scheduleUpdate = waitForEvent(ctx.gateway, 'ScheduleUpdate');
+    const scheduleUpdate = waitForEvent(ctx.events, 'ScheduleUpdate');
 
     ctx.resticMock.backup.mockReset();
     void ctx.module.get(SchedulerRegistry).getCronJob(schedule.id).fireOnTick();
@@ -87,7 +87,7 @@ describe('Schedule', () => {
       repositories: [repo1.id, repo2.id],
     });
 
-    const lastRunEvent = waitForEvent(ctx.gateway, 'ScheduleUpdate');
+    const lastRunEvent = waitForEvent(ctx.events, 'ScheduleUpdate');
 
     ctx.resticMock.backup.mockReset();
     void ctx.module.get(SchedulerRegistry).getCronJob(schedule.id).fireOnTick();
