@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { CloseButton, HStack, Modal, ModalBody, ModalHeader } from "@immich/ui";
+  import {
+    CloseButton,
+    HStack,
+    Modal,
+    ModalBody,
+    ModalHeader,
+  } from "@immich/ui";
   import UpsellHowItWorks from "./UpsellHowItWorks.svelte";
   import UpsellProtectYourImmichLibrary from "./UpsellProtectYourImmichLibrary.svelte";
 
@@ -17,6 +23,8 @@
   size="giant"
   {onClose}
   icon={false}
+  // this is a bit of a hack to remove the frames from base modal...
+  // twin code is in ViewStatusModal
   class="[&>div>div:first-child]:border-b-0 [&>div>div:first-child]:pb-0"
 >
   <ModalHeader>

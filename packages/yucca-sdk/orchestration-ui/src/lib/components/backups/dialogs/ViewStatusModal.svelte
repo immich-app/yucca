@@ -109,6 +109,8 @@
 <Modal
   size="medium"
   {onClose}
+  // this is a bit of a hack to remove the frames from base modal...
+  // this one might be removed ; twin code is in UpsellModal
   class="[&>div>div:first-child]:border-b-0 [&>div>div:first-child]:px-8 [&>div>div:first-child]:pb-0"
 >
   <ModalHeader>
