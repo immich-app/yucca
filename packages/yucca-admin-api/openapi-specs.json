@@ -685,6 +685,46 @@
         ]
       }
     },
+    "/api/repository/{id}/storage-credentials": {
+      "post": {
+        "operationId": "repositoryStorageCredentials",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryStorageCredentialsRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryStorageCredentialsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
     "/api/allowlist": {
       "get": {
         "operationId": "listAllowlist",
@@ -835,6 +875,88 @@
         },
         "tags": [
           "Allowlist"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "listSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{scope}": {
+      "put": {
+        "operationId": "setSettings",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsValueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsEntryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Settings"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteSettings",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Settings"
         ]
       }
     },
@@ -1268,6 +1390,14 @@
           "worm": {
             "type": "boolean"
           },
+          "siteCode": {
+            "type": "string",
+            "description": "Stable internal site code"
+          },
+          "storageClusterCode": {
+            "type": "string",
+            "description": "Stable, globally unique internal storage cluster code"
+          },
           "connectionId": {
             "type": "string"
           },
@@ -1285,6 +1415,8 @@
           "id",
           "name",
           "worm",
+          "siteCode",
+          "storageClusterCode",
           "connectionId",
           "connectionType",
           "user",
@@ -1321,6 +1453,10 @@
           },
           "worm": {
             "type": "boolean"
+          },
+          "site": {
+            "type": "string",
+            "description": "Internal site code to place the repository in; defaults to the topology default site"
           },
           "connectionType": {
             "type": "string",
@@ -1366,6 +1502,35 @@
         },
         "required": [
           "url"
+        ]
+      },
+      "RepositoryStorageCredentialsRequestDto": {
+        "type": "object",
+        "properties": {
+          "rotate": {
+            "type": "boolean",
+            "description": "Issue a fresh key pair, invalidating the credentials already minted"
+          }
+        }
+      },
+      "RepositoryStorageCredentialsResponseDto": {
+        "type": "object",
+        "properties": {
+          "storageUserId": {
+            "type": "string",
+            "description": "RGW user that owns the repository bucket"
+          },
+          "storageClusterCode": {
+            "type": "string"
+          },
+          "accessKeyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "storageUserId",
+          "storageClusterCode",
+          "accessKeyId"
         ]
       },
       "RepositoryUpdateRequestDto": {
@@ -1506,6 +1671,63 @@
         },
         "required": [
           "count"
+        ]
+      },
+      "SettingsValueDto": {
+        "type": "object",
+        "properties": {
+          "restic_pack_size_mib": {
+            "type": "number"
+          },
+          "connections_math": {
+            "type": "string",
+            "description": "Client-evaluated expression: integers, cores, min, max, + - * /"
+          }
+        }
+      },
+      "SettingsEntryDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "description": "'global', 'site:<code>' or 'cluster:<code>'"
+          },
+          "value": {
+            "$ref": "#/components/schemas/SettingsValueDto"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "value",
+          "updatedAt"
+        ]
+      },
+      "SettingsListResponseDto": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingsEntryDto"
+            }
+          }
+        },
+        "required": [
+          "settings"
+        ]
+      },
+      "SettingsEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/SettingsEntryDto"
+          }
+        },
+        "required": [
+          "entry"
         ]
       },
       "FeatureFlagDefDto": {

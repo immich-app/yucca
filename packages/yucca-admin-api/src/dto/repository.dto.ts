@@ -142,3 +142,21 @@ export class RepositoryUpdateResponseDto {
   @ApiProperty()
   repository!: RepositoryAdminDto;
 }
+
+export class RepositoryStorageCredentialsRequestDto {
+  @ApiProperty({ required: false, description: 'Issue a fresh key pair, invalidating the credentials already minted' })
+  @IsOptional()
+  @IsBoolean()
+  rotate?: boolean;
+}
+
+export class RepositoryStorageCredentialsResponseDto {
+  @ApiProperty({ description: 'RGW user that owns the repository bucket' })
+  storageUserId!: string;
+
+  @ApiProperty()
+  storageClusterCode!: string;
+
+  @ApiProperty()
+  accessKeyId!: string;
+}

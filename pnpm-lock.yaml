@@ -726,6 +726,9 @@ importers:
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
+      aws4fetch:
+        specifier: 'catalog:'
+        version: 1.0.20
       class-validator:
         specifier: 'catalog:'
         version: 0.14.3
