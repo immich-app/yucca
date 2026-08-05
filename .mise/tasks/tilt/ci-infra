@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-#MISE description="tilt ci for the infra subset only (no app images) — what integration tests need"
+#MISE description="tilt ci for the infra the database-backed integration tests need (no app images, no Ceph)"
 #MISE dir="{{config_root}}"
-# The closure of every non-app resource: chart repos, operators, the Ceph dev
-# cluster + RGW user, CNPG database, mock-oidc and the victoria pair. Skipping
-# the four heavy app images (yucca-api/admin/web/michael) saves ~10 min in CI;
-# integration tests boot those apps on the host themselves.
+# The closure of what `mise test:integration:k3d` consumes: chart repos, the
+# CNPG operator + database, mock-oidc and the victoria pair. Two absences are
+# deliberate:
+#
+#   - the four app images (yucca-api/admin/web/michael) — those tests boot the
+#     apps on the host themselves;
+#   - Rook-Ceph — converging it took longer than every test in the job put
+#     together, and nothing left here talks to S3. The S3-backed suites run
+#     against the e2e stack's real RGW instead (mise test:integration:s3).
 set -euo pipefail
 
 if ! kubectl config current-context | grep -q '^k3d-yucca$'; then
@@ -13,7 +18,5 @@ if ! kubectl config current-context | grep -q '^k3d-yucca$'; then
 fi
 
 exec tilt ci --timeout 1800s \
-  rook-release-repo helm-deps \
-  cloudnative-pg rook-ceph-operator rook-ceph-cluster \
-  yucca-object-user yucca-database yucca-mock-oidc \
+  helm-deps cloudnative-pg yucca-database yucca-mock-oidc \
   yucca-victoria-metrics yucca-victoria-logs

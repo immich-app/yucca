@@ -17,7 +17,7 @@ describe('AppController (e2e)', () => {
   let authHeader: string;
   let wormAuthHeader: string;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports,
       controllers,
@@ -30,7 +30,13 @@ describe('AppController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+  });
 
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(async () => {
     const signer = new JwtService({
       privateKey: process.env.JWT_PRIVATE_KEY,
       signOptions: { algorithm: 'ES256' },

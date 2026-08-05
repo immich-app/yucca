@@ -13,7 +13,7 @@ import { testUtils } from './testUtils';
 describe('AuthController (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports,
       controllers,
@@ -27,7 +27,13 @@ describe('AuthController (e2e)', () => {
     app.setGlobalPrefix('/api');
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+  });
 
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(async () => {
     await testUtils.resetDatabase();
   });
 

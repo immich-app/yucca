@@ -14,7 +14,7 @@ describe('MetaController (e2e)', () => {
   let app: INestApplication<App>;
   let db: Kysely<DB>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports,
       controllers,
@@ -30,12 +30,15 @@ describe('MetaController (e2e)', () => {
     await app.init();
 
     db = new Kysely<DB>(getKyselyConfig());
-    await testUtils.resetDatabase();
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await db.destroy();
     await app.close();
+  });
+
+  beforeEach(async () => {
+    await testUtils.resetDatabase();
   });
 
   describe('GET /meta', () => {

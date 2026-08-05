@@ -53,6 +53,7 @@ mise build                # build all packages
 
 mise test                 # all unit tests (jest per NestJS pkg, vitest for web)
 mise test:integration     # integration tests (--jobs 1; needs infra up)
+mise test:integration:k3d # CI split: the database-backed suites; :s3 = the Ceph-backed ones
 mise test:e2e             # e2e (needs the stack running); mise test:e2e:web = Playwright
 mise <pkg>:test           # one package; args after -- go to jest: mise yucca-api:test -- -t "name"
 
@@ -62,9 +63,14 @@ mise yucca-api:migrations <args>   # DB migrations (@immich/sql-tools; yucca-api
 ### k3d + Tilt (prod-shaped dev)
 
 `mise k3d:up` → `mise tilt:up` (build images, render charts from `kubernetes/apps/dev/local`,
-port-forward, live_update); `tilt:down` / `k3d:down` to tear down. CI uses `mise tilt:ci-infra`
-(integration) and `mise tilt:ci` (e2e). Tilt's source of truth is the Flux tree under
-`kubernetes/` — see the extensively commented `Tiltfile`.
+port-forward, live_update); `tilt:down` / `k3d:down` to tear down. Tilt's source of truth is the
+Flux tree under `kubernetes/` — see the extensively commented `Tiltfile`.
+
+CI deploys resource subsets rather than the whole stack (`mise tilt:ci` still does everything):
+`tilt:ci-infra` (integration — postgres, mock-oidc, victoria; **no Ceph**), then for e2e
+`tilt:ci-ceph` (Rook only; builds no images, so it converges while the workspace installs)
+followed by `tilt:ci-e2e` (the apps the e2e suites touch). Ceph converging outweighed every test
+in the integration job, so that job dropped it and its S3-backed suites moved to the e2e one.
 
 Ports: `5173` web · `3020` yucca-api · `3030` yucca-admin-api · `3010` michael ·
 `8092` mock-oidc · `9000` ceph rgw · `8428` victoria-metrics · `9428` victoria-logs.

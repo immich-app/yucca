@@ -30,7 +30,10 @@ describe('Auth', () => {
 
     const redirectUrl = new URL(loginHeaders.get('Location')!);
     redirectUrl.pathname = '/api/form';
-    redirectUrl.searchParams.set('sub', 'bar');
+    // Must differ from orchestration-api.spec's subject: these run in parallel,
+    // and one subject means one user, one repository list — which that suite
+    // enumerates and imports from.
+    redirectUrl.searchParams.set('sub', 'yucca-api-e2e');
 
     const { headers: oidcHeaders } = await fetch(redirectUrl, {
       redirect: 'manual',

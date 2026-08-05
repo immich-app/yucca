@@ -72,20 +72,23 @@ jobs:
           # mise downloads tools from GitHub releases; anonymous requests hit
           # API rate limits with four parallel jobs.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: mise prepare
-
-      # The stack (Ceph image, dev images, k3s) is heavy; the stock runner has
-      # ~14GB free, so drop the biggest unused toolchains up front.
+      # The stack (dev images, k3s) is heavy; the stock runner has ~14GB free,
+      # so drop the biggest unused toolchains up front.
       - name: Free runner disk space
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
 
-      # Tests boot the apps on the runner; only the infra (CNPG postgres, Ceph
-      # RGW, mock-oidc, victoria) comes from the cluster — so skip the four
-      # heavy app images entirely.
-      - name: Stand up k3d infra
+      # Cluster bring-up and the workspace install touch none of the same files,
+      # so they overlap. Only @common/server is built: the suites run from
+      # TypeScript source via ts-jest, so `mise prepare`'s other packages are
+      # never loaded here.
+      - name: Stand up k3d infra, install deps and build shared libs
         run: |
-          mise k3d:up
-          mise tilt:ci-infra
+          ( mise k3d:up && mise tilt:ci-infra ) > /tmp/k3d-infra.log 2>&1 &
+          infra=$!
+          mise run install:frozen
+          mise run common:server:build
+          wait "$infra" || { echo "::error::k3d infra failed"; cat /tmp/k3d-infra.log; exit 1; }
+          echo "::group::k3d infra log"; cat /tmp/k3d-infra.log; echo "::endgroup::"
 
       - name: Run integration tests against the cluster
         run: mise test:integration:k3d
@@ -94,6 +97,11 @@ jobs:
     name: End-to-end Tests
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      # restic runs on the runner, so yucca-api must advertise a localhost
+      # rest_url; rendering it that way up front spares a yucca-api rollout.
+      YUCCA_TOPOLOGY_LOCAL_REST: '1'
+      YUCCA_E2E_PREBUILT: '1'
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
@@ -105,22 +113,37 @@ jobs:
           # mise downloads tools from GitHub releases; anonymous requests hit
           # API rate limits with four parallel jobs.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: mise prepare
-
       - name: Free runner disk space
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
 
-      - name: Install Playwright browser
-        run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Create the k3d cluster
+        run: mise k3d:up
 
-      # Full stack on k3d, then the whole e2e surface — the jest suites
-      # (it-works, restic-api, yucca-api, orchestration-api) AND the web
-      # Playwright test — via the same runner developers use locally.
-      # orchestration-api runs as a separate host process by design.
-      - name: Stand up the full k3d stack
+      # Rook-Ceph converging is the long pole of this job and is nearly all
+      # waiting. `tilt:ci-ceph` builds no images, so unlike the full stack it
+      # never tars the workspace and cannot race the build writing into it —
+      # which is what makes running these together safe.
+      - name: Start Ceph converging while installing deps and Playwright
         run: |
-          mise k3d:up
-          mise tilt:ci
+          ( mise tilt:ci-ceph ) > /tmp/k3d-ceph.log 2>&1 &
+          ceph=$!
+          mise run install:frozen
+          pnpm --filter web exec playwright install --with-deps chromium > /tmp/playwright.log 2>&1 &
+          playwright=$!
+          mise run build
+          wait "$playwright" || { echo "::error::playwright install failed"; cat /tmp/playwright.log; exit 1; }
+          wait "$ceph" || { echo "::error::Ceph failed to converge"; cat /tmp/k3d-ceph.log; exit 1; }
+          echo "::group::Ceph bring-up log"; cat /tmp/k3d-ceph.log; echo "::endgroup::"
+
+      # Images build here while Rook finishes; yucca-michael mounts the
+      # object-user Secret, so this is where the job blocks on Ceph serving S3.
+      - name: Deploy the app stack
+        run: mise tilt:ci-e2e
+
+      # Here rather than in the integration job because this stack already runs
+      # Ceph, and standing a second one up there cost more than its whole suite.
+      - name: Run S3-backed integration tests against the cluster
+        run: mise test:integration:s3
 
       - name: Run end-to-end tests against the cluster
         run: mise test:e2e:k3d

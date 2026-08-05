@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#MISE description="tilt ci for Rook-Ceph only — kicks off the slow, image-build-free half of the e2e stack"
+#MISE dir="{{config_root}}"
+# Rook converging is the long pole of the e2e stack and is almost all waiting.
+# This subset builds no container images, so it never tars the workspace — which
+# is what lets CI run it concurrently with `mise prepare` writing into it.
+#
+# It deliberately returns before Ceph is finished: a CephObjectStoreUser creates
+# no pods, so Tilt calls those resources ready on apply (pod_readiness: ignore).
+# The app image builds in `mise tilt:ci-e2e` then run alongside the rest of the
+# convergence rather than after it, and yucca-michael mounting the object-user
+# Secret is what makes that run block until Ceph really is serving S3.
+set -euo pipefail
+
+if ! kubectl config current-context | grep -q '^k3d-yucca$'; then
+  echo "Current kube context is not k3d-yucca. Run: mise k3d:up" >&2
+  exit 1
+fi
+
+exec tilt ci --timeout 1800s \
+  rook-release-repo helm-deps ceph-image-prepull \
+  rook-ceph-operator rook-ceph-cluster \
+  yucca-object-user yucca-metrics-object-user

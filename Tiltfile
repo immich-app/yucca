@@ -80,8 +80,40 @@ if DEV_ENV:
 # yucca-metrics-worker mount it and parse it at boot, so it has to exist before
 # they start (see their APP_WIRING deps below).
 # ---------------------------------------------------------------------------
-k8s_yaml('kubernetes/apps/dev/local/yucca/topology/app/configmap.yaml')
+#
+# The e2e runner drives restic from the HOST, so for it the site's rest_url has
+# to name localhost rather than the in-cluster michael. Rendering that variant
+# here spares the runner a ConfigMap patch plus a yucca-api rollout; an
+# interactive `tilt up` leaves the in-cluster name alone.
+TOPOLOGY = str(read_file('kubernetes/apps/dev/local/yucca/topology/app/configmap.yaml'))
+if os.getenv('YUCCA_TOPOLOGY_LOCAL_REST'):
+    TOPOLOGY = TOPOLOGY.replace('http://yucca-michael:3010', 'http://localhost:3010')
+
+k8s_yaml(blob(TOPOLOGY))
 k8s_resource(objects=['yucca-topology:configmap'], new_name='yucca-topology', labels=['app'])
+
+# ---------------------------------------------------------------------------
+# Rook's convergence chain (detect-version, mon, mgr, osd, rgw, object-user
+# Secret) is serialised behind the first pull of the ~490 MB Ceph image, which
+# it only starts once its operator is up. Pulling the same image the moment the
+# cluster exists overlaps that with the chart installs and image builds. Nothing
+# depends on this Job — it is cache warming, and its failure is harmless.
+# ---------------------------------------------------------------------------
+CEPH_IMAGE = read_yaml('charts/platform/rook-ceph-cluster/values.yaml')['cephImage']
+
+k8s_yaml(encode_yaml({
+    'apiVersion': 'batch/v1',
+    'kind': 'Job',
+    'metadata': {'name': 'ceph-image-prepull', 'namespace': 'yucca'},
+    'spec': {
+        'backoffLimit': 0,
+        'template': {'spec': {
+            'restartPolicy': 'Never',
+            'containers': [{'name': 'prepull', 'image': CEPH_IMAGE, 'command': ['true']}],
+        }},
+    },
+}))
+k8s_resource('ceph-image-prepull', labels=['helm'])
 
 # ---------------------------------------------------------------------------
 # Images. Built locally and injected into each app's Helm release via image_keys
@@ -272,10 +304,14 @@ APP_WIRING = {
     # dev_env: receives the .env override Secret (see load_dev_env above).
     # dev_keypair: render the well-known dev JWT fixture into the chart Secret
     # (the chart default is useDevKeypair=false so real overlays fail loudly).
-    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
+    # No yucca-michael dep: yucca-api only mints URLs pointing at it, never
+    # calls it at boot. Tilt builds an image only when ready to deploy, so that
+    # edge parked this build (and web's) behind Rook-Ceph instead of alongside.
+    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
     'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_keypair': True},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user', 'yucca-topology'], 'dev_env': True},
-    'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
+    # Likewise: the dev server reaches yucca-api per request, not at boot.
+    'yucca-web':              {'build': 'web',                'deps': []},
     # Stock upstream nginx serving the .well-known pointer — nothing to build,
     # nothing to wait for (it's a static file, deliberately independent of the
     # API whose URL it advertises).
