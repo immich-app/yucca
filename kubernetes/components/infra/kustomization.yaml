@@ -3,7 +3,8 @@
 # the region is primary or secondary. These are the platform layers the apps sit
 # on: the CNPG operator, node-local storage (OpenEBS LocalPV), the network/ingress stack
 # (cert-manager, cilium-lb, envoy gateway/proxy, httproutes, netbird-operator),
-# and observability agents (vmagent, victoria-logs-collector).
+# observability agents (vmagent, victoria-logs-collector), and the cluster-local
+# P2P image mirror (spegel).
 #
 # Each entry is itself a kustomize Kustomization of Flux Kustomizations pointing
 # at apps/base/<x>; the Component just accumulates them into the overlay.
@@ -13,4 +14,5 @@ resources:
   - ./cnpg-system
   - ./network
   - ./observability
+  - ./spegel-system
   - ./storage

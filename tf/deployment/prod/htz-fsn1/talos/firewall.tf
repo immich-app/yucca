@@ -67,6 +67,18 @@ locals {
       portSelector = { ports = [8420, 4421], protocol = "tcp" }
       ingress      = [for c in local.kubelet_allow : { subnet = c }]
     }),
+    # Spegel P2P image mirror: a node fetching an unpacked layer connects to the peer
+    # that has it at PEER_IP:30020 (the registry hostPort advertised as --local-addr).
+    # Same-node containerd→local-Spegel is loopback; this rule is for the cross-node
+    # fetch, so allow the fabric + pod CIDR (kubelet_allow). The router/P2P membership
+    # plane rides Cilium (ClusterIP), so no host rule is needed for it.
+    yamlencode({
+      apiVersion   = "v1alpha1"
+      kind         = "NetworkRuleConfig"
+      name         = "spegel-registry"
+      portSelector = { ports = [30020], protocol = "tcp" }
+      ingress      = [for c in local.kubelet_allow : { subnet = c }]
+    }),
     # Cilium BGP (workers ↔ the spine IRB on VLAN 10): the node BGP speakers advertise
     # LoadBalancer /32s to the core. Peer is 10.40.10.1 (kube net), so allow TCP 179
     # from the fabric.

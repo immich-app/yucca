@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: spegel
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: spegel
+  install:
+    remediation:
+      retries: 3 # first-install failures self-retry instead of wedging until manual intervention
+  interval: 1h
+  rollback:
+    cleanupOnFail: true
+  upgrade:
+    cleanupOnFail: true
+    strategy:
+      name: RemediateOnFailure
+    remediation:
+      remediateLastFailure: true
+      retries: 2
+  # Cluster-local P2P OCI mirror (DaemonSet). Talos-specific wiring:
+  #  • containerdRegistryConfigPath — Talos exposes containerd's registry
+  #    config_path at /etc/cri/conf.d/hosts (NOT the chart default
+  #    /etc/containerd/certs.d); Spegel writes its hosts.d mirror files there.
+  #  • The peer prerequisite — containerd must stop discarding unpacked layers
+  #    (else a node has nothing to serve) — is a machine-config change, so it
+  #    lives in the talos TF stacks, not here.
+  values:
+    spegel:
+      containerdRegistryConfigPath: /etc/cri/conf.d/hosts

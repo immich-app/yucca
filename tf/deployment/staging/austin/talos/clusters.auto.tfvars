@@ -62,6 +62,38 @@ clusters = {
         minSize: 100GB
         grow: true
       EOT
+      ,
+      # Spegel (cluster-local P2P image mirror) prereq: keep unpacked layers on disk
+      # so a node has something to serve to peers (Talos discards them by default).
+      # Talos already exposes containerd's registry config_path at /etc/cri/conf.d/hosts
+      # where Spegel writes its hosts.d mirrors. Only images pulled AFTER this lands are
+      # shareable, and a containerd restart (node reboot) is needed to take effect.
+      <<-EOT
+      machine:
+        files:
+          - path: /etc/cri/conf.d/20-customization.part
+            op: create
+            content: |
+              [plugins."io.containerd.cri.v1.images"]
+                discard_unpacked_layers = false
+      EOT
+      ,
+      # Open the Spegel registry hostPort (30020) so a node can fetch unpacked layers
+      # from the peer that has them (advertised as PEER_IP:30020). Sources: the node
+      # subnet + pod CIDR (10.244.0.0/16, module default). The host ingress firewall is
+      # default-deny (enable_ingress_firewall = true).
+      <<-EOT
+      apiVersion: v1alpha1
+      kind: NetworkRuleConfig
+      name: spegel-registry
+      portSelector:
+        ports:
+          - 30020
+        protocol: tcp
+      ingress:
+        - subnet: 10.10.10.0/24
+        - subnet: 10.244.0.0/16
+      EOT
     ]
 
     # Compact 3-node cluster: every node is a control-plane and also runs
