@@ -16,10 +16,36 @@ import { BackendRepository } from 'src/repositories/backend.repository';
 import { ResticRepository } from 'src/repositories/restic.repository';
 import { newResticRepositoryMock } from './mocks';
 
+type GatewayListener = (event: GatewayEvent) => void;
+
+export interface TestEventBus {
+  emit: GatewayListener;
+  on: (listener: GatewayListener) => void;
+  off: (listener: GatewayListener) => void;
+}
+
+function createEventBus(): TestEventBus {
+  const listeners = new Set<GatewayListener>();
+  return {
+    emit: (event) => {
+      for (const listener of listeners) {
+        listener(event);
+      }
+    },
+    on: (listener) => {
+      listeners.add(listener);
+    },
+    off: (listener) => {
+      listeners.delete(listener);
+    },
+  };
+}
+
 export interface TestContext {
   app: INestApplication;
   module: TestingModule;
   gateway: EventsGateway;
+  events: TestEventBus;
   database: InstanceType<typeof Database>;
   resticMock: jest.Mocked<ResticRepository>;
   backendId: string;
@@ -36,6 +62,7 @@ export async function createTestingModule(): Promise<TestContext> {
   database.pragma('journal_mode = WAL');
 
   const resticMock = newResticRepositoryMock();
+  const events = createEventBus();
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [
@@ -56,6 +83,7 @@ export async function createTestingModule(): Promise<TestContext> {
           statePath,
           requireLock: false,
           requireWsAuth: false,
+          onInternalEvent: events.emit,
         },
       },
       EventsGateway,
@@ -80,6 +108,7 @@ export async function createTestingModule(): Promise<TestContext> {
     app,
     module: moduleFixture,
     gateway: moduleFixture.get(EventsGateway),
+    events,
     database,
     resticMock,
     backendId,
@@ -88,15 +117,15 @@ export async function createTestingModule(): Promise<TestContext> {
   };
 }
 
-export function waitForEvent(gateway: EventsGateway, type: GatewayEvent['type']): Promise<GatewayEvent> {
+export function waitForEvent(events: TestEventBus, type: GatewayEvent['type']): Promise<GatewayEvent> {
   return new Promise((resolve) => {
     const onEvent = (event: GatewayEvent) => {
       if (event.type === type) {
-        gateway.off(onEvent);
+        events.off(onEvent);
         resolve(event);
       }
     };
-    gateway.on(onEvent);
+    events.on(onEvent);
   });
 }
 

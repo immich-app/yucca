@@ -19,9 +19,9 @@ victoria-logs-collector.
 | File (= uid) | Covers | Source metrics |
 | --- | --- | --- |
 | `yucca-overview.json` | Single pane of glass: backup data plane + platform | michael OTLP, `ceph_rgw_*`, cadvisor, PVCs, coredns |
-| `yucca-michael.json` | Restic gateway deep dive: HTTP + S3 backend pool + logs | `http.server.request.*`, `s3.backend.*` (OTel, dotted names), VictoriaLogs |
-| `yucca-top-users.json` | Fleet-wide top talkers: storage, traffic, stale backups per user (rows link to the per-user board) | `rgw_repository_*`, `blobs.*`, `user_last_*` (all keyed by user id) |
-| `yucca-per-user.json` | Single-user drill-down: storage, backup health, traffic, logs. Deep-linkable as `/d/yucca-per-user?var-user=<id>` (`yuctl users view-dashboard`) | `rgw_repository_*`, `blobs.*`, `user_*`, VictoriaLogs |
+| `yucca-michael.json` | Restic gateway deep dive: HTTP + S3 backend pool + source networks + logs | `http.server.request.*`, `s3.backend.*`, `traffic.*` (OTel, dotted names), VictoriaLogs |
+| `yucca-top-users.json` | Fleet-wide top talkers: storage, traffic, parallelism, stale backups per user (rows link to the per-user board) | `rgw_repository_*`, `blobs.*`, `client.request.*`, `user_last_*` (all keyed by user id) |
+| `yucca-per-user.json` | Single-user drill-down: storage, backup health, traffic, client behaviour, logs. Deep-linkable as `/d/yucca-per-user?var-user=<id>` (`yuctl users view-dashboard`) | `rgw_repository_*`, `blobs.*`, `client.*`, `user_*`, VictoriaLogs |
 | `yucca-spice-rgw-capacity.json` | RGW/pool capacity, S3 perf, OSD/BlueStore internals | `ceph_pool_*`, `ceph_rgw_*`, `ceph_osd_*`, `node_*` |
 | `yucca-spice-ceph-health.json` | Cluster health: quorum, OSDs, PGs, recovery, latency | `ceph_health_*`, `ceph_pg_*`, `ceph_osd_*` |
 | `yucca-spice-nodes.json` | 48-node fleet hotspots: CPU/mem/disk/fabric VLANs | `node_*` (job `ceph-node-exporter`) |
@@ -36,13 +36,47 @@ bytes moved per user/repository/blob-type (`blobs.*`, labels
 `customerId`/`repositoryId`/`type`) and requests per user
 (`http.server.request.{count,errors}` carry `customerId`/`repositoryId` on
 authenticated requests; the duration/TTFB histograms stay route-scoped),
+michael also accumulates per-client request-seconds (`client.request.*`) and a
+per-client concurrency high-water gauge (`client.requests.peak`),
 yucca-metrics-worker gauges authoritative RGW bucket usage every 5 min
 (`rgw_repository_*`), yucca-api / admin-api count every request per handler and
 customer (`api_request_count`, unsampled even though the request log lines are
 sampled), and yucca-api gauges client-reported backup health
 (`user_repository_size`, `user_last_*` — labels `user_id`/`repository_id`).
-Known gaps: no API-side latency histograms, and nothing scrapes CNPG or the
-envoy gateways on father.
+Known gaps: no API-side latency histograms, no per-client retry count (restic
+retries are invisible to michael and the orchestrator's restic wrapper drops
+stderr on success), and nothing scrapes CNPG or the envoy gateways on father.
+
+**Reading the per-client instruments.** `client.request.seconds` is a counter of
+accumulated request-seconds labeled by identity only (`customerId`,
+`repositoryId`, `connection` — no route or status). Its rate IS average
+parallelism, by Little's Law: `rate(client.request.seconds[5m])` is the mean
+number of that client's requests in flight over the window, needing no
+per-client state to compute. Dividing by the matching request rate gives mean
+duration, and `client.request.ttfb_seconds` does the same for time-to-first-byte
+— duration includes streaming the body, so the two diverging is how you tell a
+slow client from a slow backend. `client.requests.peak` covers what an average
+cannot, a client that saturates its `rest.connections` budget in bursts; it is
+per michael replica, so summing across replicas is an upper bound whereas the
+Little's Law average sums exactly.
+
+Source-network inventory (the "Source networks" row on the michael board):
+michael also counts traffic by the CLIENT's autonomous system —
+`traffic.{uploaded_bytes,downloaded_bytes,requests}`, labels `asn`/`asOrg`.
+These are deliberately separate from the `blobs.*` family: `blobs.*` answers
+"which customer moved this" and only counts authenticated 2xx requests, the
+`traffic.*` counters answer "which network is this coming from" and count every
+request, including the unauthenticated and rejected ones. The client address
+comes from the LAST `X-Forwarded-For` entry — the only one the gateway wrote
+itself (`CLIENT_IP_HEADER`) — and is resolved against an IP→ASN database baked
+into the michael image at `/etc/michael/asn.mmdb` (`ASN_DB_PATH`; DB-IP's free
+ASN Lite, MaxMind-DB format, CC BY 4.0). Sources reaching us on-net report as
+`private`, public addresses the database does not resolve as `unknown` — which
+is also what an image built while db-ip.com was unreachable reports for
+everything, since a missing database warns rather than failing the pod.
+**Addresses are not a metric label** (unbounded cardinality): `client_ip`,
+`asn` and `as_org` ride on every michael access-log line instead, which is what
+the "Top source addresses" table aggregates out of VictoriaLogs.
 
 ## Distribution contract
 

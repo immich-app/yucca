@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"michael/internal/config"
+	"michael/internal/geoip"
 	"michael/internal/handlers"
 	"michael/internal/metrics"
 	"michael/internal/storage"
@@ -97,7 +98,21 @@ func main() {
 		}
 	}
 
+	// A missing or unreadable ASN database is NOT fatal: source-network labels
+	// are an observability nicety, and failing the backup data plane over them
+	// would be the wrong trade. The nil database resolves every public address
+	// to "unknown", so the series stay continuous either way.
+	asnDB, err := geoip.Open(cfg.ASNDatabasePath)
+	if err != nil {
+		log.Warn().Err(err).Msg("ASN database unavailable; traffic will not be attributed to source networks")
+	} else {
+		log.Info().Str("path", cfg.ASNDatabasePath).Msg("ASN database loaded")
+	}
+
 	srv := handlers.NewClusterServer(stores, cfg.S3DefaultCluster, cfg.JWTPublicKey, m)
+	srv.ResolveClient = func(r *http.Request) geoip.Client {
+		return asnDB.Resolve(r, cfg.ClientIPHeader)
+	}
 
 	httpSrv := &http.Server{
 		Addr:    addr,
@@ -128,6 +143,10 @@ func main() {
 
 	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 		log.Fatal().Err(err).Msg("shutdown error")
+	}
+
+	if err := asnDB.Close(); err != nil {
+		log.Error().Err(err).Msg("ASN database close error")
 	}
 
 	if meterProvider != nil {

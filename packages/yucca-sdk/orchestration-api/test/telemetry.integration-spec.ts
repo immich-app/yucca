@@ -1,11 +1,12 @@
 import { submitStructuredLog } from '@futo-org/backups-api-client';
 import { setTimeout as delay } from 'node:timers/promises';
 import { version } from '../package.json';
-import { YUCCA_PRODUCTION_UUID } from '../src/const';
+import { REPOSITORY_DEFAULT_CLOUD_UUID } from '../src/const';
 import { BackendType } from '../src/enum';
 import { BackendRepository } from '../src/repositories/backend.repository';
 import { ConfigRepository } from '../src/repositories/config.repository';
 import { TelemetryService } from '../src/services/telemetry.service';
+import { yuccaWellKnown } from '../src/wellKnown';
 import { createTestingModule, TestContext, waitFor } from './testUtils';
 
 const apiSubmitStructuredLog = submitStructuredLog as jest.Mock;
@@ -22,8 +23,11 @@ afterAll(async () => {
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // Without this the backend resolves its base URL by fetching the real
+  // production .well-known over the network.
+  jest.spyOn(yuccaWellKnown, 'getBaseUrl').mockResolvedValue('http://yucca.test');
   ctx.database.prepare("DELETE FROM config WHERE key = 'telemetry'").run();
-  await ctx.module.get(BackendRepository).updateBackend(YUCCA_PRODUCTION_UUID, {
+  await ctx.module.get(BackendRepository).updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
     type: BackendType.Yucca,
     accessToken: 'test-token',
   });
@@ -83,7 +87,7 @@ describe('Telemetry', () => {
   });
 
   it('does not throw when no production backend is configured', async () => {
-    ctx.database.prepare('DELETE FROM backends WHERE id = ?').run(YUCCA_PRODUCTION_UUID);
+    ctx.database.prepare('DELETE FROM backends WHERE id = ?').run(REPOSITORY_DEFAULT_CLOUD_UUID);
     await ctx.module.get(ConfigRepository).enableTelemetry();
     const telemetry = ctx.module.get(TelemetryService);
 
