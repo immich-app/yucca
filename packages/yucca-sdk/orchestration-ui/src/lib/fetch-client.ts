@@ -86,6 +86,7 @@ export type ConfigureImmichIntegrationRequestDto = {
     backupConfiguration: boolean;
     libraries: "all" | string[];
     retentionPolicy?: (RetentionPolicyDto) | null;
+    paused?: boolean;
 };
 export type ImmichRollbackRequestDto = {
     repositoryId: string;

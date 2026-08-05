@@ -3,6 +3,7 @@
     type BackupStatusState,
   } from "$lib/components/backups/BackupStatus.svelte";
   import ImmichSettingsBackupContents from "$lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte";
+  import ImmichSettingsSchedule from "$lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte";
   import ImmichSettingsStorage from "$lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte";
   import OnboardingStepFinishSetup from "$lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte";
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
@@ -15,7 +16,6 @@
   import UpsellProtectImmichLibrary from "$lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte";
   import SettingsBilling from "$lib/components/settings/SettingsBilling.svelte";
   import SettingsNotifications from "$lib/components/settings/SettingsNotifications.svelte";
-  import SettingsSchedule from "$lib/components/settings/SettingsSchedule.svelte";
   import StackList from "$lib/components/ui/StackList.svelte";
   import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
@@ -678,7 +678,7 @@
     />
 
     <ImmichSettingsBackupContents />
-    <SettingsSchedule />
+    <ImmichSettingsSchedule />
     <ImmichSettingsStorage />
     <SettingsNotifications onSave={() => void 0} />
     <SettingsBilling onManageBilling={() => void 0} />

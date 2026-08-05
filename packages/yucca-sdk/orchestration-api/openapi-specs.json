@@ -1419,6 +1419,9 @@
                 "$ref": "#/components/schemas/RetentionPolicyDto"
               }
             ]
+          },
+          "paused": {
+            "type": "boolean"
           }
         },
         "required": [

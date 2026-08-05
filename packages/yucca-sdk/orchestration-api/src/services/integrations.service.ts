@@ -69,7 +69,7 @@ export class IntegrationsService {
         name: dto.name,
         retentionPolicy: dto.retentionPolicy,
       });
-      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron });
+      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron, paused: dto.paused });
     } else {
       ({
         repository: { id: repositoryId },
@@ -91,6 +91,10 @@ export class IntegrationsService {
         cron: dto.cron,
         repositories: [repositoryId],
       }));
+
+      if (dto.paused) {
+        await this.scheduleService.applyScheduleUpdate(scheduleId, { paused: true });
+      }
     }
 
     const configuration: ImmichRepositoryConfig = {

@@ -11,8 +11,6 @@
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
   import {
-    handlePauseSchedule,
-    handleResumeSchedule,
     useScheduleEventHandler,
     useSchedules,
   } from "$lib/services/schedule.service";
@@ -73,6 +71,7 @@
 
   let frequency = $state<Frequency>("daily");
   let startTime = $state("3");
+  let enabled = $state(true);
   let loaded = false;
 
   const parse = (cron: string) => {
@@ -102,6 +101,7 @@
     const parsed = parse(schedule.cron);
     frequency = parsed.frequency;
     startTime = parsed.hour;
+    enabled = !schedule.paused;
   };
 
   $effect(() => {
@@ -129,20 +129,6 @@
     }
   });
 
-  const enabled = $derived(!schedule?.paused);
-
-  const onToggle = (value: boolean) => {
-    if (!schedule) {
-      return;
-    }
-
-    if (value) {
-      handleResumeSchedule(schedule.id, "Immich");
-    } else {
-      handlePauseSchedule(schedule.id, "Immich");
-    }
-  };
-
   const onSave = () => {
     if (!integration || !repository || !schedule) {
       return;
@@ -156,6 +142,7 @@
       libraries: integration.configuration.libraries,
       retentionPolicy: repository.configuration?.retentionPolicy ?? null,
       cron,
+      paused: !enabled,
     });
   };
 </script>
@@ -184,7 +171,7 @@
         description="Back up your library on a recurring schedule."
         color="primary"
       >
-        <Switch checked={enabled} onCheckedChange={onToggle} />
+        <Switch bind:checked={enabled} />
       </Field>
 
       <Field
