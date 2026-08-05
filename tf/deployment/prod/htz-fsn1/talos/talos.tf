@@ -169,7 +169,7 @@ locals {
   # defaults containerd to DISCARD unpacked layers after a pull, leaving a node with
   # nothing to serve to peers. Flip it off so pulled layers stay on disk. Note: only
   # images pulled AFTER this lands are shareable — a containerd restart (node reboot)
-  # is needed for the config to take effect. The registry hostPort (30020) is opened
+  # is needed for the config to take effect. The registry hostPort (29999) is opened
   # in firewall.tf so peers can fetch layers node-to-node.
   spegel_containerd_patch = yamlencode({
     machine = {
