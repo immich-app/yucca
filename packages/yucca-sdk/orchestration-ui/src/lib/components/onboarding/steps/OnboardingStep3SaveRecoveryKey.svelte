@@ -1,7 +1,9 @@
 <script lang="ts">
   import RecoveryKeyDisplay from "$lib/components/onboarding/RecoveryKeyDisplay.svelte";
   import { Checkbox, HStack, Stack, Text } from "@immich/ui";
-  import OnboardingStepLayout from "./OnboardingStepLayout.svelte";
+  import OnboardingStepLayout, {
+    type OnboardingStepAction,
+  } from "./OnboardingStepLayout.svelte";
 
   type Props = {
     code: string;
@@ -12,15 +14,21 @@
   const { code, onContinue, loading = false }: Props = $props();
 
   let saved = $state(false);
+
+  const actions = $derived<OnboardingStepAction[]>([
+    {
+      label: "Continue",
+      onClick: onContinue,
+      disabled: !saved,
+      loading,
+    },
+  ]);
 </script>
 
 <OnboardingStepLayout
   title="Save your recovery key"
   description="You'll need this key to restore your encrypted backups. Save it somewhere safe before continuing. FUTO cannot recover this key if it is lost."
-  actionLabel="Continue"
-  actionDisabled={!saved}
-  actionLoading={loading}
-  onAction={onContinue}
+  {actions}
 >
   <Stack gap={4}>
     <RecoveryKeyDisplay {code} />

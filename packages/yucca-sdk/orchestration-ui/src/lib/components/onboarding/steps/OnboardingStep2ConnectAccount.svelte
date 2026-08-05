@@ -1,7 +1,9 @@
 <script lang="ts">
   import { HStack, Icon, Stack, Text } from "@immich/ui";
   import { mdiCheckCircle } from "@mdi/js";
-  import OnboardingStepLayout from "./OnboardingStepLayout.svelte";
+  import OnboardingStepLayout, {
+    type OnboardingStepAction,
+  } from "./OnboardingStepLayout.svelte";
 
   type Props = {
     onConnect: () => void;
@@ -15,15 +17,21 @@
     "Allow Immich to upload encrypted backups",
     "Return you here to finish setup",
   ];
+
+  const actions: OnboardingStepAction[] = [
+    { label: "Connect account", onClick: () => onConnect() },
+    {
+      label: "Use local storage",
+      onClick: () => onLocalStorage?.(),
+      $if: () => !!onLocalStorage,
+    },
+  ];
 </script>
 
 <OnboardingStepLayout
   title="Connect your FUTO account"
   description="Connect your FUTO account to this Immich server so FUTO Backups can store your encrypted backups."
-  actionLabel="Connect account"
-  onAction={onConnect}
-  secondaryLabel="Use local storage"
-  onSecondary={onLocalStorage}
+  {actions}
 >
   <Stack gap={3}>
     <Text fontWeight="semi-bold" size="small">This will:</Text>

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { HStack, Icon, Stack, Text } from "@immich/ui";
   import { mdiClock, mdiDownloadBox, mdiImageMultiple } from "@mdi/js";
-  import OnboardingStepLayout from "./OnboardingStepLayout.svelte";
+  import OnboardingStepLayout, {
+    type OnboardingStepAction,
+  } from "./OnboardingStepLayout.svelte";
 
   type Props = {
     schedule: string;
@@ -35,14 +37,16 @@
       value: storageLocation,
     },
   ]);
+
+  const actions = $derived<OnboardingStepAction[]>([
+    { label: "Start backup", onClick: onStartBackup, loading },
+  ]);
 </script>
 
 <OnboardingStepLayout
   title="Start your first backup"
   description="Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard."
-  actionLabel="Start backup"
-  actionLoading={loading}
-  onAction={onStartBackup}
+  {actions}
 >
   <Stack gap={4}>
     {#each settings as setting (setting.title)}
