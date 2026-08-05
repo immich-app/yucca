@@ -53,6 +53,7 @@ type Metrics struct {
 	AuthCacheHits   otelmetric.Int64Counter
 	AuthCacheMisses otelmetric.Int64Counter
 	UnknownCluster  otelmetric.Int64Counter
+	client          *clientMetrics
 
 	// Traffic counters, labelled by the SOURCE NETWORK instead of the identity:
 	// the blobs.* family answers "which customer moved this", these answer
@@ -180,6 +181,11 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating traffic_requests counter: %w", err)
 	}
 
+	client, err := newClientMetrics(meter)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Metrics{
 		RequestedBytes:  requestedBytes,
 		DownloadedBytes: downloadedBytes,
@@ -193,6 +199,7 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		AuthCacheHits:   authCacheHits,
 		AuthCacheMisses: authCacheMisses,
 		UnknownCluster:  unknownCluster,
+		client:          client,
 
 		TrafficUploadedBytes:   trafficUploadedBytes,
 		TrafficDownloadedBytes: trafficDownloadedBytes,
@@ -569,6 +576,12 @@ type authCapture struct {
 	user       string
 	repository string
 	connection string
+
+	// Concurrency is tracked from the moment auth resolves rather than from the
+	// start of the request: before that there is no identity to attribute it to,
+	// and the unattributed prefix is a cache lookup.
+	tracker *clientTracker
+	state   *clientConcurrency
 }
 
 type authCaptureKey struct{}
@@ -583,6 +596,9 @@ func CaptureAuth(next http.Handler) http.Handler {
 			h.user = a.User
 			h.repository = a.Repository
 			h.connection = connectionLabel(a)
+			if h.tracker != nil && h.user != "" {
+				h.state = h.tracker.enter(clientAttrKey{h.user, h.repository, h.connection})
+			}
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -594,8 +610,18 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			ww := &ResponseWriter{ResponseWriter: w}
-			capture := &authCapture{}
+			capture := &authCapture{tracker: m.client.tracker}
 			r = r.WithContext(context.WithValue(r.Context(), authCaptureKey{}, capture))
+
+			// Deferred: a handler panic unwinds straight past this middleware to
+			// chi's Recoverer, and an outstanding request never accounted back out
+			// would pin the client's concurrency above zero for the life of the
+			// process — inflating its reported peak and blocking idle eviction.
+			defer func() {
+				if capture.state != nil {
+					capture.state.exit(time.Now())
+				}
+			}()
 
 			next.ServeHTTP(ww, r)
 
@@ -621,6 +647,13 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 				m.RequestTTFB.Record(r.Context(), ww.FirstByte.Sub(start).Seconds(), attrs)
 			}
 			m.RequestCount.Add(r.Context(), 1, countAttrs)
+
+			if capture.state != nil {
+				m.client.seconds.Add(r.Context(), duration, capture.state.attrs)
+				if !ww.FirstByte.IsZero() {
+					m.client.ttfbSeconds.Add(r.Context(), ww.FirstByte.Sub(start).Seconds(), capture.state.attrs)
+				}
+			}
 
 			if status >= 400 {
 				m.RequestErrors.Add(r.Context(), 1, countAttrs)
