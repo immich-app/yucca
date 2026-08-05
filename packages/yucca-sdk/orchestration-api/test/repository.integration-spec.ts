@@ -59,7 +59,7 @@ describe('Repository', () => {
       ctx.backendId,
     );
 
-    const metricsEvent = waitForEvent(ctx.gateway, 'RepositoryUpdate');
+    const metricsEvent = waitForEvent(ctx.events, 'RepositoryUpdate');
 
     const { logId, task } = await repositoryService.createBackup(repository.id);
     await task;
@@ -91,7 +91,7 @@ describe('Repository', () => {
 
     ctx.resticMock.backup.mockRejectedValue(new Error('Backup failed'));
 
-    const metricsEvent = waitForEvent(ctx.gateway, 'RepositoryUpdate');
+    const metricsEvent = waitForEvent(ctx.events, 'RepositoryUpdate');
 
     const { task } = await repositoryService.createBackup(repository.id);
     await task.catch(() => {});
