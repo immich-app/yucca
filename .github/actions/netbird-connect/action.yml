@@ -30,15 +30,10 @@ inputs:
 runs:
   using: composite
   steps:
-    # Install a PINNED NetBird release and verify its SHA256 against an in-repo
-    # pin before executing anything -- never `curl | sh`. This runner holds the
-    # prod-write 1Password SA token and overlay access to the live nodes, so a
-    # compromised pkgs.netbird.io/install.sh would run as root here.
-    #
-    # To bump: pick a version, then read the published checksums and copy the
-    # `netbird_<ver>_linux_<arch>.tar.gz` lines into SHA256 below:
-    #   curl -fsSL \
-    #     https://github.com/netbirdio/netbird/releases/download/v<ver>/netbird_<ver>_checksums.txt
+    # Never `curl | sh`: this runner holds the prod-write 1P SA token + overlay
+    # access, so a compromised pkgs.netbird.io/install.sh runs as root.
+    # Bump: copy the netbird_<ver>_linux_<arch>.tar.gz lines from
+    # .../releases/download/v<ver>/netbird_<ver>_checksums.txt into SHA256 below.
     - name: Install NetBird client (pinned + SHA256-verified)
       shell: bash
       env:
@@ -46,7 +41,6 @@ runs:
       run: |
         set -euo pipefail
 
-        # Pinned SHA256 of netbird_${NB_VERSION}_linux_<arch>.tar.gz.
         declare -A SHA256=(
           [amd64]=b854710409e7de79071642e2c328b181d4db7b9c90c298ee32b6e3b5d9ebd36f
           [arm64]=af6fc4909bcc68e55197eddbecd8a8ec1b02bc9b34cc28ef72e2858375e138d9
@@ -66,14 +60,12 @@ runs:
         tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
         curl -fsSL --retry 3 --proto '=https' --tlsv1.2 -o "$tmp/$tarball" "$url"
 
-        # Fail closed on any mismatch BEFORE the artifact is unpacked or run.
         echo "${want}  ${tmp}/${tarball}" | sha256sum -c -
 
         tar -xzf "$tmp/$tarball" -C "$tmp" netbird
         sudo install -m 0755 "$tmp/netbird" /usr/local/bin/netbird
 
-        # Register + start the daemon (what the upstream installer would do), so
-        # the later `netbird up` has a service to talk to.
+        # `netbird up` needs the daemon registered + started (the upstream installer's job).
         sudo netbird service install 2>/dev/null || true
         sudo netbird service start   2>/dev/null || true
         netbird version

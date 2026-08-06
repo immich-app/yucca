@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
-# Render the o11y bundle into <output-dir>: each o11y/dashboards/*.json becomes
-# a self-contained GrafanaDashboard CR (the JSON embedded as gzip+base64 via
-# spec.gzipJson) filed under a single GrafanaFolder, and GrafanaAlertRuleGroup
-# CRs from o11y/alerts are copied through verbatim. CI pushes this bundle as the
-# OCI artifact; o11y applies it with a Flux OCIRepository + Kustomization (no
-# kustomization.yaml needed: the kustomize-controller generates one for plain
-# manifests). The o11y/ sources remain the source of truth; these manifests are
-# build output, so do not commit them. See o11y/README.md.
+# Renders o11y/ into <output-dir>: dashboards/*.json -> GrafanaDashboard CRs
+# (gzip+base64 spec.gzipJson) under one GrafanaFolder; alerts copied verbatim.
+# No kustomization.yaml — kustomize-controller generates one. Output is build
+# product, never committed. See o11y/README.md.
 set -euo pipefail
 
 usage='usage: render-o11y-manifests.sh <output-dir> <github-repository>'
@@ -16,8 +12,6 @@ src=o11y
 
 mkdir -p "$out/dashboards"
 
-# All dashboards are filed under one GrafanaFolder (folderRef -> metadata.name)
-# named after the repo.
 folder=${repo#*/}
 
 # The instanceSelector/resyncPeriod defaults below are o11y-overridable via
@@ -38,8 +32,6 @@ EOF
 
 dashboards=0
 for f in "$src"/dashboards/*.json; do
-  # file name, .uid, and metadata.name must agree on one DNS-1123 name that
-  # doesn't collide with the bundle's own files.
   uid=$(basename "$f" .json)
   if [ "$(jq -r .uid "$f")" != "$uid" ] || [ "$uid" = folder ] || [ "$uid" = kustomization ] ||
     ! printf '%s' "$uid" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$'; then
@@ -66,7 +58,6 @@ EOF
   dashboards=$((dashboards + 1))
 done
 
-# Alerts are authored directly as GrafanaAlertRuleGroup CRs; ship them as-is.
 alerts=0
 if compgen -G "$src/alerts/*.yaml" >/dev/null; then
   mkdir -p "$out/alerts"

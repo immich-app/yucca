@@ -5,9 +5,8 @@ set -e
 mkdir -p dist
 cd packages/yuctl
 
-# Two-stage: cross-build the bench agent, embed it (-tags embedagent) so
-# `yuctl tools bench` is self-contained. Plain `go build` still works without
-# the tag — the embedded agent is then absent and --agent-bin is required.
+# -tags embedagent makes `yuctl tools bench` self-contained; a plain `go build`
+# still works, but then requires --agent-bin.
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../../dist/bench-agent-linux-amd64 ./cmd/bench-agent
 gzip -9 -n -c ../../dist/bench-agent-linux-amd64 > internal/bench/bench-agent-linux-amd64.gz
 

@@ -3,7 +3,6 @@
 #MISE dir="{{config_root}}/packages/michael"
 set -euo pipefail
 
-# Pinned to the LOCAL k3d cluster so this can never touch a remote context.
 CTX="${KUBE_CONTEXT:-k3d-yucca}"
 RGW_NS="rook-ceph"
 RGW_SVC="rook-ceph-rgw-yucca"

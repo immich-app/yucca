@@ -1,15 +1,8 @@
 name: ansible-ceph-validate
 
-# Static validation gate for the ansible/ceph stack. ci.yml only validates the
-# Kubernetes/Flux surface (mise run k8s:validate); nothing there parses the ceph
-# playbooks, inventory or scripts. Without this gate a broken playbook, host_var
-# or script arg first executes during the post-merge PROD apply against real
-# nodes. This job runs the existing local validators (yamllint + ansible-lint +
-# shellcheck + syntax-check) with NO secrets and NO connection to any host.
-#
-# It lives in its own workflow (not a job in ci.yml) so the path filter below is
-# workflow-scoped: `on.<event>.paths` gates the whole file. Adding the same
-# filter inside ci.yml would gate every ci.yml job (k8s validate, tests) too.
+# Static gate for ansible/ceph (no secrets, no host connection) — without it a
+# broken playbook/host_var/script first executes during the post-merge PROD apply.
+# Own workflow so the on.paths filter doesn't gate all of ci.yml.
 
 on:
   pull_request:
@@ -22,8 +15,6 @@ on:
       - 'ansible/ceph/**'
       - '.github/workflows/ansible-ceph-validate.yml'
 
-# Read-only: checkout + tool downloads only. No writes through the token, no
-# deploy credentials, no 1Password.
 permissions:
   contents: read
 
@@ -47,37 +38,25 @@ jobs:
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
         env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits.
+          # Token avoids GitHub API rate limits on mise tool downloads.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Trust the nested ansible/ceph/.mise.toml and install its pinned Python
-      # (3.12). The use-mise action installs root tools from the repo root; the
-      # ceph config is only picked up here, where cwd is ansible/ceph.
+      # use-mise only installs root tools; the nested ansible/ceph/.mise.toml
+      # (pinned Python) is only picked up here, where cwd is ansible/ceph.
       - name: Trust and install mise tools
         run: |
           mise trust --all
           mise install
 
-      # Create the project .venv exactly as `mise run setup` does: pip install
-      # requirements.txt (pins ansible-core, ansible-lint, yamllint) and the
-      # ansible-galaxy collections (ansible.posix, community.general) that
-      # ansible-lint / syntax-check need to resolve modules. PyPI + Galaxy only;
-      # no secrets.
       - name: Install ansible tooling
         run: mise run setup
 
-      # yamllint + ansible-lint + shellcheck (scripts/*.sh). None need a live
-      # inventory or secrets; shellcheck ships on ubuntu-latest runners.
+      # shellcheck ships on ubuntu-latest.
       - name: Lint (yamllint + ansible-lint + shellcheck)
         run: mise run lint
 
-      # ansible-playbook --syntax-check needs *an* inventory, but the real
-      # inventory.ini is TF-generated and gitignored, so it does not exist in
-      # CI. A syntax-check only parses YAML/role structure, so any valid
-      # inventory works: write a throwaway localhost inventory and point CEPH_ENV
-      # at it (the ceph:check task honours an exported CEPH_ENV). This never
-      # connects to a host.
+      # syntax-check needs *an* inventory but the real one is TF-generated and
+      # gitignored; it only parses structure, so a throwaway localhost one works.
       - name: Syntax-check playbooks
         env:
           CEPH_ENV: /tmp/ci-inventory.ini
@@ -85,10 +64,8 @@ jobs:
           printf '[all]\nlocalhost ansible_connection=local\n' > /tmp/ci-inventory.ini
           mise run check
 
-      # Byte-compile the helper scripts so a broken generator is caught here,
-      # not mid-provision. (shellcheck above covers the *.sh scripts.)
-      # Covers roles/*/files/*.py too: those ship to the nodes via
-      # ansible.builtin.script, so a syntax error there fails mid-converge.
+      # Byte-compile helper scripts (incl. roles/*/files/*.py, which ship to the
+      # nodes via ansible.builtin.script) so syntax errors fail here, not mid-converge.
       - name: Compile Python scripts
         run: |
           mise exec -- python -m py_compile \

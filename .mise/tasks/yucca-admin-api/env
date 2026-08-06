@@ -8,8 +8,7 @@ export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
 export POSTGRES_DATABASE=${POSTGRES_DATABASE:-yucca}
 export POSTGRES_PORT=${POSTGRES_PORT:-15432}
 
-# The project's well-known local-dev ES256 keypair (same fixture as
-# .mise/tasks/yucca-api/env); signs CLI session JWTs in dev.
+# Well-known local-dev ES256 fixture (same as .mise/tasks/yucca-api/env).
 export JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY:------BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgCla79+Sip4o2hZ1K
 nQJYp2xU/nsCJmRoZmvXjeX6cW+hRANCAASkubBRIE7Sns/VS8ZF5XEVO8CwJ+AZ
@@ -17,8 +16,7 @@ Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
 -----END PRIVATE KEY-----
 }
 
-# Dev restic minting: the same dev keypair signs repo tokens (michael's dev
-# public key matches), pointed at the local michael.
+# The same dev keypair signs repo tokens; michael's dev public key matches.
 export RESTIC_JWT_PRIVATE_KEY=${RESTIC_JWT_PRIVATE_KEY:-$JWT_PRIVATE_KEY}
 export TOPOLOGY_FILE=${TOPOLOGY_FILE:-./topology.dev.json}
 export LEGACY_SITE_CODE=${LEGACY_SITE_CODE:-local}
