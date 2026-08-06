@@ -2,7 +2,7 @@
 clusterName: rook-ceph
 dataDirHostPath: /var/lib/rook
 # Pin to match the rook-ceph operator appVersion (Renovate keeps these in step).
-cephImage: quay.io/ceph/ceph:v19.2.2
+cephImage: quay.io/ceph/ceph:v19.2.2@sha256:8214ebff6133ac27d20659038df6962dbf9d77da21c9438a296b2e2059a56af6
 
 mon:
   count: 1
@@ -36,7 +36,7 @@ objectStore:
 # it; Rook's OSD then consumes it. Disable if your nodes have real disks.
 loopDevice:
   enabled: true
-  image: alpine:3.21
+  image: alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
   sizeGiB: 20
   # where the backing image file lives on the node (under dataDirHostPath)
   path: /var/lib/rook/osd-loop.img
