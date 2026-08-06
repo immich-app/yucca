@@ -1,0 +1,12 @@
+---
+# spegel-system on father — CHERRY-PICKED from components/infra/spegel-system
+# (the full infra component stays off, see kustomization.yaml). Content matches
+# the component copy, so enabling components/infra later is a clean handover;
+# REMOVE this file at that point alongside spegel.yaml. Privileged: Spegel mounts
+# the containerd socket + content store (hostPath) and binds the registry hostPort.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spegel-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

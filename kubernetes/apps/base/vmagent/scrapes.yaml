@@ -1,0 +1,179 @@
+---
+# Scrape definitions for the infra components the k8s-stack chart doesn't
+# cover. All CRs land in the observability namespace (the Flux Kustomization's
+# targetNamespace) and reach into the target namespaces via namespaceSelector.
+# App services (yucca-api, michael, …) are deliberately absent: they push OTLP
+# to the vmagent and scraping them too would double their series.
+#
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/operator.victoriametrics.com/vmpodscrape_v1beta1.json
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: flux-controllers
+spec:
+  namespaceSelector:
+    matchNames: [flux-system]
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [source-controller, kustomize-controller, helm-controller, notification-controller]
+  podMetricsEndpoints:
+    - port: http-prom
+---
+# All three cert-manager deployments expose :9402, each behind its own Service
+# with a differently named port; endpoints that don't match a given Service
+# produce no targets.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: cert-manager
+spec:
+  namespaceSelector:
+    matchNames: [cert-manager]
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: cert-manager
+  endpoints:
+    - port: tcp-prometheus-servicemonitor
+    - port: http-metrics
+    - port: metrics
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: cnpg-operator
+spec:
+  namespaceSelector:
+    matchNames: [cnpg-system]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudnative-pg
+  podMetricsEndpoints:
+    - port: metrics
+---
+# CNPG postgres instances (primary + replicas) — the built-in exporter on
+# :9187. Ingress is opened by the yucca namespace's database-metrics policy.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: yucca-database
+spec:
+  namespaceSelector:
+    matchNames: [yucca]
+  selector:
+    matchLabels:
+      cnpg.io/cluster: yucca-db
+  podMetricsEndpoints:
+    - port: metrics
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: envoy-gateway
+spec:
+  namespaceSelector:
+    matchNames: [envoy-system]
+  selector:
+    matchLabels:
+      control-plane: envoy-gateway
+  endpoints:
+    - port: metrics
+---
+# The Envoy data-plane pods (EnvoyProxy telemetry.metrics.prometheus serves
+# the admin port's prometheus view).
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: envoy-proxy
+spec:
+  namespaceSelector:
+    matchNames: [envoy-system]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: envoy
+  podMetricsEndpoints:
+    - port: metrics
+      path: /stats/prometheus
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: netbird-operator
+spec:
+  namespaceSelector:
+    matchNames: [netbird]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netbird-operator
+  endpoints:
+    - port: http
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: victoria-logs-collector
+spec:
+  namespaceSelector:
+    matchNames: [observability]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: victoria-logs-collector
+  podMetricsEndpoints:
+    - port: http
+---
+# Mayastor data plane (father only; the namespace is empty of matches where
+# mayastor is off). Empty selector + named port: only pods carrying a
+# `metrics` port (io-engine exporters et al) become targets. Both namespace
+# spellings, matching the netbird webhook exclusion list.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: openebs
+spec:
+  namespaceSelector:
+    matchNames: [openebs, openebs-system]
+  selector: {}
+  podMetricsEndpoints:
+    - port: metrics
+---
+# Cilium — ports exist once the helm values enable prometheus (tf stacks); the
+# agent/operator are host-network, so the Talos firewall opens 9962/9963/9965.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: cilium-agent
+spec:
+  namespaceSelector:
+    matchNames: [kube-system]
+  selector:
+    matchLabels:
+      k8s-app: cilium
+  podMetricsEndpoints:
+    - port: prometheus
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: cilium-operator
+spec:
+  namespaceSelector:
+    matchNames: [kube-system]
+  selector:
+    matchLabels:
+      io.cilium/app: operator
+  podMetricsEndpoints:
+    - port: prometheus
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: hubble
+spec:
+  namespaceSelector:
+    matchNames: [kube-system]
+  selector:
+    matchLabels:
+      k8s-app: cilium
+  podMetricsEndpoints:
+    - port: hubble-metrics

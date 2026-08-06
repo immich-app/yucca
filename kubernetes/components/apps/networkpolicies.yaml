@@ -153,3 +153,14 @@ spec:
               app.kubernetes.io/name: cloudnative-pg
       ports:
         - { port: 8000, protocol: TCP }
+    # Built-in postgres exporter, scraped by the observability vmagent
+    # (VMPodScrape yucca-database).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vmagent
+      ports:
+        - { port: 9187, protocol: TCP }

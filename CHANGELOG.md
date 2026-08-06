@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.27.0](https://github.com/immich-app/yucca/compare/v0.26.0...v0.27.0) (2026-08-05)
+
+
+### Features
+
+* **michael:** attribute traffic to the client's source asn ([#428](https://github.com/immich-app/yucca/issues/428)) ([72b343c](https://github.com/immich-app/yucca/commit/72b343ceba52146043ba1ed0021f8e7db891056b))
+* **michael:** per-client parallelism and latency metrics ([#427](https://github.com/immich-app/yucca/issues/427)) ([a4d4227](https://github.com/immich-app/yucca/commit/a4d422709bb9020f6531b4836e4cdd9c6dc9d488))
+
+
+### Bug Fixes
+
+* **yucca-api:** format failure ([#426](https://github.com/immich-app/yucca/issues/426)) ([a4c4b0c](https://github.com/immich-app/yucca/commit/a4c4b0c337021a0fd05cdb374ce5974ce6fbd7b5))
+* **yuctl:** pin op reads to the team-futo 1Password account ([#409](https://github.com/immich-app/yucca/issues/409)) ([3dffd93](https://github.com/immich-app/yucca/commit/3dffd93eca78736e008cc78dd71203a513527750))
+
 ## [0.26.0](https://github.com/immich-app/yucca/compare/v0.25.0...v0.26.0) (2026-08-03)
 
 

@@ -163,10 +163,31 @@ locals {
     }
   })
 
-  cp_base_patches = compact([local.hostdns_patch, local.cp_netbird_patch, local.cp_nodeip_patch])
+  # Spegel (cluster-local P2P image mirror) prereq — applied to every node.
+  # Talos already points containerd's registry config_path at /etc/cri/conf.d/hosts
+  # (where Spegel writes its hosts.d mirrors); the only missing piece is that Talos
+  # defaults containerd to DISCARD unpacked layers after a pull, leaving a node with
+  # nothing to serve to peers. Flip it off so pulled layers stay on disk. Note: only
+  # images pulled AFTER this lands are shareable — a containerd restart (node reboot)
+  # is needed for the config to take effect. The registry hostPort (29999) is opened
+  # in firewall.tf so peers can fetch layers node-to-node.
+  spegel_containerd_patch = yamlencode({
+    machine = {
+      files = [{
+        path    = "/etc/cri/conf.d/20-customization.part"
+        op      = "create"
+        content = <<-EOT
+        [plugins."io.containerd.cri.v1.images"]
+          discard_unpacked_layers = false
+        EOT
+      }]
+    }
+  })
+
+  cp_base_patches = compact([local.hostdns_patch, local.cp_netbird_patch, local.cp_nodeip_patch, local.spegel_containerd_patch])
   # (install patch is PER-NODE — by disk serial — appended in controlplane.tf /
   # workers.tf, along with the bond/VLAN network patches.)
-  worker_base_patches = compact([local.hostdns_patch, local.worker_mayastor_patch, local.worker_volumes_patch, local.worker_netbird_patch, local.worker_nodeip_patch])
+  worker_base_patches = compact([local.hostdns_patch, local.worker_mayastor_patch, local.worker_volumes_patch, local.worker_netbird_patch, local.worker_nodeip_patch, local.spegel_containerd_patch])
 
   # ── Control-plane cluster config (same on every CP) ──────────────────────
   cp_cluster_patch = yamlencode({
@@ -192,8 +213,22 @@ locals {
         # /etc/hosts) whenever the entry set changes (e.g. a node add).
         env = { HOSTS_REVISION = substr(sha256(jsonencode(local.cp_host_entries)), 0, 12) }
       }
+      # Metrics exposure for the in-cluster vmagent: controller-manager and
+      # scheduler default to binding 127.0.0.1, and etcd's client port needs
+      # client certs — open a plain metrics listener instead. All three ports
+      # (10257/10259/2381) are gated to cluster subnets by the host firewall
+      # (control-plane-metrics rule).
+      controllerManager = {
+        extraArgs = { "bind-address" = "0.0.0.0" }
+      }
+      scheduler = {
+        extraArgs = { "bind-address" = "0.0.0.0" }
+      }
       # Pin etcd to the kube-cp VLAN so CP↔CP etcd stays off the mesh + public NICs.
-      etcd = { advertisedSubnets = [local.kube_cp_cidr] }
+      etcd = {
+        advertisedSubnets = [local.kube_cp_cidr]
+        extraArgs         = { "listen-metrics-urls" = "http://0.0.0.0:2381" }
+      }
     }
   })
 

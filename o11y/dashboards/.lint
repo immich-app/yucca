@@ -17,3 +17,14 @@ exclusions:
     reason: refresh-on-time-range-change not set on the datasource variable; revisit
   template-datasource-rule:
     reason: house style is `$datasource` (+ `$logs_datasource` where VictoriaLogs panels exist), not type-prefixed names
+  # Scoped, not blanket: PromQL validation stays on everywhere else. The rule
+  # parses every `table` target as PromQL whenever the dashboard's default
+  # datasource is Prometheus, without looking at the target's own datasource —
+  # so a table fed by VictoriaLogs is a false positive. `logs` panels are
+  # skipped by the rule and need no entry.
+  target-promql-rule:
+    entries:
+      - dashboard: "Yucca: Michael (restic gateway)"
+        panel: Top source addresses (selected range)
+        targetIdx: "0"
+        reason: LogsQL stats query against $logs_datasource, not PromQL

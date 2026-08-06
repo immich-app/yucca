@@ -17,11 +17,14 @@ import (
 	"time"
 
 	"michael/internal/auth"
+	"michael/internal/geoip"
+	"michael/internal/metrics"
 	"michael/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/metric/noop"
 )
 
 var testPrivateKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -331,5 +334,78 @@ func TestAuthFailureLogOutput(t *testing.T) {
 
 	if accessLog["level"] != "info" {
 		t.Errorf("expected level=info, got %v", accessLog["level"])
+	}
+}
+
+// Traffic accounting wraps the request body to count it. With the whole chain
+// mounted — Middleware, TrafficMiddleware, BlobMiddleware, each wrapping the
+// body again — an upload must still reach storage byte for byte.
+func TestUploadBodySurvivesTrafficAccounting(t *testing.T) {
+	m, err := metrics.NewMetrics(noop.NewMeterProvider().Meter("test"))
+	if err != nil {
+		t.Fatalf("NewMetrics: %v", err)
+	}
+
+	const payload = "the whole blob, unabridged"
+	var stored []byte
+	store := &mockStorage{
+		putObjectFn: func(_ context.Context, _, _ string, body io.Reader, _ int64, _ bool, _ string) error {
+			var readErr error
+			stored, readErr = io.ReadAll(body)
+			return readErr
+		},
+	}
+
+	srv := NewServer(store, testPublicKey, m)
+	srv.ResolveClient = func(*http.Request) geoip.Client {
+		return geoip.Client{IP: "203.0.113.7", ASN: "AS64496", Org: "Example Transit"}
+	}
+
+	rec := doRequest(t, srv, http.MethodPost, "/"+testRepository+"/data/"+testBlobName,
+		strings.NewReader(payload), defaultAuth(), nil)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if string(stored) != payload {
+		t.Errorf("stored %q, want %q", stored, payload)
+	}
+}
+
+// The source network has to reach the access log even for requests that never
+// authenticated — that is the only handle on a flood from one network.
+func TestClientNetworkLogOutput(t *testing.T) {
+	buf := captureLogOutput(t)
+
+	srv := newTestServer(&mockStorage{})
+	srv.ResolveClient = func(r *http.Request) geoip.Client {
+		addr := geoip.ClientAddr(r, "X-Forwarded-For")
+		return geoip.Client{IP: addr.String(), ASN: "AS64496", Org: "Example Transit"}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/data", nil)
+	req.Header.Set("Accept", ContentTypeResticV2)
+	// The leftmost entry is client-supplied; only the gateway's own append is
+	// trustworthy, so the log must show the rightmost one.
+	req.Header.Set("X-Forwarded-For", "9.9.9.9, 203.0.113.7")
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+
+	accessLog := findLog(parseLogLines(t, buf), map[string]interface{}{"status": float64(http.StatusUnauthorized)})
+	if accessLog == nil {
+		t.Fatalf("no access log entry for 401 response:\n%s", buf.String())
+	}
+	for field, want := range map[string]string{
+		"client_ip": "203.0.113.7",
+		"asn":       "AS64496",
+		"as_org":    "Example Transit",
+	} {
+		if accessLog[field] != want {
+			t.Errorf("expected access log %s=%s, got %v", field, want, accessLog[field])
+		}
 	}
 }
