@@ -1,8 +1,6 @@
 ---
-# Wildcard TLS for the netops UIs: *.father.fsn.htz.yucca.futo.network via
-# Let's Encrypt DNS-01 (cloudflare, futo.network zone — split-horizon: only the
-# ACME TXT records are public, the A records live in the NetBird zone). Consumed
-# by the future ingress/gateway; issued now so the pipeline is proven.
+# Split-horizon: only the ACME TXT records are public, the A records live in the
+# NetBird zone.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

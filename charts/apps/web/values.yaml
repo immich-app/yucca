@@ -1,8 +1,6 @@
-# 2 replicas + a PDB (templates/pdb.yaml): the user-facing frontend survives
-# single-node drains/reboots.
 replicas: 2
 
-# Generous requests, deliberately huge memory limits (never CPU-limit).
+# No CPU limit on purpose (CFS throttling hurts tail latency).
 resources:
   requests: { cpu: 100m, memory: 256Mi }
   limits: { memory: 4Gi }

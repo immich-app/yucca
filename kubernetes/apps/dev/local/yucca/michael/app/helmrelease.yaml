@@ -21,17 +21,13 @@ spec:
     remediation:
       retries: 3
   values:
-    # DEV-ONLY relaxation: Tilt live_update syncs source into /app inside the
-    # running container, and michael's `air` rebuilds in-place — both need a
-    # writable rootfs (the chart default is readOnlyRootFilesystem: true).
+    # Tilt live_update / air rebuilds need a writable rootfs (chart default is read-only).
     containerSecurityContext:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: false
       capabilities:
         drop: [ALL]
-    # Dev (Tilt) uses the chart defaults; prod overrides the image + secrets.
-    # useDevKeypair renders the well-known dev JWT public key (chart default is
-    # false so real overlays fail loudly instead).
+    # Chart default is false so real overlays fail loudly instead.
     useDevKeypair: true
     image:
       repository: ghcr.io/immich-app/yucca/michael # TODO: confirm prod registry

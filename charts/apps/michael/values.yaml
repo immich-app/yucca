@@ -1,9 +1,7 @@
-# 2 replicas + a PDB (templates/pdb.yaml): michael is the production restic
-# gateway — a single replica turns every node drain into interrupted backups.
-# Stateless S3 proxy, safe to run N-way.
+# A single replica turns every node drain into interrupted backups; stateless, safe N-way.
 replicas: 2
 
-# Generous requests, deliberately huge memory limits (never CPU-limit).
+# No CPU limit on purpose (CFS throttling hurts tail latency).
 resources:
   requests: { cpu: 250m, memory: 256Mi }
   limits: { memory: 4Gi }
@@ -23,8 +21,8 @@ ports:
 service:
   type: ClusterIP
 
-# Michael reads the same topology as the API. Every declared storage cluster
-# is therefore routable before the API can mint a token for it.
+# Same topology as the API: every declared storage cluster is routable before
+# the API can mint a token for it.
 volumes:
   - name: topology
     configMap:
@@ -34,12 +32,8 @@ volumeMounts:
     mountPath: /etc/yucca
     readOnly: true
 
-# OPT-IN dev verification key — the public half of the project's well-known
-# local-dev keypair (see charts/yucca-api/values.yaml + .mise/tasks/*/env).
-# Renders into the Secret ONLY when useDevKeypair is true (dev/local overlay).
-# Default false: with no key provided the Secret doesn't render and the pod
-# fails loudly, instead of silently trusting tokens anyone can mint with the
-# committed private half. Prod provides the real key via ExternalSecret.
+# Public half of the local-dev keypair (.mise/tasks/*/env). Default false: pod fails
+# loudly rather than trusting tokens anyone can mint with the committed private half.
 useDevKeypair: false
 devJwtPublicKey: |
   -----BEGIN PUBLIC KEY-----
@@ -52,14 +46,9 @@ env:
     value: "3010"
   - name: LOG_LEVEL
     value: debug
-  # S3 object store = Rook-Ceph RGW. michael creates one bucket per restic
-  # repository, so it needs a full RGW user (CephObjectStoreUser via
-  # charts/ceph-objectuser), NOT a bucket-scoped ObjectBucketClaim. Rook writes
-  # the user's keys into this namespace as rook-ceph-object-user-<store>-<user>.
-  # Must match the dev topology's cluster code (ConfigMap yucca-topology /
-  # topology.dev.json): yucca-api mints restic tokens with
-  # storageCluster=local-dev,
-  # and michael fails closed on cluster codes it does not front.
+  # One bucket per restic repo → needs a full RGW user, NOT a bucket-scoped OBC.
+  # S3_DEFAULT_CLUSTER must match the topology cluster code — michael fails closed
+  # on cluster codes it does not front.
   - name: S3_DEFAULT_CLUSTER
     value: local-dev
   - name: SITE_CODE
@@ -82,11 +71,9 @@ env:
     value: us-east-1
   - name: S3_FORCE_PATH_STYLE
     value: "true"
-  # Built-in S3 load balancing. Dev has a single RGW behind a ClusterIP, so the
-  # DNS source resolves to one backend (kube-proxy still spreads behind the
-  # VIP) — this exercises the pool/health-probe/per-backend-metrics path in
-  # dev. Plain HTTP to Rook RGW, which accepts any signing host, so no
-  # host-pinning or TLS skip is needed (unlike staging's bare-metal RGW).
+  # Dev's DNS source resolves to the single RGW ClusterIP — still exercises the
+  # pool/health-probe/per-backend-metrics path. Rook RGW accepts any signing host,
+  # so no host-pinning/TLS skip (unlike staging's bare-metal RGW).
   - name: S3_BACKEND_SOURCE
     value: dns
   - name: S3_BACKEND_DNS_HOST

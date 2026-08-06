@@ -19,13 +19,10 @@ spec:
     remediation:
       retries: 2
   values:
-    # DaemonSet that tails every pod's stdout node-side and forwards to o11y's
-    # VictoriaLogs. Replaces the OTLP-push vlagent: captures all pods (not just
-    # apps) and parses their JSON logs into fields.
     fullnameOverride: victoria-logs-collector
 
-    # Ship to o11y's vmauth (native VictoriaLogs ingest -> vlinsert), authed with
-    # the shared bearer token (TF-provisioned `vmagent-remote-write` Secret).
+    # o11y's vmauth (native VictoriaLogs ingest -> vlinsert); bearer token from the
+    # TF-provisioned `vmagent-remote-write` Secret.
     remoteWrite:
       - url: ${VLOGS_REMOTE_URL}
         maxDiskUsagePerURL: 10GB
@@ -49,12 +46,10 @@ spec:
         - kubernetes.pod_namespace
         - kubernetes.container_name
         - kubernetes.pod_labels.app.kubernetes.io/name
-      # Stamp the remote-cluster identity on every log line (cluster/site/env,
-      # same tags as the metrics pipeline).
+      # Same tags as the metrics pipeline.
       extraFields: '{"cluster":"${METRICS_CLUSTER_LABEL}","site":"${METRICS_SITE_LABEL}","env":"${METRICS_ENV_LABEL}"}'
 
-    # All staging nodes are control-plane; tolerate the taint so the DaemonSet
-    # lands everywhere.
+    # All staging nodes are control-plane.
     tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists

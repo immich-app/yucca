@@ -1,29 +1,25 @@
 ---
-# Pull-based image delivery (flux-operator). The input provider watches GHCR
-# for new monorepo build tags (0.0.<run_number>, pushed by CI); the ResourceSet
-# templates the `image-versions` ConfigMap from the latest tag. cluster-apps'
-# postBuild.substituteFrom then feeds ${YUCCA_IMAGE_TAG} into every app
-# HelmRelease. No CI cluster access, no per-deploy git commit — CI only builds+pushes.
+# Pull-based: the ResourceSet templates `image-versions` from the latest GHCR tag and
+# cluster-apps postBuild feeds ${YUCCA_IMAGE_TAG} into every app HR. No CI cluster access
+# and no per-deploy git commit — CI only builds+pushes.
 apiVersion: fluxcd.controlplane.io/v1
 kind: ResourceSetInputProvider
 metadata:
   name: yucca-image
   namespace: flux-system
   annotations:
-    # Poll GHCR every minute (flux-operator reconcile interval; default 10m).
+    # flux-operator default is 10m.
     fluxcd.controlplane.io/reconcileEvery: "1m"
 spec:
   type: OCIArtifactTag
-  # Any app repo works as the version oracle — all 5 ship at the same monorepo
-  # tag (release-please linked-versions).
+  # Any app repo works as the version oracle — all 5 ship at the same monorepo tag
+  # (release-please linked-versions).
   url: oci://ghcr.io/immich-app/yucca/yucca-api
   filter:
-    # CI build track: 0.0.<github.run_number>, monotonically increasing. The
-    # upper bound keeps release-please release tags (>= 0.1.0) off this track —
-    # staging must follow CI builds, not published releases.
+    # The upper bound keeps release-please tags (>= 0.1.0) off: staging follows the
+    # monotonic CI build track 0.0.<run_number>, not published releases.
     semver: ">=0.0.0 <0.1.0"
-  # No secretRef: the app images are public, so the provider reads tags
-  # from GHCR unauthenticated.
+  # No secretRef: the app images are public.
 ---
 apiVersion: fluxcd.controlplane.io/v1
 kind: ResourceSet

@@ -1,9 +1,6 @@
 ---
-# Ingress-only network policies for observability. Inbound surface: OTLP
-# metric pushes from the yucca apps into the vmagent (vmagent-yucca:8429) and
-# the apiserver's calls to the VM-operator admission webhook. The
-# victoria-logs-collector DaemonSet tails logs node-side and only pushes
-# outward — no ingress needed.
+# Ingress-only. victoria-logs-collector tails node-side and only pushes outward, so it
+# needs no ingress rule.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -32,7 +29,7 @@ metadata:
   name: allow-otlp-ingest
   namespace: observability
 spec:
-  # VM-operator-managed VMAgent pods (CR `yucca` via fullnameOverride).
+  # The CR is named `yucca` via fullnameOverride.
   podSelector:
     matchLabels:
       app.kubernetes.io/name: vmagent
@@ -51,10 +48,9 @@ metadata:
   name: allow-vm-operator-webhook
   namespace: observability
 spec:
-  # The apiserver must reach the k8s-stack's VM-operator admission webhook or
-  # every VM CR write starts failing admission. The apiserver is NOT a pod
-  # (hcloud CPs / host network), so it can't be namespace-selected — allow the
-  # webhook port from anywhere.
+  # The apiserver must reach the VM-operator admission webhook or every VM CR write
+  # starts failing admission — and it is NOT a pod (hcloud CPs / host network), so it
+  # can't be namespace-selected.
   podSelector:
     matchLabels:
       app.kubernetes.io/name: victoria-metrics-operator

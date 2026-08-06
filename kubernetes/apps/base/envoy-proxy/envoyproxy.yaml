@@ -1,8 +1,5 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.envoyproxy.io/envoyproxy_v1alpha1.json
-# Bare-metal exposure: the Envoy data-plane Service is a LoadBalancer pinned to
-# the internal ingress VIP via Cilium LB-IPAM (the public IP NATs to it). Unlike
-# o11y's cloud NodePort, this serves :443 directly.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
@@ -20,9 +17,8 @@ spec:
           topologySpreadConstraints:
             - maxSkew: 1
               topologyKey: kubernetes.io/hostname
-              # DoNotSchedule: with ScheduleAnyway both replicas could co-locate
-              # and one node reboot takes all ingress down. Both real clusters
-              # have 3+ schedulable nodes, so this is always satisfiable.
+              # ScheduleAnyway could co-locate both replicas → one node reboot takes all
+              # ingress down. Both real clusters have 3+ nodes, so always satisfiable.
               whenUnsatisfiable: DoNotSchedule
               labelSelector:
                 matchLabels:
@@ -35,12 +31,10 @@ spec:
           value:
             metadata:
               labels:
-                # Pool selection where pools use a serviceSelector (father:
-                # internal → lb-internal, public → lb-public-a); ignored where
-                # the pool matches by IP annotation (staging).
+                # Pool selection where pools use a serviceSelector (father); ignored
+                # where the pool matches by IP annotation (staging).
                 lb: ${INGRESS_LB_LABEL}
               annotations:
-                # Cilium LB-IPAM assigns this specific VIP to the Service.
                 lbipam.cilium.io/ips: "${INGRESS_VIP}"
   telemetry:
     metrics:

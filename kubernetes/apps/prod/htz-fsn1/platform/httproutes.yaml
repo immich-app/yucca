@@ -1,8 +1,6 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# HTTPRoutes (web/api on the app gateway, gw on the dedicated michael gateway —
-# GW_PARENT_GATEWAY selects the parent). CHERRY-PICKED from
-# components/infra/network/httproutes.yaml.
+# CHERRY-PICKED from components/infra/network/httproutes.yaml.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:

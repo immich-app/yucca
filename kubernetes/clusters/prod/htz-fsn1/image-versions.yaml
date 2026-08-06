@@ -1,12 +1,8 @@
 ---
-# RELEASE-STAMPED image pin, the second half of the prod pin (the first is the
-# flux-release GitRepository tag — see flux-release.yaml). Both lines are
-# stamped by release-please in the release PR (extra-files in
-# release-please-config.json), so they can't diverge: merging the release PR
-# promotes manifests, charts, and images together. Roll back by reverting both
-# stamped lines in a normal PR. Kept DISJOINT from cluster-settings (human) +
-# generated (TF). Unlike staging's copy this is git-owned (no ssa annotation,
-# no in-cluster automation rewrites it).
+# Second half of the prod pin; the first is the flux-release tag. Both lines are
+# release-please-stamped in the same release PR so they can't diverge. Keys DISJOINT from
+# cluster-settings (human) + generated (TF). Unlike staging's copy this is git-owned —
+# no ssa annotation, no in-cluster automation rewrites it.
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -21,13 +21,12 @@ spec:
     remediation:
       retries: 3
   values:
-    # DEV footprint: object store only needs the bucket provisioner, not CSI.
+    # Object store only needs the bucket provisioner, not CSI.
     csi:
       enableRbdDriver: false
       enableCephfsDriver: false
     enableDiscoveryDaemon: true
     monitoring:
       enabled: false
-    # The dev cluster's OSD runs on a loopback block device (k3d has no spare
-    # disk); Rook filters loop devices out of discovery unless this is set.
+    # Rook filters loop devices out of discovery unless this is set; the dev OSD is one.
     allowLoopDevices: true

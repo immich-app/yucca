@@ -1,6 +1,6 @@
 replicas: 1
 
-# Generous requests, deliberately huge memory limits (never CPU-limit).
+# No CPU limit on purpose (CFS throttling hurts tail latency).
 resources:
   requests: { cpu: 100m, memory: 512Mi }
   limits: { memory: 4Gi }
@@ -20,8 +20,6 @@ ports:
 service:
   type: ClusterIP
 
-# The GitOps-owned topology document (sites + storage clusters), validated and
-# hot-reloaded on access. Same ConfigMap and mount as yucca-api.
 volumes:
   - name: topology
     configMap:
@@ -31,25 +29,20 @@ volumeMounts:
     mountPath: /etc/yucca
     readOnly: true
 
-# CNPG-managed postgres Cluster name (shares yucca-api's database)
 postgresClusterName: yucca-db
 
-# OIDC provider in-cluster service (must match the issuer mock-oidc advertises)
+# Must match the issuer mock-oidc advertises.
 oidcIssuer: http://yucca-mock-oidc:8092
 oidcRedirectUri: http://localhost:3030/api/auth/oidc/callback
 oidcLogoutRedirectUri: http://localhost:3030
 
-# Static dev secrets (overridden in prod via ExternalSecret)
+# Dev fixtures; prod replaces via ExternalSecret.
 secretData:
   OIDC_ADMIN_CLIENT_ID: "client ID"
   OIDC_ADMIN_CLIENT_SECRET: "client secret"
 
-# OPT-IN dev signing key for CLI session JWTs. The project's well-known
-# local-dev ES256 keypair (the same one committed in .mise/tasks/*/env and the
-# yucca-api chart) renders into the Secret ONLY when useDevKeypair is true —
-# set by the dev/local overlay. Default false: an overlay that forgets to
-# provide a real key gets a loud missing-JWT_PRIVATE_KEY crash instead of
-# silently signing admin tokens with a public fixture.
+# Local-dev ES256 keypair (.mise/tasks/*/env). Default false so a forgetful overlay
+# crashes on missing JWT_PRIVATE_KEY instead of signing admin tokens with a public fixture.
 useDevKeypair: false
 devJwtPrivateKey: |
   -----BEGIN PRIVATE KEY-----
@@ -67,8 +60,6 @@ env:
     value: debug
   - name: OIDC_ADMIN_ALLOW_INSECURE
     value: "true"
-  # Fleet topology — replaces the old single RESTIC_ENDPOINT: the restic
-  # gateway is now a per-site field in this file (rest_url), not one global URL.
   - name: TOPOLOGY_FILE
     value: /etc/yucca/topology.json
   - name: LEGACY_SITE_CODE

@@ -1,8 +1,6 @@
-# junos_exporter — NETCONF/SSH scraper for the fabric switches (interface octets,
-# BGP sessions, environment, optics). Auth: the read-only `netops` Junos login
-# (fabric.tf netops_users) with the key from the `netops-ssh` Secret (created
-# imperatively; never in git). Pods reach the switch vme IPs (10.40.5.x) over the
-# mesh via the talos→resources NetBird policy.
+# Auth: the read-only `netops` Junos login (fabric.tf netops_users) with the key from the
+# `netops-ssh` Secret (created imperatively; never in git). Pods reach the switch vme IPs
+# (10.40.5.x) over the mesh via the talos→resources NetBird policy.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -17,9 +15,8 @@ data:
       - host: 10.40.5.125
         username: netops
         key_file: /ssh/id_ed25519
-    # Feature set is latency-tuned: `routes` (route-table summaries) is DISABLED —
-    # the spine carries a full transit table (>1M routes) and the collector pushed
-    # a scrape past 20s; queues likewise. Interfaces/BGP/optics cover the dashboard.
+    # `routes` and `queues` are DISABLED: the spine carries a full transit table
+    # (>1M routes) and collecting it pushed a scrape past 20s.
     features:
       alarm: true
       environment: true

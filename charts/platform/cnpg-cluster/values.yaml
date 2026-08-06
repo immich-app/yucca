@@ -1,12 +1,9 @@
-# CNPG Cluster. The name is the stable in-cluster identifier; yucca-api and
-# yucca-admin-api derive their POSTGRES_* env from the "<clusterName>-app" secret
-# that CNPG generates, so keep this consistent across dev and prod.
+# Consumers derive POSTGRES_* from the CNPG-generated "<clusterName>-app" secret —
+# keep the name consistent across dev and prod.
 clusterName: yucca-db
 instances: 1
 storage: 1Gi
 storageClass: ""
 database: yucca
 owner: yucca
-# Per-instance postgres pod resources (CNPG spec.resources). Empty = BestEffort
-# (dev default); real clusters set this via the HelmRelease.
 resources: {}

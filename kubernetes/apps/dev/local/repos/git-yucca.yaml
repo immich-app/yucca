@@ -13,7 +13,6 @@ spec:
   # fine-grained PAT) BEFORE applying this tree — see kubernetes/bootstrap/.
   secretRef:
     name: yucca-repo-auth
-  # Flux pulls only the GitOps manifests and the Helm charts they reference.
   ignore: |
     /*
     !/kubernetes

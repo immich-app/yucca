@@ -9,8 +9,7 @@ spec:
   chart:
     spec:
       chart: charts/apps/yucca-admin-api
-      # Repackage on every git revision — the in-repo charts keep a static
-      # version, so the default ChartVersion strategy never ships template edits.
+      # In-repo charts keep a static version; Revision repackages every git rev (ChartVersion would never ship template edits).
       reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
@@ -26,18 +25,14 @@ spec:
   values:
     image:
       repository: ghcr.io/immich-app/yucca/yucca-admin-api
-      # Substituted from the image-versions ConfigMap: staging's is rewritten
-      # in-cluster to the latest CI build (flux-operator ResourceSet), prod's is
-      # release-please-stamped in git. If unset, the empty default lets the
-      # chart fall back to v<appVersion> — the matching release image.
+      # From the image-versions ConfigMap (staging: rewritten in-cluster by the flux-operator
+      # ResourceSet to latest CI build; prod: release-please-stamped in git). Empty default →
+      # chart falls back to v<appVersion>, the matching release image.
       tag: ${YUCCA_IMAGE_TAG:=}
-    # secretData nulled: replaced by the TF-provisioned `yucca-admin-api` Secret
-    # (OIDC_ADMIN_CLIENT_ID/SECRET) via the chart's envFrom: secretRef.
+    # Real values come from the TF-provisioned `yucca-admin-api` Secret (envFrom).
     secretData: null
-    # Not publicly routed — reached over the NetBird overlay at
-    # ${YUCCA_ADMIN_HOST} (per-cluster, from cluster-settings). Admin auth uses
-    # the internal FUTO Zitadel (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in
-    # shared_tf), not the customer ${OIDC_ISSUER}.
+    # NetBird overlay only. Admin auth uses the internal FUTO Zitadel
+    # (FUTO_ZITADEL_OAUTH_*_YUCCA_INTERNAL_TOOLING in shared_tf), not the customer ${OIDC_ISSUER}.
     oidcIssuer: https://auth.internal.futo.org
     oidcRedirectUri: https://${YUCCA_ADMIN_HOST}/api/auth/oidc/callback
     oidcLogoutRedirectUri: https://${YUCCA_ADMIN_HOST}
@@ -48,9 +43,6 @@ spec:
         value: "3030"
       - name: LOG_LEVEL
         value: info
-      # Fleet topology (the yucca-topology ConfigMap the chart mounts at
-      # /etc/yucca) — the per-site rest_url in it replaces the old single
-      # RESTIC_ENDPOINT.
       - name: TOPOLOGY_FILE
         value: /etc/yucca/topology.json
       # Pinned origin of rows created before placement columns existed.

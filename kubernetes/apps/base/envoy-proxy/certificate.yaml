@@ -1,9 +1,6 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cert-manager.io/certificate_v1.json
-# Wildcard + apex for the cluster's APP_DOMAIN — covers web (apex), api.
-# (and admin. when it's exposed; prod's restic host is two labels down and has
-# its own gw-public cert). cert-manager writes app-domain-tls into this
-# namespace (envoy-system) for the Gateway(s) to terminate with.
+# Prod's restic host is two labels down — outside this wildcard; it has its own gw-public cert.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

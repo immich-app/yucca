@@ -1,7 +1,6 @@
 replicas: 1
 
 # Stable in-cluster name, independent of the Helm release name (dev == prod).
-# yucca-api/admin-api reference this as their OIDC issuer host.
 fullnameOverride: yucca-mock-oidc
 
 image:
@@ -9,8 +8,6 @@ image:
   tag: dev
   pullPolicy: IfNotPresent
 
-# Container listens on 80 (see packages/mock-oidc-provider); exposed in-cluster
-# and via port-forward as 8092 to match yucca-api's oidcIssuer.
 ports:
   - name: http
     containerPort: 80
@@ -22,8 +19,7 @@ service:
 env:
   - name: PORT
     value: "80"
-  # iss claim / discovery base — must match yucca-api's OIDC_ISSUER
-  # (http://yucca-mock-oidc:8092) so issued tokens validate in-cluster.
+  # Must match yucca-api's OIDC_ISSUER or issued tokens fail validation in-cluster.
   - name: ISSUER
     value: http://yucca-mock-oidc:8092
   - name: CLIENT_ID
@@ -32,7 +28,6 @@ env:
     value: "client secret"
   - name: DEVICE_CLIENT_ID
     value: "device client ID"
-  # Browser-facing callbacks resolve via the Tilt port-forwards.
   - name: REDIRECT_URI
     value: http://localhost:5173/api/auth/oidc/callback
   - name: POST_LOGOUT_REDIRECT_URI
@@ -42,8 +37,6 @@ env:
   - name: ADMIN_POST_LOGOUT_REDIRECT_URI
     value: http://localhost:3030
 
-# Probe the discovery document — it's what every consumer (yucca-api, the e2e,
-# browsers) needs working.
 startupProbe:
   httpGet: { path: /.well-known/openid-configuration, port: http }
   periodSeconds: 2

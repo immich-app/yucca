@@ -1,28 +1,18 @@
-# Cilium BGP (north-south LoadBalancer VIPs). The worker speakers iBGP-peer the spine's
-# kube-VLAN IRB (10.40.10.1, AS 402421) and advertise LoadBalancer /32s from the two
-# public pools; the spine ECMPs each VIP per-flow across ALL advertising workers
-# (multipath + forwarding-table load-balance, fabric side: tf/.../core-fabric/
-# bgp-nodes.tf) and it's covered by the transit 69.48.224.0/24 advertisement.
-# With Cilium DSR (loadBalancer.mode hybrid, talos cilium values) the gw LB
-# Service runs externalTrafficPolicy: Cluster: every worker advertises the VIP,
-# the spine ECMPs the /32 across all of them, the landing node dispatches to a
-# backend, and the backend's node replies straight to the client from the VIP —
-# no SNAT hop, client IP preserved, ECMP width independent of pod placement.
-# NOTE: applied to the father cluster directly for now; to be adopted into the Flux tree
-# once GitOps is bootstrapped on prod.
+# Workers iBGP-peer the spine kube-VLAN IRB (10.40.10.1, AS 402421) and advertise LB /32s
+# covered by the transit 69.48.224.0/24; fabric side is tf/.../core-fabric/bgp-nodes.tf.
+# DSR (loadBalancer.mode hybrid) + externalTrafficPolicy: Cluster on gw keeps client IPs and
+# makes ECMP width independent of pod placement.
+# NOTE: applied to father directly for now; adopt into the Flux tree once GitOps lands on prod.
 ---
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: lb-public-a
 spec:
-  # Skip the network/broadcast addresses — .0 is dropped by upstream routers.
+  # .0 is dropped by upstream routers.
   allowFirstLastIPs: "No"
-  # Pool-a is the DEFAULT public pool: every LB service EXCEPT ones labeled
-  # lb=internal (NetBird-only VIP from lb-internal, must never draw a public IP)
-  # or lb=public-b (explicit opt-in to pool-b below). Disjoint selectors keep
-  # pool assignment deterministic — with identical selectors Cilium picks
-  # arbitrarily between matching pools.
+  # lb=internal must never draw a public IP. Selectors must stay disjoint — identical
+  # selectors make Cilium pick between pools arbitrarily.
   serviceSelector:
     matchExpressions:
       - { key: lb, operator: NotIn, values: ["internal", "public-b"] }
@@ -35,17 +25,14 @@ metadata:
   name: lb-public-b
 spec:
   allowFirstLastIPs: "No"
-  # Opt-in only: label a Service lb=public-b to draw from this range.
   serviceSelector:
     matchLabels:
       lb: public-b
   blocks:
     - cidr: 69.48.224.64/26
 ---
-# Internal (NetBird-only) VIPs — 10.40.12.0/24 (fabric-addressing lb_internal).
-# Advertised to the spine over the same iBGP (CILIUM-NODES-IN accepts the range)
-# but NOT covered by the transit advertisement, so unreachable from the internet;
-# NetBird peers reach it via the mgmt route (netbird stack lb_internal resource).
+# 10.40.12.0/24 = fabric-addressing lb_internal. Advertised over the same iBGP but NOT in
+# the transit advert, so internet-unreachable; NetBird peers reach it via the mgmt route.
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
@@ -55,17 +42,16 @@ spec:
   serviceSelector:
     matchLabels:
       lb: internal
-  # Ranges, not the full /24: .17 is carved out for lb-gw-internal below
-  # (overlapping pools would mark each other conflicting and disable).
+  # .17 is carved out for lb-gw-internal below — overlapping pools mark each other
+  # conflicting and disable.
   blocks:
     - start: 10.40.12.1
       stop: 10.40.12.16
     - start: 10.40.12.18
       stop: 10.40.12.254
 ---
-# Dedicated internal VIP for the gw (michael) envoy Service: it already draws
-# its public IP from pool-a (lb: public), so a second, label-disjoint pool
-# grants the internal twin (${GW_INT_VIP}) requested via lbipam.cilium.io/ips.
+# The gw envoy Service already draws its public IP from pool-a, so the internal twin
+# (${GW_INT_VIP}) needs a second, label-disjoint pool.
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
@@ -90,7 +76,7 @@ spec:
       service:
         addresses:
           - LoadBalancerIP
-      # Match every service (opt a service out with the label bgp=disabled).
+      # Opt a service out with the label bgp=disabled.
       selector:
         matchExpressions:
           - { key: bgp, operator: NotIn, values: ["disabled"] }
@@ -112,7 +98,7 @@ kind: CiliumBGPClusterConfig
 metadata:
   name: father
 spec:
-  # Workers only — the CPs live on the kube-cp VLAN; the spine's iBGP group peers
+  # Workers only: the CPs live on the kube-cp VLAN, and the spine's iBGP group peers
   # from the kube VLAN (10.40.10.0/24) only.
   nodeSelector:
     matchExpressions:

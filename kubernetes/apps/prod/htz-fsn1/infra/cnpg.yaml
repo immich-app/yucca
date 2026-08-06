@@ -1,7 +1,5 @@
-# CNPG operator on father — CHERRY-PICKED from components/infra/cnpg-system
-# (the full infra component stays off: its storage layer would collide with the
-# prod-owned openebs install, see kustomization.yaml). CRD provider for the
-# yucca-database Cluster CR, so it lives in the cluster-infra layer.
+# Cherry-picked from components/infra/cnpg-system, which stays off wholesale (its storage
+# layer collides with the prod-owned openebs).
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

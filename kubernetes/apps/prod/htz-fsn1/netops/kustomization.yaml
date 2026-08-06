@@ -1,8 +1,6 @@
 ---
-# The father netops stack. The namespace + its Secrets (netops-ssh,
-# grafana-admin, hyperglass-devices) are NOT in git — the talos stack provisions
-# them from 1Password (tf/deployment/prod/htz-fsn1/talos/netops-secrets.tf);
-# Flux only manages the workloads around them.
+# The namespace + its Secrets (netops-ssh, grafana-admin, hyperglass-devices) are NOT in
+# git — the talos stack provisions them from 1Password (talos/netops-secrets.tf).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

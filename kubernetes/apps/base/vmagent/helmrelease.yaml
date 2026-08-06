@@ -17,14 +17,11 @@ spec:
     remediation:
       retries: 2
   values:
-    # `vmagent-<name>` Service => vmagent-yucca (matches VMAGENT_OTLP). The
-    # k8s-stack chart bundles the VM operator, so this one release gives us the
-    # CRDs + operator + a VMAgent. yucca_staging is a METRICS REMOTE CLUSTER:
-    # only the agent runs here; storage/query/alerting live at o11y.
+    # `vmagent-<name>` Service => vmagent-yucca (must match VMAGENT_OTLP). Only the
+    # agent runs here; storage/query/alerting live at o11y.
     fullnameOverride: yucca
     global:
       clusterLabel: cluster
-    # Server-side components are disabled — they run in the o11y cluster.
     vmcluster:
       enabled: false
     vmsingle:
@@ -48,10 +45,8 @@ spec:
     vmagent:
       enabled: true
       spec:
-        # Stamp the remote-cluster identity on EVERY series: cluster (short
-        # cluster name), site, env. Relabel (not externalLabels): externalLabels
-        # only tags scraped data, leaving OTLP-pushed app metrics untagged. This
-        # applies to all data (scraped + ingested) before remote-write.
+        # Relabel, not externalLabels: externalLabels only tags scraped data, leaving
+        # OTLP-pushed app metrics untagged; relabel covers both before remote-write.
         inlineRelabelConfig:
           - target_label: cluster
             replacement: ${METRICS_CLUSTER_LABEL}
@@ -59,9 +54,8 @@ spec:
             replacement: ${METRICS_SITE_LABEL}
           - target_label: env
             replacement: ${METRICS_ENV_LABEL}
-        # Ship to o11y's vmauth (the `remote-clusters` VMUser proxies
-        # /insert/0/.* -> vminsert), authenticating with the shared bearer token
-        # (TF-provisioned `vmagent-remote-write` Secret from o11y_tf_staging).
+        # o11y's vmauth (the `remote-clusters` VMUser proxies /insert/0/.* -> vminsert);
+        # bearer token TF-provisioned from o11y_tf_staging.
         remoteWrite:
           - url: https://vmauth.staging.futostatus.com/insert/0/prometheus/api/v1/write
             bearerTokenSecret:

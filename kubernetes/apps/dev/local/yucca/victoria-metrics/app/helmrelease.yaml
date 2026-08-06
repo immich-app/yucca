@@ -18,7 +18,6 @@ spec:
   values:
     server:
       fullnameOverride: victoria-metrics
-      # Dev-mirror posture (Tilt installs these exact values).
       # TODO(prod): enable + size persistence for the target cluster.
       persistentVolume:
         enabled: false

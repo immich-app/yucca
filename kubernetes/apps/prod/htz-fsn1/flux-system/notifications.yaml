@@ -1,16 +1,7 @@
 ---
-# notification-controller posts each Kustomization/HelmRelease reconcile result
-# as a GitHub commit status (✅/❌ on the deployed commit), so deploy outcome is
-# visible in GitHub without CI reaching into the cluster.
-#
-# The `github-app` Secret currently carries the shared `push-o-matic` GitHub App
-# creds (TF-provisioned from op://shared_tf/GITHUB_APP_IMMICH_PUSH_O_MATIC) — the
-# dedicated least-privilege `yucca-flux` app doesn't exist yet. Swap the 1P refs
-# in the prod stack's env file once it does; nothing here changes.
-#
-# NB: authored ahead of the cluster — the prod Talos/flux stack isn't built yet
-# (tf/deployment/prod/htz-fsn1 is fabric-only), so this activates once that
-# stack provisions the `github-app` Secret and flux syncs clusters/production.
+# `github-app` Secret carries the shared push-o-matic App creds
+# (op://shared_tf/GITHUB_APP_IMMICH_PUSH_O_MATIC) until a least-privilege `yucca-flux`
+# app exists — then swap the 1P refs in the prod stack's env file; nothing here changes.
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Provider
 metadata:
@@ -19,11 +10,8 @@ metadata:
 spec:
   type: github
   address: https://github.com/immich-app/yucca
-  # Prefix the commit-status context with the environment so prod-htz-fsn1 and
-  # staging (which both reconcile this monorepo and post to the same commits)
-  # show as DISTINCT statuses instead of overwriting one another — e.g.
-  # "prod-htz-fsn1/kustomization/yucca-api". Without this, the default context
-  # (kind/name/<provider-uid>) is opaque and clusters can collide.
+  # Env-prefixed: prod and staging post to the same commits, and the default context
+  # (kind/name/<provider-uid>) is opaque and collides.
   commitStatusExpr: "('prod-htz-fsn1/' + event.involvedObject.kind + '/' + event.involvedObject.name).lowerAscii()"
   secretRef:
     name: github-app

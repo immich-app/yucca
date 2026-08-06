@@ -1,8 +1,7 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# Observability agents (vmagent + victoria-logs-collector) — the shared
-# components/infra/observability slice via the prod overlay (../observability),
-# which repoints remote-write at o11y's mesh vmauth over NetBird, unauth.
+# Goes through the prod overlay (../observability), which repoints remote-write at
+# o11y's mesh vmauth over NetBird, unauth.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -19,10 +18,9 @@ spec:
     kind: GitRepository
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
-  # The nested vmagent/victoria-logs-collector Kustomizations are applied by
-  # THIS Kustomization, not cluster-apps, so its substituteFrom patch doesn't
-  # reach them — re-apply it here or their ${vars} ship unsubstituted (the
-  # 17h victoria-logs-collector crash loop on father).
+  # The nested Kustomizations are applied by THIS one, not cluster-apps, so its
+  # substituteFrom patch doesn't reach them — re-apply it here or their ${vars} ship
+  # unsubstituted (the 17h victoria-logs-collector crash loop on father).
   patches:
     - target:
         group: kustomize.toolkit.fluxcd.io

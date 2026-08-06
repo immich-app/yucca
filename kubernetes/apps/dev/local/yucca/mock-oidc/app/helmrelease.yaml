@@ -20,16 +20,13 @@ spec:
     remediation:
       retries: 3
   values:
-    # DEV-ONLY relaxation: Tilt live_update syncs source into /app inside the
-    # running container, and michael's `air` rebuilds in-place — both need a
-    # writable rootfs (the chart default is readOnlyRootFilesystem: true).
+    # Tilt live_update / air rebuilds need a writable rootfs (chart default is read-only).
     containerSecurityContext:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: false
       capabilities:
         drop: [ALL]
-    # DEV ONLY. Prod uses a real IdP (e.g. Zitadel) — drop this release and
-    # point yucca-api/admin-api OIDC_* at the real issuer via ExternalSecrets.
+    # DEV ONLY — prod uses a real IdP; drop this release there.
     fullnameOverride: yucca-mock-oidc
     image:
       repository: ghcr.io/immich-app/yucca/mock-oidc-provider # TODO: confirm prod registry

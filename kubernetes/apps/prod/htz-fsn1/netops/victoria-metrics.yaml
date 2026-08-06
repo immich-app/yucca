@@ -1,11 +1,6 @@
-# VictoriaMetrics single — the SHORT-TERM, HIGH-GRANULARITY tier of the hybrid
-# design: 30d retention at 10s scrape resolution, in-cluster. vmagent remote-writes
-# here today and will FAN OUT to the o11y cluster later (second -remoteWrite.url in
-# vmagent.yaml) — this instance stays the fast local buffer, o11y the long-term one.
-#
-# Storage: a REPLICATED Mayastor volume (openebs-replicated, repl=2 across the
-# workers' second NVMe) — survives a node loss, attaches over NVMe-oF/TCP.
-# Image digest matches the repo's compose pin.
+# The SHORT-TERM tier (30d @ 10s): the fast local buffer, with o11y the long-term tier
+# via vmagent's second -remoteWrite.url. Storage is a repl=2 Mayastor volume so it
+# survives node loss. Image digest matches the compose pin.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

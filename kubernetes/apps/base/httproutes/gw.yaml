@@ -1,8 +1,6 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
-# michael — the restic gateway. Exposed at gw.<domain>. The parent is
-# per-cluster: staging's single app gateway (envoy) vs father's dedicated
-# high-throughput gateway (gw) — see GW_PARENT_GATEWAY in cluster-settings.
+# GW_PARENT_GATEWAY: staging shares the app gateway (envoy); father has a dedicated gw.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

@@ -21,5 +21,4 @@ spec:
   dependsOn:
     - name: yucca-database
     - name: yucca-mock-oidc
-    # ConfigMap mounted at /etc/yucca and parsed at boot.
     - name: yucca-topology

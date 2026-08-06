@@ -17,8 +17,7 @@ spec:
   gateway:
     port: {{ .Values.objectStore.gateway.port }}
     instances: {{ .Values.objectStore.gateway.instances }}
-  # Allow CephObjectStoreUser CRs in the app namespace (so the user's S3 secret
-  # is written there for michael to consume). See charts/ceph-objectuser.
+  # So user CRs live in the app namespace and their S3 secrets are written there.
   allowUsersInNamespaces:
     {{- range .Values.objectStore.allowUsersInNamespaces }}
     - {{ . }}

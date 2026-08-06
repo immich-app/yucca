@@ -1,6 +1,5 @@
-# Reusable Kustomize component. Reserved for cross-app concerns that should be
-# applied uniformly (e.g. common labels, a shared ExternalSecret store ref).
-# Consume from an app's app/kustomization.yaml via:
+# Reserved for cross-app concerns applied uniformly (common labels, a shared
+# ExternalSecret store ref). Consume via:
 #   components: [../../../../components/common]
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component

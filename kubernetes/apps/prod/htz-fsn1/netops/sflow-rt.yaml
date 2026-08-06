@@ -1,9 +1,6 @@
-# sflow-rt — real-time sFlow analytics for the fabric. The spine streams hardware
-# counter samples (5s) + 1:2048 packet samples to the VIP (UDP 6343); sflow-rt's
-# prometheus app exposes per-port rates that vmagent scrapes every 5s — the
-# seconds-granularity bandwidth source (junos_exporter stays for device health).
-# UI (top talkers, flow browser): http://sflow.father.fsn.htz.yucca.futo.network
-# Image: sflow/prometheus = sflow-rt with the prometheus + browse-metrics apps.
+# The spine streams hardware counter samples (5s) + 1:2048 packet samples to the VIP
+# (UDP 6343). This is the seconds-granularity bandwidth source; junos_exporter stays for
+# device health. Image sflow/prometheus = sflow-rt with the prometheus + browse-metrics apps.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -42,10 +39,9 @@ spec:
     - { name: sflow, port: 6343, targetPort: 6343, protocol: UDP }
     - { name: http, port: 80, targetPort: 8008, protocol: TCP }
 ---
-# The raw sFlow COLLECTOR endpoint — this one must stay a LoadBalancer VIP: the
-# spine's `protocols sflow collector 10.40.12.14` (fabric TF) streams UDP here
-# via the Cilium iBGP /32; only the UI moved behind the ingress. Losing this VIP
-# silently kills all 5s bandwidth data (learned 2026-07-06).
+# Must stay a LoadBalancer VIP: the spine's `protocols sflow collector 10.40.12.14`
+# (fabric TF) streams UDP here via the Cilium iBGP /32. Losing this VIP silently kills
+# all 5s bandwidth data (learned 2026-07-06).
 apiVersion: v1
 kind: Service
 metadata:

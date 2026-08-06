@@ -26,11 +26,9 @@ spec:
       hostAliases:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      # Restricted-PSS-compliant defaults (the yucca namespace enforces
-      # `restricted`). uid/gid 1000 matches every service Dockerfile (USER
-      # node/michael, both 1000) — set explicitly because kubelet can't verify
-      # runAsNonRoot against a NAMED image user. Override wholesale via
-      # .Values.podSecurityContext when a chart needs something else.
+      # Restricted-PSS defaults (yucca ns enforces `restricted`). uid/gid 1000 matches
+      # every service Dockerfile; explicit because kubelet can't verify runAsNonRoot
+      # against a NAMED image user. Override wholesale via .Values.podSecurityContext.
       securityContext:
         {{- if .Values.podSecurityContext }}
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -91,9 +89,7 @@ spec:
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
-          # /tmp is always a writable emptyDir: the root filesystem is
-          # read-only by default (securityContext above) and the Node runtimes
-          # expect a writable tmpdir.
+          # /tmp always writable: rootfs is read-only by default and Node runtimes need a tmpdir.
           volumeMounts:
             - name: tmp
               mountPath: /tmp

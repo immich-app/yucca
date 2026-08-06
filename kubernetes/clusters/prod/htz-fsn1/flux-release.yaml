@@ -1,16 +1,10 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/source.toolkit.fluxcd.io/gitrepository_v1.json
 ---
-# RELEASE-PINNED source for prod's app tree + charts, one half of the prod pin
-# (the other is the image tag in image-versions.yaml). The root flux-system
-# GitRepository stays on main and syncs only this cluster entrypoint;
-# cluster-infra/cluster-apps and every chart build from THIS repository at the
-# tag below.
-#
-# Both pin lines are stamped by release-please in the release PR itself
-# (extra-files in release-please-config.json), so merging the release PR IS
-# the prod promotion — no promote workflow, no bot push, and the two halves
-# can't diverge. Roll back by reverting both stamped lines in a normal PR
-# (the old tag's images still exist in GHCR).
+# One half of the prod pin; the other is the image tag in image-versions.yaml. Root
+# flux-system stays on main and syncs only the cluster entrypoint. Both pin lines are
+# release-please-stamped in the release PR (extra-files in release-please-config.json),
+# so merging it IS the prod promotion and the halves can't diverge. Roll back by
+# reverting both stamped lines — old images persist in GHCR.
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:

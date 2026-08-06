@@ -13,7 +13,6 @@ metadata:
   name: envoy-system
   annotations:
     kustomize.toolkit.fluxcd.io/prune: disabled
-# NB: the `netbird` namespace is NOT declared here — it's created by the
-# staging/talos TF stack (secrets.tf), which bootstraps the netbird-mgmt-api-key
-# Secret into it before Flux reconciles. Declaring it here too would race TF for
-# ownership and 409 on apply, so TF is the sole creator.
+# The `netbird` ns is NOT declared here — the staging/talos TF stack (secrets.tf) creates
+# it and bootstraps the netbird-mgmt-api-key Secret before Flux reconciles; declaring it
+# here too would race TF for ownership and 409.

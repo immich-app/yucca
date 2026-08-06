@@ -1,17 +1,6 @@
 ---
-# The fleet topology, GitOps-owned: which sites exist, the restic gateway that
-# fronts each one, and the Ceph clusters behind it. yucca-api, yucca-admin-api,
-# yucca-metrics-worker and michael all mount this at /etc/yucca, validate it at
-# boot, and are rolled on change by their charts' topology checksum annotation.
-#
-# Today every cluster is single-site: the site IS this region, and its one
-# storage cluster is the active one. A second Ceph cluster in a region means a
-# second `clusters` entry (active: false until it takes writes); a second REGION
-# means a second `sites` entry, which is a cross-cluster edit and doesn't belong
-# in a per-cluster substitution — expect this file to grow a real template then.
-#
-# NB: the ${VAR} tokens are Flux postBuild substitutions, not shell/JSON — the
-# literal JSON braces around them pass through untouched.
+# Consumers validate at boot and roll on change via the charts' topology checksum annotation.
+# ${VAR} tokens are Flux postBuild substitutions; the JSON braces pass through untouched.
 apiVersion: v1
 kind: ConfigMap
 metadata:

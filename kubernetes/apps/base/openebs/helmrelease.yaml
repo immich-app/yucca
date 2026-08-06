@@ -23,17 +23,11 @@ spec:
     remediation:
       remediateLastFailure: true
       retries: 2
-  # OpenEBS LocalPV hostpath + (optionally) Mayastor replicated block storage.
-  # Shared by every cluster via postBuild substitutions (cluster-settings):
-  #   OPENEBS_MAYASTOR_ENABLED        default false (staging: PG replicates at the
-  #                                   app layer; father: true — VictoriaMetrics
-  #                                   rides repl=2 volumes on the DiskPools)
-  #   OPENEBS_LOCALPV_BASEPATH        default /var/mnt/hostpath (a UserVolume)
-  #   OPENEBS_HOSTPATH_CLASS_ENABLED  default false (staging uses per-disk SCs in
-  #                                   its overlay; father uses the chart class)
-  #   OPENEBS_MAYASTOR_ETCD_BASEPATH  mayastor's own etcd (localpv) — only read
-  #                                   when mayastor is enabled
-  # lvm/zfs/loki/alloy/minio stay off everywhere.
+  # Per-cluster via cluster-settings:
+  #   OPENEBS_MAYASTOR_ENABLED       default false (staging: PG replicates app-side;
+  #                                  father true — VictoriaMetrics on repl=2 DiskPools)
+  #   OPENEBS_LOCALPV_BASEPATH       default /var/mnt/hostpath (a UserVolume)
+  #   OPENEBS_HOSTPATH_CLASS_ENABLED default false (staging: per-disk SCs in overlay)
   values:
     preUpgradeHook:
       enabled: false
@@ -43,16 +37,10 @@ spec:
       localpv:
         image:
           registry: quay.io/
-        # Fallback basePath for the chart's default class. We disable that class
-        # below (the 240GB BOSS install disk holds no PVs), so this is unused —
-        # all PVs land on the NVMe StorageClasses (storageclass-spare-disk*.yaml),
-        # which set their own BasePath. Kept pointing at a UserVolume mount to
-        # avoid any drift onto EPHEMERAL.
+        # Kept on a UserVolume mount to avoid drift onto EPHEMERAL.
         basePath: ${OPENEBS_LOCALPV_BASEPATH:=/var/mnt/hostpath}
-      # No openebs-system-disk default class: unlike o11y's large system disks,
-      # these nodes install to a small 240GB DELLBOSS. Persistent storage lives
-      # on the two 1.6TB NVMes via openebs-spare-disk / -2 (one of which is the
-      # cluster-default class). Disabling this stops PVs landing on the BOSS.
+      # Disabled so PVs never land on the small 240GB DELLBOSS install disk;
+      # storage lives on the two 1.6TB NVMes via openebs-spare-disk / -2.
       hostpathClass:
         enabled: ${OPENEBS_HOSTPATH_CLASS_ENABLED:=false}
       helperPod:

@@ -6,9 +6,8 @@ metadata:
   name: michael
   namespace: flux-system
 spec:
-  # michael load-balances across the RGW daemons itself now (no HAProxy hop).
   dependsOn:
-    # Mounted at /etc/yucca — it must exist before the pods boot.
+    # Must exist before the pods boot — they parse it at startup.
     - name: yucca-topology
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2

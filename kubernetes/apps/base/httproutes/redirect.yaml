@@ -1,7 +1,6 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
-# Catch-all on the :80 listener: permanent-redirect everything to HTTPS. No
-# hostnames filter — any plain-http hit on the VIP gets the 301.
+# No hostnames filter: intentional catch-all.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

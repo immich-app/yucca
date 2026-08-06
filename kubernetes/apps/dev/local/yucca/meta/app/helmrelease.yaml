@@ -20,6 +20,4 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
-  # No values: stock upstream nginx (nothing Tilt builds, so none of the
-  # dev rootfs/securityContext relaxations the other releases need), and the
-  # chart's default wellKnown.meta_url already points at the dev port-forward.
+  # Nothing Tilt builds here, so none of the dev rootfs relaxations the other releases need.

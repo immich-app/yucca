@@ -6,8 +6,8 @@ metadata:
   name: yucca-meta
   namespace: flux-system
 spec:
-  # No dependsOn: the pointer is a static file, and it should come up (and stay
-  # up) even when the API behind the URL it advertises is down.
+  # No dependsOn, deliberately: it must come up and stay up even when the API behind
+  # the URL it advertises is down.
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

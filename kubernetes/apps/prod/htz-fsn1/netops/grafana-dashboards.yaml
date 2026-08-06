@@ -1,5 +1,4 @@
-# Provisioned Grafana dashboards (netops). GENERATED-then-committed — edit the
-# dashboard in Grafana, export JSON, and paste back here (or regenerate).
+# GENERATED-then-committed: edit in Grafana, export JSON, paste back here.
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,19 +1,11 @@
-# The discovery pointer: a static nginx serving exactly
-# /.well-known/yucca.json — the one URL a client can hard-code. The JSON names
-# the API root, and yucca-api's /meta serves everything else (sites, rest_url,
-# config). Deliberately a separate pod from yucca-api: the pointer must stay
-# reachable on a stable vendor host (meta.futo.cloud) independent of whichever
-# domain the API currently lives on.
+# Deliberately separate from yucca-api so the stable vendor host (meta.futo.cloud)
+# outlives the API's domain.
 
-# 2 replicas + a PDB (templates/pdb.yaml): the pointer is the first thing every
-# client touches, and it costs ~nothing to run two.
 replicas: 2
 
-# Tiny: nginx serving one 60-byte file. The limit looks oversized for that
-# because nginx's stock `worker_processes auto` forks one worker per HOST cpu
-# (~48 on the father workers, measured ~0.6MiB private each) — the image's
-# autotune entrypoint can't help, it bails on a read-only rootfs since it
-# rewrites /etc/nginx/nginx.conf. Headroom is cheaper than a custom nginx.conf.
+# Limit looks oversized because `worker_processes auto` forks per HOST cpu (~48 on
+# father, ~0.6MiB each); the image's autotune entrypoint bails on read-only rootfs
+# (rewrites nginx.conf). Headroom is cheaper than a custom nginx.conf.
 resources:
   requests: { cpu: 10m, memory: 32Mi }
   limits: { memory: 256Mi }
@@ -21,9 +13,7 @@ resources:
 # Stable in-cluster name, independent of the Helm release name (dev == prod).
 fullnameOverride: yucca-meta
 
-# Unprivileged upstream nginx: listens on 8080 as uid 101 and relocates every
-# runtime path (pid, *_temp) under /tmp, so it runs unchanged with the chart's
-# read-only rootfs. Pinned to the 1.29 minor — patch releases roll in on pull.
+# Image runs 8080 as uid 101, runtime paths under /tmp → works with read-only rootfs.
 image:
   repository: docker.io/nginxinc/nginx-unprivileged
   tag: 1.29-alpine
@@ -45,10 +35,7 @@ podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
 
-# Serialized verbatim (as JSON) into the ConfigMap that becomes
-# /.well-known/yucca.json. The real clusters override meta_url from the
-# HelmRelease (https://${APP_DOMAIN}/api/meta); this default points at the dev
-# port-forward, which is where a browser-side client reaches yucca-api in k3d.
+# Default = dev port-forward; real clusters override meta_url from the HelmRelease.
 wellKnown:
   meta_url: http://localhost:3020/api/meta
 
@@ -58,9 +45,7 @@ volumes:
   - name: well-known
     configMap:
       name: yucca-meta
-  # nginx-unprivileged keeps its temp paths in /tmp (already an emptyDir from
-  # the library chart), but the image still creates /var/cache/nginx and the
-  # rootfs is read-only. A tmpfs here keeps startup quiet.
+  # Image still creates /var/cache/nginx on the read-only rootfs; tmpfs keeps startup quiet.
   - name: cache
     emptyDir: {}
 

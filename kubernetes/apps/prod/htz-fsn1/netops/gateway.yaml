@@ -1,8 +1,5 @@
 ---
-# The netops Gateway — terminates *.father.fsn.htz.yucca.futo.network with the
-# cert-manager wildcard (certificate.yaml) on the SAME VIP the netops DNS records
-# point at. Its Envoy data plane deploys into THIS namespace (operator runs in
-# GatewayNamespace mode). Per-host routing: httproutes.yaml.
+# Its Envoy data plane deploys into THIS namespace (operator runs in GatewayNamespace mode).
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:

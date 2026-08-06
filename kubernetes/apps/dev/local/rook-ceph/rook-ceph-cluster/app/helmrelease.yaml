@@ -19,6 +19,5 @@ spec:
   upgrade:
     remediation:
       retries: 3
-  # Dev defaults (single-node, single-replica, loopback OSD) live in the chart's
-  # values.yaml. This is DEV ONLY — prod object storage is a separate Ceph.
+  # DEV ONLY — prod object storage is a separate, bare-metal Ceph.
   values: {}

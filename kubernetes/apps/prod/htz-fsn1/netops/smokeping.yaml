@@ -1,8 +1,5 @@
-# smokeping — latency/loss history for the paths that matter: the fabric switches,
-# the spine gateway, the workers, the mgmt hosts, the transit next-hop, and the
-# internet. Internal VIP: http://smokeping.father.fsn.htz.yucca.futo.network
-# (linuxserver image seeds /config from /defaults on first boot — our Targets is
-# mounted over /defaults so a fresh /config always picks it up.)
+# The linuxserver image seeds /config from /defaults on first boot, so our Targets is
+# mounted over /defaults for a fresh /config to pick it up.
 apiVersion: v1
 kind: ConfigMap
 metadata:

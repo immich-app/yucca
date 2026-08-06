@@ -1,8 +1,7 @@
-# Single replica ON PURPOSE: a cron-style meter worker — two replicas would
-# double-count usage.
+# Single replica ON PURPOSE: two replicas would double-count usage.
 replicas: 1
 
-# Generous requests, deliberately huge memory limits (never CPU-limit).
+# No CPU limit on purpose (CFS throttling hurts tail latency).
 resources:
   requests: { cpu: 100m, memory: 512Mi }
   limits: { memory: 4Gi }
@@ -19,17 +18,11 @@ ports:
   - name: http
     containerPort: 3040
 
-# CNPG-managed postgres Cluster name (shares yucca-api's database)
 postgresClusterName: yucca-db
 
-# RGW admin endpoints come from the hot-reloaded topology file (ConfigMap
-# yucca-topology, rgw_admin_endpoint per storage cluster). The object-user Secret holds the
-# fallback AccessKey/SecretKey pair — a dedicated RGW user (charts/ceph-objectuser
-# via the yucca-metrics-object-user release) with admin read caps, so the worker
-# can pull per-bucket stats from the RGW admin API — michael is a plain S3 user
-# without those caps. Per-cluster creds override via
-# RADOS_ACCESS_KEY_ID_<CODE>/RADOS_SECRET_ACCESS_KEY_<CODE> keys in that same
-# Secret (envFrom exposes them under those exact names).
+# Fallback AccessKey/SecretKey of a dedicated RGW user with admin read caps for per-bucket
+# stats (michael's plain S3 user lacks them). Per-cluster overrides:
+# RADOS_ACCESS_KEY_ID_<CODE>/RADOS_SECRET_ACCESS_KEY_<CODE> in the same Secret (envFrom).
 radosSecretName: rook-ceph-object-user-yucca-metrics
 
 volumes:
@@ -41,8 +34,7 @@ volumeMounts:
     mountPath: /etc/yucca
     readOnly: true
 
-# Static dev secrets (overridden in dev via the yucca-dev-env extraEnvFrom
-# layer, in prod via ExternalSecret)
+# Dev fixtures; overridden via the yucca-dev-env extraEnvFrom layer (dev) / ExternalSecret (prod).
 secretData:
   POLAR_ACCESS_TOKEN: "polar access token"
   POLAR_WEBHOOK_SECRET: "polar webhook secret"

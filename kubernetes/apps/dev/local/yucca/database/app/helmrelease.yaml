@@ -19,6 +19,5 @@ spec:
   upgrade:
     remediation:
       retries: 3
-  # Dev-mirror posture: chart defaults (1 instance, 1Gi) keep this tree 1:1
-  # with the Tilt deployment. TODO(prod): a prod overlay raises instances/storage.
+  # TODO(prod): a prod overlay raises instances/storage.
   values: {}

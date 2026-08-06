@@ -8,7 +8,7 @@ metadata:
 spec:
   dependsOn:
     - name: yucca-database
-    # Mounted at /etc/yucca — it must exist before the pods boot.
+    # Must exist before the pods boot — they parse it at startup.
     - name: yucca-topology
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2

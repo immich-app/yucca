@@ -1,11 +1,7 @@
-# Mayastor DiskPools — one per worker on the r-mayastor RAW partition (the 50/50
-# split of the data NVMe; the other half is the u-localpv xfs volume for CNPG's
-# node-local PG storage — see talos.tf worker_volumes_patch). by-partlabel is
-# node-local and immune to nvme0/nvme1 renumbering (observed swapping across
-# boots). These back the `openebs-replicated` StorageClass (repl=2).
-# OpenEBS itself is installed by Helm (see kustomization.yaml in this dir for the
-# Flux HelmRelease); prereqs (hugepages, nvme_tcp, engine label) are Talos machine
-# config (talos.tf worker_mayastor_patch).
+# r-mayastor RAW partition = half the data NVMe; other half is u-localpv xfs for CNPG
+# (talos.tf worker_volumes_patch). by-partlabel is immune to nvme0/nvme1 renumbering,
+# observed swapping across boots. Prereqs (hugepages, nvme_tcp, engine label) are Talos
+# machine config (talos.tf worker_mayastor_patch).
 apiVersion: openebs.io/v1beta3
 kind: DiskPool
 metadata:
@@ -33,10 +29,8 @@ spec:
   node: yucca-htz-fsn-father-k8s-dianna
   disks: ["aio:///dev/disk/by-partlabel/r-mayastor"]
 ---
-# Replicated volumes (2 copies on distinct workers, NVMe-oF/TCP attach). For
-# VictoriaMetrics and anything that should survive a node loss. PG (CNPG) will use
-# LOCAL volumes instead (openebs-hostpath) — replication happens at the Postgres
-# layer there, not the block layer.
+# For workloads that must survive node loss. CNPG deliberately uses LOCAL openebs-hostpath
+# instead — replication at the Postgres layer, not block.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

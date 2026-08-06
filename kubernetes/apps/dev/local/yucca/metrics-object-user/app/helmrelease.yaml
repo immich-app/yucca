@@ -20,9 +20,7 @@ spec:
     remediation:
       retries: 3
   values:
-    # Dedicated RGW user for the metrics worker. michael is a plain S3 user with
-    # no admin caps, so it can't read per-bucket stats via the RGW admin API.
-    # Rook writes this user's keys to rook-ceph-object-user-yucca-metrics.
+    # michael's plain S3 user has no admin caps, so it can't read per-bucket stats.
     userName: metrics
     capabilities:
       bucket: read

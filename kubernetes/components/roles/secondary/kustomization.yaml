@@ -1,30 +1,16 @@
-# SECONDARY region app set. A partition's secondary region runs only the
-# storage-region-local services that sit next to *that* region's Ceph/S3 —
-# michael (restic gateway) and the metrics-worker. It runs NO api/admin/db/web:
-# those stay in the primary region (product invariant).
-#
-# Selected compile-time by a cluster overlay via:
-#   components: [../../../components/infra, ../../../components/roles/secondary]
-# kept in lockstep with the runtime CLUSTER_ROLE=secondary from the generated
-# cluster-settings fragment.
-#
-# No partition spans two regions yet, so no overlay currently selects this role —
-# it is built ahead of need (per plan §2.2). The region-local Ceph object-users
-# (charts/platform/ceph-objectuser) join here once per-region in-cluster Rook
-# lands; today both real clusters reach an EXTERNAL Ceph (sietch) over S3, so no
-# CephObjectStoreUser CR is reconciled on-cluster and none exists under
-# apps/base yet.
+# NO api/admin/db/web here — those stay in the primary region (product invariant).
+# Selected compile-time by an overlay, in lockstep with runtime CLUSTER_ROLE=secondary.
+# No overlay selects this yet: no partition spans two regions, and both real clusters
+# reach EXTERNAL Ceph (sietch) over S3, so there is no CephObjectStoreUser CR under
+# apps/base to make region-local.
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
   - ../../apps/namespace.yaml
   - ../../apps/topology.yaml
-  # Policies referencing apps a secondary doesn't run are inert (selectors
-  # match nothing); the default-deny + michael/db rules are what matter here.
+  # Policies referencing apps a secondary doesn't run are inert — selectors match nothing.
   - ../../apps/networkpolicies.yaml
   - ../../apps/michael.yaml
-  # NOT yucca-metrics-worker: its Kustomization dependsOn yucca-database, which
-  # secondary never deploys (it would wedge permanently on "dependency not
-  # found"), and the chart hard-wires POSTGRES_* from the absent yucca-db-app
-  # Secret. Re-add once the secondary metrics design exists (region-local
-  # metering without the primary DB).
+  # NOT yucca-metrics-worker: it dependsOn yucca-database (never deployed on a secondary
+  # → permanent "dependency not found") and hard-wires POSTGRES_* from the absent
+  # yucca-db-app Secret.

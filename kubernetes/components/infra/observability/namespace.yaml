@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: observability
-  # victoria-logs-collector is a DaemonSet that hostPath-mounts /var/log to tail
-  # pod logs — forbidden under Talos' default `baseline` PSS, so enforce privileged.
+  # victoria-logs-collector hostPath-mounts /var/log, forbidden under Talos' default
+  # `baseline` PSS.
   labels:
     pod-security.kubernetes.io/enforce: privileged

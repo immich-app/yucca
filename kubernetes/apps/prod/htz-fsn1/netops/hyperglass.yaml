@@ -1,9 +1,5 @@
-# hyperglass — looking glass for the fabric (BGP route lookups, ping, traceroute
-# from the switches' vantage point). Internal VIP:
-# http://lg.father.fsn.htz.yucca.futo.network
-#
-# devices.yaml is NOT here: it embeds the netops password (netmiko can't key-auth
-# through hyperglass config), so it's a Secret the talos stack renders from
+# devices.yaml is a Secret, NOT here: it embeds the netops password (netmiko can't
+# key-auth through hyperglass config). The talos stack renders it from
 # op://yucca_tf_prod/NETOPS_FABRIC_PASSWORD (netops-secrets.tf).
 apiVersion: v1
 kind: ConfigMap
@@ -32,8 +28,7 @@ spec:
       containers:
         - name: hyperglass
           image: ghcr.io/thatmattlove/hyperglass:latest@sha256:7e7515bf6e27d0980f82516b62b4d0fcebdddb81140e17ee1be2f29f8cc929ab
-          # Without --workers it forks one per CPU — 192 on the EPYC workers — and
-          # instantly OOMs. The startup UI build also needs headroom (2Gi limit).
+          # Without --workers it forks one per CPU — 192 on the EPYC workers — and OOMs.
           command: ["hyperglass", "start", "--workers", "4"]
           env:
             - { name: HYPERGLASS_APP_PATH, value: /etc/hyperglass }
@@ -46,9 +41,8 @@ spec:
             - { name: devices, mountPath: /etc/hyperglass/devices.yaml, subPath: devices.yaml }
           resources:
             requests: { cpu: 200m, memory: 1Gi }
-            # The one-shot startup UI build (Next.js) keys its worker count off the
-            # node's 192 hardware threads and peaks absurdly high; the limit is
-            # build headroom only — steady-state is <1Gi on a 128GB idle worker.
+            # Sized for the one-shot startup UI build, which keys its worker count off the
+            # node's 192 threads; steady-state is <1Gi.
             limits: { memory: 16Gi }
       volumes:
         - name: config
@@ -66,7 +60,7 @@ spec:
   ports:
     - { name: http, port: 80, targetPort: 8001 }
 ---
-# hyperglass's cache/queue backend (it dials `redis:6379` by default).
+# hyperglass dials `redis:6379` by default — hence the name.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

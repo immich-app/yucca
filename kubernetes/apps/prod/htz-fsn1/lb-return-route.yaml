@@ -1,14 +1,7 @@
-# LoadBalancer return-path routing (workers).
-#
-# Inbound to a LoadBalancer VIP arrives via the fabric (BGP → transit), but the workers'
-# default route is their public eth0. A reply sourced from a VIP (69.48.224.0/24) sent out
-# eth0 is dropped by Hetzner Robot as spoofed (the VIP isn't the NIC's IP). So we source-
-# route VIP-sourced traffic back through the fabric core (the spine IRB, 10.40.10.1), where
-# 69.48.224.0/24 is a valid source — making the path symmetric. General egress stays on eth0.
-#
-# Talos has no policy-routing knob in machineconfig, so this runs as a privileged, self-
-# healing DaemonSet on the workers. When GitOps lands on prod, adopt it into the Flux tree
-# (and template the CIDR/gateway from cluster-settings instead of hardcoding).
+# VIP traffic arrives via the fabric, but workers default-route out public eth0, where
+# Hetzner Robot drops VIP-sourced (69.48.224.0/24) replies as spoofed. Source-route them
+# back via the spine IRB (10.40.10.1), where the range is a valid source; general egress
+# stays on eth0. A DaemonSet because Talos has no policy-routing knob in machineconfig.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:

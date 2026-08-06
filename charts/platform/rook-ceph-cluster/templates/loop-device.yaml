@@ -1,9 +1,5 @@
 {{- if .Values.loopDevice.enabled }}
-# DEV ONLY. k3d nodes have no spare block device, and Rook OSDs need raw block
-# storage (k3d's local-path provisioner is filesystem-only). This privileged
-# DaemonSet creates a sparse image on the node and losetup-attaches it to a
-# FIXED loop device (storage.device / loopDevice.device) that the CephCluster
-# names explicitly. The container stays alive so the attachment persists.
+# DEV ONLY. Rook OSDs need raw block storage and k3d has none (local-path is filesystem-only).
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -34,12 +30,10 @@ spec:
               DEV="{{ .Values.loopDevice.device }}"
               mkdir -p "$(dirname "$IMG")"
               [ -f "$IMG" ] || truncate -s {{ .Values.loopDevice.sizeGiB }}G "$IMG"
-              # Attach the image to the FIXED device the CephCluster references.
-              # Loop attachments live in the HOST kernel (shared by every k3d
-              # node), so they survive cluster re-creation: after a k3d:reset,
-              # DEV is typically still bound to the PREVIOUS cluster's now-
-              # deleted image — which also makes Rook skip it (stale bluestore
-              # signature). Clean all stale state before attaching:
+              # Loop attachments live in the HOST kernel (shared by all k3d nodes) and
+              # survive cluster re-creation: after k3d:reset DEV is typically bound to the
+              # previous cluster's deleted image (stale bluestore signature — Rook skips
+              # it). Clean stale state before attaching:
               if losetup "$DEV" >/dev/null 2>&1; then
                 back="$(losetup --noheadings --output BACK-FILE "$DEV" 2>/dev/null | xargs || true)"
                 # detach unless it's a live attachment of exactly our image

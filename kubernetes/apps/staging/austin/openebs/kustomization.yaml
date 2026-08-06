@@ -1,7 +1,6 @@
 ---
-# Staging's per-spare-NVMe StorageClasses — CLUSTER-specific (disk layout), so they
-# live in this overlay, not apps/base/openebs (father uses the chart's hostpath
-# class + Mayastor instead; see the OPENEBS_* cluster-settings).
+# In this overlay, not apps/base/openebs, because the disk layout is cluster-specific:
+# father uses the chart's hostpath class + Mayastor instead.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

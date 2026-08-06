@@ -1,8 +1,5 @@
-# Envoy Gateway on father — CHERRY-PICKED from components/infra/network (same
-# caveat as cert-manager.yaml: REMOVE this file when components/infra is enabled,
-# or the Kustomization names collide). Deploys the operator + the APP gateway
-# (pre-staged for the yucca launch: VIP ${INGRESS_VIP}, cert for
-# ${APP_DOMAIN}); the NETOPS gateway lives in netops/gateway.yaml.
+# Cherry-picked from components/infra/network; REMOVE when that component is enabled,
+# else Kustomization names collide. The NETOPS gateway lives in netops/gateway.yaml.
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -50,22 +47,12 @@ spec:
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
   targetNamespace: envoy-system
-  # PROD-ONLY: the discovery pointer lives on ${META_HOST} = meta.futo.cloud,
-  # which is outside the *.${APP_DOMAIN} wildcard the base cert covers (staging's
-  # META_HOST is under its app domain, so staging needs none of this).
-  #
-  # Deliberately an extra SAN on the EXISTING cert rather than a second
-  # certificateRef on the gateway listener: Gateway API makes a listener whose
-  # certificateRef can't be resolved Programmed=False, so a new ref would take
-  # the whole https listener (web + api) down for as long as it takes
-  # cert-manager to issue — an outage designed into a routine merge. Editing
-  # dnsNames instead just triggers a reissue; the old Secret keeps serving
-  # throughout and the listener never changes.
-  #
-  # NB: kustomize applies this patch, THEN postBuild substitutes — which is why
-  # a ${VAR} in the patch value resolves. Coupling accepted: a meta.futo.cloud
-  # DNS-01 failure now blocks renewal of the app cert too, but both names sit in
-  # the same Cloudflare zone behind the same token, so they fail together anyway.
+  # PROD-ONLY: ${META_HOST} is outside the *.${APP_DOMAIN} wildcard (staging's sits under
+  # its app domain). Extra SAN on the EXISTING cert, NOT a second certificateRef: an
+  # unresolvable ref makes the listener Programmed=False, taking web + api down until
+  # cert-manager issues; editing dnsNames just reissues while the old Secret keeps serving.
+  # kustomize patches THEN postBuild substitutes — that's why ${VAR} resolves here.
+  # Coupling accepted: both names share the same Cloudflare zone/token and fail together.
   patches:
     - target:
         group: cert-manager.io

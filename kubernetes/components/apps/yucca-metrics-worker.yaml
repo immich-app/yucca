@@ -6,9 +6,7 @@ metadata:
   name: yucca-metrics-worker
   namespace: flux-system
 spec:
-  # Shares yucca-api's database; needs the CNPG app Secret to exist. The
-  # topology ConfigMap (rgw_admin_endpoint per storage cluster) is mounted at
-  # /etc/yucca, so it has to land first too.
+  # Needs the CNPG app Secret and the topology ConfigMap to exist before it boots.
   dependsOn:
     - name: yucca-database
     - name: yucca-topology

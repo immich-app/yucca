@@ -1,10 +1,7 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/gateway_v1.json
-# The michael (restic) Gateway: HTTPS-only, scoped to ${GW_HOST}. Shares the
-# `envoy` GatewayClass but attaches its own EnvoyProxy via
-# infrastructure.parametersRef (Envoy Gateway creates one proxy fleet per
-# Gateway). TLS terminates with the gw-public cert (certificate.yaml — the
-# *.APP_DOMAIN wildcard doesn't reach rest.htz-fsn1.); no :80 listener —
-# restic clients speak HTTPS only.
+# Shares the `envoy` GatewayClass but attaches its own EnvoyProxy via
+# infrastructure.parametersRef — one proxy fleet per Gateway. No :80 listener:
+# restic speaks HTTPS only.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -29,8 +26,7 @@ spec:
         certificateRefs:
           - kind: Secret
             name: gw-public-tls
-    # Internal twin (${GW_INT_VIP}): same envoy fleet, NetBird-zone hostname,
-    # own DNS-01 cert (gw-internal.yaml at the overlay root).
+    # Internal twin: same envoy fleet, own DNS-01 cert (gw-internal.yaml at the overlay root).
     - name: https-internal
       protocol: HTTPS
       port: 443

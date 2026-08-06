@@ -1,16 +1,11 @@
-# 2 replicas + a PDB (templates/pdb.yaml, rendered when replicas > 1): the API
-# survives single-node drains/reboots.
 replicas: 2
 
-# Generous requests, deliberately huge memory limits (never CPU-limit — CFS
-# throttling hurts tail latency more than contention does).
+# No CPU limit on purpose (CFS throttling hurts tail latency more than contention).
 resources:
   requests: { cpu: 250m, memory: 512Mi }
   limits: { memory: 4Gi }
 
-# Stable in-cluster name, independent of the Helm release name. This keeps
-# service DNS identical whether rendered by Tilt (dev) or Flux (prod, per-app
-# release names).
+# Stable in-cluster DNS regardless of release name — identical under Tilt (dev) and Flux (prod).
 fullnameOverride: yucca-api
 
 image:
@@ -25,11 +20,8 @@ ports:
 service:
   type: ClusterIP
 
-# The GitOps-owned topology document (sites + storage clusters), validated and
-# hot-reloaded on access — see TOPOLOGY_FILE below. Rendered per cluster by
-# kubernetes/apps/base/topology; dev/k3d gets the literal copy from
-# kubernetes/apps/dev/local/yucca/topology. Same mount in yucca-admin-api and
-# yucca-metrics-worker.
+# Hot-reloaded. Rendered by kubernetes/apps/base/topology (dev/k3d: literal copy
+# under apps/dev/local/yucca/topology).
 volumes:
   - name: topology
     configMap:
@@ -39,26 +31,19 @@ volumeMounts:
     mountPath: /etc/yucca
     readOnly: true
 
-# CNPG-managed postgres Cluster name (see umbrella chart)
 postgresClusterName: yucca-db
 
-# OIDC provider in-cluster service
 oidcIssuer: http://yucca-mock-oidc:8092
 oidcRedirectUri: http://localhost:5173/api/auth/oidc/callback
 oidcLogoutRedirectUri: http://localhost:5173
 
-# DEV FIXTURES — not secrets (mock-oidc placeholder client). Prod replaces
-# this whole block with ExternalSecrets (1Password) — see kubernetes/README.md.
+# Dev fixtures, not secrets; prod replaces the whole block via ExternalSecrets.
 secretData:
   OIDC_CLIENT_ID: "client ID"
   OIDC_CLIENT_SECRET: "client secret"
 
-# OPT-IN dev signing key. The project's well-known local-dev ES256 keypair
-# (the same one committed in .mise/tasks/*/env; michael verifies with the
-# matching public half) renders into the Secret ONLY when useDevKeypair is
-# true — set by the dev/local overlay. Default false: an overlay that forgets
-# to provide a real key gets a loud missing-JWT_PRIVATE_KEY crash instead of
-# silently signing production tokens with a public fixture.
+# Local-dev ES256 keypair (.mise/tasks/*/env; michael holds the public half). Default
+# false so an overlay missing a real key crashes instead of signing with a public fixture.
 useDevKeypair: false
 devJwtPrivateKey: |
   -----BEGIN PRIVATE KEY-----
@@ -67,12 +52,9 @@ devJwtPrivateKey: |
   Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
   -----END PRIVATE KEY-----
 
-# Extra envFrom sources appended AFTER the chart's own secret — for duplicate
-# keys the last source wins, so this is the override hook. Tilt points it at
-# the yucca-dev-env Secret (built from a gitignored root .env, op:// refs
-# resolved via the 1Password CLI); prod can point it at an ExternalSecret.
-# NB: explicit `env` entries below always beat envFrom — env vars the chart
-# pins there (OIDC_ISSUER & co) are overridden via their Helm values instead.
+# Appended AFTER the chart's own secret — last envFrom source wins, so this is the
+# override hook (Tilt: yucca-dev-env Secret from gitignored .env; prod: ExternalSecret).
+# NB: explicit `env` entries below always beat envFrom — override those via Helm values.
 extraEnvFrom: []
 
 env:
@@ -84,16 +66,12 @@ env:
     value: debug
   - name: OIDC_ALLOW_INSECURE
     value: "true"
-  # Device-flow OIDC (required by yucca-api env schema; points at mock-oidc's
-  # registered device client).
   - name: OIDC_DEVICE_ISSUER
     value: http://yucca-mock-oidc:8092
   - name: OIDC_DEVICE_CLIENT_ID
     value: "device client ID"
   - name: OIDC_DEVICE_ALLOW_INSECURE
     value: "true"
-  # Fleet topology — replaces the old single RESTIC_ENDPOINT: the restic
-  # gateway is now a per-site field in this file (rest_url), not one global URL.
   - name: TOPOLOGY_FILE
     value: /etc/yucca/topology.json
   - name: LEGACY_SITE_CODE

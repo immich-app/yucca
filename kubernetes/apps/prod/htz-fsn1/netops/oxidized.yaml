@@ -1,6 +1,5 @@
-# oxidized — switch config backup (versioned): pulls `show configuration` from every
-# VC over SSH (the read-only netops login + key) into a local git repo on the
-# hostPath. Web UI (config diffs/history): http://oxidized.father.fsn.htz.yucca.futo.network
+# Pulls `show configuration` from every VC over SSH (read-only netops login + key) into a
+# local git repo on the hostPath.
 # TODO: point the git output at a real remote once one exists.
 apiVersion: v1
 kind: ConfigMap
@@ -62,8 +61,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: yucca-htz-fsn-father-k8s-jeanne
-      # hostPath dirs are root-owned and fsGroup does not apply to hostPath —
-      # hand the repo dir to the oxidized uid before it starts.
+      # fsGroup does not apply to hostPath, and hostPath dirs are root-owned.
       initContainers:
         - name: chown-data
           image: busybox:1.36

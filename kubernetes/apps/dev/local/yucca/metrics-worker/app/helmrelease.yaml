@@ -21,9 +21,7 @@ spec:
     remediation:
       retries: 3
   values:
-    # DEV-ONLY relaxation: Tilt live_update syncs source into /app inside the
-    # running container, and michael's `air` rebuilds in-place — both need a
-    # writable rootfs (the chart default is readOnlyRootFilesystem: true).
+    # Tilt live_update / air rebuilds need a writable rootfs (chart default is read-only).
     containerSecurityContext:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: false

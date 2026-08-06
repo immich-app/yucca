@@ -12,33 +12,27 @@ dashboard:
   enabled: false
 
 storage:
-  # Rook does NOT auto-select loop devices via useAllDevices (even with
-  # allowLoopDevices on the operator) — they must be named explicitly. This is
-  # the loop device attached by the DaemonSet below. A HIGH minor number: the
-  # kernel hands out the lowest free loop devices, so k3s/containerd will have
-  # claimed loop0..N on a fresh node — loop100 is reliably ours.
+  # Rook does NOT auto-select loop devices via useAllDevices (even with allowLoopDevices)
+  # — must be named explicitly; attached by the DaemonSet below. High minor on purpose:
+  # k3s/containerd claim the lowest free loop0..N, so loop100 is reliably ours.
   device: /dev/loop100
 
-# S3 object store (CephObjectStore + RGW).
 objectStore:
   name: yucca
   region: us-east-1
   gateway:
     port: 80
     instances: 1
-  # Namespaces allowed to host CephObjectStoreUser CRs (michael's S3 user lives
-  # in the yucca namespace so its secret is written there).
+  # So user CRs live in the app namespace and Rook writes their S3 secrets there.
   allowUsersInNamespaces:
     - yucca
 
-# k3d has no spare block device, so synthesize one with a loopback file. This
-# privileged DaemonSet truncates a sparse image on the node and losetup-attaches
-# it; Rook's OSD then consumes it. Disable if your nodes have real disks.
+# k3d has no spare block device — a privileged DaemonSet losetup-attaches a sparse
+# image for the OSD. Disable if your nodes have real disks.
 loopDevice:
   enabled: true
   image: alpine:3.21
   sizeGiB: 20
-  # where the backing image file lives on the node (under dataDirHostPath)
   path: /var/lib/rook/osd-loop.img
-  # fixed device the image is attached to (must match storage.device above)
+  # must match storage.device above
   device: /dev/loop100

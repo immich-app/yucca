@@ -4,7 +4,7 @@ kind: Namespace
 metadata:
   name: openebs-system
   labels:
-    # OpenEBS localpv provisioner + helper pods run privileged (hostpath).
+    # The localpv provisioner + helper pods need hostpath.
     pod-security.kubernetes.io/enforce: privileged
   annotations:
     kustomize.toolkit.fluxcd.io/prune: disabled

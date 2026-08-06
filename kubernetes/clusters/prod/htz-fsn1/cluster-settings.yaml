@@ -1,37 +1,28 @@
 ---
-# Per-cluster, HUMAN-managed settings for prod@htz-fsn1. Neither CI nor TF
-# touch this file. Keys are disjoint from cluster-settings.generated.yaml (TF)
-# and image-versions.yaml (CI).
+# Human-managed; keys disjoint from cluster-settings.generated.yaml (TF) and
+# image-versions.yaml (CI).
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cluster-settings
   namespace: flux-system
 data:
-  # ─── Release pinning ─────────────────────────────────────────────────
-  # App-tree manifests + in-repo charts build from the flux-release
-  # GitRepository (release-please tag, see flux-release.yaml). Staging keeps
-  # the ${...:=flux-system} defaults and tracks main.
+  # Points manifests + charts at the flux-release GitRepository; staging keeps the
+  # ${...:=flux-system} defaults (main).
   MANIFEST_SOURCE: flux-release
   CHART_SOURCE: flux-release
 
-  # Production Zitadel instance; clients in 1P (CUSTOMER_ZITADEL_OAUTH_*).
+  # Clients in 1P (CUSTOMER_ZITADEL_OAUTH_*).
   OIDC_ISSUER: https://external-prod-r5dlf0.us1.zitadel.cloud
 
-  # Beta gate: these email domains may sign up without an allowlist entry;
-  # everyone else needs a `yuctl users allowlist` entry or invite code.
+  # Beta gate: these domains sign up freely; others need `yuctl users allowlist` or invite code.
   ALLOWED_EMAIL_DOMAINS: futo.org
 
-  # admin-api host on the NetBird overlay (netops gateway wildcard); the
-  # admin OIDC redirect URIs derive from this (see base yucca-admin-api HR).
+  # The admin OIDC redirect URIs derive from this (see base yucca-admin-api HR).
   YUCCA_ADMIN_HOST: admin.father.fsn.htz.yucca.futo.network
 
-  # ─── Fleet topology ──────────────────────────────────────────────────
-  # Rendered into the yucca-topology ConfigMap (apps/base/topology), which
-  # yucca-api/admin-api/metrics-worker parse at boot. SITE_CODE and
-  # STORAGE_CLUSTER_CODE are IDENTIFIERS, not labels: they end up in repository
-  # rows and restic JWT claims, so changing one after launch orphans data.
-  # Codes are immutable internal identifiers; display names are presentation.
+  # SITE_CODE / STORAGE_CLUSTER_CODE are immutable identifiers (repository rows + restic
+  # JWT claims — changing one orphans data); display names are presentation.
   SITE_CODE: father
   SITE_DISPLAY_NAME: "Hetzner Falkenstein-1"
   SITE_DESCRIPTION: "Located in Falkenstein, Germany"
@@ -41,49 +32,38 @@ data:
   # the active write cluster changes.
   LEGACY_SITE_CODE: father
   LEGACY_STORAGE_CLUSTER_CODE: father-spice
-  # The vendor-stable discovery host: clients hard-code
-  # https://${META_HOST}/.well-known/yucca.json and learn everything else from
-  # there, so it must NOT move with the product domain. Own cert
-  # (meta-domain.yaml) — futo.cloud is outside the *.backups.futo.cloud
-  # wildcard; A record in tf/deployment/prod/global/dns.
+  # Clients hard-code this, so it must NOT move with the product domain. Own cert
+  # (outside the *.backups.futo.cloud wildcard); A record in tf/deployment/prod/global/dns.
   META_HOST: meta.futo.cloud
 
-  # ─── Ingress entry points ────────────────────────────────────────────
-  # App gateway (web/api): public pool-a VIP, BGP-advertised /32 covered by the
-  # 69.48.224.0/24 transit aggregate. lb: public selects pool-a.
+  # pool-a VIP, BGP-advertised /32 covered by the 69.48.224.0/24 transit aggregate.
   INGRESS_LB_LABEL: public
   INGRESS_VIP: 69.48.224.5
-  # Dedicated michael (restic) gateway — see apps/prod/htz-fsn1/gw-proxy.
   # externalTrafficPolicy: Local + one envoy per worker → spine ECMP.
   GW_PARENT_GATEWAY: gw
   GW_VIP: 69.48.224.6
-  # Internal (NetBird-zone) twin of the gw VIP: on-net clients (mgmt hosts,
-  # yuctl tools bench) can't reach the public aggregate from inside Hetzner.
-  # DNS: netbird dns.tf `gw` record; pool: lb-gw-internal in cilium-bgp.yaml.
+  # On-net clients can't reach the public aggregate from inside Hetzner.
+  # DNS: netbird dns.tf `gw`; pool: lb-gw-internal in cilium-bgp.yaml.
   GW_INT_VIP: 10.40.12.17
   GW_INT_HOST: gw.father.fsn.htz.yucca.futo.network
   GW_PROXY_REPLICAS: "3"
   # (netops keeps its own internal VIP, pinned at 10.40.12.16 in netops/.)
 
-  # ─── App fleet sizing ────────────────────────────────────────────────
-  # michael sized for the 60+ Gbps backup data plane (~4 per worker today;
-  # scale with the worker count). API is stateless behind the app gateway.
+  # michael sized for the 60+ Gbps backup data plane (~4 per worker; scale with the
+  # worker count).
   MICHAEL_REPLICAS: "12"
   API_REPLICAS: "3"
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
 
-  # ─── OpenEBS (shared apps/base/openebs, see the father openebs wrapper) ──
-  # Mayastor ON: openebs-replicated (repl=2) on the r-mayastor partitions.
+  # Mayastor: openebs-replicated (repl=2) on the r-mayastor partitions.
   # LocalPV on the u-localpv xfs partition (node-local; CNPG replicates itself).
   OPENEBS_MAYASTOR_ENABLED: "true"
   OPENEBS_HOSTPATH_CLASS_ENABLED: "true"
   OPENEBS_LOCALPV_BASEPATH: /var/mnt/localpv/hostpath
   OPENEBS_MAYASTOR_ETCD_BASEPATH: /var/mnt/openebs/etcd
 
-  # ─── Storage ─────────────────────────────────────────────────────────
-  # CNPG database PVs: LOCAL volumes on the u-localpv partition (see
-  # openebs/diskpools.yaml) — Postgres replicates itself; Mayastor is for
+  # Node-local u-localpv: Postgres replicates itself, so Mayastor is reserved for
   # workloads without app-level replication.
   DB_STORAGE_CLASS: openebs-hostpath

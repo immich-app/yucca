@@ -1,9 +1,7 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# Just the yucca-topology ConfigMap, but a Kustomization of its own so the
-# services that parse it at boot can dependsOn it — a pod that starts before
-# the ConfigMap exists sits in ContainerCreating, and one that starts against a
-# stale one silently serves the wrong rest_url.
+# Its own Kustomization so boot-time parsers can dependsOn it: starting before it exists
+# is ContainerCreating, and against a stale one is a silently wrong rest_url.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -15,8 +13,8 @@ spec:
   timeout: 5m
   path: ./kubernetes/apps/base/topology
   prune: true
-  # No healthChecks: `wait` alone is the gate (kstatus reports a ConfigMap
-  # Current as soon as it applies).
+  # No healthChecks: `wait` alone is the gate — kstatus reports a ConfigMap Current
+  # as soon as it applies.
   wait: true
   sourceRef:
     kind: GitRepository

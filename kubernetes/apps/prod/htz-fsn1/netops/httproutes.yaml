@@ -1,5 +1,5 @@
 ---
-# HTTP -> HTTPS for everything on the netops gateway.
+# No hostnames filter: intentional catch-all.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -80,7 +80,7 @@ spec:
           namespace: kube-system
           port: 80
 ---
-# Allow the cross-namespace backendRef above (netops HTTPRoute -> kube-system Service).
+# Required for the cross-namespace backendRef above.
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: ReferenceGrant
 metadata:
@@ -95,8 +95,7 @@ spec:
     - group: ""
       kind: Service
 ---
-# yucca-admin-api — NetBird-only human access (${YUCCA_ADMIN_HOST}); the admin
-# OIDC redirect URIs in the base HR derive from the same host.
+# The admin OIDC redirect URIs in the base HR derive from this same host.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -111,7 +110,7 @@ spec:
           namespace: yucca
           port: 3030
 ---
-# Allow the cross-namespace backendRef above (netops HTTPRoute -> yucca Service).
+# Required for the cross-namespace backendRef above.
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: ReferenceGrant
 metadata:
@@ -126,8 +125,7 @@ spec:
     - group: ""
       kind: Service
 ---
-# The yucca namespace is default-deny (components/apps/networkpolicies.yaml);
-# open admin-api to the netops gateway's envoy pods only.
+# The yucca namespace is default-deny (components/apps/networkpolicies.yaml).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

@@ -1,7 +1,5 @@
-# vmagent — the single scrape + fan-out point. Scrapes at 10s (high granularity)
-# and remote-writes to BOTH the in-cluster VictoriaMetrics (30d buffer) and
-# o11y's mesh vmauth (long-term tier, over NetBird, unauth). Also scrapes the
-# spice ceph fleet (cluster=spice) over the fabric.
+# Single scrape, fanned out to the in-cluster VM (30d buffer) AND o11y's mesh vmauth
+# (long-term, NetBird, unauth). Also scrapes spice over the fabric.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -39,31 +37,24 @@ data:
   scrape.yml: |
     global:
       scrape_interval: 10s
-      # Site/env identity tags. `cluster` is deliberately NOT here: vmagent
-      # applies external_labels OVER target labels (unlike Prometheus's
-      # fill-gaps semantics — it relabeled all 48 spice targets to
-      # cluster=netops), so each job stamps its own cluster label instead.
+      # No `cluster` here: vmagent applies external_labels OVER target labels (unlike
+      # Prometheus — it relabeled all 48 spice targets to cluster=netops), so each job
+      # stamps its own.
       external_labels:
         site: htz-fsn1
         env: prod
     scrape_configs:
-      # The fabric switches (spine + cls1 leaf) via junos_exporter. The exporter
-      # polls the switches synchronously per scrape and burns ~20s/device in its
-      # SSH layer (the raw RPC is ~2s — known exporter quirk, revisit), so this job
-      # runs at 60s with a generous timeout. 60s counter resolution is plenty for
-      # bandwidth dashboards; sFlow is the upgrade path if we ever need seconds.
+      # The exporter burns ~20s/device in its SSH layer (raw RPC ~2s — known quirk),
+      # hence the 60s interval + long timeout; sFlow covers seconds-granularity needs.
       - job_name: junos
         scrape_interval: 60s
         scrape_timeout: 55s
         static_configs:
           - labels: { cluster: netops }
             targets: ["junos-exporter.netops.svc:9326"]
-      # sflow-rt: seconds-granularity per-port fabric rates (the spine exports
-      # counter samples every 5s; the prometheus app serves them PRE-RATED — the
-      # sflow_* series are already per-second gauges, no rate() needed). The
-      # datasource label is the SNMP ifIndex (persistent on Junos); the relabels
-      # map it to the port name (regenerate from `show snmp mib walk ifDescr`
-      # after channelization changes).
+      # Served PRE-RATED: sflow_* are per-second gauges, no rate(). The datasource is
+      # SNMP ifIndex (persistent on Junos) — regenerate the port relabels from
+      # `show snmp mib walk ifDescr` after channelization changes.
       - job_name: sflow
         scrape_interval: 5s
         metrics_path: /prometheus/metrics/ALL/ifinoctets,ifoutoctets,ifinutilization,ifoututilization,ifinerrors,ifouterrors,ifindiscards,ifoutdiscards,ifinpkts,ifoutpkts/txt
@@ -91,7 +82,6 @@ data:
           - {source_labels: [datasource], regex: "669", target_label: port, replacement: "ae3"}
           - {source_labels: [datasource], regex: "671", target_label: port, replacement: "ae2"}
           - {source_labels: [datasource], regex: "675", target_label: port, replacement: "ae1"}
-      # Self-observability of the metrics tier.
       - job_name: victoria-metrics
         static_configs:
           - labels: { cluster: netops }
@@ -100,12 +90,11 @@ data:
         static_configs:
           - labels: { cluster: netops }
             targets: ["localhost:8429"]
-      # coredns (service metrics port).
       - job_name: coredns
         static_configs:
           - labels: { cluster: netops }
-            targets: ["kube-dns.kube-system.svc:9153"]
-      # Node + container metrics straight from every kubelet (no apiserver proxy).
+            targets: ["kube-dns.kube-system.svc:9153"] # :9153 = coredns metrics, not DNS
+      # Scraped direct off each kubelet, not through the apiserver proxy.
       - job_name: kubelet
         scheme: https
         tls_config: { insecure_skip_verify: true }
@@ -123,13 +112,9 @@ data:
         kubernetes_sd_configs: [{ role: node }]
         relabel_configs:
           - { target_label: cluster, replacement: netops }
-      # ─── spice (bare-metal Ceph) ────────────────────────────────────────
-      # All 48 nodes' fabric VLAN-120 IPs (host_index 4-51; roster
-      # tf/.../ceph/spice-hosts.yaml — same list the s3 DNS records pin),
-      # reached over the spine-routed kube↔cls1-public path. cluster=spice is
-      # stamped per-target (see the external_labels note: vmagent would
-      # override it from globals). 30s: 48 node-exporters at the global 10s
-      # would triple the sample volume for no operational gain.
+      # All 48 spice nodes' fabric VLAN-120 IPs (host_index 4-51; roster
+      # tf/.../ceph/spice-hosts.yaml), via the spine-routed kube↔cls1-public path.
+      # 30s, not 10s: the shorter interval would 3x sample volume.
       - job_name: ceph-node-exporter
         scrape_interval: 30s
         static_configs:
@@ -144,7 +129,6 @@ data:
               "10.40.20.40:9100", "10.40.20.41:9100", "10.40.20.42:9100", "10.40.20.43:9100", "10.40.20.44:9100", "10.40.20.45:9100",
               "10.40.20.46:9100", "10.40.20.47:9100", "10.40.20.48:9100", "10.40.20.49:9100", "10.40.20.50:9100", "10.40.20.51:9100"
             ]
-      # Per-daemon Ceph metrics (the cephadm ceph-exporter on every node).
       - job_name: ceph-exporter
         scrape_interval: 30s
         static_configs:
@@ -159,11 +143,8 @@ data:
               "10.40.20.40:9926", "10.40.20.41:9926", "10.40.20.42:9926", "10.40.20.43:9926", "10.40.20.44:9926", "10.40.20.45:9926",
               "10.40.20.46:9926", "10.40.20.47:9926", "10.40.20.48:9926", "10.40.20.49:9926", "10.40.20.50:9926", "10.40.20.51:9926"
             ]
-      # Cluster-level metrics (health, pools) from the mgr prometheus module.
-      # mgr is count:3 with cephadm-chosen placement that MOVES on redeploy, so
-      # scrape :9283 on every node: only mgr hosts answer (active = full set,
-      # standby = tiny), the rest refuse — one RST per interval, and
-      # up{job="ceph-mgr"} tracks where the mgrs actually live.
+      # mgr placement moves on redeploy, so scrape :9283 everywhere: only mgr hosts answer
+      # (active=full, standby=tiny), the rest RST; up{job="ceph-mgr"} tracks where they live.
       - job_name: ceph-mgr
         scrape_interval: 30s
         static_configs:
@@ -198,11 +179,9 @@ spec:
           image: victoriametrics/vmagent:latest@sha256:4f2d79253c1ce04296e4624724a815e53ea5ebadd465a1d0291153afb9893a30
           args:
             - -promscrape.config=/config/scrape.yml
-            # Pick up ConfigMap edits without a pod restart.
             - -promscrape.configCheckInterval=1m
             - -remoteWrite.url=http://victoria-metrics.netops.svc:8428/api/v1/write
-            # o11y long-term tier: the unauth mesh vmauth over NetBird (same
-            # path as the observability agents; NetBird ACL is the only gate).
+            # Unauth over NetBird: the NetBird ACL is the only gate.
             - -remoteWrite.url=https://vmauth.o11y.futo.network/insert/0/prometheus/api/v1/write
             # Bound each URL's spill so two queues fit the 2Gi buffer emptyDir.
             - -remoteWrite.maxDiskUsagePerURL=900MB
@@ -215,8 +194,7 @@ spec:
             - { name: buffer, mountPath: /buffer }
           resources:
             requests: { cpu: 50m, memory: 256Mi }
-            # 512Mi OOM-looped every ~8min once the 12 k8s + 5 static targets
-            # were all scraping (269 restarts over 6 days).
+            # 512Mi OOM-looped ~8min with all targets scraping (269 restarts / 6 days).
             limits: { memory: 4Gi }
       volumes:
         - name: config

@@ -1,24 +1,10 @@
 ---
-# Ingress-only network policies for the yucca namespace — the pods here hold
-# the JWT signing key, S3 credentials, and the database, so lateral movement
-# from any other compromised pod must not reach them. Egress is deliberately
-# NOT restricted in this pass (external RGW/OIDC/Polar egress needs FQDN rules
-# — a CiliumNetworkPolicy follow-up). Flow inventory:
-#   envoy (envoy-system)      → yucca-api:3020, web:5173, michael:3010,
-#                               meta:8080 (HTTPRoutes)
-#   yucca-api → michael       = hairpin via the ingress VIP, so it ARRIVES as
-#                               envoy traffic — no direct pod-to-pod allow needed
-#   web (SSR)                 → yucca-api:3020
-#   api/admin-api/worker      → CNPG pods :5432 (yucca-db-rw/-ro)
-#   CNPG replication          → CNPG pods :5432 (pod↔pod)
-#   cnpg-system operator      → CNPG pods :8000 (instance manager)
-#   admin-api / metrics-worker: NO inbound in this component (no HTTPRoute;
-#                               cron worker) — the default-deny is their whole
-#                               policy here. father additionally opens admin-api
-#                               to its netops gateway (apps/prod/htz-fsn1/netops/
-#                               httproutes.yaml, NetBird-only access).
-#   nothing scrapes this namespace; logs are collected node-side; kubelet
-#   probes are exempt from NetworkPolicy
+# Ingress-only. Egress deliberately unrestricted for now — external RGW/OIDC/Polar would
+# need FQDN rules (CiliumNetworkPolicy follow-up). yucca-api→michael hairpins via the
+# ingress VIP so it ARRIVES as envoy traffic, hence no pod-to-pod allow. admin-api and
+# metrics-worker get NO inbound rule: default-deny is their whole policy (father
+# additionally opens admin-api to its netops gateway, NetBird-only). Nothing scrapes this
+# ns, logs are collected node-side, and kubelet probes are NetworkPolicy-exempt.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -40,14 +26,14 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        # The app gateway's proxy pods (GatewayNamespace mode → envoy-system).
+        # The app gateway's proxy pods land here in GatewayNamespace mode.
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: envoy-system
           podSelector:
             matchLabels:
               app.kubernetes.io/name: envoy
-        # web's server-side rendering (YUCCA_API_URL=http://yucca-api:3020).
+        # web's server-side rendering.
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: web
@@ -108,8 +94,7 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        # Both public restic clients (${GW_HOST}) and yucca-api's hairpined
-        # RESTIC_ENDPOINT traffic arrive via the gateway.
+        # Both public restic clients and yucca-api's hairpinned traffic arrive via the gateway.
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: envoy-system
@@ -125,13 +110,12 @@ metadata:
   name: allow-ingress-database
   namespace: yucca
 spec:
-  # CNPG instance pods (primary + streaming replicas).
   podSelector:
     matchLabels:
       cnpg.io/cluster: yucca-db
   policyTypes: [Ingress]
   ingress:
-    # Postgres: the app set + instance↔instance streaming replication.
+    # The app set + instance↔instance streaming replication.
     - from:
         - podSelector:
             matchExpressions:
@@ -143,7 +127,7 @@ spec:
               cnpg.io/cluster: yucca-db
       ports:
         - { port: 5432, protocol: TCP }
-    # Instance-manager REST (status/reload) from the CNPG operator.
+    # Instance-manager REST (status/reload).
     - from:
         - namespaceSelector:
             matchLabels:

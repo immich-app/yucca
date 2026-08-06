@@ -1,12 +1,6 @@
-# PRIMARY region app set. A partition's primary region runs the FULL stack: the
-# control-plane services (yucca-api, yucca-admin-api, web) and the database live
-# ONLY here (product invariant: api + DB run in the primary region), alongside
-# the storage-region-local services (michael, metrics-worker).
-#
-# Selected compile-time by a cluster overlay via:
-#   components: [../../../components/infra, ../../../components/roles/primary]
-# kept in lockstep with the runtime CLUSTER_ROLE=primary from the generated
-# cluster-settings fragment (a validate check enforces the pairing).
+# Control-plane services + database live ONLY in a primary region (product invariant).
+# Selected compile-time by an overlay, in lockstep with runtime CLUSTER_ROLE=primary —
+# a validate check enforces the pairing.
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:

@@ -1,8 +1,6 @@
 ---
-# Spare-NVMe StorageClass (nvme0n1) — backs the Talos UserVolumeConfig
-# `local-hostpath` at /var/mnt/local-hostpath (staging/austin clusters.auto.tfvars).
-# This is the cluster-default class: the only persistent consumer (yucca-database
-# CNPG) and any future stateful workload land here on local NVMe.
+# Backs the Talos UserVolumeConfig `local-hostpath` on nvme0n1 (staging/austin
+# clusters.auto.tfvars). Cluster-default class, so stateful workloads land on local NVMe.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

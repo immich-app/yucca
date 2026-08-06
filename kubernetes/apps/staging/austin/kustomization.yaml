@@ -1,9 +1,5 @@
 ---
-# staging@austin cluster overlay. The flux-instance sync (installed by the TF
-# helm module) reconciles clusters/staging/austin, which points cluster-apps at
-# this path. Role + infra are selected by composing two Components: `infra`
-# (role-independent platform layers) and `roles/primary` (the full app set —
-# austin is the staging partition's primary region).
+# austin is the staging partition's primary region, hence `roles/primary`.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

@@ -6,8 +6,8 @@ metadata:
   name: netbird-operator
   namespace: flux-system
 spec:
-  # cert-manager must be Ready first: the operator provisions its admission
-  # webhook certs through it (webhook.enableCertManager).
+  # The operator provisions its admission webhook certs through cert-manager
+  # (webhook.enableCertManager), so it must be Ready first.
   dependsOn:
     - name: cert-manager
   healthChecks:

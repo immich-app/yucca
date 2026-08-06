@@ -16,28 +16,23 @@ spec:
     allowMultiplePerNode: true
   dashboard:
     enabled: {{ .Values.dashboard.enabled }}
-  # Trim the footprint for a laptop-sized dev cluster.
   crashCollector:
     disable: true
   cephConfig:
     global:
-      # no redundancy on a single OSD
       osd_pool_default_size: "1"
       osd_pool_default_min_size: "1"
       mon_warn_on_pool_no_redundancy: "false"
       mon_allow_pool_size_one: "true"
-      # Single-OSD dev fix: the PG autoscaler starts pools at pg_num=1, but Rook
-      # sets pg_num_min=8 on the RGW system pools (e.g. .rgw.root) -> EINVAL
-      # "pg_num_min 8 > pg_num 1". Disable autoscaling and default new pools to
-      # 8 PGs so the object store's pools are created at pg_num=8.
+      # The PG autoscaler starts pools at pg_num=1, but Rook sets pg_num_min=8 on the
+      # RGW system pools -> EINVAL "pg_num_min 8 > pg_num 1"; default new pools to 8 PGs.
       osd_pool_default_pg_autoscale_mode: "off"
       osd_pool_default_pg_num: "8"
       osd_pool_default_pgp_num: "8"
   storage:
     useAllNodes: true
     useAllDevices: false
-    # Loop devices must be named explicitly (see values.yaml). Requires
-    # allowLoopDevices=true on the operator.
+    # Loop devices must be named explicitly; requires allowLoopDevices=true on the operator.
     devices:
       - name: {{ .Values.storage.device }}
   healthCheck:

@@ -18,7 +18,6 @@ spec:
         job: migrate
     spec:
       restartPolicy: OnFailure
-      # Restricted-PSS-compliant (the yucca namespace enforces `restricted`).
       # No readOnlyRootFilesystem: the migrate step writes to /app (pnpm).
       securityContext:
         runAsNonRoot: true
