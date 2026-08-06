@@ -44,9 +44,10 @@ data:
       # Prometheus's fill-gaps semantics — it relabeled all 48 spice targets
       # to cluster=netops), so each job stamps its own cluster label instead.
       external_labels:
-        site: htz-fsn1
         env: prod
         project: yucca
+        provider: hetzner
+        region: fsn
     scrape_configs:
       # The fabric switches (spine + cls1 leaf) via junos_exporter. The exporter
       # polls the switches synchronously per scrape and burns ~20s/device in its
