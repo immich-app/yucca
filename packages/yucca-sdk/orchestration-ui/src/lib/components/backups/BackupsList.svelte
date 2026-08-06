@@ -4,9 +4,11 @@
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
-  import { Button, HStack, modalManager, Stack, Text } from "@immich/ui";
+  import { Button, HStack, modalManager, Stack } from "@immich/ui";
   import StackList from "../ui/StackList.svelte";
+  import StackListPlaceholder from "../ui/StackListPlaceholder.svelte";
   import OnEvents from "../util/OnEvents.svelte";
+  import Suspense from "../util/Suspense.svelte";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
 
@@ -39,18 +41,20 @@
 <Stack gap={6}>
   {#if local}
     <Stack gap={2}>
-      <StackList {query}>
+      <StackList>
         {#snippet title()}Backups on this machine{/snippet}
-        {#snippet children()}
+
+        <Suspense {query}>
           {#each localRepositories as repository (repository.id)}
             <BackupItem {repository} />
           {/each}
+
           {#if localRepositories.length === 0}
-            <Text class="text-center py-6" color="muted">
+            <StackListPlaceholder>
               No backups on this machine yet.
-            </Text>
+            </StackListPlaceholder>
           {/if}
-        {/snippet}
+        </Suspense>
       </StackList>
 
       <HStack>
@@ -64,19 +68,21 @@
     </Stack>
   {/if}
 
-  <StackList {query}>
+  <StackList>
     {#snippet title()}
       {local ? "Backups found elsewhere" : "Your Backups"}
     {/snippet}
-    {#snippet children()}
+
+    <Suspense {query}>
       {#each remoteRepositories as repository (repository.id)}
         <BackupItem {repository} />
       {/each}
+
       {#if remoteRepositories.length === 0}
-        <Text class="text-center py-6" color="muted">
+        <StackListPlaceholder>
           {local ? "No other backups found." : "No backups yet."}
-        </Text>
+        </StackListPlaceholder>
       {/if}
-    {/snippet}
+    </Suspense>
   </StackList>
 </Stack>

@@ -1,7 +1,7 @@
 import { sdk } from '$lib';
 import ConfigureRepositoryModal from '$lib/components/backups/dialogs/ConfigureRepositoryModal.svelte';
 import ImportRepositoryModal from '$lib/components/backups/dialogs/ImportRepositoryModal.svelte';
-import ViewLogModal from '$lib/components/backups/dialogs/ViewLogModal.svelte';
+import ViewStatusModal from '$lib/components/backups/dialogs/ViewStatusModal.svelte';
 import MetricsHistoryModal from '$lib/components/backups/metrics-history/MetricsHistoryModal.svelte';
 import RunHistoryModal from '$lib/components/backups/run-history/RunHistoryModal.svelte';
 import SnapshotsListModal from '$lib/components/backups/snapshots-list/SnapshotsListModal.svelte';
@@ -183,7 +183,10 @@ export const handleCreateBackup = async (id: string) => {
   try {
     toastManager.info('Started backup');
     const response = await sdk.createBackup(id);
-    void modalManager.open(ViewLogModal, { logId: response.logId });
+    void modalManager.open(ViewStatusModal, {
+      logId: response.logId,
+      onRetry: () => void handleCreateBackup(id),
+    });
     return response;
   } catch (error) {
     handleError(error, 'Failed to start backup');
@@ -195,7 +198,10 @@ export const handlePruneRepository = async (id: string) => {
   try {
     toastManager.info('Cleaning up old backups');
     const response = await sdk.pruneRepository(id);
-    void modalManager.open(ViewLogModal, { logId: response.logId });
+    void modalManager.open(ViewStatusModal, {
+      logId: response.logId,
+      onRetry: () => void handlePruneRepository(id),
+    });
     return response;
   } catch (error) {
     handleError(error, 'Failed to start cleanup');

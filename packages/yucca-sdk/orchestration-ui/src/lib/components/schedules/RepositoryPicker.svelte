@@ -1,8 +1,9 @@
 <script lang="ts">
   import { useRepositories } from "$lib/services/repository.service";
-  import { HStack, IconButton, Stack, Text } from "@immich/ui";
+  import { IconButton, Stack, Text } from "@immich/ui";
   import { mdiArrowDown, mdiArrowUp, mdiClose, mdiPlus } from "@mdi/js";
   import StackList from "../ui/StackList.svelte";
+  import StackListItem from "../ui/StackListItem.svelte";
 
   type Props = {
     repositories: string[];
@@ -46,41 +47,44 @@
     {#snippet title()}Repositories{/snippet}
 
     {#each repositories as id, index (id)}
-      <HStack gap={2} class="px-4 py-3">
+      <StackListItem>
         <Text class="grow truncate" size="small">{nameById[id] ?? id}</Text>
-        <IconButton
-          icon={mdiArrowUp}
-          size="tiny"
-          variant="ghost"
-          aria-label="Move up"
-          disabled={index === 0}
-          onclick={() => move(index, -1)}
-        />
-        <IconButton
-          icon={mdiArrowDown}
-          size="tiny"
-          variant="ghost"
-          aria-label="Move down"
-          disabled={index === repositories.length - 1}
-          onclick={() => move(index, 1)}
-        />
-        <IconButton
-          icon={mdiClose}
-          size="tiny"
-          color="danger"
-          variant="ghost"
-          aria-label="Remove"
-          onclick={() => remove(id)}
-        />
-      </HStack>
+
+        {#snippet trailing()}
+          <IconButton
+            icon={mdiArrowUp}
+            size="tiny"
+            variant="ghost"
+            aria-label="Move up"
+            disabled={index === 0}
+            onclick={() => move(index, -1)}
+          />
+          <IconButton
+            icon={mdiArrowDown}
+            size="tiny"
+            variant="ghost"
+            aria-label="Move down"
+            disabled={index === repositories.length - 1}
+            onclick={() => move(index, 1)}
+          />
+          <IconButton
+            icon={mdiClose}
+            size="tiny"
+            color="danger"
+            variant="ghost"
+            aria-label="Remove"
+            onclick={() => remove(id)}
+          />
+        {/snippet}
+      </StackListItem>
     {/each}
 
     {#if repositories.length === 0}
-      <HStack class="px-4 py-3">
+      <StackListItem>
         <Text color="secondary" size="small">
           No repositories in this schedule yet.
         </Text>
-      </HStack>
+      </StackListItem>
     {/if}
   </StackList>
 
@@ -89,16 +93,19 @@
       {#snippet title()}Available{/snippet}
 
       {#each available as repo (repo.id)}
-        <HStack gap={2} class="px-4 py-3">
+        <StackListItem>
           <Text class="grow truncate" size="small">{repo.name}</Text>
-          <IconButton
-            icon={mdiPlus}
-            size="tiny"
-            variant="ghost"
-            aria-label="Add"
-            onclick={() => add(repo.id)}
-          />
-        </HStack>
+
+          {#snippet trailing()}
+            <IconButton
+              icon={mdiPlus}
+              size="tiny"
+              variant="ghost"
+              aria-label="Add"
+              onclick={() => add(repo.id)}
+            />
+          {/snippet}
+        </StackListItem>
       {/each}
     </StackList>
   {/if}

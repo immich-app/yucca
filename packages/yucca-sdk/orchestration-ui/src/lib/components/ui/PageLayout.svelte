@@ -4,26 +4,42 @@
     Button,
     ContextMenuButton,
     HStack,
+    IconButton,
     type ActionItem,
   } from "@immich/ui";
+  import { mdiArrowLeft } from "@mdi/js";
   import type { Snippet } from "svelte";
 
   type Props = {
     title?: string;
     actions?: ActionItem[];
+    onBack?: () => void;
     children?: Snippet;
   };
 
-  const { title, actions = [], children }: Props = $props();
+  const { title, actions = [], onBack, children }: Props = $props();
   const { demoPadding } = options;
+
+  const hasHeader = $derived(Boolean(title) || actions.length > 0 || Boolean(onBack));
 </script>
 
-<main class="absolute inset-0">
-  {#if title || actions.length > 0}
+<main class="flex h-full w-full flex-col">
+  {#if hasHeader}
     <div
-      class="absolute top-0 left-0 flex h-16 w-full place-items-center justify-between border-b p-2 text-dark"
+      class="flex h-16 shrink-0 place-items-center justify-between border-b p-2 text-dark"
     >
       <div class="flex gap-2 items-center">
+        {#if onBack}
+          <IconButton
+            icon={mdiArrowLeft}
+            aria-label="Back"
+            variant="ghost"
+            color="secondary"
+            shape="round"
+            onclick={onBack}
+          />
+        {/if}
+
         {#if title}
           <div class="outline-none pe-8">{title}</div>
         {/if}
@@ -57,11 +73,7 @@
     </div>
   {/if}
 
-  <div
-    class="absolute left-0 w-full overflow-y-auto {title || actions.length > 0
-      ? 'top-16 h-[calc(100%-4rem)]'
-      : 'top-0 h-full'} {$demoPadding ? 'p-4' : ''}"
-  >
+  <div class="min-h-0 grow overflow-y-auto {$demoPadding ? 'p-4' : ''}">
     {@render children?.()}
   </div>
 </main>

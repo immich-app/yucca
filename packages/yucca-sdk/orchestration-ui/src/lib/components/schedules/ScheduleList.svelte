@@ -4,9 +4,11 @@
     useScheduleEventHandler,
     useSchedules,
   } from "$lib/services/schedule.service";
-  import { Button, HStack, modalManager, Stack, Text } from "@immich/ui";
+  import { Button, HStack, modalManager, Stack } from "@immich/ui";
   import StackList from "../ui/StackList.svelte";
+  import StackListPlaceholder from "../ui/StackListPlaceholder.svelte";
   import OnEvents from "../util/OnEvents.svelte";
+  import Suspense from "../util/Suspense.svelte";
   import CreateScheduleModal from "./dialogs/CreateScheduleModal.svelte";
   import ScheduleItem from "./ScheduleItem.svelte";
 
@@ -31,16 +33,20 @@
 <OnEvents {onScheduleCreate} {onScheduleUpdate} {onScheduleDelete} />
 
 <Stack gap={2}>
-  <StackList query={schedulesQuery}>
+  <StackList>
     {#snippet title()}Schedules{/snippet}
-    {#snippet children(schedules)}
-      {#each schedules as schedule (schedule.id)}
-        <ScheduleItem {schedule} {repositoryNames} />
-      {/each}
-      {#if schedules.length === 0}
-        <Text class="text-center py-6" color="muted">No schedules yet.</Text>
-      {/if}
-    {/snippet}
+
+    <Suspense query={schedulesQuery}>
+      {#snippet children(schedules)}
+        {#each schedules as schedule (schedule.id)}
+          <ScheduleItem {schedule} {repositoryNames} />
+        {/each}
+
+        {#if schedules.length === 0}
+          <StackListPlaceholder>No schedules yet.</StackListPlaceholder>
+        {/if}
+      {/snippet}
+    </Suspense>
   </StackList>
 
   <HStack>

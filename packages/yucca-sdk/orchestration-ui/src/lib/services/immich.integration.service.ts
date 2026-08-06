@@ -1,14 +1,16 @@
-import ImmichConfigureBackup from '$lib/components/integrations/immich/ImmichConfigureBackup.svelte';
 import BackupsRecoveryKeyModal from '$lib/components/onboarding/dialogs/BackupsRecoveryKeyModal.svelte';
 import { modalManager, type ActionItem } from '@immich/ui';
 import { mdiCloudUploadOutline, mdiCogOutline, mdiKeyOutline } from '@mdi/js';
 import { handleCreateBackup } from './repository.service';
 
-export const getBackupPageActions = (repositoryId?: string) => {
+export const getBackupPageActions = (
+  repositoryId: string | undefined,
+  onConfigure: () => void,
+) => {
   const Configure: ActionItem = {
     title: 'Configure',
     icon: mdiCogOutline,
-    onAction: () => modalManager.show(ImmichConfigureBackup, {}),
+    onAction: onConfigure,
   };
 
   const ViewRecoveryKey: ActionItem = {

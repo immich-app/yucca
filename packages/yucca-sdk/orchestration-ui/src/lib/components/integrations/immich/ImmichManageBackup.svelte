@@ -17,6 +17,9 @@
     useScheduleEventHandler,
     useSchedules,
   } from "$lib/services/schedule.service";
+  import RepositoryRunHistoryPage from "$lib/components/backups/run-history/RepositoryRunHistoryPage.svelte";
+  import RepositorySnapshotsPage from "$lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte";
+  import ImmichBackupSettings from "./ImmichBackupSettings.svelte";
   import { Container, Stack } from "@immich/ui";
   import ImmichManageBackupOverview from "./ImmichManageBackupOverview.svelte";
 
@@ -48,8 +51,12 @@
       : undefined,
   );
 
-  const { ViewRecoveryKey, Configure, BackUpNow } = $derived(
-    getBackupPageActions(repository?.id),
+  let view = $state<"overview" | "attempts" | "snapshots" | "settings">(
+    "overview",
+  );
+
+  const { ViewRecoveryKey, Configure } = $derived(
+    getBackupPageActions(repository?.id, () => (view = "settings")),
   );
 </script>
 
@@ -63,15 +70,47 @@
   {onIntegrationUpdate}
 />
 
-<PageLayout title="Backups" actions={[ViewRecoveryKey, Configure, BackUpNow]}>
-  <Container size="large" center>
-    {#if repository && schedule}
-      <Stack class="mt-4" gap={8}>
-        <ImmichManageBackupOverview {repository} {schedule} />
-        <BackendsList {repository} />
-        <RepositoryRunHistory {repository} />
-        <RepositorySnapshotsList {repository} immich />
-      </Stack>
-    {/if}
-  </Container>
-</PageLayout>
+{#if view === "attempts" && repository}
+  <PageLayout title="Backup attempts" onBack={() => (view = "overview")}>
+    <Container size="medium" center>
+      <div class="mt-4">
+        <RepositoryRunHistoryPage {repository} />
+      </div>
+    </Container>
+  </PageLayout>
+{:else if view === "settings"}
+  <PageLayout title="Backup settings" onBack={() => (view = "overview")}>
+    <div class="mt-4">
+      <ImmichBackupSettings />
+    </div>
+  </PageLayout>
+{:else if view === "snapshots" && repository}
+  <PageLayout title="Snapshots" onBack={() => (view = "overview")}>
+    <Container size="medium" center>
+      <div class="mt-4">
+        <RepositorySnapshotsPage {repository} immich />
+      </div>
+    </Container>
+  </PageLayout>
+{:else}
+  <PageLayout title="Backups" actions={[ViewRecoveryKey, Configure]}>
+    <Container size="medium" center>
+      {#if repository && schedule}
+        <Stack class="mt-4" gap={6}>
+          <ImmichManageBackupOverview {repository} {schedule} />
+          <BackendsList {repository} />
+          <RepositoryRunHistory
+            {repository}
+            onViewAll={() => (view = "attempts")}
+          />
+          <RepositorySnapshotsList
+            {repository}
+            immich
+            limit={5}
+            onViewAll={() => (view = "snapshots")}
+          />
+        </Stack>
+      {/if}
+    </Container>
+  </PageLayout>
+{/if}

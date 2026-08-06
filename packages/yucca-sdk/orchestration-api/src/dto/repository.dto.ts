@@ -152,6 +152,11 @@ export class RepositoryUpdateRequestDto {
   @IsString()
   name?: string;
 
+  @ApiProperty({ type: Boolean, required: false })
+  @IsOptional()
+  @IsBoolean()
+  worm?: boolean;
+
   @ApiProperty({ type: [String], required: false })
   @IsOptional()
   @IsArray()
