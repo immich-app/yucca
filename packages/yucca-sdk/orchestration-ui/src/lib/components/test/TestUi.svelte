@@ -19,7 +19,7 @@
     mdiCog,
     mdiViewDashboard,
   } from "@mdi/js";
-  import BackendsList from "../backends/BackendsList.svelte";
+  import GlobalSettings from "../settings/GlobalSettings.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
   import Dashboard from "../dashboard/Dashboard.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
@@ -37,7 +37,7 @@
   let route = $state("dashboard");
 </script>
 
-<AppShell>
+<AppShell class="h-full">
   <AppShellHeader>
     <div class="flex items-center justify-between w-full px-4 py-2">
       <Heading>
@@ -118,12 +118,12 @@
 
   <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
     {#if route === "dashboard"}
-      <Dashboard local onNavigate={(target) => (route = target)} />
+      <Dashboard local onViewBackups={() => (route = "backups")} />
     {:else if route === "backups"}
       <BackupsList local />
     {:else if route === "config"}
       {#if !mock}
-        <BackendsList />
+        <GlobalSettings />
       {/if}
     {:else if route === "schedules"}
       {#if !mock}

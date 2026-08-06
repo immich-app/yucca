@@ -34,7 +34,7 @@
   import { SvelteMap } from "svelte/reactivity";
   import OnEvents from "../../util/OnEvents.svelte";
   import RelativeTime from "../../util/RelativeTime.svelte";
-  import ViewLogModal from "../../backups/dialogs/ViewLogModal.svelte";
+  import ViewStatusModal from "../../backups/dialogs/ViewStatusModal.svelte";
 
   const LINGER_MS = 3000;
   const FADE_MS = 600;
@@ -171,7 +171,7 @@
   };
 
   const openLog = (logId: string) => {
-    modalManager.open(ViewLogModal, { logId });
+    modalManager.open(ViewStatusModal, { logId });
   };
 
   const onCancel = (parentId: string) => handleCancelTask(parentId);

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { MockProvider, setProvider } from "$lib/providers";
-  import { initializeTheme, theme, Theme, toastManager } from "@immich/ui";
+  import { themeManager, ThemePreference, toastManager } from "@immich/ui";
   import { YuccaContext } from "$lib";
   import "./layout.css";
 
@@ -8,8 +8,7 @@
 
   setProvider(new MockProvider());
 
-  theme.value = Theme.Light;
-  initializeTheme();
+  themeManager.setPreference(ThemePreference.Light);
 
   toastManager.setOptions({
     class: "fixed top-0 right-0 flex flex-col items-end justify-end gap-2 p-4",

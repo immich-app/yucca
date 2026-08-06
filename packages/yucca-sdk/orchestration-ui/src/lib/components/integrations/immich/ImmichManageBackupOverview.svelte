@@ -3,26 +3,14 @@
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import type { LocalRepositoryDto, ScheduleDto } from "$lib/fetch-client";
-  import {
-    handlePauseSchedule,
-    handleResumeSchedule,
-  } from "$lib/services/schedule.service";
-  import {
-    FormatBytes,
-    Heading,
-    HStack,
-    Icon,
-    IconButton,
-    Stack,
-    Text,
-  } from "@immich/ui";
+  import { handleCreateBackup } from "$lib/services/repository.service";
+  import { Button, FormatBytes, Icon } from "@immich/ui";
   import {
     mdiAlert,
     mdiArchiveOutline,
     mdiCheck,
+    mdiCloudUploadOutline,
     mdiInformation,
-    mdiPauseCircleOutline,
-    mdiPlayCircleOutline,
   } from "@mdi/js";
   import cronstrue from "cronstrue";
 
@@ -33,72 +21,58 @@
 
   const { repository, schedule }: Props = $props();
 
-  function togglePause() {
-    if (schedule!.paused) {
-      handleResumeSchedule(schedule!.id, "Immich");
-    } else {
-      handlePauseSchedule(schedule!.id, "Immich");
+  const status = $derived.by(() => {
+    if (!repository.metrics.lastBackup) {
+      return { color: "warning", icon: mdiInformation } as const;
     }
-  }
+
+    return repository.metrics.lastBackup !==
+      repository.metrics.lastSuccessfulBackup
+      ? ({ color: "danger", icon: mdiAlert } as const)
+      : ({ color: "success", icon: mdiCheck } as const);
+  });
+
 </script>
 
 <StackList>
-  <StackListItem>
+  <StackListItem title="Your library" footerColor={status.color}>
     {#snippet icon()}
-      <Icon icon={mdiArchiveOutline} size="32px" />
+      <Icon icon={mdiArchiveOutline} />
     {/snippet}
 
-    <HStack gap={4}>
-      <Stack gap={0}>
-        <Heading size="tiny">Your library</Heading>
-        <Text>
-          {#if repository.meter}
-            <FormatBytes bytes={repository.meter.sizeBytes} />
-          {:else}
-            Estimated <FormatBytes bytes={repository.metrics.sizeBytes} />
-          {/if} &middot;
-          <span class="lowercase"
-            >{cronstrue.toString(schedule.cron, {
-              verbose: true,
-            })}</span
-          >
-        </Text>
-      </Stack>
-    </HStack>
+    {#if repository.meter}
+      <FormatBytes bytes={repository.meter.sizeBytes} />
+    {:else}
+      Estimated <FormatBytes bytes={repository.metrics.sizeBytes} />
+    {/if} &middot;
+    <span class="lowercase">
+      {cronstrue.toString(schedule.cron, { verbose: true })}
+    </span>
 
     {#snippet trailing()}
-      <IconButton
+      <Button
         variant="ghost"
-        onclick={togglePause}
-        aria-label={schedule.paused ? "Resume backups" : "Pause backups"}
-        icon={schedule.paused ? mdiPlayCircleOutline : mdiPauseCircleOutline}
-      />
+        size="small"
+        class="whitespace-nowrap"
+        leadingIcon={mdiCloudUploadOutline}
+        onclick={() => void handleCreateBackup(repository.id)}
+      >
+        Back up now
+      </Button>
+    {/snippet}
+
+    {#snippet footer()}
+      <Icon icon={status.icon} />
+
+      {#if !repository.metrics.lastBackup}
+        Backup is yet to run.
+      {:else if status.color === "danger"}
+        Last backup failed <RelativeTime time={repository.metrics.lastBackup} />
+      {:else}
+        Last backup successful <RelativeTime
+          time={repository.metrics.lastBackup}
+        />
+      {/if}
     {/snippet}
   </StackListItem>
-
-  {#if repository.metrics.lastBackup}
-    {#if repository.metrics.lastBackup !== repository.metrics.lastSuccessfulBackup}
-      <StackListItem class="bg-danger-100">
-        <HStack>
-          <Icon icon={mdiAlert} /> Last backup failed <RelativeTime
-            time={repository.metrics.lastBackup}
-          />
-        </HStack>
-      </StackListItem>
-    {:else}
-      <StackListItem class="bg-success-50">
-        <HStack>
-          <Icon icon={mdiCheck} /> Last backup successful <RelativeTime
-            time={repository.metrics.lastBackup}
-          />
-        </HStack>
-      </StackListItem>
-    {/if}
-  {:else}
-    <StackListItem class="bg-warning-50">
-      <HStack>
-        <Icon icon={mdiInformation} /> Backup is yet to run.
-      </HStack>
-    </StackListItem>
-  {/if}
 </StackList>

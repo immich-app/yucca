@@ -6,19 +6,24 @@
     AppShellSidebar,
     Avatar,
     Button,
+    HStack,
     IconButton,
     Input,
     Logo,
     NavbarGroup,
     NavbarItem,
+    Stack,
+    Text,
     ThemeSwitcher,
   } from "@immich/ui";
   import {
     mdiAccountMultipleOutline,
     mdiArchiveArrowDownOutline,
-    mdiBackupRestore,
     mdiBellOutline,
     mdiCastVariant,
+    mdiChartBoxOutline,
+    mdiCogOutline,
+    mdiFormatListBulletedType,
     mdiHeartOutline,
     mdiImageAlbum,
     mdiImageMultipleOutline,
@@ -33,9 +38,17 @@
   } from "@mdi/js";
   import { options } from "$lib/options";
   import { onDestroy } from "svelte";
-  import ImmichManageBackup from "../integrations/immich/ImmichManageBackup.svelte";
+  import ImmichBackupsNavButton from "../integrations/immich/ImmichBackupsNavButton.svelte";
+  import MockImmichPhotos from "./immich/MockImmichPhotos.svelte";
+  import MockImmichPurchaseInfo from "./immich/MockImmichPurchaseInfo.svelte";
+  import MockImmichStorageSpace from "./immich/MockImmichStorageSpace.svelte";
+  import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
   import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
-  import ImmichOnboardingSetupFlow from "../integrations/immich/ImmichOnboardingSetupFlow.svelte";
+  import OnEvents from "../util/OnEvents.svelte";
+  import {
+    useIntegrationEventHandler,
+    useIntegrations,
+  } from "$lib/services/integrations.service";
 
   type Props = {
     onExit: () => void;
@@ -44,6 +57,27 @@
   const { onExit }: Props = $props();
   const { testUiRestore, demoPadding } = options;
 
+  let route = $state<"photos" | "settings">("photos");
+
+  const integrations = useIntegrations();
+  const { onIntegrationUpdate } = useIntegrationEventHandler();
+  const configured = $derived(Boolean(integrations.data?.immichIntegration));
+
+  const sampleQuestions = [
+    {
+      title: "Is FUTO Backups the same as an Immich product key?",
+      answer: "Sample answer copy for the FAQ preview.",
+    },
+    {
+      title: "How is FUTO Backups priced?",
+      answer: "Sample answer copy for the FAQ preview.",
+    },
+    {
+      title: "Can I use local storage instead?",
+      answer: "Sample answer copy for the FAQ preview.",
+    },
+  ];
+
   demoPadding.set(true);
   onDestroy(() => demoPadding.set(false));
 
@@ -51,7 +85,9 @@
   setProvider(orchestrationApiProvider);
 </script>
 
-<AppShell>
+<OnEvents {onIntegrationUpdate} />
+
+<AppShell class="h-full">
   <AppShellHeader>
     <div class="grid grid-cols-[--spacing(64)_auto] items-center w-full py-2">
       <div class="flex flex-row gap-1 mx-4 items-center">
@@ -134,6 +170,17 @@
             aria-label="Cast"
           />
 
+          <IconButton
+            shape="round"
+            color="secondary"
+            variant={route === "settings" ? "filled" : "ghost"}
+            size="medium"
+            icon={mdiCogOutline}
+            onclick={() =>
+              (route = route === "settings" ? "photos" : "settings")}
+            aria-label="Settings"
+          />
+
           <button
             type="button"
             class="flex ps-2"
@@ -147,26 +194,77 @@
     </div>
   </AppShellHeader>
 
-  <AppShellSidebar>
-    <div class="pt-4 pr-2">
-      <NavbarItem href="#" title="Photos" icon={mdiImageMultipleOutline} />
-      <NavbarItem href="#" title="Explore" icon={mdiMagnify} />
-      <NavbarItem href="#" title="Map" icon={mdiMapOutline} />
-      <NavbarItem href="#" title="Sharing" icon={mdiAccountMultipleOutline} />
+  <AppShellSidebar class="relative">
+    <div class="flex h-full flex-col pt-4 pr-2">
+      {#if route === "settings"}
+        <ImmichBackupsNavButton
+          {configured}
+          active
+          onclick={() => {}}
+        />
 
-      <NavbarGroup title="Library" size="tiny" />
+        <NavbarItem
+          href="#"
+          title="Users"
+          icon={mdiAccountMultipleOutline}
+          isActive={() => false}
+        />
+        <NavbarItem
+          href="#"
+          title="Job Queues"
+          icon={mdiFormatListBulletedType}
+          isActive={() => false}
+        />
+        <NavbarItem
+          href="#"
+          title="Server Stats"
+          icon={mdiChartBoxOutline}
+          isActive={() => false}
+        />
+        <NavbarItem
+          href="#"
+          title="Settings"
+          icon={mdiCogOutline}
+          isActive={() => false}
+        />
+      {:else}
+        <NavbarItem
+          href="#"
+          title="Photos"
+          icon={mdiImageMultipleOutline}
+          active
+        />
+        <NavbarItem href="#" title="Explore" icon={mdiMagnify} />
+        <NavbarItem href="#" title="Map" icon={mdiMapOutline} />
+        <NavbarItem href="#" title="Sharing" icon={mdiAccountMultipleOutline} />
 
-      <NavbarItem href="#" title="Favorites" icon={mdiHeartOutline} />
-      <NavbarItem
-        href="#"
-        title="Albums"
-        icon={{ icon: mdiImageAlbum, flipped: true }}
-      />
-      <NavbarItem href="#" title="Backups" icon={mdiBackupRestore} active />
-      <NavbarItem href="#" title="Utilities" icon={mdiToolboxOutline} />
-      <NavbarItem href="#" title="Archive" icon={mdiArchiveArrowDownOutline} />
-      <NavbarItem href="#" title="Locked folder" icon={mdiLockOutline} />
-      <NavbarItem href="#" title="Trash" icon={mdiTrashCanOutline} />
+        <NavbarGroup title="Library" size="tiny" />
+
+        <NavbarItem href="#" title="Favorites" icon={mdiHeartOutline} />
+        <NavbarItem
+          href="#"
+          title="Albums"
+          icon={{ icon: mdiImageAlbum, flipped: true }}
+        />
+        <NavbarItem href="#" title="Utilities" icon={mdiToolboxOutline} />
+        <NavbarItem href="#" title="Archive" icon={mdiArchiveArrowDownOutline} />
+        <NavbarItem href="#" title="Locked folder" icon={mdiLockOutline} />
+        <NavbarItem href="#" title="Trash" icon={mdiTrashCanOutline} />
+      {/if}
+
+      <Stack gap={4} class="mt-auto p-4">
+        <MockImmichStorageSpace onBackups={() => (route = "settings")} />
+
+        {#if route !== "settings"}
+          <MockImmichPurchaseInfo />
+        {/if}
+
+        <HStack gap={2}>
+          <span class="bg-success size-2 rounded-full"></span>
+          <Text size="small" class="flex-1">Server Online</Text>
+          <Text size="small" color="muted">v3.0.3</Text>
+        </HStack>
+      </Stack>
     </div>
   </AppShellSidebar>
 
@@ -175,9 +273,13 @@
       {onExit}
       onFinish={() => testUiRestore.set(false)}
     />
+  {:else if route === "settings"}
+    <ImmichBackupsPage
+      price="$1"
+      includedStorage="50 GB"
+      questions={sampleQuestions}
+    />
   {:else}
-    <ImmichOnboardingSetupFlow {onExit}>
-      <ImmichManageBackup />
-    </ImmichOnboardingSetupFlow>
+    <MockImmichPhotos />
   {/if}
 </AppShell>

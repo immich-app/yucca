@@ -58,7 +58,7 @@ export class LocalBackend extends Backend {
       repository: {
         id,
         name: dto.name ?? 'new name',
-        worm: false,
+        worm: dto.worm ?? false,
         siteCode: null,
         storageClusterCode: null,
         connectionId: '',

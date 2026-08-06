@@ -35,6 +35,8 @@ type LogEvent =
     }
   | { message_type: 'exit_error'; code: number; message: string }
   | { message_type: 'raw'; message: string }
+  | { message_type: 'yucca_prune_kept'; id: string; time: string }
+  | { message_type: 'yucca_prune_removed'; id: string; time: string }
   | {
       message_type: 'status';
       percent_done: number;
@@ -67,6 +69,7 @@ export function createLogObserver(logId: string) {
     errors: string[];
     events: LogEvent[];
     summary: SummaryEvent | undefined;
+    pruned: { kept: number; removed: number };
   }>({
     status: {
       progress: 0,
@@ -76,6 +79,7 @@ export function createLogObserver(logId: string) {
     errors: [],
     events: [],
     summary: undefined,
+    pruned: { kept: 0, removed: 0 },
   });
 
   const buffer: LogEvent[] = [];
@@ -137,6 +141,16 @@ export function createLogObserver(logId: string) {
         flush.flush();
         break;
       }
+      case 'yucca_prune_kept': {
+        state.pruned.kept++;
+        flush();
+        break;
+      }
+      case 'yucca_prune_removed': {
+        state.pruned.removed++;
+        flush();
+        break;
+      }
       default: {
         flush();
         break;
@@ -145,7 +159,7 @@ export function createLogObserver(logId: string) {
   };
 
   const source = new EventSource(
-    new URL(`/api/yucca/logs/${logId}/stream`, defaults.baseUrl),
+    `${defaults.baseUrl}/api/yucca/logs/${logId}/stream`,
   );
   source.addEventListener('message', ({ data }) => onEvent(JSON.parse(data)));
 
@@ -161,6 +175,9 @@ export function createLogObserver(logId: string) {
     },
     get summary() {
       return state.summary;
+    },
+    get pruned() {
+      return state.pruned;
     },
     destroy() {
       flush.cancel();

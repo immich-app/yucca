@@ -1,20 +1,23 @@
 <script lang="ts">
   import type { OnboardingStatusResponseDto } from "$lib/fetch-client";
   import {
+    handleSetupLocalStorage,
+    handleStartYuccaLogin,
+  } from "$lib/services/backend.service";
+  import {
     handleConfirmRecoveryKey,
     handleCurrentRecoveryKey,
     handleSkipOnboardingExtraConfig,
   } from "$lib/services/onboarding.service";
+  import { Modal, ModalBody } from "@immich/ui";
   import { onMount } from "svelte";
   import CreateFirstBackup from "./stages/SampleCreateFirstBackup.svelte";
   import CreateFirstSchedule from "./stages/SampleCreateFirstSchedule.svelte";
-  import BackupOptions from "./stages/OnboardingStageBackupServices.svelte";
-  import ConfirmKey from "./stages/OnboardingStageKeyConfirm.svelte";
   import ImportKey from "./stages/OnboardingStageKeyImport.svelte";
-  import KeyIntro from "./stages/OnboardingStageKeyIntro.svelte";
-  import SaveKey from "./stages/OnboardingStageKeySave.svelte";
   import Telemetry from "./stages/OnboardingStageTelemetry.svelte";
-  import Welcome from "./stages/OnboardingStageWelcome.svelte";
+  import StepFinishSetup from "./steps/OnboardingStep1FinishSetup.svelte";
+  import StepConnectAccount from "./steps/OnboardingStep2ConnectAccount.svelte";
+  import StepSaveRecoveryKey from "./steps/OnboardingStep3SaveRecoveryKey.svelte";
 
   type Props = {
     status: OnboardingStatusResponseDto;
@@ -25,21 +28,23 @@
   const { status, onFinish, onCancel }: Props = $props();
 
   let code = $state("");
+  let confirming = $state(false);
 
   // svelte-ignore state_referenced_locally
   let stage:
-    | "welcome"
+    | "intro"
     | "telemetry"
-    | `key-${"intro" | "save" | "confirm" | "import"}`
-    | "backup-service"
+    | "key"
+    | "key-import"
+    | "connect"
     | "backup-create"
     | "schedule-create" = $state(
     !status.hasOnboardedKey
-      ? "welcome"
+      ? "intro"
       : status.hasTelemetry === "none"
         ? "telemetry"
         : !status.hasBackend
-          ? "backup-service"
+          ? "connect"
           : !status.hasBackup
             ? "backup-create"
             : "schedule-create",
@@ -57,56 +62,70 @@
   };
 
   const onConfirmKey = async () => {
-    await handleConfirmRecoveryKey();
+    confirming = true;
 
-    if (status.hasBackend) {
-      onFinish();
-    } else {
-      stage = "backup-service";
+    try {
+      await handleConfirmRecoveryKey();
+
+      if (status.hasBackend) {
+        onFinish();
+      } else {
+        stage = "connect";
+      }
+    } finally {
+      confirming = false;
     }
   };
+
+  const onBackendReady = () => (stage = "backup-create");
 </script>
 
-{#if stage === "welcome"}
-  <Welcome
-    onNext={() => (stage = status.hasTelemetry === "none" ? "telemetry" : "key-intro")}
-    onImportKey={() => (stage = "key-import")}
-    {onCancel}
-  />
+{#if stage === "intro"}
+  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+    <ModalBody>
+      <StepFinishSetup
+        onContinue={() =>
+          (stage = status.hasTelemetry === "none" ? "telemetry" : "key")}
+        onImportKey={() => (stage = "key-import")}
+      />
+    </ModalBody>
+  </Modal>
 {:else if stage === "telemetry"}
   <Telemetry
     onContinue={() =>
       (stage = !status.hasOnboardedKey
-        ? "key-intro"
+        ? "key"
         : !status.hasBackend
-          ? "backup-service"
+          ? "connect"
           : !status.hasBackup
             ? "backup-create"
             : "schedule-create")}
     {onCancel}
   />
-{:else if stage === "key-intro"}
-  <KeyIntro onNext={() => (stage = "key-save")} {onCancel} />
-{:else if stage === "key-save"}
-  <SaveKey {code} onNext={() => (stage = "key-confirm")} {onCancel} />
-{:else if stage === "key-confirm"}
-  <ConfirmKey
-    {code}
-    {onConfirmKey}
-    onBack={() => (stage = "key-save")}
-    {onCancel}
-  />
+{:else if stage === "key"}
+  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+    <ModalBody>
+      <StepSaveRecoveryKey {code} onContinue={onConfirmKey} loading={confirming} />
+    </ModalBody>
+  </Modal>
 {:else if stage === "key-import"}
   <ImportKey
-    onStart={() => (stage = "welcome")}
+    onStart={() => (stage = "intro")}
     onImported={(key) => {
       code = key;
-      stage = "key-save";
+      stage = "key";
     }}
     {onCancel}
   />
-{:else if stage === "backup-service"}
-  <BackupOptions onNext={() => (stage = "backup-create")} {onCancel} />
+{:else if stage === "connect"}
+  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+    <ModalBody>
+      <StepConnectAccount
+        onConnect={() => handleStartYuccaLogin(onBackendReady)}
+        onLocalStorage={() => handleSetupLocalStorage(onBackendReady)}
+      />
+    </ModalBody>
+  </Modal>
 {:else if stage === "backup-create"}
   <CreateFirstBackup onNext={() => (stage = "schedule-create")} {onSkip} />
 {:else if stage === "schedule-create"}

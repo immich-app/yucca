@@ -12,7 +12,7 @@
   const { baseUrl, children }: Props = $props();
 
   // svelte-ignore state_referenced_locally
-  if (baseUrl) {
+  if (typeof baseUrl === "string") {
     orchestrationDefaults.baseUrl = baseUrl;
   }
 

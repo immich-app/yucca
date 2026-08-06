@@ -1,39 +1,56 @@
 <script lang="ts">
   import OnboardingBootstrapError from "$lib/components/onboarding/OnboardingBootstrapError.svelte";
-  import OnboardingStageBackupServices from "$lib/components/onboarding/stages/OnboardingStageBackupServices.svelte";
-  import OnboardingStageKeyConfirm from "$lib/components/onboarding/stages/OnboardingStageKeyConfirm.svelte";
   import OnboardingStageKeyImport from "$lib/components/onboarding/stages/OnboardingStageKeyImport.svelte";
-  import OnboardingStageKeyIntro from "$lib/components/onboarding/stages/OnboardingStageKeyIntro.svelte";
-  import OnboardingStageSaveKey from "$lib/components/onboarding/stages/OnboardingStageKeySave.svelte";
   import OnboardingStageTelemetry from "$lib/components/onboarding/stages/OnboardingStageTelemetry.svelte";
-  import OnboardingStageWelcome from "$lib/components/onboarding/stages/OnboardingStageWelcome.svelte";
+  import OnboardingStepFinishSetup from "$lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte";
+  import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
+  import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
+  import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
   import type { OnboardingStatusResponseDto } from "$lib/fetch-client";
+  import {
+    handleSetupLocalStorage,
+    handleStartYuccaLogin,
+  } from "$lib/services/backend.service";
+  import {
+    IMMICH_DEFAULT_CRON,
+    useConfigureImmichDefaults,
+  } from "$lib/services/integrations.service";
   import {
     handleConfirmRecoveryKey,
     handleCurrentRecoveryKey,
     handleOnboardingStatus,
   } from "$lib/services/onboarding.service";
-  import { LoadingSpinner } from "@immich/ui";
+  import { LoadingSpinner, Modal, ModalBody } from "@immich/ui";
+  import cronstrue from "cronstrue";
   import { onMount, type Snippet } from "svelte";
-  import ImmichConfigureBackup from "./ImmichConfigureBackup.svelte";
-  import ImmichConfirmDefaultBackup from "./ImmichConfirmDefaultBackup.svelte";
+
+  type Stage =
+    | "idle"
+    | "intro"
+    | "telemetry"
+    | "connect"
+    | "key-import"
+    | "key"
+    | "backup"
+    | "finished";
 
   type Props = {
-    onExit: () => void;
+    fallback: Snippet<[() => void]>;
     children: Snippet;
   };
 
-  const { onExit, children }: Props = $props();
+  const { fallback, children }: Props = $props();
 
   let code = $state("");
-  let backendId = $state("");
+  let storageLocation = $state("FUTO Backups");
   let status: OnboardingStatusResponseDto | undefined = $state();
-  let stage:
-    | `welcome`
-    | `telemetry`
-    | `key-${"intro" | "save" | "confirm" | "import"}`
-    | `backup-${"service" | "confirm" | "create"}`
-    | `finished` = $state("welcome");
+  let stage: Stage = $state("idle");
+  let resume: Stage = $state("intro");
+  let confirming = $state(false);
+
+  const defaults = useConfigureImmichDefaults();
+
+  const schedule = cronstrue.toString(IMMICH_DEFAULT_CRON, { verbose: true });
 
   onMount(() => {
     handleOnboardingStatus().then(async (data) => {
@@ -44,12 +61,12 @@
       }
 
       if (data.hasOnboardedKey) {
-        stage =
-          data.hasTelemetry === "none"
-            ? "telemetry"
-            : data.hasBackup
-              ? "finished"
-              : "backup-service";
+        if (data.hasBackup) {
+          stage = "finished";
+          return;
+        }
+
+        resume = data.hasTelemetry === "none" ? "telemetry" : "connect";
       } else {
         const { recoveryKey } = await handleCurrentRecoveryKey();
         code = recoveryKey;
@@ -57,75 +74,99 @@
     });
   });
 
-  const onConfirmKey = async () => {
-    await handleConfirmRecoveryKey();
-    stage = "backup-service";
+  const onStart = () => (stage = resume);
+  const onCancel = () => (stage = "idle");
+
+  const afterTelemetry = () =>
+    (stage = status?.hasOnboardedKey && status.hasBackup
+      ? "finished"
+      : "connect");
+
+  const onBackendReady = () => (stage = status?.hasOnboardedKey ? "backup" : "key");
+
+  const onConnect = () => {
+    storageLocation = "FUTO Backups";
+    handleStartYuccaLogin(onBackendReady);
   };
 
-  const onSelectBackend = (id: string) => {
-    backendId = id;
-    stage = "backup-confirm";
+  const onLocalStorage = () => {
+    storageLocation = "Local Storage";
+    handleSetupLocalStorage(onBackendReady);
   };
+
+  const onConfirmKey = async () => {
+    confirming = true;
+
+    try {
+      await handleConfirmRecoveryKey();
+      stage = "backup";
+    } finally {
+      confirming = false;
+    }
+  };
+
+  const onStartBackup = () =>
+    defaults.mutate(undefined, { onSuccess: () => (stage = "finished") });
 </script>
 
 {#if status === undefined || status.status === "not-ready"}
-  <LoadingSpinner />
-{:else if status.status === "error"}
-  <OnboardingBootstrapError error={status.error} onQuit={onExit} />
+  <div class="flex h-full items-center justify-center p-8">
+    <LoadingSpinner />
+  </div>
 {:else if stage === "finished"}
   {@render children()}
-{:else if stage === "welcome"}
-  <OnboardingStageWelcome
-    onNext={() => (stage = status?.hasTelemetry === "none" ? "telemetry" : "key-intro")}
-    onImportKey={() => (stage = "key-import")}
-    onCancel={onExit}
-  />
+{:else}
+  {@render fallback(onStart)}
+{/if}
+
+{#if status?.status === "error" && stage !== "idle"}
+  <OnboardingBootstrapError error={status.error} onQuit={onCancel} />
+{:else if stage === "intro"}
+  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+    <ModalBody>
+      <OnboardingStepFinishSetup
+        onContinue={() =>
+          (stage = status?.hasTelemetry === "none" ? "telemetry" : "connect")}
+        onImportKey={() => (stage = "key-import")}
+      />
+    </ModalBody>
+  </Modal>
 {:else if stage === "telemetry"}
-  <OnboardingStageTelemetry
-    onContinue={() =>
-      (stage = status?.hasOnboardedKey
-        ? status.hasBackup
-          ? "finished"
-          : "backup-service"
-        : "key-intro")}
-    onCancel={onExit}
-  />
+  <OnboardingStageTelemetry onContinue={afterTelemetry} {onCancel} />
+{:else if stage === "connect"}
+  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+    <ModalBody>
+      <OnboardingStepConnectAccount {onConnect} {onLocalStorage} />
+    </ModalBody>
+  </Modal>
 {:else if stage === "key-import"}
   <OnboardingStageKeyImport
-    onStart={() => (stage = "welcome")}
-    onImported={() => (stage = "key-confirm")}
-    onCancel={onExit}
+    onStart={() => (stage = "intro")}
+    onImported={(key) => {
+      code = key;
+      stage = "connect";
+    }}
+    {onCancel}
   />
-{:else if stage === "key-intro"}
-  <OnboardingStageKeyIntro
-    onNext={() => (stage = "key-save")}
-    onCancel={onExit}
-  />
-{:else if stage === "key-save"}
-  <OnboardingStageSaveKey
-    {code}
-    onNext={() => (stage = "key-confirm")}
-    onCancel={onExit}
-  />
-{:else if stage === "key-confirm"}
-  <OnboardingStageKeyConfirm
-    {code}
-    onBack={() => (stage = "key-save")}
-    onCancel={onExit}
-    {onConfirmKey}
-  />
-{:else if stage === "backup-service"}
-  <OnboardingStageBackupServices onNext={onSelectBackend} onCancel={onExit} />
-{:else if stage === "backup-confirm"}
-  <ImmichConfirmDefaultBackup
-    onCustomize={() => (stage = "backup-create")}
-    onConfirm={() => (stage = "finished")}
-    onCancel={onExit}
-  />
-{:else if stage === "backup-create"}
-  <ImmichConfigureBackup
-    onFinish={() => (stage = "finished")}
-    onCancel={onExit}
-    {backendId}
-  />
+{:else if stage === "key"}
+  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+    <ModalBody>
+      <OnboardingStepSaveRecoveryKey
+        {code}
+        onContinue={onConfirmKey}
+        loading={confirming}
+      />
+    </ModalBody>
+  </Modal>
+{:else if stage === "backup"}
+  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+    <ModalBody>
+      <OnboardingStepFirstBackup
+        {schedule}
+        {storageLocation}
+        {onStartBackup}
+        loading={defaults.isPending}
+      />
+    </ModalBody>
+  </Modal>
 {/if}

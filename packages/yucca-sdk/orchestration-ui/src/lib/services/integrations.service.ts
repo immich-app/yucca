@@ -9,6 +9,8 @@ import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
 
+export const IMMICH_DEFAULT_CRON = '0 3 * * *';
+
 export const integrationsKeys = {
   all: ['integrations'] as const,
 };
@@ -52,7 +54,7 @@ export const useConfigureImmichDefaults = () =>
         await configureImmichIntegration({
           name: 'Immich',
           worm: false,
-          cron: '0 3 * * *',
+          cron: IMMICH_DEFAULT_CRON,
           dataFolders: immichState.dataFolders,
           backupConfiguration: true,
           libraries: 'all',

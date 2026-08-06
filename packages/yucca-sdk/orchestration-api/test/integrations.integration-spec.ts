@@ -153,4 +153,50 @@ describe('Integrations', () => {
     await immichRepository.delete();
     moduleConfig.update({ immichIntegration: undefined });
   });
+
+  it('pauses and resumes the managed schedule', async () => {
+    const moduleConfig = ctx.module.get(ModuleConfigRepository);
+    const integrationsService = ctx.module.get(IntegrationsService);
+    const immichRepository = ctx.module.get(RepositoryIntegrationImmichRepository);
+    const scheduleService = ctx.module.get(ScheduleService);
+
+    moduleConfig.update({
+      immichIntegration: {
+        dataPath: '/data/immich',
+        dataFolders: ['upload'],
+        libraries: [],
+      },
+    });
+
+    const configuration = {
+      name: 'Immich Backup',
+      worm: false,
+      cron: '0 2 * * *',
+      dataFolders: ['upload'],
+      backupConfiguration: false,
+      libraries: 'all' as const,
+    };
+
+    await integrationsService.configureImmichIntegration(configuration);
+
+    const getSchedule = async () => {
+      const integration = await immichRepository.get();
+      const { schedules } = await scheduleService.getSchedules();
+
+      return schedules.find((entry) => entry.id === integration?.scheduleId);
+    };
+
+    expect((await getSchedule())?.paused).toBe(false);
+
+    await integrationsService.configureImmichIntegration({ ...configuration, paused: true });
+
+    expect((await getSchedule())?.paused).toBe(true);
+
+    await integrationsService.configureImmichIntegration({ ...configuration, paused: false });
+
+    expect((await getSchedule())?.paused).toBe(false);
+
+    await immichRepository.delete();
+    moduleConfig.update({ immichIntegration: undefined });
+  });
 });

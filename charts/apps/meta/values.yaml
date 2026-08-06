@@ -26,7 +26,7 @@ fullnameOverride: yucca-meta
 # read-only rootfs. Pinned to the 1.29 minor — patch releases roll in on pull.
 image:
   repository: docker.io/nginxinc/nginx-unprivileged
-  tag: 1.29-alpine
+  tag: 1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
   pullPolicy: IfNotPresent
 
 ports:

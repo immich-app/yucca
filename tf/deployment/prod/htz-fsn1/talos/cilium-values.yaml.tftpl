@@ -81,6 +81,14 @@ k8sServiceHost: localhost
 k8sServicePort: 7445
 %{ endif ~}
 
+# Prometheus listeners for the vmagent scrapes (agent :9962, operator :9963 —
+# host network, gated by the Talos firewall's cilium-metrics rule).
+prometheus:
+  enabled: true
+operator:
+  prometheus:
+    enabled: true
+
 securityContext:
   capabilities:
     ciliumAgent:
@@ -111,6 +119,10 @@ hubble:
     enabled: true
   ui:
     enabled: true # exposed NetBird-only via the hubble-ui-internal LB Service (flux tree)
+  # Per-agent flow metrics on :9965 (host network, firewall hubble-metrics
+  # rule), scraped by the vmagent.
+  metrics:
+    enabled: [dns, drop, tcp, flow, icmp]
 %{ else ~}
 hubble:
   enabled: false

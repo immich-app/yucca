@@ -1,15 +1,15 @@
 [tools]
-node = "25.4.0"
+node = "25.9.0"
 pnpm = "10.28.1"
-go = "1.24"
-restic = "0.19.0"
+go = "1.26.5"
+restic = "0.19.1"
 
 gh = "2.25.0"
-"github:git-town/git-town" = "22.4.0"
+"github:git-town/git-town" = "22.7.1"
 
-k3d = "5.8.3"
-kubectl = "1.32.2"
-helm = "3.17.0"
+k3d = "5.9.0"
+kubectl = "1.36.3"
+helm = "3.21.3"
 tilt = "0.34.5"
 
 # Static validation of the k8s surface (mise run k8s:validate, used by CI).
@@ -18,7 +18,7 @@ tilt = "0.34.5"
 # GitHub runners, 3.14 on dev machines) doesn't matter.
 kubeconform = "0.8.0"
 kustomize = "5.8.1"            # flux-local shells out to it
-flux2 = "2.7.5"                # ...and to the flux CLI
+flux2 = "2.9.3"                # ...and to the flux CLI
 uv = "0.9.18"
 
 # github backend: the aqua backend fails to verify cosign v3's sigstore
@@ -28,9 +28,9 @@ uv = "0.9.18"
 
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
 opentofu = "1.11.5"
-terragrunt = "0.99.4"
+terragrunt = "0.99.5"
 # ansible/mgmt convergence (mgmt:ansible task, run from CI on prod apply).
-"pipx:ansible-core" = "2.18.1"
+"pipx:ansible-core" = "2.21.2"
 [tasks.dev]
 description = "Start all services in development mode"
 depends = ["install:deps", "common:build", "docker:start"]

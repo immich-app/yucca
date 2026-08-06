@@ -22,6 +22,12 @@ The only permitted comment captures something the code *cannot* express — a wh
 a gotcha a reader would otherwise miss. These are rare. When in doubt, do not comment.
 **Before finishing any edit, re-read your diff and delete every comment that fails this bar.**
 
+This rule is about code. Infra config (`tf/`, `ansible/`, `kubernetes/`) has no equivalent
+remedy: the keys belong to Ceph, Terraform and Ansible, so there is no better name to pick and
+no smaller function to extract. The bar is the same and restating a value is still banned, but
+a comment recording why a value deviates from its default, or what breaks when it changes, is
+usually the only place that knowledge can live.
+
 ## What this is
 
 Yucca is a multi-tenant **backup service**: OIDC-authenticated users get S3-backed

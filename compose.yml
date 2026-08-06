@@ -13,7 +13,7 @@ services:
       _MINIO_DRIVE_ACTIVE_MONITORING: off
 
   database:
-    image: postgres:18@sha256:8ff36f3c66371cba71d20ceedccfc3de9669a68737607888c4ef0af93abe8e39
+    image: postgres:18@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
@@ -46,7 +46,7 @@ services:
       - 8428:8428
 
   victoria-logs:
-    image: docker.io/victoriametrics/victoria-logs:v1.43.1@sha256:3db89651b2ffa0f4fe5a0f8805ede409701f41ca63ebdd64cfa4a3cb63976b43
+    image: docker.io/victoriametrics/victoria-logs:v1.52.0@sha256:47b820890d64c4575a2a0a46415dcd8a4fd59a0f1fcd6a377693d7aea639442e
     ports:
       - 9428:9428
     command: -storageDataPath=victoria-logs-data

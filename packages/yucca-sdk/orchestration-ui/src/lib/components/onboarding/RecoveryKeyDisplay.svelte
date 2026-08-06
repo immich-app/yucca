@@ -1,12 +1,11 @@
 <script lang="ts">
+  import { Button, Card, CardBody, HStack, Text, VStack } from "@immich/ui";
   import {
-    Button,
-    Card,
-    CardBody,
-    HStack,
-    VStack,
-  } from "@immich/ui";
-  import { mdiAsterisk, mdiContentCopy, mdiFile, mdiPrinter } from "@mdi/js";
+    mdiAsterisk,
+    mdiContentCopy,
+    mdiDownloadOutline,
+    mdiPrinterOutline,
+  } from "@mdi/js";
 
   type Props = {
     code: string;
@@ -69,29 +68,44 @@
   };
 </script>
 
-<Card class="bg-primary-50 shadow-none">
+<Card color="primary" class="shadow-none">
   <CardBody class="flex justify-center">
-    <pre><code>{code}</code></pre>
+    <Text size="large" fontWeight="semi-bold"
+      ><pre><code>{code}</code></pre></Text
+    >
   </CardBody>
 </Card>
 
 <VStack>
-  <HStack>
-    <Button leadingIcon={mdiPrinter} variant="outline" onclick={print}>
-      Print
-    </Button>
-    <Button leadingIcon={mdiFile} variant="outline" onclick={saveFile}>
-      Save as file
-    </Button>
-  </HStack>
   <Button
-    leadingIcon={mdiContentCopy}
+    shape="round"
     variant="outline"
+    leadingIcon={mdiContentCopy}
     onclick={copyToClipboard}
   >
-    Copy to clipboard
+    Copy recovery key
   </Button>
-  {#if PasswordCredential}
+
+  <HStack>
+    <Button
+      leadingIcon={mdiDownloadOutline}
+      variant="ghost"
+      shape="round"
+      onclick={saveFile}
+    >
+      Download
+    </Button>
+    <Button
+      leadingIcon={mdiPrinterOutline}
+      variant="ghost"
+      shape="round"
+      onclick={print}
+    >
+      Print
+    </Button>
+  </HStack>
+
+  {#if /* intentionally hide this to not overcrowd the modal */ PasswordCredential && false}
     <Button
       leadingIcon={mdiAsterisk}
       variant="outline"

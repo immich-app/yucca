@@ -1,14 +1,26 @@
 <script lang="ts">
+  import UpsellPage from "../../onboarding/upsell/UpsellPage.svelte";
   import ImmichManageBackup from "./ImmichManageBackup.svelte";
   import ImmichOnboardingSetupFlow from "./ImmichOnboardingSetupFlow.svelte";
 
-  type Props = {
-    onExit: () => void;
+  type Question = {
+    title: string;
+    answer: string;
   };
 
-  const { onExit }: Props = $props();
+  type Props = {
+    price: string;
+    includedStorage: string;
+    questions: Question[];
+  };
+
+  const { price, includedStorage, questions }: Props = $props();
 </script>
 
-<ImmichOnboardingSetupFlow {onExit}>
+<ImmichOnboardingSetupFlow>
+  {#snippet fallback(onStart)}
+    <UpsellPage {price} {includedStorage} {questions} onGetStarted={onStart} />
+  {/snippet}
+
   <ImmichManageBackup />
 </ImmichOnboardingSetupFlow>

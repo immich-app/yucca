@@ -110,6 +110,19 @@ locals {
       apiServer = {
         certSANs = concat([var.cluster_vip], local.cp_addresses)
       }
+      # Metrics exposure for the in-cluster vmagent: controller-manager and
+      # scheduler default to binding 127.0.0.1, and etcd's client port needs
+      # client certs — open a plain metrics listener instead. All three ports
+      # (10257/10259/2381) are gated to cluster subnets by the host firewall.
+      controllerManager = {
+        extraArgs = { "bind-address" = "0.0.0.0" }
+      }
+      scheduler = {
+        extraArgs = { "bind-address" = "0.0.0.0" }
+      }
+      etcd = {
+        extraArgs = { "listen-metrics-urls" = "http://0.0.0.0:2381" }
+      }
     },
     # Disable the bundled CNI for Cilium/none — it's installed out-of-band.
     contains(["cilium", "none"], var.cni) ? { network = { cni = { name = "none" } } } : {},

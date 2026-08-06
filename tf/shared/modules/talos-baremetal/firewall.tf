@@ -58,6 +58,15 @@ locals {
           portSelector = { ports = [4240], protocol = "tcp" }
           ingress      = [for c in local.firewall_allow : { subnet = c }]
         }),
+        # Cilium agent/operator prometheus listeners (host network; enabled in
+        # the cilium helm values) — scraped by the vmagent.
+        yamlencode({
+          apiVersion   = "v1alpha1"
+          kind         = "NetworkRuleConfig"
+          name         = "cilium-metrics"
+          portSelector = { ports = [9962, 9963], protocol = "tcp" }
+          ingress      = [for c in local.kubelet_allow : { subnet = c }]
+        }),
         ], var.enable_hubble_firewall_ports ? [
         # Hubble peer — the relay connects to each agent here.
         yamlencode({
@@ -65,6 +74,14 @@ locals {
           kind         = "NetworkRuleConfig"
           name         = "hubble-peer"
           portSelector = { ports = [4244], protocol = "tcp" }
+          ingress      = [for c in local.kubelet_allow : { subnet = c }]
+        }),
+        # Hubble per-agent metrics listener, scraped by the vmagent.
+        yamlencode({
+          apiVersion   = "v1alpha1"
+          kind         = "NetworkRuleConfig"
+          name         = "hubble-metrics"
+          portSelector = { ports = [9965], protocol = "tcp" }
           ingress      = [for c in local.kubelet_allow : { subnet = c }]
         }),
     ] : []) : []
@@ -89,6 +106,14 @@ locals {
       kind         = "NetworkRuleConfig"
       name         = "kubelet"
       portSelector = { ports = [10250], protocol = "tcp" }
+      ingress      = [for c in local.kubelet_allow : { subnet = c }]
+    }),
+    # node-exporter (host network on every node), scraped by the vmagent.
+    yamlencode({
+      apiVersion   = "v1alpha1"
+      kind         = "NetworkRuleConfig"
+      name         = "node-exporter"
+      portSelector = { ports = [9100], protocol = "tcp" }
       ingress      = [for c in local.kubelet_allow : { subnet = c }]
     }),
   ], local.overlay_firewall_patches) : []
@@ -116,6 +141,16 @@ locals {
       portSelector = { ports = ["2379-2380"], protocol = "tcp" }
       # etcd is intra-cluster only — never the operator/Tailscale ranges.
       ingress = [for c in [var.subnet_cidr] : { subnet = c }]
+    }),
+    # Control-plane metrics listeners (controller-manager, scheduler, etcd's
+    # :2381 — see cp_cluster_config), scraped by the vmagent. Unlike etcd's
+    # client ports these are read-only, so pod/cluster trust suffices.
+    yamlencode({
+      apiVersion   = "v1alpha1"
+      kind         = "NetworkRuleConfig"
+      name         = "control-plane-metrics"
+      portSelector = { ports = [10257, 10259, 2381], protocol = "tcp" }
+      ingress      = [for c in local.kubelet_allow : { subnet = c }]
     }),
   ] : []
 }

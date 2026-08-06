@@ -97,6 +97,11 @@ export class ConfigureImmichIntegrationRequestDto {
   @IsOptional()
   @IsObject()
   retentionPolicy?: RetentionPolicyDto | null;
+
+  @ApiProperty({ type: Boolean, required: false })
+  @IsOptional()
+  @IsBoolean()
+  paused?: boolean;
 }
 
 export class ImmichRollbackRequestDto {

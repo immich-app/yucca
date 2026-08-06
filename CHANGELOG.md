@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.28.0](https://github.com/immich-app/yucca/compare/v0.27.0...v0.28.0) (2026-08-06)
+
+
+### Features
+
+* **infra:** add spegel ([#436](https://github.com/immich-app/yucca/issues/436)) ([75c77ec](https://github.com/immich-app/yucca/commit/75c77ecdfa5a918ffdc1e6df254899665e8e57ad))
+* standalone app ([#422](https://github.com/immich-app/yucca/issues/422)) ([b23e7b3](https://github.com/immich-app/yucca/commit/b23e7b32768cce44acb803eed98249938285c9a6))
+* UI redesign (part 1) ([#423](https://github.com/immich-app/yucca/issues/423)) ([f79eeea](https://github.com/immich-app/yucca/commit/f79eeea9b83143d5590a156223eaca301f79ffe4))
+
+
+### Bug Fixes
+
+* **infra:** monitor all the things ([#445](https://github.com/immich-app/yucca/issues/445)) ([51472c3](https://github.com/immich-app/yucca/commit/51472c37ebff16be5758ae0f6085f56711a2064e))
+* **yucca-sdk:** repair the orchestration-api integration suites ([#429](https://github.com/immich-app/yucca/issues/429)) ([bf69aee](https://github.com/immich-app/yucca/commit/bf69aee5784c71290e9fb79bd9c3b6ae8c46f094))
+
 ## [0.27.0](https://github.com/immich-app/yucca/compare/v0.26.0...v0.27.0) (2026-08-05)
 
 

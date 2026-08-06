@@ -1,5 +1,5 @@
 import { sdk } from '$lib';
-import ViewLogModal from '$lib/components/backups/dialogs/ViewLogModal.svelte';
+import ViewStatusModal from '$lib/components/backups/dialogs/ViewStatusModal.svelte';
 import { SocketEvent } from '$lib/events';
 import { getRun, getRunHistory, type RunDto } from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
@@ -85,7 +85,7 @@ export const handleGetRunHistory = async (id: string) => {
 export const getRunActions = (run: RunDto) => {
   const ViewLog: ActionItem = {
     title: 'View Log',
-    onAction: () => void modalManager.open(ViewLogModal, { logId: run.id }),
+    onAction: () => void modalManager.open(ViewStatusModal, { logId: run.id }),
   };
 
   return { ViewLog };

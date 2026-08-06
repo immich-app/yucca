@@ -1419,6 +1419,9 @@
                 "$ref": "#/components/schemas/RetentionPolicyDto"
               }
             ]
+          },
+          "paused": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1854,6 +1857,9 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
           },
           "paths": {
             "type": "array",
