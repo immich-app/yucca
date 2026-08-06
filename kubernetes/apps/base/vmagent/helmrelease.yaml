@@ -129,15 +129,18 @@ spec:
       enabled: true
       spec:
         # Stamp the remote-cluster identity on EVERY series: cluster (short
-        # cluster name), site, env, project. Relabel (not externalLabels):
+        # cluster name), env, project, provider, region — the identity set from
+        # o11y's shipping guide. Relabel (not externalLabels):
         # externalLabels only tags scraped data, leaving OTLP-pushed app
         # metrics untagged. This applies to all data (scraped + ingested)
         # before remote-write.
         inlineRelabelConfig:
           - target_label: cluster
             replacement: ${METRICS_CLUSTER_LABEL}
-          - target_label: site
-            replacement: ${METRICS_SITE_LABEL}
+          - target_label: provider
+            replacement: ${METRICS_PROVIDER_LABEL}
+          - target_label: region
+            replacement: ${METRICS_REGION_LABEL}
           - target_label: env
             replacement: ${METRICS_ENV_LABEL}
           - target_label: project

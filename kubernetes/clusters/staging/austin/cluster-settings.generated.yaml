@@ -18,10 +18,11 @@ data:
   # mirrored compile-time by the components/roles/<role> the overlay composes).
   CLUSTER_ROLE: primary
   # Telemetry identity tags stamped on everything the agents ship (cluster =
-  # short cluster name; site; env). NB: values changed from the old single
-  # yucca_staging_austin label — o11y queries keyed on it need updating.
+  # short cluster name; env; provider and region = 3-letter codes from
+  # region.hcl).
   METRICS_CLUSTER_LABEL: luke
-  METRICS_SITE_LABEL: austin
+  METRICS_PROVIDER_LABEL: int
+  METRICS_REGION_LABEL: aus
   METRICS_ENV_LABEL: staging
   # CP node IPs (clusters.auto.tfvars) — the vmagent's kubeEtcd static targets,
   # hitting the plain-HTTP etcd metrics listener the machine config opens
