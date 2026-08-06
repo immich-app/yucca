@@ -291,6 +291,22 @@ smartctl -i /dev/<sdX> | grep -i "serial number"
 Record all four. The by-path identifies the bay; the serial identifies the disk
 to Hetzner; the db slot is what you zap and reuse.
 
+**When the disk has already dropped off the bus**, which is the common shape of a
+hard failure, both commands above fail: there is no `/dev/sdX` and the by-path
+symlink disappeared with the disk. Recover them from the cluster instead.
+
+```bash
+# serial: the mgr keeps its device inventory after the disk is gone
+ceph device ls-by-daemon osd.<id>
+
+# bay: every spice node has the same 14, so the missing one is the empty bay
+ls /dev/disk/by-path/ | grep -E 'ata-[0-9]+$' | sort -V
+```
+
+The full complement is `pci-0000:45:00.0-ata-{1..8}`, `pci-0000:46:00.0-ata-{1,2}`
+and `pci-0000:87:00.0-ata-{1..4}`. Diff against a healthy peer if it is easier to
+read that way.
+
 ### 2. Drain
 
 ```bash
@@ -330,22 +346,25 @@ ceph orch daemon stop osd.<id>
 ceph orch osd rm <id> --replace     # keeps the id reserved for the new disk
 ```
 
-Then, on the node, zap the db LV. The LV itself stays; only its contents go:
+Leave the db LV alone. `replace-osd.yml` zaps it in step 6, and it zaps
+unconditionally so it does not matter whether the slot survived, was already
+zapped, or was deleted outright by an earlier ad-hoc removal.
 
-```bash
-cephadm ceph-volume lvm zap vg0/db-slot<N>
-lvs vg0 | grep db-slot<N>           # confirm the LV still exists
-```
-
-Skipping this is the most common failure: ceph-volume refuses a db device that
-still carries an old OSD's metadata, and the recreate fails with no obvious
-pointer back to this step.
+Do **not** `lvremove` the slot. Deleting it rather than zapping it is what
+happened to osd.35 on alyssa, and while the play now recreates a missing slot,
+the deletion buys nothing and loses the record of which slot belonged to the OSD.
 
 ### 5. Physical swap
 
 Hetzner support ticket quoting the **serial** from step 1, since there is no
 IPMI and no bay LED. Reference the by-path only as supporting detail; Hetzner
 identifies drives by serial.
+
+These chassis have no hot-swap path that Hetzner will use, so expect them to ask
+to power the machine down. Put the host into maintenance before handing it over,
+or the remaining OSDs are marked `out` ten minutes in and the cluster starts a
+rebalance that has to be undone when it returns:
+[host-maintenance.md](host-maintenance.md).
 
 After the swap, confirm the new disk is present at the same by-path:
 
@@ -359,19 +378,59 @@ not actually swapped.
 
 ### 6. Recreate the OSD
 
-Create explicitly rather than re-applying the spec. This is the only way to
-pin the disk to the intended slot:
+Run `replace-osd.yml`. It takes the bay and derives the rest:
+
+```bash
+scripts/ansible-play.sh replace-osd.yml --limit <hostname> \
+  -e osd_bay=<bay-path>
+```
+
+It ensures the db slot LV exists, zaps it, drives `ceph-volume lvm create` with
+the slot pinned explicitly, activates the daemon, and then asserts the result
+landed on the NVMe. Re-running it against a bay that already holds an OSD is a
+no-op, so it is safe to repeat after a failure.
+
+The slot is derived, not passed: a slot counts as claimed only when it is the
+`db` entry of an OSD that also has a `block` entry. That distinction matters
+because a db-slot whose data disk died keeps its `ceph.osd_id` tag and reads as
+claimed forever if you go by LV tags alone. Pass `-e osd_db_slot=<n>` if the play
+reports more than one candidate.
+
+The equivalent by hand, for when you need to see what it is doing:
 
 ```bash
 DISK=/dev/disk/by-path/<bay-path>
 DB_LV=vg0/db-slot<N>
 
-cephadm ceph-volume \
-  --keyring /var/lib/ceph/bootstrap-osd/ceph.keyring \
-  lvm create --dmcrypt --no-systemd --data "$DISK" --block.db "$DB_LV"
+# These nodes carry no /etc/ceph and no bootstrap-osd keyring: cephadm hands the
+# mgr-supplied credentials to the container at deploy time and leaves nothing
+# behind. Stage both, from the bootstrap node, for the one command.
+install -d -m 0700 /run/replace-osd
+ssh <bootstrap> ceph config generate-minimal-conf > /run/replace-osd/ceph.conf
+ssh <bootstrap> ceph auth get client.bootstrap-osd > /run/replace-osd/bootstrap-osd.keyring
+chmod 600 /run/replace-osd/*
 
+cephadm ceph-volume \
+  --config /run/replace-osd/ceph.conf \
+  --keyring /run/replace-osd/bootstrap-osd.keyring \
+  lvm create --dmcrypt --no-systemd --crush-device-class hdd \
+  --data "$DISK" --block.db "$DB_LV"
+
+rm -rf /run/replace-osd
 ceph cephadm osd activate <hostname>
 ```
+
+Two traps in that block, both of which cost a failed run:
+
+- **The ceph.conf must end in a newline.** Without it `conf_read_file` throws
+  `InvalidArgumentError('RADOS invalid argument')` and ceph-volume then reports
+  `RuntimeError: Unable to create a new OSD id`, which reads like a credentials
+  problem and is not. Shell redirection preserves the newline; anything that
+  captures the output as a string is liable to strip it.
+- **Pass `--crush-device-class` explicitly.** Ceph infers `hdd` from rotational
+  if you omit it, so the OSD comes up in the right class either way, but its LV
+  tag is then left empty while every OSD built from the drivegroup spec carries
+  the class. Inference is not declarative; set it.
 
 **Do not rebuild a replaced disk by re-managing the OSD spec.** spice's specs
 carry `unmanaged: true` (`ceph_osd_spec_unmanaged` in its group_vars) precisely
@@ -387,11 +446,25 @@ spinning disk in front of every metadata operation. The bug is open against
 The same applies to `deploy-ceph.yml --tags osds`. It re-renders and re-applies
 the spec, which stays unmanaged, so it will not create the OSD for you; the
 `ceph_osd_allow_spec_provisioning` window that would let it is for initial
-cluster provisioning only. Use `ceph-volume` above.
+cluster provisioning only. Use `replace-osd.yml` above.
 
 [t68436]: https://tracker.ceph.com/issues/68436
 
 ### 7. Verify
+
+`replace-osd.yml` already asserts the part that is invisible from the outside:
+that `bluefs_dedicated_db` is 1 and the db is non-rotational. A colocated
+block.db does not show up in `ceph -s` or `ceph osd tree`, so if you built the
+OSD by hand, check it yourself:
+
+```bash
+ceph osd metadata <id> -f json | \
+  python3 -c 'import sys,json; d=json.load(sys.stdin); \
+    print(d["bluefs_dedicated_db"], d["bluefs_db_devices"], d["bluefs_db_rotational"])'
+# expect: 1 md1 0
+```
+
+Then watch it fill:
 
 ```bash
 ceph osd tree | grep "osd.<id>"        # up, weight > 0
@@ -399,8 +472,9 @@ ceph osd df | awk 'NR==1 || $1==<id>'  # PGs climbing as backfill lands
 ceph -s                                # back to active+clean
 ```
 
-Confirm the new OSD picked up the intended slot, since nothing enforced it:
+Confirm it took the intended slot and matches its siblings:
 
 ```bash
 cephadm ceph-volume lvm list | grep -A 8 "====== osd.<id>"
+lvs -a -o lv_tags | grep "ceph.osd_id=<id>," | grep -o 'ceph.crush_device_class=[a-z]*'
 ```
