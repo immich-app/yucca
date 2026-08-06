@@ -29,9 +29,8 @@ type Config struct {
 	S3Endpoint        string
 	S3ForcePathStyle  bool
 
-	// S3 load-balancing pool. When S3BackendSource is empty, michael talks to
-	// the single S3Endpoint (legacy behavior). When set to "file" or "dns", it
-	// balances across the resolved backend gateways instead.
+	// S3 load-balancing pool. Empty S3BackendSource = single S3Endpoint
+	// (legacy); "file"/"dns" = balance across resolved gateways.
 	S3BackendSource     string // "" | "file" | "dns"
 	S3BackendFile       string // path, for source=file
 	S3BackendDNSHost    string // hostname to resolve, for source=dns
@@ -43,20 +42,18 @@ type Config struct {
 	S3EjectThreshold    int    // consecutive transport failures before ejection
 	S3ReconcileInterval time.Duration
 
-	// S3DefaultCluster is the code of the storage cluster the flat S3_* fields
-	// above describe. Requests whose token carries no storageCluster claim are
-	// served from it.
+	// S3DefaultCluster: cluster the flat S3_* fields describe; serves tokens
+	// without a storageCluster claim.
 	S3DefaultCluster string
 	// Clusters is every storage cluster this michael fronts, the default one
 	// first, followed by any declared in S3_CLUSTERS_FILE.
 	Clusters []ClusterConfig
 
-	// ASNDatabasePath is the MaxMind-format IP→ASN database used to label
-	// traffic with its source network. The image bakes one in; a deployment
-	// without it still serves, with every source network reported as unknown.
+	// ASNDatabasePath: MaxMind-format IP→ASN DB (baked into the image); absent
+	// still serves, with every source network reported unknown.
 	ASNDatabasePath string
-	// ClientIPHeader is the header the gateway writes the observed client
-	// address into. Only its LAST entry is trusted — see geoip.ClientAddr.
+	// ClientIPHeader: gateway-written client address header; only its LAST
+	// entry is trusted — see geoip.ClientAddr.
 	ClientIPHeader string
 
 	OTLPMetricsEndpoint string
@@ -70,10 +67,9 @@ type Config struct {
 	LogPretty           bool
 }
 
-// ClusterConfig is everything needed to talk to ONE storage cluster: its S3
-// endpoint and credentials plus that cluster's own backend-pool settings. The
-// flat S3_* environment variables describe the default cluster; S3_CLUSTERS_FILE
-// declares any additional ones.
+// ClusterConfig: everything to talk to ONE storage cluster (endpoint,
+// credentials, pool settings). Flat S3_* env = default cluster;
+// S3_CLUSTERS_FILE declares additional ones.
 type ClusterConfig struct {
 	Code              string
 	S3AccessKeyID     string
@@ -94,7 +90,6 @@ type ClusterConfig struct {
 	S3ReconcileInterval time.Duration
 }
 
-// DefaultCluster returns the cluster described by the flat S3_* configuration.
 func (c Config) DefaultCluster() ClusterConfig {
 	return ClusterConfig{
 		Code:                c.S3DefaultCluster,
@@ -160,8 +155,7 @@ func LoadConfig() Config {
 	backendFile := os.Getenv("S3_BACKEND_FILE")
 	backendDNSHost := os.Getenv("S3_BACKEND_DNS_HOST")
 
-	// Scheme/port default to those parsed from S3_ENDPOINT, so a DNS source only
-	// needs the hostname configured.
+	// Scheme/port default from S3_ENDPOINT so a DNS source only needs the hostname.
 	defScheme, defPort := schemeAndPort(s3Endpoint)
 	backendScheme := envOr("S3_BACKEND_SCHEME", defScheme)
 	backendPort := envOr("S3_BACKEND_PORT", defPort)
@@ -203,7 +197,6 @@ func LoadConfig() Config {
 
 	switch backendSource {
 	case "":
-		// single-endpoint mode
 	case "file":
 		if backendFile == "" {
 			log.Fatal().Msg("S3_BACKEND_FILE is required when S3_BACKEND_SOURCE=file")
@@ -315,8 +308,8 @@ func LoadConfig() Config {
 	return cfg
 }
 
-// clustersFile is the S3_CLUSTERS_FILE document: the storage clusters michael
-// fronts IN ADDITION to the default one configured by the flat S3_* variables.
+// clustersFile is the S3_CLUSTERS_FILE document: clusters fronted IN ADDITION
+// to the flat-S3_* default.
 type clustersFile struct {
 	Clusters []clusterEntry `json:"clusters"`
 }
@@ -344,11 +337,9 @@ type topologyCluster struct {
 	S3               *clusterEntry `json:"s3"`
 }
 
-// clusterEntry is one cluster in S3_CLUSTERS_FILE. Credentials are named
-// indirectly — the entry gives the NAMES of the environment variables holding
-// them — so the file can be a plain ConfigMap while the secrets stay in a k8s
-// Secret. Pointer fields distinguish "absent, inherit the default cluster" from
-// an explicit false.
+// clusterEntry: one cluster in S3_CLUSTERS_FILE. Credential fields are env-var
+// NAMES (file stays a plain ConfigMap, secrets in a k8s Secret). Pointer fields
+// distinguish absent-inherit-default from explicit false.
 type clusterEntry struct {
 	Code           string `json:"code"`
 	Endpoint       string `json:"endpoint"`
@@ -357,9 +348,8 @@ type clusterEntry struct {
 	AccessKeyEnv   string `json:"access_key_env"`
 	SecretKeyEnv   string `json:"secret_key_env"`
 
-	// Backend pool. These deliberately do NOT inherit from the default cluster:
-	// inheriting a DNS host or backend file would silently point this cluster at
-	// the default cluster's gateways. Absent means single-endpoint mode.
+	// Backend pool: deliberately NOT inherited — an inherited DNS host/file
+	// would silently point at the default cluster's gateways. Absent = single-endpoint.
 	BackendSource  string `json:"backend_source"`
 	BackendFile    string `json:"backend_file"`
 	BackendDNSHost string `json:"backend_dns_host"`
@@ -374,11 +364,9 @@ type clusterEntry struct {
 	ReconcileIntervalMS int    `json:"reconcile_interval_ms"`
 }
 
-// ParseClusters decodes the S3_CLUSTERS_FILE contents into the additional
-// clusters michael should front. def supplies the fallback for the knobs an
-// entry leaves unset, and getenv resolves the credential env-var names. Unknown
-// JSON fields are rejected: a typo'd key would otherwise silently leave a
-// cluster on an inherited default.
+// ParseClusters decodes S3_CLUSTERS_FILE extras; def fills unset knobs, getenv
+// resolves credential env names. Unknown fields rejected — a typo'd key would
+// silently leave an inherited default.
 func ParseClusters(data []byte, def ClusterConfig, getenv func(string) string) ([]ClusterConfig, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
@@ -404,9 +392,8 @@ func ParseClusters(data []byte, def ClusterConfig, getenv func(string) string) (
 }
 
 // ParseTopologyClusters selects one site's clusters from the shared fleet
-// topology. Every cluster, including the default, must carry a non-secret s3
-// block whose credential fields name environment variables. This keeps API
-// placement and michael routing on one declarative cluster list.
+// topology. Every cluster (incl. default) needs a non-secret s3 block naming
+// credential env vars — one declarative list for API placement + michael routing.
 func ParseTopologyClusters(
 	data []byte,
 	siteCode string,
@@ -500,7 +487,6 @@ func (e clusterEntry) toConfig(def ClusterConfig, getenv func(string) string) (C
 
 	switch e.BackendSource {
 	case "":
-		// single-endpoint mode
 	case "file":
 		if e.BackendFile == "" {
 			return ClusterConfig{}, fmt.Errorf("cluster %q: backend_file is required when backend_source=file", e.Code)
@@ -569,9 +555,8 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
-// schemeAndPort extracts the scheme and port from an endpoint URL, used to
-// default the templating for DNS-resolved backends. Falls back to http and the
-// scheme's default port when unset.
+// schemeAndPort extracts scheme/port from an endpoint URL for DNS-backend
+// templating; defaults http and the scheme's default port.
 func schemeAndPort(endpoint string) (scheme, port string) {
 	scheme, port = "http", "80"
 	u, err := url.Parse(endpoint)

@@ -19,7 +19,6 @@ const RemoteBinDir = ".cache/yuctl-bench/bin"
 
 const remoteDir = RemoteBinDir
 
-// RunOpts drives one remote benchmark run from the dev machine.
 type RunOpts struct {
 	Host        string // ssh destination for the management host
 	SSHIdentity string // ssh private key file ("" = ssh defaults/agent)
@@ -28,8 +27,6 @@ type RunOpts struct {
 	Out         string // local results path ("" = don't save)
 }
 
-// Run pushes the agent + pinned restic to the host, streams the run, and
-// returns the collected result.
 func Run(ctx context.Context, opts RunOpts) (*RunResult, error) {
 	agentBin, cleanup, err := AgentBinary(opts.AgentBin)
 	if err != nil {
@@ -55,8 +52,6 @@ func Run(ctx context.Context, opts RunOpts) (*RunResult, error) {
 	return finish(result, opts.Out)
 }
 
-// RunHere executes the benchmark on the local machine — no ssh, the agent
-// library runs in-process against a locally pinned restic.
 func RunHere(ctx context.Context, opts RunOpts) (*RunResult, error) {
 	resticBin, err := EnsureResticLocal(ctx)
 	if err != nil {
@@ -204,7 +199,6 @@ func drive(ctx context.Context, identity, host string, cfg Config) (*RunResult, 
 	return sink.result, nil
 }
 
-// eventSink renders agent events as log lines and captures the terminal ones.
 type eventSink struct {
 	result *RunResult
 	fatal  string
@@ -236,7 +230,6 @@ func (s *eventSink) handle(ev Event) {
 	}
 }
 
-// EmitJSON is the agent-side event sink: one JSON object per stdout line.
 func EmitJSON(w io.Writer) func(Event) {
 	enc := json.NewEncoder(w)
 	return func(ev Event) {

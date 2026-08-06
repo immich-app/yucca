@@ -12,7 +12,6 @@ import (
 	"michael/internal/storage"
 )
 
-// HEAD /{path}/config
 func (s *Server) checkConfig(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 
@@ -26,7 +25,6 @@ func (s *Server) checkConfig(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// GET /{path}/config
 func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 
@@ -41,7 +39,6 @@ func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 	s.respondWithS3Object(w, r, obj)
 }
 
-// POST /{path}/config
 func (s *Server) saveConfig(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 
@@ -63,7 +60,6 @@ func (s *Server) saveConfig(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// DELETE /{path}/config
 func (s *Server) deleteConfig(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 

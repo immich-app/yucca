@@ -192,7 +192,6 @@ func TestAuthOptionalClaims(t *testing.T) {
 func TestAuthMiddlewareRepoMismatch(t *testing.T) {
 	token := makeJWT(t, validClaims())
 
-	// Create a chi router to test the middleware with path params
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
 		r.Use(Middleware(testPublicKey))
@@ -201,7 +200,6 @@ func TestAuthMiddlewareRepoMismatch(t *testing.T) {
 		})
 	})
 
-	// Use a different path than the repository in the JWT
 	req := httptest.NewRequest(http.MethodGet, "/wrong-repo-id/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
 	rec := httptest.NewRecorder()

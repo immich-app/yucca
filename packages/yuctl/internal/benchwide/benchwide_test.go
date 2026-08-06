@@ -16,9 +16,9 @@ func TestDropletName(t *testing.T) {
 	}
 }
 
-// The kill patterns must match the processes they target but never the shell
-// running the kill script itself (whose command line contains the pattern
-// text) — a self-match SIGTERMs the exec. Same bracket trick as warp.
+// Kill patterns must match their targets but never the kill script's own shell
+// (its command line contains the pattern) — self-match SIGTERMs the exec. Same
+// bracket trick as warp.
 func TestKillScriptNoSelfMatch(t *testing.T) {
 	re := regexp.MustCompile(`bench-agent --[l]oadgen`)
 	if !re.MatchString("/root/.cache/yuctl-bench/bin/bench-agent --loadgen /var/tmp/yucca-bench-do/loadgen.json") {
@@ -86,10 +86,9 @@ func TestStartOptionsDefaults(t *testing.T) {
 	}
 }
 
-// prep and launch must stay separate execs: prep runs the kill patterns, and
-// launch's command line contains "bench-agent --loadgen" verbatim — combined,
-// the pkill would match its own shell and SIGTERM it mid-script (config
-// written, agent never started). Guard both halves of that invariant.
+// prep and launch must stay separate execs: combined, prep's pkill would match
+// launch's verbatim "bench-agent --loadgen" on its own shell and SIGTERM it
+// mid-script (config written, agent never started). Guard both halves.
 func TestPrepAndLaunchScriptsSeparated(t *testing.T) {
 	prep, launch := prepScript(), launchScript()
 	if !strings.Contains(prep, "cat > "+configPath) {

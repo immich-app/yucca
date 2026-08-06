@@ -169,8 +169,6 @@ func TestSaveBlob_ChecksumMismatch(t *testing.T) {
 	}
 }
 
-// --- List Blobs ---
-
 func TestListBlobs_Success(t *testing.T) {
 	store := &mockStorage{
 		listObjectsFn: func(_ context.Context, _, _ string) ([]storage.BlobInfo, error) {
@@ -285,8 +283,6 @@ func TestListBlobs_EmptyResult(t *testing.T) {
 		t.Errorf("expected empty array, got %d blobs", len(blobs))
 	}
 }
-
-// --- Delete Blob ---
 
 func TestDeleteBlob_Success(t *testing.T) {
 	store := &mockStorage{

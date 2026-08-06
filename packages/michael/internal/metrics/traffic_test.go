@@ -28,9 +28,8 @@ func TestASNOption(t *testing.T) {
 	}
 }
 
-// The middleware counts EVERY request, not just the authenticated 2xx ones the
-// blobs.* family covers: a rejected flood is exactly what a per-network view is
-// for, and it moves almost no bytes.
+// Counts EVERY request, not just authed 2xx (blobs.*): a rejected flood is the
+// per-network view's point, and it moves almost no bytes.
 func TestTrafficMiddlewareCountsRejectedRequests(t *testing.T) {
 	reader := metric.NewManualReader()
 	m, err := NewMetrics(metric.NewMeterProvider(metric.WithReader(reader)).Meter("test"))

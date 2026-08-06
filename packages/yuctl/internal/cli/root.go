@@ -1,7 +1,6 @@
-// Package cli wires the yuctl command tree (spf13/cobra). cobra is a documented
-// divergence from michael's stdlib-only style, justified by yuctl's nested
-// subcommand surface (select / ceph / infra / users). Logging matches michael
-// (rs/zerolog).
+// Package cli wires the yuctl command tree (spf13/cobra — documented divergence
+// from michael's stdlib-only style, justified by the nested subcommand surface).
+// Logging matches michael (rs/zerolog).
 package cli
 
 import (
@@ -23,7 +22,6 @@ var (
 	flagRefreshDiscovery bool
 )
 
-// NewRootCmd builds the root command and registers every subcommand.
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "yuctl",
@@ -76,11 +74,9 @@ func setupLogging() error {
 	return nil
 }
 
-// resolveTopology returns the cached topology when fresh (see
-// discovery.LoadCachedTopology; TTL 1h, YUCTL_DISCOVERY_TTL to override,
-// --refresh-discovery to bypass), otherwise builds the discovery client,
-// resolves live from S3 state, and refreshes the cache. Shared by every command
-// that needs to read state.
+// resolveTopology: cached topology when fresh (TTL 1h; YUCTL_DISCOVERY_TTL
+// overrides, --refresh-discovery bypasses), else live resolve from S3 state +
+// cache refresh. Shared by every state-reading command.
 func resolveTopology(ctx context.Context) (*discovery.Topology, error) {
 	if !flagRefreshDiscovery {
 		if topo, ok := discovery.LoadCachedTopology(log.Logger); ok {

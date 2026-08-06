@@ -1,7 +1,5 @@
-// Package geoip identifies the remote end of a request: its network address and
-// the autonomous system announcing that address. Traffic metrics are labelled by
-// AS rather than by address — an AS label is bounded by the number of networks
-// that reach us, an address label is not.
+// Package geoip identifies a request's remote end: address + announcing AS.
+// Traffic metrics label by AS (bounded), never by address (unbounded).
 package geoip
 
 import (
@@ -16,31 +14,26 @@ import (
 	"github.com/oschwald/maxminddb-golang/v2"
 )
 
-// Sentinel AS labels. Every request gets one of these or a real "AS<number>",
-// so a traffic series is never dropped for want of a lookup.
+// Sentinel AS labels: every request gets one of these or a real "AS<number>",
+// so a series is never dropped for want of a lookup.
 const (
-	// ASNPrivate covers addresses no registry announces: RFC1918, loopback,
-	// link-local, unique-local, CGNAT. On-net clients (NetBird, the internal
-	// gateway VIP) land here.
+	// ASNPrivate: unannounced addresses (RFC1918, loopback, link-local, ULA,
+	// CGNAT). On-net clients (NetBird, internal gateway VIP) land here.
 	ASNPrivate = "private"
-	// ASNUnknown is a public address the database does not resolve — including
-	// every address when no database is loaded.
+	// ASNUnknown: public address the DB doesn't resolve — every address when no DB loaded.
 	ASNUnknown = "unknown"
 )
 
-// Client is the resolved identity of a request's remote end.
 type Client struct {
-	// IP is the client address in textual form, empty when unresolvable.
 	IP string
 	// ASN is "AS<number>", ASNPrivate, or ASNUnknown.
 	ASN string
-	// Org is the AS organization name; it mirrors ASN for the sentinels.
+	// Org mirrors ASN for the sentinels.
 	Org string
 }
 
-// Labels returns c's AS labels, substituting the unknown sentinel for a Client
-// nothing resolved — a metric series labelled with an empty AS would be worse
-// than one labelled unknown.
+// Labels returns c's AS labels, substituting ASNUnknown for empties (an empty
+// AS label would be worse than unknown).
 func (c Client) Labels() (asn, org string) {
 	asn, org = c.ASN, c.Org
 	if asn == "" {
@@ -52,15 +45,13 @@ func (c Client) Labels() (asn, org string) {
 	return asn, org
 }
 
-// Database resolves addresses against a MaxMind-format ASN database. A nil
-// *Database resolves nothing — that is what a deployment whose image carries no
-// database file gets, and it degrades to ASNUnknown rather than failing.
+// Database resolves addresses against a MaxMind-format ASN database. nil
+// resolves nothing (image without a DB file) — degrades to ASNUnknown.
 type Database struct {
 	reader *maxminddb.Reader
 }
 
-// asnRecord is the subset of an ASN database record we label with. Field names
-// are fixed by the MaxMind ASN schema, which DB-IP's free ASN database follows.
+// asnRecord: field names fixed by the MaxMind ASN schema (DB-IP's free DB follows it).
 type asnRecord struct {
 	Number uint32 `maxminddb:"autonomous_system_number"`
 	Org    string `maxminddb:"autonomous_system_organization"`
@@ -82,7 +73,6 @@ func (d *Database) Close() error {
 	return d.reader.Close()
 }
 
-// Lookup returns the AS labels for addr.
 func (d *Database) Lookup(addr netip.Addr) (asn, org string) {
 	if !addr.IsValid() {
 		return ASNUnknown, ASNUnknown
@@ -104,8 +94,6 @@ func (d *Database) Lookup(addr netip.Addr) (asn, org string) {
 	return "AS" + strconv.FormatUint(uint64(rec.Number), 10), org
 }
 
-// Resolve returns the client identity of a request. The address is read from
-// header, falling back to the transport peer when the header is absent.
 func (d *Database) Resolve(r *http.Request, header string) Client {
 	addr := ClientAddr(r, header)
 	asn, org := d.Lookup(addr)
@@ -116,8 +104,7 @@ func (d *Database) Resolve(r *http.Request, header string) Client {
 	return c
 }
 
-// cgnat is RFC 6598 shared address space — carrier NAT, not globally routed, so
-// it is no more attributable to an AS than RFC1918 is.
+// cgnat: RFC 6598 shared space — carrier NAT, no AS attribution (like RFC1918).
 var cgnat = netip.MustParsePrefix("100.64.0.0/10")
 
 func isPrivate(addr netip.Addr) bool {
@@ -130,13 +117,9 @@ func isPrivate(addr netip.Addr) bool {
 }
 
 // ClientAddr extracts the client address from header, falling back to the
-// request's transport peer when header is unset or holds nothing parseable.
-//
-// The RIGHTMOST header entry wins, and that is the whole point: a client may
-// send any X-Forwarded-For it likes and the gateway APPENDS the address it
-// actually saw, so only the last entry is written by something we trust.
-// Reading the leftmost entry — the usual reflex — would let any client pick its
-// own source network.
+// transport peer. RIGHTMOST entry wins: clients can send any X-Forwarded-For,
+// but the gateway APPENDS what it saw — only the last entry is trusted;
+// leftmost would let clients pick their own source network.
 func ClientAddr(r *http.Request, header string) netip.Addr {
 	if header != "" {
 		values := r.Header.Values(header)
@@ -153,9 +136,8 @@ func ClientAddr(r *http.Request, header string) netip.Addr {
 	return addr
 }
 
-// parseAddr accepts the forms an address reaches us in: bare, bracketed IPv6,
-// and host:port. Zones are dropped — they are meaningless off-host and would
-// split one network's series in two.
+// parseAddr accepts bare, bracketed IPv6, and host:port forms. Zones dropped
+// (meaningless off-host; would split a network's series).
 func parseAddr(s string) (netip.Addr, bool) {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -177,20 +159,16 @@ func parseAddr(s string) (netip.Addr, bool) {
 
 type contextKey struct{}
 
-// NewContext returns a new context carrying the given Client.
 func NewContext(ctx context.Context, c Client) context.Context {
 	return context.WithValue(ctx, contextKey{}, c)
 }
 
-// FromContext returns the Client resolved for this request, or the zero Client
-// when no Middleware ran.
+// Zero Client when no Middleware ran.
 func FromContext(ctx context.Context) Client {
 	c, _ := ctx.Value(contextKey{}).(Client)
 	return c
 }
 
-// Middleware resolves the client once per request so the access log and the
-// traffic metrics agree on who sent it without each paying for a lookup.
 func Middleware(resolve func(*http.Request) Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -30,7 +30,6 @@ var writeError = httputil.WriteError
 func (s *Server) respondWithS3Object(w http.ResponseWriter, r *http.Request, obj *storage.S3Object) {
 	defer obj.Body.Close()
 
-	// If-None-Match → 304
 	if etag := r.Header.Get("If-None-Match"); etag != "" && etag == obj.ETag {
 		w.WriteHeader(http.StatusNotModified)
 		return
@@ -54,7 +53,6 @@ func (s *Server) respondWithS3Object(w http.ResponseWriter, r *http.Request, obj
 		w.Header().Set("Content-Length", strconv.FormatInt(obj.ContentLength, 10))
 	}
 
-	// Range → 206
 	rangeHeader := r.Header.Get("Range")
 	if rangeHeader != "" && rangeHeader != "bytes=0-" {
 		w.WriteHeader(http.StatusPartialContent)

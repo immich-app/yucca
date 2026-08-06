@@ -1,12 +1,9 @@
 // Package warp deploys and drives a MinIO warp S3 load-test fleet on the
-// selected region's K8s cluster, targeting the region's Ceph RGW fleet. All
-// topology (worker nodes, CPU sizing, RGW endpoints) is resolved at runtime
-// from discovery and the live cluster; nothing region-specific is hardcoded.
-//
-// The proven shape (father, 2026-07-22, ~250Gbps combined): hostNetwork runner
-// pods (2 per worker), 16MiB objects, per-pod concurrency 167 PUT / 17 GET,
-// every request round-robined over an explicit RGW IP list — DNS round-robin
-// alone pins one gateway per process.
+// region's K8s cluster against its Ceph RGW fleet; all topology is resolved at
+// runtime from discovery + live cluster, nothing region-specific hardcoded.
+// Proven shape (father, 2026-07-22, ~250Gbps combined): hostNetwork runners
+// (2/worker), 16MiB objects, 167 PUT / 17 GET per pod, requests round-robined
+// over an explicit RGW IP list — DNS round-robin alone pins one gateway per process.
 package warp
 
 import (
@@ -35,7 +32,6 @@ import (
 	"yuctl/internal/state"
 )
 
-// fieldManager identifies this tool's server-side applies.
 const fieldManager = "yuctl-warp"
 
 //go:embed manifests/*.yaml
@@ -48,7 +44,6 @@ var manifestTmpl = template.Must(template.New("").
 	}}).
 	ParseFS(manifestFS, "manifests/*.yaml"))
 
-// renderManifest renders one embedded manifest template to YAML bytes.
 func renderManifest(name string, data any) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := manifestTmpl.ExecuteTemplate(&buf, name, data); err != nil {
@@ -57,7 +52,6 @@ func renderManifest(name string, data any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Session holds the resolved cluster access for one warp command invocation.
 type Session struct {
 	Namespace string
 	K8s       state.Kubernetes
@@ -120,14 +114,13 @@ func (s *Session) podExec(ctx context.Context, pod, script string) (string, erro
 	return out.String(), nil
 }
 
-// Worker is one schedulable (non-control-plane) node.
 type Worker struct {
 	Name     string
 	CPUCores int
 }
 
-// Workers lists the cluster's Ready, schedulable, non-control-plane nodes with
-// their allocatable CPU. This is the fleet the runners spread across.
+// Ready, schedulable, non-control-plane nodes with their allocatable CPU — the
+// fleet the runners spread across.
 func (s *Session) Workers(ctx context.Context) ([]Worker, error) {
 	nodes, err := s.client.CoreV1().Nodes().List(ctx, listAll)
 	if err != nil {
@@ -169,9 +162,9 @@ type S3Target struct {
 	IPs      []string
 }
 
-// ResolveS3 resolves the ceph cluster's RGW endpoint to its full A-record set.
-// The endpoint's DNS is public even where the IPs are fabric-internal, so
-// resolution happens here; reachability is probed from inside the cluster.
+// ResolveS3 resolves the RGW endpoint to its full A-record set. DNS is public
+// even where the IPs are fabric-internal, so resolve here; reachability is
+// probed in-cluster.
 func (s *Session) ResolveS3(ctx context.Context, override string) (*S3Target, error) {
 	endpoint := s.Ceph.RGWS3Endpoint
 	if override != "" {
@@ -201,9 +194,8 @@ func (s *Session) ResolveS3(ctx context.Context, override string) (*S3Target, er
 	return &S3Target{Endpoint: endpoint, Host: u.Hostname(), Port: port, IPs: ips}, nil
 }
 
-// ProbeIPs filters the roster to gateways that accept TCP connects, probed from
-// inside pod (the vantage the load actually runs from). It degrades gracefully:
-// with neither bash nor nc in the image, the unprobed roster is returned.
+// ProbeIPs filters to gateways accepting TCP connects, probed from inside a
+// pod (the load's vantage). Degrades gracefully: no bash/nc in image → unprobed roster.
 func (s *Session) ProbeIPs(ctx context.Context, pod string, t *S3Target) []string {
 	log.Info().Int("endpoints", len(t.IPs)).Str("from", pod).Msg("probing RGW endpoints for liveness")
 	tool, err := s.podExec(ctx, pod,
@@ -250,8 +242,6 @@ func (s *Session) ProbeIPs(ctx context.Context, pod string, t *S3Target) []strin
 	return healthy
 }
 
-// RunnerPods lists the runner pods (Running only), sorted by name, with the
-// node each landed on.
 func (s *Session) RunnerPods(ctx context.Context) ([]RunnerPod, error) {
 	pods, err := s.client.CoreV1().Pods(s.Namespace).List(ctx, listByApp(deploymentName))
 	if err != nil {
@@ -273,7 +263,6 @@ func (s *Session) RunnerPods(ctx context.Context) ([]RunnerPod, error) {
 	return out, nil
 }
 
-// RunnerPod is one running warp runner.
 type RunnerPod struct {
 	Name string
 	Node string

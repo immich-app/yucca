@@ -23,10 +23,8 @@ import (
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 )
 
-// otelResource identifies this process to the collector. Without
-// service.instance.id every replica exports IDENTICAL series; the TSDB merges
-// them into one, interleaved cumulative counters read as resets, and rate()
-// reports ~1/replicas of the real traffic.
+// otelResource identifies this process. Without service.instance.id replicas
+// export identical series; merged counters read as resets and rate() reports ~1/replicas.
 func otelResource() *sdkresource.Resource {
 	host, _ := os.Hostname()
 	res, err := sdkresource.Merge(sdkresource.Default(), sdkresource.NewSchemaless(
@@ -55,18 +53,15 @@ type Metrics struct {
 	UnknownCluster  otelmetric.Int64Counter
 	client          *clientMetrics
 
-	// Traffic counters, labelled by the SOURCE NETWORK instead of the identity:
-	// the blobs.* family answers "which customer moved this", these answer
-	// "which network did it come from", including for requests that never
-	// authenticated.
+	// Traffic counters, labelled by SOURCE NETWORK (not identity) — covers
+	// requests that never authenticated; blobs.* answers "which customer".
 	TrafficUploadedBytes   otelmetric.Int64Counter
 	TrafficDownloadedBytes otelmetric.Int64Counter
 	TrafficRequests        otelmetric.Int64Counter
 }
 
-// durationBuckets replaces the SDK default histogram boundaries, which are
-// sized for milliseconds — recording seconds against them put every sub-5s
-// request in the first bucket.
+// durationBuckets replaces the ms-sized SDK defaults (seconds recorded against
+// them land every sub-5s request in the first bucket).
 var durationBuckets = []float64{
 	0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120,
 }
@@ -105,8 +100,7 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating request_duration histogram: %w", err)
 	}
 
-	// Duration includes streaming the body to the client, so for large blobs it
-	// measures client throughput; TTFB isolates michael+RGW latency.
+	// Duration includes streaming to the client; TTFB isolates michael+RGW latency.
 	requestTTFB, err := meter.Float64Histogram("http.server.request.ttfb",
 		otelmetric.WithDescription("Time from request start to first response byte"),
 		otelmetric.WithUnit("s"),
@@ -127,10 +121,8 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating request_errors counter: %w", err)
 	}
 
-	// Backend (RGW) storage-operation failures, split out from the generic HTTP
-	// error counter so a gateway write-error spike is directly visible and
-	// alertable — the signal that a client-facing 500 wave is the storage
-	// backend, not michael or auth.
+	// RGW failures, split from generic HTTP errors so a backend-caused 500 wave
+	// is directly alertable.
 	storageErrors, err := meter.Int64Counter("storage.backend.errors",
 		otelmetric.WithDescription("Backend S3 storage operation failures, by operation and blob type"))
 	if err != nil {
@@ -149,10 +141,8 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating auth_cache_misses counter: %w", err)
 	}
 
-	// A token naming a storage cluster this michael does not front means a
-	// routing/config mismatch between the API that minted the token and this
-	// deployment — every such request is rejected, so this must be alertable
-	// rather than buried in the generic 4xx count.
+	// Token naming a cluster we don't front = routing/config mismatch with the
+	// minting API; always rejected, so alertable rather than buried in 4xx.
 	unknownCluster, err := meter.Int64Counter("storage.cluster.unknown",
 		otelmetric.WithDescription("Requests rejected because the token named a storage cluster michael does not front"))
 	if err != nil {
@@ -173,8 +163,7 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating traffic_downloaded_bytes counter: %w", err)
 	}
 
-	// Byte counters alone hide the abuse case this is here to catch: a flood of
-	// rejected requests from one network moves almost no bytes.
+	// Catches abuse floods of rejected requests that move almost no bytes.
 	trafficRequests, err := meter.Int64Counter("traffic.requests",
 		otelmetric.WithDescription("Total HTTP requests received, by source autonomous system"))
 	if err != nil {
@@ -209,9 +198,8 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 
 var clusterAttrCache sync.Map
 
-// ClusterOption labels a measurement with a storage cluster code. Cluster codes
-// are validated against a narrow charset before reaching here, so this stays
-// bounded even though the value originates in a token claim.
+// ClusterOption labels a measurement with a storage cluster code — charset-validated
+// upstream, so bounded despite originating in a token claim.
 func ClusterOption(code string) otelmetric.MeasurementOption {
 	if v, ok := clusterAttrCache.Load(code); ok {
 		return v.(otelmetric.MeasurementOption)
@@ -227,12 +215,9 @@ type asnAttrKey struct{ asn, org string }
 
 var asnAttrCache sync.Map
 
-// ASNOption labels a measurement with the source network of the request. The
-// AS number is the label that matters; the organization rides along because it
-// is a function of the number and so costs no extra series, and a board legend
-// reading "AS3320 Deutsche Telekom" beats one reading "AS3320". Address-level
-// attribution deliberately stays OUT of the labels — unbounded — and lives on
-// the access log line instead.
+// ASNOption labels a measurement with the request's source network. Org is a
+// function of the AS number (no extra series, nicer legends); address-level
+// attribution is unbounded and stays on the access log line, never in labels.
 func ASNOption(asn, org string) otelmetric.MeasurementOption {
 	key := asnAttrKey{asn, org}
 	if v, ok := asnAttrCache.Load(key); ok {
@@ -250,10 +235,9 @@ type storageErrAttrKey struct{ operation, blobType string }
 
 var storageErrAttrCache sync.Map
 
-// StorageErrorOption labels a backend storage failure by operation ("put",
-// "get", …) and blob type. Deliberately low-cardinality (no per-user labels):
-// this is a fleet-health/alerting signal, and the per-request identity is
-// already on the logged error line.
+// StorageErrorOption labels a backend failure by operation ("put", "get", …) and
+// blob type. Deliberately low-cardinality (no per-user labels — identity is on the
+// logged error line); this is a fleet-health/alerting signal.
 func StorageErrorOption(operation, blobType string) otelmetric.MeasurementOption {
 	key := storageErrAttrKey{operation, blobType}
 	if v, ok := storageErrAttrCache.Load(key); ok {
@@ -295,10 +279,8 @@ func SetupMeterProvider(cfg config.Config) (*sdkmetric.MeterProvider, error) {
 	return provider, nil
 }
 
-// --- Cached metric helpers (hot-path allocation avoidance) ---
-
-// connectionLabel bounds the label to the connection *type*; legacy tokens
-// without the claim report "unknown". Never label by connection instance id.
+// connectionLabel: connection *type* only, never instance id; legacy tokens
+// without the claim report "unknown".
 func connectionLabel(a auth.Auth) string {
 	if a.Connection == "" {
 		return "unknown"
@@ -325,9 +307,6 @@ func BlobMetricOption(a auth.Auth, blobType string) otelmetric.MeasurementOption
 	return opt
 }
 
-// BlobType returns the blob-category metric label for a request: the {type}
-// route param ("data", "index", ...), "config" for repository config
-// operations, "repo" for repository-level create/delete.
 func BlobType(r *http.Request) string {
 	if t := chi.URLParam(r, "type"); t != "" {
 		return t
@@ -371,9 +350,8 @@ type httpUserAttrKey struct {
 
 var httpUserAttrCache sync.Map
 
-// HttpUserMetricOption is HttpMetricOption plus the request's verified
-// identity. Used for the request count/error counters only — the duration and
-// TTFB histograms stay route-scoped to keep bucket-series cardinality down.
+// HttpUserMetricOption is HttpMetricOption plus verified identity. Count/error
+// counters only — histograms stay route-scoped to cap bucket-series cardinality.
 func HttpUserMetricOption(method, route string, status int, user, repository, connection string) otelmetric.MeasurementOption {
 	if user == "" {
 		return HttpMetricOption(method, route, status)
@@ -407,7 +385,6 @@ func cachedRoutePattern(rctx *chi.Context) string {
 	return result
 }
 
-// countingReader wraps an io.Reader and counts bytes read.
 type countingReader struct {
 	reader io.Reader
 	n      int64
@@ -419,7 +396,6 @@ func (cr *countingReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
-// countingReadCloser wraps an io.ReadCloser and counts bytes read.
 type countingReadCloser struct {
 	io.ReadCloser
 	n int64
@@ -431,7 +407,6 @@ func (cr *countingReadCloser) Read(p []byte) (int, error) {
 	return n, err
 }
 
-// countingWriter wraps an io.Writer and counts bytes written.
 type countingWriter struct {
 	writer io.Writer
 	n      int64
@@ -443,8 +418,6 @@ func (cw *countingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// ResponseWriter wraps http.ResponseWriter to count bytes written, track
-// status, and stamp when the response started (for TTFB).
 type ResponseWriter struct {
 	http.ResponseWriter
 	BytesWritten int64
@@ -496,7 +469,6 @@ func (w *ResponseWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-// BlobMiddleware counts uploaded/downloaded bytes.
 // Must run after auth.Middleware so auth context is available, and after
 // Middleware so w is already a *ResponseWriter.
 func BlobMiddleware(m *Metrics) func(http.Handler) http.Handler {
@@ -535,13 +507,9 @@ func BlobMiddleware(m *Metrics) func(http.Handler) http.Handler {
 	}
 }
 
-// TrafficMiddleware counts requests and bytes per source network. Unlike
-// BlobMiddleware it wraps the WHOLE router and counts every outcome —
-// unauthenticated, rejected, errored — because "which network is sending this"
-// has to answer for traffic that never reached a repository.
-//
-// Must run after Middleware so w is already a *ResponseWriter, and after
-// geoip.Middleware so the source network is resolved.
+// TrafficMiddleware counts requests and bytes per source network. Wraps the
+// WHOLE router — every outcome counts, incl. unauthenticated/rejected/errored.
+// Must run after Middleware (*ResponseWriter) and geoip.Middleware (network resolved).
 func TrafficMiddleware(m *Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -569,26 +537,23 @@ func TrafficMiddleware(m *Metrics) func(http.Handler) http.Handler {
 	}
 }
 
-// authCapture carries the verified identity from the authed route group out to
-// Middleware, which wraps the whole router (it must observe auth failures too)
-// and therefore never sees the auth context on its own request.
+// authCapture carries the verified identity out to Middleware, which wraps the
+// whole router (must see auth failures too) and so never gets the auth context.
 type authCapture struct {
 	user       string
 	repository string
 	connection string
 
-	// Concurrency is tracked from the moment auth resolves rather than from the
-	// start of the request: before that there is no identity to attribute it to,
-	// and the unattributed prefix is a cache lookup.
+	// Concurrency tracked from auth resolution (no identity before then; the
+	// unattributed prefix is just a cache lookup).
 	tracker *clientTracker
 	state   *clientConcurrency
 }
 
 type authCaptureKey struct{}
 
-// CaptureAuth copies the request's verified identity into the holder injected
-// by Middleware so request count/error metrics can be labeled per user. Must
-// be mounted after auth.Middleware.
+// CaptureAuth copies the verified identity into Middleware's holder for
+// per-user count/error labels. Mount after auth.Middleware.
 func CaptureAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if h, _ := r.Context().Value(authCaptureKey{}).(*authCapture); h != nil {
@@ -604,7 +569,6 @@ func CaptureAuth(next http.Handler) http.Handler {
 	})
 }
 
-// Middleware records HTTP request metrics.
 func Middleware(m *Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -613,10 +577,8 @@ func Middleware(m *Metrics) func(http.Handler) http.Handler {
 			capture := &authCapture{tracker: m.client.tracker}
 			r = r.WithContext(context.WithValue(r.Context(), authCaptureKey{}, capture))
 
-			// Deferred: a handler panic unwinds straight past this middleware to
-			// chi's Recoverer, and an outstanding request never accounted back out
-			// would pin the client's concurrency above zero for the life of the
-			// process — inflating its reported peak and blocking idle eviction.
+			// Deferred: a panic unwinds past us to chi's Recoverer; a request never
+			// accounted out would pin concurrency >0 forever, blocking idle eviction.
 			defer func() {
 				if capture.state != nil {
 					capture.state.exit(time.Now())

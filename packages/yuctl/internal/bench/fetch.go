@@ -25,14 +25,10 @@ var resticSHA256 = map[string]string{
 	"darwin_arm64": "7be0a144ccc377880f294204aa271d76e4b79554b42a751151d425ce6ebac143",
 }
 
-// EnsureResticLinux returns the pinned linux/amd64 restic to push to a
-// management host.
 func EnsureResticLinux(ctx context.Context) (string, error) {
 	return ensureRestic(ctx, "linux_amd64")
 }
 
-// EnsureResticLocal returns the pinned restic for the machine yuctl is running
-// on (--from-here runs).
 func EnsureResticLocal(ctx context.Context) (string, error) {
 	return ensureRestic(ctx, runtime.GOOS+"_"+runtime.GOARCH)
 }

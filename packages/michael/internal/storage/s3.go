@@ -59,28 +59,19 @@ func NewS3Storage(cfg config.Config) *S3Storage {
 	return NewS3StorageForEndpoint(cfg, cfg.S3Endpoint)
 }
 
-// S3Options describes how to build one backend's S3 client.
 type S3Options struct {
-	// Endpoint is the BaseEndpoint the SDK uses for routing, the Host header,
-	// and SigV4 signing. This is the address the backend gateway must accept in
-	// its zonegroup hostname list.
+	// Endpoint drives SDK routing, Host header, and SigV4 signing; must be in
+	// the gateway's zonegroup hostname list.
 	Endpoint string
-	// DialAddr, when set, pins the underlying TCP connection to this host:port
-	// regardless of Endpoint's host. This lets michael sign with a fixed
-	// hostname (Endpoint) while load-balancing across specific gateway IPs —
-	// the job HAProxy used to do. Empty means dial Endpoint's host normally.
+	// DialAddr, when set, pins the TCP connection to this host:port while
+	// Endpoint keeps driving signing/Host — fixed-hostname signing with per-IP
+	// load-balancing (ex-HAProxy job). Empty = dial Endpoint's host.
 	DialAddr string
-	// TLSSkipVerify disables TLS certificate verification, for gateways behind a
-	// self-signed cert (matching HAProxy's `ssl verify none`).
+	// TLSSkipVerify: for self-signed gateway certs (HAProxy `ssl verify none` equivalent).
 	TLSSkipVerify bool
-	// Wrap, when set, wraps the backend's transport (e.g. with per-backend
-	// client metrics).
-	Wrap func(http.RoundTripper) http.RoundTripper
+	Wrap          func(http.RoundTripper) http.RoundTripper
 }
 
-// NewS3StorageForEndpoint builds an S3Storage bound to a specific endpoint,
-// reusing the credentials/region/path-style from cfg. The load-balancing pool
-// uses this to stamp out one client per backend gateway.
 func NewS3StorageForEndpoint(cfg config.Config, endpoint string) *S3Storage {
 	return NewS3StorageWithOptions(cfg, S3Options{
 		Endpoint:      endpoint,
@@ -88,16 +79,11 @@ func NewS3StorageForEndpoint(cfg config.Config, endpoint string) *S3Storage {
 	})
 }
 
-// NewS3StorageWithOptions builds an S3Storage for the default storage cluster
-// with explicit per-backend options (host-pinned dialing and/or TLS
-// skip-verify) layered on the cfg credentials.
 func NewS3StorageWithOptions(cfg config.Config, opts S3Options) *S3Storage {
 	return NewS3StorageForCluster(cfg.DefaultCluster(), opts)
 }
 
-// NewS3StorageForCluster builds an S3Storage against one storage cluster's
-// credentials, region, and path-style. Each cluster michael fronts has its own
-// object-user, so credentials cannot be shared across clusters.
+// Each cluster has its own object-user, so credentials can't be shared.
 func NewS3StorageForCluster(cc config.ClusterConfig, opts S3Options) *S3Storage {
 	s3opts := s3.Options{
 		Region: cc.S3Region,
@@ -113,16 +99,14 @@ func NewS3StorageForCluster(cc config.ClusterConfig, opts S3Options) *S3Storage 
 	return &S3Storage{client: s3.New(s3opts)}
 }
 
-// buildHTTPClient builds the HTTP client for one backend. Always custom (never
-// the SDK default), so connection pooling behaves identically across
-// dev/staging/prod regardless of pin-host or TLS settings.
+// Always custom (never the SDK default) so pooling behaves identically across
+// dev/staging/prod.
 func buildHTTPClient(opts S3Options) *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 
-	// Each transport serves a single gateway, and restic fans out far more
-	// concurrent requests than the default per-host idle cap of 2 — anything
-	// past that paid a fresh TCP+TLS handshake. Buffers sized for multi-MB
-	// pack transfers (defaults are 4KB).
+	// One gateway per transport; restic's fan-out blows past the default
+	// per-host idle cap of 2 (fresh TCP+TLS beyond it). Buffers sized for
+	// multi-MB packs (defaults 4KB).
 	transport.MaxIdleConns = 0
 	transport.MaxIdleConnsPerHost = 128
 	transport.IdleConnTimeout = 120 * time.Second
@@ -141,9 +125,8 @@ func buildHTTPClient(opts S3Options) *http.Client {
 		if base == nil {
 			base = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
 		}
-		// Ignore the address the SDK derived from the URL host and dial the
-		// pinned backend instead. The URL host still drives the Host header,
-		// SNI, and signature, so the gateway sees the expected hostname.
+		// Dial the pinned backend, not the URL host; the URL host still drives
+		// Host header, SNI, and signature.
 		transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
 			return base(ctx, network, opts.DialAddr)
 		}
@@ -156,13 +139,10 @@ func buildHTTPClient(opts S3Options) *http.Client {
 	return &http.Client{Transport: rt}
 }
 
-// Probe performs a cheap liveness check against the backend gateway. It issues a
-// HeadBucket on a sentinel bucket: any HTTP response (even 404/403, meaning the
-// bucket is absent or access-denied) proves the gateway is serving, so only a
-// transport-level failure (dial refused, timeout, 5xx) is treated as unhealthy.
+// Probe: HeadBucket on a sentinel bucket. Any HTTP response (even 404/403)
+// proves the gateway serves; only transport failure/5xx is unhealthy.
 func (s *S3Storage) Probe(ctx context.Context, bucket string) error {
-	// Single-shot: a probe must not be silently retried by the SDK, or a dead
-	// gateway would look slow-but-alive and add latency to every reconcile.
+	// Single-shot: SDK retries would make a dead gateway look slow-but-alive.
 	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(bucket),
 	}, func(o *s3.Options) {
@@ -183,7 +163,6 @@ func (s *S3Storage) CheckBucket(ctx context.Context, bucket string) (bool, error
 		if errors.As(err, &notFound) {
 			return false, nil
 		}
-		// Also check for 404 in the operation error
 		var noSuchBucket *types.NoSuchBucket
 		if errors.As(err, &noSuchBucket) {
 			return false, nil
@@ -269,14 +248,11 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 		input.IfNoneMatch = aws.String("*")
 	}
 
-	// Use unsigned payload so the SDK doesn't need to seek the body for signing.
-	// RetryMaxAttempts=1 (no SDK retry): the body is restic's non-seekable
-	// proxied stream, so any retry would try to rewind it and fail with "failed
-	// to rewind transport stream for retry, request stream is not seekable" —
-	// masking the real backend error and, under load, stalling clients on a
-	// large fraction of PUTs. With retries off, a transient gateway error
-	// surfaces cleanly and restic retries the pack itself (its body IS
-	// seekable). See TestPutObject_NonSeekableBodyOn503_NoRewindRetry.
+	// Unsigned payload: no body seek needed for signing. RetryMaxAttempts=1:
+	// the body is restic's non-seekable proxied stream — an SDK retry fails with
+	// "failed to rewind transport stream", masking the real error and stalling
+	// PUTs under load; restic retries the pack itself (its body IS seekable).
+	// See TestPutObject_NonSeekableBodyOn503_NoRewindRetry.
 	_, err := s.client.PutObject(ctx, input, s3.WithAPIOptions(
 		v4.SwapComputePayloadSHA256ForUnsignedPayloadMiddleware,
 	), func(o *s3.Options) {
@@ -301,7 +277,6 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 	return nil
 }
 
-// sha256Writer wraps a hash.Hash for use with io.TeeReader.
 type sha256Writer struct {
 	hash interface {
 		Write(p []byte) (n int, err error)
@@ -313,11 +288,9 @@ func (w *sha256Writer) Write(p []byte) (n int, err error) {
 	return w.hash.Write(p)
 }
 
-// ListObjects streams every object under prefix to fn as pages arrive, instead
-// of buffering the whole listing — restic's REST protocol has no pagination, so
-// a large repo is one response and TTFB otherwise waits on every ListObjectsV2
-// page (1000 keys each). Names are full object keys; callers strip what they
-// need. An fn error aborts the walk.
+// ListObjects streams each page to fn instead of buffering: restic's REST
+// protocol has no pagination, so a large repo is one response and TTFB would
+// otherwise wait on every 1000-key page. Names are full keys; fn error aborts.
 func (s *S3Storage) ListObjects(ctx context.Context, bucket, prefix string, fn func(BlobInfo) error) error {
 	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
@@ -351,8 +324,6 @@ func (s *S3Storage) DeleteObject(ctx context.Context, bucket, key string) error 
 	return nil
 }
 
-// IsNotFound reports whether err is an S3 404 — the object (or bucket) does
-// not exist, as opposed to a storage failure.
 func IsNotFound(err error) bool {
 	var notFound *types.NotFound
 	if errors.As(err, &notFound) {
@@ -371,7 +342,6 @@ func IsNotFound(err error) bool {
 	return false
 }
 
-// isPreconditionFailed checks if an S3 error is a 412 Precondition Failed.
 func isPreconditionFailed(err error) bool {
 	// aws-sdk-go-v2 wraps HTTP status in the operation error
 	var apiErr interface {
@@ -383,19 +353,15 @@ func isPreconditionFailed(err error) bool {
 	return false
 }
 
-// isBackendFailure reports whether err indicates the S3 backend (gateway) is
-// unhealthy, as opposed to a normal application-level response. A 4xx status
-// (404 missing, 403 denied, 409 conflict, 412 precondition, …) means the
-// gateway responded correctly and is NOT a health failure. A 5xx status, or an
-// error carrying no HTTP status at all (dial refused, timeout, connection
-// reset, unexpected EOF), is a transport/backend failure.
+// isBackendFailure reports gateway unhealth: 4xx = gateway responded fine (not
+// a health failure); 5xx or no HTTP status (dial refused, timeout, reset,
+// unexpected EOF) = transport/backend failure.
 func isBackendFailure(err error) bool {
 	if err == nil {
 		return false
 	}
-	// A cancelled/expired context is the caller giving up (e.g. the restic
-	// client disconnected mid-stream), not a backend health signal — don't let
-	// it eject an otherwise-healthy gateway.
+	// Cancelled/expired context = caller gave up (client disconnect), not a
+	// backend health signal — must not eject a healthy gateway.
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}
@@ -404,9 +370,8 @@ func isBackendFailure(err error) bool {
 	}
 	if errors.As(err, &apiErr) {
 		code := apiErr.HTTPStatusCode()
-		// A transport failure (dial refused, timeout, reset) is surfaced by the
-		// SDK as a ResponseError with StatusCode 0 — no response ever reached
-		// us, so treat it as a backend failure alongside real 5xx responses.
+		// SDK surfaces transport failures as ResponseError with StatusCode 0 —
+		// no response reached us; treat like 5xx.
 		return code == 0 || code >= 500
 	}
 	// No HTTP status at all: the request never got a response from the gateway.

@@ -31,7 +31,6 @@ func TestCountingReader(t *testing.T) {
 		t.Fatalf("expected counter at 5, got %d", cr.n)
 	}
 
-	// Read remaining bytes into a larger buffer
 	buf2 := make([]byte, 32)
 	n, err = cr.Read(buf2)
 	if err != nil {
@@ -223,7 +222,6 @@ func TestResponseWriterDefaultStatus(t *testing.T) {
 	rec := &fakeResponseWriter{header: make(map[string][]string)}
 	mrw := &ResponseWriter{ResponseWriter: rec}
 
-	// Write without explicit WriteHeader should default to 200
 	if _, err := mrw.Write([]byte("data")); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -279,7 +277,6 @@ func (ew *errWriter) Write(p []byte) (int, error) {
 	return 0, io.ErrClosedPipe
 }
 
-// fakeResponseWriter is a minimal http.ResponseWriter for testing.
 type fakeResponseWriter struct {
 	header map[string][]string
 	buf    bytes.Buffer
@@ -289,7 +286,6 @@ func (f *fakeResponseWriter) Header() http.Header         { return http.Header(f
 func (f *fakeResponseWriter) Write(p []byte) (int, error) { return f.buf.Write(p) }
 func (f *fakeResponseWriter) WriteHeader(int)             {}
 
-// readFromResponseWriter implements both http.ResponseWriter and io.ReaderFrom.
 type readFromResponseWriter struct {
 	header         map[string][]string
 	buf            bytes.Buffer
@@ -308,7 +304,6 @@ func TestBlobMetricOptionCacheHit(t *testing.T) {
 	a := auth.Auth{User: "u1", Repository: "r1"}
 	opt1 := BlobMetricOption(a, "data")
 	opt2 := BlobMetricOption(a, "data")
-	// Same pointer means the cache returned the same object.
 	if opt1 != opt2 {
 		t.Fatal("expected cached BlobMetricOption to return the same object")
 	}
@@ -327,7 +322,6 @@ func TestBlobMetricOptionDifferentKeys(t *testing.T) {
 }
 
 func TestHttpUserMetricOption(t *testing.T) {
-	// Empty user delegates to the route-scoped option.
 	anon := HttpUserMetricOption("GET", "/foo", 200, "", "", "immich")
 	if anon != HttpMetricOption("GET", "/foo", 200) {
 		t.Fatal("expected empty user to reuse the route-scoped option")
@@ -362,8 +356,7 @@ func TestHttpMetricOptionDifferentKeys(t *testing.T) {
 }
 
 func TestCachedRoutePattern(t *testing.T) {
-	// Build a chi router with a known route, then fire a request through it
-	// so that RoutePatterns is populated.
+	// RoutePatterns is only populated once a request has run through the router.
 	r := chi.NewRouter()
 	var captured string
 	r.Get("/api/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -379,7 +372,6 @@ func TestCachedRoutePattern(t *testing.T) {
 		t.Fatal("expected non-empty cached route pattern")
 	}
 
-	// Fire again — should hit cache and return same string.
 	var captured2 string
 	r2 := chi.NewRouter()
 	r2.Get("/api/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -415,8 +407,6 @@ func TestBlobMiddlewareUnwraps(t *testing.T) {
 	}
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The writer passed through should be the outer ResponseWriter,
-		// not a second wrapper.
 		if _, ok := w.(*ResponseWriter); !ok {
 			t.Error("expected w to be *ResponseWriter, not a new wrapper")
 		}
@@ -427,7 +417,6 @@ func TestBlobMiddlewareUnwraps(t *testing.T) {
 
 	handler := BlobMiddleware(m)(inner)
 
-	// Wrap in a ResponseWriter (simulating Middleware).
 	rec := httptest.NewRecorder()
 	mrw := &ResponseWriter{ResponseWriter: rec}
 
@@ -443,7 +432,6 @@ func TestBlobMiddlewareUnwraps(t *testing.T) {
 }
 
 func TestBlobMetricOptionConnectionInCacheKey(t *testing.T) {
-	// Same user+repo but different connection types must not share a cache entry.
 	a := BlobMetricOption(auth.Auth{User: "u1", Repository: "r1", Connection: "immich"}, "data")
 	b := BlobMetricOption(auth.Auth{User: "u1", Repository: "r1", Connection: "restic"}, "data")
 	if a == b {

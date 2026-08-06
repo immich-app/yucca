@@ -47,7 +47,6 @@ func TestFileResolver_HotReload(t *testing.T) {
 		t.Fatalf("first resolve: got %v", got)
 	}
 
-	// Rewrite the file: next Resolve must reflect the change.
 	if err := os.WriteFile(path, []byte("http://a:80\nhttp://b:80\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -108,7 +108,6 @@ func (v *benchDoView) render(r *benchwide.StatusReport, sampledAt time.Time, sam
 	}
 	b.WriteString("\n")
 
-	// Clients: loop progress per restic identity.
 	cnameW := 6
 	for _, d := range r.Droplets {
 		if d.Status == nil {

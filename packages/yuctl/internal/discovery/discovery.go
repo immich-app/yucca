@@ -1,13 +1,10 @@
-// Package discovery resolves the live yucca topology by reading Terraform state
-// objects directly from the shared `yucca-tf-state` S3 bucket and parsing each
-// stack's `discovery` output (see internal/state). It never shells out to
-// `terragrunt output`, so it works without a checkout, provider plugins, or
-// `terragrunt init`.
-//
-// Stack enumeration is auto-detected: it prefers walking a local
-// `tf/deployment` tree (cheap, offline, and authoritative for *which* stacks
-// exist), and falls back to a `ListObjectsV2` sweep of the bucket. Either way,
-// live values come from a `GetObject` on each `terraform.tfstate`.
+// Package discovery resolves the live yucca topology by reading Terraform
+// state straight from the shared `yucca-tf-state` S3 bucket and parsing each
+// stack's `discovery` output (see internal/state) — never `terragrunt output`,
+// so no checkout, provider plugins, or init needed. Stack enumeration prefers
+// walking a local `tf/deployment` tree (cheap, offline, authoritative for
+// WHICH stacks exist), falling back to a ListObjectsV2 sweep; live values
+// always come from GetObject on each terraform.tfstate.
 package discovery
 
 import (
@@ -41,14 +38,12 @@ const (
 	s3Endpoint = "https://s3.eu-west-par.io.cloud.ovh.net/"
 	s3Region   = "eu-west-par"
 
-	// Default 1Password references for the state-bucket credentials. These match
-	// the AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY lines in tf/.env. Overridable
-	// via the env vars below for `op run` / CI contexts.
+	// Default 1P refs for the state-bucket creds (match the AWS_* lines in
+	// tf/.env); overridable via the env vars below for `op run`/CI.
 	defaultAccessKeyRef = "op://yucca_tf/TF_STATE_S3_ACCESS_KEY/password"
 	defaultSecretKeyRef = "op://yucca_tf/TF_STATE_S3_SECRET_KEY/password"
 )
 
-// Stack identifies one Terraform stack and its state object key.
 type Stack struct {
 	Partition string
 	Region    string
@@ -56,27 +51,22 @@ type Stack struct {
 	Key       string // full S3 object key
 }
 
-// ResolvedStack is a Stack with its parsed discovery envelope.
 type ResolvedStack struct {
 	Stack
 	Discovery state.Discovery
 }
 
-// Topology is every resolved stack across the bucket.
 type Topology struct {
 	Stacks []ResolvedStack
 }
 
-// Client reads state from S3.
 type Client struct {
 	s3  *s3.Client
 	log zerolog.Logger
 }
 
-// NewClient builds the S3 client. Credentials come from AWS_ACCESS_KEY_ID /
-// AWS_SECRET_ACCESS_KEY when already present (e.g. under `op run`), otherwise
-// they are resolved from 1Password via `op read` (refs overridable through
-// YUCTL_TF_STATE_ACCESS_KEY_REF / YUCTL_TF_STATE_SECRET_KEY_REF).
+// NewClient builds the S3 client: AWS_ACCESS_KEY_ID/SECRET when present (op
+// run), else `op read` (refs overridable via YUCTL_TF_STATE_{ACCESS,SECRET}_KEY_REF).
 func NewClient(ctx context.Context, logger zerolog.Logger) (*Client, error) {
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
@@ -121,14 +111,11 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
-// resolveConcurrency bounds the parallel GetObject fan-out in Resolve.
 const resolveConcurrency = 8
 
-// Resolve discovers stacks (local tree preferred, else bucket listing), reads
-// each state object, and returns the populated topology. Stacks whose state has
-// no `discovery` output yet are skipped with a debug log. State objects are
-// fetched concurrently; results keep the (sorted) enumeration order so the
-// topology stays deterministic.
+// Resolve discovers stacks (local tree preferred, else bucket listing) and
+// fetches states concurrently; stacks without a `discovery` output are skipped
+// (debug log). Results keep sorted enumeration order — deterministic topology.
 func (c *Client) Resolve(ctx context.Context) (*Topology, error) {
 	stacks, src, err := c.enumerate(ctx)
 	if err != nil {
@@ -175,7 +162,6 @@ func (c *Client) Resolve(ctx context.Context) (*Topology, error) {
 	return topo, nil
 }
 
-// enumerate returns candidate stacks, preferring a local tf/deployment tree.
 func (c *Client) enumerate(ctx context.Context) ([]Stack, string, error) {
 	if dir := findDeploymentDir(); dir != "" {
 		stacks, err := enumerateLocal(dir)
@@ -193,8 +179,6 @@ func (c *Client) enumerate(ctx context.Context) ([]Stack, string, error) {
 	return stacks, "bucket", nil
 }
 
-// findDeploymentDir walks up from the working directory looking for a
-// `tf/deployment` directory, returning its absolute path or "".
 func findDeploymentDir() string {
 	if override := os.Getenv("YUCTL_TF_DEPLOYMENT_DIR"); override != "" {
 		if isDir(override) {
@@ -223,9 +207,8 @@ func isDir(p string) bool {
 	return err == nil && info.IsDir()
 }
 
-// enumerateLocal walks tf/deployment finding every directory that contains a
-// terragrunt.hcl and sits at depth >= 2 (partition/region/<stack...>). The root
-// terragrunt.hcl (depth 0) is ignored.
+// enumerateLocal walks tf/deployment for terragrunt.hcl dirs at depth >= 2
+// (partition/region/<stack...>); the root terragrunt.hcl is ignored.
 func enumerateLocal(root string) ([]Stack, error) {
 	var stacks []Stack
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -257,7 +240,6 @@ func enumerateLocal(root string) ([]Stack, error) {
 	return stacks, nil
 }
 
-// enumerateBucket lists every `*/terraform.tfstate` under the yucca/ prefix.
 func (c *Client) enumerateBucket(ctx context.Context) ([]Stack, error) {
 	var stacks []Stack
 	p := s3.NewListObjectsV2Paginator(c.s3, &s3.ListObjectsV2Input{
@@ -283,7 +265,6 @@ func (c *Client) enumerateBucket(ctx context.Context) ([]Stack, error) {
 	return stacks, nil
 }
 
-// stackFromSegments builds a Stack from path segments [partition, region, sub...].
 func stackFromSegments(segs []string) Stack {
 	partition, region := segs[0], segs[1]
 	sub := strings.Join(segs[2:], "/")
@@ -295,7 +276,6 @@ func stackFromSegments(segs []string) Stack {
 	}
 }
 
-// stackFromKey parses `yucca/<partition>/<region>/<stack...>/terraform.tfstate`.
 func stackFromKey(key string) (Stack, bool) {
 	trimmed := strings.TrimPrefix(key, KeyPrefix)
 	trimmed = strings.TrimSuffix(trimmed, "/terraform.tfstate")
@@ -332,9 +312,6 @@ func sortStacks(s []Stack) {
 	})
 }
 
-// ---- Topology queries -------------------------------------------------------
-
-// Regions returns the distinct partition@region pairs present in the topology.
 func (t *Topology) Regions() []string {
 	seen := map[string]struct{}{}
 	var out []string
@@ -352,7 +329,6 @@ func (t *Topology) Regions() []string {
 	return out
 }
 
-// HasRegion reports whether any stack exists for partition@region.
 func (t *Topology) HasRegion(partition, region string) bool {
 	for _, s := range t.Stacks {
 		if s.Partition == partition && s.Region == region {
@@ -362,7 +338,6 @@ func (t *Topology) HasRegion(partition, region string) bool {
 	return false
 }
 
-// Kubernetes returns the region's single k8s/talos discovery payload, or nil.
 func (t *Topology) Kubernetes(partition, region string) *state.Kubernetes {
 	for _, s := range t.Stacks {
 		if s.Partition == partition && s.Region == region && s.Discovery.Kubernetes != nil {

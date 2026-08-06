@@ -19,13 +19,11 @@ type User struct {
 	Disabled bool   `json:"disabled"`
 }
 
-// userPage is the paginated envelope returned by GET /api/user.
 type userPage struct {
 	Items      []User  `json:"items"`
 	NextCursor *string `json:"nextCursor"`
 }
 
-// Client talks to one admin-api instance using a CLI session JWT.
 type Client struct {
 	baseURL string
 	http    *http.Client
@@ -45,8 +43,6 @@ func (c *Client) setAuth(req *http.Request) {
 	req.Header.Set("Authorization", "Bearer "+c.token.AccessToken)
 }
 
-// GetAuth verifies the session against GET /api/auth and returns the
-// authenticated subject.
 func (c *Client) GetAuth(ctx context.Context) (string, error) {
 	u := c.baseURL + "/api/auth"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -133,7 +129,6 @@ func (c *Client) listUserPage(ctx context.Context, cursor string, limit int) (*u
 	return &page, nil
 }
 
-// ParseLimit validates a user-supplied --limit page size for the admin-api.
 func ParseLimit(s string) (int, error) {
 	if s == "" {
 		return 0, nil

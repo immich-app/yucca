@@ -49,10 +49,9 @@ func main() {
 	log.Logger = zerolog.New(output).With().Timestamp().Caller().Logger()
 	zerolog.SetGlobalLevel(cfg.LogLevel)
 
-	// Bind the listener BEFORE the (potentially slow) backend pool init, so the
-	// kubelet's tcpSocket startup probe sees the process as alive while probes
-	// run. With the port bound late, N unreachable backends once pushed init
-	// past the startup budget and crash-looped the deployment.
+	// Bind the listener BEFORE slow pool init so the kubelet tcpSocket startup
+	// probe sees us alive — late binding once crash-looped the deployment when
+	// N unreachable backends pushed init past the startup budget.
 	addr := fmt.Sprintf(":%d", cfg.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -98,10 +97,8 @@ func main() {
 		}
 	}
 
-	// A missing or unreadable ASN database is NOT fatal: source-network labels
-	// are an observability nicety, and failing the backup data plane over them
-	// would be the wrong trade. The nil database resolves every public address
-	// to "unknown", so the series stay continuous either way.
+	// Missing/unreadable ASN DB is NOT fatal — don't fail the backup data plane
+	// over an observability nicety; nil DB resolves public addresses to "unknown".
 	asnDB, err := geoip.Open(cfg.ASNDatabasePath)
 	if err != nil {
 		log.Warn().Err(err).Msg("ASN database unavailable; traffic will not be attributed to source networks")
@@ -119,11 +116,9 @@ func main() {
 		Handler: srv.Handler(),
 	}
 
-	// Graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Drive each backend pool's reconcile/probe loop until shutdown.
 	for _, pool := range pools {
 		go pool.Run(ctx)
 	}
@@ -164,11 +159,7 @@ func main() {
 	log.Info().Msg("shutdown complete")
 }
 
-// buildClusters builds one Storage per storage cluster michael fronts, keyed by
-// cluster code, plus the subset of those that are load-balancing pools (returned
-// concretely so the caller can register their metrics and run their reconcile
-// loops). A single-cluster deployment yields exactly one entry, under
-// cfg.S3DefaultCluster.
+// The pools are returned concretely for metrics registration + reconcile loops.
 func buildClusters(cfg config.Config, tm *metrics.TransportMetrics) (map[string]storage.Storage, map[string]*storage.Pool) {
 	stores := make(map[string]storage.Storage, len(cfg.Clusters))
 	pools := make(map[string]*storage.Pool)
@@ -183,10 +174,6 @@ func buildClusters(cfg config.Config, tm *metrics.TransportMetrics) (map[string]
 	return stores, pools
 }
 
-// buildStorage returns the Storage for one cluster. With no backend source
-// configured it is a single S3 client (legacy behavior) and pool is nil. With
-// source=file or source=dns it is a load-balancing Pool, also returned
-// concretely so the caller can register its metrics and run its reconcile loop.
 func buildStorage(cc config.ClusterConfig, tm *metrics.TransportMetrics) (storage.Storage, *storage.Pool) {
 	if cc.S3BackendSource == "" {
 		return storage.NewS3StorageForCluster(cc, storage.S3Options{
@@ -210,11 +197,9 @@ func buildStorage(cc config.ClusterConfig, tm *metrics.TransportMetrics) (storag
 	return pool, pool
 }
 
-// backendFactory builds the per-backend Storage constructor for the pool. In
-// pin-host mode each resolved backend is a gateway IP that michael dials
-// directly while still signing/Host-ing with the cluster endpoint (replacing the
-// HAProxy hop); otherwise the resolved endpoint is used as the S3 endpoint
-// as-is.
+// backendFactory builds the pool's per-backend Storage constructor. Pin-host
+// mode dials each resolved gateway IP directly while signing/Host-ing with the
+// cluster endpoint (replaces HAProxy); otherwise the resolved endpoint is used as-is.
 func backendFactory(cc config.ClusterConfig, tm *metrics.TransportMetrics) storage.BackendFactory {
 	if !cc.S3BackendPinHost {
 		return func(endpoint string) (storage.Storage, error) {
@@ -247,8 +232,6 @@ func backendFactory(cc config.ClusterConfig, tm *metrics.TransportMetrics) stora
 	}
 }
 
-// transportWrap returns the metrics wrapper for one backend's transport, or
-// nil when metrics are disabled.
 func transportWrap(tm *metrics.TransportMetrics, cluster, backend string) func(http.RoundTripper) http.RoundTripper {
 	if tm == nil {
 		return nil

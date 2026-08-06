@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-// Agent executes the benchmark phases on the management host and streams
-// Events back to the orchestrator.
 type Agent struct {
 	cfg  Config
 	emit func(Event)
@@ -318,7 +316,6 @@ func (a *Agent) progressFn(phase string, conns int, total int64) func(delta int6
 	}
 }
 
-// statusFn adapts restic --json status messages into throttled progress events.
 func (a *Agent) statusFn(phase string, conns int, doneKey, totalKey string) func(map[string]any) {
 	var last time.Time
 	start := time.Now()

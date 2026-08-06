@@ -9,7 +9,6 @@ import (
 	yctx "yuctl/internal/context"
 )
 
-// parseTarget splits the human form `partition@region`.
 func parseTarget(s string) (partition, region string, err error) {
 	p, r, ok := strings.Cut(s, "@")
 	if !ok || p == "" || r == "" {
@@ -52,7 +51,6 @@ func newSelectCmd() *cobra.Command {
 	}
 }
 
-// requireContext loads the persisted context, erroring if nothing is selected.
 func requireContext() (*yctx.Context, error) {
 	c, err := yctx.Load()
 	if err != nil {

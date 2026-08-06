@@ -15,8 +15,6 @@ import (
 	"yuctl/internal/warp"
 )
 
-// warpFlags are shared by every warp subcommand: how to reach the cluster and
-// which ceph cluster's RGW fleet to target. Everything else is derived.
 type warpFlags struct {
 	namespace   string
 	kubeconfig  string

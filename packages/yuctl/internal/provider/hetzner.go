@@ -26,8 +26,7 @@ const hetznerTokenRef = "op://yucca_tf_prod/HCLOUD_API_TOKEN/password"
 const fleetLabel = "yuctl-fleet"
 
 // hetznerProvider talks to the Hetzner Cloud API (https://api.hetzner.cloud/v1)
-// over plain net/http — the surface bench-wide needs is small enough that a
-// full SDK dependency isn't worth it.
+// over plain net/http — bench-wide's surface is too small to warrant an SDK.
 type hetznerProvider struct {
 	token string
 	http  *http.Client
@@ -104,7 +103,6 @@ func (p *hetznerProvider) req(ctx context.Context, method, path string, body, ou
 	return nil
 }
 
-// hServer is the subset of a Hetzner server object we read.
 type hServer struct {
 	ID        int64  `json:"id"`
 	Name      string `json:"name"`

@@ -13,10 +13,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// --- fakes ---
-
-// fakeStore is an in-memory Storage used to drive the pool without real S3. It
-// can be toggled to fail operations (transport-style) and to fail probes.
 type fakeStore struct {
 	endpoint  string
 	opFail    atomic.Bool
@@ -117,8 +113,6 @@ func (e *errReadCloser) Read(p []byte) (int, error) {
 }
 func (e *errReadCloser) Close() error { return nil }
 
-// --- test harness ---
-
 type testResolver struct {
 	mu  sync.Mutex
 	eps []string
@@ -167,12 +161,9 @@ func backendByEndpoint(p *Pool, ep string) *backend {
 	return nil
 }
 
-// --- tests ---
-
 func TestPool_PickLeastOutstanding(t *testing.T) {
 	p, _, _ := newTestPool(t, []string{"a", "b", "c"}, 3)
 	bs := p.snapshot()
-	// Give them distinct inflight loads; pick must choose the minimum.
 	for _, b := range bs {
 		switch b.endpoint {
 		case "a":
@@ -191,7 +182,6 @@ func TestPool_PickLeastOutstanding(t *testing.T) {
 
 func TestPool_PickTiebreakRotates(t *testing.T) {
 	p, _, _ := newTestPool(t, []string{"a", "b", "c"}, 3)
-	// All equal load => tiebreak should rotate across backends.
 	seen := map[string]int{}
 	for range 30 {
 		seen[p.pick().endpoint]++
@@ -224,14 +214,12 @@ func TestPool_EjectAfterThresholdThenReinstate(t *testing.T) {
 		t.Fatal("backend should start healthy after initial probe")
 	}
 
-	// Two failures: still healthy (no immediate ejection).
 	reg["a"].opFail.Store(true)
 	p.HeadObject(context.Background(), "bucket", "k")
 	p.HeadObject(context.Background(), "bucket", "k")
 	if !b.healthy.Load() {
 		t.Error("ejected before reaching threshold")
 	}
-	// Third consecutive failure: ejected.
 	p.HeadObject(context.Background(), "bucket", "k")
 	if b.healthy.Load() {
 		t.Error("expected ejection after threshold failures")
@@ -240,7 +228,6 @@ func TestPool_EjectAfterThresholdThenReinstate(t *testing.T) {
 		t.Errorf("expected 3 recorded errors, got %d", b.errors.Load())
 	}
 
-	// Active probe reinstates once the backend recovers.
 	reg["a"].opFail.Store(false)
 	p.Reconcile(context.Background())
 	if !b.healthy.Load() {
@@ -255,9 +242,7 @@ func TestPool_AppErrorDoesNotEject(t *testing.T) {
 	p, _, reg := newTestPool(t, []string{"a"}, 1) // threshold 1: any transport failure ejects
 	b := backendByEndpoint(p, "a")
 
-	// Make GetObject return a 404-style app error (not a backend failure).
 	reg["a"].getErr = nil
-	// Simulate via recordResult directly with an HTTP 404 error.
 	p.recordResult(b, &httpError{statusCode: 404})
 	if !b.healthy.Load() {
 		t.Error("app-level 404 must not eject the backend")
@@ -322,7 +307,6 @@ func TestPool_ReconcileAddsAndRemoves(t *testing.T) {
 		t.Fatalf("expected 2 backends, got %d", len(p.snapshot()))
 	}
 
-	// Remove b, add c.
 	res.set([]string{"a", "c"}, nil)
 	p.Reconcile(context.Background())
 
@@ -333,11 +317,9 @@ func TestPool_ReconcileAddsAndRemoves(t *testing.T) {
 	if !eps["a"] || !eps["c"] || eps["b"] || len(eps) != 2 {
 		t.Errorf("after reconcile expected {a,c}, got %v", eps)
 	}
-	// 'a' must be reused (same pointer survives) and stay healthy.
 	if !backendByEndpoint(p, "a").healthy.Load() {
 		t.Error("surviving backend 'a' should remain healthy")
 	}
-	// 'c' is newly added and promoted by the probe in the same reconcile.
 	if !backendByEndpoint(p, "c").healthy.Load() {
 		t.Error("new backend 'c' should be probed healthy")
 	}
@@ -355,7 +337,6 @@ func TestPool_ReconcileEjectsViaProbe(t *testing.T) {
 		t.Error("'b' should remain healthy")
 	}
 
-	// Recovery: probe passes again, backend reinstated.
 	reg["a"].probeFail.Store(false)
 	p.Reconcile(context.Background())
 	if !backendByEndpoint(p, "a").healthy.Load() {
@@ -387,7 +368,6 @@ func TestPool_ConcurrentRequestsDuringReconcile(t *testing.T) {
 	var wg sync.WaitGroup
 	stop := make(chan struct{})
 
-	// Hammer the hot path from several goroutines.
 	for range 8 {
 		wg.Go(func() {
 			for {
@@ -405,7 +385,6 @@ func TestPool_ConcurrentRequestsDuringReconcile(t *testing.T) {
 		})
 	}
 
-	// Concurrently churn the backend set and probe.
 	wg.Go(func() {
 		sets := [][]string{{"a", "b"}, {"a", "b", "c", "d"}, {"b", "c"}, {"a", "b", "c"}}
 		for i := range 200 {
@@ -427,7 +406,6 @@ func TestPool_ConcurrentRequestsDuringReconcile(t *testing.T) {
 
 func TestPool_StatsReflectActivity(t *testing.T) {
 	p, _, _ := newTestPool(t, []string{"a", "b"}, 3)
-	// Drive some successful ops.
 	for range 4 {
 		p.HeadObject(context.Background(), "bucket", "k")
 	}
@@ -458,9 +436,8 @@ func (s *slowProbeStore) Probe(ctx context.Context, _ string) error {
 	return ctx.Err()
 }
 
-// Probes must run concurrently and be bounded by probeTimeout: N unreachable
-// backends cost one timeout, not N — serial unbounded probes once pushed pool
-// init past the kubelet startup budget and crash-looped the deployment.
+// Probes run concurrently, bounded by probeTimeout: N unreachable backends cost
+// one timeout, not N (serial unbounded probes once crash-looped startup).
 func TestPool_ProbesConcurrentAndBounded(t *testing.T) {
 	const n = 8
 	eps := make([]string, n)

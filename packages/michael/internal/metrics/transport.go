@@ -12,10 +12,8 @@ import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
-// TransportMetrics instruments the per-backend S3 HTTP transports: connection
-// churn (dials, reuse ratio), TLS handshake cost, and time-to-first-byte from
-// the gateway. These separate RGW latency from michael's own overhead and
-// prove out connection-pool tuning.
+// Instruments dials/reuse, TLS handshake cost, and gateway TTFB per backend,
+// separating RGW latency from michael overhead.
 type TransportMetrics struct {
 	dials       otelmetric.Int64Counter
 	conns       otelmetric.Int64Counter
@@ -60,9 +58,8 @@ func NewTransportMetrics(meter otelmetric.Meter) (*TransportMetrics, error) {
 	}, nil
 }
 
-// Wrap returns rt instrumented with per-request httptrace hooks, labeled with
-// the backend's address and the storage cluster it belongs to. The cluster
-// label is what keeps two clusters apart when their gateways share an address.
+// Wrap instruments rt with httptrace hooks, labeled cluster+backend; the
+// cluster label keeps clusters apart when gateways share an address.
 func (t *TransportMetrics) Wrap(cluster, backend string, rt http.RoundTripper) http.RoundTripper {
 	return &tracedTransport{tm: t, cluster: cluster, backend: backend, rt: rt}
 }
@@ -99,8 +96,6 @@ func (t *tracedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	return t.rt.RoundTrip(req.WithContext(httptrace.WithClientTrace(ctx, trace)))
 }
-
-// --- cached attribute options (hot path, same pattern as HttpMetricOption) ---
 
 type backendAttrKey struct{ cluster, backend string }
 

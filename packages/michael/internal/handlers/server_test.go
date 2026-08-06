@@ -49,7 +49,6 @@ func makeBasicAuth(token string) string {
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte("restic:"+token))
 }
 
-// mockStorage implements the storage.Storage interface for testing.
 type mockStorage struct {
 	checkBucketFn  func(ctx context.Context, bucket string) (bool, error)
 	createBucketFn func(ctx context.Context, bucket string) error
@@ -127,17 +126,14 @@ func (m *mockStorage) DeleteObject(ctx context.Context, bucket, key string) erro
 	return nil
 }
 
-// newTestServer creates a single-cluster Server with mock storage.
 func newTestServer(store *mockStorage) *Server {
 	return NewServer(store, testPublicKey, nil)
 }
 
-// doRequest creates and executes a request against the test server with a real JWT auth header.
 func doRequest(t *testing.T, srv *Server, method, path string, body io.Reader, a auth.Auth, headers map[string]string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(method, path, body)
 
-	// Generate a real JWT for the auth middleware
 	claims := jwt.MapClaims{
 		"user":       a.User,
 		"repository": a.Repository,
@@ -176,7 +172,6 @@ func wormAuth() auth.Auth {
 	}
 }
 
-// parseLogLines parses JSON log output into a slice of maps.
 func parseLogLines(t *testing.T, buf *bytes.Buffer) []map[string]interface{} {
 	t.Helper()
 	var entries []map[string]interface{}
@@ -193,7 +188,6 @@ func parseLogLines(t *testing.T, buf *bytes.Buffer) []map[string]interface{} {
 	return entries
 }
 
-// findLog returns the first log entry matching all given field values.
 func findLog(entries []map[string]interface{}, match map[string]interface{}) map[string]interface{} {
 	for _, e := range entries {
 		hit := true
@@ -210,7 +204,6 @@ func findLog(entries []map[string]interface{}, match map[string]interface{}) map
 	return nil
 }
 
-// captureLogOutput replaces the global logger with one writing to buf, and restores it on cleanup.
 func captureLogOutput(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
@@ -276,7 +269,6 @@ func TestErrorLogOutput(t *testing.T) {
 
 	entries := parseLogLines(t, buf)
 
-	// Should have an error-level log with the error message and request context
 	errLog := findLog(entries, map[string]interface{}{"level": "error"})
 	if errLog == nil {
 		t.Fatalf("no error log entry found in output:\n%s", buf.String())
@@ -314,7 +306,6 @@ func TestAuthFailureLogOutput(t *testing.T) {
 
 	srv := newTestServer(&mockStorage{})
 
-	// Send a request with no auth header
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/data", nil)
 	req.Header.Set("Accept", ContentTypeResticV2)
 	rec := httptest.NewRecorder()
@@ -326,7 +317,6 @@ func TestAuthFailureLogOutput(t *testing.T) {
 
 	entries := parseLogLines(t, buf)
 
-	// Should still get an access log even for auth failures
 	accessLog := findLog(entries, map[string]interface{}{"status": float64(http.StatusUnauthorized)})
 	if accessLog == nil {
 		t.Fatalf("no access log entry for 401 response:\n%s", buf.String())
@@ -337,9 +327,8 @@ func TestAuthFailureLogOutput(t *testing.T) {
 	}
 }
 
-// Traffic accounting wraps the request body to count it. With the whole chain
-// mounted — Middleware, TrafficMiddleware, BlobMiddleware, each wrapping the
-// body again — an upload must still reach storage byte for byte.
+// The full chain (Middleware, TrafficMiddleware, BlobMiddleware) wraps the body
+// three times; an upload must still reach storage byte for byte.
 func TestUploadBodySurvivesTrafficAccounting(t *testing.T) {
 	m, err := metrics.NewMetrics(noop.NewMeterProvider().Meter("test"))
 	if err != nil {

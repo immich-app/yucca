@@ -26,9 +26,8 @@ type Manifest struct {
 
 const manifestName = "manifest.json"
 
-// fileKey derives the ChaCha8 key for one file's content in one round. Random
-// (incompressible, dedup-proof) yet fully reproducible from (seed, index,
-// round).
+// fileKey derives the ChaCha8 key for one file's content in one round: random
+// (incompressible, dedup-proof) yet reproducible from (seed, index, round).
 func fileKey(seed uint64, index, round int) [32]byte {
 	var b [24]byte
 	binary.LittleEndian.PutUint64(b[0:], seed)

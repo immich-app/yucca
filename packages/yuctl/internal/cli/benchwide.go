@@ -19,7 +19,6 @@ import (
 	"yuctl/internal/provider"
 )
 
-// benchDoFlags are shared by every bench-wide subcommand.
 type benchDoFlags struct {
 	yes      bool
 	provider string
@@ -44,7 +43,6 @@ func (f *benchDoFlags) session(ctx context.Context) (*benchwide.Session, string,
 	return s, cc.Partition + " · " + s.Tag(), nil
 }
 
-// minter runs the admin-api login flow and returns the repo-minting client.
 func (f *benchDoFlags) minter(ctx context.Context, cmd *cobra.Command, admin *adminFlags) (benchwide.RepoMinter, error) {
 	cc, err := requireContext()
 	if err != nil {

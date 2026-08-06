@@ -1,14 +1,11 @@
-// Package adminapi authenticates against the yucca-admin-api via its CLI
-// loopback login flow and queries its REST endpoints.
-//
-// Login never touches the IdP directly and needs no client secret: yuctl
-// starts a listener on 127.0.0.1:<random port>, opens the browser at the
-// admin-api's /api/auth/cli/login with a state nonce and an S256 code
-// challenge, and the admin-api (which owns the confidential OIDC client) runs
-// the normal browser OIDC dance. The callback redirects the browser to the
-// loopback listener with a one-time code, which yuctl exchanges — together
-// with the plaintext verifier that never left this process — for a
-// admin-api-minted ES256 session JWT sent as `Authorization: Bearer`.
+// Package adminapi authenticates against yucca-admin-api via its CLI loopback
+// login flow and queries its REST endpoints. Login never touches the IdP and
+// needs no client secret: yuctl listens on 127.0.0.1:<random port>, opens the
+// browser at /api/auth/cli/login with a state nonce + S256 code challenge; the
+// admin-api (owner of the confidential OIDC client) runs the browser OIDC
+// dance and redirects a one-time code to the loopback, which yuctl exchanges —
+// with the verifier that never left this process — for an admin-api-minted
+// ES256 session JWT sent as `Authorization: Bearer`.
 package adminapi
 
 import (
@@ -32,12 +29,10 @@ type Token struct {
 	Expiry      time.Time `json:"expiry"`
 }
 
-// Valid reports whether the cached token is present and not expired.
 func (t *Token) Valid() bool {
 	return t != nil && t.AccessToken != "" && t.Sub != "" && time.Now().Before(t.Expiry)
 }
 
-// loginTimeout bounds the wait for the operator to finish the browser flow.
 const loginTimeout = 5 * time.Minute
 
 type cliTokenResponse struct {
@@ -46,10 +41,9 @@ type cliTokenResponse struct {
 	Sub         string `json:"sub"`
 }
 
-// BrowserLogin runs the loopback login flow against adminURL. promptFn
-// receives the URL the operator must open (already attempted via openFn when
-// non-nil; the prompt is always shown as fallback). Returns the minted session
-// token.
+// BrowserLogin runs the loopback flow against adminURL. promptFn gets the URL
+// to open (openFn attempted first when non-nil; prompt always shown as
+// fallback). Returns the minted session token.
 func BrowserLogin(ctx context.Context, hc *http.Client, adminURL string, openFn func(url string) error, promptFn func(url string)) (*Token, error) {
 	verifier := randB64(32)
 	challenge := base64.RawURLEncoding.EncodeToString(func() []byte { s := sha256.Sum256([]byte(verifier)); return s[:] }())

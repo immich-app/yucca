@@ -8,10 +8,9 @@ import (
 	"testing"
 )
 
-// benchDB opens the database the benchmarks resolve against. testdata's fixture
-// holds three networks, which understates lookup cost — a real ASN database is
-// ~400k networks and several levels deeper in the search tree. Point
-// MICHAEL_BENCH_ASN_DB at a real one to measure what production actually pays:
+// benchDB: the testdata fixture holds three networks — understates lookup cost
+// (real ASN DB is ~400k networks, deeper tree). Point MICHAEL_BENCH_ASN_DB at
+// a real one to measure what production pays:
 //
 //	go test ./internal/geoip -bench . -benchmem \
 //	  -args # MICHAEL_BENCH_ASN_DB=/path/to/dbip-asn-lite.mmdb
@@ -33,9 +32,8 @@ func benchDB(b *testing.B) *Database {
 	return db
 }
 
-// The three outcomes cost different amounts: private short-circuits before the
-// database is touched, a hit walks the tree AND decodes a record, a miss walks
-// the tree and stops.
+// Outcomes cost differently: private short-circuits pre-DB; a hit walks the
+// tree AND decodes; a miss walks and stops.
 func BenchmarkLookup(b *testing.B) {
 	db := benchDB(b)
 

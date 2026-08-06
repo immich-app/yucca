@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// CleanupOptions control the bucket purge.
 type CleanupOptions struct {
 	Prefixes   []string // bucket-name prefixes to purge (default yuctl-warp-)
 	Legacy     bool     // also purge the pre-yuctl soak prefixes (warp-lt-, warp-loadtest-)
@@ -27,10 +26,9 @@ type CleanupOptions struct {
 	Timeout    time.Duration
 }
 
-// Cleanup purges warp test buckets via a hostNetwork Job running `mc` inside
-// the cluster — the RGW IPs are fabric-internal, so the deletes must run from
-// the worker vantage, with the same creds secret the runners use. Note a mass
-// delete is itself a load event (RGW GC churns afterwards).
+// Cleanup purges warp buckets via a hostNetwork `mc` Job in-cluster — RGW IPs
+// are fabric-internal, so deletes run from the worker vantage with the runners'
+// creds secret. A mass delete is itself a load event (RGW GC churns after).
 func (s *Session) Cleanup(ctx context.Context, opts CleanupOptions) error {
 	if len(opts.Prefixes) == 0 {
 		opts.Prefixes = []string{"yuctl-warp-"}
@@ -144,7 +142,6 @@ echo cleanup done`, mci, target.Endpoint, strings.Join(patterns, "|"), strings.J
 	return nil
 }
 
-// jobLogs concatenates the logs of the job's pods (best effort).
 func (s *Session) jobLogs(ctx context.Context, job string) string {
 	pods, err := s.client.CoreV1().Pods(s.Namespace).List(ctx, metav1.ListOptions{LabelSelector: "job-name=" + job})
 	if err != nil {

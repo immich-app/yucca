@@ -108,7 +108,6 @@ func (v *warpView) render(r *warp.StatusReport, sampledAt time.Time, sampleSec i
 		b.WriteString("\n")
 	}
 
-	// Pods: process liveness and log error counts.
 	podW := 3
 	for _, p := range r.Pods {
 		podW = max(podW, len(p.Name))
@@ -161,7 +160,6 @@ func padGbps(bps float64) string {
 	return fmt.Sprintf("%11s", fmtGbps(bps))
 }
 
-// meter renders a horizontal bar of width w, filled to value/scale.
 func meter(value, scale float64, w int) string {
 	filled := 0
 	if scale > 0 {
@@ -171,8 +169,6 @@ func meter(value, scale float64, w int) string {
 	return strings.Repeat("█", filled) + strings.Repeat("░", w-filled)
 }
 
-// sparkline renders the last len(vals) samples with block glyphs, scaled to
-// the window maximum, downsampled to at most w points.
 func sparkline(vals []float64, w int) string {
 	if len(vals) > w {
 		vals = vals[len(vals)-w:]
