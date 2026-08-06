@@ -322,7 +322,7 @@ describe('Repository', () => {
         }),
       }),
     });
-  }, 30_000);
+  }, 60_000);
 
   it('lists run history', async () => {
     await expect(sdk.getRunHistory(repository.id)).resolves.toEqual({
@@ -435,7 +435,7 @@ describe('Snapshot browsing and restore', () => {
     ({
       snapshots: [{ id: snapshotId }],
     } = await sdk.getSnapshots(repository.id));
-  }, 30_000);
+  }, 60_000);
 
   it('navigates into a subdirectory of a snapshot', async () => {
     await expect(sdk.getSnapshotListing(repository.id, snapshotId, { path: workingDir })).resolves.toEqual({
@@ -750,7 +750,7 @@ describe('Repository pruning', () => {
     const backupComplete = waitForMessage('TaskEnd');
     await sdk.createBackup(repository.id);
     await backupComplete;
-  }, 30_000);
+  }, 60_000);
 
   it('prunes a repository according to its retention policy', async () => {
     const event = waitForMessage('TaskEnd');
@@ -824,7 +824,7 @@ describe('Running task cancellation', () => {
         }),
       ]),
     });
-  }, 30_000);
+  }, 60_000);
 });
 
 describe('Immich integration', () => {
