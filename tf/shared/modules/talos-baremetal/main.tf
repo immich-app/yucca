@@ -215,13 +215,6 @@ resource "talos_machine_configuration_apply" "controlplane" {
   node                        = each.value.address
   endpoint                    = each.value.address
   config_patches              = local.per_node_patches[each.key]
-  # Never auto-reboot from an apply: "auto" rebooted every node the moment a
-  # non-hot-applicable change merged, and TF walks the for_each in parallel, so
-  # the whole fleet went down at once (2026-08-05, PR #436, on the prod stack).
-  # Reboot-needing changes are now STAGED; activate them with a manual
-  # one-node-at-a-time `talosctl reboot`. Talos 1.14 removes the dry-run reboot
-  # detection this mode relies on (apply-config there can no longer reboot at
-  # all); revisit at the 1.14 upgrade.
   apply_mode = "staged_if_needing_reboot"
 
   # Reset + reboot on destroy so `tf:destroy` wipes the node back toward
