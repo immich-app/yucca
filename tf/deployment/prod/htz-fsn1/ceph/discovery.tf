@@ -1,4 +1,3 @@
-# ── Discovery contract ──────────────────────────────────────────────────────
 # Single non-sensitive envelope consumed by yuctl (parses .outputs.discovery
 # .value from S3 state). Credentials are op:// references only — never values.
 # See tf/README.md "Discovery outputs".

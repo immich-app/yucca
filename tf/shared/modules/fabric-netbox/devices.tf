@@ -1,5 +1,5 @@
 locals {
-  # Devices whose vme (VC management) IP we register — the master chassis only.
+  # The master chassis only — it carries the VC's vme IP.
   mgmt_devices = { for name, d in var.devices : name => d if d.mgmt_ip != null }
 }
 
@@ -13,7 +13,7 @@ resource "netbox_device" "this" {
   status         = "active"
 }
 
-# vme (virtual management) interface + IP on each VC master.
+# vme = virtual management, on each VC master.
 resource "netbox_device_interface" "vme" {
   for_each  = local.mgmt_devices
   device_id = netbox_device.this[each.key].id

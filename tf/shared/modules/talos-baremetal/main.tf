@@ -1,17 +1,6 @@
-# talos-baremetal — brings up a Talos cluster on bare-metal nodes that are
-# already running Talos in maintenance mode at known addresses. Drives the
-# whole sequence via the siderolabs/talos provider:
-#
-#   machine_secrets → per-role machine_configuration → CP config apply
-#   (install to disk + reboot) → machine_bootstrap (one CP) → worker apply
-#   → kubeconfig + talosconfig → cluster_health gate.
-#
-# Bare-metal-direct by design (the earlier VM-on-ceph-hypervisors
-# talos-cluster module was removed unused): no Ansible inventory, no
-# hypervisors, no kernel `ip=` cmdline. Nodes are dialed directly at their
-# maintenance IP, which is also pinned as the post-install static IP on the bond.
+# Nodes are dialed at their maintenance IP, which is also pinned as the
+# post-install static IP on the bond.
 
-# Per-node names from the shared inventory (operator override per node, else auto).
 module "names" {
   source       = "../node-names"
   cluster_name = var.cluster_name
@@ -22,12 +11,8 @@ module "names" {
 locals {
   cluster_endpoint = coalesce(var.cluster_endpoint, "https://${var.cluster_vip}:6443")
 
-  # Prefix length from the subnet CIDR (e.g. "24" from "10.10.10.0/24").
   netmask = split("/", var.subnet_cidr)[1]
 
-  # Each node's hostname per the fleet convention:
-  #   <product>-<provider>-<region>-<clustername>-<role>-<nodename>
-  #   e.g. yucca-int-aus-luke-k8s-<word>. <nodename> = nodes[i].name or auto-picked.
   nodes_named = [
     for i, n in var.nodes : merge(n, {
       role     = coalesce(n.role, "control-plane")
@@ -35,23 +20,18 @@ locals {
     })
   ]
 
-  # Keyed by address (static, known at plan) — NOT the hostname, which derives from
-  # the random_shuffle and is unknown until apply (for_each keys must be known at
-  # plan). Map iteration is alphabetical by key, so plan ordering is deterministic.
+  # Keyed by address, NOT hostname — hostnames derive from random_shuffle and are
+  # unknown at plan (for_each keys must be known at plan).
   node_map        = { for n in local.nodes_named : n.address => n }
   cp_node_map     = { for k, n in local.node_map : k => n if n.role == "control-plane" }
   worker_node_map = { for k, n in local.node_map : k => n if n.role == "worker" }
 
   cp_addresses = [for k, n in local.cp_node_map : n.address]
 
-  # Bootstrap CP: lowest-named control-plane, deterministic. Bootstrap is
-  # one-shot — re-running rolls cluster identity, so this pick must NOT
-  # change post-bootstrap.
+  # Bootstrap CP: lowest-keyed, deterministic. Bootstrap is one-shot — the pick
+  # must NOT change post-bootstrap (re-running rolls cluster identity).
   bootstrap_cp = local.cp_node_map[sort(keys(local.cp_node_map))[0]]
 
-  # Factory metal installer keeps a schematic's extensions; stock installer
-  # otherwise. Pinned to v${talos_version} so the installed system is exactly
-  # that version regardless of which image the node booted into maintenance on.
   install_image = (
     var.talos_schematic_id != null
     ? "factory.talos.dev/metal-installer/${var.talos_schematic_id}:v${var.talos_version}"
@@ -59,15 +39,11 @@ locals {
   )
 }
 
-# One machine_secrets per cluster (Talos PKI; sensitive).
 resource "talos_machine_secrets" "this" {
   talos_version = "v${var.talos_version}"
 }
 
-# ─── Shared + per-role config patches ───────────────────────────────────
-
 locals {
-  # Applied to every node: install target + image.
   install_patch = yamlencode({
     machine = {
       install = {
@@ -77,14 +53,9 @@ locals {
     }
   })
 
-  # NetBird node-level overlay: when a setup key is supplied, append an
-  # ExtensionServiceConfig document (a separate config doc, like the
-  # HostnameConfig multi-doc below) so the siderolabs/netbird extension reads
-  # NB_SETUP_KEY on boot and the node registers as a NetBird peer. Only takes
-  # effect once the node runs a schematic that includes siderolabs/netbird
-  # (talos_schematic_id + a `talosctl upgrade` to that installer image).
-  # NB_MANAGEMENT_URL is the NetBird Cloud default — set explicitly to mirror the
-  # ansible mgmt role.
+  # Only takes effect once the node runs a schematic including siderolabs/netbird
+  # (talos_schematic_id + `talosctl upgrade` to that image). NB_MANAGEMENT_URL is
+  # the Cloud default, set explicitly to mirror the ansible mgmt role.
   netbird_patches = var.netbird_setup_key != "" ? [
     yamlencode({
       apiVersion = "v1alpha1"
@@ -99,11 +70,7 @@ locals {
 
   shared_patches = concat([local.install_patch], local.netbird_patches, var.config_patches)
 
-  # Control-plane cluster-level config: compact-cluster scheduling toggle +
-  # apiserver cert SANs (VIP for in-cluster traffic, direct CP IPs for
-  # operators — the floating VIP follows the leader and isn't always the
-  # node you can reach). Firewall: common rules + CP-only services (firewall
-  # locals live in firewall.tf).
+  # SANs include direct CP IPs — the VIP follows the leader and isn't always reachable.
   cp_cluster_config = merge(
     {
       allowSchedulingOnControlPlanes = var.allow_scheduling_on_control_planes
@@ -111,9 +78,8 @@ locals {
         certSANs = concat([var.cluster_vip], local.cp_addresses)
       }
     },
-    # Disable the bundled CNI for Cilium/none — it's installed out-of-band.
+    # cilium is installed out-of-band → Talos CNI none.
     contains(["cilium", "none"], var.cni) ? { network = { cni = { name = "none" } } } : {},
-    # kube-proxy replacement: Cilium uses Talos KubePrism (localhost:7445).
     var.disable_kube_proxy ? { proxy = { disabled = true } } : {},
   )
 
@@ -126,9 +92,6 @@ locals {
 
   worker_patches = concat(local.shared_patches, local.common_firewall_patches)
 
-  # Per-node network: bond0 over the physical NICs, static address, default
-  # route, hostname, resolvers. CPs additionally carry the shared VIP on the
-  # bond (Talos elects a single holder via etcd).
   per_node_patches = {
     for k, n in local.node_map : k => [
       yamlencode({
@@ -147,10 +110,6 @@ locals {
                       gateway = var.gateway
                     },
                   ]
-                  # LACP-only fields (lacpRate/xmitHashPolicy) are emitted only
-                  # for 802.3ad — they're meaningless for active-backup, so the
-                  # active-backup bring-up stays clean and the later flip to
-                  # 802.3ad adds them automatically.
                   bond = merge(
                     {
                       interfaces = var.bond.interfaces
@@ -169,10 +128,9 @@ locals {
           }
         }
       }),
-      # Hostname via the HostnameConfig multi-doc (auto:"off"), NOT
-      # machine.network.hostname — Talos v1.13 rejects the v1alpha1 hostname
-      # as "already set" when a hostname is otherwise determined. "off" must
-      # stay quoted (YAML 1.1 parses bare off as boolean false).
+      # HostnameConfig multi-doc, NOT machine.network.hostname — Talos v1.13
+      # rejects the v1alpha1 hostname as "already set" when otherwise determined.
+      # "off" must stay quoted (YAML 1.1 parses bare off as false).
       yamlencode({
         apiVersion = "v1alpha1"
         kind       = "HostnameConfig"
@@ -203,10 +161,6 @@ data "talos_machine_configuration" "worker" {
   config_patches     = local.worker_patches
 }
 
-# ─── Per-node config apply (installs to disk + reboots) ─────────────────
-
-# CP-first, then bootstrap, then workers — workers must not race the
-# apiserver coming up (they'd sit in maintenance until it's reachable).
 resource "talos_machine_configuration_apply" "controlplane" {
   for_each = local.cp_node_map
 
@@ -217,8 +171,6 @@ resource "talos_machine_configuration_apply" "controlplane" {
   config_patches              = local.per_node_patches[each.key]
   apply_mode                  = "auto"
 
-  # Reset + reboot on destroy so `tf:destroy` wipes the node back toward
-  # maintenance mode rather than leaving a half-configured install.
   on_destroy = {
     reboot   = true
     reset    = true
@@ -226,18 +178,15 @@ resource "talos_machine_configuration_apply" "controlplane" {
   }
 }
 
-# ONE bootstrap call against the explicit bootstrap CP, gated on the full CP
-# apply set (siderolabs/terraform-provider-talos#265 — otherwise TF may
-# schedule bootstrap before every CP is configured). One-shot: re-running
-# rolls cluster identity.
+# One-shot bootstrap (re-running rolls cluster identity), gated on the full CP
+# apply set (siderolabs/terraform-provider-talos#265 — TF may otherwise schedule
+# bootstrap before every CP is configured).
 resource "talos_machine_bootstrap" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
   node                 = local.bootstrap_cp.address
   endpoint             = local.bootstrap_cp.address
 
-  # Cold nodes pulling images + initial etcd leader election can take a few
-  # minutes; 10m absorbs that without masking a real stall (provider does
-  # not retry).
+  # Cold image pulls + etcd election can take minutes; provider does not retry.
   timeouts = {
     create = "10m"
   }
@@ -264,8 +213,7 @@ resource "talos_machine_configuration_apply" "worker" {
   depends_on = [talos_machine_bootstrap.this]
 }
 
-# Kubeconfig — server URL = cluster_endpoint (the VIP). Dialed via the
-# bootstrap CP's direct IP (the VIP may not be up until election settles).
+# Dialed direct — the VIP may not be up until election settles.
 resource "talos_cluster_kubeconfig" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
   node                 = local.bootstrap_cp.address
@@ -274,8 +222,7 @@ resource "talos_cluster_kubeconfig" "this" {
   depends_on = [talos_machine_bootstrap.this]
 }
 
-# Talosconfig endpoints = direct CP IPs (NOT the VIP): the VIP follows the
-# leader, which is exactly the node you can't reach during a failure.
+# Direct CP IPs, NOT the VIP — unreachable exactly during failures.
 data "talos_client_configuration" "this" {
   cluster_name         = var.cluster_name
   client_configuration = talos_machine_secrets.this.client_configuration
@@ -283,17 +230,14 @@ data "talos_client_configuration" "this" {
   nodes                = [for k, n in local.node_map : n.address]
 }
 
-# Health gate — blocks apply until etcd quorum + all nodes Ready, turning a
-# silently-broken bring-up into a hard failure. Reaches nodes directly, so
-# apply must run from a host that routes the node subnet.
+# Reaches nodes directly: apply must run from a host that routes the node subnet.
 data "talos_cluster_health" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
   control_plane_nodes  = [for k, n in local.cp_node_map : n.address]
   worker_nodes         = [for k, n in local.worker_node_map : n.address]
   endpoints            = local.cp_addresses
 
-  # When the CNI is installed after bootstrap (cni=cilium), nodes stay
-  # NotReady until then — verify only Talos/etcd health here, not k8s Ready.
+  # With out-of-band CNI, nodes stay NotReady until it lands — check Talos/etcd only.
   skip_kubernetes_checks = var.health_skip_kubernetes_checks
 
   timeouts = {

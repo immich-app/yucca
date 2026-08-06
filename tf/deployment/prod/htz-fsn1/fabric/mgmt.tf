@@ -1,19 +1,7 @@
-# mgmt hosts — Hetzner dedicated-server reprovisioning (zack/hetzner robot API).
-#
-# Two-step, operator-gated flow:
-#   1. Terraform arms a fresh Debian auto-install on the robot (hetzner_boot_linux),
-#      authorizing a TF-owned automation SSH key for root. This is NON-destructive
-#      — the flag only takes effect on the next boot; the running host is untouched.
-#   2. The operator reboots the host (manually, for now) -> the robot wipes the
-#      disks + installs Debian -> ansible/mgmt configures it (networkd, tailscale,
-#      users from modules/identity, baseline + hardening).
-#
-# Only hosts listed in var.mgmt_reprovision_targets are armed, so a normal apply
-# does nothing to the mgmt hosts. Re-target deliberately for each reprovision.
-#
-# Host roster (server numbers = Hetzner robot IDs, GET /server) comes from the
-# shared mgmt-hosts.yaml at the region root (../mgmt-hosts.yaml) — the same SoT
-# the ansible inventory render reads.
+# Two-step, operator-gated: TF only ARMS the auto-install (non-destructive until
+# the operator reboots → robot wipes+installs → ansible/mgmt configures). Only
+# var.mgmt_reprovision_targets are armed, so a normal apply touches nothing.
+# ../mgmt-hosts.yaml is the same SoT as the ansible inventory render.
 locals {
   mgmt_roster = yamldecode(file("${path.module}/../mgmt-hosts.yaml"))
   mgmt_hosts  = local.mgmt_roster.hosts
@@ -22,7 +10,6 @@ locals {
   provisioning_key_item = "${local.site_prefix}_PROVISIONING_SSH_PRIVATE_KEY"
 }
 
-# Guard: the roster's site_id must match the stack's, or addressing diverges.
 resource "terraform_data" "mgmt_site_id_check" {
   lifecycle {
     precondition {
@@ -32,18 +19,14 @@ resource "terraform_data" "mgmt_site_id_check" {
   }
 }
 
-# ── Provisioning keypair (TF-owned, recorded in 1Password) ───────────────────
-# Generated here, stored in the env-appropriate vault as the source-of-truth
-# record, and registered in the Hetzner robot. Authorized for root on freshly-
-# reprovisioned hosts; ansible/mgmt reads the private half from 1Password
-# (op://<vault>/<title>/password). Survives state loss and is operator-visible.
+# 1P record = source of truth; registered in Robot, authorized for root on
+# reprovisioned hosts; ansible/mgmt reads op://<vault>/<title>/password.
 resource "tls_private_key" "mgmt_provisioning" {
   algorithm = "ED25519"
 
   lifecycle {
-    # Rotating this key requires re-registering it in Robot and re-authorizing
-    # hosts — a deliberate runbook, never a plan side effect. (The reprovision
-    # flow arms hetzner_boot_linux; it never destroys the key.)
+    # Rotation = re-register in Robot + re-authorize hosts — a deliberate
+    # runbook, never a plan side effect.
     prevent_destroy = true
   }
 }
@@ -73,7 +56,6 @@ resource "hetzner_ssh_key" "mgmt_automation" {
   data = trimspace(tls_private_key.mgmt_provisioning.public_key_openssh)
 }
 
-# ── Arm a fresh OS install for each targeted host ────────────────────────────
 # server_number RequiresReplace, so re-targeting recreates cleanly.
 resource "hetzner_boot_linux" "mgmt" {
   for_each = toset(var.mgmt_reprovision_targets)

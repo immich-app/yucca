@@ -9,9 +9,8 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
-    # This stack's secrets.tf creates the SPICE_CEPH_* password items in
-    # yucca_tf_prod. Token via OP_SERVICE_ACCOUNT_TOKEN: infra.yml apply uses the
-    # prod write SA OP_TF_YUCCA_PROD_ENV_WRITE; local runs use a superuser SA token.
+    # secrets.tf creates SPICE_CEPH_* items in yucca_tf_prod. Token via
+    # OP_SERVICE_ACCOUNT_TOKEN (CI: OP_TF_YUCCA_PROD_ENV_WRITE; local: superuser SA).
     onepassword = {
       source  = "1Password/onepassword"
       version = "~> 2.1"

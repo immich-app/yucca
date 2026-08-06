@@ -1,4 +1,3 @@
-# ── Discovery contract ──────────────────────────────────────────────────────
 # Single non-sensitive envelope consumed by yuctl. Account-wide prod netbird
 # layer (region = global). Secrets stay in 1P. See tf/README.md.
 

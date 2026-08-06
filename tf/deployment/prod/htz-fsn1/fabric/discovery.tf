@@ -1,4 +1,3 @@
-# ── Discovery contract ──────────────────────────────────────────────────────
 # Single non-sensitive envelope consumed by yuctl (it parses
 # .outputs.discovery.value straight from S3 state). Secrets are op:// refs only,
 # never values — this stack has none. See tf/README.md "Discovery outputs".

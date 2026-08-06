@@ -1,4 +1,3 @@
-# ── Discovery contract ──────────────────────────────────────────────────────
 # Single non-sensitive envelope consumed by yuctl. Region netbird layer for
 # htz-fsn1 (the routed HTZ-FSN1 network). Secrets stay in 1P. See tf/README.md.
 

@@ -1,4 +1,3 @@
-# ── Discovery contract ──────────────────────────────────────────────────────
 # Single non-sensitive envelope consumed by yuctl. Secrets stay in 1P; the
 # setup-key plaintext is never output — only the item titles. See tf/README.md.
 

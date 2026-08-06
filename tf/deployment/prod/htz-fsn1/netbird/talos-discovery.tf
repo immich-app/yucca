@@ -1,7 +1,4 @@
-# Read the talos stack's DISCOVERY contract from its S3 state — the same envelope
-# yuctl consumes. Feeds the yucca.futo.network node records (dns.tf) so node names
-# and IPs live in exactly ONE place (the talos stack).
-# Greenfield ordering: this stack applies BEFORE talos exists — set
+# Feeds the dns.tf node records so names/IPs live in ONE place. Greenfield: set
 # talos_discovery_enabled = false for bring-up, flip after the cluster stack lands.
 variable "talos_discovery_enabled" {
   type    = bool

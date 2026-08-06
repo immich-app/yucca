@@ -1,4 +1,3 @@
-# ── Discovery contract ──────────────────────────────────────────────────────
 # Single non-sensitive envelope consumed by yuctl. The Cloudflare API token is
 # an op:// reference only, never a value. See tf/README.md "Discovery outputs".
 

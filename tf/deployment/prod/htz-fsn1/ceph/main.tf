@@ -18,11 +18,8 @@ module "cluster" {
   alertmanager_webhook = each.value.alertmanager_webhook
   ceph_config          = each.value.ceph_config
 
-  # Password items (<CLUSTER>_CEPH_*) are created at the stack level in
-  # secrets.tf (mirrors tf/deployment/staging/talos), using this module's
-  # `secrets` output for the item titles. The module itself stays free of the
-  # onepassword provider so dev (which doesn't manage secrets in TF) is
-  # unaffected.
+  # Password items (<CLUSTER>_CEPH_*) live in secrets.tf, keyed off this
+  # module's `secrets` output — the module stays free of the 1P provider.
 }
 
 output "cluster_summaries" {
@@ -37,26 +34,22 @@ output "cluster_summaries" {
   }
 }
 
-# Consumed by ansible/ceph/scripts/render-inventories.sh: it reads this output
-# and writes each cluster's files under ansible/ceph/inventories/<dirname>/.
-# Rendered content lives in a TF OUTPUT (not in local_file resources), so the
-# shared remote state never records a checkout-specific filesystem path. See
-# the module's rendering.tf for the full rationale.
-# Canonical user/group registry. Used here only for server operator access:
-# members of a `server`-mapped group get their SSH keys into the node ops
-# account's authorized_keys (rendered as group_vars/all/operators.yml below).
+# `server`-mapped group members' SSH keys land in the ops account
+# (group_vars/all/operators.yml below).
 module "identity" {
   source = "../../../../shared/modules/identity"
 }
 
+# Read by ansible/ceph/scripts/render-inventories.sh → writes under
+# ansible/ceph/inventories/<dirname>/. Content is an OUTPUT, not local_file —
+# keeps checkout paths out of shared state (see module rendering.tf).
 output "render" {
   description = "Per-cluster { dirname, files } for the local render wrapper."
   value = {
     for k, m in module.cluster : k => {
       dirname = m.inventory_dirname
       files = merge(m.rendered_files, {
-        # Operator SSH keys for the shared ops account, from the identity
-        # registry. Public keys only; gitignored (rendered, not committed).
+        # gitignored
         "group_vars/all/operators.yml" = yamlencode({
           ops_authorized_keys = module.identity.server_authorized_keys
         })

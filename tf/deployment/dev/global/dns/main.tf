@@ -1,12 +1,10 @@
-# Cloudflare-managed DNS for infrastructure names under futo.cloud.
 # The provider reads CLOUDFLARE_API_TOKEN from the environment (injected
 # from 1P via tf/.env by the mise tf:* tasks); no provider arguments.
 provider "cloudflare" {}
 
 locals {
-  # One resource instance per (name, value) pair. The for_each key carries
-  # the value so adding or removing a node IP touches only that instance,
-  # never its siblings under the same name.
+  # One instance per (name, value) pair — the key carries the value, so
+  # adding/removing a node IP never touches siblings.
   record_instances = merge([
     for name, r in var.records : {
       for v in r.values : "${name}/${r.type}/${v}" => {

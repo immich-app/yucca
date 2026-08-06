@@ -1,13 +1,7 @@
-# ─── netops namespace + fabric-credential Secrets ────────────────────────────
-# The netops stack (kubernetes/apps/prod/htz-fsn1/netops/) mounts fabric
-# credentials that must NEVER be in git: the read-only `netops` Junos login's
-# SSH key + password (fabric stack, fabric.tf netops_users) and the Grafana
-# admin password. Historically these were hand-created (`kubectl create secret`)
-# and DIED WITH THE CLUSTER on the 2026-07 rebuild — now they're provisioned
-# here from the same 1Password items, so a rebuild restores them with the stack.
-# Flux owns the workloads around them; TF owns the namespace + these Secrets
-# (the namespace also carries the VictoriaMetrics hostPath PVC, so it must
-# survive flux prunes — TF ownership replaces the old prune-disabled manifest).
+# Creds for kubernetes/apps/prod/htz-fsn1/netops/, never in git. Hand-created
+# versions died with the cluster on the 2026-07 rebuild; TF now provisions from
+# 1P so rebuilds restore them. TF owns namespace + Secrets (the namespace carries
+# the VM hostPath PVC and must survive flux prunes); Flux owns the workloads.
 
 data "onepassword_item" "netops_ssh_key" {
   vault = data.onepassword_vault.prod.uuid
@@ -32,15 +26,13 @@ resource "kubernetes_namespace_v1" "netops" {
       "pod-security.kubernetes.io/enforce" = "privileged"
     }
     annotations = {
-      # Belt-and-braces from the flux-owned era (the namespace manifest is gone
-      # from the tree, but flux's GC honors this if it ever re-tracks the object).
+      # Belt-and-braces: flux GC honors this if it ever re-tracks the object.
       "kustomize.toolkit.fluxcd.io/prune" = "disabled"
     }
   }
 }
 
-# SSH key for junos-exporter (NETCONF scrape) + oxidized (config backup) — both
-# mount key `id_ed25519` and log in as the `netops` Junos user.
+# Mounted by junos-exporter + oxidized; they log in as `netops`.
 resource "kubernetes_secret_v1" "netops_ssh" {
   metadata {
     name      = "netops-ssh"
@@ -62,15 +54,14 @@ resource "kubernetes_secret_v1" "grafana_admin" {
 }
 
 # hyperglass device inventory — embeds the netops PASSWORD (netmiko can't
-# key-auth through hyperglass config), hence a Secret and not the configmap.
+# key-auth via hyperglass config), hence a Secret.
 resource "kubernetes_secret_v1" "hyperglass_devices" {
   metadata {
     name      = "hyperglass-devices"
     namespace = kubernetes_namespace_v1.netops.metadata[0].name
   }
-  # Spine only: hyperglass's juniper directives require source4 AND source6 per
-  # device, and only the spine has both (lo0 + the transit v6) — the leaf has no
-  # public/v6 presence, so LG queries from it would be meaningless anyway.
+  # Spine only: hyperglass juniper directives need source4 AND source6, and only
+  # the spine has both (lo0 + transit v6).
   data = {
     "devices.yaml" = yamlencode({
       devices = [

@@ -1,10 +1,6 @@
-# ── sFlow export (seconds-granularity traffic telemetry) ─────────────────────
-# Hardware counter samples every polling_interval seconds + 1:sample_rate packet
-# samples from every listed physical port, exported to the collector (sflow-rt in
-# the father cluster, an internal LB VIP the spine reaches via the Cilium iBGP /32).
-# This is the high-resolution bandwidth source — the junos_exporter/NETCONF path
-# stays for device health (BGP, optics, temps) at its slower cadence.
-# Raw set-config: `protocols sflow` has no typed jeremmfr resource.
+# Feeds sflow-rt (father, internal LB VIP via Cilium iBGP /32); junos_exporter
+# stays for device health. Raw set-config: `protocols sflow` has no typed
+# jeremmfr resource.
 resource "junos_null_load_config" "sflow" {
   count  = var.sflow == null ? 0 : 1
   action = "set"

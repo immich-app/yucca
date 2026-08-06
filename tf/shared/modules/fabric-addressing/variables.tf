@@ -1,7 +1,3 @@
-# fabric-addressing — derives the fabric IP plan from a site ID (+ optional
-# cluster ordinal). One place owns "site/cluster ID -> addressing" so the switch
-# fabric and NetBox stay in lockstep.
-#
 # Scheme (htz-fsn1 = site 40):
 #   site supernet      10.<site_id>.0.0/16                  -> 10.40.0.0/16
 #   management         10.<site_id>.5.0/24                  -> 10.40.5.0/24  (vme)

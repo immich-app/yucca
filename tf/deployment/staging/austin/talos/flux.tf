@@ -1,12 +1,5 @@
-# Flux bootstrap — mirrors yucca-o11y's deployment/modules/kubernetes/helm:
-# flux-operator + flux-instance via Helm (OCI charts), then Flux reconciles
-# this repo's kubernetes/clusters/staging path on its own. Runs on the same
-# helm/kubernetes providers as the Cilium install (providers.tf), so it lands
-# after the cluster + CNI are up.
-#
-# NOTE: takes effect once these manifests are on the repo's main branch — the
-# flux-instance sync tracks refs/heads/main. Applying before merge installs the
-# controllers but finds nothing to reconcile at clusters/staging yet.
+# Flux reconciles kubernetes/clusters/staging from refs/heads/main — applying
+# before merge installs controllers with nothing to reconcile yet.
 
 resource "helm_release" "flux_operator" {
   count = local.cluster_spec.cni == "cilium" ? 1 : 0
@@ -24,18 +17,9 @@ resource "helm_release" "flux_operator" {
   depends_on = [helm_release.cilium]
 }
 
-# GitHub App credentials for notification-controller's `github` Provider, which
-# posts deploy results as commit statuses. App auth (no PAT): notification-
-# controller mints short-lived installation tokens from these and auto-rotates.
-#
-# TEMPORARY: sources the SHARED `push-o-matic` app (op://shared_tf/
-# GITHUB_APP_IMMICH_PUSH_O_MATIC, via TF_VARs in tf/.env) — the dedicated
-# least-privilege "yucca-flux" app (only "Commit statuses: write") doesn't exist
-# yet. push-o-matic is broader than we'd like but already provisioned; repoint
-# the tf/.env refs to yucca-flux once it's created (nothing here changes).
-#
-# (No git-sync or GHCR pull secret: yucca is a public repo with public images,
-# so Flux reads the repo and pulls images unauthenticated.)
+# Consumed by notification-controller's commit-status Provider. TEMPORARY:
+# shared push-o-matic app (op://shared_tf/GITHUB_APP_IMMICH_PUSH_O_MATIC);
+# repoint tf/.env to the least-privilege "yucca-flux" app once created.
 resource "kubernetes_secret_v1" "github_app" {
   count = local.cluster_spec.cni == "cilium" ? 1 : 0
 
@@ -51,9 +35,8 @@ resource "kubernetes_secret_v1" "github_app" {
   depends_on = [helm_release.flux_operator]
 
   lifecycle {
-    # The variable defaults to "" so credential-less validate/plan stays clean —
-    # but an APPLY without the op-run env would silently rewrite the live secret
-    # to an empty key. Fail loudly instead.
+    # "" default keeps validate clean; an env-less apply would silently rewrite
+    # the live secret to an empty key. Fail loudly.
     precondition {
       condition     = length(var.flux_github_app_private_key) > 0
       error_message = "flux_github_app_private_key is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."

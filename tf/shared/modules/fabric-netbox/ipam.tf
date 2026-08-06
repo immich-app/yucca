@@ -1,7 +1,6 @@
 locals {
   site_id = data.netbox_site.this.id
 
-  # Per-cluster networks (public/private/host-mgmt) for VLANs + prefixes + gateways.
   networks = merge([
     for cid, c in var.clusters : {
       "${cid}-public"    = { vid = c.public_vlan_id, role = "PUBLIC", prefix = c.public_cidr, gateway = c.public_gateway }
@@ -11,7 +10,6 @@ locals {
   ]...)
 }
 
-# ── Site container ──────────────────────────────────────────────────────────
 resource "netbox_prefix" "site" {
   prefix      = var.site_supernet
   status      = "container"
@@ -19,7 +17,6 @@ resource "netbox_prefix" "site" {
   description = "${var.site.code} site supernet"
 }
 
-# ── Site-global VLANs (mgmt, api) + their prefixes ──────────────────────────
 resource "netbox_vlan" "global" {
   for_each = var.global_vlans
   name     = "${var.site.code}-${each.key}"
@@ -36,7 +33,6 @@ resource "netbox_prefix" "global" {
   description = "${var.site.code}-${each.key}"
 }
 
-# ── Per-cluster supernets, VLANs, network prefixes, gateway IPs ─────────────
 resource "netbox_prefix" "cluster_supernet" {
   for_each    = var.clusters
   prefix      = each.value.cluster_supernet
@@ -71,7 +67,7 @@ resource "netbox_ip_address" "gateway" {
   description = "IRB gateway for ${var.site.code}-C${split("-", each.key)[0]}-${each.value.role}"
 }
 
-# ── Extra (non-VLAN) prefixes: cloud subnets, overlays, public space ─────────
+# Cloud subnets, overlays, public space.
 resource "netbox_prefix" "extra" {
   for_each    = var.extra_prefixes
   prefix      = each.value.prefix

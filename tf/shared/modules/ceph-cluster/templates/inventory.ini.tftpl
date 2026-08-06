@@ -21,11 +21,10 @@ ${h.hostname_short}
 %{ endif ~}
 %{ endfor ~}
 
-# Bootstrap node — first MON/MGR, runs cephadm bootstrap
+# first MON/MGR, runs cephadm bootstrap
 [ceph_bootstrap]
 ${bootstrap_host.hostname_short}
 
-# Joined nodes — added to cluster post-bootstrap
 [ceph_join]
 %{ for h in join_hosts ~}
 ${h.hostname_short}

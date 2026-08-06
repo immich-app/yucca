@@ -1,8 +1,5 @@
-# Flux bootstrap — mirrors the staging stack: flux-operator + flux-instance via
-# Helm (OCI charts), then Flux reconciles this repo's kubernetes/clusters/prod
-# path on its own. Lands after the cluster + CNI (providers.tf helm/kubernetes).
-#
-# Sync ref = main (var.flux_git_ref default; CI guards it stays that way).
+# Flux reconciles kubernetes/clusters/prod on its own; sync ref = main
+# (var.flux_git_ref default; CI guards it stays that way).
 
 resource "helm_release" "flux_operator" {
   name             = "flux-operator"
@@ -18,8 +15,7 @@ resource "helm_release" "flux_operator" {
   depends_on = [helm_release.cilium]
 }
 
-# GitHub App credentials for notification-controller commit statuses — the
-# SHARED push-o-matic app for now (same TEMPORARY caveat as staging; see
+# The SHARED push-o-matic app for now (same TEMPORARY caveat as staging; see
 # kubernetes/apps/prod/htz-fsn1/flux-system/notifications.yaml).
 resource "kubernetes_secret_v1" "github_app" {
   metadata {
@@ -34,9 +30,8 @@ resource "kubernetes_secret_v1" "github_app" {
   depends_on = [helm_release.flux_operator]
 
   lifecycle {
-    # The variable defaults to "" so credential-less validate/plan stays clean —
-    # but an APPLY without the op-run env would silently rewrite the live secret
-    # to an empty key. Fail loudly instead.
+    # "" default keeps validate clean; an env-less apply would silently rewrite
+    # the live secret to an empty key. Fail loudly.
     precondition {
       condition     = length(var.flux_github_app_private_key) > 0
       error_message = "flux_github_app_private_key is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."

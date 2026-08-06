@@ -1,6 +1,4 @@
-# Declaratively manage Junos login users + classes (and the default name-servers,
-# which live here so a single resource owns the `system` slice). One resource per
-# user/class. Public SSH keys are committed; passwords never are.
+# Public SSH keys are committed; passwords never are.
 locals {
   user_keys = {
     for name, u in var.users : name => concat(u.ssh_ed25519_keys, u.ssh_rsa_keys)
@@ -32,11 +30,9 @@ resource "junos_system_login_user" "this" {
   depends_on = [junos_system_login_class.this]
 }
 
-# Default DNS resolvers, pushed as additive raw set-config. NOT junos_system: that
-# is a singleton owning the whole `system` block (incl. `services netconf/ssh` and
-# `ssh root-login`), so setting only name-server would STRIP the management services
-# and lock us out. null_load_config only ever `set`s — it cannot remove services.
-# (Trade-off: removing a resolver later needs a manual delete; fine for DNS.)
+# Resolvers via additive raw set-config, NOT junos_system: that singleton owns
+# the whole `system` block, so setting only name-server would STRIP netconf/ssh
+# and lock us out. Trade-off: removing a resolver needs a manual delete.
 resource "junos_null_load_config" "name_servers" {
   count  = length(var.name_servers) == 0 ? 0 : 1
   action = "set"

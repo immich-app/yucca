@@ -1,11 +1,6 @@
-# Cilium CNI install. The Talos config sets cni:none + proxy:disabled (see the
-# module), so nodes stay NotReady until this release lands the datapath. Runs
-# in the SAME apply, right after bootstrap, via the helm provider in
-# providers.tf — one apply yields a Ready cluster.
-#
-# kube-proxy replacement points Cilium at Talos KubePrism (localhost:7445), a
-# stable in-host apiserver endpoint that needs no kube-proxy. wait=true blocks
-# until the agent DaemonSet + operator are Ready.
+# Nodes stay NotReady until this lands (cni:none in the module); same apply,
+# right after bootstrap — one apply yields a Ready cluster. KPR → Talos
+# KubePrism localhost:7445.
 resource "helm_release" "cilium" {
   count = local.cluster_spec.cni == "cilium" ? 1 : 0
 
@@ -25,7 +20,7 @@ resource "helm_release" "cilium" {
   cleanup_on_fail = true
 }
 
-# Full health gate AFTER the CNI is in — now node-Ready is achievable. Turns a
+# Only AFTER the CNI is in is node-Ready achievable; turns a
 # Cilium-up-but-cluster-unhealthy state into a hard apply failure.
 data "talos_cluster_health" "post_cni" {
   count = local.cluster_spec.cni == "cilium" ? 1 : 0

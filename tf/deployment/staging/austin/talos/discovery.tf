@@ -1,4 +1,3 @@
-# ── Discovery contract ──────────────────────────────────────────────────────
 # Single non-sensitive envelope consumed by yuctl. kube/talosconfig are op://
 # references to the 1P records written by secrets.tf (YUCCA_STAGING_KUBECONFIG /
 # YUCCA_STAGING_TALOSCONFIG) — never inlined. See tf/README.md.

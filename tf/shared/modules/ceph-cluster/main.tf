@@ -9,15 +9,11 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
-    # onepassword provider re-enabled once a dedicated ceph-scoped 1P service
-    # account replaces the org-wide superuser SA. See secrets.tf.disabled for
-    # the currently-dormant resource declarations.
+    # onepassword provider returns once a ceph-scoped 1P SA replaces the
+    # superuser SA; dormant resources in secrets.tf.disabled.
   }
 }
 
-# Auto host names come from the shared node-names inventory (the wordlist used to
-# live here; it now backs both talos + ceph). cluster_name seeds the shuffle so each
-# cluster gets its own permutation; explicit host names are excluded from the pool.
 module "names" {
   source       = "../node-names"
   cluster_name = var.cluster_name
@@ -25,15 +21,13 @@ module "names" {
   names        = [for h in var.hosts : h.name]
 }
 
-# The wordlist + shuffle moved into node-names; preserve the existing shuffle state
-# so host names don't re-randomize on this refactor.
+# Preserves shuffle state — names must not re-randomize.
 moved {
   from = random_shuffle.names
   to   = module.names.random_shuffle.names
 }
 
 locals {
-  # Resolve each host's final name: explicit or auto-picked from shuffle.
   hosts_computed = [
     for i, h in var.hosts : {
       name           = module.names.resolved[i]
@@ -46,8 +40,8 @@ locals {
     }
   ]
 
-  # Per-host config -> `<section>/host:<hostname>`, the form `ceph config set`
-  # takes. Composed here so a tfvars entry names the host, not the mask syntax.
+  # Per-host config -> `<section>/host:<hostname>` (the `ceph config set` mask
+  # form); tfvars entries name the host only.
   ceph_config_host = merge([
     for h in local.hosts_computed : {
       for section, options in h.ceph_config :
@@ -63,10 +57,8 @@ locals {
 
   join_hosts = [for h in local.hosts_computed : h if h.hostname_short != local.bootstrap_host.hostname_short]
 
-  # SHOUTY_SNAKE_CASE prefix for 1P item names: <CLUSTER>_CEPH_*.
-  # Hardcoded "CEPH" because this module manages Ceph clusters regardless of
-  # hostname role (which varies: small clusters use 'ceph', large use 'osd'/'mon').
-  # Every Ceph-project item grep-matches *_CEPH_* across all clusters.
+  # UPPER_SNAKE 1P prefix <CLUSTER>_CEPH_*; "CEPH" hardcoded (hostname role
+  # varies: 'ceph'/'osd'/'mon') so items grep-match *_CEPH_*.
   secret_prefix = "${upper(var.cluster_name)}_CEPH"
 
   secrets = merge({
@@ -75,16 +67,14 @@ locals {
     grafana          = "${local.secret_prefix}_GRAFANA_PASSWORD"
     s3_restic_access = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_ACCESS_KEY"
     s3_restic_secret = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_SECRET_KEY"
-    # RGW admin (read-only) keys for the metrics worker. Titled <CLUSTER>_
-    # METRICS_WORKER_* (no _CEPH infix) to match the metrics-worker consumer's
-    # 1P contract, which is named by cluster, not by the ceph subsystem.
+    # <CLUSTER>_METRICS_WORKER_* (no _CEPH infix) — matches the metrics-worker
+    # consumer's 1P contract, named by cluster.
     metrics_worker_access = "${upper(var.cluster_name)}_METRICS_WORKER_ACCESS_KEY"
     metrics_worker_secret = "${upper(var.cluster_name)}_METRICS_WORKER_SECRET_KEY"
     },
-    # Alertmanager receiver URL. Opt-in per cluster, and provisioned OUT OF BAND:
-    # the value is an externally-issued webhook (Zulip/Opsgenie/etc), not a
-    # generated password, so the role is listed in the stack's
-    # ceph_unmanaged_secret_roles and TF only ever references it.
+    # Alertmanager receiver URL: opt-in, provisioned OUT OF BAND (external
+    # webhook, not a generated password) — in ceph_unmanaged_secret_roles;
+    # TF only references it.
     var.alertmanager_webhook ? {
       alertmanager_webhook = "${local.secret_prefix}_ALERTMANAGER_WEBHOOK_URL"
     } : {}

@@ -1,4 +1,3 @@
-# ── Partition / region / stack identity ─────────────────────────────────────
 # Injected by the root terragrunt from the directory path; region metadata
 # (role + FQDN parts) is merged from the nearest region.hcl. Null defaults keep
 # `tofu validate`/plan clean when a stack is run outside terragrunt.

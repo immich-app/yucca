@@ -1,12 +1,10 @@
-# Cloudflare-managed DNS for yucca-prod (spice cluster) ingress names under
-# futo.cloud. The provider reads CLOUDFLARE_API_TOKEN from the environment
-# (injected from 1P via tf/.env.prod by the mise tf:* tasks); no provider args.
+# The provider reads CLOUDFLARE_API_TOKEN from the environment (injected from 1P
+# via tf/.env.prod by the mise tf:* tasks); no provider args.
 provider "cloudflare" {}
 
 locals {
-  # One resource instance per (name, value) pair. The for_each key carries
-  # the value so adding or removing an address touches only that instance,
-  # never its siblings under the same name.
+  # One instance per (name, value) pair — the key carries the value, so
+  # adding/removing an address never touches siblings.
   record_instances = merge([
     for name, r in var.records : {
       for v in r.values : "${name}/${r.type}/${v}" => {

@@ -1,12 +1,10 @@
-# Cluster access recorded in 1Password (yucca_tf_prod), so operators fetch creds
-# with `op read` instead of pulling TF state. Titles match the discovery refs.
+# Operators fetch creds with `op read`, not TF state.
 data "onepassword_vault" "prod" {
   name = "yucca_tf_${coalesce(var.partition, "prod")}"
 }
 
-# Titles come from the discovery locals (region-scoped) so the written items and
-# the discovery refs can never drift. NB: retitling recreates the 1P items — the
-# old partition-scoped YUCCA_PROD_{KUBE,TALOS}CONFIG records need manual archive.
+# Titles from the discovery locals so items and refs can't drift. Retitling
+# recreates the 1P items (old YUCCA_PROD_{KUBE,TALOS}CONFIG need manual archive).
 resource "onepassword_item" "kubeconfig" {
   vault    = data.onepassword_vault.prod.uuid
   title    = local._kubeconfig_title
@@ -21,10 +19,8 @@ resource "onepassword_item" "talosconfig" {
   password = data.talos_client_configuration.this.talos_config
 }
 
-# ─── cert-manager Secret (namespace: cert-manager) ───────────────────────────
-# Cloudflare API token for the Let's Encrypt DNS-01 ClusterIssuer (futo.network;
-# op://shared_tf/CLOUDFLARE_API_TOKEN). The cert-manager workload itself is Flux
-# (apps/base/cert-manager via the prod overlay); only the secret is TF-provisioned.
+# DNS-01 token (futo.network; op://shared_tf/CLOUDFLARE_API_TOKEN). The workload
+# is Flux-managed; only the secret is TF-provisioned.
 resource "kubernetes_namespace_v1" "cert_manager" {
   metadata {
     name = "cert-manager"
@@ -41,8 +37,8 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
   }
 
   lifecycle {
-    # "" default keeps credential-less validate clean; never let it reach the
-    # cluster (cert-manager would silently stop renewing).
+    # "" default keeps validate clean; must never reach the cluster
+    # (cert-manager silently stops renewing).
     precondition {
       condition     = length(var.cloudflare_api_token) > 0
       error_message = "cloudflare_api_token is empty — run applies through tf/op-run.sh (op run env missing or op:// ref resolved empty)."
@@ -50,15 +46,11 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
   }
 }
 
-# ─── App secrets (yucca workload set) ────────────────────────────────────────
-# Mirrors staging/austin/talos/secrets.tf: this stack is the 1P integration
-# point, so it owns the app secret material. Each Secret is named after its
-# chart's fullnameOverride (the chart's dev `secretData` fixture is nulled in
-# the HelmReleases) so the apps' envFrom picks these up unchanged.
+# Secret names = chart fullnameOverride (dev secretData fixture nulled in the
+# HelmReleases) so envFrom picks these up.
 
-# ES256 (P-256) JWT keypair: yucca-api signs, michael verifies. The 1P record
-# is the survives-state-loss source of truth; prevent_destroy because rotating
-# it invalidates every issued token AND michael's verification of them.
+# ES256 JWT keypair: yucca-api signs, michael verifies. 1P record = source of
+# truth; prevent_destroy — rotating invalidates every issued token.
 resource "tls_private_key" "yucca_jwt" {
   algorithm   = "ECDSA"
   ecdsa_curve = "P256"
@@ -85,9 +77,8 @@ resource "onepassword_item" "yucca_jwt" {
   }
 }
 
-# ES256 keypair for yucca-admin-api's CLI session JWTs (yuctl login). Separate
-# trust domain from yucca_jwt on purpose: admin-api both signs and verifies,
-# and nothing else may accept these tokens.
+# admin-api CLI-session JWTs (yuctl login). Separate trust domain from yucca_jwt
+# on purpose — nothing else may accept these tokens.
 resource "tls_private_key" "yucca_admin_jwt" {
   algorithm   = "ECDSA"
   ecdsa_curve = "P256"
@@ -114,8 +105,7 @@ resource "onepassword_item" "yucca_admin_jwt" {
   }
 }
 
-# Namespaces created here so the Secrets have a home before Flux reconciles;
-# the Flux overlays declare them too (bare Namespace is safe under dual SSA).
+# Namespaces pre-Flux so Secrets have a home; dual ownership safe (bare Namespace, SSA).
 resource "kubernetes_namespace_v1" "yucca" {
   metadata {
     name = "yucca"
@@ -128,8 +118,6 @@ resource "kubernetes_namespace_v1" "observability" {
   }
 }
 
-# yucca-api: signs JWTs with the generated private key + its OIDC client creds
-# (prod Zitadel, CUSTOMER_ZITADEL_OAUTH_*_YUCCA_WEB / _YUCCA_ORCHESTRATOR).
 resource "kubernetes_secret_v1" "yucca_api" {
   metadata {
     name      = "yucca-api"
@@ -150,8 +138,6 @@ resource "kubernetes_secret_v1" "yucca_api" {
   }
 }
 
-# yucca-admin-api: its own OIDC client — not registered yet (mirrors staging:
-# empty creds until the admin console launches).
 resource "kubernetes_secret_v1" "yucca_admin_api" {
   metadata {
     name      = "yucca-admin-api"
@@ -161,9 +147,8 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     JWT_PRIVATE_KEY          = tls_private_key.yucca_admin_jwt.private_key_pem_pkcs8
     OIDC_ADMIN_CLIENT_ID     = var.yucca_oidc_admin_client_id
     OIDC_ADMIN_CLIENT_SECRET = var.yucca_oidc_admin_client_secret
-    # Restic repository tokens (POST /repository/:id/url, used by yuctl tools
-    # bench): deliberately the yucca_jwt SIGNING key — michael only accepts
-    # tokens from that keypair. Admin session JWTs stay on yucca_admin_jwt.
+    # Restic repo tokens (yuctl tools bench): deliberately the yucca_jwt SIGNING
+    # key — michael only accepts that keypair. Sessions stay on yucca_admin_jwt.
     RESTIC_JWT_PRIVATE_KEY = tls_private_key.yucca_jwt.private_key_pem_pkcs8
   }
 
@@ -175,8 +160,7 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
   }
 }
 
-# michael: verifies yucca-api's JWTs + the spice RGW svc-yucca-restic S3 keys
-# (out-of-band contract items, seeded into the RGW by the ceph ansible).
+# The S3 keys are out-of-band contract items, seeded into the RGW by the ceph ansible.
 resource "kubernetes_secret_v1" "yucca_michael" {
   metadata {
     name      = "yucca-michael"
@@ -196,8 +180,7 @@ resource "kubernetes_secret_v1" "yucca_michael" {
   }
 }
 
-# yucca-metrics-worker: separate RGW user WITH admin caps (per-bucket usage via
-# the spice RGW admin API). Keys are AccessKey/SecretKey to match the chart's
+# Separate RGW user WITH admin caps; AccessKey/SecretKey match the chart's
 # radosSecretName lookup.
 resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
   metadata {
@@ -217,7 +200,6 @@ resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
   }
 }
 
-# ─── Observability Secret (namespace: observability) ─────────────────────────
 # Bearer token vmagent + the logs collector present to o11y's prod vmauth.
 resource "kubernetes_secret_v1" "vmagent_remote_write" {
   metadata {

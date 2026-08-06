@@ -1,7 +1,4 @@
-# Talos Image Factory schematic — the extension set, managed in TF. The resource
-# registers schematic.yaml with the factory and returns its deterministic id; the
-# metal installer/image URLs derive from it. No hand-pasted schematic id, no
-# out-of-band curl. One schematic for every node (all bare-metal).
+# Installer/image URLs derive from the returned id. One schematic for every node.
 resource "talos_image_factory_schematic" "this" {
   schematic = file("${path.module}/schematic.yaml")
 }

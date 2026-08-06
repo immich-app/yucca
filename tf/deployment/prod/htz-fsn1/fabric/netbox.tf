@@ -1,6 +1,3 @@
-# NetBox — creates the whole fabric representation: the site, manufacturers/roles/
-# device-types, the switch chassis (spine pair + each cluster's leaf pair, with vme
-# mgmt IPs), VLANs, prefixes, and gateway IPs — all from the addressing module.
 module "netbox" {
   source = "../../../../shared/modules/fabric-netbox"
 
@@ -12,7 +9,7 @@ module "netbox" {
 
   site_supernet = module.addr_site.site_supernet
 
-  # Site-global VLANs (present on every cluster).
+  # Present on every cluster.
   global_vlans = {
     MGMT      = { vid = module.addr_site.mgmt_vlan_id, prefix = module.addr_site.mgmt_cidr }
     KUBE      = { vid = module.addr_site.kube_vlan_id, prefix = module.addr_site.kube_cidr }
@@ -34,9 +31,8 @@ module "netbox" {
     }
   }
 
-  # Everything that is NOT a fabric VLAN but is real, routed address space.
-  # Pod/service CIDRs mirror the talos stack (talos.tf locals); the public carves
-  # mirror the Cilium LB pools + node-egress + transit config in this stack.
+  # Pod/service CIDRs mirror talos.tf locals; public carves mirror the Cilium
+  # LB pools + node-egress + transit config.
   extra_prefixes = {
     lb_internal = { prefix = module.addr_site.lb_internal_cidr, description = "father internal (NetBird-only) LoadBalancer VIPs — Cilium lb-internal pool, iBGP /32s to the spine" }
     pods        = { prefix = "10.250.0.0/17", description = "father pod CIDR (Cilium, geneve over the kube VLAN)", status = "container" }
@@ -52,7 +48,7 @@ module "netbox" {
   }
 
   devices = {
-    # Spine VC (shared site core) — member 0 carries the vme.
+    # Member 0 carries the vme.
     "${var.netbox_site_slug}-corenetsw-1" = {
       role   = "spine", manufacturer = "Juniper Networks", model = "QFX5200-32C-32Q"
       serial = var.spine_vc_serials[0], mgmt_ip = module.addr_site.spine_mgmt_ip
@@ -61,7 +57,7 @@ module "netbox" {
       role   = "spine", manufacturer = "Juniper Networks", model = "QFX5200-32C-32Q"
       serial = var.spine_vc_serials[1]
     }
-    # cls1 leaf VC — member 0 carries the vme.
+    # Member 0 carries the vme.
     "${var.netbox_site_slug}-cls1netsw-1" = {
       role   = "leaf", manufacturer = "Juniper Networks", model = "QFX5120-48Y-8C"
       serial = var.cls1_leaf_serials[0], mgmt_ip = module.addr_cls1.leaf_mgmt_ip

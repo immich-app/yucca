@@ -1,6 +1,6 @@
-# ── Partition / region / stack identity (injected by the root terragrunt from
-# the path; region metadata merged from region.hcl). site_id is also a region
-# field — kept below with its existing default 40 (region.hcl supplies 40 too).
+# Injected by the root terragrunt from the path; region metadata merged from
+# region.hcl. site_id is also a region field — kept below with its existing
+# default 40 (region.hcl supplies 40 too).
 variable "partition" {
   description = "Partition slug (prod), from deployment/<partition>/..."
   type        = string
@@ -105,7 +105,6 @@ variable "spine_vc_serials" {
   description = "Spine (corenetsw) VC member chassis serials (member 0, member 1)."
 }
 
-# ── mgmt-host reprovisioning (mgmt.tf) ───────────────────────────────────────
 variable "op_vault" {
   type        = string
   default     = "yucca_tf_prod"

@@ -1,5 +1,4 @@
-# Declarative inputs for one environment's NetBird footprint. Policies and
-# setup keys reference groups by their LOGICAL key (the map key here), which the
+# Policies and setup keys reference groups by their LOGICAL key (the map key), which the
 # module resolves to the NetBird-assigned group ID — so the tfvars never carry
 # opaque IDs.
 

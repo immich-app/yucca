@@ -76,10 +76,8 @@ variable "hosts" {
   }
 }
 
-# Rendered-artifact destination paths used to live here (ansible_*_path). They
-# were removed: rendering no longer writes files via local_file (which leaked a
-# checkout-specific path into shared state). The module now only emits content
-# via the `rendered_files` output; scripts/render-inventories.sh writes it.
+# No destination-path vars: rendering emits content via `rendered_files` only
+# (local_file leaked checkout-specific paths into shared state).
 
 variable "provision_profile" {
   description = <<-EOT

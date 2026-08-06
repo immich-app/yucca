@@ -1,9 +1,3 @@
-# fabric-netbox — build the NetBox representation of the fabric from scratch:
-# the site, manufacturers/roles/device-types, the chassis devices (+ vme mgmt
-# IPs), VLANs, prefixes, and gateway IPs — all derived from the addressing module
-# and a device inventory. netbox provider (server_url + token) is configured by
-# the stack. Split across site.tf / devices.tf / ipam.tf.
-
 variable "site" {
   description = "The NetBox site to create."
   type = object({

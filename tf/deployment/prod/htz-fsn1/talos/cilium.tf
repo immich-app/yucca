@@ -1,8 +1,5 @@
-# Cilium CNI — installed post-bootstrap in the same apply (helm provider bound to
-# the bootstrap CP, providers.tf). Talos set cni:none + proxy:disabled, so nodes
-# go Ready only once this lands the datapath. Tunnel (geneve) routing spans the
-# two routed VLANs (kube/kube-cp) via the spine IRBs; MTU is auto-detected
-# (wt0-limited) — see cilium-values.yaml.tftpl.
+# Nodes go Ready only once this lands. Geneve routing + wt0-limited auto MTU:
+# see cilium-values.yaml.tftpl.
 resource "helm_release" "cilium" {
   name       = "cilium"
   namespace  = "kube-system"
@@ -23,7 +20,7 @@ resource "helm_release" "cilium" {
   depends_on = [talos_cluster_kubeconfig.this]
 }
 
-# Full health gate AFTER the CNI is in — now node-Ready is achievable.
+# Only AFTER the CNI is in is node-Ready achievable.
 data "talos_cluster_health" "post_cni" {
   count = var.bootstrap_health_gate ? 1 : 0
 
