@@ -11,6 +11,21 @@ mgr:
 dashboard:
   enabled: false
 
+# Bootstrap-latency tuning. Rook's stock probes are sized for real hardware:
+# 10s of initial delay then a 10s poll, which on a dev cluster is almost all of
+# each daemon's startup time. failureThreshold is scaled by the same factor the
+# period shrinks by, so every daemon keeps the total budget it had by default
+# (mon/mgr 10s + 6x10s; osd 10s + 720x10s; rgw 10s + 33x10s).
+probes:
+  statusInterval: 10s
+  startup:
+    mon: { initialDelaySeconds: 2, periodSeconds: 2, failureThreshold: 35 }
+    mgr: { initialDelaySeconds: 2, periodSeconds: 2, failureThreshold: 35 }
+    osd: { initialDelaySeconds: 2, periodSeconds: 2, failureThreshold: 3600 }
+  rgw:
+    startup: { initialDelaySeconds: 2, periodSeconds: 2, failureThreshold: 170 }
+    readiness: { initialDelaySeconds: 2, periodSeconds: 2 }
+
 storage:
   # Rook does NOT auto-select loop devices via useAllDevices (even with
   # allowLoopDevices on the operator) — they must be named explicitly. This is
