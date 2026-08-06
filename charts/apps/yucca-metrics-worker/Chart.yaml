@@ -3,7 +3,7 @@ name: yucca-metrics-worker
 description: Yucca metrics worker (NestJS)
 type: application
 version: 0.1.0
-appVersion: "0.27.0" # x-release-please-version
+appVersion: "0.28.0" # x-release-please-version
 dependencies:
   - name: yucca-common
     version: 0.2.0
