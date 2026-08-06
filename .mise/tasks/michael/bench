@@ -3,16 +3,10 @@
 #MISE dir="{{config_root}}/packages/michael"
 set -e
 
-# Complements the fleet-level `mise bench` (real restic CLI against a running
-# backend): these measure per-request cost inside the process.
-#
-# The source-network benchmarks resolve against the committed three-network
-# fixture by default, which understates lookup cost. Point MICHAEL_BENCH_ASN_DB
-# at a real database for representative numbers:
-#
+# Per-request cost in-process (fleet-level `mise bench` drives real restic).
+# The committed three-network fixture understates source-network lookup cost;
+# point MICHAEL_BENCH_ASN_DB at a real database for representative numbers:
 #   curl -fsS https://download.db-ip.com/free/dbip-asn-lite-$(date -u +%Y-%m).mmdb.gz \
 #     | gunzip > /tmp/asn.mmdb
 #   MICHAEL_BENCH_ASN_DB=/tmp/asn.mmdb mise run michael:bench
-#
-# For an A/B with confidence intervals, raise -count and pipe through benchstat.
 go test ./... -run '^$' -bench . -benchmem "$@"

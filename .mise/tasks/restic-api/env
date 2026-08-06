@@ -19,7 +19,6 @@ export S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-miniominio}
 export S3_REGION=${S3_REGION:-minio}
 export S3_ENDPOINT=${S3_ENDPOINT:-http://localhost:9000}
 export S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-true}
-# Must match the dev topology's cluster code (packages/yucca-api/topology.dev.json):
-# yucca-api mints restic tokens with storageCluster=local, and michael fails
-# closed on cluster codes it does not front.
+# Must match packages/yucca-api/topology.dev.json — michael fails closed on
+# cluster codes it does not front.
 export S3_DEFAULT_CLUSTER=${S3_DEFAULT_CLUSTER:-local-dev}

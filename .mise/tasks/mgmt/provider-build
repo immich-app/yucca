@@ -8,16 +8,15 @@ REPO="${HETZNER_PROVIDER_REPO:-https://github.com/zackpollard/terraform-provider
 REF="${HETZNER_PROVIDER_REF:-v0.1.0}"
 VER="${HETZNER_PROVIDER_VERSION:-0.1.0}"
 
-# Pinned shallow clone of the upstream provider (not vendored — it's stock).
+# Pinned shallow clone (not vendored — it's stock upstream).
 if [ ! -d "$SRC/.git" ]; then
   git clone --depth 1 --branch "$REF" "$REPO" "$SRC"
 else
   ( cd "$SRC" && git fetch --depth 1 origin "$REF" && git checkout -q FETCH_HEAD )
 fi
 
-# Build into the unpacked filesystem-mirror layout for both registry hosts
-# (OpenTofu defaults to registry.opentofu.org; Terraform to registry.terraform.io).
-# Provider address is registry.<host>/zack/hetzner (see its main.go).
+# Unpacked filesystem-mirror layout for both registry hosts; the provider
+# address is registry.<host>/zack/hetzner (see its main.go).
 GOOS=$(go env GOOS); GOARCH=$(go env GOARCH)
 BIN="terraform-provider-hetzner_v${VER}"
 for HOST in registry.opentofu.org registry.terraform.io; do
