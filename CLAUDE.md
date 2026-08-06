@@ -26,7 +26,7 @@ This rule is about code. Infra config (`tf/`, `ansible/`, `kubernetes/`) has no 
 remedy: the keys belong to Ceph, Terraform and Ansible, so there is no better name to pick and
 no smaller function to extract. The bar is the same and restating a value is still banned, but
 a comment recording why a value deviates from its default, or what breaks when it changes, is
-usually the only place that can live.
+usually the only place that knowledge can live.
 
 ## What this is
 
