@@ -18,6 +18,14 @@ Connection→Repository is 1:N (a restic connection is reused across repositorie
 a repository belongs to exactly one connection. `POST /connections/:id/adopt`
 re-parents a repository that still sits on the user's **default** connection.
 
+> **Status.** The connection model, feature flags, billing rollup, and the web
+> Connections page are on `main`. Everything marked *(in flight)* below —
+> revocation (valkey verdict cache, introspection, `resticTokens`), long-lived
+> tokens, and the one-call self-serve restic flow — is unmerged work on
+> `feat/conn-4-revocation` / `feat/conn-5-restic`. On `main`, minting a restic
+> URL (`POST /repository/:id/restic`) issues a session-lifetime JWT with no
+> revocation surface.
+
 ## Types (a code registry)
 
 The set of connection types and their behavior is **code**, not data, only
@@ -25,7 +33,7 @@ per-user/instance state is data. The descriptor lives in
 `packages/common/src/connections.ts` (`ConnectionTypeInfos`), exported from
 `@common/server`. Adding a type is a one-object change there.
 
-| Type | Metering tiers | Reports activity | Min object size | Revocable | Self-serve flag |
+| Type | Metering tiers | Reports activity | Min object size | Revocable *(in flight)* | Self-serve flag |
 |---|---|---|---|---|---|
 | `immich` | storage, transfer, activity | yes | 0 | no | none (always on) |
 | `restic` | storage, transfer | no | 1 MiB | yes | `connection-restic` |
@@ -65,7 +73,7 @@ cases. Exact per-object billing (S3 `ListObjects`) is a documented future option
 
 *(This produces billable-bytes only. Pricing/plan/quota is a separate later layer.)*
 
-## Revocation: postgres truth, layered caches, bounded grace
+## Revocation: postgres truth, layered caches, bounded grace *(in flight — `feat/conn-4-revocation`)*
 
 restic tokens are long-lived, so their liveness is checked against the **source
 of truth, postgres** (`resticTokens`), fronted by yucca-api's internal
@@ -111,24 +119,29 @@ michael request ──> L1 (per-process, fresh 60s / grace 30min)
 
 michael enforces validity only where `TOKEN_INTROSPECTION_URL` is set (primary
 regions, secondaries have no local yucca-api and run with checking off). The
-valkey is the **generic shared platform cache** (`charts/apps/redis`, ephemeral
-by design, keys namespaced `yucca:<service>:<purpose>:*`); the verdict cache is
-its first tenant, with michael rate limiting a likely second.
+valkey is the **generic shared platform cache** (`charts/apps/redis`, introduced
+by the same branch; ephemeral by design, keys namespaced
+`yucca:<service>:<purpose>:*`); the verdict cache is its first tenant, with
+michael rate limiting a likely second.
 
 ## Self-serve restic
 
-A user with the `connection-restic` flag can stand up a restic backup in one call:
+On `main` today: `POST /repository/:id/restic` mints a rest: URL for an existing
+repository with the session-JWT lifetime (`JWT_EXPIRES_IN`), no options.
+
+The full flow *(in flight — `feat/conn-5-restic`)* lets a user with the
+`connection-restic` flag stand up a restic backup in one call:
 
 - **`POST /connections/restic`**, get-or-create the user's restic connection,
   create a repository under it, mint a **long-lived** rest: URL, and return
   `{ connection, repository, url, jti, expiresAt }`. Idempotent on the connection
   (reused across repositories). Gated on `connection-restic` (403 without).
-- **`POST /repository/:id/restic`**, mint a URL for an existing repository.
-  Optional `expiresIn` and `label`. **Long-lived tokens are revocable-only**: for
-  restic repositories the default is `RESTIC_JWT_EXPIRES_IN` (90d), capped at
-  `RESTIC_JWT_MAX_EXPIRES_IN` (365d); for non-revocable types (immich, michael
-  never validity-checks them) the token keeps the short session-JWT lifetime
-  (`JWT_EXPIRES_IN`, 1d) and a custom `expiresIn` is rejected.
+- **`POST /repository/:id/restic`** grows optional `expiresIn` and `label`.
+  **Long-lived tokens are revocable-only**: for restic repositories the default
+  is `RESTIC_JWT_EXPIRES_IN` (90d), capped at `RESTIC_JWT_MAX_EXPIRES_IN` (365d);
+  for non-revocable types (immich, michael never validity-checks them) the token
+  keeps the short session-JWT lifetime (`JWT_EXPIRES_IN`, 1d) and a custom
+  `expiresIn` is rejected.
 - **`GET /repository/:id/restic-tokens`**, list a repository's minted tokens
   (owner-scoped).
 - **`DELETE /restic-tokens/:jti`**, revoke your own token (owner-scoped; unknown
@@ -150,22 +163,23 @@ lists each connection with its type and usage rollup. It's a thin SvelteKit rout
 `+page.ts` loads `listConnections` + `getRepositories` via the generated client, and
 `+page.svelte` renders it with `@immich/ui`.
 
-**Restic self-serve is invisible without the flag.** The "New restic backup" button and
-all restic actions render only when `data.user.features['connection-restic']` is true,
-absent from the DOM otherwise, not merely disabled. The create flow (`CreateResticModal`)
-calls `POST /connections/restic` and opens a result modal (`ResticResultModal`) showing the
-`rest:` URL, a `restic -r … init` snippet (copy buttons), and a repository-password
-reminder. Per-repository access keys are listed/revoked/re-minted in `ManageTokensModal`.
+**Restic self-serve is invisible without the flag** *(in flight — `feat/conn-restic-web`)*.
+The "New restic backup" button and all restic actions render only when
+`data.user.features['connection-restic']` is true, absent from the DOM otherwise, not merely
+disabled. The create flow (`CreateResticModal`) calls `POST /connections/restic` and opens a
+result modal (`ResticResultModal`) showing the `rest:` URL, a `restic -r … init` snippet
+(copy buttons), and a repository-password reminder. Per-repository access keys are
+listed/revoked/re-minted in `ManageTokensModal`.
 
 ## Where things live
 
 | Concern | Location |
 |---|---|
 | Type descriptor + billing floor | `packages/common/src/connections.ts` |
-| Schema (`connections`, `connectionMetrics`, `resticTokens`) | `packages/yucca-api/src/schema/` |
+| Schema (`connections`, `connectionMetrics`; `resticTokens` *in flight*) | `packages/yucca-api/src/schema/` |
 | Connection + self-serve restic API | `packages/yucca-api/src/{controllers,services}/` |
-| Web Connections page + restic modals | `packages/web/src/routes/dashboard/connections/`, `packages/web/src/lib/components/connections/` |
+| Web Connections page (restic modals *in flight*) | `packages/web/src/routes/dashboard/connections/`, `packages/web/src/lib/components/connections/` |
 | Billing rollup | `packages/yucca-metrics-worker/` |
-| Validity check (michael: L1/L2/introspection) | `packages/michael/internal/revocation/` |
-| Introspection endpoint | `packages/yucca-api/src/controllers/introspection.controller.ts` |
+| Validity check *(in flight)* | `packages/michael/internal/revocation/` |
+| Introspection endpoint *(in flight)* | `packages/yucca-api/src/controllers/introspection.controller.ts` |
 | Admin provisioning | `packages/yucca-admin-api/`, `packages/yuctl/` |

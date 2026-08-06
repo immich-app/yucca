@@ -96,7 +96,6 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `michael` | Go | **Production** restic REST backend — S3 proxy with JWT verification, WORM enforcement, backend pooling. |
 | `restic-api` | NestJS | Earlier TS implementation of the restic backend, kept as **reference**; not deployed. |
 | `yucca-metrics-worker` | NestJS | 5-min cron: RadosGW usage → meter tables → per-connection rollup (`connectionMetrics`, billing floor), OTel gauges. |
-| `redis` (valkey) | | Shared platform cache (ephemeral; keys `yucca:<service>:<purpose>:*`). Primary-region only. |
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). |
 | `common` (`@common/server`) | TS lib | OTel init, pino repository, **feature-flag registry + connection-type registry**. |
 
@@ -131,11 +130,10 @@ Full detail: `docs/connections.md`. The essentials:
   (admin-owned, runtime).
 - **Billing**: `ConnectionTypeInfos` declares metering tiers and `minObjectSizeBytes` floor;
   metrics-worker computes `billableBytes = max(size, objects * floor)` per connection.
-- **Revocation** (revocable types only, default `restic`): postgres is truth; michael checks
-  L1 per-process cache → valkey verdict cache (`yucca:michael:verdict:<jti>`) → yucca-api
-  introspection (`GET /internal/restic-tokens/:jti`). Revoke flips the DB row + best-effort DELs
-  the valkey key; introspection outage honors the grace window then **fails closed**. Long-lived
-  tokens are revocable-only. yuctl: `tokens list/revoke`, `repos url --ttl`.
+- **Revocation** — **not on main yet**: the layered design in `docs/connections.md` (valkey
+  verdict cache, yucca-api introspection, yuctl `tokens`) is in flight on
+  `feat/conn-4-revocation`; no valkey/redis service, introspection endpoint, or `resticTokens`
+  table exists in the current tree.
 
 ## Infrastructure architecture
 
