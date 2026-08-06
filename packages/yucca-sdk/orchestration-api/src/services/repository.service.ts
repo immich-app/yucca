@@ -322,7 +322,7 @@ export class RepositoryService {
     const { backend, configuration } = await this.getBackendOrThrow(backendId);
 
     let remote;
-    if (dto.name) {
+    if (dto.name || dto.worm !== undefined) {
       ({ repository: remote } = await backend.updateRepository(remoteId, dto));
     } else {
       ({ repository: remote } = await backend.getRepository(remoteId));

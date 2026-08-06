@@ -152,12 +152,22 @@
 
       <BackendsList {repository} />
 
-      <Field
-        label="Write-only"
-        description="Once written, backups can't be removed."
-      >
-        <Switch bind:checked={worm} />
-      </Field>
+      {#if repository?.worm}
+        <Field
+          label="Write-only"
+          description="Once written, backups can't be removed. This can't be turned off again."
+          readOnly // @immich/ui forces enabled={false} when disabled={true}
+        >
+          <Switch checked class="grayscale brightness-90" />
+        </Field>
+      {:else}
+        <Field
+          label="Write-only"
+          description="Once written, backups can't be removed. This can't be turned off again."
+        >
+          <Switch bind:checked={worm} />
+        </Field>
+      {/if}
 
       <Field
         label="Delete old backups"
