@@ -39,7 +39,7 @@ data:
   scrape.yml: |
     global:
       scrape_interval: 10s
-      # Site/env/project identity tags. `cluster` is deliberately NOT here:
+      # Env/project/provider/region identity tags. `cluster` is deliberately NOT here:
       # vmagent applies external_labels OVER target labels (unlike
       # Prometheus's fill-gaps semantics — it relabeled all 48 spice targets
       # to cluster=netops), so each job stamps its own cluster label instead.
