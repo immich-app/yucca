@@ -20,9 +20,8 @@ const schema = z.object({
     .default('24h')
     .transform((value): StringValue => value as StringValue),
 
-  // Restic repository tokens (POST /repository/:id/url): signed with
-  // yucca-api's key so michael accepts them. Optional — the endpoint returns
-  // 501 until configured.
+  // Restic repository tokens (POST /repository/:id/url), signed with yucca-api's key so michael accepts them.
+  // Optional — the endpoint returns 501 until configured.
   RESTIC_JWT_PRIVATE_KEY: z.string().optional(),
   RESTIC_JWT_EXPIRES_IN: z
     .string()

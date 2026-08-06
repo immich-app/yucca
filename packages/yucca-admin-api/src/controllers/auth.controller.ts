@@ -44,11 +44,9 @@ export class AuthController {
     response.redirect(redirectTo);
   }
 
-  // Loopback login for yuctl: the CLI opens this in a browser with its
-  // listener port, a state nonce, and an S256 code challenge; the normal OIDC
-  // dance runs, and the callback redirects to 127.0.0.1:<port> with a one-time
-  // code the CLI exchanges at /auth/cli/token. The CLI params ride along in
-  // their own short-lived cookie, mirroring how state/verifier already travel.
+  // yuctl loopback login: CLI opens this with listener port, state nonce, S256 code challenge; the OIDC callback
+  // redirects to 127.0.0.1:<port> with a one-time code exchanged at /auth/cli/token. CLI params ride their own
+  // short-lived cookie, like state/verifier.
   @Get('/cli/login')
   @ApiQuery({ name: 'port', type: Number })
   @ApiQuery({ name: 'state', type: String })
@@ -101,12 +99,10 @@ export class AuthController {
       maxAge: Duration.fromObject({ days: 7 }).toMillis(),
     });
 
-    // CLI loopback flow: hand the browser back to the local yuctl listener
-    // with a one-time code instead of the admin UI.
+    // CLI loopback flow: redirect to the local yuctl listener with a one-time code instead of the admin UI.
     const cliCookie = parse(request.headers.cookie ?? '')[CookieName.CliLogin];
     if (cliCookie) {
-      // Re-validate: the cookie is client-controlled, and the values are
-      // interpolated into the loopback redirect.
+      // Re-validate: the cookie is client-controlled and its values are interpolated into the loopback redirect.
       const raw = JSON.parse(cliCookie) as CliLoginParams;
       const { port, state, codeChallenge } = this.auth.parseCliLoginParams(
         String(raw.port),

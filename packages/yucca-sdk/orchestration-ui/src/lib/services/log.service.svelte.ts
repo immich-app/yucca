@@ -4,7 +4,6 @@ import debounce from 'lodash.debounce';
 
 type SummaryEvent = {
   message_type: 'summary';
-  // backup
   files_new?: number;
   files_changed?: number;
   files_unmodified?: number;
@@ -13,7 +12,6 @@ type SummaryEvent = {
   total_bytes_processed?: number;
   total_duration?: number;
   snapshot_id?: string;
-  // restore
   files_restored?: number;
   files_skipped?: number;
   files_deleted?: number;

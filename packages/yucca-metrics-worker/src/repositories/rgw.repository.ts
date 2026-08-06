@@ -36,10 +36,8 @@ export class RgwRepository {
   }
 
   async *getBucketStatsStream(pageSize = 1000): AsyncGenerator<BucketStats> {
-    // Some RGW versions ignore max-entries/marker on /admin/bucket (observed on
-    // v19.2.2, which returns the full listing on every page), so terminating on
-    // entries.length < pageSize alone would loop forever. Dedupe by bucket and
-    // stop as soon as a page yields nothing new.
+    // Some RGW versions ignore max-entries/marker on /admin/bucket (v19.2.2 returns the full listing every page),
+    // so entries.length < pageSize alone would loop forever. Dedupe by bucket; stop when a page yields nothing new.
     const seen = new Set<string>();
     let marker = '';
 

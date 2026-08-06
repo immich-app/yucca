@@ -23,8 +23,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  // Without this the backend resolves its base URL by fetching the real
-  // production .well-known over the network.
+  // Without this the backend resolves its base URL by fetching the real production .well-known over the network.
   jest.spyOn(yuccaWellKnown, 'getBaseUrl').mockResolvedValue('http://yucca.test');
   ctx.database.prepare("DELETE FROM config WHERE key = 'telemetry'").run();
   await ctx.module.get(BackendRepository).updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {

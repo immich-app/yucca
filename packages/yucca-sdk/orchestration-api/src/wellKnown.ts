@@ -114,8 +114,7 @@ export class YuccaWellKnown {
     }
   }
 
-  // The api-client's operation paths already carry the /api prefix, so the
-  // request base is api_root without it.
+  // The api-client's operation paths already carry the /api prefix, so the request base is api_root without it.
   async getBaseUrl(): Promise<string> {
     const meta = await this.get();
     return meta.api_root.replace(/\/api\/?$/, '');

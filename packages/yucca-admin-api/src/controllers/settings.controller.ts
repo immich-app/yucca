@@ -15,9 +15,8 @@ export class SettingsController {
     return this.settings.list();
   }
 
-  // The body is deliberately taken raw (not a validated DTO): the service
-  // validates against the strict settings registry so unknown keys are
-  // rejected instead of silently stripped by the whitelist pipe.
+  // Body deliberately raw (not a validated DTO): the service validates against the strict settings registry, so
+  // unknown keys are rejected instead of silently stripped by the whitelist pipe.
   @Put('/:scope')
   @AuthRoute()
   @ApiBody({ type: SettingsValueDto })

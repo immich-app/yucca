@@ -10,16 +10,14 @@ import { CookieName, JwtAudience } from 'src/enum';
 import { env } from 'src/env';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 
-// Loopback-flow parameters set by the CLI on /auth/cli/login, carried through
-// the OIDC dance in the CliLogin cookie.
+// Loopback-flow params set by the CLI on /auth/cli/login, carried through the OIDC dance in the CliLogin cookie.
 export interface CliLoginParams {
   port: number;
   state: string;
   codeChallenge: string;
 }
 
-// state / code_challenge are CLI-generated random strings; constrain them to
-// URL-safe base64 so they can be echoed into the loopback redirect untouched.
+// CLI-generated state/code_challenge: constrain to URL-safe base64 so they can be echoed into the redirect untouched.
 const URL_SAFE = /^[\w-]{16,128}$/;
 
 @Injectable()
@@ -122,7 +120,6 @@ export class AuthService {
     return { sub: payload.sub };
   }
 
-  // Validates the loopback-flow query params of GET /auth/cli/login.
   parseCliLoginParams(port?: string, state?: string, codeChallenge?: string): CliLoginParams {
     const portNum = Number(port);
     if (!Number.isInteger(portNum) || portNum < 1024 || portNum > 65_535) {
@@ -137,10 +134,9 @@ export class AuthService {
     return { port: portNum, state, codeChallenge };
   }
 
-  // Mints the one-time code delivered to the CLI's loopback listener: a
-  // short-lived JWT binding the authenticated sub to the CLI's code_challenge.
-  // One-time use is enforced by PKCE semantics rather than server state — the
-  // code alone is useless without the verifier, which never leaves the CLI.
+  // One-time code for the CLI's loopback listener: short-lived JWT binding sub to the CLI's code_challenge. Single
+  // use is enforced by PKCE semantics, not server state — the code is useless without the verifier, which never
+  // leaves the CLI.
   async mintCliCode(sub: string, codeChallenge: string): Promise<string> {
     return await this.jwt.signAsync({ sub, cnf: codeChallenge }, { audience: JwtAudience.CliCode, expiresIn: '60s' });
   }
