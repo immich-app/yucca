@@ -61,6 +61,10 @@
   delay: 10
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
+  # Read-only, so run it under --check too. Left to default it skips, `until`
+  # can never be satisfied, and every --check of this tag fails here after
+  # burning the full 30 retries.
+  check_mode: false
 
 # --- Step 2.5: Re-spec the monitoring stack (fabric bind + alert delivery) ---
 # cephadm auto-deployed the stack binding all interfaces and with NO alertmanager
