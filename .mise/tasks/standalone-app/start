@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run the built standalone-app from dist/"
+set -e
+
+pnpm --filter @futo-org/backups-standalone start

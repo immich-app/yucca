@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+@import '@immich/ui/theme/default.css';
+@source "../../node_modules/@immich/ui";
+@source "../../node_modules/@futo-org/backups-orchestrator-ui";
+
+body {
+  background-color: var(--immich-ui-light);
+  color: var(--immich-ui-dark);
+}

@@ -18,10 +18,10 @@
   type Props = {
     local?: boolean;
     initialData?: RepositoryListResponseDto;
-    onNavigate?: (route: string) => void;
+    onViewBackups?: () => void;
   };
 
-  const { local, initialData, onNavigate }: Props = $props();
+  const { local, initialData, onViewBackups }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   const query = useRepositories(initialData?.repositories);
@@ -38,8 +38,15 @@
 {:else if query.isSuccess}
   <Stack gap={6}>
     <Stack direction="row" gap={4}>
-      <DashboardBackupHealth repositories={query.data} {local} {onNavigate} />
-      <DashboardInstall />
+      <DashboardBackupHealth
+        repositories={query.data}
+        {local}
+        {onViewBackups}
+      />
+
+      {#if !local}
+        <DashboardInstall />
+      {/if}
     </Stack>
     <Stack direction="row" gap={4}>
       <DashboardAvgBackupTime repositories={query.data} />

@@ -13,10 +13,10 @@
   type Props = {
     repositories: LocalRepositoryDto[];
     local?: boolean;
-    onNavigate?: (route: string) => void;
+    onViewBackups?: () => void;
   };
 
-  const { repositories, local, onNavigate }: Props = $props();
+  const { repositories, local, onViewBackups }: Props = $props();
 
   const total = $derived(repositories.length);
 
@@ -45,12 +45,8 @@
   <CardHeader>
     <HStack class="justify-between">
       <CardTitle>Your Backups</CardTitle>
-      {#if onNavigate}
-        <Button
-          variant="outline"
-          size="tiny"
-          onclick={() => onNavigate("backups")}
-        >
+      {#if onViewBackups}
+        <Button variant="outline" size="tiny" onclick={onViewBackups}>
           View all
         </Button>
       {/if}

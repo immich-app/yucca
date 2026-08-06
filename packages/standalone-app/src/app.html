@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script>
+      try {
+        const preference = JSON.parse(localStorage.getItem('immich-ui-theme'));
+        const prefersDark = globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (preference === 'light' || (preference !== 'dark' && !prefersDark)) {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+        }
+      } catch {
+        // noop
+      }
+    </script>
+
+    %sveltekit.head%
+
+    <style>
+      html.dark {
+        background-color: black;
+      }
+
+      html.light {
+        background-color: white;
+      }
+    </style>
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

@@ -31,3 +31,15 @@ jobs:
             --filter @futo-org/backups-orchestrator-api \
             --filter @futo-org/backups-orchestrator-ui \
             publish --access public --provenance --no-git-checks
+
+  docker:
+    name: Publish standalone image
+    uses: immich-app/devtools/.github/workflows/multi-runner-build.yml@50dc3a14f0606ecd8fc28d78d3a3c655115ab695 # multi-runner-build-workflow-v3.1.0
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    with:
+      image: futo-backups-standalone
+      context: .
+      dockerfile: packages/standalone-app/Dockerfile
