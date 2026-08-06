@@ -191,6 +191,7 @@ export type RepositoryInspectResponseDto = {
 };
 export type RepositoryUpdateRequestDto = {
     name?: string;
+    worm?: boolean;
     paths?: string[];
     retentionPolicy?: (RetentionPolicyDto) | null;
 };

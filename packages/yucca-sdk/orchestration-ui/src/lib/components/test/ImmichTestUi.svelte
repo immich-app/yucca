@@ -39,9 +39,9 @@
   import { options } from "$lib/options";
   import { onDestroy } from "svelte";
   import ImmichBackupsNavButton from "../integrations/immich/ImmichBackupsNavButton.svelte";
-  import MockImmichPhotos from "../../../test-mocks/immich/MockImmichPhotos.svelte";
-  import MockImmichPurchaseInfo from "../../../test-mocks/immich/MockImmichPurchaseInfo.svelte";
-  import MockImmichStorageSpace from "../../../test-mocks/immich/MockImmichStorageSpace.svelte";
+  import MockImmichPhotos from "./immich/MockImmichPhotos.svelte";
+  import MockImmichPurchaseInfo from "./immich/MockImmichPurchaseInfo.svelte";
+  import MockImmichStorageSpace from "./immich/MockImmichStorageSpace.svelte";
   import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
   import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
   import OnEvents from "../util/OnEvents.svelte";

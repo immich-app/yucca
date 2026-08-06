@@ -1237,6 +1237,339 @@
         "x": 0,
         "y": 48
       },
+      "id": 26,
+      "panels": [],
+      "title": "Client behaviour (michael restic gateway)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 49
+      },
+      "id": 27,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (repositoryId) (rate({__name__=\"client.request.seconds\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "{{repositoryId}}"
+        }
+      ],
+      "title": "Average parallelism by repository",
+      "type": "timeseries",
+      "description": "Mean requests in flight, from accumulated request-seconds per second (Little's Law). Compare against the client's restic rest.connections budget."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 49
+      },
+      "id": 28,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (repositoryId) ({__name__=\"client.requests.peak\", customerId=~\"$user\", cluster=~\"$cluster\"})",
+          "legendFormat": "{{repositoryId}}"
+        }
+      ],
+      "title": "Peak parallelism by repository",
+      "type": "timeseries",
+      "description": "Highest concurrent request count per collection window. Summed across michael replicas, so it is an upper bound when a client spreads its connections; the average above sums exactly."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 57
+      },
+      "id": 29,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (repositoryId) (rate({__name__=\"client.request.seconds\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))\n/\nsum by (repositoryId) (rate({__name__=\"http.server.request.count\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "{{repositoryId}}"
+        }
+      ],
+      "title": "Average request duration by repository",
+      "type": "timeseries",
+      "description": "Mean wall-clock per request. Includes streaming the body to the client, so on large blobs this tracks the client's link speed."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 57
+      },
+      "id": 30,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (repositoryId) (rate({__name__=\"client.request.ttfb_seconds\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))\n/\nsum by (repositoryId) (rate({__name__=\"http.server.request.count\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "legendFormat": "{{repositoryId}}"
+        }
+      ],
+      "title": "Average time to first byte by repository",
+      "type": "timeseries",
+      "description": "Mean time to first response byte — michael plus RGW latency, without the client's download time. Diverging from duration above means a slow client, not a slow backend."
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 65
+      },
       "id": 20,
       "panels": [],
       "title": "API activity (yucca-api / admin-api)",
@@ -1291,7 +1624,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 49
+        "y": 66
       },
       "id": 21,
       "options": {
@@ -1371,7 +1704,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 49
+        "y": 66
       },
       "id": 22,
       "options": {
@@ -1407,7 +1740,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 57
+        "y": 74
       },
       "id": 23,
       "panels": [],
@@ -1427,7 +1760,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 75
       },
       "id": 24,
       "options": {
@@ -1467,7 +1800,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 85
       },
       "id": 25,
       "options": {

@@ -142,7 +142,10 @@
 {:else if stage === "key-import"}
   <OnboardingStageKeyImport
     onStart={() => (stage = "intro")}
-    onImported={() => (stage = "connect")}
+    onImported={(key) => {
+      code = key;
+      stage = "connect";
+    }}
     {onCancel}
   />
 {:else if stage === "key"}

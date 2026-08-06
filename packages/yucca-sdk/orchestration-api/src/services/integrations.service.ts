@@ -67,6 +67,7 @@ export class IntegrationsService {
       scheduleId = existing.scheduleId;
       await this.repositoryService.updateRepository(existing.id, {
         name: dto.name,
+        worm: dto.worm,
         retentionPolicy: dto.retentionPolicy,
       });
       await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron, paused: dto.paused });

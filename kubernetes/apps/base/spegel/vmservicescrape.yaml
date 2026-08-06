@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/operator.victoriametrics.com/vmservicescrape_v1beta1.json
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: spegel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spegel
+      app.kubernetes.io/component: metrics
+  endpoints:
+    - port: metrics
