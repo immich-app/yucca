@@ -21,6 +21,10 @@ load('ext://namespace', 'namespace_create')
 # Gate: only talk to the local k3d cluster. Prevents accidental prod deploys.
 allow_k8s_contexts('k3d-yucca')
 
+# Tilt defaults to 3, which builds the app images in two waves. There are five
+# of them and the CI runner has eight cores, so one wave fits.
+update_settings(max_parallel_updates=6)
+
 namespace_create('yucca')
 
 # ---------------------------------------------------------------------------

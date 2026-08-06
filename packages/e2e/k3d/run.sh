@@ -117,11 +117,11 @@ echo "==> jest e2e (it-works, restic-api, yucca-api, orchestration-api)"
 source .mise/tasks/restic-api/env
 # shellcheck disable=SC1091
 source .mise/tasks/yucca-api/env
-# One worker per suite file — each scopes itself to its own repositories and
-# users. Not tied to core count: these spend most of their time waiting on the
-# cluster, so they oversubscribe happily on a 4-core runner.
+# Three, not one per suite: orchestration-api alone runs ~105s and gates the
+# phase, so a fourth worker adds no wall-clock — only a fourth CPU consumer on a
+# runner that is already hosting the cluster these suites drive.
 NODE_OPTIONS="--experimental-vm-modules --require $HERE/hostmap.cjs" \
-  pnpm --filter e2e exec jest --maxWorkers=4
+  pnpm --filter e2e exec jest --maxWorkers=3
 
 echo "==> web e2e (playwright against the k3d web)"
 # Config lives in packages/web so @playwright/test resolves from web's deps.

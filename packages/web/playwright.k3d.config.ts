@@ -9,7 +9,9 @@ export default defineConfig({
   testDir: 'e2e',
   // yucca-web is a vite DEV server here, so the first visit to a route pays for
   // its compile — more than the stock 5s assertion timeout on a cold, loaded
-  // runner, which is exactly when CI runs this.
+  // runner, which is exactly when CI runs this. The per-test budget has to
+  // clear that too, or the test dies before the assertion can spend its own.
+  timeout: 90_000,
   expect: { timeout: 30_000 },
   use: {
     launchOptions: {

@@ -95,7 +95,10 @@ jobs:
 
   e2e:
     name: End-to-end Tests
-    runs-on: ubuntu-latest
+    # This job hosts the whole k3d stack — Ceph, postgres, michael, a vite dev
+    # server — and runs restic against it. Both halves are CPU-bound, so the
+    # 4-vCPU hosted runner starved them; pokedex-large is 8 cores / 32 GB.
+    runs-on: pokedex-large
     timeout-minutes: 60
     env:
       # restic runs on the runner, so yucca-api must advertise a localhost
@@ -113,8 +116,10 @@ jobs:
           # mise downloads tools from GitHub releases; anonymous requests hit
           # API rate limits with four parallel jobs.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Paths from the GitHub-hosted image; absent on a self-hosted runner, and
+      # -n so a runner without passwordless sudo fails instead of hanging.
       - name: Free runner disk space
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
+        run: sudo -n rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
 
       - name: Create the k3d cluster
         run: mise k3d:up
