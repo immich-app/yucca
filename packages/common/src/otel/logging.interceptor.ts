@@ -22,10 +22,8 @@ export class LoggingInterceptor implements NestInterceptor {
     });
   }
 
-  // Counts every request (log lines are sampled, the counter is not). The
-  // handler label is Controller.method — bounded, unlike the raw path which
-  // embeds resource ids. customerId/repositoryId come from the wide context
-  // when the request authenticated.
+  // Counts every request (log lines are sampled, the counter is not). handler = Controller.method — bounded,
+  // unlike the raw path which embeds resource ids. customerId/repositoryId come from wide context when authenticated.
   private recordRequest(handler: string, method: string, event: Record<string, unknown>) {
     const attributes: Attributes = { handler, method, status: event.status_code as number };
     if (typeof event.customerId === 'string') {

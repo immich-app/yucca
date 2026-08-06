@@ -36,9 +36,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     FROM "repositories" AS repository
     WHERE meter."repositoryId" = repository.id AND meter."storageClusterCode" IS NULL;`.execute(db);
 
-  // Defaults keep old application replicas safe during a rolling deployment:
-  // pre-topology inserts omit these columns, but can no longer create NULL
-  // placement after the backfill.
+  // Defaults keep old replicas safe during rolling deploy: pre-topology inserts omit these columns yet can no
+  // longer create NULL placement after the backfill.
   await sql`ALTER TABLE "repositories"
     ALTER COLUMN "siteCode" SET DEFAULT ${sql.lit(siteCode)},
     ALTER COLUMN "siteCode" SET NOT NULL,

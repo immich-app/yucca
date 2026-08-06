@@ -103,8 +103,7 @@ describe(RepositoryService.name, () => {
   });
 
   describe('url', () => {
-    // The parsed env may carry dev RESTIC_* values (mise env); pin both
-    // states explicitly so the tests are environment-independent.
+    // The parsed env may carry dev RESTIC_* values (mise env); pin both states so tests are environment-independent.
     type ResticEnv = { RESTIC_JWT_PRIVATE_KEY?: string };
     const restic = env as ResticEnv;
     let saved: ResticEnv;

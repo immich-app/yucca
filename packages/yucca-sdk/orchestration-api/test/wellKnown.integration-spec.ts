@@ -100,7 +100,7 @@ describe(YuccaWellKnown.name, () => {
   it('serves stale data when a refresh fails', async () => {
     await sut.getBaseUrl();
 
-    sut['fetchedAt'] = 0; // expire the cache
+    sut['fetchedAt'] = 0;
     fetchMock.mockRejectedValue(new Error('offline'));
 
     await expect(sut.getBaseUrl()).resolves.toBe('https://backups.futo.cloud');

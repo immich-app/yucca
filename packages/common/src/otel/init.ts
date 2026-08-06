@@ -15,12 +15,10 @@ const SpanProcessor = otelEnv.NODE_ENV === 'development' ? tracing.SimpleSpanPro
 const LogProcessor = otelEnv.NODE_ENV === 'development' ? logs.SimpleLogRecordProcessor : logs.BatchLogRecordProcessor;
 
 const otelSDK = new NodeSDK({
-  // Without service.instance.id every replica exports IDENTICAL series; the
-  // TSDB merges them and rate() reads ~1/replicas of the real traffic. The SDK
-  // merges this with its detected resource (service.name via OTEL_SERVICE_NAME).
+  // Without service.instance.id replicas export identical series — the TSDB merges them and rate() reads
+  // ~1/replicas of real traffic. The SDK merges this with its detected resource (service.name via OTEL_SERVICE_NAME).
   resource: resourceFromAttributes({ 'service.instance.id': hostname() }),
 
-  // metrics
   metricReader: new metrics.PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
       url: otelEnv.OTEL_METRICS,
@@ -29,7 +27,6 @@ const otelSDK = new NodeSDK({
     exportIntervalMillis: 1000,
   }),
 
-  // tracing
   sampler:
     otelEnv.NODE_ENV === 'development' || otelEnv.OTEL_SAMPLE_RATE == 1
       ? new tracing.AlwaysOnSampler()
@@ -49,7 +46,6 @@ const otelSDK = new NodeSDK({
     }),
   ),
 
-  // logging
   logRecordProcessors: [
     new LogProcessor(
       new OTLPLogExporter({
