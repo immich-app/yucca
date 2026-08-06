@@ -77,13 +77,6 @@ resource "talos_machine_configuration_apply" "cp" {
   node           = each.value.provisioned ? each.value.cp_ip : each.value.maint_ip
   endpoint       = each.value.provisioned ? each.value.cp_ip : each.value.maint_ip
   config_patches = local.cp_node_patches[each.key]
-  # Never auto-reboot from an apply: "auto" rebooted every node the moment a
-  # non-hot-applicable change merged, and TF walks the for_each in parallel, so
-  # the whole fleet went down at once (2026-08-05, PR #436). Reboot-needing
-  # changes are now STAGED; activate them with a manual one-node-at-a-time
-  # `talosctl reboot`. Talos 1.14 removes the dry-run reboot detection this
-  # mode relies on (apply-config there can no longer reboot at all); revisit
-  # at the 1.14 upgrade.
   apply_mode = "staged_if_needing_reboot"
 
   # reset=false: decommissioning an etcd member must be a deliberate
