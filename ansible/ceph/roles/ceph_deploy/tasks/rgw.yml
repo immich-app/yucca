@@ -1,9 +1,4 @@
 ---
-# Phase 5.75: RadosGW (S3 Object Gateway)
-# Deploys RGW with EC data pool, realm/zonegroup/zone, and S3 service user
-
-# --- Step 1: EC profile ---
-
 - name: Check existing EC profiles
   ansible.builtin.command: ceph osd erasure-code-profile ls
   register: ec_profiles
@@ -20,8 +15,6 @@
     - inventory_hostname in groups['ceph_bootstrap']
     - "ceph_rgw_ec_profile not in ec_profiles.stdout"
   changed_when: true
-
-# --- Step 2-3: EC data pool ---
 
 - name: Check existing pools
   ansible.builtin.command: ceph osd pool ls
@@ -47,10 +40,8 @@
   changed_when: true
 
 - name: Mark the EC data pool as bulk (autoscaler sizing floor)
-  # bulk=true tells the pg_autoscaler to target a pg_num sized for the pool's
-  # expected full capacity, so it will not shrink the pre-seeded pg_num
-  # (ceph_pg_init_data) back toward 1 during the first fill. Idempotent: only sets
-  # when not already true.
+  # bulk=true sizes the autoscaler for full capacity, so it won't shrink the
+  # pre-seeded ceph_pg_init_data back toward 1 during the first fill.
   ansible.builtin.shell: |
     set -o pipefail
     [ "$(ceph osd pool get {{ ceph_rgw_data_pool }} bulk | awk '{print $2}')" = "true" ] || { ceph osd pool set {{ ceph_rgw_data_pool }} bulk true; echo CHANGED; }
@@ -63,13 +54,9 @@
   changed_when: "'CHANGED' in (bulk_flag_result.stdout | default(''))"
 
 - name: Pin EC data pool min_size to k+1 ({{ ceph_rgw_ec_min_size }})
-  # The EC pool otherwise inherits Ceph's default min_size = k+1 implicitly. Pin
-  # it EXPLICITLY so the write-availability floor is documented and cannot drift:
-  # k+1 keeps a PG writable while at least k+1 shards are up, so writes tolerate
-  # up to m-1 host losses while reads still tolerate m. NEVER set below k+1 --
-  # allowing writes at k shards risks data loss if another shard is lost during
-  # recovery. Idempotent get-then-set; gated on the pool existing (fresh run:
-  # create_data_pool changed; re-run: pool already in pool_list).
+  # Pin the implicit default explicitly so the floor can't drift. k+1 = writes
+  # tolerate m-1 host losses, reads m. NEVER below k+1: writes at k shards risk
+  # data loss if another shard dies during recovery.
   ansible.builtin.shell: |
     set -o pipefail
     cur=$(ceph osd pool get {{ ceph_rgw_data_pool }} min_size | awk '{print $2}')
@@ -84,8 +71,6 @@
     - (create_data_pool is changed) or (ceph_rgw_data_pool in pool_list.stdout)
   register: ec_min_size_result
   changed_when: "'CHANGED' in (ec_min_size_result.stdout | default(''))"
-
-# --- Step 4: Replicated index pool ---
 
 - name: Create replicated index pool {{ ceph_rgw_index_pool }}
   ansible.builtin.command: >
@@ -105,8 +90,6 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
-# --- Step 5: Replicated non-EC pool (multipart uploads) ---
-
 - name: Create replicated non-EC pool {{ ceph_rgw_extra_pool }}
   ansible.builtin.command: >
     ceph osd pool create {{ ceph_rgw_extra_pool }} replicated
@@ -124,8 +107,6 @@
     executable: /bin/bash
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
-
-# --- Step 6: Pool application tags ---
 
 - name: Check pool application tags
   ansible.builtin.command: "ceph osd pool application get {{ item }}"
@@ -149,19 +130,12 @@
   loop_control:
     label: "{{ item.item | default('skipped') }}"
 
-# --- Step 6.5: Initial PG counts ---
-#
-# Pools are created with pg_num=1 (ceph default). The autoscaler will
-# eventually grow them, but splitting PGs under load causes latency
-# spikes and throughput drops. Pre-sizing avoids this penalty during
-# the first fill. Idempotent: only increases pg_num, never decreases.
+# Pools start at pg_num=1; autoscaler splits under load cause latency spikes, so
+# pre-size before the first fill. Only ever increases pg_num.
 
-# The top-of-file pool_list snapshot predates the data/index/non-EC pools
-# created just above, so on a fresh run 1 it does NOT contain them and every
-# "in pool_list.stdout" gate below would skip - deferring all pre-sizing to a
-# second converge. Re-query now that the explicit pools exist so run 1 sizes
-# them. (The lazily-created .rgw.* system pools are handled later, after the
-# RGW daemon is up.)
+# Re-query: the top-of-file pool_list predates the pools created above, so on run 1
+# the gates below would skip and defer pre-sizing to a second converge. (Lazily
+# created .rgw.* system pools are handled after the RGW daemon is up.)
 - name: Re-query pools after explicit RGW pools are created
   ansible.builtin.command: ceph osd pool ls
   register: pool_list
@@ -207,10 +181,8 @@
     - pg_extra_result.rc != 0
     - "'is not >= current' not in pg_extra_result.stderr | default('')"
 
-# NB: the .rgw.* system-pool PG-count and size/min_size pins are NOT here - those
-# pools are created lazily by the realm/zone setup and the RGW daemon, so they do
-# not exist yet at this point in the play. They are pinned in Step 13.6 below,
-# after the RGW readiness wait, against a freshly re-queried pool list.
+# The .rgw.* system-pool pins run post-RGW-readiness below: those pools are
+# created lazily and do not exist yet here.
 
 - name: Wait for PG peering to complete
   ansible.builtin.shell: |
@@ -237,8 +209,6 @@
   changed_when: false
   timeout: 330
 
-# --- Step 7: Realm ---
-
 - name: Check existing realms
   ansible.builtin.command: radosgw-admin realm list
   register: realm_list
@@ -260,8 +230,6 @@
     radosgw-admin realm default --rgw-realm={{ ceph_rgw_realm }}
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
-
-# --- Step 8: Zonegroup ---
 
 - name: Check existing zonegroups
   ansible.builtin.command: radosgw-admin zonegroup list
@@ -306,8 +274,6 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: "'CHANGED' in (set_api_name.stdout | default(''))"
 
-# --- Step 9: Zone ---
-
 - name: Check existing zones
   ansible.builtin.command: radosgw-admin zone list
   register: zone_list
@@ -328,8 +294,6 @@
     - inventory_hostname in groups['ceph_bootstrap']
     - "ceph_rgw_zone not in (zone_list.stdout | default(''))"
   changed_when: true
-
-# --- Step 10: Zone placement targets ---
 
 - name: Configure zone placement targets for EC pools
   ansible.builtin.shell: |
@@ -368,14 +332,9 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: "'CHANGED' in (zone_placement.stdout | default(''))"
 
-# --- Step 10.5: Zonegroup hostnames ---
-#
-# The dashboard connects to RGW using the node's hostname or IP in the
-# Host header. RGW validates the Host header during S3 signature
-# verification: if the hostname isn't in the zonegroup's hostnames
-# list, signature verification fails with SignatureDoesNotMatch (403).
-# Adding all node hostnames and IPs ensures both dashboard and direct
-# client access work regardless of which address is used.
+# RGW validates the Host header during S3 signature verification: any hostname/IP
+# not in the zonegroup hostnames list fails with SignatureDoesNotMatch (403), so
+# add every node hostname + IP (dashboard and direct clients both work).
 
 - name: Add cluster hostnames and IPs to zonegroup
   ansible.builtin.shell: |
@@ -412,24 +371,13 @@
   register: zonegroup_hostnames
   changed_when: "'CHANGED' in zonegroup_hostnames.stdout"
 
-# --- Step 11: Commit period ---
-#
-# Committing a period is not free: it notifies every RGW watching
-# realms.<realm-id>.control (48 of them on spice). Each one pauses its beast
-# frontend and cancels in-flight connections, so live requests abort with 500s
-# and 409s, and under load the teardown can trip a use-after-free in the
-# frontend teardown path; five RGWs segfaulted that way on 2026-07-27.
-#
-# `period update --commit` is also not idempotent: it bumps the epoch even when
-# the period content is unchanged (epoch 3 -> 4 on 2026-07-27 differed by that
-# single field and nothing else). So only commit when there is something to
-# commit: either a task above changed the realm/zonegroup/zone, or the
-# committed period has drifted from the live zonegroup.
-#
-# The drift probe repairs a run that changed config but died before committing.
-# Its reach is the zonegroup only (creation, api_name, hostnames, endpoints),
-# because that is all the period map carries. Zone params such as placement
-# pools live outside the period, so they are not self-healing here.
+# A commit notifies every RGW on realms.<realm-id>.control; each pauses beast and
+# cancels in-flight requests (500s/409s), and under load the teardown can trip a
+# use-after-free -- five RGWs segfaulted on spice 2026-07-27. `period update
+# --commit` is also NOT idempotent (bumps the epoch even when content is unchanged,
+# seen 2026-07-27). So commit only when a task above changed realm/zonegroup/zone
+# or the committed period drifted. The drift probe covers the zonegroup only (all
+# the period map carries); zone params like placement pools are not self-healing here.
 
 - name: Check whether the committed period matches the live zonegroup
   ansible.builtin.shell: |
@@ -458,8 +406,7 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
   failed_when: false
-  # Read-only probe, so let it run under --check too; otherwise check mode
-  # would skip it and the gate below would report a commit that isn't needed.
+  # Read-only probe; runs under --check too so the commit gate stays accurate.
   check_mode: false
 
 - name: Commit the period
@@ -477,14 +424,6 @@
       ('MATCH' not in (period_drift.stdout | default('')))
   changed_when: true
 
-# --- Step 11.5: rgw_dns_name for virtual-hosted bucket addressing ---
-#
-# With this set, a request to bucket.{{ ceph_rgw_dns_name }} is
-# recognized as the bucket "bucket" rather than a literal bucket whose
-# name is the full FQDN. Clients can then use either path-style
-# ({{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}/bucket/key) or
-# virtual-hosted style ({{ ceph_rgw_scheme }}://bucket.{{ ceph_rgw_dns_name }}/key).
-
 - name: Get current rgw_dns_name
   ansible.builtin.command: ceph config get client.rgw rgw_dns_name
   register: current_rgw_dns_name
@@ -500,30 +439,11 @@
     - "(current_rgw_dns_name.stdout | default('')) | trim != ceph_rgw_dns_name"
   changed_when: true
 
-# --- Step 11.6: Self-signed TLS cert for RGW frontend ---
-#
-# Generated on the bootstrap node via openssl, handed to cephadm via the
-# service spec template below. cephadm distributes the combined PEM to
-# every RGW daemon container on apply.
-#
-# Idempotent via `creates:`; the openssl run only fires if the cert file
-# is absent. To rotate: delete /etc/ceph/rgw-ssl.{crt,key} on the bootstrap
-# node and re-run the role.
-#
-# SANs include:
-#   - the canonical DNS name (CN)
-#   - a wildcard under the same name for virtual-hosted buckets
-#   - per-node FQDNs so direct-host addressing also validates
-#   - per-node bond IPs so IP-based S3 clients also validate
-#   - the RGW ingress VIP (only when ceph_rgw_ingress_enabled) so a client hitting
-#     the health-checked VIP, where haproxy terminates TLS with this cert, validates
+# Cert rotation: delete /etc/ceph/rgw-ssl.{crt,key} on the bootstrap node and re-run.
 
-# Build the -subj and SAN as single-line strings up front. Doing this inline in
-# the openssl command forced a backslash-newline INSIDE the quoted args, which
-# folds the next line's indentation into the value (e.g. C="DE    ") and openssl
-# aborts on the over-length field. Precomputing here keeps the shell one flat line
-# per arg. The {%- ... %} whitespace-control strips the fold-inserted spaces so the
-# SAN concatenates with no embedded whitespace.
+# Precompute -subj/SAN: inline backslash-newlines inside quoted openssl args fold
+# the next line's indentation into the value (C="DE    ") and openssl aborts.
+# The {%- %} whitespace control keeps the SAN free of embedded spaces.
 - name: Build RGW self-signed cert subject and SAN
   ansible.builtin.set_fact:
     _rgw_cert_subj: >-
@@ -575,18 +495,10 @@
     - ceph_rgw_ssl | default(false) | bool
   no_log: true
 
-# --- Step 12: Deploy RGW daemons via cephadm service spec ---
-#
-# We render a YAML service spec rather than using `ceph orch apply rgw
-# <realm> <zone> --placement=... --port=...` because the command-line
-# form doesn't accept cert content. The YAML spec supports both
-# `ssl: true` and inline `rgw_frontend_ssl_certificate`, and cephadm
-# distributes the cert to every RGW container.
-#
-# Placement is pinned to groups['ceph_nodes'] (not ansible_play_batch)
-# so a --limit re-run doesn't accidentally shrink the spec and
-# de-deploy daemons on omitted hosts (cephadm is declarative: applying
-# a smaller placement REMOVES daemons).
+# YAML spec (not `ceph orch apply rgw ...` CLI) because only the spec accepts
+# inline rgw_frontend_ssl_certificate. Placement pinned to groups['ceph_nodes'],
+# not the play batch: cephadm is declarative, so a --limit re-run with a smaller
+# placement would REMOVE daemons on omitted hosts.
 
 - name: Render RGW service spec
   ansible.builtin.template:
@@ -603,11 +515,8 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
-# --- Step 12.5: Dashboard RGW SSL verify ---
-#
-# With self-signed certs the dashboard's RGW client rejects the cert
-# and returns 500 on the Object Gateway page. Disable verification so
-# the dashboard can talk to the local RGW endpoints.
+# Self-signed cert makes the dashboard's RGW client 500 on the Object Gateway
+# page unless verification is off.
 
 - name: Disable dashboard RGW API SSL verification (self-signed cert)
   ansible.builtin.command: ceph dashboard set-rgw-api-ssl-verify false
@@ -621,8 +530,6 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
-# --- Step 13: Wait for RGW daemons ---
-
 - name: Wait for RGW daemons to start
   ansible.builtin.shell: |
     set -eo pipefail
@@ -635,48 +542,24 @@
   args:
     executable: /bin/bash
   register: rgw_running_count
-  # Wait for RGW on the nodes in THIS run (respects --limit), not all ceph_nodes,
-  # so a subset deploy does not block forever waiting for daemons on hosts it never
-  # joined. The rgw-spec placement stays pinned to all ceph_nodes (it must not
-  # shrink on a --limit re-run); only the readiness gate is play-scoped.
+  # Readiness gate is play-scoped (respects --limit) so a subset deploy doesn't
+  # block forever; the rgw-spec placement itself stays pinned to all ceph_nodes.
   until: "(rgw_running_count.stdout | int) >= (groups['ceph_nodes'] | intersect(ansible_play_hosts) | length)"
   retries: 30
   delay: 10
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
 
-# --- Step 13.7: RGW ingress (haproxy + keepalived) -- health-checked S3 VIP ---
-#
-# Opt-in floating VIP in front of RGW in TLS TERMINATION mode: haproxy `mode http`
-# terminates the client's TLS on the VIP with the RGW self-signed cert (reused,
-# combined cert+key -- see template), then re-encrypts to each RGW/beast backend
-# (default-server ssl / verify none). The keepalived VIP + haproxy per-backend
-# health check drop a dead RGW node from rotation instead of blackholing ~1/N of
-# S3 connections.
-#
-# Runs HERE, after the RGW readiness wait above, on purpose: the ingress spec's
-# backend_service references the RGW service, which must already exist and be
-# running before cephadm can wire the ingress to it. It also needs
-# rgw_ssl_cert_combined_pem, the fact built in Step 11.6.
-#
-# WHY TERMINATE, not passthrough: L4 passthrough (`mode tcp`) for an RGW backend
-# requires IngressSpec.use_tcp_mode_over_rgw, a post-20.2.2 upstream field absent
-# on the pinned 20.2.2 (source-verified: an unknown spec key makes `ceph orch
-# apply` TypeError). Terminate is the only health-checked ingress mode available
-# here. haproxy forwards the Host header in mode http, so virtual-hosted buckets
-# keep working against haproxy's wildcard cert.
-#
-# NO 443 COLLISION: haproxy terminates on VIP:{{ ceph_rgw_ingress_frontend_port }},
-# beast binds each node's fabric IP:{{ ceph_rgw_port }} -- distinct sockets. This
-# holds ONLY when the RGW spec restricts beast to a specific IP (ceph_bind_networks
-# non-empty); otherwise beast binds 0.0.0.0 and the co-located VIP bind collides.
-# Asserted below.
-#
-# APPLY ORDERING (cross-tool): the DNS cutover that points s3.<domain> at the VIP
-# is done separately in TF and MUST NOT precede this ingress being live, or S3
-# resolves to a VIP that nothing answers.
-#
-# Idempotent + declarative: `ceph orch apply -i` reconciles to the spec.
+# TLS TERMINATION mode: haproxy terminates on the VIP with the reused RGW cert
+# (combined PEM from Step 11.6), re-encrypts to beast; health checks drop a dead
+# node instead of blackholing ~1/N of S3 connections. Must run AFTER the RGW
+# readiness wait (backend_service must exist). Terminate, not L4 passthrough:
+# passthrough needs IngressSpec.use_tcp_mode_over_rgw, absent on pinned 20.2.2
+# (unknown spec key => `ceph orch apply` TypeError); Host header is forwarded so
+# virtual-hosted buckets keep working. No 443 collision ONLY while beast binds a
+# specific IP (ceph_bind_networks non-empty; asserted below), else 0.0.0.0 collides
+# with the co-located VIP. ORDERING: the TF DNS cutover of s3.<domain> to the VIP
+# MUST NOT precede this ingress being live.
 
 - name: Assert RGW ingress preconditions (VIP + restricted beast bind + RGW ssl)
   ansible.builtin.assert:
@@ -717,20 +600,11 @@
     - (ceph_rgw_ingress_vip | default('')) | length > 0
   changed_when: false
 
-# --- Step 13.6: Pin pools to device-class CRUSH rules ---
-#
-# crush-rules.yml creates replicated_ssd/replicated_hdd but binds no pool, so
-# every replicated pool falls to the default class-agnostic rule and the
-# omap-heavy bucket index lands on HDD while the ssd-osd NVMe tier sits idle.
-# Pin the latency-sensitive index/metadata/mgr pools to the SSD rule and the
-# bulk non-EC pool to HDD.
-#
-# Runs HERE (after RGW readiness) on purpose: .rgw.root and the prod-z1.rgw.*
-# metadata pools are created lazily by the realm/zone setup and the RGW daemon,
-# so a pool snapshot taken before the daemon is up (like the top-of-file one)
-# would miss them. Re-query fresh, and gate each pin on the pool existing now.
-# Opt-in per cluster via ceph_rgw_ssd_pools / ceph_rgw_hdd_pools (empty default
-# leaves a live cluster's pools where they are - re-homing forces a rebalance).
+# crush-rules.yml creates replicated_ssd/hdd but binds no pool; unpinned, the
+# omap-heavy index falls to the class-agnostic default rule on HDD while the NVMe
+# tier idles. Runs after RGW readiness because the .rgw.* pools are created lazily.
+# Opt-in per cluster via ceph_rgw_ssd_pools/hdd_pools -- empty default leaves a
+# live cluster alone (re-homing forces a rebalance).
 
 - name: Re-query pools after RGW is up (system pools are created lazily)
   ansible.builtin.command: ceph osd pool ls
@@ -757,14 +631,10 @@
     - "'is not >= current' not in pg_meta_result.stderr | default('')"
 
 - name: Pin replica size on the RGW metadata + mgr pools (durability)
-  # These otherwise inherit the cluster-spec osd_pool_default_size / min_size,
-  # unlike index/extra which are pinned. Losing 2 OSDs behind a metadata PG would
-  # take out the RGW/mgr control plane, and min_size 1 permits single-replica
-  # writes. Pin to the same replicated size (spice 3/2; sietch stays 2/1 via its
-  # own var). Runs here, after RGW readiness, because these pools are created
-  # lazily by the daemon; the pre-daemon snapshot missed them so run 1 skipped
-  # the pin and they sat at the inherited 2/1 until a second converge. Idempotent:
-  # only sets when the current value differs.
+  # These otherwise inherit osd_pool_default_size/min_size (min_size 1 = single-
+  # replica writes; 2 OSD losses could take out the RGW/mgr control plane). Pin to
+  # ceph_rgw_replicated_size (spice 3/2, sietch 2/1). After RGW readiness because
+  # these pools are lazily created; the pre-daemon snapshot missed them on run 1.
   ansible.builtin.shell: |
     set -o pipefail
     ch=0
@@ -821,11 +691,8 @@
   register: hdd_pin_result
   changed_when: "'CHANGED' in (hdd_pin_result.stdout | default(''))"
 
-# --- Step 13.5: Ensure dashboard RGW user has admin caps ---
-#
-# cephadm auto-creates a "dashboard" RGW user with system=true but
-# zero caps. Without admin caps the dashboard's Object Gateway page
-# returns 403 SignatureDoesNotMatch on every admin API call.
+# cephadm auto-creates the "dashboard" user with system=true but zero caps;
+# without admin caps the Object Gateway page 403s (SignatureDoesNotMatch).
 
 - name: Ensure dashboard RGW user has admin caps
   ansible.builtin.shell: |
@@ -844,8 +711,6 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   register: dashboard_caps
   changed_when: "'CHANGED' in dashboard_caps.stdout"
-
-# --- Step 14: Create S3 user ---
 
 - name: Check if S3 user exists
   ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_s3_user_uid }}"
@@ -869,13 +734,7 @@
   changed_when: true
   no_log: true
 
-# --- Step 14.5: Metrics-worker RGW admin user (read-only) ---
-#
-# A dedicated RGW user the metrics worker uses to scrape usage/bucket/user
-# stats via the radosgw admin ops API. Keys are TF-minted in 1P
-# (<CLUSTER>_METRICS_WORKER_{ACCESS,SECRET}_KEY) and passed here so the consumer
-# is pre-configured with matching credentials. Read-only admin caps only -- it
-# can read stats but cannot mutate buckets or users.
+# Metrics-worker keys are TF-minted in 1P (<CLUSTER>_METRICS_WORKER_{ACCESS,SECRET}_KEY).
 
 - name: Check if metrics-worker RGW user exists
   ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_metrics_user_uid }}"
@@ -917,17 +776,10 @@
   register: metrics_caps
   changed_when: "'CHANGED' in metrics_caps.stdout"
 
-# --- Step 15: Converge S3 user keys to the 1P canonical key (gated rotation) ---
-#
-# For clusters that predate the predetermined-keys pattern, the user exists
-# with a cephadm-generated random key instead of the 1P one. When rotate_s3_keys
-# is set, converge to exactly the canonical 1P key: add it if missing, then
-# retire every other (stray) key so no undocumented credential is left valid.
-# Gated behind rotate_s3_keys because rotating a live S3 key is disruptive to
-# whatever already uses it. The canonical key is added before any stray is
-# removed, so the user is never left without a working key. (A stray with the
-# same access key but a different secret is not auto-corrected; that is rare and
-# would need a manual key create.)
+# Pre-pattern clusters carry a cephadm-generated random key. Gated behind
+# rotate_s3_keys (rotating a live key is disruptive). Canonical key is added
+# before strays are retired, so the user is never keyless. A stray sharing the
+# access key with a different secret is not auto-corrected (manual key create).
 
 - name: Get current S3 user info
   ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_s3_user_uid }}"
@@ -1003,8 +855,6 @@
       - "Path-style:        {{ ceph_rgw_scheme }}://{{ ceph_rgw_dns_name }}:{{ ceph_rgw_port }}/<bucket>"
   when: inventory_hostname in groups['ceph_bootstrap']
   no_log: false
-
-# --- Step 16: Show RGW status ---
 
 - name: Show RGW status
   ansible.builtin.shell: |

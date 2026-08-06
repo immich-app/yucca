@@ -1,30 +1,24 @@
 ---
-# Scheduled Ceph cluster-state backup defaults.
-#
 # The capture is read-only (dumps config/topology maps via the on-node admin
-# keyring) and writes to a root-only local dir, so it is universally safe. Set
-# ceph_backup_enabled: false in a cluster's group_vars to opt out.
+# keyring) and writes to a root-only local dir, so it is universally safe.
 ceph_backup_enabled: true
 
-# Local landing dir for tarballs. Root-only (0700): the capture set is
-# config/topology only, but keep it locked down regardless.
 ceph_backup_dir: /var/backups/ceph
 
 # Prune tarballs older than N days on each run. 0 disables pruning.
 ceph_backup_retention_days: 14
 
-# Where the capture script is installed on the bootstrap node.
 ceph_backup_script_path: /usr/local/sbin/ceph-backup.sh
 
-# Offsite sync target - EMPTY BY DEFAULT (operator decision; do not hardcode a
-# destination). When set the script ships each tarball after capture:
+# EMPTY BY DEFAULT (operator decision). When set the script ships each tarball
+# after capture:
 #   rsync form: user@host:/path/  or  rsync://host/module/path
 #   S3 form:    s3://bucket/prefix  (requires the aws CLI on the bootstrap node)
 # TODO(operator): choose + wire an offsite destination for true DR.
 ceph_backup_offsite_dest: ""
 
-# systemd timer schedule + jitter. Daily with an up-to-1h randomized delay so a
-# fleet of clusters does not stampede a shared offsite target at the same second.
+# Randomized delay so a fleet of clusters does not stampede a shared offsite
+# target at the same second.
 ceph_backup_oncalendar: "daily"
 ceph_backup_randomized_delay: "1h"
 

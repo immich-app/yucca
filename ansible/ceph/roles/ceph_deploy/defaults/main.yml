@@ -1,153 +1,83 @@
 ---
-# Ceph release train. Upstream publishes per-release apt trees at
-# download.ceph.com/debian-<release>/, and each tree has subdirectories
-# per Debian codename. prerequisites.yml pins the codename to 'bookworm'
-# in the sources.list entry - when upgrading the base OS to Trixie,
-# flip the codename there. This split keeps the Ceph release and the
-# Debian release independently versionable.
+# Ceph release train. prerequisites.yml pins the Debian codename ('bookworm')
+# separately in sources.list -- flip it there when moving the base OS to Trixie.
 ceph_release: tentacle
-ceph_release_version: "20.2.*"  # pin to patch range; set "20.2.1" to pin exactly
+ceph_release_version: "20.2.*"  # patch range; "20.2.1" pins exactly
 ceph_repo_url: "https://download.ceph.com/debian-{{ ceph_release }}/"
 ceph_repo_key_url: "https://download.ceph.com/keys/release.asc"
 cephadm_install_method: repo   # 'repo' or 'curl'
 
-# Initial PG counts per pool. The autoscaler is left on and will adjust
-# over time, but starting at pg_num=1 (the ceph default) causes PG
-# splitting under load which tanks performance during the first fill.
-# These values are sized for ~36 OSDs. Scale proportionally for larger
-# clusters.
-ceph_pg_init_data: 128        # EC data pool - bulk of I/O
-ceph_pg_init_index: 16        # bucket index
-ceph_pg_init_non_ec: 16       # multipart uploads
+# Initial PG counts (autoscaler stays on; pg_num=1 default splits under load and
+# tanks the first fill). Sized for ~36 OSDs -- scale proportionally.
+ceph_pg_init_data: 128
+ceph_pg_init_index: 16
+ceph_pg_init_non_ec: 16
 ceph_pg_init_meta: 8          # .rgw.root, .meta, .log, .control
 
-# RGW EC data-pool min_size (write-availability floor). Ceph defaults an EC pool
-# to min_size = k+1, which is the correct floor: at k+1 up shards a PG stays
-# writable, so writes tolerate up to m-1 host losses while reads still tolerate m.
-# Pin it EXPLICITLY (get-then-set in rgw.yml) so the value is documented and
-# cannot drift. NEVER set below k+1: permitting writes at k shards risks data loss
-# if another shard is lost mid-recovery. Derived from ceph_rgw_ec_k so it tracks
-# whatever profile a cluster runs (spice 16+4 -> 17, sietch 8+3 -> 9).
+# EC data-pool min_size floor, pinned explicitly in rgw.yml so it can't drift.
+# k+1 = writes tolerate m-1 host losses, reads m. NEVER below k+1 (writes at k
+# shards risk data loss mid-recovery). Tracks each cluster's profile via ceph_rgw_ec_k.
 ceph_rgw_ec_min_size: "{{ (ceph_rgw_ec_k | int) + 1 }}"
 
-# MGR daemon count (1 active + standbys). cephadm's default and upstream guidance
-# is a small fixed count; deploying one per host (e.g. 47 on spice) is wasteful and
-# non-standard. count:N lets cephadm place them (caps at the host count on small
-# clusters like sietch).
+# MGR count (1 active + standbys). Small fixed count per upstream guidance, not
+# one per host; cephadm caps at host count on small clusters.
 ceph_mgr_count: 3
 
-# --- Service bind/advertise policy (per-cluster; fabric-only on spice) ---
-# ceph_service_ip (the address Ceph point-services advertise + bind on: mon
-# --mon-ip, the cephadm host-add address, the dashboard monitoring URLs) is
-# defined in each cluster's group_vars, NOT here. join/rgw/monitoring read it
-# through hostvars[<host>], and role defaults are INVISIBLE via hostvars (a role
-# default raises "HostVarsVars object has no attribute ceph_service_ip" and aborts
-# the deploy), whereas group_vars resolve through hostvars per host. spice sets it
-# to the fabric ceph_public_ip; sietch (flat) to bond_ip. It is NOT the ansible/SSH
-# connection address (that is bond_ip / ansible_host).
+# ceph_service_ip (mon --mon-ip / cephadm host-add / dashboard URLs) lives in
+# group_vars, NOT here: role defaults are invisible via hostvars[] ("HostVarsVars
+# object has no attribute" aborts the deploy). Not the SSH address (bond_ip).
 #
-# CIDR(s) cephadm restricts daemon binds to, injected as the `networks:` field of
-# the RGW + monitoring service specs. mon/mgr/OSD already bind per public_network/
-# cluster_network; this closes the remaining daemons (beast RGW, prometheus,
-# grafana, alertmanager, node-exporter, ceph-exporter) that otherwise bind 0.0.0.0.
-# EMPTY by default: no `networks:` field is emitted and the monitoring re-spec is
-# skipped, so daemons bind every interface exactly as cephadm ships them - flat
-# clusters like sietch are untouched. A cluster that must be fabric-only (spice)
-# opts in by setting this to its fabric CIDR(s) in group_vars.
+# CIDR(s) injected as `networks:` in the RGW + monitoring specs, closing the
+# daemons that otherwise bind 0.0.0.0 (beast, prometheus, grafana, alertmanager,
+# exporters). EMPTY default = no field emitted, monitoring re-spec skipped, flat
+# clusters (sietch) untouched; fabric-only clusters opt in via group_vars.
 ceph_bind_networks: []
 
-# --- Device-class CRUSH pool placement (per-cluster; opt-in) ---
-# Pools listed here are pinned to the named device-class CRUSH rule after RGW is
-# up. EMPTY by default so a cluster's pools stay on whatever rule they already
-# carry - re-homing a live pool triggers a full rebalance under load, so this is
-# never applied implicitly. A cluster with a dedicated fast tier (spice's ssd-osd
-# NVMe) opts in via group_vars. The rule names must match crush-rules.yml.
+# Pools listed here get pinned to the named rule after RGW is up. EMPTY default:
+# re-homing a live pool forces a full rebalance, so never implicit. Rule names
+# must match crush-rules.yml.
 ceph_rgw_ssd_crush_rule: replicated_ssd
 ceph_rgw_hdd_crush_rule: replicated_hdd
 ceph_rgw_ssd_pools: []
 ceph_rgw_hdd_pools: []
 
-# --- RGW ingress: health-checked S3 VIP (haproxy + keepalived; per-cluster; opt-in) ---
-# A cephadm `ingress` service that puts a keepalived-managed floating VIP with
-# haproxy health checks in front of RGW, in TLS TERMINATION mode (haproxy
-# `mode http`: haproxy terminates the client TLS on the VIP with the reused RGW
-# self-signed cert, then re-encrypts to the RGW backends). A dead RGW node is then
-# dropped from the VIP instead of blackholing ~1/N of S3 connections. DEFAULT OFF:
-# no ingress spec is rendered or applied, so flat/dev clusters (sietch) and any
-# cluster that has not opted in are a complete no-op.
-#
-# (Terminate, not L4 passthrough, because passthrough for an RGW backend needs
-# IngressSpec.use_tcp_mode_over_rgw, a post-20.2.2 upstream field absent on the
-# pinned 20.2.2 -- source-verified; an unknown spec key makes `orch apply`
-# TypeError. Terminate is the only health-checked ingress mode available here.)
-#
-# A cluster opts in by setting ceph_rgw_ingress_enabled: true AND
-# ceph_rgw_ingress_vip in its group_vars. Three hard preconditions, all asserted
-# at apply time:
-#   1. ceph_rgw_ingress_vip must be set (the VIP the clients hit).
-#   2. ceph_bind_networks must be non-empty - otherwise beast binds
-#      0.0.0.0:<ceph_rgw_port> and the co-located haproxy VIP bind on the same
-#      port collides (EADDRINUSE). Restricted beast binds a per-node IP, the VIP
-#      is a distinct socket, so they coexist.
-#   3. ceph_rgw_ssl must be true - haproxy terminates with the RGW self-signed
-#      cert (rgw_ssl_cert_combined_pem), which only exists when RGW ssl is on.
+# keepalived VIP + haproxy health checks in front of RGW, TLS TERMINATION mode
+# (reused RGW self-signed cert, re-encrypt to backends); a dead node is dropped
+# instead of blackholing ~1/N of S3 connections. DEFAULT OFF (no spec rendered).
+# Terminate, not L4 passthrough: passthrough needs IngressSpec.use_tcp_mode_over_rgw,
+# absent on pinned 20.2.2 (unknown spec key => `orch apply` TypeError).
+# Asserted preconditions: ceph_rgw_ingress_vip set; ceph_bind_networks non-empty
+# (else beast binds 0.0.0.0:<port> and the co-located VIP bind EADDRINUSEs);
+# ceph_rgw_ssl true (haproxy terminates with rgw_ssl_cert_combined_pem).
 ceph_rgw_ingress_enabled: false
-# Floating VIP the S3 clients hit (bare IP; the prefix is added below). Empty by
-# default; a cluster that opts in sets this to an address on its RGW-facing
-# network (e.g. spice fabric public 10.40.20.250).
-ceph_rgw_ingress_vip: ""
-# CIDR prefix of the network the VIP lives on - MUST match the prefix of the
-# public/RGW-facing network (spice fabric public = /23) so keepalived binds the
-# VIP to the right interface.
+ceph_rgw_ingress_vip: ""             # bare IP on the RGW-facing network
+# MUST match the RGW-facing network's prefix (spice fabric public = /23) so
+# keepalived binds the VIP to the right interface.
 ceph_rgw_ingress_vip_prefix: 23
-# Port clients hit on the VIP. Must match ceph_rgw_port (the S3/beast port).
+# Must match ceph_rgw_port.
 ceph_rgw_ingress_frontend_port: 443
-# haproxy stats/monitor port (load-balancer status; not the S3 data path).
-ceph_rgw_ingress_monitor_port: 1967
-# Number of haproxy + keepalived instances cephadm spreads across nodes (VRRP
-# needs >= 2 for failover; 3 tolerates one node loss with quorum to spare).
+ceph_rgw_ingress_monitor_port: 1967  # haproxy stats, not the S3 data path
+# VRRP needs >= 2 instances; 3 tolerates a node loss.
 ceph_rgw_ingress_count: 3
 
-# --- Alert delivery (per-cluster; opt-in) ---
-# cephadm auto-deploys alertmanager but with NO receiver, so the ~89 Prometheus
-# alert rules (OSD down, host down, PG degraded, near-full) fire into the default
-# null route and no human is notified. Set this to one or more webhook URLs (a
-# chat incoming-webhook, or a pager like Opsgenie/PagerDuty, or a FUTO endpoint)
-# and the alertmanager service spec routes all alerts there via cephadm's
-# user_data.default_webhook_urls. Values may be op:// refs resolved before the
-# play. EMPTY by default: no receiver is wired (cephadm default is unchanged), and
-# verify.yml warns that alert delivery is not configured. TODO(operator): set the
-# destination for spice.
+# cephadm deploys alertmanager with NO receiver, so the ~89 rules fire into the
+# null route unnoticed. Webhook URLs here are routed via cephadm's
+# user_data.default_webhook_urls; values may be op:// refs. EMPTY default: no
+# receiver wired, verify.yml warns. TODO(operator): set the destination for spice.
 ceph_alertmanager_webhook_urls: []
 
 # Repair cephadm's alertmanager route tree so `default_webhook_urls` is live.
-#
-# WHY: upstream's 'ceph-dashboard' child route carries no matchers, so it
-# matches every alert. Its `continue: true` is emitted only inside the
-# snmp_gateway_urls conditional. Alertmanager falls back to the parent receiver
-# only when no child matched. On a cluster with no SNMP gateway, every alert
-# therefore stops at 'ceph-dashboard' and never reaches 'default', which is
-# where the webhooks above land. Notifications report success; nothing arrives.
-#
-# Required whenever ceph_alertmanager_webhook_urls is non-empty, because without
-# it that setting is inert. It stays a separate flag because it rewrites a
-# cephadm-managed config, so setting a webhook URL never rewrites that config on
-# its own.
+# Upstream's 'ceph-dashboard' child route has no matchers and `continue: true`
+# only under snmp_gateway_urls, so without SNMP every alert stops there and
+# 'default' (the webhooks) never fires -- silently. Required whenever
+# ceph_alertmanager_webhook_urls is non-empty; separate flag because it rewrites
+# a cephadm-managed config.
 ceph_alertmanager_fix_route_tree: false
 
-# Drop the `description` label from alerts before they reach alertmanager.
-#
-# WHY: `ceph_pool_metadata` carries a label named `description`, whose value is
-# the pool's EC profile (`ec:16+4`, `replica:3`). Three rules join that metric
-# with group_left and inherit the label: CephPGsUnclean, CephPGsInactive,
-# CephPoolGrowthWarning. Zulip's alertmanager integration resolves its `desc`
-# field against labels first and annotations second. With `desc=description`
-# those three alerts render as the string `ec:16+4` instead of their annotation.
-#
-# The label is incidental pool metadata. Nothing routes, silences or groups on
-# it. This relabels alerts only, so the metric keeps the label and dashboards
-# are unaffected.
-#
-# Only meaningful when the receiver resolves annotations by name. Harmless
-# otherwise, but defaults false so no cluster changes alert content implicitly.
+# Drop the `description` label from alerts (relabel only; metric/dashboards keep it).
+# ceph_pool_metadata's `description` label (EC profile, e.g. `ec:16+4`) is
+# group_left-inherited by CephPGsUnclean/CephPGsInactive/CephPoolGrowthWarning;
+# Zulip resolves `desc` against labels before annotations, so those alerts render
+# as `ec:16+4`. Nothing routes/silences/groups on the label. Defaults false so no
+# cluster changes alert content implicitly.
 ceph_prometheus_drop_description_label: false

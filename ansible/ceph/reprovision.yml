@@ -1,9 +1,4 @@
 ---
-# Reprovision Hetzner SX295 ceph nodes via the Robot API + installimage.
-# Ansible-native replacement for the out-of-band installimage step:
-#   arm rescue (uri) -> hw reset (uri) -> wait for rescue -> [zap OSD HDDs] ->
-#   installimage -> reboot -> verify installed OS. Then hand off to `mise run deploy`.
-#
 # ALWAYS DESTRUCTIVE to the NVMe OS disks. NEVER fold this into deploy/converge.
 # Launch ONLY via `mise run reprovision` (wraps op run --env-file=../../tf/.env.prod,
 # which materializes HETZNER_ROBOT_* and lets ansible-play.sh op-inject secrets).

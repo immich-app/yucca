@@ -1,5 +1,4 @@
 ---
-# Phase 2: Bootstrap cluster (first node only)
 
 - name: Check if Ceph cluster already exists
   ansible.builtin.stat:
@@ -69,15 +68,10 @@
     # its SSH key to managed hosts during `ceph orch host add`. No
     # manual capture or distribution needed.
 
-# --- Idempotent dashboard password enforcement ---
-# The bootstrap task above only sets the dashboard password on the very first
-# `cephadm bootstrap` (guarded by `not ceph_conf.stat.exists`), and
-# `--dashboard-password-noupdate` means it is never re-applied afterwards. If a
-# cluster was ever bootstrapped out-of-band (or before this var existed),
-# cephadm generated a *random* admin password and no playbook run would ever
-# correct it; the vaulted password stays aspirational. These tasks reconcile
-# the running cluster to `ceph_dashboard_password` on every converge, so the
-# vault is the single source of truth for both initial set and rotation.
+# Bootstrap sets the password only on first run (--dashboard-password-noupdate
+# never re-applies), so an out-of-band bootstrap leaves a random admin password
+# forever. Reconcile to ceph_dashboard_password every converge -- the vault is
+# the single source of truth for initial set and rotation.
 - name: Write dashboard password to temp file (reconcile)
   ansible.builtin.copy:
     content: "{{ ceph_dashboard_password }}"

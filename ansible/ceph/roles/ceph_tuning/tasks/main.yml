@@ -1,13 +1,4 @@
 ---
-# Post-deploy Ceph cluster tuning.
-# Requires a running cluster -- all tasks use ceph CLI commands.
-# Runs from the bootstrap node only.
-#
-# Every config-set task checks the current value first and only
-# applies changes when needed, so re-runs report accurate changed counts.
-
-# --- Telemetry ---
-
 - name: Check telemetry status
   ansible.builtin.command: ceph telemetry status --format json
   register: telemetry_status
@@ -30,18 +21,13 @@
     - (telemetry_status.stdout | from_json).enabled | default(true)
   changed_when: true
 
-# --- Ceph config model ---
-#
-# Merge the three layers, diff against the live mon database, apply only what
-# differs. The diff is a script rather than a Jinja comparison because
-# `ceph config dump` reports every value as a string (604800.000000 for an int
-# option, "true" for a bool) while the model holds real YAML types, and the
-# `float` filter returns 0.0 for anything non-numeric -- which would read
-# "balanced" and "high_recovery_ops" as equal.
+# Diff is a script, not Jinja: `ceph config dump` stringifies every value while
+# the model holds YAML types, and Jinja's `float` returns 0.0 for non-numerics
+# ("balanced" == "high_recovery_ops").
 
-# A render that predates the TF ceph_config model lacks the generated file;
-# the model would then fall back to role defaults and REVERT cluster tuning
-# (e.g. spice's deep scrub interval back to 7d). Fail instead of converging.
+# A render predating the TF ceph_config model lacks the generated file; falling
+# back to role defaults would REVERT cluster tuning (spice deep scrub back to
+# 7d). Fail instead of converging.
 - name: Require the TF-rendered ceph config (guards against a stale render)
   ansible.builtin.assert:
     that: >-
@@ -84,9 +70,8 @@
       {{ ceph_config_changes.rm | length }} superseded entry(ies) to remove
   when: inventory_hostname in groups['ceph_bootstrap']
 
-# Gate keys sort first (the script orders them), so
-# osd_mclock_override_recovery_settings lands before the recovery limits it
-# gates rather than depending on dict ordering in the model.
+# Gate keys sort first (script-ordered): osd_mclock_override_recovery_settings
+# lands before the recovery limits it gates.
 - name: Apply Ceph config values
   ansible.builtin.command:
     argv: ["ceph", "config", "set", "{{ item.who }}", "{{ item.key }}", "{{ item.value }}"]
@@ -96,12 +81,10 @@
     label: "{{ item.who }}/{{ item.key }}: {{ item.current | default('unset') }} -> {{ item.value }}"
   changed_when: true
 
-# Safety interlock for the prune below. The recovery limits are moving from
-# `global` to `osd`, and under mclock an `osd`-section write can be reverted.
-# If that happened and we removed the `global` copy anyway, the effective value
-# would fall through to the mclock default of 1000 concurrent backfills. So
-# confirm the running daemons actually report the declared values first; a
-# mismatch fails the play with `global` still in place, which is the safe state.
+# Prune interlock: under mclock an `osd`-section write can be silently reverted;
+# removing the `global` copy anyway would drop the effective value to mclock's
+# 1000 backfills. Confirm running OSDs report the declared values first -- a
+# mismatch fails the play with `global` still in place (the safe state).
 - name: Verify gated options landed on a running OSD
   ansible.builtin.shell: |
     set -o pipefail
@@ -162,8 +145,6 @@
     label: "{{ item.section }}/{{ item.name }} (was {{ item.current }})"
   changed_when: true
 
-# --- Crash daemon ---
-
 - name: Verify ceph-crash daemon is deployed
   ansible.builtin.shell: |
     set -o pipefail
@@ -186,8 +167,6 @@
     - (crash_daemon_count.stdout | default('0') | int) == 0
   changed_when: true
 
-# --- Log rotation ---
-
 - name: Check log rotation config exists
   ansible.builtin.find:
     paths: /etc/logrotate.d
@@ -203,8 +182,6 @@
          else 'WARNING: No Ceph logrotate config found' }}
   when: inventory_hostname in groups['ceph_bootstrap']
 
-# --- CRUSH tunables ---
-
 - name: Ensure CRUSH tunables are optimal
   ansible.builtin.shell: |
     set -o pipefail
@@ -217,10 +194,7 @@
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: "'CHANGED' in (crush_tunables.stdout | default(''))"
 
-# --- Prometheus alerting rules ---
-# cephadm ships 89 built-in alert rules across 16 groups (OSD, MON, PG,
-# pool, MDS, hardware, network, etc.). No custom rules needed -- verify
-# they're loaded.
+# cephadm ships 89 rules across 16 groups; no custom rules, just verify loaded.
 
 - name: Verify Prometheus alert rules are loaded
   ansible.builtin.shell: |
@@ -239,8 +213,6 @@
     executable: /bin/bash
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
-
-# --- Audit logging ---
 
 - name: Check audit logging state
   ansible.builtin.command: >
@@ -261,8 +233,6 @@
     - ceph_audit_enabled | bool
     - audit_state.stdout | default('') | trim != 'true'
   changed_when: true
-
-# --- Summary ---
 
 - name: Show applied Ceph tuning
   ansible.builtin.shell: |

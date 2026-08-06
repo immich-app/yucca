@@ -1,19 +1,9 @@
 ---
-# Distribute the current ansible-iac public key to every node in the cluster.
-#
-# Non-destructive — adds the key if absent, does NOT remove any others.
-# Run this after generating a new key in 1P to make it usable before you
-# rotate off the old one. Old keys are removed manually (or by a separate
-# cleanup playbook) once the new key is verified working.
-#
-# Usage:
-#   scripts/ansible-play.sh rotate-ssh-key.yml
-#
-# The current public key is sourced from:
-#   op://{{ cluster_secrets_vault }}/{{ cluster_name | upper }}_CEPH_ANSIBLE_IAC_SSH_KEY/public_key
-#
-# which for sietch is op://yucca_tf_dev/SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY/public_key
-# (cluster_secrets_vault + cluster_name both set per-cluster in group_vars/all/vars.yml).
+# Distribute the current ansible-iac public key to every node. Non-destructive:
+# adds if absent, never removes others -- run after minting a new 1P key, before
+# rotating off the old one; old keys are removed manually once the new one works.
+# Key source: op://{{ cluster_secrets_vault }}/<CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY/public_key
+# (both vars per-cluster in group_vars/all/vars.yml).
 
 - name: Rotate ansible-iac SSH authorized_keys
   hosts: ceph_nodes

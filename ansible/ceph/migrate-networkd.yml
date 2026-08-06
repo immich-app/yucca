@@ -1,29 +1,11 @@
 ---
-# Migrate ifupdown -> systemd-networkd on sietch Ceph nodes.
-#
-# Live migration — no reboot, no Ceph disruption:
-#   1. Deploys networkd configs
-#   2. Starts networkd (adopts existing bond0)
-#   3. Verifies bond0 IP, members, gateway
-#   4. Commits: disables ifupdown, enables networkd for boot
-#
-# If verification fails, the play stops before committing.
-# networkd can be stopped and ifupdown still owns next boot.
-#
-# Safety:
-#   - serial: 1 -- one node at a time
-#   - /etc/network/interfaces preserved on disk
-#   - Rollback: /usr/local/sbin/rollback-networkd.sh
-#   - iDRAC at 10.10.11.9{0,1,2} for emergency recovery
-#
-# Usage (samara first):
+# Migrate ifupdown -> systemd-networkd, live (no reboot, no Ceph disruption):
+# deploy configs -> start networkd (adopts bond0) -> verify IP/members/gateway ->
+# commit (disable ifupdown for boot). A failed verify stops BEFORE commit;
+# ifupdown still owns next boot. Safety: serial 1, /etc/network/interfaces kept
+# on disk, rollback-networkd.sh, iDRAC at 10.10.11.9{0,1,2} for recovery.
+# Usage (canary samara first, then 'ceph_nodes:!sietch-ceph-samara'; --check --diff dry-runs):
 #   scripts/ansible-play.sh migrate-networkd.yml --limit sietch-ceph-samara
-#
-# Usage (remaining nodes):
-#   scripts/ansible-play.sh migrate-networkd.yml --limit 'ceph_nodes:!sietch-ceph-samara'
-#
-# Dry run:
-#   scripts/ansible-play.sh migrate-networkd.yml --limit sietch-ceph-samara --check --diff
 
 - name: Migrate to systemd-networkd
   hosts: ceph_nodes
@@ -33,9 +15,8 @@
   max_fail_percentage: 0   # any node fails (e.g. WAN drops -> unreachable) -> halt
 
   pre_tasks:
-    # Ceph-health gate applies only to a live cluster. Pre-Ceph clusters (spice
-    # bringup: coexistence activation before any cephadm deploy) have no
-    # ceph_bootstrap group and no ceph binary, so skip it automatically.
+    # Health gate only for live clusters; pre-Ceph bringup (no ceph_bootstrap
+    # group / no ceph binary) skips it automatically.
     - name: Preflight -- check Ceph health
       ansible.builtin.command: ceph health --format json
       register: ceph_health_pre

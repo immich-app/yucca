@@ -1,17 +1,10 @@
 ---
-# Make Talos VM traffic on br-vlan50/51 bypass the Ceph nftables
-# inet filter table. Without this, br_netfilter (loaded by libvirt
-# on first VM start) hooks bridge frames into the netfilter IP layer,
-# where Ceph's default-DROP forward chain silently kills them.
-#
-# We don't add nftables rules — we keep our state DISJOINT from the
-# Ceph-owned ruleset. The sysctl bypass is local to the kernel's
-# bridge module and has zero overlap with Ceph's existing inet filter
-# table or its DROP policy.
-#
-# Pre-conditions:
-#   - br_netfilter module loadable (always true on Debian Bookworm)
-#   - Ceph cluster HEALTH_OK (asserted by preflight.yml import upstream)
+# Make Talos VM traffic on br-vlan50/51 bypass the Ceph nftables inet filter:
+# br_netfilter (loaded by libvirt on first VM start) hooks bridge frames into
+# the netfilter IP layer, where Ceph's default-DROP forward chain silently kills
+# them. Deliberately NO nftables rules -- the sysctl bypass keeps our state
+# disjoint from the Ceph-owned ruleset. Pre-conditions: br_netfilter loadable;
+# Ceph HEALTH_OK (asserted by the upstream preflight.yml import).
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:

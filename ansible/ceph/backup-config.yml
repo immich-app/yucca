@@ -1,12 +1,6 @@
 ---
-# Export Ceph cluster configuration for disaster recovery.
-# Captures: ceph.conf, admin keyring, CRUSH map, RGW realm config,
-# monitor map, and OSD map to the controller's backups/ directory.
-#
-# Usage:
-#   scripts/ansible-play.sh backup-config.yml
-#
-# Outputs: backups/<timestamp>/ on the controller (gitignored)
+# Captures ceph.conf, admin keyring, CRUSH map, RGW realm config, monitor map and
+# OSD map to backups/<timestamp>/ on the controller (gitignored).
 # Restore: see docs/runbooks/recovery.md
 
 - name: Backup Ceph cluster configuration

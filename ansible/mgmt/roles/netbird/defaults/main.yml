@@ -1,5 +1,4 @@
 ---
-# NetBird defaults.
 mgmt_netbird_management_url: "https://api.netbird.io"
 
 # Setup key — NEVER hardcoded. Passed at run time (op:// ref, see README). The

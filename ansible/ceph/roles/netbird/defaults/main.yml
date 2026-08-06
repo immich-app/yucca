@@ -1,38 +1,28 @@
 ---
-# NetBird enrollment defaults for ceph nodes. Endpoints only: no router role,
-# no IP forwarding, no route acceptance (the ceph peer group is kept out of
-# every network's distribution groups in TF, so the client receives zero
-# overlay routes and the fabric stays authoritative for cluster traffic).
-# Access to the node over the overlay is governed by NetBird policies
-# (yucca operators via the auto policy, CI via ci-to-ceph tcp/22); the node
-# firewall accepts wt0 wholesale (security role ceph_firewall_trusted_ifaces).
+# NetBird enrollment for ceph nodes -- endpoints only: no routing/forwarding, and
+# the ceph peer group stays out of every network's TF distribution groups so the
+# fabric stays authoritative. Overlay access is governed by NetBird policies
+# (operators auto policy, CI ci-to-ceph tcp/22); node firewall accepts wt0 wholesale.
 ceph_netbird_enabled: false
 
-# Pinned + dpkg-held: netbird is load-bearing access infrastructure and its
-# ssh/DNAT behavior was audited against this version's source. Upgrades are
-# deliberate: bump the pin here (the install task unholds, installs, re-holds).
+# Pinned + dpkg-held: ssh/DNAT behavior audited against this version's source.
+# Upgrade = bump the pin (install task unholds, installs, re-holds).
 ceph_netbird_version: "0.73.2"
 
 ceph_netbird_management_url: "https://api.netbird.io"
 
-# Setup key - NEVER committed. `mise run netbird` reads it from 1Password
-# (op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_CEPH_SETUP_KEY) and passes
-# it as an extra-var. Only FRESH enrollment needs it; converging an already
-# connected node skips `netbird up` entirely, so the CI deploy pipeline can
-# carry this role with no secrets plumbing. A reimaged node fails the assert
-# below with instructions until an operator runs `mise run netbird` for it.
+# Setup key -- NEVER committed. `mise run netbird` reads
+# op://yucca_tf_prod/NETBIRD_YUCCA_PROD_HTZ_FSN1_CEPH_SETUP_KEY as an extra-var.
+# Only FRESH enrollment needs it (connected nodes skip `netbird up`, so CI needs
+# no secrets plumbing); a reimaged node fails the assert with instructions.
 ceph_netbird_setup_key: ""
 
-# --- NetBird SSH server (SSO/policy-gated human access over the overlay) ---
-# When true, netbird runs its own SSH server and DNATs overlay :22 -> :22022
-# (the DNAT is wt0-scoped, so sshd keeps fabric+WAN :22 and cephadm + ansible
-# are unaffected). Humans reach nodes with `netbird ssh ops@<node>` and sudo;
-# root login is deliberately OFF. Enabling needs BOTH the client flag below AND
-# ssh_enabled=true on the management side, which is a per-peer NetBird API call
-# (the client flag alone is not enough - verified 2026-07-22). So the API token
-# must be provided: `mise run netbird` reads it from op://shared_tf/
-# NETBIRD_TF_PAT. A token-less converge (CI deploy pipeline) is a no-op on
-# already-enabled peers and leaves un-enabled ones for `mise run netbird`.
+# netbird's own SSH server, DNAT overlay :22 -> :22022 (wt0-scoped: sshd keeps
+# fabric+WAN :22, cephadm/ansible unaffected). Humans: `netbird ssh ops@<node>`
+# + sudo; root deliberately OFF. Needs BOTH the client flag AND per-peer API
+# ssh_enabled=true (client flag alone insufficient -- verified 2026-07-22), so
+# the API token is required: `mise run netbird` reads op://shared_tf/NETBIRD_TF_PAT.
+# Token-less converge (CI) is a no-op on enabled peers.
 ceph_netbird_ssh_server: false
 ceph_netbird_ssh_sftp: true
 ceph_netbird_api_url: "https://api.netbird.io"

@@ -1,6 +1,4 @@
 ---
-# Post-reboot verification for systemd-networkd migration.
-# All checks are read-only assertions.
 
 - name: Check systemd-networkd is active
   ansible.builtin.systemd:

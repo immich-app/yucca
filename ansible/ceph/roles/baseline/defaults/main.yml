@@ -1,9 +1,7 @@
 ---
-# Post-boot OS baseline — runs via ansible-iac after provisioning.
-# Configures everything that doesn't need to be in the chroot.
+# Runs via ansible-iac after provisioning.
 
-# --- iac automation access (convergence twin of the reprovision -x chroot) ---
-# Ensures root's iac key + the ansible-iac sudo account on already-installed nodes
+# Convergence twin of the reprovision -x chroot: ensures root's iac key + the ansible-iac sudo account on already-installed nodes
 # without reimaging. baseline_iac_pubkey derives from the cluster's iac key; the
 # iac-access task is gated on provision_iac_ssh_key_path so clusters without one
 # skip. Override baseline_iac_pubkey directly to authorize a different key.
@@ -11,31 +9,25 @@ baseline_iac_user: ansible-iac
 baseline_iac_pubkey: >-
   {{ lookup('file', (provision_iac_ssh_key_path | expanduser) ~ '.pub') }}
 
-# --- Intel ice NIC firmware (DDP) ---
-# nic-firmware.yml reboots an E810 host once to load the DDP (exit Safe Mode) after
-# firmware-misc-nonfree is installed. Set false to install the package but skip the
-# activating reboot (an operator can reboot on their own schedule).
+# nic-firmware.yml reboots an E810 host once to load the DDP (exit Safe Mode).
+# false = install firmware-misc-nonfree but skip the activating reboot.
 baseline_nic_firmware_activate: true
 baseline_nic_firmware_reboot_timeout: 600
 
-# --- ops user ---
 baseline_ops_user: ops
 baseline_ops_uid: 1001
 baseline_ops_sudo: "ALL"      # "ALL" = password required; "NOPASSWD:ALL" for dev
 
-# Operator SSH public keys authorized on the ops account. Sourced from the
-# identity registry (tf/shared/modules/identity, members of a `server`-mapped
-# group) and rendered into group_vars/all/operators.yml by
-# render-inventories.sh. Default empty: with no keys, ops stays password-only.
+# Operator pubkeys for ops, rendered into group_vars/all/operators.yml by
+# render-inventories.sh from the identity registry (tf/shared/modules/identity).
+# Empty = ops stays password-only.
 ops_authorized_keys: []
 
-# --- /etc/hosts ---
 # Rendered from the same cluster variables used by ceph_deploy/hosts.j2.
 # Keeps host entries converged even if ceph_deploy hasn't run yet.
 baseline_manage_hosts: true
 
-# --- Packages ---
-# Podman ecosystem (needed by cephadm)
+# Needed by cephadm.
 baseline_podman_packages:
   - podman
   - catatonit
@@ -44,7 +36,6 @@ baseline_podman_packages:
   - slirp4netns
   - uidmap
 
-# Diagnostic and ops toolset
 baseline_diag_packages:
   - smartmontools
   - ipmitool
@@ -64,35 +55,25 @@ baseline_diag_packages:
   - bsdmainutils
   - python3-boto3
 
-# Per-cluster hardware/site-specific packages, merged with baseline_diag_packages
-# at install time. Default empty so the role stays hardware-agnostic; each
-# cluster declares its own set in inventories/<cluster>/group_vars/all/vars.yml
-# (e.g. sietch's Mellanox + SAS-enclosure tools). A different cluster (spice,
-# ...) sets its own list or leaves it empty.
+# Per-cluster hardware packages, merged with baseline_diag_packages; declared in
+# each cluster's group_vars (e.g. sietch's Mellanox + SAS tools). Empty default.
 baseline_extra_packages: []
 
-# Load-bearing host packages frozen at their installed version via a dpkg hold, so
-# a stray `apt upgrade` cannot move them out from under a live cluster. We run NO
-# unattended-upgrades by design; upgrading these is a deliberate, health-gated act
-# (unhold -> upgrade -> re-hold, ideally through the serial converge). The default
-# covers cephadm's container runtime (podman + ecosystem) and the chrony time
-# source that mon quorum depends on. Diagnostic/ops tools are intentionally NOT
-# held (a version drift there is harmless). Extend per cluster, or set [] to
-# disable. For an exact-version pin (rather than freeze-at-installed) add an apt
-# preferences entry; the hold covers the common "do not let it drift" need.
+# dpkg-hold load-bearing packages at installed version so a stray `apt upgrade`
+# can't move them under a live cluster (no unattended-upgrades by design;
+# upgrade = deliberate unhold -> upgrade -> re-hold via the serial converge).
+# Covers cephadm's podman runtime + chrony (mon quorum is skew-sensitive); diag
+# tools deliberately NOT held. [] disables; exact pins need apt preferences.
 baseline_held_packages: "{{ baseline_podman_packages + ['chrony'] }}"
 
-# --- Time sync (chrony) ---
-# Pinned NTP sources for chrony.conf. Default to the Debian pool as a safe,
-# explicit fallback; each cluster overrides with a consistent low-latency set
-# (e.g. spice -> Hetzner NTP). Owned by chrony.yml (install+config+enable), NOT
-# baseline_enable_services, so system.yml never starts a not-yet-installed unit.
+# Debian-pool fallback; clusters override with a low-latency set (spice ->
+# Hetzner NTP). Owned by chrony.yml, NOT baseline_enable_services, so system.yml
+# never starts a not-yet-installed unit.
 chrony_ntp_servers:
   - 0.debian.pool.ntp.org
   - 1.debian.pool.ntp.org
   - 2.debian.pool.ntp.org
 
-# --- Services ---
 baseline_enable_services:
   - dbus
   - podman.socket

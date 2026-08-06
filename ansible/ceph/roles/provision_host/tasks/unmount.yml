@@ -1,10 +1,6 @@
 ---
-# Helper: unmount the chroot bind mounts and /mnt hierarchy in reverse
-# order. Called by finalize.yml at the end of a successful run and by
-# main.yml's rescue block on failure.
-#
-# Every unmount is best-effort (failed_when: false) — if a path isn't
-# mounted we just want to keep going.
+# Reverse order. Called by finalize.yml on success and by main.yml's rescue block
+# on failure, so every unmount is best-effort.
 
 - name: Unmount chroot bind mounts (reverse order)
   ansible.posix.mount:

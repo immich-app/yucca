@@ -1,9 +1,6 @@
 ---
-# S3 benchmark — runs in parallel on all Ceph nodes against local RGW.
-#
-# Default: 1000 objects x 16 MiB x 3 nodes = ~48 GiB PUT workload
-#
-# Usage:
+# Runs in parallel on all Ceph nodes against local RGW.
+# Default: 1000 objects x 16 MiB x 3 nodes = ~48 GiB PUT workload.
 #   scripts/ansible-play.sh bench.yml                              # default PUT
 #   scripts/ansible-play.sh bench.yml -e s3bench_ops=get           # GET (after PUT)
 #   scripts/ansible-play.sh bench.yml -e s3bench_ops=mixed         # 70/20/10 mix

@@ -1,6 +1,4 @@
 ---
-# Phase 5.5: Create CRUSH device-class rules
-# Ensures pools can target HDD-only or SSD-only OSDs
 
 - name: Check existing CRUSH rules
   ansible.builtin.command: ceph osd crush rule ls

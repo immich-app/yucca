@@ -1,9 +1,7 @@
 ---
-# Post-boot OS baseline.
-# Runs via ansible-iac on the installed OS (not in chroot).
-# Assumes: ansible-iac user exists with key-only SSH + NOPASSWD sudo
-#          (created by provision_host during initial OS install).
-# Everything here is convergeable via normal deploy pipeline.
+# Runs via ansible-iac on the installed OS (not in chroot); assumes the
+# ansible-iac user exists with key-only SSH + NOPASSWD sudo, as provision_host
+# created it during the initial OS install.
 
 # First, before any dpkg/apt task: stop Debian's periodic apt and drain any
 # boot-time apt still holding the dpkg lock, so the converge cannot race it.

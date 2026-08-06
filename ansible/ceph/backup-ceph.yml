@@ -1,24 +1,10 @@
 ---
-# backup-ceph.yml - install (and enable) SCHEDULED Ceph cluster-state backups.
-#
-# The deep review flagged that config/topology backups were manual, unscheduled,
-# and controller-local only. This play installs an on-node capture script plus a
-# systemd timer on the bootstrap node so recoverable cluster state (fsid, config
-# dump, monmap/osdmap/crushmap, osd tree, orch ls/host ls, RGW realm/zonegroup/
-# zone) is snapshot to a timestamped tarball daily under a root-only local dir,
-# pruned by retention, and ready to ship offsite once an operator wires a target.
-#
-# Deliberate/manual: run it to install the timer; the timer then runs unattended.
-# It complements (does not replace):
-#   - mise run capture  (post-deploy-capture.yml) -- secrets -> 1Password
-#   - mise run backup    (backup-config.yml)       -- one-shot controller-local export
-#
-# Usage:
-#   scripts/ansible-play.sh backup-ceph.yml
-#   mise run backup-timer
-#
-# Opt a cluster out with `ceph_backup_enabled: false` in its group_vars.
-# Set an offsite target with `ceph_backup_offsite_dest` (empty by default).
+# Install SCHEDULED Ceph cluster-state backups: on-node capture script + systemd
+# timer on the bootstrap node, daily timestamped tarball (fsid, config dump,
+# mon/osd/crush maps, osd tree, orch ls, RGW realm/zonegroup/zone) in a root-only
+# dir, retention-pruned; offsite via ceph_backup_offsite_dest (empty default).
+# Complements mise run capture (secrets -> 1P) and mise run backup (one-shot
+# controller export). Opt out per cluster: ceph_backup_enabled: false.
 
 - name: Install scheduled Ceph cluster-state backups
   hosts: ceph_bootstrap

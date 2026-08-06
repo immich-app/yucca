@@ -1,9 +1,5 @@
 ---
-# Security hardening for Ceph nodes.
-# Firewall (nftables) + SSH hardening.
-# Run AFTER ceph_deploy so cephadm orchestrator can freely deploy daemons.
-
-# --- nftables firewall ---
+# Run AFTER ceph_deploy so the cephadm orchestrator can deploy daemons freely.
 
 - name: Install nftables
   ansible.builtin.apt:
@@ -20,17 +16,13 @@
     validate: "nft -c -f %s"
   when: ceph_firewall_enabled | bool
 
-# Reload the firewall only when the LIVE filter table actually differs from the
-# desired one -- not merely when the rendered file changed. On DIFF we `reload`
-# (ExecReload = nft -f /etc/nftables.conf), which with the table-scoped config
-# atomically replaces ONLY table inet filter and leaves the podman/docker tables
-# alone -- unlike a `restart`, whose ExecStop flushes the whole ruleset (that
-# momentary flush can stall OSD peering and drop podman's rules). The desired
-# state is normalized by loading the config into a throwaway network namespace --
-# fully isolated, it never touches the live firewall -- then its table inet filter
-# is compared to the live one. Both sides go through nft's own output formatting,
-# so the match is on effective rules, not file text. Anything inconclusive falls
-# back to reloading (DIFF), so the firewall is never left stale or drifted.
+# Reload only when the LIVE filter table differs from desired, and always
+# `reload` (nft -f), never `restart`: restart's ExecStop flushes the whole
+# ruleset, which can stall OSD peering and drops podman's tables; reload
+# atomically replaces ONLY table inet filter. Desired state is normalized by
+# loading the config in a throwaway netns (never touches the live firewall) and
+# comparing its inet filter to the live one via nft's own formatting (effective
+# rules, not file text). Inconclusive -> DIFF -> reload, never left stale.
 - name: Compare the live nftables ruleset against the desired one
   ansible.builtin.shell: |
     set -o pipefail
@@ -93,8 +85,6 @@
   ansible.builtin.debug:
     msg: "{{ nft_rules.stdout_lines | default(['Firewall disabled']) }}"
 
-# --- SSH hardening ---
-
 - name: Deploy SSH hardening config
   ansible.builtin.template:
     src: sshd-hardening.conf.j2
@@ -107,8 +97,6 @@
 - name: Verify full SSH config is valid after drop-in
   ansible.builtin.command: sshd -t
   changed_when: false
-
-# --- Summary ---
 
 - name: Report security state
   ansible.builtin.debug:

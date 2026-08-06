@@ -1,11 +1,8 @@
 #!/bin/bash
-# Zap the OSD data HDDs in the Hetzner RESCUE ramdisk, before installimage, so
-# cephadm sees them as AVAILABLE on a clean rebuild. Leftover ceph LVM / bluestore
-# / LUKS signatures otherwise make `ceph orch apply osd` skip the disks.
-#
-# Proven sequence distilled from yucca ceph_destroy/cleanup.yml +
-# provision_host/wipe-osds.yml. Targets ALL SATA disks (sd*); NEVER the NVMe OS
-# disks (installimage's SWRAID handles those). Idempotent and safe to re-run.
+# Runs in the Hetzner RESCUE ramdisk before installimage: leftover ceph LVM /
+# bluestore / LUKS signatures make `ceph orch apply osd` skip the disks.
+# Targets ALL SATA disks; NEVER the NVMe OS disks (installimage's SWRAID owns
+# those). Idempotent.
 #
 # Running in rescue (not a live node) sidesteps the LUKS-lock problem: a fresh
 # rescue never opens the dmcrypt mappings, so wipefs can clear the headers
@@ -30,8 +27,7 @@ for vg in $(vgs --noheadings -o vg_name 2>/dev/null | grep -i ceph | tr -d ' ');
   vgremove -ff "$vg" 2>/dev/null || true
 done
 
-# Per OSD HDD: drop any PV, wipe signatures, zap GPT, zero the bluestore label.
-# Select by rotational type + size (like sietch), NOT /dev/sdN - so the BMC 0-byte
+# Select by rotational type + size, NOT /dev/sdN, so the BMC 0-byte
 # "Virtual HDisk0" and the NVMe OS disks are excluded automatically.
 MIN_BYTES=1000000000000   # 1 TB floor
 mapfile -t DISKS < <(lsblk -dbn -o NAME,SIZE,ROTA,TYPE | awk -v m="$MIN_BYTES" '$4=="disk" && $3==1 && $2+0>=m+0 {print "/dev/"$1}')

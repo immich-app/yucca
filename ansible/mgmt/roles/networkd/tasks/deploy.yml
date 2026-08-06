@@ -1,7 +1,6 @@
 ---
-# Write systemd-networkd config for the OOB management NIC + the 25G fabric
-# VLANs, and make sure networkd is running. Safe to re-run. Only the NICs matched
-# below are managed; the primary public NIC is left to its own manager.
+# Only the NICs matched below are managed; the primary public NIC is left to its
+# own manager.
 
 - name: Ensure systemd-networkd is enabled and running
   ansible.builtin.systemd:
@@ -9,7 +8,7 @@
     enabled: true
     state: started
 
-# ── OOB management LAN (1G; the switch vme lives here) ──────────────────────
+# OOB management LAN (1G); the switch vme lives here.
 - name: Deploy OOB management .network
   ansible.builtin.template:
     src: oob.network.j2
@@ -20,7 +19,6 @@
   when: mgmt_oob.nic is defined
   notify: Restart systemd-networkd
 
-# ── 25G fabric VLAN sub-interfaces ──────────────────────────────────────────
 - name: Deploy fabric parent .network (declares VLANs, no L3 of its own)
   ansible.builtin.template:
     src: fabric.network.j2

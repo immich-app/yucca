@@ -1,9 +1,6 @@
 ---
-# Phase 3: Add nodes to cluster (from bootstrap node)
-#
-# Only attempts to add hosts that are in the current play (--limit aware).
-# This prevents failures when nodes are defined in inventory
-# but not yet available.
+# --limit aware: only adds hosts in the current play, so not-yet-available
+# inventory nodes don't fail it.
 
 - name: Build list of joinable hosts
   ansible.builtin.set_fact:
@@ -13,11 +10,9 @@
          | list }}
   when: inventory_hostname in groups['ceph_bootstrap']
 
-# cephadm adds hosts by SSHing to root@<addr> with the cluster key it generated
-# at bootstrap (/etc/ceph/ceph.pub). On a fresh install that key is not yet in
-# the join nodes' root authorized_keys, so `ceph orch host add` fails with
-# "Permission denied". Distribute it here (ansible connects as ansible-iac and
-# becomes root) before adding the hosts.
+# cephadm SSHes root@<addr> with its bootstrap key (/etc/ceph/ceph.pub); on a
+# fresh install the key isn't in the join nodes' root authorized_keys yet and
+# `ceph orch host add` fails "Permission denied". Distribute it first.
 - name: Get cephadm cluster SSH pubkey from the bootstrap node
   ansible.builtin.command: ceph cephadm get-pub-key
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
@@ -70,7 +65,6 @@
 - name: Add remaining nodes to Ceph cluster
   ansible.builtin.shell: |
     set -o pipefail
-    # Check if host already added
     if ceph orch host ls --format json |
        grep -q '"{{ hostvars[item]['hostname_short'] }}"'; then
       echo "Host {{ hostvars[item]['hostname_short'] }} already in cluster"

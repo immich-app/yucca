@@ -13,8 +13,7 @@
 # NICs are verified per host in mgmt-hosts.yaml; correct there if `ip link` differs.
 mgmt_networkd_enabled: true
 
-# OOB management interface { nic, address } — empty disables just the OOB part.
+# { nic, address }; empty disables just the OOB part.
 mgmt_oob: {}
 
-# --- Paths ---
 mgmt_networkd_config_dir: /etc/systemd/network

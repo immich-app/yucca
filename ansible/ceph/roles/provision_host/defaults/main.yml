@@ -1,56 +1,39 @@
 ---
-# provision-host role defaults
-#
-# Drives fresh-install provisioning of a Ceph cluster node from its
-# Debian 12 live image. All values here are overridable via
-# group_vars / host_vars / extra-vars.
-
-# Target path on the live image where the new OS is mounted during install.
 provision_mnt: /mnt
 
-# Idempotency marker written to the provisioned system at finalize.
-# Project-scoped (not cluster-scoped) so every Ceph cluster writes the same
-# filename; the marker's CONTENTS identify which cluster + host.
+# Idempotency marker written at finalize. Same filename on every cluster; the
+# CONTENTS identify cluster + host.
 provision_marker_path: /etc/ceph-provisioned.json
 
-# Safety gate — set to true via extra-vars before any destructive disk work.
+# Gates all destructive disk work:
 #   scripts/ansible-play.sh provision.yml -e confirm_wipe=true
 confirm_wipe: false
 
-# Opt-in: also zap the OSD data HDDs (wipe-osds.yml). Default off so a normal
-# re-provision (e.g. replacing an OS SSD) keeps OSD data. Set true for a clean
-# rebuild where the HDDs must be cleared so cephadm can recreate OSDs.
+# Opt-in: also zap OSD data HDDs (wipe-osds.yml). Default off so a re-provision
+# keeps OSD data; true only for a clean rebuild.
 #   ... provision.yml -e confirm_wipe=true -e provision_wipe_osd_disks=true
 provision_wipe_osd_disks: false
 
-# Canary / inspection gate — when true, the role completes everything
-# (wipe → install → configure → bootloader → marker → ESP mirror) but
-# stops short of unmounting /mnt and rebooting. Lets you `chroot /mnt`
-# from the live image to verify state before committing to the reboot.
+# Canary gate: complete everything through the ESP mirror but stop before
+# unmounting /mnt + rebooting, so you can `chroot /mnt` to verify first.
 #   scripts/ansible-play.sh provision.yml -e provision_skip_reboot=true
 provision_skip_reboot: false
 
-# SSD discovery model pattern (matches lsblk MODEL field).
+# Matches the lsblk MODEL field.
 provision_ssd_model_pattern: "Micron_5100"
 
-# Sanity floor for SSD size, in GB. Pre-flight rejects any matching disk
-# below this size — catches "model string match but it's a 16GB USB stick"
-# scenarios. Real Ceph block.db SSDs should be >> 200GB anyway. Override
-# in host_vars / group_vars if you need a different floor.
+# SSD size sanity floor (GB): pre-flight rejects smaller matches (catches
+# "model matched but it's a 16GB USB stick").
 provision_ssd_min_size_gb: 200
 
-# Debian release + mirror for debootstrap.
 provision_debian_release: bookworm
 provision_debian_mirror: http://deb.debian.org/debian
 
-# LV sizing for Ceph block.db on each SSD partition 5 VG.
 provision_ceph_db_lv_size: 240G
 provision_ceph_db_lv_count_per_vg: 6   # 5 fixed-size + 1 remainder
 
-# Packages installed on the LIVE image before provisioning begins.
-# prerequisites_live.yml installs these via apt every run so the live
-# image has the debootstrap/partitioning/mdraid/LVM/rsync toolchain
-# regardless of which Debian live ISO was booted.
+# Installed on the LIVE image every run (prerequisites_live.yml) so the
+# provisioning toolchain exists regardless of which Debian live ISO was booted.
 provision_live_packages:
   - debootstrap
   - dosfstools
@@ -62,40 +45,32 @@ provision_live_packages:
   - lvm2
   - parted
 
-# Packages installed INSIDE the chroot — boot-essential only.
-# Diagnostic tools, podman ecosystem, and ops packages are installed
-# post-boot by the baseline role. This keeps the chroot minimal and
-# makes everything except boot infra convergeable.
+# Installed INSIDE the chroot — boot-essential only; everything else lands
+# post-boot via the baseline role (keeps all but boot infra convergeable).
 provision_chroot_packages:
-  # Boot / core OS
   - linux-image-amd64
   - grub-efi-amd64
   - efibootmgr
   - firmware-linux
-  # Storage / networking
   - mdadm
   - lvm2
   - ifenslave
   - dosfstools
   - cryptsetup
   - rsync
-  # Remote access (minimum for Ansible to connect post-reboot)
   - openssh-server
   - sudo
   - python3
-  # Time sync + TLS (needed at boot)
   - chrony
   - ca-certificates
   - gnupg
   - curl
   - dbus
 
-# Opt-in: auto-generate the ansible-iac deploy keypair on the controller
-# if it doesn't exist. Default: fail fast with a clear message.
+# false = fail fast when the controller keypair is missing.
 provision_create_iac_keypair: false
 
-# Post-reboot verification timing.
 provision_reboot_wait_timeout: 600
-provision_reboot_wait_delay: 60      # initial pause before SSH probing
-provision_verify_retries: 30         # max SSH probe attempts
-provision_verify_delay: 15           # seconds between probe attempts
+provision_reboot_wait_delay: 60      # seconds before the first SSH probe
+provision_verify_retries: 30
+provision_verify_delay: 15           # seconds between probes

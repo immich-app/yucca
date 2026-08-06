@@ -1,13 +1,7 @@
 ---
-# Phase 4: Configure MON and MGR placement
-#
-# MON placement strategy:
-#   1. If ceph_mon group is defined and non-empty: use those hosts (explicit)
-#   2. Else if <=2 active hosts: 1 MON (bootstrap only, avoids 2-MON fragility)
-#   3. Else: MON on all active hosts
-#
-# MGR deploys a capped count (ceph_mgr_count, default 3: 1 active + standbys),
-# not one per host -- cephadm schedules them and caps at the host count.
+# Phase 4: MON/MGR placement. MON: explicit ceph_mon group if non-empty; else
+# 1 MON when <=2 active hosts (avoids 2-MON fragility); else all active hosts.
+# MGR: capped count (ceph_mgr_count), cephadm schedules and caps at host count.
 
 - name: Determine active cluster hosts
   ansible.builtin.shell: |

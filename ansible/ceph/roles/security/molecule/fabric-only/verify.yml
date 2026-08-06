@@ -25,7 +25,6 @@
   tasks:
     - name: Select the fabric-only (closed) firewall branch
       ansible.builtin.set_fact:
-        # No any-source exposure for RGW or SSH.
         ceph_firewall_rgw_any_source: false
         ceph_firewall_ssh_any_source: false
         # spice fabric (10.40.20.0/23) + NetBird overlay (100.64.0.0/10).

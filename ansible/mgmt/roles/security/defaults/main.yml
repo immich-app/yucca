@@ -1,13 +1,9 @@
 ---
-# Security hardening defaults for management hosts.
-
-# --- Firewall (nftables) ---
 mgmt_firewall_enabled: true
 
-# Trusted source networks allowed to reach management services beyond SSH.
 # RFC1918 + the NetBird overlay range (this tailnet uses 10.254.0.0/15) + CGNAT.
 # Loopback is always allowed via "lo"; overlay traffic is also accepted by iface
-# (iifname "wt0") in the nftables template — this list is the belt-and-braces.
+# (iifname "wt0") in the nftables template -- this list is belt-and-braces.
 mgmt_firewall_trusted_networks:
   - 10.0.0.0/8
   - 172.16.0.0/12
@@ -15,12 +11,10 @@ mgmt_firewall_trusted_networks:
   - 10.254.0.0/15
   - 100.64.0.0/10
 
-# Allow SSH from any source (true) or restrict to trusted networks (false).
-# Default true: these hosts are reached over the public IP for bootstrapping
-# and NetBird admin. Tighten once NetBird access is confirmed.
+# true = any source, false = trusted networks only. True while these hosts are
+# reached over the public IP for bootstrapping; tighten once NetBird is confirmed.
 mgmt_firewall_ssh_any_source: true
 
-# --- SSH hardening ---
 mgmt_ssh_max_auth_tries: 3
 # Key-based root is required for the initial Ansible run (TF provisioning key).
 # prohibit-password keeps password root login off while allowing key auth.

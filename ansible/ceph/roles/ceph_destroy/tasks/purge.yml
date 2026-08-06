@@ -1,7 +1,4 @@
 ---
-# Phase 4: Purge Ceph from all nodes using cephadm
-# This removes all containers, config, and cluster state.
-#
 # cephadm rm-cluster only purges ONE FSID at a time. Join nodes can accumulate
 # containers from multiple cluster FSIDs (e.g., failed bootstrap + rebuild).
 # We discover ALL FSIDs present on each node and purge each one.
@@ -11,15 +8,12 @@
     set -o pipefail
     FSIDS=""
 
-    # Source 1: running ceph cluster
     LIVE=$(timeout 10 ceph fsid 2>/dev/null || true)
     [ -n "$LIVE" ] && FSIDS="$LIVE"
 
-    # Source 2: ceph.conf
     CONF=$(grep -oP '(?<=fsid = )[a-f0-9-]+' /etc/ceph/ceph.conf 2>/dev/null || true)
     [ -n "$CONF" ] && FSIDS="$FSIDS $CONF"
 
-    # Source 3: /var/lib/ceph directories (each FSID has a subdirectory)
     if [ -d /var/lib/ceph ]; then
       for d in /var/lib/ceph/*/; do
         DIRNAME=$(basename "$d")
@@ -29,20 +23,17 @@
       done
     fi
 
-    # Source 4: podman containers with ceph FSID in their name
     UUID_RE='[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'
     for name in $(podman ps -a --format '{{ '{{' }}.Names{{ '}}' }}' 2>/dev/null \
         | grep -oP "$UUID_RE" || true); do
       FSIDS="$FSIDS $name"
     done
 
-    # Source 5: systemd units referencing ceph FSIDs
     for unit in $(systemctl list-units --all --no-legend 'ceph-*' 2>/dev/null \
         | grep -oP "$UUID_RE" || true); do
       FSIDS="$FSIDS $unit"
     done
 
-    # Deduplicate — output nothing if no FSIDs found
     echo "$FSIDS" | tr ' ' '\n' | sort -u | grep -P '^[a-f0-9]{8}-' || true
   args:
     executable: /bin/bash

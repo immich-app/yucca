@@ -1,11 +1,8 @@
 ---
-# Neutralize Debian's stock periodic apt before any dpkg/apt task runs.
-#
-# On a freshly-imaged node the apt-daily / unattended-upgrades units fire at boot
-# and hold the dpkg frontend lock. A converge that then runs apt or dpkg races
-# them and fails ("dpkg frontend lock was locked by another process"). We run no
-# unattended upgrades by design (load-bearing packages are dpkg-held), so masking
-# these units is both the intended end state and the fix for that race.
+# Neutralize Debian's periodic apt before any dpkg/apt task: on a fresh image the
+# apt-daily/unattended-upgrades units hold the dpkg frontend lock at boot and the
+# converge races them. We run no unattended upgrades by design (load-bearing
+# packages are dpkg-held), so masking is both the end state and the fix.
 
 - name: Stop and mask the periodic apt units
   ansible.builtin.systemd:

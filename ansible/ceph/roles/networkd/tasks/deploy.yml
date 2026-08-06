@@ -1,6 +1,5 @@
 ---
-# Write systemd-networkd config files and rollback script.
-# No services are started or stopped. Safe to re-run.
+# No services are started or stopped here.
 
 # Coexistence only: explicitly fence the 1G WAN off from networkd so it stays on
 # ifupdown. The 05- prefix settles this match before any bond file. Flat clusters

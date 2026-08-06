@@ -1,35 +1,18 @@
 ---
-# systemd-networkd bond configuration, in one of two modes (see
-# networkd_replace_ifupdown): full migration off ifupdown, or coexistence beside it.
-#
-# Prerequisites:
-#   - systemd-networkd is installed (present in Debian 12 base)
-#   - bond_ip, bond_interfaces, bond_mode, gateway, dns_server
-#     defined in group_vars / host_vars
-#
-# Safety:
-#   - /etc/network/interfaces is left on disk as rollback backup
-#   - Rollback script deployed to /usr/local/sbin/rollback-networkd.sh
-#   - networkd is started live and verified before any boot-service toggle
-
-# Master toggle. When false, the entire role is skipped.
+# Requires bond_ip/bond_interfaces/bond_mode/gateway/dns_server in group_vars or
+# host_vars. Safety: /etc/network/interfaces kept as rollback backup,
+# rollback-networkd.sh deployed, networkd verified live before any boot-service
+# toggle.
 networkd_enabled: false
 
-# Replace ifupdown entirely (full migration) vs coexist with it.
-#   true (default): networkd owns ALL networking; commit.yml disables ifupdown for
-#                   future boots. For flat clusters (sietch) where the bond is the
-#                   only/management interface, so there is nothing else to keep.
-#   false         : COEXISTENCE. ifupdown keeps the interfaces it already owns --
-#                   the 1G WAN (oob_nic) that installimage configured in
-#                   /etc/network/interfaces and that carries the default route --
-#                   while networkd manages ONLY the bond + VLANs. commit.yml leaves
-#                   networking.service enabled, so the reachability-critical WAN is
-#                   never migrated and cannot be lost by a networkd error (spice).
-#                   An explicit Unmanaged=yes guard fences oob_nic off from networkd.
-#                   Requires oob_nic to be defined.
+# true (default): networkd owns ALL networking, commit.yml disables ifupdown at
+#   boot (flat clusters like sietch -- nothing else to keep).
+# false: COEXISTENCE (spice). ifupdown keeps the 1G WAN (oob_nic, default route,
+#   installimage-configured); networkd manages ONLY bond + VLANs, commit.yml
+#   leaves networking.service enabled so a networkd error can't cost the
+#   reachability link. Unmanaged=yes fences oob_nic; requires oob_nic defined.
 networkd_replace_ifupdown: true
 
-# --- Bond ---
 networkd_bond_name: bond0
 networkd_bond_mode: "{{ bond_mode | default('active-backup') }}"
 networkd_bond_miimon: 100                          # MII link monitoring interval (ms)
@@ -39,23 +22,17 @@ networkd_bond_miimon: 100                          # MII link monitoring interva
 networkd_bond_lacp_rate: fast                      # 1s LACPDUs (vs 30s 'slow')
 networkd_bond_xmit_hash_policy: layer3+4           # spread flows across both members
 
-# Tagged VLAN sub-interfaces carried on the bond (opt-in). Each entry:
-#   { id: <vlan id>, address: <CIDR>, dns: <optional>, mtu: <optional> }
-# Empty     -> bond0 carries bond_ip directly (flat active-backup clusters).
-# Non-empty -> bond0 carries NO L3; each VLAN sub-interface carries its address
-#              (spice: VLAN 120 public + VLAN 122 private on the 25G LACP bond).
-# A VLAN opts into jumbo with its own `mtu:` (e.g. 9000 on the private/replication
-# VLAN); VLANs without `mtu:` default to 1500.
+# Tagged VLANs on the bond: { id, address, dns?, mtu? }. Empty -> bond0 carries
+# bond_ip directly (flat clusters); non-empty -> bond0 carries NO L3, each VLAN
+# carries its address (spice). Per-VLAN `mtu:` opts into jumbo; default 1500.
 networkd_bond_vlans: []
 
-# Bond MTU ceiling = the largest child VLAN MTU (a VLAN child cannot exceed its
-# parent), defaulting to 1500. Raising a single VLAN to jumbo raises the bond and
-# its 25G members to match, so the jumbo VLAN's frames are not silently capped by a
-# 1500 parent/slave. Flat clusters (no VLANs) resolve to 1500 -> no MTU is emitted.
+# Bond MTU = max child VLAN MTU (a VLAN cannot exceed its parent): one jumbo
+# VLAN raises the bond + members so its frames aren't capped by a 1500 parent.
+# Flat clusters resolve to 1500 -> no MTU emitted.
 networkd_bond_mtu: >-
   {{ (networkd_bond_vlans | map(attribute='mtu', default=1500) | map('int') | max)
      if (networkd_bond_vlans | length > 0) else 1500 }}
 
-# --- Paths ---
 networkd_config_dir: /etc/systemd/network
 networkd_rollback_script: /usr/local/sbin/rollback-networkd.sh

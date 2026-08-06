@@ -1,29 +1,12 @@
 ---
-# Phase 5: Create OSDs via cephadm orch service spec
+# osd-spec.yml.j2 covers both the sietch (SAS expander, sas_path_prefix REQUIRED)
+# and NVMe-RAID (sas_path_prefix omitted) shapes. Required host_vars: ceph_hdd_osds
+# ({path_phy, db}), ceph_ssd_osds ({path_phy+partition} SAS / {lv} NVMe-RAID).
 #
-# Renders a multi-document OSD service spec (one document per host TYPE, see
-# templates/osd-spec.yml.j2) and applies via `ceph orch apply osd`. Cephadm
-# handles per-disk LUKS provisioning, LVM creation, daemon deployment, and
-# CRUSH placement internally; the role no longer iterates disks.
-#
-# Hardware-shape independence: the template's Jinja conditionals handle
-# both sietch (SAS expander + dual-SSD-VG) and NVMe-RAID hosts (PCI-ATA + single
-# NVMe-RAID VG + LV-backed SSD OSD) without per-shape branching here.
-#
-# Required host_vars (per host, in inventories/<cluster>/host_vars/<host>.yml):
-#   ceph_hdd_osds   : list of {path_phy, db} mappings per HDD
-#   ceph_ssd_osds   : list of {path_phy + partition} (SAS shape) or {lv} (NVMe-RAID shape)
-#   sas_path_prefix : REQUIRED for sietch; OMITTED for NVMe-RAID-shape hosts
-#
-# Idempotent: re-applying the same spec is a no-op when OSDs match.
-#
-# Whether cephadm acts on the spec depends on ceph_osd_spec_unmanaged. Left
-# false (sietch) the spec is managed and cephadm picks up new disks on its own,
-# which is the behaviour this role has always had. Set true (spice) the spec is
-# registered but inert, because reconciling a managed spec costs a ceph-volume
-# lvm+raw list per host on every serve-loop pass and that dominated the loop at
-# 48 hosts. Provisioning from an inert spec then needs the explicit window
-# below.
+# ceph_osd_spec_unmanaged: false (sietch) = managed, cephadm auto-adopts new
+# disks; true (spice) = registered but inert -- reconciling a managed spec costs
+# a ceph-volume lvm+raw list per host per serve-loop pass, which dominated the
+# loop at 48 hosts. Inert specs provision only via the window below.
 
 - name: Render OSD service spec on bootstrap node
   ansible.builtin.template:
@@ -55,22 +38,13 @@
     'Scheduled' in (orch_apply.stdout | default(''))
     or 'created' in (orch_apply.stdout | default('') | lower)
 
-# Provisioning window.
-#
-# An unmanaged spec creates nothing, so a cluster that sets
-# ceph_osd_spec_unmanaged has to hand cephadm a bounded interval in which to
-# build the OSDs: set-managed, wait, set-unmanaged. Opt in with
-# `-e ceph_osd_allow_spec_provisioning=true`.
-#
-# INITIAL PROVISIONING ONLY. Do not open this window to rebuild a replaced
-# disk. With one blank disk and one free db slot cephadm may recreate the OSD
-# without its block.db (Ceph tracker #68436, open against 18.2.4), which on the
-# NVMe-RAID shape means block.db silently colocated on the 22TB HDD instead of
-# the vg0 db-slot LV. docs/runbooks/replace-disk.md drives ceph-volume directly
-# for exactly that reason.
-#
-# `always` closes the window even if a wait times out, so a failed run cannot
-# leave the specs managed and the serve loop crawling.
+# Provisioning window for unmanaged specs: set-managed, wait, set-unmanaged.
+# Opt in with `-e ceph_osd_allow_spec_provisioning=true`. INITIAL PROVISIONING
+# ONLY -- never open it to rebuild a replaced disk: cephadm may recreate the OSD
+# without its block.db (Ceph tracker #68436), silently colocating it on the 22TB
+# HDD on the NVMe-RAID shape; docs/runbooks/replace-disk.md drives ceph-volume
+# directly instead. `always` closes the window even on timeout, so a failed run
+# cannot leave specs managed and the serve loop crawling.
 - name: Provision OSDs from the service spec
   vars:
     spec_window: >-
@@ -169,23 +143,16 @@
       changed_when: true
       when: spec_window | bool
 
-# Safety net: an OSD that comes up at reweight 0 because a noin flag was set
-# before this run never takes data until something reweights it back.
-#
-# "up with reweight 0" is ambiguous, though -- it is equally the signature of a
-# drain (`ceph orch osd rm`, or the plain `ceph osd out` that replace-disk.md
-# step 2 prescribes), and nothing in the osdmap distinguishes the two. Guessing
-# wrong is expensive in one direction only: reweighting a draining OSD back to
-# 1.0 refills the disk you are removing, silently and mid-drain, whereas failing
-# to fix a genuinely stuck OSD leaves it visibly at reweight 0 in `ceph osd
-# tree`. So this task corrects an OSD only when it can name the cause:
-#
-#   in the cephadm removal queue  -> skip, cephadm is draining it
-#   noin set                      -> reweight to 1.0, the documented cause
-#   neither                       -> warn and leave alone; someone outed it
-#
-# noin is read before the "clear noin flag" task below unsets it. A `destroyed`
-# OSD needs no special case: it is not `up`, so the status filter passes over it.
+# Safety net: an OSD up at reweight 0 (noin set pre-run) takes no data. But
+# "up with reweight 0" is also the signature of a drain (orch osd rm / manual
+# `ceph osd out` per replace-disk.md), and the osdmap can't tell them apart --
+# reweighting a draining OSD back to 1.0 silently refills the disk being
+# removed, while a stuck OSD is at least visible in `ceph osd tree`. So only
+# correct when the cause is known:
+#   in cephadm removal queue -> skip (draining); noin set -> reweight 1.0;
+#   neither -> warn and leave (someone outed it).
+# noin is read before the clear-noin task below; `destroyed` OSDs are not `up`
+# so the filter skips them.
 
 - name: Fix any OSDs stuck at reweight 0
   ansible.builtin.shell: |
@@ -266,9 +233,6 @@
   register: reweight_fix
   changed_when: "'Fixed' in reweight_fix.stdout"
 
-# Without this the warnings sit unread inside reweight_fix. An OSD left at
-# reweight 0 holds no data, so it is worth putting in front of the operator
-# even though it is deliberately not an error.
 - name: Surface OSDs left at reweight 0
   ansible.builtin.debug:
     msg: "{{ reweight_fix.stdout_lines | select('search', '^WARNING:') | list }}"
@@ -305,10 +269,8 @@
       in MON config-key database
   run_once: true
 
-# Defensive: clear the noin flag if it's set. The current spec-apply flow
-# doesn't set noin (cephadm orch handles backfill rollout gracefully), but
-# a prior failed run of this role's older imperative OSD-creation flow may
-# have set it and not unset it. Unset is idempotent: a no-op when already off.
+# Defensive: the spec-apply flow doesn't set noin, but a failed run of the old
+# imperative flow may have left it set. Unset is a no-op when off.
 
 - name: Defensive - clear noin flag if set
   ansible.builtin.command: ceph osd unset noin

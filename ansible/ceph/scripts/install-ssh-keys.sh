@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
-# install-ssh-keys.sh — pull ansible-iac SSH keys from 1P into ~/.ssh/
-#
-# For new operators setting up a fresh workstation, or existing operators
-# after a key rotation. Idempotent — skips keys that already exist on disk
-# with matching fingerprints.
+# Pull ansible-iac SSH keys from 1P into ~/.ssh/. Skips keys already on disk
+# whose fingerprint matches.
 #
 # Prereq: `op` CLI signed in (desktop session unlocked or
-# OP_SERVICE_ACCOUNT_TOKEN set). Read-only access to the cluster's vault
-# (see VAULTS below) is enough.
+# OP_SERVICE_ACCOUNT_TOKEN set). Read-only access to the cluster's vault suffices.
 #
 # Usage:
 #   scripts/install-ssh-keys.sh                  # all keys
@@ -15,16 +11,13 @@
 #   OP_VAULT=yucca_tf_staging scripts/install-ssh-keys.sh sietch   # override vault
 set -euo pipefail
 
-# Map: short cluster name -> target filename under ~/.ssh/
 declare -A KEYS=(
   [sietch]="id_ed25519_sietch"
   [spice]="id_ed25519_spice"
 )
 
-# Map: short cluster name -> 1P vault holding its
-# <CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY item. Per-cluster so clusters can live in
-# different env vaults (e.g. sietch moves to yucca_tf_staging on promotion).
-# Override any lookup with OP_VAULT=<vault>.
+# Vault holding each cluster's <CLUSTER>_CEPH_ANSIBLE_IAC_SSH_KEY item; override
+# with OP_VAULT=<vault>.
 declare -A VAULTS=(
   [sietch]="yucca_tf_staging"
   [spice]="yucca_tf_prod"
@@ -50,7 +43,6 @@ for cluster in "${targets[@]}"; do
 
   echo "=== $cluster → $priv (vault: $vault) ==="
 
-  # Compare fingerprints if the key is already on disk
   if [ -f "$priv" ]; then
     disk_fp=$(ssh-keygen -l -f "$priv" 2>/dev/null | awk '{print $2}' || echo "?")
     onep_fp=$(op read "op://$vault/$item/public_key" | ssh-keygen -l -f /dev/stdin 2>/dev/null | awk '{print $2}' || echo "?")
@@ -66,12 +58,9 @@ for cluster in "${targets[@]}"; do
     fi
   fi
 
-  # Write private + public side by side.
-  # ?ssh-format=openssh is REQUIRED: the 1P item is an SSH_KEY whose private-key
-  # field otherwise reads back as PKCS#8 (-----BEGIN PRIVATE KEY-----), which
-  # macOS ssh tolerates for ed25519 but Ubuntu's OpenSSH (e.g. CI runners)
-  # rejects with "Load key: invalid format". OpenSSH format is accepted
-  # everywhere.
+  # ?ssh-format=openssh is REQUIRED: the SSH_KEY item otherwise reads back as
+  # PKCS#8, which macOS ssh tolerates for ed25519 but Ubuntu OpenSSH (CI
+  # runners) rejects with "Load key: invalid format".
   umask 077
   op read "op://$vault/$item/private_key?ssh-format=openssh" > "$priv"
   op read "op://$vault/$item/public_key"  > "$pub"

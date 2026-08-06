@@ -1,9 +1,7 @@
 ---
-# No dependencies - deploys a self-contained capture script + systemd timer on
-# the bootstrap node. Independent of the deploy pipeline; run deliberately via
-# backup-ceph.yml. Complements post-deploy-capture.yml (secrets -> 1P) and
-# backup-config.yml (one-shot controller-local export) with a SCHEDULED,
-# on-node config/topology backup.
+# Independent of the deploy pipeline; run deliberately via backup-ceph.yml.
+# Complements post-deploy-capture.yml (secrets -> 1P) and backup-config.yml
+# (one-shot controller-local export) with a SCHEDULED on-node backup.
 dependencies: []
 
 galaxy_info:

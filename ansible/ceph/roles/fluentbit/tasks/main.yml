@@ -1,5 +1,4 @@
 ---
-# Install Fluent Bit (pinned) and ship journald to o11y over the NetBird overlay.
 
 - name: Assert the node is on the overlay
   # Without it there is no route to the gateway VIP, and fluent-bit would spin

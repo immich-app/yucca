@@ -1,19 +1,9 @@
 ---
-# Rollback for the nftables_bridges role: restore the kernel defaults
-# for br_netfilter call-iptables/-ip6tables, remove the sysctl drop-in
-# file, leave br_netfilter loaded (it's harmless when the call-*
-# sysctls are 1, and removing the module would risk disrupting any
-# bridge in use). After this runs, bridge traffic is back under the
-# kernel default behavior — which means Ceph's inet filter forward
-# chain DROP applies, and Talos VM traffic on br-vlan50 will be
-# dropped again.
-#
-# Use after destroy-vms.yml when fully reverting the Talos lab,
-# OR if the operator decides to take a different approach to bridge
-# filtering (e.g. explicit allow rules in the Ceph security role).
-#
-# Usage: scripts/ansible-play.sh rollback-nftables-bridges.yml
-# Or:    mise run rollback-nftables-bridges
+# Rollback for nftables_bridges: restore br_netfilter call-iptables/-ip6tables
+# defaults, remove the sysctl drop-in, leave br_netfilter loaded (unloading could
+# disrupt in-use bridges). Afterwards Ceph's inet filter forward DROP applies
+# again and Talos VM traffic on br-vlan50 is dropped. Use after destroy-vms.yml
+# or when switching to explicit allow rules in the Ceph security role.
 
 - name: Pre-flight gate (imported)
   ansible.builtin.import_playbook: preflight.yml

@@ -1,48 +1,29 @@
 ---
-# Master toggle — role is a no-op when false.
 talos_vms_enabled: false
 
-# Libvirt domain + qcow2 + NVRAM file name prefix.
-# Default scopes to "sietch-talos" so VMs end up as sietch-talos-cp1,
-# sietch-talos-worker1, etc. — aligns with the monorepo FQDN scheme
-# `<cluster>-<role>-<name>.<domain>` (e.g. sietch-talos-cp1.staging.austin.int.futo.cloud)
-# and matches the *_TALOS_* 1P secret-prefix convention. Read from
-# group_vars `talos_domain_prefix` when present so a future second
-# cluster can override without role edits.
+# Names domains/qcow2/NVRAM, matching the <cluster>-<role>-<name> FQDN scheme and
+# the *_TALOS_* 1P prefixes.
 talos_vms_domain_prefix: "{{ talos_domain_prefix | default('sietch-talos') }}"
 
-# Active profile selector. Full = 3 CP + 3 workers (1 CP + 1 worker per
-# hypervisor); smoke = 1 CP + 1 worker (laurel).
-# Read from group_vars (single source); local default falls through to
-# `full` to match the playbook + group_vars + TF default.
+# full = 3 CP + 3 workers (1 CP + 1 worker per hypervisor); smoke = 1 CP + 1
+# worker (laurel).
 talos_vms_profile: "{{ talos_profile | default('full') }}"
 
-# Computed inside tasks/main.yml from per-host talos_vms list filtered
-# by the active profile. Surfaced here as a default of [] so the
-# profile-filter task can append idempotently.
+# Computed in tasks/main.yml; [] here so the profile-filter task can append
+# idempotently.
 talos_vms_filtered: []
 
-# Bridge attachment for the primary NIC (VLAN 50 Compute).
-# All Talos VMs sit here; VLAN 51 Services attachment is a follow-up
-# (cluster ingress / LB workloads, not infra bring-up).
+# VLAN 50 Compute; every Talos VM sits here.
 talos_vms_primary_bridge: "{{ vlan_compute_bridge | default('br-vlan50') }}"
 
-# Secondary NIC for workers — attaches to the Services VLAN bridge so
-# LB / ingress controllers can announce service VIPs on VLAN 51 without
-# their traffic touching the cluster's compute network. Rendered by the
-# template only when item.role == 'worker'; CPs stay single-NIC.
+# VLAN 51 Services, workers only (item.role == 'worker'): lets LB/ingress
+# announce service VIPs without that traffic touching the compute network.
 talos_vms_secondary_bridge: "{{ vlan_services_bridge | default('br-vlan51') }}"
 
-# UEFI / OVMF paths. Pinned explicitly (not via `<os firmware='efi'>`
-# shorthand) because libvirt's expansion of that shorthand into stored
-# XML differs from the template every run, triggering re-define on
-# every provision-vms run; a re-define on a stopped VM wipes per-VM
-# NVRAM state.
-#
-# Defaults track Debian Bookworm's `ovmf` package layout. Verify on
-# the actual hypervisor with `dpkg -L ovmf | grep -E 'CODE|VARS'` if
-# upstream changes the filename. The 4M variant (vs legacy 2M) is
-# Bookworm's default for ovmf 2022.11+.
+# OVMF paths pinned explicitly, NOT `<os firmware='efi'>`: libvirt's shorthand
+# expansion differs from the template every run, forcing a re-define each
+# provision-vms -- and a re-define on a stopped VM wipes its NVRAM. Tracks
+# Bookworm's ovmf layout (4M variant); verify with `dpkg -L ovmf | grep -E 'CODE|VARS'`.
 talos_vms_ovmf_code_path: "/usr/share/OVMF/OVMF_CODE_4M.fd"
 talos_vms_ovmf_vars_template: "/usr/share/OVMF/OVMF_VARS_4M.fd"
 talos_vms_nvram_dir: "/var/lib/libvirt/qemu/nvram"

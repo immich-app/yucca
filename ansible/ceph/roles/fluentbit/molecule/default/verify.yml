@@ -1,7 +1,4 @@
 ---
-# Verify fluent-bit.conf.j2 renders the pipeline o11y depends on: journald in,
-# noise dropped, cluster/site/env stamped on, jsonline out over TLS.
-#
 # The load-bearing check is the grep filter's Exclude regex. It is tested as
 # behaviour -- matched against real journal lines -- not as a string compare,
 # because what matters is which lines it eats. Rewording the regex stays green;
@@ -104,8 +101,6 @@
         success_msg: "Exclude regex drops pgmap and _set_new_cache_sizes lines"
 
     - name: Assert the Exclude regex never drops a cluster health line
-      # The failure mode we most fear: HEALTH_ERR filtered out at the node, so
-      # o11y stays quiet while the cluster is degraded.
       ansible.builtin.assert:
         that:
           - fluentbit_health_err is not search(fluentbit_exclude_regex)

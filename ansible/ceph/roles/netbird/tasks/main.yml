@@ -1,8 +1,6 @@
 ---
-# Install NetBird (pinned) and join the overlay as an endpoint peer.
-# Convergeable: install is pin+hold, `netbird up` is skipped when connected.
-# Adapted from ansible/mgmt/roles/netbird, minus the route-peer parts (no IP
-# forwarding here - ceph nodes must never route or receive overlay routes).
+# From mgmt/roles/netbird minus the route-peer parts -- ceph nodes must never
+# route or receive overlay routes.
 
 - name: Ensure keyrings directory exists
   ansible.builtin.file:
@@ -38,9 +36,8 @@
   failed_when: false
 
 - name: Unhold netbird only when the pinned version differs (keeps converge clean)
-  # rc != 0 means dpkg has never seen the package. That is every fresh node.
-  # dpkg_selections fails hard on an unknown package, and there is no hold to
-  # release before the first install, so skip it there.
+  # rc != 0 = dpkg never saw the package (fresh node); dpkg_selections fails
+  # hard on unknown packages and there is no hold to release yet, so skip.
   ansible.builtin.dpkg_selections:
     name: netbird
     selection: install
@@ -102,9 +99,8 @@
   retries: 6
   delay: 5
   until: "'Management: Connected' in ceph_netbird_status_post.stdout"
-  # Same condition as the join task: a node that was already connected never
-  # joined, so there is nothing to re-check (and _post stays undefined for the
-  # asserts' default() fallback).
+  # Same condition as the join: already-connected nodes never joined, so _post
+  # stays undefined for the asserts' default() fallback.
   when: "'Management: Connected' not in ceph_netbird_status.stdout"
 
 - name: Assert connected
@@ -116,10 +112,9 @@
     success_msg: "{{ inventory_hostname }}: NetBird connected"
 
 - name: Assert no overlay routes were received (fabric stays authoritative)
-  # `Networks: -` is the 0.73.x status line for zero received routes. If this
-  # fires, the ceph group leaked into a network's distribution groups in TF -
-  # an overlay route here could shadow the node's fabric paths. Format is
-  # version-coupled; revisit when bumping ceph_netbird_version.
+  # `Networks: -` = zero received routes on 0.73.x (format is version-coupled;
+  # revisit on version bump). Firing means the ceph group leaked into a network's
+  # TF distribution groups -- an overlay route could shadow the fabric paths.
   ansible.builtin.assert:
     that:
       - >-
@@ -130,7 +125,6 @@
       group must stay out of all NetBird network distribution groups. Fix the
       TF (tf/deployment/prod/htz-fsn1/netbird) before enrolling further nodes.
 
-# --- NetBird SSH server (SSO-gated human access; ops+sudo, root off) ---
 # Gated on the API token so a token-less converge is a no-op on already-enabled
 # peers. The DNAT is wt0-scoped, so cephadm (fabric) and ansible (WAN) keep
 # key-based sshd on :22 - verified on the philip canary 2026-07-22.
@@ -191,11 +185,10 @@
     - ceph_netbird_api_token | length > 0
 
 - name: Apply the server-ssh client flags (down/up over WAN)
-  # `netbird up` short-circuits on a connected peer ("Already connected"), so a
-  # down/up cycle is needed to (re)apply client flags. Safe: ansible connects
-  # over the WAN, and the cycle drops only the overlay. The server binds once
-  # both the client flag and management ssh_enabled agree. Idempotent - skipped
-  # once :22022 already listens. No --enable-ssh-root: humans use ops + sudo.
+  # `netbird up` short-circuits when connected, so a down/up cycle (re)applies
+  # client flags; safe -- ansible rides the WAN, only the overlay drops. Server
+  # binds once client flag AND management ssh_enabled agree; skipped when :22022
+  # already listens. No --enable-ssh-root: humans use ops + sudo.
   ansible.builtin.shell: |
     set -e
     netbird down
