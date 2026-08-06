@@ -360,11 +360,16 @@ Hetzner support ticket quoting the **serial** from step 1, since there is no
 IPMI and no bay LED. Reference the by-path only as supporting detail; Hetzner
 identifies drives by serial.
 
-These chassis have no hot-swap path that Hetzner will use, so expect them to ask
-to power the machine down. Put the host into maintenance before handing it over,
-or the remaining OSDs are marked `out` ten minutes in and the cluster starts a
-rebalance that has to be undone when it returns:
-[host-maintenance.md](host-maintenance.md).
+Ask for a hot swap. The Robot form carries a `Replacement method` field, and
+these bays do support `hot_swap`: Hetzner replaced a drive on a live SX295 with
+no downtime. A single-disk swap then needs no maintenance window at all, as long
+as the OSD is already `down` and `out` so nothing is reading the device.
+
+Take the host into maintenance only when the work genuinely needs the machine
+down, which so far means anything inside the chassis, such as reseating a SATA
+cable. Skipping it in that case leaves the remaining OSDs to be marked `out` ten
+minutes in, and the cluster starts a rebalance that has to be undone when the
+host returns: [host-maintenance.md](host-maintenance.md).
 
 After the swap, confirm the new disk is present at the same by-path:
 

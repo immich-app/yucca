@@ -1,8 +1,13 @@
 # Runbook: Take a Host Offline for Physical Maintenance
 
 **When:** A node must be powered off or rebooted for longer than a few minutes.
-Hetzner disk replacement, DIMM or NIC swap, chassis work, anything where remote
-hands need the machine down.
+DIMM or NIC swap, cable reseating, chassis work, anything where remote hands need
+the machine down.
+
+**Not for a plain disk swap.** Hetzner will hot-swap a drive on a live SX295 if
+the ticket asks for `hot_swap`, so a failed disk whose OSD is already `down` and
+`out` needs no maintenance window. See
+[replace-disk.md](replace-disk.md).
 
 **Time estimate:** 2 minutes to enter, 2 minutes to exit. The offline window is
 whatever the physical work takes.
