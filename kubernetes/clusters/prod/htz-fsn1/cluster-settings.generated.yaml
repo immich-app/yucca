@@ -11,10 +11,12 @@ data:
   # Cluster identity (derived: yucca_<partition>_<region>).
   CLUSTER_NAME: yucca_prod_htz_fsn1
   CLUSTER_ROLE: primary
-  # Telemetry identity tags (cluster = short cluster name; site; env). The
+  # Telemetry identity tags (cluster = short cluster name; env; provider and
+  # region = 3-letter codes from region.hcl, except provider spelled out). The
   # netops vmagent stamps its own set (cluster=netops, spice jobs cluster=spice).
   METRICS_CLUSTER_LABEL: father
-  METRICS_SITE_LABEL: htz-fsn1
+  METRICS_PROVIDER_LABEL: hetzner
+  METRICS_REGION_LABEL: fsn
   METRICS_ENV_LABEL: prod
   # CP node IPs (kube-cp VLAN 11; clusters.auto.tfvars) — the vmagent's
   # kubeEtcd static targets, hitting the plain-HTTP etcd metrics listener the

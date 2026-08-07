@@ -27,9 +27,12 @@
         "label": "Data Source",
         "refresh": 1,
         "hide": 0,
-        "current": {},
+        "current": {
+          "text": "VictoriaMetrics Fleet",
+          "value": "VictoriaMetricsFleet"
+        },
         "options": [],
-        "regex": "",
+        "regex": "/^VictoriaMetrics Fleet$/",
         "skipUrlSync": false
       },
       {
