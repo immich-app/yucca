@@ -99,7 +99,7 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 |---|---|---|
 | `yucca-api` | NestJS | User-facing API. Owns auth (OIDC code + device flow, ES256 JWTs), repositories, **DB schema + migrations**. |
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Same DB + JWT validation. |
-| `michael` | Go | **Production** restic REST backend — S3 proxy with JWT verification, WORM enforcement, backend pooling. |
+| `michael` | Go | **Production** restic REST backend — S3 proxy with JWT verification, WORM enforcement, backend pooling. Holds **no S3 credentials**: each token carries its repository's own, sealed. |
 | `restic-api` | NestJS | Earlier TS implementation of the restic backend, kept as **reference**; not deployed. |
 | `yucca-metrics-worker` | NestJS | 5-min cron: RadosGW usage → meter tables → per-connection rollup (`connectionMetrics`, billing floor), OTel gauges. |
 | `redis` (valkey) | | Shared platform cache (ephemeral; keys `yucca:<service>:<purpose>:*`). Primary-region only. |
@@ -142,6 +142,28 @@ Full detail: `docs/connections.md`. The essentials:
   introspection (`GET /internal/restic-tokens/:jti`). Revoke flips the DB row + best-effort DELs
   the valkey key; introspection outage honors the grace window then **fails closed**. Long-lived
   tokens are revocable-only. yuctl: `tokens list/revoke`, `repos url --ttl`.
+
+### Per-repository storage credentials
+
+Full detail: `docs/storage-credentials.md`. The essentials:
+
+- Every repository owns an RGW user (`yucca-repo-<id>`, `max-buckets=1`), created by the APIs
+  through the RadosGW admin API with the ansible-provisioned `yucca-provisioner` credential
+  (`users=*`, Secret `yucca-provisioner-rgw`, chart `radosSecretName`). Bucket ops belong to a
+  separate `yucca-migrator` (`buckets=*`) that only the yuctl migration uses, read from 1Password
+  and never mounted into the cluster.
+- Its keys ride in the token as the `storageCredentials` claim: AES-256-GCM,
+  `base64url(version||nonce||ct||tag)`, **repository id as AAD**. Sealed by `@common/server`
+  `sealStorageCredentials`, opened by michael's `internal/credentials`; a cross-language fixture
+  test pins the format.
+- Two keys, both comma-separated lists (first seals, all open, so rotation is a two-step deploy):
+  `STORAGE_CREDENTIAL_KEY` (APIs only, at-rest column `repositories.storageSecretAccessKey`) and
+  `STORAGE_CREDENTIAL_SEAL_KEY` (APIs **+ michael**).
+- michael caches one S3 client per credential per backend and probes backends **unsigned**. A
+  token without credentials is a 401 — there is no fallback. Clusters without an
+  `rgw_admin_endpoint` (compose/MinIO) fall back to `STORAGE_STATIC_*`.
+- Pre-existing buckets: `yuctl repos migrate-storage-credentials` (BucketOwnerEnforced as the old
+  owner, admin-API link, then verify).
 
 ## Infrastructure architecture
 
