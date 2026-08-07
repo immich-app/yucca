@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.29.0](https://github.com/immich-app/yucca/compare/v0.28.0...v0.29.0) (2026-08-07)
+
+
+### Features
+
+* **o11y:** pin dashboards to Fleet datasource and conform telemetry labels ([#461](https://github.com/immich-app/yucca/issues/461)) ([11cda8c](https://github.com/immich-app/yucca/commit/11cda8c8c62e5ab0b14bc4ef9fdeb05f10a9a4b6))
+
+
+### Bug Fixes
+
+* **ceph:** unblock spice scrub scheduling ([#448](https://github.com/immich-app/yucca/issues/448)) ([2f37ba8](https://github.com/immich-app/yucca/commit/2f37ba8cf6ffb49bdc646bc1576770ae8f342a49))
+* **deps:** update aws-sdk-go-v2 monorepo ([#359](https://github.com/immich-app/yucca/issues/359)) ([c3e5c4f](https://github.com/immich-app/yucca/commit/c3e5c4f0aa58b898e50c1346e353b0bf8b5b89de))
+* **deps:** update module github.com/go-chi/chi/v5 to v5.3.1 ([#360](https://github.com/immich-app/yucca/issues/360)) ([2956998](https://github.com/immich-app/yucca/commit/29569982df6c1b90fb71b9b591edbc064f4c5fe2))
+* **deps:** update module github.com/rs/zerolog to v1.35.1 ([#361](https://github.com/immich-app/yucca/issues/361)) ([a624a52](https://github.com/immich-app/yucca/commit/a624a52ad4a3bba0b751abb19e3e3d13b2f3f7ed))
+* **deps:** update module go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp to v0.19.0 [security] ([#425](https://github.com/immich-app/yucca/issues/425)) ([5b514fc](https://github.com/immich-app/yucca/commit/5b514fc06991651b649323e5f6f601a809f9e510))
+* **deps:** update opentelemetry-go monorepo to v1.44.0 ([#362](https://github.com/immich-app/yucca/issues/362)) ([68af7f4](https://github.com/immich-app/yucca/commit/68af7f4926012cdf014ba20fab8fd96df14e5a8c))
+
 ## [0.28.0](https://github.com/immich-app/yucca/compare/v0.27.0...v0.28.0) (2026-08-06)
 
 
