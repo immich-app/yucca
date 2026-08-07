@@ -8,6 +8,14 @@
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
+  import {
+    useRunEventHandler,
+    useRunHistory,
+  } from "$lib/services/runHistory.service";
+  import {
+    useScheduleEventHandler,
+    useSchedules,
+  } from "$lib/services/schedule.service";
   import ImmichBackupsCard from "./ImmichBackupsCard.svelte";
 
   type Props = {
@@ -18,20 +26,42 @@
 
   const { href = "/backups", onclick, class: className }: Props = $props();
 
+  // TODO: this should probably be condensed into one big request - since this loads on every initial Immich page load (in the future)
+
   const integrations = useIntegrations();
   const repositories = useRepositories();
+  const schedules = useSchedules();
 
   const { onIntegrationUpdate } = useIntegrationEventHandler();
   const { onRepositoryCreate, onRepositoryUpdate, onRepositoryDelete } =
     useRepositoryEventHandler();
+  const { onScheduleCreate, onScheduleUpdate, onScheduleDelete } =
+    useScheduleEventHandler();
+  const { onRunCreate, onRunUpdate } = useRunEventHandler();
 
-  const repository = $derived.by(() => {
-    const integration = integrations.data?.immichIntegration;
+  const integration = $derived(integrations.data?.immichIntegration);
 
-    return integration
+  const repository = $derived(
+    integration
       ? repositories.data?.find((entry) => entry.id === integration.id)
-      : undefined;
-  });
+      : undefined,
+  );
+
+  const runHistory = useRunHistory(() => repository?.id);
+
+  const latestBackupRun = $derived(
+    runHistory.data?.find(
+      (run) => run.type === "backup" || run.type === "schedule",
+    ),
+  );
+
+  const paused = $derived(
+    Boolean(
+      integration &&
+      schedules.data?.find((entry) => entry.id === integration.scheduleId)
+        ?.paused,
+    ),
+  );
 
   const lastBackup = $derived(repository?.metrics.lastBackup ?? undefined);
 
@@ -41,8 +71,8 @@
     ),
   );
 
-  const sizeBytes = $derived(
-    repository?.meter?.sizeBytes ?? repository?.metrics.sizeBytes,
+  const loading = $derived(
+    integrations.isLoading || repositories.isLoading || schedules.isLoading,
   );
 </script>
 
@@ -51,16 +81,22 @@
   {onRepositoryCreate}
   {onRepositoryUpdate}
   {onRepositoryDelete}
+  {onScheduleCreate}
+  {onScheduleUpdate}
+  {onScheduleDelete}
+  {onRunCreate}
+  {onRunUpdate}
 />
 
-{#if !integrations.isLoading && !repositories.isLoading}
+{#if !loading}
   <ImmichBackupsCard
-    configured={Boolean(repository)}
-    {lastBackup}
-    {failed}
-    {sizeBytes}
     {href}
+    {failed}
+    {paused}
     {onclick}
+    {lastBackup}
     class={className}
+    configured={Boolean(repository)}
+    running={latestBackupRun?.status === "incomplete"}
   />
 {/if}

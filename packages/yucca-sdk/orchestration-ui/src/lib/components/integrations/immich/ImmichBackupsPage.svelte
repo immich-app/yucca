@@ -1,11 +1,12 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import UpsellPage from "../../onboarding/upsell/UpsellPage.svelte";
   import ImmichManageBackup from "./ImmichManageBackup.svelte";
   import ImmichOnboardingSetupFlow from "./ImmichOnboardingSetupFlow.svelte";
 
   type Question = {
     title: string;
-    answer: string;
+    answer: string | Snippet;
   };
 
   type Props = {

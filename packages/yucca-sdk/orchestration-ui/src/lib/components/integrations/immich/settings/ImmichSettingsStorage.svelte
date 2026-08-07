@@ -158,7 +158,7 @@
           description="Once written, backups can't be removed. This can't be turned off again."
           readOnly // @immich/ui forces enabled={false} when disabled={true}
         >
-          <Switch checked class="grayscale brightness-90" />
+          <Switch checked class="cursor-not-allowed opacity-38" />
         </Field>
       {:else}
         <Field
