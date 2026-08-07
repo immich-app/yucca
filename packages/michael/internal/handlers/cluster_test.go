@@ -45,7 +45,7 @@ func twoClusterServer() (*Server, *recordingStorage, *recordingStorage) {
 	srv := NewClusterServer(map[string]storage.Storage{
 		cluster.DefaultCode: def,
 		"spice":             spice,
-	}, cluster.DefaultCode, testPublicKey, nil)
+	}, cluster.DefaultCode, testPublicKey, testSealKeys, nil)
 	return srv, def, spice
 }
 
@@ -87,11 +87,12 @@ func TestClusterRoutingEmptyClaimUsesDefault(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodHead, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, jwt.MapClaims{
-		"user":           testUser,
-		"repository":     testRepository,
-		"writeOnce":      false,
-		"storageCluster": "",
-		"exp":            jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		"user":               testUser,
+		"repository":         testRepository,
+		"writeOnce":          false,
+		"storageCluster":     "",
+		"storageCredentials": sealedFor(t, testRepository),
+		"exp":                jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	})))
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
@@ -170,7 +171,7 @@ func TestClusterRoutingUnknownClusterCounted(t *testing.T) {
 		t.Fatalf("NewMetrics: %v", err)
 	}
 	srv := NewClusterServer(map[string]storage.Storage{cluster.DefaultCode: &mockStorage{}},
-		cluster.DefaultCode, testPublicKey, m)
+		cluster.DefaultCode, testPublicKey, testSealKeys, m)
 
 	for range 2 {
 		rec := doRequest(t, srv, http.MethodHead, "/"+testRepository+"/config", nil, clusterAuth("sietch"), nil)
@@ -221,11 +222,12 @@ func TestClusterRoutingNonStringClaimRejected(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodHead, "/"+testRepository+"/config", nil)
 			req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, jwt.MapClaims{
-				"user":           testUser,
-				"repository":     testRepository,
-				"writeOnce":      false,
-				"storageCluster": value,
-				"exp":            jwt.NewNumericDate(time.Now().Add(time.Hour)),
+				"user":               testUser,
+				"repository":         testRepository,
+				"writeOnce":          false,
+				"storageCluster":     value,
+				"storageCredentials": sealedFor(t, testRepository),
+				"exp":                jwt.NewNumericDate(time.Now().Add(time.Hour)),
 			})))
 			rec := httptest.NewRecorder()
 			srv.Handler().ServeHTTP(rec, req)

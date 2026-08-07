@@ -15,19 +15,21 @@ import (
 	"time"
 
 	"michael/internal/cluster"
+	"michael/internal/credentials"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
-	Port              int
-	JWTPublicKey      *ecdsa.PublicKey
-	S3AccessKeyID     string
-	S3SecretAccessKey string
-	S3Region          string
-	S3Endpoint        string
-	S3ForcePathStyle  bool
+	Port         int
+	JWTPublicKey *ecdsa.PublicKey
+	// michael configures no S3 credentials of its own; these open the ones each
+	// token carries.
+	StorageSealKeys  [][]byte
+	S3Region         string
+	S3Endpoint       string
+	S3ForcePathStyle bool
 
 	// S3 load-balancing pool. When S3BackendSource is empty, michael talks to
 	// the single S3Endpoint (legacy behavior). When set to "file" or "dns", it
@@ -75,12 +77,10 @@ type Config struct {
 // flat S3_* environment variables describe the default cluster; S3_CLUSTERS_FILE
 // declares any additional ones.
 type ClusterConfig struct {
-	Code              string
-	S3AccessKeyID     string
-	S3SecretAccessKey string
-	S3Region          string
-	S3Endpoint        string
-	S3ForcePathStyle  bool
+	Code             string
+	S3Region         string
+	S3Endpoint       string
+	S3ForcePathStyle bool
 
 	S3BackendSource     string // "" | "file" | "dns"
 	S3BackendFile       string
@@ -98,8 +98,6 @@ type ClusterConfig struct {
 func (c Config) DefaultCluster() ClusterConfig {
 	return ClusterConfig{
 		Code:                c.S3DefaultCluster,
-		S3AccessKeyID:       c.S3AccessKeyID,
-		S3SecretAccessKey:   c.S3SecretAccessKey,
 		S3Region:            c.S3Region,
 		S3Endpoint:          c.S3Endpoint,
 		S3ForcePathStyle:    c.S3ForcePathStyle,
@@ -128,14 +126,9 @@ func LoadConfig() Config {
 
 	jwtPublicKey := parseES256PublicKey(os.Getenv("JWT_PUBLIC_KEY"))
 
-	s3AccessKeyID := os.Getenv("S3_ACCESS_KEY_ID")
-	if s3AccessKeyID == "" {
-		log.Fatal().Msg("S3_ACCESS_KEY_ID is required")
-	}
-
-	s3SecretAccessKey := os.Getenv("S3_SECRET_ACCESS_KEY")
-	if s3SecretAccessKey == "" {
-		log.Fatal().Msg("S3_SECRET_ACCESS_KEY is required")
+	sealKeys, err := credentials.ParseKeys(os.Getenv("STORAGE_CREDENTIAL_SEAL_KEY"))
+	if err != nil {
+		log.Fatal().Err(err).Msg("STORAGE_CREDENTIAL_SEAL_KEY is required")
 	}
 
 	s3Region := os.Getenv("S3_REGION")
@@ -260,8 +253,7 @@ func LoadConfig() Config {
 	cfg := Config{
 		Port:                port,
 		JWTPublicKey:        jwtPublicKey,
-		S3AccessKeyID:       s3AccessKeyID,
-		S3SecretAccessKey:   s3SecretAccessKey,
+		StorageSealKeys:     sealKeys,
 		S3Region:            s3Region,
 		S3Endpoint:          s3Endpoint,
 		S3ForcePathStyle:    s3ForcePathStyle,
@@ -344,11 +336,10 @@ type topologyCluster struct {
 	S3               *clusterEntry `json:"s3"`
 }
 
-// clusterEntry is one cluster in S3_CLUSTERS_FILE. Credentials are named
-// indirectly — the entry gives the NAMES of the environment variables holding
-// them — so the file can be a plain ConfigMap while the secrets stay in a k8s
-// Secret. Pointer fields distinguish "absent, inherit the default cluster" from
-// an explicit false.
+// clusterEntry is one cluster in S3_CLUSTERS_FILE. Pointer fields distinguish
+// "absent, inherit the default cluster" from an explicit false. access_key_env
+// and secret_key_env are still accepted so existing topology documents parse,
+// but nothing reads them: credentials arrive per request, from the token.
 type clusterEntry struct {
 	Code           string `json:"code"`
 	Endpoint       string `json:"endpoint"`
@@ -486,18 +477,6 @@ func (e clusterEntry) toConfig(def ClusterConfig, getenv func(string) string) (C
 	if e.Endpoint == "" {
 		return ClusterConfig{}, fmt.Errorf("cluster %q: endpoint is required", e.Code)
 	}
-	if e.AccessKeyEnv == "" || e.SecretKeyEnv == "" {
-		return ClusterConfig{}, fmt.Errorf("cluster %q: access_key_env and secret_key_env are required", e.Code)
-	}
-	accessKey := getenv(e.AccessKeyEnv)
-	if accessKey == "" {
-		return ClusterConfig{}, fmt.Errorf("cluster %q: %s is unset or empty", e.Code, e.AccessKeyEnv)
-	}
-	secretKey := getenv(e.SecretKeyEnv)
-	if secretKey == "" {
-		return ClusterConfig{}, fmt.Errorf("cluster %q: %s is unset or empty", e.Code, e.SecretKeyEnv)
-	}
-
 	switch e.BackendSource {
 	case "":
 		// single-endpoint mode
@@ -523,8 +502,6 @@ func (e clusterEntry) toConfig(def ClusterConfig, getenv func(string) string) (C
 	scheme, port := schemeAndPort(e.Endpoint)
 	cc := ClusterConfig{
 		Code:                e.Code,
-		S3AccessKeyID:       accessKey,
-		S3SecretAccessKey:   secretKey,
 		S3Region:            firstNonEmpty(e.Region, def.S3Region),
 		S3Endpoint:          e.Endpoint,
 		S3ForcePathStyle:    boolOr(e.ForcePathStyle, def.S3ForcePathStyle),

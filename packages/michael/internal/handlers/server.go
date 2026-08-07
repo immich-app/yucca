@@ -26,9 +26,10 @@ type Server struct {
 	Clusters map[string]storage.Storage
 	// DefaultCluster is the code served to tokens carrying no storageCluster
 	// claim — every token minted before multi-cluster routing existed.
-	DefaultCluster string
-	JWTPublicKey   *ecdsa.PublicKey
-	Metrics        *metrics.Metrics
+	DefaultCluster  string
+	JWTPublicKey    *ecdsa.PublicKey
+	StorageSealKeys [][]byte
+	Metrics         *metrics.Metrics
 	// ResolveClient identifies the source network of a request, for the traffic
 	// metrics and the access log. Optional: nil leaves both unattributed, which
 	// is what the tests and any deployment without an ASN database get.
@@ -37,18 +38,25 @@ type Server struct {
 
 // NewServer builds a single-cluster server: everything is served from s under
 // the default cluster code.
-func NewServer(s storage.Storage, jwtPublicKey *ecdsa.PublicKey, m *metrics.Metrics) *Server {
-	return NewClusterServer(map[string]storage.Storage{cluster.DefaultCode: s}, cluster.DefaultCode, jwtPublicKey, m)
+func NewServer(s storage.Storage, jwtPublicKey *ecdsa.PublicKey, sealKeys [][]byte, m *metrics.Metrics) *Server {
+	return NewClusterServer(map[string]storage.Storage{cluster.DefaultCode: s}, cluster.DefaultCode, jwtPublicKey, sealKeys, m)
 }
 
 // NewClusterServer builds a server fronting several storage clusters, routing
 // each request by its token's storageCluster claim.
-func NewClusterServer(clusters map[string]storage.Storage, defaultCluster string, jwtPublicKey *ecdsa.PublicKey, m *metrics.Metrics) *Server {
+func NewClusterServer(
+	clusters map[string]storage.Storage,
+	defaultCluster string,
+	jwtPublicKey *ecdsa.PublicKey,
+	sealKeys [][]byte,
+	m *metrics.Metrics,
+) *Server {
 	return &Server{
-		Clusters:       clusters,
-		DefaultCluster: defaultCluster,
-		JWTPublicKey:   jwtPublicKey,
-		Metrics:        m,
+		Clusters:        clusters,
+		DefaultCluster:  defaultCluster,
+		JWTPublicKey:    jwtPublicKey,
+		StorageSealKeys: sealKeys,
+		Metrics:         m,
 	}
 }
 
@@ -134,7 +142,7 @@ func (s *Server) Handler() http.Handler {
 			}
 		}
 	}
-	verifier := auth.NewVerifier(s.JWTPublicKey, onLookup)
+	verifier := auth.NewVerifier(s.JWTPublicKey, s.StorageSealKeys, onLookup)
 
 	r.Route("/{path}", func(r chi.Router) {
 		r.Use(verifier.Middleware())

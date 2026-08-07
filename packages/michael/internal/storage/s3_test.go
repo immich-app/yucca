@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"michael/internal/config"
+	"michael/internal/credentials"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -128,7 +129,7 @@ func TestListObjects_PaginatesAllPages(t *testing.T) {
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
 	var blobs []BlobInfo
-	err := s.ListObjects(context.Background(), "bucket", "data/", func(b BlobInfo) error {
+	err := s.ListObjects(testCtx(), "bucket", "data/", func(b BlobInfo) error {
 		blobs = append(blobs, b)
 		return nil
 	})
@@ -165,7 +166,7 @@ func TestListObjects_EmptyListing(t *testing.T) {
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
 	calls := 0
-	err := s.ListObjects(context.Background(), "bucket", "data/", func(BlobInfo) error {
+	err := s.ListObjects(testCtx(), "bucket", "data/", func(BlobInfo) error {
 		calls++
 		return nil
 	})
@@ -204,7 +205,7 @@ func TestPutObject_NonSeekableBodyOn503_NoRewindRetry(t *testing.T) {
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
 	body := readOnly{strings.NewReader("restic-pack-bytes")}
-	err := s.PutObject(context.Background(), "bucket", "data/deadbeef", body, int64(len("restic-pack-bytes")), true, "")
+	err := s.PutObject(testCtx(), "bucket", "data/deadbeef", body, int64(len("restic-pack-bytes")), true, "")
 
 	if err == nil {
 		t.Fatal("expected an error from the 503 gateway, got nil")
@@ -220,12 +221,18 @@ func TestPutObject_NonSeekableBodyOn503_NoRewindRetry(t *testing.T) {
 	}
 }
 
+// Only Probe works without credentials.
+func testCtx() context.Context {
+	return credentials.NewContext(context.Background(), credentials.Credentials{
+		AccessKeyID:     "test",
+		SecretAccessKey: "test",
+	})
+}
+
 func probeConfig() config.Config {
 	return config.Config{
-		S3AccessKeyID:     "test",
-		S3SecretAccessKey: "test",
-		S3Region:          "us-east-1",
-		S3ForcePathStyle:  true,
+		S3Region:         "us-east-1",
+		S3ForcePathStyle: true,
 	}
 }
 
@@ -237,7 +244,7 @@ func TestProbe_HealthyOn404(t *testing.T) {
 	defer srv.Close()
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
-	if err := s.Probe(context.Background(), "probe-bucket"); err != nil {
+	if err := s.Probe(testCtx(), "probe-bucket"); err != nil {
 		t.Errorf("Probe against 404 gateway: expected healthy, got %v", err)
 	}
 }
@@ -249,7 +256,7 @@ func TestProbe_HealthyOn200(t *testing.T) {
 	defer srv.Close()
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
-	if err := s.Probe(context.Background(), "probe-bucket"); err != nil {
+	if err := s.Probe(testCtx(), "probe-bucket"); err != nil {
 		t.Errorf("Probe against 200 gateway: expected healthy, got %v", err)
 	}
 }
@@ -261,7 +268,7 @@ func TestProbe_UnhealthyOn503(t *testing.T) {
 	defer srv.Close()
 
 	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
-	if err := s.Probe(context.Background(), "probe-bucket"); err == nil {
+	if err := s.Probe(testCtx(), "probe-bucket"); err == nil {
 		t.Error("Probe against 503 gateway: expected unhealthy, got nil")
 	}
 }
@@ -273,7 +280,7 @@ func TestProbe_UnhealthyOnConnRefused(t *testing.T) {
 	srv.Close()
 
 	s := NewS3StorageForEndpoint(probeConfig(), url)
-	if err := s.Probe(context.Background(), "probe-bucket"); err == nil {
+	if err := s.Probe(testCtx(), "probe-bucket"); err == nil {
 		t.Error("Probe against down gateway: expected unhealthy, got nil")
 	}
 }
@@ -297,7 +304,7 @@ func TestNewS3StorageWithOptions_PinsDialAndPreservesHost(t *testing.T) {
 		Endpoint: "http://s3.signing-host.invalid",
 		DialAddr: dialAddr,
 	})
-	if err := s.Probe(context.Background(), "probe-bucket"); err != nil {
+	if err := s.Probe(testCtx(), "probe-bucket"); err != nil {
 		t.Fatalf("Probe through pinned dial: %v", err)
 	}
 	if !hit {
@@ -321,7 +328,7 @@ func TestNewS3StorageWithOptions_TLSSkipVerify(t *testing.T) {
 		Endpoint: "https://s3.signing-host.invalid",
 		DialAddr: dialAddr,
 	})
-	if err := noSkip.Probe(context.Background(), "probe-bucket"); err == nil {
+	if err := noSkip.Probe(testCtx(), "probe-bucket"); err == nil {
 		t.Error("expected TLS verification failure without skip-verify")
 	}
 
@@ -331,7 +338,7 @@ func TestNewS3StorageWithOptions_TLSSkipVerify(t *testing.T) {
 		DialAddr:      dialAddr,
 		TLSSkipVerify: true,
 	})
-	if err := skip.Probe(context.Background(), "probe-bucket"); err != nil {
+	if err := skip.Probe(testCtx(), "probe-bucket"); err != nil {
 		t.Errorf("Probe with skip-verify against self-signed gateway: %v", err)
 	}
 }
@@ -350,3 +357,71 @@ type httpError struct {
 
 func (e *httpError) Error() string       { return "http error" }
 func (e *httpError) HTTPStatusCode() int { return e.statusCode }
+
+// The connection pool belongs to the transport, so it is shared regardless.
+func TestClientCachedPerCredential(t *testing.T) {
+	var hits, misses int
+	s := NewS3StorageForCluster(config.ClusterConfig{S3Region: "us-east-1", S3Endpoint: "http://s3.invalid"}, S3Options{
+		Endpoint: "http://s3.invalid",
+		OnCredentialLookup: func(hit bool) {
+			if hit {
+				hits++
+				return
+			}
+			misses++
+		},
+	})
+
+	repoA := credentials.NewContext(context.Background(), credentials.Credentials{AccessKeyID: "a", SecretAccessKey: "a"})
+	repoB := credentials.NewContext(context.Background(), credentials.Credentials{AccessKeyID: "b", SecretAccessKey: "b"})
+
+	first, err := s.client(repoA)
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	again, err := s.client(repoA)
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	other, err := s.client(repoB)
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+
+	if first != again {
+		t.Error("expected the same client for the same credentials")
+	}
+	if first == other {
+		t.Error("expected a distinct client for different credentials")
+	}
+	if misses != 2 || hits != 1 {
+		t.Errorf("expected 2 misses and 1 hit, got %d/%d", misses, hits)
+	}
+}
+
+func TestStorageRejectsRequestWithoutCredentials(t *testing.T) {
+	s := NewS3StorageForEndpoint(probeConfig(), "http://s3.invalid")
+
+	if _, err := s.CheckBucket(context.Background(), "bucket"); !errors.Is(err, ErrNoCredentials) {
+		t.Fatalf("expected ErrNoCredentials, got %v", err)
+	}
+}
+
+// Any HTTP response at all proves the gateway is serving, so an unsigned probe
+// is enough.
+func TestProbeSendsNoAuthorizationHeader(t *testing.T) {
+	var authorization string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorization = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	if err := s.Probe(context.Background(), "probe-bucket"); err != nil {
+		t.Errorf("Probe against a 403 gateway: expected healthy, got %v", err)
+	}
+	if authorization != "" {
+		t.Errorf("expected an unsigned probe, got Authorization %q", authorization)
+	}
+}

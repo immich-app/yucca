@@ -62,6 +62,12 @@ type Metrics struct {
 	TrafficUploadedBytes   otelmetric.Int64Counter
 	TrafficDownloadedBytes otelmetric.Int64Counter
 	TrafficRequests        otelmetric.Int64Counter
+
+	// Per-credential S3 client cache. A collapsing hit rate means clients are
+	// being rebuilt per request, which costs the SDK's per-client state (never
+	// the connection pool, which every client shares).
+	CredentialCacheHits   otelmetric.Int64Counter
+	CredentialCacheMisses otelmetric.Int64Counter
 }
 
 // durationBuckets replaces the SDK default histogram boundaries, which are
@@ -181,6 +187,18 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		return nil, fmt.Errorf("creating traffic_requests counter: %w", err)
 	}
 
+	credentialCacheHits, err := meter.Int64Counter("storage.credentials.cache.hits",
+		otelmetric.WithDescription("Storage requests served by an already-built per-credential S3 client"))
+	if err != nil {
+		return nil, fmt.Errorf("creating credential_cache_hits counter: %w", err)
+	}
+
+	credentialCacheMisses, err := meter.Int64Counter("storage.credentials.cache.misses",
+		otelmetric.WithDescription("Storage requests that had to build an S3 client for their credentials"))
+	if err != nil {
+		return nil, fmt.Errorf("creating credential_cache_misses counter: %w", err)
+	}
+
 	client, err := newClientMetrics(meter)
 	if err != nil {
 		return nil, err
@@ -204,6 +222,9 @@ func NewMetrics(meter otelmetric.Meter) (*Metrics, error) {
 		TrafficUploadedBytes:   trafficUploadedBytes,
 		TrafficDownloadedBytes: trafficDownloadedBytes,
 		TrafficRequests:        trafficRequests,
+
+		CredentialCacheHits:   credentialCacheHits,
+		CredentialCacheMisses: credentialCacheMisses,
 	}, nil
 }
 

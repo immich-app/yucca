@@ -38,8 +38,6 @@ data:
                 "endpoint": "${S3_ENDPOINT}",
                 "region": "us-east-1",
                 "force_path_style": true,
-                "access_key_env": "S3_ACCESS_KEY_ID",
-                "secret_key_env": "S3_SECRET_ACCESS_KEY",
                 "backend_source": "dns",
                 "backend_dns_host": "${S3_HOST}",
                 "pin_host": true,

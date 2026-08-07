@@ -80,6 +80,12 @@ done
 
 echo "==> jest e2e (it-works, restic-api, yucca-api, orchestration-api)"
 # shellcheck disable=SC1091
+# michael takes its S3 credentials from the token, so the suites that mint their
+# own have to seal the REAL RGW user's keys — the cluster's, not the compose
+# MinIO defaults the env files fall back to.
+S3_ACCESS_KEY_ID="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-michael -o jsonpath='{.data.AccessKey}' | base64 -d)"
+S3_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-michael -o jsonpath='{.data.SecretKey}' | base64 -d)"
+export S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY
 source .mise/tasks/restic-api/env
 # shellcheck disable=SC1091
 source .mise/tasks/yucca-api/env

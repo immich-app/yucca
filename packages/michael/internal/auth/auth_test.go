@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -10,6 +11,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"michael/internal/credentials"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
@@ -37,18 +40,31 @@ func makeBasicAuth(token string) string {
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte("restic:"+token))
 }
 
+var testSealKeys = [][]byte{bytes.Repeat([]byte{0x2a}, 32)}
+
+var testCredentials = credentials.Credentials{AccessKeyID: "AKIAREPO", SecretAccessKey: "s3cret"}
+
+func sealedFor(repository string) string {
+	sealed, err := credentials.Seal(testSealKeys[0], repository, testCredentials)
+	if err != nil {
+		panic(err)
+	}
+	return sealed
+}
+
 func validClaims() jwt.MapClaims {
 	return jwt.MapClaims{
-		"user":       testUser,
-		"repository": testRepository,
-		"writeOnce":  false,
-		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		"user":               testUser,
+		"repository":         testRepository,
+		"writeOnce":          false,
+		"storageCredentials": sealedFor(testRepository),
+		"exp":                jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	}
 }
 
 func TestAuthMissingHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
-	_, _, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
 	if err == nil {
 		t.Fatal("expected error for missing auth header")
 	}
@@ -60,7 +76,7 @@ func TestAuthMissingHeader(t *testing.T) {
 func TestAuthInvalidAuthType(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", "Bearer some-token")
-	_, _, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
 	if err == nil {
 		t.Fatal("expected error for non-Basic auth")
 	}
@@ -73,7 +89,7 @@ func TestAuthMissingToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	// Basic auth with no password (just username, no colon)
 	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("restic")))
-	_, _, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
 	if err == nil {
 		t.Fatal("expected error for missing token")
 	}
@@ -85,7 +101,7 @@ func TestAuthMissingToken(t *testing.T) {
 func TestAuthInvalidJWT(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth("not-a-valid-jwt"))
-	_, _, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
 	if err == nil {
 		t.Fatal("expected error for invalid JWT")
 	}
@@ -103,7 +119,7 @@ func TestAuthInvalidPayloadNonUUID(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
-	_, _, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
 	if err == nil {
 		t.Fatal("expected error for non-UUID user")
 	}
@@ -120,7 +136,7 @@ func TestAuthInvalidPayloadMissingWriteOnce(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
-	_, _, err := extractAuth(req, testPublicKey)
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
 	if err == nil {
 		t.Fatal("expected error for missing writeOnce")
 	}
@@ -134,7 +150,7 @@ func TestAuthSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
 
-	a, _, err := extractAuth(req, testPublicKey)
+	a, _, err := extractAuth(req, testPublicKey, testSealKeys)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -175,7 +191,7 @@ func TestAuthOptionalClaims(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 			req.Header.Set("Authorization", makeBasicAuth(token))
 
-			a, _, err := extractAuth(req, testPublicKey)
+			a, _, err := extractAuth(req, testPublicKey, testSealKeys)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -195,7 +211,7 @@ func TestAuthMiddlewareRepoMismatch(t *testing.T) {
 	// Create a chi router to test the middleware with path params
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(Middleware(testPublicKey))
+		r.Use(Middleware(testPublicKey, testSealKeys))
 		r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
@@ -218,7 +234,7 @@ func TestAuthMiddlewareSuccess(t *testing.T) {
 	var gotAuth Auth
 	r := chi.NewRouter()
 	r.Route("/{path}", func(r chi.Router) {
-		r.Use(Middleware(testPublicKey))
+		r.Use(Middleware(testPublicKey, testSealKeys))
 		r.Get("/config", func(w http.ResponseWriter, r *http.Request) {
 			gotAuth = FromContext(r.Context())
 			w.WriteHeader(http.StatusOK)
@@ -242,7 +258,7 @@ func TestVerifierCachesVerifiedTokens(t *testing.T) {
 	token := makeJWT(t, validClaims())
 
 	var lookups []bool
-	v := NewVerifier(testPublicKey, func(hit bool) { lookups = append(lookups, hit) })
+	v := NewVerifier(testPublicKey, testSealKeys, func(hit bool) { lookups = append(lookups, hit) })
 
 	for range 3 {
 		req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
@@ -269,7 +285,7 @@ func TestVerifierCachesVerifiedTokens(t *testing.T) {
 
 func TestVerifierCacheHonorsExpiry(t *testing.T) {
 	token := makeJWT(t, validClaims())
-	v := NewVerifier(testPublicKey, nil)
+	v := NewVerifier(testPublicKey, testSealKeys, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(token))
@@ -299,7 +315,7 @@ func TestVerifierDoesNotCacheInvalidTokens(t *testing.T) {
 		return signed
 	}()
 
-	v := NewVerifier(testPublicKey, nil)
+	v := NewVerifier(testPublicKey, testSealKeys, nil)
 	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
 	req.Header.Set("Authorization", makeBasicAuth(badToken))
 	if _, err := v.authenticate(req); err == nil {
@@ -308,5 +324,48 @@ func TestVerifierDoesNotCacheInvalidTokens(t *testing.T) {
 	key := sha256.Sum256([]byte(makeBasicAuth(badToken)))
 	if _, ok := v.cache.get(key, time.Now()); ok {
 		t.Fatal("invalid token must not be cached")
+	}
+}
+
+func TestAuthRejectsTokenWithoutStorageCredentials(t *testing.T) {
+	claims := validClaims()
+	delete(claims, "storageCredentials")
+	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
+	req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, claims)))
+
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
+	if err == nil {
+		t.Fatal("expected a token without storage credentials to be rejected")
+	}
+	if err.code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", err.code)
+	}
+}
+
+func TestAuthRejectsStorageCredentialsSealedForAnotherRepository(t *testing.T) {
+	claims := validClaims()
+	claims["storageCredentials"] = sealedFor("00000000-0000-0000-0000-0000000000ff")
+	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
+	req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, claims)))
+
+	_, _, err := extractAuth(req, testPublicKey, testSealKeys)
+	if err == nil {
+		t.Fatal("expected credentials sealed for another repository to be rejected")
+	}
+	if err.code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", err.code)
+	}
+}
+
+func TestAuthCarriesStorageCredentials(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/"+testRepository+"/config", nil)
+	req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, validClaims())))
+
+	a, _, err := extractAuth(req, testPublicKey, testSealKeys)
+	if err != nil {
+		t.Fatalf("extractAuth: %v", err)
+	}
+	if a.Credentials != testCredentials {
+		t.Errorf("expected the sealed credentials on the auth, got %+v", a.Credentials)
 	}
 }

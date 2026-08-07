@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"michael/internal/config"
+	"michael/internal/credentials"
 	"michael/internal/handlers"
 	"michael/internal/storage"
 
@@ -34,12 +35,22 @@ const (
 	testRepository = "00000000-0000-0000-0000-000000000002"
 )
 
+// Against the compose MinIO these are the root credentials the static dev
+// provider hands out.
+var testSealKeys = [][]byte{bytes.Repeat([]byte{0x2a}, 32)}
+
+func testStorageCredentials() credentials.Credentials {
+	return credentials.Credentials{
+		AccessKeyID:     envOrDefault("S3_ACCESS_KEY_ID", "minio"),
+		SecretAccessKey: envOrDefault("S3_SECRET_ACCESS_KEY", "miniominio"),
+	}
+}
+
 func integrationConfig() config.Config {
 	return config.Config{
 		Port:             3010,
 		JWTPublicKey:     testPublicKey,
-		S3AccessKeyID:    envOrDefault("S3_ACCESS_KEY_ID", "minio"),
-		S3SecretAccessKey: envOrDefault("S3_SECRET_ACCESS_KEY", "miniominio"),
+		StorageSealKeys:  testSealKeys,
 		S3Region:         envOrDefault("S3_REGION", "minio"),
 		S3Endpoint:       envOrDefault("S3_ENDPOINT", "http://localhost:9000"),
 		S3ForcePathStyle: true,
@@ -55,11 +66,16 @@ func envOrDefault(key, fallback string) string {
 
 func integrationJWT(t *testing.T, _ config.Config, repo string, writeOnce bool) string {
 	t.Helper()
+	sealed, err := credentials.Seal(testSealKeys[0], repo, testStorageCredentials())
+	if err != nil {
+		t.Fatalf("seal storage credentials: %v", err)
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
-		"user":       testUser,
-		"repository": repo,
-		"writeOnce":  writeOnce,
-		"exp":        jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		"user":               testUser,
+		"repository":         repo,
+		"writeOnce":          writeOnce,
+		"storageCredentials": sealed,
+		"exp":                jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	})
 	signed, err := token.SignedString(testPrivateKey)
 	if err != nil {
@@ -75,7 +91,7 @@ func integrationAuth(token string) string {
 func TestIntegration_FullWorkflow(t *testing.T) {
 	cfg := integrationConfig()
 	store := storage.NewS3Storage(cfg)
-	srv := handlers.NewServer(store, cfg.JWTPublicKey, nil)
+	srv := handlers.NewServer(store, cfg.JWTPublicKey, cfg.StorageSealKeys, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -246,7 +262,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 func TestIntegration_WORM(t *testing.T) {
 	cfg := integrationConfig()
 	store := storage.NewS3Storage(cfg)
-	srv := handlers.NewServer(store, cfg.JWTPublicKey, nil)
+	srv := handlers.NewServer(store, cfg.JWTPublicKey, cfg.StorageSealKeys, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
