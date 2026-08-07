@@ -112,6 +112,24 @@ ceph_rgw_metrics_user_access_key: "{{ vault_metrics_worker_access_key }}"
 ceph_rgw_metrics_user_secret_key: "{{ vault_metrics_worker_secret_key }}"
 ceph_rgw_metrics_user_caps: "buckets=read;usage=read;metadata=read;users=read"
 
+# Provisioner RGW admin (read-write). Keys TF-minted in 1P
+# (SIETCH_PROVISIONER_{ACCESS,SECRET}_KEY); yucca-api creates one S3 user per
+# repository with it, which is the credential michael no longer carries.
+ceph_rgw_provisioner_user_uid: yucca-provisioner
+ceph_rgw_provisioner_user_display_name: "yucca/api RGW admin (per-repository users)"
+ceph_rgw_provisioner_user_access_key: "{{ vault_provisioner_access_key }}"
+ceph_rgw_provisioner_user_secret_key: "{{ vault_provisioner_secret_key }}"
+ceph_rgw_provisioner_user_caps: "users=*"
+
+# Migrator RGW admin: bucket ops only, for `yuctl repos migrate-storage-credentials`.
+# Keys are TF-minted (SIETCH_MIGRATOR_*) and read from 1Password by the operator —
+# deliberately never mounted into the cluster, unlike the provisioner.
+ceph_rgw_migrator_user_uid: yucca-migrator
+ceph_rgw_migrator_user_display_name: "yucca/migration RGW admin (bucket ops)"
+ceph_rgw_migrator_user_access_key: "{{ vault_migrator_access_key }}"
+ceph_rgw_migrator_user_secret_key: "{{ vault_migrator_secret_key }}"
+ceph_rgw_migrator_user_caps: "buckets=*"
+
 # --- RGW DNS + TLS ---
 # Virtual-hosted S3 support: setting rgw_dns_name tells RGW to strip this
 # suffix from the Host header and treat the remainder as the bucket name.
