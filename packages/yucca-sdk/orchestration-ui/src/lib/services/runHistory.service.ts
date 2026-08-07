@@ -15,14 +15,15 @@ export const runKeys = {
   byId: (id: string) => ['run', id] as const,
 };
 
-export const useRunHistory = (repositoryId: string) =>
+export const useRunHistory = (repositoryId: () => string | undefined) =>
   createQuery(
     () => ({
-      queryKey: runHistoryKeys.byRepository(repositoryId),
+      queryKey: runHistoryKeys.byRepository(repositoryId() ?? ''),
       queryFn: () =>
-        getRunHistory(repositoryId).then(({ runs }) =>
+        getRunHistory(repositoryId()!).then(({ runs }) =>
           runs.toSorted((a, b) => b.start.localeCompare(a.start)),
         ),
+      enabled: repositoryId() !== undefined,
     }),
     () => queryClient,
   );

@@ -21,8 +21,7 @@
 
   let { repository, pageSize = 10 }: Props = $props();
 
-  // svelte-ignore state_referenced_locally
-  const query = useRunHistory(repository.id);
+  const query = useRunHistory(() => repository.id);
   const { onRunCreate, onRunUpdate } = useRunEventHandler();
 
   let search = $state("");
@@ -101,7 +100,9 @@
       ),
   );
 
-  const pageCount = $derived(Math.max(Math.ceil(filtered.length / pageSize), 1));
+  const pageCount = $derived(
+    Math.max(Math.ceil(filtered.length / pageSize), 1),
+  );
   const current = $derived(Math.min(page, pageCount));
   const visible = $derived(
     filtered.slice((current - 1) * pageSize, current * pageSize),

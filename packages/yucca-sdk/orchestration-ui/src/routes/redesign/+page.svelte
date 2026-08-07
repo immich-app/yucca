@@ -2,6 +2,8 @@
   import BackupStatus, {
     type BackupStatusState,
   } from "$lib/components/backups/BackupStatus.svelte";
+  import ImmichBackupsCard from "$lib/components/integrations/immich/ImmichBackupsCard.svelte";
+  import ImmichBackupsNavButton from "$lib/components/integrations/immich/ImmichBackupsNavButton.svelte";
   import ImmichSettingsBackupContents from "$lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte";
   import ImmichSettingsSchedule from "$lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte";
   import ImmichSettingsStorage from "$lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte";
@@ -16,9 +18,12 @@
   import UpsellProtectImmichLibrary from "$lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte";
   import SettingsBilling from "$lib/components/settings/SettingsBilling.svelte";
   import SettingsNotifications from "$lib/components/settings/SettingsNotifications.svelte";
+  import MockImmichHideBackupsReminder from "$lib/components/test/immich/MockImmichHideBackupsReminder.svelte";
+  import MockImmichSidebar from "$lib/components/test/immich/MockImmichSidebar.svelte";
+  import MockPagination from "$lib/components/ui/Pagination.svelte";
   import StackList from "$lib/components/ui/StackList.svelte";
-  import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
+  import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
   import {
     Badge,
     Button,
@@ -32,7 +37,6 @@
     Input,
     Link,
     Stack,
-    Text,
     type ActionItem,
   } from "@immich/ui";
   import {
@@ -51,11 +55,7 @@
   } from "@mdi/js";
   import { onDestroy, onMount } from "svelte";
   import FakeModal from "../../test-mocks/FakeModal.svelte";
-  import ImmichBackupsCard from "$lib/components/integrations/immich/ImmichBackupsCard.svelte";
-  import ImmichBackupsNavButton from "$lib/components/integrations/immich/ImmichBackupsNavButton.svelte";
   import MockImmichSettingsMenu from "../../test-mocks/immich/MockImmichSettingsMenu.svelte";
-  import MockImmichSidebar from "../../test-mocks/immich/MockImmichSidebar.svelte";
-  import MockPagination from "$lib/components/ui/Pagination.svelte";
 
   let demoState = $state<BackupStatusState>("running");
   let demoProgress = $state(0);
@@ -146,6 +146,10 @@
   ];
 </script>
 
+{#snippet hideReminder()}
+  <MockImmichHideBackupsReminder />
+{/snippet}
+
 <div class="p-8 flex flex-col gap-8">
   <Heading size="giant">individual previews for the new ui components</Heading>
 
@@ -166,16 +170,9 @@
 
   <hr />
 
-  <Heading>Immich Sidebar Card - Setup incomplete</Heading>
+  <Heading>Immich Sidebar Card - Not backed up</Heading>
   <MockImmichSidebar>
     <ImmichBackupsCard configured={false} onclick={() => void 0} />
-  </MockImmichSidebar>
-
-  <hr />
-
-  <Heading>Immich Sidebar Card - No backups yet</Heading>
-  <MockImmichSidebar>
-    <ImmichBackupsCard configured onclick={() => void 0} />
   </MockImmichSidebar>
 
   <hr />
@@ -185,9 +182,39 @@
     <ImmichBackupsCard
       configured
       lastBackup={twoHoursAgo}
-      sizeBytes={107_374_182_400}
       onclick={() => void 0}
     />
+  </MockImmichSidebar>
+
+  <hr />
+
+  <Heading>Immich Sidebar Card - Backups paused</Heading>
+  <MockImmichSidebar>
+    <ImmichBackupsCard
+      configured
+      paused
+      lastBackup={twoHoursAgo}
+      onclick={() => void 0}
+    />
+  </MockImmichSidebar>
+
+  <hr />
+
+  <Heading>Immich Sidebar Card - Backup running</Heading>
+  <MockImmichSidebar>
+    <ImmichBackupsCard
+      configured
+      running
+      lastBackup={twoHoursAgo}
+      onclick={() => void 0}
+    />
+  </MockImmichSidebar>
+
+  <hr />
+
+  <Heading>Immich Sidebar Card - Setup unfinished</Heading>
+  <MockImmichSidebar>
+    <ImmichBackupsCard configured onclick={() => void 0} />
   </MockImmichSidebar>
 
   <hr />
@@ -198,7 +225,6 @@
       configured
       failed
       lastBackup={twoHoursAgo}
-      sizeBytes={107_374_182_400}
       onclick={() => void 0}
     />
   </MockImmichSidebar>
@@ -243,7 +269,15 @@
       </Card>
 
       <UpsellBackupFeatures />
-      <UpsellFrequentlyAskedQuestions questions={sampleQuestions} />
+      <UpsellFrequentlyAskedQuestions
+        questions={[
+          {
+            title: "Already back up your library elsewhere?",
+            answer: hideReminder,
+          },
+          ...sampleQuestions,
+        ]}
+      />
     </Stack>
   </Container>
 

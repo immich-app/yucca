@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Card, CardBody, Container, HStack, Stack } from "@immich/ui";
+  import type { Snippet } from "svelte";
   import UpsellBackupFeaturesGrid from "./UpsellBackupFeaturesGrid.svelte";
   import UpsellExplainFutoBackups from "./UpsellExplainFutoBackups.svelte";
   import UpsellFrequentlyAskedQuestions from "./UpsellFrequentlyAskedQuestions.svelte";
@@ -7,7 +8,7 @@
 
   type Question = {
     title: string;
-    answer: string;
+    answer: string | Snippet;
   };
 
   type Props = {

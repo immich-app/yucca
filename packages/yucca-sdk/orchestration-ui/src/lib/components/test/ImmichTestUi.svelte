@@ -6,14 +6,12 @@
     AppShellSidebar,
     Avatar,
     Button,
-    HStack,
     IconButton,
     Input,
     Logo,
     NavbarGroup,
     NavbarItem,
     Stack,
-    Text,
     ThemeSwitcher,
   } from "@immich/ui";
   import {
@@ -39,12 +37,15 @@
   import { options } from "$lib/options";
   import { onDestroy } from "svelte";
   import ImmichBackupsNavButton from "../integrations/immich/ImmichBackupsNavButton.svelte";
+  import ImmichBackupsCard from "../integrations/immich/ImmichBackupsCard.svelte";
   import MockImmichPhotos from "./immich/MockImmichPhotos.svelte";
+  import MockImmichServerStatus from "./immich/MockImmichServerStatus.svelte";
   import MockImmichPurchaseInfo from "./immich/MockImmichPurchaseInfo.svelte";
   import MockImmichStorageSpace from "./immich/MockImmichStorageSpace.svelte";
   import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
   import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
   import OnEvents from "../util/OnEvents.svelte";
+  import MockImmichHideBackupsReminder from "./immich/MockImmichHideBackupsReminder.svelte";
   import {
     useIntegrationEventHandler,
     useIntegrations,
@@ -62,6 +63,7 @@
   const integrations = useIntegrations();
   const { onIntegrationUpdate } = useIntegrationEventHandler();
   const configured = $derived(Boolean(integrations.data?.immichIntegration));
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
   const sampleQuestions = [
     {
@@ -86,6 +88,10 @@
 </script>
 
 <OnEvents {onIntegrationUpdate} />
+
+{#snippet hideReminder()}
+  <MockImmichHideBackupsReminder />
+{/snippet}
 
 <AppShell class="h-full">
   <AppShellHeader>
@@ -253,17 +259,19 @@
       {/if}
 
       <Stack gap={4} class="mt-auto p-4">
-        <MockImmichStorageSpace onBackups={() => (route = "settings")} />
+        <MockImmichStorageSpace>
+          <ImmichBackupsCard
+            {configured}
+            lastBackup={configured ? twoHoursAgo : undefined}
+            onclick={() => (route = "settings")}
+          />
+        </MockImmichStorageSpace>
 
         {#if route !== "settings"}
           <MockImmichPurchaseInfo />
         {/if}
 
-        <HStack gap={2}>
-          <span class="bg-success size-2 rounded-full"></span>
-          <Text size="small" class="flex-1">Server Online</Text>
-          <Text size="small" color="muted">v3.0.3</Text>
-        </HStack>
+        <MockImmichServerStatus />
       </Stack>
     </div>
   </AppShellSidebar>
@@ -277,7 +285,13 @@
     <ImmichBackupsPage
       price="$1"
       includedStorage="50 GB"
-      questions={sampleQuestions}
+      questions={[
+        {
+          title: "Already back up your library elsewhere?",
+          answer: hideReminder,
+        },
+        ...sampleQuestions,
+      ]}
     />
   {:else}
     <MockImmichPhotos />

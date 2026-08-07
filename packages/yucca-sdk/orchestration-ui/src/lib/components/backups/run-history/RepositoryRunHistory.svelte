@@ -1,8 +1,8 @@
 <script lang="ts">
   import StackList from "$lib/components/ui/StackList.svelte";
   import StackListPlaceholder from "$lib/components/ui/StackListPlaceholder.svelte";
-  import Suspense from "$lib/components/util/Suspense.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
+  import Suspense from "$lib/components/util/Suspense.svelte";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import {
     useRunEventHandler,
@@ -19,8 +19,7 @@
 
   let { repository, limit = 5, onViewAll }: Props = $props();
 
-  // svelte-ignore state_referenced_locally
-  const query = useRunHistory(repository.id);
+  const query = useRunHistory(() => repository.id);
   const { onRunCreate, onRunUpdate } = useRunEventHandler();
 </script>
 

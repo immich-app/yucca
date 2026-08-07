@@ -47,15 +47,15 @@ FROM ${ALPINE_IMAGE}
 
 WORKDIR /app
 
-RUN apk add --no-cache libstdc++ dumb-init \
+RUN apk add --no-cache libstdc++ dumb-init su-exec \
     && addgroup -g 1000 node && adduser -u 1000 -G node -s /bin/sh -D node
 
 COPY --from=builder /usr/local/bin/node /usr/local/bin/
 COPY --from=tools /usr/local/bin/restic /usr/local/bin/
 COPY --from=builder /deploy ./
+COPY --chmod=0755 packages/standalone-app/docker-entrypoint.sh /usr/local/bin/
 
 RUN mkdir -p /data && chown node:node /data /app
-USER node
 VOLUME /data
 
 ENV NODE_ENV="production"
@@ -68,5 +68,5 @@ EXPOSE 22676
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
     CMD wget -q --spider "http://127.0.0.1:${PORT}/" || exit 1
 
-ENTRYPOINT ["dumb-init", "--"]
+ENTRYPOINT ["dumb-init", "--", "docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]
