@@ -44,3 +44,17 @@ spec:
     daemonHealth:
       mon:
         interval: 45s
+      # Bootstrap is a serial chain — mon, then mgr, then OSD, then the object
+      # store — and the operator only advances it when a status check observes
+      # the previous daemon up. At the 60s default that polling dominates.
+      status:
+        interval: {{ .Values.probes.statusInterval }}
+    # These daemons come up in a couple of seconds, but Rook's default probe
+    # waits 10s and then polls every 10s, so each one rounds up to ~20s of
+    # nothing. Finer granularity, same total budget — see values.yaml.
+    startupProbe:
+{{- range $daemon, $probe := .Values.probes.startup }}
+      {{ $daemon }}:
+        probe:
+{{ toYaml $probe | indent 10 }}
+{{- end }}

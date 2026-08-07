@@ -17,7 +17,7 @@ describe('AuthController (e2e)', () => {
   let user: { id: string; name: string; email: string; sub: string };
   let session: { id: string; accessToken: string };
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports,
       controllers,
@@ -33,7 +33,13 @@ describe('AuthController (e2e)', () => {
     await app.init();
 
     auth = await moduleFixture.resolve(AuthService);
+  });
 
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(async () => {
     await testUtils.resetDatabase();
     ({ user, session } = await testUtils.createUser());
   });

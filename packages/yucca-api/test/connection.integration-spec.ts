@@ -15,7 +15,7 @@ describe('ConnectionController (e2e)', () => {
 
   const cookie = () => `yucca-access-token=${session.accessToken}`;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports,
       controllers,
@@ -29,13 +29,15 @@ describe('ConnectionController (e2e)', () => {
     app.setGlobalPrefix('/api');
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
-
-    await testUtils.resetDatabase();
-    ({ user, session, connection } = await testUtils.createUser());
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
+  });
+
+  beforeEach(async () => {
+    await testUtils.resetDatabase();
+    ({ user, session, connection } = await testUtils.createUser());
   });
 
   describe('GET /connections', () => {

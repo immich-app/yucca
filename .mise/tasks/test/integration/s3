@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#MISE description="Run the S3-backed integration tests against the k3d stack's Ceph RGW"
+#MISE dir="{{config_root}}"
+# The other half of `mise test:integration:k3d`: the suites needing object
+# storage rather than (or as well as) postgres. They run in the e2e job, where
+# Rook-Ceph is already up — a second Ceph in the integration job cost more than
+# that job's whole suite.
+#
+# yucca-metrics-worker's RadosGW suite needs the admin ops API, which only Ceph
+# has; it skipped silently on every run before this.
+#
+# Prereq: mise k3d:up && mise tilt:ci-e2e
+set -euo pipefail
+
+[ "$(kubectl config current-context)" = "k3d-yucca" ] || {
+  echo "Not on k3d-yucca. Run: mise k3d:up && mise tilt:ci-e2e" >&2; exit 1; }
+
+PF_PIDS=()
+cleanup() {
+  for p in "${PF_PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done
+}
+trap cleanup EXIT
+
+wait_for() {
+  local desc="$1"; shift
+  for _ in $(seq 1 150); do "$@" >/dev/null 2>&1 && return 0; sleep 2; done
+  echo "timed out waiting for $desc" >&2; return 1
+}
+
+echo "==> wait for the Ceph object users and the database"
+wait_for "michael S3 user" kubectl -n yucca get secret rook-ceph-object-user-yucca-michael
+wait_for "metrics S3 user" kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics
+wait_for "CNPG cluster Ready" kubectl -n yucca wait --for=condition=Ready cluster/yucca-db --timeout=5s
+
+echo "==> port-forward the RGW and the database"
+kubectl port-forward -n rook-ceph svc/rook-ceph-rgw-yucca 9000:80    >/tmp/yucca-s3-pf.log 2>&1 & PF_PIDS+=($!)
+kubectl port-forward -n yucca     svc/yucca-db-rw         15432:5432 >>/tmp/yucca-s3-pf.log 2>&1 & PF_PIDS+=($!)
+probe() { (exec 3<>"/dev/tcp/localhost/$1") 2>/dev/null; }
+for port in 9000 15432; do
+  wait_for "localhost:$port" probe "$port"
+done
+
+echo "==> export cluster credentials (the per-package env files only set defaults)"
+POSTGRES_HOST=localhost
+POSTGRES_PORT=15432
+POSTGRES_USERNAME="$(kubectl -n yucca get secret yucca-db-app -o jsonpath='{.data.username}' | base64 -d)"
+POSTGRES_PASSWORD="$(kubectl -n yucca get secret yucca-db-app -o jsonpath='{.data.password}' | base64 -d)"
+POSTGRES_DATABASE="$(kubectl -n yucca get secret yucca-db-app -o jsonpath='{.data.dbname}' | base64 -d)"
+export POSTGRES_HOST POSTGRES_PORT POSTGRES_USERNAME POSTGRES_PASSWORD POSTGRES_DATABASE
+
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY_ID="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-michael -o jsonpath='{.data.AccessKey}' | base64 -d)"
+S3_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-michael -o jsonpath='{.data.SecretKey}' | base64 -d)"
+S3_REGION=us-east-1
+S3_FORCE_PATH_STYLE=true
+export S3_ENDPOINT S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_REGION S3_FORCE_PATH_STYLE
+
+RADOS_ENDPOINT=http://localhost:9000
+RADOS_ACCESS_KEY_ID="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.AccessKey}' | base64 -d)"
+RADOS_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.SecretKey}' | base64 -d)"
+export RADOS_ENDPOINT RADOS_ACCESS_KEY_ID RADOS_SECRET_ACCESS_KEY
+
+echo "==> run the S3-backed integration suites"
+# Concurrent: each scopes itself to freshly generated repository/bucket names.
+mise run michael:test:integration ::: restic-api:test:integration ::: yucca-metrics-worker:test:integration

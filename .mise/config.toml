@@ -52,7 +52,9 @@ depends = ["*:test"]
 description = "Run all integration tests"
 # NB: mise flags must precede the task pattern — anything after it is forwarded
 # to the tasks themselves (jest/go test choke on a stray --jobs).
-run = "mise run --jobs 1 '*:test:integration'"
+# Both depths: `*` does not cross `:`, so the first pattern alone silently
+# skipped yucca-sdk:orchestration-api:test:integration.
+run = "mise run --jobs 1 '*:test:integration' ::: '*:*:test:integration'"
 
 [tasks."test:e2e:web"]
 description = "Run all web e2e tests"

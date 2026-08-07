@@ -13,7 +13,7 @@ describe('MetricsController (e2e)', () => {
   let session: { id: string; accessToken: string };
   let repository: { id: string };
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports,
       controllers,
@@ -27,7 +27,13 @@ describe('MetricsController (e2e)', () => {
     app.setGlobalPrefix('/api');
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+  });
 
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(async () => {
     await testUtils.resetDatabase();
     ({ user, session } = await testUtils.createUser());
     repository = await testUtils.createRepository(user.id);

@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-#MISE description="Run all integration tests against the local k3d stack's infra"
+#MISE description="Run the database-backed integration tests against the local k3d stack's infra"
 #MISE dir="{{config_root}}"
 # Kube replacement for the compose-backed `mise docker:start && mise test:integration`:
 # the tests boot the apps on this host but take their infrastructure — postgres
-# (CNPG), S3 (Ceph RGW), the OIDC provider and the victoria pair — from the k3d
-# cluster, port-forwarded to the same localhost ports the compose flow used.
+# (CNPG), the OIDC provider and the victoria pair — from the k3d cluster,
+# port-forwarded to the same localhost ports the compose flow used.
+#
+# The S3-backed suites live in `mise test:integration:s3` instead, against the
+# e2e stack's Ceph RGW — keeping Ceph out of here is what makes this quick.
 #
 # Prereq: mise k3d:up && mise tilt:ci-infra   (apps not required)
 set -euo pipefail
@@ -20,23 +23,21 @@ trap cleanup EXIT
 
 wait_for() {
   local desc="$1"; shift
-  for _ in $(seq 1 60); do "$@" >/dev/null 2>&1 && return 0; sleep 5; done
+  for _ in $(seq 1 150); do "$@" >/dev/null 2>&1 && return 0; sleep 2; done
   echo "timed out waiting for $desc" >&2; return 1
 }
 
-echo "==> wait for infra (tilt ci-infra returns before Rook mints the S3 user)"
+echo "==> wait for infra"
 wait_for "CNPG cluster Ready"  kubectl -n yucca wait --for=condition=Ready cluster/yucca-db --timeout=5s
-wait_for "Ceph S3 user secret" kubectl -n yucca get secret rook-ceph-object-user-yucca-michael
 wait_for "mock-oidc Available" kubectl -n yucca wait --for=condition=Available deploy/yucca-mock-oidc --timeout=5s
 
 echo "==> port-forward infra to the localhost ports the tests expect"
-kubectl port-forward -n yucca     svc/yucca-db-rw          15432:5432 >/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
-kubectl port-forward -n rook-ceph svc/rook-ceph-rgw-yucca  9000:80   >>/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
-kubectl port-forward -n yucca     svc/yucca-mock-oidc      8092:8092 >>/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
-kubectl port-forward -n yucca     svc/victoria-metrics     8428:8428 >>/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
-kubectl port-forward -n yucca     svc/victoria-logs        9428:9428 >>/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
+kubectl port-forward -n yucca svc/yucca-db-rw      15432:5432 >/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
+kubectl port-forward -n yucca svc/yucca-mock-oidc   8092:8092 >>/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
+kubectl port-forward -n yucca svc/victoria-metrics  8428:8428 >>/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
+kubectl port-forward -n yucca svc/victoria-logs     9428:9428 >>/tmp/yucca-int-pf.log 2>&1 & PF_PIDS+=($!)
 probe() { (exec 3<>"/dev/tcp/localhost/$1") 2>/dev/null; }
-for port in 15432 9000 8092; do
+for port in 15432 8092; do
   wait_for "localhost:$port" probe "$port"
 done
 
@@ -48,22 +49,6 @@ POSTGRES_PASSWORD="$(kubectl -n yucca get secret yucca-db-app -o jsonpath='{.dat
 POSTGRES_DATABASE="$(kubectl -n yucca get secret yucca-db-app -o jsonpath='{.data.dbname}' | base64 -d)"
 export POSTGRES_HOST POSTGRES_PORT POSTGRES_USERNAME POSTGRES_PASSWORD POSTGRES_DATABASE
 
-S3_ENDPOINT=http://localhost:9000
-S3_ACCESS_KEY_ID="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-michael -o jsonpath='{.data.AccessKey}' | base64 -d)"
-S3_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-michael -o jsonpath='{.data.SecretKey}' | base64 -d)"
-S3_REGION=us-east-1
-S3_FORCE_PATH_STYLE=true
-export S3_ENDPOINT S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_REGION S3_FORCE_PATH_STYLE
-
-if kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics >/dev/null 2>&1; then
-  RADOS_ENDPOINT=http://localhost:9000
-  RADOS_ACCESS_KEY_ID="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.AccessKey}' | base64 -d)"
-  RADOS_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.SecretKey}' | base64 -d)"
-  export RADOS_ENDPOINT RADOS_ACCESS_KEY_ID RADOS_SECRET_ACCESS_KEY
-else
-  echo "==> rook-ceph-object-user-yucca-metrics not found; RGW integration tests will skip"
-fi
-
 # The deployed mock-oidc advertises its in-cluster name as the issuer; the dns
 # preload resolves it to the port-forward for every node process (jest + the
 # apps it boots). Same split-horizon glue as the e2e runner.
@@ -71,5 +56,10 @@ export OIDC_ISSUER=http://yucca-mock-oidc:8092
 export OIDC_DEVICE_ISSUER=http://yucca-mock-oidc:8092
 export NODE_OPTIONS="--require $PWD/packages/e2e/k3d/hostmap.cjs${NODE_OPTIONS:+ ${NODE_OPTIONS}}"
 
-echo "==> run the integration suites"
-mise run test:integration
+echo "==> run the database-backed integration suites"
+# yucca-api and yucca-admin-api are serial against each other: both reset the
+# same tables between tests. orchestration-api needs no infrastructure at all
+# and rides along here because this is where integration suites are expected to
+# run — the glob in `mise test:integration` had never matched its task name.
+mise run --jobs 1 yucca-api:test:integration ::: yucca-admin-api:test:integration
+mise run yucca-sdk:orchestration-api:test:integration

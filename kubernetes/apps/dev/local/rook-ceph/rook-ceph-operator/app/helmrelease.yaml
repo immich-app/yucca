@@ -21,11 +21,13 @@ spec:
     remediation:
       retries: 3
   values:
-    # DEV footprint: object store only needs the bucket provisioner, not CSI.
-    csi:
-      enableRbdDriver: false
-      enableCephfsDriver: false
-    enableDiscoveryDaemon: true
+    # We use this cluster over S3 (RGW) only, but do NOT set
+    # csi.installCsiOperator: false to trim it — Rook still creates a
+    # CephConnection CR whose CRD ships with that subchart, and mon bootstrap
+    # then fails outright. (The csi.enableRbdDriver/enableCephfsDriver keys that
+    # used to sit here don't exist in the v1.20 chart at all.)
+    # The discovery daemon IS unused: the CephCluster names its OSD explicitly.
+    enableDiscoveryDaemon: false
     monitoring:
       enabled: false
     # The dev cluster's OSD runs on a loopback block device (k3d has no spare

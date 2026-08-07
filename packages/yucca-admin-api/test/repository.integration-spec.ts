@@ -13,7 +13,7 @@ const authCookie = ['yucca-admin-sub=admin', 'yucca-admin-access-token=token'];
 describe('RepositoryController (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports,
       controllers,
@@ -29,7 +29,13 @@ describe('RepositoryController (e2e)', () => {
     app.setGlobalPrefix('/api');
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+  });
 
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(async () => {
     await testUtils.resetDatabase();
   });
 

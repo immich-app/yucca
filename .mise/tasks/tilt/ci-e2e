@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#MISE description="tilt ci for the stack the e2e suites exercise (skips yucca-admin-api + yucca-metrics-worker)"
+#MISE dir="{{config_root}}"
+# Everything `packages/e2e` and the web Playwright run touch, plus the Ceph the
+# S3-backed integration suites need. yucca-admin-api and yucca-metrics-worker
+# are out on purpose: no e2e test speaks to either, and each is a full node image
+# build. yucca-metrics-object-user stays — it mints only a Secret, no pod, and
+# `mise test:integration:s3` reads it.
+set -euo pipefail
+
+if ! kubectl config current-context | grep -q '^k3d-yucca$'; then
+  echo "Current kube context is not k3d-yucca. Run: mise k3d:up" >&2
+  exit 1
+fi
+
+exec tilt ci --timeout 1800s \
+  rook-release-repo helm-deps ceph-image-prepull \
+  cloudnative-pg rook-ceph-operator rook-ceph-cluster \
+  yucca-object-user yucca-metrics-object-user \
+  yucca-database yucca-mock-oidc \
+  yucca-victoria-metrics yucca-victoria-logs \
+  yucca-topology yucca-michael yucca-api yucca-web yucca-meta

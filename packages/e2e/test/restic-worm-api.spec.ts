@@ -1,3 +1,3 @@
 import { describeResticApi } from 'src/restic-api.suite';
 
-describeResticApi('restic API', false);
+describeResticApi('restic WORM API', true);

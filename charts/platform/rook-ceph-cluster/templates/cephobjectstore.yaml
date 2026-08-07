@@ -14,6 +14,15 @@ spec:
       size: 1
       requireSafeReplicaSize: false
   preservePoolsOnDelete: false
+  # Same reasoning as the daemon probes in cephcluster.yaml — the RGW is the
+  # last link in the bootstrap chain and the one the S3 suites wait on.
+  healthCheck:
+    startupProbe:
+      probe:
+{{ toYaml .Values.probes.rgw.startup | indent 8 }}
+    readinessProbe:
+      probe:
+{{ toYaml .Values.probes.rgw.readiness | indent 8 }}
   gateway:
     port: {{ .Values.objectStore.gateway.port }}
     instances: {{ .Values.objectStore.gateway.instances }}
