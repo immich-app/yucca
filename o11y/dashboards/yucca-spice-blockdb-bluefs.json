@@ -36,13 +36,67 @@
         "skipUrlSync": false
       },
       {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "includeAll": true,
+        "label": "Env",
+        "multi": true,
+        "name": "env",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\"}, env)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "includeAll": true,
+        "label": "Provider",
+        "multi": true,
+        "name": "provider",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\", env=~\"$env\"}, provider)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "includeAll": true,
+        "label": "Region",
+        "multi": true,
+        "name": "region",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\", env=~\"$env\", provider=~\"$provider\"}, region)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
         "name": "cluster",
         "type": "query",
         "datasource": {
           "type": "prometheus",
           "uid": "$datasource"
         },
-        "query": "label_values(ceph_health_status, cluster)",
+        "query": "label_values(ceph_health_status{env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)",
         "label": "Cluster",
         "refresh": 1,
         "hide": 0,
