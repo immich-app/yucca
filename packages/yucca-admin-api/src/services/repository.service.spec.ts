@@ -35,11 +35,25 @@ describe(RepositoryService.name, () => {
   let users: { [k: string]: jest.Mock };
   let topology: { [k: string]: jest.Mock };
   let connections: { [k: string]: jest.Mock };
+  let storageCredentials: { [k: string]: jest.Mock };
   let jwt: JwtService;
   let sut: RepositoryService;
 
   beforeEach(() => {
-    repositories = { list: jest.fn(), get: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+    repositories = {
+      list: jest.fn(),
+      get: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      getStorageOwner: jest.fn().mockResolvedValue({
+        id: repositoryRow.id,
+        storageClusterCode: repositoryRow.storageClusterCode,
+        storageAccessKeyId: 'access',
+        storageSecretAccessKey: 'sealed-at-rest',
+      }),
+      setStorageCredentials: jest.fn(),
+    };
     users = { getBySub: jest.fn(), create: jest.fn() };
     topology = {
       getSite: jest.fn().mockReturnValue(site),
@@ -48,8 +62,21 @@ describe(RepositoryService.name, () => {
       hasCluster: jest.fn(),
     };
     connections = { getByUser: jest.fn(), getOrCreateByType: jest.fn().mockResolvedValue({ id: 'connection-id' }) };
+    storageCredentials = {
+      ensure: jest.fn().mockResolvedValue({ accessKeyId: 'access', secretAccessKey: 'secret' }),
+      rotate: jest.fn(),
+      revoke: jest.fn(),
+      seal: jest.fn().mockReturnValue('sealed'),
+    };
     jwt = newJwtService();
-    sut = new RepositoryService(repositories as never, users as never, connections as never, jwt, topology as never);
+    sut = new RepositoryService(
+      repositories as never,
+      users as never,
+      connections as never,
+      jwt,
+      topology as never,
+      storageCredentials as never,
+    );
   });
 
   describe('create', () => {

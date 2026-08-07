@@ -18,6 +18,7 @@ import { DatabaseRepository } from './repositories/database.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
+import { RgwAdminRepository } from './repositories/rgwAdmin.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { SettingsRepository } from './repositories/settings.repository';
 import { StorageRepository } from './repositories/storage.repository';
@@ -31,6 +32,7 @@ import { FeaturesService } from './services/features.service';
 import { RepositoryService } from './services/repository.service';
 import { SessionService } from './services/session.service';
 import { SettingsService } from './services/settings.service';
+import { StorageCredentialService } from './services/storageCredential.service';
 import { TopologyService } from './services/topology.service';
 import { UserService } from './services/user.service';
 import { getKyselyConfig } from './utils/database';
@@ -68,6 +70,7 @@ export const providers = [
   UserAllowlistRepository,
   SessionRepository,
   RepositoryRepository,
+  RgwAdminRepository,
   SettingsRepository,
   StorageRepository,
   TopologyRepository,
@@ -80,6 +83,7 @@ export const providers = [
   SettingsService,
   TopologyService,
   RepositoryService,
+  StorageCredentialService,
   FeaturesService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },

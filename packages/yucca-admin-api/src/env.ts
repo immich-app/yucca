@@ -1,3 +1,4 @@
+import { parseStorageCredentialKeys } from '@common/server';
 import type { StringValue } from 'ms';
 import { z } from 'zod';
 
@@ -29,6 +30,17 @@ const schema = z.object({
     .regex(/^\d+\s*(ms|s|m|h|d|w|y)$/i, 'Expected a duration like "1d", "30m", "3600s"')
     .default('1d')
     .transform((value): StringValue => value as StringValue),
+
+  // First key seals, the rest stay accepted so a rotation is a two-step deploy.
+  // Only the SEAL key is shared with michael.
+  STORAGE_CREDENTIAL_KEY: z.string().transform(parseStorageCredentialKeys),
+  STORAGE_CREDENTIAL_SEAL_KEY: z.string().transform(parseStorageCredentialKeys),
+
+  RADOS_ACCESS_KEY_ID: z.string().optional(),
+  RADOS_SECRET_ACCESS_KEY: z.string().optional(),
+
+  STORAGE_STATIC_ACCESS_KEY_ID: z.string().optional(),
+  STORAGE_STATIC_SECRET_ACCESS_KEY: z.string().optional(),
 
   TOPOLOGY_FILE: z.string().default('./topology.dev.json'),
   LEGACY_SITE_CODE: z.string(),

@@ -6,6 +6,8 @@ import {
   RepositoryGetResponseDto,
   RepositoryListQueryDto,
   RepositoryListResponseDto,
+  RepositoryStorageCredentialsRequestDto,
+  RepositoryStorageCredentialsResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
   RepositoryUrlResponseDto,
@@ -43,6 +45,16 @@ export class RepositoryController {
   @ApiOkResponse({ type: RepositoryUrlResponseDto })
   repositoryUrl(@Param('id') id: string): Promise<RepositoryUrlResponseDto> {
     return this.repository.url(id);
+  }
+
+  @Post('/:id/storage-credentials')
+  @AuthRoute()
+  @ApiOkResponse({ type: RepositoryStorageCredentialsResponseDto })
+  repositoryStorageCredentials(
+    @Param('id') id: string,
+    @Body() dto: RepositoryStorageCredentialsRequestDto,
+  ): Promise<RepositoryStorageCredentialsResponseDto> {
+    return this.repository.provisionStorageCredentials(id, dto);
   }
 
   @Patch('/:id')
