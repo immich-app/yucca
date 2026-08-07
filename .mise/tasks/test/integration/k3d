@@ -27,6 +27,7 @@ wait_for() {
 echo "==> wait for infra (tilt ci-infra returns before Rook mints the S3 user)"
 wait_for "CNPG cluster Ready"  kubectl -n yucca wait --for=condition=Ready cluster/yucca-db --timeout=5s
 wait_for "Ceph S3 user secret" kubectl -n yucca get secret rook-ceph-object-user-yucca-michael
+wait_for "Ceph provisioner secret" kubectl -n yucca get secret rook-ceph-object-user-yucca-provisioner
 wait_for "mock-oidc Available" kubectl -n yucca wait --for=condition=Available deploy/yucca-mock-oidc --timeout=5s
 
 echo "==> port-forward infra to the localhost ports the tests expect"
@@ -55,13 +56,24 @@ S3_REGION=us-east-1
 S3_FORCE_PATH_STYLE=true
 export S3_ENDPOINT S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_REGION S3_FORCE_PATH_STYLE
 
-if kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics >/dev/null 2>&1; then
+# RADOS_* is the RGW admin credential. Prefer the provisioner user (users+buckets
+# caps — what yucca-api creates per-repository S3 users with, and a superset of
+# the read caps the metrics worker's suite needs); fall back to the metrics user.
+RADOS_SECRET_NAME=""
+for candidate in rook-ceph-object-user-yucca-provisioner rook-ceph-object-user-yucca-metrics; do
+  if kubectl -n yucca get secret "$candidate" >/dev/null 2>&1; then
+    RADOS_SECRET_NAME="$candidate"
+    break
+  fi
+done
+if [ -n "$RADOS_SECRET_NAME" ]; then
+  echo "==> RGW admin credential: $RADOS_SECRET_NAME"
   RADOS_ENDPOINT=http://localhost:9000
-  RADOS_ACCESS_KEY_ID="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.AccessKey}' | base64 -d)"
-  RADOS_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret rook-ceph-object-user-yucca-metrics -o jsonpath='{.data.SecretKey}' | base64 -d)"
+  RADOS_ACCESS_KEY_ID="$(kubectl -n yucca get secret "$RADOS_SECRET_NAME" -o jsonpath='{.data.AccessKey}' | base64 -d)"
+  RADOS_SECRET_ACCESS_KEY="$(kubectl -n yucca get secret "$RADOS_SECRET_NAME" -o jsonpath='{.data.SecretKey}' | base64 -d)"
   export RADOS_ENDPOINT RADOS_ACCESS_KEY_ID RADOS_SECRET_ACCESS_KEY
 else
-  echo "==> rook-ceph-object-user-yucca-metrics not found; RGW integration tests will skip"
+  echo "==> no RGW admin object-user secret found; RGW integration tests will skip"
 fi
 
 # The deployed mock-oidc advertises its in-cluster name as the issuer; the dns

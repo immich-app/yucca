@@ -1,9 +1,11 @@
+import { openStorageCredentials } from '@common/server';
 import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { controllers, imports, providers } from '../src/app.module';
+import { env } from '../src/env';
 import { newMetricServiceMock } from './mocks';
 import { testUtils } from './testUtils';
 
@@ -156,6 +158,27 @@ describe('RepositoryController (e2e)', () => {
         writeOnce: false,
         connection: 'immich',
       });
+    });
+
+    // Without this claim michael 401s every request for the repository.
+    it('carries the repository storage credentials, sealed', async () => {
+      const { body } = await request(app.getHttpServer())
+        .post(`/api/repository/${repository.id}/restic`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(201);
+
+      const token = new URL((body.url as string).slice('rest:'.length)).password;
+      const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()) as Record<string, unknown>;
+
+      const sealed = claims.storageCredentials as string;
+      expect(sealed).toEqual(expect.any(String));
+      expect(openStorageCredentials(env.STORAGE_CREDENTIAL_SEAL_KEY, repository.id, sealed)).toEqual({
+        accessKeyId: expect.any(String),
+        secretAccessKey: expect.any(String),
+      });
+      expect(() =>
+        openStorageCredentials(env.STORAGE_CREDENTIAL_SEAL_KEY, '00000000-0000-0000-0000-000000000000', sealed),
+      ).toThrow();
     });
   });
 

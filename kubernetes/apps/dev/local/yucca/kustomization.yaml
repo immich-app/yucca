@@ -6,6 +6,7 @@ resources:
   - ./database/ks.yaml
   - ./object-user/ks.yaml
   - ./metrics-object-user/ks.yaml
+  - ./provisioner-object-user/ks.yaml
   - ./mock-oidc/ks.yaml
   - ./victoria-metrics/ks.yaml
   - ./victoria-logs/ks.yaml

@@ -15,8 +15,10 @@ const storageClusterSchema = z
         endpoint: z.url(),
         region: z.string().min(1).default('us-east-1'),
         force_path_style: z.boolean().default(true),
-        access_key_env: envNameSchema,
-        secret_key_env: envNameSchema,
+        // Accepted but unread: michael takes its credentials from the token
+        // now, so nothing resolves these environment variable names.
+        access_key_env: envNameSchema.optional(),
+        secret_key_env: envNameSchema.optional(),
         backend_source: z.enum(['file', 'dns']).optional(),
         backend_file: z.string().min(1).optional(),
         backend_dns_host: z.string().min(1).optional(),
@@ -150,6 +152,17 @@ export class TopologyRepository {
 
   hasCluster(code: string): boolean {
     return this.get().sites.some((site) => site.clusters.some((cluster) => cluster.code === code));
+  }
+
+  getCluster(code: string): TopologyStorageCluster {
+    for (const site of this.get().sites) {
+      const cluster = site.clusters.find((cluster) => cluster.code === code);
+      if (cluster) {
+        return cluster;
+      }
+    }
+
+    throw new BadRequestException(`Unknown storage cluster '${code}'`);
   }
 
   getActiveCluster(site: TopologySite): TopologyStorageCluster {

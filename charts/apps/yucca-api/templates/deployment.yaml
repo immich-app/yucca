@@ -2,6 +2,8 @@
   (dict "name" "OIDC_ISSUER" "value" .Values.oidcIssuer)
   (dict "name" "OIDC_REDIRECT_URI" "value" .Values.oidcRedirectUri)
   (dict "name" "OIDC_LOGOUT_REDIRECT_URI" "value" .Values.oidcLogoutRedirectUri)
+  (dict "name" "RADOS_ACCESS_KEY_ID" "valueFrom" (dict "secretKeyRef" (dict "name" .Values.radosSecretName "key" "AccessKey")))
+  (dict "name" "RADOS_SECRET_ACCESS_KEY" "valueFrom" (dict "secretKeyRef" (dict "name" .Values.radosSecretName "key" "SecretKey")))
   (dict "name" "POSTGRES_HOST" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "host")))
   (dict "name" "POSTGRES_PORT" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "port")))
   (dict "name" "POSTGRES_DATABASE" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "dbname")))
@@ -11,7 +13,9 @@
 {{- /* extraEnvFrom comes after the chart secret: for duplicate keys Kubernetes
 takes the LAST envFrom source, so these act as overrides. */}}
 {{- $_ := set .Values "envFrom" (concat
-  (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .))))
+  (list
+    (dict "secretRef" (dict "name" (include "yucca-common.fullname" .)))
+    (dict "secretRef" (dict "name" .Values.radosSecretName)))
   (.Values.extraEnvFrom | default (list))) }}
 {{- $topology := (lookup "v1" "ConfigMap" .Release.Namespace "yucca-topology") | default dict }}
 {{- $topologyData := (get $topology "data") | default dict }}

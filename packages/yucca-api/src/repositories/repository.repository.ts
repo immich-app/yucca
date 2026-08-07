@@ -13,6 +13,18 @@ const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetri
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   }).as('metrics');
 
+// Every read outside StorageCredentialService goes through this list: a
+// selectAll() would put the sealed secret straight into a JSON response.
+const columns = [
+  'repositories.id',
+  'repositories.userId',
+  'repositories.worm',
+  'repositories.name',
+  'repositories.siteCode',
+  'repositories.storageClusterCode',
+  'repositories.connectionId',
+] as const;
+
 const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)),
@@ -36,7 +48,7 @@ export class RepositoryRepository {
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
       .where('repositories.id', '=', id)
-      .selectAll('repositories')
+      .select(columns)
       .select('connections.type as connectionType')
       .select(metricsJson)
       .select(meterJson)
@@ -50,7 +62,7 @@ export class RepositoryRepository {
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
       .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
       .where('repositories.userId', '=', userId)
-      .selectAll('repositories')
+      .select(columns)
       .select('connections.type as connectionType')
       .select(metricsJson)
       .select(meterJson)
@@ -67,7 +79,22 @@ export class RepositoryRepository {
   }
 
   getByIds(ids: string[]) {
-    return this.db.selectFrom('repositories').selectAll().where('id', 'in', ids).execute();
+    return this.db.selectFrom('repositories').select(columns).where('repositories.id', 'in', ids).execute();
+  }
+
+  getStorageOwner(id: string) {
+    return this.db
+      .selectFrom('repositories')
+      .select(['id', 'storageClusterCode', 'storageAccessKeyId', 'storageSecretAccessKey'])
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow();
+  }
+
+  async setStorageCredentials(
+    id: string,
+    credentials: Pick<RepositoryTable, 'storageAccessKeyId' | 'storageSecretAccessKey'>,
+  ) {
+    await this.db.updateTable('repositories').where('id', '=', id).set(credentials).execute();
   }
 
   async reparent(ids: string[], connectionId: string) {

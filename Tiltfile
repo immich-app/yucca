@@ -272,14 +272,16 @@ APP_WIRING = {
     # dev_env: receives the .env override Secret (see load_dev_env above).
     # dev_keypair: render the well-known dev JWT fixture into the chart Secret
     # (the chart default is useDevKeypair=false so real overlays fail loudly).
-    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
-    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_keypair': True},
+    'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-michael', 'yucca-topology', 'yucca-provisioner-object-user'], 'dev_env': True, 'dev_keypair': True},
+    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology', 'yucca-provisioner-object-user'], 'dev_keypair': True},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user', 'yucca-topology'], 'dev_env': True},
     'yucca-web':              {'build': 'web',                'deps': ['yucca-api']},
     # Stock upstream nginx serving the .well-known pointer — nothing to build,
     # nothing to wait for (it's a static file, deliberately independent of the
     # API whose URL it advertises).
     'yucca-meta':             {'build': None,                 'deps': []},
+    # yucca-object-user is no longer michael's credential — it owns the buckets
+    # created before per-repository users, and the e2e harness signs with it.
     'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user'], 'dev_keypair': True},
     'yucca-mock-oidc':        {'build': 'mock-oidc-provider', 'deps': []},
     'yucca-database':         {'build': None,                 'deps': ['cloudnative-pg']},
@@ -291,6 +293,9 @@ APP_WIRING = {
     # come from the HelmRelease values, so dev must apply them (dev_values) or
     # both releases would default to userName=michael and collide.
     'yucca-metrics-object-user': {'build': None,              'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore', 'dev_values': True},
+    # The RGW admin the APIs create per-repository S3 users with. Same chart,
+    # so its userName/caps also have to come from the HelmRelease values.
+    'yucca-provisioner-object-user': {'build': None,          'deps': ['rook-ceph-cluster'], 'pod_readiness': 'ignore', 'dev_values': True},
     # Rook spins up transient mon/osd "canary" pods and deletes them; Tilt's
     # pod tracking misreads those deletions as failures. Ignore pod readiness
     # here — real convergence is still gated downstream (object-user -> michael

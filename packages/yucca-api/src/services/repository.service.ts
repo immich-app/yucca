@@ -6,6 +6,7 @@ import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
+import { StorageCredentialService } from 'src/services/storageCredential.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RepositoryService {
@@ -15,6 +16,7 @@ export class RepositoryService {
     private readonly wideContext: WideContextRepository,
     private readonly connection: ConnectionRepository,
     private readonly topology: TopologyRepository,
+    private readonly storageCredentials: StorageCredentialService,
   ) {}
 
   async create(auth: AuthDto, { site: siteCode, ...dto }: RepositoryCreateRequestDto) {
@@ -27,13 +29,24 @@ export class RepositoryService {
       connectionId = connection.id;
     }
 
-    return this.repositoryRepository.create({
+    const repository = await this.repositoryRepository.create({
       userId: auth.id,
       connectionId,
       ...dto,
       siteCode: site.code,
       storageClusterCode: cluster.code,
     });
+
+    // Eager, so a storage cluster that cannot issue an identity fails the
+    // create rather than the first backup.
+    await this.storageCredentials.ensure({
+      id: repository.id,
+      storageClusterCode: repository.storageClusterCode,
+      storageAccessKeyId: null,
+      storageSecretAccessKey: null,
+    });
+
+    return repository;
   }
 
   async get(auth: AuthDto, id: string) {
@@ -64,12 +77,16 @@ export class RepositoryService {
 
     const site = this.topology.getSite(repository.siteCode);
 
+    const owner = await this.repositoryRepository.getStorageOwner(repository.id);
+    const credentials = await this.storageCredentials.ensure(owner);
+
     const token = await this.jwt.signAsync({
       user: auth.id,
       repository: repository.id,
       writeOnce: repository.worm,
       storageCluster: repository.storageClusterCode,
       connection: repository.connectionType,
+      storageCredentials: this.storageCredentials.seal(repository.id, credentials),
     });
 
     this.wideContext.addContext('repositoryId', repository.id);
@@ -88,6 +105,7 @@ export class RepositoryService {
       throw new BadRequestException('Refusing to delete write-only repository');
     }
 
+    await this.storageCredentials.revoke(await this.repositoryRepository.getStorageOwner(id));
     await this.repositoryRepository.delete(id);
   }
 }
