@@ -44,7 +44,7 @@ export const newSessionRepositoryMock = (): jest.Mocked<RepositoryInterface<Sess
 
 export const newUserRepositoryMock = (): jest.Mocked<RepositoryInterface<UserRepository>> => {
   return {
-    create: jest.fn(),
+    upsertBySub: jest.fn(),
     getByAccessToken: jest.fn(),
     getBySub: jest.fn(),
     getFeatureOverrides: jest.fn().mockResolvedValue([]),

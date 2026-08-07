@@ -216,7 +216,7 @@ describe(AuthService.name, () => {
 
       env.ALLOWED_EMAIL_DOMAINS = ['example.test'];
       mocks.user.getBySub.mockResolvedValue(void 0);
-      mocks.user.create.mockResolvedValue(mockUser);
+      mocks.user.upsertBySub.mockResolvedValue(mockUser);
       mocks.oidc.callback.mockResolvedValue(claims as never);
       mocks.crypto.randomHex.mockReturnValue(accessToken as never);
 
@@ -378,7 +378,7 @@ describe(AuthService.name, () => {
 
     beforeEach(() => {
       mocks.user.getBySub.mockResolvedValue(void 0);
-      mocks.user.create.mockResolvedValue(mockUser);
+      mocks.user.upsertBySub.mockResolvedValue(mockUser);
     });
 
     it('should allow a new user whose email domain is allowed', async () => {
@@ -387,7 +387,16 @@ describe(AuthService.name, () => {
       await expect(sut.getOrCreateUser(claims)).resolves.toBe(mockUser);
 
       expect(mocks.userAllowlist.getByEmail).not.toHaveBeenCalled();
-      expect(mocks.user.create).toHaveBeenCalledWith({ sub: claims.sub, name: claims.name, email: claims.email });
+      expect(mocks.user.upsertBySub).toHaveBeenCalledWith({ sub: claims.sub, name: claims.name, email: claims.email });
+    });
+
+    it('should reject when a concurrent sign-in resolves to a disabled account', async () => {
+      env.ALLOWED_EMAIL_DOMAINS = ['example.com'];
+      mocks.user.upsertBySub.mockResolvedValue({ ...mockUser, disabled: true });
+
+      await expect(sut.getOrCreateUser(claims)).rejects.toThrowErrorMatchingInlineSnapshot(`"Account is disabled"`);
+
+      expect(mocks.connection.getOrCreateDefault).not.toHaveBeenCalled();
     });
 
     it('should allow a new user with an invited allowlist entry and mark it used', async () => {
@@ -413,7 +422,7 @@ describe(AuthService.name, () => {
       await expect(sut.getOrCreateUser(claims)).rejects.toThrowErrorMatchingInlineSnapshot(
         `"Email is not allowed during the beta"`,
       );
-      expect(mocks.user.create).not.toHaveBeenCalled();
+      expect(mocks.user.upsertBySub).not.toHaveBeenCalled();
     });
 
     it('should allow a new user with a valid invite code and mark it used', async () => {
@@ -432,14 +441,14 @@ describe(AuthService.name, () => {
         `"Email is not allowed during the beta"`,
       );
       expect(mocks.userAllowlist.markUsed).not.toHaveBeenCalled();
-      expect(mocks.user.create).not.toHaveBeenCalled();
+      expect(mocks.user.upsertBySub).not.toHaveBeenCalled();
     });
 
     it('should reject a new user with no allowlist match', async () => {
       await expect(sut.getOrCreateUser(claims)).rejects.toThrowErrorMatchingInlineSnapshot(
         `"Email is not allowed during the beta"`,
       );
-      expect(mocks.user.create).not.toHaveBeenCalled();
+      expect(mocks.user.upsertBySub).not.toHaveBeenCalled();
     });
 
     it('should let an existing user log in regardless of the allowlist', async () => {

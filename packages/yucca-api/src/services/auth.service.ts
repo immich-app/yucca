@@ -143,11 +143,15 @@ export class AuthService {
     } else {
       await this.assertEmailAllowed(claims.email.toLowerCase(), inviteCode);
 
-      user = await this.user.create({
+      user = await this.user.upsertBySub({
         sub: claims.sub,
         name: claims.name,
         email: claims.email,
       });
+
+      if (user.disabled) {
+        throw new UnauthorizedException('Account is disabled');
+      }
 
       await this.connection.getOrCreateDefault(user.id);
     }

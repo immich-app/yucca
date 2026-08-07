@@ -9,8 +9,13 @@ import { UserTable } from 'src/schema/tables/user.table';
 export class UserRepository {
   constructor(@InjectKysely() private db: Kysely<DB>) {}
 
-  create(user: Insertable<UserTable>) {
-    return this.db.insertInto('users').values(user).returningAll().executeTakeFirstOrThrow();
+  upsertBySub(user: Insertable<UserTable>) {
+    return this.db
+      .insertInto('users')
+      .values(user)
+      .onConflict((oc) => oc.column('sub').doUpdateSet({ name: user.name, email: user.email }))
+      .returningAll()
+      .executeTakeFirstOrThrow();
   }
 
   getBySub(sub: string) {

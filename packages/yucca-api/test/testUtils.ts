@@ -56,7 +56,7 @@ export const testUtils = {
     const connectionRepository = new ConnectionRepository(db);
     const cryptoRepository = new CryptoRepository();
 
-    const user = await userRepository.create({
+    const user = await userRepository.upsertBySub({
       name,
       email,
       sub,

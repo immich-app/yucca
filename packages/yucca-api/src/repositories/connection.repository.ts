@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Insertable, Kysely } from 'kysely';
+import { Insertable, Kysely, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
 import { ConnectionTable } from 'src/schema/tables/connection.table';
@@ -56,16 +56,29 @@ export class ConnectionRepository {
   }
 
   async getOrCreateDefault(userId: string) {
-    const existing = await this.db
-      .selectFrom('connections')
-      .selectAll()
-      .where('userId', '=', userId)
-      .where('type', '=', 'immich')
-      .orderBy('createdAt', 'asc')
-      .orderBy('id', 'asc')
-      .executeTakeFirst();
+    return this.db.transaction().execute(async (trx) => {
+      // Serialise per user: without this, two concurrent sign-ins can both
+      // miss the lookup below and each insert a default connection.
+      await sql`select pg_advisory_xact_lock(hashtextextended(${userId}, 0))`.execute(trx);
 
-    return existing ?? (await this.create({ userId, type: 'immich', name: 'Immich' }));
+      const existing = await trx
+        .selectFrom('connections')
+        .selectAll()
+        .where('userId', '=', userId)
+        .where('type', '=', 'immich')
+        .orderBy('createdAt', 'asc')
+        .orderBy('id', 'asc')
+        .executeTakeFirst();
+
+      return (
+        existing ??
+        (await trx
+          .insertInto('connections')
+          .values({ userId, type: 'immich', name: 'Immich' })
+          .returningAll()
+          .executeTakeFirstOrThrow())
+      );
+    });
   }
 
   async touchLastSeen(id: string) {
