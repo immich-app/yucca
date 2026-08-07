@@ -14,6 +14,8 @@ export class MetricsService implements OnApplicationBootstrap {
   private readonly repositorySizeBytes: Gauge;
   private readonly repositoryObjectCount: Gauge;
   private readonly connectionBillableBytes: Gauge;
+  private readonly orphanedBucketCount: Gauge;
+  private readonly orphanedBytes: Gauge;
 
   constructor(
     private logger: LoggerRepository,
@@ -31,6 +33,12 @@ export class MetricsService implements OnApplicationBootstrap {
     });
     this.connectionBillableBytes = metricService.getGauge('connection_billable_bytes', {
       description: 'Billable bytes rolled up per connection (min-object-size floor applied)',
+    });
+    this.orphanedBucketCount = metricService.getGauge('rgw_orphaned_bucket_count', {
+      description: 'Buckets in RadosGW with no matching repository row',
+    });
+    this.orphanedBytes = metricService.getGauge('rgw_orphaned_bytes', {
+      description: 'Bytes held by buckets with no matching repository row',
     });
   }
 
@@ -64,11 +72,15 @@ export class MetricsService implements OnApplicationBootstrap {
 
       try {
         let count = 0;
+        let orphanedCount = 0;
+        let orphanedBytes = 0;
         for await (const { bucket: repositoryId, bytes, objects } of rgw.getBucketStats()) {
           count++;
 
           const repository = repositoryById.get(repositoryId);
           if (!repository) {
+            orphanedCount++;
+            orphanedBytes += bytes;
             this.logger.warn(
               `RGW bucket "${repositoryId}" (cluster ${clusterCode}) has no matching repository; skipping`,
             );
@@ -101,6 +113,11 @@ export class MetricsService implements OnApplicationBootstrap {
             cluster: clusterCode,
           });
         }
+
+        // Recorded even at zero, so an alert can watch the series rather than
+        // its absence.
+        this.orphanedBucketCount.record(orphanedCount, { site: siteCode, cluster: clusterCode });
+        this.orphanedBytes.record(orphanedBytes, { site: siteCode, cluster: clusterCode });
 
         this.logger.info(`Synced stats for ${count} buckets from cluster ${clusterCode}`);
       } catch (error) {
