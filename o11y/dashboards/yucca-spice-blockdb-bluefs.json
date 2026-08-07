@@ -42,6 +42,9 @@
           "text": ["All"],
           "value": ["$__all"]
         },
+        "datasource": {
+          "uid": "$datasource"
+        },
         "includeAll": true,
         "label": "Env",
         "multi": true,
@@ -60,6 +63,9 @@
           "text": ["All"],
           "value": ["$__all"]
         },
+        "datasource": {
+          "uid": "$datasource"
+        },
         "includeAll": true,
         "label": "Provider",
         "multi": true,
@@ -77,6 +83,9 @@
           "selected": true,
           "text": ["All"],
           "value": ["$__all"]
+        },
+        "datasource": {
+          "uid": "$datasource"
         },
         "includeAll": true,
         "label": "Region",
