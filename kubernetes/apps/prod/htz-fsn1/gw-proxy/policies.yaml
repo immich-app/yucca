@@ -11,12 +11,15 @@
 # buy nothing on their own; they stop Envoy becoming the next gate once client
 # tcp_wmem is raised. The throughput fix is ALPN (see the companion change).
 #
-# 64Mi connection window matches the kernel rcvbuf ceiling set for the workers in
-# tf/.../talos/talos.tf — past that the kernel binds first. 16Mi stream window
-# keeps 5 streams (restic's default rest.connections) able to fill it, and
-# bufferLimit >= streamWindow keeps the L4 watermark off the critical path.
-# bufferLimit is charged PER CONNECTION and these pods have no memory limit, so
-# it is deliberately not raised beyond the stream window.
+# 64Mi connection window is sized against the kernel rcvbuf ceiling the pod's
+# netns will actually have; past that the kernel binds first. Note that ceiling
+# is NOT settable from the node — net.ipv4.tcp_* is per-netns and a fresh netns
+# gets kernel-computed defaults rather than the host's values, so it needs pod
+# securityContext.sysctls plus kubelet allowed-unsafe-sysctls. Untried so far.
+# 16Mi stream window keeps 5 streams (restic's default rest.connections) able to
+# fill the connection window, and bufferLimit >= streamWindow keeps the L4
+# watermark off the critical path. bufferLimit is charged PER CONNECTION and
+# these pods have no memory limit, so it is not raised beyond the stream window.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
