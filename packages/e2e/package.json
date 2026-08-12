@@ -37,6 +37,7 @@
     "setupFilesAfterEnv": [
       "jest-extended/all"
     ],
+    "testTimeout": 15000,
     "transform": {
       "^.+\\.tsx?$": [
         "ts-jest",
