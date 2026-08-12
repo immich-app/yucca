@@ -184,33 +184,10 @@ locals {
     }
   })
 
-  # Workers terminate the gw (michael/restic) listener, whose clients are a
-  # transatlantic ~90ms away. A TCP flow can only carry (socket buffer / RTT), and
-  # the kernel's 6MiB tcp_rmem ceiling caps one flow at ~66 MB/s at that RTT —
-  # which HTTP/2 makes the WHOLE backup, because it multiplexes every restic
-  # connection onto a single TCP connection. 64MiB moves that ceiling out of the
-  # way. These are autotuning CEILINGS, not allocations: the kernel only grows a
-  # buffer for a flow that is actually filling it, so the low-RTT fabric and Ceph
-  # traffic on these same nodes keep their small buffers.
-  #
-  # net.ipv4.* is per-network-namespace and a new netns is seeded from init_net,
-  # so pods pick these up — but only pods created AFTER the sysctl lands. The gw
-  # Envoy pods must be restarted before the ceiling applies to them.
-  worker_socket_buffer_patch = yamlencode({
-    machine = {
-      sysctls = {
-        "net.ipv4.tcp_rmem" = "4096 131072 67108864"
-        "net.ipv4.tcp_wmem" = "4096 16384 67108864"
-        "net.core.rmem_max" = "67108864"
-        "net.core.wmem_max" = "67108864"
-      }
-    }
-  })
-
   cp_base_patches = compact([local.hostdns_patch, local.cp_netbird_patch, local.cp_nodeip_patch, local.spegel_containerd_patch])
   # (install patch is PER-NODE — by disk serial — appended in controlplane.tf /
   # workers.tf, along with the bond/VLAN network patches.)
-  worker_base_patches = compact([local.hostdns_patch, local.worker_mayastor_patch, local.worker_volumes_patch, local.worker_netbird_patch, local.worker_nodeip_patch, local.spegel_containerd_patch, local.worker_socket_buffer_patch])
+  worker_base_patches = compact([local.hostdns_patch, local.worker_mayastor_patch, local.worker_volumes_patch, local.worker_netbird_patch, local.worker_nodeip_patch, local.spegel_containerd_patch])
 
   # ── Control-plane cluster config (same on every CP) ──────────────────────
   cp_cluster_patch = yamlencode({
