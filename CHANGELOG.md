@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.30.0](https://github.com/immich-app/yucca/compare/v0.29.0...v0.30.0) (2026-08-12)
+
+
+### Features
+
+* new immich nav item, snippet FAQ answers, user manual ([#467](https://github.com/immich-app/yucca/issues/467)) ([2bae945](https://github.com/immich-app/yucca/commit/2bae9454042783152fc6199c5c6761fe0985a1ea))
+* **o11y:** add env/provider/region filters to the yucca dashboards ([#466](https://github.com/immich-app/yucca/issues/466)) ([7b77f82](https://github.com/immich-app/yucca/commit/7b77f8223d5589c1094009792a8e9d515b32e1de))
+
+
+### Bug Fixes
+
+* bump restic version in test ([#473](https://github.com/immich-app/yucca/issues/473)) ([541e995](https://github.com/immich-app/yucca/commit/541e995fa489ba0d47c6108e40134e8d6c7725ff))
+
+
+### Performance Improvements
+
+* **ci:** stop the integration and e2e jobs waiting on rook-ceph ([#435](https://github.com/immich-app/yucca/issues/435)) ([0e3f47a](https://github.com/immich-app/yucca/commit/0e3f47a769425457103e4947dde98ebcccb7760d))
+
 ## [0.29.0](https://github.com/immich-app/yucca/compare/v0.28.0...v0.29.0) (2026-08-07)
 
 
