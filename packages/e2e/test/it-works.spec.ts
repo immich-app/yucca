@@ -16,7 +16,7 @@ it('can connect to the orchestrator API', async () => {
 it('can load restic', async () => {
   await expect(version).resolves.toEqual(
     expect.objectContaining({
-      version: '0.19.0',
+      version: '0.19.1',
     }),
   );
 });
