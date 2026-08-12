@@ -38,9 +38,16 @@ spec:
         - name: yucca-michael
           port: 3010
 ---
-# Upstream buffer tuning for envoy→michael (the restore direction rides these);
-# lives here rather than gw-proxy/ because that tree is targetNamespace-forced
-# to envoy-system and this policy must sit beside its HTTPRoute in yucca.
+# Upstream buffer tuning for envoy→michael (both directions ride these: a backup
+# streams the request body through to michael, a restore streams the response
+# back); lives here rather than gw-proxy/ because that tree is
+# targetNamespace-forced to envoy-system and this policy must sit beside its
+# HTTPRoute in yucca.
+#
+# Raised to 16Mi 2026-08-12 to match the downstream bufferLimit in
+# gw-proxy/policies.yaml — leaving this at 4Mi would just move the gate from the
+# client side of the proxy to the michael side. Both routes are listed so the
+# internal listener is not left on Envoy's 32KiB default.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
@@ -51,5 +58,8 @@ spec:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       name: gw
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: gw-internal
   connection:
-    bufferLimit: 4Mi
+    bufferLimit: 16Mi
