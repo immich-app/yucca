@@ -1,6 +1,6 @@
 {
   "name": "mock-oidc-provider",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "description": "In-repo OIDC mock provider for dev and integration tests",
   "private": true,
   "license": "UNLICENSED",

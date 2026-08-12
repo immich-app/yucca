@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.1](https://github.com/immich-app/yucca/compare/v0.30.0...v0.30.1) (2026-08-12)
+
+
+### Performance Improvements
+
+* **net:** pin gw alpn to http/1.1 ([#475](https://github.com/immich-app/yucca/issues/475)) ([a000887](https://github.com/immich-app/yucca/commit/a00088706f1bec7cb5f902e139861e8a583ec9ca))
+
 ## [0.30.0](https://github.com/immich-app/yucca/compare/v0.29.0...v0.30.0) (2026-08-12)
 
 
