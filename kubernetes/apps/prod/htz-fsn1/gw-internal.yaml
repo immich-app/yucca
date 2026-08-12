@@ -44,10 +44,14 @@ spec:
 # targetNamespace-forced to envoy-system and this policy must sit beside its
 # HTTPRoute in yucca.
 #
-# Raised to 16Mi 2026-08-12 to match the downstream bufferLimit in
-# gw-proxy/policies.yaml — leaving this at 4Mi would just move the gate from the
-# client side of the proxy to the michael side. Both routes are listed so the
-# internal listener is not left on Envoy's 32KiB default.
+# Deliberately NOT raised alongside the downstream buffers in
+# gw-proxy/policies.yaml: this hop is HTTP/1.1 over the sub-millisecond fabric,
+# so 4Mi is already orders of magnitude past its BDP, and this is the term that
+# multiplies by concurrent stream count.
+#
+# gw-internal added to targetRefs 2026-08-12. EG builds one cluster per HTTPRoute
+# destination, so that route was running on the 32KiB default — 128x smaller than
+# the public path, and it is the path yuctl bench measures over the internal VIP.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
@@ -62,4 +66,4 @@ spec:
       kind: HTTPRoute
       name: gw-internal
   connection:
-    bufferLimit: 16Mi
+    bufferLimit: 4Mi

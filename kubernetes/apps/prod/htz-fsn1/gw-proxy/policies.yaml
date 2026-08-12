@@ -3,14 +3,20 @@
 # EG defaults (64KiB stream / 1MiB conn windows, 32KiB buffers) needlessly
 # constrain per-connection throughput. ALPN deliberately untouched (h2 stays).
 #
-# Raised 2026-08-12. h2 puts every restic connection on ONE TCP connection, so
-# upload throughput is (smallest window on the path) / RTT. At the previous 4Mi
-# that is ~46 MB/s at the 90ms US->fsn1 RTT, and the client's own 4MiB
-# net.ipv4.tcp_wmem sits at the same figure, so both gate together. 16Mi lifts
-# the Envoy side to ~178 MB/s and leaves the client socket buffer as the only
-# remaining gate (raise net.ipv4.tcp_wmem on backup clients to collect it).
-# Kept at 16Mi rather than matching the 32Mi connection window because
-# bufferLimit is charged PER CONNECTION and the proxy pods have no memory limit.
+# Raised 2026-08-12, as HEADROOM rather than as a fix. h2 puts every restic
+# connection on ONE TCP connection, so the real ceiling is that connection's
+# min(socket buffer, cwnd) / RTT — measured at ~37 MB/s at the 90ms US->fsn1 RTT
+# with a client on Linux's default 4MiB net.ipv4.tcp_wmem, and h2 windows an
+# order of magnitude larger than these made no difference to it. So these values
+# buy nothing on their own; they stop Envoy becoming the next gate once client
+# tcp_wmem is raised. The throughput fix is ALPN (see the companion change).
+#
+# 64Mi connection window matches the kernel rcvbuf ceiling set for the workers in
+# tf/.../talos/talos.tf — past that the kernel binds first. 16Mi stream window
+# keeps 5 streams (restic's default rest.connections) able to fill it, and
+# bufferLimit >= streamWindow keeps the L4 watermark off the critical path.
+# bufferLimit is charged PER CONNECTION and these pods have no memory limit, so
+# it is deliberately not raised beyond the stream window.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
@@ -25,4 +31,4 @@ spec:
     bufferLimit: 16Mi
   http2:
     initialStreamWindowSize: 16Mi
-    initialConnectionWindowSize: 32Mi
+    initialConnectionWindowSize: 64Mi
