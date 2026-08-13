@@ -17,7 +17,9 @@
   const integrations = useIntegrations();
   const { onIntegrationUpdate } = useIntegrationEventHandler();
 
-  const configured = $derived(Boolean(integrations.data?.immichIntegration));
+  const configured = $derived(
+    integrations.data ? Boolean(integrations.data.immichIntegration) : true,
+  );
 
   const shell = $derived(
     configured
