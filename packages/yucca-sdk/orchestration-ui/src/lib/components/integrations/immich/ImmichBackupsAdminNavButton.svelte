@@ -4,15 +4,17 @@
     useIntegrationEventHandler,
     useIntegrations,
   } from "$lib/services/integrations.service";
+  import { page } from "$app/state";
   import { Icon, Text } from "@immich/ui";
   import { mdiCloudUpload, mdiCloudUploadOutline } from "@mdi/js";
 
   type Props = {
     href: string;
-    active?: boolean;
   };
 
-  const { href, active = false }: Props = $props();
+  const { href }: Props = $props();
+
+  const active = $derived(page.url.pathname.startsWith(href));
 
   const integrations = useIntegrations();
   const { onIntegrationUpdate } = useIntegrationEventHandler();

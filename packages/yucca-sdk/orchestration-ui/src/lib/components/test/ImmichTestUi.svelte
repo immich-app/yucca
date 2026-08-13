@@ -191,7 +191,7 @@
   <AppShellSidebar class="relative">
     <div class="flex h-full flex-col pt-4 pr-2">
       {#if route === "settings"}
-        <ImmichBackupsAdminNavButton href="#" active />
+        <ImmichBackupsAdminNavButton href="#" />
 
         <NavbarItem
           href="#"

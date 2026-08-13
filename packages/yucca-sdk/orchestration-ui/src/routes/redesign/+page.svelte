@@ -179,13 +179,6 @@
 
   <hr />
 
-  <Heading>Immich Settings Menu Button - Current page</Heading>
-  <MockImmichSettingsMenu settingsActive={false}>
-    <ImmichBackupsAdminNavButton href="#" active />
-  </MockImmichSettingsMenu>
-
-  <hr />
-
   <Heading>Settings Upsell Page</Heading>
   <Container size="large" center>
     <Stack gap={8}>
