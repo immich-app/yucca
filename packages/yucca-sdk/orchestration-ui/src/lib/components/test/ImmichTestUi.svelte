@@ -36,20 +36,15 @@
   } from "@mdi/js";
   import { options } from "$lib/options";
   import { onDestroy } from "svelte";
-  import ImmichBackupsNavButton from "../integrations/immich/ImmichBackupsNavButton.svelte";
-  import ImmichBackupsCard from "../integrations/immich/ImmichBackupsCard.svelte";
+  import ImmichBackupsAdminNavButton from "../integrations/immich/ImmichBackupsAdminNavButton.svelte";
+  import ImmichBackupsSidebarItem from "../integrations/immich/ImmichBackupsSidebarItem.svelte";
   import MockImmichPhotos from "./immich/MockImmichPhotos.svelte";
   import MockImmichServerStatus from "./immich/MockImmichServerStatus.svelte";
   import MockImmichPurchaseInfo from "./immich/MockImmichPurchaseInfo.svelte";
   import MockImmichStorageSpace from "./immich/MockImmichStorageSpace.svelte";
   import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
   import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
-  import OnEvents from "../util/OnEvents.svelte";
   import MockImmichHideBackupsReminder from "./immich/MockImmichHideBackupsReminder.svelte";
-  import {
-    useIntegrationEventHandler,
-    useIntegrations,
-  } from "$lib/services/integrations.service";
 
   type Props = {
     onExit: () => void;
@@ -59,11 +54,6 @@
   const { testUiRestore, demoPadding } = options;
 
   let route = $state<"photos" | "settings">("photos");
-
-  const integrations = useIntegrations();
-  const { onIntegrationUpdate } = useIntegrationEventHandler();
-  const configured = $derived(Boolean(integrations.data?.immichIntegration));
-  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
   const sampleQuestions = [
     {
@@ -86,8 +76,6 @@
   // svelte-ignore state_referenced_locally
   setProvider(orchestrationApiProvider);
 </script>
-
-<OnEvents {onIntegrationUpdate} />
 
 {#snippet hideReminder()}
   <MockImmichHideBackupsReminder />
@@ -203,11 +191,7 @@
   <AppShellSidebar class="relative">
     <div class="flex h-full flex-col pt-4 pr-2">
       {#if route === "settings"}
-        <ImmichBackupsNavButton
-          {configured}
-          active
-          onclick={() => {}}
-        />
+        <ImmichBackupsAdminNavButton href="#" active />
 
         <NavbarItem
           href="#"
@@ -260,11 +244,7 @@
 
       <Stack gap={4} class="mt-auto p-4">
         <MockImmichStorageSpace>
-          <ImmichBackupsCard
-            {configured}
-            lastBackup={configured ? twoHoursAgo : undefined}
-            onclick={() => (route = "settings")}
-          />
+          <ImmichBackupsSidebarItem href="#" />
         </MockImmichStorageSpace>
 
         {#if route !== "settings"}
