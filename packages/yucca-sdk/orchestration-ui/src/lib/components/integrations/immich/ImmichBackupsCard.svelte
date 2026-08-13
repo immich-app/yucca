@@ -1,6 +1,6 @@
 <script lang="ts">
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
-  import { Icon, Text } from "@immich/ui";
+  import { HStack, Icon, Text } from "@immich/ui";
   import {
     mdiChevronRight,
     mdiCloudAlertOutline,
@@ -66,14 +66,14 @@
 </script>
 
 {#snippet body()}
-  <Icon icon={status.icon} size="1.25em" class="shrink-0" />
-
-  <Text
-    size="small"
+  <Icon
     color={status.color}
-    fontWeight="medium"
-    class="flex-1 truncate"
-  >
+    icon={status.icon}
+    size="1.25em"
+    class="shrink-0"
+  />
+
+  <Text size="tiny" color={status.color} class="flex-1 truncate">
     {#if running}
       Backing up now
     {:else if failed}
@@ -89,13 +89,18 @@
     {/if}
   </Text>
 
-  {#if !configured}
-    <Text size="small" color="primary" fontWeight="medium" class="shrink-0">
-      Set up
-    </Text>
-  {/if}
+  <HStack gap={0}>
+    {#if !configured}
+      <Text size="tiny" color="primary" class="shrink-0">Set up</Text>
+    {/if}
 
-  <Icon icon={mdiChevronRight} size="1.25em" class="shrink-0" />
+    <Icon
+      color={configured ? status.color : "primary5"}
+      icon={mdiChevronRight}
+      size="1.25em"
+      class="shrink-0"
+    />
+  </HStack>
 {/snippet}
 
 {#if href}
