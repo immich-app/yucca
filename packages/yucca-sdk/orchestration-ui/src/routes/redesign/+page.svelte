@@ -181,6 +181,19 @@
   <MockImmichSidebar>
     <ImmichBackupsCard
       configured
+      outcome="complete"
+      lastBackup={twoHoursAgo}
+      onclick={() => void 0}
+    />
+  </MockImmichSidebar>
+
+  <hr />
+
+  <Heading>Immich Sidebar Card - Last backup had warnings</Heading>
+  <MockImmichSidebar>
+    <ImmichBackupsCard
+      configured
+      outcome="warn"
       lastBackup={twoHoursAgo}
       onclick={() => void 0}
     />
@@ -193,6 +206,7 @@
     <ImmichBackupsCard
       configured
       paused
+      outcome="complete"
       lastBackup={twoHoursAgo}
       onclick={() => void 0}
     />
@@ -205,6 +219,7 @@
     <ImmichBackupsCard
       configured
       running
+      outcome="complete"
       lastBackup={twoHoursAgo}
       onclick={() => void 0}
     />
@@ -223,7 +238,7 @@
   <MockImmichSidebar>
     <ImmichBackupsCard
       configured
-      failed
+      outcome="failed"
       lastBackup={twoHoursAgo}
       onclick={() => void 0}
     />

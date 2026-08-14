@@ -57,11 +57,20 @@
       return "connecting";
     }
 
-    if (run.status === "incomplete") {
-      return "running";
+    switch (run.status) {
+      case "incomplete": {
+        return "running";
+      }
+      case "failed": {
+        return "failed";
+      }
+      case "warn": {
+        return "warned";
+      }
+      default: {
+        return "complete";
+      }
     }
-
-    return run.status === "failed" ? "failed" : "complete";
   });
 
   const duration = $derived(
@@ -93,6 +102,9 @@
     switch (backupState) {
       case "complete": {
         return `${titles[type].done} complete`;
+      }
+      case "warned": {
+        return `${titles[type].done} completed with warnings`;
       }
       case "failed": {
         return `${titles[type].done} failed`;

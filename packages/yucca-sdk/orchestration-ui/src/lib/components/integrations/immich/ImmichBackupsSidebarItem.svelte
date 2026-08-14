@@ -16,6 +16,7 @@
     useScheduleEventHandler,
     useSchedules,
   } from "$lib/services/schedule.service";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import ImmichBackupsCard from "./ImmichBackupsCard.svelte";
 
   type Props = {
@@ -65,11 +66,7 @@
 
   const lastBackup = $derived(repository?.metrics.lastBackup ?? undefined);
 
-  const failed = $derived(
-    Boolean(
-      lastBackup && lastBackup !== repository?.metrics.lastSuccessfulBackup,
-    ),
-  );
+  const outcome = $derived(getBackupOutcome(repository?.metrics));
 
   const loading = $derived(
     integrations.isLoading || repositories.isLoading || schedules.isLoading,
@@ -91,7 +88,7 @@
 {#if !loading}
   <ImmichBackupsCard
     {href}
-    {failed}
+    {outcome}
     {paused}
     {onclick}
     {lastBackup}

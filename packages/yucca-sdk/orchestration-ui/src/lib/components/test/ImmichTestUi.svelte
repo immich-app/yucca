@@ -262,6 +262,7 @@
         <MockImmichStorageSpace>
           <ImmichBackupsCard
             {configured}
+            outcome={configured ? "complete" : "never"}
             lastBackup={configured ? twoHoursAgo : undefined}
             onclick={() => (route = "settings")}
           />

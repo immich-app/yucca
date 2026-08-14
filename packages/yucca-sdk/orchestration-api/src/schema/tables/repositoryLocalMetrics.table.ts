@@ -1,8 +1,10 @@
+import { TaskStatus } from '../../enum';
+
 export class RepositoryLocalMetricsTable {
   id!: string;
 
   sizeBytes!: number;
   lastBackup?: string;
-  lastSuccessfulBackup?: string;
+  lastBackupStatus?: TaskStatus;
   lastBackupDuration?: number;
 }

@@ -8,6 +8,7 @@
     CardTitle,
     HStack,
   } from "@immich/ui";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import VisualisationSegmentedBar from "../ui/VisualisationSegmentedBar.svelte";
 
   type Props = {
@@ -25,18 +26,31 @@
       (tally, repo) => {
         if (local && !repo.backends?.primary.online) {
           tally.offline++;
-        } else if (!repo.metrics?.lastBackup) {
-          tally.neverRun++;
-        } else if (
-          repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup
-        ) {
-          tally.success++;
-        } else {
-          tally.failed++;
+          return tally;
         }
+
+        switch (getBackupOutcome(repo.metrics)) {
+          case "never": {
+            tally.neverRun++;
+            break;
+          }
+          case "failed": {
+            tally.failed++;
+            break;
+          }
+          case "warn": {
+            tally.warned++;
+            break;
+          }
+          default: {
+            tally.success++;
+            break;
+          }
+        }
+
         return tally;
       },
-      { success: 0, offline: 0, failed: 0, neverRun: 0 },
+      { success: 0, offline: 0, warned: 0, failed: 0, neverRun: 0 },
     ),
   );
 </script>
@@ -66,6 +80,12 @@
         {
           value: status.offline,
           label: "Offline",
+          color: "var(--immich-ui-warning-500)",
+          badge: "warning",
+        },
+        {
+          value: status.warned,
+          label: "With warnings",
           color: "var(--immich-ui-warning-500)",
           badge: "warning",
         },

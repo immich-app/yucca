@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import { Alert, Text } from "@immich/ui";
   import SegmentedBar from "../../ui/VisualisationSegmentedBar.svelte";
 
@@ -16,14 +17,12 @@
       (tally, repo) => {
         if (!repo.backends?.primary.online) {
           tally.offline++;
-        } else if (!repo.metrics?.lastBackup) {
+        } else if (getBackupOutcome(repo.metrics) === "never") {
           tally.neverRun++;
-        } else if (
-          repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup
-        ) {
-          tally.success++;
-        } else {
+        } else if (getBackupOutcome(repo.metrics) === "failed") {
           tally.failed++;
+        } else {
+          tally.success++;
         }
         return tally;
       },

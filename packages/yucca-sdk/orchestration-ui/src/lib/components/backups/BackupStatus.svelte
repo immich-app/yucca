@@ -5,6 +5,7 @@
     | "connecting"
     | "running"
     | "complete"
+    | "warned"
     | "failed";
 </script>
 
@@ -50,8 +51,6 @@
     onRetry,
   }: Props = $props();
 
-  let showErrors = $state(false);
-
   const phases: Record<BackupStatusType, [string, string, string]> = {
     backup: ["Preparing backup", "Backing up", "Finalizing backup"],
     restore: ["Preparing restore", "Restoring", "Finalizing restore"],
@@ -62,6 +61,12 @@
     backup: "Your library was backed up successfully",
     restore: "Your library was restored successfully",
     forget: "Old backups were pruned successfully",
+  };
+
+  const warned: Record<BackupStatusType, string> = {
+    backup: "Your library was backed up, with warnings",
+    restore: "Your library was restored, with warnings",
+    forget: "Old backups were pruned, with warnings",
   };
 
   const failed: Record<BackupStatusType, string> = {
@@ -104,6 +109,9 @@
       case "complete": {
         return succeeded[type];
       }
+      case "warned": {
+        return warned[type];
+      }
       default: {
         return `${phase} · ${Math.round(progress * 100)}%`;
       }
@@ -111,10 +119,20 @@
   });
 
   const titleColor = $derived(
-    backupState === "complete" ? "success" : backupState === "failed" ? "danger" : "primary",
+    backupState === "complete"
+      ? "success"
+      : backupState === "warned"
+        ? "warning"
+        : backupState === "failed"
+          ? "danger"
+          : "primary",
   );
 
-  const terminal = $derived(backupState === "complete" || backupState === "failed");
+  const terminal = $derived(
+    backupState === "complete" ||
+      backupState === "warned" ||
+      backupState === "failed",
+  );
 </script>
 
 <Stack gap={4}>
@@ -132,7 +150,7 @@
         <Text color="muted">Completed in {duration}</Text>
       {/if}
 
-      {#if backupState === "complete" && errors.length > 0}
+      {#if backupState === "warned" && errors.length > 0}
         <Text color="warning">
           Completed with {errors.length}
           {errors.length === 1 ? "warning" : "warnings"}.
@@ -151,38 +169,30 @@
   {/if}
 
   {#if terminal && (errors.length > 0 || (backupState === "failed" && onRetry))}
-    <HStack gap={4} class="items-center">
+    <Stack gap={4}>
       {#if backupState === "failed" && onRetry}
-        <Button shape="round" onclick={onRetry}>Try again</Button>
+        <HStack gap={4} class="items-center">
+          <Button shape="round" onclick={onRetry}>Try again</Button>
+        </HStack>
       {/if}
 
       {#if errors.length > 0}
-        <Button
-          variant="ghost"
-          shape="round"
-          onclick={() => (showErrors = !showErrors)}
-        >
-          {showErrors ? "Hide details" : "View details"}
-        </Button>
+        <Scrollable class="max-h-64">
+          <Stack gap={2}>
+            {#each errors as error, index (index)}
+              <Alert color={backupState === "failed" ? "danger" : "warning"}>
+                {error}
+              </Alert>
+            {/each}
+          </Stack>
+        </Scrollable>
       {/if}
-    </HStack>
-
-    {#if showErrors}
-      <Scrollable class="max-h-32">
-        <Stack gap={1}>
-          {#each errors as error, index (index)}
-            <Alert color={backupState === "failed" ? "danger" : "warning"}>
-              {error}
-            </Alert>
-          {/each}
-        </Stack>
-      </Scrollable>
-    {/if}
+    </Stack>
   {/if}
 
   {#if backupState === "running"}
     <Text color="muted">{running[type]}</Text>
-  {:else if backupState === "complete" && details}
+  {:else if (backupState === "complete" || backupState === "warned") && details}
     <Text color="muted">{@render details()}</Text>
   {/if}
 

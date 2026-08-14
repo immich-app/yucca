@@ -11,6 +11,7 @@ import { TaskStatus } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { DB } from '../schema';
 import { type RunType } from '../schema/tables/runHistory.table';
+import { writeError } from '../utils/errors';
 import { LoggingRepository } from './logging.repository';
 import { ModuleConfigRepository } from './moduleConfig.repository';
 import { StorageRepository } from './storage.repository';
@@ -27,14 +28,70 @@ export class RunHistoryRepository {
     this.logger.setContext(RunHistoryRepository.name);
   }
 
-  private writeError(log: WriteStream, error: unknown) {
-    const events = Array.isArray((error as { error?: unknown })?.error)
-      ? ((error as { error: unknown[] }).error as object[])
-      : [{ message_type: 'error', error: `${error}` }];
+  async createLogHelper(target?: { repositoryId: string; type: RunType }) {
+    const logId = randomUUID();
+    const startTime = new Date();
+    const logFilePath = resolve(
+      this.moduleConfig.get().statePath,
+      'logs',
+      target?.repositoryId ?? 'ephemeral',
+      startTime.toISOString() + '.jsonl',
+    );
 
-    for (const event of events) {
-      log.write(JSON.stringify(event) + '\n');
+    await this.storage.mkdir(dirname(logFilePath), {
+      recursive: true,
+    });
+
+    const logWriter = this.storage.createWriteStream(logFilePath);
+
+    if (target) {
+      const run = await this.db
+        .insertInto('runHistory')
+        .values({
+          id: logId,
+          repositoryId: target.repositoryId,
+          type: target.type,
+
+          start: startTime.toISOString(),
+          logFilePath,
+
+          status: TaskStatus.Incomplete,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+
+      this.events.publish({ type: 'RunCreate', run });
     }
+
+    this.ephemeralLogs.set(logId, logFilePath);
+
+    const closeLog = async (status: TaskStatus, error?: any) => {
+      const end = new Date().toISOString();
+
+      if (error) {
+        writeError(logWriter, error);
+      }
+
+      logWriter.close();
+
+      if (target) {
+        await this.db.updateTable('runHistory').where('id', '=', logId).set('status', status).set('end', end).execute();
+
+        this.events.publish({
+          type: 'RunUpdate',
+          runId: logId,
+          repositoryId: target.repositoryId,
+          run: { status, end },
+        });
+      }
+    };
+
+    return {
+      logWriter,
+      logId,
+      closeLog,
+      startTime,
+    };
   }
 
   async createLog(
@@ -94,7 +151,7 @@ export class RunHistoryRepository {
         .catch(async (error) => {
           callback(error);
 
-          this.writeError(log, error);
+          writeError(log, error);
           log.close();
 
           await finalize(TaskStatus.Failed);
@@ -130,7 +187,7 @@ export class RunHistoryRepository {
         })
         .catch((error) => {
           callback(error);
-          this.writeError(log, error);
+          writeError(log, error);
           log.close();
         });
     } catch (error) {

@@ -118,9 +118,10 @@ export type RepositoryCreateRequestDto = {
     site?: string;
     paths?: string[];
 };
+export type TaskStatus = "incomplete" | "complete" | "warn" | "failed";
 export type RepositoryMetricsDto = {
     lastBackup?: string;
-    lastSuccessfulBackup?: string;
+    lastBackupStatus?: TaskStatus;
     lastBackupDuration?: number;
     sizeBytes: number;
 };
@@ -207,7 +208,7 @@ export type RepositoryCheckImportResponseDto = {
 export type RepositoryPrimaryBackendReconfigureRequestDto = {
     backendId: string;
 };
-export type RunStatus = "incomplete" | "complete" | "failed";
+export type RunStatus = "incomplete" | "complete" | "warn" | "failed";
 export type RunType = "schedule" | "restore" | "backup" | "forget";
 export type RunDto = {
     id: string;
@@ -236,7 +237,6 @@ export type RunResponseDto = {
     run: RunDto;
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
-export type TaskStatus = "incomplete" | "complete" | "failed";
 export type ActiveScheduleItemDto = {
     repositoryId: string;
     status: TaskStatus;

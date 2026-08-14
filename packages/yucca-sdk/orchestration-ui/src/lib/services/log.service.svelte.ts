@@ -141,6 +141,12 @@ export function createLogObserver(logId: string) {
         flush.flush();
         break;
       }
+      case 'raw': {
+        state.errors.push(event.message);
+        flush();
+        flush.flush();
+        break;
+      }
       case 'yucca_prune_kept': {
         state.pruned.kept++;
         flush();

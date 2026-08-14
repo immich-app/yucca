@@ -38,6 +38,13 @@
           icon: mdiCloudOffOutline,
         } as const;
       }
+      case "warn": {
+        return {
+          title: `${noun.done} with warnings`,
+          color: "warning",
+          icon: mdiCloudCheckOutline,
+        } as const;
+      }
       case "incomplete": {
         return {
           title: `${noun.running} in progress`,

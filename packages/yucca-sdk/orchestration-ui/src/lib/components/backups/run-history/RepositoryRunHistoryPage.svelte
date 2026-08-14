@@ -26,7 +26,9 @@
 
   let search = $state("");
   let newestFirst = $state(true);
-  let status = $state<"all" | "complete" | "failed" | "incomplete">("all");
+  let status = $state<"all" | "complete" | "warn" | "failed" | "incomplete">(
+    "all",
+  );
   let page = $state(1);
 
   const onSearch = (value: string) => {
@@ -47,6 +49,7 @@
   const statusOptions: { value: typeof status; title: string }[] = [
     { value: "all", title: "All attempts" },
     { value: "complete", title: "Successful only" },
+    { value: "warn", title: "With warnings only" },
     { value: "failed", title: "Failed only" },
     { value: "incomplete", title: "In progress only" },
   ];

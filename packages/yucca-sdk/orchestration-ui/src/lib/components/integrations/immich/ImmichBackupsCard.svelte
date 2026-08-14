@@ -1,5 +1,6 @@
 <script lang="ts">
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
+  import type { BackupOutcome } from "$lib/utils/backup-status";
   import { Icon, Text } from "@immich/ui";
   import {
     mdiChevronRight,
@@ -14,7 +15,7 @@
   type Props = {
     configured: boolean;
     lastBackup?: string;
-    failed?: boolean;
+    outcome?: BackupOutcome;
     paused?: boolean;
     running?: boolean;
     href?: string;
@@ -25,7 +26,7 @@
   const {
     configured,
     lastBackup,
-    failed = false,
+    outcome = "never",
     paused = false,
     running = false,
     href,
@@ -38,8 +39,12 @@
       return { color: "primary", icon: mdiCloudUploadOutline } as const;
     }
 
-    if (failed) {
+    if (outcome === "failed") {
       return { color: "danger", icon: mdiCloudOffOutline } as const;
+    }
+
+    if (outcome === "warn") {
+      return { color: "warning", icon: mdiCloudCheckVariantOutline } as const;
     }
 
     if (paused) {
@@ -76,8 +81,10 @@
   >
     {#if running}
       Backing up now
-    {:else if failed}
+    {:else if outcome === "failed"}
       Backup failed
+    {:else if outcome === "warn" && lastBackup}
+      Backed up with warnings <RelativeTime time={lastBackup} />
     {:else if paused}
       Backups paused
     {:else if !configured}
