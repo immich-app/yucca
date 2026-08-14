@@ -155,7 +155,7 @@ export const getSnapshotActions = (
   const rollback = useRollbackSnapshot();
 
   const Restore: ActionItem = {
-    title: 'Restore',
+    title: 'Restore files',
     icon: mdiBackupRestore,
     onAction: () =>
       void modalManager.open(RestoreSnapshotModal, {
@@ -165,7 +165,7 @@ export const getSnapshotActions = (
   };
 
   const Rollback: ActionItem = {
-    title: 'Rollback',
+    title: 'Rollback snapshot',
     icon: mdiHistory,
     onAction: () => rollback.mutate({ repositoryId, snapshotId: snapshot.id }),
     $if: () => immich === true,
