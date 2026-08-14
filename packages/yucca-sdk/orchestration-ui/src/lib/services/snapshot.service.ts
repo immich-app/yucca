@@ -1,5 +1,6 @@
 import { sdk } from '$lib';
 import RestoreSnapshotModal from '$lib/components/backups/dialogs/RestoreSnapshotModal.svelte';
+import RollbackSnapshotModal from '$lib/components/backups/dialogs/RollbackSnapshotModal.svelte';
 import { SocketEvent } from '$lib/events';
 import {
   getSnapshots,
@@ -152,7 +153,6 @@ export const getSnapshotActions = (
   immich?: boolean,
 ) => {
   const removeSnapshot = useRemoveSnapshot(repositoryId);
-  const rollback = useRollbackSnapshot();
 
   const Restore: ActionItem = {
     title: 'Restore files',
@@ -167,7 +167,11 @@ export const getSnapshotActions = (
   const Rollback: ActionItem = {
     title: 'Rollback snapshot',
     icon: mdiHistory,
-    onAction: () => rollback.mutate({ repositoryId, snapshotId: snapshot.id }),
+    onAction: () =>
+      void modalManager.open(RollbackSnapshotModal, {
+        repository: repositoryId,
+        snapshot: snapshot.id,
+      }),
     $if: () => immich === true,
   };
 
