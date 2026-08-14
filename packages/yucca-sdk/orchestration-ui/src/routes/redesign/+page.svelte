@@ -2,8 +2,7 @@
   import BackupStatus, {
     type BackupStatusState,
   } from "$lib/components/backups/BackupStatus.svelte";
-  import ImmichBackupsCard from "$lib/components/integrations/immich/ImmichBackupsCard.svelte";
-  import ImmichBackupsNavButton from "$lib/components/integrations/immich/ImmichBackupsNavButton.svelte";
+  import ImmichBackupsAdminNavButton from "$lib/components/integrations/immich/ImmichBackupsAdminNavButton.svelte";
   import ImmichSettingsBackupContents from "$lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte";
   import ImmichSettingsSchedule from "$lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte";
   import ImmichSettingsStorage from "$lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte";
@@ -19,7 +18,6 @@
   import SettingsBilling from "$lib/components/settings/SettingsBilling.svelte";
   import SettingsNotifications from "$lib/components/settings/SettingsNotifications.svelte";
   import MockImmichHideBackupsReminder from "$lib/components/test/immich/MockImmichHideBackupsReminder.svelte";
-  import MockImmichSidebar from "$lib/components/test/immich/MockImmichSidebar.svelte";
   import MockPagination from "$lib/components/ui/Pagination.svelte";
   import StackList from "$lib/components/ui/StackList.svelte";
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
@@ -37,6 +35,7 @@
     Input,
     Link,
     Stack,
+    Text,
     type ActionItem,
   } from "@immich/ui";
   import {
@@ -138,8 +137,6 @@
 
   let settingsSearch = $state("");
 
-  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-
   const actions: ActionItem[] = [
     { title: "View details", onAction: () => void 0 },
     { title: "Delete", onAction: () => void 0 },
@@ -170,84 +167,14 @@
 
   <hr />
 
-  <Heading>Immich Sidebar Card - Not backed up</Heading>
-  <MockImmichSidebar>
-    <ImmichBackupsCard configured={false} onclick={() => void 0} />
-  </MockImmichSidebar>
+  <Heading>Immich Sidebar Card</Heading>
+  <Text>merged into ImmichBackupsSidebarItem</Text>
 
   <hr />
 
-  <Heading>Immich Sidebar Card - Last backup successful</Heading>
-  <MockImmichSidebar>
-    <ImmichBackupsCard
-      configured
-      lastBackup={twoHoursAgo}
-      onclick={() => void 0}
-    />
-  </MockImmichSidebar>
-
-  <hr />
-
-  <Heading>Immich Sidebar Card - Backups paused</Heading>
-  <MockImmichSidebar>
-    <ImmichBackupsCard
-      configured
-      paused
-      lastBackup={twoHoursAgo}
-      onclick={() => void 0}
-    />
-  </MockImmichSidebar>
-
-  <hr />
-
-  <Heading>Immich Sidebar Card - Backup running</Heading>
-  <MockImmichSidebar>
-    <ImmichBackupsCard
-      configured
-      running
-      lastBackup={twoHoursAgo}
-      onclick={() => void 0}
-    />
-  </MockImmichSidebar>
-
-  <hr />
-
-  <Heading>Immich Sidebar Card - Setup unfinished</Heading>
-  <MockImmichSidebar>
-    <ImmichBackupsCard configured onclick={() => void 0} />
-  </MockImmichSidebar>
-
-  <hr />
-
-  <Heading>Immich Sidebar Card - Last backup failed</Heading>
-  <MockImmichSidebar>
-    <ImmichBackupsCard
-      configured
-      failed
-      lastBackup={twoHoursAgo}
-      onclick={() => void 0}
-    />
-  </MockImmichSidebar>
-
-  <hr />
-
-  <Heading>Immich Settings Menu Button - Setup incomplete</Heading>
+  <Heading>Immich Settings Menu Button</Heading>
   <MockImmichSettingsMenu>
-    <ImmichBackupsNavButton configured={false} onclick={() => void 0} />
-  </MockImmichSettingsMenu>
-
-  <hr />
-
-  <Heading>Immich Settings Menu Button - Backups configured</Heading>
-  <MockImmichSettingsMenu>
-    <ImmichBackupsNavButton configured onclick={() => void 0} />
-  </MockImmichSettingsMenu>
-
-  <hr />
-
-  <Heading>Immich Settings Menu Button - Current page</Heading>
-  <MockImmichSettingsMenu settingsActive={false}>
-    <ImmichBackupsNavButton configured active onclick={() => void 0} />
+    <ImmichBackupsAdminNavButton href="#" />
   </MockImmichSettingsMenu>
 
   <hr />

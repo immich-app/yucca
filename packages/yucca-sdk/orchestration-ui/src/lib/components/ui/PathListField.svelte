@@ -1,17 +1,20 @@
 <script lang="ts">
-  import StackList from "$lib/components/ui/StackList.svelte";
-  import StackListItem from "$lib/components/ui/StackListItem.svelte";
   import type { FilesystemListingResponseDto } from "$lib/fetch-client";
   import {
     Button,
+    Heading,
+    HStack,
     IconButton,
     modalManager,
+    Stack,
     Text,
   } from "@immich/ui";
   import { mdiClose } from "@mdi/js";
   import type { Snippet } from "svelte";
   import type { SvelteSet } from "svelte/reactivity";
   import PathPickerModal from "./PathPickerModal.svelte";
+  import StackList from "./StackList.svelte";
+  import StackListItem from "./StackListItem.svelte";
 
   type Props = {
     paths: SvelteSet<string>;
@@ -51,36 +54,34 @@
     });
 </script>
 
-<StackList>
-  {#snippet title()}
-    {@render label?.()}
-  {/snippet}
+<Stack>
+  <Heading size="tiny">{@render label?.()}</Heading>
 
   {#if paths.size > 0}
-    {#each [...paths] as path (path)}
-      <StackListItem>
-        <Text class="grow truncate" title={path}>{path}</Text>
+    <StackList>
+      {#each [...paths] as path (path)}
+        <StackListItem>
+          <Text class="grow truncate" title={path}>{path}</Text>
 
-        {#snippet trailing()}
-          <IconButton
-            icon={mdiClose}
-            aria-label="Remove"
-            size="tiny"
-            variant="ghost"
-            onclick={() => paths.delete(path)}
-          />
-        {/snippet}
-      </StackListItem>
-    {/each}
+          {#snippet trailing()}
+            <IconButton
+              icon={mdiClose}
+              aria-label="Remove"
+              size="tiny"
+              variant="ghost"
+              onclick={() => paths.delete(path)}
+            />
+          {/snippet}
+        </StackListItem>
+      {/each}
+    </StackList>
   {:else if empty}
-    <StackListItem>
+    <HStack>
       <Text color="secondary">{@render empty()}</Text>
-    </StackListItem>
+    </HStack>
   {/if}
 
-  <StackListItem>
-    <Button size="small" variant="ghost" onclick={openPicker}>
-      {paths.size > 0 ? addLabel : manageLabel}
-    </Button>
-  </StackListItem>
-</StackList>
+  <Button class="w-fit" size="small" variant="ghost" onclick={openPicker}>
+    {paths.size > 0 ? addLabel : manageLabel}
+  </Button>
+</Stack>
