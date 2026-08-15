@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# ansible-play.sh — secrets-resolving wrapper around ansible-playbook.
-#
 # Renders the cluster's TF-generated secrets.yml.tpl via `op inject` into a
 # short-lived tmpfile, then execs ansible-playbook with --extra-vars @tmpfile.
 # Fails closed: if op inject exits non-zero or auth is unavailable, ansible

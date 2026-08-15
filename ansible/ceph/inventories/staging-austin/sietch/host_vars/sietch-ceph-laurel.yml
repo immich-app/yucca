@@ -21,7 +21,6 @@ ceph_db_vg2: ceph-db-rear13   # VG on SSD2 (phy13) partition 5
 ceph_ssd_vg1: ceph-ssd-rear12  # VG on SSD1 (phy12) partition 6 -- SSD OSD data
 ceph_ssd_vg2: ceph-ssd-rear13  # VG on SSD2 (phy13) partition 6 -- SSD OSD data
 
-# HDD OSD mappings: PHY slot -> block.db LV
 # PHY 0-5 -> SSD1 (ceph-db-rear12/db-slot0..5)
 # PHY 6-11 -> SSD2 (ceph-db-rear13/db-slot6..11)
 # by-path is slot-stable: replacing a drive in the same bay keeps the same path

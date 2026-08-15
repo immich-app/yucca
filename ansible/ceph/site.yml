@@ -1,17 +1,8 @@
 ---
-# Full site playbook: tune -> deploy -> tune ceph -> harden -> ship logs
-#
-# Runs all post-provision steps in the correct dependency order.
-# Provisioning is a separate concern; run provision.yml first.
-#
-# Workflow:
-#   1. Boot nodes from Debian live image
-#   2. CEPH_ENV=inventories/<cluster>/inventory-provision.ini \
-#        scripts/ansible-play.sh provision.yml -e confirm_wipe=true
-#   3. Nodes reboot into installed OS
-#   4. scripts/ansible-play.sh site.yml
-#
-# Or use: mise run deploy  (wraps scripts/ansible-play.sh per sub-playbook)
+# Full site playbook: tune -> deploy -> tune ceph -> harden -> ship logs, in
+# dependency order. Provisioning is separate: run provision.yml (live image,
+# -e confirm_wipe=true) first, then `scripts/ansible-play.sh site.yml` or
+# `mise run deploy` (wraps ansible-play.sh per sub-playbook).
 
 - name: OS baseline (ops user, packages, /etc/hosts)
   import_playbook: baseline.yml

@@ -1,8 +1,6 @@
 ---
-# Install NetBird and join the overlay. The mgmt nodes are the NetBird route
-# peers for the site subnets (the routed network is declared in TF, not here), so
-# enable IP forwarding. Convergeable: `netbird up` is skipped when already
-# connected.
+# The mgmt nodes are the NetBird route peers for the site subnets (the routed
+# network is declared in TF, not here), hence IP forwarding.
 
 - name: Install NetBird (official script — adds the apt repo + installs)
   ansible.builtin.shell:

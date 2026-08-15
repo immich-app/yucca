@@ -1,10 +1,4 @@
 ---
-# Phase 2: Live-image prerequisites
-#
-# Installs the packages needed to run the rest of provisioning
-# (debootstrap, sgdisk, mdadm, lvm2, etc.) on the live image itself.
-# Idempotent — apt module only installs what's missing.
-
 # The Debian live image ships with a sources.list (and/or sources.list.d
 # entries) referencing `file:/run/live/medium`, which is NOT a real apt
 # repo and causes apt-get update to fail with "File not found". Replace

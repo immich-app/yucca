@@ -1,6 +1,4 @@
 ---
-# Static shared vars for the htz-fsn1 mgmt hosts.
-#
 # Host/user/addressing data is TF-GENERATED at run time (hosts.yml,
 # host_vars/*.yml, users.generated.yml) by tf/render/ansible-mgmt from the
 # Terraform sources (mgmt-hosts.yaml, fabric-addressing, identity). Edit those,

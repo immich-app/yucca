@@ -1,7 +1,6 @@
 ---
-# Deploy the scheduled cluster-state backup: capture script + systemd
-# service/timer on the bootstrap node. Read-only capture to a root-only local
-# dir, so it is universally safe; gate with ceph_backup_enabled to opt out.
+# Read-only capture to a root-only local dir on the bootstrap node, so it is
+# universally safe.
 
 - name: Scheduled backup install
   when: ceph_backup_enabled | bool

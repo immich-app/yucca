@@ -1,7 +1,6 @@
 ---
-# Drift checks for hardware_tuning. Read-only.
-# Included by drift.yml via include_role + tasks_from -- see the precedence
-# note in roles/os_tuning/tasks/drift.yml.
+# Read-only. Included via include_role + tasks_from -- see the precedence note in
+# roles/os_tuning/tasks/drift.yml.
 
 - name: Check HDD I/O scheduler
   ansible.builtin.shell: |
@@ -55,7 +54,6 @@
                  == ceph_ssd_scheduler
       }] }}
 
-# SATA link power management
 # Every AHCI port matters here, not a representative one: a single port
 # back on min_power_with_partial is enough to stall an OSD, so report the
 # distribution when the ports disagree.

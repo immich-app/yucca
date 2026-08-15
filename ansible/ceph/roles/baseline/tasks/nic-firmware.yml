@@ -1,16 +1,11 @@
 ---
-# Intel E810 (ice) NICs need their DDP package (intel/ice/ddp/ice.pkg, provided by
-# firmware-misc-nonfree, installed via baseline_extra_packages). Without it the NIC
-# boots into Safe Mode: the packet classifier is crippled and drops reserved-multicast
-# control frames (LACP 01:80:c2:00:00:02, LLDP ..:0e), so the 25G fabric bond never
-# aggregates even though the switch is correctly configured. The DDP only loads when
-# ice (re)probes, so once the package is present a single reboot clears Safe Mode.
-#
-# Safe by design: only acts on hosts with an ice NIC; only reboots when the NIC is
-# actually in Safe Mode AND the DDP file is present (so the reboot will fix it, and
-# healthy nodes are never rebooted); refuses to reboot if the DDP is still missing
-# (would loop). The WAN is on a separate igb NIC, so the reboot keeps the node
-# reachable (coexistence). Idempotent: a converged node is a no-op.
+# Intel E810 (ice) DDP (intel/ice/ddp/ice.pkg from firmware-misc-nonfree):
+# without it the NIC boots into Safe Mode, whose crippled classifier drops
+# reserved-multicast control frames (LACP 01:80:c2:00:00:02, LLDP ..:0e) so the
+# 25G bond never aggregates. DDP loads only on ice (re)probe -> one reboot clears
+# it. Only reboots when the NIC IS in Safe Mode AND the DDP file exists (never
+# healthy nodes; refuses if DDP missing -- would loop). WAN rides a separate igb
+# NIC, so the reboot keeps the node reachable.
 
 - name: Find an ice-bound netdev (is this an E810 host?)
   ansible.builtin.shell: |

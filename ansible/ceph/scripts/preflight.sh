@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Pre-flight checks before running destructive playbooks.
-# Verifies: TF-rendered artifacts present, 1P session live, secrets template
-# resolves via op inject, SSH connectivity, Python on targets.
+# Verifies TF-rendered artifacts are present, the 1P session is live, the secrets
+# template resolves via op inject, SSH connectivity, and Python on targets.
 #
-# Target inventory + secrets template are located via CEPH_ENV (path to
-# the TF-rendered inventory file; TF is the authoritative source of
-# cluster identity, declared in tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars).
+# Inventory + secrets template are located via CEPH_ENV; cluster identity is
+# declared in tf/deployment/<partition>/<region>/ceph/clusters.auto.tfvars.
 set -euo pipefail
 
 : "${CEPH_ENV:?CEPH_ENV must be set to the target cluster inventory.ini}"
@@ -14,7 +12,6 @@ INV="$CEPH_ENV"
 INV_DIR="$(dirname "$CEPH_ENV")"
 TEMPLATE="${INV_DIR}/secrets.yml.tpl"
 
-# Read SSH key path from inventory vars (preferred) or group_vars fallback
 SSH_KEY="$(sed -n 's/^ansible_ssh_private_key_file=\(.*\)/\1/p' "$INV" 2>/dev/null | head -1)"
 if [ -z "$SSH_KEY" ]; then
   SSH_KEY="$(sed -n 's/^provision_iac_ssh_key_path:[[:space:]]*//p' \
@@ -55,7 +52,6 @@ echo "Inventory: $INV"
 echo "Template:  $TEMPLATE"
 echo ""
 
-# Controller checks
 echo "--- Controller ---"
 check "ansible-play.sh wrapper executable" test -x scripts/ansible-play.sh
 check "Inventory file (TF-rendered) present" test -f "$INV"
@@ -68,7 +64,6 @@ check "op CLI installed" op --version
 check "1Password session live" op account get
 echo ""
 
-# Secrets resolve
 echo "--- Secrets ---"
 SECRETS_TEST="$(mktemp --suffix=-secrets-test.yml)"
 trap 'rm -f "$SECRETS_TEST"' EXIT INT TERM
@@ -77,7 +72,6 @@ check "Resolved file has non-empty vault_ops_password" \
   grep -qE '^vault_ops_password: \S+' "$SECRETS_TEST"
 echo ""
 
-# Target connectivity
 echo "--- Target connectivity ---"
 for host in $(ansible-inventory -i "$INV" --list 2>/dev/null \
   | python3 -c "
@@ -104,7 +98,6 @@ for h in hosts:
 done
 echo ""
 
-# Summary
 echo "=== Results ==="
 echo "  Passed: $PASS  Failed: $FAIL  Warnings: $WARN"
 if [ "$FAIL" -gt 0 ]; then

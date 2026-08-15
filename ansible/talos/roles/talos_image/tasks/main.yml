@@ -1,17 +1,8 @@
 ---
-# Stage the Talos base image on each hypervisor. The base raw image
-# is immutable and shared by every VM — each VM gets a thin qcow2
-# overlay (talos_vms role) backed by this single file.
-#
-# Idempotency model:
-#   - .raw exists  → role is a no-op (no download, no decompress).
-#   - .raw missing, .zst exists with matching checksum → decompress only.
-#   - neither → download (checksum-verified) + decompress.
-#
-# Why pin the .zst checksum (not the .raw): verifying the compressed
-# artifact at download time fails fast (no wasted decompress CPU).
-# Image Factory publishes no checksum sidecar on the free tier —
-# compute it yourself: `curl -sL <talos_image_url> | sha256sum`.
+# Idempotency: .raw exists -> no-op; .zst with matching checksum -> decompress
+# only; neither -> checksum-verified download + decompress. The checksum is
+# pinned on the .zst so a bad download fails before decompress; Image Factory
+# publishes no sidecar -- compute via `curl -sL <talos_image_url> | sha256sum`.
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:
@@ -71,8 +62,6 @@
   register: _raw_image
   tags: [talos_image]
 
-# zstd is in Debian Bookworm's base archive. Install only when we
-# actually need it (image not already present).
 - name: Install zstd (only if image not yet decompressed)
   ansible.builtin.apt:
     name: zstd
@@ -112,15 +101,9 @@
     path: "{{ talos_image_compressed_path }}"
     state: absent
   when: talos_image_delete_compressed | bool
-  # Reaching this task means decompression completed — either the
-  # creates:-guarded decompress ran successfully, or the .raw was
-  # already present (in which case the .zst probably doesn't exist
-  # either, and state=absent is a no-op).
   tags: [talos_image]
 
-# ─── Boot assets for libvirt direct kernel boot ──────────────────────────
 # Kernel + initramfs referenced by the domain XML's <kernel>/<initrd>.
-# get_url is idempotent (skips when dest matches the checksum).
 
 - name: Fetch Talos kernel (checksum-verified)
   ansible.builtin.get_url:

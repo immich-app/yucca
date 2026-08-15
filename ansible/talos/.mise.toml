@@ -2,12 +2,11 @@
 python = "3.12"
 
 [env]
-# Project-local virtualenv for all Python tooling
 VIRTUAL_ENV = "{{config_root}}/.venv"
 PATH = "{{config_root}}/.venv/bin:{{env.PATH}}"
-# Note: TALOS_ENV is intentionally NOT declared here. mise's [env] block
-# overrides shell-exported values, which silently sends operators to the
-# wrong cluster. Operators must export TALOS_ENV once per shell session:
+# TALOS_ENV is deliberately NOT declared here: mise's [env] block overrides
+# shell-exported values, silently sending operators to the wrong cluster. Export
+# it once per shell session:
 #   export TALOS_ENV=inventories/staging-austin/inventory.ini
 # Inventory file is TF-rendered — `TF_STACK_DIR=tf/deployment/staging/austin/talos mise run tf:apply`
 # (from yucca root) if missing.

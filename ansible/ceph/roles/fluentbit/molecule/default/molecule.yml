@@ -1,11 +1,9 @@
 ---
-# Template-rendering scenario, same shape as roles/security and
-# roles/ceph_deploy: `mise run test` runs `molecule verify` only, never a
-# converge. That is what makes this role testable at all -- tasks/main.yml
-# installs a pinned .deb from an apt repo, asserts the node is on the NetBird
-# overlay, resolves an o11y name over mesh DNS and starts a systemd unit, none
-# of which exist in a test environment. The rendered config is the part that
-# breaks silently, so the rendered config is what gets exercised.
+# `mise run test` runs `molecule verify` only, never a converge: tasks/main.yml
+# installs a pinned .deb from an apt repo, asserts NetBird overlay membership,
+# resolves an o11y name over mesh DNS and starts a systemd unit, none of which
+# exist in a test environment. The rendered config is what breaks silently, so
+# the rendered config is what gets exercised.
 driver:
   name: default
 

@@ -1,15 +1,9 @@
 ---
-# Drift checks for os_tuning. Read-only.
-#
-# Included by drift.yml with include_role + tasks_from, NOT vars_files.
-# vars_files loads a role's defaults at precedence 14, which outranks inventory
-# group_vars (4) and host_vars (9): every check would then compare the live host
-# against the role default rather than what the cluster actually declares, and
-# any per-cluster or per-host override would read as drift. include_role loads
-# defaults at precedence 2, so the normal layering applies.
-#
-# Appends to the play-level drift_results accumulator. set_fact (19) outranks
-# role defaults, so a later role's defaults cannot reset it.
+# Read-only. Included via include_role + tasks_from, NOT vars_files: vars_files loads role
+# defaults at precedence 14 (outranking group_vars 4 / host_vars 9), so cluster
+# overrides would read as drift; include_role loads them at 2 (normal layering).
+# Appends to drift_results; set_fact (19) outranks role defaults, so a later
+# role's defaults cannot reset the accumulator.
 
 - name: Check sysctl values
   ansible.builtin.shell: |

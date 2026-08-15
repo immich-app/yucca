@@ -1,20 +1,9 @@
 ---
-# Tear down all Talos VMs and their qcow2 overlays for lab repeatability.
-# Does NOT touch:
-#   - networkd bridges (br-vlan50, br-vlan51) — reusable infrastructure
-#   - libvirt itself or the storage pool definition
-#   - the base raw image (re-fetching is slow; keep)
-#   - Ceph or its OSDs (entirely out of scope here)
-#
-# Filtering: matches VMs by regex `^(sietch-)?talos-` so we never touch
-# unrelated libvirt domains a host might host. The transitional regex
-# catches both the legacy `talos-cp1` shape (from pre-monorepo sietch-talos
-# stock VMs that need destroying once) AND the current `sietch-talos-cp1`
-# shape that this subtree produces. Drop the `(sietch-)?` once no legacy
-# names remain in the lab.
-#
-# Usage: scripts/ansible-play.sh destroy-vms.yml
-# Or:    mise run destroy-vms
+# Does NOT touch: networkd bridges, libvirt/storage pool, the base raw image
+# (slow re-fetch), or Ceph/OSDs. VM filter `^(sietch-)?talos-` never matches
+# unrelated domains; the transitional `(sietch-)?` catches legacy pre-monorepo
+# `talos-cp1` names -- drop it once no legacy VMs remain.
+# Usage: scripts/ansible-play.sh destroy-vms.yml | mise run destroy-vms
 
 - name: Destroy Talos VMs (lab cleanup)
   hosts: hypervisors

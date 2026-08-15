@@ -1,18 +1,10 @@
 ---
-# Zap the OSD data HDDs so cephadm sees them as available on a clean rebuild.
-#
-# WHY: disks.yml wipes only the two OS/block.db SSDs. The OSD HDDs keep the
-# previous cluster LVM (ceph-<uuid> VGs) plus bluestore signatures. cephadm
-# `ceph orch apply osd` only consumes disks it considers AVAILABLE, so leftover
-# signatures make it skip the HDDs and the OSD wait loop times out. In the
-# live-image reimage path destroy-ceph.yml never ran to tear OSDs down
-# gracefully, so we clear them here.
-#
-# Gated by provision_wipe_osd_disks (default false) on top of the role
-# confirm_wipe gate -- both must be set, since this is irreversible OSD data
-# loss. Targets exactly the ceph_hdd_osds devices (phy0..N), never the SSDs
-# (which are phy12/phy13 and handled by disks.yml). sietch-shape only
-# (sas_path_prefix); NVMe-RAID-shape hosts are out of scope here.
+# Zap the OSD data HDDs so cephadm sees them as AVAILABLE on a clean rebuild:
+# disks.yml wipes only the SSDs, and leftover ceph-<uuid> LVM + bluestore
+# signatures make `ceph orch apply osd` skip the HDDs until the wait loop times
+# out (the reimage path never ran destroy-ceph.yml). IRREVERSIBLE OSD data loss:
+# gated on provision_wipe_osd_disks AND confirm_wipe. Targets exactly the
+# ceph_hdd_osds devices, never the SSDs. sietch-shape (sas_path_prefix) only.
 
 - name: Zap OSD HDDs (remove LVM, wipe signatures, zero bluestore label)
   ansible.builtin.shell: |

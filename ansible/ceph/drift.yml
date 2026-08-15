@@ -1,14 +1,8 @@
 ---
-# Drift detection: compares expected Ansible state against live cluster.
-# Read-only. No changes. Reports mismatches.
-#
-# Each role owns its own checks in roles/<role>/tasks/drift.yml and appends to
-# the drift_results accumulator; this play sequences them and renders the
-# report. Adding a tunable means touching one role directory, not two files.
-#
-# Usage:
-#   scripts/ansible-play.sh drift.yml
-#   mise run drift
+# Drift detection: expected Ansible state vs live cluster. Read-only.
+# Each role owns its checks in roles/<role>/tasks/drift.yml, appending to the
+# drift_results accumulator; this play sequences them and renders the report.
+# Usage: scripts/ansible-play.sh drift.yml  |  mise run drift
 
 - name: Drift detection
   hosts: ceph_nodes
@@ -19,18 +13,11 @@
     drift_results: []
 
   tasks:
-    # --- Per-role checks ---
-    #
-    # include_role, NOT vars_files. vars_files loads a role's defaults at
-    # precedence 14, above inventory group_vars (4) and host_vars (9), so every
-    # check compared the live host against the role default and a cluster that
-    # legitimately overrode a value would be reported as drifting. include_role
-    # loads defaults at precedence 2, where normal layering applies.
-    #
-    # Order is deliberate: it reproduces the report sequence this play emitted
-    # when the checks were inline, so the two can be diffed. security before
-    # baseline, and ceph_tuning after the cluster-state block below, for the
-    # same reason. Reorder freely once that comparison is no longer useful.
+    # include_role, NOT vars_files: vars_files loads role defaults at precedence
+    # 14 (above group_vars 4 / host_vars 9), so legitimate cluster overrides
+    # would report as drift; include_role loads them at 2 (#373).
+    # Order reproduces the old inline report sequence (ceph_tuning after the
+    # cluster-state block); reorder freely once diffing them stops mattering.
 
     - name: OS tuning checks
       ansible.builtin.include_role:
@@ -52,10 +39,7 @@
         name: baseline
         tasks_from: drift
 
-    # --- Cluster state (bootstrap only) ---
-    #
-    # These assert live cluster shape rather than a declared config value, so
-    # they read no role defaults and stay at play level.
+    # Live cluster shape, not declared config: no role defaults, stays at play level.
 
     - name: Check OSD status
       ansible.builtin.shell: |
@@ -99,10 +83,8 @@
       when: inventory_hostname in groups['ceph_bootstrap']
       changed_when: false
 
-    # Expect the declared quorum, not one MON per node. ceph_mon holds the hosts
-    # whose `roles` include "mon": every node on a small cluster, a pinned subset
-    # on a large one (spice runs 5 across 48). Comparing against ceph_nodes read
-    # as permanent drift on any cluster that pins its quorum.
+    # Expect the declared quorum (ceph_mon group), not one MON per node: spice
+    # runs 5 across 48, so comparing against ceph_nodes reads as permanent drift (#374).
     - name: Record MON drift
       ansible.builtin.set_fact:
         drift_results: >-
@@ -169,7 +151,6 @@
         name: ceph_tuning
         tasks_from: drift
 
-    # --- Report ---
 
     - name: Build drift report
       ansible.builtin.set_fact:

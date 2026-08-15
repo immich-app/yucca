@@ -1,32 +1,20 @@
 #!/usr/bin/env bash
-# render-inventories.sh — write the TF-rendered Ansible inventories + secrets
-# templates into THIS checkout, from the dev/ceph stack's `render` output.
-#
-# WHY a wrapper instead of tofu `local_file`: local_file records the destination
-# path in state. With a shared remote backend that path is checkout-specific, so
-# it coupled state to whichever git worktree last applied (get_repo_root()
-# resolves per-worktree) — every apply elsewhere then force-replaced the files
-# and rebound state. Reading the content from a TF *output* and writing it here,
-# with the path derived from THIS script's own location, keeps checkout-specific
-# paths out of shared state entirely.
-#
-# Prereq: `terragrunt apply` has been run for the stack (so the `render` output
-# reflects the current cluster spec). This script is read-only against state.
-#
-# Usage (from anywhere):
-#   ansible/ceph/scripts/render-inventories.sh [partition] [region]
-#     # partition defaults to staging, region defaults to austin (sietch's home)
-#
-# The TF `render` output carries each cluster's own `dirname` (region-scoped,
-# friendly-cluster leaf — e.g. `staging-austin/sietch`), so this wrapper does
-# not derive the inventory layout; it only locates the partition/region stack.
+# Write the TF-rendered Ansible inventories + secrets templates into THIS
+# checkout from the ceph stack's `render` output. A wrapper, not tofu
+# `local_file`: local_file stores the checkout-specific path in shared state, so
+# every apply from another worktree force-replaced the files and rebound state;
+# reading the output and deriving the path from this script's location keeps
+# checkout paths out of state. Read-only against state; requires a prior
+# terragrunt apply. Layout comes from each cluster's `dirname` in the output
+# (e.g. staging-austin/sietch); this only locates the partition/region stack.
+# Usage: ansible/ceph/scripts/render-inventories.sh [partition=staging] [region=austin]
 set -euo pipefail
 
 PARTITION="${1:-staging}"
 REGION="${2:-austin}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ANSIBLE_CEPH="$(cd "$SCRIPT_DIR/.." && pwd)"   # ansible/ceph
+ANSIBLE_CEPH="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$ANSIBLE_CEPH/../.." && pwd)" # repo root of THIS checkout
 STACK_DIR="$REPO_ROOT/tf/deployment/${PARTITION}/${REGION}/ceph"
 INV_ROOT="$ANSIBLE_CEPH/inventories"
@@ -36,12 +24,10 @@ INV_ROOT="$ANSIBLE_CEPH/inventories"
   exit 1
 }
 
-# The `render` output is non-sensitive (inventory text + op:// references — no
-# raw secrets). Reading state needs the S3 backend creds, so go through the
-# op-run wrapper which injects them from the partition's env file: prod refs
-# live in tf/.env.prod, everything else in tf/.env (the same split infra.yml
-# makes). op run resolves every ref up front, so a mismatched file fails on the
-# wrong vault under the prod service-account token.
+# `render` output is non-sensitive (op:// refs, no raw secrets), but reading
+# state needs the S3 backend creds: go through op-run with the partition's env
+# file (prod -> tf/.env.prod, else tf/.env, same split as infra.yml). op run
+# resolves refs up front, so a mismatched file fails on the wrong vault.
 ENV_FILE="$REPO_ROOT/tf/.env"
 if [ "$PARTITION" = "prod" ]; then ENV_FILE="$REPO_ROOT/tf/.env.prod"; fi
 JSON="$(cd "$STACK_DIR" && OP_ENV_FILE="$ENV_FILE" "$REPO_ROOT/tf/op-run.sh" terragrunt output -json render)"

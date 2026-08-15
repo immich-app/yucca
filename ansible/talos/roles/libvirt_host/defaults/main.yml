@@ -1,32 +1,22 @@
 ---
-# Master toggle — role is a no-op when false. Default false; opt-in
-# only, matching the project-wide lab posture.
 libvirt_host_enabled: false
 
-# Packages installed via apt. Debian 12 Bookworm names. Ordered for
-# readable apt output rather than dependency reasons (apt resolves
-# the dependency graph itself).
+# Debian 12 Bookworm package names.
 libvirt_host_packages:
-  - qemu-system-x86       # KVM via qemu (x86_64 target)
-  - qemu-utils            # qemu-img for qcow2 overlay creation
-  - libvirt-daemon-system # libvirtd + default systemd units
+  - qemu-system-x86
+  - qemu-utils            # qemu-img, for qcow2 overlays
+  - libvirt-daemon-system
   - libvirt-clients       # virsh, virt-host-validate
-  - virtinst              # virt-install (used by talos_vms role)
-  - ovmf                  # UEFI firmware images for EFI boot
-  - dnsmasq-base          # libvirt uses pieces of this for some networks
-  - python3-lxml          # required by community.libvirt.virt_pool /
-                          # virt modules to parse libvirt XML state
+  - virtinst              # virt-install, used by the talos_vms role
+  - ovmf                  # UEFI firmware images
+  - dnsmasq-base          # libvirt uses pieces of it for some networks
+  - python3-lxml          # community.libvirt modules parse libvirt XML with it
                           # (target-side dep, not controller-side)
 
-# Storage pool — name + path are read from group_vars (single source
-# of truth across roles). Defaults below are fallbacks for standalone
-# role use.
+# Read from group_vars across roles; these are standalone-use fallbacks.
 libvirt_host_pool_name: "{{ libvirt_storage_pool_name | default('talos') }}"
 libvirt_host_pool_path: "{{ libvirt_storage_pool_path | default('/var/lib/libvirt/images') }}"
 
-# Whether to disable libvirt's default NAT network. The default
-# network is virbr0 + dnsmasq, autostarted on every libvirtd start.
-# We don't use it (Talos VMs sit on br-vlan50). Setting autostart=no
-# tidies host startup without removing the network — operators can
-# still bring it up manually if they ever want a one-off NAT VM.
+# Talos VMs sit on br-vlan50, so libvirt's virbr0 + dnsmasq are unused;
+# autostart=no leaves the network defined for a one-off NAT VM.
 libvirt_host_disable_default_network_autostart: true

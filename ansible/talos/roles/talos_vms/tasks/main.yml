@@ -1,15 +1,6 @@
 ---
-# Create per-VM qcow2 overlays, render libvirt domain XML, define +
-# start each VM. Three phases (overlay, define, start) so progress
-# fans out across all VMs at each phase rather than fully provisioning
-# one VM before starting the next — easier to debug if a phase fails
-# for a single VM.
-#
-# Idempotency:
-#   - qcow2 overlays use `creates:` (qemu-img is not idempotent on its
-#     own; -F + creates: gives us the right semantics).
-#   - community.libvirt.virt define is a no-op if the active XML matches.
-#   - state=running is a no-op when the VM is already running.
+# Idempotency: overlays via `creates:` (qemu-img is not idempotent alone), virt
+# define no-ops on matching XML, state=running no-ops when already running.
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:
@@ -69,9 +60,7 @@
       networkd_bridges role first.
   tags: [talos_vms, preflight]
 
-# ─── Profile filter ─────────────────────────────────────────────────
-# Build the filtered VM list with an explicit accumulator loop —
-# verbose but unambiguous and ansible-lint clean.
+# Explicit accumulator loop: verbose, but unambiguous and ansible-lint clean.
 
 - name: Reset filtered VM list
   ansible.builtin.set_fact:
@@ -94,7 +83,6 @@
       VM(s) selected for profile={{ talos_vms_profile }}.
   tags: [talos_vms]
 
-# ─── Overlays: per-VM qcow2 ─────────────────────────────────────────
 
 - name: Create per-VM qcow2 overlay backed by the Talos base image
   ansible.builtin.command:
@@ -122,7 +110,6 @@
     label: "{{ talos_vms_domain_prefix }}-{{ item.name }}.qcow2"
   tags: [talos_vms, overlays]
 
-# ─── Define: libvirt domains ────────────────────────────────────────
 
 - name: Define libvirt domain for each VM
   community.libvirt.virt:
@@ -133,7 +120,6 @@
     label: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
   tags: [talos_vms, define]
 
-# ─── Start: boot the VMs ────────────────────────────────────────────
 
 - name: Start each VM (idempotent — no-op when already running)
   community.libvirt.virt:
@@ -145,7 +131,6 @@
     label: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
   tags: [talos_vms, start]
 
-# ─── Verify ─────────────────────────────────────────────────────────
 
 - name: Confirm each VM is in 'running' state
   community.libvirt.virt:
@@ -158,9 +143,8 @@
     label: "{{ talos_vms_domain_prefix }}-{{ item.name }}"
   tags: [talos_vms, verify]
 
-# Show the MAC table so the operator can identify VMs at the switch /
-# bridge level (and correlate workers' VLAN-51 DHCP leases). Recomputes
-# the same MAC the template embedded.
+# Recomputes the MAC the template embedded, so VMs can be identified at the
+# switch/bridge level and workers' VLAN-51 DHCP leases correlated.
 - name: Display VM MAC table for operator handoff
   ansible.builtin.debug:
     msg: >-

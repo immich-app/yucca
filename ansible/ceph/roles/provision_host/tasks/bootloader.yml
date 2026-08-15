@@ -1,12 +1,7 @@
 ---
-# Phase 8: Bootloader installation
-#
-# Builds the initramfs with mdraid/LVM support, installs GRUB to the
-# primary ESP, and creates a fallback efibootmgr entry pointing at
-# the backup ESP on SSD2. All three steps run inside chroot.
-#
-# initramfs and grub-install overwrite idempotently; efibootmgr is
-# guarded by a check for an existing "Debian (mirror)" entry.
+# All three steps run inside the chroot. initramfs and grub-install overwrite
+# idempotently; efibootmgr is guarded by a check for an existing
+# "Debian (mirror)" entry.
 
 - name: Rebuild initramfs inside chroot for all kernels
   ansible.builtin.command: "chroot {{ provision_mnt }} update-initramfs -u -k all"

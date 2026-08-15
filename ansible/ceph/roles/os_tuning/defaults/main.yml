@@ -1,29 +1,23 @@
 ---
-# Kernel / OS tuning defaults for Ceph OSD nodes
-#
 # cephadm does NOT assert these (unlike ceph-ansible), so they must be
 # applied explicitly. Values sourced from Red Hat Ceph Storage hardening
 # guide and Heinlein Support's production tuning.
 
-# --- VM ---
 ceph_sysctl_vm_swappiness: 10
 ceph_sysctl_vm_min_free_kbytes: 4194303    # ~4 GB — headroom to prevent OSD OOM
 ceph_sysctl_vm_zone_reclaim_mode: 0        # disable NUMA zone reclaim (causes stalls)
 
-# --- FS ---
 ceph_sysctl_fs_aio_max_nr: 1048576         # async I/O slots — OSD prepare fails if too low
-ceph_sysctl_fs_file_max: 26234859          # file descriptor ceiling
+ceph_sysctl_fs_file_max: 26234859
 # inotify headroom for cephadm-on-podman container scale (many daemons/units per
 # node); Debian's default max_user_instances=128 is a known podman-at-scale limit.
 ceph_sysctl_fs_inotify_max_user_instances: 512
 ceph_sysctl_fs_inotify_max_user_watches: 524288
 
-# --- Kernel ---
 ceph_sysctl_kernel_pid_max: 4194304        # high OSD count spawns many threads
 
-# --- Network (TCP buffer tuning for OSD replication) ---
-ceph_sysctl_net_core_rmem_max: 56623104    # ~54 MB receive buffer
-ceph_sysctl_net_core_wmem_max: 56623104    # ~54 MB send buffer
+ceph_sysctl_net_core_rmem_max: 56623104    # ~54 MB
+ceph_sysctl_net_core_wmem_max: 56623104    # ~54 MB
 ceph_sysctl_net_core_rmem_default: 56623104
 ceph_sysctl_net_core_wmem_default: 56623104
 ceph_sysctl_net_core_optmem_max: 40960
@@ -36,20 +30,18 @@ ceph_sysctl_net_ipv4_tcp_tw_reuse: 1
 ceph_sysctl_net_ipv4_tcp_max_tw_buckets: 2000000
 ceph_sysctl_net_ipv4_ip_local_port_range: "8192 65535"
 
-# --- Security hardening (host kernel / network) ---
-# Universally-good host settings; safe on all clusters.
-ceph_sysctl_net_ipv4_tcp_syncookies: 1                  # SYN flood mitigation
-ceph_sysctl_net_ipv4_conf_all_accept_redirects: 0       # ignore ICMP redirects
+ceph_sysctl_net_ipv4_tcp_syncookies: 1
+ceph_sysctl_net_ipv4_conf_all_accept_redirects: 0
 ceph_sysctl_net_ipv4_conf_default_accept_redirects: 0
-ceph_sysctl_net_ipv4_conf_all_send_redirects: 0         # do not send ICMP redirects
+ceph_sysctl_net_ipv4_conf_all_send_redirects: 0
 ceph_sysctl_net_ipv4_conf_default_send_redirects: 0
-ceph_sysctl_net_ipv4_conf_all_accept_source_route: 0    # drop source-routed packets
+ceph_sysctl_net_ipv4_conf_all_accept_source_route: 0
 ceph_sysctl_net_ipv4_conf_default_accept_source_route: 0
 ceph_sysctl_net_ipv6_conf_all_accept_redirects: 0
 ceph_sysctl_net_ipv6_conf_all_accept_source_route: 0
-ceph_sysctl_kernel_kptr_restrict: 1                     # hide kernel pointers from /proc
-ceph_sysctl_kernel_dmesg_restrict: 1                    # restrict dmesg to privileged users
-ceph_sysctl_net_ipv4_conf_all_log_martians: 1           # log packets with impossible addresses
+ceph_sysctl_kernel_kptr_restrict: 1
+ceph_sysctl_kernel_dmesg_restrict: 1
+ceph_sysctl_net_ipv4_conf_all_log_martians: 1
 # rp_filter LOOSE (2), NOT strict (1). The spice nodes are multi-homed: a 1G
 # WAN carries the default route while the 25G fabric VLAN sub-interfaces
 # (bond0.120/.122/.124) carry cluster traffic. STRICT reverse-path filtering
@@ -57,17 +49,13 @@ ceph_sysctl_net_ipv4_conf_all_log_martians: 1           # log packets with impos
 ceph_sysctl_net_ipv4_conf_all_rp_filter: 2
 ceph_sysctl_net_ipv4_conf_default_rp_filter: 2
 
-# --- Persistent journald ---
 # The KVM-only headless nodes default to volatile journald (Storage=auto with
 # no /var/log/journal), so logs are lost across the pipeline's own reboots.
 # Make the journal persistent and bound its on-disk / runtime footprint.
 ceph_journald_storage: persistent
-ceph_journald_system_max_use: 2G      # cap persistent journal at ~2 GB
-ceph_journald_runtime_max_use: 200M   # cap volatile (tmpfs) journal at ~200 MB
+ceph_journald_system_max_use: 2G      # persistent journal cap
+ceph_journald_runtime_max_use: 200M   # volatile (tmpfs) journal cap
 
-# --- Centralized logging (opt-in) ---
-# When enabled, configures rsyslog to forward all logs to a remote syslog
-# server. Disabled by default — enable when a log aggregator is available.
 ceph_logging_enabled: false
 ceph_logging_target: ""          # e.g., "10.10.10.50:514"
 ceph_logging_protocol: tcp       # tcp or udp

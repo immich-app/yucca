@@ -1,34 +1,12 @@
 ---
-# Provision sietch-ceph nodes from the Debian 12 live image.
-#
-# Fresh-install workflow (no cloning):
-#   1. Boot all target nodes to Debian 12 live image (user/live credentials)
-#   2. Ensure the live image is reachable on its reserved IP (= bond_ip)
-#   3. CEPH_ENV=inventories/<cluster>/inventory-provision.ini \
-#        scripts/ansible-play.sh provision.yml -e confirm_wipe=true
-#
-# Flags:
-#   confirm_wipe=true                    required — destroys all data on SSDs
-#   provision_create_iac_keypair=true    opt-in: preflight auto-generates
-#                                        the ansible-iac deploy keypair if
-#                                        it doesn't already exist on disk
-#   provision_skip_reboot=true           opt-in: skip the final reboot and
-#                                        the post-reboot verification play
-#                                        (canary inspection of the chroot)
-#   --limit <host>                       provision one node at a time
-#
-# Post-reboot: a separate verification play waits on the installed OS
-# (reached via the production sietch-ceph-<name> SSH alias / ansible-iac
-# user with key) and confirms the provisioning marker is in place.
-
-# --- Preflight: controller-side prerequisites -------------------------
-#
-# Runs BEFORE the target hosts are touched. Verifies the ansible-iac
-# deploy keypair exists on the controller (it gets installed into every
-# node's ~ansible-iac/.ssh/authorized_keys via file lookup during the
-# main play). Keypair generation is strictly opt-in via
-# -e provision_create_iac_keypair=true — default behavior is to fail
-# fast with a clear message if the keypair is missing.
+# Targets must already be booted into the Debian 12 live image (user/live) and
+# reachable on bond_ip:
+#   CEPH_ENV=inventories/<cluster>/inventory-provision.ini \
+#     scripts/ansible-play.sh provision.yml -e confirm_wipe=true
+# Flags: confirm_wipe=true (required, DESTROYS SSD data);
+#   provision_create_iac_keypair=true (opt-in keypair autogen);
+#   provision_skip_reboot=true (skip reboot + verify, chroot canary inspection);
+#   --limit <host> (one node at a time).
 
 - name: Preflight — verify controller prerequisites
   hosts: localhost
@@ -115,41 +93,24 @@
   gather_facts: false
   become: false
   tasks:
-    # Verification runs on localhost via delegate_to + the production
-    # sietch-ceph-<name> SSH alias. That avoids having to juggle live
-    # vs installed credentials inside a single play.
-
+    # Runs on localhost via the production SSH alias, avoiding live-vs-installed
+    # credential juggling in one play.
     - name: Skip verification play when reboot was intentionally skipped
       ansible.builtin.meta: end_play
       when: provision_skip_reboot | default(false) | bool
 
-    # Give the box a head start before we start hammering ssh. R730xd
-    # POST + GRUB + initramfs + systemd brings the bond up in ~60-90s.
+    # Head start: R730xd POST->systemd brings the bond up in ~60-90s.
     - name: Initial reboot wait
       delegate_to: localhost
       ansible.builtin.pause:
         seconds: "{{ provision_reboot_wait_delay | default(60) }}"
 
-    # The ssh probe is the actual gate — it honors ~/.ssh/config
-    # (including any ProxyJump or ProxyCommand entries) so it works
-    # from the controller regardless of whether the target subnet is
-    # directly routable. wait_for/tcp does NOT honor ssh_config, so
-    # we rely on retries here instead.
-    #
-    # We force user + identity explicitly with -l / -i / IdentitiesOnly
-    # because ~/.ssh/config for the host alias lands as the 'ops' human
-    # user (which has NO authorized_keys on a fresh provision — operator
-    # keys are distributed out-of-band). The verify play is an automation
-    # reachability test, so it uses ansible-iac (the same identity
-    # ansible_ssh_private_key_file points at in inventory.ini).
-    #
-    # UserKnownHostsFile=/dev/null + StrictHostKeyChecking=no bypass
-    # known_hosts entirely: fresh provisioning generates new host keys,
-    # and on reprovisioning a stale known_hosts entry would otherwise
-    # trigger "REMOTE HOST IDENTIFICATION HAS CHANGED" and abort. The
-    # real identity check happens via the marker assertion below, not
-    # via the SSH host key cache. LogLevel=ERROR suppresses the
-    # "Warning: Permanently added..." noise.
+    # ssh (not wait_for/tcp) is the gate because it honors ~/.ssh/config
+    # (ProxyJump etc.). Force -l/-i/IdentitiesOnly: the host alias defaults to
+    # 'ops', which has NO authorized_keys on a fresh provision. known_hosts is
+    # bypassed because provisioning mints new host keys and a stale entry would
+    # abort with "REMOTE HOST IDENTIFICATION HAS CHANGED"; real identity check
+    # is the marker assertion below.
     - name: Probe installed OS via production SSH alias (as ansible-iac)
       delegate_to: localhost
       ansible.builtin.command:

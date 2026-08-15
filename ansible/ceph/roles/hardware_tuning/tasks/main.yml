@@ -1,7 +1,5 @@
 ---
-# Hardware-level tuning for Ceph OSD nodes.
-# Sets I/O scheduler, readahead, and queue depth per device class.
-# All changes apply live and persist via udev rules (no reboot).
+# All changes apply live and persist via udev rules; no reboot.
 
 - name: Deploy udev rules for disk tuning
   ansible.builtin.template:
@@ -77,8 +75,6 @@
     state: started
   when: ceph_enable_fstrim_timer | bool
 
-# ---------- SATA link power management ----------
-
 # The udev rule above covers boot and hot-plug; this applies the policy to
 # ports that are already up. Writing the attribute schedules a libata EH cycle
 # on that port, which is why this role wants serial: 1 on a serving cluster.
@@ -101,7 +97,6 @@
   changed_when: "'CHANGED' in (_sata_lpm.stdout | default(''))"
   when: ceph_sata_link_pm_enabled | bool
 
-# ---------- Transparent Huge Pages ----------
 
 - name: Set Transparent Huge Pages live
   ansible.builtin.shell: |
@@ -142,7 +137,6 @@
     daemon_reload: true
   when: ceph_thp_enabled | bool
 
-# ---------- CPU governor tuning ----------
 
 - name: Install cpupower package
   ansible.builtin.package:
@@ -195,7 +189,6 @@
   notify: Update GRUB
   when: ceph_cpu_governor_enabled | bool
 
-# ---------- LVM device filter ----------
 
 - name: Set LVM device filter in lvm.conf
   ansible.builtin.lineinfile:
@@ -205,7 +198,6 @@
     insertafter: '^\s*# filter\s*='
   when: ceph_lvm_filter_enabled | bool
 
-# ---------- Verification ----------
 
 - name: Verify I/O scheduler on sample devices
   ansible.builtin.shell: |

@@ -1,8 +1,5 @@
 ---
-# Quick cluster health check — no changes, read-only.
-#
-# Usage:
-#   scripts/ansible-play.sh status.yml
+# Read-only.
 
 - name: Ceph cluster status
   hosts: ceph_nodes

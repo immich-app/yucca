@@ -1,7 +1,6 @@
 ---
-# Start systemd-networkd to adopt the existing bond0.
-# ifupdown's networking.service is active (exited) - no daemon to conflict.
-# networkd sees bond0 already exists and adopts it without disruption.
+# ifupdown's networking.service is active (exited), so there is no daemon to
+# conflict: networkd adopts the existing bond0 without disruption.
 
 - name: Flush handlers (ensure daemon-reload before start)
   ansible.builtin.meta: flush_handlers
@@ -11,21 +10,16 @@
     name: systemd-networkd.service
     state: started
 
-# Apply any config delta to an ALREADY-running networkd. On the initial migration
-# `state: started` above brings the stack up; on a re-run (e.g. adding a bond VLAN)
-# networkd is already active, so `started` is a no-op and the freshly written
-# .netdev/.network files would sit unapplied. `networkctl reload` re-reads the
-# config and creates the added sub-interfaces without tearing down the existing
-# links (unchanged bond0 + VLANs are untouched; the WAN, on ifupdown, is untouched
-# regardless).
+# On a re-run `started` is a no-op and fresh .netdev/.network files sit
+# unapplied; `networkctl reload` picks them up and creates added sub-interfaces
+# without touching existing links (or the ifupdown WAN).
 - name: Apply networkd config (idempotent; picks up added VLAN sub-interfaces)
   ansible.builtin.command: networkctl reload
   changed_when: false
 
-# networkctl reload creates + addresses sub-interfaces asynchronously; wait for each
-# bond VLAN to carry its address before verify asserts on it. A sub-interface that
-# never comes up (e.g. a reload that could not create the netdev) fails here and,
-# with max_fail_percentage 0 + serial 1, halts the roll on that one node.
+# reload creates/addresses sub-interfaces asynchronously; wait for each VLAN's
+# address before verify asserts. A sub-interface that never comes up fails here
+# and (max_fail_percentage 0 + serial 1) halts the roll on that node.
 - name: Wait for bond VLAN sub-interfaces to acquire their addresses
   ansible.builtin.command: "ip -4 addr show {{ networkd_bond_name }}.{{ vlan.id }}"
   register: networkd_vlan_settle

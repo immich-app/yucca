@@ -1,16 +1,7 @@
 ---
-# Phase 5: Clean up LVM, device signatures, and leftover Ceph state on all nodes
-#
-# Order matters:
-#   1. Close dm-crypt/LUKS mappings (devices are locked until closed)
-#   2. Remove device-mapper entries
-#   3. Remove LVM volume groups and physical volumes
-#   4. Wipe device signatures (HDD and SSD OSD partitions)
-#   5. Clean stale LVM metadata files
-#   6. Reset failed systemd units
-#   7. Remove Ceph directories
+# ORDER MATTERS: LUKS close (devices locked until closed) -> DM entries -> VGs/PVs
+# -> wipe signatures -> stale LVM metadata -> reset failed units -> remove dirs.
 
-# --- Step 1: Close dm-crypt LUKS mappings ---
 # ceph-volume --dmcrypt creates LUKS volumes on OSD devices. These persist after
 # cephadm rm-cluster and lock the underlying block devices. Must close before wipefs.
 - name: Close dm-crypt LUKS mappings
@@ -29,7 +20,6 @@
   register: luks_cleanup
   changed_when: "'Closing LUKS' in luks_cleanup.stdout"
 
-# --- Step 2: Remove leftover device mapper entries ---
 - name: Remove Ceph device mapper entries
   ansible.builtin.shell: |
     set -o pipefail
@@ -45,7 +35,6 @@
   register: dm_cleanup
   changed_when: "'Removing DM' in dm_cleanup.stdout"
 
-# --- Step 3: Remove Ceph LVM volume groups ---
 # Catches both ceph-db VGs (ceph-db-rear12, ceph-db-rear13) and ceph-volume
 # created VGs (ceph-<uuid> from dmcrypt OSDs).
 - name: Remove Ceph LVM volume groups
@@ -63,7 +52,6 @@
   register: vg_cleanup
   changed_when: "'Removing VG' in vg_cleanup.stdout"
 
-# --- Step 4: Remove LVM physical volumes ---
 # After VG removal, PVs are orphaned (no VG name in pvs output). Must catch BOTH
 # PVs that still reference a ceph VG AND orphaned PVs on HDD/SSD OSD devices.
 - name: Remove Ceph LVM physical volumes (named VGs)
@@ -121,10 +109,8 @@
   register: pv_cleanup_ssd
   changed_when: "'Removing orphaned PV' in pv_cleanup_ssd.stdout"
 
-# --- Step 5: Wipe device signatures ---
-# Wipe ALL rotational (HDD) devices that have any filesystem/LVM/LUKS signatures.
-# Every HDD in these servers is a Ceph OSD - no ambiguity about which to wipe.
-# Only wipes devices that actually have signatures (idempotent on clean disks).
+# Wipes ALL rotational devices with signatures: every HDD in these servers is a
+# Ceph OSD, no ambiguity. Idempotent on clean disks.
 - name: Wipe HDD device signatures
   ansible.builtin.shell: |
     set -o pipefail
@@ -171,9 +157,7 @@
   register: ssd_zap
   changed_when: "'Wiping' in ssd_zap.stdout"
 
-# --- Step 6: Clean stale LVM metadata ---
-# ceph-volume operations generate LVM archive/backup files that accumulate across
-# cluster lifecycles. Hundreds of ceph-* files can build up in /etc/lvm/.
+# ceph-volume accumulates hundreds of ceph-* archive/backup files in /etc/lvm/.
 - name: Remove stale Ceph LVM archive and backup files
   ansible.builtin.shell: |
     REMOVED=0
@@ -188,7 +172,6 @@
   register: lvm_meta_cleanup
   changed_when: "lvm_meta_cleanup.stdout is not search('Removed 0')"
 
-# --- Step 7: Reset failed Ceph systemd units ---
 - name: Reset failed Ceph systemd units
   ansible.builtin.shell: |
     set -o pipefail
@@ -204,7 +187,6 @@
   register: systemd_cleanup
   changed_when: "'Resetting failed unit' in systemd_cleanup.stdout"
 
-# --- Step 8: Remove Ceph directories ---
 - name: Clean up leftover Ceph directories
   ansible.builtin.file:
     path: "{{ item }}"

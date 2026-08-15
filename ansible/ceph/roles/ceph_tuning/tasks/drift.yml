@@ -1,8 +1,7 @@
 ---
-# Drift checks for ceph_tuning. Read-only. Bootstrap node only -- these read
-# cluster-wide state from the mon config database, not per-host state.
-# Included by drift.yml via include_role + tasks_from -- see the precedence
-# note in roles/os_tuning/tasks/drift.yml.
+# Read-only, bootstrap node only: these read cluster-wide state from the mon
+# config database, not per-host state. Included via include_role + tasks_from --
+# see the precedence note in roles/os_tuning/tasks/drift.yml.
 #
 # Compares against `ceph config dump` matched on (section, mask, name), reusing
 # the diff engine tasks/main.yml applies with, so drift and converge cannot

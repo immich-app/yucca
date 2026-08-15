@@ -1,10 +1,8 @@
 ---
-# Read-only pre-flight. Verifies the hypervisors are ready to receive
-# Talos work. Touches no state. Refuses to greenlight if Ceph cluster
-# health degrades — cluster health is non-negotiable.
+# Read-only; touches no state. Refuses to greenlight if Ceph cluster health is
+# degraded.
 #
-# Usage: scripts/ansible-play.sh preflight.yml
-# Or:    mise run preflight
+# Usage: scripts/ansible-play.sh preflight.yml  (or: mise run preflight)
 
 - name: Pre-flight — sietch-talos prerequisites (read-only)
   hosts: hypervisors
@@ -13,14 +11,12 @@
   tags: [preflight]
 
   tasks:
-    # ─── Reachability ─────────────────────────────────────────────────
     - name: Confirm SSH + sudo reachability
       ansible.builtin.ping:
       become: false  # ping doesn't need root; keep blast radius minimal
 
-    # ─── Ceph cluster health ──────────────────────────────────────────
-    # Runs on every host; redundant per node but surfaces per-host
-    # failures (ceph not callable on this node = node-local issue).
+    # Runs on every host: redundant per node, but ceph not being callable on one
+    # node is itself a node-local failure worth surfacing.
     - name: Query Ceph cluster status
       ansible.builtin.command: ceph -s --format=json
       register: _ceph_status
@@ -50,7 +46,6 @@
             ' (HEALTH_WARN explicitly allowed via -e allow_ceph_warn=true)'
             if _ceph_health == 'HEALTH_WARN' else '' }}
 
-    # ─── Network prerequisites ────────────────────────────────────────
     - name: Confirm systemd-networkd is active
       ansible.builtin.systemd_service:
         name: systemd-networkd
@@ -78,7 +73,6 @@
           bond0 not present on {{ inventory_hostname }}.
           The Ceph deployment is expected to bring it up.
 
-    # ─── Virtualization capability ────────────────────────────────────
     - name: /dev/kvm exists
       ansible.builtin.stat:
         path: /dev/kvm
@@ -93,10 +87,8 @@
           module not loaded or virtualization extensions disabled in
           BIOS/UEFI. Cannot run Talos VMs on this host.
 
-    # ─── Optional state-of-deployment (informational) ─────────────────
-    # These pass through with debug output rather than asserting; on
-    # a fresh host they'll be missing. preflight is run BEFORE
-    # prepare-hypervisors, so absence is normal.
+    # Debug output rather than asserts: preflight runs BEFORE
+    # prepare-hypervisors, so absence on a fresh host is normal.
     - name: Check if br-vlan50 already exists (informational)
       ansible.builtin.stat:
         path: "/sys/class/net/{{ vlan_compute_bridge }}"

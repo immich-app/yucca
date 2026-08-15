@@ -1,34 +1,22 @@
 ---
-# Manual, rescue-first "add a node" path: install + chroot + verify on a node the
-# operator has ALREADY put into the Hetzner rescue system by hand. This is the
-# default way to (re)image a spice node -- the Robot API (register keys / arm
-# rescue / hw reset) is deliberately OUT of the loop (reprovision_use_robot=false).
+# Manual, rescue-first "add a node": install + chroot + verify on a node the
+# operator ALREADY put into Hetzner rescue by hand (reprovision_use_robot=false).
+# Default way to (re)image a spice node. WHY manual: the Robot rescue/reset step
+# is both the unreliable part (arms rescue but never boots it) and the highest
+# blast radius (errant /reset on a LIVE node); with it out of the loop nothing
+# here can flip a running node -- wait_rescue hard-refuses any node not in the
+# rescue ramdisk. Remote "nuke a dead node" = reprovision.yml (Robot path).
 #
-# WHY manual: the Robot rescue/reset step is the unreliable part (nodes that arm
-# rescue but never boot it) AND the highest blast radius (an errant /reset on a
-# LIVE spice node once the cluster is in production). Taking it out means nothing
-# Ansible does here can flip a running node into rescue: installimage exists only
-# in the rescue ramdisk, so wait_rescue hard-refuses any node a human did not
-# deliberately rescue. The install/chroot/verify automation -- the reliable part --
-# still runs untouched.
+# OPERATOR PRECONDITION (Robot portal, per node): enable Linux rescue authorizing
+# the spice-ansible-iac + break-glass keys, hardware reset, wait for rescue on
+# the WAN IP, then run promptly (wait_rescue rejects rescue uptime >
+# reprovision_rescue_max_uptime; raise with -e if needed).
 #
-# For the rare remote "nuke a dead node" case, use reprovision.yml (Robot path).
-#
-# OPERATOR PRECONDITION (do this in the Hetzner Robot portal, per node):
-#   1. Enable the Linux rescue system, authorizing the spice-ansible-iac key
-#      (and operator break-glass keys). 2. Trigger a hardware reset. 3. Wait until
-#      the node is reachable in rescue over its WAN IP. THEN run this play.
-#   Run it promptly after rescue boots (wait_rescue rejects a stale rescue whose
-#   uptime exceeds reprovision_rescue_max_uptime; raise it with -e if needed).
-#
-# No secrets and no Robot creds are needed -- run with plain ansible-playbook:
-#   Canary (one node, full wipe + verify):
-#     ansible-playbook -i inventories/prod-htz-fsn1/spice/inventory.ini add-node.yml \
-#       -e confirm_wipe=true --limit spice-ceph-philip
-#   Fan-out (only nodes you have already rescued; low serial, canary-gated):
-#     ansible-playbook -i inventories/prod-htz-fsn1/spice/inventory.ini add-node.yml \
-#       -e confirm_wipe=true -e allow_fanout=true -e reprovision_serial=2 \
-#       --limit 'rescue:!spice-ceph-philip'
+# No secrets/Robot creds; plain ansible-playbook:
+#   Canary:   ansible-playbook -i inventories/prod-htz-fsn1/spice/inventory.ini add-node.yml \
+#               -e confirm_wipe=true --limit spice-ceph-philip
+#   Fan-out:  ... -e confirm_wipe=true -e allow_fanout=true -e reprovision_serial=2 \
+#               --limit 'rescue:!spice-ceph-philip'
 #
 # ALWAYS DESTRUCTIVE to the NVMe OS disks (installimage). Requires confirm_wipe=true.
 

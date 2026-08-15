@@ -1,7 +1,6 @@
 ---
-# Drift checks for baseline. Read-only.
-# Included by drift.yml via include_role + tasks_from -- see the precedence
-# note in roles/os_tuning/tasks/drift.yml.
+# Read-only. Included via include_role + tasks_from -- see the precedence note in
+# roles/os_tuning/tasks/drift.yml.
 
 # ssh-hardening.yml writes "PasswordAuthentication no" as a literal, not from a
 # variable, so the expectation is a literal here too. If that ever becomes

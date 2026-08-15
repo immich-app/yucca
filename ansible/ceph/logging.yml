@@ -1,28 +1,19 @@
 ---
-# Ship each ceph node's journald to o11y's VictoriaLogs over the NetBird overlay.
-# journald is the whole source: cephadm daemons write there via libsystemd
-# (log_to_journald true, log_to_file false), and so does the mon cluster channel.
-#
-# Needs the node enrolled in NetBird and the ceph-to-o11y-gateway policy applied;
-# without the policy there is no route to the gateway VIP.
-#
-# Runs LAST in site.yml, after harden.yml: log shipping is not on the Ceph
-# critical path, so it must never stand between a node and convergence, and
-# running it last means it is exercised against the final nftables ruleset.
-#
+# Ship journald (the whole source: cephadm daemons + mon cluster channel) to
+# o11y VictoriaLogs over the NetBird overlay. Needs enrollment + the
+# ceph-to-o11y-gateway policy (no policy = no route to the gateway VIP).
+# Runs LAST in site.yml, after harden.yml: not on the Ceph critical path, and
+# last means it is exercised against the final nftables ruleset.
 #   Canary:   mise run logs -- --limit spice-ceph-adelia
 #   Fleet:    mise run logs
 - name: Host log shipping
   hosts: ceph_nodes
   become: true
   serial: "{{ fluentbit_serial | default('25%') }}"
-  # No blast-radius control here, unlike baseline.yml: a node that will not ship
-  # logs cannot degrade the cluster. Isolated failures ride along and the rest of
-  # the fleet still converges.
-  # Ansible evaluates this per batch. At the 25% default, 12 nodes on spice, it
-  # rides out 2 failures and halts at 3. One dead node is a node problem. A third
-  # of a batch is the gateway, the policy, or the package.
-  # A wholly failed batch halts regardless, and failed hosts still fail the run.
+  # Looser than baseline.yml: a node that won't ship logs can't degrade the
+  # cluster. Per batch (12 nodes on spice at 25%): rides out 2 failures, halts at
+  # 3 -- one dead node is a node problem, a third of a batch is the gateway/
+  # policy/package. Failed hosts still fail the run.
   max_fail_percentage: 20
   tasks:
     - name: Ship journald via the fluentbit role

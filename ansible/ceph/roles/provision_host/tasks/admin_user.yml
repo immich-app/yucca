@@ -1,15 +1,8 @@
 ---
-# Phase 7: Create ansible-iac user inside chroot
-#
-# This is the minimum viable user for Ansible to connect after reboot:
-#   - uid 1000, locked password (key-only SSH)
-#   - SSH pubkey from {{ provision_iac_ssh_key_path }}.pub
-#   - NOPASSWD sudo
-#
-# The ops user and all other post-boot config are handled by the
-# baseline role, which runs after provisioning via the normal pipeline.
-
-# === ansible-iac (uid 1000, locked password, key-only) ================
+# The minimum viable user for Ansible to connect after reboot: uid 1000, locked
+# password (key-only SSH), pubkey from {{ provision_iac_ssh_key_path }}.pub,
+# NOPASSWD sudo. The ops user and all other post-boot config belong to the
+# baseline role.
 
 - name: Check if ansible-iac user exists inside chroot
   ansible.builtin.command: "chroot {{ provision_mnt }} id -u ansible-iac"
@@ -54,5 +47,3 @@
     mode: '0440'
     validate: "visudo -cf %s"
 
-    # ops user is created post-boot by the baseline role, not in chroot.
-    # Only ansible-iac is needed for Ansible to connect after reboot.

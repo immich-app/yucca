@@ -1,14 +1,8 @@
 ---
-# Rotate the self-signed RGW TLS certificate.
-#
-# Deletes the existing cert/key on the bootstrap node, re-generates via
-# the ceph_deploy RGW role, and restarts RGW daemons to pick up the new cert.
-#
-# Usage:
-#   scripts/ansible-play.sh rotate-certs.yml
-#
-# The new cert inherits all SANs (DNS names, IPs, wildcard) from
-# group_vars/all/vars.yml. Validity period: ceph_rgw_ssl_cert_days (default 3650).
+# Deletes the cert/key on the bootstrap node, re-generates via the ceph_deploy
+# RGW role, and restarts the RGW daemons. The new cert inherits all SANs (DNS
+# names, IPs, wildcard) from group_vars/all/vars.yml; validity is
+# ceph_rgw_ssl_cert_days.
 
 - name: Rotate RGW TLS certificate
   hosts: ceph_nodes

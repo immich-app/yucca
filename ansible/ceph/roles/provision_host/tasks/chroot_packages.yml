@@ -1,27 +1,11 @@
 ---
-# Phase 6: Install packages inside the chroot
-#
-# Sets up bind mounts for /dev, /dev/pts, /proc, /sys, and the EFI
-# variable store, then runs apt-get inside chroot to install the
-# baseline OS + diagnostic toolset. Also rotates the machine-id,
-# regenerates SSH host keys, and enables ssh + chrony services.
-#
-# Bind mounts use a probe-then-mount idempotency pattern (see the
-# comment block above the probe task) so crash-recovery re-runs don't
-# trip on binds that are already in place from a previous partial run.
-#
-# The bind mounts are NOT unmounted here — bootloader.yml needs them
-# for grub-install, and finalize.yml (via unmount.yml) will tear them
-# down at the end.
+# Bind mounts stay mounted -- bootloader.yml needs them for grub-install;
+# unmount.yml tears them down at the end.
 
-# --- Bind mounts for chroot --------------------------------------------
-#
-# Probe-then-mount pattern: ansible.posix.mount with state=ephemeral
-# fails if the mountpoint is already mounted (even with the same source)
-# because it reads /proc/mounts and compares the resolved source string
-# rather than recognizing the existing bind. Probe with mountpoint(1)
-# first and skip the mount if already present, so a partial-failure
-# crash-recovery rerun doesn't trip on the binds that already existed.
+# Probe-then-mount: ansible.posix.mount state=ephemeral fails when the
+# mountpoint is already mounted (compares resolved source strings, doesn't
+# recognize an existing bind), so probe with mountpoint(1) and skip -- a
+# crash-recovery rerun must not trip on binds from a previous partial run.
 
 - name: Probe existing chroot bind mounts
   ansible.builtin.command: "mountpoint -q {{ provision_mnt }}{{ item }}"
@@ -84,7 +68,6 @@
     state: ephemeral
   when: chroot_bind_probe.results[4].rc != 0
 
-# --- apt update/install inside chroot ----------------------------------
 
 - name: Check which required packages are already present in chroot
   ansible.builtin.shell: |
@@ -120,7 +103,6 @@
   async: 1800
   poll: 15
 
-# --- machine-id ---------------------------------------------------------
 
 - name: Check for existing machine-id
   ansible.builtin.stat:
@@ -139,7 +121,6 @@
     creates: "{{ provision_mnt }}/etc/machine-id"
   changed_when: true
 
-# --- SSH host keys ------------------------------------------------------
 
 - name: Check for existing SSH host keys in chroot
   ansible.builtin.find:
@@ -166,7 +147,6 @@
   ansible.builtin.command: "chroot {{ provision_mnt }} ssh-keygen -A"
   changed_when: true
 
-# --- Enable services ----------------------------------------------------
 
 - name: Check enabled state of key services in chroot
   ansible.builtin.command: "chroot {{ provision_mnt }} systemctl is-enabled {{ item }}"

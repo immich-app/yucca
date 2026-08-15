@@ -1,7 +1,6 @@
 ---
-# Lock in the migration: disable ifupdown, enable networkd for future boots.
-# Only runs after verify.yml passes. If verify failed, we never reach here
-# and ifupdown still owns the next boot.
+# Only reached after verify.yml passes; on a verify failure ifupdown still owns
+# the next boot.
 
 # Full migration only: hand the whole stack to networkd. In coexistence mode
 # (spice) ifupdown MUST stay enabled -- it owns the 1G WAN, and disabling it would

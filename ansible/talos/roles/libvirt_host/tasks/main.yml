@@ -1,13 +1,7 @@
 ---
-# Install libvirt + qemu, enable libvirtd, define the Talos storage
-# pool. Idempotent on re-run; package installs are apt-cache-aware so
-# a recent run skips the index update.
-#
-# Pre-flight refuses to proceed if KVM isn't available — running qemu
-# under TCG (software emulation) is too slow for actual Talos workloads
-# and almost certainly indicates a misconfigured host (BIOS virt
-# extensions disabled, kernel module missing, or container with no
-# /dev/kvm passthrough).
+# Pre-flight refuses to proceed without KVM: qemu under TCG is too slow for Talos
+# workloads, and its absence means BIOS virt extensions off, kernel module
+# missing, or a container with no /dev/kvm passthrough.
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:
@@ -49,10 +43,6 @@
     state: started
   tags: [libvirt_host]
 
-# Storage pool — define, set autostart, activate. The community.libvirt
-# module is idempotent for each phase: define is a no-op if the pool
-# already exists with matching XML; autostart and active flips only
-# fire when the current state differs.
 
 - name: Define Talos storage pool
   community.libvirt.virt_pool:
@@ -73,9 +63,8 @@
     name: "{{ libvirt_host_pool_name }}"
   tags: [libvirt_host, pool]
 
-# Default NAT network — keep defined (we're not in the business of
-# tearing down libvirt's defaults), but disable autostart so it's not
-# constantly bringing virbr0 + dnsmasq up at every libvirtd start.
+# libvirt's default network stays defined, but autostart off so virbr0 + dnsmasq
+# do not come up at every libvirtd start.
 - name: Set default network autostart=no
   community.libvirt.virt_net:
     autostart: false

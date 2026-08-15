@@ -1,18 +1,8 @@
 ---
-# Create VLAN-tagged sub-interfaces on bond0 and L2 bridges for VM
-# attachment. Idempotent (template module compares content); the
-# `networkctl reload` handler fires only if any unit file actually
-# changed.
-#
-# Pre-conditions:
-#   - bond0 exists and is up (Ceph storage cluster brought it up)
-#   - systemd-networkd is the active link manager
-#   - VLANs 50/51 are tagged on the upstream switch port
-#
-# Failure modes intentionally NOT handled:
-#   - Switch not tagging VLANs → bridges come up but VMs see no
-#     traffic. Caught by post-deploy verification, not by this role.
-#   - bond0 missing → role refuses to render (pre-flight below).
+# Pre-conditions: bond0 up (Ceph brought it up), networkd active, VLANs 50/51
+# tagged on the switch port. Untagged switch VLANs are NOT detected here (bridges
+# come up, VMs see no traffic -- caught by post-deploy verification); missing
+# bond0 refuses to render.
 
 - name: Pre-flight — role enabled
   ansible.builtin.assert:
@@ -56,11 +46,10 @@
       networkd deployment finished on this host?
   tags: [networkd_bridges, preflight]
 
-# Parent .network drop-in: declares VLAN= per sub-interface. Without
-# this, our .netdev files alone never instantiate kernel devices —
-# networkd only attaches VLAN sub-interfaces it sees declared on the
-# parent's [Network]. Drop-in path is parent-filename-prefix-sensitive;
-# default tracks the Ceph deployment's 20-bond0.network basename.
+# networkd only instantiates VLAN sub-interfaces declared on the parent's
+# [Network], never from .netdev files alone. The drop-in path is sensitive to the
+# parent filename prefix; the default tracks the Ceph deployment's
+# 20-bond0.network basename.
 - name: Ensure parent .network drop-in directory exists
   ansible.builtin.file:
     path: "{{ networkd_bridges_parent_dropin_dir }}"
@@ -132,9 +121,8 @@
   notify: Networkd reload
   tags: [networkd_bridges]
 
-# Run handlers explicitly here (not after the play) so a downstream
-# role like libvirt_host can rely on bridges being up by the time it
-# tries to attach VMs to them.
+# Flush here, not after the play, so libvirt_host can rely on the bridges being
+# up before it attaches VMs.
 - name: Flush handlers — apply networkd reload now if files changed
   ansible.builtin.meta: flush_handlers
   tags: [networkd_bridges]

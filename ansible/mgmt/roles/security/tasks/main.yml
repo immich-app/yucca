@@ -1,8 +1,4 @@
 ---
-# Security hardening for management hosts.
-# nftables firewall + SSH hardening + unattended-upgrades.
-
-# --- nftables firewall ---
 
 - name: Install nftables
   ansible.builtin.apt:
@@ -27,7 +23,6 @@
     state: "{{ 'restarted' if nftables_config is changed else 'started' }}"
   when: mgmt_firewall_enabled | bool
 
-# --- SSH hardening ---
 
 - name: Deploy SSH hardening config
   ansible.builtin.template:
@@ -42,7 +37,6 @@
   ansible.builtin.command: sshd -t
   changed_when: false
 
-# --- unattended-upgrades ---
 
 - name: Install unattended-upgrades
   ansible.builtin.apt:
@@ -59,7 +53,6 @@
     group: root
     mode: '0644'
 
-# --- Summary ---
 
 - name: Report security state
   ansible.builtin.debug:

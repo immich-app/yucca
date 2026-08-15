@@ -1,28 +1,9 @@
 ---
-# Phase 9: Finalize
-#
-# 1. Write the provisioning marker to /mnt/etc/ceph-provisioned.json
-#    (skipped on marker-driven resume — provisioning_done guards it)
-# 2. Sync the primary ESP to the backup ESP on SSD2
-#    (also skipped on resume)
-# 3. If provision_skip_reboot is true, stop here — /mnt stays mounted
-#    with chroot bind mounts active for canary inspection. Operator
-#    can `chroot /mnt` to verify, unmount manually, reboot when ready.
-# 4. Otherwise include unmount.yml to tear down the chroot bind mounts
-#    and the /mnt hierarchy in reverse order (shared with the rescue
-#    path in main.yml).
-# 5. Trigger a reboot via systemd-run (fire-and-forget — the live
-#    image will disappear, so ansible cannot wait on SSH here).
-#
-# A separate post-reboot verification play runs from localhost after
-# this one completes.
+# Marker write + ESP mirror are skipped on resume via provisioning_done: an
+# existing marker must not get a bumped timestamp. The reboot is a systemd-run
+# fire-and-forget -- the live image disappears, so ansible cannot wait on SSH;
+# post-reboot verification is a separate localhost play.
 
-# --- Write marker + mirror ESP (skipped on resume via marker gate) -----
-#
-# Both of these tasks are gated on `not provisioning_done` because the
-# marker file IS the marker — if it already exists, we wrote it on a
-# previous run and don't want to bump the timestamp. The ESP mirror
-# is similarly idempotent on re-run and would just waste time.
 
 - name: Write marker and mirror ESP
   when: not provisioning_done
@@ -64,12 +45,8 @@
         path: /tmp/provision-backup-esp
         state: absent
 
-# --- Skip-reboot inspection mode ---------------------------------------
-#
-# When provision_skip_reboot is set, finalize stops here. Marker is
-# written, ESP is mirrored, but /mnt stays mounted (with the chroot
-# bind mounts still active). Operator can then `chroot /mnt` to verify,
-# unmount manually, and reboot when ready.
+# provision_skip_reboot leaves /mnt and the chroot binds mounted so the operator
+# can `chroot /mnt` to verify, then unmount and reboot by hand.
 
 - name: Report inspection-mode finalize (reboot skipped)
   ansible.builtin.debug:
@@ -86,7 +63,6 @@
   ansible.builtin.meta: end_host
   when: provision_skip_reboot | bool
 
-# --- Unmount chroot bind mounts and /mnt hierarchy ---------------------
 
 - name: Include unmount tasks (reverse order, best-effort)
   ansible.builtin.include_tasks: unmount.yml
@@ -95,7 +71,6 @@
   ansible.builtin.command: sync
   changed_when: false
 
-# --- Reboot ------------------------------------------------------------
 
 - name: Schedule async reboot via systemd-run
   ansible.builtin.shell: |

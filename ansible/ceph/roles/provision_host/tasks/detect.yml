@@ -1,14 +1,7 @@
 ---
-# Phase 1: Detect state
-#
-# Confirms we're running on a Debian live image (not an installed OS)
-# and booted in UEFI mode, snapshots the current disk layout, then runs
-# the full SSD pre-flight: model-pattern discovery, rotational-flag
-# check, minimum-size floor, and capture of model/serial/size facts.
-# SSD pre-flight lives here (not in disks.yml) so that a bad hardware
-# configuration fails BEFORE any destructive disk work begins, and so
-# that ssd1_dev/ssd2_dev/ssd1_serial/ssd2_serial are available to every
-# later phase unconditionally (including the resume path in disks.yml).
+# The SSD pre-flight lives HERE, not in disks.yml, so bad hardware fails BEFORE
+# destructive work and the ssd*_dev/_serial facts exist for every later phase,
+# resume path included.
 
 - name: Verify host is booted from a Debian live image
   ansible.builtin.stat:
@@ -47,13 +40,7 @@
   ansible.builtin.debug:
     msg: "{{ pre_lsblk.stdout_lines }}"
 
-# --- SSD pre-flight ----------------------------------------------------
-#
-# This block validates the boot SSDs BEFORE the destructive disks phase
-# even gets a chance to run. Failing here means the role exits cleanly
-# with no state changes. The facts set here (ssd1_dev, ssd2_dev,
-# ssd1_serial, ssd2_serial) are consumed by disks.yml + the marker
-# template later in finalize.yml.
+# Failing here exits the role cleanly with no state changes.
 
 - name: Discover candidate SSDs by model pattern
   ansible.builtin.shell: |

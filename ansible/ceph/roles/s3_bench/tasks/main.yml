@@ -1,9 +1,6 @@
 ---
-# S3 benchmark role — deploys s3bench.py to each node and runs a
-# parallel workload against each node's local RGW endpoint.
-#
-# Prerequisites: python3-boto3 (installed by the baseline role)
-# Results: JSONL logs on each node + fetched to controller bench/ dir
+# Requires python3-boto3 (installed by the baseline role). Results: JSONL logs on
+# each node, fetched to the controller's bench/ dir.
 
 - name: Create log directory
   ansible.builtin.file:

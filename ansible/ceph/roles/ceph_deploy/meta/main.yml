@@ -1,13 +1,7 @@
 ---
-# Advisory: os_tuning and hardware_tuning should run before this role.
-# Not declared as hard dependencies because the tuning playbooks are
-# separate operational steps, not automatic prerequisites.
-#
-# Execution order:
-#   1. provision_host (bare metal → Debian)
-#   2. os_tuning (sysctl, ulimits)
-#   3. hardware_tuning (I/O scheduler, readahead)
-#   4. ceph_deploy (this role)
+# Advisory order: provision_host -> os_tuning -> hardware_tuning -> ceph_deploy.
+# The tuning roles are not hard dependencies because their playbooks are separate
+# operational steps.
 dependencies: []
 
 galaxy_info:

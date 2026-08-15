@@ -1,7 +1,6 @@
 ---
-# Login users for members of the identity registry's `server`-mapped groups.
-# Sourced from mgmt_users (group_vars/all.yml). Convergeable: re-running fixes
-# drift in group membership, sudo, and authorized_keys.
+# Login users for members of the identity registry's `server`-mapped groups,
+# sourced from mgmt_users (group_vars/all.yml).
 
 - name: Ensure login users exist
   ansible.builtin.user:

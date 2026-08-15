@@ -1,9 +1,5 @@
 ---
-# Apply hardware-level disk tuning to Ceph nodes.
-# Run BEFORE deploy-ceph.yml so OSDs use optimal I/O settings from the start.
-#
-# Usage:
-#   scripts/ansible-play.sh tune-hardware.yml
+# Run BEFORE deploy-ceph.yml so OSDs use these I/O settings from the start.
 
 - name: Hardware tuning for Ceph nodes
   hosts: ceph_nodes

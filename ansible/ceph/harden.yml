@@ -1,28 +1,19 @@
 ---
-# Security hardening for Ceph nodes.
-# Deploys the nftables firewall + the full sshd hardening drop-in.
-# Runs AFTER deploy-ceph.yml - cephadm needs unrestricted access during deploy.
-# NB: the security-critical sshd lockdown (root key-only, no password auth, locked
-# root password) is applied EARLY in the baseline role, not here, so a node is
-# never left root-password-open on the WAN during the deploy campaign; this stage
-# adds the firewall and the remaining sshd hardening on top.
-#
-# WARNING: This locks down inbound traffic. Ensure ceph_firewall_trusted_networks
-# includes all subnets that need to reach Ceph services. SSH (port 22) stays open
-# from any source (ceph_firewall_ssh_any_source) to prevent lockout.
-#
-# Usage:
-#   scripts/ansible-play.sh harden.yml
+# nftables firewall + full sshd hardening drop-in. Runs AFTER deploy-ceph.yml
+# (cephadm needs unrestricted access during deploy). The security-critical sshd
+# lockdown itself lands EARLY in baseline so a node is never root-password-open
+# on the WAN mid-campaign; this adds the firewall + the rest.
+# WARNING: locks down inbound -- ceph_firewall_trusted_networks must cover every
+# subnet that reaches Ceph; SSH stays any-source (ceph_firewall_ssh_any_source)
+# to prevent lockout.
 
 - name: Security hardening for Ceph nodes
   hosts: ceph_nodes
   become: true
   gather_facts: false
-  # Blast-radius control (see baseline.yml): batch the roll + halt on any node
-  # failure or cluster degradation. Especially important here - a bad nftables
-  # ruleset that fences the fabric shows up as an unreachable batch (halts on
-  # max_fail_percentage) or a degraded cluster at the post-batch health gate,
-  # before it reaches the rest of the fleet.
+  # Blast-radius control (see baseline.yml). Critical here: a bad nftables
+  # ruleset that fences the fabric halts as an unreachable batch or a degraded
+  # cluster at the post-batch health gate, before reaching the fleet.
   serial: "{{ ceph_converge_serial | default('10%') }}"
   max_fail_percentage: 0
 

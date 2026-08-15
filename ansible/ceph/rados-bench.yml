@@ -1,8 +1,5 @@
 ---
-# RADOS benchmark — tests raw cluster I/O bypassing RGW/S3.
-# Useful for isolating storage performance from S3 overhead.
-#
-# Usage:
+# Raw cluster I/O, bypassing RGW/S3.
 #   scripts/ansible-play.sh rados-bench.yml                        # 30s write, replicated
 #   scripts/ansible-play.sh rados-bench.yml -e rados_ec=true       # EC 8+3 (matches RGW data pool)
 #   scripts/ansible-play.sh rados-bench.yml -e rados_mode=seq      # sequential read
