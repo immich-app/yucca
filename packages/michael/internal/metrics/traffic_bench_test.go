@@ -10,10 +10,8 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
-// Decomposes the per-request cost of source-network accounting: the attribute
-// lookup, then the three counter recordings the middleware performs. Compare
-// against geoip.BenchmarkResolve (the database side) to see which half of the
-// feature dominates.
+// Decomposes per-request cost of source-network accounting: attribute lookup,
+// then the three counter recordings. Compare geoip.BenchmarkResolve (DB side).
 
 func benchMeterMetrics(b *testing.B) *Metrics {
 	b.Helper()

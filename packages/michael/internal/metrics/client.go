@@ -11,18 +11,14 @@ import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
-// clientIdleTTL bounds how long a client with nothing outstanding is kept in
-// the concurrency tracker. It only has to outlive the gap between collection
-// cycles — a client that comes back before eviction simply reuses its entry.
+// clientIdleTTL bounds idle-client retention in the tracker; only needs to
+// outlive a collection gap — returning clients reuse their entry.
 const clientIdleTTL = 15 * time.Minute
 
 type clientAttrKey struct{ user, repository, connection string }
 
-// clientAttrs labels a measurement with the request's identity and nothing
-// else — no method, route or status. That is what keeps the per-client
-// instruments at a fixed handful of series per client-repository however
-// restic exercises the API, unlike the request counters which multiply by
-// route and status.
+// clientAttrs: identity only — no method/route/status — so per-client
+// instruments stay a fixed handful of series per client-repository.
 func clientAttrs(key clientAttrKey) otelmetric.MeasurementOption {
 	return otelmetric.WithAttributeSet(attribute.NewSet(
 		attribute.String("customerId", key.user),
@@ -31,13 +27,9 @@ func clientAttrs(key clientAttrKey) otelmetric.MeasurementOption {
 	))
 }
 
-// clientConcurrency is one client's outstanding-request accounting: cur is the
-// live count, peak the high-water mark since the last collection.
-//
-// The label set is built once and held here rather than in a cache of its own,
-// so it is reclaimed with the client on idle eviction. A separate cache keyed
-// by identity would instead grow with every client-repository pair the process
-// has ever seen.
+// clientConcurrency: cur = live count, peak = high-water since last collection.
+// The label set lives here (not a separate cache) so it's reclaimed on idle
+// eviction instead of growing with every pair ever seen.
 type clientConcurrency struct {
 	attrs    otelmetric.MeasurementOption
 	cur      atomic.Int64
@@ -45,15 +37,12 @@ type clientConcurrency struct {
 	lastSeen atomic.Int64 // unix nanos, stamped when a request finishes
 }
 
-// retired marks an entry a collection has taken out of service. It is a state
-// of cur rather than a separate flag so that closing the entry and observing it
-// idle are one atomic step — otherwise a request arriving between the two would
-// be accounted against an entry already on its way out of the map.
+// retired is a state of cur (not a separate flag) so close+observe-idle is one
+// atomic step; otherwise a racing request could land on an entry leaving the map.
 const retired = -1
 
-// enter accounts for a request starting, raising the high-water mark if this
-// request is the most concurrent one yet in the current window. It reports
-// false if the entry has been retired, leaving the caller to take a fresh one.
+// enter accounts a request start, raising the window high-water mark; false if
+// the entry is retired (caller takes a fresh one).
 func (c *clientConcurrency) enter() bool {
 	for {
 		cur := c.cur.Load()
@@ -91,12 +80,10 @@ type clientTracker struct {
 	states sync.Map // clientAttrKey -> *clientConcurrency
 }
 
-// enter loads before storing so the hot path is a single map read; the label
-// set is only built when a client is seen for the first time. Losing the race
-// against a collection that retired the entry costs one more iteration, after
-// which the replacement is what every later request shares — the client must
-// not end up split across an orphan and a successor, which would under-report
-// its concurrency.
+// enter loads before storing (hot path = one map read; labels built on first
+// sight). Losing the race with a retiring collection costs one iteration; all
+// later requests share the replacement — a split orphan/successor would
+// under-report concurrency.
 func (t *clientTracker) enter(key clientAttrKey) *clientConcurrency {
 	for {
 		v, ok := t.states.Load(key)
@@ -111,8 +98,8 @@ func (t *clientTracker) enter(key clientAttrKey) *clientConcurrency {
 	}
 }
 
-// newClientConcurrency stamps lastSeen so a brand-new entry cannot look idle to
-// a collection landing before its first request is accounted in.
+// newClientConcurrency stamps lastSeen so a fresh entry can't look idle before
+// its first request is accounted in.
 func newClientConcurrency(key clientAttrKey) *clientConcurrency {
 	state := &clientConcurrency{attrs: clientAttrs(key)}
 	state.lastSeen.Store(time.Now().UnixNano())
@@ -120,10 +107,8 @@ func newClientConcurrency(key clientAttrKey) *clientConcurrency {
 }
 
 // observe reports each client's high-water concurrency and arms the next
-// window. The peak resets to the CURRENT outstanding count rather than zero:
-// restic holds its connections open for a whole backup, so a client sitting at
-// N concurrent requests across several collection cycles would otherwise
-// report N once and 0 forever after.
+// window. Peak resets to CURRENT outstanding, not zero: restic holds N
+// connections a whole backup and would otherwise report N once then 0.
 func (t *clientTracker) observe(o otelmetric.Observer, gauge otelmetric.Int64ObservableGauge, now time.Time) {
 	t.states.Range(func(k, v any) bool {
 		key := k.(clientAttrKey)
@@ -132,9 +117,8 @@ func (t *clientTracker) observe(o otelmetric.Observer, gauge otelmetric.Int64Obs
 		cur := state.cur.Load()
 		peak := state.peak.Swap(cur)
 
-		// Retire before deleting, and delete only the entry that was retired: a
-		// request arriving in between either wins (retire fails, the entry stays)
-		// or is handed the replacement it swapped in.
+		// Retire before delete, delete only the retired entry: a racing request
+		// either wins (retire fails) or gets the replacement it swapped in.
 		if cur == 0 && peak == 0 && now.UnixNano()-state.lastSeen.Load() > int64(clientIdleTTL) {
 			if state.retire() {
 				t.states.CompareAndDelete(key, state)
@@ -147,19 +131,10 @@ func (t *clientTracker) observe(o otelmetric.Observer, gauge otelmetric.Int64Obs
 	})
 }
 
-// clientMetrics measures how each client drives the gateway, as opposed to how
-// the gateway performs per route.
-//
-// Parallelism comes from `seconds` by Little's Law: the rate of accumulated
-// request-seconds over a window IS the mean number of requests in flight, so
-// `rate(client.request.seconds)` reads directly as average concurrency without
-// any per-client state. Dividing it by the matching request rate from
-// `http.server.request.count` gives mean duration.
-//
-// `peak` covers what an average cannot — a client that saturates its
-// connection budget in bursts. Note it is per michael replica: a client whose
-// connections spread across replicas makes a summed peak an upper bound,
-// whereas the Little's Law average sums exactly.
+// clientMetrics measures how each client drives the gateway (vs per-route perf).
+// Little's Law: rate(client.request.seconds) = mean in-flight requests; divided
+// by request rate = mean duration. `peak` catches bursty saturation an average
+// hides; it is per replica (summed peak = upper bound, the average sums exactly).
 type clientMetrics struct {
 	seconds     otelmetric.Float64Counter
 	ttfbSeconds otelmetric.Float64Counter
@@ -174,9 +149,8 @@ func newClientMetrics(meter otelmetric.Meter) (*clientMetrics, error) {
 		return nil, fmt.Errorf("creating client.request.seconds counter: %w", err)
 	}
 
-	// Duration runs until the client has drained the body, so on large blobs it
-	// measures the client's link; TTFB isolates michael+RGW. Split per client so
-	// a slow customer is distinguishable from a slow backend.
+	// Duration includes body drain (client's link on large blobs); TTFB isolates
+	// michael+RGW. Per client: slow customer vs slow backend.
 	ttfbSeconds, err := meter.Float64Counter("client.request.ttfb_seconds",
 		otelmetric.WithDescription("Accumulated time-to-first-byte seconds per client"),
 		otelmetric.WithUnit("s"))

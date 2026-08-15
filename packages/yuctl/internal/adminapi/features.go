@@ -16,7 +16,6 @@ type FeatureFlag struct {
 	Overrides   int    `json:"overrides"`
 }
 
-// FeatureOverride mirrors FeatureOverrideDto.
 type FeatureOverride struct {
 	Flag      string  `json:"flag"`
 	Value     bool    `json:"value"`
@@ -25,13 +24,11 @@ type FeatureOverride struct {
 	UpdatedAt string  `json:"updatedAt"`
 }
 
-// UserFeatures mirrors UserFeaturesResponseDto.
 type UserFeatures struct {
 	Features  map[string]bool   `json:"features"`
 	Overrides []FeatureOverride `json:"overrides"`
 }
 
-// FeatureUser mirrors FeatureUserDto.
 type FeatureUser struct {
 	UserID    string  `json:"userId"`
 	Email     string  `json:"email"`
@@ -41,7 +38,6 @@ type FeatureUser struct {
 	UpdatedAt string  `json:"updatedAt"`
 }
 
-// ListFeatures returns the flag registry with override counts.
 func (c *Client) ListFeatures(ctx context.Context) ([]FeatureFlag, error) {
 	var out struct {
 		Flags []FeatureFlag `json:"flags"`
@@ -52,7 +48,6 @@ func (c *Client) ListFeatures(ctx context.Context) ([]FeatureFlag, error) {
 	return out.Flags, nil
 }
 
-// GetUserFeatures returns a user's resolved flags and raw overrides.
 func (c *Client) GetUserFeatures(ctx context.Context, userID string) (*UserFeatures, error) {
 	var out UserFeatures
 	if err := c.getJSON(ctx, "/api/user/"+url.PathEscape(userID)+"/features", nil, &out); err != nil {
@@ -61,7 +56,6 @@ func (c *Client) GetUserFeatures(ctx context.Context, userID string) (*UserFeatu
 	return &out, nil
 }
 
-// SetUserFeature sets a per-user override for a flag.
 func (c *Client) SetUserFeature(ctx context.Context, userID, flag string, value bool, reason string) (*FeatureOverride, error) {
 	body := map[string]any{"value": value}
 	if reason != "" {
@@ -75,12 +69,10 @@ func (c *Client) SetUserFeature(ctx context.Context, userID, flag string, value 
 	return &out, nil
 }
 
-// ClearUserFeature removes a per-user override (reverting to the registry default).
 func (c *Client) ClearUserFeature(ctx context.Context, userID, flag string) error {
 	return c.deleteReq(ctx, "/api/user/"+url.PathEscape(userID)+"/features/"+url.PathEscape(flag))
 }
 
-// ListFeatureUsers returns the users holding an override for a flag.
 func (c *Client) ListFeatureUsers(ctx context.Context, flag string) ([]FeatureUser, error) {
 	var out struct {
 		Items []FeatureUser `json:"items"`
@@ -103,7 +95,6 @@ func (c *Client) EnableFeatureBatch(ctx context.Context, flag string, count int)
 	return out.Enabled, nil
 }
 
-// Connection mirrors the admin-api ConnectionAdminDto.
 type Connection struct {
 	ID         string  `json:"id"`
 	UserID     string  `json:"userId"`
@@ -113,7 +104,6 @@ type Connection struct {
 	LastSeenAt *string `json:"lastSeenAt"`
 }
 
-// GetUserConnections lists a user's connection instances.
 func (c *Client) GetUserConnections(ctx context.Context, userID string) ([]Connection, error) {
 	var out struct {
 		Connections []Connection `json:"connections"`

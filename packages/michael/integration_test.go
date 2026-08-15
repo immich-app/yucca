@@ -36,13 +36,13 @@ const (
 
 func integrationConfig() config.Config {
 	return config.Config{
-		Port:             3010,
-		JWTPublicKey:     testPublicKey,
-		S3AccessKeyID:    envOrDefault("S3_ACCESS_KEY_ID", "minio"),
+		Port:              3010,
+		JWTPublicKey:      testPublicKey,
+		S3AccessKeyID:     envOrDefault("S3_ACCESS_KEY_ID", "minio"),
 		S3SecretAccessKey: envOrDefault("S3_SECRET_ACCESS_KEY", "miniominio"),
-		S3Region:         envOrDefault("S3_REGION", "minio"),
-		S3Endpoint:       envOrDefault("S3_ENDPOINT", "http://localhost:9000"),
-		S3ForcePathStyle: true,
+		S3Region:          envOrDefault("S3_REGION", "minio"),
+		S3Endpoint:        envOrDefault("S3_ENDPOINT", "http://localhost:9000"),
+		S3ForcePathStyle:  true,
 	}
 }
 
@@ -85,7 +85,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 
 	client := ts.Client()
 
-	// 1. Create repository
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/?create=true", nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err := client.Do(req)
@@ -97,7 +96,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Fatalf("create repo: expected 200, got %d", resp.StatusCode)
 	}
 
-	// 2. Create again → 409
 	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/?create=true", nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
@@ -109,7 +107,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Fatalf("create repo again: expected 409, got %d", resp.StatusCode)
 	}
 
-	// 3. Save config
 	configData := []byte("test-config-data")
 	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/config", bytes.NewReader(configData))
 	req.Header.Set("Authorization", authHeader)
@@ -122,7 +119,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Fatalf("save config: expected 200, got %d", resp.StatusCode)
 	}
 
-	// 4. Check config
 	req, _ = http.NewRequest(http.MethodHead, ts.URL+"/"+repo+"/config", nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
@@ -134,7 +130,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Fatalf("check config: expected 200, got %d", resp.StatusCode)
 	}
 
-	// 5. Get config
 	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/"+repo+"/config", nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
@@ -150,7 +145,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Errorf("get config: expected %q, got %q", configData, body)
 	}
 
-	// 6. Save a blob
 	blobData := []byte("hello world blob data for testing")
 	hash := sha256.Sum256(blobData)
 	blobName := hex.EncodeToString(hash[:])
@@ -166,7 +160,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Fatalf("save blob: expected 200, got %d", resp.StatusCode)
 	}
 
-	// 7. Check blob
 	req, _ = http.NewRequest(http.MethodHead, ts.URL+"/"+repo+"/data/"+blobName, nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
@@ -181,7 +174,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Errorf("check blob: expected Content-Length %d, got %s", len(blobData), cl)
 	}
 
-	// 8. Get blob
 	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/"+repo+"/data/"+blobName, nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
@@ -197,7 +189,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Errorf("get blob: expected %q, got %q", blobData, body)
 	}
 
-	// 9. List blobs
 	req, _ = http.NewRequest(http.MethodGet, ts.URL+"/"+repo+"/data", nil)
 	req.Header.Set("Authorization", authHeader)
 	req.Header.Set("Accept", handlers.ContentTypeResticV2)
@@ -218,7 +209,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Errorf("list blobs: expected name %s, got %s", blobName, blobs[0].Name)
 	}
 
-	// 10. Delete blob
 	req, _ = http.NewRequest(http.MethodDelete, ts.URL+"/"+repo+"/data/"+blobName, nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
@@ -230,7 +220,6 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		t.Fatalf("delete blob: expected 200, got %d", resp.StatusCode)
 	}
 
-	// 11. Delete config
 	req, _ = http.NewRequest(http.MethodDelete, ts.URL+"/"+repo+"/config", nil)
 	req.Header.Set("Authorization", authHeader)
 	resp, err = client.Do(req)
@@ -258,7 +247,6 @@ func TestIntegration_WORM(t *testing.T) {
 
 	client := ts.Client()
 
-	// Create repo
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/?create=true", nil)
 	req.Header.Set("Authorization", normalAuth)
 	resp, err := client.Do(req)
@@ -267,7 +255,6 @@ func TestIntegration_WORM(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// Save config with WORM
 	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/"+repo+"/config", bytes.NewReader([]byte("worm-config")))
 	req.Header.Set("Authorization", wormAuthHeader)
 	resp, err = client.Do(req)
@@ -279,7 +266,6 @@ func TestIntegration_WORM(t *testing.T) {
 		t.Fatalf("save config: expected 200, got %d", resp.StatusCode)
 	}
 
-	// Delete config with WORM → 403
 	req, _ = http.NewRequest(http.MethodDelete, ts.URL+"/"+repo+"/config", nil)
 	req.Header.Set("Authorization", wormAuthHeader)
 	resp, err = client.Do(req)
@@ -291,7 +277,6 @@ func TestIntegration_WORM(t *testing.T) {
 		t.Errorf("delete config worm: expected 403, got %d", resp.StatusCode)
 	}
 
-	// Save blob with WORM
 	blobData := []byte("worm blob data for testing")
 	hash := sha256.Sum256(blobData)
 	blobName := hex.EncodeToString(hash[:])
@@ -307,7 +292,6 @@ func TestIntegration_WORM(t *testing.T) {
 		t.Fatalf("save blob: expected 200, got %d", resp.StatusCode)
 	}
 
-	// Delete blob with WORM → 403
 	req, _ = http.NewRequest(http.MethodDelete, ts.URL+"/"+repo+"/data/"+blobName, nil)
 	req.Header.Set("Authorization", wormAuthHeader)
 	resp, err = client.Do(req)
@@ -319,7 +303,6 @@ func TestIntegration_WORM(t *testing.T) {
 		t.Errorf("delete blob worm: expected 403, got %d", resp.StatusCode)
 	}
 
-	// Save lock blob
 	lockData := []byte("lock data for testing worm exemption")
 	lockHash := sha256.Sum256(lockData)
 	lockName := hex.EncodeToString(lockHash[:])
@@ -332,7 +315,6 @@ func TestIntegration_WORM(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	// Delete lock with WORM → should succeed (locks exempt)
 	req, _ = http.NewRequest(http.MethodDelete, ts.URL+"/"+repo+"/locks/"+lockName, nil)
 	req.Header.Set("Authorization", wormAuthHeader)
 	resp, err = client.Do(req)

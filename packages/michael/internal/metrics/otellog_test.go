@@ -11,7 +11,6 @@ import (
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 )
 
-// memoryExporter collects exported log records in memory for assertions.
 type memoryExporter struct {
 	mu      sync.Mutex
 	records []sdklog.Record
@@ -40,11 +39,9 @@ func TestOTLPLogWriter_InfoLog(t *testing.T) {
 	)
 	w := NewOTLPLogWriter(provider)
 
-	// Write a zerolog entry through the bridge
 	logger := zerolog.New(w).With().Timestamp().Logger()
 	logger.Info().Str("request_id", "abc-123").Str("user", "user-1").Msg("test message")
 
-	// Force flush
 	if err := provider.ForceFlush(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +53,6 @@ func TestOTLPLogWriter_InfoLog(t *testing.T) {
 
 	rec := records[0]
 
-	// Check severity
 	if rec.Severity() != otellog.SeverityInfo {
 		t.Errorf("expected SeverityInfo, got %v", rec.Severity())
 	}
@@ -64,17 +60,14 @@ func TestOTLPLogWriter_InfoLog(t *testing.T) {
 		t.Errorf("expected severity text 'info', got %q", rec.SeverityText())
 	}
 
-	// Check body
 	if rec.Body().AsString() != "test message" {
 		t.Errorf("expected body 'test message', got %q", rec.Body().AsString())
 	}
 
-	// Check timestamp is set and reasonable
 	if rec.Timestamp().IsZero() {
 		t.Error("expected non-zero timestamp")
 	}
 
-	// Check attributes contain our structured fields
 	attrs := map[string]string{}
 	rec.WalkAttributes(func(kv otellog.KeyValue) bool {
 		attrs[kv.Key] = kv.Value.AsString()
@@ -216,7 +209,6 @@ func TestOTLPLogWriter_InvalidJSON(t *testing.T) {
 	)
 	w := NewOTLPLogWriter(provider)
 
-	// Write invalid JSON — should not panic or export anything
 	n, err := w.Write([]byte("not json at all"))
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
@@ -241,7 +233,6 @@ func TestOTLPLogWriter_Shutdown(t *testing.T) {
 	)
 	w := NewOTLPLogWriter(provider)
 
-	// Write a log, then shut down, and verify the record was flushed
 	logger := zerolog.New(w).With().Timestamp().Logger()
 	logger.Info().Msg("before shutdown")
 

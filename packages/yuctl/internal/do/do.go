@@ -1,7 +1,6 @@
-// Package do wraps the DigitalOcean API (godo) for the bench-do droplet
-// fleet: token resolution via 1Password, the yucca-bench project, ephemeral
-// SSH keys, and tagged droplet lifecycle. Nothing here knows about restic or
-// michael — it is pure fleet plumbing.
+// Package do wraps godo for the bench-do droplet fleet: 1P token resolution,
+// the yucca-bench project, ephemeral SSH keys, tagged droplet lifecycle. Pure
+// fleet plumbing — knows nothing of restic or michael.
 package do
 
 import (
@@ -27,7 +26,6 @@ const (
 	ProjectName = "yucca-bench"
 )
 
-// Client is a thin godo wrapper scoped to bench-do's needs.
 type Client struct {
 	do *godo.Client
 }
@@ -51,8 +49,6 @@ func NewClient(ctx context.Context) (*Client, error) {
 	return &Client{do: godo.NewFromToken(token)}, nil
 }
 
-// EnsureProject returns the ProjectName project's ID, creating the project if
-// the account does not have it yet.
 func (c *Client) EnsureProject(ctx context.Context) (string, error) {
 	opt := &godo.ListOptions{PerPage: 200}
 	for {
@@ -83,7 +79,6 @@ func (c *Client) EnsureProject(ctx context.Context) (string, error) {
 	return p.ID, nil
 }
 
-// AssignDroplets files droplets under the project.
 func (c *Client) AssignDroplets(ctx context.Context, projectID string, dropletIDs []int) error {
 	if len(dropletIDs) == 0 {
 		return nil
@@ -139,25 +134,21 @@ func (c *Client) DeleteKey(ctx context.Context, id int) error {
 	return nil
 }
 
-// Size describes one droplet size the fleet can use.
 type Size struct {
 	Slug        string
 	VCPUs       int
 	MemoryMB    int
 	DiskGB      int
 	PriceHourly float64
-	// TransferTB is DO's included outbound transfer for the size. DO markets
-	// it as "TB"; we bill the cap conservatively as decimal TB (1e12 bytes)
-	// so the auto-stop errs on the early side.
+	// TransferTB: DO's included outbound transfer. Marketed as "TB"; billed
+	// conservatively as decimal TB (1e12 bytes) so auto-stop errs early.
 	TransferTB float64
 }
 
-// TransferBytes is the conservative byte value of the size's allowance.
 func (s Size) TransferBytes() int64 {
 	return int64(s.TransferTB * 1e12)
 }
 
-// GetSize resolves a size slug to its pricing and transfer allowance.
 func (c *Client) GetSize(ctx context.Context, slug string) (*Size, error) {
 	opt := &godo.ListOptions{PerPage: 200}
 	for {
@@ -185,7 +176,6 @@ func (c *Client) GetSize(ctx context.Context, slug string) (*Size, error) {
 	return nil, fmt.Errorf("unknown DO size slug %q", slug)
 }
 
-// Droplet is the subset of droplet state bench-do tracks.
 type Droplet struct {
 	ID       int
 	Name     string
@@ -245,7 +235,6 @@ func (c *Client) CreateDroplets(ctx context.Context, names []string, region, siz
 	return out, nil
 }
 
-// ListByTag returns every droplet carrying the fleet tag, sorted by name.
 func (c *Client) ListByTag(ctx context.Context, tag string) ([]Droplet, error) {
 	var out []Droplet
 	opt := &godo.ListOptions{PerPage: 200}
@@ -293,7 +282,6 @@ func (c *Client) DeleteByTag(ctx context.Context, tag string) error {
 	}
 }
 
-// DeleteDroplet destroys a single droplet by ID (used to trim surplus).
 func (c *Client) DeleteDroplet(ctx context.Context, id int) error {
 	if _, err := c.do.Droplets.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete droplet %d: %w", id, err)
@@ -301,8 +289,6 @@ func (c *Client) DeleteDroplet(ctx context.Context, id int) error {
 	return nil
 }
 
-// WaitActive polls the tagged fleet until every droplet is active with a
-// public IPv4, returning the refreshed listing.
 func (c *Client) WaitActive(ctx context.Context, tag string, want int, timeout time.Duration) ([]Droplet, error) {
 	deadline := time.Now().Add(timeout)
 	lastReady := -1

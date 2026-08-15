@@ -40,7 +40,6 @@ func TestRegisterBackendMetrics(t *testing.T) {
 		t.Fatalf("Collect: %v", err)
 	}
 
-	// Index every emitted (metric, cluster/backend) -> value.
 	got := map[string]map[string]int64{}
 	for _, sm := range rm.ScopeMetrics {
 		for _, m := range sm.Metrics {

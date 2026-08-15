@@ -1,13 +1,11 @@
-// Package benchwide deploys and drives a fleet of cloud VMs — across
-// providers (DigitalOcean, Hetzner, …; see internal/provider) — running real
-// restic clients against michael, the external-user data path over the public
-// internet. It is the VM-shaped sibling of internal/warp (fleet lifecycle:
-// deploy/start/status/stop/cleanup/undeploy) built on the bench agent's
-// loadgen mode: every host runs a detached supervisor looping seeded
-// generate→backup cycles per client, hard-capped at the host's transfer
-// allowance so a forgotten run cannot burn into paid overage. Each provider is
-// a separate, independently-addressable fleet (state keyed by partition ×
-// provider), so multiple providers can load michael concurrently.
+// Package benchwide drives a fleet of cloud VMs (DigitalOcean, Hetzner, …; see
+// internal/provider) running real restic clients against michael — the
+// external-user path over the public internet. VM-shaped sibling of
+// internal/warp (deploy/start/status/stop/cleanup/undeploy), built on the
+// bench agent's loadgen mode: each host loops seeded generate→backup cycles
+// under a detached supervisor, hard-capped at the host's transfer allowance so
+// a forgotten run can't burn into paid overage. State is keyed partition ×
+// provider — independent fleets, providers can load michael concurrently.
 package benchwide
 
 import (
@@ -44,9 +42,8 @@ const (
 	tagPrefix = "yuctl-bench-"
 )
 
-// Client is one restic identity: its admin-api repository and password,
-// pinned to a droplet by name. Passwords are generated once and persisted —
-// without them the repos can never be reopened (cleanup, restarts).
+// Client is one restic identity (admin-api repo + password), pinned to a
+// droplet by name. Passwords persist — repos are unreopenable without them.
 type Client struct {
 	Name     string `json:"name"`    // <droplet>-c<n>
 	Droplet  string `json:"droplet"` // droplet name it runs on
@@ -55,18 +52,15 @@ type Client struct {
 	Password string `json:"password"`
 }
 
-// RunInfo records the parameters of the last `start` for status displays and
-// the results file.
 type RunInfo struct {
 	StartedAt time.Time         `json:"startedAt"`
 	Label     string            `json:"label"`
 	Params    map[string]string `json:"params"`
 }
 
-// State is the local fleet record (0600 — it holds repo passwords). Host
-// existence itself is never trusted from here: the provider's tag listing is
-// the source of truth, so fleets survive yuctl crashes and state loss only
-// costs repo passwords, not orphaned hosts.
+// State is the local fleet record (0600 — holds repo passwords). Host
+// existence is never trusted from here: the provider tag listing is truth, so
+// state loss costs only repo passwords, never orphaned hosts.
 type State struct {
 	Partition     string    `json:"partition"`
 	Provider      string    `json:"provider"`
@@ -80,8 +74,6 @@ type State struct {
 	Run           *RunInfo  `json:"run,omitempty"`
 }
 
-// Session is the resolved handle for one bench-wide command invocation,
-// scoped to one provider × partition fleet.
 type Session struct {
 	Partition string
 	Provider  provider.Provider
@@ -115,14 +107,12 @@ func NewSession(ctx context.Context, partition, providerName string) (*Session, 
 // slug is the provider×partition key used in the tag and local filenames.
 func (s *Session) slug() string { return s.providerName + "-" + s.Partition }
 
-// Tag is the fleet's provider tag/label.
 func (s *Session) Tag() string { return tagPrefix + s.slug() }
 
 func (s *Session) statePath() string {
 	return filepath.Join(s.dir, "fleet-"+s.slug()+".json")
 }
 
-// PrivateKeyPath is where the fleet's ephemeral ssh private key lives.
 func (s *Session) PrivateKeyPath() string {
 	return filepath.Join(s.dir, "id_ed25519-"+s.slug())
 }
@@ -165,10 +155,9 @@ func (s *Session) SaveState() error {
 	return os.Rename(tmp, p)
 }
 
-// clearFleetState drops everything droplet-bound (ssh key material, run
-// info) but keeps the client records when repos exist: their passwords are
-// the only way to ever reopen those repos (e.g. `tools bench --repo-id` with
-// a re-minted URL to prune them later).
+// clearFleetState drops droplet-bound bits (ssh keys, run info) but keeps
+// client records while repos exist — their passwords are the only way to
+// reopen them (`tools bench --repo-id` + re-minted URL to prune later).
 func (s *Session) clearFleetState() error {
 	os.Remove(s.PrivateKeyPath())
 	os.Remove(s.knownHostsPath())
@@ -183,14 +172,11 @@ func (s *Session) clearFleetState() error {
 	return s.SaveState()
 }
 
-// sshArgs are the fleet ssh options: the ephemeral identity, a per-fleet
-// known_hosts (droplet IPs get recycled across deployments — the global file
-// would scream host-key-changed), TOFU on first contact, and connection
-// multiplexing. Multiplexing matters beyond latency: status/watch/start
-// otherwise open a fresh port-22 TCP flow per droplet per command, a burst
-// pattern that trips ssh-targeted rate limiting on some paths (observed as
-// flapping per-IP port-22 SYN drops while ICMP and other ports stay fine).
-// One persistent master per droplet keeps the flow count flat.
+// sshArgs: ephemeral identity, per-fleet known_hosts (recycled droplet IPs
+// would trip host-key-changed in the global file), TOFU, and multiplexing.
+// Multiplexing is load-bearing: a fresh port-22 flow per droplet per command
+// trips ssh-targeted rate limiting on some paths (flapping per-IP SYN drops
+// while ICMP stays fine); one persistent master keeps the flow count flat.
 func (s *Session) sshArgs(extra ...string) []string {
 	args := []string{
 		"-o", "BatchMode=yes",
@@ -208,12 +194,10 @@ func (s *Session) sshArgs(extra ...string) []string {
 	return append(args, extra...)
 }
 
-// sshRun executes script on the droplet, returning combined stdout. stdin may
-// be nil. The script travels as the ssh command argument (visible in remote
-// ps — it must never contain secrets); secret payloads go through stdin.
-// Connection-level failures (ssh exit 255: banner timeouts, resets — common
-// when tens of sessions open against fresh droplets) are retried; remote
-// command failures are not, ssh reports those as the command's own exit code.
+// sshRun executes script (combined stdout; stdin may be nil). The script rides
+// ssh argv — visible in remote ps, NEVER secrets; secrets go via stdin.
+// Connection failures (exit 255: banner timeouts/resets, common on fresh
+// droplets) are retried; remote command failures (own exit code) are not.
 func (s *Session) sshRun(ctx context.Context, ip, script string, stdin []byte) (string, error) {
 	var lastOut string
 	var lastErr error
@@ -236,9 +220,8 @@ func (s *Session) sshRun(ctx context.Context, ip, script string, stdin []byte) (
 	return lastOut, lastErr
 }
 
-// sshRunOnce is a single ssh attempt with no retry — used by callers that
-// implement their own retry cadence (waitSSH), where nesting retries would
-// multiply the delays.
+// sshRunOnce: single attempt, no retry — for callers with their own cadence
+// (waitSSH); nested retries would multiply delays.
 func (s *Session) sshRunOnce(ctx context.Context, ip, script string, stdin []byte) (string, error) {
 	cmd := exec.CommandContext(ctx, "ssh", s.sshArgs(s.Provider.SSHUser()+"@"+ip, script)...)
 	if stdin != nil {
@@ -267,9 +250,8 @@ func (s *Session) Droplets(ctx context.Context) ([]provider.Host, error) {
 	return s.Provider.List(ctx, s.Tag())
 }
 
-// eachDroplet runs fn against every host in parallel — staggered by 150ms each
-// so a big fleet doesn't fire all its port-22 SYNs in one burst (see sshArgs)
-// — and returns the first error (all hosts are still attempted).
+// eachDroplet runs fn on every host in parallel, staggered 150ms apiece to
+// avoid one port-22 SYN burst (see sshArgs); first error returned, all attempted.
 func eachDroplet(hosts []provider.Host, fn func(d provider.Host) error) error {
 	var wg sync.WaitGroup
 	errs := make([]error, len(hosts))

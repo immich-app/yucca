@@ -17,14 +17,12 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
-// clusterAuth returns an auth carrying an explicit storageCluster claim.
 func clusterAuth(code string) auth.Auth {
 	a := defaultAuth()
 	a.StorageCluster = code
 	return a
 }
 
-// recordingStorage is a mockStorage that remembers whether it was reached.
 type recordingStorage struct {
 	mockStorage
 	hits int
@@ -39,7 +37,6 @@ func newRecordingStorage() *recordingStorage {
 	return rs
 }
 
-// twoClusterServer fronts "default" and "spice", each with its own storage.
 func twoClusterServer() (*Server, *recordingStorage, *recordingStorage) {
 	def, spice := newRecordingStorage(), newRecordingStorage()
 	srv := NewClusterServer(map[string]storage.Storage{
@@ -146,9 +143,8 @@ func TestClusterRoutingUnknownClusterRejected(t *testing.T) {
 	}
 }
 
-// A well-formed claim naming a cluster is still rejected on a single-cluster
-// michael unless it matches that michael's default code — the legacy-token path
-// must not be a wildcard.
+// A well-formed claim is rejected on single-cluster michael unless it matches
+// the default code — the legacy-token path must not be a wildcard.
 func TestClusterRoutingSingleClusterRejectsForeignClaim(t *testing.T) {
 	srv := newTestServer(&mockStorage{})
 

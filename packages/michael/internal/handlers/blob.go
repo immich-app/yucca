@@ -20,12 +20,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// GET /{path}/{type}
-//
-// Streams the restic v2 JSON array as listing pages arrive instead of
-// buffering the whole repo listing. data/ (the bulk of a repo, hex-named) fans
-// out across 16 hex prefixes: RGW scans them in parallel and each shard lands
-// on its own pool backend.
+// Streams the restic v2 JSON array as pages arrive (no full-listing buffer).
+// data/ fans out across 16 hex prefixes: RGW scans in parallel, each shard on
+// its own pool backend.
 func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 
@@ -128,7 +125,6 @@ func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HEAD /{path}/{type}/{name}
 func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
@@ -144,7 +140,6 @@ func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// GET /{path}/{type}/{name}
 func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
@@ -164,7 +159,6 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	s.respondWithS3Object(w, r, obj)
 }
 
-// POST /{path}/{type}/{name}
 func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")
@@ -195,7 +189,6 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// DELETE /{path}/{type}/{name}
 func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 	blobType := chi.URLParam(r, "type")

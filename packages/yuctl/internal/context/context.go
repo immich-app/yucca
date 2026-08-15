@@ -1,7 +1,6 @@
 // Package context persists the operator's selected topology to
-// ${XDG_CONFIG_HOME:-~/.config}/yuctl/context.json. It is the small bit of
-// sticky state that lets `yuctl select prod@htz-fsn1` be followed by
-// `yuctl ceph get health` without re-specifying the target each time.
+// ${XDG_CONFIG_HOME:-~/.config}/yuctl/context.json — the sticky state letting
+// `yuctl select prod@htz-fsn1` be followed by `yuctl ceph get health`.
 package context
 
 import (
@@ -11,8 +10,7 @@ import (
 	"path/filepath"
 )
 
-// Context is the selected partition/region (+ optional ceph cluster). An empty
-// CephCluster means none is selected.
+// An empty CephCluster means none is selected.
 type Context struct {
 	Partition   string `json:"partition"`
 	Region      string `json:"region"`
@@ -33,7 +31,6 @@ func Dir() (string, error) {
 	return filepath.Join(base, "yuctl"), nil
 }
 
-// Path returns the full path to context.json.
 func Path() (string, error) {
 	dir, err := Dir()
 	if err != nil {
@@ -42,9 +39,8 @@ func Path() (string, error) {
 	return filepath.Join(dir, "context.json"), nil
 }
 
-// Load reads the persisted context. A missing file is not an error: it returns
-// a zero Context and (nil), so commands can detect "nothing selected" via
-// Context.Partition == "".
+// Load reads the persisted context. Missing file = zero Context, nil error;
+// "nothing selected" is Context.Partition == "".
 func Load() (*Context, error) {
 	p, err := Path()
 	if err != nil {
@@ -90,7 +86,6 @@ func Save(c *Context) error {
 	return nil
 }
 
-// Selected reports whether a partition/region is currently selected.
 func (c *Context) Selected() bool {
 	return c != nil && c.Partition != "" && c.Region != ""
 }

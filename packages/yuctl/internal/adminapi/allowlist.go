@@ -20,7 +20,6 @@ type AllowlistEntry struct {
 	CreatedAt    string  `json:"createdAt"`
 }
 
-// allowlistPage is the paginated envelope returned by GET /api/allowlist.
 type allowlistPage struct {
 	Items      []AllowlistEntry `json:"items"`
 	NextCursor *string          `json:"nextCursor"`
@@ -96,7 +95,6 @@ func (c *Client) AddAllowlistEntry(ctx context.Context, email string, staged boo
 	return &out.Entry, nil
 }
 
-// RemoveAllowlistEntry removes an email from the allowlist.
 func (c *Client) RemoveAllowlistEntry(ctx context.Context, email string) error {
 	return c.deleteReq(ctx, "/api/allowlist/"+url.PathEscape(email))
 }

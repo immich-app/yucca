@@ -67,9 +67,8 @@ func TestAuthStorageClusterInvalid(t *testing.T) {
 	}
 }
 
-// The token cache is keyed by the Authorization header, so two tokens differing
-// only in storageCluster must not share an entry — a collision would serve one
-// user's repository out of another cluster.
+// Cache is keyed by the Authorization header: tokens differing only in
+// storageCluster must not collide — that would serve a repo from another cluster.
 func TestVerifierCacheKeepsClustersDistinct(t *testing.T) {
 	v := NewVerifier(testPublicKey, nil)
 

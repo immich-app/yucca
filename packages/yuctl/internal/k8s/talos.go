@@ -15,19 +15,14 @@ import (
 	"yuctl/internal/state"
 )
 
-// UpgradeOptions controls a talos upgrade run.
 type UpgradeOptions struct {
-	// Image, when set, is passed as `--image` (the target installer image).
-	Image string
-	// DryRun prints the talosctl commands instead of executing them.
+	Image  string
 	DryRun bool
-	// Nodes overrides the control-plane node IPs from discovery (optional).
-	Nodes []string
+	Nodes  []string
 }
 
-// TalosUpgrade resolves the talosconfig referenced by the kubernetes payload and
-// runs `talosctl upgrade` against each control-plane node. The temp talosconfig
-// is removed on return. With DryRun the commands are only logged.
+// TalosUpgrade resolves the payload's talosconfig and runs `talosctl upgrade`
+// per control-plane node; temp talosconfig removed on return, DryRun only logs.
 func TalosUpgrade(ctx context.Context, k state.Kubernetes, opts UpgradeOptions, logger zerolog.Logger) error {
 	nodes := opts.Nodes
 	if len(nodes) == 0 {
@@ -72,8 +67,7 @@ func TalosUpgrade(ctx context.Context, k state.Kubernetes, opts UpgradeOptions, 
 	return nil
 }
 
-// endpointHost strips a scheme/port from an api_endpoint so it can be used as a
-// talosctl --endpoints host. talosctl wants the host, not a URL.
+// talosctl --endpoints wants a bare host, not a URL.
 func endpointHost(endpoint string) string {
 	host := endpoint
 	for _, p := range []string{"https://", "http://"} {
@@ -81,11 +75,9 @@ func endpointHost(endpoint string) string {
 			host = host[len(p):]
 		}
 	}
-	// drop any path
 	if i := indexByte(host, '/'); i >= 0 {
 		host = host[:i]
 	}
-	// drop any port
 	if i := indexByte(host, ':'); i >= 0 {
 		host = host[:i]
 	}

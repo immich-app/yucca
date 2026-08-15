@@ -82,9 +82,8 @@ func TestParseClustersFull(t *testing.T) {
 	}
 }
 
-// Unset knobs inherit the default cluster, EXCEPT the backend source, which
-// must not be inherited: pointing a new cluster at the default cluster's
-// gateways would serve its repositories from the wrong Ceph.
+// Unset knobs inherit the default cluster EXCEPT the backend source —
+// inheriting it would serve repositories from the wrong Ceph.
 func TestParseClustersInheritsDefaults(t *testing.T) {
 	doc := `{"clusters":[{"code":"spice","endpoint":"http://s3.spice.example","access_key_env":"K","secret_key_env":"S"}]}`
 

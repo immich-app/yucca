@@ -8,7 +8,6 @@ import (
 	"michael/internal/auth"
 )
 
-// POST /{path}?create=true
 func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 	a := auth.FromContext(r.Context())
 
@@ -44,7 +43,6 @@ func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// DELETE /{path}
 func (s *Server) deleteRepository(w http.ResponseWriter, r *http.Request) {
 	writeError(w, r, http.StatusNotImplemented, "Not Implemented")
 }

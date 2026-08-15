@@ -11,11 +11,9 @@ import (
 	yctx "yuctl/internal/context"
 )
 
-// The resolved topology is cached on disk so repeat invocations skip the
-// 1Password credential reads and the per-stack S3 state fetches entirely. The
-// discovery contract only ever carries `op://` reference strings (never secret
-// values), so caching it in the config dir is safe; 0600 matches the token
-// cache convention anyway.
+// Topology is cached on disk so repeat invocations skip the 1P credential
+// reads and per-stack S3 fetches. The contract only carries `op://` refs
+// (never secret values), so config-dir caching is safe; 0600 matches the token cache.
 const (
 	cacheFileName   = "discovery-cache.json"
 	defaultCacheTTL = time.Hour
@@ -24,7 +22,6 @@ const (
 	cacheTTLEnvVar = "YUCTL_DISCOVERY_TTL"
 )
 
-// cacheEnvelope is the on-disk shape: the topology plus when it was resolved.
 type cacheEnvelope struct {
 	FetchedAt time.Time `json:"fetched_at"`
 	Topology  *Topology `json:"topology"`
@@ -47,9 +44,8 @@ func cacheTTL() time.Duration {
 	return defaultCacheTTL
 }
 
-// LoadCachedTopology returns the cached topology when one exists and is younger
-// than the TTL. Any problem (missing, unreadable, corrupt, expired) is a cache
-// miss, never an error — callers fall back to a live resolve.
+// LoadCachedTopology returns the cache when younger than TTL. Any problem
+// (missing/corrupt/expired) is a miss, never an error — callers resolve live.
 func LoadCachedTopology(logger zerolog.Logger) (*Topology, bool) {
 	p, err := cachePath()
 	if err != nil {

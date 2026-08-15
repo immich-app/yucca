@@ -118,7 +118,6 @@ func truncate(s string, n int) string {
 	return s[:n] + "…"
 }
 
-// sortedKeys of the ceph cluster map.
 func cephClusterNames[T any](m map[string]T) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

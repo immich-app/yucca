@@ -1,9 +1,7 @@
-// Package state defines the Go view of the Terraform "discovery" output
-// contract (Workstream 1.5) and parses it out of raw terraform.tfstate objects.
-//
-// Every stack emits a single non-sensitive top-level output named `discovery`
-// with a common envelope and a stack-typed payload. Secrets are ALWAYS `op://`
-// reference strings (resolved later via the op package), never literal values.
+// Package state is the Go view of the Terraform `discovery` output contract
+// (Workstream 1.5), parsed from raw terraform.tfstate. Each stack emits one
+// non-sensitive top-level `discovery` output: common envelope + stack-typed
+// payload; secrets are ALWAYS `op://` refs (resolved via the op package), never literal.
 package state
 
 import (
@@ -11,9 +9,9 @@ import (
 	"fmt"
 )
 
-// Discovery is the decoded `.outputs.discovery.value` envelope plus the union of
-// every stack-typed payload. Exactly one payload group is populated per stack
-// (talos → Kubernetes, ceph → CephClusters, etc.); the rest stay nil/empty.
+// Discovery is the decoded `.outputs.discovery.value` envelope plus the union
+// of stack-typed payloads; exactly one group is populated per stack (talos →
+// Kubernetes, ceph → CephClusters, …), the rest stay nil/empty.
 type Discovery struct {
 	// Envelope — present on every stack.
 	SchemaVersion int        `json:"schema_version"`
@@ -63,7 +61,6 @@ type CephCluster struct {
 	BootstrapHost    string            `json:"bootstrap_host"`
 }
 
-// DNS is the dns stack payload.
 type DNS struct {
 	Provider    string   `json:"provider"`
 	Zone        string   `json:"zone"`
@@ -82,7 +79,6 @@ type Netbird struct {
 	SetupKeyItemTitles map[string]string `json:"setup_key_item_titles"`
 }
 
-// ClusterCIDR is one fabric cluster's public/private CIDR pair.
 type ClusterCIDR struct {
 	Public  string `json:"public"`
 	Private string `json:"private"`
@@ -95,7 +91,6 @@ type MgmtHost struct {
 	PublicIP string `json:"public_ip"`
 }
 
-// Fabric is the fabric stack payload.
 type Fabric struct {
 	SiteID       *int                   `json:"site_id"`
 	KubeCIDR     string                 `json:"kube_cidr"`
@@ -104,9 +99,8 @@ type Fabric struct {
 	MgmtHosts    []MgmtHost             `json:"mgmt_hosts,omitempty"`
 }
 
-// tfState is the minimal slice of a terraform.tfstate JSON document we care
-// about: the `outputs.discovery.value` envelope. We deliberately ignore the
-// rest of the (potentially large, sensitive) state body.
+// tfState: minimal slice of terraform.tfstate — just `outputs.discovery.value`;
+// the (large, sensitive) rest is deliberately ignored.
 type tfState struct {
 	Outputs struct {
 		Discovery struct {
@@ -115,10 +109,9 @@ type tfState struct {
 	} `json:"outputs"`
 }
 
-// ParseDiscovery extracts and decodes `.outputs.discovery.value` from a raw
-// terraform.tfstate document. It returns (nil, nil) when the state has no
-// `discovery` output (e.g. a stack that predates the contract), so callers can
-// skip such stacks rather than treat them as errors.
+// ParseDiscovery decodes `.outputs.discovery.value` from raw tfstate. Returns
+// (nil, nil) when there is no `discovery` output (stack predates the contract)
+// so callers skip rather than error.
 func ParseDiscovery(raw []byte) (*Discovery, error) {
 	var st tfState
 	if err := json.Unmarshal(raw, &st); err != nil {

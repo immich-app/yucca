@@ -1,11 +1,9 @@
-// Command bench-agent is the remote half of `yuctl tools bench` and
-// `yuctl tools bench-do`. In bench mode (no args) it reads a bench.Config as
-// JSON on stdin, executes the benchmark phases, and streams JSON events on
-// stdout. In loadgen mode (--loadgen [config-path]) it reads a
-// bench.LoadgenConfig — from the file, which it deletes after reading, or
-// from stdin when no path is given — and either supervises the detached
-// continuous load or runs the synchronous repo cleanup. The orchestrator
-// pushes it over ssh; it is embedded into yuctl by the build task.
+// Command bench-agent is the remote half of `yuctl tools bench`/`bench-do`.
+// Bench mode (no args): bench.Config JSON on stdin, phases executed, JSON
+// events on stdout. Loadgen mode (--loadgen [config-path]): bench.LoadgenConfig
+// from the file (deleted after reading) or stdin, supervising the detached load
+// or running the synchronous repo cleanup. Pushed over ssh by the orchestrator;
+// embedded into yuctl by the build task.
 package main
 
 import (

@@ -76,7 +76,6 @@ func tail(s string, n int) string {
 	return s
 }
 
-// num pulls a numeric field out of a decoded JSON message.
 func num(m map[string]any, key string) float64 {
 	v, _ := m[key].(float64)
 	return v
@@ -98,7 +97,6 @@ func (r *Restic) Version(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// EnsureInit initializes the repository unless it already exists.
 func (r *Restic) EnsureInit(ctx context.Context) (created bool, err error) {
 	if err := r.command(ctx, "cat", "config").Run(); err == nil {
 		return false, nil

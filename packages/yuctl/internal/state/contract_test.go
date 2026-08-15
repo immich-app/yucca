@@ -67,7 +67,6 @@ func TestParseDiscovery_Ceph(t *testing.T) {
 }
 
 func TestParseDiscovery_NoOutput(t *testing.T) {
-	// A pre-contract stack: no discovery output. Should return (nil, nil).
 	d, err := ParseDiscovery([]byte(`{"version":4,"outputs":{}}`))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

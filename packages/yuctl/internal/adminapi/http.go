@@ -9,7 +9,6 @@ import (
 	"net/url"
 )
 
-// getJSON GETs path (with optional query) and decodes the JSON response.
 func (c *Client) getJSON(ctx context.Context, path string, query url.Values, out any) error {
 	u := c.baseURL + path
 	if enc := query.Encode(); enc != "" {
@@ -39,8 +38,6 @@ func (c *Client) getJSON(ctx context.Context, path string, query url.Values, out
 	return nil
 }
 
-// putJSON PUTs a JSON body to path and decodes the JSON response into out
-// (out may be nil).
 func (c *Client) putJSON(ctx context.Context, path string, body, out any) error {
 	u := c.baseURL + path
 	b, err := json.Marshal(body)

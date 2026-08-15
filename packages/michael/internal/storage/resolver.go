@@ -11,20 +11,16 @@ import (
 	"strings"
 )
 
-// Resolver discovers the set of backend S3 endpoints the pool should balance
-// across. Resolve is called once at startup and again on every reconcile tick,
-// so implementations are expected to re-read their source each call (hot
-// reload). Each returned element is a full endpoint URL, e.g.
+// Resolve runs at startup and every reconcile tick — implementations re-read
+// their source each call (hot reload). Elements are full endpoint URLs, e.g.
 // "http://10.0.1.5:80".
 type Resolver interface {
 	Resolve(ctx context.Context) ([]string, error)
-	// Describe returns a short human-readable description of the source, for logs.
 	Describe() string
 }
 
-// FileResolver reads endpoints from a file, one per line. Blank lines and lines
-// beginning with '#' are ignored. The file is re-read on every Resolve call, so
-// editing it hot-reloads the backend set on the next reconcile tick.
+// FileResolver reads endpoints one per line (blank/'#' lines ignored),
+// re-reading every Resolve — edits hot-reload on the next tick.
 type FileResolver struct {
 	Path string
 }
@@ -57,11 +53,9 @@ func (r *FileResolver) Resolve(_ context.Context) ([]string, error) {
 	return dedupeSorted(endpoints), nil
 }
 
-// DNSResolver resolves a hostname to its A/AAAA records and templates each
-// resolved IP into an endpoint URL using Scheme and Port. This maps a headless
-// Kubernetes Service (e.g. the Ceph RGW pods) to one backend per pod, so the
-// pool balances across gateways directly instead of through a single Service
-// VIP. Re-resolved on every reconcile tick to track pod churn.
+// DNSResolver templates each A/AAAA record into Scheme://IP:Port — a headless
+// k8s Service (Ceph RGW pods) becomes one backend per pod, balanced directly
+// rather than via a Service VIP. Re-resolved each tick to track pod churn.
 type DNSResolver struct {
 	Host   string
 	Scheme string

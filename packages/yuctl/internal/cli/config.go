@@ -13,10 +13,9 @@ import (
 	"yuctl/internal/adminapi"
 )
 
-// newConfigCmd builds the `config` subtree: scoped mutable configuration
-// (global / per-site / per-cluster overrides of restic_pack_size_mib,
-// connections_math, ...) stored by yucca-admin-api and served to clients via
-// GET /api/meta.
+// newConfigCmd builds the `config` subtree: scoped mutable config (global/site/
+// cluster overrides of restic_pack_size_mib, connections_math, …) stored by
+// yucca-admin-api, served via GET /api/meta.
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -29,7 +28,6 @@ func newConfigCmd() *cobra.Command {
 	return cmd
 }
 
-// scopeFlags resolves --site/--cluster into a settings scope string.
 type scopeFlags struct {
 	site    string
 	cluster string

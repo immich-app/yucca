@@ -16,7 +16,6 @@ import (
 	"yuctl/internal/state"
 )
 
-// HealthResult summarizes a probe.
 type HealthResult struct {
 	Endpoint   string
 	StatusCode int
@@ -24,14 +23,10 @@ type HealthResult struct {
 	Detail     string
 }
 
-// CheckHealth issues an HTTPS GET against the cluster's RGW S3 endpoint. A
-// reachable gateway answers an anonymous/credentialed root GET with a 2xx
-// (bucket listing) or an auth-style 4xx (AccessDenied/Forbidden) — either proves
-// it is serving. Only a transport failure or a 5xx is treated as unhealthy.
-//
-// When health_cred_ref is set it is resolved via `op read` and sent as HTTP
-// basic auth (`access:secret` if it contains a colon, otherwise as a bearer
-// token), so credentialed dashboard/health endpoints work too.
+// CheckHealth: HTTPS GET on the RGW S3 endpoint. A 2xx or auth-style 4xx
+// (AccessDenied/Forbidden) proves it's serving; only transport failure or 5xx
+// is unhealthy. health_cred_ref, when set, is `op read` and sent as basic auth
+// (`access:secret` if it has a colon) or bearer — credentialed endpoints work too.
 func CheckHealth(ctx context.Context, cc state.CephCluster, insecureTLS bool) (*HealthResult, error) {
 	endpoint := cc.RGWS3Endpoint
 	if endpoint == "" {

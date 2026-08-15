@@ -1,25 +1,10 @@
 //go:build e2e
 
-// Package e2e test: proves the load-balancing Pool works end-to-end against the
-// REAL Ceph RGW running in the local k3d cluster.
-//
-// The harness (.mise/tasks/michael/test/e2e) port-forwards svc/rook-ceph-rgw-yucca
-// to S3_ENDPOINT and exports the michael object-user credentials. This test then:
-//
-//  1. Fronts that single real RGW with TWO in-process transparent TCP proxies.
-//     Both forward to the same Ceph store, so they are interchangeable backends —
-//     exactly the production model (multiple RGW gateways, one object store).
-//  2. Builds the michael Pool over the two proxy endpoints and runs the full
-//     restic blob workflow through michael's real HTTP handler stack. Data really
-//     lands in k3d's Ceph.
-//  3. Asserts traffic spreads across both backends (least-outstanding balancing).
-//  4. Fails one proxy and proves active-probe ejection + that the workflow keeps
-//     working through the survivor, then restores it and proves reinstatement.
-//  5. Proves passive ejection (consecutive request failures) independently.
-//
-// A second test reuses the same harness for claim-based cluster routing: the two
-// proxies become two SEPARATE storage clusters, and the token's storageCluster
-// claim decides which one serves each request.
+// Drives the load-balancing Pool against the real Ceph RGW in the local k3d
+// cluster. The harness (.mise/tasks/michael/test/e2e) port-forwards
+// svc/rook-ceph-rgw-yucca to S3_ENDPOINT and exports the michael object-user
+// credentials; two in-process TCP proxies front the one RGW as interchangeable
+// backends (the production model: many gateways, one store).
 package main
 
 import (
@@ -94,9 +79,8 @@ func e2eJWT(t *testing.T, repo string, writeOnce bool) string {
 	return e2eJWTForCluster(t, repo, writeOnce, "")
 }
 
-// e2eJWTForCluster mints a token carrying an explicit storageCluster claim.
-// An empty storageCluster omits the claim entirely — the shape of a token
-// minted before multi-cluster routing existed.
+// e2eJWTForCluster mints a token with an explicit storageCluster claim; empty
+// omits the claim entirely (pre-multi-cluster token shape).
 func e2eJWTForCluster(t *testing.T, repo string, writeOnce bool, storageCluster string) string {
 	t.Helper()
 	claims := jwt.MapClaims{
@@ -116,13 +100,9 @@ func e2eJWTForCluster(t *testing.T, repo string, writeOnce bool, storageCluster 
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte("restic:"+signed))
 }
 
-// --- controllable transparent TCP proxy ---
-
-// tcpProxy forwards raw TCP to a target. Failing it both refuses NEW
-// connections and tears down LIVE ones — the latter matters because the S3
-// client keeps keep-alive connections pooled, and dropping only new connections
-// would let a probe sail through a reused connection. Together this faithfully
-// simulates a dead gateway (transport failure on every request).
+// tcpProxy forwards raw TCP. Failing it refuses NEW connections AND tears down
+// LIVE ones — pooled keep-alive connections would otherwise let a probe sail
+// through; together this simulates a dead gateway (transport failure everywhere).
 type tcpProxy struct {
 	ln     net.Listener
 	target string
@@ -208,8 +188,6 @@ func (p *tcpProxy) pipe(client net.Conn) {
 
 func (p *tcpProxy) close() { _ = p.ln.Close() }
 
-// --- helpers ---
-
 func targetHostPort(t *testing.T, endpoint string) string {
 	t.Helper()
 	u, err := url.Parse(endpoint)
@@ -279,8 +257,6 @@ func mustStatus(t *testing.T, resp *http.Response, want int, what string) {
 	}
 }
 
-// rawClient builds an S3 client straight to the real RGW (not via the proxies),
-// used only for test bucket cleanup.
 func rawClient(cfg config.Config) *s3.Client {
 	return s3.New(s3.Options{
 		Region:       cfg.S3Region,
@@ -305,7 +281,6 @@ func cleanupBucket(t *testing.T, cfg config.Config, bucket string) {
 	}
 }
 
-// healthyCount returns how many backends in the pool are currently healthy.
 func healthyCount(p *storage.Pool) int {
 	n := 0
 	for _, s := range p.Stats() {
@@ -325,12 +300,10 @@ func statByEndpoint(p *storage.Pool, endpoint string) (storage.BackendStat, bool
 	return storage.BackendStat{}, false
 }
 
-// TestE2E_PoolAgainstRealRGW is the full end-to-end proof.
 func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	cfg := e2eConfig(t)
 	target := targetHostPort(t, cfg.S3Endpoint)
 
-	// Two interchangeable backends, both proxying to the same real RGW.
 	pa := newTCPProxy(t, target)
 	pb := newTCPProxy(t, target)
 	defer pa.close()
@@ -352,7 +325,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	client := srv.Client()
 	auth := e2eJWT(t, repo, false)
 
-	// ---- Phase 1: full restic workflow through the pool, real data to Ceph ----
 	resp := do(t, client, http.MethodPost, srv.URL+"/"+repo+"/?create=true", auth, nil)
 	mustStatus(t, resp, http.StatusOK, "create repo")
 	resp.Body.Close()
@@ -395,7 +367,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 		}
 	}
 
-	// List blobs (restic v2).
 	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/"+repo+"/data", nil)
 	req.Header.Set("Authorization", auth)
 	req.Header.Set("Accept", handlers.ContentTypeResticV2)
@@ -410,7 +381,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 		t.Fatalf("list: expected %d blobs, got %d", len(blobNames), len(listed))
 	}
 
-	// Assert the load balancer actually spread traffic across BOTH backends.
 	sa, _ := statByEndpoint(pool, pa.url())
 	sb, _ := statByEndpoint(pool, pb.url())
 	t.Logf("balancing: backend A served %d reqs (%d up / %d down bytes), backend B served %d reqs (%d up / %d down)",
@@ -419,7 +389,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 		t.Fatalf("expected both backends to serve traffic, got A=%d B=%d", sa.Requests, sb.Requests)
 	}
 
-	// ---- Phase 2: active-probe ejection; workflow continues via survivor ----
 	pa.setFailed(true)
 	if err := pool.Reconcile(context.Background()); err != nil {
 		t.Logf("reconcile resolver note: %v", err)
@@ -432,7 +401,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	}
 	t.Log("backend A ejected via active probe; routing only to B")
 
-	// All operations still succeed through the surviving backend.
 	data := []byte("blob written while A is down")
 	sum := sha256.Sum256(data)
 	name := hex.EncodeToString(sum[:])
@@ -445,7 +413,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	resp.Body.Close()
 	t.Log("workflow continued successfully while A was ejected")
 
-	// ---- Phase 3: reinstatement ----
 	pa.setFailed(false)
 	if err := pool.Reconcile(context.Background()); err != nil {
 		t.Logf("reconcile note: %v", err)
@@ -455,10 +422,9 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	}
 	t.Log("backend A reinstated via active probe; both healthy again")
 
-	// ---- Phase 4: passive ejection (consecutive request failures) ----
 	pb.setFailed(true)
-	// Hit backend B directly until its consecutive-failure streak trips ejection.
-	// (Some calls land on A and succeed; B's per-backend streak is what matters.)
+	// Some calls land on A and succeed; B's per-backend failure streak is what
+	// trips ejection.
 	ejected := false
 	for i := range 12 {
 		_, _ = pool.HeadObject(context.Background(), repo, "config")
@@ -480,7 +446,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	}
 	t.Log("backend B reinstated; e2e proof complete")
 
-	// ---- cleanup of created blobs/config (bucket removed by deferred cleanup) ----
 	for _, n := range blobNames {
 		resp = do(t, client, http.MethodDelete, srv.URL+"/"+repo+"/data/"+n, auth, nil)
 		resp.Body.Close()
@@ -489,7 +454,6 @@ func TestE2E_PoolAgainstRealRGW(t *testing.T) {
 	resp.Body.Close()
 }
 
-// totalRequests sums the requests every backend in a pool has served.
 func totalRequests(p *storage.Pool) int64 {
 	var n int64
 	for _, s := range p.Stats() {
@@ -498,12 +462,6 @@ func totalRequests(p *storage.Pool) int64 {
 	return n
 }
 
-// TestE2E_ClusterRoutingAgainstRealRGW proves claim-based routing end-to-end:
-// michael fronts TWO storage clusters (each a one-backend pool over its own TCP
-// proxy to the real RGW) and the token's storageCluster claim decides which one
-// serves the request. Both proxies reach the same Ceph — what is under test is
-// which cluster's pool the traffic went through, which the per-pool request
-// counters show exactly.
 func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 	cfg := e2eConfig(t)
 	target := targetHostPort(t, cfg.S3Endpoint)
@@ -528,7 +486,6 @@ func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 	defer srv.Close()
 	client := srv.Client()
 
-	// A repository is a bucket, so each cluster gets its own to write into.
 	runWorkflow := func(repo, auth string) {
 		t.Helper()
 		resp := do(t, client, http.MethodPost, srv.URL+"/"+repo+"/?create=true", auth, nil)
@@ -549,7 +506,6 @@ func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 		}
 	}
 
-	// ---- A token with NO claim must be served by the default cluster ----
 	beforeDefault, beforeSpice := totalRequests(defaultPool), totalRequests(spicePool)
 	runWorkflow(defaultRepo, e2eJWT(t, defaultRepo, false))
 	if totalRequests(defaultPool) <= beforeDefault {
@@ -560,7 +516,6 @@ func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 	}
 	t.Log("legacy (claimless) token routed to the default cluster")
 
-	// ---- A token claiming "spice" must be served by that cluster ----
 	beforeDefault, beforeSpice = totalRequests(defaultPool), totalRequests(spicePool)
 	runWorkflow(spiceRepo, e2eJWTForCluster(t, spiceRepo, false, "spice"))
 	if totalRequests(spicePool) <= beforeSpice {
@@ -571,7 +526,7 @@ func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 	}
 	t.Log("storageCluster=spice routed to the spice cluster")
 
-	// ---- A claim naming a cluster michael doesn't front must fail closed ----
+	// A claim naming a cluster michael doesn't front must fail closed.
 	beforeDefault, beforeSpice = totalRequests(defaultPool), totalRequests(spicePool)
 	unknown := e2eJWTForCluster(t, defaultRepo, false, "sietch")
 	resp := do(t, client, http.MethodGet, srv.URL+"/"+defaultRepo+"/config", unknown, nil)
@@ -582,7 +537,6 @@ func TestE2E_ClusterRoutingAgainstRealRGW(t *testing.T) {
 	}
 	t.Log("unknown storageCluster rejected with 400 and no backend traffic")
 
-	// ---- cleanup (buckets removed by the deferred cleanups) ----
 	for repo, auth := range map[string]string{
 		defaultRepo: e2eJWT(t, defaultRepo, false),
 		spiceRepo:   e2eJWTForCluster(t, spiceRepo, false, "spice"),
