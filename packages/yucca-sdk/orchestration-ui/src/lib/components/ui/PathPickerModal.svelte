@@ -16,6 +16,7 @@
   } from "@immich/ui";
   import {
     mdiArrowUp,
+    mdiCheck,
     mdiClose,
     mdiFileOutline,
     mdiFolderOutline,
@@ -149,7 +150,12 @@
           Browse
         {/snippet}
 
-        <HStack gap={2} class="items-center px-4 py-3 bg-subtle">
+        <HStack
+          gap={2}
+          class="items-center px-4 py-3 {selected.has(listing.path)
+            ? 'bg-primary/10'
+            : 'bg-subtle'}"
+        >
           <Icon icon={mdiFolderOutline} color="primary" />
           <Text class="grow truncate" title={listing.path}>
             {listing.path}
@@ -167,7 +173,13 @@
 
         {#each sortedItems as item (item.path)}
           {#if item.isDirectory || !foldersOnly}
-            <HStack gap={2} class="items-center px-2 py-1">
+            {@const isSelected = selected.has(item.path)}
+            <HStack
+              gap={2}
+              class="items-center px-2 py-1 {isSelected
+                ? 'bg-primary/10'
+                : ''}"
+            >
               {#if item.isDirectory}
                 <ListButton
                   leadingIcon={mdiFolderOutline}
@@ -189,11 +201,16 @@
                 </HStack>
               {/if}
               <IconButton
-                icon={mdiPlus}
-                aria-label={single ? "Select" : "Add"}
+                icon={isSelected ? mdiCheck : mdiPlus}
+                aria-label={isSelected
+                  ? "Selected"
+                  : single
+                    ? "Select"
+                    : "Add"}
                 size="tiny"
                 variant="ghost"
-                disabled={!single && selected.has(item.path)}
+                color={isSelected ? "primary" : undefined}
+                disabled={!single && isSelected}
                 onclick={() => add(item.path)}
               />
             </HStack>
