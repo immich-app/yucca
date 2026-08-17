@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { homedir } from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import { StorageRepository } from '../repositories/storage.repository';
 
@@ -9,7 +8,7 @@ export class FilesystemService {
   constructor(private readonly storage: StorageRepository) {}
 
   async getFileListing(dto: FilesystemListingRequestDto): Promise<FilesystemListingResponseDto> {
-    const path = dto.path ?? homedir();
+    const path = dto.path ?? sep;
     const files = await this.storage.readdir(path);
 
     return {
