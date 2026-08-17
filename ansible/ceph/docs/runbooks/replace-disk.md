@@ -344,7 +344,17 @@ it back to the same drive; draining relocates it to a healthy one.
 ```bash
 ceph orch daemon stop osd.<id>
 ceph orch osd rm <id> --replace     # keeps the id reserved for the new disk
+ceph osd tree destroyed             # must list <id> before step 6 can reuse it
 ```
+
+`--replace` marks the id `destroyed` instead of purging it, and `destroyed` is
+the only osdmap state ceph-volume will reuse an id from. An OSD that is merely
+`down` and `out` still owns its number, so skipping this step and rebuilding
+anyway hands the new disk the next free id above every existing OSD.
+
+If `orch osd rm` stalls on a daemon that is already dead, do the same thing by
+hand: `ceph osd destroy <id> --yes-i-really-mean-it`, then
+`ceph orch daemon rm osd.<id> --force`.
 
 Leave the db LV alone. `replace-osd.yml` zaps it in step 6, and it zaps
 unconditionally so it does not matter whether the slot survived, was already
@@ -387,13 +397,25 @@ Run `replace-osd.yml`. It takes the bay and derives the rest:
 
 ```bash
 scripts/ansible-play.sh replace-osd.yml --limit <hostname> \
-  -e osd_bay=<bay-path>
+  -e osd_bay=<bay-path> -e osd_id=<id>
 ```
 
 It ensures the db slot LV exists, zaps it, drives `ceph-volume lvm create` with
-the slot pinned explicitly, activates the daemon, and then asserts the result
-landed on the NVMe. Re-running it against a bay that already holds an OSD is a
-no-op, so it is safe to repeat after a failure.
+the slot and the id pinned explicitly, activates the daemon, and then asserts
+the result landed on the NVMe under the id you asked for. Re-running it against
+a bay that already holds an OSD is a no-op, so it is safe to repeat after a
+failure.
+
+`osd_id` is optional. Leave it off only when you want a fresh number, which on
+a full osdmap is one above every OSD in the cluster. With it set, the play
+refuses to run until step 4 has marked that id `destroyed`.
+
+A hot swap on a host that has not rebooted leaves the dead OSD's dm-crypt
+mapping open on the db slot (`lvs` shows the LV as `-wi-ao----`, `lsblk` shows a
+`crypt` child under it). That is normal and needs no hand cleanup: `ceph-volume
+lvm zap` closes the mapping itself, by the LV uuid it is named after. The play
+only checks first that nothing still holds it open, since a zap under a live
+holder would wipe a block.db in use.
 
 The slot is derived, not passed: a slot counts as claimed only when it is the
 `db` entry of an OSD that also has a `block` entry. That distinction matters
@@ -419,7 +441,7 @@ cephadm ceph-volume \
   --config /run/replace-osd/ceph.conf \
   --keyring /run/replace-osd/bootstrap-osd.keyring \
   lvm create --dmcrypt --no-systemd --crush-device-class hdd \
-  --data "$DISK" --block.db "$DB_LV"
+  --osd-id <id> --data "$DISK" --block.db "$DB_LV"
 
 rm -rf /run/replace-osd
 ceph cephadm osd activate <hostname>
