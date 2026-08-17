@@ -47,6 +47,7 @@ baseline_podman_packages:
 # Diagnostic and ops toolset
 baseline_diag_packages:
   - smartmontools
+  - hdparm
   - ipmitool
   - lsscsi
   - pciutils
