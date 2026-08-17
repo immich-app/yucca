@@ -59,7 +59,7 @@
     # The by-path symlink is the bay; it disappears with the disk. A missing one
     # means the swap has not happened yet, not that the play is misconfigured.
     - name: Resolve the bay to a kernel device
-      ansible.builtin.command: readlink -f /dev/disk/by-path/{{ osd_bay }}
+      ansible.builtin.command: readlink -e /dev/disk/by-path/{{ osd_bay }}
       register: replace_osd_dev
       changed_when: false
       check_mode: false
@@ -261,6 +261,7 @@
     # nothing behind. Driving ceph-volume by hand means supplying both, so stage
     # them on tmpfs for the one command and remove them either way.
     - name: Build the OSD
+      when: not ansible_check_mode
       block:
         - name: Stage a private directory for the bootstrap credentials
           ansible.builtin.file:
@@ -347,6 +348,21 @@
           ansible.builtin.set_fact:
             replace_osd_new_id: "{{ (replace_osd_created.stdout | from_json).keys() | first }}"
 
+        # The queued action runs on the first serve pass after the daemon lands in
+        # cephadm's cache, up to a minute later, and a start queued before then is
+        # dropped because stop outranks it. So let it fire, then judge the OSD.
+        - name: Wait for cephadm to consume the queued action
+          ansible.builtin.command: ceph config-key get mgr/cephadm/host.{{ inventory_hostname }}
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          register: replace_osd_host_cache_after
+          changed_when: false
+          until: >-
+            ('osd.' ~ replace_osd_new_id) not in
+            ((replace_osd_host_cache_after.stdout | from_json).scheduled_daemon_actions | default({}))
+          retries: 18
+          delay: 10
+          when: (replace_osd_queued_action | default('')) | length > 0
+
         - name: Wait for the OSD to be up
           ansible.builtin.command: ceph osd tree -f json
           register: replace_osd_tree_after
@@ -361,8 +377,6 @@
           delay: 10
           ignore_errors: true
 
-        # The queued action recorded before the build ran on the first serve pass
-        # after boot. A stop is the only one that leaves the daemon down.
         - name: Start the daemon that cephadm's queued stop took down
           ansible.builtin.command: ceph orch daemon start osd.{{ replace_osd_new_id }}
           delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
