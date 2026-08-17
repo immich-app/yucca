@@ -14,7 +14,10 @@
 # to pin the disk to its slot; the final assert is what proves it landed.
 #
 #   scripts/ansible-play.sh replace-osd.yml --limit spice-ceph-alyssa \
-#     -e osd_bay=pci-0000:45:00.0-ata-6
+#     -e osd_bay=pci-0000:45:00.0-ata-6 [-e osd_id=35]
+#
+# osd_id keeps the old id. Without it ceph-volume allocates the next free id,
+# and on a full osdmap that is a new number above every existing OSD.
 #
 # Re-running against an OSD that already exists on that bay is a no-op.
 
@@ -143,11 +146,41 @@
         replace_osd_slot: >-
           {{ osd_db_slot | default((replace_osd_scan.stdout | from_json).free | first) }}
 
+    # ceph-volume reuses a requested id only when the osdmap already marks it
+    # destroyed. down and out do not qualify, and the `osd new` error for that
+    # case ("already in use or does not exist") does not say so.
+    - name: Read the osdmap status of the requested id
+      ansible.builtin.command: ceph osd tree -f json
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      register: replace_osd_tree
+      changed_when: false
+      check_mode: false
+      when: osd_id is defined
+
+    - name: Resolve the osdmap status of the requested id
+      ansible.builtin.set_fact:
+        replace_osd_id_status: >-
+          {{ ((replace_osd_tree.stdout | from_json).nodes
+              | selectattr('type', 'eq', 'osd')
+              | selectattr('id', 'eq', osd_id | int)
+              | map(attribute='status') | list + ['absent']) | first }}
+      when: osd_id is defined
+
+    - name: Assert the requested id is destroyed or absent
+      ansible.builtin.assert:
+        that:
+          - replace_osd_id_status in ['destroyed', 'absent']
+        fail_msg: >-
+          osd.{{ osd_id }} is {{ replace_osd_id_status }} in the osdmap, not
+          destroyed. Run `ceph orch osd rm {{ osd_id }} --replace` first.
+      when: osd_id is defined
+
     - name: Report the plan
       ansible.builtin.debug:
         msg: >-
-          {{ inventory_hostname }}: build an OSD on {{ osd_bay }}
-          ({{ replace_osd_dev.stdout }}) against
+          {{ inventory_hostname }}: build
+          {{ ('osd.' ~ osd_id) if osd_id is defined else 'a new OSD' }}
+          on {{ osd_bay }} ({{ replace_osd_dev.stdout }}) against
           {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }}
           (orphaned slots seen: {{ (replace_osd_scan.stdout | from_json).orphan }})
 
@@ -162,6 +195,30 @@
         shrink: false
         opts: "-Wy"
         state: present
+
+    # zap closes the slot's dm-crypt mapping itself, by the LV uuid it is named
+    # after, but it warns rather than stops when that close fails and then wipes
+    # the LV regardless. The one holder that survives an orphaned slot is an OSD
+    # process that lost its data disk and has not exited yet.
+    - name: Read the open count on the slot's dm-crypt mapping
+      ansible.builtin.shell: |
+        set -o pipefail
+        uuid=$(lvs --noheadings -o lv_uuid {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }} | tr -d ' ')
+        dmsetup info -c --noheadings -o open "$uuid" 2>/dev/null || echo 0
+      args:
+        executable: /bin/bash
+      register: replace_osd_slot_open
+      changed_when: false
+      check_mode: false
+
+    - name: Assert nothing holds the slot's dm-crypt mapping open
+      ansible.builtin.assert:
+        that:
+          - replace_osd_slot_open.stdout | trim | int == 0
+        fail_msg: >-
+          {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }} has a dm-crypt mapping with
+          open count {{ replace_osd_slot_open.stdout | trim }}. Find and stop the
+          holder before rebuilding; zapping under it would wipe a live block.db.
 
     # Unconditional so the deleted-slot and the zapped-slot cases converge on one
     # path. ceph-volume refuses a db device still carrying an old OSD's metadata,
@@ -221,6 +278,7 @@
             --keyring {{ replace_osd_staging }}/bootstrap-osd.keyring
             lvm create --dmcrypt --no-systemd
             --crush-device-class {{ osd_crush_device_class }}
+            {{ ('--osd-id ' ~ osd_id) if osd_id is defined else '' }}
             --data /dev/disk/by-path/{{ osd_bay }}
             --block.db {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }}
           changed_when: true
@@ -247,6 +305,15 @@
           until: (replace_osd_created.stdout | from_json) | length > 0
           retries: 12
           delay: 10
+
+        - name: Assert the OSD kept the requested id
+          ansible.builtin.assert:
+            that:
+              - (replace_osd_created.stdout | from_json).keys() | first | int == osd_id | int
+            fail_msg: >-
+              Asked for osd.{{ osd_id }} and got
+              osd.{{ (replace_osd_created.stdout | from_json).keys() | first }}.
+          when: osd_id is defined
 
         - name: Read the new OSD's BlueStore metadata
           ansible.builtin.command: >-
