@@ -341,8 +341,21 @@ it back to the same drive; draining relocates it to a healthy one.
 
 ### 4. Remove the OSD and free the db slot
 
+If the daemon is still running, stop it on the host, not through the
+orchestrator:
+
 ```bash
-ceph orch daemon stop osd.<id>
+ssh <host> cephadm unit --fsid <fsid> --name osd.<id> stop
+```
+
+`ceph orch daemon stop|start|restart osd.<id>` only queues an action, and the
+serve loop skips every daemon of an unmanaged spec before it reads that queue.
+Against a spec-deployed OSD on spice it never runs and never clears, and the
+queued action then fires on the first pass after a rebuilt daemon of the same
+name boots. `orch daemon rm` does not drop it either. `replace-osd.yml` reads the
+queue and undoes a queued stop, but do not add to it.
+
+```bash
 ceph orch osd rm <id> --replace     # keeps the id reserved for the new disk
 ceph orch osd rm status             # repeat until <id> is gone from the queue
 ceph osd tree destroyed             # must list <id> before step 6 can reuse it
@@ -365,9 +378,31 @@ drive before you reach this step, which is the usual order now that they
 hot-swap, run it unchanged. Do not put the new disk in service under a fresh
 id to save the step.
 
-If `orch osd rm` stalls on a daemon that is already dead, do the same thing by
-hand: `ceph osd destroy <id> --yes-i-really-mean-it`, then
-`ceph orch daemon rm osd.<id> --force`.
+**When the cluster is not `active+clean`, `--replace` cannot finish.** The mgr's
+`safe-to-destroy` files every down OSD under "no reported stats" while any PG is
+unclean and answers EAGAIN, before and after destroy alike, and cephadm never
+bypasses that verdict (`--force` only skips the emptiness check). The entry sits
+at `done, waiting for purge` until the last backfill lands, and it is not inert
+while it waits: the moment a rebuilt osd.<id> boots and holds PGs, the entry
+marks it `out` and drains it. On spice a backfill is nearly always in flight, so
+expect this path:
+
+```bash
+ceph orch osd rm stop <id>                       # drops the entry; side effect: `osd in`
+ceph osd out <id>                                # undo that within the second
+ceph orch osd rm status                          # empty
+ceph config-key get mgr/cephadm/osd_remove_queue # []  (rm stop persists on the next serve pass)
+ceph osd destroy <id> --yes-i-really-mean-it     # the flag doubles as --force at the mgr
+ceph osd tree destroyed                          # lists <id>
+ceph orch daemon rm osd.<id> --force             # cephadm forgets the dead daemon
+```
+
+The `in`/`out` pair is two osdmap epochs a second apart. PGs whose placement
+includes the OSD re-peer and settle back onto the same map; nothing moves and
+nothing goes degraded. If the `out` could not run, the mon re-outs the OSD on
+its own after `mon_osd_down_out_interval` (600 s here). The end state is the one
+`--replace` would have produced: `destroyed`, cephx and lockbox keys scrubbed,
+CRUSH entry and weight kept.
 
 Leave the db LV alone. `replace-osd.yml` zaps it in step 6, and it zaps
 unconditionally so it does not matter whether the slot survived, was already
@@ -414,10 +449,11 @@ scripts/ansible-play.sh replace-osd.yml --limit <hostname> \
 ```
 
 It ensures the db slot LV exists, zaps it, drives `ceph-volume lvm create` with
-the slot and the id pinned explicitly, activates the daemon, and then asserts
-the result landed on the NVMe under the id you asked for. Re-running it against
-a bay that already holds an OSD is a no-op, so it is safe to repeat after a
-failure.
+the slot and the id pinned explicitly, activates the daemon, waits for it to be
+`up`, undoes a queued `orch daemon stop` if step 4 left one, and then asserts
+the metadata the new daemon reported names this disk and puts block.db on the
+NVMe. Re-running it against a bay that already holds an OSD is a no-op, so it
+is safe to repeat after a failure.
 
 `osd_id` is optional. Leave it off only when you want a fresh number, which on
 a full osdmap is one above every OSD in the cluster. With it set, the play
@@ -503,9 +539,22 @@ OSD by hand, check it yourself:
 ```bash
 ceph osd metadata <id> -f json | \
   python3 -c 'import sys,json; d=json.load(sys.stdin); \
-    print(d["bluefs_dedicated_db"], d["bluefs_db_devices"], d["bluefs_db_rotational"])'
-# expect: 1 md1 0
+    print(d["devices"], d["bluefs_dedicated_db"], d["bluefs_db_devices"], d["bluefs_db_rotational"])'
+# expect: md1,<new sdX> 1 md1 0
 ```
+
+Check `devices` first, and only after the OSD is `up`. `osd metadata` is the
+last report the mon holds for that id, so on a reused id it is the dead daemon's
+report until the new one boots, and the dead one had its block.db on `md1` too.
+A `1 md1 0` next to the old kernel device proves nothing.
+
+The rebuilt daemon is a different kind of cephadm citizen from its siblings.
+`ceph cephadm osd activate` deploys it under service `osd` (its `unit.meta`
+says so; `ceph orch ps` lists it under `osd`, not `osd.<host>-hdd`), so it has
+no spec and the serve loop does not skip it: queued `orch daemon` actions and
+config reconfigs run for it, where the spec-deployed 718 ignore them. osd.35
+and osd.17 are in that class. Harmless, and worth knowing when one of them
+behaves differently from the rest of the host.
 
 Then watch it fill:
 
