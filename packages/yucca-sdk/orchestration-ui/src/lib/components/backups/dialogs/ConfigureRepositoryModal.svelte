@@ -1,12 +1,12 @@
 <script lang="ts">
   import BackendsList from "$lib/components/backends/BackendsList.svelte";
+  import PathListField from "$lib/components/ui/PathListField.svelte";
   import { type LocalRepositoryDto } from "$lib/fetch-client";
   import { options } from "$lib/options";
   import {
     useRemoveRepository,
     useUpdateRepository,
   } from "$lib/services/repository.service";
-  import PathListField from "$lib/components/ui/PathListField.svelte";
   import {
     Button,
     Field,
@@ -89,10 +89,8 @@
       </PathListField>
     {/if}
 
-    <Button
-      color="danger"
-      loading={removeMutation.isPending}
-      onclick={onRemove}>Remove Repository</Button
+    <Button color="danger" loading={removeMutation.isPending} onclick={onRemove}
+      >Remove Repository from This Device</Button
     >
 
     {#if advanced}
