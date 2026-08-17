@@ -175,6 +175,34 @@
           destroyed. Run `ceph orch osd rm {{ osd_id }} --replace` first.
       when: osd_id is defined
 
+    # `orch daemon stop|start|restart` only queues an action per daemon name;
+    # the serve loop skips daemons of an unmanaged spec before it reads the
+    # queue, so against a spec-deployed OSD it never runs and never clears. The
+    # rebuilt daemon has no spec, so the first pass after it boots runs it.
+    # Nothing drops a queued action, so record it and undo it after the boot.
+    - name: Read cephadm's queued daemon actions for this host
+      ansible.builtin.command: ceph config-key get mgr/cephadm/host.{{ inventory_hostname }}
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      register: replace_osd_host_cache
+      changed_when: false
+      check_mode: false
+      when: osd_id is defined
+
+    - name: Note the action cephadm will run against the rebuilt daemon
+      ansible.builtin.set_fact:
+        replace_osd_queued_action: >-
+          {{ ((replace_osd_host_cache.stdout | from_json).scheduled_daemon_actions
+              | default({}))['osd.' ~ osd_id] | default('') }}
+      when: osd_id is defined
+
+    - name: Report the queued action
+      ansible.builtin.debug:
+        msg: >-
+          cephadm holds a queued `{{ replace_osd_queued_action }}` for
+          osd.{{ osd_id }} on {{ inventory_hostname }}. It runs on the first
+          serve pass after the rebuilt daemon boots; a stop is undone below.
+      when: (replace_osd_queued_action | default('')) | length > 0
+
     - name: Report the plan
       ansible.builtin.debug:
         msg: >-
@@ -315,15 +343,62 @@
               osd.{{ (replace_osd_created.stdout | from_json).keys() | first }}.
           when: osd_id is defined
 
-        - name: Read the new OSD's BlueStore metadata
+        - name: Set the new OSD id
+          ansible.builtin.set_fact:
+            replace_osd_new_id: "{{ (replace_osd_created.stdout | from_json).keys() | first }}"
+
+        - name: Wait for the OSD to be up
+          ansible.builtin.command: ceph osd tree -f json
+          register: replace_osd_tree_after
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          changed_when: false
+          until: >-
+            (replace_osd_tree_after.stdout | from_json).nodes
+            | selectattr('type', 'eq', 'osd')
+            | selectattr('id', 'eq', replace_osd_new_id | int)
+            | map(attribute='status') | first | default('') == 'up'
+          retries: 12
+          delay: 10
+          ignore_errors: true
+
+        # The queued action recorded before the build ran on the first serve pass
+        # after boot. A stop is the only one that leaves the daemon down.
+        - name: Start the daemon that cephadm's queued stop took down
+          ansible.builtin.command: ceph orch daemon start osd.{{ replace_osd_new_id }}
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          changed_when: true
+          when:
+            - replace_osd_tree_after is failed
+            - (replace_osd_queued_action | default('')) == 'stop'
+
+        - name: Wait for the OSD to be up after the restart
+          ansible.builtin.command: ceph osd tree -f json
+          register: replace_osd_tree_after
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          changed_when: false
+          until: >-
+            (replace_osd_tree_after.stdout | from_json).nodes
+            | selectattr('type', 'eq', 'osd')
+            | selectattr('id', 'eq', replace_osd_new_id | int)
+            | map(attribute='status') | first | default('') == 'up'
+          retries: 12
+          delay: 10
+          when: replace_osd_tree_after is failed
+
+        # `osd metadata` is the last report the mon holds for that id. On a reused
+        # id that is the dead daemon's report until the new one boots, and it
+        # would pass every assert below. Insist the report names this disk.
+        - name: Read the BlueStore metadata the new daemon reported
           ansible.builtin.command: >-
-            ceph osd metadata
-            {{ (replace_osd_created.stdout | from_json).keys() | first }} --format json
+            ceph osd metadata {{ replace_osd_new_id }} --format json
           register: replace_osd_meta
           delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
           changed_when: false
-          until: replace_osd_meta.rc == 0
-          retries: 12
+          until: >-
+            replace_osd_meta.rc == 0 and
+            (replace_osd_dev.stdout | basename) in
+            ((replace_osd_meta.stdout | from_json).devices | default('') | split(','))
+          retries: 6
           delay: 10
 
         # The whole reason this play drives ceph-volume instead of the spec. A
@@ -334,12 +409,12 @@
               - (replace_osd_meta.stdout | from_json).bluefs_dedicated_db == "1"
               - (replace_osd_meta.stdout | from_json).bluefs_db_rotational == "0"
             fail_msg: >-
-              osd.{{ (replace_osd_created.stdout | from_json).keys() | first }} came up
+              osd.{{ replace_osd_new_id }} came up
               with block.db on
               {{ (replace_osd_meta.stdout | from_json).bluefs_db_devices | default('?') }}
               (dedicated={{ (replace_osd_meta.stdout | from_json).bluefs_dedicated_db | default('?') }}).
               It is a spinning-disk metadata path; destroy and rebuild it.
             success_msg: >-
-              osd.{{ (replace_osd_created.stdout | from_json).keys() | first }} up on
+              osd.{{ replace_osd_new_id }} up on
               {{ osd_bay }} with block.db on
               {{ (replace_osd_meta.stdout | from_json).bluefs_db_devices }}.
