@@ -344,13 +344,26 @@ it back to the same drive; draining relocates it to a healthy one.
 ```bash
 ceph orch daemon stop osd.<id>
 ceph orch osd rm <id> --replace     # keeps the id reserved for the new disk
+ceph orch osd rm status             # repeat until <id> is gone from the queue
 ceph osd tree destroyed             # must list <id> before step 6 can reuse it
 ```
 
-`--replace` marks the id `destroyed` instead of purging it, and `destroyed` is
-the only osdmap state ceph-volume will reuse an id from. An OSD that is merely
-`down` and `out` still owns its number, so skipping this step and rebuilding
-anyway hands the new disk the next free id above every existing OSD.
+`orch osd rm` only queues the removal; the mgr works through it in the
+background, gated on `ok-to-stop` and `safe-to-destroy`, and waits rather than
+forces if either says no. `--replace` then marks the id `destroyed` instead of
+purging it, and `destroyed` is the only osdmap state ceph-volume will reuse an
+id from. An OSD that is merely `down` and `out` still owns its number, so
+skipping this step and rebuilding anyway hands the new disk the next free id
+above every existing OSD.
+
+Do not add `--zap`. It runs `ceph-volume lvm zap --osd-id <id> --destroy`, and
+`--destroy` removes the db-slot LV rather than wiping it. Step 6 zaps the slot
+itself, without `--destroy`.
+
+Nothing here needs the old disk to still be present. When Hetzner swaps the
+drive before you reach this step, which is the usual order now that they
+hot-swap, run it unchanged. Do not put the new disk in service under a fresh
+id to save the step.
 
 If `orch osd rm` stalls on a daemon that is already dead, do the same thing by
 hand: `ceph osd destroy <id> --yes-i-really-mean-it`, then
@@ -473,7 +486,10 @@ spinning disk in front of every metadata operation. The bug is open against
 The same applies to `deploy-ceph.yml --tags osds`. It re-renders and re-applies
 the spec, which stays unmanaged, so it will not create the OSD for you; the
 `ceph_osd_allow_spec_provisioning` window that would let it is for initial
-cluster provisioning only. Use `replace-osd.yml` above.
+cluster provisioning only. And to `ceph orch device replace <host> <dev>`, the
+newer upstream flow: it stamps the old device so the managed drivegroup redeploys
+onto its replacement, which is the same spec-driven path with the same hazard,
+and it needs the old device to still be visible. Use `replace-osd.yml` above.
 
 [t68436]: https://tracker.ceph.com/issues/68436
 
