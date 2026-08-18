@@ -141,6 +141,21 @@
           with -e osd_db_slot=<n>.
       when: osd_db_slot is undefined
 
+    # An explicit slot only picks among the free ones. A slot whose OSD is
+    # merely stopped still reads as live here, its LUKS mapping is closed so
+    # the open-count guard below would pass, and the zap would take that OSD's
+    # block.db with it.
+    - name: Assert the requested slot is one the scan found free
+      ansible.builtin.assert:
+        that:
+          - (osd_db_slot | int) in (replace_osd_scan.stdout | from_json).free
+        fail_msg: >-
+          db-slot{{ osd_db_slot }} is not free: it is the block.db of an OSD that
+          still has its data disk (running or not). Free slots:
+          {{ (replace_osd_scan.stdout | from_json).free }}. This play never zaps a
+          slot it can account for.
+      when: osd_db_slot is defined
+
     - name: Select the db slot
       ansible.builtin.set_fact:
         replace_osd_slot: >-
