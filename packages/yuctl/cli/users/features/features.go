@@ -1,5 +1,3 @@
-// Package features implements `yuctl users features`: per-user feature-flag
-// overrides.
 package features
 
 import (

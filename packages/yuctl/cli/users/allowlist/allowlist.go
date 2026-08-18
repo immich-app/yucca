@@ -1,5 +1,3 @@
-// Package allowlist implements `yuctl users allowlist`: the beta email
-// allowlist and invites.
 package allowlist
 
 import (

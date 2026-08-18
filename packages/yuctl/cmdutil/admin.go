@@ -42,9 +42,7 @@ func (a *AdminFlags) httpClient() *http.Client {
 	return hc
 }
 
-// Client resolves context and topology through the factory and returns an
-// authenticated admin-api client plus the selected partition. The common path
-// for every admin-backed command.
+// Client returns an authenticated admin-api client and the selected partition.
 func (a *AdminFlags) Client(ctx context.Context, f *Factory) (*adminapi.Client, string, error) {
 	cc, err := f.Context()
 	if err != nil {

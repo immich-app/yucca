@@ -21,8 +21,8 @@ import (
 // Client carries one target family's connection policy. The zero value is a
 // plain BatchMode/TOFU client using the operator's ssh defaults and agent.
 type Client struct {
-	// User is prepended to every host ("" = ssh config / a user already
-	// embedded in the destination).
+	// User is prepended to hosts that don't already embed one ("" = ssh
+	// config).
 	User string
 
 	// IdentityFile pins a private key (with IdentitiesOnly); "" = defaults.
@@ -85,8 +85,6 @@ func (c *Client) options() []string {
 	return args
 }
 
-// Run executes script on host, returning stdout, retrying connection-level
-// failures per Retries.
 func (c *Client) Run(ctx context.Context, host, script string, stdin []byte) (string, error) {
 	var lastOut string
 	var lastErr error
@@ -125,14 +123,14 @@ func (c *Client) RunOnce(ctx context.Context, host, script string, stdin []byte)
 	return out.String(), nil
 }
 
-// Command returns the exec.Cmd for a long-lived streaming session running the
-// remote command; the caller owns the pipes and lifecycle.
+// Command is for long-lived streaming sessions; the caller owns the pipes and
+// lifecycle.
 func (c *Client) Command(ctx context.Context, host, remote string) *exec.Cmd {
 	return exec.CommandContext(ctx, "ssh", append(c.options(), c.dest(host), remote)...)
 }
 
-// Push copies local files into remoteDir on host (created if missing) under
-// the given remote names, and marks them executable.
+// Push copies local files (keys) into remoteDir on host under the given
+// remote names (values), and marks them executable.
 func (c *Client) Push(ctx context.Context, host, remoteDir string, files map[string]string) error {
 	if _, err := c.Run(ctx, host, "mkdir -p "+remoteDir, nil); err != nil {
 		return err
@@ -151,7 +149,6 @@ func (c *Client) Push(ctx context.Context, host, remoteDir string, files map[str
 	return err
 }
 
-// Tail truncates v to its last n bytes for error surfacing.
 func Tail(v string, n int) string {
 	v = strings.TrimSpace(v)
 	if len(v) > n {

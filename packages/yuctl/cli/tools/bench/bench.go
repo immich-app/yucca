@@ -1,5 +1,3 @@
-// Package bench implements `yuctl tools bench`: the restic end-to-end
-// benchmark against michael, run from a management host.
 package bench
 
 import (

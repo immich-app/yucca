@@ -1,5 +1,3 @@
-// Package connections implements `yuctl users connections`: a user's
-// connection instances (immich/restic).
 package connections
 
 import (

@@ -20,9 +20,8 @@ type Event struct {
 	Result      *RunResult   `json:"result,omitempty"`
 }
 
-// ScanEvents consumes a newline-JSON event stream, invoking handle per event.
-// Non-JSON lines are skipped (agent stderr never lands here, but a remote
-// shell may still chirp).
+// Non-JSON lines are skipped: agent stderr never lands here, but a remote
+// shell may still chirp.
 func ScanEvents(r io.Reader, handle func(Event)) error {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 1<<20), 8<<20)

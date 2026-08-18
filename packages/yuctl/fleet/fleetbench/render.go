@@ -16,7 +16,6 @@ func ShortName(name string) string {
 	return strings.TrimPrefix(name, "yucca-bench-")
 }
 
-// SaveResult writes the results JSON.
 func SaveResult(path string, r *Result) error {
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
@@ -25,7 +24,6 @@ func SaveResult(path string, r *Result) error {
 	return os.WriteFile(path, append(b, '\n'), 0o644)
 }
 
-// RenderResult prints the human summary of a completed run.
 func RenderResult(w io.Writer, r *Result) {
 	fmt.Fprintf(w, "\n%s  partition=%s  elapsed=%s\n", r.Label, r.Partition, resticbench.FormatDuration(r.ElapsedSeconds))
 	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)

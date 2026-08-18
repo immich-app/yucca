@@ -1,5 +1,3 @@
-// Package ceph implements `yuctl ceph`: Ceph cluster operations within the
-// selected region.
 package ceph
 
 import (

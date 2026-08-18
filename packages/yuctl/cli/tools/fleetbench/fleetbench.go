@@ -1,5 +1,3 @@
-// Package fleetbench implements `yuctl tools fleet-bench`: a restic client
-// fleet across cloud providers writing against michael.
 package fleetbench
 
 import (

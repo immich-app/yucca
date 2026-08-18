@@ -1,5 +1,3 @@
-// Package warp implements `yuctl tools warp`: S3 load testing against the
-// region's RGW fleet with MinIO warp runner pods.
 package warp
 
 import (

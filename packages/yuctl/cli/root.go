@@ -1,11 +1,6 @@
 // Package cli wires the yuctl command tree (spf13/cobra). cobra is a documented
 // divergence from michael's stdlib-only style, justified by yuctl's nested
 // subcommand surface. Logging matches michael (rs/zerolog).
-//
-// Each topic subcommand lives in its own package under cli/, mirroring the
-// command tree (`yuctl ceph …` → cli/ceph, `yuctl tools warp …` →
-// cli/tools/warp). Shared dependencies travel through cmdutil.Factory, built
-// once here; command packages never resolve context/topology/auth themselves.
 package cli
 
 import (
@@ -36,7 +31,6 @@ var (
 	flagRefreshDiscovery bool
 )
 
-// NewRootCmd builds the root command and registers every subcommand.
 func NewRootCmd() *cobra.Command {
 	f := newFactory()
 
@@ -71,9 +65,8 @@ func NewRootCmd() *cobra.Command {
 	return root
 }
 
-// newFactory builds the per-invocation dependency factory. Topology is
-// memoized: several layers of one command may need it (host resolution, admin
-// URL derivation) but state is read at most once.
+// Topology is memoized: several layers of one command may need it (host
+// resolution, admin URL derivation) but state is read at most once.
 func newFactory() *cmdutil.Factory {
 	f := &cmdutil.Factory{IO: ui.System()}
 

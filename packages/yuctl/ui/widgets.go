@@ -45,8 +45,6 @@ func PadGbps(bps float64) string {
 	return fmt.Sprintf("%11s", FmtGbps(bps))
 }
 
-// ErrCell renders a right-aligned error count of the given width, alarming
-// when non-zero.
 func ErrCell(n, width int) string {
 	s := fmt.Sprintf("%*d", width, n)
 	if n > 0 {
@@ -55,7 +53,6 @@ func ErrCell(n, width int) string {
 	return Muted.Render(s)
 }
 
-// Truncate cuts s to at most n bytes, appending an ellipsis when cut.
 func Truncate(s string, n int) string {
 	if len(s) <= n {
 		return s

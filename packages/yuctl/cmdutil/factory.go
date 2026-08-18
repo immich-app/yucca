@@ -1,8 +1,6 @@
-// Package cmdutil holds what every command package needs but no domain
-// package should know about: the Factory carrying lazily-resolved shared
-// dependencies (selected context, topology, admin-api session), the shared
-// admin-api flag set, and small operator-interaction helpers. Command
-// packages receive a *Factory instead of re-deriving these per command.
+// Package cmdutil sits between cli and the domain packages: command packages
+// receive a *Factory instead of re-deriving shared dependencies per command,
+// and domain packages must never import it.
 package cmdutil
 
 import (
@@ -18,19 +16,15 @@ import (
 	"yuctl/ui"
 )
 
-// Factory is built once in cli.NewRootCmd and threaded through every command
-// constructor. The closures are lazy — a command that never touches topology
-// never reads Terraform state — and memoized per invocation where resolution
-// is expensive.
+// Factory's closures are lazy — a command that never touches topology never
+// reads Terraform state — and memoized per invocation where resolution is
+// expensive.
 type Factory struct {
 	IO *ui.IOStreams
 
-	// Context returns the persisted selection, erroring when none is
-	// selected (`yuctl select` first).
+	// Context errors when nothing is selected (`yuctl select` first).
 	Context func() (*ctxstore.Context, error)
 
-	// Topology resolves the fleet topology from Terraform state (or the
-	// on-disk cache), memoized for the invocation.
 	Topology func(ctx context.Context) (*discovery.Topology, error)
 }
 

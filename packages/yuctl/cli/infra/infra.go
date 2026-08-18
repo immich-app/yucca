@@ -1,5 +1,3 @@
-// Package infra implements `yuctl infra`: infrastructure / node operations
-// for the active region.
 package infra
 
 import (

@@ -1,6 +1,3 @@
-// Package tools implements `yuctl tools`: operational tooling for the
-// selected context. Each tool lives in its own subpackage mirroring the
-// command tree.
 package tools
 
 import (

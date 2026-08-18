@@ -12,7 +12,6 @@ var (
 	rx     = lipgloss.AdaptiveColor{Light: "#AF5F00", Dark: "#F5A623"}
 )
 
-// The dashboard styles shared by every styled view (warp, fleet-bench).
 var (
 	Badge = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF")).Background(accent).Padding(0, 1)
 	Title = lipgloss.NewStyle().Bold(true)

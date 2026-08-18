@@ -1,5 +1,3 @@
-// Package users implements `yuctl users`: user administration via
-// yucca-admin-api.
 package users
 
 import (

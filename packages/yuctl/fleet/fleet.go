@@ -1,7 +1,6 @@
-// Package fleet holds what the load-test fleets (fleet/warp on K8s pods,
-// fleet/fleetbench on cloud VMs) and their dashboards share: the live watch
-// loop, the throughput history behind the sparkline, and small lifecycle
-// helpers. Transport-specific logic stays in the subpackages.
+// Package fleet holds what the load-test fleet tools (fleet/warp on K8s
+// pods, fleet/fleetbench on cloud VMs) share; anything transport-specific
+// stays in the subpackages.
 package fleet
 
 import (
@@ -15,8 +14,6 @@ import (
 	"time"
 )
 
-// History keeps the rolling combined-throughput samples a dashboard's
-// sparkline is drawn from.
 type History struct {
 	vals []float64
 }
@@ -30,7 +27,6 @@ func (h *History) Push(v float64) {
 
 func (h *History) Values() []float64 { return h.vals }
 
-// Footer renders the shared dashboard footer line.
 func Footer(sampleSec int, sampledAt time.Time, watching bool) string {
 	footer := fmt.Sprintf("sampled %ds window at %s", sampleSec, sampledAt.Format("15:04:05"))
 	if watching {
@@ -39,9 +35,8 @@ func Footer(sampleSec int, sampledAt time.Time, watching bool) string {
 	return footer
 }
 
-// Watch drives a live dashboard on the alternate screen until interrupted:
-// frame is called in a loop and its result replaces the display; errors are
-// shown and retried after a short pause rather than ending the watch.
+// Watch redraws frame's result on the alternate screen until interrupted; a
+// frame error is shown and retried rather than ending the watch.
 func Watch(ctx context.Context, out io.Writer, label string, sample int, frame func(context.Context) (string, error)) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -69,7 +64,8 @@ func Watch(ctx context.Context, out io.Writer, label string, sample int, frame f
 	}
 }
 
-// Each runs fn for every index concurrently and returns the first error.
+// Each runs fn for every index concurrently; every index completes even when
+// one fails, and the first error is returned.
 func Each(n int, fn func(int) error) error {
 	var wg sync.WaitGroup
 	errs := make([]error, n)
