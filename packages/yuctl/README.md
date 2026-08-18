@@ -12,12 +12,19 @@ references, never values).
 
 ## Conventions
 
-Built to match `packages/michael`: `module yuctl`, Go 1.25, `main.go` +
-`internal/<pkg>`, `aws-sdk-go-v2` for S3, `rs/zerolog` for logging. The one
-documented divergence is **`spf13/cobra`** for the nested subcommand tree
-(michael is a single-purpose HTTP server and stays stdlib-only; yuctl is a
-multi-verb CLI). There is no Dockerfile — yuctl is an operator CLI, not a
-deployed service.
+`module yuctl`, Go 1.25, `aws-sdk-go-v2` for S3, `rs/zerolog` for logging —
+matching `packages/michael` — with two documented divergences: **`spf13/cobra`**
+for the nested subcommand tree (michael is a single-purpose HTTP server and
+stays stdlib-only; yuctl is a multi-verb CLI), and a **flat package layout**
+with no `internal/` (yuctl is an unpublishable standalone module nothing else
+imports, so the boundary bought nothing but a path segment). There is no
+Dockerfile — yuctl is an operator CLI, not a deployed service.
+
+The command layer follows the gh/kubectl shape: `cli/` mirrors the command
+tree one package per topic (`yuctl ceph …` → `cli/ceph`, `yuctl tools warp …`
+→ `cli/tools/warp`), and every command receives a `cmdutil.Factory` carrying
+the lazily-resolved shared dependencies (IO streams, selected context,
+memoized topology, admin-api login) instead of re-deriving them per command.
 
 ## Build
 
@@ -32,16 +39,29 @@ Or directly: `cd packages/yuctl && go build -o ../../dist/yuctl .`
 
 ```
 packages/yuctl/
-  main.go                     # entrypoint → cli.NewRootCmd().ExecuteContext
-  internal/
-    cli/                      # cobra command tree (root, select, ceph, infra, users)
-    discovery/                # S3 state reader + stack enumeration + topology queries
-    state/                    # discovery output contract structs + tfstate parsing
-    op/                       # `op read` / ReadToTempFile (0600) wrapper
-    context/                  # ~/.config/yuctl/context.json {partition,region,ceph_cluster}
-    k8s/                      # talosctl upgrade wrapper
-    ceph/                     # RGW/dashboard health probe
-    adminapi/                 # CLI loopback login + Bearer admin-api client
+  main.go                     # yuctl entrypoint → cli.NewRootCmd().ExecuteContext
+  cmd/bench-agent/            # second binary: the remote bench agent
+  cli/                        # cobra wiring, one package per topic, mirrors the command tree
+    root.go select.go login.go
+    ceph/ infra/ config/ features/
+    users/{allowlist,features,connections}/
+    tools/{bench,fleetbench,warp}/
+  cmdutil/                    # Factory (IO, context, topology, admin login) + Confirm/OpenBrowser
+  ui/                         # IOStreams, lipgloss theme, meter/sparkline widgets
+  fleet/                      # shared fleet-tool engine: watch loop, history, parallel fan-out
+    warp/                     #   K8s-pod transport: warp runner fleet vs RGW
+    fleetbench/               #   cloud-VM transport: restic client fleet vs michael
+  sshx/                       # the one ssh/scp layer (multiplexing, retry, stdin secrets)
+  resticbench/                # bench agent + orchestrator + loadgen + restic runner
+  discovery/                  # S3 state reader + stack enumeration + topology queries
+  state/                      # discovery output contract structs + tfstate parsing
+  op/                         # `op read` / ReadToTempFile (0600) wrapper
+  ctxstore/                   # ~/.config/yuctl/context.json {partition,region,ceph_cluster}
+  talos/                      # talosctl upgrade wrapper
+  cephhealth/                 # RGW/dashboard health probe
+  adminapi/                   # CLI loopback login + Bearer admin-api client
+  provider/                   # cloud-VM providers (DO, Hetzner) for fleet-bench
+  do/ netdev/                 # DigitalOcean plumbing; /proc/net/dev parsing
 ```
 
 ## Command tree
@@ -69,14 +89,14 @@ yuctl
     ├── bench                       restic e2e benchmark against michael, run from a mgmt host
     │   ├── compare <a> <b>         render before/after deltas from two results files
     │   └── cleanup                 forget+prune every bench snapshot (timed)
-    ├── bench-do                    restic client fleet on DigitalOcean droplets vs michael
-    │   ├── deploy                  create/converge the droplet fleet (project yucca-bench)
+    ├── fleet-bench                 restic client fleet on cloud VMs (--provider do|hetzner) vs michael
+    │   ├── deploy                  create/converge the host fleet (project yucca-bench)
     │   ├── start                   launch the per-client backup loops (graceful restart)
     │   ├── status                  one-shot dashboard (throughput, transfer budget, clients)
     │   ├── watch                   live dashboard, continuously sampled
     │   ├── stop                    kill the load, collect + save the results JSON
-    │   ├── cleanup                 forget+prune every bench-do repo (from the droplets)
-    │   └── undeploy                destroy the droplets and the ephemeral ssh key
+    │   ├── cleanup                 forget+prune every fleet-bench repo (from the hosts)
+    │   └── undeploy                destroy the hosts and the ephemeral ssh key
     └── warp                        S3 load test fleet against the region's RGW gateways
         ├── deploy                  create/converge hostNetwork runner pods on the workers
         ├── start                   launch the load (graceful restart; non-stop by default)
@@ -100,7 +120,7 @@ Global flags: `--log-level` (trace|debug|info|warn|error), `--log-format`
    - **bucket fallback**: `ListObjectsV2` on `yucca-tf-state` under prefix
      `yucca/`, keeping `*/terraform.tfstate` keys.
 2. **Resolve live values** — `GetObject` each `terraform.tfstate` and parse
-   `.outputs.discovery.value` into `internal/state.Discovery`. Stacks with no
+   `.outputs.discovery.value` into `state.Discovery`. Stacks with no
    `discovery` output (pre-contract) or no applied state are skipped, not fatal.
 3. **Query** the merged `Topology` (`HasRegion`, `Kubernetes`, `CephClusters`,
    `PrimaryRegion`, `RegionMeta`).
@@ -240,58 +260,62 @@ The ssh session stays open for the whole run (keepalives set); run multi-hour
 benchmarks inside tmux. Pair the client numbers with the michael dashboard
 (TTFB, connection churn, S3 client metrics) for the server-side view.
 
-## `tools bench-do` — DigitalOcean restic client fleet
+## `tools fleet-bench` — cloud-VM restic client fleet
 
-Drives michael from the outside: N DigitalOcean droplets each running real
-restic clients over the public internet — the actual external-user path (DNS,
-edge, michael, RGW), unlike `bench` (mgmt host on the fabric) and `warp`
-(in-cluster, straight at RGW). Fleet lifecycle mirrors `warp`.
+Drives michael from the outside: N cloud VMs (`--provider do|hetzner`) each
+running real restic clients over the public internet — the actual
+external-user path (DNS, edge, michael, RGW), unlike `bench` (mgmt host on
+the fabric) and `warp` (in-cluster, straight at RGW). Fleet lifecycle mirrors
+`warp`; fleets are per provider × partition, so several providers can load
+michael at once.
 
 ```bash
 yuctl select prod@htz-fsn1
 yuctl login
-yuctl tools bench-do start --droplets 6 --clients-per-droplet 2 \
+yuctl tools fleet-bench start --hosts 6 --clients-per-host 2 \
   --obj-size 64MiB --duration 2h --label big-packs   # auto-deploys (confirms cost first)
-yuctl tools bench-do watch          # live dashboard: Gbps, transfer budget bars, client loops
-yuctl tools bench-do stop           # kill the load, save bench-do-<label>-<ts>.json
-yuctl tools bench-do cleanup        # forget+prune the bench repos (while droplets exist)
-yuctl tools bench-do undeploy       # destroy droplets + the ephemeral ssh key
+yuctl tools fleet-bench watch       # live dashboard: Gbps, transfer budget bars, client loops
+yuctl tools fleet-bench stop        # kill the load, save fleet-bench-<label>-<ts>.json
+yuctl tools fleet-bench cleanup     # forget+prune the bench repos (while the hosts exist)
+yuctl tools fleet-bench undeploy    # destroy the hosts + the ephemeral ssh key
 ```
 
 How it works:
 
-- **Fleet**: droplets (`--droplets`, default 3 × `s-2vcpu-4gb`) are created via
-  the DO API (token from `op://yucca/do_api_token/password`, or
-  `$DIGITALOCEAN_TOKEN`), round-robined across `--do-region`
-  (default `fra1,ams3,lon1,nyc3`), tagged `yuctl-bench-do-<partition>`, and
-  filed under the **`yucca-bench`** project (created if missing). Deploy
-  prints the hourly cost and transfer pool and asks before creating anything
-  (`--yes` skips); it converges — rerunning reconciles the fleet to the
-  requested size and re-pushes binaries.
+- **Fleet**: hosts (`--hosts`, default 3 of the provider's default size) are
+  created via the provider API (DO token from
+  `op://yucca/do_api_token/password` / `$DIGITALOCEAN_TOKEN`; Hetzner from
+  `op://yucca_tf_prod/HCLOUD_API_TOKEN/password` / `$HCLOUD_TOKEN`),
+  round-robined across `--region`, tagged `yuctl-bench-<provider>-<partition>`,
+  and filed under the **`yucca-bench`** project where the provider has the
+  concept. Deploy prints the hourly cost and transfer pool and asks before
+  creating anything (`--yes` skips); it converges — rerunning reconciles the
+  fleet to the requested size and re-pushes binaries.
 - **SSH**: an **ephemeral ed25519 keypair per fleet** — generated on deploy,
   registered via the API, private key + per-fleet known_hosts under
-  `~/.config/yuctl/bench-do/`, deleted on undeploy. No personal keys involved.
-- **Clients**: one admin-api repository per client (`--clients-per-droplet`),
-  named `yucca-benchdo-…`, created on first start and reused across restarts;
-  restic URLs are re-minted on every start and travel to the droplet over ssh
-  stdin (never argv). Repo passwords live in the 0600 fleet state file — they
-  are the only way back into the repos, so `cleanup` before `undeploy`.
+  `~/.config/yuctl/bench-wide/` (legacy dir name), deleted on undeploy. No
+  personal keys involved.
+- **Clients**: one admin-api repository per client (`--clients-per-host`),
+  named `yucca-benchdo-…` (legacy prefix), created on first start and reused
+  across restarts; restic URLs are re-minted on every start and travel to the
+  host over ssh stdin (never argv). Repo passwords live in the 0600 fleet
+  state file — they are the only way back into the repos, so `cleanup` before
+  `undeploy`.
 - **Load**: the bench agent's **loadgen mode** runs detached (nohup) on each
-  droplet, looping seeded generate→backup cycles per client — fresh seed every
+  host, looping seeded generate→backup cycles per client — fresh seed every
   cycle so nothing dedups — with `--obj-size` as the restic pack size
-  (4–128 MiB, what michael sees as object size), `--size` per-cycle dataset,
-  `--connections` rest.connections. `--duration` bounds the run (`0` =
-  non-stop until `stop`). Progress goes to a droplet-local status file that
-  `status`/`watch` sample over ssh alongside `/proc/net/dev`.
-- **Transfer cap (important)**: DO droplets have a monthly outbound transfer
-  allowance (pooled; overage is billed per GiB) and a sustained restic load
-  can burn through it in hours. The agent tracks wire TX and **hard-stops the
-  droplet's load at the allowance** (counted conservatively as decimal TB);
-  `--max-transfer` overrides. The dashboard shows a per-droplet budget bar and
-  the fleet pool. If the fleet state is lost the cap is re-derived from the
-  droplet size — the load never runs uncapped.
-- **Results**: `stop` collects each droplet's final status and writes a local
-  JSON (per-client cycles, post-dedup uploaded bytes, errors; per-droplet wire
+  (4–128 MiB, what michael sees as object size), `--cycle-size` per-cycle
+  dataset, `--connections` rest.connections. `--duration` bounds the run
+  (`0` = non-stop until `stop`). Progress goes to a host-local status file
+  that `status`/`watch` sample over ssh alongside `/proc/net/dev`.
+- **Transfer cap (important)**: cloud VMs have a monthly outbound transfer
+  allowance (overage is billed per GiB) and a sustained restic load can burn
+  through it in hours. The agent tracks wire TX and **hard-stops the host's
+  load at the allowance**; `--max-transfer` overrides. The dashboard shows a
+  per-host budget bar and the fleet pool. If the fleet state is lost the cap
+  is re-derived from the host size — the load never runs uncapped.
+- **Results**: `stop` collects each host's final status and writes a local
+  JSON (per-client cycles, post-dedup uploaded bytes, errors; per-host wire
   TX) plus a rendered summary. Pair with the michael dashboards for the
   server-side view.
 
@@ -329,7 +353,7 @@ How it works:
 - **Runners**: `minio/warp` pods (2 per worker by default) on **hostNetwork**,
   so the load rides the workers' bonded NICs with no CNI hop. CPU request is
   derived from node allocatable. Manifests are `go:embed`ded templates
-  (`internal/warp/manifests/`), server-side-applied via client-go — no
+  (`fleet/warp/manifests/`), server-side-applied via client-go — no
   kubectl dependency. Credentials are copied from the `yucca-michael` secret
   (the same RGW svc user as the real data path).
 - **Gateway roster**: the ceph cluster's `rgw_s3_endpoint` is resolved to its
@@ -362,12 +386,14 @@ about the fleet size, gateway count, or endpoints is hardcoded.
 | `OP_BIN`                                             | 1Password CLI binary                   | `op`                                                     |
 | `YUCTL_ADMIN_API_URL`                                | admin-api base URL (`login`, `users`)  | derived from discovery `api_endpoint`                    |
 | `YUCTL_GRAFANA_URL`                                  | grafana base (`users view-dashboard`)  | `https://grafana.futostatus.com`                         |
-| `DIGITALOCEAN_TOKEN`                                 | DO API token (`tools bench-do`)        | resolved via op                                          |
+| `DIGITALOCEAN_TOKEN`                                 | DO API token (`tools fleet-bench`)     | resolved via op                                          |
 | `YUCTL_DO_TOKEN_REF`                                 | op ref for the DO token                | `op://yucca/do_api_token/password`                       |
+| `HCLOUD_TOKEN`                                       | Hetzner API token (`tools fleet-bench`)| resolved via op                                          |
+| `YUCTL_HCLOUD_TOKEN_REF`                             | op ref for the Hetzner token           | `op://yucca_tf_prod/HCLOUD_API_TOKEN/password`           |
 
 ## Tests
 
 `go test ./...` covers the load-bearing offline logic: discovery contract
-parsing (`internal/state`) and stack-key/topology queries
-(`internal/discovery`). The network/`op`/`talosctl`/admin-api paths are not unit
+parsing (`state`) and stack-key/topology queries
+(`discovery`). The network/`op`/`talosctl`/admin-api paths are not unit
 tested (they need live infra).
