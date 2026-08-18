@@ -108,68 +108,6 @@
       or 'Invalid argument' in (monitoring_spec_apply.stderr | default(''))
       or 'Error' in (monitoring_spec_apply.stdout | default(''))
 
-# --- Step 2.55: Correct the alertmanager route tree ---
-#
-# Without this the webhook configured above is never reached. cephadm's shipped
-# alertmanager.yml.j2 gives the 'ceph-dashboard' child route no matchers, so it
-# matches every alert, and emits its `continue: true` only when an SNMP gateway
-# is configured. Alertmanager dispatches to the parent's receiver ONLY when no
-# child matched, so every alert terminates at 'ceph-dashboard' and 'default' --
-# where default_webhook_urls land -- never fires. Notifications report success
-# the whole time, so the failure is silent.
-#
-# cephadm renders service configs through a template that first checks the mon
-# config-key store (mgr/cephadm/<name minus .j2>), falling back to the packaged
-# one. Storing a corrected copy there is the supported override; see the header
-# of files/alertmanager.yml.j2 for the diff against upstream.
-#
-# Gated on a webhook actually being configured: a cluster with no receiver has
-# nothing to deliver and is left on the stock template.
-- name: Stage corrected alertmanager config template
-  ansible.builtin.copy:
-    src: alertmanager.yml.j2
-    dest: /etc/ceph/alertmanager.yml.j2
-    owner: root
-    group: root
-    mode: '0644'
-  register: alertmanager_template_file
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
-
-# check-then-set: config-key set always "succeeds", so compare first or every
-# run reports changed and a real drift is invisible.
-- name: Read the stored alertmanager config template
-  ansible.builtin.command: >
-    ceph config-key get mgr/cephadm/services/alertmanager/alertmanager.yml
-  register: alertmanager_template_stored
-  changed_when: false
-  failed_when: false
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
-
-- name: Store the corrected alertmanager config template
-  ansible.builtin.command: >
-    ceph config-key set mgr/cephadm/services/alertmanager/alertmanager.yml
-    -i /etc/ceph/alertmanager.yml.j2
-  register: alertmanager_template_set
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
-    - (alertmanager_template_stored.stdout | default('')) !=
-      (lookup('ansible.builtin.file', role_path ~ '/files/alertmanager.yml.j2'))
-  changed_when: true
-
-# Only on a real change: cephadm re-renders the config at redeploy, so without
-# this the corrected template sits unused until some other event triggers one.
-- name: Redeploy alertmanager to pick up the corrected template
-  ansible.builtin.command: ceph orch redeploy alertmanager
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - alertmanager_template_set is changed
-  changed_when: true
-
 # --- Step 2.6: Pin the mgr dashboard + prometheus module bind to the fabric ---
 #
 # The dashboard (8443) and the prometheus mgr module (9283) run INSIDE the active
@@ -252,12 +190,12 @@
 # discovery URLs, TLS branches, fsid.
 #
 # These overrides are derived, not pinned. The task reads the template that the
-# running mgr ships and injects a small block at an asserted anchor. It does not
-# commit a copy of the upstream file. A committed copy goes stale on every Ceph
-# upgrade and someone has to re-diff it by hand. Deriving picks up an upgraded
-# template on the next converge. The cost is a dependency on an anchor string,
-# so each injection asserts its anchor and fails the play rather than storing a
-# config built on a guess.
+# running mgr ships and rewrites named anchors, each asserted to occur exactly
+# once. It does not commit a copy of the upstream file. A committed copy goes
+# stale on every Ceph upgrade and someone has to re-diff it by hand. Deriving
+# picks up an upgraded template on the next converge. The cost is a dependency
+# on an anchor string, so each edit asserts its anchor and fails the play rather
+# than storing a config built on a guess.
 #
 # Two overrides, independently gated. Each flag's default carries the why:
 # ceph_alertmanager_fix_route_tree, ceph_prometheus_drop_description_label.
@@ -274,26 +212,43 @@
     def norm(s):
         return s.rstrip("\n")
 
-    # Each override: the cephadm template path, the anchor we inject after, the
-    # text to inject, and a sanity predicate over the upstream source. The
-    # predicate guards against a future Ceph release having already made the
-    # change, which would otherwise double up.
+    # Each override: the cephadm template path, an ordered list of edits, and a
+    # sanity predicate over the upstream source. Every edit names the exact
+    # upstream text it rewrites; it must occur exactly once or the play fails
+    # rather than store a config built on a guess. The predicate guards against
+    # a future Ceph release having already made the change, which would
+    # otherwise double up.
     OVERRIDES = []
 
     if {{ ceph_alertmanager_fix_route_tree | bool | ternary('True', 'False') }}:
+        # group_by carries pool_id as well as alertname. Six rules are
+        # pool-scoped and CephPGsUnclean is per pool on a zero threshold, so
+        # one PG going clean in a 16-PG pool flips that pool's alert; grouped
+        # by alertname alone that flip re-notifies the whole group, including
+        # a large pool's unchanged alert. Rules without pool_id share the empty
+        # value and group exactly as before.
         OVERRIDES.append({
             "service": "alertmanager",
             "template": "alertmanager/alertmanager.yml.j2",
             "key": "mgr/cephadm/services/alertmanager/alertmanager.yml",
-            "anchor": "      receiver: 'ceph-dashboard'\n",
-            "inject": (
-                "      continue: true\n"
-                "    - group_by: ['alertname']\n"
-                "      group_wait: 10s\n"
-                "      group_interval: 10s\n"
-                "      repeat_interval: 1h\n"
-                "      receiver: 'default'\n"
-            ),
+            "edits": [
+                {
+                    "find": "    - group_by: ['alertname']\n"
+                            "      group_wait: 10s\n",
+                    "replace": "    - group_by: ['alertname', 'pool_id']\n"
+                               "      group_wait: 10s\n",
+                },
+                {
+                    "find": "      receiver: 'ceph-dashboard'\n",
+                    "replace": "      receiver: 'ceph-dashboard'\n"
+                               "      continue: true\n"
+                               "    - group_by: ['alertname', 'pool_id']\n"
+                               "      group_wait: 10s\n"
+                               "      group_interval: 10s\n"
+                               "      repeat_interval: 1h\n"
+                               "      receiver: 'default'\n",
+                },
+            ],
             # Upstream routes to 'default' exactly once (the parent receiver).
             # A second occurrence means upstream already added the sibling.
             "expect": lambda src: src.count("receiver: 'default'") == 1,
@@ -306,15 +261,18 @@
             "service": "prometheus",
             "template": "prometheus/prometheus.yml.j2",
             "key": "mgr/cephadm/services/prometheus/prometheus.yml",
-            "anchor": "\nalerting:\n",
-            "inject": (
-                "  alert_relabel_configs:\n"
-                "    # yucca: ceph_pool_metadata carries a `description` label (the\n"
-                "    # EC profile) that shadows the same-named annotation in any\n"
-                "    # receiver that resolves by field name.\n"
-                "    - regex: 'description'\n"
-                "      action: labeldrop\n"
-            ),
+            "edits": [
+                {
+                    "find": "\nalerting:\n",
+                    "replace": "\nalerting:\n"
+                               "  alert_relabel_configs:\n"
+                               "    # yucca: ceph_pool_metadata carries a `description` label (the\n"
+                               "    # EC profile) that shadows the same-named annotation in any\n"
+                               "    # receiver that resolves by field name.\n"
+                               "    - regex: 'description'\n"
+                               "      action: labeldrop\n",
+                },
+            ],
             "expect": lambda src: "alert_relabel_configs" not in src,
             "expect_msg": "upstream already defines alert_relabel_configs; merge by hand",
         })
@@ -336,18 +294,20 @@
             "%s/%s" % (TEMPLATE_DIR, o["template"]),
         ]).decode()
 
-        n = upstream.count(o["anchor"])
-        if n != 1:
-            sys.stderr.write(
-                "ERROR: %s: expected exactly 1 anchor in the shipped template, "
-                "found %d. Upstream layout changed; review before re-running.\n"
-                % (o["service"], n))
-            raise SystemExit(1)
         if not o["expect"](upstream):
             sys.stderr.write("ERROR: %s: %s\n" % (o["service"], o["expect_msg"]))
             raise SystemExit(1)
 
-        desired = upstream.replace(o["anchor"], o["anchor"] + o["inject"], 1)
+        desired = upstream
+        for e in o["edits"]:
+            n = desired.count(e["find"])
+            if n != 1:
+                sys.stderr.write(
+                    "ERROR: %s: expected exactly 1 occurrence of %r in the shipped "
+                    "template, found %d. Upstream layout changed; review before "
+                    "re-running.\n" % (o["service"], e["find"].splitlines()[0], n))
+                raise SystemExit(1)
+            desired = desired.replace(e["find"], e["replace"], 1)
         current = subprocess.run(
             ["ceph", "config-key", "get", o["key"]],
             capture_output=True).stdout.decode()
