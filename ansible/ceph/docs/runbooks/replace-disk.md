@@ -291,6 +291,22 @@ smartctl -i /dev/<sdX> | grep -i "serial number"
 Record all four. The by-path identifies the bay; the serial identifies the disk
 to Hetzner; the db slot is what you zap and reuse.
 
+**When the disk has already dropped off the bus**, which is the common shape of a
+hard failure, both commands above fail: there is no `/dev/sdX` and the by-path
+symlink disappeared with the disk. Recover them from the cluster instead.
+
+```bash
+# serial: the mgr keeps its device inventory after the disk is gone
+ceph device ls-by-daemon osd.<id>
+
+# bay: every spice node has the same 14, so the missing one is the empty bay
+ls /dev/disk/by-path/ | grep -E 'ata-[0-9]+$' | sort -V
+```
+
+The full complement is `pci-0000:45:00.0-ata-{1..8}`, `pci-0000:46:00.0-ata-{1,2}`
+and `pci-0000:87:00.0-ata-{1..4}`. Diff against a healthy peer if it is easier to
+read that way.
+
 ### 2. Drain
 
 ```bash
@@ -325,27 +341,93 @@ it back to the same drive; draining relocates it to a healthy one.
 
 ### 4. Remove the OSD and free the db slot
 
+If the daemon is still running, stop it on the host, not through the
+orchestrator:
+
 ```bash
-ceph orch daemon stop osd.<id>
+ssh <host> cephadm unit --fsid <fsid> --name osd.<id> stop
+```
+
+`ceph orch daemon stop|start|restart osd.<id>` only queues an action, and the
+serve loop skips every daemon of an unmanaged spec before it reads that queue.
+Against a spec-deployed OSD on spice it never runs and never clears, and the
+queued action then fires on the first pass after a rebuilt daemon of the same
+name boots. `orch daemon rm` does not drop it either. `replace-osd.yml` reads the
+queue and undoes a queued stop, but do not add to it.
+
+```bash
 ceph orch osd rm <id> --replace     # keeps the id reserved for the new disk
+ceph orch osd rm status             # repeat until <id> is gone from the queue
+ceph osd tree destroyed             # must list <id> before step 6 can reuse it
 ```
 
-Then, on the node, zap the db LV. The LV itself stays; only its contents go:
+`orch osd rm` only queues the removal; the mgr works through it in the
+background, gated on `ok-to-stop` and `safe-to-destroy`, and waits rather than
+forces if either says no. `--replace` then marks the id `destroyed` instead of
+purging it, and `destroyed` is the only osdmap state ceph-volume will reuse an
+id from. An OSD that is merely `down` and `out` still owns its number, so
+skipping this step and rebuilding anyway hands the new disk the next free id
+above every existing OSD.
+
+Do not add `--zap`. It runs `ceph-volume lvm zap --osd-id <id> --destroy`, and
+`--destroy` removes the db-slot LV rather than wiping it. Step 6 zaps the slot
+itself, without `--destroy`.
+
+Nothing here needs the old disk to still be present. When Hetzner swaps the
+drive before you reach this step, which is the usual order now that they
+hot-swap, run it unchanged. Do not put the new disk in service under a fresh
+id to save the step.
+
+**When the cluster is not `active+clean`, `--replace` cannot finish.** The mgr's
+`safe-to-destroy` files every down OSD under "no reported stats" while any PG is
+unclean and answers EAGAIN, before and after destroy alike, and cephadm never
+bypasses that verdict (`--force` only skips the emptiness check). The entry sits
+at `done, waiting for purge` until the last backfill lands, and it is not inert
+while it waits: the moment a rebuilt osd.<id> boots and holds PGs, the entry
+marks it `out` and drains it. On spice a backfill is nearly always in flight, so
+expect this path:
 
 ```bash
-cephadm ceph-volume lvm zap vg0/db-slot<N>
-lvs vg0 | grep db-slot<N>           # confirm the LV still exists
+ceph orch osd rm stop <id>                       # drops the entry; side effect: `osd in`
+ceph osd out <id>                                # undo that within the second
+ceph orch osd rm status                          # empty
+ceph config-key get mgr/cephadm/osd_remove_queue # []  (rm stop persists on the next serve pass)
+ceph osd destroy <id> --yes-i-really-mean-it     # the flag doubles as --force at the mgr
+ceph osd tree destroyed                          # lists <id>
+ceph orch daemon rm osd.<id> --force             # cephadm forgets the dead daemon
 ```
 
-Skipping this is the most common failure: ceph-volume refuses a db device that
-still carries an old OSD's metadata, and the recreate fails with no obvious
-pointer back to this step.
+The `in`/`out` pair is two osdmap epochs a second apart. PGs whose placement
+includes the OSD re-peer and settle back onto the same map; nothing moves and
+nothing goes degraded. If the `out` could not run, the mon re-outs the OSD on
+its own after `mon_osd_down_out_interval` (600 s here). The end state is the one
+`--replace` would have produced: `destroyed`, cephx and lockbox keys scrubbed,
+CRUSH entry and weight kept.
+
+Leave the db LV alone. `replace-osd.yml` zaps it in step 6, and it zaps
+unconditionally so it does not matter whether the slot survived, was already
+zapped, or was deleted outright by an earlier ad-hoc removal.
+
+Do **not** `lvremove` the slot. Deleting it rather than zapping it is what
+happened to osd.35 on alyssa, and while the play now recreates a missing slot,
+the deletion buys nothing and loses the record of which slot belonged to the OSD.
 
 ### 5. Physical swap
 
 Hetzner support ticket quoting the **serial** from step 1, since there is no
 IPMI and no bay LED. Reference the by-path only as supporting detail; Hetzner
 identifies drives by serial.
+
+Ask for a hot swap. The Robot form carries a `Replacement method` field, and
+these bays do support `hot_swap`: Hetzner replaced a drive on a live SX295 with
+no downtime. A single-disk swap then needs no maintenance window at all, as long
+as the OSD is already `down` and `out` so nothing is reading the device.
+
+Take the host into maintenance only when the work genuinely needs the machine
+down, which so far means anything inside the chassis, such as reseating a SATA
+cable. Skipping it in that case leaves the remaining OSDs to be marked `out` ten
+minutes in, and the cluster starts a rebalance that has to be undone when the
+host returns: [host-maintenance.md](host-maintenance.md).
 
 After the swap, confirm the new disk is present at the same by-path:
 
@@ -359,19 +441,72 @@ not actually swapped.
 
 ### 6. Recreate the OSD
 
-Create explicitly rather than re-applying the spec. This is the only way to
-pin the disk to the intended slot:
+Run `replace-osd.yml`. It takes the bay and derives the rest:
+
+```bash
+scripts/ansible-play.sh replace-osd.yml --limit <hostname> \
+  -e osd_bay=<bay-path> -e osd_id=<id>
+```
+
+It ensures the db slot LV exists, zaps it, drives `ceph-volume lvm create` with
+the slot and the id pinned explicitly, activates the daemon, waits for it to be
+`up`, undoes a queued `orch daemon stop` if step 4 left one, and then asserts
+the metadata the new daemon reported names this disk and puts block.db on the
+NVMe. Re-running it against a bay that already holds an OSD is a no-op, so it
+is safe to repeat after a failure.
+
+`osd_id` is optional. Leave it off only when you want a fresh number, which on
+a full osdmap is one above every OSD in the cluster. With it set, the play
+refuses to run until step 4 has marked that id `destroyed`.
+
+A hot swap on a host that has not rebooted leaves the dead OSD's dm-crypt
+mapping open on the db slot (`lvs` shows the LV as `-wi-ao----`, `lsblk` shows a
+`crypt` child under it). That is normal and needs no hand cleanup: `ceph-volume
+lvm zap` closes the mapping itself, by the LV uuid it is named after. The play
+only checks first that nothing still holds it open, since a zap under a live
+holder would wipe a block.db in use.
+
+The slot is derived, not passed: a slot counts as claimed only when it is the
+`db` entry of an OSD that also has a `block` entry. That distinction matters
+because a db-slot whose data disk died keeps its `ceph.osd_id` tag and reads as
+claimed forever if you go by LV tags alone. Pass `-e osd_db_slot=<n>` if the play
+reports more than one candidate.
+
+The equivalent by hand, for when you need to see what it is doing:
 
 ```bash
 DISK=/dev/disk/by-path/<bay-path>
 DB_LV=vg0/db-slot<N>
 
-cephadm ceph-volume \
-  --keyring /var/lib/ceph/bootstrap-osd/ceph.keyring \
-  lvm create --dmcrypt --no-systemd --data "$DISK" --block.db "$DB_LV"
+# These nodes carry no /etc/ceph and no bootstrap-osd keyring: cephadm hands the
+# mgr-supplied credentials to the container at deploy time and leaves nothing
+# behind. Stage both, from the bootstrap node, for the one command.
+install -d -m 0700 /run/replace-osd
+ssh <bootstrap> ceph config generate-minimal-conf > /run/replace-osd/ceph.conf
+ssh <bootstrap> ceph auth get client.bootstrap-osd > /run/replace-osd/bootstrap-osd.keyring
+chmod 600 /run/replace-osd/*
 
+cephadm ceph-volume \
+  --config /run/replace-osd/ceph.conf \
+  --keyring /run/replace-osd/bootstrap-osd.keyring \
+  lvm create --dmcrypt --no-systemd --crush-device-class hdd \
+  --osd-id <id> --data "$DISK" --block.db "$DB_LV"
+
+rm -rf /run/replace-osd
 ceph cephadm osd activate <hostname>
 ```
+
+Two traps in that block, both of which cost a failed run:
+
+- **The ceph.conf must end in a newline.** Without it `conf_read_file` throws
+  `InvalidArgumentError('RADOS invalid argument')` and ceph-volume then reports
+  `RuntimeError: Unable to create a new OSD id`, which reads like a credentials
+  problem and is not. Shell redirection preserves the newline; anything that
+  captures the output as a string is liable to strip it.
+- **Pass `--crush-device-class` explicitly.** Ceph infers `hdd` from rotational
+  if you omit it, so the OSD comes up in the right class either way, but its LV
+  tag is then left empty while every OSD built from the drivegroup spec carries
+  the class. Inference is not declarative; set it.
 
 **Do not rebuild a replaced disk by re-managing the OSD spec.** spice's specs
 carry `unmanaged: true` (`ceph_osd_spec_unmanaged` in its group_vars) precisely
@@ -387,11 +522,41 @@ spinning disk in front of every metadata operation. The bug is open against
 The same applies to `deploy-ceph.yml --tags osds`. It re-renders and re-applies
 the spec, which stays unmanaged, so it will not create the OSD for you; the
 `ceph_osd_allow_spec_provisioning` window that would let it is for initial
-cluster provisioning only. Use `ceph-volume` above.
+cluster provisioning only. And to `ceph orch device replace <host> <dev>`, the
+newer upstream flow: it stamps the old device so the managed drivegroup redeploys
+onto its replacement, which is the same spec-driven path with the same hazard,
+and it needs the old device to still be visible. Use `replace-osd.yml` above.
 
 [t68436]: https://tracker.ceph.com/issues/68436
 
 ### 7. Verify
+
+`replace-osd.yml` already asserts the part that is invisible from the outside:
+that `bluefs_dedicated_db` is 1 and the db is non-rotational. A colocated
+block.db does not show up in `ceph -s` or `ceph osd tree`, so if you built the
+OSD by hand, check it yourself:
+
+```bash
+ceph osd metadata <id> -f json | \
+  python3 -c 'import sys,json; d=json.load(sys.stdin); \
+    print(d["devices"], d["bluefs_dedicated_db"], d["bluefs_db_devices"], d["bluefs_db_rotational"])'
+# expect: md1,<new sdX> 1 md1 0
+```
+
+Check `devices` first, and only after the OSD is `up`. `osd metadata` is the
+last report the mon holds for that id, so on a reused id it is the dead daemon's
+report until the new one boots, and the dead one had its block.db on `md1` too.
+A `1 md1 0` next to the old kernel device proves nothing.
+
+The rebuilt daemon is a different kind of cephadm citizen from its siblings.
+`ceph cephadm osd activate` deploys it under service `osd` (its `unit.meta`
+says so; `ceph orch ps` lists it under `osd`, not `osd.<host>-hdd`), so it has
+no spec and the serve loop does not skip it: queued `orch daemon` actions and
+config reconfigs run for it, where the spec-deployed 718 ignore them. osd.35
+and osd.17 are in that class. Harmless, and worth knowing when one of them
+behaves differently from the rest of the host.
+
+Then watch it fill:
 
 ```bash
 ceph osd tree | grep "osd.<id>"        # up, weight > 0
@@ -399,8 +564,9 @@ ceph osd df | awk 'NR==1 || $1==<id>'  # PGs climbing as backfill lands
 ceph -s                                # back to active+clean
 ```
 
-Confirm the new OSD picked up the intended slot, since nothing enforced it:
+Confirm it took the intended slot and matches its siblings:
 
 ```bash
 cephadm ceph-volume lvm list | grep -A 8 "====== osd.<id>"
+lvs -a -o lv_tags | grep "ceph.osd_id=<id>," | grep -o 'ceph.crush_device_class=[a-z]*'
 ```
