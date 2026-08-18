@@ -1,6 +1,6 @@
 // Command yuctl is the yucca operations CLI. It resolves the
 // partition/region/ceph topology from Terraform "discovery" outputs (read
-// directly from S3 state) and drives day-2 operations. See internal/cli for the
+// directly from S3 state) and drives day-2 operations. See yuctl/cli for the
 // command tree and packages/yuctl/README.md for usage.
 package main
 
@@ -12,7 +12,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"yuctl/internal/cli"
+	"yuctl/cli"
 )
 
 func main() {

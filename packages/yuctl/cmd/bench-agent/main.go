@@ -1,8 +1,8 @@
 // Command bench-agent is the remote half of `yuctl tools bench` and
-// `yuctl tools bench-do`. In bench mode (no args) it reads a bench.Config as
+// `yuctl tools fleet-bench`. In bench mode (no args) it reads a resticbench.Config as
 // JSON on stdin, executes the benchmark phases, and streams JSON events on
 // stdout. In loadgen mode (--loadgen [config-path]) it reads a
-// bench.LoadgenConfig — from the file, which it deletes after reading, or
+// resticbench.LoadgenConfig — from the file, which it deletes after reading, or
 // from stdin when no path is given — and either supervises the detached
 // continuous load or runs the synchronous repo cleanup. The orchestrator
 // pushes it over ssh; it is embedded into yuctl by the build task.
@@ -16,7 +16,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"yuctl/internal/bench"
+	"yuctl/resticbench"
 )
 
 func main() {
@@ -31,20 +31,20 @@ func main() {
 		return
 	}
 
-	emit := bench.EmitJSON(os.Stdout)
-	var cfg bench.Config
+	emit := resticbench.EmitJSON(os.Stdout)
+	var cfg resticbench.Config
 	if err := json.NewDecoder(os.Stdin).Decode(&cfg); err != nil {
-		emit(bench.Event{Type: "fatal", Message: "read config from stdin: " + err.Error()})
+		emit(resticbench.Event{Type: "fatal", Message: "read config from stdin: " + err.Error()})
 		os.Exit(1)
 	}
-	if err := bench.RunAgent(ctx, cfg, emit); err != nil {
-		emit(bench.Event{Type: "fatal", Message: err.Error()})
+	if err := resticbench.RunAgent(ctx, cfg, emit); err != nil {
+		emit(resticbench.Event{Type: "fatal", Message: err.Error()})
 		os.Exit(1)
 	}
 }
 
 func loadgen(ctx context.Context, args []string) error {
-	var cfg bench.LoadgenConfig
+	var cfg resticbench.LoadgenConfig
 	if len(args) > 0 {
 		// Config file: written 0600 by the launcher, consumed exactly once.
 		b, err := os.ReadFile(args[0])
@@ -59,14 +59,14 @@ func loadgen(ctx context.Context, args []string) error {
 		return fmt.Errorf("read config from stdin: %w", err)
 	}
 
-	if cfg.Op == bench.LoadgenOpCleanup {
-		emit := bench.EmitJSON(os.Stdout)
-		if err := bench.RunLoadgenCleanup(ctx, cfg, emit); err != nil {
-			emit(bench.Event{Type: "fatal", Message: err.Error()})
+	if cfg.Op == resticbench.LoadgenOpCleanup {
+		emit := resticbench.EmitJSON(os.Stdout)
+		if err := resticbench.RunLoadgenCleanup(ctx, cfg, emit); err != nil {
+			emit(resticbench.Event{Type: "fatal", Message: err.Error()})
 			os.Exit(1)
 		}
-		emit(bench.Event{Type: "result", Result: &bench.RunResult{}})
+		emit(resticbench.Event{Type: "result", Result: &resticbench.RunResult{}})
 		return nil
 	}
-	return bench.RunLoadgen(ctx, cfg)
+	return resticbench.RunLoadgen(ctx, cfg)
 }
