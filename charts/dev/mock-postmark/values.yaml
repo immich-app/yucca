@@ -1,0 +1,34 @@
+replicas: 1
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+# yucca-admin-api points POSTMARK_API_URL here in dev.
+fullnameOverride: yucca-mock-postmark
+
+image:
+  repository: k3d-registry.localhost:5000/mock-postmark-provider
+  tag: dev
+  pullPolicy: IfNotPresent
+
+# Container listens on 80 (see packages/mock-postmark-provider); exposed
+# in-cluster and via port-forward as 8093.
+ports:
+  - name: http
+    containerPort: 80
+    servicePort: 8093
+
+service:
+  type: ClusterIP
+
+env:
+  - name: PORT
+    value: "80"
+  - name: MAILPIT_URL
+    value: http://yucca-mailpit:8025
+
+startupProbe:
+  httpGet: { path: /health, port: http }
+  periodSeconds: 2
+  failureThreshold: 60
+readinessProbe:
+  httpGet: { path: /health, port: http }
+  periodSeconds: 10

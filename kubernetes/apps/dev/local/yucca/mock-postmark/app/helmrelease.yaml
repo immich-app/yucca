@@ -1,0 +1,28 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-mock-postmark
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/dev/mock-postmark
+      sourceRef:
+        kind: GitRepository
+        name: yucca
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # DEV ONLY. Prod points POSTMARK_API_URL at the real Postmark instead of
+    # deploying this mock.
+    fullnameOverride: yucca-mock-postmark
+    image:
+      repository: ghcr.io/immich-app/yucca/mock-postmark-provider # TODO: confirm prod registry
+      tag: 0.0.1
