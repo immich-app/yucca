@@ -227,6 +227,14 @@
         # by alertname alone that flip re-notifies the whole group, including
         # a large pool's unchanged alert. Rules without pool_id share the empty
         # value and group exactly as before.
+        #
+        # CephRecoveryInProgress (files/custom_alerts.yml, severity info) is
+        # true, per pool, while that pool's shards are moving, and inhibits
+        # that pool's CephPGsUnclean, which otherwise fires for the whole of a
+        # backfill: more than a day per rebuilt 22 TB OSD, on PGs Ceph itself
+        # reports as misplaced. A pool with unclean PGs and nothing moving them
+        # still warns. The operator route takes only warning and critical, so
+        # the source alert ends at the dashboard; no stock rule carries info.
         OVERRIDES.append({
             "service": "alertmanager",
             "template": "alertmanager/alertmanager.yml.j2",
@@ -246,14 +254,27 @@
                                "      group_wait: 10s\n"
                                "      group_interval: 10s\n"
                                "      repeat_interval: 1h\n"
-                               "      receiver: 'default'\n",
+                               "      receiver: 'default'\n"
+                               "      matchers:\n"
+                               "        - severity =~ \"warning|critical\"\n",
+                },
+                {
+                    "find": "\nreceivers:\n",
+                    "replace": "\ninhibit_rules:\n"
+                               "  - source_matchers:\n"
+                               "      - alertname = CephRecoveryInProgress\n"
+                               "    target_matchers:\n"
+                               "      - alertname = CephPGsUnclean\n"
+                               "    equal: ['cluster', 'pool_id']\n"
+                               "\nreceivers:\n",
                 },
             ],
             # Upstream routes to 'default' exactly once (the parent receiver).
             # A second occurrence means upstream already added the sibling.
-            "expect": lambda src: src.count("receiver: 'default'") == 1,
-            "expect_msg": ("upstream already routes to 'default' more than once; "
-                           "the route-tree bug may be fixed upstream"),
+            "expect": lambda src: src.count("receiver: 'default'") == 1
+                                  and "inhibit_rules" not in src,
+            "expect_msg": ("upstream already routes to 'default' more than once or "
+                           "defines inhibit_rules; merge by hand"),
         })
 
     if {{ ceph_prometheus_drop_description_label | bool | ternary('True', 'False') }}:
@@ -377,6 +398,54 @@
           and (monitoring_spec_render.changed | default(false)))
   changed_when: true
   tags: [alert_rendering]
+
+# --- Step 2.8: Custom Prometheus alert rules ---
+#
+# cephadm ships its rule file from inside the mgr image and offers no way to
+# edit a stock rule; it only appends whatever the config-key
+# mgr/cephadm/services/prometheus/alerting/custom_alerts.yml holds. The rules in
+# files/custom_alerts.yml exist to feed the inhibit rules in the alertmanager
+# override above, so they ride the same gate. Same check-then-set shape as the
+# overrides above; cephadm re-renders prometheus on reconfig.
+- name: Stage the custom Prometheus alert rules
+  ansible.builtin.copy:
+    src: custom_alerts.yml
+    dest: /etc/ceph/custom_alerts.yml
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+
+- name: Read the stored custom Prometheus alert rules
+  ansible.builtin.command: >
+    ceph config-key get mgr/cephadm/services/prometheus/alerting/custom_alerts.yml
+  register: prometheus_custom_alerts_stored
+  changed_when: false
+  failed_when: false
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+
+- name: Store the custom Prometheus alert rules
+  ansible.builtin.command: >
+    ceph config-key set mgr/cephadm/services/prometheus/alerting/custom_alerts.yml
+    -i /etc/ceph/custom_alerts.yml
+  register: prometheus_custom_alerts_set
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - (ceph_alertmanager_webhook_urls | default([]) | length) > 0
+    - (prometheus_custom_alerts_stored.stdout | default('')) !=
+      (lookup('ansible.builtin.file', role_path ~ '/files/custom_alerts.yml'))
+  changed_when: true
+
+- name: Reconfigure prometheus to pick up the custom rules
+  ansible.builtin.command: ceph orch reconfig prometheus
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - prometheus_custom_alerts_set is changed
+  changed_when: true
 
 # --- Step 3: Configure dashboard integrations ---
 # The dashboard runs on the active mgr and reaches these services on the fabric;
