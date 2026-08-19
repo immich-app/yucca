@@ -49,6 +49,10 @@
     "./otel": {
       "types": "./dist/otel/index.d.ts",
       "default": "./dist/otel/index.js"
+    },
+    "./email": {
+      "types": "./dist/email/index.d.ts",
+      "default": "./dist/email/index.js"
     }
   }
 }
