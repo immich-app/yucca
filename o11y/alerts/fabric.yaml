@@ -1,0 +1,274 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+# Fabric series only ever come from the netops vmagent (cluster="netops");
+# spice's own health is alerted by cephadm's alertmanager, not here.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-fabric
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    - uid: junos-bgp-session-down
+      title: JunosBGPSessionDown
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: fabric BGP session down
+        description: >-
+          BGP session on {{ $labels.target }} to {{ $labels.ip }} has been
+          down for 5m — transit or Cilium iBGP peering is lost on the htz-fsn1
+          fabric.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              junos_bgp_session_up{cluster="netops"} == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-red-alarm
+      title: JunosRedAlarm
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: red chassis alarm on the fabric
+        description: >-
+          {{ $labels.target }} is reporting {{ humanize $values.A.Value }} red
+          chassis alarm(s) — hardware or environment failure on the htz-fsn1
+          fabric.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (target) (junos_alarms_red_count{cluster="netops"}) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-yellow-alarm
+      title: JunosYellowAlarm
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: yellow chassis alarm on the fabric
+        description: >-
+          {{ $labels.target }} has had {{ humanize $values.A.Value }} yellow
+          chassis alarm(s) for 30m on the htz-fsn1 fabric.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (target) (junos_alarms_yellow_count{cluster="netops"}) >
+              0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-interface-errors
+      title: JunosInterfaceErrors
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: fabric interface taking errors
+        description: >-
+          {{ $labels.target }} {{ $labels.name }} is taking {{ humanize
+          $values.A.Value }} errors/s sustained for 30m — check optics/cabling
+          before it becomes packet loss.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (target, name) (
+              rate(junos_interface_receive_errors{cluster="netops",
+              name=~"ae.+|et-.+|xe-.+"}[10m]) +
+              rate(junos_interface_transmit_errors{cluster="netops",
+              name=~"ae.+|et-.+|xe-.+"}[10m])) > 0.01
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-exporter-down
+      title: JunosExporterDown
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: junos exporter down
+        description: >-
+          The junos exporter has been failing its NETCONF scrape for 10m —
+          fabric health (BGP, alarms, interfaces) is blind; the fabric alerts
+          above cannot fire.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              up{cluster="netops", job="junos"} == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Guarded absence (see backup-health.yaml): only fires where sFlow data
+    # recently existed, auto-resolves 24h after it stopped.
+    - uid: sflow-silent
+      title: SflowSilent
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: sFlow stream stopped
+        description: >-
+          No sflow_* samples for 15m — the spine's sFlow stream to the
+          collector VIP (10.40.12.14) is dead or sflow-rt is down; 5s
+          bandwidth visibility is gone.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              absent(sflow_ifinoctets{cluster="netops"}) and on()
+              count(count_over_time(sflow_ifinoctets{cluster="netops"}[24h]))
+              > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
