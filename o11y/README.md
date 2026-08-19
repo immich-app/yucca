@@ -126,6 +126,13 @@ Conventions:
   while firing (e.g. cert expiry alerts on seconds *inside* the warning
   window, which keeps growing past expiry, not seconds-to-expiry, which would
   go negative and stop firing).
+- **`intervalMs: 300000` on every query node, non-negotiable**: VictoriaMetrics
+  uses an instant query's `step` as its staleness lookback, and Grafana derives
+  that step from `intervalMs`. At Grafana's ~15s default, any metric scraped
+  less often than the step resolves to *no data* → `noDataState: OK` → the rule
+  sits Normal while the condition is true (this silently killed the junos
+  alerts, whose exporter scrapes at 60s). 5m restores Prometheus-standard
+  staleness for every cadence in the fleet.
 - **Guarded absence**: absence-style rules use
   `absent(x) and on() count(count_over_time(x[24h])) > 0` so an o11y instance
   that never receives that data (staging sees no fabric) never alarms, while
