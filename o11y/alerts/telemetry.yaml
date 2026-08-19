@@ -42,7 +42,7 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              absent(up{cluster="father"}) and on()
+              absent(last_over_time(up{cluster="father"}[5m])) and on()
               count(count_over_time(up{cluster="father"}[24h])) > 0
         - refId: B
           relativeTimeRange:
@@ -84,7 +84,7 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              absent(up{cluster="luke"}) and on()
+              absent(last_over_time(up{cluster="luke"}[5m])) and on()
               count(count_over_time(up{cluster="luke"}[24h])) > 0
         - refId: B
           relativeTimeRange:
@@ -126,7 +126,7 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              absent(up{cluster="netops"}) and on()
+              absent(last_over_time(up{cluster="netops"}[5m])) and on()
               count(count_over_time(up{cluster="netops"}[24h])) > 0
         - refId: B
           relativeTimeRange:
@@ -169,7 +169,7 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              absent(up{cluster="spice"}) and on()
+              absent(last_over_time(up{cluster="spice"}[5m])) and on()
               count(count_over_time(up{cluster="spice"}[24h])) > 0
         - refId: B
           relativeTimeRange:
