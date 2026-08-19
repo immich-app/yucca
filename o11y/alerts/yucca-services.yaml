@@ -34,7 +34,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (cluster) (rate(api_request_count{status=~"5.."}[5m])) /
@@ -81,7 +81,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               kube_deployment_status_replicas_available{namespace="yucca",

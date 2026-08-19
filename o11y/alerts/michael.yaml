@@ -36,7 +36,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (cluster) (rate({__name__="http.server.request.errors",
@@ -80,7 +80,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (cluster) (rate({__name__="http.server.request.errors",
@@ -124,7 +124,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               min by (cluster, backend) ({__name__="s3.backend.healthy"}) ==
@@ -166,7 +166,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (cluster) (max by (cluster, backend)
@@ -209,7 +209,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (cluster, operation)
@@ -253,7 +253,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (cluster)
@@ -296,7 +296,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               histogram_quantile(0.99, sum by (cluster, le)
@@ -338,7 +338,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               kube_deployment_status_replicas_available{namespace="yucca",

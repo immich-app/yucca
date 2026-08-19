@@ -44,7 +44,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               junos_bgp_session_up{cluster="netops", group!="cilium-nodes"} ==
@@ -87,7 +87,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum(junos_bgp_session_up{cluster="netops",
@@ -130,7 +130,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               junos_bgp_session_up{cluster="netops", group="cilium-nodes"} ==
@@ -173,7 +173,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (target) (junos_alarms_red_count{cluster="netops"}) > 0
@@ -214,7 +214,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (target) (junos_alarms_yellow_count{cluster="netops"}) >
@@ -257,7 +257,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               sum by (target, name) (
@@ -303,7 +303,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               up{cluster="netops", job="junos"} == bool 0
@@ -347,7 +347,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               absent(sflow_ifinoctets{cluster="netops"}) and on()

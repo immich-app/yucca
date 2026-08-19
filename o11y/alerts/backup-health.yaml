@@ -39,7 +39,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               absent(rgw_repository_size_bytes) and on()
@@ -88,7 +88,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               count(count by (user_id) ((time() - user_last_successful_backup)

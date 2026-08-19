@@ -39,7 +39,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               absent(up{cluster="father"}) and on()
@@ -81,7 +81,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               absent(up{cluster="luke"}) and on()
@@ -123,7 +123,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               absent(up{cluster="netops"}) and on()
@@ -166,7 +166,7 @@ spec:
             refId: A
             instant: true
             range: false
-            intervalMs: 1000
+            intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
               absent(up{cluster="spice"}) and on()
