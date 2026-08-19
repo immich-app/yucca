@@ -84,6 +84,13 @@ variable "yucca_oidc_admin_client_secret" {
   default     = ""
 }
 
+variable "yucca_postmark_server_token" {
+  description = "Postmark server API token for invite/transactional email (ref stays commented in tf/.env until minted; empty token = admin-api logs and skips sends). Injected via TF_VAR from 1P."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # michael S3 credentials — the `svc-yucca-restic` RGW user on the bare-metal
 # Ceph (sietch / dev Ceph), created by the ceph Ansible with predetermined keys;
 # duplicated into yucca_tf_staging (op://yucca_tf_staging/SIETCH_CEPH_S3_SVC_

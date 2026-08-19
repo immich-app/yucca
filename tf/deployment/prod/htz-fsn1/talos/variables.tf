@@ -188,6 +188,13 @@ variable "yucca_oidc_admin_client_secret" {
   default     = ""
 }
 
+variable "yucca_postmark_server_token" {
+  description = "Postmark server API token for invite/transactional email (ref stays commented in tf/.env.prod until minted; empty token = admin-api logs and skips sends)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "yucca_rgw_access_key_id" {
   description = "Spice RGW (S3) access key for michael (svc-yucca-restic, out-of-band contract item)."
   type        = string
