@@ -220,6 +220,23 @@ resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
   }
 }
 
+# yucca-database backups: the sietch RGW svc-yucca-db-backup S3 keys for the
+# CNPG Barman Cloud plugin, plus the RGW's self-signed cert as the CA bundle
+# (barman cannot skip TLS verification). The cert comes from the DR item that
+# `mise run capture` snapshots off the ceph bootstrap node.
+resource "kubernetes_secret_v1" "yucca_db_backup_s3" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name      = "yucca-db-backup-s3"
+    namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
+  }
+  data = {
+    ACCESS_KEY_ID     = var.sietch_db_backup_access_key
+    ACCESS_SECRET_KEY = var.sietch_db_backup_secret_key
+    CA_CERT           = var.sietch_rgw_tls_cert
+  }
+}
+
 # ─── Observability Secret (namespace: observability) ────────────────────
 # Bearer token vmagent + vlagent present to o11y's vmauth for remote-write.
 resource "kubernetes_secret_v1" "vmagent_remote_write" {

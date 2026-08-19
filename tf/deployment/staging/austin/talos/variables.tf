@@ -116,6 +116,25 @@ variable "sietch_metrics_worker_secret_key" {
   default     = ""
 }
 
+variable "sietch_db_backup_access_key" {
+  description = "Sietch RGW (S3) access key for CNPG database backups (svc-yucca-db-backup, TF-minted SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY)."
+  type        = string
+  default     = ""
+}
+
+variable "sietch_db_backup_secret_key" {
+  description = "Sietch RGW (S3) secret key for CNPG database backups (svc-yucca-db-backup)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "sietch_rgw_tls_cert" {
+  description = "Sietch RGW self-signed TLS certificate PEM (DR item SIETCH_CEPH_RGW_TLS_CERT, snapshotted by `mise run capture`); CA bundle for the CNPG barman ObjectStore."
+  type        = string
+  default     = ""
+}
+
 # Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
 # the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the shared_tf_staging vault (the
 # `remote-clusters` VMUser authenticates remote clusters with it).

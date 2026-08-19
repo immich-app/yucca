@@ -899,6 +899,36 @@
   changed_when: true
   no_log: true
 
+# --- Step 14.6: CNPG database-backup S3 user ---
+#
+# A dedicated S3 user the yucca-database CNPG cluster (Barman Cloud plugin)
+# archives WALs and base backups with. Keys are TF-minted in 1P
+# (<CLUSTER>_CEPH_S3_SVC_YUCCA_DB_BACKUP_{ACCESS,SECRET}_KEY) and passed here so
+# the consumer is pre-configured with matching credentials. max-buckets=1: barman
+# creates its single bucket on first use; this user can never create another.
+
+- name: Check if db-backup RGW user exists
+  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_db_backup_user_uid }}"
+  register: db_backup_user_check
+  when: inventory_hostname in groups['ceph_bootstrap']
+  changed_when: false
+  failed_when: false
+
+- name: Create db-backup S3 user with predetermined keys for {{ ceph_rgw_db_backup_user_uid }}
+  ansible.builtin.command: >
+    radosgw-admin user create
+    --uid={{ ceph_rgw_db_backup_user_uid }}
+    --display-name='{{ ceph_rgw_db_backup_user_display_name }}'
+    --access-key='{{ ceph_rgw_db_backup_user_access_key }}'
+    --secret-key='{{ ceph_rgw_db_backup_user_secret_key }}'
+    --max-buckets=1
+  register: db_backup_user_create
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - db_backup_user_check.rc != 0
+  changed_when: true
+  no_log: true
+
 - name: Ensure metrics-worker RGW user has read-only admin caps
   ansible.builtin.shell: |
     set -o pipefail

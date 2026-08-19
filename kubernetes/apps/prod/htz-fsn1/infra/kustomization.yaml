@@ -17,4 +17,5 @@ resources:
   - ./envoy.yaml
   - ./openebs.yaml
   - ./cnpg.yaml
+  - ./cnpg-plugin-barman.yaml
   - ./spegel.yaml

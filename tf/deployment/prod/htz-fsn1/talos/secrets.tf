@@ -217,6 +217,29 @@ resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
   }
 }
 
+# yucca-database backups: the spice RGW svc-yucca-db-backup S3 keys for the
+# CNPG Barman Cloud plugin, plus the RGW's self-signed cert as the CA bundle
+# (barman cannot skip TLS verification). The cert comes from the DR item that
+# `mise run capture` snapshots off the ceph bootstrap node.
+resource "kubernetes_secret_v1" "yucca_db_backup_s3" {
+  metadata {
+    name      = "yucca-db-backup-s3"
+    namespace = kubernetes_namespace_v1.yucca.metadata[0].name
+  }
+  data = {
+    ACCESS_KEY_ID     = var.spice_db_backup_access_key
+    ACCESS_SECRET_KEY = var.spice_db_backup_secret_key
+    CA_CERT           = var.spice_rgw_tls_cert
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(var.spice_db_backup_access_key) > 0 && length(var.spice_db_backup_secret_key) > 0 && length(var.spice_rgw_tls_cert) > 0
+      error_message = "spice db-backup RGW keys or TLS cert are empty — run applies through tf/op-run.sh with OP_ENV_FILE=tf/.env.prod."
+    }
+  }
+}
+
 # ─── Observability Secret (namespace: observability) ─────────────────────────
 # Bearer token vmagent + the logs collector present to o11y's prod vmauth.
 resource "kubernetes_secret_v1" "vmagent_remote_write" {
