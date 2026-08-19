@@ -110,9 +110,15 @@ the "Top source addresses" table aggregates out of VictoriaLogs.
 contact points, notification policy, Discord — is configured on the o11y side
 and out of scope for this repo. Two bindings the CRs must get right:
 `folderRef: yucca` (the bundle's own `GrafanaFolder`), and `datasourceUid:
-VictoriaMetrics` on every query node — alert rules cannot use a `$datasource`
-variable the way dashboards do, so they pin o11y's default VictoriaMetrics
-datasource UID.
+VictoriaMetricsFleet` on every query node — alert rules cannot use a
+`$datasource` variable the way dashboards do. NEVER pin the default
+`VictoriaMetrics` datasource: it fronts `vmauth-self-select`, which serves
+ONLY the o11y cluster's own series, so every rule over yucca/fabric/ceph data
+evaluates to NoData and sits Normal through real outages (this shipped, and
+the Colt transit outage went unalerted until it was caught). Only
+`VictoriaMetricsFleet` (vmselect direct) sees the whole fleet — the same
+reason every dashboard's `$datasource` variable carries the
+`/^VictoriaMetrics Fleet$/` regex.
 
 Conventions:
 
