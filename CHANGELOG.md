@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.31.2](https://github.com/immich-app/yucca/compare/v0.31.1...v0.31.2) (2026-08-19)
+
+
+### Bug Fixes
+
+* **o11y:** make slow-cadence alert queries staleness-proof ([#501](https://github.com/immich-app/yucca/issues/501)) ([552735a](https://github.com/immich-app/yucca/commit/552735a52755a2573e83e32132b6f1d4dad382d3))
+* **o11y:** pin 5m staleness lookback on alert rule queries ([#499](https://github.com/immich-app/yucca/issues/499)) ([0fe43da](https://github.com/immich-app/yucca/commit/0fe43daaf088695f44208d8fd8b7a0e395781738))
+
 ## [0.31.1](https://github.com/immich-app/yucca/compare/v0.31.0...v0.31.1) (2026-08-19)
 
 

@@ -13,4 +13,4 @@ metadata:
   name: image-versions
   namespace: flux-system
 data:
-  YUCCA_IMAGE_TAG: v0.31.1 # x-release-please-version
+  YUCCA_IMAGE_TAG: v0.31.2 # x-release-please-version
