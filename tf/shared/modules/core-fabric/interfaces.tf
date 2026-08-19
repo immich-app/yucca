@@ -153,9 +153,12 @@ resource "junos_interface_logical" "transit" {
       cidr_ip = each.value.local_v4
     }
   }
-  family_inet6 {
-    address {
-      cidr_ip = each.value.local_v6
+  dynamic "family_inet6" {
+    for_each = each.value.local_v6 == null ? [] : [each.value.local_v6]
+    content {
+      address {
+        cidr_ip = family_inet6.value
+      }
     }
   }
 }

@@ -76,7 +76,8 @@ module "core" {
   # reachable on the spine via the Cilium iBGP /32). Counter samples every 5s =
   # the seconds-granularity bandwidth feed; every up physical port is listed
   # (sFlow attaches to members, not ae bundles): worker bonds (et-*/0/2:*), mgmt
-  # hosts (et-*/0/3:0), transit (et-0/0/27), leaf uplink ae0 (et-*/0/30,31).
+  # hosts (et-*/0/3:0), transits (et-0/0/27 Core-Backbone, et-1/0/27 Colt),
+  # leaf uplink ae0 (et-*/0/30,31).
   sflow = {
     collector = cidrhost(module.addr_site.lb_internal_cidr, 14)
     agent_id  = "69.48.224.254"
@@ -86,7 +87,7 @@ module "core" {
       "xe-0/0/0:0", "xe-0/0/0:1", "xe-0/0/0:2",
       "xe-1/0/0:0", "xe-1/0/0:1", "xe-1/0/0:2",
       "et-0/0/3:0", "et-1/0/3:0",
-      "et-0/0/27",
+      "et-0/0/27", "et-1/0/27",
       "et-0/0/30", "et-0/0/31", "et-1/0/30", "et-1/0/31",
     ]
   }
@@ -100,10 +101,10 @@ module "core" {
     "10.40.10.13" = "69.48.224.243"
   }
 
-  # Upstream IP-transit. Today: one transit (Core-Backbone), primary/default
-  # (prepend 0). Add a second entry with prepend>0 + a lower local_pref to
-  # multi-home (the prepended one is the backup; see core-fabric/transit.tf —
-  # prepend/local_pref need a provider regen to apply).
+  # Upstream IP-transit, multi-homed: Core-Backbone is primary/default (prepend 0,
+  # default local-pref); Colt is the backup — our /24 goes out prepended once and
+  # its received default sits at a lower local-pref, so it only carries traffic
+  # when Core-Backbone is down. See core-fabric/transit.tf.
   local_as = 402421
   transits = {
     core-backbone = {
@@ -115,6 +116,18 @@ module "core" {
       peer_as   = 33891
       advertise = "69.48.224.0/24"
       loopback  = "69.48.224.254/32"
+    }
+    # v4-only handover (no v6 delivered). Colt's inbound route filter accepts
+    # 69.48.224.0/22 le /24 from AS402421, so the /24 fits; widening past that
+    # needs a Colt Online ticket.
+    colt = {
+      interface  = "et-1/0/27"
+      local_v4   = "62.67.19.110/30"
+      peer_v4    = "62.67.19.109"
+      peer_as    = 8220
+      advertise  = "69.48.224.0/24"
+      prepend    = 1
+      local_pref = 90
     }
   }
 }

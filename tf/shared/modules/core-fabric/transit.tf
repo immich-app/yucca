@@ -54,7 +54,7 @@ resource "junos_bgp_neighbor" "v4" {
 }
 
 resource "junos_bgp_neighbor" "v6" {
-  for_each = var.transits
+  for_each = { for name, t in var.transits : name => t if t.peer_v6 != null }
   group    = junos_bgp_group.transit[each.key].name
   ip       = each.value.peer_v6
   import   = ["${upper(each.key)}-IN"]
