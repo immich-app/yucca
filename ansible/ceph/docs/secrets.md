@@ -72,6 +72,8 @@ credentials without waiting for post-bootstrap capture):
 |---|---|---|
 | `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY` | `password` | `vault_s3_restic_access_key` -> `ceph_rgw_s3_user_access_key` |
 | `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY` | `password` | `vault_s3_restic_secret_key` -> `ceph_rgw_s3_user_secret_key` |
+| `SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY` | `password` | `vault_db_backup_access_key` -> `ceph_rgw_db_backup_user_access_key` (also read by the talos stack into the `yucca-db-backup-s3` Secret for CNPG barman) |
+| `SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_SECRET_KEY` | `password` | `vault_db_backup_secret_key` -> `ceph_rgw_db_backup_user_secret_key` (same dual consumption) |
 
 **Disaster-recovery items** (populated by `mise run capture` after
 deploy -- stored in 1P for recovery if the bootstrap node's filesystem
@@ -84,7 +86,10 @@ is lost):
 | `<CLUSTER>_CEPH_CLIENT_ADMIN_KEYRING` | `password` (concealed) | `/etc/ceph/ceph.client.admin.keyring` on bootstrap |
 
 Items are created on the first `mise run capture`; later runs overwrite them
-only if the content changed.
+only if the content changed. `<CLUSTER>_CEPH_RGW_TLS_CERT` is no longer
+DR-only: the talos stack reads it into the `yucca-db-backup-s3` Secret as the
+CA bundle CNPG's barman plugin verifies the RGW endpoint with — run the
+capture before the talos apply on a fresh cluster.
 
 Item names are derived in `tf/shared/modules/ceph-cluster/main.tf`
 (`local.secret_prefix`). Hardcoded `CEPH` (not `role_in_hostname`) so every

@@ -7,6 +7,25 @@ storage: 1Gi
 storageClass: ""
 database: yucca
 owner: yucca
+# Pinned operand image: the operator's compiled-in default changes (and can
+# jump Postgres majors) on operator upgrades, so never leave this implicit.
+imageName: ghcr.io/cloudnative-pg/postgresql:17.2
 # Per-instance postgres pod resources (CNPG spec.resources). Empty = BestEffort
 # (dev default); real clusters set this via the HelmRelease.
 resources: {}
+# CNPG spec.affinity. Real clusters set podAntiAffinityType: required — the
+# default "preferred" can co-schedule two instances, and local PVs
+# (WaitForFirstConsumer) then pin that co-location permanently.
+affinity: {}
+# Barman Cloud plugin backups (WAL archiving + daily base backup) to an
+# S3-compatible object store. Requires the plugin-barman-cloud release in
+# cnpg-system, so dev (no cert-manager, no plugin) keeps this off.
+backup:
+  enabled: false
+  bucket: ""
+  endpointURL: ""
+  # Secret holding ACCESS_KEY_ID / ACCESS_SECRET_KEY / CA_CERT (the RGW
+  # endpoints use self-signed TLS and barman cannot skip verification).
+  secretName: ""
+  retentionPolicy: 30d
+  schedule: "0 0 2 * * *"

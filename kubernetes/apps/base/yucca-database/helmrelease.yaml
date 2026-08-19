@@ -23,22 +23,33 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
-  # HA across the 3 control-planes: CNPG runs a primary + 2 streaming replicas
-  # and spreads them one-per-node via its default pod anti-affinity. This base
-  # is consumed only by the real clusters (staging/production) — local dev uses
-  # the separate dev-mirror tree, which keeps the chart's 1-instance default.
-  # TODO: point backups at object storage; consider synchronous replication.
   values:
     instances: 3
     storage: 10Gi
+    imageName: ghcr.io/cloudnative-pg/postgresql:17.2
+    # One instance per node, enforced: with "preferred" (the CNPG default) a
+    # cordoned/full node lets two instances co-schedule, and the local PVs
+    # (WaitForFirstConsumer) then pin that co-location permanently.
+    affinity:
+      podAntiAffinityType: required
     # Generous requests, huge memory limit (no CPU limit — CFS throttling hurts
     # postgres tail latency more than contention does).
     resources:
       requests: { cpu: 500m, memory: 1Gi }
       limits: { memory: 8Gi }
     # Node-local NVMe (no replicated block storage). CNPG provides HA at the app
-    # layer: primary + 2 streaming replicas, spread one-per-node by its default
-    # anti-affinity, each binding a local PV on its node (WaitForFirstConsumer).
-    # Per-cluster class: staging = openebs-spare-disk (overlay SC), prod =
-    # openebs-hostpath (chart localpv class) — set in each cluster-settings.
+    # layer: primary + 2 streaming replicas, each binding a local PV on its node
+    # (WaitForFirstConsumer). Per-cluster class: staging = openebs-spare-disk
+    # (overlay SC), prod = openebs-hostpath (chart localpv class) — set in each
+    # cluster-settings.
     storageClass: ${DB_STORAGE_CLASS}
+    # PITR to the region's Ceph RGW via the Barman Cloud plugin: continuous WAL
+    # archiving + a daily base backup, 30d retention (chart default). Barman
+    # creates the bucket on first use (the RGW user is capped at max-buckets=1);
+    # the secret is TF-provisioned (talos stack) with the RGW user's keys and
+    # the self-signed RGW cert as CA_CERT. TODO: second copy on OVH S3.
+    backup:
+      enabled: true
+      bucket: yucca-db-backups
+      endpointURL: ${S3_ENDPOINT}
+      secretName: yucca-db-backup-s3

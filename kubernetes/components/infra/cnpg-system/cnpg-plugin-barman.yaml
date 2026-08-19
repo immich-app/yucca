@@ -1,28 +1,30 @@
+# The Barman Cloud CNPG-I plugin (WAL archiving + object-store backups for the
+# yucca-database Cluster). Lives next to the operator in cnpg-system; its
+# gRPC TLS certificates come from cert-manager, hence the extra dependency.
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: yucca-database
+  name: cnpg-plugin-barman
   namespace: flux-system
 spec:
   dependsOn:
     - name: cnpg-operator
-    - name: cnpg-plugin-barman
-    - name: openebs
+    - name: cert-manager
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
-      name: yucca-database
-      namespace: yucca
+      name: cnpg-plugin-barman
+      namespace: cnpg-system
   interval: 1h
   retryInterval: 2m
   timeout: 10m
-  path: ./kubernetes/apps/base/yucca-database
+  path: ./kubernetes/apps/base/cnpg-plugin-barman
   prune: true
   wait: true
   sourceRef:
     kind: GitRepository
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
-  targetNamespace: yucca
+  targetNamespace: cnpg-system
