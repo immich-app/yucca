@@ -34,11 +34,17 @@ resource "junos_static_route" "advertise" {
   discard     = true
 }
 
+# multiple-as: the transits' defaults come from different peer ASes, which plain
+# multipath refuses to combine. With equal local-pref they ECMP per-flow via the
+# chassis-global forwarding-table export (bgp-nodes.tf ECMP-LOAD-BALANCE).
 resource "junos_bgp_group" "transit" {
   for_each = var.transits
   name     = each.key
   type     = "external"
   peer_as  = tostring(each.value.peer_as)
+  bgp_multipath {
+    multiple_as = true
+  }
 }
 
 # import/export live on the neighbor (matches the device), not the group.
@@ -54,7 +60,7 @@ resource "junos_bgp_neighbor" "v4" {
 }
 
 resource "junos_bgp_neighbor" "v6" {
-  for_each = var.transits
+  for_each = { for name, t in var.transits : name => t if t.peer_v6 != null }
   group    = junos_bgp_group.transit[each.key].name
   ip       = each.value.peer_v6
   import   = ["${upper(each.key)}-IN"]

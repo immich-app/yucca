@@ -43,12 +43,13 @@ module "netbox" {
     services    = { prefix = "10.250.128.0/17", description = "father service CIDR (ClusterIPs; kube-dns at .128.10)", status = "container" }
     netbird     = { prefix = "10.254.0.0/15", description = "NetBird mesh peer range (node plane CP<->worker, operators)", status = "container" }
 
-    public         = { prefix = "69.48.224.0/24", description = "FUTO PI space announced from the spine (AS402421 via Core-Backbone)", status = "container" }
-    lb_public_a    = { prefix = "69.48.224.0/26", description = "Cilium LoadBalancer pool lb-public-a (father)" }
-    lb_public_b    = { prefix = "69.48.224.64/26", description = "Cilium LoadBalancer pool lb-public-b (father)" }
-    worker_egress  = { prefix = "69.48.224.240/29", description = "father worker fabric-egress SNAT IPs (.241 jeanne, .242 sheron, .243 dianna)" }
-    spine_loopback = { prefix = "69.48.224.254/32", description = "spine lo0 (sFlow agent-id, LG source)" }
-    transit_p2p    = { prefix = "5.56.17.224/31", description = "Core-Backbone transit /31 (spine et-0/0/27)" }
+    public           = { prefix = "69.48.224.0/24", description = "FUTO PI space announced from the spine (AS402421 via Core-Backbone + Colt)", status = "container" }
+    lb_public_a      = { prefix = "69.48.224.0/26", description = "Cilium LoadBalancer pool lb-public-a (father)" }
+    lb_public_b      = { prefix = "69.48.224.64/26", description = "Cilium LoadBalancer pool lb-public-b (father)" }
+    worker_egress    = { prefix = "69.48.224.240/29", description = "father worker fabric-egress SNAT IPs (.241 jeanne, .242 sheron, .243 dianna)" }
+    spine_loopback   = { prefix = "69.48.224.254/32", description = "spine lo0 (sFlow agent-id, LG source)" }
+    transit_p2p      = { prefix = "5.56.17.224/31", description = "Core-Backbone transit /31 (spine et-0/0/27)" }
+    transit_p2p_colt = { prefix = "62.67.19.108/30", description = "Colt transit /30 (spine et-1/0/27, v4-only; .109 Colt, .110 us)" }
   }
 
   devices = {
