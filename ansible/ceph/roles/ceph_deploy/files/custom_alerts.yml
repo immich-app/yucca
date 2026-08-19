@@ -11,9 +11,10 @@ groups:
       # a rebuilt 22 TB OSD backfills for more than a day. Ceph itself reports
       # those PGs as misplaced, not as a warning. This alert is true, per pool,
       # exactly while that pool's shards are moving, so a pool whose unclean
-      # PGs have nothing moving them still warns; the info severity keeps it
-      # off the operator route, it exists to inhibit. The metadata join gives
-      # it the same labels as the stock rule. keep_firing_for covers the
+      # PGs have nothing moving them still warns. The operator route for the
+      # chronic alerts (alertmanager override in tasks/monitoring.yml) carries
+      # it at a 12h repeat. The metadata join gives it the same labels as the
+      # stock rule. keep_firing_for covers the
       # hand-off gaps between one PG finishing and the next reservation being
       # granted, so the inhibition does not flap.
       - alert: CephRecoveryInProgress
