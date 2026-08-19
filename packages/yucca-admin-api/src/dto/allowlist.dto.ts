@@ -21,6 +21,9 @@ export class AllowlistEntryDto {
   @ApiProperty({ type: 'string', required: false, nullable: true })
   inviteUsedAt!: Date | null;
 
+  @ApiProperty({ type: 'string', required: false, nullable: true })
+  inviteEmailSentAt!: Date | null;
+
   @ApiProperty({ type: 'string' })
   createdAt!: Date;
 }

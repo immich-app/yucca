@@ -216,9 +216,11 @@ docker_build(
     live_update=[
         sync('./packages/yucca-admin-api', '/app/packages/yucca-admin-api'),
         sync('./packages/common', '/app/packages/common'),
+        sync('./packages/emails', '/app/packages/emails'),
         # yucca-admin-api/src/schema is a symlink into yucca-api; keep it synced.
         sync('./packages/yucca-api', '/app/packages/yucca-api'),
         run('cd /app && pnpm --filter @common/server build', trigger=['./packages/common/src']),
+        run('cd /app && pnpm --filter @common/emails build', trigger=['./packages/emails/src']),
     ],
 )
 
@@ -333,7 +335,7 @@ APP_WIRING = {
     # calls it at boot. Tilt builds an image only when ready to deploy, so that
     # edge parked this build (and web's) behind Rook-Ceph instead of alongside.
     'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
-    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_keypair': True},
+    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user', 'yucca-topology'], 'dev_env': True},
     # Likewise: the dev server reaches yucca-api per request, not at boot.
     'yucca-web':              {'build': 'web',                'deps': []},

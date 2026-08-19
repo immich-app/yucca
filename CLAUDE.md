@@ -79,7 +79,7 @@ followed by `tilt:ci-e2e` (the apps the e2e suites touch). Ceph converging outwe
 in the integration job, so that job dropped it and its S3-backed suites moved to the e2e one.
 
 Ports: `5173` web · `3020` yucca-api · `3030` yucca-admin-api · `3010` michael ·
-`8092` mock-oidc · `9000` ceph rgw · `8428` victoria-metrics · `9428` victoria-logs.
+`8092` mock-oidc · `8025` mailpit · `8093` mock-postmark · `9000` ceph rgw · `8428` victoria-metrics · `9428` victoria-logs.
 
 ### Infrastructure commands
 
@@ -110,7 +110,9 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `yucca-metrics-worker` | NestJS | 5-min cron: RadosGW usage → meter tables → per-connection rollup (`connectionMetrics`, billing floor), OTel gauges. |
 | `redis` (valkey) | | Shared platform cache (ephemeral; keys `yucca:<service>:<purpose>:*`). Primary-region only. |
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). |
-| `common` (`@common/server`) | TS lib | OTel init, pino repository, **feature-flag registry + connection-type registry**. |
+| `mock-postmark-provider` | Node | Dev/test Postmark API mock; delivers into the Mailpit inbox. |
+| `common` (`@common/server`) | TS lib | OTel init, pino repository, **feature-flag registry + connection-type registry**, Postmark `EmailRepository` (`@common/server/email`). |
+| `emails` (`@common/emails`) | Svelte lib | Transactional email templates (better-svelte-email, web theme), prebuilt to JS for the NestJS apps. See `docs/email.md`. |
 
 **Frontend** (`packages/web`): SvelteKit 5 + Tailwind 4, `@immich/ui`, lingui i18n
 (`mise web:lingui:*`; compiled locales are generated, not edited), generated API client.

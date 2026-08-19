@@ -1,3 +1,6 @@
+import { renderInviteEmail } from '@common/emails';
+import { EmailMessage, EmailRepository } from '@common/server/email';
+import { LoggerRepository } from '@common/server/otel';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AllowlistAddRequestDto,
@@ -9,13 +12,18 @@ import {
   AllowlistListQueryDto,
   AllowlistListResponseDto,
 } from 'src/dto/allowlist.dto';
+import { env } from 'src/env';
 import { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
 import { generateInviteCode } from 'src/utils/invite-code';
 import { resolveLimit } from 'src/utils/pagination';
 
 @Injectable()
 export class AllowlistService {
-  constructor(private readonly allowlist: UserAllowlistRepository) {}
+  constructor(
+    private readonly allowlist: UserAllowlistRepository,
+    private readonly email: EmailRepository,
+    private readonly logger: LoggerRepository,
+  ) {}
 
   list(query: AllowlistListQueryDto): Promise<AllowlistListResponseDto> {
     return this.allowlist.list({ cursor: query.cursor, limit: resolveLimit(query.limit) });
@@ -54,7 +62,7 @@ export class AllowlistService {
       }
     }
 
-    return { items };
+    return { items: await this.sendInviteEmails(items) };
   }
 
   async inviteBatch(dto: AllowlistInviteBatchRequestDto): Promise<AllowlistEntriesResponseDto> {
@@ -65,7 +73,46 @@ export class AllowlistService {
       items.push(await this.allowlist.update(entry.id, { invited: true }));
     }
 
-    return { items };
+    return { items: await this.sendInviteEmails(items) };
+  }
+
+  private async sendInviteEmails(items: AllowlistEntryDto[]): Promise<AllowlistEntryDto[]> {
+    const pending = items.filter((entry) => !entry.inviteEmailSentAt);
+    if (pending.length === 0) {
+      return items;
+    }
+
+    const messages: EmailMessage[] = [];
+    for (const entry of pending) {
+      const inviteUrl = new URL('/login/invite', env.WEB_BASE_URL).href;
+      messages.push({
+        to: entry.email,
+        tag: 'invite',
+        ...(await renderInviteEmail({ inviteCode: entry.inviteCode, inviteUrl })),
+      });
+    }
+
+    const results = await this.email.sendBatch(messages).catch((error: unknown) => {
+      this.logger.error(error, 'Failed to send invite emails');
+      return null;
+    });
+    if (!results) {
+      return items;
+    }
+
+    const updated = new Map<string, AllowlistEntryDto>();
+    for (const [index, result] of results.entries()) {
+      const entry = pending[index];
+      if (result.errorCode === 0) {
+        updated.set(entry.id, await this.allowlist.update(entry.id, { inviteEmailSentAt: new Date() }));
+      } else {
+        this.logger.warn(
+          { email: entry.email, errorCode: result.errorCode },
+          `Invite email rejected: ${result.message}`,
+        );
+      }
+    }
+    return items.map((entry) => updated.get(entry.id) ?? entry);
   }
 
   private async createEntry(email: string, invited: boolean) {

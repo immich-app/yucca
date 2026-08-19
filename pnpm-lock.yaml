@@ -837,6 +837,9 @@ importers:
 
   packages/yucca-admin-api:
     dependencies:
+      '@common/emails':
+        specifier: workspace:^
+        version: link:../emails
       '@common/server':
         specifier: workspace:^
         version: link:../common

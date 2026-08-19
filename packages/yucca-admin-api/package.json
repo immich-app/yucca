@@ -20,6 +20,7 @@
     "dist"
   ],
   "dependencies": {
+    "@common/emails": "workspace:^",
     "@common/server": "workspace:^",
     "@immich/sql-tools": "catalog:",
     "@nestjs/common": "catalog:",

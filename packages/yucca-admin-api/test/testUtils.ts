@@ -29,11 +29,13 @@ export const testUtils = {
     email,
     inviteCode,
     invited = false,
+    inviteEmailSentAt,
     createdAt,
   }: {
     email: string;
     inviteCode?: string;
     invited?: boolean;
+    inviteEmailSentAt?: Date;
     createdAt?: Date;
   }) => {
     return getDb()
@@ -42,6 +44,7 @@ export const testUtils = {
         email,
         inviteCode: inviteCode ?? randomUUID().slice(0, 10).toUpperCase(),
         invited,
+        ...(inviteEmailSentAt ? { inviteEmailSentAt } : {}),
         ...(createdAt ? { createdAt } : {}),
       })
       .returningAll()

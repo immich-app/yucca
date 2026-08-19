@@ -1,3 +1,4 @@
+import { EmailMessage, EmailRepository } from '@common/server/email';
 import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -12,6 +13,9 @@ const authCookie = ['yucca-admin-sub=admin', 'yucca-admin-access-token=token'];
 
 describe('AllowlistController (e2e)', () => {
   let app: INestApplication<App>;
+  const sendBatch = jest.fn((messages: EmailMessage[]) =>
+    Promise.resolve(messages.map((message) => ({ to: message.to, errorCode: 0, message: 'OK' }))),
+  );
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -23,6 +27,8 @@ describe('AllowlistController (e2e)', () => {
       .useValue(newMetricServiceMock())
       .overrideProvider(OidcRepository)
       .useValue({ onModuleInit: jest.fn(), fetchUserInfo: jest.fn().mockResolvedValue({ sub: 'admin' }) })
+      .overrideProvider(EmailRepository)
+      .useValue({ send: jest.fn(), sendBatch })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -37,6 +43,7 @@ describe('AllowlistController (e2e)', () => {
 
   beforeEach(async () => {
     await testUtils.resetDatabase();
+    sendBatch.mockClear();
   });
 
   describe('GET /allowlist', () => {
@@ -163,6 +170,41 @@ describe('AllowlistController (e2e)', () => {
         expect.objectContaining({ id: staged.id, email: 'staged@example.com', invited: true }),
         expect.objectContaining({ email: 'fresh@example.com', invited: true }),
       ]);
+    });
+
+    it('emails invited entries and records the send', async () => {
+      const { body } = await request(app.getHttpServer())
+        .post('/api/allowlist/invite')
+        .set('Cookie', authCookie)
+        .send({ emails: ['fresh@example.com'] })
+        .expect(201);
+
+      expect(sendBatch).toHaveBeenCalledTimes(1);
+      const [messages] = sendBatch.mock.calls[0];
+      expect(messages[0]).toEqual(
+        expect.objectContaining({ to: 'fresh@example.com', tag: 'invite', subject: "You're invited to FUTO Backups" }),
+      );
+      expect(messages[0].htmlBody).toContain(body.items[0].inviteCode);
+      expect(body.items[0].inviteEmailSentAt).toEqual(expect.any(String));
+      await expect(testUtils.getAllowlistEntry('fresh@example.com')).resolves.toEqual(
+        expect.objectContaining({ inviteEmailSentAt: expect.any(Date) }),
+      );
+    });
+
+    it('does not resend to entries that already got their invite email', async () => {
+      await testUtils.createAllowlistEntry({
+        email: 'already@example.com',
+        invited: true,
+        inviteEmailSentAt: new Date('2026-08-01'),
+      });
+
+      await request(app.getHttpServer())
+        .post('/api/allowlist/invite')
+        .set('Cookie', authCookie)
+        .send({ emails: ['already@example.com'] })
+        .expect(201);
+
+      expect(sendBatch).not.toHaveBeenCalled();
     });
 
     it('leaves already-invited entries untouched', async () => {
