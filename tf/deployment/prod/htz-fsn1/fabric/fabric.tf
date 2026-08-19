@@ -101,10 +101,11 @@ module "core" {
     "10.40.10.13" = "69.48.224.243"
   }
 
-  # Upstream IP-transit, multi-homed: Core-Backbone is primary/default (prepend 0,
-  # default local-pref); Colt is the backup — our /24 goes out prepended once and
-  # its received default sits at a lower local-pref, so it only carries traffic
-  # when Core-Backbone is down. See core-fabric/transit.tf.
+  # Upstream IP-transit, multi-homed active-active for egress: both received
+  # defaults sit at the default local-pref and the groups run multipath
+  # multiple-as (core-fabric/transit.tf), so the chassis-global ECMP export
+  # (bgp-nodes.tf) hashes egress flows across both uplinks. Ingress still
+  # favors Core-Backbone while colt exports with prepend 1.
   local_as = 402421
   transits = {
     core-backbone = {
@@ -121,13 +122,12 @@ module "core" {
     # 69.48.224.0/22 le /24 from AS402421, so the /24 fits; widening past that
     # needs a Colt Online ticket.
     colt = {
-      interface  = "et-1/0/27"
-      local_v4   = "62.67.19.110/30"
-      peer_v4    = "62.67.19.109"
-      peer_as    = 8220
-      advertise  = "69.48.224.0/24"
-      prepend    = 1
-      local_pref = 90
+      interface = "et-1/0/27"
+      local_v4  = "62.67.19.110/30"
+      peer_v4   = "62.67.19.109"
+      peer_as   = 8220
+      advertise = "69.48.224.0/24"
+      prepend   = 1
     }
   }
 }
