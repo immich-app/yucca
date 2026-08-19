@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.32.0](https://github.com/immich-app/yucca/compare/v0.31.2...v0.32.0) (2026-08-19)
+
+
+### Features
+
+* **cnpg:** make better ([#496](https://github.com/immich-app/yucca/issues/496)) ([045491d](https://github.com/immich-app/yucca/commit/045491d4375332f1aa2690f7f69a30f348837519))
+
+
+### Bug Fixes
+
+* **o11y:** point alert rules and imported dashboards at the fleet datasource ([#502](https://github.com/immich-app/yucca/issues/502)) ([569c17f](https://github.com/immich-app/yucca/commit/569c17ff639dc6078e9ebb2f805034bb2967a590))
+
 ## [0.31.2](https://github.com/immich-app/yucca/compare/v0.31.1...v0.31.2) (2026-08-19)
 
 
