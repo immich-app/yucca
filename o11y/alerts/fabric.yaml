@@ -1,6 +1,11 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
 # Fabric series only ever come from the netops vmagent (cluster="netops");
-# spice's own health is alerted by cephadm's alertmanager, not here.
+# spice's own health is alerted by cephadm's alertmanager, not here. Every
+# instant selector is wrapped in last_over_time[5m]: Grafana evaluates with the
+# group interval as the query step, VictoriaMetrics treats step as the staleness
+# lookback, and the junos exporter's 60s cadence loses the race often enough
+# that a 5m `for` can never sustain — the rules sat Normal through a real
+# transit outage until wrapped.
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaAlertRuleGroup
 metadata:
@@ -47,8 +52,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              junos_bgp_session_up{cluster="netops", group!="cilium-nodes"} ==
-              bool 0
+              last_over_time(junos_bgp_session_up{cluster="netops",
+              group!="cilium-nodes"}[5m]) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -90,8 +95,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              sum(junos_bgp_session_up{cluster="netops",
-              group!="cilium-nodes"}) == bool 0
+              sum(last_over_time(junos_bgp_session_up{cluster="netops",
+              group!="cilium-nodes"}[5m])) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -133,8 +138,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              junos_bgp_session_up{cluster="netops", group="cilium-nodes"} ==
-              bool 0
+              last_over_time(junos_bgp_session_up{cluster="netops",
+              group="cilium-nodes"}[5m]) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -176,7 +181,9 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              sum by (target) (junos_alarms_red_count{cluster="netops"}) > 0
+              sum by (target)
+              (last_over_time(junos_alarms_red_count{cluster="netops"}[5m])) >
+              0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -217,8 +224,9 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              sum by (target) (junos_alarms_yellow_count{cluster="netops"}) >
-              0
+              sum by (target)
+              (last_over_time(junos_alarms_yellow_count{cluster="netops"}[5m]))
+              > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -306,7 +314,7 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              up{cluster="netops", job="junos"} == bool 0
+              last_over_time(up{cluster="netops", job="junos"}[5m]) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600

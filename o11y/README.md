@@ -126,13 +126,17 @@ Conventions:
   while firing (e.g. cert expiry alerts on seconds *inside* the warning
   window, which keeps growing past expiry, not seconds-to-expiry, which would
   go negative and stop firing).
-- **`intervalMs: 300000` on every query node, non-negotiable**: VictoriaMetrics
-  uses an instant query's `step` as its staleness lookback, and Grafana derives
-  that step from `intervalMs`. At Grafana's ~15s default, any metric scraped
-  less often than the step resolves to *no data* → `noDataState: OK` → the rule
-  sits Normal while the condition is true (this silently killed the junos
-  alerts, whose exporter scrapes at 60s). 5m restores Prometheus-standard
-  staleness for every cadence in the fleet.
+- **Wrap slow-cadence instant selectors in `last_over_time(...[5m])`**:
+  Grafana sends the rule group's evaluation interval as the instant query's
+  `step`, and VictoriaMetrics uses `step` as the staleness lookback (setting
+  `intervalMs` on the query model does NOT change it — measured). A metric
+  whose cadence is at or above the step loses that race often enough that a
+  multi-minute `for` can never sustain: the rule sits Normal via
+  `noDataState: OK` while the condition is true. This silently killed the
+  junos rules (60s NETCONF scrape) through a real transit outage. Range
+  vectors are immune, so `rate()`/`increase()` expressions need nothing;
+  every raw selector on a source slower than ~20s gets the wrap, and
+  absence guards use `absent(last_over_time(x[10m]))`.
 - **Guarded absence**: absence-style rules use
   `absent(x) and on() count(count_over_time(x[24h])) > 0` so an o11y instance
   that never receives that data (staging sees no fabric) never alarms, while
