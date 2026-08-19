@@ -1,0 +1,279 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+# Flux and cert-manager have no coverage anywhere else, and the three core k8s
+# rules exist because the o11y stock VMRules evaluate in vmalert whose
+# notifications are blackholed — Grafana alerting is the only delivery path, so
+# the essential signals are declared here, scoped to the yucca clusters.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-kubernetes
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    - uid: flux-reconciliation-failing
+      title: FluxReconciliationFailing
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: flux reconciliation failing
+        description: >-
+          {{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name
+          }} on {{ $labels.cluster }} has been failing to reconcile for 15m —
+          GitOps drift; deploys to that object are not landing.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              max by (cluster, kind, exported_namespace, name)
+              (gotk_reconcile_condition{type="Ready", status="False"}) == 1
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Value is seconds INSIDE the 14d window (positive once inside, keeps
+    # growing past expiry) — plain seconds-to-expiry goes negative after expiry
+    # and a gt-0 condition would stop firing exactly when it matters most.
+    - uid: cert-manager-cert-expiring-soon
+      title: CertManagerCertExpiringSoon
+      condition: B
+      for: 1h
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: certificate expiring in under 14d
+        description: >-
+          Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} on
+          {{ $labels.cluster }} expires in under 14 days and auto-renewal has
+          not replaced it — renewal is stuck.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              ((time() + 14 * 86400) - min by (cluster, exported_namespace,
+              name) (certmanager_certificate_expiration_timestamp_seconds)) >
+              0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: cert-manager-cert-not-ready
+      title: CertManagerCertNotReady
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: certificate not ready
+        description: >-
+          Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} on
+          {{ $labels.cluster }} has been not-Ready for 30m — issuance or
+          renewal is failing.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              max by (cluster, exported_namespace, name)
+              (certmanager_certificate_ready_status{condition="False"}) == 1
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: kube-node-not-ready
+      title: KubeNodeNotReady
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: node not ready
+        description: >-
+          Node {{ $labels.node }} on {{ $labels.cluster }} has been NotReady
+          for 15m.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              kube_node_status_condition{cluster=~"father|luke",
+              condition="Ready", status="true"} == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: kube-pod-crash-looping
+      title: KubePodCrashLooping
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: pod crash-looping
+        description: >-
+          Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container
+          }}) on {{ $labels.cluster }} restarted {{ humanize $values.A.Value
+          }} times in 30m.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              increase(kube_pod_container_status_restarts_total{cluster=~"father|luke"}[30m])
+              > 4
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: kube-pvc-filling-up
+      title: KubePVCFillingUp
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: PVC over 90% full
+        description: >-
+          PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} on
+          {{ $labels.cluster }} is {{ humanizePercentage $values.A.Value }}
+          full.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              (1 -
+              kubelet_volume_stats_available_bytes{cluster=~"father|luke"} /
+              kubelet_volume_stats_capacity_bytes{cluster=~"father|luke"}) >
+              0.9
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
