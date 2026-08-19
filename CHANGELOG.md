@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/immich-app/yucca/compare/v0.31.0...v0.31.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **alerts:** fix bad alerts ([#497](https://github.com/immich-app/yucca/issues/497)) ([756e6e0](https://github.com/immich-app/yucca/commit/756e6e080ee5c58b14f84d44a67218efbc9f6a8f))
+
 ## [0.31.0](https://github.com/immich-app/yucca/compare/v0.30.1...v0.31.0) (2026-08-19)
 
 
