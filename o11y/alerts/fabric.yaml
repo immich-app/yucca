@@ -12,12 +12,12 @@ spec:
       dashboards: grafana
   interval: 1m
   rules:
-    # Transit peers from tf/deployment/prod/htz-fsn1/fabric/fabric.tf:
-    # Core-Backbone AS33891 (5.56.17.224 v4 + 2a01:4a0:1338:226::1 v6,
-    # et-0/0/27) and Colt AS8220 (62.67.19.109, v4-only, et-1/0/27) — update the
-    # ip matchers here and in the two rules below when transits change. One
-    # session down is degraded redundancy (egress ECMPs across both, #488),
-    # hence warning; both v4 transits down is the critical below.
+    # The `group` label is the transits map key from
+    # tf/deployment/prod/htz-fsn1/fabric/fabric.tf (core-backbone, colt, …);
+    # matching on group!="cilium-nodes" (the bgp-nodes.tf iBGP group) covers
+    # future transits with no rule change. Critical even though egress ECMPs
+    # across both (#488): a down transit means the site is one failure from dark
+    # and a carrier is being paid for nothing.
     - uid: junos-transit-session-down
       title: JunosTransitSessionDown
       condition: B
@@ -26,7 +26,7 @@ spec:
       execErrState: Error
       isPaused: false
       labels:
-        severity: warning
+        severity: critical
       annotations:
         summary: transit BGP session down
         description: >-
@@ -47,8 +47,8 @@ spec:
             intervalMs: 1000
             maxDataPoints: 43200
             expr: >-
-              junos_bgp_session_up{cluster="netops",
-              ip=~"5.56.17.224|62.67.19.109|2a01:4a0:1338:226::1"} == bool 0
+              junos_bgp_session_up{cluster="netops", group!="cilium-nodes"} ==
+              bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -91,7 +91,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum(junos_bgp_session_up{cluster="netops",
-              ip=~"5.56.17.224|62.67.19.109"}) == bool 0
+              group!="cilium-nodes"}) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -115,11 +115,11 @@ spec:
       labels:
         severity: critical
       annotations:
-        summary: fabric BGP session down
+        summary: cilium iBGP session down (spine side)
         description: >-
-          BGP session on {{ $labels.target }} to {{ $labels.ip }} has been
-          down for 5m — Cilium iBGP or fabric-internal peering is lost on the
-          htz-fsn1 fabric; LB routes from that peer are withdrawn.
+          iBGP session on {{ $labels.target }} to worker {{ $labels.ip }} has
+          been down for 5m — LB routes from that node are withdrawn from the
+          htz-fsn1 fabric.
       data:
         - refId: A
           relativeTimeRange:
@@ -133,8 +133,8 @@ spec:
             intervalMs: 1000
             maxDataPoints: 43200
             expr: >-
-              junos_bgp_session_up{cluster="netops",
-              ip!~"5.56.17.224|62.67.19.109|2a01:4a0:1338:226::1"} == bool 0
+              junos_bgp_session_up{cluster="netops", group="cilium-nodes"} ==
+              bool 0
         - refId: B
           relativeTimeRange:
             from: 600

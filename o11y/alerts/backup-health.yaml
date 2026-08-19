@@ -58,7 +58,11 @@ spec:
                   params: [0]
                   type: gt
     # Systemic signal only: a single user with stale backups is customer
-    # support, a quarter of the fleet is an outage.
+    # support, a quarter of the fleet failing the product's core promise for 6h
+    # is an outage — critical even when request-level alerts stay quiet (e.g.
+    # clients failing before they ever reach michael). The >=10-user floor keeps
+    # a tiny early fleet (3 users at last check, one of them a stale test
+    # account) from holding this permanently firing.
     - uid: backup-fleet-stale
       title: BackupFleetStale
       condition: B
@@ -67,7 +71,7 @@ spec:
       execErrState: Error
       isPaused: false
       labels:
-        severity: warning
+        severity: critical
       annotations:
         summary: large share of users have stale backups
         description: >-
@@ -89,7 +93,8 @@ spec:
             expr: >-
               count(count by (user_id) ((time() - user_last_successful_backup)
               > 172800)) / count(count by (user_id)
-              (user_last_successful_backup)) > 0.25
+              (user_last_successful_backup)) > 0.25 and on() count(count by
+              (user_id) (user_last_successful_backup)) >= 10
         - refId: B
           relativeTimeRange:
             from: 600

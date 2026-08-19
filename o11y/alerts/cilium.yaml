@@ -54,9 +54,9 @@ spec:
                   params: [0]
                   type: gt
     # Counterpart of JunosBGPSessionDown (fabric.yaml): the same iBGP sessions
-    # seen from the k8s side. Metric name is the 1.16+ BGP control-plane family;
-    # verify against a live agent :9962 after a cilium upgrade if this ever
-    # reads as permanently-absent.
+    # seen from the k8s side, at the same severity so the two views agree.
+    # Verified live 2026-08-19: 3 established sessions, labels
+    # neighbor/neighbor_asn/vrouter (not peer_address).
     - uid: cilium-bgp-peer-down
       title: CiliumBGPPeerDown
       condition: B
@@ -65,13 +65,13 @@ spec:
       execErrState: Error
       isPaused: false
       labels:
-        severity: warning
+        severity: critical
       annotations:
         summary: cilium BGP session down
         description: >-
           BGP session from {{ $labels.pod }} ({{ $labels.cluster }}) to {{
-          $labels.peer_address }} has been down for 5m — LB routes from that
-          node are withdrawn from the fabric.
+          $labels.neighbor }} has been down for 5m — LB routes from that node
+          are withdrawn from the fabric.
       data:
         - refId: A
           relativeTimeRange:
@@ -85,7 +85,7 @@ spec:
             intervalMs: 1000
             maxDataPoints: 43200
             expr: >-
-              max by (cluster, pod, peer_address)
+              max by (cluster, pod, neighbor)
               (cilium_bgp_control_plane_session_state) == bool 0
         - refId: B
           relativeTimeRange:

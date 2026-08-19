@@ -342,7 +342,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               kube_deployment_status_replicas_available{namespace="yucca",
-              deployment="michael"} == bool 0
+              deployment="yucca-michael"} == bool 0
         - refId: B
           relativeTimeRange:
             from: 600

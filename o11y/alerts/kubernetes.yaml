@@ -14,8 +14,12 @@ spec:
       dashboards: grafana
   interval: 1m
   rules:
-    - uid: flux-reconciliation-failing
-      title: FluxReconciliationFailing
+    # Modern Flux dropped gotk_reconcile_condition (verified absent live);
+    # gotk_resource_info comes from kube-state-metrics customResourceState
+    # config in the vmagent HelmRelease — if this metric reads as absent, that
+    # config regressed and Flux ready-state alerting is blind.
+    - uid: flux-resource-not-ready
+      title: FluxResourceNotReady
       condition: B
       for: 15m
       noDataState: OK
@@ -24,11 +28,11 @@ spec:
       labels:
         severity: warning
       annotations:
-        summary: flux reconciliation failing
+        summary: flux resource not ready
         description: >-
-          {{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name
-          }} on {{ $labels.cluster }} has been failing to reconcile for 15m —
-          GitOps drift; deploys to that object are not landing.
+          {{ $labels.customresource_kind }} {{ $labels.exported_namespace
+          }}/{{ $labels.name }} on {{ $labels.cluster }} has been not-Ready
+          for 15m — GitOps drift; deploys to that object are not landing.
       data:
         - refId: A
           relativeTimeRange:
@@ -42,8 +46,52 @@ spec:
             intervalMs: 1000
             maxDataPoints: 43200
             expr: >-
-              max by (cluster, kind, exported_namespace, name)
-              (gotk_reconcile_condition{type="Ready", status="False"}) == 1
+              count by (cluster, customresource_kind, exported_namespace,
+              name) (gotk_resource_info{ready="False"}) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: flux-reconcile-errors
+      title: FluxReconcileErrors
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: flux controller reconcile errors
+        description: >-
+          Flux controller {{ $labels.pod }} on {{ $labels.cluster }} is
+          failing {{ humanize $values.A.Value }} reconciles/s sustained for
+          15m.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster, pod) (rate(
+              controller_runtime_reconcile_errors_total{namespace="flux-system"}[10m]))
+              > 0.02
         - refId: B
           relativeTimeRange:
             from: 600
@@ -264,6 +312,52 @@ spec:
               kubelet_volume_stats_available_bytes{cluster=~"father|luke"} /
               kubelet_volume_stats_capacity_bytes{cluster=~"father|luke"}) >
               0.9
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: kube-pvc-almost-full
+      title: KubePVCAlmostFull
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: PVC over 95% full
+        description: >-
+          PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} on
+          {{ $labels.cluster }} is {{ humanizePercentage $values.A.Value }}
+          full — a full volume takes its workload down (postgres, victoria
+          buffers).
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              (1 -
+              kubelet_volume_stats_available_bytes{cluster=~"father|luke"} /
+              kubelet_volume_stats_capacity_bytes{cluster=~"father|luke"}) >
+              0.95
         - refId: B
           relativeTimeRange:
             from: 600
