@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-cilium
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    - uid: cilium-agent-down
+      title: CiliumAgentDown
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: cilium agents unavailable
+        description: >-
+          {{ humanize $values.A.Value }} cilium agent pod(s) on {{
+          $labels.cluster }} have been unavailable for 10m — networking/policy
+          on those nodes is degraded.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              kube_daemonset_status_number_unavailable{namespace="kube-system",
+              daemonset="cilium"} > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Counterpart of JunosBGPSessionDown (fabric.yaml): the same iBGP sessions
+    # seen from the k8s side, at the same severity so the two views agree.
+    # Verified live 2026-08-19: 3 established sessions, labels
+    # neighbor/neighbor_asn/vrouter (not peer_address).
+    - uid: cilium-bgp-peer-down
+      title: CiliumBGPPeerDown
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: cilium BGP session down
+        description: >-
+          BGP session from {{ $labels.pod }} ({{ $labels.cluster }}) to {{
+          $labels.neighbor }} has been down for 5m — LB routes from that node
+          are withdrawn from the fabric.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              max by (cluster, pod, neighbor)
+              (cilium_bgp_control_plane_session_state) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt

@@ -1,0 +1,358 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-michael
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    # 4xx is normal restic traffic (existence probes HEAD/GET missing blobs
+    # return 404), so the error ratio is 5xx-only.
+    - uid: michael-high-error-ratio
+      title: MichaelHighErrorRatio
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: michael is failing requests
+        description: >-
+          michael on {{ $labels.cluster }} is returning 5xx for {{
+          humanizePercentage $values.A.Value }} of requests over the last 10m.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster) (rate({__name__="http.server.request.errors",
+              status=~"5.."}[5m])) / sum by (cluster)
+              (rate({__name__="http.server.request.count"}[5m])) > 0.05
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: michael-severe-error-ratio
+      title: MichaelSevereErrorRatio
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: michael is failing most requests
+        description: >-
+          michael on {{ $labels.cluster }} is returning 5xx for {{
+          humanizePercentage $values.A.Value }} of requests — backups are
+          effectively down.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster) (rate({__name__="http.server.request.errors",
+              status=~"5.."}[5m])) / sum by (cluster)
+              (rate({__name__="http.server.request.count"}[5m])) > 0.2
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: michael-backend-unhealthy
+      title: MichaelBackendUnhealthy
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: RGW backend ejected from the michael pool
+        description: >-
+          RGW backend {{ $labels.backend }} ({{ $labels.cluster }}) has been
+          ejected from michael's S3 pool for 5m (consecutive transport
+          failures or failed probe).
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              min by (cluster, backend) ({__name__="s3.backend.healthy"}) ==
+              bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: michael-all-backends-unhealthy
+      title: MichaelAllBackendsUnhealthy
+      condition: B
+      for: 2m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: no healthy RGW backend
+        description: >-
+          michael on {{ $labels.cluster }} has NO healthy RGW backend in its
+          pool — every backup request is failing.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster) (max by (cluster, backend)
+              ({__name__="s3.backend.healthy"})) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: michael-storage-op-failures
+      title: MichaelStorageOpFailures
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: sustained RGW storage-op failures
+        description: >-
+          michael on {{ $labels.cluster }} is failing {{ humanize
+          $values.A.Value }} {{ $labels.operation }} storage operations per
+          second against RGW, sustained for 10m.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster, operation)
+              (rate({__name__="storage.backend.errors"}[5m])) > 0.1
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: michael-unknown-storage-cluster
+      title: MichaelUnknownStorageCluster
+      condition: B
+      for: 0s
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: tokens reference an unknown storage cluster
+        description: >-
+          michael on {{ $labels.cluster }} rejected {{ humanize
+          $values.A.Value }} requests in 10m whose token names a storage
+          cluster this michael does not front — topology/config mismatch;
+          every hit is a failed backup.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster)
+              (increase({__name__="storage.cluster.unknown"}[10m])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: michael-high-ttfb
+      title: MichaelHighTTFB
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: michael p99 TTFB above 10s
+        description: >-
+          michael on {{ $labels.cluster }} p99 time-to-first-byte is {{
+          humanize $values.A.Value }}s over 10m — michael or RGW is slow
+          (client link speed is excluded from TTFB).
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              histogram_quantile(0.99, sum by (cluster, le)
+              (rate({__name__="http.server.request.ttfb_bucket"}[10m]))) > 10
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: michael-down
+      title: MichaelDown
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: michael has no available replicas
+        description: >-
+          The michael deployment on {{ $labels.cluster }} has zero available
+          replicas — the restic gateway is down.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              kube_deployment_status_replicas_available{namespace="yucca",
+              deployment="yucca-michael"} == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt

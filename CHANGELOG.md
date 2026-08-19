@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.31.1](https://github.com/immich-app/yucca/compare/v0.31.0...v0.31.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **alerts:** fix bad alerts ([#497](https://github.com/immich-app/yucca/issues/497)) ([756e6e0](https://github.com/immich-app/yucca/commit/756e6e080ee5c58b14f84d44a67218efbc9f6a8f))
+
+## [0.31.0](https://github.com/immich-app/yucca/compare/v0.30.1...v0.31.0) (2026-08-19)
+
+
+### Features
+
+* **ceph:** install hdparm on every ceph node ([#479](https://github.com/immich-app/yucca/issues/479)) ([5eb353a](https://github.com/immich-app/yucca/commit/5eb353a4988f8aef2f88468bcaca58a90e52dbc5))
+* **ceph:** rebuild a replaced OSD onto its intended db slot ([#462](https://github.com/immich-app/yucca/issues/462)) ([48d09d7](https://github.com/immich-app/yucca/commit/48d09d79afd182c9c05b67fc1544798f35c10f3f))
+* **net:** add colt ([#488](https://github.com/immich-app/yucca/issues/488)) ([ee43e55](https://github.com/immich-app/yucca/commit/ee43e55a2b12a05b03b176efdbe6b5c141760222))
+* UI redesign (pt. 2) ([#477](https://github.com/immich-app/yucca/issues/477)) ([2d0fb98](https://github.com/immich-app/yucca/commit/2d0fb98666ccb70ab756e4ede9595fca5691c8a9))
+
+
+### Bug Fixes
+
+* **ceph:** deliver recovery progress and repeat chronic alerts every 12h ([#487](https://github.com/immich-app/yucca/issues/487)) ([d5972ef](https://github.com/immich-app/yucca/commit/d5972ef9807c664e73811313b2888345857bc5bb))
+* **ceph:** group alertmanager notifications by pool ([#463](https://github.com/immich-app/yucca/issues/463)) ([9091c1f](https://github.com/immich-app/yucca/commit/9091c1fc9d3546b9501cce2172a655246f3c8175))
+* **ceph:** inhibit CephPGsUnclean while backfill is moving ([#484](https://github.com/immich-app/yucca/issues/484)) ([fc0b712](https://github.com/immich-app/yucca/commit/fc0b712a24ad4cbabff44fced099129bce9dd9c2))
+* **ci:** point prettierignore at the moved yuctl warp manifests ([#486](https://github.com/immich-app/yucca/issues/486)) ([edd740e](https://github.com/immich-app/yucca/commit/edd740e95a4c0bf24fd7307808e8a6efb08e44b0))
+
 ## [0.30.1](https://github.com/immich-app/yucca/compare/v0.30.0...v0.30.1) (2026-08-12)
 
 

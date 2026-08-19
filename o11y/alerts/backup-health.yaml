@@ -1,0 +1,112 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-backup-health
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    # The `and on() count(count_over_time(...))` guard scopes absence to
+    # environments where the metric recently existed, so an o11y instance that
+    # never receives this data (or a decommissioned source) does not alarm
+    # forever; the alert auto-resolves 24h after the data stopped.
+    - uid: rgw-meter-stale
+      title: RgwMeterStale
+      condition: B
+      for: 20m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: RGW usage metering stopped
+        description: >-
+          rgw_repository_size_bytes has not been written for 20m — the
+          yucca-metrics-worker usage sync (5m cron) is failing; billing meters
+          and capacity data are going stale.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              absent(last_over_time(rgw_repository_size_bytes[10m])) and on()
+              count(count_over_time(rgw_repository_size_bytes[24h])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Systemic signal only: a single user with stale backups is customer
+    # support, a quarter of the fleet failing the product's core promise for 6h
+    # is an outage — critical even when request-level alerts stay quiet (e.g.
+    # clients failing before they ever reach michael). The >=10-user floor keeps
+    # a tiny early fleet (3 users at last check, one of them a stale test
+    # account) from holding this permanently firing.
+    - uid: backup-fleet-stale
+      title: BackupFleetStale
+      condition: B
+      for: 6h
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: large share of users have stale backups
+        description: >-
+          {{ humanizePercentage $values.A.Value }} of users have had no
+          successful backup for over 48h — likely a systemic backup-path
+          problem rather than individual clients.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              count(count by (user_id) ((time() -
+              last_over_time(user_last_successful_backup[10m])) > 172800)) /
+              count(count by (user_id)
+              (last_over_time(user_last_successful_backup[10m]))) > 0.25 and
+              on() count(count by (user_id)
+              (last_over_time(user_last_successful_backup[10m]))) >= 10
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
