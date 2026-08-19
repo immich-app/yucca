@@ -141,9 +141,9 @@ Conventions:
 | `michael.yaml` | 5xx ratio, RGW backend pool ejection, storage-op failures, unknown storage cluster, p99 TTFB, outage |
 | `yucca-services.yaml` | API 5xx ratio, zero-replica outage of any yucca deployment |
 | `backup-health.yaml` | metering pipeline stale, fleet-wide backup staleness (systemic only) |
-| `kubernetes.yaml` | flux reconciliation, cert-manager expiry/readiness, node not ready, crashloops, PVC fill (father+luke) |
+| `kubernetes.yaml` | flux reconciliation, cert-manager expiry/readiness, node not ready, crashloops, PVC fill 90% warning / 95% critical (father+luke) |
 | `cilium.yaml` | agent daemonset, BGP control-plane sessions (k8s side of the fabric peering) |
-| `fabric.yaml` | transit BGP per-carrier (one down = warning, both v4 transits down = critical; peer IPs pinned from `fabric.tf`), other BGP sessions, chassis alarms, interface errors, exporter/sFlow liveness |
+| `fabric.yaml` | transit BGP per-carrier (critical; peer IPs pinned from `fabric.tf`), all-transits-down, other BGP sessions, chassis alarms, interface errors, exporter/sFlow liveness |
 | `telemetry.yaml` | per-cluster "stopped shipping metrics" (father/luke/netops/spice) |
 
 Known gaps (no metric exists yet): michael token-introspection outages and

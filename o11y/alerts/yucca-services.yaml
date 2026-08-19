@@ -53,7 +53,10 @@ spec:
                   params: [0]
                   type: gt
     # Sharper than the stock KubeDeploymentReplicasMismatch: zero available
-    # replicas of a product service is an outage, not a mismatch.
+    # replicas of a product service is an outage, not a mismatch. Deployment
+    # names verified live 2026-08-19 (all yucca-prefixed; michael has its own
+    # rule; the platform valkey has no deployment in the yucca namespace yet —
+    # add it here when it lands).
     - uid: yucca-service-down
       title: YuccaServiceDown
       condition: B
@@ -82,7 +85,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               kube_deployment_status_replicas_available{namespace="yucca",
-              deployment=~"yucca-api|yucca-admin-api|web|yucca-metrics-worker|redis"}
+              deployment=~"yucca-api|yucca-admin-api|yucca-web|yucca-meta|yucca-metrics-worker"}
               == bool 0
         - refId: B
           relativeTimeRange:
