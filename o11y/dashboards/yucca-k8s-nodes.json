@@ -3740,10 +3740,14 @@
         "type": "datasource",
         "query": "prometheus",
         "label": "Datasource",
-        "current": {},
+        "current": {
+          "selected": true,
+          "text": "VictoriaMetrics Fleet",
+          "value": "VictoriaMetricsFleet"
+        },
         "options": [],
         "refresh": 1,
-        "regex": "",
+        "regex": "/^VictoriaMetrics Fleet$/",
         "hide": 0
       },
       {

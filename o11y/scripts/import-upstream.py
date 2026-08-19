@@ -162,10 +162,10 @@ def process(uid, url, title, inject, anchor, tags, drop):
             "type": "datasource",
             "query": "prometheus",
             "label": "Datasource",
-            "current": {},
+            "current": {"selected": True, "text": "VictoriaMetrics Fleet", "value": "VictoriaMetricsFleet"},
             "options": [],
             "refresh": 1,
-            "regex": "",
+            "regex": "/^VictoriaMetrics Fleet$/",
             "hide": 0,
         },
     )

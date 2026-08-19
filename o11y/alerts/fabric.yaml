@@ -44,7 +44,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -87,7 +87,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -130,7 +130,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -173,7 +173,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -216,7 +216,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -260,7 +260,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -306,7 +306,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -350,7 +350,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
