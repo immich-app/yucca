@@ -233,8 +233,15 @@
         # that pool's CephPGsUnclean, which otherwise fires for the whole of a
         # backfill: more than a day per rebuilt 22 TB OSD, on PGs Ceph itself
         # reports as misplaced. A pool with unclean PGs and nothing moving them
-        # still warns. The operator route takes only warning and critical, so
-        # the source alert ends at the dashboard; no stock rule carries info.
+        # still warns.
+        #
+        # Two operator routes. The first takes the chronic, slow-moving alerts
+        # (recovery in progress, unclean, not scrubbed) at a 12h repeat: each
+        # still notifies on start and on resolve, but a day-long backfill or a
+        # week-long scrub catch-up is a handful of messages, not one an hour.
+        # The second takes every other warning and critical at the stock 1h.
+        # Info alerts outside the first route stop at the dashboard; no stock
+        # rule carries info.
         OVERRIDES.append({
             "service": "alertmanager",
             "template": "alertmanager/alertmanager.yml.j2",
@@ -250,6 +257,13 @@
                     "find": "      receiver: 'ceph-dashboard'\n",
                     "replace": "      receiver: 'ceph-dashboard'\n"
                                "      continue: true\n"
+                               "    - group_by: ['alertname', 'pool_id']\n"
+                               "      group_wait: 10s\n"
+                               "      group_interval: 10s\n"
+                               "      repeat_interval: 12h\n"
+                               "      receiver: 'default'\n"
+                               "      matchers:\n"
+                               "        - alertname =~ \"CephRecoveryInProgress|CephPGsUnclean|CephPGNotScrubbed|CephPGNotDeepScrubbed\"\n"
                                "    - group_by: ['alertname', 'pool_id']\n"
                                "      group_wait: 10s\n"
                                "      group_interval: 10s\n"
