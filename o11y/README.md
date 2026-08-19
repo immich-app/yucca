@@ -38,6 +38,32 @@ BGP health with per-transit uplink bandwidth (Core-Backbone `et-0/0/27`, Colt
 `et-1/0/27`), michael TTFB/backend errors, and a Kubernetes health row across
 father + luke.
 
+## Logs dashboards
+
+One per service, built on the `$logs_datasource` (VictoriaLogs) variable plus
+a custom `cluster` var and LogsQL textboxes (`$search` free-form filter;
+`$request_id` on the request-serving services). Every query was validated
+against the live VictoriaLogs before landing; query types are the plugin's
+real enum (`instant` for streams/tables, `statsRange` for time series, `hits`
+for the by-level volume histograms) — NOT the `raw_logs` fallback. These
+dashboards deliberately carry no prometheus `$datasource` variable so the
+linter's PromQL rule stays away from LogsQL.
+
+| File (= uid) | Service | Beyond the common set (volume by level/pod, error stream + top messages, live stream) |
+| --- | --- | --- |
+| `yucca-logs-yucca-api.json` | yucca-api | status_code breakdown, top handlers with avg latency, slowest requests, 5xx lines — request lines are SAMPLED |
+| `yucca-logs-admin-api.json` | yucca-admin-api | same as yucca-api |
+| `yucca-logs-michael.json` | michael | requests by status, top routes/users/source networks with bytes, slowest requests |
+| `yucca-logs-web.json` | web | unstructured stdout; keyword-based error detection |
+| `yucca-logs-metrics-worker.json` | yucca-metrics-worker | sync-run markers (5m cron heartbeat) + sync log |
+| `yucca-logs-meta.json` | meta | nginx access lines; 4xx/5xx via regex |
+
+Log-level conventions baked into the queries: pino services log numeric
+levels as strings (`30` info / `40` warn / `50` error / `60` fatal), michael
+logs zerolog strings (`info`/`warn`/`error`), web and meta have no level
+field (keyword heuristics). Regex filters use LogsQL backtick strings —
+single-quoted regex strings fail to parse.
+
 ## Imported dashboards
 
 The generic service dashboards are imported from upstream by
