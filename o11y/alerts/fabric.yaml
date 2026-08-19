@@ -12,21 +12,28 @@ spec:
       dashboards: grafana
   interval: 1m
   rules:
-    - uid: junos-bgp-session-down
-      title: JunosBGPSessionDown
+    # Transit peers from tf/deployment/prod/htz-fsn1/fabric/fabric.tf:
+    # Core-Backbone AS33891 (5.56.17.224 v4 + 2a01:4a0:1338:226::1 v6,
+    # et-0/0/27) and Colt AS8220 (62.67.19.109, v4-only, et-1/0/27) — update the
+    # ip matchers here and in the two rules below when transits change. One
+    # session down is degraded redundancy (egress ECMPs across both, #488),
+    # hence warning; both v4 transits down is the critical below.
+    - uid: junos-transit-session-down
+      title: JunosTransitSessionDown
       condition: B
       for: 5m
       noDataState: OK
       execErrState: Error
       isPaused: false
       labels:
-        severity: critical
+        severity: warning
       annotations:
-        summary: fabric BGP session down
+        summary: transit BGP session down
         description: >-
-          BGP session on {{ $labels.target }} to {{ $labels.ip }} has been
-          down for 5m — transit or Cilium iBGP peering is lost on the htz-fsn1
-          fabric.
+          Transit BGP session on {{ $labels.target }} to {{ $labels.ip }} has
+          been down for 5m — egress ECMP is degraded and the site is
+          single-homed on the remaining transit; ingress via the down carrier
+          is rerouting.
       data:
         - refId: A
           relativeTimeRange:
@@ -40,7 +47,94 @@ spec:
             intervalMs: 1000
             maxDataPoints: 43200
             expr: >-
-              junos_bgp_session_up{cluster="netops"} == bool 0
+              junos_bgp_session_up{cluster="netops",
+              ip=~"5.56.17.224|62.67.19.109|2a01:4a0:1338:226::1"} == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-all-transits-down
+      title: JunosAllTransitsDown
+      condition: B
+      for: 2m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: all IP transits down
+        description: >-
+          Both v4 transit BGP sessions (Core-Backbone and Colt) are down —
+          htz-fsn1 has no IP transit; the public /24 is unreachable and egress
+          is dead.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              sum(junos_bgp_session_up{cluster="netops",
+              ip=~"5.56.17.224|62.67.19.109"}) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-bgp-session-down
+      title: JunosBGPSessionDown
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: fabric BGP session down
+        description: >-
+          BGP session on {{ $labels.target }} to {{ $labels.ip }} has been
+          down for 5m — Cilium iBGP or fabric-internal peering is lost on the
+          htz-fsn1 fabric; LB routes from that peer are withdrawn.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetrics
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 1000
+            maxDataPoints: 43200
+            expr: >-
+              junos_bgp_session_up{cluster="netops",
+              ip!~"5.56.17.224|62.67.19.109|2a01:4a0:1338:226::1"} == bool 0
         - refId: B
           relativeTimeRange:
             from: 600

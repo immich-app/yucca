@@ -1368,12 +1368,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": 0
               },
               {
                 "color": "yellow",
                 "value": 1
+              },
+              {
+                "color": "green",
+                "value": 2
               }
             ]
           },
@@ -1410,10 +1414,10 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "count(sum by (target, name) (rate(junos_interface_receive_errors{cluster=\"netops\"}[5m]) + rate(junos_interface_transmit_errors{cluster=\"netops\"}[5m])) > 0)"
+          "expr": "sum(junos_bgp_session_up{cluster=\"netops\", ip=~\"5.56.17.224|62.67.19.109\"})"
         }
       ],
-      "title": "Fabric ports erroring",
+      "title": "Transit sessions up (v4)",
       "type": "stat"
     },
     {
@@ -1468,6 +1472,111 @@
         "y": 29
       },
       "id": 23,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "rate(junos_interface_receive_bytes{cluster=\"netops\", name=\"et-0/0/27\"}[2m]) * 8",
+          "legendFormat": "Core-Backbone in"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "expr": "rate(junos_interface_transmit_bytes{cluster=\"netops\", name=\"et-0/0/27\"}[2m]) * 8",
+          "legendFormat": "Core-Backbone out"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "C",
+          "expr": "rate(junos_interface_receive_bytes{cluster=\"netops\", name=\"et-1/0/27\"}[2m]) * 8",
+          "legendFormat": "Colt in"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "D",
+          "expr": "rate(junos_interface_transmit_bytes{cluster=\"netops\", name=\"et-1/0/27\"}[2m]) * 8",
+          "legendFormat": "Colt out"
+        }
+      ],
+      "title": "Transit uplink bandwidth",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "id": 24,
       "options": {
         "legend": {
           "calcs": [
@@ -1552,11 +1661,11 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 29
+        "w": 12,
+        "x": 0,
+        "y": 37
       },
-      "id": 24,
+      "id": 25,
       "options": {
         "legend": {
           "calcs": [
@@ -1633,11 +1742,11 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 29
+        "w": 12,
+        "x": 12,
+        "y": 37
       },
-      "id": 25,
+      "id": 26,
       "options": {
         "legend": {
           "calcs": [
@@ -1689,9 +1798,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 45
       },
-      "id": 26,
+      "id": 27,
       "panels": [],
       "title": "Michael (restic gateway)",
       "type": "row"
@@ -1745,9 +1854,9 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 38
+        "y": 46
       },
-      "id": 27,
+      "id": 28,
       "options": {
         "legend": {
           "calcs": [
@@ -1842,9 +1951,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 38
+        "y": 46
       },
-      "id": 28,
+      "id": 29,
       "options": {
         "legend": {
           "calcs": [
@@ -1923,9 +2032,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 38
+        "y": 46
       },
-      "id": 29,
+      "id": 30,
       "options": {
         "legend": {
           "calcs": [
@@ -1961,9 +2070,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 46
+        "y": 54
       },
-      "id": 30,
+      "id": 31,
       "panels": [],
       "title": "Kubernetes (father + luke)",
       "type": "row"
@@ -1995,9 +2104,9 @@
         "h": 5,
         "w": 4,
         "x": 0,
-        "y": 47
+        "y": 55
       },
-      "id": 31,
+      "id": 32,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -2057,9 +2166,9 @@
         "h": 5,
         "w": 4,
         "x": 4,
-        "y": 47
+        "y": 55
       },
-      "id": 32,
+      "id": 33,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -2119,9 +2228,9 @@
         "h": 5,
         "w": 4,
         "x": 8,
-        "y": 47
+        "y": 55
       },
-      "id": 33,
+      "id": 34,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -2181,9 +2290,9 @@
         "h": 5,
         "w": 4,
         "x": 12,
-        "y": 47
+        "y": 55
       },
-      "id": 34,
+      "id": 35,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -2243,9 +2352,9 @@
         "h": 5,
         "w": 4,
         "x": 16,
-        "y": 47
+        "y": 55
       },
-      "id": 35,
+      "id": 36,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -2305,9 +2414,9 @@
         "h": 5,
         "w": 4,
         "x": 20,
-        "y": 47
+        "y": 55
       },
-      "id": 36,
+      "id": 37,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -2384,9 +2493,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 60
       },
-      "id": 37,
+      "id": 38,
       "options": {
         "legend": {
           "calcs": [
@@ -2466,9 +2575,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 52
+        "y": 60
       },
-      "id": 38,
+      "id": 39,
       "options": {
         "legend": {
           "calcs": [
@@ -2549,9 +2658,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 60
+        "y": 68
       },
-      "id": 39,
+      "id": 40,
       "options": {
         "legend": {
           "calcs": [
@@ -2630,9 +2739,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 60
+        "y": 68
       },
-      "id": 40,
+      "id": 41,
       "options": {
         "legend": {
           "calcs": [
@@ -2696,5 +2805,5 @@
   "timezone": "",
   "title": "Yucca: Product overview",
   "uid": "yucca-overview",
-  "version": 2
+  "version": 3
 }
