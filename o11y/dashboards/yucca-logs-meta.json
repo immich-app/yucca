@@ -753,7 +753,7 @@
             "uid": "$logs_datasource"
           },
           "refId": "A",
-          "expr": "{kubernetes.container_name=\"meta\"} cluster:=\"$cluster\" _msg:~`HTTP/1.[01]\" 5\\d\\d ` | stats count()",
+          "expr": "{kubernetes.container_name=\"meta\"} cluster:=\"$cluster\" status:>=500 | stats count()",
           "queryType": "statsRange",
           "legendFormat": "5xx"
         }
@@ -837,7 +837,7 @@
             "uid": "$logs_datasource"
           },
           "refId": "A",
-          "expr": "{kubernetes.container_name=\"meta\"} cluster:=\"$cluster\" _msg:~`HTTP/1.[01]\" 4\\d\\d ` | stats count()",
+          "expr": "{kubernetes.container_name=\"meta\"} cluster:=\"$cluster\" status:>=400 status:<500 | stats count()",
           "queryType": "statsRange",
           "legendFormat": "4xx"
         }
