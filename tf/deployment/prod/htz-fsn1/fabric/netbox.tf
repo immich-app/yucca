@@ -49,7 +49,7 @@ module "netbox" {
     worker_egress    = { prefix = "69.48.224.240/29", description = "father worker fabric-egress SNAT IPs (.241 jeanne, .242 sheron, .243 dianna)" }
     spine_loopback   = { prefix = "69.48.224.254/32", description = "spine lo0 (sFlow agent-id, LG source)" }
     transit_p2p      = { prefix = "5.56.17.224/31", description = "Core-Backbone transit /31 (spine et-0/0/27)" }
-    transit_p2p_colt = { prefix = "62.67.19.108/30", description = "Colt transit /30 (spine et-1/0/27, v4-only; .109 Colt, .110 us)" }
+    transit_p2p_colt = { prefix = "62.67.19.108/30", description = "Colt transit /30 (spine et-1/0/27, 100GBASE-LR4, v4-only; .109 Colt, .110 us)" }
   }
 
   devices = {

@@ -120,12 +120,14 @@ module "core" {
     }
     # v4-only handover (no v6 delivered). Colt's inbound route filter accepts
     # 69.48.224.0/22 le /24 from AS402421, so the /24 fits; widening past that
-    # needs a Colt Online ticket.
+    # needs a Colt Online ticket. Client is 100GBE (Colt transport, LAN-WDM):
+    # the port needs a QSFP28-100G-LR4 — a 40G-LR4 (CWDM) shows two dark lanes
+    # and never links (2026-08 turn-up).
     colt = {
       interface = "et-1/0/27"
       local_v4  = "62.67.19.110/30"
       peer_v4   = "62.67.19.109"
-      peer_as   = 8220
+      peer_as   = 3356
       advertise = "69.48.224.0/24"
       prepend   = 1
     }
@@ -164,10 +166,13 @@ locals {
   netops_classes = {
     netops-ro = { permissions = ["view", "view-configuration", "network"] }
   }
+  # uid must not collide with the identity registry's uids (3000+ are humans):
+  # Junos merges same-uid logins into one user, which downgraded nutgood
+  # (super-user, uid 3000) into this read-only class until netops moved to 3100.
   netops_users = {
     netops = {
       class            = "netops-ro"
-      uid              = 3000
+      uid              = 3100
       full_name        = "netops read-only (exporter/LG/backup)"
       ssh_ed25519_keys = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJSaBWwn5kKONxc0bc1w39xYBeBFAuqRWzMQTBM0xCmb netops@father"]
       # For password-only tools (hyperglass/netmiko). Hash injected from 1P.
