@@ -15,6 +15,15 @@ variable "users" {
     # glass). Source it from 1Password via a TF var — never commit even the hash.
     encrypted_password = optional(string)
   }))
+
+  # Junos aliases same-uid logins into ONE user: whoever authenticates gets the
+  # merged user's class, so a collision silently reassigns rights (a super-user
+  # key landing in a read-only class, as happened with nutgood/netops both at
+  # uid 3000).
+  validation {
+    condition = length(distinct([for u in var.users : u.uid if u.uid != null])) == length([for u in var.users : u.uid if u.uid != null])
+    error_message = "Duplicate uid across login users: Junos treats same-uid logins as one user and silently merges their classes/keys. Give every user a unique uid."
+  }
 }
 
 variable "classes" {
