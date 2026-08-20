@@ -1,0 +1,38 @@
+{{- /*
+Replaces the image's stock conf.d/default.conf: the same static server, but
+the access log is JSON — victoria-logs-collector parses it into fields — and
+records X-Forwarded-For, since behind the gateway $remote_addr is only the
+envoy pod. Unlike the well-known ConfigMap, nginx reads config only at
+startup, so edits here need a rollout to take effect.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yucca-common.fullname" . }}-nginx
+  labels:
+    {{- include "yucca-common.labels" . | nindent 4 }}
+data:
+  default.conf: |
+    log_format access_json escape=json '{'
+        '"time":"$time_iso8601",'
+        '"message":"$request",'
+        '"remote_addr":"$remote_addr",'
+        '"x_forwarded_for":"$http_x_forwarded_for",'
+        '"method":"$request_method",'
+        '"uri":"$request_uri",'
+        '"status":$status,'
+        '"size":$body_bytes_sent,'
+        '"user_agent":"$http_user_agent"'
+    '}';
+
+    server {
+        listen      8080;
+        server_name _;
+
+        access_log /var/log/nginx/access.log access_json;
+
+        location / {
+            root  /usr/share/nginx/html;
+            index index.html;
+        }
+    }
