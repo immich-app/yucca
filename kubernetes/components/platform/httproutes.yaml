@@ -1,24 +1,25 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# Dedicated michael (restic) gateway — see ../gw-proxy/. Separate from the app
-# gateway so the backup data plane (60+ Gbps target) scales independently.
+# HTTPRoutes live in the yucca namespace (alongside their backend Services);
+# web/api attach to the app gateway, gw to the michael gateway
+# (GW_PARENT_GATEWAY selects the parent). Reconciled after both gateways.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: gw-proxy
+  name: httproutes
   namespace: flux-system
 spec:
   dependsOn:
-    - name: envoy-gateway
-    - name: cert-manager-issuer
+    - name: envoy-proxy
+    - name: gw-proxy
   interval: 1h
   retryInterval: 2m
-  timeout: 10m
-  path: ./kubernetes/apps/prod/htz-fsn1/gw-proxy
+  timeout: 5m
+  path: ./kubernetes/apps/base/httproutes
   prune: true
   wait: true
   sourceRef:
     kind: GitRepository
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
-  targetNamespace: envoy-system
+  targetNamespace: yucca

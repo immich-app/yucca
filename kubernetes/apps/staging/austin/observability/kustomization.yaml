@@ -1,0 +1,8 @@
+---
+# staging@austin observability overlay — the shared components/observability
+# slice, unpatched: staging keeps the authed public futostatus egress the base
+# manifests ship (father repoints at o11y's mesh vmauth in its overlay).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../../components/observability

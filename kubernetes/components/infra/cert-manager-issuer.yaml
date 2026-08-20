@@ -1,23 +1,20 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# HTTPRoutes live in the yucca namespace (alongside their backend Services) and
-# attach to the envoy Gateway. Reconciled after the Gateway + the app Services.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: httproutes
+  name: cert-manager-issuer
   namespace: flux-system
 spec:
   dependsOn:
-    - name: envoy-proxy
+    - name: cert-manager
   interval: 1h
   retryInterval: 2m
-  timeout: 5m
-  path: ./kubernetes/apps/base/httproutes
+  timeout: 10m
+  path: ./kubernetes/apps/base/cert-manager-issuer
   prune: true
   wait: true
   sourceRef:
     kind: GitRepository
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
-  targetNamespace: yucca

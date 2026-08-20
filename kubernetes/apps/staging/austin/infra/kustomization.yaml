@@ -1,0 +1,41 @@
+---
+# staging@austin INFRA layer — the shared operator set (components/infra) plus
+# this cluster's namespaces, applied by the `cluster-infra` Flux Kustomization
+# (clusters/staging/austin/apps.yaml) that `cluster-apps` dependsOn — same
+# fresh-cluster dry-run deadlock dodge as father.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./namespace-cert-manager.yaml
+  - ./namespace-envoy-system.yaml
+  - ./namespace-cnpg-system.yaml
+  - ./namespace-openebs-system.yaml
+  - ./namespace-spegel-system.yaml
+components:
+  - ../../../../components/infra
+patches:
+  # STAGING TOPOLOGY: Austin has ONE public entry (the NAT in front of
+  # ${INGRESS_VIP}), so the gw Gateway can't get its own VIP like father's.
+  # mergeGateways folds every Gateway of the class into the app fleet instead:
+  # gw's listener rides the same Service/VIP, SNI-demuxed against the app
+  # wildcard (exact hostname wins). The per-gateway EnvoyProxy side is dropped
+  # in ../gw-proxy.
+  - target:
+      group: kustomize.toolkit.fluxcd.io
+      kind: Kustomization
+      name: envoy-proxy
+    patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: envoy-proxy
+      spec:
+        patches:
+          - target:
+              group: gateway.envoyproxy.io
+              kind: EnvoyProxy
+              name: envoy
+            patch: |-
+              - op: add
+                path: /spec/mergeGateways
+                value: true

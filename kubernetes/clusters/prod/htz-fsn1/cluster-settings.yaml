@@ -15,6 +15,10 @@ data:
   MANIFEST_SOURCE: flux-release
   CHART_SOURCE: flux-release
 
+  # This cluster's dir under kubernetes/apps/ — the shared components/platform
+  # Kustomizations (gw-proxy, observability) point their paths through it.
+  CLUSTER_PATH: prod/htz-fsn1
+
   # Production Zitadel instance; clients in 1P (CUSTOMER_ZITADEL_OAUTH_*).
   OIDC_ISSUER: https://external-prod-r5dlf0.us1.zitadel.cloud
 
@@ -77,6 +81,9 @@ data:
   # ─── OpenEBS (shared apps/base/openebs, see the father openebs wrapper) ──
   # Mayastor ON: openebs-replicated (repl=2) on the r-mayastor partitions.
   # LocalPV on the u-localpv xfs partition (node-local; CNPG replicates itself).
+  # father predates the shared openebs-system namespace; the helm release +
+  # Mayastor state live in `openebs` and renaming would churn storage.
+  OPENEBS_NAMESPACE: openebs
   OPENEBS_MAYASTOR_ENABLED: "true"
   OPENEBS_HOSTPATH_CLASS_ENABLED: "true"
   OPENEBS_LOCALPV_BASEPATH: /var/mnt/localpv/hostpath

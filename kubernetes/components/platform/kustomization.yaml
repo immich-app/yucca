@@ -1,0 +1,12 @@
+---
+# Shared APP-layer platform slice (applied by cluster-apps, after the operator
+# layer is Ready): the michael gateway, the app HTTPRoutes, observability
+# agents. The gw-proxy/observability Kustomizations point at per-cluster dirs
+# (apps/${CLUSTER_PATH}/{gw-proxy,observability}) so each cluster can overlay
+# the shared bases with its topology patches.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - ./gw-proxy.yaml
+  - ./httproutes.yaml
+  - ./observability.yaml

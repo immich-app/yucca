@@ -1,18 +1,23 @@
-# Role-INDEPENDENT per-cluster infrastructure. Every cluster overlay pulls this
-# in via `components: [../../../components/infra, ...]`, regardless of whether
-# the region is primary or secondary. These are the platform layers the apps sit
-# on: the CNPG operator, node-local storage (OpenEBS LocalPV), the network/ingress stack
-# (cert-manager, cilium-lb, envoy gateway/proxy, httproutes, netbird-operator),
-# observability agents (vmagent, victoria-logs-collector), and the cluster-local
-# P2P image mirror (spegel).
+---
+# Role-INDEPENDENT operator/CRD layer, shared by every real cluster's ./infra
+# overlay and applied by the cluster-infra Flux Kustomization (wait: true +
+# per-piece healthChecks ⇒ operators Ready ⇒ CRDs registered before
+# cluster-apps dry-runs any custom resource — a flat tree deadlocks on a fresh
+# cluster; 2026-07 father rebuild).
 #
-# Each entry is itself a kustomize Kustomization of Flux Kustomizations pointing
-# at apps/base/<x>; the Component just accumulates them into the overlay.
+# Namespaces are deliberately NOT here: their ownership differs per cluster
+# (TF bootstraps some, prune protection differs), so each cluster's infra
+# overlay declares its own. Cluster topology tweaks (father's CP-pinned
+# webhook and META_HOST SAN, staging's mergeGateways) are injected there as
+# spec.patches on these Kustomizations.
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
-  - ./cnpg-system
-  - ./network
-  - ./observability
-  - ./spegel-system
-  - ./storage
+  - ./cert-manager.yaml
+  - ./cert-manager-issuer.yaml
+  - ./envoy-gateway.yaml
+  - ./envoy-proxy.yaml
+  - ./cnpg.yaml
+  - ./cnpg-plugin-barman.yaml
+  - ./openebs.yaml
+  - ./spegel.yaml

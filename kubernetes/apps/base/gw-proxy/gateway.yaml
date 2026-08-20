@@ -2,9 +2,8 @@
 # The michael (restic) Gateway: HTTPS-only, scoped to ${GW_HOST}. Shares the
 # `envoy` GatewayClass but attaches its own EnvoyProxy via
 # infrastructure.parametersRef (Envoy Gateway creates one proxy fleet per
-# Gateway). TLS terminates with the gw-public cert (certificate.yaml — the
-# *.APP_DOMAIN wildcard doesn't reach rest.htz-fsn1.); no :80 listener —
-# restic clients speak HTTPS only.
+# Gateway); staging drops the ref and merges into the app fleet instead. No
+# :80 listener — restic clients speak HTTPS only.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -29,17 +28,3 @@ spec:
         certificateRefs:
           - kind: Secret
             name: gw-public-tls
-    # Internal twin (${GW_INT_VIP}): same envoy fleet, NetBird-zone hostname,
-    # own DNS-01 cert (gw-internal.yaml at the overlay root).
-    - name: https-internal
-      protocol: HTTPS
-      port: 443
-      hostname: "${GW_INT_HOST}"
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - kind: Secret
-            name: gw-internal-tls

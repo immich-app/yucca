@@ -1,9 +1,0 @@
----
-# Spegel mounts the containerd socket + content store (hostPath) and binds the
-# registry hostPort, so the namespace runs privileged.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: spegel-system
-  labels:
-    pod-security.kubernetes.io/enforce: privileged
