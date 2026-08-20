@@ -1050,7 +1050,7 @@
     ]
   },
   "timezone": "",
-  "title": "Yucca: Cilium operator",
+  "title": "Cilium / Operator",
   "uid": "yucca-cilium-operator",
   "version": 2,
   "description": "Imported from https://raw.githubusercontent.com/cilium/cilium/v1.19.5/install/kubernetes/cilium/files/cilium-operator/dashboards/cilium-operator-dashboard.json by o11y/scripts/import-upstream.py; local edits are overwritten on re-import."

@@ -53,7 +53,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               last_over_time(junos_bgp_session_up{cluster="netops",
-              group!="cilium-nodes"}[5m]) == bool 0
+              group!="cilium-nodes", project="yucca"}[5m]) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -96,7 +96,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum(last_over_time(junos_bgp_session_up{cluster="netops",
-              group!="cilium-nodes"}[5m])) == bool 0
+              group!="cilium-nodes", project="yucca"}[5m])) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -139,7 +139,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               last_over_time(junos_bgp_session_up{cluster="netops",
-              group="cilium-nodes"}[5m]) == bool 0
+              group="cilium-nodes", project="yucca"}[5m]) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -182,8 +182,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (target)
-              (last_over_time(junos_alarms_red_count{cluster="netops"}[5m])) >
-              0
+              (last_over_time(junos_alarms_red_count{cluster="netops",
+              project="yucca"}[5m])) > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -225,8 +225,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (target)
-              (last_over_time(junos_alarms_yellow_count{cluster="netops"}[5m]))
-              > 0
+              (last_over_time(junos_alarms_yellow_count{cluster="netops",
+              project="yucca"}[5m])) > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -270,9 +270,9 @@ spec:
             expr: >-
               sum by (target, name) (
               rate(junos_interface_receive_errors{cluster="netops",
-              name=~"ae.+|et-.+|xe-.+"}[10m]) +
+              name=~"ae.+|et-.+|xe-.+", project="yucca"}[10m]) +
               rate(junos_interface_transmit_errors{cluster="netops",
-              name=~"ae.+|et-.+|xe-.+"}[10m])) > 0.01
+              name=~"ae.+|et-.+|xe-.+", project="yucca"}[10m])) > 0.01
         - refId: B
           relativeTimeRange:
             from: 600
@@ -314,7 +314,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              last_over_time(up{cluster="netops", job="junos"}[5m]) == bool 0
+              last_over_time(up{cluster="netops", job="junos",
+              project="yucca"}[5m]) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -358,9 +359,9 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              absent(sflow_ifinoctets{cluster="netops"}) and on()
-              count(count_over_time(sflow_ifinoctets{cluster="netops"}[24h]))
-              > 0
+              absent(sflow_ifinoctets{cluster="netops", project="yucca"}) and
+              on() count(count_over_time(sflow_ifinoctets{cluster="netops",
+              project="yucca"}[24h])) > 0
         - refId: B
           relativeTimeRange:
             from: 600

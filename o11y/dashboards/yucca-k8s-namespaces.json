@@ -2902,7 +2902,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Yucca: K8s / Namespaces",
+  "title": "Kubernetes / Views / Namespaces",
   "uid": "yucca-k8s-namespaces",
   "version": 46,
   "weekStart": ""

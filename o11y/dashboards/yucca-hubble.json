@@ -2886,7 +2886,7 @@
     ]
   },
   "timezone": "",
-  "title": "Yucca: Hubble",
+  "title": "Cilium / Hubble",
   "uid": "yucca-hubble",
   "version": 24,
   "description": "Imported from https://raw.githubusercontent.com/cilium/cilium/v1.19.5/install/kubernetes/cilium/files/hubble/dashboards/hubble-dashboard.json by o11y/scripts/import-upstream.py; local edits are overwritten on re-import."

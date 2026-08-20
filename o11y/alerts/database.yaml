@@ -40,7 +40,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -50,7 +50,7 @@ spec:
             expr: >-
               max by (cluster)
               (last_over_time(cnpg_collector_pg_wal_archive_status{value="ready",
-              cluster=~"father|luke"}[5m])) > 2
+              cluster=~"father|luke", project="yucca"}[5m])) > 2
         - refId: B
           relativeTimeRange:
             from: 600
@@ -89,7 +89,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -98,9 +98,9 @@ spec:
             maxDataPoints: 43200
             expr: >-
               max by (cluster)
-              (last_over_time(cnpg_collector_last_failed_backup_timestamp{cluster=~"father|luke"}[5m]))
+              (last_over_time(cnpg_collector_last_failed_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
               - max by (cluster)
-              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke"}[5m]))
+              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
               > 0
         - refId: B
           relativeTimeRange:
@@ -138,7 +138,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -147,9 +147,9 @@ spec:
             maxDataPoints: 43200
             expr: >-
               (time() - max by (cluster)
-              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke"}[5m]))
+              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
               > 93600) and max by (cluster)
-              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke"}[5m]))
+              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
               > 0
         - refId: B
           relativeTimeRange:
@@ -187,7 +187,7 @@ spec:
           relativeTimeRange:
             from: 600
             to: 0
-          datasourceUid: VictoriaMetrics
+          datasourceUid: VictoriaMetricsFleet
           model:
             refId: A
             instant: true
@@ -195,8 +195,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              absent(last_over_time(cnpg_collector_up[10m])) and on()
-              count(count_over_time(cnpg_collector_up[24h])) > 0
+              absent(last_over_time(cnpg_collector_up{project="yucca"}[10m])) and on()
+              count(count_over_time(cnpg_collector_up{project="yucca"}[24h])) > 0
         - refId: B
           relativeTimeRange:
             from: 600

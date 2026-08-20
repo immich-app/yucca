@@ -3007,7 +3007,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Yucca: K8s / Global",
+  "title": "Kubernetes / Views / Global",
   "uid": "yucca-k8s-global",
   "version": 45,
   "weekStart": ""

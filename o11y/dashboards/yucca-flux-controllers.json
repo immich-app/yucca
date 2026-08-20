@@ -1739,7 +1739,7 @@
     ]
   },
   "timezone": "",
-  "title": "Yucca: Flux controllers",
+  "title": "Flux / Control Plane",
   "uid": "yucca-flux-controllers",
   "version": 2,
   "weekStart": "",

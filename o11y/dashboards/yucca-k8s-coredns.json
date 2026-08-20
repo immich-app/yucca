@@ -1521,7 +1521,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Yucca: K8s / CoreDNS",
+  "title": "Kubernetes / System / CoreDNS",
   "uid": "yucca-k8s-coredns",
   "version": 22,
   "weekStart": ""

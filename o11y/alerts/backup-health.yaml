@@ -42,8 +42,10 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              absent(last_over_time(rgw_repository_size_bytes[10m])) and on()
-              count(count_over_time(rgw_repository_size_bytes[24h])) > 0
+              absent(last_over_time(rgw_repository_size_bytes{project="yucca"}[10m]))
+              and on()
+              count(count_over_time(rgw_repository_size_bytes{project="yucca"}[24h]))
+              > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -92,11 +94,12 @@ spec:
             maxDataPoints: 43200
             expr: >-
               count(count by (user_id) ((time() -
-              last_over_time(user_last_successful_backup[10m])) > 172800)) /
-              count(count by (user_id)
-              (last_over_time(user_last_successful_backup[10m]))) > 0.25 and
-              on() count(count by (user_id)
-              (last_over_time(user_last_successful_backup[10m]))) >= 10
+              last_over_time(user_last_successful_backup{project="yucca"}[10m]))
+              > 172800)) / count(count by (user_id)
+              (last_over_time(user_last_successful_backup{project="yucca"}[10m])))
+              > 0.25 and on() count(count by (user_id)
+              (last_over_time(user_last_successful_backup{project="yucca"}[10m])))
+              >= 10
         - refId: B
           relativeTimeRange:
             from: 600

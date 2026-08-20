@@ -80,7 +80,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -177,7 +179,9 @@
       "id": 3,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -199,7 +203,7 @@
           "legendFormat": "{{customerId}}"
         }
       ],
-      "title": "Stored bytes — top 10 users",
+      "title": "Stored bytes \u2014 top 10 users",
       "type": "timeseries"
     },
     {
@@ -250,7 +254,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -346,7 +352,9 @@
       "id": 5,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -438,7 +446,9 @@
       "id": 7,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -517,7 +527,9 @@
       "id": 8,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -590,7 +602,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -680,7 +694,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -776,7 +792,9 @@
       "id": 11,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -856,7 +874,9 @@
       "id": 12,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -936,7 +956,9 @@
       "id": 16,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1016,7 +1038,9 @@
       "id": 17,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true,
@@ -1103,7 +1127,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -1144,7 +1170,7 @@
       ],
       "title": "Stalest successful backups (bottom 15)",
       "type": "table",
-      "description": "Users whose newest successful backup is oldest — likely broken or abandoned setups."
+      "description": "Users whose newest successful backup is oldest \u2014 likely broken or abandoned setups."
     },
     {
       "datasource": {
@@ -1194,7 +1220,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -1240,7 +1268,11 @@
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["yucca", "users", "prod"],
+  "tags": [
+    "yucca",
+    "users",
+    "prod"
+  ],
   "templating": {
     "list": [
       {
@@ -1260,8 +1292,12 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "uid": "$datasource"
@@ -1281,8 +1317,12 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "uid": "$datasource"
@@ -1302,8 +1342,12 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "uid": "$datasource"
@@ -1342,7 +1386,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Yucca: Top users",
+  "title": "Yucca / Top Users",
   "uid": "yucca-top-users",
   "version": 1
 }

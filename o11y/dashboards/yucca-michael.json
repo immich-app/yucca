@@ -2741,8 +2741,12 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "uid": "$datasource"
@@ -2762,8 +2766,12 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "uid": "$datasource"
@@ -2783,8 +2791,12 @@
         "allValue": ".*",
         "current": {
           "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "uid": "$datasource"
@@ -2823,7 +2835,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Yucca: Michael (restic gateway)",
+  "title": "Yucca / Michael",
   "uid": "yucca-michael",
   "version": 1
 }

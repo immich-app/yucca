@@ -1213,7 +1213,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Yucca logs: metrics-worker",
+  "title": "Logs / metrics-worker",
   "uid": "yucca-logs-metrics-worker",
   "version": 1
 }

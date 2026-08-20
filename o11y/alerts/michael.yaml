@@ -40,8 +40,9 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (cluster) (rate({__name__="http.server.request.errors",
-              status=~"5.."}[5m])) / sum by (cluster)
-              (rate({__name__="http.server.request.count"}[5m])) > 0.05
+              status=~"5..", project="yucca"}[5m])) / sum by (cluster)
+              (rate({__name__="http.server.request.count",
+              project="yucca"}[5m])) > 0.05
         - refId: B
           relativeTimeRange:
             from: 600
@@ -84,8 +85,9 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (cluster) (rate({__name__="http.server.request.errors",
-              status=~"5.."}[5m])) / sum by (cluster)
-              (rate({__name__="http.server.request.count"}[5m])) > 0.2
+              status=~"5..", project="yucca"}[5m])) / sum by (cluster)
+              (rate({__name__="http.server.request.count",
+              project="yucca"}[5m])) > 0.2
         - refId: B
           relativeTimeRange:
             from: 600
@@ -127,8 +129,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              min by (cluster, backend) ({__name__="s3.backend.healthy"}) ==
-              bool 0
+              min by (cluster, backend) ({__name__="s3.backend.healthy",
+              project="yucca"}) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -170,7 +172,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (cluster) (max by (cluster, backend)
-              ({__name__="s3.backend.healthy"})) == bool 0
+              ({__name__="s3.backend.healthy", project="yucca"})) == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -213,7 +215,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (cluster, operation)
-              (rate({__name__="storage.backend.errors"}[5m])) > 0.1
+              (rate({__name__="storage.backend.errors", project="yucca"}[5m]))
+              > 0.1
         - refId: B
           relativeTimeRange:
             from: 600
@@ -256,8 +259,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              sum by (cluster)
-              (increase({__name__="storage.cluster.unknown"}[10m])) > 0
+              sum by (cluster) (increase({__name__="storage.cluster.unknown",
+              project="yucca"}[10m])) > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -300,7 +303,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               histogram_quantile(0.99, sum by (cluster, le)
-              (rate({__name__="http.server.request.ttfb_bucket"}[10m]))) > 10
+              (rate({__name__="http.server.request.ttfb_bucket",
+              project="yucca"}[10m]))) > 10
         - refId: B
           relativeTimeRange:
             from: 600
@@ -342,7 +346,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               kube_deployment_status_replicas_available{namespace="yucca",
-              deployment="yucca-michael"} == bool 0
+              deployment="yucca-michael", project="yucca"} == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
