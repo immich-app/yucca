@@ -7,3 +7,7 @@ metadata:
   # pod logs — forbidden under Talos' default `baseline` PSS, so enforce privileged.
   labels:
     pod-security.kubernetes.io/enforce: privileged
+  annotations:
+    # Never prune namespaces on restructure (openebs incident 2026-07-06; this
+    # one got GC'd 2026-08-20 when its owner moved to the observability Ks).
+    kustomize.toolkit.fluxcd.io/prune: disabled
