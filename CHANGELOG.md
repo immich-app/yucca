@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.35.0](https://github.com/immich-app/yucca/compare/v0.34.0...v0.35.0) (2026-08-20)
+
+
+### Features
+
+* **o11y:** staging observability to o11y staging mesh vmauth over netbird ([#517](https://github.com/immich-app/yucca/issues/517)) ([d4554a7](https://github.com/immich-app/yucca/commit/d4554a7a6f08a849e4df7acf0c1ebfeef9bb6297))
+
+
+### Bug Fixes
+
+* **k8s:** staging gw via SNI passthrough — mergeGateways is unsupported under GatewayNamespace mode ([#516](https://github.com/immich-app/yucca/issues/516)) ([57c790d](https://github.com/immich-app/yucca/commit/57c790d660efbaa25e9faffa7ce5e01e3592326a))
+* **meta:** log x-forwarded for IP address ([#512](https://github.com/immich-app/yucca/issues/512)) ([a3b4294](https://github.com/immich-app/yucca/commit/a3b42946d5cce142bae56d08cc1dde84115cfa27))
+
 ## [0.34.0](https://github.com/immich-app/yucca/compare/v0.33.0...v0.34.0) (2026-08-20)
 
 
