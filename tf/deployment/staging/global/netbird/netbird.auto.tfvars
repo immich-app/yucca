@@ -12,6 +12,12 @@ groups = {
   ci    = { resource = true } # ephemeral CI runners → YUCCA_STAGING_CI
   mgmt  = { resource = true } # management nodes (ansible) → YUCCA_STAGING_MGMT
   talos = { resource = true } # Talos cluster nodes → YUCCA_STAGING_TALOS
+  # DELETION IN FLIGHT (two-phase): NetBird refuses to delete a group while a
+  # policy still links it, and tofu orders the group destroy before the policy
+  # updates that drop the references — the retired k8s_operator group is kept
+  # one apply longer (resource = false, so no policy links it) so those
+  # updates land, then this entry goes.
+  k8s_operator = { resource = false }
 }
 
 setup_keys = {
