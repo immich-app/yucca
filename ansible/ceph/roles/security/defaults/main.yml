@@ -64,6 +64,20 @@ ceph_firewall_nfs_enabled: false
 ceph_firewall_nfs_port: 2049
 ceph_firewall_nfs_mgmt_port: 12049
 
+# --- Firewall drop logging (NFLOG -> ulogd2) ---
+# The drop rule logs over NFLOG, not printk, so the journal and the kmsg ring
+# buffer never see scanner noise. ulogd2 listens on the group and writes one
+# JSON event per drop; roles/fluentbit tails that file to o11y.
+ceph_firewall_droplog_group: 0
+# Headers only: 64 bytes covers IP + TCP/UDP, which is all ulogd2 decodes.
+ceph_firewall_droplog_snaplen: 64
+# Packets per netlink datagram. The kernel still flushes partial batches on
+# its ~1s nfnetlink_log timer, so batching costs at most ~1s of latency.
+ceph_firewall_droplog_threshold: 64
+# roles/fluentbit's ceph_fluentbit_droplog_file default must match this path;
+# the roles run in different playbooks, so neither can reference the other.
+ceph_firewall_droplog_file: /var/log/ulog/nft-drop.json
+
 # Allow SSH from any source (true) or restrict to trusted networks (false).
 # Default true for dev/bootstrapping. Set false in production once
 # management networks are confirmed.

@@ -10,6 +10,49 @@
     name: nftables
     state: present
 
+# --- Firewall drop logging (ulogd2) ---
+# ulogd2 listens on the NFLOG group the drop rule logs to (role defaults have
+# the why). It converges BEFORE the ruleset so the group never emits into the
+# void, and the handler flush below applies a config-change restart now rather
+# than at end of play, where old-config ulogd2 would listen the whole play.
+
+- name: Install ulogd2 (NFLOG listener + JSON output)
+  ansible.builtin.apt:
+    name:
+      - ulogd2
+      - ulogd2-json
+    state: present
+  when: ceph_firewall_enabled | bool
+
+- name: Deploy ulogd2 config
+  ansible.builtin.template:
+    src: ulogd.conf.j2
+    dest: /etc/ulogd.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart ulogd2
+  when: ceph_firewall_enabled | bool
+
+- name: Rotate the drop log
+  ansible.builtin.template:
+    src: nft-drop.logrotate.j2
+    dest: /etc/logrotate.d/nft-drop
+    owner: root
+    group: root
+    mode: '0644'
+  when: ceph_firewall_enabled | bool
+
+- name: Enable and start ulogd2
+  ansible.builtin.systemd:
+    name: ulogd2
+    enabled: true
+    state: started
+  when: ceph_firewall_enabled | bool
+
+- name: Apply any pending ulogd2 restart before the ruleset goes live
+  ansible.builtin.meta: flush_handlers
+
 - name: Deploy nftables ruleset
   ansible.builtin.template:
     src: nftables.conf.j2
@@ -29,12 +72,14 @@
 # state is normalized by loading the config into a throwaway network namespace --
 # fully isolated, it never touches the live firewall -- then its table inet filter
 # is compared to the live one. Both sides go through nft's own output formatting,
-# so the match is on effective rules, not file text. Anything inconclusive falls
+# so the match is on effective rules, not file text. Counter VALUES are masked
+# before comparing: the live rule has counted packets, the netns one never has,
+# and that difference is not drift. Anything inconclusive falls
 # back to reloading (DIFF), so the firewall is never left stale or drifted.
 - name: Compare the live nftables ruleset against the desired one
   ansible.builtin.shell: |
     set -o pipefail
-    norm() { grep -vE '^[[:space:]]*#' | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ +$//' | grep -v '^$'; }
+    norm() { grep -vE '^[[:space:]]*#' | sed -E 's/counter packets [0-9]+ bytes [0-9]+/counter/; s/[[:space:]]+/ /g; s/^ +//; s/ +$//' | grep -v '^$'; }
     live="$(nft list table inet filter 2>/dev/null | norm)"
     ns="nft-cmp-$$"
     ip netns add "$ns"

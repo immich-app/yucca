@@ -108,6 +108,24 @@
     mode: '0644'
   notify: Restart fluent-bit
 
+- name: Install the nftables drop-event parser
+  ansible.builtin.copy:
+    src: parsers-nftables.conf
+    dest: /etc/fluent-bit/parsers-nftables.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fluent-bit
+
+- name: Install the drop-event MESSAGE synthesizer
+  ansible.builtin.copy:
+    src: nft-drop-message.lua
+    dest: /etc/fluent-bit/nft-drop-message.lua
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fluent-bit
+
 - name: Template the fluent-bit config
   ansible.builtin.template:
     src: fluent-bit.conf.j2

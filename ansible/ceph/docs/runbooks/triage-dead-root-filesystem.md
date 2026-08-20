@@ -156,10 +156,12 @@ head -1 /tmp/<host>-kmsg.txt
 
 On philip the buffer held 5170 messages covering only the last **2.1 hours** of
 a 499-hour uptime, so the original NVMe/PCIe failure messages were already gone
-five hours after the event. Two things evict them: the EXT4 error storm the
-failure itself produces, and `nftables-drop` logging from the security role,
-which fills the buffer continuously with internet background noise. Capture
-kmsg early or accept that you will not get the root-cause line.
+five hours after the event. Two things evicted them: the EXT4 error storm the
+failure itself produces, and `nftables-drop` kernel logging filling the buffer
+with internet background noise. The security role has since moved drop logging
+off printk (NFLOG to ulogd2), which removes the second source; the storm from
+the failure itself remains. Capture kmsg early or accept that you will not get
+the root-cause line.
 
 ## 4. Concluding
 

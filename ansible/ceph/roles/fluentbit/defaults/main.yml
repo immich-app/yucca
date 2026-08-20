@@ -58,3 +58,8 @@ ceph_fluentbit_http_listen: "{{ ceph_public_ip }}"
 # How long the ExecStartPre drop-in waits for that address at boot. LACP and
 # MLAG convergence on the 25G bond is seconds; this is slack, not a real budget.
 ceph_fluentbit_bind_wait_secs: 60
+
+# nftables drop events, written by roles/security's ulogd2 as JSON lines.
+# Must match ceph_firewall_droplog_file (roles/security): the roles run in
+# different playbooks, so neither default can reference the other.
+ceph_fluentbit_droplog_file: /var/log/ulog/nft-drop.json
