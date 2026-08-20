@@ -177,6 +177,8 @@ staging → prod is promoted by merging the release-please PR (stamps both prod 
 - **Conventional commits** enforced on PRs (`feat(scope):`, `fix(scope):`, `chore:`); scopes
   like `ceph`, `netbird`, `michael`, `yucca-api`, `ansible`, `bgp`. Releases via release-please;
   the monorepo is single-versioned.
+- **PR descriptions and commit messages: one line at most.** Always. The diff carries the
+  detail; neither the PR body nor the commit message restates it.
 - ESLint is strict on promises (`no-floating-promises`, `no-misused-promises`, `require-await`,
   `await-thenable` are errors). Prettier: single quotes, trailing commas, width 120.
 - Generated files are eslint-ignored: `**/fetch-client.ts`, `packages/web/src/locales`, `dist`,
