@@ -1,0 +1,2062 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "What this covers",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Where scrubbing stands on the cluster: which hosts are still scrubbing, at which level, and how many PGs are in flight.\n\n**PG counts** come from the mgr's PG state flags (`ceph_pg_scrubbing`, `ceph_pg_deep`, `ceph_pg_wait`). A PG is flagged `scrubbing` from the moment its primary opens a scrub session, i.e. while it is still reserving replicas, so the PG counts run well ahead of the scrubs actually reading data. `deep` is a subset of `scrubbing`; regular = scrubbing - deep.\n\n**Host activity** comes from the per-OSD scrub counters the ceph-exporter publishes (`ceph_osd_scrub_{sh,dp}_*_chunk_selected`, shallow / deep). Only the scrub primary selects chunks, so an OSD counts as scrubbing when it is primary for a scrub that selected a chunk in the last 5 min, and a host counts as scrubbing when any OSD on it does. This is what \"still scrubbing\" means on the host panels; the replica shards of those PGs are read on other hosts, which only the read-throughput panel shows. Hostname is joined from `ceph_osd_metadata`.\n\n**Work outstanding** is a proxy: nothing exported today carries per-PG `last_deep_scrub_stamp`, so the row compares bytes read by scrubs (`ceph_osd_scrub_*_read_bytes`, every shard on every OSD) against raw used bytes over one deep interval (`$deep_interval_days` days, spice runs 28d deep / 7d shallow; set the variables to match the cluster). Reads by aborted or preempted scrubs inflate it; data written inside the window deflates it. An exact overdue-PG count needs `ceph pg dump` exported."
+      }
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Now",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Hosts scrubbing (regular)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Hosts with at least one OSD that selected a shallow-scrub chunk in the last 5 min."
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Hosts deep scrubbing",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Hosts with at least one OSD that selected a deep-scrub chunk in the last 5 min."
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "PGs scrubbing (regular)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_pg_scrubbing{cluster=~\"$cluster\"}) - sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "PGs flagged scrubbing but not deep. Includes PGs still reserving replicas."
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "PGs deep scrubbing",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "PGs flagged scrubbing+deep. Includes PGs still reserving replicas."
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "PGs waiting for reservations",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_pg_wait{cluster=~\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "PGs flagged scrubbing+wait: the primary is queued for replica scrub reservations."
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Scrub flags",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "ceph_osd_flag_noscrub{cluster=~\"$cluster\"}",
+          "legendFormat": "noscrub",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "ceph_osd_flag_nodeep_scrub{cluster=~\"$cluster\"}",
+          "legendFormat": "nodeep-scrub",
+          "refId": "B",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "clear",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "SET",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Cluster osdmap flags. SET means that scrub level is paused cluster-wide."
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Hosts",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "state-timeline",
+      "title": "Scrub activity by host",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "interval": "1m",
+      "description": "Per host, over time: idle, regular (shallow) scrubbing, deep scrubbing, or both. 5 min activity window.",
+      "gridPos": {
+        "h": 20,
+        "w": 16,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "2 * (sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > bool 0) + (sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > bool 0)",
+          "legendFormat": "{{hostname}}",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "spice-ceph-(.*)",
+            "renamePattern": "$1"
+          }
+        }
+      ],
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.85,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "transparent"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "idle",
+                  "color": "transparent",
+                  "index": 0
+                },
+                "1": {
+                  "text": "regular",
+                  "color": "blue",
+                  "index": 1
+                },
+                "2": {
+                  "text": "deep",
+                  "color": "purple",
+                  "index": 2
+                },
+                "3": {
+                  "text": "regular + deep",
+                  "color": "red",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Hosts scrubbing now",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "description": "Instant snapshot of hosts that are primary for a running scrub. regular / deep count OSDs on the host that selected a chunk at that level in the last 5 min; read is all scrub reads on the host, replica shards included.",
+      "gridPos": {
+        "h": 20,
+        "w": 8,
+        "x": 16,
+        "y": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "label_replace(count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or 0 * count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "label_replace(count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or 0 * count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
+          "legendFormat": "",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "label_replace(sum by (hostname) ((rate(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"}[5m])) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) and on (hostname) (count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0)), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
+          "legendFormat": "",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "hostname": "host",
+              "Value #A": "regular",
+              "Value #B": "deep",
+              "Value #C": "read"
+            },
+            "indexByName": {
+              "hostname": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "deep",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "read"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Bps"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deep"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "regular"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "PGs",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "PGs scrubbing: regular vs deep",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 33
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_pg_scrubbing{cluster=~\"$cluster\"}) - sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "legendFormat": "regular",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "legendFormat": "deep",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_pg_wait{cluster=~\"$cluster\"})",
+          "legendFormat": "waiting for reservations",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "regular"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deep"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "waiting for reservations"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "mgr PG state flags, summed over pools. Regular = scrubbing - deep."
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "PGs scrubbing by pool",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 33
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (name) (ceph_pg_scrubbing{cluster=~\"$cluster\"} * on (cluster, pool_id) group_left(name) ceph_pool_metadata{cluster=~\"$cluster\"} > 0)",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Pool name joined from ceph_pool_metadata. Pools with no PG scrubbing are hidden."
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Scrub sessions per minute",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 33
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(ceph_osd_num_scrubs_started_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_num_scrubs_started_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "legendFormat": "started",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(ceph_osd_num_scrubs_past_reservation_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_num_scrubs_past_reservation_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "legendFormat": "past reservation",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(ceph_osd_successful_scrubs_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_successful_scrubs_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "legendFormat": "completed",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(ceph_osd_failed_scrubs_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_failed_scrubs_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "legendFormat": "failed",
+          "refId": "D"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "completed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Cluster-wide, all OSDs. A session starts when the primary begins reserving replicas, passes reservation when it starts reading chunks, and ends completed or failed (aborted, preempted, or reservation denied). Started running far above completed means the backlog is growing."
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Work outstanding (deep-scrub cycle)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Cycle coverage",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 42
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)) / sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"})",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "description": "Share of raw used bytes that scrubs read within the last $deep_interval_days days. 100% means the whole cluster was deep-scrubbed inside one cycle; below that, the remainder is overdue or still queued. Shard reads on every OSD are counted, so it compares like-for-like with raw used."
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Raw bytes still due",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 42
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "clamp_min(sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"}) - sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)), 0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "description": "Raw used bytes minus bytes scrubbed in the current cycle window. Zero when the cycle is keeping up."
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Scrub reads, last 24h",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 42
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset 1d, 0))",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "description": "Bytes read by scrubs across all OSDs in the last 24h. Compare with the required pace on the panel below."
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Days to clear at this pace",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 42
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "clamp_min(sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"}) - sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)), 0) / sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset 1d, 0))",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "color": {
+            "mode": "thresholds",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 7
+              },
+              {
+                "color": "red",
+                "value": 28
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "description": "Raw bytes still due divided by the last 24h of scrub reads. A rough ETA: assumes today's pace holds and ignores new writes."
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Scrub reads per day vs required pace",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 46
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset 1d, 0))",
+          "legendFormat": "read per day",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"}) / $deep_interval_days",
+          "legendFormat": "required (raw used / $deep_interval_days d)",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "required (raw used / $deep_interval_days d)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "read per day"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Rolling 24h scrub reads against the bytes per day needed to deep-scrub all raw used data once per cycle. Below the line for long and the cycle falls behind.",
+      "interval": "1h"
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Cycle coverage trend",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 46
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)) / sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"})",
+          "legendFormat": "coverage",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "coverage"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "The Cycle coverage stat over time: a rolling $deep_interval_days-day window, so it needs that much history before it is meaningful.",
+      "interval": "1h"
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Scrubs completed per day vs required",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 46
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(clamp_min(ceph_osd_successful_scrubs_ec{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_successful_scrubs_ec{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_successful_scrubs_replicated{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_successful_scrubs_replicated{cluster=~\"$cluster\"} offset 1d, 0))",
+          "legendFormat": "completed per day",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(ceph_pg_total{cluster=~\"$cluster\"}) * (1 / $shallow_interval_days + 1 / $deep_interval_days)",
+          "legendFormat": "required (PGs / intervals)",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "required (PGs / intervals)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "completed per day"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Scrub sessions that finished successfully in a rolling 24h, all levels and pools, against the number every PG needs to scrub once per interval (PGs / $shallow_interval_days d + PGs / $deep_interval_days d). Replicated metadata pools scrub fast and often, so this overstates progress on the data pool.",
+      "interval": "1h"
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "Hosts over time",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "panels": []
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Hosts actively scrubbing",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 55
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "legendFormat": "regular",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "legendFormat": "deep",
+          "refId": "B"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "regular"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deep"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "Hosts with at least one OSD selecting chunks at that level in the last 5 min."
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Scrub read throughput by host",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 55
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (hostname) ((rate(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"}[5m])) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0",
+          "legendFormat": "{{hostname}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Bytes read by scrubs per host, replica shards included: every OSD holding a shard of a PG under deep scrub reads it, so hosts that are primary for nothing still show load here. Shallow scrubs read metadata only. Stacked.",
+      "interval": "1m",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "spice-ceph-(.*)",
+            "renamePattern": "$1"
+          }
+        }
+      ]
+    }
+  ],
+  "refresh": "1h",
+  "schemaVersion": 39,
+  "tags": [
+    "spice",
+    "ceph",
+    "scrub",
+    "prod"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {
+          "text": "VictoriaMetrics Fleet",
+          "value": "VictoriaMetricsFleet"
+        },
+        "hide": 0,
+        "refresh": 1,
+        "regex": "/^VictoriaMetrics Fleet$/",
+        "skipUrlSync": false
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "includeAll": true,
+        "label": "Env",
+        "multi": true,
+        "name": "env",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\"}, env)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "includeAll": true,
+        "label": "Provider",
+        "multi": true,
+        "name": "provider",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\", env=~\"$env\"}, provider)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "includeAll": true,
+        "label": "Region",
+        "multi": true,
+        "name": "region",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\", env=~\"$env\", provider=~\"$provider\"}, region)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "name": "cluster",
+        "label": "cluster",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "$datasource"
+        },
+        "query": "label_values(ceph_health_status{env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)",
+        "current": {},
+        "hide": 0,
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false,
+        "regex": "",
+        "sort": 1,
+        "skipUrlSync": false,
+        "definition": "label_values(ceph_health_status{env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)"
+      },
+      {
+        "name": "shallow_interval_days",
+        "label": "shallow interval (days)",
+        "type": "custom",
+        "query": "7",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "options": [
+          {
+            "selected": true,
+            "text": "7",
+            "value": "7"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "7",
+          "value": "7"
+        }
+      },
+      {
+        "name": "deep_interval_days",
+        "label": "deep interval (days)",
+        "type": "custom",
+        "query": "28",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "options": [
+          {
+            "selected": true,
+            "text": "28",
+            "value": "28"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "28",
+          "value": "28"
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Ceph Scrub Progress",
+  "uid": "yucca-spice-scrub",
+  "weekStart": ""
+}
