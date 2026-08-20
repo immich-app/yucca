@@ -33,9 +33,9 @@ policies = {
   }
 
   # Talos nodes → o11y's staging mesh gateway (external group, resolved in
-  # main.tf): victoria-logs-collector remote-writes to the UNAUTHENTICATED mesh
-  # vmauth (vmauth.staging.o11y.futo.network:443) — this ACL is the only gate.
-  # Mirrors prod's talos-to-o11y-gateway.
+  # main.tf): vmagent + victoria-logs-collector remote-write to the
+  # UNAUTHENTICATED mesh vmauth (vmauth.staging.o11y.futo.network:443) — this
+  # ACL is the only gate. Mirrors prod's talos-to-o11y-gateway.
   talos-to-o11y-gateway = {
     description = "Talos nodes → o11y staging mesh gateway (unauth vmauth remote-write)."
     rules = [{

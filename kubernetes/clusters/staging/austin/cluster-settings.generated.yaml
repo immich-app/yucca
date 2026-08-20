@@ -41,11 +41,9 @@ data:
   S3_ENDPOINT: https://s3.staging.austin.int.futo.cloud
   S3_HOST: s3.staging.austin.int.futo.cloud
 
-  # Observability egress (apps -> agents -> o11y vmauth). In-cluster OTLP
-  # receiver for metrics (host:port, no scheme). Logs go to o11y staging's MESH
-  # vmauth over NetBird, unauthenticated (the talos-to-o11y-gateway ACL is the
-  # gate; the overlay strips the bearer and pins the mesh name pod-side — see
-  # apps/staging/austin/observability). Metrics still ride the authed public
-  # futostatus path.
+  # Observability egress (apps -> agents -> o11y STAGING's mesh vmauth over
+  # NetBird, unauthenticated — the talos-to-o11y-gateway ACL is the gate; see
+  # apps/staging/austin/observability). In-cluster OTLP receiver for metrics
+  # (host:port, no scheme); VictoriaLogs native ingest URL for the collector.
   VMAGENT_OTLP: vmagent-yucca.observability.svc:8429
   VLOGS_REMOTE_URL: https://vmauth.staging.o11y.futo.network/insert/native

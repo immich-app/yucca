@@ -135,16 +135,6 @@ variable "sietch_rgw_tls_cert" {
   default     = ""
 }
 
-# Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
-# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the shared_tf_staging vault (the
-# `remote-clusters` VMUser authenticates remote clusters with it).
-variable "vmauth_remote_write_password" {
-  description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (shared_tf_staging/VICTORIAMETRICS_VMAUTH_PASSWORD)."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 # Cloudflare API token for the cert-manager DNS-01 ClusterIssuer (futo.cloud
 # zone). Same 1P item the dns stack uses. Injected via TF_VAR from 1P.
 variable "cloudflare_api_token" {
