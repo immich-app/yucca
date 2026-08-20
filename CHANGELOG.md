@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.34.0](https://github.com/immich-app/yucca/compare/v0.33.0...v0.34.0) (2026-08-20)
+
+
+### Features
+
+* **o11y:** add spice scrub progress dashboard ([#506](https://github.com/immich-app/yucca/issues/506)) ([bff3488](https://github.com/immich-app/yucca/commit/bff34886b7dc392c699b48a9b047c60c9997bda6))
+
+
+### Bug Fixes
+
+* **migrations:** re-date ([#510](https://github.com/immich-app/yucca/issues/510)) ([816ce71](https://github.com/immich-app/yucca/commit/816ce71bd31d71037bc08de2b77dc338a466ef6c))
+* **o11y:** field selector on log panels, variable-safe request tracing ([#509](https://github.com/immich-app/yucca/issues/509)) ([153bf22](https://github.com/immich-app/yucca/commit/153bf220e2dcb781a2b17d80050b6690001e9591))
+
 ## [0.33.0](https://github.com/immich-app/yucca/compare/v0.32.0...v0.33.0) (2026-08-20)
 
 
