@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.33.0](https://github.com/immich-app/yucca/compare/v0.32.0...v0.33.0) (2026-08-20)
+
+
+### Features
+
+* **o11y:** per-service log dashboards ([#504](https://github.com/immich-app/yucca/issues/504)) ([09f10fc](https://github.com/immich-app/yucca/commit/09f10fcbf538e7541f5d2e1181a3a2f442d4669f))
+* **o11y:** scope alerts to project=yucca, CNPG dashboard, title convention ([#508](https://github.com/immich-app/yucca/issues/508)) ([d760fb1](https://github.com/immich-app/yucca/commit/d760fb19932968d3707afee049e5134e13767ec8))
+
+
+### Bug Fixes
+
+* **net:** bgp ([#507](https://github.com/immich-app/yucca/issues/507)) ([4eaaaa6](https://github.com/immich-app/yucca/commit/4eaaaa6e6fb4148c1977b3d0104883dfc2672ed2))
+
 ## [0.32.0](https://github.com/immich-app/yucca/compare/v0.31.2...v0.32.0) (2026-08-19)
 
 
