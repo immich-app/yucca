@@ -1,8 +1,8 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.envoyproxy.io/envoyproxy_v1alpha1.json
 # Data-plane config for the DEDICATED michael (restic) gateway, separate from
-# the app gateway so the backup data plane scales independently. Deleted in
-# staging (mergeGateways rides the app fleet); father patches in its dual
-# public/internal VIPs.
+# the app gateway so the backup data plane scales independently. father patches
+# in its dual public/internal VIPs; staging replaces the Service with a
+# ClusterIP reached via the app gateway's SNI passthrough.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:

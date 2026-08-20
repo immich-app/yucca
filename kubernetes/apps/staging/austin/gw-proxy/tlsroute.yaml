@@ -1,0 +1,18 @@
+---
+# Hands ${GW_HOST}'s raw TLS from the app gateway's gw-passthrough listener to
+# the gw fleet. Backend `gw` is the Service Envoy Gateway provisions for the
+# gw Gateway — named exactly after it under the GatewayNamespace deploy mode.
+apiVersion: gateway.networking.k8s.io/v1alpha3
+kind: TLSRoute
+metadata:
+  name: gw-passthrough
+spec:
+  parentRefs:
+    - name: envoy
+      sectionName: gw-passthrough
+  hostnames:
+    - "${GW_HOST}"
+  rules:
+    - backendRefs:
+        - name: gw
+          port: 443

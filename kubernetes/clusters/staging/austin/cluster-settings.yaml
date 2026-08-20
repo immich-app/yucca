@@ -50,9 +50,10 @@ data:
   INGRESS_VIP: 10.10.10.16
   INGRESS_PUBLIC_IP: 97.77.242.205
   # michael's gw. route attaches to the dedicated gw Gateway, same as father —
-  # but Austin has one NAT'd entry, so mergeGateways serves it from the app
-  # fleet on this same VIP (see apps/staging/austin/{infra,gw-proxy}).
+  # but Austin has one NAT'd entry, so the app gateway SNI-passes ${GW_HOST}
+  # through to the gw fleet (see apps/staging/austin/{infra,gw-proxy}).
   GW_PARENT_GATEWAY: gw
+  GW_PROXY_REPLICAS: "2"
 
   # ─── App fleet sizing ────────────────────────────────────────────────
   MICHAEL_REPLICAS: "2"
