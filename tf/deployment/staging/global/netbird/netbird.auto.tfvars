@@ -32,6 +32,22 @@ policies = {
     }]
   }
 
+  # Talos nodes → o11y's staging mesh gateway (external group, resolved in
+  # main.tf): vmagent + victoria-logs-collector remote-write to the
+  # UNAUTHENTICATED mesh vmauth (vmauth.staging.o11y.futo.network:443) — this
+  # ACL is the only gate. Mirrors prod's talos-to-o11y-gateway.
+  talos-to-o11y-gateway = {
+    description = "Talos nodes → o11y staging mesh gateway (unauth vmauth remote-write)."
+    rules = [{
+      name          = "talos-to-o11y-gateway"
+      protocol      = "tcp"
+      bidirectional = false
+      sources       = ["talos"]
+      destinations  = ["o11y_k8s_gateway"]
+      ports         = ["443"]
+    }]
+  }
+
   # CI reaches the existing Liberty Park infra groups where the staging nodes
   # live today (the targets CI talks to over the overlay). lp_* are external
   # groups resolved by name in main.tf.

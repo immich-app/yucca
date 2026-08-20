@@ -229,19 +229,6 @@ resource "kubernetes_secret_v1" "yucca_db_backup_s3" {
   }
 }
 
-# ─── Observability Secret (namespace: observability) ────────────────────
-# Bearer token vmagent + vlagent present to o11y's vmauth for remote-write.
-resource "kubernetes_secret_v1" "vmagent_remote_write" {
-  count = local.provision_secrets ? 1 : 0
-  metadata {
-    name      = "vmagent-remote-write"
-    namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
-  }
-  data = {
-    token = var.vmauth_remote_write_password
-  }
-}
-
 # ─── cert-manager Secret (namespace: cert-manager) ──────────────────────
 # Cloudflare API token for the Let's Encrypt DNS-01 ClusterIssuer (same 1P
 # item the dns stack uses — Zone:Read + DNS:Edit on futo.cloud).

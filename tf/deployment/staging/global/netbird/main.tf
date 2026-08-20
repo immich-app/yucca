@@ -31,6 +31,15 @@ data "netbird_group" "lp_services" {
   name = "Liberty Park Services"
 }
 
+# o11y's staging mesh gateway group (owned by the yucca-o11y repo's netbird TF)
+# — destination of the talos-to-o11y-gateway policy (netbird.auto.tfvars): the
+# logs collector remote-writes to the mesh vmauth
+# (vmauth.staging.o11y.futo.network → the gateway VIP behind o11y's routing
+# peers). Mirrors prod/htz-fsn1/netbird.
+data "netbird_group" "o11y_k8s_gateway" {
+  name = "o11y-staging-k8s-gateway"
+}
+
 module "netbird" {
   source = "../../../../shared/modules/netbird-env"
 
@@ -47,6 +56,7 @@ module "netbird" {
     lp_server_monitoring = data.netbird_group.lp_server_monitoring.id
     lp_servers           = data.netbird_group.lp_servers.id
     lp_services          = data.netbird_group.lp_services.id
+    o11y_k8s_gateway     = data.netbird_group.o11y_k8s_gateway.id
   }
 }
 
