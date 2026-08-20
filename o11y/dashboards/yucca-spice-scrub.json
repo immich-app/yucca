@@ -11,14 +11,14 @@
       "type": "text",
       "title": "What this covers",
       "gridPos": {
-        "h": 6,
+        "h": 7,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "options": {
         "mode": "markdown",
-        "content": "Where scrubbing stands on the cluster: which hosts are still scrubbing, at which level, and how many PGs are in flight.\n\n**PG counts** come from the mgr's PG state flags (`ceph_pg_scrubbing`, `ceph_pg_deep`, `ceph_pg_wait`). A PG is flagged `scrubbing` from the moment its primary opens a scrub session, i.e. while it is still reserving replicas, so the PG counts run well ahead of the scrubs actually reading data. `deep` is a subset of `scrubbing`; regular = scrubbing - deep.\n\n**Host activity** comes from the per-OSD scrub counters the ceph-exporter publishes (`ceph_osd_scrub_{sh,dp}_*_chunk_selected`, shallow / deep). Only the scrub primary selects chunks, so an OSD counts as scrubbing when it is primary for a scrub that selected a chunk in the last 5 min, and a host counts as scrubbing when any OSD on it does. This is what \"still scrubbing\" means on the host panels; the replica shards of those PGs are read on other hosts, which only the read-throughput panel shows. Hostname is joined from `ceph_osd_metadata`.\n\n**Work outstanding** is a proxy: nothing exported today carries per-PG `last_deep_scrub_stamp`, so the row compares bytes read by scrubs (`ceph_osd_scrub_*_read_bytes`, every shard on every OSD) against raw used bytes over one deep interval (`$deep_interval_days` days, spice runs 28d deep / 7d shallow; set the variables to match the cluster). Reads by aborted or preempted scrubs inflate it; data written inside the window deflates it. An exact overdue-PG count needs `ceph pg dump` exported."
+        "content": "Ceph guards against silent data corruption by **scrubbing**: re-reading stored data and checking it is still intact. A **regular** scrub compares the bookkeeping of every copy; a **deep** scrub reads all the data back and verifies checksums, which is the slow, disk-heavy part. Every slice of data (a **PG**) must get a regular scrub every 7 days and a deep scrub every 28 days on spice. At petabyte scale a deep cycle takes weeks, so this board answers three questions: what is scrubbing right now, which hosts are busy with it, and is the cycle keeping up.\n\n**Now / PGs**: how many PGs the cluster flags as scrubbing. A PG is flagged from the moment it is queued, so these counts run ahead of the scrubs actually reading data.\n\n**Hosts**: a host counts as scrubbing when one of its disks is leading a scrub that made progress in the last 5 minutes. The data being checked is spread across many hosts, so other hosts read for it too; the read-throughput panel shows that load.\n\n**Work outstanding**: how much of the cluster's data was deep-scrubbed inside the last 28 days. 100% means everything was checked within one cycle; lower means part of the data is overdue. This is an estimate from bytes read, because the cluster does not report a per-PG last-checked date, and it needs 28 days of stored metrics before it is meaningful. If the cluster's intervals differ, change the two interval variables at the top."
       }
     },
     {
@@ -30,7 +30,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 7
       },
       "panels": []
     },
@@ -46,7 +46,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 7
+        "y": 8
       },
       "targets": [
         {
@@ -110,7 +110,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 7
+        "y": 8
       },
       "targets": [
         {
@@ -174,7 +174,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 7
+        "y": 8
       },
       "targets": [
         {
@@ -238,7 +238,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 7
+        "y": 8
       },
       "targets": [
         {
@@ -302,7 +302,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 7
+        "y": 8
       },
       "targets": [
         {
@@ -366,7 +366,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 7
+        "y": 8
       },
       "targets": [
         {
@@ -454,7 +454,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 12
       },
       "panels": []
     },
@@ -472,7 +472,7 @@
         "h": 20,
         "w": 16,
         "x": 0,
-        "y": 12
+        "y": 13
       },
       "targets": [
         {
@@ -572,7 +572,7 @@
         "h": 20,
         "w": 8,
         "x": 16,
-        "y": 12
+        "y": 13
       },
       "targets": [
         {
@@ -758,7 +758,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 33
       },
       "panels": []
     },
@@ -774,7 +774,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 33
+        "y": 34
       },
       "targets": [
         {
@@ -907,7 +907,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 33
+        "y": 34
       },
       "targets": [
         {
@@ -976,7 +976,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 33
+        "y": 34
       },
       "targets": [
         {
@@ -1100,7 +1100,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 42
       },
       "panels": []
     },
@@ -1116,7 +1116,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1189,7 +1189,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1254,7 +1254,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1319,7 +1319,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 42
+        "y": 43
       },
       "targets": [
         {
@@ -1392,7 +1392,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 46
+        "y": 47
       },
       "targets": [
         {
@@ -1502,7 +1502,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 46
+        "y": 47
       },
       "targets": [
         {
@@ -1588,7 +1588,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 46
+        "y": 47
       },
       "targets": [
         {
@@ -1695,7 +1695,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 55
       },
       "panels": []
     },
@@ -1711,7 +1711,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 55
+        "y": 56
       },
       "targets": [
         {
@@ -1820,7 +1820,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 55
+        "y": 56
       },
       "targets": [
         {
@@ -2056,7 +2056,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Ceph Scrub Progress",
+  "title": "Ceph / Scrub",
   "uid": "yucca-spice-scrub",
   "weekStart": ""
 }
