@@ -18,7 +18,6 @@ apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
   name: gw-h2-windows
-  namespace: envoy-system
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io

@@ -1,11 +1,10 @@
 ---
-# prod@htz-fsn1 INFRA layer — the CRD/operator providers (cert-manager,
-# envoy-gateway + Gateway API, OpenEBS/mayastor) + their namespaces. Applied by
-# the `cluster-infra` Flux Kustomization (clusters/prod/htz-fsn1/apps.yaml),
-# which `cluster-apps` dependsOn: everything here must be READY (healthChecks →
-# operators running → CRDs registered) before the app layer's custom resources
-# (Certificates, Gateways, EnvoyProxy, DiskPools) are even dry-run — the flat
-# single-layer tree deadlocked on exactly that during the 2026-07 rebuild.
+# prod@htz-fsn1 INFRA layer — the shared operator set (components/infra) plus
+# father's namespaces, applied by the `cluster-infra` Flux Kustomization
+# (clusters/prod/htz-fsn1/apps.yaml) that `cluster-apps` dependsOn. The
+# cert-manager namespace is NOT declared here — the talos TF stack creates it
+# (secrets.tf) to bootstrap the cloudflare-api-token Secret, and declaring it
+# twice would race TF.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -13,9 +12,69 @@ resources:
   - ./namespace-openebs.yaml
   - ./namespace-cnpg-system.yaml
   - ./namespace-spegel-system.yaml
-  - ./cert-manager.yaml
-  - ./envoy.yaml
-  - ./openebs.yaml
-  - ./cnpg.yaml
-  - ./cnpg-plugin-barman.yaml
-  - ./spegel.yaml
+components:
+  - ../../../../components/infra
+patches:
+  # PROD TOPOLOGY: the webhook must run on the CONTROL PLANES. The apiserver
+  # (hostNetwork on the CPs) calls admission webhooks itself, and CP→worker-pod
+  # traffic rides geneve over the NetBird mgmt route — where TLS-sized packets
+  # blackhole (same plane the coredns pin dodges). On a CP the call is local.
+  - target:
+      group: kustomize.toolkit.fluxcd.io
+      kind: Kustomization
+      name: cert-manager
+    patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: cert-manager
+      spec:
+        patches:
+          - target:
+              kind: HelmRelease
+              name: cert-manager
+            patch: |
+              - op: add
+                path: /spec/values/webhook
+                value:
+                  nodeSelector:
+                    node-role.kubernetes.io/control-plane: ""
+                  tolerations:
+                    - key: node-role.kubernetes.io/control-plane
+                      operator: Exists
+                      effect: NoSchedule
+  # PROD-ONLY: the discovery pointer lives on ${META_HOST} = meta.futo.cloud,
+  # which is outside the *.${APP_DOMAIN} wildcard the base cert covers (staging's
+  # META_HOST is under its app domain, so staging needs none of this).
+  #
+  # Deliberately an extra SAN on the EXISTING cert rather than a second
+  # certificateRef on the gateway listener: Gateway API makes a listener whose
+  # certificateRef can't be resolved Programmed=False, so a new ref would take
+  # the whole https listener (web + api) down for as long as it takes
+  # cert-manager to issue — an outage designed into a routine merge. Editing
+  # dnsNames instead just triggers a reissue; the old Secret keeps serving
+  # throughout and the listener never changes.
+  #
+  # NB: kustomize applies this patch, THEN postBuild substitutes — which is why
+  # a ${VAR} in the patch value resolves. Coupling accepted: a meta.futo.cloud
+  # DNS-01 failure now blocks renewal of the app cert too, but both names sit in
+  # the same Cloudflare zone behind the same token, so they fail together anyway.
+  - target:
+      group: kustomize.toolkit.fluxcd.io
+      kind: Kustomization
+      name: envoy-proxy
+    patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: envoy-proxy
+      spec:
+        patches:
+          - target:
+              group: cert-manager.io
+              kind: Certificate
+              name: app-domain
+            patch: |-
+              - op: add
+                path: /spec/dnsNames/-
+                value: ${META_HOST}

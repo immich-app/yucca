@@ -1,28 +1,27 @@
-# CNPG operator on father — CHERRY-PICKED from components/infra/cnpg-system
-# (the full infra component stays off: its storage layer would collide with the
-# prod-owned openebs install, see kustomization.yaml). CRD provider for the
-# yucca-database Cluster CR, so it lives in the cluster-infra layer.
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
+# The namespace is parameterized because father's install predates the shared
+# openebs-system convention: its helm release + Mayastor state live in
+# `openebs`, and renaming would churn storage.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: cnpg-operator
+  name: openebs
   namespace: flux-system
 spec:
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
-      name: cloudnative-pg
-      namespace: cnpg-system
+      name: openebs
+      namespace: ${OPENEBS_NAMESPACE:=openebs-system}
   interval: 1h
   retryInterval: 2m
-  timeout: 10m
-  path: ./kubernetes/apps/base/cloudnative-pg
+  timeout: 15m
+  path: ./kubernetes/apps/base/openebs
   prune: true
   wait: true
   sourceRef:
     kind: GitRepository
     name: ${MANIFEST_SOURCE:=flux-system}
     namespace: flux-system
-  targetNamespace: cnpg-system
+  targetNamespace: ${OPENEBS_NAMESPACE:=openebs-system}

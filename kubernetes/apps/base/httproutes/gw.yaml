@@ -18,3 +18,18 @@ spec:
     - backendRefs:
         - name: yucca-michael
           port: 3010
+---
+# Upstream buffer tuning for envoy→michael (the restore direction rides these);
+# lives beside its HTTPRoute because BackendTrafficPolicy must share the
+# route's namespace (yucca, targetNamespace-forced here).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: gw-buffers
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: gw
+  connection:
+    bufferLimit: 4Mi

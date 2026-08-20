@@ -1,6 +1,4 @@
 ---
-# Namespaces are cluster-owned (see infra/kustomization.yaml); the
-# cert-manager namespace is TF's here, not Flux's.
 apiVersion: v1
 kind: Namespace
 metadata:

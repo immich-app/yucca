@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
 # Observability agents (vmagent + victoria-logs-collector) — the shared
-# components/infra/observability slice via the prod overlay (../observability),
-# which repoints remote-write at o11y's mesh vmauth over NetBird, unauth.
+# components/observability slice via the per-cluster overlay (which repoints
+# the remote-write egress: father at o11y's mesh vmauth, staging at the authed
+# public futostatus path).
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -12,7 +13,7 @@ spec:
   interval: 1h
   retryInterval: 2m
   timeout: 10m
-  path: ./kubernetes/apps/prod/htz-fsn1/observability
+  path: ./kubernetes/apps/${CLUSTER_PATH}/observability
   prune: true
   wait: true
   sourceRef:

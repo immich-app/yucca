@@ -1,12 +1,8 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.envoyproxy.io/envoyproxy_v1alpha1.json
-# Data-plane config for the DEDICATED michael (restic) gateway — sized for the
-# backup data plane (60+ Gbps target), separate from the 2-replica app gateway.
-# One replica per worker; the LB Service draws its VIP from the public pool-a
-# (lb: public matches its NotIn selector). externalTrafficPolicy: Cluster +
-# Cilium DSR (loadBalancer.mode hybrid, talos cilium values): every worker
-# advertises the /32 so the spine ECMPs across all of them regardless of pod
-# placement, the landing node geneve-dispatches to a backend, and the backend's
-# node replies straight to the client — no SNAT hop, client IPs preserved.
+# Data-plane config for the DEDICATED michael (restic) gateway, separate from
+# the app gateway so the backup data plane scales independently. Deleted in
+# staging (mergeGateways rides the app fleet); father patches in its dual
+# public/internal VIPs.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
@@ -37,11 +33,9 @@ spec:
           value:
             metadata:
               labels:
-                lb: public
-                # Second, internal VIP (lb-gw-internal pool) for on-net clients.
-                lb-internal-vip: gw
+                lb: ${INGRESS_LB_LABEL}
               annotations:
-                lbipam.cilium.io/ips: "${GW_VIP},${GW_INT_VIP}"
+                lbipam.cilium.io/ips: "${GW_VIP}"
   telemetry:
     metrics:
       prometheus: {}
