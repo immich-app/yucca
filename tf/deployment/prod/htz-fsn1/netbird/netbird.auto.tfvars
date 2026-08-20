@@ -9,11 +9,8 @@
 # yucca-reachable here, not strictly a network-resource tag.) `resources` is the
 # routed-subnet tag the site Network resources (netbird.tf) are tagged into;
 # it replaced the retired shared "yucca_resource" tag.
-# NB: no k8s_operator group/key here — the in-cluster netbird operator isn't
-# deployed on father, and the half-wired group+setup-key invited use before the
-# service user/token existed. Mirror the staging pattern (staging/global/netbird
-# mints the service user; the talos stack lands netbird-mgmt-api-key) when the
-# operator actually deploys.
+# NB: no k8s_operator group/key here — the in-cluster netbird operator was
+# retired unused (2026-08; staging's service user + token were removed too).
 groups = {
   ci    = { resource = true } # ephemeral CI runners → yucca-prod-htz-fsn1-ci
   mgmt  = { resource = true } # management nodes (ansible); also the route peers
