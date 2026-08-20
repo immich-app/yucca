@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Disable the volatile write cache on rotational ATA disks, drive-side.
+#
+# Usage: ceph-hdd-wcache all
+#        ceph-hdd-wcache --udev <sdX>
+#        ceph-hdd-wcache <sdX|/dev/sdX|/dev/disk/by-*> [...]
+#
+# hdparm -W 0 issues SET FEATURES to the drive itself; libata revalidates on
+# completion, so the kernel's queue flag follows and BlueStore's fdatasync
+# becomes a no-op at this device. The setting does NOT survive a power cycle
+# (SSP preserves it across link resets only), which is why the udev rule
+# deployed next to this script re-runs it on every disk add: boot coldplug and
+# hot-swapped replacement drives get it without operator action.
+#
+# Guards: rotational ATA whole disks only. SAS (sietch) and the BMC's virtual
+# media never match. The udev rule is add-only, so a uevent loop is impossible
+# regardless of what this script does; the --udev sysfs fast path exists only
+# to keep the RUN program cheap and idempotent on every disk add. Explicitly
+# named devices that are missing or ineligible are hard errors; only `all` and
+# `--udev` skip them quietly. Exit codes: 0 converged, 1 any failure, 2 usage.
+#
+# The LVM/dm-crypt devices above a disk keep reporting `write back`; dm samples
+# the flag at table load only. Cosmetic. Judge state by this script's output,
+# /sys/block/sdX/queue/write_cache, or hdparm -W.
+set -u
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+fail=0
+changed=0
+udev_mode=0
+
+usage() {
+  echo "usage: ceph-hdd-wcache all | --udev <sdX> | <sdX|/dev/sdX|/dev/disk/by-*> [...]"
+}
+
+eligible() {
+  local d=$1 bus
+  [ -b "/dev/$d" ] || return 1
+  [ -e "/sys/block/$d/partition" ] && return 1
+  [ -e "/sys/block/$d/queue/rotational" ] || return 1
+  [ "$(cat "/sys/block/$d/queue/rotational")" = "1" ] || return 1
+  grep -qi "virtual" "/sys/block/$d/device/model" 2>/dev/null && return 1
+  # udev exports event properties to RUN programs, so only --udev may trust an
+  # inherited ID_BUS; any other mode could be inheriting a stale one from its
+  # caller's environment and always asks udevadm.
+  bus=""
+  [ "$udev_mode" = "1" ] && bus=${ID_BUS:-}
+  if [ -z "$bus" ]; then
+    bus=$(udevadm info -q property --name "/dev/$d" 2>/dev/null | sed -n 's/^ID_BUS=//p')
+  fi
+  [ "$bus" = "ata" ] || return 1
+  return 0
+}
+
+drive_wce() {
+  hdparm -W "/dev/$1" 2>/dev/null | awk '/write-caching/{print $3}'
+}
+
+apply() {
+  local d=$1 drive kernel
+  drive=$(drive_wce "$d")
+  kernel=$(cat "/sys/block/$d/queue/write_cache")
+  if [ "$drive" = "0" ] && [ "$kernel" = "write through" ]; then
+    echo "$d: write cache already disabled (drive=0)"
+    return 0
+  fi
+  if ! hdparm -q -W 0 "/dev/$d"; then
+    echo "$d: hdparm -W 0 FAILED" >&2
+    return 1
+  fi
+  # Completing the SET FEATURES schedules the libata revalidate that refreshes
+  # the kernel flag, which is why a drive already at 0 whose kernel flag still
+  # reads write back gets the idempotent re-issue above rather than an early
+  # return. Give the sd flag a moment to follow.
+  for _ in 1 2 3 4 5 6; do
+    [ "$(cat "/sys/block/$d/queue/write_cache")" = "write through" ] && break
+    sleep 0.3
+  done
+  drive=$(drive_wce "$d")
+  kernel=$(cat "/sys/block/$d/queue/write_cache")
+  if [ "$drive" = "0" ] && [ "$kernel" = "write through" ]; then
+    echo "$d: write cache disabled (drive=0 kernel=write_through)"
+    changed=1
+    return 0
+  fi
+  echo "$d: VERIFY FAILED drive=$drive kernel=$kernel" >&2
+  return 1
+}
+
+case ${1:-} in
+-h|--help)
+  usage
+  exit 0
+  ;;
+esac
+
+[ $# -ge 1 ] || { usage >&2; exit 2; }
+
+case $1 in
+all)
+  [ $# -eq 1 ] || { usage >&2; exit 2; }
+  for sys in /sys/block/sd*; do
+    [ -e "$sys" ] || continue
+    d=${sys##*/}
+    if ! eligible "$d"; then
+      echo "$d: skipped (not a rotational ATA disk)"
+      continue
+    fi
+    apply "$d" || fail=1
+  done
+  ;;
+--udev)
+  [ $# -eq 2 ] || { usage >&2; exit 2; }
+  udev_mode=1
+  d=$2
+  if ! eligible "$d"; then
+    echo "$d: skipped (not a rotational ATA disk)"
+  elif [ "$(cat "/sys/block/$d/queue/write_cache")" != "write through" ]; then
+    apply "$d" || fail=1
+  fi
+  ;;
+*)
+  for arg in "$@"; do
+    d=$arg
+    case $arg in
+    */*)
+      if ! d=$(readlink -f -- "$arg") || [ "${d%/*}" != "/dev" ] || [ ! -b "$d" ]; then
+        echo "$arg: no such block device" >&2
+        fail=1
+        continue
+      fi
+      ;;
+    esac
+    d=${d#/dev/}
+    if [ ! -b "/dev/$d" ]; then
+      echo "$arg: no such block device" >&2
+      fail=1
+      continue
+    fi
+    if ! eligible "$d"; then
+      echo "$arg: not a rotational ATA disk" >&2
+      fail=1
+      continue
+    fi
+    apply "$d" || fail=1
+  done
+  ;;
+esac
+
+[ "$changed" -eq 1 ] && echo CHANGED
+exit $fail
