@@ -2875,7 +2875,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Yucca: K8s / Pods",
+  "title": "Kubernetes / Views / Pods",
   "uid": "yucca-k8s-pods",
   "version": 39,
   "weekStart": ""

@@ -10,7 +10,10 @@ the alert rules.
 ## The set
 
 Every series at o11y carries `cluster` (`father` k8s / `spice` ceph / `netops`
-fabric tier / `luke` staging), `site`, `env`. Each dashboard uses a
+fabric tier / `luke` staging), `site`, `env`, and `project="yucca"`. Dashboard
+titles follow o11y's `Component / Subarea` convention (`Yucca / Overview`,
+`Ceph / Health`, `Kubernetes / Views / Global`, `Logs / michael`, …); the
+`yucca` folder is what distinguishes our copies from o11y's own. Each dashboard uses a
 `$datasource` variable — no datasource UIDs are baked in. Dashboards with logs
 panels additionally use a `$logs_datasource` variable (the VictoriaLogs grafana
 datasource); log lines carry the same `cluster`/`site`/`env` fields, stamped by
@@ -80,6 +83,7 @@ one). Provenance and pinned versions live in the script; each dashboard's
 | `yucca-cilium.json`, `yucca-cilium-operator.json`, `yucca-hubble.json` | cilium/cilium (pinned to the deployed version; hubble http panels pruned — only dns/drop/tcp/flow/icmp metric sets are enabled) |
 | `yucca-node-exporter.json` | rfmoz/grafana-dashboards node-exporter-full |
 | `yucca-flux.json`, `yucca-flux-controllers.json` | fluxcd/flux2-monitoring-example |
+| `yucca-cnpg.json` | cloudnative-pg/grafana-dashboards, plus an appended Backups row (Barman Cloud: base-backup/PITR ages, WAL archive queue) mirroring the `yucca-database` alert group |
 | `yucca-vmagent.json` | VictoriaMetrics official vmagent board |
 
 Per-user metric inventory (used by the two user dashboards): michael counts
@@ -148,6 +152,11 @@ reason every dashboard's `$datasource` variable carries the
 
 Conventions:
 
+- **`project="yucca"` on every selector**: the fleet datasource serves every
+  tenant's series (harbor, o11y itself, …), so each rule query is scoped to
+  the project label our vmagents stamp on all yucca-owned data — without it,
+  generic selectors (flux, cert-manager, k8s) fire on other tenants'
+  clusters.
 - **Severity**: rules carry a `severity` label (`critical` | `warning`) for
   o11y's notification policy to route on. Every rule carries a `description`
   annotation that names the cluster/host, so a notification is actionable

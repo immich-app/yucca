@@ -26,13 +26,16 @@ exclusions:
   # units upstream ships; re-import would revert any local fix-ups.
   panel-units-rule:
     entries:
-      - dashboard: "Yucca: Hubble"
+      - dashboard: "Cilium / Hubble"
         reason: imported upstream dashboard; graph panels predate fieldConfig units
-      - dashboard: "Yucca: Cilium operator"
+      - dashboard: "Cilium / Operator"
         reason: imported upstream dashboard; graph panels predate fieldConfig units
   target-promql-rule:
     entries:
-      - dashboard: "Yucca: Michael (restic gateway)"
+      - dashboard: "Yucca / Michael"
         panel: Top source addresses (selected range)
         targetIdx: "0"
         reason: LogsQL stats query against $logs_datasource, not PromQL
+      - dashboard: "CloudNativePG"
+        targetIdx: "4"
+        reason: grafana server-side math expression target (__expr__), not PromQL

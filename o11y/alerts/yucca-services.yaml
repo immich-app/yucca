@@ -37,8 +37,9 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              sum by (cluster) (rate(api_request_count{status=~"5.."}[5m])) /
-              sum by (cluster) (rate(api_request_count[5m])) > 0.05
+              sum by (cluster) (rate(api_request_count{status=~"5..",
+              project="yucca"}[5m])) / sum by (cluster)
+              (rate(api_request_count{project="yucca"}[5m])) > 0.05
         - refId: B
           relativeTimeRange:
             from: 600
@@ -85,8 +86,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               kube_deployment_status_replicas_available{namespace="yucca",
-              deployment=~"yucca-api|yucca-admin-api|yucca-web|yucca-meta|yucca-metrics-worker"}
-              == bool 0
+              deployment=~"yucca-api|yucca-admin-api|yucca-web|yucca-meta|yucca-metrics-worker",
+              project="yucca"} == bool 0
         - refId: B
           relativeTimeRange:
             from: 600

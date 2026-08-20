@@ -39,7 +39,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               kube_daemonset_status_number_unavailable{namespace="kube-system",
-              daemonset="cilium"} > 0
+              daemonset="cilium", project="yucca"} > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -86,7 +86,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               max by (cluster, pod, neighbor)
-              (cilium_bgp_control_plane_session_state) == bool 0
+              (cilium_bgp_control_plane_session_state{project="yucca"}) ==
+              bool 0
         - refId: B
           relativeTimeRange:
             from: 600

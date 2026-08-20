@@ -47,7 +47,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               count by (cluster, customresource_kind, exported_namespace,
-              name) (gotk_resource_info{ready="False"}) > 0
+              name) (gotk_resource_info{ready="False", project="yucca"}) > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -90,8 +90,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (cluster, pod) (rate(
-              controller_runtime_reconcile_errors_total{namespace="flux-system"}[10m]))
-              > 0.02
+              controller_runtime_reconcile_errors_total{namespace="flux-system",
+              project="yucca"}[10m])) > 0.02
         - refId: B
           relativeTimeRange:
             from: 600
@@ -137,8 +137,9 @@ spec:
             maxDataPoints: 43200
             expr: >-
               ((time() + 14 * 86400) - min by (cluster, exported_namespace,
-              name) (certmanager_certificate_expiration_timestamp_seconds)) >
-              0
+              name)
+              (certmanager_certificate_expiration_timestamp_seconds{project="yucca"}))
+              > 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -181,7 +182,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               max by (cluster, exported_namespace, name)
-              (certmanager_certificate_ready_status{condition="False"}) == 1
+              (certmanager_certificate_ready_status{condition="False",
+              project="yucca"}) == 1
         - refId: B
           relativeTimeRange:
             from: 600
@@ -223,7 +225,7 @@ spec:
             maxDataPoints: 43200
             expr: >-
               kube_node_status_condition{cluster=~"father|luke",
-              condition="Ready", status="true"} == bool 0
+              condition="Ready", status="true", project="yucca"} == bool 0
         - refId: B
           relativeTimeRange:
             from: 600
@@ -265,8 +267,8 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              increase(kube_pod_container_status_restarts_total{cluster=~"father|luke"}[30m])
-              > 4
+              increase(kube_pod_container_status_restarts_total{cluster=~"father|luke",
+              project="yucca"}[30m]) > 4
         - refId: B
           relativeTimeRange:
             from: 600
@@ -309,9 +311,10 @@ spec:
             maxDataPoints: 43200
             expr: >-
               (1 -
-              kubelet_volume_stats_available_bytes{cluster=~"father|luke"} /
-              kubelet_volume_stats_capacity_bytes{cluster=~"father|luke"}) >
-              0.9
+              kubelet_volume_stats_available_bytes{cluster=~"father|luke",
+              project="yucca"} /
+              kubelet_volume_stats_capacity_bytes{cluster=~"father|luke",
+              project="yucca"}) > 0.9
         - refId: B
           relativeTimeRange:
             from: 600
@@ -355,9 +358,10 @@ spec:
             maxDataPoints: 43200
             expr: >-
               (1 -
-              kubelet_volume_stats_available_bytes{cluster=~"father|luke"} /
-              kubelet_volume_stats_capacity_bytes{cluster=~"father|luke"}) >
-              0.95
+              kubelet_volume_stats_available_bytes{cluster=~"father|luke",
+              project="yucca"} /
+              kubelet_volume_stats_capacity_bytes{cluster=~"father|luke",
+              project="yucca"}) > 0.95
         - refId: B
           relativeTimeRange:
             from: 600

@@ -22,22 +22,25 @@ CILIUM = f"https://raw.githubusercontent.com/cilium/cilium/{CILIUM_VERSION}/inst
 # uid -> (url, title, inject cluster var+matchers, anchor metric for the
 # cluster variable, extra tags, drop panels whose exprs match)
 IMPORTS = {
-    "yucca-k8s-global": (f"{DOTDC}/k8s-views-global.json", "Yucca: K8s / Global", False, None, ["kubernetes"], None),
-    "yucca-k8s-namespaces": (f"{DOTDC}/k8s-views-namespaces.json", "Yucca: K8s / Namespaces", False, None, ["kubernetes"], None),
-    "yucca-k8s-nodes": (f"{DOTDC}/k8s-views-nodes.json", "Yucca: K8s / Nodes", False, None, ["kubernetes"], None),
-    "yucca-k8s-pods": (f"{DOTDC}/k8s-views-pods.json", "Yucca: K8s / Pods", False, None, ["kubernetes"], None),
-    "yucca-k8s-apiserver": (f"{DOTDC}/k8s-system-api-server.json", "Yucca: K8s / API server", False, None, ["kubernetes"], None),
-    "yucca-k8s-coredns": (f"{DOTDC}/k8s-system-coredns.json", "Yucca: K8s / CoreDNS", False, None, ["kubernetes"], None),
-    "yucca-cilium": (f"{CILIUM}/cilium-agent/dashboards/cilium-dashboard.json", "Yucca: Cilium agent", True, "cilium_version", ["cilium"], None),
-    "yucca-cilium-operator": (f"{CILIUM}/cilium-operator/dashboards/cilium-operator-dashboard.json", "Yucca: Cilium operator", True, "cilium_operator_process_cpu_seconds_total", ["cilium"], None),
-    "yucca-hubble": (f"{CILIUM}/hubble/dashboards/hubble-dashboard.json", "Yucca: Hubble", True, "hubble_flows_processed_total", ["cilium"], re.compile(r"hubble_http_")),
-    "yucca-node-exporter": ("https://raw.githubusercontent.com/rfmoz/grafana-dashboards/master/prometheus/node-exporter-full.json", "Yucca: Node exporter", True, "node_uname_info", ["nodes"], None),
-    "yucca-flux": ("https://raw.githubusercontent.com/fluxcd/flux2-monitoring-example/main/monitoring/configs/dashboards/cluster.json", "Yucca: Flux cluster", True, "gotk_reconcile_duration_seconds_count", ["flux"], None),
-    "yucca-flux-controllers": ("https://raw.githubusercontent.com/fluxcd/flux2-monitoring-example/main/monitoring/configs/dashboards/control-plane.json", "Yucca: Flux controllers", True, "gotk_reconcile_duration_seconds_count", ["flux"], None),
-    "yucca-vmagent": ("https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/vmagent.json", "Yucca: vmagent", True, 'vm_app_version{version=~"^vmagent.*"}', ["telemetry"], None),
+    "yucca-k8s-global": (f"{DOTDC}/k8s-views-global.json", "Kubernetes / Views / Global", False, None, ["kubernetes"], None),
+    "yucca-k8s-namespaces": (f"{DOTDC}/k8s-views-namespaces.json", "Kubernetes / Views / Namespaces", False, None, ["kubernetes"], None),
+    "yucca-k8s-nodes": (f"{DOTDC}/k8s-views-nodes.json", "Kubernetes / Views / Nodes", False, None, ["kubernetes"], None),
+    "yucca-k8s-pods": (f"{DOTDC}/k8s-views-pods.json", "Kubernetes / Views / Pods", False, None, ["kubernetes"], None),
+    "yucca-k8s-apiserver": (f"{DOTDC}/k8s-system-api-server.json", "Kubernetes / System / API Server", False, None, ["kubernetes"], None),
+    "yucca-k8s-coredns": (f"{DOTDC}/k8s-system-coredns.json", "Kubernetes / System / CoreDNS", False, None, ["kubernetes"], None),
+    "yucca-cilium": (f"{CILIUM}/cilium-agent/dashboards/cilium-dashboard.json", "Cilium / Agent", True, "cilium_version", ["cilium"], None),
+    "yucca-cilium-operator": (f"{CILIUM}/cilium-operator/dashboards/cilium-operator-dashboard.json", "Cilium / Operator", True, "cilium_operator_process_cpu_seconds_total", ["cilium"], None),
+    "yucca-hubble": (f"{CILIUM}/hubble/dashboards/hubble-dashboard.json", "Cilium / Hubble", True, "hubble_flows_processed_total", ["cilium"], re.compile(r"hubble_http_")),
+    "yucca-node-exporter": ("https://raw.githubusercontent.com/rfmoz/grafana-dashboards/master/prometheus/node-exporter-full.json", "Node Exporter / Full", True, "node_uname_info", ["nodes"], None),
+    "yucca-flux": ("https://raw.githubusercontent.com/fluxcd/flux2-monitoring-example/main/monitoring/configs/dashboards/cluster.json", "Flux / Cluster", True, "gotk_reconcile_duration_seconds_count", ["flux"], None),
+    "yucca-flux-controllers": ("https://raw.githubusercontent.com/fluxcd/flux2-monitoring-example/main/monitoring/configs/dashboards/control-plane.json", "Flux / Control Plane", True, "gotk_reconcile_duration_seconds_count", ["flux"], None),
+    "yucca-cnpg": ("https://raw.githubusercontent.com/cloudnative-pg/grafana-dashboards/main/charts/cluster/grafana-dashboard.json", "CloudNativePG", True, "cnpg_collector_up", ["postgres"], None),
+    "yucca-vmagent": ("https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/master/dashboards/vmagent.json", "VictoriaMetrics / vmagent", True, 'vm_app_version{version=~"^vmagent.*"}', ["telemetry"], None),
 }
 
-CLUSTER_VAR_OVERRIDE = {}
+# The CNPG dashboard already uses `$cluster` for the CNPG Cluster resource, so
+# the infra-cluster variable gets a different name there.
+CLUSTER_VAR_OVERRIDE = {"yucca-cnpg": "k8s_cluster"}
 
 
 def query_var(d, name, query, regex=""):
@@ -50,11 +53,182 @@ def query_var(d, name, query, regex=""):
     raise KeyError(name)
 
 
+def tweak_cnpg(d):
+    """Our vmagent overwrites the `cluster` label with the infra cluster name
+    (verified live: father's cnpg series carry no exported_cluster), so the
+    upstream vars that regex CNPG cluster names out of series strings resolve
+    to father/luke and match nothing. Re-derive them from pod names, then
+    append a Backups row for the Barman Cloud plugin signals the yucca-database
+    alert group (o11y/alerts/database.yaml) fires on."""
+    query_var(d, "namespace", 'label_values(cnpg_collector_up{cluster=~"$k8s_cluster"}, namespace)')
+    query_var(
+        d,
+        "cluster",
+        'label_values(cnpg_collector_up{cluster=~"$k8s_cluster", namespace=~"$namespace"}, pod)',
+        regex="/(?<value>.+)-[0-9]+$/",
+    )
+    query_var(
+        d,
+        "instances",
+        'label_values(cnpg_collector_up{cluster=~"$k8s_cluster", namespace=~"$namespace", pod=~"$cluster-[0-9]+"}, pod)',
+    )
+
+    sel = 'cluster=~"$k8s_cluster", namespace=~"$namespace", pod=~"$cluster-[0-9]+"'
+    y = max((p["gridPos"]["y"] + p["gridPos"]["h"]) for p in d["panels"] if "gridPos" in p)
+    ids = 9000
+
+    def ds():
+        return {"uid": "$datasource"}
+
+    def stat(title, expr, x, w, thresholds, unit="s", description=None):
+        nonlocal ids
+        ids += 1
+        p = {
+            "datasource": ds(),
+            "fieldConfig": {
+                "defaults": {
+                    "color": {"mode": "thresholds"},
+                    "mappings": [],
+                    "thresholds": {"mode": "absolute", "steps": thresholds},
+                    "unit": unit,
+                },
+                "overrides": [],
+            },
+            "gridPos": {"h": 5, "w": w, "x": x, "y": y + 1},
+            "id": ids,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
+                "textMode": "auto",
+                "wideLayout": True,
+            },
+            "targets": [{"datasource": ds(), "refId": "A", "expr": expr}],
+            "title": title,
+            "type": "stat",
+        }
+        if description:
+            p["description"] = description
+        return p
+
+    def ts(title, targets, x, w, unit="short"):
+        nonlocal ids
+        ids += 1
+        return {
+            "datasource": ds(),
+            "fieldConfig": {
+                "defaults": {
+                    "color": {"mode": "palette-classic"},
+                    "custom": {
+                        "axisCenteredZero": False,
+                        "axisPlacement": "auto",
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {"type": "linear"},
+                        "showPoints": "never",
+                        "spanNulls": True,
+                        "stacking": {"group": "A", "mode": "none"},
+                        "thresholdsStyle": {"mode": "off"},
+                    },
+                    "mappings": [],
+                    "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": 0}]},
+                    "unit": unit,
+                },
+                "overrides": [],
+            },
+            "gridPos": {"h": 8, "w": w, "x": x, "y": y + 6},
+            "id": ids,
+            "options": {
+                "legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": True},
+                "tooltip": {"mode": "multi", "sort": "desc"},
+            },
+            "targets": targets,
+            "title": title,
+            "type": "timeseries",
+        }
+
+    def tgt(expr, ref="A", legend=None):
+        t = {"datasource": ds(), "refId": ref, "expr": expr}
+        if legend:
+            t["legendFormat"] = legend
+        return t
+
+    ids += 1
+    d["panels"].append(
+        {"collapsed": False, "gridPos": {"h": 1, "w": 24, "x": 0, "y": y}, "id": ids, "panels": [], "title": "Backups (Barman Cloud)", "type": "row"}
+    )
+    d["panels"].append(
+        stat(
+            "Last base backup age",
+            f"time() - max(cnpg_collector_last_available_backup_timestamp{{{sel}}})",
+            0,
+            6,
+            [{"color": "green", "value": 0}, {"color": "yellow", "value": 93600}, {"color": "red", "value": 172800}],
+            description="Schedule is daily; a value of ~forever means no base backup has ever succeeded.",
+        )
+    )
+    d["panels"].append(
+        stat(
+            "PITR window (first recoverability point age)",
+            f"time() - max(cnpg_collector_first_recoverability_point{{{sel}}})",
+            6,
+            6,
+            [{"color": "red", "value": 0}, {"color": "yellow", "value": 86400}, {"color": "green", "value": 604800}],
+        )
+    )
+    d["panels"].append(
+        stat(
+            "Last failed backup age",
+            f"time() - max(cnpg_collector_last_failed_backup_timestamp{{{sel}}})",
+            12,
+            6,
+            [{"color": "red", "value": 0}, {"color": "green", "value": 93600}],
+            description="Red while the most recent failure is fresher than the daily schedule.",
+        )
+    )
+    d["panels"].append(
+        stat(
+            "WAL segments awaiting archive",
+            f'max(cnpg_collector_pg_wal_archive_status{{value="ready", {sel}}})',
+            18,
+            6,
+            [{"color": "green", "value": 0}, {"color": "yellow", "value": 1}, {"color": "red", "value": 3}],
+            unit="short",
+            description="Sustained queue = WAL archiving to RGW is broken and the PITR window stops advancing.",
+        )
+    )
+    d["panels"].append(
+        ts(
+            "WAL archive status",
+            [tgt(f"sum by (value) (cnpg_collector_pg_wal_archive_status{{{sel}}})", "A", "{{value}}")],
+            0,
+            12,
+        )
+    )
+    d["panels"].append(
+        ts(
+            "WAL generation",
+            [
+                tgt(f"sum(rate(cnpg_collector_wal_bytes{{{sel}}}[$__rate_interval]))", "A", "bytes/s"),
+            ],
+            12,
+            12,
+            unit="Bps",
+        )
+    )
+
+
 def tweak_flux_control_plane(d):
     query_var(d, "namespace", 'label_values(workqueue_work_duration_seconds_count{cluster=~"$cluster"}, namespace)')
 
 
-TWEAKS = {"yucca-flux-controllers": tweak_flux_control_plane}
+TWEAKS = {"yucca-cnpg": tweak_cnpg, "yucca-flux-controllers": tweak_flux_control_plane}
 
 
 def inject_cluster(expr, var):

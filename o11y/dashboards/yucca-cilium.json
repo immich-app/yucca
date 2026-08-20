@@ -11047,7 +11047,7 @@
     ]
   },
   "timezone": "utc",
-  "title": "Yucca: Cilium agent",
+  "title": "Cilium / Agent",
   "uid": "yucca-cilium",
   "version": 1,
   "weekStart": ""
