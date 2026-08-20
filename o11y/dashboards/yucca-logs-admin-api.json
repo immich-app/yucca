@@ -642,6 +642,8 @@
         "prettifyLogMessage": false,
         "showCommonLabels": false,
         "showControls": true,
+        "showFieldSelector": true,
+        "syntaxHighlighting": true,
         "showLabels": false,
         "showTime": true,
         "sortOrder": "Descending",
@@ -976,7 +978,7 @@
         "uid": "$logs_datasource"
       },
       "gridPos": {
-        "h": 14,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 36
@@ -989,6 +991,8 @@
         "prettifyLogMessage": false,
         "showCommonLabels": false,
         "showControls": true,
+        "showFieldSelector": true,
+        "syntaxHighlighting": true,
         "showLabels": false,
         "showTime": true,
         "sortOrder": "Descending",
@@ -1001,13 +1005,55 @@
             "uid": "$logs_datasource"
           },
           "refId": "A",
-          "expr": "{kubernetes.container_name=\"yucca-admin-api\"} cluster:=\"$cluster\" request_id:~\"$request_id\" $search",
+          "expr": "{kubernetes.container_name=\"yucca-admin-api\"} cluster:=\"$cluster\" $search",
           "queryType": "instant",
           "maxLines": 5000
         }
       ],
       "title": "Live stream",
       "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "id": 19,
+      "options": {
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": true,
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showControls": true,
+        "showFieldSelector": true,
+        "syntaxHighlighting": true,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "expr": "{kubernetes.container_name=\"yucca-admin-api\"} cluster:=\"$cluster\" request_id:\"$request_id\"* $search",
+          "queryType": "instant",
+          "maxLines": 2000
+        }
+      ],
+      "title": "Request trace",
+      "type": "logs",
+      "description": "All lines for the request id in the Request ID box (prefix match). Empty shows every request-tagged line; the regexp operator cannot take variables, hence the prefix filter."
     }
   ],
   "preload": false,
