@@ -1,8 +1,8 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
 # Dedicated michael (restic) Gateway — apps/base/gw-proxy via the per-cluster
-# overlay: father adds the internal listener + BGP VIPs; staging folds the
-# fleet into the app gateway's single NAT'd VIP (mergeGateways).
+# overlay: father adds the internal listener + BGP VIPs; staging serves it
+# behind the app gateway's single NAT'd VIP via an SNI passthrough listener.
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:

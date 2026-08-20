@@ -1,24 +1,22 @@
 ---
-# staging's specialization of apps/base/gw-proxy: no dedicated fleet — Austin
-# has one public entry (the NAT in front of the ingress VIP), so mergeGateways
-# (patched onto the app EnvoyProxy in ../infra) serves the gw Gateway from the
-# app fleet on the shared VIP. Merged gateways take the class-level EnvoyProxy,
-# so the per-gateway one is deleted and its parametersRef dropped.
+# staging's specialization of apps/base/gw-proxy: Austin has one public entry
+# (the NAT in front of the ingress VIP), so the gw fleet gets no VIP of its
+# own — the app gateway's SNI passthrough listener (see ../infra) forwards
+# ${GW_HOST}'s raw TLS here via the TLSRoute, and the fleet Service is plain
+# ClusterIP. TLS still terminates in THIS fleet (gw-public cert, ALPN pin,
+# buffer policies), same as father.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../../base/gw-proxy
+  - ./tlsroute.yaml
 patches:
   - target:
-      group: gateway.networking.k8s.io
-      kind: Gateway
-      name: gw
-    patch: |-
-      - op: remove
-        path: /spec/infrastructure
-  - patch: |-
-      apiVersion: gateway.envoyproxy.io/v1alpha1
+      group: gateway.envoyproxy.io
       kind: EnvoyProxy
-      metadata:
-        name: envoy-gw
-      $patch: delete
+      name: envoy-gw
+    patch: |-
+      - op: replace
+        path: /spec/provider/kubernetes/envoyService
+        value:
+          type: ClusterIP

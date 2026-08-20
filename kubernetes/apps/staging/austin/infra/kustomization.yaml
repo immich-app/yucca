@@ -16,10 +16,13 @@ components:
 patches:
   # STAGING TOPOLOGY: Austin has ONE public entry (the NAT in front of
   # ${INGRESS_VIP}), so the gw Gateway can't get its own VIP like father's.
-  # mergeGateways folds every Gateway of the class into the app fleet instead:
-  # gw's listener rides the same Service/VIP, SNI-demuxed against the app
-  # wildcard (exact hostname wins). The per-gateway EnvoyProxy side is dropped
-  # in ../gw-proxy.
+  # Instead the app gateway gets an SNI PASSTHROUGH listener for ${GW_HOST}
+  # (exact SNI beats the wildcard cert listener) whose TLSRoute hands the raw
+  # TLS stream to the gw fleet — clients still terminate against gw's own cert
+  # and policies. NOT mergeGateways: EG rejects it under the GatewayNamespace
+  # deploy mode the shared install runs ("Merged Gateways with Gateway
+  # Namespace Mode is not supported"), and a rejected class EnvoyProxy drops
+  # the whole app fleet to chart defaults (replicas 1, no VIP annotation).
   - target:
       group: kustomize.toolkit.fluxcd.io
       kind: Kustomization
@@ -32,10 +35,19 @@ patches:
       spec:
         patches:
           - target:
-              group: gateway.envoyproxy.io
-              kind: EnvoyProxy
+              group: gateway.networking.k8s.io
+              kind: Gateway
               name: envoy
             patch: |-
               - op: add
-                path: /spec/mergeGateways
-                value: true
+                path: /spec/listeners/-
+                value:
+                  name: gw-passthrough
+                  protocol: TLS
+                  port: 443
+                  hostname: "${GW_HOST}"
+                  tls:
+                    mode: Passthrough
+                  allowedRoutes:
+                    namespaces:
+                      from: All
