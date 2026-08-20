@@ -9,17 +9,15 @@
 # (its peers — SSH to the nodes — and any tagged resources) via the module's
 # auto-generated YUCCA_STAGING_YUCCA_TO_RESOURCES policy.
 groups = {
-  ci           = { resource = true } # ephemeral CI runners → YUCCA_STAGING_CI
-  mgmt         = { resource = true } # management nodes (ansible) → YUCCA_STAGING_MGMT
-  talos        = { resource = true } # Talos cluster nodes → YUCCA_STAGING_TALOS
-  k8s_operator = { resource = true } # in-cluster kubernetes operator → YUCCA_STAGING_K8S_OPERATOR
+  ci    = { resource = true } # ephemeral CI runners → YUCCA_STAGING_CI
+  mgmt  = { resource = true } # management nodes (ansible) → YUCCA_STAGING_MGMT
+  talos = { resource = true } # Talos cluster nodes → YUCCA_STAGING_TALOS
 }
 
 setup_keys = {
-  ci           = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
-  mgmt         = { type = "reusable", auto_groups = ["mgmt"] }
-  talos        = { type = "reusable", auto_groups = ["talos"] }
-  k8s_operator = { type = "reusable", auto_groups = ["k8s_operator"] }
+  ci    = { type = "reusable", ephemeral = true, auto_groups = ["ci"] }
+  mgmt  = { type = "reusable", auto_groups = ["mgmt"] }
+  talos = { type = "reusable", auto_groups = ["talos"] }
 }
 
 policies = {
@@ -30,7 +28,7 @@ policies = {
       name         = "ci-to-all"
       protocol     = "all"
       sources      = ["ci"]
-      destinations = ["mgmt", "talos", "k8s_operator"]
+      destinations = ["mgmt", "talos"]
     }]
   }
 
