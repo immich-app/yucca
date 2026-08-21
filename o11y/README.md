@@ -22,7 +22,7 @@ victoria-logs-collector.
 | File (= uid) | Covers | Source metrics |
 | --- | --- | --- |
 | `yucca-overview.json` | Single pane of glass: backup data plane + platform | michael OTLP, `ceph_rgw_*`, cadvisor, PVCs, coredns |
-| `yucca-michael.json` | Restic gateway deep dive: HTTP + S3 backend pool + source networks + logs | `http.server.request.*`, `s3.backend.*`, `traffic.*` (OTel, dotted names), VictoriaLogs |
+| `yucca-michael.json` | Restic gateway deep dive: HTTP + S3 backend pool (incl. circuit-breaker states, retries, load shedding) + source networks + logs | `http.server.request.*`, `s3.backend.*`, `s3.pool.*`, `traffic.*` (OTel, dotted names), VictoriaLogs |
 | `yucca-top-users.json` | Fleet-wide top talkers: storage, traffic, parallelism, stale backups per user (rows link to the per-user board) | `rgw_repository_*`, `blobs.*`, `client.request.*`, `user_last_*` (all keyed by user id) |
 | `yucca-per-user.json` | Single-user drill-down: storage, backup health, traffic, client behaviour, logs. Deep-linkable as `/d/yucca-per-user?var-user=<id>` (`yuctl users view-dashboard`) | `rgw_repository_*`, `blobs.*`, `client.*`, `user_*`, VictoriaLogs |
 | `yucca-spice-rgw-capacity.json` | RGW/pool capacity, S3 perf, OSD/BlueStore internals | `ceph_pool_*`, `ceph_rgw_*`, `ceph_osd_*`, `node_*` |
