@@ -18,6 +18,13 @@ func (s *Server) checkConfig(w http.ResponseWriter, r *http.Request) {
 
 	size, err := s.store(r.Context()).HeadObject(r.Context(), a.Repository, "config")
 	if err != nil {
+		// Restic stats the config to decide whether the repository exists — an
+		// infra failure answered as 404 would present a live repo as absent.
+		if !storage.IsNotFound(err) {
+			hlog.FromRequest(r).Error().Err(err).Msg("head config failed")
+			writeStorageError(w, r, err)
+			return
+		}
 		writeError(w, r, http.StatusNotFound, "Not Found")
 		return
 	}
@@ -34,7 +41,7 @@ func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 	obj, err := s.store(r.Context()).GetObject(r.Context(), a.Repository, "config", rangeHeader)
 	if err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("get config failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 
@@ -52,7 +59,7 @@ func (s *Server) saveConfig(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hlog.FromRequest(r).Error().Err(err).Msg("save config failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 
@@ -75,13 +82,13 @@ func (s *Server) deleteConfig(w http.ResponseWriter, r *http.Request) {
 	size, err := s.store(r.Context()).HeadObject(r.Context(), a.Repository, "config")
 	if err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("head config for delete failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 
 	if err := s.store(r.Context()).DeleteObject(r.Context(), a.Repository, "config"); err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("delete config failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 

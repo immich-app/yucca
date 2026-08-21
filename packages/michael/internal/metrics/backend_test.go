@@ -27,10 +27,10 @@ func TestRegisterBackendMetrics(t *testing.T) {
 	providers := map[string]BackendStatsProvider{
 		"default": stubProvider{
 			stats: []storage.BackendStat{
-				{Endpoint: "http://a:80", Healthy: true, Inflight: 2, Requests: 10, Errors: 1, DownloadedBytes: 100, UploadedBytes: 50},
-				{Endpoint: "http://b:80", Healthy: false, Inflight: 0, Requests: 3, Errors: 3, DownloadedBytes: 0, UploadedBytes: 7},
+				{Endpoint: "http://a:80", Healthy: true, State: "closed", Inflight: 2, Requests: 10, Errors: 1, DownloadedBytes: 100, UploadedBytes: 50},
+				{Endpoint: "http://b:80", Healthy: false, State: "half_open", Inflight: 0, Requests: 3, Errors: 3, DownloadedBytes: 0, UploadedBytes: 7},
 			},
-			pool: storage.PoolStat{RetryAttempts: 5, RetrySuccesses: 4, RetryDenied: 2, RetryBudget: 150},
+			pool: storage.PoolStat{RetryAttempts: 5, RetrySuccesses: 4, RetryDenied: 2, RetryBudget: 150, ShedRequests: 9, CanaryRequests: 3},
 		},
 		// Same endpoint as the default cluster's first backend: only the cluster
 		// attribute keeps the two series apart.
@@ -86,6 +86,10 @@ func TestRegisterBackendMetrics(t *testing.T) {
 		{"s3.pool.retries", "default//denied", 2},
 		{"s3.pool.retry_budget", "default/", 150},
 		{"s3.pool.retries", "spice//success", 0},
+		{"s3.backend.state", "default/http://a:80", 2},
+		{"s3.backend.state", "default/http://b:80", 1},
+		{"s3.pool.sheds", "default/", 9},
+		{"s3.pool.canaries", "default/", 3},
 	}
 	for _, c := range checks {
 		series, ok := got[c.metric]

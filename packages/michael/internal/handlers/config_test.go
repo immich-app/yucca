@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"michael/internal/storage"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 func TestCheckConfig_Found(t *testing.T) {
@@ -34,7 +36,7 @@ func TestCheckConfig_Found(t *testing.T) {
 func TestCheckConfig_NotFound(t *testing.T) {
 	store := &mockStorage{
 		headObjectFn: func(_ context.Context, _, _ string) (int64, error) {
-			return 0, errors.New("not found")
+			return 0, &types.NotFound{}
 		},
 	}
 	srv := newTestServer(store)

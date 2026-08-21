@@ -18,6 +18,92 @@ const probeTimeout = 5 * time.Second
 // ErrNoBackends is returned when the pool has no backend to route a request to.
 var ErrNoBackends = errors.New("no S3 backends available")
 
+// ErrBackendsUnavailable is returned while the pool sheds load fast because
+// every backend is unhealthy and real traffic recently failed. Handlers
+// surface it as 503 + Retry-After; restic retries that with backoff for up to
+// 15 minutes, which beats queueing requests onto dead gateways where each one
+// burns a dial timeout (docs/restic-retries.md).
+var ErrBackendsUnavailable = errors.New("all S3 backends unavailable")
+
+// Backend circuit-breaker states. A backend starts open (unproven) and is
+// closed by its first probe; traffic failures reopen it, and a traffic-tripped
+// backend must re-earn closed through half-open trial requests, since passing
+// a probe proves much less than serving real load.
+const (
+	stateOpen     int32 = iota // ejected, receives no regular traffic
+	stateClosed                // serving normally
+	stateHalfOpen              // admits one trial request at a time
+)
+
+// halfOpenCloseAfter consecutive trial successes close a half-open backend.
+const halfOpenCloseAfter = 3
+
+// shedWindow is how long after a real-traffic failure the pool fails fast when
+// nothing is serviceable. When it lapses, a single fail-open canary request is
+// let through: its failure re-arms the window, its success starts reinstating
+// the backend — so a dead cluster costs one probing request per window instead
+// of a pile-up, and a false alarm heals itself.
+const shedWindow = 30 * time.Second
+
+// One-second buckets back a sliding error-rate view. It ejects brownout
+// backends whose failures never run consecutively (each success resets the
+// streak) yet whose probes pass: at least windowMinRequests in the window and
+// windowFailurePercent of them failed.
+const (
+	windowBuckets        = 10
+	windowMinRequests    = 20
+	windowFailurePercent = 50
+)
+
+type windowBucket struct {
+	sec                int64
+	requests, failures int64
+}
+
+type window struct {
+	mu      sync.Mutex
+	buckets [windowBuckets]windowBucket
+}
+
+func (w *window) record(sec int64, failure bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	b := &w.buckets[sec%windowBuckets]
+	if b.sec != sec {
+		b.sec, b.requests, b.failures = sec, 0, 0
+	}
+	b.requests++
+	if failure {
+		b.failures++
+	}
+}
+
+func (w *window) failureRateExceeded(sec int64) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	var requests, failures int64
+	for _, b := range w.buckets {
+		if b.sec > sec-windowBuckets {
+			requests += b.requests
+			failures += b.failures
+		}
+	}
+	return requests >= windowMinRequests && failures*100 >= requests*windowFailurePercent
+}
+
+// recentSuccess reports whether any request succeeded inside the window — the
+// signal that lets live traffic overrule a failing probe.
+func (w *window) recentSuccess(sec int64) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for _, b := range w.buckets {
+		if b.sec > sec-windowBuckets && b.requests > b.failures {
+			return true
+		}
+	}
+	return false
+}
+
 // Cross-backend retries are paid from a token budget refilled by successful
 // traffic (by default one token per success, ten per retry, so at most ~1
 // retry per 10 successes): a healthy pool masks isolated gateway failures,
@@ -43,6 +129,7 @@ type BackendFactory func(endpoint string) (Storage, error)
 type BackendStat struct {
 	Endpoint        string
 	Healthy         bool
+	State           string // "closed" | "half_open" | "open"
 	Inflight        int64
 	Requests        int64
 	Errors          int64
@@ -59,13 +146,31 @@ type backend struct {
 
 	inflight atomic.Int64 // outstanding requests (drives least-outstanding pick)
 	failures atomic.Int64 // consecutive transport failures (passive ejection)
-	healthy  atomic.Bool
+	state    atomic.Int32
+	trial    atomic.Int64 // the half-open state's single trial slot (0 free, 1 claimed)
+	window   window
+	// trafficTripped marks a backend that was ever ejected by real-traffic
+	// failures: it must re-earn closed through half-open trials, while a
+	// probe-only ejection (or a fresh backend) closes on a passing probe alone.
+	trafficTripped    atomic.Bool
+	halfOpenSuccesses atomic.Int64
 
 	// cumulative, for metrics
 	requests        atomic.Int64
 	errors          atomic.Int64
 	downloadedBytes atomic.Int64
 	uploadedBytes   atomic.Int64
+}
+
+func stateName(s int32) string {
+	switch s {
+	case stateClosed:
+		return "closed"
+	case stateHalfOpen:
+		return "half_open"
+	default:
+		return "open"
+	}
 }
 
 // PoolConfig holds the tunables for a Pool. Zero values take the defaults.
@@ -79,11 +184,14 @@ type PoolConfig struct {
 }
 
 // Pool implements Storage by load-balancing requests across a set of
-// interchangeable S3 gateway backends. It picks the backend with the fewest
-// outstanding requests, ejects backends after consecutive transport failures,
-// and actively probes to reinstate them. The pool never retries a failed
-// request — it records the failure and returns it, leaving retries to the
-// client (restic).
+// interchangeable S3 gateway backends. Each backend runs a circuit breaker:
+// consecutive or windowed traffic failures (and failed probes) open it,
+// passing probes and successful trial traffic close it again. Idempotent
+// operations that fail at the transport level are retried once on a different
+// closed backend, within a budget; uploads are never retried (the body is the
+// client's one-shot stream — restic re-drives those itself). With every
+// backend open, the pool fails fast for a shed window after real-traffic
+// failures rather than queueing requests onto dead gateways.
 type Pool struct {
 	backends    atomic.Pointer[[]*backend]
 	factory     BackendFactory
@@ -101,15 +209,23 @@ type Pool struct {
 	retries        atomic.Int64
 	retrySuccesses atomic.Int64
 	retryDenied    atomic.Int64
+
+	now             func() time.Time // injectable for deterministic tests
+	lastFailureNano atomic.Int64
+	canaryInflight  atomic.Int64
+	sheds           atomic.Int64
+	canaries        atomic.Int64
 }
 
-// PoolStat is a pool-wide snapshot of the cross-backend retry machinery,
+// PoolStat is a pool-wide snapshot of the retry and fast-fail machinery,
 // consumed by the metrics layer.
 type PoolStat struct {
 	RetryAttempts  int64
 	RetrySuccesses int64
 	RetryDenied    int64
 	RetryBudget    int64
+	ShedRequests   int64
+	CanaryRequests int64
 }
 
 var _ Storage = (*Pool)(nil)
@@ -146,6 +262,7 @@ func NewPool(cfg PoolConfig, factory BackendFactory, resolver Resolver, logger z
 	empty := []*backend{}
 	p.backends.Store(&empty)
 	p.budget.Store(p.retryBudgetCap)
+	p.now = time.Now
 
 	if err := p.Reconcile(context.Background()); err != nil {
 		return nil, err
@@ -217,7 +334,6 @@ func (p *Pool) applyEndpoints(endpoints []string) {
 			continue
 		}
 		b := &backend{endpoint: ep, store: store}
-		b.healthy.Store(false)
 		next = append(next, b)
 		added++
 	}
@@ -255,64 +371,131 @@ func (p *Pool) probeOne(ctx context.Context, b *backend) {
 	prober, ok := b.store.(Prober)
 	if !ok {
 		// Unprobeable store (e.g. a bare fake): assume healthy.
-		b.healthy.Store(true)
+		b.state.Store(stateClosed)
 		return
 	}
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 	if err := prober.Probe(ctx, p.probeBucket); err != nil {
-		if b.healthy.CompareAndSwap(true, false) {
+		// Live traffic outranks probes: a backend serving real requests is not
+		// ejected over a broken probe path (e.g. a misconfigured sentinel
+		// bucket), or the two signals would flap it open and closed forever.
+		if b.state.Load() == stateClosed && b.window.recentSuccess(p.now().Unix()) {
+			p.logger.Warn().Str("backend", b.endpoint).Err(err).Msg("probe failed but traffic is healthy; keeping backend")
+			return
+		}
+		if b.state.CompareAndSwap(stateClosed, stateOpen) {
 			p.logger.Warn().Str("backend", b.endpoint).Err(err).Msg("backend failed health probe; ejecting")
+		}
+		if b.state.CompareAndSwap(stateHalfOpen, stateOpen) {
+			b.halfOpenSuccesses.Store(0)
+			p.logger.Warn().Str("backend", b.endpoint).Err(err).Msg("half-open backend failed health probe; reopening")
 		}
 		return
 	}
 	b.failures.Store(0)
-	if b.healthy.CompareAndSwap(false, true) {
+	if b.trafficTripped.Load() {
+		if b.state.CompareAndSwap(stateOpen, stateHalfOpen) {
+			b.halfOpenSuccesses.Store(0)
+			p.logger.Info().Str("backend", b.endpoint).Msg("probe passed; admitting trial traffic")
+		}
+		return
+	}
+	if b.state.CompareAndSwap(stateOpen, stateClosed) {
 		p.logger.Info().Str("backend", b.endpoint).Msg("backend healthy; reinstated")
 	}
 }
 
-// pick selects the healthy backend with the fewest outstanding requests. Ties
-// are broken by a rotating offset so equal-load backends are used round-robin.
-// If nothing is healthy it fails open to the least-loaded backend overall,
-// degrading rather than refusing service.
-func (p *Pool) pick() *backend {
+// picked is one admitted request's routing decision. A canary holds the pool's
+// single fail-open slot, a trial holds its backend's single half-open slot;
+// both must be released when the operation completes.
+type picked struct {
+	b      *backend
+	canary bool
+	trial  bool
+}
+
+// pick selects the serving backend for a request. Closed backends compete by
+// fewest outstanding requests, ties broken by a rotating offset; a half-open
+// backend admits one trial request at a time via an atomically claimed slot,
+// held until the operation (a streaming GET included) completes. With nothing
+// serviceable, the pool fails fast inside the shed window and otherwise admits
+// one fail-open canary to the least-loaded open backend.
+func (p *Pool) pick() (picked, error) {
 	bs := p.snapshot()
 	n := len(bs)
 	if n == 0 {
-		return nil
+		return picked{}, ErrNoBackends
 	}
 	start := int(p.pickCounter.Add(1) % uint64(n))
 
-	var best, fallback *backend
-	var bestLoad, fallbackLoad int64
+	var best, trialCand *backend
+	var bestLoad int64
 	for i := range n {
 		b := bs[(start+i)%n]
-		load := b.inflight.Load()
-		if fallback == nil || load < fallbackLoad {
-			fallback, fallbackLoad = b, load
+		switch b.state.Load() {
+		case stateClosed:
+			if load := b.inflight.Load(); best == nil || load < bestLoad {
+				best, bestLoad = b, load
+			}
+		case stateHalfOpen:
+			if trialCand == nil && b.trial.Load() == 0 {
+				trialCand = b
+			}
 		}
-		if !b.healthy.Load() {
-			continue
-		}
-		if best == nil || load < bestLoad {
-			best, bestLoad = b, load
-		}
+	}
+	// The trial goes first even when closed backends are idle: on a quiet
+	// system trials are the only traffic a half-open backend ever sees, and
+	// without them it could stay half-open indefinitely.
+	if trialCand != nil && trialCand.trial.CompareAndSwap(0, 1) {
+		return picked{b: trialCand, trial: true}, nil
 	}
 	if best != nil {
-		return best
+		return picked{b: best}, nil
 	}
-	p.logger.Warn().Msg("no healthy S3 backends; failing open to least-loaded")
-	return fallback
+
+	if p.now().UnixNano()-p.lastFailureNano.Load() < int64(shedWindow) {
+		p.sheds.Add(1)
+		return picked{}, ErrBackendsUnavailable
+	}
+	// Canaries only probe fully-open backends: a half-open backend already has
+	// its own trial gate, and admitting canaries there would let every new
+	// request start an extra stream on it while a slow trial body is open.
+	var fallback *backend
+	var fallbackLoad int64
+	for _, b := range bs {
+		if b.state.Load() != stateOpen {
+			continue
+		}
+		if load := b.inflight.Load(); fallback == nil || load < fallbackLoad {
+			fallback, fallbackLoad = b, load
+		}
+	}
+	if fallback == nil || !p.canaryInflight.CompareAndSwap(0, 1) {
+		p.sheds.Add(1)
+		return picked{}, ErrBackendsUnavailable
+	}
+	p.canaries.Add(1)
+	p.logger.Warn().Str("backend", fallback.endpoint).Msg("no serviceable S3 backend; failing open with a canary request")
+	return picked{b: fallback, canary: true}, nil
 }
 
-// pickHealthyOther returns the least-loaded healthy backend other than exclude,
+func (p *Pool) release(pk picked) {
+	if pk.canary {
+		p.canaryInflight.Store(0)
+	}
+	if pk.trial {
+		pk.b.trial.Store(0)
+	}
+}
+
+// pickHealthyOther returns the least-loaded closed backend other than exclude,
 // or nil — a retry never fails open, it only moves to a backend believed good.
 func (p *Pool) pickHealthyOther(exclude *backend) *backend {
 	var best *backend
 	var bestLoad int64
 	for _, b := range p.snapshot() {
-		if b == exclude || !b.healthy.Load() {
+		if b == exclude || b.state.Load() != stateClosed {
 			continue
 		}
 		if load := b.inflight.Load(); best == nil || load < bestLoad {
@@ -346,23 +529,62 @@ func (p *Pool) takeRetryTokens() bool {
 	}
 }
 
-// recordResult updates a backend's counters and passive-ejection state after a
-// completed operation. A transport failure increments the consecutive-failure
-// streak and ejects once it crosses the threshold; any non-transport outcome
-// (success, or a normal 4xx like a missing blob) proves liveness, resets the
-// streak, and refills the retry budget.
+// recordResult drives a backend's breaker from a completed operation's
+// outcome. A transport failure trips closed→open on the consecutive-failure
+// streak or the windowed error rate, and any failure reopens a half-open
+// backend. A non-transport outcome (success, or a normal 4xx like a missing
+// blob) proves liveness: it resets the streak, refills the retry budget,
+// advances a half-open backend toward closed, and turns a successful fail-open
+// canary on an open backend into a half-open one.
 func (p *Pool) recordResult(b *backend, err error) {
 	b.requests.Add(1)
+	now := p.now()
 	if isBackendFailure(err) {
 		b.errors.Add(1)
+		b.window.record(now.Unix(), true)
+		p.lastFailureNano.Store(now.UnixNano())
+		if b.state.CompareAndSwap(stateHalfOpen, stateOpen) {
+			b.trafficTripped.Store(true)
+			b.halfOpenSuccesses.Store(0)
+			p.logger.Warn().Str("backend", b.endpoint).Msg("half-open S3 backend failed a trial; reopening")
+			return
+		}
 		n := b.failures.Add(1)
-		if n >= p.ejectThresh && b.healthy.CompareAndSwap(true, false) {
-			p.logger.Warn().Str("backend", b.endpoint).Int64("failures", n).Msg("ejecting S3 backend after consecutive failures")
+		if (n >= p.ejectThresh || b.window.failureRateExceeded(now.Unix())) && b.state.CompareAndSwap(stateClosed, stateOpen) {
+			b.trafficTripped.Store(true)
+			p.logger.Warn().Str("backend", b.endpoint).Int64("failures", n).Msg("ejecting S3 backend after traffic failures")
 		}
 		return
 	}
 	b.failures.Store(0)
+	b.window.record(now.Unix(), false)
 	p.earnRetryToken()
+	switch b.state.Load() {
+	case stateHalfOpen:
+		if b.halfOpenSuccesses.Add(1) >= halfOpenCloseAfter && b.state.CompareAndSwap(stateHalfOpen, stateClosed) {
+			p.logger.Info().Str("backend", b.endpoint).Msg("backend passed its trials; closing")
+		}
+	case stateOpen:
+		// The completed canary counts as the first trial. A GET canary takes the
+		// other path — noteCanaryLiveness at headers seeds the streak at zero and
+		// this switch sees stateHalfOpen when the body closes — so either way one
+		// canary request contributes exactly one success.
+		if p.noteCanaryLiveness(b) {
+			b.halfOpenSuccesses.Add(1)
+		}
+	}
+}
+
+// noteCanaryLiveness turns a response from an open backend (a fail-open
+// canary) into half-open: the gateway answered, so trial traffic may resume.
+// It reports whether this call made the transition.
+func (p *Pool) noteCanaryLiveness(b *backend) bool {
+	if b.state.CompareAndSwap(stateOpen, stateHalfOpen) {
+		b.halfOpenSuccesses.Store(0)
+		p.logger.Info().Str("backend", b.endpoint).Msg("open backend served a canary; admitting trial traffic")
+		return true
+	}
+	return false
 }
 
 func (p *Pool) runOn(b *backend, fn func(s Storage) error) error {
@@ -382,15 +604,16 @@ func canAlwaysRetry() bool { return true }
 // sibling gateway would have absorbed, and its per-file Load breaker then
 // locks the affected blob out client-side for an hour (docs/restic-retries.md).
 func (p *Pool) do(ctx context.Context, canRetry func() bool, fn func(s Storage) error) error {
-	b := p.pick()
-	if b == nil {
-		return ErrNoBackends
+	pk, perr := p.pick()
+	if perr != nil {
+		return perr
 	}
-	err := p.runOn(b, fn)
+	err := p.runOn(pk.b, fn)
+	p.release(pk)
 	if !isBackendFailure(err) || canRetry == nil || !canRetry() || ctx.Err() != nil {
 		return err
 	}
-	next := p.pickHealthyOther(b)
+	next := p.pickHealthyOther(pk.b)
 	if next == nil {
 		return err
 	}
@@ -411,9 +634,11 @@ func (p *Pool) Stats() []BackendStat {
 	bs := p.snapshot()
 	stats := make([]BackendStat, 0, len(bs))
 	for _, b := range bs {
+		state := b.state.Load()
 		stats = append(stats, BackendStat{
 			Endpoint:        b.endpoint,
-			Healthy:         b.healthy.Load(),
+			Healthy:         state == stateClosed,
+			State:           stateName(state),
 			Inflight:        b.inflight.Load(),
 			Requests:        b.requests.Load(),
 			Errors:          b.errors.Load(),
@@ -431,6 +656,8 @@ func (p *Pool) PoolStats() PoolStat {
 		RetrySuccesses: p.retrySuccesses.Load(),
 		RetryDenied:    p.retryDenied.Load(),
 		RetryBudget:    p.budget.Load(),
+		ShedRequests:   p.sheds.Load(),
+		CanaryRequests: p.canaries.Load(),
 	}
 }
 
@@ -488,10 +715,11 @@ func (p *Pool) DeleteObject(ctx context.Context, bucket, key string) error {
 // consumed once — restic re-drives failed uploads itself with a rewindable
 // pack (docs/restic-retries.md).
 func (p *Pool) PutObject(ctx context.Context, bucket, key string, body io.Reader, contentLength int64, writeOnce bool, sha256Hex string) error {
-	b := p.pick()
-	if b == nil {
-		return ErrNoBackends
+	pk, perr := p.pick()
+	if perr != nil {
+		return perr
 	}
+	b := pk.b
 	// The body is fully consumed and uploaded before PutObject returns, so the
 	// upload — the large transfer — is accounted end-to-end here.
 	b.inflight.Add(1)
@@ -501,6 +729,7 @@ func (p *Pool) PutObject(ctx context.Context, bucket, key string, body io.Reader
 		b.uploadedBytes.Add(contentLength)
 	}
 	p.recordResult(b, err)
+	p.release(pk)
 	return err
 }
 
@@ -508,15 +737,15 @@ func (p *Pool) PutObject(ctx context.Context, bucket, key string, body io.Reader
 // headers are returned the body is streamed by the caller and a mid-stream
 // failure cannot be replayed.
 func (p *Pool) GetObject(ctx context.Context, bucket, key, rangeHeader string) (*S3Object, error) {
-	b := p.pick()
-	if b == nil {
-		return nil, ErrNoBackends
+	pk, perr := p.pick()
+	if perr != nil {
+		return nil, perr
 	}
-	obj, err := p.getFrom(ctx, b, bucket, key, rangeHeader)
+	obj, err := p.getFrom(ctx, pk, bucket, key, rangeHeader)
 	if !isBackendFailure(err) || ctx.Err() != nil {
 		return obj, err
 	}
-	next := p.pickHealthyOther(b)
+	next := p.pickHealthyOther(pk.b)
 	if next == nil {
 		return nil, err
 	}
@@ -525,35 +754,46 @@ func (p *Pool) GetObject(ctx context.Context, bucket, key, rangeHeader string) (
 		return nil, err
 	}
 	p.retries.Add(1)
-	obj, rerr := p.getFrom(ctx, next, bucket, key, rangeHeader)
+	obj, rerr := p.getFrom(ctx, picked{b: next}, bucket, key, rangeHeader)
 	if !isBackendFailure(rerr) {
 		p.retrySuccesses.Add(1)
 	}
 	return obj, rerr
 }
 
-func (p *Pool) getFrom(ctx context.Context, b *backend, bucket, key, rangeHeader string) (*S3Object, error) {
+func (p *Pool) getFrom(ctx context.Context, pk picked, bucket, key, rangeHeader string) (*S3Object, error) {
 	// The SDK returns headers here but the body is streamed by the caller after
-	// we return, so inflight must stay counted until the body is closed.
+	// we return, so inflight (and a canary's fail-open slot) must stay held
+	// until the body is closed.
+	b := pk.b
 	b.inflight.Add(1)
 	obj, err := b.store.GetObject(ctx, bucket, key, rangeHeader)
 	if err != nil {
 		b.inflight.Add(-1)
 		p.recordResult(b, err)
+		p.release(pk)
 		return nil, err
 	}
-	obj.Body = &poolBody{ReadCloser: obj.Body, pool: p, backend: b}
+	if pk.canary {
+		// Headers back is liveness proven: free the pool-wide canary slot now
+		// rather than holding recovery hostage to an arbitrarily slow body
+		// stream. The body's outcome still reaches recordResult on Close.
+		p.noteCanaryLiveness(b)
+		p.release(pk)
+		pk = picked{b: b}
+	}
+	obj.Body = &poolBody{ReadCloser: obj.Body, pool: p, picked: pk}
 	return obj, nil
 }
 
-// poolBody wraps a GetObject body so that closing it releases the inflight slot,
-// records downloaded bytes, and reports any mid-stream read failure toward the
-// backend's health (a read error from a dead gateway has no HTTP status and so
-// counts as a transport failure).
+// poolBody wraps a GetObject body so that closing it releases the inflight
+// slot (and a canary's fail-open slot), records downloaded bytes, and reports
+// any mid-stream read failure toward the backend's health (a read error from a
+// dead gateway has no HTTP status and so counts as a transport failure).
 type poolBody struct {
 	io.ReadCloser
 	pool    *Pool
-	backend *backend
+	picked  picked
 	n       int64
 	readErr error
 	done    atomic.Bool
@@ -571,9 +811,10 @@ func (b *poolBody) Read(p []byte) (int, error) {
 func (b *poolBody) Close() error {
 	err := b.ReadCloser.Close()
 	if b.done.CompareAndSwap(false, true) {
-		b.backend.inflight.Add(-1)
-		b.backend.downloadedBytes.Add(b.n)
-		b.pool.recordResult(b.backend, b.readErr)
+		b.picked.b.inflight.Add(-1)
+		b.picked.b.downloadedBytes.Add(b.n)
+		b.pool.recordResult(b.picked.b, b.readErr)
+		b.pool.release(b.picked)
 	}
 	return err
 }

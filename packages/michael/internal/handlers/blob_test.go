@@ -38,7 +38,7 @@ func TestCheckBlob_Found(t *testing.T) {
 func TestCheckBlob_NotFound(t *testing.T) {
 	store := &mockStorage{
 		headObjectFn: func(_ context.Context, _, _ string) (int64, error) {
-			return 0, errors.New("not found")
+			return 0, &types.NotFound{}
 		},
 	}
 	srv := newTestServer(store)
@@ -365,5 +365,66 @@ func TestDeleteBlob_InvalidType(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("expected 400, got %d", rec.Code)
+	}
+}
+
+func TestGetBlob_AllBackendsDown_Returns503WithRetryAfter(t *testing.T) {
+	store := &mockStorage{
+		getObjectFn: func(_ context.Context, _, _, _ string) (*storage.S3Object, error) {
+			return nil, storage.ErrBackendsUnavailable
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodGet, "/"+testRepository+"/data/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 while shedding, got %d", rec.Code)
+	}
+	if ra := rec.Header().Get("Retry-After"); ra == "" {
+		t.Error("expected a Retry-After header on shed responses")
+	}
+}
+
+func TestSaveBlob_AllBackendsDown_Returns503(t *testing.T) {
+	store := &mockStorage{
+		putObjectFn: func(_ context.Context, _, _ string, _ io.Reader, _ int64, _ bool, _ string) error {
+			return storage.ErrBackendsUnavailable
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodPost, "/"+testRepository+"/data/"+testBlobName, strings.NewReader("x"), defaultAuth(), nil)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 while shedding, got %d", rec.Code)
+	}
+}
+
+func TestCheckBlob_AllBackendsDown_IsNotA404(t *testing.T) {
+	// 404 is permanent for restic ("blob does not exist"); an outage must never
+	// wear that disguise.
+	store := &mockStorage{
+		headObjectFn: func(_ context.Context, _, _ string) (int64, error) {
+			return 0, storage.ErrBackendsUnavailable
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodHead, "/"+testRepository+"/data/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 while shedding, got %d", rec.Code)
+	}
+}
+
+func TestCheckBlob_StorageErrorIsNotA404(t *testing.T) {
+	store := &mockStorage{
+		headObjectFn: func(_ context.Context, _, _ string) (int64, error) {
+			return 0, errors.New("dial tcp: connection refused")
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodHead, "/"+testRepository+"/data/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for a transport failure, got %d", rec.Code)
 	}
 }
