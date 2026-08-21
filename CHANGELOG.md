@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.35.1](https://github.com/immich-app/yucca/compare/v0.35.0...v0.35.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **alerts:** make junos-exporter ignore one of em ([#524](https://github.com/immich-app/yucca/issues/524)) ([359a227](https://github.com/immich-app/yucca/commit/359a22764544995d0c179bc41d3ec14d40a32ede))
+* **cnpg:** fix backup alerts ([#522](https://github.com/immich-app/yucca/issues/522)) ([bbcfa7c](https://github.com/immich-app/yucca/commit/bbcfa7c295383047535b998f7a5dd31e291ec80c))
+* **go:** add golangci-lint ([#525](https://github.com/immich-app/yucca/issues/525)) ([55488d6](https://github.com/immich-app/yucca/commit/55488d6818672702ebd840f2e50f2023ee607703))
+
 ## [0.35.0](https://github.com/immich-app/yucca/compare/v0.34.0...v0.35.0) (2026-08-20)
 
 
