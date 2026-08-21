@@ -1,5 +1,6 @@
 # Managed by ansible (roles/fluentbit) - do not edit on the node.
-# journald -> drop noise -> tag -> o11y VictoriaLogs over the NetBird overlay.
+# journald + nftables drop events -> filter -> tag -> o11y VictoriaLogs over
+# the NetBird overlay.
 
 [SERVICE]
     Flush                     5

@@ -1,5 +1,6 @@
 ---
-# Ship each node's journald to o11y's VictoriaLogs over the NetBird overlay.
+# Ship each node's journald and nftables drop events to o11y's VictoriaLogs
+# over the NetBird overlay.
 # One agent per node, straight to the mesh vmauth. No aggregation tier.
 ceph_fluentbit_enabled: false
 
