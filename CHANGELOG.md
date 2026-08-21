@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.36.0](https://github.com/immich-app/yucca/compare/v0.35.1...v0.36.0) (2026-08-21)
+
+
+### Features
+
+* **michael:** budgeted cross-backend retries in the S3 pool ([#527](https://github.com/immich-app/yucca/issues/527)) ([bb28f01](https://github.com/immich-app/yucca/commit/bb28f016a33672b0c321699b5b8ad68a4d27a34d))
+* **michael:** per-backend circuit breakers with fast-fail load shedding ([#528](https://github.com/immich-app/yucca/issues/528)) ([6c8092a](https://github.com/immich-app/yucca/commit/6c8092ace8e86b6b2cc800a30f3f9ffbd857e819))
+* **o11y:** michael resilience panels and alerts ([#529](https://github.com/immich-app/yucca/issues/529)) ([03ea70e](https://github.com/immich-app/yucca/commit/03ea70ea7c2f1d25546284928eb411ad1cb81d12))
+
+
+### Bug Fixes
+
+* **michael:** converge retried WORM puts when the existing blob matches ([#526](https://github.com/immich-app/yucca/issues/526)) ([f435601](https://github.com/immich-app/yucca/commit/f435601871c2d21c2807f8721184afe09bb59686))
+
 ## [0.35.1](https://github.com/immich-app/yucca/compare/v0.35.0...v0.35.1) (2026-08-21)
 
 
