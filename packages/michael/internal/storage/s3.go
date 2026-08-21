@@ -282,6 +282,11 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 	})
 	if err != nil {
 		if isPreconditionFailed(err) {
+			// Only content-addressed writes converge: for keys that aren't the
+			// content's hash (the config object) a size match proves nothing.
+			if sha256Hex != "" && s.existingBlobMatches(ctx, bucket, key, contentLength) {
+				return nil
+			}
 			return ErrPreconditionFailed
 		}
 		return fmt.Errorf("put object: %w", err)
@@ -297,6 +302,23 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 	}
 
 	return nil
+}
+
+// existingBlobMatches reports whether the object that failed a write-once
+// PUT's precondition already holds this exact blob. Restic recovers from an
+// ambiguously-failed upload (michael reported an error but the gateway
+// committed the object) by re-POSTing the pack — on a WORM repository that
+// lands here as a 412, and surfacing it as an error would turn a healed
+// transient into a permanent backup failure (403 is permanent for restic; see
+// docs/restic-retries.md). Blob keys are the content's sha256 and every object
+// written through michael had that hash verified on the wire, so a size match
+// identifies the same blob without re-reading it.
+func (s *S3Storage) existingBlobMatches(ctx context.Context, bucket, key string, contentLength int64) bool {
+	if contentLength <= 0 {
+		return false
+	}
+	size, err := s.HeadObject(ctx, bucket, key)
+	return err == nil && size == contentLength
 }
 
 // sha256Writer wraps a hash.Hash for use with io.TeeReader.
