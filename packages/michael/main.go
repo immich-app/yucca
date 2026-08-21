@@ -202,6 +202,9 @@ func buildStorage(cc config.ClusterConfig, tm *metrics.TransportMetrics) (storag
 		EjectThreshold:    cc.S3EjectThreshold,
 		ProbeBucket:       cc.S3ProbeBucket,
 		ReconcileInterval: cc.S3ReconcileInterval,
+		RetryTokenEarn:    cc.S3RetryTokenEarn,
+		RetryTokenCost:    cc.S3RetryTokenCost,
+		RetryBudgetCap:    cc.S3RetryBudgetCap,
 	}, factory, resolver, log.Logger.With().Str("cluster", cc.Code).Logger())
 	if err != nil {
 		log.Fatal().Err(err).Str("cluster", cc.Code).Msg("failed to initialize S3 backend pool")

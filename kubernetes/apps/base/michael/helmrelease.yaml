@@ -78,6 +78,15 @@ spec:
         value: "3"
       - name: S3_RECONCILE_INTERVAL_MS
         value: "5000"
+      # Cross-backend retry budget (michael's defaults, surfaced likewise): a
+      # retry spends COST tokens, every success earns EARN back, CAP bounds how
+      # many retries a burst can spend before the budget must refill.
+      - name: S3_RETRY_TOKEN_EARN
+        value: "1"
+      - name: S3_RETRY_TOKEN_COST
+        value: "10"
+      - name: S3_RETRY_BUDGET_CAP
+        value: "200"
       - name: OTLP_METRICS_ENDPOINT
         value: ${VMAGENT_OTLP}
       - name: OTLP_METRICS_URL_PATH

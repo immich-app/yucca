@@ -11,9 +11,13 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
-type stubProvider struct{ stats []storage.BackendStat }
+type stubProvider struct {
+	stats []storage.BackendStat
+	pool  storage.PoolStat
+}
 
 func (s stubProvider) Stats() []storage.BackendStat { return s.stats }
+func (s stubProvider) PoolStats() storage.PoolStat  { return s.pool }
 
 func TestRegisterBackendMetrics(t *testing.T) {
 	reader := metric.NewManualReader()
@@ -21,10 +25,13 @@ func TestRegisterBackendMetrics(t *testing.T) {
 	meter := mp.Meter("test")
 
 	providers := map[string]BackendStatsProvider{
-		"default": stubProvider{stats: []storage.BackendStat{
-			{Endpoint: "http://a:80", Healthy: true, Inflight: 2, Requests: 10, Errors: 1, DownloadedBytes: 100, UploadedBytes: 50},
-			{Endpoint: "http://b:80", Healthy: false, Inflight: 0, Requests: 3, Errors: 3, DownloadedBytes: 0, UploadedBytes: 7},
-		}},
+		"default": stubProvider{
+			stats: []storage.BackendStat{
+				{Endpoint: "http://a:80", Healthy: true, Inflight: 2, Requests: 10, Errors: 1, DownloadedBytes: 100, UploadedBytes: 50},
+				{Endpoint: "http://b:80", Healthy: false, Inflight: 0, Requests: 3, Errors: 3, DownloadedBytes: 0, UploadedBytes: 7},
+			},
+			pool: storage.PoolStat{RetryAttempts: 5, RetrySuccesses: 4, RetryDenied: 2, RetryBudget: 150},
+		},
 		// Same endpoint as the default cluster's first backend: only the cluster
 		// attribute keeps the two series apart.
 		"spice": stubProvider{stats: []storage.BackendStat{
@@ -73,6 +80,12 @@ func TestRegisterBackendMetrics(t *testing.T) {
 		// The second cluster's identically-addressed backend stays its own series.
 		{"s3.backend.requests", "spice/http://a:80", 4},
 		{"s3.backend.inflight", "spice/http://a:80", 1},
+		// Pool-wide retry series carry cluster+outcome, no backend.
+		{"s3.pool.retries", "default//success", 4},
+		{"s3.pool.retries", "default//failure", 1},
+		{"s3.pool.retries", "default//denied", 2},
+		{"s3.pool.retry_budget", "default/", 150},
+		{"s3.pool.retries", "spice//success", 0},
 	}
 	for _, c := range checks {
 		series, ok := got[c.metric]
@@ -87,7 +100,11 @@ func TestRegisterBackendMetrics(t *testing.T) {
 }
 
 func seriesKey(set attribute.Set) string {
-	return attrValue(set, "cluster") + "/" + attrValue(set, "backend")
+	key := attrValue(set, "cluster") + "/" + attrValue(set, "backend")
+	if outcome := attrValue(set, "outcome"); outcome != "" {
+		key += "/" + outcome
+	}
+	return key
 }
 
 func attrValue(set attribute.Set, key attribute.Key) string {
