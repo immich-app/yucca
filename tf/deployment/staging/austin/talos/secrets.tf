@@ -139,14 +139,6 @@ resource "kubernetes_namespace_v1" "cert_manager" {
   depends_on = [helm_release.cilium]
 }
 
-resource "kubernetes_namespace_v1" "netbird" {
-  count = local.provision_secrets ? 1 : 0
-  metadata {
-    name = "netbird"
-  }
-  depends_on = [helm_release.cilium]
-}
-
 # ─── App Secrets (namespace: yucca) ─────────────────────────────────────
 
 # yucca-api: signs JWTs with the generated private key + its OIDC client creds.
@@ -220,16 +212,20 @@ resource "kubernetes_secret_v1" "yucca_metrics_rgw" {
   }
 }
 
-# ─── Observability Secret (namespace: observability) ────────────────────
-# Bearer token vmagent + vlagent present to o11y's vmauth for remote-write.
-resource "kubernetes_secret_v1" "vmagent_remote_write" {
+# yucca-database backups: the sietch RGW svc-yucca-db-backup S3 keys for the
+# CNPG Barman Cloud plugin, plus the RGW's self-signed cert as the CA bundle
+# (barman cannot skip TLS verification). The cert comes from the DR item that
+# `mise run capture` snapshots off the ceph bootstrap node.
+resource "kubernetes_secret_v1" "yucca_db_backup_s3" {
   count = local.provision_secrets ? 1 : 0
   metadata {
-    name      = "vmagent-remote-write"
-    namespace = kubernetes_namespace_v1.observability[0].metadata[0].name
+    name      = "yucca-db-backup-s3"
+    namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
   }
   data = {
-    token = var.vmauth_remote_write_password
+    ACCESS_KEY_ID     = var.sietch_db_backup_access_key
+    ACCESS_SECRET_KEY = var.sietch_db_backup_secret_key
+    CA_CERT           = var.sietch_rgw_tls_cert
   }
 }
 
@@ -256,18 +252,3 @@ resource "kubernetes_secret_v1" "cloudflare_api_token" {
   }
 }
 
-# ─── NetBird operator Secret (namespace: netbird) ───────────────────────
-# Management API token (service user yucca-staging-k8s-operator) the operator
-# authenticates with. Key name NB_API_KEY matches the chart's default
-# netbirdAPI.keyFromSecret. Minted by the staging/netbird stack; read here via
-# TF_VAR from 1P. The operator HelmRelease (Flux) mounts this Secret.
-resource "kubernetes_secret_v1" "netbird_mgmt_api_key" {
-  count = local.provision_secrets ? 1 : 0
-  metadata {
-    name      = "netbird-mgmt-api-key"
-    namespace = kubernetes_namespace_v1.netbird[0].metadata[0].name
-  }
-  data = {
-    NB_API_KEY = var.netbird_operator_api_token
-  }
-}

@@ -1,8 +1,49 @@
 ---
+# father's specialization of apps/base/gw-proxy — sized for the 60+ Gbps
+# backup data plane (~4 per worker; scale with the worker count). The LB
+# Service draws its public VIP from pool-a (lb: public via INGRESS_LB_LABEL)
+# plus a second, internal VIP (lb-gw-internal pool) for on-net clients: the
+# public VIP rides the transit aggregate and is NOT routable from inside
+# Hetzner. externalTrafficPolicy: Cluster + Cilium DSR (loadBalancer.mode
+# hybrid, talos cilium values): every worker advertises the /32 so the spine
+# ECMPs across all of them regardless of pod placement, the landing node
+# geneve-dispatches to a backend, and the backend's node replies straight to
+# the client — no SNAT hop, client IPs preserved.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ./certificate.yaml
-  - ./envoyproxy.yaml
-  - ./gateway.yaml
-  - ./policies.yaml
+  - ../../../base/gw-proxy
+patches:
+  - target:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: envoy-gw
+    patch: |-
+      - op: replace
+        path: /spec/provider/kubernetes/envoyService/patch/value/metadata/annotations/lbipam.cilium.io~1ips
+        value: "${GW_VIP},${GW_INT_VIP}"
+      - op: add
+        path: /spec/provider/kubernetes/envoyService/patch/value/metadata/labels/lb-internal-vip
+        value: gw
+  # Internal twin listener (${GW_INT_VIP}): same envoy fleet, NetBird-zone
+  # hostname, own DNS-01 cert (gw-internal.yaml at the overlay root).
+  - target:
+      group: gateway.networking.k8s.io
+      kind: Gateway
+      name: gw
+    patch: |-
+      - op: add
+        path: /spec/listeners/-
+        value:
+          name: https-internal
+          protocol: HTTPS
+          port: 443
+          hostname: "${GW_INT_HOST}"
+          allowedRoutes:
+            namespaces:
+              from: All
+          tls:
+            mode: Terminate
+            certificateRefs:
+              - kind: Secret
+                name: gw-internal-tls

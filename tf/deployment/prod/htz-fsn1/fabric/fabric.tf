@@ -76,7 +76,8 @@ module "core" {
   # reachable on the spine via the Cilium iBGP /32). Counter samples every 5s =
   # the seconds-granularity bandwidth feed; every up physical port is listed
   # (sFlow attaches to members, not ae bundles): worker bonds (et-*/0/2:*), mgmt
-  # hosts (et-*/0/3:0), transit (et-0/0/27), leaf uplink ae0 (et-*/0/30,31).
+  # hosts (et-*/0/3:0), transits (et-0/0/27 Core-Backbone, et-1/0/27 Colt),
+  # leaf uplink ae0 (et-*/0/30,31).
   sflow = {
     collector = cidrhost(module.addr_site.lb_internal_cidr, 14)
     agent_id  = "69.48.224.254"
@@ -86,7 +87,7 @@ module "core" {
       "xe-0/0/0:0", "xe-0/0/0:1", "xe-0/0/0:2",
       "xe-1/0/0:0", "xe-1/0/0:1", "xe-1/0/0:2",
       "et-0/0/3:0", "et-1/0/3:0",
-      "et-0/0/27",
+      "et-0/0/27", "et-1/0/27",
       "et-0/0/30", "et-0/0/31", "et-1/0/30", "et-1/0/31",
     ]
   }
@@ -100,10 +101,11 @@ module "core" {
     "10.40.10.13" = "69.48.224.243"
   }
 
-  # Upstream IP-transit. Today: one transit (Core-Backbone), primary/default
-  # (prepend 0). Add a second entry with prepend>0 + a lower local_pref to
-  # multi-home (the prepended one is the backup; see core-fabric/transit.tf —
-  # prepend/local_pref need a provider regen to apply).
+  # Upstream IP-transit, multi-homed active-active for egress: both received
+  # defaults sit at the default local-pref and the groups run multipath
+  # multiple-as (core-fabric/transit.tf), so the chassis-global ECMP export
+  # (bgp-nodes.tf) hashes egress flows across both uplinks. Ingress still
+  # favors Core-Backbone while colt exports with prepend 1.
   local_as = 402421
   transits = {
     core-backbone = {
@@ -115,6 +117,19 @@ module "core" {
       peer_as   = 33891
       advertise = "69.48.224.0/24"
       loopback  = "69.48.224.254/32"
+    }
+    # v4-only handover (no v6 delivered). Colt's inbound route filter accepts
+    # 69.48.224.0/22 le /24 from AS402421, so the /24 fits; widening past that
+    # needs a Colt Online ticket. Client is 100GBE (Colt transport, LAN-WDM):
+    # the port needs a QSFP28-100G-LR4 — a 40G-LR4 (CWDM) shows two dark lanes
+    # and never links (2026-08 turn-up).
+    colt = {
+      interface = "et-1/0/27"
+      local_v4  = "62.67.19.110/30"
+      peer_v4   = "62.67.19.109"
+      peer_as   = 3356
+      advertise = "69.48.224.0/24"
+      prepend   = 1
     }
   }
 }
@@ -151,10 +166,13 @@ locals {
   netops_classes = {
     netops-ro = { permissions = ["view", "view-configuration", "network"] }
   }
+  # uid must not collide with the identity registry's uids (3000+ are humans):
+  # Junos merges same-uid logins into one user, which downgraded nutgood
+  # (super-user, uid 3000) into this read-only class until netops moved to 3100.
   netops_users = {
     netops = {
       class            = "netops-ro"
-      uid              = 3000
+      uid              = 3100
       full_name        = "netops read-only (exporter/LG/backup)"
       ssh_ed25519_keys = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJSaBWwn5kKONxc0bc1w39xYBeBFAuqRWzMQTBM0xCmb netops@father"]
       # For password-only tools (hyperglass/netmiko). Hash injected from 1P.

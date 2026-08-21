@@ -3,14 +3,17 @@
 Everything yucca ships to the o11y cluster, packaged as grafana-operator CRs
 inside a single OCI artifact on GHCR: `dashboards/` (Grafana dashboard JSON,
 rendered into `GrafanaDashboard` CRs) and `alerts/` (`GrafanaAlertRuleGroup`
-CRs, authored directly; none yet). o11y applies the bundle with a Flux
-`OCIRepository` + `Kustomization`; its grafana-operator renders the embedded
-JSON.
+CRs, authored directly). o11y applies the bundle with a Flux `OCIRepository` +
+`Kustomization`; its grafana-operator renders the embedded JSON and registers
+the alert rules.
 
 ## The set
 
 Every series at o11y carries `cluster` (`father` k8s / `spice` ceph / `netops`
-fabric tier / `luke` staging), `site`, `env`. Each dashboard uses a
+fabric tier / `luke` staging), `site`, `env`, and `project="yucca"`. Dashboard
+titles follow o11y's `Component / Subarea` convention (`Yucca / Overview`,
+`Ceph / Health`, `Kubernetes / Views / Global`, `Logs / michael`, …); the
+`yucca` folder is what distinguishes our copies from o11y's own. Each dashboard uses a
 `$datasource` variable — no datasource UIDs are baked in. Dashboards with logs
 panels additionally use a `$logs_datasource` variable (the VictoriaLogs grafana
 datasource); log lines carry the same `cluster`/`site`/`env` fields, stamped by
@@ -27,9 +30,62 @@ victoria-logs-collector.
 | `yucca-spice-nodes.json` | 48-node fleet hotspots: CPU/mem/disk/fabric VLANs | `node_*` (job `ceph-node-exporter`) |
 | `yucca-spice-blockdb-bluefs.json` | block.db headroom: spillover tripwire, per-OSD utilization and growth, BlueFS internals | `ceph_bluefs_*`, `ceph_bluestore_onode_*`, `ceph_osd_metadata` |
 | `yucca-spice-recovery-backfill.json` | Rebalance throughput in bytes and work outstanding, during an OSD purge / reweight / host drain. Complements the recovery ops/s on `yucca-spice-ceph-health` | `ceph_pool_recovering_*`, `ceph_pg_{backfilling,backfill_wait,remapped}`, `ceph_num_objects_{misplaced,degraded}` |
+| `yucca-spice-scrub.json` | Scrub progress: which hosts are still scrubbing (regular vs deep, as scrub primary), PGs in flight per level, and work outstanding for the deep cycle (bytes scrubbed vs raw used over the configured interval; needs that much retention) | `ceph_pg_{scrubbing,deep,wait}`, `ceph_osd_scrub_{sh,dp}_*_chunk_selected`, `ceph_osd_scrub_*_read_bytes`, `ceph_osd_{num_scrubs_started,successful_scrubs,failed_scrubs}_*`, `ceph_osd_stat_bytes_used`, `ceph_osd_metadata` |
 | `yucca-father-kubernetes.json` | apiserver, coredns, workloads, PVCs, kubelet | `apiserver_*`, `container_*`, `kubelet_*`, `coredns_*` |
 | `yucca-fabric-htz-fsn1.json` | Switch fabric: sFlow 5s rates, NETCONF, BGP, alarms | `sflow_*`, `junos_*` (port of the in-cluster netops board) |
 | `yucca-telemetry-pipeline.json` | Is telemetry itself healthy: scrape + remote-write | `up`, `vmagent_remotewrite_*`, `vm_*` |
+
+`yucca-overview` is the product single pane of glass: backup data plane stats
+(including backup freshness from `user_last_successful_backup`), bandwidth per
+carrier and top source ASNs (`traffic.*` by `asOrg`/`asn`), fabric + Cilium
+BGP health with per-transit uplink bandwidth (Core-Backbone `et-0/0/27`, Colt
+`et-1/0/27`), michael TTFB/backend errors, and a Kubernetes health row across
+father + luke.
+
+## Logs dashboards
+
+One per service, built on the `$logs_datasource` (VictoriaLogs) variable plus
+a custom `cluster` var and LogsQL textboxes (`$search` free-form filter;
+`$request_id` on the request-serving services). Every query was validated
+against the live VictoriaLogs before landing; query types are the plugin's
+real enum (`instant` for streams/tables, `statsRange` for time series, `hits`
+for the by-level volume histograms) — NOT the `raw_logs` fallback. These
+dashboards deliberately carry no prometheus `$datasource` variable so the
+linter's PromQL rule stays away from LogsQL.
+
+| File (= uid) | Service | Beyond the common set (volume by level/pod, error stream + top messages, live stream) |
+| --- | --- | --- |
+| `yucca-logs-yucca-api.json` | yucca-api | status_code breakdown, top handlers with avg latency, slowest requests, 5xx lines — request lines are SAMPLED |
+| `yucca-logs-admin-api.json` | yucca-admin-api | same as yucca-api |
+| `yucca-logs-michael.json` | michael | requests by status, top routes/users/source networks with bytes, slowest requests |
+| `yucca-logs-web.json` | web | unstructured stdout; keyword-based error detection |
+| `yucca-logs-metrics-worker.json` | yucca-metrics-worker | sync-run markers (5m cron heartbeat) + sync log |
+| `yucca-logs-meta.json` | meta | nginx access lines; 4xx/5xx via regex |
+
+Log-level conventions baked into the queries: pino services log numeric
+levels as strings (`30` info / `40` warn / `50` error / `60` fatal), michael
+logs zerolog strings (`info`/`warn`/`error`), web and meta have no level
+field (keyword heuristics). Regex filters use LogsQL backtick strings —
+single-quoted regex strings fail to parse.
+
+## Imported dashboards
+
+The generic service dashboards are imported from upstream by
+`scripts/import-upstream.py` (run it to refresh; it overwrites local edits) and
+normalized to the house conventions: uid = file name, `$datasource` variable,
+and a `$cluster` variable injected into every PromQL selector so the
+multi-cluster data at o11y stays separated (the dotdc k8s boards already carry
+one). Provenance and pinned versions live in the script; each dashboard's
+`description` names its source URL.
+
+| File (= uid) | Upstream |
+| --- | --- |
+| `yucca-k8s-{global,namespaces,nodes,pods,apiserver,coredns}.json` | dotdc/grafana-dashboards-kubernetes |
+| `yucca-cilium.json`, `yucca-cilium-operator.json`, `yucca-hubble.json` | cilium/cilium (pinned to the deployed version; hubble http panels pruned — only dns/drop/tcp/flow/icmp metric sets are enabled) |
+| `yucca-node-exporter.json` | rfmoz/grafana-dashboards node-exporter-full |
+| `yucca-flux.json`, `yucca-flux-controllers.json` | fluxcd/flux2-monitoring-example |
+| `yucca-cnpg.json` | cloudnative-pg/grafana-dashboards, plus an appended Backups row (Barman Cloud: base-backup/PITR ages, WAL archive queue) mirroring the `yucca-database` alert group |
+| `yucca-vmagent.json` | VictoriaMetrics official vmagent board |
 
 Per-user metric inventory (used by the two user dashboards): michael counts
 bytes moved per user/repository/blob-type (`blobs.*`, labels
@@ -77,6 +133,76 @@ everything, since a missing database warns rather than failing the pod.
 **Addresses are not a metric label** (unbounded cardinality): `client_ip`,
 `asn` and `as_org` ride on every michael access-log line instead, which is what
 the "Top source addresses" table aggregates out of VictoriaLogs.
+
+## Alerts
+
+`alerts/*.yaml` are `GrafanaAlertRuleGroup` CRs, evaluated by o11y's Grafana
+(Grafana-managed alerting). Dropping a file here is the whole job: delivery —
+contact points, notification policy, Discord — is configured on the o11y side
+and out of scope for this repo. Two bindings the CRs must get right:
+`folderRef: yucca` (the bundle's own `GrafanaFolder`), and `datasourceUid:
+VictoriaMetricsFleet` on every query node — alert rules cannot use a
+`$datasource` variable the way dashboards do. NEVER pin the default
+`VictoriaMetrics` datasource: it fronts `vmauth-self-select`, which serves
+ONLY the o11y cluster's own series, so every rule over yucca/fabric/ceph data
+evaluates to NoData and sits Normal through real outages (this shipped, and
+the Colt transit outage went unalerted until it was caught). Only
+`VictoriaMetricsFleet` (vmselect direct) sees the whole fleet — the same
+reason every dashboard's `$datasource` variable carries the
+`/^VictoriaMetrics Fleet$/` regex.
+
+Conventions:
+
+- **`project="yucca"` on every selector**: the fleet datasource serves every
+  tenant's series (harbor, o11y itself, …), so each rule query is scoped to
+  the project label our vmagents stamp on all yucca-owned data — without it,
+  generic selectors (flux, cert-manager, k8s) fire on other tenants'
+  clusters.
+- **Severity**: rules carry a `severity` label (`critical` | `warning`) for
+  o11y's notification policy to route on. Every rule carries a `description`
+  annotation that names the cluster/host, so a notification is actionable
+  without opening Grafana.
+- **Grafana threshold semantics**: the condition is "query A > 0", and Grafana
+  treats a value of 0 as normal — so `== 0`-style PromQL uses `== bool 0`
+  (firing value 1), and value-carrying expressions are shaped to stay positive
+  while firing (e.g. cert expiry alerts on seconds *inside* the warning
+  window, which keeps growing past expiry, not seconds-to-expiry, which would
+  go negative and stop firing).
+- **Wrap slow-cadence instant selectors in `last_over_time(...[5m])`**:
+  Grafana sends the rule group's evaluation interval as the instant query's
+  `step`, and VictoriaMetrics uses `step` as the staleness lookback (setting
+  `intervalMs` on the query model does NOT change it — measured). A metric
+  whose cadence is at or above the step loses that race often enough that a
+  multi-minute `for` can never sustain: the rule sits Normal via
+  `noDataState: OK` while the condition is true. This silently killed the
+  junos rules (60s NETCONF scrape) through a real transit outage. Range
+  vectors are immune, so `rate()`/`increase()` expressions need nothing;
+  every raw selector on a source slower than ~20s gets the wrap, and
+  absence guards use `absent(last_over_time(x[10m]))`.
+- **Guarded absence**: absence-style rules use
+  `absent(x) and on() count(count_over_time(x[24h])) > 0` so an o11y instance
+  that never receives that data (staging sees no fabric) never alarms, while
+  data that *disappears* fires within minutes and self-resolves after 24h.
+- **Scope**: only what nothing else delivers. Grafana-managed alerting is the
+  notification path at o11y (its stock VMRule groups evaluate in vmalert but
+  notify nowhere), so the essential k8s signals for the yucca clusters are
+  declared here alongside the product rules. Ceph is alerted by cephadm's own
+  prometheus/alertmanager on the ceph cluster (ansible/ceph), not from o11y.
+
+| File | Covers |
+| --- | --- |
+| `michael.yaml` | 5xx ratio, RGW backend pool ejection, storage-op failures, unknown storage cluster, p99 TTFB, outage |
+| `yucca-services.yaml` | API 5xx ratio, zero-replica outage of any yucca deployment |
+| `backup-health.yaml` | metering pipeline stale, fleet-wide backup staleness (systemic only) |
+| `database.yaml` | CNPG (yucca-db) backups: WAL archiving stuck, base backup failed/stale, exporter scrape gone |
+| `kubernetes.yaml` | flux reconciliation, cert-manager expiry/readiness, node not ready, crashloops, PVC fill 90% warning / 95% critical (father+luke) |
+| `cilium.yaml` | agent daemonset, BGP control-plane sessions (k8s side of the fabric peering) |
+| `fabric.yaml` | transit BGP per-carrier (critical; peer IPs pinned from `fabric.tf`), all-transits-down, other BGP sessions, chassis alarms, interface errors, exporter/sFlow liveness |
+| `telemetry.yaml` | per-cluster "stopped shipping metrics" (father/luke/netops/spice) |
+
+Known gaps (no metric exists yet): michael token-introspection outages and
+WORM rejections are log-only; restic client retries are invisible; nothing
+scrapes the envoy gateways' data plane into alerting.
 
 ## Distribution contract
 
@@ -169,7 +295,8 @@ Edit in Grafana, export (share → JSON), save over the file keeping the `uid`
 (the file name must stay `<uid>.json`). CI lints every dashboard with
 [dashboard-linter](https://github.com/grafana/dashboard-linter) (`--strict`;
 rule exclusions live in `dashboards/.lint`). Alerts are plain
-`GrafanaAlertRuleGroup` CRs dropped into `alerts/`. Merge to main → CI pushes
+`GrafanaAlertRuleGroup` CRs dropped into `alerts/` (see the Alerts section).
+Merge to main → CI pushes
 the `:main` artifact → o11y's `OCIRepository` picks it up at its `interval` (or
 instantly via webhook). Michael's OTel metrics have dotted names; query them as
 `{__name__="http.server.request.count", ...}` (VictoriaMetrics).

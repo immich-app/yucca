@@ -4,14 +4,25 @@ metadata:
   name: {{ .Values.clusterName }}
 spec:
   instances: {{ .Values.instances }}
+  imageName: {{ .Values.imageName }}
   {{- with .Values.resources }}
   resources: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.affinity }}
+  affinity: {{- toYaml . | nindent 4 }}
   {{- end }}
   storage:
     size: {{ .Values.storage }}
     {{- with .Values.storageClass }}
     storageClass: {{ . }}
     {{- end }}
+  {{- if .Values.backup.enabled }}
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: {{ .Values.clusterName }}
+  {{- end }}
   bootstrap:
     initdb:
       database: {{ .Values.database }}

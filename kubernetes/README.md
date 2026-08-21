@@ -10,10 +10,11 @@ kubernetes/
 │   └── dev/local/            #   ← dev-mirror entry point (repos.yaml + apps.yaml; consumed by Tilt)
 ├── apps/
 │   ├── base/                 #   reusable HelmReleases (chart + image.repository); tag via ${YUCCA_IMAGE_TAG:=}
-│   ├── staging/austin/       #   overlay: components [infra, roles/primary] + flux-system/ (image automation, notifications)
-│   ├── prod/htz-fsn1/         #   overlay: components [infra, roles/primary] + flux-system/ (notifications)
+│   ├── staging/austin/       #   overlay: infra/ (namespaces + components/infra) + components [platform, roles/primary]
+│   ├── prod/htz-fsn1/         #   overlay: same shape + cluster baseline (BGP, netops, diskpools)
 │   └── dev/local/            #   ← dev-mirror tree (Tilt/k3d only): yucca/ rook-ceph/ cnpg-system/ repos/
-├── components/               #   apps/<app>.yaml (single-source Flux Ks), infra/ (platform layers),
+├── components/               #   apps/<app>.yaml (single-source Flux Ks), infra/ (operator layer),
+│   │                         #   platform/ (gw-proxy, httproutes, observability), observability/ (agents),
 │   │                         #   roles/{primary,secondary}/ (Kustomize Components: per-role app sets)
 ├── bootstrap/
 ```
@@ -22,9 +23,11 @@ kubernetes/
   is the GitOps surface for the real Talos clusters. The flux-instance (installed
   by `tf/deployment/staging/austin/talos/flux.tf`) syncs `clusters/<partition>/<region>`;
   merge→build→deploy is driven by `.github/workflows/deploy.yml`. Each cluster
-  overlay picks its app set by composing two Kustomize Components: `infra`
-  (role-independent platform layers) and `roles/<role>` (the role's app set).
-  See **GitOps deploy** below.
+  reconciles TWO Flux layers (`cluster-infra` → `cluster-apps`, see
+  `clusters/<p>/<r>/apps.yaml`): the infra layer applies the cluster's
+  namespaces + the shared `components/infra` operator set, the app layer
+  composes `components/platform` and `components/roles/<role>` plus
+  cluster-local topology. See **GitOps deploy** below.
 - **`apps/dev/local/` + `clusters/dev/local/`** is the dev-mirror tree the
   [Tiltfile](../Tiltfile) consumes for local k3d dev. Tilt scans only
   `apps/dev/local/` (allow-list) and reads HelmRepository sources from

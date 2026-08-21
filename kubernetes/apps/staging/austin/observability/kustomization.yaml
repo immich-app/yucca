@@ -1,0 +1,71 @@
+---
+# staging@austin observability overlay — the shared components/observability
+# slice, with the remote-write egress repointed at o11y STAGING's mesh vmauth
+# over NetBird (vmauth.staging.o11y.futo.network → 10.69.1.10, unauthenticated:
+# the yucca-side talos-to-o11y-gateway NetBird ACL is the only gate; the
+# mesh-unauth vmauth 401s requests that DO carry a bearer, so the token wiring
+# must go, not just be ignored). Mirrors father's mesh path.
+#
+# The mesh name is pinned pod-side (hostAliases): the NetBird DNS zone is not
+# distributed to the staging talos peers, and 10.69.1.10 is the
+# netbox-registered gateway VIP (cidrhost of o11y staging's service CIDR).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../../components/observability
+patches:
+  # vmagent: mesh URL, no bearer, pinned mesh name.
+  - target:
+      group: kustomize.toolkit.fluxcd.io
+      kind: Kustomization
+      name: vmagent
+    patch: |-
+      - op: add
+        path: /spec/patches
+        value:
+          - target:
+              kind: HelmRelease
+              name: vmagent
+            patch: |-
+              - op: replace
+                path: /spec/values/vmagent/spec/remoteWrite/0/url
+                value: https://vmauth.staging.o11y.futo.network/insert/0/prometheus/api/v1/write
+              - op: remove
+                path: /spec/values/vmagent/spec/remoteWrite/0/bearerTokenSecret
+              - op: add
+                path: /spec/values/vmagent/spec/hostAliases
+                value:
+                  - ip: 10.69.1.10
+                    hostnames:
+                      - vmauth.staging.o11y.futo.network
+  # logs collector: URL comes from VLOGS_REMOTE_URL (cluster-settings); the
+  # bearer flag AND its token volume go (the vmagent-remote-write Secret is no
+  # longer provisioned), and the mesh name is pinned via postRenderers — the
+  # chart has no hostAliases value.
+  - target:
+      group: kustomize.toolkit.fluxcd.io
+      kind: Kustomization
+      name: victoria-logs-collector
+    patch: |-
+      - op: add
+        path: /spec/patches
+        value:
+          - target:
+              kind: HelmRelease
+              name: victoria-logs-collector
+            patch: |-
+              - op: remove
+                path: /spec/values/extraArgs/remoteWrite.bearerTokenFile
+              - op: remove
+                path: /spec/values/extraVolumes
+              - op: remove
+                path: /spec/values/extraVolumeMounts
+              - op: add
+                path: /spec/postRenderers
+                value:
+                  - kustomize:
+                      patches:
+                        - target:
+                            kind: DaemonSet
+                            name: victoria-logs-collector
+                          patch: '[{"op": "add", "path": "/spec/template/spec/hostAliases", "value": [{"ip": "10.69.1.10", "hostnames": ["vmauth.staging.o11y.futo.network"]}]}]'

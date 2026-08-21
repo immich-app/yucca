@@ -10,6 +10,10 @@ metadata:
   name: cluster-settings
   namespace: flux-system
 data:
+  # This cluster's dir under kubernetes/apps/ — the shared components/platform
+  # Kustomizations (gw-proxy, observability) point their paths through it.
+  CLUSTER_PATH: staging/austin
+
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
   # Beta gate: these email domains may sign up without an allowlist entry;
@@ -45,9 +49,11 @@ data:
   INGRESS_LB_LABEL: internal
   INGRESS_VIP: 10.10.10.16
   INGRESS_PUBLIC_IP: 97.77.242.205
-  # Single shared gateway: michael's gw. route attaches to the app gateway
-  # (father runs a dedicated gw-proxy instead).
-  GW_PARENT_GATEWAY: envoy
+  # michael's gw. route attaches to the dedicated gw Gateway, same as father —
+  # but Austin has one NAT'd entry, so the app gateway SNI-passes ${GW_HOST}
+  # through to the gw fleet (see apps/staging/austin/{infra,gw-proxy}).
+  GW_PARENT_GATEWAY: gw
+  GW_PROXY_REPLICAS: "2"
 
   # ─── App fleet sizing ────────────────────────────────────────────────
   MICHAEL_REPLICAS: "2"

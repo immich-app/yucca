@@ -22,9 +22,20 @@ exclusions:
   # datasource is Prometheus, without looking at the target's own datasource —
   # so a table fed by VictoriaLogs is a false positive. `logs` panels are
   # skipped by the rule and need no entry.
+  # Imported upstream dashboards (o11y/scripts/import-upstream.py) keep the
+  # units upstream ships; re-import would revert any local fix-ups.
+  panel-units-rule:
+    entries:
+      - dashboard: "Cilium / Hubble"
+        reason: imported upstream dashboard; graph panels predate fieldConfig units
+      - dashboard: "Cilium / Operator"
+        reason: imported upstream dashboard; graph panels predate fieldConfig units
   target-promql-rule:
     entries:
-      - dashboard: "Yucca: Michael (restic gateway)"
+      - dashboard: "Yucca / Michael"
         panel: Top source addresses (selected range)
         targetIdx: "0"
         reason: LogsQL stats query against $logs_datasource, not PromQL
+      - dashboard: "CloudNativePG"
+        targetIdx: "4"
+        reason: grafana server-side math expression target (__expr__), not PromQL

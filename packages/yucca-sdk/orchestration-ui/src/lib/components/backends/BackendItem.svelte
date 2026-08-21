@@ -64,7 +64,7 @@
   {backend.description ?? BackendDescriptions[backend.type]}
 
   {#snippet trailing()}
-    <Badge color={online ? "primary" : "danger"} size="small">
+    <Badge color={online ? "success" : "danger"} size="small">
       {#if !backend.isOnline}
         Offline
       {:else if repositoryBackend}

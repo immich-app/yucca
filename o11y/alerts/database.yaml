@@ -1,0 +1,212 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+# CNPG control-plane database backups (Barman Cloud plugin → region RGW):
+# continuous WAL archiving + a daily 02:00 base backup, so PITR only holds if
+# both keep moving. Sources: the cnpg_collector_* gauges every instance manager
+# exposes on :9187 (scraped by the yucca-database VMPodScrape); backup
+# timestamps mirror the Cluster status the plugin maintains. All three
+# instances report the same status values, hence the max by (cluster).
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-database
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    # WAL segments stuck in ready state = archiving to the object store is
+    # broken and the PITR window stops advancing. A busy checkpoint can queue a
+    # couple briefly; a sustained queue cannot happen while archiving works.
+    - uid: cnpg-wal-archiving-stuck
+      title: CnpgWalArchivingStuck
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: database WAL archiving is stuck
+        description: >-
+          {{ $values.A.Value }} WAL segments on {{ $labels.cluster }} have been
+          waiting to archive for 30m — the yucca-db PITR window is not
+          advancing. Check the barman plugin sidecar logs and the
+          yucca-db-backup-s3 credentials/RGW reachability.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              max by (cluster)
+              (last_over_time(cnpg_collector_pg_wal_archive_status{value="ready",
+              cluster=~"father|luke", project="yucca"}[5m])) > 2
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # A failure newer than the last success. Positive-while-firing: the value
+    # is how many seconds the failure postdates the last good backup, and it
+    # keeps growing until the next success clears it. Also covers a cluster
+    # whose very first backup failed (last available = 0).
+    - uid: cnpg-backup-failed
+      title: CnpgBackupFailed
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: database base backup failed
+        description: >-
+          The latest yucca-db base backup on {{ $labels.cluster }} failed and
+          no success has followed. WAL archiving may still be fine; the next
+          scheduled attempt is 02:00. kubectl get backups -n yucca for the
+          error.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              max by (cluster)
+              (last_over_time(cnpg_collector_last_failed_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              - max by (cluster)
+              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # 26h = the daily schedule plus slack for a slow run. The > 0 guard keeps a
+    # freshly bootstrapped cluster (no backup yet, timestamp 0) from firing;
+    # cnpg-backup-failed owns that phase.
+    - uid: cnpg-backup-stale
+      title: CnpgBackupStale
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: no recent database base backup
+        description: >-
+          yucca-db on {{ $labels.cluster }} has had no successful base backup
+          for over 26h (schedule is daily 02:00) — restore points are aging
+          out against the 30d retention.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              (time() - max by (cluster)
+              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              > 93600) and max by (cluster)
+              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # The three rules above are noDataState: OK, so they go blind if the :9187
+    # scrape breaks (netpol regression, VMPodScrape drift). Guarded absence per
+    # the house pattern; scoped tighter than telemetry.yaml's per-cluster rule,
+    # which only catches a cluster-wide remote-write stop.
+    - uid: cnpg-metrics-stale
+      title: CnpgMetricsStale
+      condition: B
+      for: 20m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: database metrics stopped
+        description: >-
+          cnpg_collector_up disappeared — the yucca-db exporter scrape is
+          broken, and the database backup alerts are blind until it returns.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              absent(last_over_time(cnpg_collector_up{project="yucca"}[10m])) and on()
+              count(count_over_time(cnpg_collector_up{project="yucca"}[24h])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt

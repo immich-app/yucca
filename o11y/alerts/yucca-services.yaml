@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-services
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    - uid: yucca-api-high-error-ratio
+      title: YuccaApiHighErrorRatio
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: yucca API is failing requests
+        description: >-
+          The yucca APIs on {{ $labels.cluster }} are returning 5xx for {{
+          humanizePercentage $values.A.Value }} of requests over the last 10m.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster) (rate(api_request_count{status=~"5..",
+              project="yucca"}[5m])) / sum by (cluster)
+              (rate(api_request_count{project="yucca"}[5m])) > 0.05
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Sharper than the stock KubeDeploymentReplicasMismatch: zero available
+    # replicas of a product service is an outage, not a mismatch. Deployment
+    # names verified live 2026-08-19 (all yucca-prefixed; michael has its own
+    # rule; the platform valkey has no deployment in the yucca namespace yet —
+    # add it here when it lands).
+    - uid: yucca-service-down
+      title: YuccaServiceDown
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: yucca service has no available replicas
+        description: >-
+          Deployment {{ $labels.deployment }} on {{ $labels.cluster }} has
+          zero available replicas for 5m.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              kube_deployment_status_replicas_available{namespace="yucca",
+              deployment=~"yucca-api|yucca-admin-api|yucca-web|yucca-meta|yucca-metrics-worker",
+              project="yucca"} == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt

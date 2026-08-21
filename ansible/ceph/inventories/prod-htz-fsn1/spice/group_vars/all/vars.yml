@@ -388,6 +388,15 @@ ceph_rgw_metrics_user_access_key: "{{ vault_metrics_worker_access_key }}"
 ceph_rgw_metrics_user_secret_key: "{{ vault_metrics_worker_secret_key }}"
 ceph_rgw_metrics_user_caps: "buckets=read;usage=read;metadata=read;users=read"
 
+# CNPG database-backup S3 user: the yucca-database cluster's Barman Cloud
+# plugin archives WALs/base backups to its own bucket. Keys TF-minted in 1P
+# (SPICE_CEPH_S3_SVC_YUCCA_DB_BACKUP_*); rgw.yml (Step 14.6) creates the user
+# with max-buckets=1. Mirror of the sietch definition.
+ceph_rgw_db_backup_user_uid: svc-yucca-db-backup
+ceph_rgw_db_backup_user_display_name: "yucca/db-backup service account (CNPG barman)"
+ceph_rgw_db_backup_user_access_key: "{{ vault_db_backup_access_key }}"
+ceph_rgw_db_backup_user_secret_key: "{{ vault_db_backup_secret_key }}"
+
 # === Monitoring Stack ===
 ceph_prometheus_port: 9095
 ceph_grafana_port: 3000

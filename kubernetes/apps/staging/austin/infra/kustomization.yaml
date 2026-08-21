@@ -1,0 +1,53 @@
+---
+# staging@austin INFRA layer — the shared operator set (components/infra) plus
+# this cluster's namespaces, applied by the `cluster-infra` Flux Kustomization
+# (clusters/staging/austin/apps.yaml) that `cluster-apps` dependsOn — same
+# fresh-cluster dry-run deadlock dodge as father.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./namespace-cert-manager.yaml
+  - ./namespace-envoy-system.yaml
+  - ./namespace-cnpg-system.yaml
+  - ./namespace-openebs-system.yaml
+  - ./namespace-spegel-system.yaml
+components:
+  - ../../../../components/infra
+patches:
+  # STAGING TOPOLOGY: Austin has ONE public entry (the NAT in front of
+  # ${INGRESS_VIP}), so the gw Gateway can't get its own VIP like father's.
+  # Instead the app gateway gets an SNI PASSTHROUGH listener for ${GW_HOST}
+  # (exact SNI beats the wildcard cert listener) whose TLSRoute hands the raw
+  # TLS stream to the gw fleet — clients still terminate against gw's own cert
+  # and policies. NOT mergeGateways: EG rejects it under the GatewayNamespace
+  # deploy mode the shared install runs ("Merged Gateways with Gateway
+  # Namespace Mode is not supported"), and a rejected class EnvoyProxy drops
+  # the whole app fleet to chart defaults (replicas 1, no VIP annotation).
+  - target:
+      group: kustomize.toolkit.fluxcd.io
+      kind: Kustomization
+      name: envoy-proxy
+    patch: |-
+      apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: envoy-proxy
+      spec:
+        patches:
+          - target:
+              group: gateway.networking.k8s.io
+              kind: Gateway
+              name: envoy
+            patch: |-
+              - op: add
+                path: /spec/listeners/-
+                value:
+                  name: gw-passthrough
+                  protocol: TLS
+                  port: 443
+                  hostname: "${GW_HOST}"
+                  tls:
+                    mode: Passthrough
+                  allowedRoutes:
+                    namespaces:
+                      from: All

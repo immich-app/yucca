@@ -1,0 +1,29 @@
+# Custom Prometheus rules for cephadm's prometheus, stored in the mon config-key
+# store at mgr/cephadm/services/prometheus/alerting/custom_alerts.yml by
+# tasks/monitoring.yml. cephadm writes this file verbatim (no Jinja), next to
+# its own ceph_alerts.yml, which cannot be edited: this file can only add rules.
+groups:
+  - name: yucca-recovery
+    rules:
+      # Source alert for the CephPGsUnclean inhibit rule in the alertmanager
+      # override in tasks/monitoring.yml. Stock CephPGsUnclean counts every
+      # remapped PG as unclean, so it fires for the whole of any backfill, and
+      # a rebuilt 22 TB OSD backfills for more than a day. Ceph itself reports
+      # those PGs as misplaced, not as a warning. This alert is true, per pool,
+      # exactly while that pool's shards are moving, so a pool whose unclean
+      # PGs have nothing moving them still warns. The operator route for the
+      # chronic alerts (alertmanager override in tasks/monitoring.yml) carries
+      # it at a 12h repeat. The metadata join gives it the same labels as the
+      # stock rule. keep_firing_for covers the
+      # hand-off gaps between one PG finishing and the next reservation being
+      # granted, so the inhibition does not flap.
+      - alert: CephRecoveryInProgress
+        expr: ceph_pool_metadata * on(cluster,pool_id,instance) group_left() (ceph_pg_backfilling + ceph_pg_recovering) > 0
+        for: 2m
+        keep_firing_for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "Backfill or recovery is progressing in pool {{ $labels.name }} on cluster {{ $labels.cluster }}"
+          description: "{{ $value }} PGs are backfilling or recovering in pool {{ $labels.name }} on cluster {{ $labels.cluster }}.
+            CephPGsUnclean for this pool is inhibited while this holds and fires again as soon as its PGs are unclean with nothing moving them."

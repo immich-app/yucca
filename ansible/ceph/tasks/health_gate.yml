@@ -20,6 +20,9 @@
   register: _ceph_health_gate
   changed_when: false
   failed_when: false
+  # Read-only, so run it under --check too. Left to default the probe skips,
+  # the assert below sees no stdout, and a --check run loses the gate entirely.
+  check_mode: false
   run_once: true
   delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
   when: (groups['ceph_bootstrap'] | default([]) | length) > 0

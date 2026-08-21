@@ -176,9 +176,9 @@ variable "transits" {
   type = map(object({
     interface  = string              # uplink port (e.g. et-0/0/27)
     local_v4   = string              # our /31 (e.g. 5.56.17.225/31)
-    local_v6   = string              # our /64 (e.g. 2a01:4a0:1338:226::2/64)
+    local_v6   = optional(string)    # our /64; null = v4-only handover (no v6 unit address)
     peer_v4    = string              # provider v4 (e.g. 5.56.17.224)
-    peer_v6    = string              # provider v6 (e.g. 2a01:4a0:1338:226::1)
+    peer_v6    = optional(string)    # provider v6; null = v4-only handover (no v6 neighbor)
     peer_as    = number              # provider ASN (e.g. 33891)
     advertise  = string              # prefix to originate + advertise
     loopback   = optional(string)    # lo0 host in the advertised space (e.g. 69.48.224.254/32)

@@ -1,0 +1,25 @@
+{{- if .Values.backup.enabled }}
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: {{ .Values.clusterName }}
+spec:
+  retentionPolicy: {{ .Values.backup.retentionPolicy }}
+  configuration:
+    destinationPath: s3://{{ required "backup.bucket is required" .Values.backup.bucket }}/
+    endpointURL: {{ required "backup.endpointURL is required" .Values.backup.endpointURL }}
+    endpointCA:
+      name: {{ required "backup.secretName is required" .Values.backup.secretName }}
+      key: CA_CERT
+    s3Credentials:
+      accessKeyId:
+        name: {{ .Values.backup.secretName }}
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: {{ .Values.backup.secretName }}
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+{{- end }}

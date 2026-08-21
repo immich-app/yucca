@@ -214,6 +214,25 @@ variable "spice_metrics_worker_secret_key" {
   default     = ""
 }
 
+variable "spice_db_backup_access_key" {
+  description = "Spice RGW (S3) access key for CNPG database backups (svc-yucca-db-backup, TF-minted SPICE_CEPH_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY)."
+  type        = string
+  default     = ""
+}
+
+variable "spice_db_backup_secret_key" {
+  description = "Spice RGW (S3) secret key for CNPG database backups (svc-yucca-db-backup)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "spice_rgw_tls_cert" {
+  description = "Spice RGW self-signed TLS certificate PEM (DR item SPICE_CEPH_RGW_TLS_CERT, snapshotted by `mise run capture`); CA bundle for the CNPG barman ObjectStore."
+  type        = string
+  default     = ""
+}
+
 variable "vmauth_remote_write_password" {
   description = "o11y prod vmauth bearer token for vmagent/logs remote-write (shared_tf_prod/O11Y_VICTORIAMETRICS_VMAUTH_PASSWORD)."
   type        = string

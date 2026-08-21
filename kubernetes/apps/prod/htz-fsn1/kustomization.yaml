@@ -5,11 +5,9 @@
 # infra/kustomization.yaml for why (fresh-cluster dry-run deadlock).
 #
 # SCOPE: cluster baseline (coredns, Cilium BGP LB config, netops, OpenEBS
-# pools) + the yucca platform/app set. components/infra stays off WHOLESALE —
-# its storage layer collides with the prod-owned openebs (infra/openebs.yaml,
-# targetNamespace `openebs`) and netbird-operator has no prod service user —
-# so the platform pieces are cherry-picked: operators in ./infra
-# (cluster-infra layer), issuer/proxies/routes/observability in ./platform.
+# pools) + the shared platform slice (components/platform: gw-proxy,
+# httproutes, observability — specialized in ./gw-proxy and ./observability)
+# + the yucca app set (components/roles/primary).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -20,6 +18,6 @@ resources:
   - ./lb-return-route.yaml
   - ./diskpools.yaml
   - ./netops
-  - ./platform
 components:
+  - ../../../components/platform
   - ../../../components/roles/primary

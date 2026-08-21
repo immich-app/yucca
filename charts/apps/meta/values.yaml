@@ -58,6 +58,9 @@ volumes:
   - name: well-known
     configMap:
       name: yucca-meta
+  - name: nginx-conf
+    configMap:
+      name: yucca-meta-nginx
   # nginx-unprivileged keeps its temp paths in /tmp (already an emptyDir from
   # the library chart), but the image still creates /var/cache/nginx and the
   # rootfs is read-only. A tmpfs here keeps startup quiet.
@@ -67,6 +70,12 @@ volumes:
 volumeMounts:
   - name: well-known
     mountPath: /usr/share/nginx/html/.well-known
+    readOnly: true
+  # Shadows the whole conf.d — default.conf is the only file the image ships
+  # there, replaced wholesale by templates/nginx-configmap.yaml (JSON access
+  # log).
+  - name: nginx-conf
+    mountPath: /etc/nginx/conf.d
     readOnly: true
   - name: cache
     mountPath: /var/cache/nginx

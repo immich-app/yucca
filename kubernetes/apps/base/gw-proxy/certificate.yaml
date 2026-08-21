@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cert-manager.io/certificate_v1.json
+# Cert for the restic hostname (${GW_HOST}). father's rest.htz-fsn1. sits two
+# labels below APP_DOMAIN, outside the shared wildcard, so the gateway carries
+# its own cert; staging's gw. would be covered but terminates with the same
+# object so both clusters run the same TLS path. Lands in envoy-system
+# (targetNamespace-forced) beside the Gateway.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gw-public
+spec:
+  secretName: gw-public-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+    - "${GW_HOST}"

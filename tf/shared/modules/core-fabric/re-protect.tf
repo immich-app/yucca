@@ -15,7 +15,7 @@ locals {
     [for t in var.transits : "${t.peer_v4}/32"],
     var.node_bgp == null ? [] : [var.node_bgp.peer_range],
   )
-  bgp_trusted_v6 = [for t in var.transits : "${t.peer_v6}/128"]
+  bgp_trusted_v6 = [for t in var.transits : "${t.peer_v6}/128" if t.peer_v6 != null]
 }
 
 resource "junos_firewall_filter" "protect_re" {

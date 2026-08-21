@@ -1,5 +1,89 @@
 # Changelog
 
+## [0.35.0](https://github.com/immich-app/yucca/compare/v0.34.0...v0.35.0) (2026-08-20)
+
+
+### Features
+
+* **o11y:** staging observability to o11y staging mesh vmauth over netbird ([#517](https://github.com/immich-app/yucca/issues/517)) ([d4554a7](https://github.com/immich-app/yucca/commit/d4554a7a6f08a849e4df7acf0c1ebfeef9bb6297))
+
+
+### Bug Fixes
+
+* **k8s:** staging gw via SNI passthrough — mergeGateways is unsupported under GatewayNamespace mode ([#516](https://github.com/immich-app/yucca/issues/516)) ([57c790d](https://github.com/immich-app/yucca/commit/57c790d660efbaa25e9faffa7ce5e01e3592326a))
+* **meta:** log x-forwarded for IP address ([#512](https://github.com/immich-app/yucca/issues/512)) ([a3b4294](https://github.com/immich-app/yucca/commit/a3b42946d5cce142bae56d08cc1dde84115cfa27))
+
+## [0.34.0](https://github.com/immich-app/yucca/compare/v0.33.0...v0.34.0) (2026-08-20)
+
+
+### Features
+
+* **o11y:** add spice scrub progress dashboard ([#506](https://github.com/immich-app/yucca/issues/506)) ([bff3488](https://github.com/immich-app/yucca/commit/bff34886b7dc392c699b48a9b047c60c9997bda6))
+
+
+### Bug Fixes
+
+* **migrations:** re-date ([#510](https://github.com/immich-app/yucca/issues/510)) ([816ce71](https://github.com/immich-app/yucca/commit/816ce71bd31d71037bc08de2b77dc338a466ef6c))
+* **o11y:** field selector on log panels, variable-safe request tracing ([#509](https://github.com/immich-app/yucca/issues/509)) ([153bf22](https://github.com/immich-app/yucca/commit/153bf220e2dcb781a2b17d80050b6690001e9591))
+
+## [0.33.0](https://github.com/immich-app/yucca/compare/v0.32.0...v0.33.0) (2026-08-20)
+
+
+### Features
+
+* **o11y:** per-service log dashboards ([#504](https://github.com/immich-app/yucca/issues/504)) ([09f10fc](https://github.com/immich-app/yucca/commit/09f10fcbf538e7541f5d2e1181a3a2f442d4669f))
+* **o11y:** scope alerts to project=yucca, CNPG dashboard, title convention ([#508](https://github.com/immich-app/yucca/issues/508)) ([d760fb1](https://github.com/immich-app/yucca/commit/d760fb19932968d3707afee049e5134e13767ec8))
+
+
+### Bug Fixes
+
+* **net:** bgp ([#507](https://github.com/immich-app/yucca/issues/507)) ([4eaaaa6](https://github.com/immich-app/yucca/commit/4eaaaa6e6fb4148c1977b3d0104883dfc2672ed2))
+
+## [0.32.0](https://github.com/immich-app/yucca/compare/v0.31.2...v0.32.0) (2026-08-19)
+
+
+### Features
+
+* **cnpg:** make better ([#496](https://github.com/immich-app/yucca/issues/496)) ([045491d](https://github.com/immich-app/yucca/commit/045491d4375332f1aa2690f7f69a30f348837519))
+
+
+### Bug Fixes
+
+* **o11y:** point alert rules and imported dashboards at the fleet datasource ([#502](https://github.com/immich-app/yucca/issues/502)) ([569c17f](https://github.com/immich-app/yucca/commit/569c17ff639dc6078e9ebb2f805034bb2967a590))
+
+## [0.31.2](https://github.com/immich-app/yucca/compare/v0.31.1...v0.31.2) (2026-08-19)
+
+
+### Bug Fixes
+
+* **o11y:** make slow-cadence alert queries staleness-proof ([#501](https://github.com/immich-app/yucca/issues/501)) ([552735a](https://github.com/immich-app/yucca/commit/552735a52755a2573e83e32132b6f1d4dad382d3))
+* **o11y:** pin 5m staleness lookback on alert rule queries ([#499](https://github.com/immich-app/yucca/issues/499)) ([0fe43da](https://github.com/immich-app/yucca/commit/0fe43daaf088695f44208d8fd8b7a0e395781738))
+
+## [0.31.1](https://github.com/immich-app/yucca/compare/v0.31.0...v0.31.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **alerts:** fix bad alerts ([#497](https://github.com/immich-app/yucca/issues/497)) ([756e6e0](https://github.com/immich-app/yucca/commit/756e6e080ee5c58b14f84d44a67218efbc9f6a8f))
+
+## [0.31.0](https://github.com/immich-app/yucca/compare/v0.30.1...v0.31.0) (2026-08-19)
+
+
+### Features
+
+* **ceph:** install hdparm on every ceph node ([#479](https://github.com/immich-app/yucca/issues/479)) ([5eb353a](https://github.com/immich-app/yucca/commit/5eb353a4988f8aef2f88468bcaca58a90e52dbc5))
+* **ceph:** rebuild a replaced OSD onto its intended db slot ([#462](https://github.com/immich-app/yucca/issues/462)) ([48d09d7](https://github.com/immich-app/yucca/commit/48d09d79afd182c9c05b67fc1544798f35c10f3f))
+* **net:** add colt ([#488](https://github.com/immich-app/yucca/issues/488)) ([ee43e55](https://github.com/immich-app/yucca/commit/ee43e55a2b12a05b03b176efdbe6b5c141760222))
+* UI redesign (pt. 2) ([#477](https://github.com/immich-app/yucca/issues/477)) ([2d0fb98](https://github.com/immich-app/yucca/commit/2d0fb98666ccb70ab756e4ede9595fca5691c8a9))
+
+
+### Bug Fixes
+
+* **ceph:** deliver recovery progress and repeat chronic alerts every 12h ([#487](https://github.com/immich-app/yucca/issues/487)) ([d5972ef](https://github.com/immich-app/yucca/commit/d5972ef9807c664e73811313b2888345857bc5bb))
+* **ceph:** group alertmanager notifications by pool ([#463](https://github.com/immich-app/yucca/issues/463)) ([9091c1f](https://github.com/immich-app/yucca/commit/9091c1fc9d3546b9501cce2172a655246f3c8175))
+* **ceph:** inhibit CephPGsUnclean while backfill is moving ([#484](https://github.com/immich-app/yucca/issues/484)) ([fc0b712](https://github.com/immich-app/yucca/commit/fc0b712a24ad4cbabff44fced099129bce9dd9c2))
+* **ci:** point prettierignore at the moved yuctl warp manifests ([#486](https://github.com/immich-app/yucca/issues/486)) ([edd740e](https://github.com/immich-app/yucca/commit/edd740e95a4c0bf24fd7307808e8a6efb08e44b0))
+
 ## [0.30.1](https://github.com/immich-app/yucca/compare/v0.30.0...v0.30.1) (2026-08-12)
 
 

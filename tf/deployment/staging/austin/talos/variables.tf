@@ -116,13 +116,22 @@ variable "sietch_metrics_worker_secret_key" {
   default     = ""
 }
 
-# Bearer token vmagent uses to remote-write metrics to o11y's vmauth. This is
-# the shared VICTORIAMETRICS_VMAUTH_PASSWORD from the shared_tf_staging vault (the
-# `remote-clusters` VMUser authenticates remote clusters with it).
-variable "vmauth_remote_write_password" {
-  description = "o11y vmauth bearer token for vmagent remote-write. Injected via TF_VAR from 1P (shared_tf_staging/VICTORIAMETRICS_VMAUTH_PASSWORD)."
+variable "sietch_db_backup_access_key" {
+  description = "Sietch RGW (S3) access key for CNPG database backups (svc-yucca-db-backup, TF-minted SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY)."
+  type        = string
+  default     = ""
+}
+
+variable "sietch_db_backup_secret_key" {
+  description = "Sietch RGW (S3) secret key for CNPG database backups (svc-yucca-db-backup)."
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "sietch_rgw_tls_cert" {
+  description = "Sietch RGW self-signed TLS certificate PEM (DR item SIETCH_CEPH_RGW_TLS_CERT, snapshotted by `mise run capture`); CA bundle for the CNPG barman ObjectStore."
+  type        = string
   default     = ""
 }
 
@@ -137,23 +146,15 @@ variable "cloudflare_api_token" {
 
 # ─── NetBird ────────────────────────────────────────────────────────────
 #
-# Setup key for the node-level siderolabs/netbird system extension (Part A) and
-# the API token for the in-cluster NetBird operator (Part B). Both are minted by
+# Setup key for the node-level siderolabs/netbird system extension, minted by
 # the staging/netbird stack and stored in the yucca_tf_staging vault; injected
-# here via TF_VAR from op:// refs in tf/.env. Empty defaults keep `tofu validate`
-# clean and let the slice deploy before the netbird stack has been applied.
+# here via TF_VAR from op:// refs in tf/.env. The empty default keeps
+# `tofu validate` clean and lets the slice deploy before the netbird stack has
+# been applied.
 
 # Per-node overlay: each Talos node joins NetBird via the extension's NB_SETUP_KEY.
 variable "netbird_talos_setup_key" {
   description = "NetBird setup key for the node-level siderolabs/netbird extension (group YUCCA_STAGING_TALOS). Injected via TF_VAR from 1P (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_TALOS_SETUP_KEY)."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-# In-cluster operator: NetBird Management API personal access token (service user).
-variable "netbird_operator_api_token" {
-  description = "NetBird API token for the in-cluster kubernetes operator (service user yucca-staging-k8s-operator). Bootstrapped into the netbird-mgmt-api-key Secret. Injected via TF_VAR from 1P (op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_K8S_OPERATOR_API_TOKEN)."
   type        = string
   sensitive   = true
   default     = ""

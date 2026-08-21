@@ -1,9 +1,14 @@
 ---
-# staging@austin cluster overlay. The flux-instance sync (installed by the TF
-# helm module) reconciles clusters/staging/austin, which points cluster-apps at
-# this path. Role + infra are selected by composing two Components: `infra`
-# (role-independent platform layers) and `roles/primary` (the full app set —
-# austin is the staging partition's primary region).
+# staging@austin cluster overlay — the APP layer (custom resources +
+# workloads). The CRD/operator providers live in ./infra, applied by the
+# `cluster-infra` Flux Kustomization that this layer dependsOn — see
+# infra/kustomization.yaml for why (fresh-cluster dry-run deadlock).
+#
+# SCOPE: cluster baseline (L2 LB pool, spare-disk StorageClasses, image
+# automation) + the shared platform slice (components/platform: gw-proxy,
+# httproutes, observability — specialized in ./gw-proxy and ./observability)
+# + the yucca app set (components/roles/primary — austin is the staging
+# partition's primary region).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -11,5 +16,5 @@ resources:
   - ./cilium-lb.yaml # L2/ARP ingress pool (cluster-specific LB topology)
   - ./openebs # per-spare-NVMe StorageClasses (cluster-specific disk layout)
 components:
-  - ../../../components/infra
+  - ../../../components/platform
   - ../../../components/roles/primary

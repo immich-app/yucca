@@ -2,7 +2,7 @@ export { default as BackendsList } from './components/backends/BackendsList.svel
 export { default as BackupsList } from './components/backups/BackupsList.svelte';
 export { default as ViewStatusModal } from './components/backups/dialogs/ViewStatusModal.svelte';
 export { default as Dashboard } from './components/dashboard/Dashboard.svelte';
-export { default as ImmichBackupsNavButton } from './components/integrations/immich/ImmichBackupsNavButton.svelte';
+export { default as ImmichBackupsAdminNavButton } from './components/integrations/immich/ImmichBackupsAdminNavButton.svelte';
 export { default as ImmichBackupsPage } from './components/integrations/immich/ImmichBackupsPage.svelte';
 export { default as ImmichBackupsSidebarItem } from './components/integrations/immich/ImmichBackupsSidebarItem.svelte';
 export { default as ImmichManageBackup } from './components/integrations/immich/ImmichManageBackup.svelte';

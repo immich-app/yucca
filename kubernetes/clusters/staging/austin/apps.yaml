@@ -1,11 +1,66 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 ---
-# cluster-apps entry point — the flux-instance sync (installed by the TF helm
-# module) points here (kubernetes/clusters/staging/austin). A single
-# Kustomization over kubernetes/apps/staging/austin, plus one patch that gives
-# EVERY child Kustomization a postBuild.substituteFrom over the three disjoint
-# settings ConfigMaps. Precedence (last wins): cluster-settings-generated (TF) ->
-# cluster-settings (human) -> image-versions (CI); keys are disjoint by design.
+# staging@austin entry points — the flux-instance sync (installed by the TF
+# helm module) points here (kubernetes/clusters/staging/austin). TWO layers,
+# so a fresh cluster can't deadlock: kustomize-controller server-side dry-runs
+# every object, so any CR whose CRD is missing blocks the WHOLE apply —
+# including the HelmReleases that would install those CRDs (2026-07 father
+# rebuild).
+#
+#   cluster-infra  operators/CRD providers (apps/staging/austin/infra) —
+#                  wait: true, so Ready ⇒ operators running ⇒ CRDs registered.
+#   cluster-apps   everything else (CRs + workloads) — dependsOn cluster-infra.
+#
+# Substitution precedence (last wins): cluster-settings-generated (TF) ->
+# cluster-settings (human) -> image-versions (CI-rewritten in-cluster, see the
+# flux-system ResourceSet); keys are disjoint by design. Injected into the
+# NESTED Kustomizations via the patches block (both layers' direct objects use
+# no ${vars} themselves).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-infra
+  namespace: flux-system
+spec:
+  interval: 1h
+  retryInterval: 2m
+  path: ./kubernetes/apps/staging/austin/infra
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  # The health gate cluster-apps depends on: every nested Kustomization here
+  # carries healthChecks on its HelmRelease, so wait covers operator readiness.
+  wait: true
+  timeout: 10m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings-generated
+      - kind: ConfigMap
+        name: cluster-settings
+      - kind: ConfigMap
+        name: image-versions
+  patches:
+    - target:
+        group: kustomize.toolkit.fluxcd.io
+        kind: Kustomization
+      patch: |-
+        apiVersion: kustomize.toolkit.fluxcd.io/v1
+        kind: Kustomization
+        metadata:
+          name: _
+        spec:
+          postBuild:
+            substituteFrom:
+              - kind: ConfigMap
+                name: cluster-settings-generated
+              - kind: ConfigMap
+                name: cluster-settings
+              - kind: ConfigMap
+                name: image-versions
+---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -14,6 +69,8 @@ metadata:
 spec:
   interval: 1h
   retryInterval: 2m # fresh-bootstrap CRD races retry in minutes, not 1h
+  dependsOn:
+    - name: cluster-infra
   path: ./kubernetes/apps/staging/austin
   prune: true
   sourceRef:
@@ -21,9 +78,6 @@ spec:
     name: flux-system
     namespace: flux-system
   wait: false
-  # Direct objects (the nested Kustomization CRs) carry substitutable source
-  # refs (${MANIFEST_SOURCE:=flux-system}); staging keeps the default, but the
-  # substitution pass must run for the default to resolve.
   postBuild:
     substituteFrom:
       - kind: ConfigMap

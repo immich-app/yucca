@@ -46,6 +46,20 @@ radosgw-admin user create \
   --max-buckets=100
 ```
 
+## Service accounts
+
+| UID | Purpose | Buckets | Caps |
+|---|---|---|---|
+| `svc-yucca-restic` | michael's restic object store (one bucket per repository) | 100 | — |
+| `metrics-worker` | yucca-metrics-worker usage scraping via the RGW admin API | 0 | `buckets=read;usage=read;metadata=read;users=read` |
+| `svc-yucca-db-backup` | CNPG (yucca-database) WAL archiving + base backups via the Barman Cloud plugin | 1 | — |
+
+All three are created by `rgw.yml` with predetermined, TF-minted keys (see
+[secrets.md](secrets.md)). `svc-yucca-db-backup` never needs a pre-created
+bucket: barman creates `yucca-db-backups` on first use, and `--max-buckets=1`
+caps the user there. The k8s side consumes the keys plus the RGW cert from the
+TF-provisioned `yucca-db-backup-s3` Secret.
+
 ## Self-signed certificate handling
 
 The cluster uses a self-signed wildcard certificate. Every client must either

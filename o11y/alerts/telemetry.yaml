@@ -1,0 +1,192 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+# One rule per remote data source: a dead vmagent takes every series from its
+# cluster with it, so nothing label-scoped can fire — only absence can. The
+# last_over_time guard keeps an o11y instance that never had the cluster's data
+# (e.g. staging never sees father) from alarming forever.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-telemetry
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    - uid: cluster-metrics-gone-father
+      title: ClusterMetricsGoneFather
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: father stopped shipping metrics
+        description: >-
+          No series from cluster "father" for 10m — its vmagent, the mesh
+          path, or the whole cluster is down; every father alert is blind
+          while this fires.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              absent(last_over_time(up{cluster="father",
+              project="yucca"}[5m])) and on()
+              count(count_over_time(up{cluster="father",
+              project="yucca"}[24h])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: cluster-metrics-gone-luke
+      title: ClusterMetricsGoneLuke
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: luke stopped shipping metrics
+        description: >-
+          No series from cluster "luke" (staging) for 10m — its vmagent, the
+          remote-write path, or the cluster is down.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              absent(last_over_time(up{cluster="luke", project="yucca"}[5m]))
+              and on() count(count_over_time(up{cluster="luke",
+              project="yucca"}[24h])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: cluster-metrics-gone-netops
+      title: ClusterMetricsGoneNetops
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: netops stopped shipping metrics
+        description: >-
+          No series from cluster "netops" for 10m — fabric telemetry (BGP,
+          alarms, sFlow) is blind; the fabric alerts cannot fire.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              absent(last_over_time(up{cluster="netops",
+              project="yucca"}[5m])) and on()
+              count(count_over_time(up{cluster="netops",
+              project="yucca"}[24h])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: cluster-metrics-gone-spice
+      title: ClusterMetricsGoneSpice
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: spice stopped shipping metrics
+        description: >-
+          No spice series at o11y for 10m — the netops vmagent's ceph scrapes
+          are failing. cephadm's own prometheus/alertmanager on spice still
+          alert independently.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              absent(last_over_time(up{cluster="spice", project="yucca"}[5m]))
+              and on() count(count_over_time(up{cluster="spice",
+              project="yucca"}[24h])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt

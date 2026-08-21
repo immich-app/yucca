@@ -1,11 +1,6 @@
 ---
-# envoy-system on father — needed by the cherry-picked envoy.yaml (the full
-# components/infra, whose network/namespace.yaml normally owns this, stays off
-# until launch). Content matches the component copy, so enabling components/infra
-# later is a clean handover (same field manager, no fight); REMOVE this file at
-# that point alongside envoy.yaml. The cert-manager namespace is NOT declared
-# here — the talos TF stack creates it (secrets.tf) to bootstrap the
-# cloudflare-api-token Secret, and declaring it twice would race TF.
+# Namespaces are cluster-owned (see infra/kustomization.yaml); the
+# cert-manager namespace is TF's here, not Flux's.
 apiVersion: v1
 kind: Namespace
 metadata:

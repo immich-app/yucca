@@ -31,6 +31,15 @@ data "netbird_group" "lp_services" {
   name = "Liberty Park Services"
 }
 
+# o11y's staging mesh gateway group (owned by the yucca-o11y repo's netbird TF)
+# — destination of the talos-to-o11y-gateway policy (netbird.auto.tfvars): the
+# logs collector remote-writes to the mesh vmauth
+# (vmauth.staging.o11y.futo.network → the gateway VIP behind o11y's routing
+# peers). Mirrors prod/htz-fsn1/netbird.
+data "netbird_group" "o11y_k8s_gateway" {
+  name = "o11y-staging-k8s-gateway"
+}
+
 module "netbird" {
   source = "../../../../shared/modules/netbird-env"
 
@@ -47,59 +56,7 @@ module "netbird" {
     lp_server_monitoring = data.netbird_group.lp_server_monitoring.id
     lp_servers           = data.netbird_group.lp_servers.id
     lp_services          = data.netbird_group.lp_services.id
-  }
-}
-
-# ─── In-cluster operator service account + API token ────────────────────
-# The NetBird Kubernetes operator authenticates to the Management API with a
-# personal access token. We mint a dedicated service user (auto-joined to the
-# k8s_operator group) and a 365-day token, then stash the plaintext in the
-# yucca_tf_staging vault — the staging/talos stack reads it from there (via
-# TF_VAR) and bootstraps it into the netbird-mgmt-api-key Secret. The operator
-# itself creates per-workload setup keys via this token, so no setup key is
-# pre-provisioned for it.
-#
-# NB: NetBird PATs always expire — `tf:apply` past the expiry re-mints the token.
-resource "netbird_user" "k8s_operator" {
-  is_service_user = true
-  name            = "yucca-${var.partition}-k8s-operator"
-  role            = "admin"
-  auto_groups     = [module.netbird.group_ids["k8s_operator"]]
-}
-
-resource "netbird_token" "k8s_operator" {
-  user_id         = netbird_user.k8s_operator.id
-  name            = "yucca-${var.partition}-k8s-operator"
-  expiration_days = 365
-}
-
-data "onepassword_vault" "env" {
-  name = "yucca_tf_${var.partition}"
-}
-
-resource "onepassword_item" "k8s_operator_api_token" {
-  vault    = data.onepassword_vault.env.uuid
-  title    = upper("NETBIRD_YUCCA_${var.partition}_K8S_OPERATOR_API_TOKEN")
-  category = "password"
-  password = netbird_token.k8s_operator.token
-
-  section {
-    label = "netbird"
-    field {
-      label = "token_id"
-      type  = "STRING"
-      value = netbird_token.k8s_operator.id
-    }
-    field {
-      label = "service_user_id"
-      type  = "STRING"
-      value = netbird_user.k8s_operator.id
-    }
-    field {
-      label = "expiration_date"
-      type  = "STRING"
-      value = netbird_token.k8s_operator.expiration_date
-    }
+    o11y_k8s_gateway     = data.netbird_group.o11y_k8s_gateway.id
   }
 }
 

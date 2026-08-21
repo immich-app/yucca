@@ -1,0 +1,449 @@
+---
+# Rebuild one OSD onto a replaced HDD, on the NVMe-RAID (spice) shape.
+#
+# Picks up AFTER the disk is physically in the bay: drain, `ceph orch osd rm
+# <id> --replace`, and the Hetzner serial ticket stay manual in
+# docs/runbooks/replace-disk.md. Those steps are one-way and need an operator
+# watching a drain, so wrapping them would only cost the idempotency below.
+#
+# WHY this exists rather than re-applying the OSD spec: with one blank disk and
+# one free db slot, cephadm may recreate the OSD without its block.db (Ceph
+# tracker #68436, open against 18.2.4, cluster runs 20.2.2). On this shape that
+# silently colocates block.db on the 22TB HDD instead of the vg0 db-slot LV, and
+# the OSD comes up looking healthy. Driving ceph-volume directly is the only way
+# to pin the disk to its slot; the final assert is what proves it landed.
+#
+#   scripts/ansible-play.sh replace-osd.yml --limit spice-ceph-alyssa \
+#     -e osd_bay=pci-0000:45:00.0-ata-6 [-e osd_id=35]
+#
+# osd_id keeps the old id. Without it ceph-volume allocates the next free id,
+# and on a full osdmap that is a new number above every existing OSD.
+#
+# Re-running against an OSD that already exists on that bay is a no-op.
+
+- name: Rebuild an OSD on a replaced disk
+  hosts: ceph_nodes
+  become: true
+  gather_facts: false
+
+  vars:
+    replace_osd_staging: /run/replace-osd
+    # Ceph auto-detects this from rotational, so leaving it unset still lands on
+    # hdd. Set it anyway: the drivegroup spec pins it, so an OSD built here would
+    # otherwise be the one on the node whose LV tag disagrees with its siblings.
+    osd_crush_device_class: hdd
+
+  pre_tasks:
+    # Standing directive for spice: one node at a time, never a blanket re-run.
+    - name: Assert exactly one target host
+      ansible.builtin.assert:
+        that:
+          - ansible_play_hosts | length == 1
+        fail_msg: >-
+          replace-osd.yml targets exactly one host per run, got
+          {{ ansible_play_hosts | length }}: {{ ansible_play_hosts | join(', ') }}.
+          Re-run with --limit <host>.
+        success_msg: "Target: {{ ansible_play_hosts | first }}."
+
+    - name: Assert the required inputs are present
+      ansible.builtin.assert:
+        that:
+          - osd_bay is defined
+          - ceph_db_lvs_per_node is defined
+          - sas_path_prefix is undefined
+        fail_msg: >-
+          Needs -e osd_bay=<by-path under /dev/disk/by-path>, and a host on the
+          NVMe-RAID shape (ceph_db_lvs_per_node set, no sas_path_prefix).
+
+  tasks:
+    # The by-path symlink is the bay; it disappears with the disk. A missing one
+    # means the swap has not happened yet, not that the play is misconfigured.
+    - name: Resolve the bay to a kernel device
+      ansible.builtin.command: readlink -e /dev/disk/by-path/{{ osd_bay }}
+      register: replace_osd_dev
+      changed_when: false
+      check_mode: false
+      failed_when: replace_osd_dev.rc != 0 or replace_osd_dev.stdout | length == 0
+
+    - name: Look for an OSD already on this disk
+      ansible.builtin.command: >-
+        cephadm ceph-volume lvm list {{ replace_osd_dev.stdout }} --format json
+      register: replace_osd_existing
+      changed_when: false
+      check_mode: false
+
+    - name: Report the OSD already present on this bay
+      ansible.builtin.debug:
+        msg: >-
+          osd.{{ (replace_osd_existing.stdout | from_json).keys() | first }} already
+          occupies {{ osd_bay }} ({{ replace_osd_dev.stdout }}). Nothing to do.
+      when: (replace_osd_existing.stdout | from_json) | length > 0
+
+    - name: End the run when the OSD already exists
+      ansible.builtin.meta: end_host
+      when: (replace_osd_existing.stdout | from_json) | length > 0
+
+    - name: Gate on cluster health
+      ansible.builtin.import_tasks: tasks/health_gate.yml
+
+    - name: Check whether the disk carries an LVM PV
+      ansible.builtin.command: pvs {{ replace_osd_dev.stdout }}
+      register: replace_osd_pv
+      changed_when: false
+      check_mode: false
+      failed_when: false
+
+    - name: Assert the replacement disk is bare
+      ansible.builtin.assert:
+        that:
+          - replace_osd_pv.rc != 0
+        fail_msg: >-
+          {{ replace_osd_dev.stdout }} already carries an LVM PV but no OSD. Zap it
+          by hand before rebuilding: this play will not destroy data it cannot
+          account for.
+
+    # A slot is claimed only when it is the `db` entry of an OSD that ALSO has a
+    # `block` entry. LV tags alone are not enough: a db-slot whose data disk died
+    # keeps its ceph.osd_id tag and reads as claimed forever. The shapes are
+    # ('block','db') for a live HDD OSD, ('db',) for that orphan, and ('block',)
+    # for the colocated ssd-osd, which never consumes a slot.
+    - name: Scan db slots for one that is free to reuse
+      ansible.builtin.shell: |
+        set -o pipefail
+        cephadm ceph-volume lvm list --format json 2>/dev/null | python3 -c '
+        import sys, json, re
+        entries = json.load(sys.stdin)
+        live, orphan = set(), set()
+        for devs in entries.values():
+            types = {d.get("type") for d in devs}
+            for d in devs:
+                if d.get("type") != "db":
+                    continue
+                m = re.search(r"db-slot(\d+)", d.get("lv_path", ""))
+                if m:
+                    (live if "block" in types else orphan).add(int(m.group(1)))
+        free = sorted(set(range({{ ceph_db_lvs_per_node }})) - live)
+        print(json.dumps({"free": free, "orphan": sorted(orphan)}))
+        '
+      args:
+        executable: /bin/bash
+      register: replace_osd_scan
+      changed_when: false
+      check_mode: false
+
+    - name: Assert the free slot is unambiguous
+      ansible.builtin.assert:
+        that:
+          - (replace_osd_scan.stdout | from_json).free | length == 1
+        fail_msg: >-
+          Expected exactly one reusable db slot, found
+          {{ (replace_osd_scan.stdout | from_json).free }}. Name one explicitly
+          with -e osd_db_slot=<n>.
+      when: osd_db_slot is undefined
+
+    # An explicit slot only picks among the free ones. A slot whose OSD is
+    # merely stopped still reads as live here, its LUKS mapping is closed so
+    # the open-count guard below would pass, and the zap would take that OSD's
+    # block.db with it.
+    - name: Assert the requested slot is one the scan found free
+      ansible.builtin.assert:
+        that:
+          - (osd_db_slot | int) in (replace_osd_scan.stdout | from_json).free
+        fail_msg: >-
+          db-slot{{ osd_db_slot }} is not free: it is the block.db of an OSD that
+          still has its data disk (running or not). Free slots:
+          {{ (replace_osd_scan.stdout | from_json).free }}. This play never zaps a
+          slot it can account for.
+      when: osd_db_slot is defined
+
+    - name: Select the db slot
+      ansible.builtin.set_fact:
+        replace_osd_slot: >-
+          {{ osd_db_slot | default((replace_osd_scan.stdout | from_json).free | first) }}
+
+    # ceph-volume reuses a requested id only when the osdmap already marks it
+    # destroyed. down and out do not qualify, and the `osd new` error for that
+    # case ("already in use or does not exist") does not say so.
+    - name: Read the osdmap status of the requested id
+      ansible.builtin.command: ceph osd tree -f json
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      register: replace_osd_tree
+      changed_when: false
+      check_mode: false
+      when: osd_id is defined
+
+    - name: Resolve the osdmap status of the requested id
+      ansible.builtin.set_fact:
+        replace_osd_id_status: >-
+          {{ ((replace_osd_tree.stdout | from_json).nodes
+              | selectattr('type', 'eq', 'osd')
+              | selectattr('id', 'eq', osd_id | int)
+              | map(attribute='status') | list + ['absent']) | first }}
+      when: osd_id is defined
+
+    - name: Assert the requested id is destroyed or absent
+      ansible.builtin.assert:
+        that:
+          - replace_osd_id_status in ['destroyed', 'absent']
+        fail_msg: >-
+          osd.{{ osd_id }} is {{ replace_osd_id_status }} in the osdmap, not
+          destroyed. Run `ceph orch osd rm {{ osd_id }} --replace` first.
+      when: osd_id is defined
+
+    # `orch daemon stop|start|restart` only queues an action per daemon name;
+    # the serve loop skips daemons of an unmanaged spec before it reads the
+    # queue, so against a spec-deployed OSD it never runs and never clears. The
+    # rebuilt daemon has no spec, so the first pass after it boots runs it.
+    # Nothing drops a queued action, so record it and undo it after the boot.
+    - name: Read cephadm's queued daemon actions for this host
+      ansible.builtin.command: ceph config-key get mgr/cephadm/host.{{ inventory_hostname }}
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      register: replace_osd_host_cache
+      changed_when: false
+      check_mode: false
+      when: osd_id is defined
+
+    - name: Note the action cephadm will run against the rebuilt daemon
+      ansible.builtin.set_fact:
+        replace_osd_queued_action: >-
+          {{ ((replace_osd_host_cache.stdout | from_json).scheduled_daemon_actions
+              | default({}))['osd.' ~ osd_id] | default('') }}
+      when: osd_id is defined
+
+    - name: Report the queued action
+      ansible.builtin.debug:
+        msg: >-
+          cephadm holds a queued `{{ replace_osd_queued_action }}` for
+          osd.{{ osd_id }} on {{ inventory_hostname }}. It runs on the first
+          serve pass after the rebuilt daemon boots; a stop is undone below.
+      when: (replace_osd_queued_action | default('')) | length > 0
+
+    - name: Report the plan
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: build
+          {{ ('osd.' ~ osd_id) if osd_id is defined else 'a new OSD' }}
+          on {{ osd_bay }} ({{ replace_osd_dev.stdout }}) against
+          {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }}
+          (orphaned slots seen: {{ (replace_osd_scan.stdout | from_json).orphan }})
+
+    # Covers the slot having been deleted rather than zapped by an earlier ad-hoc
+    # removal. shrink:false so this can never truncate a live block.db; -Wy wipes
+    # stale signatures on a slot it does create.
+    - name: Ensure the db slot LV exists
+      community.general.lvol:
+        vg: "{{ ceph_db_vg }}"
+        lv: "db-slot{{ replace_osd_slot }}"
+        size: "{{ ceph_db_lv_size }}"
+        shrink: false
+        opts: "-Wy"
+        state: present
+
+    # zap closes the slot's dm-crypt mapping itself, by the LV uuid it is named
+    # after, but it warns rather than stops when that close fails and then wipes
+    # the LV regardless. The one holder that survives an orphaned slot is an OSD
+    # process that lost its data disk and has not exited yet.
+    - name: Read the open count on the slot's dm-crypt mapping
+      ansible.builtin.shell: |
+        set -o pipefail
+        uuid=$(lvs --noheadings -o lv_uuid {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }} | tr -d ' ')
+        dmsetup info -c --noheadings -o open "$uuid" 2>/dev/null || echo 0
+      args:
+        executable: /bin/bash
+      register: replace_osd_slot_open
+      changed_when: false
+      check_mode: false
+
+    - name: Assert nothing holds the slot's dm-crypt mapping open
+      ansible.builtin.assert:
+        that:
+          - replace_osd_slot_open.stdout | trim | int == 0
+        fail_msg: >-
+          {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }} has a dm-crypt mapping with
+          open count {{ replace_osd_slot_open.stdout | trim }}. Find and stop the
+          holder before rebuilding; zapping under it would wipe a live block.db.
+
+    # Unconditional so the deleted-slot and the zapped-slot cases converge on one
+    # path. ceph-volume refuses a db device still carrying an old OSD's metadata,
+    # and the resulting create failure does not point back here.
+    - name: Zap the db slot
+      ansible.builtin.command: >-
+        cephadm ceph-volume lvm zap {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }}
+      changed_when: true
+
+    # These hosts carry no /etc/ceph and no bootstrap-osd keyring: cephadm hands
+    # the mgr-supplied credentials to the container at deploy time and leaves
+    # nothing behind. Driving ceph-volume by hand means supplying both, so stage
+    # them on tmpfs for the one command and remove them either way.
+    - name: Build the OSD
+      when: not ansible_check_mode
+      block:
+        - name: Stage a private directory for the bootstrap credentials
+          ansible.builtin.file:
+            path: "{{ replace_osd_staging }}"
+            state: directory
+            mode: "0700"
+
+        - name: Fetch the minimal cluster config
+          ansible.builtin.command: ceph config generate-minimal-conf
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          register: replace_osd_conf
+          changed_when: false
+
+        - name: Fetch the client.bootstrap-osd keyring
+          ansible.builtin.command: ceph auth get client.bootstrap-osd
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          register: replace_osd_key
+          changed_when: false
+          no_log: true
+
+        # The trailing newline is load-bearing. `command` strips it from stdout,
+        # and a ceph.conf whose last line has no newline fails to parse with
+        # InvalidArgumentError('RADOS invalid argument (error calling
+        # conf_read_file)'), which reads as a credentials problem and is not.
+        - name: Write the staged credentials
+          ansible.builtin.copy:
+            content: "{{ item.body }}\n"
+            dest: "{{ replace_osd_staging }}/{{ item.name }}"
+            mode: "0600"
+          loop:
+            - name: ceph.conf
+              body: "{{ replace_osd_conf.stdout }}"
+            - name: bootstrap-osd.keyring
+              body: "{{ replace_osd_key.stdout }}"
+          loop_control:
+            label: "{{ item.name }}"
+          no_log: true
+
+        - name: Create the OSD
+          ansible.builtin.command: >-
+            cephadm ceph-volume
+            --config {{ replace_osd_staging }}/ceph.conf
+            --keyring {{ replace_osd_staging }}/bootstrap-osd.keyring
+            lvm create --dmcrypt --no-systemd
+            --crush-device-class {{ osd_crush_device_class }}
+            {{ ('--osd-id ' ~ osd_id) if osd_id is defined else '' }}
+            --data /dev/disk/by-path/{{ osd_bay }}
+            --block.db {{ ceph_db_vg }}/db-slot{{ replace_osd_slot }}
+          changed_when: true
+
+      always:
+        - name: Remove the staged credentials
+          ansible.builtin.file:
+            path: "{{ replace_osd_staging }}"
+            state: absent
+
+    - name: Activate the new daemon
+      ansible.builtin.command: ceph cephadm osd activate {{ inventory_hostname }}
+      delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+      changed_when: true
+
+    - name: Post-create verification
+      when: not ansible_check_mode
+      block:
+        - name: Resolve the new OSD id
+          ansible.builtin.command: >-
+            cephadm ceph-volume lvm list {{ replace_osd_dev.stdout }} --format json
+          register: replace_osd_created
+          changed_when: false
+          until: (replace_osd_created.stdout | from_json) | length > 0
+          retries: 12
+          delay: 10
+
+        - name: Assert the OSD kept the requested id
+          ansible.builtin.assert:
+            that:
+              - (replace_osd_created.stdout | from_json).keys() | first | int == osd_id | int
+            fail_msg: >-
+              Asked for osd.{{ osd_id }} and got
+              osd.{{ (replace_osd_created.stdout | from_json).keys() | first }}.
+          when: osd_id is defined
+
+        - name: Set the new OSD id
+          ansible.builtin.set_fact:
+            replace_osd_new_id: "{{ (replace_osd_created.stdout | from_json).keys() | first }}"
+
+        # The queued action runs on the first serve pass after the daemon lands in
+        # cephadm's cache, up to a minute later, and a start queued before then is
+        # dropped because stop outranks it. So let it fire, then judge the OSD.
+        - name: Wait for cephadm to consume the queued action
+          ansible.builtin.command: ceph config-key get mgr/cephadm/host.{{ inventory_hostname }}
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          register: replace_osd_host_cache_after
+          changed_when: false
+          until: >-
+            ('osd.' ~ replace_osd_new_id) not in
+            ((replace_osd_host_cache_after.stdout | from_json).scheduled_daemon_actions | default({}))
+          retries: 18
+          delay: 10
+          when: (replace_osd_queued_action | default('')) | length > 0
+
+        - name: Wait for the OSD to be up
+          ansible.builtin.command: ceph osd tree -f json
+          register: replace_osd_tree_after
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          changed_when: false
+          until: >-
+            (replace_osd_tree_after.stdout | from_json).nodes
+            | selectattr('type', 'eq', 'osd')
+            | selectattr('id', 'eq', replace_osd_new_id | int)
+            | map(attribute='status') | first | default('') == 'up'
+          retries: 12
+          delay: 10
+          ignore_errors: true
+
+        - name: Start the daemon that cephadm's queued stop took down
+          ansible.builtin.command: ceph orch daemon start osd.{{ replace_osd_new_id }}
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          changed_when: true
+          when:
+            - replace_osd_tree_after is failed
+            - (replace_osd_queued_action | default('')) == 'stop'
+
+        - name: Wait for the OSD to be up after the restart
+          ansible.builtin.command: ceph osd tree -f json
+          register: replace_osd_tree_after
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          changed_when: false
+          until: >-
+            (replace_osd_tree_after.stdout | from_json).nodes
+            | selectattr('type', 'eq', 'osd')
+            | selectattr('id', 'eq', replace_osd_new_id | int)
+            | map(attribute='status') | first | default('') == 'up'
+          retries: 12
+          delay: 10
+          when: replace_osd_tree_after is failed
+
+        # `osd metadata` is the last report the mon holds for that id. On a reused
+        # id that is the dead daemon's report until the new one boots, and it
+        # would pass every assert below. Insist the report names this disk.
+        - name: Read the BlueStore metadata the new daemon reported
+          ansible.builtin.command: >-
+            ceph osd metadata {{ replace_osd_new_id }} --format json
+          register: replace_osd_meta
+          delegate_to: "{{ groups['ceph_bootstrap'][0] }}"
+          changed_when: false
+          until: >-
+            replace_osd_meta.rc == 0 and
+            (replace_osd_dev.stdout | basename) in
+            ((replace_osd_meta.stdout | from_json).devices | default('') | split(','))
+          retries: 6
+          delay: 10
+
+        # The whole reason this play drives ceph-volume instead of the spec. A
+        # colocated block.db is invisible in `ceph -s` and in `ceph osd tree`.
+        - name: Assert block.db landed on the NVMe slot and not the HDD
+          ansible.builtin.assert:
+            that:
+              - (replace_osd_meta.stdout | from_json).bluefs_dedicated_db == "1"
+              - (replace_osd_meta.stdout | from_json).bluefs_db_rotational == "0"
+            fail_msg: >-
+              osd.{{ replace_osd_new_id }} came up
+              with block.db on
+              {{ (replace_osd_meta.stdout | from_json).bluefs_db_devices | default('?') }}
+              (dedicated={{ (replace_osd_meta.stdout | from_json).bluefs_dedicated_db | default('?') }}).
+              It is a spinning-disk metadata path; destroy and rebuild it.
+            success_msg: >-
+              osd.{{ replace_osd_new_id }} up on
+              {{ osd_bay }} with block.db on
+              {{ (replace_osd_meta.stdout | from_json).bluefs_db_devices }}.

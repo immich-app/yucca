@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.envoyproxy.io/envoyproxy_v1alpha1.json
+# Data-plane config for the DEDICATED michael (restic) gateway, separate from
+# the app gateway so the backup data plane scales independently. father patches
+# in its dual public/internal VIPs; staging replaces the Service with a
+# ClusterIP reached via the app gateway's SNI passthrough.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: envoy-gw
+spec:
+  logging:
+    level:
+      default: info
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        replicas: ${GW_PROXY_REPLICAS}
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: envoy
+                  gateway.envoyproxy.io/owning-gateway-name: gw
+      envoyService:
+        type: LoadBalancer
+        externalTrafficPolicy: Cluster
+        patch:
+          type: StrategicMerge
+          value:
+            metadata:
+              labels:
+                lb: ${INGRESS_LB_LABEL}
+              annotations:
+                lbipam.cilium.io/ips: "${GW_VIP}"
+  telemetry:
+    metrics:
+      prometheus: {}

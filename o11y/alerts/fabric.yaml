@@ -1,0 +1,377 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+# Fabric series only ever come from the netops vmagent (cluster="netops");
+# spice's own health is alerted by cephadm's alertmanager, not here. Every
+# instant selector is wrapped in last_over_time[5m]: Grafana evaluates with the
+# group interval as the query step, VictoriaMetrics treats step as the staleness
+# lookback, and the junos exporter's 60s cadence loses the race often enough
+# that a 5m `for` can never sustain — the rules sat Normal through a real
+# transit outage until wrapped.
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-fabric
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    # The `group` label is the transits map key from
+    # tf/deployment/prod/htz-fsn1/fabric/fabric.tf (core-backbone, colt, …);
+    # matching on group!="cilium-nodes" (the bgp-nodes.tf iBGP group) covers
+    # future transits with no rule change. Critical even though egress ECMPs
+    # across both (#488): a down transit means the site is one failure from dark
+    # and a carrier is being paid for nothing.
+    - uid: junos-transit-session-down
+      title: JunosTransitSessionDown
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: transit BGP session down
+        description: >-
+          Transit BGP session on {{ $labels.target }} to {{ $labels.ip }} has
+          been down for 5m — egress ECMP is degraded and the site is
+          single-homed on the remaining transit; ingress via the down carrier
+          is rerouting.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              last_over_time(junos_bgp_session_up{cluster="netops",
+              group!="cilium-nodes", project="yucca"}[5m]) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-all-transits-down
+      title: JunosAllTransitsDown
+      condition: B
+      for: 2m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: all IP transits down
+        description: >-
+          Both v4 transit BGP sessions (Core-Backbone and Colt) are down —
+          htz-fsn1 has no IP transit; the public /24 is unreachable and egress
+          is dead.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum(last_over_time(junos_bgp_session_up{cluster="netops",
+              group!="cilium-nodes", project="yucca"}[5m])) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-bgp-session-down
+      title: JunosBGPSessionDown
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: cilium iBGP session down (spine side)
+        description: >-
+          iBGP session on {{ $labels.target }} to worker {{ $labels.ip }} has
+          been down for 5m — LB routes from that node are withdrawn from the
+          htz-fsn1 fabric.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              last_over_time(junos_bgp_session_up{cluster="netops",
+              group="cilium-nodes", project="yucca"}[5m]) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-red-alarm
+      title: JunosRedAlarm
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: red chassis alarm on the fabric
+        description: >-
+          {{ $labels.target }} is reporting {{ humanize $values.A.Value }} red
+          chassis alarm(s) — hardware or environment failure on the htz-fsn1
+          fabric.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (target)
+              (last_over_time(junos_alarms_red_count{cluster="netops",
+              project="yucca"}[5m])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-yellow-alarm
+      title: JunosYellowAlarm
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: yellow chassis alarm on the fabric
+        description: >-
+          {{ $labels.target }} has had {{ humanize $values.A.Value }} yellow
+          chassis alarm(s) for 30m on the htz-fsn1 fabric.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (target)
+              (last_over_time(junos_alarms_yellow_count{cluster="netops",
+              project="yucca"}[5m])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-interface-errors
+      title: JunosInterfaceErrors
+      condition: B
+      for: 30m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: fabric interface taking errors
+        description: >-
+          {{ $labels.target }} {{ $labels.name }} is taking {{ humanize
+          $values.A.Value }} errors/s sustained for 30m — check optics/cabling
+          before it becomes packet loss.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (target, name) (
+              rate(junos_interface_receive_errors{cluster="netops",
+              name=~"ae.+|et-.+|xe-.+", project="yucca"}[10m]) +
+              rate(junos_interface_transmit_errors{cluster="netops",
+              name=~"ae.+|et-.+|xe-.+", project="yucca"}[10m])) > 0.01
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    - uid: junos-exporter-down
+      title: JunosExporterDown
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: junos exporter down
+        description: >-
+          The junos exporter has been failing its NETCONF scrape for 10m —
+          fabric health (BGP, alarms, interfaces) is blind; the fabric alerts
+          above cannot fire.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              last_over_time(up{cluster="netops", job="junos",
+              project="yucca"}[5m]) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Guarded absence (see backup-health.yaml): only fires where sFlow data
+    # recently existed, auto-resolves 24h after it stopped.
+    - uid: sflow-silent
+      title: SflowSilent
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: sFlow stream stopped
+        description: >-
+          No sflow_* samples for 15m — the spine's sFlow stream to the
+          collector VIP (10.40.12.14) is dead or sflow-rt is down; 5s
+          bandwidth visibility is gone.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              absent(sflow_ifinoctets{cluster="netops", project="yucca"}) and
+              on() count(count_over_time(sflow_ifinoctets{cluster="netops",
+              project="yucca"}[24h])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
