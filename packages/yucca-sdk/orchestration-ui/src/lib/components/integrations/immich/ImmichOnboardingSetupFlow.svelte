@@ -109,9 +109,9 @@
   };
 
   const onImportedKey = async (key: string) => {
+    await confirmRecoveryKey();
     code = key;
     stage = "connect";
-    await confirmRecoveryKey();
   };
 
   const onStartBackup = () =>
