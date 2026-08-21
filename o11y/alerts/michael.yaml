@@ -360,3 +360,99 @@ spec:
               - evaluator:
                   params: [0]
                   type: gt
+    # Fires only in the fast-fail state (every breaker open + traffic-confirmed
+    # failure): sheds are requests answered 503 without touching a backend.
+    # Restic retries them for up to 15 minutes, so short bursts self-heal —
+    # sustained shedding means backups are bouncing off a down storage cluster.
+    # The 2m rate window with a 3m pending period keeps a single shed (one
+    # blip, or a recovery canary) from latching the alert after the pool heals.
+    - uid: michael-pool-shedding
+      title: MichaelPoolShedding
+      condition: B
+      for: 3m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: critical
+      annotations:
+        summary: michael is shedding requests — all S3 backends down
+        description: >-
+          michael on {{ $labels.cluster }} is fast-failing {{
+          humanize $values.A.Value }} req/s with 503 because every S3 backend
+          in the pool is unhealthy.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              sum by (cluster) (rate({__name__="s3.pool.sheds",
+              project="yucca"}[2m])) > 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # The cross-backend retry budget refills on successes and drains on
+    # retries; pinned at zero it means failures are so widespread that retries
+    # are being denied — a brownout signal that fires before the error ratio
+    # alerts do.
+    - uid: michael-retry-budget-exhausted
+      title: MichaelRetryBudgetExhausted
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: michael's cross-backend retry budget is exhausted
+        description: >-
+          A michael replica on {{ $labels.cluster }} has had an empty S3 retry
+          budget for 10m — backend failures are widespread enough that
+          single-gateway blips are no longer being masked.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              min by (cluster) ({__name__="s3.pool.retry_budget",
+              project="yucca"}) == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt

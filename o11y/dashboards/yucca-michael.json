@@ -1955,12 +1955,372 @@
       "description": "Empty when everything is healthy."
     },
     {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "open",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "half-open",
+                  "color": "yellow",
+                  "index": 1
+                },
+                "2": {
+                  "text": "closed",
+                  "color": "green",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 82
+      },
+      "id": 44,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "min by (backend) ({__name__=\"s3.backend.state\", cluster=~\"$cluster\"})",
+          "legendFormat": "{{backend}}"
+        }
+      ],
+      "title": "Breaker state by backend",
+      "type": "timeseries",
+      "description": "Per-backend circuit breaker: 2 closed (serving), 1 half-open (trial traffic), 0 open (ejected)."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 82
+      },
+      "id": 45,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (outcome) (rate({__name__=\"s3.pool.retries\", cluster=~\"$cluster\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "title": "Cross-backend retries by outcome",
+      "type": "timeseries",
+      "description": "Idempotent ops retried once on a sibling backend after a transport failure. Empty when nothing fails; 'denied' means the budget ran dry."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 90
+      },
+      "id": 46,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "min by (cluster) ({__name__=\"s3.pool.retry_budget\", cluster=~\"$cluster\"})",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "title": "Retry budget (min across replicas)",
+      "type": "timeseries",
+      "description": "Token budget refilled by successes, spent per retry (defaults: cap 200, cost 10, earn 1 \u2014 S3_RETRY_* env). Pinned at zero = brownout: failures outpace successes and retries are denied."
+    },
+    {
+      "datasource": {
+        "uid": "$datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 90
+      },
+      "id": 47,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (cluster) (rate({__name__=\"s3.pool.sheds\", cluster=~\"$cluster\"}[$__rate_interval])) > 0",
+          "legendFormat": "shed {{cluster}}"
+        },
+        {
+          "datasource": {
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "expr": "sum by (cluster) (rate({__name__=\"s3.pool.canaries\", cluster=~\"$cluster\"}[$__rate_interval])) > 0",
+          "legendFormat": "canary {{cluster}}"
+        }
+      ],
+      "title": "Load shedding & canaries",
+      "type": "timeseries",
+      "description": "Sheds are fast 503s while every backend is open; canaries are the single fail-open probes that re-test dead backends. Empty in normal operation."
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 82
+        "y": 98
       },
       "id": 25,
       "panels": [],
@@ -2016,7 +2376,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 83
+        "y": 99
       },
       "id": 26,
       "options": {
@@ -2098,7 +2458,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 83
+        "y": 99
       },
       "id": 27,
       "options": {
@@ -2179,7 +2539,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 91
+        "y": 107
       },
       "id": 28,
       "options": {
@@ -2260,7 +2620,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 91
+        "y": 107
       },
       "id": 29,
       "options": {
@@ -2301,7 +2661,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 99
+        "y": 115
       },
       "panels": []
     },
@@ -2317,7 +2677,7 @@
         "h": 5,
         "w": 4,
         "x": 0,
-        "y": 100
+        "y": 116
       },
       "fieldConfig": {
         "defaults": {
@@ -2382,7 +2742,7 @@
         "h": 5,
         "w": 4,
         "x": 4,
-        "y": 100
+        "y": 116
       },
       "fieldConfig": {
         "defaults": {
@@ -2447,7 +2807,7 @@
         "h": 5,
         "w": 4,
         "x": 8,
-        "y": 100
+        "y": 116
       },
       "fieldConfig": {
         "defaults": {
@@ -2508,7 +2868,7 @@
         "h": 8,
         "w": 8,
         "x": 12,
-        "y": 100
+        "y": 116
       },
       "fieldConfig": {
         "defaults": {
@@ -2559,7 +2919,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 105
+        "y": 121
       },
       "fieldConfig": {
         "defaults": {
@@ -2610,7 +2970,7 @@
         "h": 8,
         "w": 4,
         "x": 20,
-        "y": 100
+        "y": 116
       },
       "fieldConfig": {
         "defaults": {
@@ -2655,7 +3015,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 113
+        "y": 129
       },
       "id": 30,
       "panels": [],
@@ -2675,7 +3035,7 @@
         "h": 14,
         "w": 24,
         "x": 0,
-        "y": 114
+        "y": 130
       },
       "id": 31,
       "options": {
