@@ -1,0 +1,15 @@
+# Managed by Ansible (security role). Rotation for the nftables drop log
+# written by ulogd2. Not copytruncate: ulogd2 reopens on HUP and fluent-bit's
+# tail input follows the rename, so nothing is lost at the boundary.
+{{ ceph_firewall_droplog_file }} {
+    daily
+    rotate 14
+    maxsize 512M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    postrotate
+        systemctl kill -s HUP ulogd2.service
+    endscript
+}

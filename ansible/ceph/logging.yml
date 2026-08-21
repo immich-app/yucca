@@ -1,7 +1,8 @@
 ---
-# Ship each ceph node's journald to o11y's VictoriaLogs over the NetBird overlay.
-# journald is the whole source: cephadm daemons write there via libsystemd
-# (log_to_journald true, log_to_file false), and so does the mon cluster channel.
+# Ship each ceph node's logs to o11y's VictoriaLogs over the NetBird overlay.
+# Two sources: journald, where cephadm daemons write via libsystemd
+# (log_to_journald true, log_to_file false) along with the mon cluster channel,
+# and the nftables drop events ulogd2 writes (roles/security).
 #
 # Needs the node enrolled in NetBird and the ceph-to-o11y-gateway policy applied;
 # without the policy there is no route to the gateway VIP.

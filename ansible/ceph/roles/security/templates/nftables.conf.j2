@@ -85,8 +85,9 @@ table inet filter {
 {% endif %}
 {% endfor %}
 
-        # Log + drop everything else
-        limit rate 5/minute log prefix "nftables-drop: " level warn
+        # Count + log every drop over NFLOG to ulogd2 (role defaults have
+        # the why); no printk, so nothing lands in kmsg or the journal.
+        counter log prefix "nftables-drop" group {{ ceph_firewall_droplog_group }} snaplen {{ ceph_firewall_droplog_snaplen }} queue-threshold {{ ceph_firewall_droplog_threshold }}
         drop
     }
 

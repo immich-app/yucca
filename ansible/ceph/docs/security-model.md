@@ -136,8 +136,11 @@ chain forward { policy drop; }  # no forwarding
 chain output { policy accept; } # outbound unrestricted
 ```
 
-Dropped packets are logged at rate 5/minute with prefix `nftables-drop: ` for
-forensic review.
+Every dropped packet is counted and logged in full over NFLOG: ulogd2 turns
+the netlink stream into JSON events in `/var/log/ulog/nft-drop.json` (rotated,
+14 days), and roles/fluentbit ships them to o11y. Nothing goes through printk
+or the journal, so scanner noise cannot crowd real kernel messages out of the
+kmsg or the journal.
 
 ### Optional gateways (disabled by default)
 
@@ -203,7 +206,7 @@ Rotation procedure: [runbooks/rotate-sa-token.md](runbooks/rotate-sa-token.md).
 | Ceph audit log | Enabled (`ceph config set global log_to_cluster_level audit`) |
 | Ceph manager log | `mgr/cephadm/log_to_cluster true` |
 | View audit log | `ceph log last -W audit` |
-| Firewall logging | Dropped packets logged at 5/min with `nftables-drop:` prefix |
+| Firewall logging | Every drop as a JSON event via NFLOG + ulogd2, shipped to o11y |
 | Prometheus alerts | 89 built-in rules across 16 groups covering OSD, MON, PG, pool, MDS, hardware, network |
 
 The audit channel records all `ceph` admin commands executed against the

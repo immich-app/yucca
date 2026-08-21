@@ -1,0 +1,25 @@
+# Firewall drop logging - managed by Ansible (security role).
+# NFLOG group {{ ceph_firewall_droplog_group }} (the nftables drop rule) in,
+# one JSON event per dropped packet out. roles/fluentbit tails the file to o11y.
+
+[global]
+logfile="syslog"
+loglevel=3
+
+plugin="/usr/lib/x86_64-linux-gnu/ulogd/ulogd_inppkt_NFLOG.so"
+plugin="/usr/lib/x86_64-linux-gnu/ulogd/ulogd_raw2packet_BASE.so"
+plugin="/usr/lib/x86_64-linux-gnu/ulogd/ulogd_filter_IFINDEX.so"
+plugin="/usr/lib/x86_64-linux-gnu/ulogd/ulogd_filter_IP2STR.so"
+plugin="/usr/lib/x86_64-linux-gnu/ulogd/ulogd_output_JSON.so"
+
+stack=drop1:NFLOG,base1:BASE,ifi1:IFINDEX,ip2str1:IP2STR,json1:JSON
+
+[drop1]
+group={{ ceph_firewall_droplog_group }}
+
+[json1]
+# Flush per event: fluent-bit tails this file, and a page-cache-buffered write
+# would sit unshipped indefinitely at low drop rates.
+sync=1
+file="{{ ceph_firewall_droplog_file }}"
+timestamp=1

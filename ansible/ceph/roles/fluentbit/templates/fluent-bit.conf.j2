@@ -1,5 +1,6 @@
 # Managed by ansible (roles/fluentbit) - do not edit on the node.
-# journald -> drop noise -> tag -> o11y VictoriaLogs over the NetBird overlay.
+# journald + nftables drop events -> filter -> tag -> o11y VictoriaLogs over
+# the NetBird overlay.
 
 [SERVICE]
     Flush                     5
@@ -9,6 +10,7 @@
     HTTP_Port                 {{ ceph_fluentbit_http_port }}
     storage.path              /var/lib/fluent-bit/storage
     storage.backlog.mem_limit 64M
+    parsers_file              /etc/fluent-bit/parsers-nftables.conf
 
 [INPUT]
     Name              systemd
@@ -20,6 +22,16 @@
     # First start skips the existing journal (1.9G/node) rather than
     # backfilling it into o11y.
     Read_From_Tail    On
+    storage.type      filesystem
+
+# nftables drop events: ulogd2 (roles/security) decodes NFLOG into JSON lines.
+# Same output, own tag, so the journald noise filter cannot touch them.
+[INPUT]
+    Name              tail
+    Tag               host.nftables
+    Path              {{ ceph_fluentbit_droplog_file }}
+    Parser            nft_drop_json
+    DB                /var/lib/fluent-bit/nft-drop.db
     storage.type      filesystem
 
 # ~2.4M lines/hour fleet-wide is nearly all mon/mgr status chatter. The mon
@@ -35,6 +47,21 @@
     Record cluster {{ ceph_fluentbit_cluster_label }}
     Record site {{ ceph_fluentbit_site_label }}
     Record env {{ ceph_fluentbit_env_label }}
+
+# Drop events carry ulogd2 field names, not journald ones. Synthesize MESSAGE
+# (VictoriaLogs _msg) and both stream fields so they land in the same schema
+# as the journald stream and join it per host.
+[FILTER]
+    Name   lua
+    Match  host.nftables
+    script /etc/fluent-bit/nft-drop-message.lua
+    call   nft_drop_message
+
+[FILTER]
+    Name   record_modifier
+    Match  host.nftables
+    Record HOSTNAME {{ inventory_hostname }}
+    Record SYSLOG_IDENTIFIER nftables-drop
 
 [OUTPUT]
     Name                     http

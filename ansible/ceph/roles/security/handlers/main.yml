@@ -3,3 +3,8 @@
   ansible.builtin.systemd:
     name: sshd
     state: restarted
+
+- name: Restart ulogd2
+  ansible.builtin.systemd:
+    name: ulogd2
+    state: restarted
