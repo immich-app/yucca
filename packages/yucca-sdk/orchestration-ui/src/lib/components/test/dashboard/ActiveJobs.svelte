@@ -88,12 +88,17 @@
   const hasFailedItems = (task: LiveTask) =>
     task.scheduleStatus?.some((item) => item.status === "failed") ?? false;
 
+  const hasWarnItems = (task: LiveTask) =>
+    task.scheduleStatus?.some((item) => item.status === "warn") ?? false;
+
   const statusColor = (task: LiveTask) =>
     !task.completedAt
       ? "var(--immich-ui-warning-500)"
       : hasFailedItems(task)
         ? "var(--immich-ui-danger-500)"
-        : "var(--immich-ui-success-500)";
+        : hasWarnItems(task)
+          ? "var(--immich-ui-warning-500)"
+          : "var(--immich-ui-success-500)";
 
   onMount(async () => {
     const taskData = await handleGetRunningTasks();
@@ -210,6 +215,12 @@
                   size="16"
                   class="text-danger-500"
                 />
+              {:else if item.status === "warn"}
+                <Icon
+                  icon={mdiCheckCircleOutline}
+                  size="16"
+                  class="text-warning-500"
+                />
               {:else if subLog && subLog.progress > 0}
                 <Icon
                   icon={mdiLoading}
@@ -232,6 +243,8 @@
                 <Badge size="tiny" color="success">Done</Badge>
               {:else if item.status === "failed"}
                 <Badge size="tiny" color="danger">Failed</Badge>
+              {:else if item.status === "warn"}
+                <Badge size="tiny" color="warning">Warnings</Badge>
               {:else if subLog && subLog.progress > 0}
                 <Badge size="tiny" color="warning"
                   >{Math.round(subLog.progress * 100)}%</Badge

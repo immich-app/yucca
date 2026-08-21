@@ -7,3 +7,5 @@ export const forget = jest.fn();
 export const ls = jest.fn();
 export const keyList = jest.fn();
 export const version = Promise.resolve({ version: '0.0.0' });
+
+export class ResticBackupCommandCouldNotReadSourceDataError extends Error {}

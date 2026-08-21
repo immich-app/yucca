@@ -1,5 +1,7 @@
+import { ResticBackupCommandCouldNotReadSourceDataError } from '@futo-org/restic-wrapper';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
+import { TaskStatus } from 'src/enum';
 import { BackendRepository } from 'src/repositories/backend.repository';
 import { RepositoryService } from 'src/services/repository.service';
 import { createTestingModule, TestContext, waitForEvent } from './testUtils';
@@ -74,14 +76,14 @@ describe('Repository', () => {
           metrics: expect.objectContaining({
             sizeBytes: 1024,
             lastBackup: expect.any(String),
-            lastSuccessfulBackup: expect.any(String),
+            lastBackupStatus: TaskStatus.Complete,
           }),
         }),
       }),
     );
   });
 
-  it('sets lastBackup but not lastSuccessfulBackup on failure', async () => {
+  it('sets lastBackupStatus to failed on failure', async () => {
     const repositoryService = ctx.module.get(RepositoryService);
 
     const { repository } = await repositoryService.createRepository(
@@ -104,11 +106,40 @@ describe('Repository', () => {
         repository: expect.objectContaining({
           metrics: expect.objectContaining({
             lastBackup: expect.any(String),
+            lastBackupStatus: TaskStatus.Failed,
           }),
         }),
       }),
     );
-    expect((event as any).repository.metrics.lastSuccessfulBackup).toBeFalsy();
+  });
+
+  it('reports warn without rejecting when source data could not be read', async () => {
+    const repositoryService = ctx.module.get(RepositoryService);
+
+    const { repository } = await repositoryService.createRepository(
+      { name: 'Warn Metrics Repo', worm: false, paths: ['/tmp/warn-metrics'] },
+      ctx.backendId,
+    );
+
+    ctx.resticMock.backup.mockRejectedValue(new ResticBackupCommandCouldNotReadSourceDataError('unreadable'));
+
+    const metricsEvent = waitForEvent(ctx.events, 'RepositoryUpdate');
+
+    const { task } = await repositoryService.createBackup(repository.id);
+    await task.catch(() => {});
+
+    await expect(metricsEvent).resolves.toEqual(
+      expect.objectContaining({
+        type: 'RepositoryUpdate',
+        repositoryId: repository.id,
+        repository: expect.objectContaining({
+          metrics: expect.objectContaining({
+            lastBackup: expect.any(String),
+            lastBackupStatus: TaskStatus.Warn,
+          }),
+        }),
+      }),
+    );
   });
 
   it('shows offline status when backend errors', async () => {

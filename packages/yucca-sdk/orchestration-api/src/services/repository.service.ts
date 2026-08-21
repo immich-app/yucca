@@ -610,12 +610,16 @@ export class RepositoryService {
         void finish();
       } catch (error) {
         void finish(error);
+        throw error;
       } finally {
         this.tasks.endTask(id);
       }
     };
 
-    return { task: task(), logId };
+    const pending = task();
+    pending.catch(() => void 0);
+
+    return { task: pending, logId };
   }
 
   private async runForgetAndPrune(
