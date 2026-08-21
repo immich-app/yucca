@@ -202,9 +202,12 @@ func TestPool_PickLeastOutstanding(t *testing.T) {
 			b.inflight.Store(9)
 		}
 	}
-	got := p.pick()
-	if got.endpoint != "b" {
-		t.Errorf("pick: expected least-loaded 'b', got %q", got.endpoint)
+	got, err := p.pick()
+	if err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	if got.b.endpoint != "b" {
+		t.Errorf("pick: expected least-loaded 'b', got %q", got.b.endpoint)
 	}
 }
 
@@ -213,60 +216,270 @@ func TestPool_PickTiebreakRotates(t *testing.T) {
 	// All equal load => tiebreak should rotate across backends.
 	seen := map[string]int{}
 	for range 30 {
-		seen[p.pick().endpoint]++
+		pk, err := p.pick()
+		if err != nil {
+			t.Fatalf("pick: %v", err)
+		}
+		seen[pk.b.endpoint]++
 	}
 	if len(seen) < 2 {
 		t.Errorf("tiebreak did not rotate; only hit %v", seen)
 	}
 }
 
-func TestPool_PickFailsOpenWhenAllUnhealthy(t *testing.T) {
-	p, _, _ := newTestPool(t, []string{"a", "b"}, 3)
+// tripAllByTraffic drives real traffic failures until every backend is open,
+// arming the shed window.
+func tripAllByTraffic(t *testing.T, p *Pool, reg map[string]*fakeStore, threshold int) {
+	t.Helper()
+	for _, f := range reg {
+		f.opFail.Store(true)
+	}
+	for range len(reg) * threshold * 2 {
+		_, _ = p.HeadObject(context.Background(), "bucket", "k")
+	}
 	for _, b := range p.snapshot() {
-		b.healthy.Store(false)
-		b.inflight.Store(7)
+		if b.state.Load() != stateOpen {
+			t.Fatalf("backend %s not open after traffic failures", b.endpoint)
+		}
 	}
-	backendByEndpoint(p, "b").inflight.Store(1) // least loaded
-	got := p.pick()
-	if got == nil {
-		t.Fatal("fail-open: expected a backend, got nil")
+}
+
+func TestPool_ShedsFastAfterTrafficFailures(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 1)
+	base := time.Now()
+	p.now = func() time.Time { return base }
+	tripAllByTraffic(t, p, reg, 1)
+
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); !errors.Is(err, ErrBackendsUnavailable) {
+		t.Fatalf("expected fast-fail inside the shed window, got %v", err)
 	}
-	if got.endpoint != "b" {
-		t.Errorf("fail-open: expected least-loaded 'b', got %q", got.endpoint)
+	if st := p.PoolStats(); st.ShedRequests == 0 {
+		t.Errorf("shed counter not incremented: %+v", st)
+	}
+	for _, f := range reg {
+		f.calls.Store(0)
+	}
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); !errors.Is(err, ErrBackendsUnavailable) {
+		t.Fatalf("expected continued shedding, got %v", err)
+	}
+	for ep, f := range reg {
+		if f.calls.Load() != 0 {
+			t.Errorf("shed request must not touch backend %s", ep)
+		}
+	}
+}
+
+func TestPool_CanaryAfterShedWindowRearmsOnFailure(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 1)
+	base := time.Now()
+	now := base
+	p.now = func() time.Time { return now }
+	tripAllByTraffic(t, p, reg, 1)
+
+	now = base.Add(shedWindow + time.Second)
+	for _, f := range reg {
+		f.calls.Store(0)
+	}
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err == nil {
+		t.Fatal("canary against dead backends must fail")
+	}
+	var canaried int64
+	for _, f := range reg {
+		canaried += f.calls.Load()
+	}
+	if canaried != 1 {
+		t.Errorf("expected exactly 1 canary attempt, got %d", canaried)
+	}
+	if st := p.PoolStats(); st.CanaryRequests != 1 {
+		t.Errorf("stats = %+v, want 1 canary", st)
+	}
+	// The canary's failure re-arms the window: the next request sheds.
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); !errors.Is(err, ErrBackendsUnavailable) {
+		t.Fatalf("expected shedding after failed canary, got %v", err)
+	}
+	if p.canaryInflight.Load() != 0 {
+		t.Error("canary slot must be released after the attempt")
+	}
+}
+
+func TestPool_CanarySuccessReinstatesThroughHalfOpen(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a"}, 1)
+	base := time.Now()
+	now := base
+	p.now = func() time.Time { return now }
+	tripAllByTraffic(t, p, reg, 1)
+
+	// Backend recovers, but probes still fail (e.g. sentinel bucket broken).
+	reg["a"].opFail.Store(false)
+	reg["a"].probeFail.Store(true)
+	now = base.Add(shedWindow + time.Second)
+
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err != nil {
+		t.Fatalf("canary against recovered backend: %v", err)
+	}
+	b := backendByEndpoint(p, "a")
+	if b.state.Load() != stateHalfOpen {
+		t.Fatalf("canary success must move the backend to half-open, got %s", stateName(b.state.Load()))
+	}
+	if p.canaryInflight.Load() != 0 {
+		t.Error("canary slot must be released")
+	}
+	// Trial traffic closes it.
+	for range halfOpenCloseAfter {
+		if _, err := p.HeadObject(context.Background(), "bucket", "k"); err != nil {
+			t.Fatalf("trial request: %v", err)
+		}
+	}
+	if b.state.Load() != stateClosed {
+		t.Errorf("expected closed after %d trial successes, got %s", halfOpenCloseAfter, stateName(b.state.Load()))
 	}
 }
 
 func TestPool_EjectAfterThresholdThenReinstate(t *testing.T) {
 	p, _, reg := newTestPool(t, []string{"a"}, 3)
 	b := backendByEndpoint(p, "a")
-	if !b.healthy.Load() {
-		t.Fatal("backend should start healthy after initial probe")
+	if b.state.Load() != stateClosed {
+		t.Fatal("backend should start closed after initial probe")
 	}
 
-	// Two failures: still healthy (no immediate ejection).
+	// Two failures: still closed (no immediate ejection).
 	reg["a"].opFail.Store(true)
 	_, _ = p.HeadObject(context.Background(), "bucket", "k")
 	_, _ = p.HeadObject(context.Background(), "bucket", "k")
-	if !b.healthy.Load() {
+	if b.state.Load() != stateClosed {
 		t.Error("ejected before reaching threshold")
 	}
 	// Third consecutive failure: ejected.
 	_, _ = p.HeadObject(context.Background(), "bucket", "k")
-	if b.healthy.Load() {
+	if b.state.Load() != stateOpen {
 		t.Error("expected ejection after threshold failures")
 	}
 	if b.errors.Load() != 3 {
 		t.Errorf("expected 3 recorded errors, got %d", b.errors.Load())
 	}
 
-	// Active probe reinstates once the backend recovers.
+	// A traffic-tripped backend re-earns closed through half-open trials, not
+	// from the probe alone.
 	reg["a"].opFail.Store(false)
 	_ = p.Reconcile(context.Background())
-	if !b.healthy.Load() {
-		t.Error("expected reinstatement after healthy probe")
+	if b.state.Load() != stateHalfOpen {
+		t.Fatalf("expected half-open after healthy probe, got %s", stateName(b.state.Load()))
 	}
 	if b.failures.Load() != 0 {
 		t.Errorf("failure streak not reset, got %d", b.failures.Load())
+	}
+	for range halfOpenCloseAfter {
+		_, _ = p.HeadObject(context.Background(), "bucket", "k")
+	}
+	if b.state.Load() != stateClosed {
+		t.Errorf("expected closed after trials, got %s", stateName(b.state.Load()))
+	}
+}
+
+func TestPool_HalfOpenTrialFailureReopens(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a"}, 1)
+	tripAllByTraffic(t, p, reg, 1)
+	reg["a"].opFail.Store(false)
+	_ = p.Reconcile(context.Background())
+	b := backendByEndpoint(p, "a")
+	if b.state.Load() != stateHalfOpen {
+		t.Fatalf("expected half-open, got %s", stateName(b.state.Load()))
+	}
+
+	reg["a"].opFail.Store(true)
+	_, _ = p.HeadObject(context.Background(), "bucket", "k")
+	if b.state.Load() != stateOpen {
+		t.Errorf("trial failure must reopen the backend, got %s", stateName(b.state.Load()))
+	}
+}
+
+func TestPool_HalfOpenAdmitsOneTrialAtATime(t *testing.T) {
+	p, _, _ := newTestPool(t, []string{"a", "h"}, 1)
+	h := backendByEndpoint(p, "h")
+	h.state.Store(stateHalfOpen)
+
+	pk, err := p.pick()
+	if err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	if pk.b.endpoint != "h" || !pk.trial {
+		t.Fatalf("expected the half-open backend to get a trial, got %q trial=%v", pk.b.endpoint, pk.trial)
+	}
+	for range 10 {
+		next, err := p.pick()
+		if err != nil {
+			t.Fatalf("pick: %v", err)
+		}
+		if next.b.endpoint != "a" {
+			t.Fatalf("only one concurrent trial is allowed, got %q", next.b.endpoint)
+		}
+	}
+	p.release(pk)
+	next, err := p.pick()
+	if err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	if next.b.endpoint != "h" || !next.trial {
+		t.Errorf("freed trial slot must admit the next trial, got %q trial=%v", next.b.endpoint, next.trial)
+	}
+}
+
+func TestPool_WindowedErrorRateEjectsBrownout(t *testing.T) {
+	// Threshold high enough that the consecutive streak can never trip; the
+	// alternating failure pattern is exactly what the sliding window catches.
+	p, _, _ := newTestPool(t, []string{"a"}, 100)
+	base := time.Now()
+	p.now = func() time.Time { return base }
+	b := backendByEndpoint(p, "a")
+
+	for range windowMinRequests / 2 {
+		p.recordResult(b, nil)
+		p.recordResult(b, &genericError{msg: "dial tcp: connection refused"})
+	}
+	if b.state.Load() != stateOpen {
+		t.Errorf("expected windowed ejection at 50%% failures over %d requests, got %s",
+			windowMinRequests, stateName(b.state.Load()))
+	}
+	if !b.trafficTripped.Load() {
+		t.Error("windowed ejection must mark the backend traffic-tripped")
+	}
+}
+
+func TestPool_WindowForgetsOldFailures(t *testing.T) {
+	p, _, _ := newTestPool(t, []string{"a"}, 100)
+	base := time.Now()
+	now := base
+	p.now = func() time.Time { return now }
+	b := backendByEndpoint(p, "a")
+
+	for range (windowMinRequests / 2) - 1 {
+		p.recordResult(b, nil)
+		p.recordResult(b, &genericError{msg: "connection reset"})
+	}
+	if b.state.Load() != stateClosed {
+		t.Fatalf("below min volume must not eject, got %s", stateName(b.state.Load()))
+	}
+	// Much later, a single failure: the old window has aged out entirely.
+	now = base.Add(time.Hour)
+	p.recordResult(b, &genericError{msg: "connection reset"})
+	if b.state.Load() != stateClosed {
+		t.Errorf("aged-out failures must not count toward ejection, got %s", stateName(b.state.Load()))
+	}
+}
+
+func TestPool_ProbeFailureIgnoredWhileTrafficSucceeds(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a"}, 3)
+	b := backendByEndpoint(p, "a")
+	base := time.Now()
+	p.now = func() time.Time { return base }
+
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err != nil {
+		t.Fatalf("HeadObject: %v", err)
+	}
+	reg["a"].probeFail.Store(true)
+	_ = p.Reconcile(context.Background())
+	if b.state.Load() != stateClosed {
+		t.Errorf("probe failure must not eject a backend with healthy traffic, got %s", stateName(b.state.Load()))
 	}
 }
 
@@ -278,7 +491,7 @@ func TestPool_AppErrorDoesNotEject(t *testing.T) {
 	reg["a"].getErr = nil
 	// Simulate via recordResult directly with an HTTP 404 error.
 	p.recordResult(b, &httpError{statusCode: 404})
-	if !b.healthy.Load() {
+	if b.state.Load() != stateClosed {
 		t.Error("app-level 404 must not eject the backend")
 	}
 	if b.failures.Load() != 0 {
@@ -310,7 +523,7 @@ func TestPool_GetObjectBodyAccounting(t *testing.T) {
 	if b.downloadedBytes.Load() != int64(len("blobdata")) {
 		t.Errorf("downloadedBytes: got %d", b.downloadedBytes.Load())
 	}
-	if b.healthy.Load() != true {
+	if b.state.Load() != stateClosed {
 		t.Error("clean download must keep backend healthy")
 	}
 }
@@ -327,7 +540,7 @@ func TestPool_GetObjectMidStreamErrorCountsFailure(t *testing.T) {
 	_, _ = io.ReadAll(obj.Body) // drains data then hits the injected error
 	obj.Body.Close()
 
-	if b.healthy.Load() {
+	if b.state.Load() != stateOpen {
 		t.Error("mid-stream read failure should eject backend at threshold 1")
 	}
 	if b.errors.Load() != 1 {
@@ -352,13 +565,14 @@ func TestPool_ReconcileAddsAndRemoves(t *testing.T) {
 	if !eps["a"] || !eps["c"] || eps["b"] || len(eps) != 2 {
 		t.Errorf("after reconcile expected {a,c}, got %v", eps)
 	}
-	// 'a' must be reused (same pointer survives) and stay healthy.
-	if !backendByEndpoint(p, "a").healthy.Load() {
-		t.Error("surviving backend 'a' should remain healthy")
+	// 'a' must be reused (same pointer survives) and stay closed.
+	if backendByEndpoint(p, "a").state.Load() != stateClosed {
+		t.Error("surviving backend 'a' should remain closed")
 	}
-	// 'c' is newly added and promoted by the probe in the same reconcile.
-	if !backendByEndpoint(p, "c").healthy.Load() {
-		t.Error("new backend 'c' should be probed healthy")
+	// 'c' is newly added and promoted straight to closed by the probe in the
+	// same reconcile: a fresh backend has no traffic history to re-earn.
+	if backendByEndpoint(p, "c").state.Load() != stateClosed {
+		t.Error("new backend 'c' should be probed closed")
 	}
 }
 
@@ -367,17 +581,18 @@ func TestPool_ReconcileEjectsViaProbe(t *testing.T) {
 	reg["a"].probeFail.Store(true)
 	_ = p.Reconcile(context.Background())
 
-	if backendByEndpoint(p, "a").healthy.Load() {
+	if backendByEndpoint(p, "a").state.Load() != stateOpen {
 		t.Error("'a' should be ejected after failing probe")
 	}
-	if !backendByEndpoint(p, "b").healthy.Load() {
-		t.Error("'b' should remain healthy")
+	if backendByEndpoint(p, "b").state.Load() != stateClosed {
+		t.Error("'b' should remain closed")
 	}
 
-	// Recovery: probe passes again, backend reinstated.
+	// Recovery: probe passes again; a probe-only ejection closes directly,
+	// without half-open trials.
 	reg["a"].probeFail.Store(false)
 	_ = p.Reconcile(context.Background())
-	if !backendByEndpoint(p, "a").healthy.Load() {
+	if backendByEndpoint(p, "a").state.Load() != stateClosed {
 		t.Error("'a' should be reinstated after probe recovers")
 	}
 }
@@ -498,7 +713,7 @@ func TestPool_RetryMasksSingleBackendFailure(t *testing.T) {
 
 func TestPool_NoRetryWithoutAnotherHealthyBackend(t *testing.T) {
 	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
-	backendByEndpoint(p, "b").healthy.Store(false)
+	backendByEndpoint(p, "b").state.Store(stateOpen)
 	forcePick(p, "a")
 	reg["a"].opFail.Store(true)
 
@@ -729,8 +944,8 @@ func TestPool_ProbesConcurrentAndBounded(t *testing.T) {
 		t.Errorf("probes returned before the timeout cancelled them (%v)", elapsed)
 	}
 	for _, b := range p.snapshot() {
-		if b.healthy.Load() {
-			t.Errorf("backend %s should be unhealthy after timed-out probe", b.endpoint)
+		if b.state.Load() != stateOpen {
+			t.Errorf("backend %s should be open after timed-out probe", b.endpoint)
 		}
 	}
 }
@@ -754,4 +969,65 @@ func TestPool_RetryBudgetKnobsConfigurable(t *testing.T) {
 	if got := p.PoolStats().RetryBudget; got != 40-20+5 {
 		t.Errorf("budget after one retry (-20) and its success (+5) = %d, want 25", got)
 	}
+}
+
+func TestPool_CanaryGetReleasesSlotAtHeaders(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a"}, 1)
+	base := time.Now()
+	now := base
+	p.now = func() time.Time { return now }
+	tripAllByTraffic(t, p, reg, 1)
+	reg["a"].opFail.Store(false)
+	reg["a"].probeFail.Store(true)
+	now = base.Add(shedWindow + time.Second)
+
+	obj, err := p.GetObject(context.Background(), "bucket", "k", "")
+	if err != nil {
+		t.Fatalf("canary GetObject: %v", err)
+	}
+	if p.canaryInflight.Load() != 0 {
+		t.Error("canary slot must be freed once headers arrive, not held for the body stream")
+	}
+	b := backendByEndpoint(p, "a")
+	if b.state.Load() != stateHalfOpen {
+		t.Errorf("headers from an open backend must admit trial traffic, got %s", stateName(b.state.Load()))
+	}
+	_, _ = io.ReadAll(obj.Body)
+	obj.Body.Close()
+	if b.state.Load() != stateHalfOpen {
+		t.Errorf("clean body close must keep the backend half-open, got %s", stateName(b.state.Load()))
+	}
+	if got := b.halfOpenSuccesses.Load(); got != 1 {
+		t.Errorf("one canary GET must count exactly one trial success, got %d", got)
+	}
+}
+
+func TestPool_TrialsAndCanariesBoundedWhileStreaming(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a"}, 1)
+	base := time.Now()
+	now := base
+	p.now = func() time.Time { return now }
+	tripAllByTraffic(t, p, reg, 1)
+	reg["a"].opFail.Store(false)
+	reg["a"].probeFail.Store(true)
+	now = base.Add(shedWindow + time.Second)
+
+	canary, err := p.GetObject(context.Background(), "bucket", "k", "")
+	if err != nil {
+		t.Fatalf("canary GetObject: %v", err)
+	}
+	trial, err := p.GetObject(context.Background(), "bucket", "k", "")
+	if err != nil {
+		t.Fatalf("trial GetObject: %v", err)
+	}
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); !errors.Is(err, ErrBackendsUnavailable) {
+		t.Fatalf("expected shed with the trial slot taken and no open backend left, got %v", err)
+	}
+	_, _ = io.ReadAll(trial.Body)
+	trial.Body.Close()
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err != nil {
+		t.Fatalf("freed trial slot must admit the next trial: %v", err)
+	}
+	_, _ = io.ReadAll(canary.Body)
+	canary.Body.Close()
 }

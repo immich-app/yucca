@@ -62,6 +62,11 @@ func RegisterBackendMetrics(meter otelmetric.Meter, providers map[string]Backend
 	if err != nil {
 		return fmt.Errorf("creating s3.backend.healthy: %w", err)
 	}
+	state, err := meter.Int64ObservableGauge("s3.backend.state",
+		otelmetric.WithDescription("Backend circuit-breaker state (0 open, 1 half-open, 2 closed)"))
+	if err != nil {
+		return fmt.Errorf("creating s3.backend.state: %w", err)
+	}
 	retries, err := meter.Int64ObservableCounter("s3.pool.retries",
 		otelmetric.WithDescription("Cross-backend retries per pool, by outcome (success, failure, denied)"))
 	if err != nil {
@@ -71,6 +76,16 @@ func RegisterBackendMetrics(meter otelmetric.Meter, providers map[string]Backend
 		otelmetric.WithDescription("Remaining cross-backend retry budget tokens per pool"))
 	if err != nil {
 		return fmt.Errorf("creating s3.pool.retry_budget: %w", err)
+	}
+	sheds, err := meter.Int64ObservableCounter("s3.pool.sheds",
+		otelmetric.WithDescription("Requests fast-failed because every backend was unhealthy"))
+	if err != nil {
+		return fmt.Errorf("creating s3.pool.sheds: %w", err)
+	}
+	canaries, err := meter.Int64ObservableCounter("s3.pool.canaries",
+		otelmetric.WithDescription("Fail-open canary requests sent while every backend was unhealthy"))
+	if err != nil {
+		return fmt.Errorf("creating s3.pool.canaries: %w", err)
 	}
 
 	_, err = meter.RegisterCallback(
@@ -87,20 +102,24 @@ func RegisterBackendMetrics(meter otelmetric.Meter, providers map[string]Backend
 					o.ObserveInt64(uploaded, s.UploadedBytes, attrs)
 					o.ObserveInt64(inflight, s.Inflight, attrs)
 					o.ObserveInt64(healthy, boolToInt64(s.Healthy), attrs)
+					o.ObserveInt64(state, stateValue(s.State), attrs)
 				}
 				ps := provider.PoolStats()
 				cluster := attribute.String("cluster", code)
+				clusterAttrs := otelmetric.WithAttributeSet(attribute.NewSet(cluster))
 				retryOutcome := func(outcome string) otelmetric.MeasurementOption {
 					return otelmetric.WithAttributeSet(attribute.NewSet(cluster, attribute.String("outcome", outcome)))
 				}
 				o.ObserveInt64(retries, ps.RetrySuccesses, retryOutcome("success"))
 				o.ObserveInt64(retries, ps.RetryAttempts-ps.RetrySuccesses, retryOutcome("failure"))
 				o.ObserveInt64(retries, ps.RetryDenied, retryOutcome("denied"))
-				o.ObserveInt64(retryBudget, ps.RetryBudget, otelmetric.WithAttributeSet(attribute.NewSet(cluster)))
+				o.ObserveInt64(retryBudget, ps.RetryBudget, clusterAttrs)
+				o.ObserveInt64(sheds, ps.ShedRequests, clusterAttrs)
+				o.ObserveInt64(canaries, ps.CanaryRequests, clusterAttrs)
 			}
 			return nil
 		},
-		requests, requestErrors, downloaded, uploaded, inflight, healthy, retries, retryBudget,
+		requests, requestErrors, downloaded, uploaded, inflight, healthy, state, retries, retryBudget, sheds, canaries,
 	)
 	if err != nil {
 		return fmt.Errorf("registering backend metrics callback: %w", err)
@@ -113,4 +132,17 @@ func boolToInt64(b bool) int64 {
 		return 1
 	}
 	return 0
+}
+
+// stateValue orders breaker states by serviceability so dashboards can
+// threshold on them: 0 open, 1 half-open, 2 closed.
+func stateValue(state string) int64 {
+	switch state {
+	case "closed":
+		return 2
+	case "half_open":
+		return 1
+	default:
+		return 0
+	}
 }

@@ -103,7 +103,7 @@ func (s *Server) listBlobs(w http.ResponseWriter, r *http.Request) {
 	if listErr != nil {
 		hlog.FromRequest(r).Error().Err(listErr).Msg("list blobs failed")
 		if first {
-			writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+			writeStorageError(w, r, listErr)
 			return
 		}
 		// The 200 and part of the body are already out; abort the connection
@@ -136,6 +136,14 @@ func (s *Server) checkBlob(w http.ResponseWriter, r *http.Request) {
 	key := blobType + "/" + name
 	size, err := s.store(r.Context()).HeadObject(r.Context(), a.Repository, key)
 	if err != nil {
+		// Only a genuine 404 may say "not found": that answer is permanent for
+		// restic, and an infra failure disguised as a missing blob would make it
+		// re-upload or mis-plan around data that exists (docs/restic-retries.md).
+		if !storage.IsNotFound(err) {
+			hlog.FromRequest(r).Error().Err(err).Msg("head blob failed")
+			writeStorageError(w, r, err)
+			return
+		}
 		writeError(w, r, http.StatusNotFound, "Not Found")
 		return
 	}
@@ -157,7 +165,7 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 		if s.Metrics != nil {
 			s.Metrics.StorageErrors.Add(r.Context(), 1, metrics.StorageErrorOption("get", metrics.BlobType(r)))
 		}
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 
@@ -184,7 +192,7 @@ func (s *Server) saveBlob(w http.ResponseWriter, r *http.Request) {
 		if s.Metrics != nil {
 			s.Metrics.StorageErrors.Add(r.Context(), 1, metrics.StorageErrorOption("put", metrics.BlobType(r)))
 		}
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 
@@ -216,13 +224,13 @@ func (s *Server) deleteBlob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		hlog.FromRequest(r).Error().Err(err).Msg("head blob for delete failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 
 	if err := s.store(r.Context()).DeleteObject(r.Context(), a.Repository, key); err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("delete blob failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 

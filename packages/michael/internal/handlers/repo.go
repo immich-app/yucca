@@ -26,7 +26,7 @@ func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 	exists, err := s.store(r.Context()).CheckBucket(r.Context(), a.Repository)
 	if err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("check bucket failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 
@@ -37,7 +37,7 @@ func (s *Server) createRepository(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.store(r.Context()).CreateBucket(r.Context(), a.Repository); err != nil {
 		hlog.FromRequest(r).Error().Err(err).Msg("create bucket failed")
-		writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+		writeStorageError(w, r, err)
 		return
 	}
 

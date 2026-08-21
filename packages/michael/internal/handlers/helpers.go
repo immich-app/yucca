@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"regexp"
@@ -26,6 +27,18 @@ var validBlobTypes = map[string]bool{
 var sha256HexPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 var writeError = httputil.WriteError
+
+// writeStorageError maps a storage-layer failure onto the restic contract
+// (docs/restic-retries.md): a shedding pool answers 503 + Retry-After, which
+// restic retries with backoff, while anything else stays the generic 500.
+func writeStorageError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, storage.ErrBackendsUnavailable) {
+		w.Header().Set("Retry-After", "30")
+		writeError(w, r, http.StatusServiceUnavailable, "Storage temporarily unavailable")
+		return
+	}
+	writeError(w, r, http.StatusInternalServerError, "An error occurred with the storage server")
+}
 
 func (s *Server) respondWithS3Object(w http.ResponseWriter, r *http.Request, obj *storage.S3Object) {
 	defer obj.Body.Close()
