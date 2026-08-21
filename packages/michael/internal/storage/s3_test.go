@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -217,6 +218,92 @@ func TestPutObject_NonSeekableBodyOn503_NoRewindRetry(t *testing.T) {
 	// And with retries off, the gateway must see exactly one upload attempt.
 	if n := puts.Load(); n != 1 {
 		t.Fatalf("expected exactly 1 upload attempt (no retry on a non-seekable body), got %d", n)
+	}
+}
+
+// worm412Server simulates a WORM gateway mid restic-Save-recovery: every PUT
+// hits the If-None-Match precondition (the ambiguously-failed upload actually
+// committed), and HEAD reports the committed object's size.
+func worm412Server(headStatus int, headSize int64, puts, heads *atomic.Int32) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			puts.Add(1)
+			_, _ = io.Copy(io.Discard, r.Body)
+			w.WriteHeader(http.StatusPreconditionFailed)
+		case http.MethodHead:
+			heads.Add(1)
+			if headStatus != http.StatusOK {
+				w.WriteHeader(headStatus)
+				return
+			}
+			w.Header().Set("Content-Length", strconv.FormatInt(headSize, 10))
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+}
+
+const testBlobName = "0000000000000000000000000000000000000000000000000000000000000000"
+
+func TestPutObject_PreconditionWithMatchingBlob_ConvergesToSuccess(t *testing.T) {
+	body := "restic-pack-bytes"
+	var puts, heads atomic.Int32
+	srv := worm412Server(http.StatusOK, int64(len(body)), &puts, &heads)
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	err := s.PutObject(context.Background(), "bucket", "data/"+testBlobName, readOnly{strings.NewReader(body)}, int64(len(body)), true, testBlobName)
+	if err != nil {
+		t.Fatalf("expected converged success for matching existing blob, got %v", err)
+	}
+	if heads.Load() != 1 {
+		t.Errorf("expected 1 HEAD to verify the existing blob, got %d", heads.Load())
+	}
+}
+
+func TestPutObject_PreconditionWithDifferentSize_Fails(t *testing.T) {
+	body := "restic-pack-bytes"
+	var puts, heads atomic.Int32
+	srv := worm412Server(http.StatusOK, 999, &puts, &heads)
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	err := s.PutObject(context.Background(), "bucket", "data/"+testBlobName, readOnly{strings.NewReader(body)}, int64(len(body)), true, testBlobName)
+	if !errors.Is(err, ErrPreconditionFailed) {
+		t.Fatalf("expected ErrPreconditionFailed for size mismatch, got %v", err)
+	}
+}
+
+func TestPutObject_PreconditionHeadError_Fails(t *testing.T) {
+	body := "restic-pack-bytes"
+	var puts, heads atomic.Int32
+	srv := worm412Server(http.StatusInternalServerError, 0, &puts, &heads)
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	err := s.PutObject(context.Background(), "bucket", "data/"+testBlobName, readOnly{strings.NewReader(body)}, int64(len(body)), true, testBlobName)
+	if !errors.Is(err, ErrPreconditionFailed) {
+		t.Fatalf("expected ErrPreconditionFailed when verification HEAD fails, got %v", err)
+	}
+}
+
+func TestPutObject_PreconditionWithoutContentHash_Fails(t *testing.T) {
+	// The config object's key is not a content hash, so a size match proves
+	// nothing and the 412 must surface.
+	body := "repo-config"
+	var puts, heads atomic.Int32
+	srv := worm412Server(http.StatusOK, int64(len(body)), &puts, &heads)
+	defer srv.Close()
+
+	s := NewS3StorageForEndpoint(probeConfig(), srv.URL)
+	err := s.PutObject(context.Background(), "bucket", "config", readOnly{strings.NewReader(body)}, int64(len(body)), true, "")
+	if !errors.Is(err, ErrPreconditionFailed) {
+		t.Fatalf("expected ErrPreconditionFailed for non-content-addressed key, got %v", err)
+	}
+	if heads.Load() != 0 {
+		t.Errorf("expected no verification HEAD for non-content-addressed key, got %d", heads.Load())
 	}
 }
 
