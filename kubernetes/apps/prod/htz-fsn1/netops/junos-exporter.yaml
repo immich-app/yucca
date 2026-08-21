@@ -51,8 +51,8 @@ spec:
             # Junos licensing on the QFX is honor-based: the spine's eBGP raises a
             # permanent minor alarm (no license installed), which would pin
             # junos_alarms_yellow_count ≥1 and keep the yellow-alarm alert firing
-            # forever. Filtered from the red/yellow counts only; the alarm stays
-            # visible in junos_alarms_set and on the box.
+            # forever. Filtered from the exported alarm metrics; the alarm stays
+            # visible on the box.
             - -alarms.filter=BGP.+usage requires a license
           ports:
             - containerPort: 9326
