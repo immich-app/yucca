@@ -22,3 +22,11 @@ ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/rotational}=="0", ATTR{queu
 # TEST== guards non-SATA hosts, which have no such attribute.
 ACTION=="add|change", SUBSYSTEM=="scsi_host", KERNEL=="host*", TEST=="link_power_management_policy", ATTR{link_power_management_policy}="{{ ceph_sata_link_pm_policy }}"
 {% endif %}
+{% if ceph_hdd_write_cache_disabled %}
+
+# HDD volatile write cache off, drive-side, on every disk add: boot coldplug
+# and hot-swapped replacements alike. The script re-checks rotational/ATA and
+# no-ops when already write through; see its header and the rationale on
+# ceph_hdd_write_cache_disabled in defaults/main.yml.
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="sd[a-z]*", ENV{DEVTYPE}=="disk", ATTR{queue/rotational}=="1", RUN+="/usr/local/sbin/ceph-hdd-wcache --udev %k"
+{% endif %}

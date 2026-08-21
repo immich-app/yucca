@@ -1,7 +1,18 @@
 ---
 # Hardware-level tuning for Ceph OSD nodes.
-# Sets I/O scheduler, readahead, and queue depth per device class.
+# Sets I/O scheduler, readahead, and queue depth per device class, plus the
+# HDD volatile write cache.
 # All changes apply live and persist via udev rules (no reboot).
+
+# The RUN target must exist before the rules file that names it is deployed.
+- name: Deploy the HDD write-cache helper
+  ansible.builtin.copy:
+    src: ceph-hdd-wcache
+    dest: /usr/local/sbin/ceph-hdd-wcache
+    owner: root
+    group: root
+    mode: '0755'
+  when: ceph_hdd_write_cache_disabled | bool
 
 - name: Deploy udev rules for disk tuning
   ansible.builtin.template:
@@ -69,6 +80,12 @@
     executable: /bin/bash
   register: ssd_tuning
   changed_when: "'CHANGED' in (ssd_tuning.stdout | default(''))"
+
+- name: Disable the HDD volatile write cache on existing disks
+  ansible.builtin.command: /usr/local/sbin/ceph-hdd-wcache all
+  register: _hdd_wcache
+  changed_when: "'CHANGED' in (_hdd_wcache.stdout | default(''))"
+  when: ceph_hdd_write_cache_disabled | bool
 
 - name: Enable fstrim.timer for OS partitions
   ansible.builtin.systemd:

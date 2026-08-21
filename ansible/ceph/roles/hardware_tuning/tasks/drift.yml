@@ -92,3 +92,47 @@
                  in [ceph_sata_link_pm_policy, 'n/a']
       }] }}
   when: ceph_sata_link_pm_enabled | bool
+
+# HDD volatile write cache. Every disk matters, not a representative one: the
+# drive reverts to write back on a power cycle, EC pays the slowest shard, and
+# a single reverted disk taxes every PG it hosts. Same population rule as LPM;
+# the loop mirrors ceph-hdd-wcache's eligibility, so a rotational non-ATA disk
+# is neither counted here nor converged there. A probe that inspected zero
+# disks (udev database unavailable, or no eligible disks on a flagged host)
+# must fail the row, not pass it vacuously; every flagged host is expected to
+# have eligible HDDs.
+- name: Check HDD write cache
+  ansible.builtin.shell: |
+    set -o pipefail
+    total=0; back=0
+    for d in /sys/block/sd*; do
+      [ -e "$d/queue/rotational" ] || continue
+      [ "$(cat "$d/queue/rotational")" = "1" ] || continue
+      grep -qi "virtual" "$d/device/model" 2>/dev/null && continue
+      B=$(basename "$d")
+      bus=$(udevadm info -q property --name "/dev/$B" 2>/dev/null | sed -n "s/^ID_BUS=//p")
+      [ "$bus" = "ata" ] || continue
+      total=$((total+1))
+      [ "$(cat "$d/queue/write_cache")" = "write through" ] || back=$((back+1))
+    done
+    echo "$back of $total write back"
+  args:
+    executable: /bin/bash
+  register: hdd_wcache_drift
+  changed_when: false
+  # Read-only, so run it under --check too (health_gate precedent). Left to
+  # default the probe skips and the row below records '' as a false mismatch.
+  check_mode: false
+  when: ceph_hdd_write_cache_disabled | bool
+
+- name: Record HDD write cache drift
+  ansible.builtin.set_fact:
+    drift_results: >-
+      {{ drift_results + [{
+        'category': 'hardware',
+        'item': 'HDD volatile write cache',
+        'expected': '0 write back',
+        'actual': hdd_wcache_drift.stdout | trim,
+        'match': (hdd_wcache_drift.stdout | trim) is match('^0 of [1-9]')
+      }] }}
+  when: ceph_hdd_write_cache_disabled | bool

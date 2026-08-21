@@ -35,6 +35,33 @@ ceph_enable_fstrim_timer: true
 ceph_sata_link_pm_enabled: true
 ceph_sata_link_pm_policy: max_performance
 
+# HDD volatile write cache: disable it drive-side (hdparm -W 0) on rotational
+# ATA disks.
+#
+# BlueStore opens the data device O_DIRECT and issues one FLUSH CACHE EXT per
+# kv-sync batch. A FLUSH is non-NCQ, so libata drains the whole 32-deep queue
+# around it: measured on spice, ~100 flushes/s at 4-8 ms each during fill, a
+# flush outstanding 8% of wall time, and EC k16+m4 pays the slowest shard on
+# every write. With the cache off the flush completes at the block layer and
+# commit latency dropped ~2x (WD HC580) to ~4x (Seagate X22), reads unharmed.
+# Durability is unchanged: with WCE off a completed write is on media (the WD
+# ArmorCache drives were power-loss safe either way, but nothing in the kernel
+# or Ceph reads that; see the 2026-08-17 decision memo in Brain Box).
+#
+# The drive reverts to write back on every power cycle, silently. The udev add
+# rule + /usr/local/sbin/ceph-hdd-wcache re-apply it on boot coldplug and on a
+# hot-swapped replacement; a drive that resets in place (firmware crash,
+# internal power event) reverts with no uevent and is caught only by the drift
+# check. The script is also the day-2 tool: `ceph-hdd-wcache sdX` after a disk
+# swap, `ceph-hdd-wcache all` for a host, though udev normally beats you to
+# both. Rotational ATA whole disks only; SAS clusters (sietch) need sdparm
+# instead and stay off this flag.
+#
+# NOTE: like the LPM write below, the first application toggles SET FEATURES on
+# every disk and schedules a libata EH pass per port; roll per node, not
+# fleet-wide in one pass.
+ceph_hdd_write_cache_disabled: false
+
 # Transparent Huge Pages -- madvise is universally correct for BlueStore.
 # THP=always drives tcmalloc/BlueStore RSS bloat and allocation-stall latency.
 # Applied on all ceph clusters (not gated behind the CPU governor).

@@ -192,6 +192,13 @@ ceph_db_lvs_per_node: 14
 ceph_ssd_osd_lv: ssd-osd          # NVMe-backed OSD LV (fast replicated pool)
 ceph_ssd_osd_reserve_gib: 512     # vg0 free left unallocated for headroom/expansion
 
+# HDD volatile write cache off, fleet-wide. Measured on this cluster
+# 2026-08-17/19; the alyssa power cycle on 08-18 silently reverted 14 drives
+# for 30 hours, which is what the udev-side persistence exists to stop.
+# Rationale, rollout note and the day-2 tool live on the flag in
+# roles/hardware_tuning/defaults/main.yml.
+ceph_hdd_write_cache_disabled: true
+
 # Keep the OSD specs registered but inert. cephadm reconciles every MANAGED spec
 # on every serve-loop pass, and each pass costs a ceph-volume lvm list + raw list
 # per host; at spice's size that pinned one full loop iteration at ~35 minutes
