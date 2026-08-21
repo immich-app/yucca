@@ -527,34 +527,41 @@ export class RepositoryService {
     });
 
     const finish = async (error?: any) => {
-      const lastBackupStatus = error
-        ? error instanceof ResticBackupCommandCouldNotReadSourceDataError
-          ? TaskStatus.Warn
-          : TaskStatus.Failed
-        : TaskStatus.Complete;
+      try {
+        const lastBackupStatus = error
+          ? error instanceof ResticBackupCommandCouldNotReadSourceDataError
+            ? TaskStatus.Warn
+            : TaskStatus.Failed
+          : TaskStatus.Complete;
 
-      const lastBackup = new Date().toISOString();
-      const lastBackupDuration = Date.now() - +startTime;
+        const lastBackup = new Date().toISOString();
+        const lastBackupDuration = Date.now() - +startTime;
 
-      void this.updateLocalMetrics(id, {
-        resticParameters: { endpoint, key, placement },
-        additionalMetrics: {
-          lastBackup,
+        void this.updateLocalMetrics(id, {
+          resticParameters: { endpoint, key, placement },
+          additionalMetrics: {
+            lastBackup,
+            lastBackupStatus,
+            lastBackupDuration,
+          },
+        });
+
+        this.telemetry.submitStructuredLog('Backup finished', {
+          repositoryId: id,
           lastBackupStatus,
-          lastBackupDuration,
-        },
-      });
+          error,
+        });
 
-      this.telemetry.submitStructuredLog('Backup finished', {
-        repositoryId: id,
-        lastBackupStatus,
-        error,
-      });
+        await closeLog(lastBackupStatus, error);
 
-      void closeLog(lastBackupStatus, error);
-
-      if (backend.isMetricsCapable()) {
-        await backend.submitMetricBackupEnd(remoteId, lastBackupStatus !== TaskStatus.Failed, lastBackupDuration);
+        if (backend.isMetricsCapable()) {
+          await backend.submitMetricBackupEnd(remoteId, lastBackupStatus !== TaskStatus.Failed, lastBackupDuration);
+        }
+      } catch (error) {
+        this.telemetry.submitStructuredLog('Failed to finalise backup', {
+          repositoryId: id,
+          error,
+        });
       }
     };
 
