@@ -174,7 +174,7 @@ func TestResolve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	r := httptest.NewRequest(http.MethodGet, "/repo/data/abc", nil)
 	r.RemoteAddr = "10.0.0.1:1234"

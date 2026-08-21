@@ -177,14 +177,14 @@ func wormAuth() auth.Auth {
 }
 
 // parseLogLines parses JSON log output into a slice of maps.
-func parseLogLines(t *testing.T, buf *bytes.Buffer) []map[string]interface{} {
+func parseLogLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 	t.Helper()
-	var entries []map[string]interface{}
-	for _, line := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+	var entries []map[string]any
+	for line := range bytes.SplitSeq(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
 		if len(line) == 0 {
 			continue
 		}
-		var entry map[string]interface{}
+		var entry map[string]any
 		if err := json.Unmarshal(line, &entry); err != nil {
 			t.Fatalf("log line is not valid JSON: %s", line)
 		}
@@ -194,7 +194,7 @@ func parseLogLines(t *testing.T, buf *bytes.Buffer) []map[string]interface{} {
 }
 
 // findLog returns the first log entry matching all given field values.
-func findLog(entries []map[string]interface{}, match map[string]interface{}) map[string]interface{} {
+func findLog(entries []map[string]any, match map[string]any) map[string]any {
 	for _, e := range entries {
 		hit := true
 		for k, v := range match {
@@ -238,7 +238,7 @@ func TestAccessLogOutput(t *testing.T) {
 	}
 
 	entries := parseLogLines(t, buf)
-	accessLog := findLog(entries, map[string]interface{}{"status": float64(http.StatusOK)})
+	accessLog := findLog(entries, map[string]any{"status": float64(http.StatusOK)})
 	if accessLog == nil {
 		t.Fatalf("no access log entry found in output:\n%s", buf.String())
 	}
@@ -277,7 +277,7 @@ func TestErrorLogOutput(t *testing.T) {
 	entries := parseLogLines(t, buf)
 
 	// Should have an error-level log with the error message and request context
-	errLog := findLog(entries, map[string]interface{}{"level": "error"})
+	errLog := findLog(entries, map[string]any{"level": "error"})
 	if errLog == nil {
 		t.Fatalf("no error log entry found in output:\n%s", buf.String())
 	}
@@ -297,7 +297,7 @@ func TestErrorLogOutput(t *testing.T) {
 
 	// Should also have an access log for this failed request, carrying the
 	// authenticated identity (authLogContext mutates the shared request logger).
-	accessLog := findLog(entries, map[string]interface{}{"status": float64(http.StatusInternalServerError)})
+	accessLog := findLog(entries, map[string]any{"status": float64(http.StatusInternalServerError)})
 	if accessLog == nil {
 		t.Fatalf("no access log entry for the 500 response:\n%s", buf.String())
 	}
@@ -327,7 +327,7 @@ func TestAuthFailureLogOutput(t *testing.T) {
 	entries := parseLogLines(t, buf)
 
 	// Should still get an access log even for auth failures
-	accessLog := findLog(entries, map[string]interface{}{"status": float64(http.StatusUnauthorized)})
+	accessLog := findLog(entries, map[string]any{"status": float64(http.StatusUnauthorized)})
 	if accessLog == nil {
 		t.Fatalf("no access log entry for 401 response:\n%s", buf.String())
 	}
@@ -395,7 +395,7 @@ func TestClientNetworkLogOutput(t *testing.T) {
 		t.Fatalf("expected 401, got %d", rec.Code)
 	}
 
-	accessLog := findLog(parseLogLines(t, buf), map[string]interface{}{"status": float64(http.StatusUnauthorized)})
+	accessLog := findLog(parseLogLines(t, buf), map[string]any{"status": float64(http.StatusUnauthorized)})
 	if accessLog == nil {
 		t.Fatalf("no access log entry for 401 response:\n%s", buf.String())
 	}

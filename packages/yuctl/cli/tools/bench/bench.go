@@ -268,7 +268,7 @@ func (o *options) buildConfig(defaultPhases []string) (resticbench.Config, error
 	}
 
 	if o.connections != "" {
-		for _, s := range strings.Split(o.connections, ",") {
+		for s := range strings.SplitSeq(o.connections, ",") {
 			n, err := strconv.Atoi(strings.TrimSpace(s))
 			if err != nil || n < 1 {
 				return cfg, fmt.Errorf("invalid --connections value %q", s)

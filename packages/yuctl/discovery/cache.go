@@ -97,7 +97,7 @@ func SaveCachedTopology(topo *Topology, logger zerolog.Logger) {
 		return
 	}
 	if err := os.Rename(tmp, p); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		logger.Warn().Err(err).Msg("skip discovery cache write")
 	}
 }

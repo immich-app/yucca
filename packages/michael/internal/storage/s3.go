@@ -108,8 +108,8 @@ func NewS3StorageForCluster(cc config.ClusterConfig, opts S3Options) *S3Storage 
 		),
 		BaseEndpoint: aws.String(opts.Endpoint),
 		UsePathStyle: cc.S3ForcePathStyle,
-	}
-	s3opts.HTTPClient = buildHTTPClient(opts)
+
+		HTTPClient: buildHTTPClient(opts)}
 	return &S3Storage{client: s3.New(s3opts)}
 }
 
@@ -179,13 +179,11 @@ func (s *S3Storage) CheckBucket(ctx context.Context, bucket string) (bool, error
 		Bucket: aws.String(bucket),
 	})
 	if err != nil {
-		var notFound *types.NotFound
-		if errors.As(err, &notFound) {
+		if _, ok := errors.AsType[*types.NotFound](err); ok {
 			return false, nil
 		}
 		// Also check for 404 in the operation error
-		var noSuchBucket *types.NoSuchBucket
-		if errors.As(err, &noSuchBucket) {
+		if _, ok := errors.AsType[*types.NoSuchBucket](err); ok {
 			return false, nil
 		}
 		return false, fmt.Errorf("check bucket: %w", err)
@@ -250,7 +248,7 @@ func (s *S3Storage) GetObject(ctx context.Context, bucket, key, rangeHeader stri
 }
 
 func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.Reader, contentLength int64, writeOnce bool, sha256Hex string) error {
-	var uploadBody io.Reader = body
+	uploadBody := body
 	var hasher *sha256Writer
 
 	if sha256Hex != "" {
@@ -354,18 +352,16 @@ func (s *S3Storage) DeleteObject(ctx context.Context, bucket, key string) error 
 // IsNotFound reports whether err is an S3 404 — the object (or bucket) does
 // not exist, as opposed to a storage failure.
 func IsNotFound(err error) bool {
-	var notFound *types.NotFound
-	if errors.As(err, &notFound) {
+	if _, ok := errors.AsType[*types.NotFound](err); ok {
 		return true
 	}
-	var noSuchKey *types.NoSuchKey
-	if errors.As(err, &noSuchKey) {
+	if _, ok := errors.AsType[*types.NoSuchKey](err); ok {
 		return true
 	}
-	var apiErr interface {
+	if apiErr, ok := errors.AsType[interface {
+		error
 		HTTPStatusCode() int
-	}
-	if errors.As(err, &apiErr) {
+	}](err); ok {
 		return apiErr.HTTPStatusCode() == 404
 	}
 	return false
@@ -374,10 +370,10 @@ func IsNotFound(err error) bool {
 // isPreconditionFailed checks if an S3 error is a 412 Precondition Failed.
 func isPreconditionFailed(err error) bool {
 	// aws-sdk-go-v2 wraps HTTP status in the operation error
-	var apiErr interface {
+	if apiErr, ok := errors.AsType[interface {
+		error
 		HTTPStatusCode() int
-	}
-	if errors.As(err, &apiErr) {
+	}](err); ok {
 		return apiErr.HTTPStatusCode() == 412
 	}
 	return false
@@ -399,10 +395,10 @@ func isBackendFailure(err error) bool {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}
-	var apiErr interface {
+	if apiErr, ok := errors.AsType[interface {
+		error
 		HTTPStatusCode() int
-	}
-	if errors.As(err, &apiErr) {
+	}](err); ok {
 		code := apiErr.HTTPStatusCode()
 		// A transport failure (dial refused, timeout, reset) is surfaced by the
 		// SDK as a ResponseError with StatusCode 0 — no response ever reached

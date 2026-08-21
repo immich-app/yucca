@@ -124,7 +124,7 @@ func (p *Pool) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			p.Reconcile(ctx)
+			_ = p.Reconcile(ctx)
 		}
 	}
 }

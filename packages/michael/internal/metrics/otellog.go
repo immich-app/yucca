@@ -63,7 +63,7 @@ func NewOTLPLogWriter(provider *sdklog.LoggerProvider) *OTLPLogWriter {
 
 // Write parses a zerolog JSON line and emits it as an OTEL log record.
 func (w *OTLPLogWriter) Write(p []byte) (int, error) {
-	var entry map[string]interface{}
+	var entry map[string]any
 	if err := json.Unmarshal(p, &entry); err != nil {
 		// Not JSON — pass through length but skip OTEL export.
 		return len(p), nil

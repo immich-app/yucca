@@ -33,12 +33,12 @@ func (v *view) render(r *warpfleet.StatusReport, sampledAt time.Time, sampleSec 
 		if t, err := time.Parse(time.RFC3339, since); err == nil {
 			since = time.Since(t).Round(time.Second).String() + " ago"
 		}
-		b.WriteString(fmt.Sprintf("%s %s · %s PUT / %s GET · %s/%s objects · %s RGWs\n",
+		fmt.Fprintf(&b, "%s %s · %s PUT / %s GET · %s/%s objects · %s RGWs\n",
 			ui.OK.Render("● "+r.Config["mode"]),
 			ui.Muted.Render("started "+since),
 			r.Config["put_streams"], r.Config["get_streams"],
 			r.Config["put_obj_size"], r.Config["get_obj_size"],
-			r.Config["rgw_endpoints"]))
+			r.Config["rgw_endpoints"])
 		b.WriteString(ui.Muted.Render("endpoint "+r.Config["endpoint"]) + "\n")
 	} else {
 		b.WriteString(ui.Warn.Render("○ no active run recorded") +
@@ -58,22 +58,22 @@ func (v *view) render(r *warpfleet.StatusReport, sampledAt time.Time, sampleSec 
 	}
 	var tx, rx float64
 	for _, n := range r.Nodes {
-		b.WriteString(fmt.Sprintf("%-*s %s  %s %s  %s %s\n",
+		fmt.Fprintf(&b, "%-*s %s  %s %s  %s %s\n",
 			nodeW, n.Node,
 			ui.Muted.Render(fmt.Sprintf("%-*s", ifaceW, n.Iface)),
 			ui.TX.Render(ui.Meter(n.TxBps, maxBps, 14)),
 			ui.PadGbps(n.TxBps),
 			ui.RX.Render(ui.Meter(n.RxBps, maxBps, 14)),
-			ui.PadGbps(n.RxBps)))
+			ui.PadGbps(n.RxBps))
 		tx += n.TxBps
 		rx += n.RxBps
 	}
 	if len(r.Nodes) > 0 {
-		b.WriteString(fmt.Sprintf("%s   %s %s · %s %s · %s\n",
+		fmt.Fprintf(&b, "%s   %s %s · %s %s · %s\n",
 			ui.Muted.Render(fmt.Sprintf("%-*s", nodeW+ifaceW-2, "aggregate")),
 			ui.TX.Render("TX"), ui.PadGbps(tx),
 			ui.RX.Render("RX"), ui.PadGbps(rx),
-			ui.Total.Render("combined "+ui.FmtGbps(tx+rx))))
+			ui.Total.Render("combined "+ui.FmtGbps(tx+rx)))
 		if len(v.history.Values()) > 1 {
 			b.WriteString(ui.Muted.Render("history   ") + ui.Total.Render(ui.Sparkline(v.history.Values(), 40)) + "\n")
 		}
@@ -87,11 +87,11 @@ func (v *view) render(r *warpfleet.StatusReport, sampledAt time.Time, sampleSec 
 	}
 	b.WriteString(ui.Muted.Render(fmt.Sprintf("%-*s %-*s %6s %6s %10s %10s", podW, "POD", nodeW, "NODE", "PUT", "GET", "ERR(PUT)", "ERR(GET)")) + "\n")
 	for _, p := range r.Pods {
-		b.WriteString(fmt.Sprintf("%-*s %-*s %s %s %s %s\n",
+		fmt.Fprintf(&b, "%-*s %-*s %s %s %s %s\n",
 			podW, p.Name, nodeW, p.Node,
 			procCell(p.PutProcs, r.Config != nil),
 			procCell(p.GetProcs, r.Config != nil),
-			ui.ErrCell(p.PutErrors, 10), ui.ErrCell(p.GetErrors, 10)))
+			ui.ErrCell(p.PutErrors, 10), ui.ErrCell(p.GetErrors, 10))
 	}
 
 	b.WriteString("\n" + ui.Muted.Render(fleet.Footer(sampleSec, sampledAt, watching)))

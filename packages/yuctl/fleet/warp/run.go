@@ -192,8 +192,8 @@ func share(total, n, i int) int {
 
 func (s *Session) saveRunConfig(ctx context.Context, kv map[string]string) error {
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: runConfigMap, Namespace: s.Namespace},
-		Data:       kv,
+		Name: runConfigMap, Namespace: s.Namespace,
+		Data: kv,
 	}
 	_, err := s.client.CoreV1().ConfigMaps(s.Namespace).Update(ctx, cm, metav1.UpdateOptions{})
 	if isNotFound(err) {

@@ -75,16 +75,16 @@ func ReadToTempFile(ctx context.Context, ref, pattern string) (string, error) {
 	// platform defaults differ.
 	if err := f.Chmod(0o600); err != nil {
 		f.Close()
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name())
 		return "", fmt.Errorf("chmod temp file: %w", err)
 	}
 	if _, err := f.WriteString(val); err != nil {
 		f.Close()
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name())
 		return "", fmt.Errorf("write temp file: %w", err)
 	}
 	if err := f.Close(); err != nil {
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name())
 		return "", fmt.Errorf("close temp file: %w", err)
 	}
 	return f.Name(), nil

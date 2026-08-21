@@ -1,0 +1,27 @@
+version: '2'
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  settings:
+    errcheck:
+      # Best-effort writes and teardown where the error carries no signal:
+      # CLI/tabwriter output, and Close on response bodies, files, listeners.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (io.Closer).Close
+        - (*os.File).Close
+        - (net.Listener).Close
+        - (*net/http.Server).Close
+        - (*text/tabwriter.Writer).Flush
+  exclusions:
+    rules:
+      # SA4023 sees only the !embedagent stub of embeddedAgent (the embedagent
+      # variant needs the gitignored bench-agent artifact) and wrongly concludes
+      # its error is always non-nil.
+      - path: resticbench/orchestrator\.go
+        text: 'SA4023'

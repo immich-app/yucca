@@ -62,10 +62,7 @@ func writeFile(path string, key [32]byte, size int64) error {
 	src := rand.NewChaCha8(key)
 	buf := make([]byte, 1<<20)
 	for size > 0 {
-		n := int64(len(buf))
-		if size < n {
-			n = size
-		}
+		n := min(size, int64(len(buf)))
 		_, _ = src.Read(buf[:n])
 		if _, err := w.Write(buf[:n]); err != nil {
 			f.Close()
@@ -95,17 +92,12 @@ func Generate(dir string, size, fileSize int64, seed uint64, progress func(delta
 		Files:    int((size + fileSize - 1) / fileSize),
 	}
 
-	workers := runtime.NumCPU()
-	if workers > 16 {
-		workers = 16
-	}
+	workers := min(runtime.NumCPU(), 16)
 	indices := make(chan int)
 	var wg sync.WaitGroup
 	var firstErr atomic.Value
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for i := range indices {
 				sz := m.fileSizeAt(i)
 				if err := writeFile(filePath(dir, i), fileKey(seed, i, 0), sz); err != nil {
@@ -116,7 +108,7 @@ func Generate(dir string, size, fileSize int64, seed uint64, progress func(delta
 					progress(sz)
 				}
 			}
-		}()
+		})
 	}
 	for i := 0; i < m.Files; i++ {
 		if firstErr.Load() != nil {
@@ -139,10 +131,7 @@ func Generate(dir string, size, fileSize int64, seed uint64, progress func(delta
 // change, so restic re-uploads them) and bumps the manifest round.
 func Mutate(dir string, m *Manifest, percent float64, progress func(delta int64)) (int64, error) {
 	round := m.Rounds + 1
-	k := int(float64(m.Files) * percent / 100)
-	if k < 1 {
-		k = 1
-	}
+	k := max(int(float64(m.Files)*percent/100), 1)
 	if k > m.Files {
 		k = m.Files
 	}

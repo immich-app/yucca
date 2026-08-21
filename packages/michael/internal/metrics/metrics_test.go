@@ -397,12 +397,10 @@ func TestCachedRoutePattern(t *testing.T) {
 
 func TestBlobMetricOptionConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 100 {
+		wg.Go(func() {
 			BlobMetricOption(auth.Auth{User: "u1", Repository: "r1"}, "data")
-		}()
+		})
 	}
 	wg.Wait()
 }

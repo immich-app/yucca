@@ -137,7 +137,7 @@ func TestClusterRoutingUnknownClusterRejected(t *testing.T) {
 		t.Errorf("a known cluster served a request for an unknown one (default=%d spice=%d)", def.hits, spice.hits)
 	}
 
-	warn := findLog(parseLogLines(t, buf), map[string]interface{}{"level": "warn", "cluster": "sietch"})
+	warn := findLog(parseLogLines(t, buf), map[string]any{"level": "warn", "cluster": "sietch"})
 	if warn == nil {
 		t.Fatalf("no warn log for the unknown cluster:\n%s", buf.String())
 	}

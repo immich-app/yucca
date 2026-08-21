@@ -182,11 +182,11 @@ func (s *Session) SaveState() error {
 // way to ever reopen those repos (e.g. `tools bench --repo-id` with a
 // re-minted URL to prune them later).
 func (s *Session) clearFleetState() error {
-	os.Remove(s.PrivateKeyPath())
-	os.Remove(s.knownHostsPath())
-	os.RemoveAll(filepath.Join(s.dir, "cm"))
+	_ = os.Remove(s.PrivateKeyPath())
+	_ = os.Remove(s.knownHostsPath())
+	_ = os.RemoveAll(filepath.Join(s.dir, "cm"))
 	if len(s.State.Clients) == 0 {
-		os.Remove(s.statePath())
+		_ = os.Remove(s.statePath())
 		return nil
 	}
 	s.State.KeyID = ""

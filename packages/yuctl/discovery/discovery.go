@@ -142,9 +142,7 @@ func (c *Client) Resolve(ctx context.Context) (*Topology, error) {
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, resolveConcurrency)
 	for i, st := range stacks {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			raw, err := c.getObject(ctx, st.Key)
@@ -164,7 +162,7 @@ func (c *Client) Resolve(ctx context.Context) (*Topology, error) {
 				return
 			}
 			resolved[i] = &ResolvedStack{Stack: st, Discovery: *d}
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -380,9 +378,7 @@ func (t *Topology) CephClusters(partition, region string) map[string]state.CephC
 	out := map[string]state.CephCluster{}
 	for _, s := range t.Stacks {
 		if s.Partition == partition && s.Region == region {
-			for name, cc := range s.Discovery.CephClusters {
-				out[name] = cc
-			}
+			maps.Copy(out, s.Discovery.CephClusters)
 		}
 	}
 	return out

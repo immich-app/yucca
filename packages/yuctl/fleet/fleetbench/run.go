@@ -297,7 +297,7 @@ type Result struct {
 	Label          string            `json:"label"`
 	Partition      string            `json:"partition"`
 	Created        time.Time         `json:"created"`
-	StartedAt      time.Time         `json:"startedAt,omitempty"`
+	StartedAt      time.Time         `json:"startedAt"`
 	ElapsedSeconds float64           `json:"elapsedSeconds,omitempty"`
 	Params         map[string]string `json:"params,omitempty"`
 	Hosts          []HostResult      `json:"droplets"`
