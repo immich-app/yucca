@@ -1,10 +1,13 @@
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
 # CNPG control-plane database backups (Barman Cloud plugin → region RGW):
 # continuous WAL archiving + a daily 02:00 base backup, so PITR only holds if
-# both keep moving. Sources: the cnpg_collector_* gauges every instance manager
-# exposes on :9187 (scraped by the yucca-database VMPodScrape); backup
-# timestamps mirror the Cluster status the plugin maintains. All three
-# instances report the same status values, hence the max by (cluster).
+# both keep moving. Sources: the :9187 exporter on every instance (scraped by
+# the yucca-database VMPodScrape). Backup timestamps MUST use the plugin's
+# barman_cloud_cloudnative_pg_io_* gauges — the cnpg_collector_last_*_backup
+# ones are only fed by the removed in-tree flow and sit at 0 forever under
+# plugin backups (verified live 2026-08-21). WAL-archive and collector-up
+# gauges are unaffected. All instances report the same values, hence the
+# max by (cluster).
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaAlertRuleGroup
 metadata:
@@ -66,8 +69,8 @@ spec:
                   type: gt
     # A failure newer than the last success. Positive-while-firing: the value
     # is how many seconds the failure postdates the last good backup, and it
-    # keeps growing until the next success clears it. Also covers a cluster
-    # whose very first backup failed (last available = 0).
+    # keeps growing until the next success clears it. The `or … unless` branch
+    # covers a cluster whose very first backup failed (no success series yet).
     - uid: cnpg-backup-failed
       title: CnpgBackupFailed
       condition: B
@@ -97,11 +100,14 @@ spec:
             intervalMs: 300000
             maxDataPoints: 43200
             expr: >-
-              max by (cluster)
-              (last_over_time(cnpg_collector_last_failed_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              (max by (cluster)
+              (last_over_time(barman_cloud_cloudnative_pg_io_last_failed_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
               - max by (cluster)
-              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
-              > 0
+              (last_over_time(barman_cloud_cloudnative_pg_io_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              > 0) or (max by (cluster)
+              (last_over_time(barman_cloud_cloudnative_pg_io_last_failed_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              > 0 unless on (cluster) max by (cluster)
+              (last_over_time(barman_cloud_cloudnative_pg_io_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m])))
         - refId: B
           relativeTimeRange:
             from: 600
@@ -147,9 +153,9 @@ spec:
             maxDataPoints: 43200
             expr: >-
               (time() - max by (cluster)
-              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              (last_over_time(barman_cloud_cloudnative_pg_io_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
               > 93600) and max by (cluster)
-              (last_over_time(cnpg_collector_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
+              (last_over_time(barman_cloud_cloudnative_pg_io_last_available_backup_timestamp{cluster=~"father|luke", project="yucca"}[5m]))
               > 0
         - refId: B
           relativeTimeRange:

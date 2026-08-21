@@ -904,8 +904,10 @@
 # A dedicated S3 user the yucca-database CNPG cluster (Barman Cloud plugin)
 # archives WALs and base backups with. Keys are TF-minted in 1P
 # (<CLUSTER>_CEPH_S3_SVC_YUCCA_DB_BACKUP_{ACCESS,SECRET}_KEY) and passed here so
-# the consumer is pre-configured with matching credentials. max-buckets=1: barman
-# creates its single bucket on first use; this user can never create another.
+# the consumer is pre-configured with matching credentials. max-buckets=1: the
+# yucca-db-backups bucket is created out-of-band with this user's own creds
+# (barman does NOT auto-create it — see docs/s3-integration.md), and the cap
+# means this user can never create another.
 
 - name: Check if db-backup RGW user exists
   ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_db_backup_user_uid }}"

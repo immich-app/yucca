@@ -55,10 +55,22 @@ radosgw-admin user create \
 | `svc-yucca-db-backup` | CNPG (yucca-database) WAL archiving + base backups via the Barman Cloud plugin | 1 | — |
 
 All three are created by `rgw.yml` with predetermined, TF-minted keys (see
-[secrets.md](secrets.md)). `svc-yucca-db-backup` never needs a pre-created
-bucket: barman creates `yucca-db-backups` on first use, and `--max-buckets=1`
-caps the user there. The k8s side consumes the keys plus the RGW cert from the
-TF-provisioned `yucca-db-backup-s3` Secret.
+[secrets.md](secrets.md)). `svc-yucca-db-backup`'s bucket is NOT auto-created —
+barman-cloud fails with `NoSuchBucket` until it exists. Create it once per
+cluster with the user's own credentials (`--max-buckets=1` permits exactly this
+one bucket):
+
+```bash
+AWS_ACCESS_KEY_ID=$(op read "op://<vault>/<CLUSTER>_CEPH_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY/password") \
+AWS_SECRET_ACCESS_KEY=$(op read "op://<vault>/<CLUSTER>_CEPH_S3_SVC_YUCCA_DB_BACKUP_SECRET_KEY/password") \
+aws s3api create-bucket --bucket yucca-db-backups \
+  --endpoint-url https://s3.<cluster domain> --no-verify-ssl
+```
+
+(Or a named profile holding the same keys, per the AWS CLI section below.)
+
+The k8s side consumes the keys plus the RGW cert from the TF-provisioned
+`yucca-db-backup-s3` Secret.
 
 ## Self-signed certificate handling
 

@@ -45,9 +45,12 @@ spec:
     storageClass: ${DB_STORAGE_CLASS}
     # PITR to the region's Ceph RGW via the Barman Cloud plugin: continuous WAL
     # archiving + a daily base backup, 30d retention (chart default). Barman
-    # creates the bucket on first use (the RGW user is capped at max-buckets=1);
-    # the secret is TF-provisioned (talos stack) with the RGW user's keys and
-    # the self-signed RGW cert as CA_CERT. TODO: second copy on OVH S3.
+    # does NOT create the bucket — WAL archiving fails with NoSuchBucket until
+    # it exists. Create it once per cluster with the backup user's own creds
+    # (any S3 client; --max-buckets=1 permits exactly this one — see
+    # ansible/ceph/docs/s3-integration.md). The secret is TF-provisioned (talos
+    # stack) with the RGW user's keys and the self-signed RGW cert as CA_CERT.
+    # TODO: second copy on OVH S3.
     backup:
       enabled: true
       bucket: yucca-db-backups
