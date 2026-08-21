@@ -21,6 +21,9 @@ func testDefaultCluster() ClusterConfig {
 		S3ProbeBucket:       "michael-probe",
 		S3EjectThreshold:    3,
 		S3ReconcileInterval: 5 * time.Second,
+		S3RetryTokenEarn:    2,
+		S3RetryTokenCost:    12,
+		S3RetryBudgetCap:    120,
 	}
 }
 
@@ -44,7 +47,10 @@ func TestParseClustersFull(t *testing.T) {
 	      "tls_skip_verify": false,
 	      "probe_bucket": "spice-probe",
 	      "eject_threshold": 5,
-	      "reconcile_interval_ms": 250
+	      "reconcile_interval_ms": 250,
+	      "retry_token_earn": 3,
+	      "retry_token_cost": 30,
+	      "retry_budget_cap": 90
 	    }
 	  ]
 	}`
@@ -76,6 +82,9 @@ func TestParseClustersFull(t *testing.T) {
 		S3ProbeBucket:       "spice-probe",
 		S3EjectThreshold:    5,
 		S3ReconcileInterval: 250 * time.Millisecond,
+		S3RetryTokenEarn:    3,
+		S3RetryTokenCost:    30,
+		S3RetryBudgetCap:    90,
 	}
 	if got[0] != want {
 		t.Errorf("cluster mismatch:\n got %+v\nwant %+v", got[0], want)
@@ -99,6 +108,9 @@ func TestParseClustersInheritsDefaults(t *testing.T) {
 	}
 	if c.S3ProbeBucket != "michael-probe" || c.S3EjectThreshold != 3 || c.S3ReconcileInterval != 5*time.Second {
 		t.Errorf("expected the default pool tunables to be inherited, got %+v", c)
+	}
+	if c.S3RetryTokenEarn != 2 || c.S3RetryTokenCost != 12 || c.S3RetryBudgetCap != 120 {
+		t.Errorf("expected the default retry budget knobs to be inherited, got %+v", c)
 	}
 	if c.S3BackendSource != "" || c.S3BackendDNSHost != "" || c.S3BackendFile != "" {
 		t.Errorf("backend source must not be inherited from the default cluster, got %+v", c)

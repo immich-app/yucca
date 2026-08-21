@@ -109,6 +109,13 @@ func NewS3StorageForCluster(cc config.ClusterConfig, opts S3Options) *S3Storage 
 		BaseEndpoint: aws.String(opts.Endpoint),
 		UsePathStyle: cc.S3ForcePathStyle,
 
+		// One attempt per call, no silent SDK retry anywhere: PUT bodies are
+		// restic's non-seekable proxied streams (a retry fails rewinding them and
+		// masks the real error — see TestPutObject_NonSeekableBodyOn503_NoRewindRetry),
+		// and for every other operation retrying is the pool's job, where each
+		// attempt is visible, budgeted, and feeds backend health accounting.
+		RetryMaxAttempts: 1,
+
 		HTTPClient: buildHTTPClient(opts)}
 	return &S3Storage{client: s3.New(s3opts)}
 }
@@ -161,12 +168,8 @@ func buildHTTPClient(opts S3Options) *http.Client {
 // bucket is absent or access-denied) proves the gateway is serving, so only a
 // transport-level failure (dial refused, timeout, 5xx) is treated as unhealthy.
 func (s *S3Storage) Probe(ctx context.Context, bucket string) error {
-	// Single-shot: a probe must not be silently retried by the SDK, or a dead
-	// gateway would look slow-but-alive and add latency to every reconcile.
 	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(bucket),
-	}, func(o *s3.Options) {
-		o.RetryMaxAttempts = 1
 	})
 	if err != nil && isBackendFailure(err) {
 		return err
@@ -268,18 +271,12 @@ func (s *S3Storage) PutObject(ctx context.Context, bucket, key string, body io.R
 	}
 
 	// Use unsigned payload so the SDK doesn't need to seek the body for signing.
-	// RetryMaxAttempts=1 (no SDK retry): the body is restic's non-seekable
-	// proxied stream, so any retry would try to rewind it and fail with "failed
-	// to rewind transport stream for retry, request stream is not seekable" —
-	// masking the real backend error and, under load, stalling clients on a
-	// large fraction of PUTs. With retries off, a transient gateway error
-	// surfaces cleanly and restic retries the pack itself (its body IS
-	// seekable). See TestPutObject_NonSeekableBodyOn503_NoRewindRetry.
+	// The client is built with SDK retries off (see NewS3StorageForCluster):
+	// crucial here, since a retry would try to rewind restic's non-seekable
+	// proxied stream and mask the real backend error.
 	_, err := s.client.PutObject(ctx, input, s3.WithAPIOptions(
 		v4.SwapComputePayloadSHA256ForUnsignedPayloadMiddleware,
-	), func(o *s3.Options) {
-		o.RetryMaxAttempts = 1
-	})
+	))
 	if err != nil {
 		if isPreconditionFailed(err) {
 			// Only content-addressed writes converge: for keys that aren't the

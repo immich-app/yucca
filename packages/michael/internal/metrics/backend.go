@@ -10,11 +10,12 @@ import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 )
 
-// BackendStatsProvider yields a per-backend snapshot. *storage.Pool implements
-// it. Kept as an interface so the metrics layer doesn't depend on the pool's
-// internals and can be tested with a stub.
+// BackendStatsProvider yields per-backend and pool-wide snapshots.
+// *storage.Pool implements it. Kept as an interface so the metrics layer
+// doesn't depend on the pool's internals and can be tested with a stub.
 type BackendStatsProvider interface {
 	Stats() []storage.BackendStat
+	PoolStats() storage.PoolStat
 }
 
 // RegisterBackendMetrics wires per-backend S3 load-balancer metrics onto meter,
@@ -61,6 +62,16 @@ func RegisterBackendMetrics(meter otelmetric.Meter, providers map[string]Backend
 	if err != nil {
 		return fmt.Errorf("creating s3.backend.healthy: %w", err)
 	}
+	retries, err := meter.Int64ObservableCounter("s3.pool.retries",
+		otelmetric.WithDescription("Cross-backend retries per pool, by outcome (success, failure, denied)"))
+	if err != nil {
+		return fmt.Errorf("creating s3.pool.retries: %w", err)
+	}
+	retryBudget, err := meter.Int64ObservableGauge("s3.pool.retry_budget",
+		otelmetric.WithDescription("Remaining cross-backend retry budget tokens per pool"))
+	if err != nil {
+		return fmt.Errorf("creating s3.pool.retry_budget: %w", err)
+	}
 
 	_, err = meter.RegisterCallback(
 		func(_ context.Context, o otelmetric.Observer) error {
@@ -77,10 +88,19 @@ func RegisterBackendMetrics(meter otelmetric.Meter, providers map[string]Backend
 					o.ObserveInt64(inflight, s.Inflight, attrs)
 					o.ObserveInt64(healthy, boolToInt64(s.Healthy), attrs)
 				}
+				ps := provider.PoolStats()
+				cluster := attribute.String("cluster", code)
+				retryOutcome := func(outcome string) otelmetric.MeasurementOption {
+					return otelmetric.WithAttributeSet(attribute.NewSet(cluster, attribute.String("outcome", outcome)))
+				}
+				o.ObserveInt64(retries, ps.RetrySuccesses, retryOutcome("success"))
+				o.ObserveInt64(retries, ps.RetryAttempts-ps.RetrySuccesses, retryOutcome("failure"))
+				o.ObserveInt64(retries, ps.RetryDenied, retryOutcome("denied"))
+				o.ObserveInt64(retryBudget, ps.RetryBudget, otelmetric.WithAttributeSet(attribute.NewSet(cluster)))
 			}
 			return nil
 		},
-		requests, requestErrors, downloaded, uploaded, inflight, healthy,
+		requests, requestErrors, downloaded, uploaded, inflight, healthy, retries, retryBudget,
 	)
 	if err != nil {
 		return fmt.Errorf("registering backend metrics callback: %w", err)

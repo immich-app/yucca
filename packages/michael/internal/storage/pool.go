@@ -18,6 +18,16 @@ const probeTimeout = 5 * time.Second
 // ErrNoBackends is returned when the pool has no backend to route a request to.
 var ErrNoBackends = errors.New("no S3 backends available")
 
+// Cross-backend retries are paid from a token budget refilled by successful
+// traffic (by default one token per success, ten per retry, so at most ~1
+// retry per 10 successes): a healthy pool masks isolated gateway failures,
+// while a cluster-wide brownout cannot be amplified by retrying into it.
+const (
+	defaultRetryTokenEarn       = 1
+	defaultRetryTokenCost       = 10
+	defaultRetryBudgetCapFactor = 20 // cap defaults to this many retries' worth
+)
+
 // Prober is implemented by backends that support an active liveness probe.
 // *S3Storage satisfies it; the reconciler skips probing for stores that don't.
 type Prober interface {
@@ -58,11 +68,14 @@ type backend struct {
 	uploadedBytes   atomic.Int64
 }
 
-// PoolConfig holds the tunables for a Pool.
+// PoolConfig holds the tunables for a Pool. Zero values take the defaults.
 type PoolConfig struct {
 	EjectThreshold    int           // consecutive transport failures before ejection
 	ProbeBucket       string        // sentinel bucket name for active health probes
 	ReconcileInterval time.Duration // how often Run re-resolves and probes
+	RetryTokenEarn    int           // budget tokens earned per successful request
+	RetryTokenCost    int           // budget tokens one cross-backend retry spends
+	RetryBudgetCap    int           // budget ceiling (bounds how many retries a burst can spend)
 }
 
 // Pool implements Storage by load-balancing requests across a set of
@@ -80,6 +93,23 @@ type Pool struct {
 	interval    time.Duration
 	pickCounter atomic.Uint64
 	logger      zerolog.Logger
+
+	budget         atomic.Int64
+	retryTokenEarn int64
+	retryTokenCost int64
+	retryBudgetCap int64
+	retries        atomic.Int64
+	retrySuccesses atomic.Int64
+	retryDenied    atomic.Int64
+}
+
+// PoolStat is a pool-wide snapshot of the cross-backend retry machinery,
+// consumed by the metrics layer.
+type PoolStat struct {
+	RetryAttempts  int64
+	RetrySuccesses int64
+	RetryDenied    int64
+	RetryBudget    int64
 }
 
 var _ Storage = (*Pool)(nil)
@@ -101,8 +131,21 @@ func NewPool(cfg PoolConfig, factory BackendFactory, resolver Resolver, logger z
 	if p.interval <= 0 {
 		p.interval = 5 * time.Second
 	}
+	p.retryTokenEarn = int64(cfg.RetryTokenEarn)
+	p.retryTokenCost = int64(cfg.RetryTokenCost)
+	p.retryBudgetCap = int64(cfg.RetryBudgetCap)
+	if p.retryTokenEarn < 1 {
+		p.retryTokenEarn = defaultRetryTokenEarn
+	}
+	if p.retryTokenCost < 1 {
+		p.retryTokenCost = defaultRetryTokenCost
+	}
+	if p.retryBudgetCap < 1 {
+		p.retryBudgetCap = defaultRetryBudgetCapFactor * p.retryTokenCost
+	}
 	empty := []*backend{}
 	p.backends.Store(&empty)
+	p.budget.Store(p.retryBudgetCap)
 
 	if err := p.Reconcile(context.Background()); err != nil {
 		return nil, err
@@ -263,10 +306,51 @@ func (p *Pool) pick() *backend {
 	return fallback
 }
 
+// pickHealthyOther returns the least-loaded healthy backend other than exclude,
+// or nil — a retry never fails open, it only moves to a backend believed good.
+func (p *Pool) pickHealthyOther(exclude *backend) *backend {
+	var best *backend
+	var bestLoad int64
+	for _, b := range p.snapshot() {
+		if b == exclude || !b.healthy.Load() {
+			continue
+		}
+		if load := b.inflight.Load(); best == nil || load < bestLoad {
+			best, bestLoad = b, load
+		}
+	}
+	return best
+}
+
+func (p *Pool) earnRetryToken() {
+	for {
+		cur := p.budget.Load()
+		if cur >= p.retryBudgetCap {
+			return
+		}
+		if p.budget.CompareAndSwap(cur, min(cur+p.retryTokenEarn, p.retryBudgetCap)) {
+			return
+		}
+	}
+}
+
+func (p *Pool) takeRetryTokens() bool {
+	for {
+		cur := p.budget.Load()
+		if cur < p.retryTokenCost {
+			return false
+		}
+		if p.budget.CompareAndSwap(cur, cur-p.retryTokenCost) {
+			return true
+		}
+	}
+}
+
 // recordResult updates a backend's counters and passive-ejection state after a
 // completed operation. A transport failure increments the consecutive-failure
 // streak and ejects once it crosses the threshold; any non-transport outcome
-// (success, or a normal 4xx like a missing blob) proves liveness and resets it.
+// (success, or a normal 4xx like a missing blob) proves liveness, resets the
+// streak, and refills the retry budget.
 func (p *Pool) recordResult(b *backend, err error) {
 	b.requests.Add(1)
 	if isBackendFailure(err) {
@@ -278,20 +362,48 @@ func (p *Pool) recordResult(b *backend, err error) {
 		return
 	}
 	b.failures.Store(0)
+	p.earnRetryToken()
 }
 
-// do runs an in-call operation (one that completes before returning) on a
-// picked backend, accounting inflight and recording the result.
-func (p *Pool) do(fn func(s Storage) error) error {
-	b := p.pick()
-	if b == nil {
-		return ErrNoBackends
-	}
+func (p *Pool) runOn(b *backend, fn func(s Storage) error) error {
 	b.inflight.Add(1)
 	err := fn(b.store)
 	b.inflight.Add(-1)
 	p.recordResult(b, err)
 	return err
+}
+
+func canAlwaysRetry() bool { return true }
+
+// do runs an in-call operation (one that completes before returning) on a
+// picked backend. On a transport-level failure, if canRetry allows it (nil
+// means never — the operation is not idempotent), the pool retries once on a
+// different healthy backend: restic would otherwise see a 500 for a blip a
+// sibling gateway would have absorbed, and its per-file Load breaker then
+// locks the affected blob out client-side for an hour (docs/restic-retries.md).
+func (p *Pool) do(ctx context.Context, canRetry func() bool, fn func(s Storage) error) error {
+	b := p.pick()
+	if b == nil {
+		return ErrNoBackends
+	}
+	err := p.runOn(b, fn)
+	if !isBackendFailure(err) || canRetry == nil || !canRetry() || ctx.Err() != nil {
+		return err
+	}
+	next := p.pickHealthyOther(b)
+	if next == nil {
+		return err
+	}
+	if !p.takeRetryTokens() {
+		p.retryDenied.Add(1)
+		return err
+	}
+	p.retries.Add(1)
+	rerr := p.runOn(next, fn)
+	if !isBackendFailure(rerr) {
+		p.retrySuccesses.Add(1)
+	}
+	return rerr
 }
 
 // Stats returns a per-backend snapshot for the metrics layer.
@@ -312,11 +424,21 @@ func (p *Pool) Stats() []BackendStat {
 	return stats
 }
 
+// PoolStats returns the pool-wide retry snapshot for the metrics layer.
+func (p *Pool) PoolStats() PoolStat {
+	return PoolStat{
+		RetryAttempts:  p.retries.Load(),
+		RetrySuccesses: p.retrySuccesses.Load(),
+		RetryDenied:    p.retryDenied.Load(),
+		RetryBudget:    p.budget.Load(),
+	}
+}
+
 // --- Storage interface ---
 
 func (p *Pool) CheckBucket(ctx context.Context, bucket string) (bool, error) {
 	var exists bool
-	err := p.do(func(s Storage) error {
+	err := p.do(ctx, canAlwaysRetry, func(s Storage) error {
 		var e error
 		exists, e = s.CheckBucket(ctx, bucket)
 		return e
@@ -325,14 +447,17 @@ func (p *Pool) CheckBucket(ctx context.Context, bucket string) (bool, error) {
 }
 
 func (p *Pool) CreateBucket(ctx context.Context, bucket string) error {
-	return p.do(func(s Storage) error {
+	// Never retried: an ambiguous first attempt may have created the bucket,
+	// and a second create then fails differently instead of surfacing the
+	// original error.
+	return p.do(ctx, nil, func(s Storage) error {
 		return s.CreateBucket(ctx, bucket)
 	})
 }
 
 func (p *Pool) HeadObject(ctx context.Context, bucket, key string) (int64, error) {
 	var size int64
-	err := p.do(func(s Storage) error {
+	err := p.do(ctx, canAlwaysRetry, func(s Storage) error {
 		var e error
 		size, e = s.HeadObject(ctx, bucket, key)
 		return e
@@ -340,18 +465,28 @@ func (p *Pool) HeadObject(ctx context.Context, bucket, key string) (int64, error
 	return size, err
 }
 
+// ListObjects retries only while nothing has been emitted: entries already
+// streamed to the caller cannot be taken back, and a fresh listing on another
+// backend would duplicate them.
 func (p *Pool) ListObjects(ctx context.Context, bucket, prefix string, fn func(BlobInfo) error) error {
-	return p.do(func(s Storage) error {
-		return s.ListObjects(ctx, bucket, prefix, fn)
+	var emitted atomic.Bool
+	return p.do(ctx, func() bool { return !emitted.Load() }, func(s Storage) error {
+		return s.ListObjects(ctx, bucket, prefix, func(b BlobInfo) error {
+			emitted.Store(true)
+			return fn(b)
+		})
 	})
 }
 
 func (p *Pool) DeleteObject(ctx context.Context, bucket, key string) error {
-	return p.do(func(s Storage) error {
+	return p.do(ctx, canAlwaysRetry, func(s Storage) error {
 		return s.DeleteObject(ctx, bucket, key)
 	})
 }
 
+// PutObject is never retried: the body is the client's stream and can only be
+// consumed once — restic re-drives failed uploads itself with a rewindable
+// pack (docs/restic-retries.md).
 func (p *Pool) PutObject(ctx context.Context, bucket, key string, body io.Reader, contentLength int64, writeOnce bool, sha256Hex string) error {
 	b := p.pick()
 	if b == nil {
@@ -369,11 +504,35 @@ func (p *Pool) PutObject(ctx context.Context, bucket, key string, body io.Reader
 	return err
 }
 
+// GetObject retries header-phase failures on a different healthy backend; once
+// headers are returned the body is streamed by the caller and a mid-stream
+// failure cannot be replayed.
 func (p *Pool) GetObject(ctx context.Context, bucket, key, rangeHeader string) (*S3Object, error) {
 	b := p.pick()
 	if b == nil {
 		return nil, ErrNoBackends
 	}
+	obj, err := p.getFrom(ctx, b, bucket, key, rangeHeader)
+	if !isBackendFailure(err) || ctx.Err() != nil {
+		return obj, err
+	}
+	next := p.pickHealthyOther(b)
+	if next == nil {
+		return nil, err
+	}
+	if !p.takeRetryTokens() {
+		p.retryDenied.Add(1)
+		return nil, err
+	}
+	p.retries.Add(1)
+	obj, rerr := p.getFrom(ctx, next, bucket, key, rangeHeader)
+	if !isBackendFailure(rerr) {
+		p.retrySuccesses.Add(1)
+	}
+	return obj, rerr
+}
+
+func (p *Pool) getFrom(ctx context.Context, b *backend, bucket, key, rangeHeader string) (*S3Object, error) {
 	// The SDK returns headers here but the body is streamed by the caller after
 	// we return, so inflight must stay counted until the body is closed.
 	b.inflight.Add(1)

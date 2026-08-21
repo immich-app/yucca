@@ -24,6 +24,9 @@ type fakeStore struct {
 	getBody   string
 	getErr    error // mid-stream read error to inject into the returned body
 	calls     atomic.Int64
+
+	listItems             []BlobInfo
+	listFailAfterEmitting *int
 }
 
 func (f *fakeStore) transportErr() error {
@@ -55,9 +58,20 @@ func (f *fakeStore) HeadObject(_ context.Context, _, _ string) (int64, error) {
 	return 0, nil
 }
 
-func (f *fakeStore) ListObjects(_ context.Context, _, _ string, _ func(BlobInfo) error) error {
+func (f *fakeStore) ListObjects(_ context.Context, _, _ string, fn func(BlobInfo) error) error {
 	f.calls.Add(1)
 	if f.opFail.Load() {
+		return f.transportErr()
+	}
+	for i, item := range f.listItems {
+		if f.listFailAfterEmitting != nil && i == *f.listFailAfterEmitting {
+			return f.transportErr()
+		}
+		if err := fn(item); err != nil {
+			return err
+		}
+	}
+	if f.listFailAfterEmitting != nil && *f.listFailAfterEmitting >= len(f.listItems) {
 		return f.transportErr()
 	}
 	return nil
@@ -141,6 +155,11 @@ func (r *testResolver) Describe() string { return "test" }
 // endpoint to its *fakeStore so the test can toggle failures.
 func newTestPool(t *testing.T, eps []string, threshold int) (*Pool, *testResolver, map[string]*fakeStore) {
 	t.Helper()
+	return newTestPoolCfg(t, eps, PoolConfig{EjectThreshold: threshold, ReconcileInterval: time.Hour})
+}
+
+func newTestPoolCfg(t *testing.T, eps []string, cfg PoolConfig) (*Pool, *testResolver, map[string]*fakeStore) {
+	t.Helper()
 	reg := map[string]*fakeStore{}
 	var mu sync.Mutex
 	factory := func(endpoint string) (Storage, error) {
@@ -151,7 +170,7 @@ func newTestPool(t *testing.T, eps []string, threshold int) (*Pool, *testResolve
 		return f, nil
 	}
 	res := &testResolver{eps: eps}
-	p, err := NewPool(PoolConfig{EjectThreshold: threshold, ReconcileInterval: time.Hour}, factory, res, zerolog.Nop())
+	p, err := NewPool(cfg, factory, res, zerolog.Nop())
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
 	}
@@ -447,6 +466,224 @@ func TestPool_StatsReflectActivity(t *testing.T) {
 	}
 }
 
+func intp(v int) *int { return &v }
+
+func forcePick(p *Pool, ep string) {
+	for _, b := range p.snapshot() {
+		if b.endpoint != ep {
+			b.inflight.Add(1)
+		}
+	}
+}
+
+func TestPool_RetryMasksSingleBackendFailure(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err != nil {
+		t.Fatalf("expected retry on 'b' to mask the failure, got %v", err)
+	}
+	if got := reg["b"].calls.Load(); got != 1 {
+		t.Errorf("expected exactly 1 call on 'b', got %d", got)
+	}
+	st := p.PoolStats()
+	if st.RetryAttempts != 1 || st.RetrySuccesses != 1 || st.RetryDenied != 0 {
+		t.Errorf("stats = %+v, want 1 attempt / 1 success / 0 denied", st)
+	}
+	if e := backendByEndpoint(p, "a").errors.Load(); e != 1 {
+		t.Errorf("failed attempt must still count against 'a', got %d errors", e)
+	}
+}
+
+func TestPool_NoRetryWithoutAnotherHealthyBackend(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	backendByEndpoint(p, "b").healthy.Store(false)
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err == nil {
+		t.Fatal("expected the failure to surface with no healthy sibling")
+	}
+	if got := reg["b"].calls.Load(); got != 0 {
+		t.Errorf("unhealthy 'b' must not receive the retry, got %d calls", got)
+	}
+	st := p.PoolStats()
+	if st.RetryAttempts != 0 || st.RetryDenied != 0 {
+		t.Errorf("stats = %+v, want no attempts and no budget spend", st)
+	}
+	if st.RetryBudget != p.retryBudgetCap {
+		t.Errorf("budget must be untouched when there is nothing to retry onto, got %d", st.RetryBudget)
+	}
+}
+
+func TestPool_RetryDeniedWhenBudgetExhausted(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	p.budget.Store(0)
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err == nil {
+		t.Fatal("expected the failure to surface with an empty budget")
+	}
+	if got := reg["b"].calls.Load(); got != 0 {
+		t.Errorf("'b' must not be tried without budget, got %d calls", got)
+	}
+	if st := p.PoolStats(); st.RetryDenied != 1 || st.RetryAttempts != 0 {
+		t.Errorf("stats = %+v, want 1 denied / 0 attempts", st)
+	}
+}
+
+func TestPool_SuccessesRefillRetryBudget(t *testing.T) {
+	p, _, _ := newTestPool(t, []string{"a", "b"}, 3)
+	p.budget.Store(0)
+	for range p.retryTokenCost {
+		_, _ = p.HeadObject(context.Background(), "bucket", "k")
+	}
+	if got := p.PoolStats().RetryBudget; got != p.retryTokenCost*p.retryTokenEarn {
+		t.Errorf("budget after %d successes = %d, want %d", p.retryTokenCost, got, p.retryTokenCost*p.retryTokenEarn)
+	}
+
+	p.budget.Store(p.retryBudgetCap - 1)
+	for range 5 {
+		_, _ = p.HeadObject(context.Background(), "bucket", "k")
+	}
+	if got := p.PoolStats().RetryBudget; got != p.retryBudgetCap {
+		t.Errorf("budget must cap at %d, got %d", p.retryBudgetCap, got)
+	}
+}
+
+func TestPool_PutObjectNeverRetries(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+
+	err := p.PutObject(context.Background(), "bucket", "k", strings.NewReader("x"), 1, true, "")
+	if err == nil {
+		t.Fatal("expected PUT failure to surface")
+	}
+	if got := reg["b"].calls.Load(); got != 0 {
+		t.Errorf("PUT must never move to another backend (body already consumed), got %d calls", got)
+	}
+	if st := p.PoolStats(); st.RetryAttempts != 0 {
+		t.Errorf("stats = %+v, want no retry attempts", st)
+	}
+}
+
+func TestPool_CreateBucketNeverRetries(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+
+	if err := p.CreateBucket(context.Background(), "bucket"); err == nil {
+		t.Fatal("expected create failure to surface")
+	}
+	if got := reg["b"].calls.Load(); got != 0 {
+		t.Errorf("non-idempotent create must not retry, got %d calls", got)
+	}
+}
+
+func TestPool_ListRetriesWhenNothingEmitted(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].listFailAfterEmitting = intp(0)
+	reg["b"].listItems = []BlobInfo{{Name: "data/aa", Size: 1}}
+
+	var got []BlobInfo
+	err := p.ListObjects(context.Background(), "bucket", "data/", func(b BlobInfo) error {
+		got = append(got, b)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("expected retried listing to succeed, got %v", err)
+	}
+	if len(got) != 1 || got[0].Name != "data/aa" {
+		t.Errorf("expected 'b' listing, got %v", got)
+	}
+	if st := p.PoolStats(); st.RetryAttempts != 1 || st.RetrySuccesses != 1 {
+		t.Errorf("stats = %+v, want 1 attempt / 1 success", st)
+	}
+}
+
+func TestPool_ListDoesNotRetryAfterEmitting(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].listItems = []BlobInfo{{Name: "data/aa", Size: 1}, {Name: "data/bb", Size: 2}}
+	reg["a"].listFailAfterEmitting = intp(1)
+
+	emitted := 0
+	err := p.ListObjects(context.Background(), "bucket", "data/", func(BlobInfo) error {
+		emitted++
+		return nil
+	})
+	if err == nil {
+		t.Fatal("mid-listing failure must surface: emitted entries cannot be taken back")
+	}
+	if emitted != 1 {
+		t.Errorf("expected 1 emitted entry before the failure, got %d", emitted)
+	}
+	if got := reg["b"].calls.Load(); got != 0 {
+		t.Errorf("'b' must not be tried after emission, got %d calls", got)
+	}
+}
+
+func TestPool_GetObjectRetriesHeaderPhase(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+
+	obj, err := p.GetObject(context.Background(), "bucket", "k", "")
+	if err != nil {
+		t.Fatalf("expected header-phase retry to succeed, got %v", err)
+	}
+	data, _ := io.ReadAll(obj.Body)
+	obj.Body.Close()
+	if string(data) != "blobdata" {
+		t.Errorf("body = %q, want 'b' backend's blob", data)
+	}
+	if st := p.PoolStats(); st.RetryAttempts != 1 || st.RetrySuccesses != 1 {
+		t.Errorf("stats = %+v, want 1 attempt / 1 success", st)
+	}
+}
+
+func TestPool_GetObjectMidStreamFailureDoesNotRetry(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].getErr = errors.New("connection reset")
+
+	obj, err := p.GetObject(context.Background(), "bucket", "k", "")
+	if err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+	_, _ = io.ReadAll(obj.Body)
+	obj.Body.Close()
+
+	if st := p.PoolStats(); st.RetryAttempts != 0 {
+		t.Errorf("mid-stream failure must not retry, stats = %+v", st)
+	}
+	if got := reg["b"].calls.Load(); got != 0 {
+		t.Errorf("'b' must not be called, got %d", got)
+	}
+}
+
+func TestPool_NoRetryAfterContextCancelled(t *testing.T) {
+	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := p.HeadObject(ctx, "bucket", "k"); err == nil {
+		t.Fatal("expected failure")
+	}
+	if st := p.PoolStats(); st.RetryAttempts != 0 {
+		t.Errorf("a gone caller must not trigger retries, stats = %+v", st)
+	}
+	if got := reg["b"].calls.Load(); got != 0 {
+		t.Errorf("'b' must not be called, got %d", got)
+	}
+}
+
 // slowProbeStore blocks each probe until its context is cancelled — an
 // unreachable, blackholed backend that eats the whole probe budget.
 type slowProbeStore struct {
@@ -495,5 +732,26 @@ func TestPool_ProbesConcurrentAndBounded(t *testing.T) {
 		if b.healthy.Load() {
 			t.Errorf("backend %s should be unhealthy after timed-out probe", b.endpoint)
 		}
+	}
+}
+
+func TestPool_RetryBudgetKnobsConfigurable(t *testing.T) {
+	p, _, reg := newTestPoolCfg(t, []string{"a", "b"}, PoolConfig{
+		EjectThreshold:    3,
+		ReconcileInterval: time.Hour,
+		RetryTokenEarn:    5,
+		RetryTokenCost:    20,
+		RetryBudgetCap:    40,
+	})
+	if got := p.PoolStats().RetryBudget; got != 40 {
+		t.Fatalf("budget must start at the configured cap, got %d", got)
+	}
+	forcePick(p, "a")
+	reg["a"].opFail.Store(true)
+	if _, err := p.HeadObject(context.Background(), "bucket", "k"); err != nil {
+		t.Fatalf("expected retry to succeed: %v", err)
+	}
+	if got := p.PoolStats().RetryBudget; got != 40-20+5 {
+		t.Errorf("budget after one retry (-20) and its success (+5) = %d, want 25", got)
 	}
 }

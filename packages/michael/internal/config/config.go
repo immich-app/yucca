@@ -42,6 +42,11 @@ type Config struct {
 	S3ProbeBucket       string // sentinel bucket for active health probes
 	S3EjectThreshold    int    // consecutive transport failures before ejection
 	S3ReconcileInterval time.Duration
+	// Cross-backend retry budget knobs; zero means the pool default (earn 1,
+	// cost 10, cap 20 retries' worth).
+	S3RetryTokenEarn int
+	S3RetryTokenCost int
+	S3RetryBudgetCap int
 
 	// S3DefaultCluster is the code of the storage cluster the flat S3_* fields
 	// above describe. Requests whose token carries no storageCluster claim are
@@ -92,6 +97,9 @@ type ClusterConfig struct {
 	S3ProbeBucket       string
 	S3EjectThreshold    int
 	S3ReconcileInterval time.Duration
+	S3RetryTokenEarn    int
+	S3RetryTokenCost    int
+	S3RetryBudgetCap    int
 }
 
 // DefaultCluster returns the cluster described by the flat S3_* configuration.
@@ -113,6 +121,9 @@ func (c Config) DefaultCluster() ClusterConfig {
 		S3ProbeBucket:       c.S3ProbeBucket,
 		S3EjectThreshold:    c.S3EjectThreshold,
 		S3ReconcileInterval: c.S3ReconcileInterval,
+		S3RetryTokenEarn:    c.S3RetryTokenEarn,
+		S3RetryTokenCost:    c.S3RetryTokenCost,
+		S3RetryBudgetCap:    c.S3RetryBudgetCap,
 	}
 }
 
@@ -191,6 +202,10 @@ func LoadConfig() Config {
 			log.Fatal().Msg("S3_EJECT_THRESHOLD must be a number >= 1")
 		}
 	}
+
+	retryTokenEarn := envPoolKnob("S3_RETRY_TOKEN_EARN")
+	retryTokenCost := envPoolKnob("S3_RETRY_TOKEN_COST")
+	retryBudgetCap := envPoolKnob("S3_RETRY_BUDGET_CAP")
 
 	reconcileInterval := 5 * time.Second
 	if v := os.Getenv("S3_RECONCILE_INTERVAL_MS"); v != "" {
@@ -275,6 +290,9 @@ func LoadConfig() Config {
 		S3ProbeBucket:       probeBucket,
 		S3EjectThreshold:    ejectThreshold,
 		S3ReconcileInterval: reconcileInterval,
+		S3RetryTokenEarn:    retryTokenEarn,
+		S3RetryTokenCost:    retryTokenCost,
+		S3RetryBudgetCap:    retryBudgetCap,
 		S3DefaultCluster:    defaultCluster,
 		ASNDatabasePath:     asnDatabasePath,
 		ClientIPHeader:      clientIPHeader,
@@ -372,6 +390,9 @@ type clusterEntry struct {
 	ProbeBucket         string `json:"probe_bucket"`
 	EjectThreshold      int    `json:"eject_threshold"`
 	ReconcileIntervalMS int    `json:"reconcile_interval_ms"`
+	RetryTokenEarn      int    `json:"retry_token_earn"`
+	RetryTokenCost      int    `json:"retry_token_cost"`
+	RetryBudgetCap      int    `json:"retry_budget_cap"`
 }
 
 // ParseClusters decodes the S3_CLUSTERS_FILE contents into the additional
@@ -519,6 +540,9 @@ func (e clusterEntry) toConfig(def ClusterConfig, getenv func(string) string) (C
 	if e.ReconcileIntervalMS < 0 {
 		return ClusterConfig{}, fmt.Errorf("cluster %q: reconcile_interval_ms must be >= 1", e.Code)
 	}
+	if e.RetryTokenEarn < 0 || e.RetryTokenCost < 0 || e.RetryBudgetCap < 0 {
+		return ClusterConfig{}, fmt.Errorf("cluster %q: retry budget knobs must be >= 1", e.Code)
+	}
 
 	scheme, port := schemeAndPort(e.Endpoint)
 	cc := ClusterConfig{
@@ -538,6 +562,9 @@ func (e clusterEntry) toConfig(def ClusterConfig, getenv func(string) string) (C
 		S3ProbeBucket:       firstNonEmpty(e.ProbeBucket, def.S3ProbeBucket),
 		S3EjectThreshold:    def.S3EjectThreshold,
 		S3ReconcileInterval: def.S3ReconcileInterval,
+		S3RetryTokenEarn:    intOr(e.RetryTokenEarn, def.S3RetryTokenEarn),
+		S3RetryTokenCost:    intOr(e.RetryTokenCost, def.S3RetryTokenCost),
+		S3RetryBudgetCap:    intOr(e.RetryBudgetCap, def.S3RetryBudgetCap),
 	}
 	if e.EjectThreshold > 0 {
 		cc.S3EjectThreshold = e.EjectThreshold
@@ -546,6 +573,27 @@ func (e clusterEntry) toConfig(def ClusterConfig, getenv func(string) string) (C
 		cc.S3ReconcileInterval = time.Duration(e.ReconcileIntervalMS) * time.Millisecond
 	}
 	return cc, nil
+}
+
+// envPoolKnob reads an optional positive-integer pool tunable; 0 (unset)
+// means "use the pool's default".
+func envPoolKnob(key string) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return 0
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		log.Fatal().Msgf("%s must be a number >= 1", key)
+	}
+	return n
+}
+
+func intOr(v, fallback int) int {
+	if v > 0 {
+		return v
+	}
+	return fallback
 }
 
 func firstNonEmpty(v, fallback string) string {
