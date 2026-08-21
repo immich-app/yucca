@@ -44,7 +44,7 @@ func Upgrade(ctx context.Context, k state.Kubernetes, opts UpgradeOptions, logge
 	if err != nil {
 		return fmt.Errorf("materialize talosconfig: %w", err)
 	}
-	defer os.Remove(cfgPath)
+	defer func() { _ = os.Remove(cfgPath) }()
 
 	for _, node := range nodes {
 		args := []string{"--talosconfig", cfgPath, "--nodes", node}

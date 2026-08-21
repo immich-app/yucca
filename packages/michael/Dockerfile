@@ -5,7 +5,7 @@ ARG ALPINE_VERSION=3.23
 # be appended to the node/golang base tags (which reuse ${ALPINE_VERSION}).
 ARG ALPINE_IMAGE=alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
 
-FROM golang:1.25-alpine${ALPINE_VERSION} AS dev
+FROM golang:1.27-alpine${ALPINE_VERSION} AS dev
 WORKDIR /src
 # air is pinned: @latest broke the build when v1.67.2 started requiring a newer
 # Go than this base image ships (bump air and the golang tag together).
@@ -17,7 +17,7 @@ COPY packages/michael/ ./
 EXPOSE 3010
 CMD ["air", "-c", ".air.toml"]
 
-FROM golang:1.25-alpine${ALPINE_VERSION} AS builder
+FROM golang:1.27-alpine${ALPINE_VERSION} AS builder
 WORKDIR /app
 
 COPY packages/michael/go.mod packages/michael/go.sum ./

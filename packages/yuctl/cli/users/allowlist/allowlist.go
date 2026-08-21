@@ -125,7 +125,7 @@ func newInviteCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var emails []string
 			for _, arg := range args {
-				for _, email := range strings.Split(arg, ",") {
+				for email := range strings.SplitSeq(arg, ",") {
 					if email = strings.TrimSpace(email); email != "" {
 						emails = append(emails, email)
 					}

@@ -84,7 +84,7 @@ func Save(c *Context) error {
 		return fmt.Errorf("write context: %w", err)
 	}
 	if err := os.Rename(tmp, p); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return fmt.Errorf("commit context: %w", err)
 	}
 	return nil

@@ -121,10 +121,10 @@ func AgentBinary(explicit string) (string, func(), error) {
 	}
 	path := dir + "/bench-agent"
 	if err := os.WriteFile(path, raw, 0o755); err != nil {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 		return "", nil, err
 	}
-	return path, func() { os.RemoveAll(dir) }, nil
+	return path, func() { _ = os.RemoveAll(dir) }, nil
 }
 
 // drive runs the remote agent, feeding Config over stdin and consuming the

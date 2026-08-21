@@ -232,7 +232,7 @@ func (s *Session) ProbeIPs(ctx context.Context, pod string, t *S3Target) []strin
 		return t.IPs
 	}
 	var healthy []string
-	for _, line := range strings.Fields(out) {
+	for line := range strings.FieldsSeq(out) {
 		if net.ParseIP(line) != nil {
 			healthy = append(healthy, line)
 		}

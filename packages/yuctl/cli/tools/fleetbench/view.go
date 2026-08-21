@@ -32,10 +32,10 @@ func (v *view) render(r *fbfleet.StatusReport, sampledAt time.Time, sampleSec in
 	if r.Run != nil {
 		since := time.Since(r.Run.StartedAt).Round(time.Second).String() + " ago"
 		p := r.Run.Params
-		b.WriteString(fmt.Sprintf("%s %s · %s objects · %s/cycle · %s clients/host · %s\n",
+		fmt.Fprintf(&b, "%s %s · %s objects · %s/cycle · %s clients/host · %s\n",
 			ui.OK.Render("● "+r.Run.Label),
 			ui.Muted.Render("started "+since),
-			p["obj_size_mib"]+"MiB", p["cycle_size"], p["clients_per_host"], p["duration"]))
+			p["obj_size_mib"]+"MiB", p["cycle_size"], p["clients_per_host"], p["duration"])
 		b.WriteString(ui.Muted.Render("cap "+p["cap_per_host"]+" per host") + "\n")
 	} else {
 		b.WriteString(ui.Warn.Render("○ no active run recorded") +
@@ -89,10 +89,10 @@ func (v *view) render(r *fbfleet.StatusReport, sampledAt time.Time, sampleSec in
 		wire += used
 		capTotal += capBytes
 	}
-	b.WriteString(fmt.Sprintf("%s %s %s · %s\n",
+	fmt.Fprintf(&b, "%s %s %s · %s\n",
 		ui.Muted.Render(fmt.Sprintf("%-*s", nameW+6, "aggregate")),
 		ui.TX.Render("TX"), ui.PadGbps(txBps),
-		ui.Total.Render(fmt.Sprintf("pool %s / %s", resticbench.FormatBytes(wire), resticbench.FormatBytes(capTotal)))))
+		ui.Total.Render(fmt.Sprintf("pool %s / %s", resticbench.FormatBytes(wire), resticbench.FormatBytes(capTotal))))
 	if len(v.history.Values()) > 1 {
 		b.WriteString(ui.Muted.Render("history   ") + ui.Total.Render(ui.Sparkline(v.history.Values(), 40)) + "\n")
 	}
@@ -112,7 +112,7 @@ func (v *view) render(r *fbfleet.StatusReport, sampledAt time.Time, sampleSec in
 	for _, d := range r.Hosts {
 		if d.Status == nil {
 			if d.Err != "" {
-				b.WriteString(fmt.Sprintf("%-*s %s\n", cnameW, fbfleet.ShortName(d.Name), ui.Bad.Render(d.Err)))
+				fmt.Fprintf(&b, "%-*s %s\n", cnameW, fbfleet.ShortName(d.Name), ui.Bad.Render(d.Err))
 			}
 			continue
 		}
@@ -121,9 +121,9 @@ func (v *view) render(r *fbfleet.StatusReport, sampledAt time.Time, sampleSec in
 			if c.LastError != "" {
 				lastErr = ui.Bad.Render(ui.Truncate(c.LastError, 48))
 			}
-			b.WriteString(fmt.Sprintf("%-*s %-9s %6d %10s %s  %s\n",
+			fmt.Fprintf(&b, "%-*s %-9s %6d %10s %s  %s\n",
 				cnameW, fbfleet.ShortName(c.Name), phaseCell(c.Phase), c.Cycles,
-				resticbench.FormatBytes(c.Uploaded+c.CurrentBytes), ui.ErrCell(c.Errors, 6), lastErr))
+				resticbench.FormatBytes(c.Uploaded+c.CurrentBytes), ui.ErrCell(c.Errors, 6), lastErr)
 		}
 	}
 

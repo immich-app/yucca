@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -140,10 +141,10 @@ func isPrivate(addr netip.Addr) bool {
 func ClientAddr(r *http.Request, header string) netip.Addr {
 	if header != "" {
 		values := r.Header.Values(header)
-		for i := len(values) - 1; i >= 0; i-- {
-			entries := strings.Split(values[i], ",")
-			for j := len(entries) - 1; j >= 0; j-- {
-				if addr, ok := parseAddr(entries[j]); ok {
+		for _, value := range slices.Backward(values) {
+			entries := strings.Split(value, ",")
+			for _, entrie := range slices.Backward(entries) {
+				if addr, ok := parseAddr(entrie); ok {
 					return addr
 				}
 			}

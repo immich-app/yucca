@@ -36,13 +36,13 @@ const (
 
 func integrationConfig() config.Config {
 	return config.Config{
-		Port:             3010,
-		JWTPublicKey:     testPublicKey,
-		S3AccessKeyID:    envOrDefault("S3_ACCESS_KEY_ID", "minio"),
+		Port:              3010,
+		JWTPublicKey:      testPublicKey,
+		S3AccessKeyID:     envOrDefault("S3_ACCESS_KEY_ID", "minio"),
 		S3SecretAccessKey: envOrDefault("S3_SECRET_ACCESS_KEY", "miniominio"),
-		S3Region:         envOrDefault("S3_REGION", "minio"),
-		S3Endpoint:       envOrDefault("S3_ENDPOINT", "http://localhost:9000"),
-		S3ForcePathStyle: true,
+		S3Region:          envOrDefault("S3_REGION", "minio"),
+		S3Endpoint:        envOrDefault("S3_ENDPOINT", "http://localhost:9000"),
+		S3ForcePathStyle:  true,
 	}
 }
 

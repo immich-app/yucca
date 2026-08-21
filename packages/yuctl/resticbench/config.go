@@ -1,5 +1,7 @@
 package resticbench
 
+import "slices"
+
 // Phase names, in execution order within a cell.
 const (
 	PhaseGenerate    = "generate"
@@ -41,10 +43,5 @@ type Config struct {
 }
 
 func (c *Config) HasPhase(name string) bool {
-	for _, p := range c.Phases {
-		if p == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Phases, name)
 }

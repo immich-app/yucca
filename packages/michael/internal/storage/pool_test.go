@@ -85,7 +85,7 @@ func (f *fakeStore) GetObject(_ context.Context, _, _, _ string) (*S3Object, err
 	if f.opFail.Load() {
 		return nil, f.transportErr()
 	}
-	var rc io.ReadCloser = io.NopCloser(strings.NewReader(f.getBody))
+	rc := io.NopCloser(strings.NewReader(f.getBody))
 	if f.getErr != nil {
 		rc = &errReadCloser{data: f.getBody, err: f.getErr}
 	}
@@ -226,13 +226,13 @@ func TestPool_EjectAfterThresholdThenReinstate(t *testing.T) {
 
 	// Two failures: still healthy (no immediate ejection).
 	reg["a"].opFail.Store(true)
-	p.HeadObject(context.Background(), "bucket", "k")
-	p.HeadObject(context.Background(), "bucket", "k")
+	_, _ = p.HeadObject(context.Background(), "bucket", "k")
+	_, _ = p.HeadObject(context.Background(), "bucket", "k")
 	if !b.healthy.Load() {
 		t.Error("ejected before reaching threshold")
 	}
 	// Third consecutive failure: ejected.
-	p.HeadObject(context.Background(), "bucket", "k")
+	_, _ = p.HeadObject(context.Background(), "bucket", "k")
 	if b.healthy.Load() {
 		t.Error("expected ejection after threshold failures")
 	}
@@ -242,7 +242,7 @@ func TestPool_EjectAfterThresholdThenReinstate(t *testing.T) {
 
 	// Active probe reinstates once the backend recovers.
 	reg["a"].opFail.Store(false)
-	p.Reconcile(context.Background())
+	_ = p.Reconcile(context.Background())
 	if !b.healthy.Load() {
 		t.Error("expected reinstatement after healthy probe")
 	}
@@ -324,7 +324,7 @@ func TestPool_ReconcileAddsAndRemoves(t *testing.T) {
 
 	// Remove b, add c.
 	res.set([]string{"a", "c"}, nil)
-	p.Reconcile(context.Background())
+	_ = p.Reconcile(context.Background())
 
 	eps := map[string]bool{}
 	for _, b := range p.snapshot() {
@@ -346,7 +346,7 @@ func TestPool_ReconcileAddsAndRemoves(t *testing.T) {
 func TestPool_ReconcileEjectsViaProbe(t *testing.T) {
 	p, _, reg := newTestPool(t, []string{"a", "b"}, 3)
 	reg["a"].probeFail.Store(true)
-	p.Reconcile(context.Background())
+	_ = p.Reconcile(context.Background())
 
 	if backendByEndpoint(p, "a").healthy.Load() {
 		t.Error("'a' should be ejected after failing probe")
@@ -357,7 +357,7 @@ func TestPool_ReconcileEjectsViaProbe(t *testing.T) {
 
 	// Recovery: probe passes again, backend reinstated.
 	reg["a"].probeFail.Store(false)
-	p.Reconcile(context.Background())
+	_ = p.Reconcile(context.Background())
 	if !backendByEndpoint(p, "a").healthy.Load() {
 		t.Error("'a' should be reinstated after probe recovers")
 	}
@@ -366,7 +366,7 @@ func TestPool_ReconcileEjectsViaProbe(t *testing.T) {
 func TestPool_ReconcileKeepsSetOnResolverError(t *testing.T) {
 	p, res, _ := newTestPool(t, []string{"a", "b"}, 3)
 	res.set(nil, errors.New("dns down"))
-	p.Reconcile(context.Background())
+	_ = p.Reconcile(context.Background())
 	if len(p.snapshot()) != 2 {
 		t.Errorf("resolver error should not drain pool; got %d backends", len(p.snapshot()))
 	}
@@ -375,7 +375,7 @@ func TestPool_ReconcileKeepsSetOnResolverError(t *testing.T) {
 func TestPool_ReconcileKeepsSetOnEmptyResolve(t *testing.T) {
 	p, res, _ := newTestPool(t, []string{"a", "b"}, 3)
 	res.set([]string{}, nil)
-	p.Reconcile(context.Background())
+	_ = p.Reconcile(context.Background())
 	if len(p.snapshot()) != 2 {
 		t.Errorf("empty resolve should not drain pool; got %d backends", len(p.snapshot()))
 	}
@@ -396,7 +396,7 @@ func TestPool_ConcurrentRequestsDuringReconcile(t *testing.T) {
 					return
 				default:
 				}
-				p.HeadObject(context.Background(), "bucket", "k")
+				_, _ = p.HeadObject(context.Background(), "bucket", "k")
 				if obj, err := p.GetObject(context.Background(), "bucket", "k", ""); err == nil {
 					_, _ = io.ReadAll(obj.Body)
 					obj.Body.Close()
@@ -415,7 +415,7 @@ func TestPool_ConcurrentRequestsDuringReconcile(t *testing.T) {
 			default:
 			}
 			res.set(sets[i%len(sets)], nil)
-			p.Reconcile(context.Background())
+			_ = p.Reconcile(context.Background())
 		}
 	})
 
@@ -429,7 +429,7 @@ func TestPool_StatsReflectActivity(t *testing.T) {
 	p, _, _ := newTestPool(t, []string{"a", "b"}, 3)
 	// Drive some successful ops.
 	for range 4 {
-		p.HeadObject(context.Background(), "bucket", "k")
+		_, _ = p.HeadObject(context.Background(), "bucket", "k")
 	}
 	var totalReq int64
 	stats := p.Stats()

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#MISE description="Lint Go packages with golangci-lint"
+set -e
+
+status=0
+for pkg in michael yuctl; do
+  (cd "packages/$pkg" && golangci-lint run ./... "$@") || status=1
+done
+exit $status

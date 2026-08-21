@@ -1,7 +1,8 @@
 [tools]
 node = "25.9.0"
 pnpm = "10.28.1"
-go = "1.26.5"
+go = "1.27.0"
+golangci-lint = "2.13.1"
 restic = "0.19.1"
 
 gh = "2.25.0"
@@ -66,7 +67,7 @@ run = [{ task = "install:frozen" }, { task = "build" }]
 
 [tasks."check"]
 description = "Run checks & unit tests"
-run = [{ tasks = ["lint", "*:check"] }, { task = "format" }, { task = "test" }]
+run = [{ tasks = ["lint", "lint:go", "*:check"] }, { task = "format" }, { task = "test" }]
 
 [tasks.fix]
 description = "Run all possible code fixes"

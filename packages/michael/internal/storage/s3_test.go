@@ -190,10 +190,10 @@ func TestListObjects_EmptyListing(t *testing.T) {
 // which restic retries at the pack level (its own body IS seekable). RED before
 // the s3.go RetryMaxAttempts=1 fix, GREEN after.
 func TestPutObject_NonSeekableBodyOn503_NoRewindRetry(t *testing.T) {
-	var puts int32
+	var puts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut {
-			atomic.AddInt32(&puts, 1)
+			puts.Add(1)
 			_, _ = io.Copy(io.Discard, r.Body) // let the client finish sending
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -215,7 +215,7 @@ func TestPutObject_NonSeekableBodyOn503_NoRewindRetry(t *testing.T) {
 		t.Fatalf("PutObject attempted a rewind-for-retry on a non-seekable body: %v", err)
 	}
 	// And with retries off, the gateway must see exactly one upload attempt.
-	if n := atomic.LoadInt32(&puts); n != 1 {
+	if n := puts.Load(); n != 1 {
 		t.Fatalf("expected exactly 1 upload attempt (no retry on a non-seekable body), got %d", n)
 	}
 }

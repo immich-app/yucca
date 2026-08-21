@@ -258,9 +258,7 @@ func TestClientTrackerEvictionKeepsRequestsAttached(t *testing.T) {
 	var collectors, requests sync.WaitGroup
 
 	// Collect for as long as requests are arriving, so the two actually overlap.
-	collectors.Add(1)
-	go func() {
-		defer collectors.Done()
+	collectors.Go(func() {
 		obs := &recordingObserver{}
 		for {
 			select {
@@ -271,20 +269,18 @@ func TestClientTrackerEvictionKeepsRequestsAttached(t *testing.T) {
 				obs.got = obs.got[:0]
 			}
 		}
-	}()
+	})
 
-	for i := 0; i < 4; i++ {
-		requests.Add(1)
-		go func() {
-			defer requests.Done()
-			for n := 0; n < 20000; n++ {
+	for range 4 {
+		requests.Go(func() {
+			for range 20000 {
 				state := tr.enter(key)
 				if v, ok := tr.states.Load(key); !ok || v.(*clientConcurrency) != state {
 					orphaned.Add(1)
 				}
 				state.exit(time.Now())
 			}
-		}()
+		})
 	}
 
 	requests.Wait()
@@ -331,12 +327,10 @@ func TestClientTrackerConcurrentEnterExit(t *testing.T) {
 	key := clientAttrKey{"u1", "r1", "restic"}
 
 	var wg sync.WaitGroup
-	for i := 0; i < 200; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 200 {
+		wg.Go(func() {
 			tr.enter(key).exit(time.Now())
-		}()
+		})
 	}
 	wg.Wait()
 
