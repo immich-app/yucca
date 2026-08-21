@@ -59,10 +59,12 @@
   };
 
   const onTelemetryConfirmed = () => {
-    if (status.hasBackup) {
+    if (!status.hasOnboardedKey) {
+      stage = "key";
+    } else if (status.hasBackend) {
       onFinish();
     } else {
-      stage = !status.hasOnboardedKey ? "key" : "connect";
+      stage = "connect";
     }
   };
 </script>
