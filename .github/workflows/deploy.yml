@@ -20,11 +20,27 @@ env:
   BUILD_TAG: 0.0.${{ github.run_number }}
 
 jobs:
+  # A migration that sorts before one already executed makes every yucca-api /
+  # yucca-admin-api pod crashloop at boot (Kysely refuses the whole set), and
+  # the stale-branch case escapes PR CI — checks don't re-run when main moves
+  # (incident: #492 merged after #510's re-date). Gate the build on HEAD^ so a
+  # bad merge stops here instead of rolling out.
+  migration-order:
+    name: Migration ordering gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - run: .mise/tasks/yucca-api/check-migration-order HEAD^
+
   # ── Build + push every app image (the ONLY delivery action CI performs) ──
   # Release commits build like any other — they're the stamped tree the release
   # tag points at, and they additionally push v<version> image tags (below).
   build:
     name: Build ${{ matrix.app.name }}
+    needs: migration-order
     runs-on: ubuntu-latest
     permissions:
       contents: read
