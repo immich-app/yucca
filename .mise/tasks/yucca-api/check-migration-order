@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#MISE description="Fail if a new migration sorts before one already present on the base ref"
+set -euo pipefail
+
+base="${1:-origin/main}"
+dir=packages/yucca-api/src/schema/migrations
+
+if ! git rev-parse -q --verify "$base^{commit}" >/dev/null 2>&1; then
+  git fetch -q --depth=1 origin main
+fi
+
+base_files=$(git ls-tree -r --name-only "$base" -- "$dir" | sed 's|.*/||' | sort)
+head_files=$(ls "$dir" | sort)
+
+last_common=$(comm -12 <(echo "$base_files") <(echo "$head_files") | tail -1)
+new_files=$(comm -13 <(echo "$base_files") <(echo "$head_files"))
+if [ -z "$new_files" ] || [ -z "$last_common" ]; then exit 0; fi
+
+bad=$(awk -v m="$last_common" '$0 <= m' <<<"$new_files")
+if [ -n "$bad" ]; then
+  echo "migration(s) sort before $last_common, which $base already has (Kysely will refuse to run):" >&2
+  sed 's/^/  /' <<<"$bad" >&2
+  echo "re-date them after $last_common (see PRs #510, #535)." >&2
+  exit 1
+fi

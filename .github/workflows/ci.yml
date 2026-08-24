@@ -23,6 +23,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # Advisory only — this runs against origin/main at PR time, so a branch
+      # that goes stale after a migration re-date on main slips past it; the
+      # deploy workflow's gate is the authoritative check.
+      - name: Migration ordering vs main
+        run: .mise/tasks/yucca-api/check-migration-order origin/main
+
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
         env:

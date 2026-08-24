@@ -80,7 +80,7 @@ data:
 
   # From header for invite/transactional email (must match a Postmark-verified
   # sender signature).
-  EMAIL_FROM_ADDRESS: "FUTO Backups <noreply@backups.futo.cloud>"
+  EMAIL_FROM_ADDRESS: "FUTO Backups <noreply@futo.cloud>"
 
   # ─── OpenEBS (shared apps/base/openebs, see the father openebs wrapper) ──
   # Mayastor ON: openebs-replicated (repl=2) on the r-mayastor partitions.
