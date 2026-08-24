@@ -7,12 +7,9 @@
   import {
     handleConfirmRecoveryKey,
     handleCurrentRecoveryKey,
-    handleSkipOnboardingExtraConfig,
   } from "$lib/services/onboarding.service";
   import { Modal, ModalBody } from "@immich/ui";
   import { onMount } from "svelte";
-  import CreateFirstBackup from "./stages/SampleCreateFirstBackup.svelte";
-  import CreateFirstSchedule from "./stages/SampleCreateFirstSchedule.svelte";
   import ImportKey from "./stages/OnboardingStageKeyImport.svelte";
   import Telemetry from "./stages/OnboardingStageTelemetry.svelte";
   import StepFinishSetup from "./steps/OnboardingStep1FinishSetup.svelte";
@@ -31,23 +28,12 @@
   let confirming = $state(false);
 
   // svelte-ignore state_referenced_locally
-  let stage:
-    | "intro"
-    | "telemetry"
-    | "key"
-    | "key-import"
-    | "connect"
-    | "backup-create"
-    | "schedule-create" = $state(
+  let stage: "intro" | "telemetry" | "key" | "key-import" | "connect" = $state(
     !status.hasOnboardedKey
       ? "intro"
       : status.hasTelemetry === "none"
         ? "telemetry"
-        : !status.hasBackend
-          ? "connect"
-          : !status.hasBackup
-            ? "backup-create"
-            : "schedule-create",
+        : "connect",
   );
 
   onMount(() => {
@@ -55,11 +41,6 @@
       handleCurrentRecoveryKey().then((dto) => (code = dto.recoveryKey));
     }
   });
-
-  const onSkip = () => {
-    void handleSkipOnboardingExtraConfig();
-    onFinish();
-  };
 
   const onConfirmKey = async () => {
     confirming = true;
@@ -77,7 +58,15 @@
     }
   };
 
-  const onBackendReady = () => (stage = "backup-create");
+  const onTelemetryConfirmed = () => {
+    if (!status.hasOnboardedKey) {
+      stage = "key";
+    } else if (status.hasBackend) {
+      onFinish();
+    } else {
+      stage = "connect";
+    }
+  };
 </script>
 
 {#if stage === "intro"}
@@ -91,21 +80,15 @@
     </ModalBody>
   </Modal>
 {:else if stage === "telemetry"}
-  <Telemetry
-    onContinue={() =>
-      (stage = !status.hasOnboardedKey
-        ? "key"
-        : !status.hasBackend
-          ? "connect"
-          : !status.hasBackup
-            ? "backup-create"
-            : "schedule-create")}
-    {onCancel}
-  />
+  <Telemetry onContinue={onTelemetryConfirmed} {onCancel} />
 {:else if stage === "key"}
   <Modal size="small" title="FUTO Backups" onClose={onCancel}>
     <ModalBody>
-      <StepSaveRecoveryKey {code} onContinue={onConfirmKey} loading={confirming} />
+      <StepSaveRecoveryKey
+        {code}
+        onContinue={onConfirmKey}
+        loading={confirming}
+      />
     </ModalBody>
   </Modal>
 {:else if stage === "key-import"}
@@ -121,13 +104,9 @@
   <Modal size="small" title="FUTO Backups" onClose={onCancel}>
     <ModalBody>
       <StepConnectAccount
-        onConnect={() => handleStartYuccaLogin(onBackendReady)}
-        onLocalStorage={() => handleSetupLocalStorage(onBackendReady)}
+        onConnect={() => handleStartYuccaLogin(onFinish)}
+        onLocalStorage={() => handleSetupLocalStorage(onFinish)}
       />
     </ModalBody>
   </Modal>
-{:else if stage === "backup-create"}
-  <CreateFirstBackup onNext={() => (stage = "schedule-create")} {onSkip} />
-{:else if stage === "schedule-create"}
-  <CreateFirstSchedule {onFinish} {onSkip} />
 {/if}

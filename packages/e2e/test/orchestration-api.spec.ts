@@ -3,7 +3,7 @@ import { createEventSource } from 'eventsource-client';
 import { randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { io, Socket } from 'socket.io-client';
 import { waitForLog } from 'src/victoria-logs';
 
@@ -115,11 +115,11 @@ describe('Filesystem', () => {
     });
   });
 
-  it('defaults to the home directory when no path is provided', async () => {
+  it('defaults to the filesystem root when no path is provided', async () => {
     await expect(sdk.getFileListing()).resolves.toEqual(
       expect.objectContaining({
-        path: homedir(),
-        parent: dirname(homedir()),
+        path: sep,
+        parent: sep,
         items: expect.any(Array),
       }),
     );

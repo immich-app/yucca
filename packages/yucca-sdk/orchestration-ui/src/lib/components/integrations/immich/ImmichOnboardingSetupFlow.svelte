@@ -6,7 +6,7 @@
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
-  import type { OnboardingStatusResponseDto } from "$lib/fetch-client";
+  import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
   import {
     handleSetupLocalStorage,
     handleStartYuccaLogin,
@@ -78,11 +78,11 @@
   const onCancel = () => (stage = "idle");
 
   const afterTelemetry = () =>
-    (stage = status?.hasOnboardedKey && status.hasBackup
-      ? "finished"
-      : "connect");
+    (stage =
+      status?.hasOnboardedKey && status.hasBackup ? "finished" : "connect");
 
-  const onBackendReady = () => (stage = status?.hasOnboardedKey ? "backup" : "key");
+  const onBackendReady = () =>
+    (stage = status?.hasOnboardedKey ? "backup" : "key");
 
   const onConnect = () => {
     storageLocation = "FUTO Backups";
@@ -102,6 +102,16 @@
       stage = "backup";
     } finally {
       confirming = false;
+    }
+  };
+
+  const onImportedKey = async (key: string) => {
+    try {
+      await handleConfirmRecoveryKey();
+      code = key;
+      stage = "connect";
+    } catch {
+      // no-op
     }
   };
 
@@ -142,10 +152,7 @@
 {:else if stage === "key-import"}
   <OnboardingStageKeyImport
     onStart={() => (stage = "intro")}
-    onImported={(key) => {
-      code = key;
-      stage = "connect";
-    }}
+    onImported={onImportedKey}
     {onCancel}
   />
 {:else if stage === "key"}
