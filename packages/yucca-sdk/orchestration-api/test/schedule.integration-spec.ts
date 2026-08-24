@@ -1,9 +1,11 @@
+import { ResticBackupCommandCouldNotReadSourceDataError } from '@futo-org/restic-wrapper';
 import { SchedulerRegistry } from '@nestjs/schedule';
+import { TaskStatus } from 'src/enum';
 import { ModuleConfigRepository } from 'src/repositories/moduleConfig.repository';
 import { RepositoryIntegrationImmichRepository } from 'src/repositories/repositoryIntegrationImmich.repository';
 import { RepositoryService } from 'src/services/repository.service';
 import { ScheduleService } from 'src/services/schedule.service';
-import { createTestingModule, TestContext, waitForEvent } from './testUtils';
+import { createTestingModule, TestContext, waitFor, waitForEvent } from './testUtils';
 
 let ctx: TestContext;
 
@@ -140,6 +142,44 @@ describe('Schedule', () => {
 
     expect(callCount).toBe(2);
     expect(ctx.resticMock.backup).toHaveBeenCalledTimes(2);
+
+    ctx.resticMock.backup.mockReset();
+  });
+
+  it('records warn rather than failed when source data could not be read', async () => {
+    const repositoryService = ctx.module.get(RepositoryService);
+    const scheduleService = ctx.module.get(ScheduleService);
+
+    const { repository: warnRepo } = await repositoryService.createRepository(
+      { name: 'Warn Repo', worm: false, paths: ['/tmp/warn'] },
+      ctx.backendId,
+    );
+
+    ctx.resticMock.backup.mockReset();
+    ctx.resticMock.backup.mockRejectedValue(new ResticBackupCommandCouldNotReadSourceDataError('unreadable'));
+
+    const statuses: TaskStatus[] = [];
+    ctx.events.on((event) => {
+      if (event.type === 'TaskUpdate') {
+        for (const item of event.task.scheduleStatus ?? []) {
+          if (item.repositoryId === warnRepo.id) {
+            statuses.push(item.status);
+          }
+        }
+      }
+    });
+
+    const { schedule } = await scheduleService.createSchedule({
+      name: 'Warn Schedule',
+      cron: '0 0 1 1 *',
+      repositories: [warnRepo.id],
+    });
+
+    void ctx.module.get(SchedulerRegistry).getCronJob(schedule.id).fireOnTick();
+
+    await waitFor(() => statuses.includes(TaskStatus.Warn));
+
+    expect(statuses).not.toContain(TaskStatus.Failed);
 
     ctx.resticMock.backup.mockReset();
   });

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { getRepositoryActions } from "$lib/services/repository.service";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import { Badge, FormatBytes, Icon } from "@immich/ui";
   import { mdiArchiveOutline } from "@mdi/js";
   import StackListItem from "../ui/StackListItem.svelte";
@@ -18,12 +19,7 @@
     s3: "S3 Server",
   };
 
-  const failed = $derived(
-    repository.metrics.lastBackup &&
-      (!repository.metrics.lastSuccessfulBackup ||
-        +new Date(repository.metrics.lastBackup) >
-          +new Date(repository.metrics.lastSuccessfulBackup)),
-  );
+  const outcome = $derived(getBackupOutcome(repository.metrics));
 
   const { BackupNow, Snapshots, History, Configure, Import, MetricsHistory } =
     $derived(getRepositoryActions(repository));
@@ -31,7 +27,7 @@
 
 <StackListItem
   title={repository.name}
-  color={failed ? "danger" : "primary"}
+  color={outcome === "failed" ? "danger" : "primary"}
   actions={[BackupNow, Snapshots, History, Configure, Import, MetricsHistory]}
 >
   {#snippet icon()}
@@ -57,15 +53,17 @@
       <Badge size="tiny" color="danger">Offline</Badge>
     {/if}
 
-    {#if failed}
+    {#if outcome === "failed"}
       <Badge size="tiny" color="danger">
         Failed <RelativeTime time={repository.metrics.lastBackup!} />
       </Badge>
-    {:else if repository.metrics.lastSuccessfulBackup}
+    {:else if outcome === "warn"}
+      <Badge size="tiny" color="warning">
+        Warnings <RelativeTime time={repository.metrics.lastBackup!} />
+      </Badge>
+    {:else if outcome === "complete"}
       <Badge size="tiny" color="success">
-        Successful <RelativeTime
-          time={repository.metrics.lastSuccessfulBackup}
-        />
+        Successful <RelativeTime time={repository.metrics.lastBackup!} />
       </Badge>
     {:else}
       <Badge size="tiny" color="warning">Never backed up</Badge>

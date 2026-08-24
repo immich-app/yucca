@@ -24,9 +24,9 @@ export abstract class Backend {
 
   abstract getResticEndpoint(id: string): Promise<string>;
 
-  abstract submitMetricBackupStart(id: string): Promise<void>;
-  abstract submitMetricBackupEnd(id: string, success: boolean, duration: number): Promise<void>;
-  abstract submitMetricRepositorySize(id: string, size: number): Promise<void>;
+  abstract submitMetricBackupStart(id: string): void;
+  abstract submitMetricBackupEnd(id: string, success: boolean, duration: number): void;
+  abstract submitMetricRepositorySize(id: string, size: number): void;
   abstract submitStructuredLog(summary: string, data: object): void;
 
   static from(configuration: BackendConfiguration) {

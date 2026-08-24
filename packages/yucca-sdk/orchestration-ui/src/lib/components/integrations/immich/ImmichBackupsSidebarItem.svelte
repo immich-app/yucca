@@ -17,6 +17,7 @@
     useScheduleEventHandler,
     useSchedules,
   } from "$lib/services/schedule.service";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import { HStack, Icon, Text } from "@immich/ui";
   import {
     mdiChevronRight,
@@ -73,11 +74,7 @@
 
   const lastBackup = $derived(repository?.metrics.lastBackup ?? undefined);
 
-  const failed = $derived(
-    Boolean(
-      lastBackup && lastBackup !== repository?.metrics.lastSuccessfulBackup,
-    ),
-  );
+  const outcome = $derived(getBackupOutcome(repository?.metrics));
 
   const loading = $derived(
     integrations.isLoading || repositories.isLoading || schedules.isLoading,
@@ -91,8 +88,12 @@
       return { color: "primary", icon: mdiCloudUploadOutline } as const;
     }
 
-    if (failed) {
+    if (outcome === "failed") {
       return { color: "danger", icon: mdiCloudOffOutline } as const;
+    }
+
+    if (outcome === "warn") {
+      return { color: "warning", icon: mdiCloudCheckVariantOutline } as const;
     }
 
     if (paused) {
@@ -138,8 +139,10 @@
     <Text size="tiny" color={status.color} class="flex-1 truncate">
       {#if running}
         Backing up now
-      {:else if failed}
+      {:else if outcome === "failed"}
         Backup failed
+      {:else if outcome === "warn" && lastBackup}
+        Backed up with warnings <RelativeTime time={lastBackup} />
       {:else if paused}
         Backups paused
       {:else if !configured}

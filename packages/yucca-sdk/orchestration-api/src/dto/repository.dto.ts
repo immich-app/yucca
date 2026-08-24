@@ -47,8 +47,8 @@ export class RepositoryMetricsDto {
   @ApiProperty({ type: String, required: false })
   lastBackup?: string;
 
-  @ApiProperty({ type: String, required: false })
-  lastSuccessfulBackup?: string;
+  @ApiProperty({ enumName: 'TaskStatus', enum: TaskStatus, required: false })
+  lastBackupStatus?: TaskStatus;
 
   @ApiProperty({ type: Number, required: false })
   lastBackupDuration?: number;

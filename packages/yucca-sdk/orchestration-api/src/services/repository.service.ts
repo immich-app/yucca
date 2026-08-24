@@ -1,3 +1,4 @@
+import { ResticBackupCommandCouldNotReadSourceDataError } from '@futo-org/restic-wrapper';
 import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Updateable } from 'kysely';
 import { randomUUID } from 'node:crypto';
@@ -24,7 +25,7 @@ import {
   RepositoryWithMetricsDto,
   RunHistoryResponseDto,
 } from '../dto/repository.dto';
-import { BackendType, ResticTagPrefix, TaskType } from '../enum';
+import { BackendType, ResticTagPrefix, TaskStatus, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository, ResticPlacement } from '../repositories/config.repository';
@@ -474,7 +475,7 @@ export class RepositoryService {
         const { backend } = await this.getBackendOrThrow(backendId);
 
         if (backend.isMetricsCapable()) {
-          await backend.submitMetricRepositorySize(remoteId, metrics.sizeBytes);
+          backend.submitMetricRepositorySize(remoteId, metrics.sizeBytes);
         }
 
         // ... in the future, this should push to all mirrors too
@@ -520,105 +521,112 @@ export class RepositoryService {
       throw new BadRequestException('Missing configuration paths');
     }
 
-    return new Promise((resolve) => {
-      const startTime = Date.now();
+    const { logWriter, logId, startTime, closeLog } = await this.runHistory.createLogHelper({
+      repositoryId: id,
+      type: TaskType.Backup,
+    });
 
-      const task = new Promise<void>(
-        (complete, fail) =>
-          void this.runHistory.createLog(
-            id,
-            TaskType.Backup,
-            async (log, logId) => {
-              resolve({
-                task,
-                logId,
+    const finish = async (error?: any) => {
+      try {
+        const lastBackupStatus = error
+          ? error instanceof ResticBackupCommandCouldNotReadSourceDataError
+            ? TaskStatus.Warn
+            : TaskStatus.Failed
+          : TaskStatus.Complete;
+
+        const lastBackup = new Date().toISOString();
+        const lastBackupDuration = Date.now() - +startTime;
+
+        void this.updateLocalMetrics(id, {
+          resticParameters: { endpoint, key, placement },
+          additionalMetrics: {
+            lastBackup,
+            lastBackupStatus,
+            lastBackupDuration,
+          },
+        });
+
+        this.telemetry.submitStructuredLog('Backup finished', {
+          repositoryId: id,
+          lastBackupStatus,
+          error,
+        });
+
+        await closeLog(lastBackupStatus, error);
+
+        if (backend.isMetricsCapable()) {
+          backend.submitMetricBackupEnd(remoteId, lastBackupStatus !== TaskStatus.Failed, lastBackupDuration);
+        }
+      } catch (error) {
+        this.telemetry.submitStructuredLog('Failed to finalise backup', {
+          repositoryId: id,
+          error,
+        });
+      }
+    };
+
+    const task = async () => {
+      if (backend.isMetricsCapable()) {
+        backend.submitMetricBackupStart(remoteId);
+      }
+
+      try {
+        const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
+        const tags = [];
+
+        const config = this.moduleConfig.get();
+        if (config.immichIntegration) {
+          const immichIntegration = await this.repositoryIntegrationImmich.get();
+          if (id === immichIntegration?.id) {
+            this.telemetry.submitStructuredLog('Creating Immich database backup', {
+              repositoryId: id,
+            });
+
+            try {
+              const backupFileName = await config.immichIntegration.hooks.createDatabaseBackup();
+              tags.push(`${ResticTagPrefix.ImmichBackupFileName}=${backupFileName}`);
+
+              this.telemetry.submitStructuredLog('Created Immich database backup', {
+                repositoryId: id,
               });
-
-              if (backend.isMetricsCapable()) {
-                await backend.submitMetricBackupStart(remoteId);
-              }
-
-              try {
-                const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
-                const tags = [];
-
-                const config = this.moduleConfig.get();
-                if (config.immichIntegration) {
-                  const immichIntegration = await this.repositoryIntegrationImmich.get();
-                  if (id === immichIntegration?.id) {
-                    this.telemetry.submitStructuredLog('Creating Immich database backup', {
-                      repositoryId: id,
-                    });
-
-                    try {
-                      const backupFileName = await config.immichIntegration.hooks.createDatabaseBackup();
-                      tags.push(`${ResticTagPrefix.ImmichBackupFileName}=${backupFileName}`);
-
-                      this.telemetry.submitStructuredLog('Created Immich database backup', {
-                        repositoryId: id,
-                      });
-                    } catch (error) {
-                      this.telemetry.submitStructuredLog('Failed to create Immich database backup', {
-                        repositoryId: id,
-                        error,
-                      });
-                    }
-                  }
-                }
-
-                await this.restic.unlockAll(endpoint, key, placement);
-                const summary = await this.restic.backup(endpoint, key, placement, paths, log, taskSignal, tags);
-
-                this.telemetry.submitStructuredLog('Finished backup to primary backend', {
-                  repositoryId: id,
-                  summary,
-                });
-
-                if (retentionPolicy) {
-                  await this.runForgetAndPrune(endpoint, key, placement, retentionPolicy, log, taskSignal);
-
-                  this.telemetry.submitStructuredLog('Finished prune on primary backend', {
-                    repositoryId: id,
-                  });
-                }
-              } finally {
-                this.tasks.endTask(id);
-              }
-            },
-            async (error) => {
-              const lastBackup = new Date().toISOString();
-              const lastSuccessfulBackup = error ? undefined : lastBackup;
-              const lastBackupDuration = Date.now() - startTime;
-
-              void this.updateLocalMetrics(id, {
-                resticParameters: { endpoint, key, placement },
-                additionalMetrics: {
-                  lastBackup,
-                  lastSuccessfulBackup,
-                  lastBackupDuration,
-                },
-              });
-
-              this.telemetry.submitStructuredLog('Backup finished', {
+            } catch (error) {
+              this.telemetry.submitStructuredLog('Failed to create Immich database backup', {
                 repositoryId: id,
                 error,
               });
+            }
+          }
+        }
 
-              if (error) {
-                fail(error);
-              } else {
-                complete();
-              }
+        await this.restic.unlockAll(endpoint, key, placement);
+        const summary = await this.restic.backup(endpoint, key, placement, paths, logWriter, taskSignal, tags);
 
-              if (backend.isMetricsCapable()) {
-                await backend.submitMetricBackupEnd(remoteId, !error, lastBackupDuration);
-              }
-            },
-          ),
-      );
+        this.telemetry.submitStructuredLog('Finished backup to primary backend', {
+          repositoryId: id,
+          summary,
+        });
 
-      task.catch(() => {});
-    });
+        if (retentionPolicy) {
+          await this.runForgetAndPrune(endpoint, key, placement, retentionPolicy, logWriter, taskSignal);
+
+          this.telemetry.submitStructuredLog('Finished prune on primary backend', {
+            repositoryId: id,
+          });
+        }
+
+        void finish();
+      } catch (error) {
+        void finish(error);
+        throw error;
+      } finally {
+        this.tasks.endTask(id);
+      }
+    };
+
+    const pending = task();
+    pending.catch(() => void 0);
+
+    return { task: pending, logId };
   }
 
   private async runForgetAndPrune(

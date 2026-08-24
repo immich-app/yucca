@@ -6,6 +6,7 @@
     mdiCloudOffOutline,
     mdiHistory,
   } from "@mdi/js";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import MetricsHistoryModal from "../backups/metrics-history/MetricsHistoryModal.svelte";
   import StackList from "../ui/StackList.svelte";
   import StackListPlaceholder from "../ui/StackListPlaceholder.svelte";
@@ -54,19 +55,19 @@
   {/if}
 
   {#each recentAttempts as repository (repository.id)}
-    {@const successful =
-      repository.metrics.lastBackup === repository.metrics.lastSuccessfulBackup}
+    {@const outcome = getBackupOutcome(repository.metrics)}
+    {@const failed = outcome === "failed"}
 
     <StackListItem
       title={repository.name}
-      color={successful ? "success" : "danger"}
+      color={failed ? "danger" : outcome === "warn" ? "warning" : "success"}
       actions={getActions(repository)}
     >
       {#snippet icon()}
-        <Icon icon={successful ? mdiCloudCheckOutline : mdiCloudOffOutline} />
+        <Icon icon={failed ? mdiCloudOffOutline : mdiCloudCheckOutline} />
       {/snippet}
 
-      {successful ? "Backed up" : "Attempted"}
+      {failed ? "Attempted" : outcome === "warn" ? "Backed up with warnings" : "Backed up"}
       <RelativeTime time={repository.metrics.lastBackup!} />
     </StackListItem>
   {/each}

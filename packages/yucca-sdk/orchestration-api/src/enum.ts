@@ -28,6 +28,7 @@ export enum BackendType {
 export enum TaskStatus {
   Incomplete = 'incomplete',
   Complete = 'complete',
+  Warn = 'warn',
   Failed = 'failed',
 }
 

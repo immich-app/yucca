@@ -1559,14 +1559,27 @@
           "worm"
         ]
       },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "incomplete",
+          "complete",
+          "warn",
+          "failed"
+        ]
+      },
       "RepositoryMetricsDto": {
         "type": "object",
         "properties": {
           "lastBackup": {
             "type": "string"
           },
-          "lastSuccessfulBackup": {
-            "type": "string"
+          "lastBackupStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              }
+            ]
           },
           "lastBackupDuration": {
             "type": "number"
@@ -1926,6 +1939,7 @@
         "enum": [
           "incomplete",
           "complete",
+          "warn",
           "failed"
         ]
       },
@@ -2055,14 +2069,6 @@
           "restore",
           "backup",
           "forget"
-        ]
-      },
-      "TaskStatus": {
-        "type": "string",
-        "enum": [
-          "incomplete",
-          "complete",
-          "failed"
         ]
       },
       "ActiveScheduleItemDto": {

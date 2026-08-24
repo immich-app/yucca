@@ -1,6 +1,7 @@
 <script lang="ts">
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import type { LocalRepositoryDto } from "$lib/fetch-client";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import { formatDuration } from "$lib/utils/format";
   import {
     Button,
@@ -62,7 +63,7 @@
             {/if}
             <HStack class="items-center justify-between py-2">
               <HStack class="items-center gap-2">
-                {#if repo.metrics.lastBackup === repo.metrics.lastSuccessfulBackup}
+                {#if getBackupOutcome(repo.metrics) !== "failed"}
                   <Icon
                     icon={mdiCheckCircleOutline}
                     size="16"

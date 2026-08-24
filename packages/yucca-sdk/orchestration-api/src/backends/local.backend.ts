@@ -114,15 +114,15 @@ export class LocalBackend extends Backend {
     return resolve(this.configuration.path, id);
   }
 
-  submitMetricBackupStart(): Promise<void> {
+  submitMetricBackupStart(): void {
     throw new Error('not capable');
   }
 
-  submitMetricBackupEnd(): Promise<void> {
+  submitMetricBackupEnd(): void {
     throw new Error('not capable');
   }
 
-  submitMetricRepositorySize(): Promise<void> {
+  submitMetricRepositorySize(): void {
     throw new Error('not capable');
   }
 

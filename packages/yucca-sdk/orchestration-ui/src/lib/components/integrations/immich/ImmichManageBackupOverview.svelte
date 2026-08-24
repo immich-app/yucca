@@ -4,6 +4,7 @@
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import type { LocalRepositoryDto, ScheduleDto } from "$lib/fetch-client";
   import { handleCreateBackup } from "$lib/services/repository.service";
+  import { getBackupOutcome } from "$lib/utils/backup-status";
   import { Button, FormatBytes, Icon } from "@immich/ui";
   import {
     mdiAlert,
@@ -21,15 +22,23 @@
 
   const { repository, schedule }: Props = $props();
 
-  const status = $derived.by(() => {
-    if (!repository.metrics.lastBackup) {
-      return { color: "warning", icon: mdiInformation } as const;
-    }
+  const outcome = $derived(getBackupOutcome(repository.metrics));
 
-    return repository.metrics.lastBackup !==
-      repository.metrics.lastSuccessfulBackup
-      ? ({ color: "danger", icon: mdiAlert } as const)
-      : ({ color: "success", icon: mdiCheck } as const);
+  const status = $derived.by(() => {
+    switch (outcome) {
+      case "never": {
+        return { color: "warning", icon: mdiInformation } as const;
+      }
+      case "failed": {
+        return { color: "danger", icon: mdiAlert } as const;
+      }
+      case "warn": {
+        return { color: "warning", icon: mdiAlert } as const;
+      }
+      default: {
+        return { color: "success", icon: mdiCheck } as const;
+      }
+    }
   });
 
 </script>
@@ -64,13 +73,17 @@
     {#snippet footer()}
       <Icon icon={status.icon} />
 
-      {#if !repository.metrics.lastBackup}
+      {#if outcome === "never"}
         Backup is yet to run.
-      {:else if status.color === "danger"}
-        Last backup failed <RelativeTime time={repository.metrics.lastBackup} />
+      {:else if outcome === "failed"}
+        Last backup failed <RelativeTime time={repository.metrics.lastBackup!} />
+      {:else if outcome === "warn"}
+        Last backup finished with warnings <RelativeTime
+          time={repository.metrics.lastBackup!}
+        />
       {:else}
         Last backup successful <RelativeTime
-          time={repository.metrics.lastBackup}
+          time={repository.metrics.lastBackup!}
         />
       {/if}
     {/snippet}
