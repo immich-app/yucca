@@ -475,7 +475,7 @@ export class RepositoryService {
         const { backend } = await this.getBackendOrThrow(backendId);
 
         if (backend.isMetricsCapable()) {
-          await backend.submitMetricRepositorySize(remoteId, metrics.sizeBytes);
+          backend.submitMetricRepositorySize(remoteId, metrics.sizeBytes);
         }
 
         // ... in the future, this should push to all mirrors too
@@ -555,7 +555,7 @@ export class RepositoryService {
         await closeLog(lastBackupStatus, error);
 
         if (backend.isMetricsCapable()) {
-          await backend.submitMetricBackupEnd(remoteId, lastBackupStatus !== TaskStatus.Failed, lastBackupDuration);
+          backend.submitMetricBackupEnd(remoteId, lastBackupStatus !== TaskStatus.Failed, lastBackupDuration);
         }
       } catch (error) {
         this.telemetry.submitStructuredLog('Failed to finalise backup', {
@@ -567,7 +567,7 @@ export class RepositoryService {
 
     const task = async () => {
       if (backend.isMetricsCapable()) {
-        await backend.submitMetricBackupStart(remoteId);
+        backend.submitMetricBackupStart(remoteId);
       }
 
       try {

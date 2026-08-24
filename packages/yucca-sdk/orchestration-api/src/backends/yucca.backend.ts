@@ -72,23 +72,22 @@ export class YuccaBackend extends Backend {
     return url;
   }
 
-  async submitMetricBackupStart(id: string): Promise<void> {
-    return await submitMetricBackupStart(id, await this.getRequestOptions());
+  submitMetricBackupStart(id: string): void {
+    void this.getRequestOptions()
+      .then((requestOptions) => submitMetricBackupStart(id, requestOptions))
+      .catch((error) => this.logger.error('Failed to submit backup start metric', error));
   }
 
-  async submitMetricBackupEnd(id: string, success: boolean, durationMs: number): Promise<void> {
-    return await submitMetricBackupEnd(
-      id,
-      {
-        durationMs,
-        success,
-      },
-      await this.getRequestOptions(),
-    );
+  submitMetricBackupEnd(id: string, success: boolean, durationMs: number): void {
+    void this.getRequestOptions()
+      .then((requestOptions) => submitMetricBackupEnd(id, { durationMs, success }, requestOptions))
+      .catch((error) => this.logger.error('Failed to submit backup end metric', error));
   }
 
-  async submitMetricRepositorySize(id: string, sizeBytes: number): Promise<void> {
-    return await submitMetricRepositorySize(id, { sizeBytes }, await this.getRequestOptions());
+  submitMetricRepositorySize(id: string, sizeBytes: number): void {
+    void this.getRequestOptions()
+      .then((requestOptions) => submitMetricRepositorySize(id, { sizeBytes }, requestOptions))
+      .catch((error) => this.logger.error('Failed to submit repository size metric', error));
   }
 
   submitStructuredLog(summary: string, data: object) {
