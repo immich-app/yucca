@@ -106,9 +106,13 @@
   };
 
   const onImportedKey = async (key: string) => {
-    await handleConfirmRecoveryKey();
-    code = key;
-    stage = "connect";
+    try {
+      await handleConfirmRecoveryKey();
+      code = key;
+      stage = "connect";
+    } catch {
+      // no-op
+    }
   };
 
   const onStartBackup = () =>
