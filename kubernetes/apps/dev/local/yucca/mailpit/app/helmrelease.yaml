@@ -1,0 +1,25 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: yucca-mailpit
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/dev/mailpit
+      sourceRef:
+        kind: GitRepository
+        name: yucca
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # DEV ONLY. Prod sends through the real Postmark — there is nothing to
+    # deploy there; this inbox exists so dev/e2e can read what was sent.
+    fullnameOverride: yucca-mailpit

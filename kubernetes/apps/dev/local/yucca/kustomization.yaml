@@ -7,6 +7,8 @@ resources:
   - ./object-user/ks.yaml
   - ./metrics-object-user/ks.yaml
   - ./mock-oidc/ks.yaml
+  - ./mailpit/ks.yaml
+  - ./mock-postmark/ks.yaml
   - ./victoria-metrics/ks.yaml
   - ./victoria-logs/ks.yaml
   - ./michael/ks.yaml
