@@ -15,8 +15,7 @@ export const CONNECTION_TYPES: ConnectionTypeMeta[] = [
     label: 'Immich',
     icon: mdiImageMultiple,
     description: 'Back up an Immich instance: photos, videos and the database.',
-    limitation:
-      'Added automatically when you connect FUTO Backups from the Immich app; not created here.',
+    limitation: 'Added automatically when you connect FUTO Backups from the Immich app; not created here.',
     addable: false,
   },
   {
@@ -24,8 +23,7 @@ export const CONNECTION_TYPES: ConnectionTypeMeta[] = [
     label: 'Standalone',
     icon: mdiServer,
     description: 'Back up files from a machine running the standalone FUTO Backups app.',
-    limitation:
-      'Added automatically when you connect FUTO Backups from the standalone app; not created here.',
+    limitation: 'Added automatically when you connect FUTO Backups from the standalone app; not created here.',
     addable: false,
   },
 ];
