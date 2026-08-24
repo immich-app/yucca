@@ -60,3 +60,9 @@ spec:
         value: ${LEGACY_STORAGE_CLUSTER_CODE}
       - name: OTEL_METRICS
         value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics
+      # Invite emails: real Postmark (the API URL default), token from the
+      # TF-provisioned Secret above; links point at the public web app.
+      - name: WEB_BASE_URL
+        value: https://${APP_DOMAIN}
+      - name: EMAIL_FROM_ADDRESS
+        value: ${EMAIL_FROM_ADDRESS}

@@ -62,6 +62,10 @@ data:
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
 
+  # From header for invite/transactional email (must match a Postmark-verified
+  # sender signature).
+  EMAIL_FROM_ADDRESS: "FUTO Backups Staging <noreply@staging.backups.futo.cloud>"
+
   # ─── Storage ─────────────────────────────────────────────────────────
   # CNPG database PVs: node-local NVMe via the overlay's spare-disk SC.
   DB_STORAGE_CLASS: openebs-spare-disk

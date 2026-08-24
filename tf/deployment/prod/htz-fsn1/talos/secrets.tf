@@ -165,6 +165,9 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     # bench): deliberately the yucca_jwt SIGNING key — michael only accepts
     # tokens from that keypair. Admin session JWTs stay on yucca_admin_jwt.
     RESTIC_JWT_PRIVATE_KEY = tls_private_key.yucca_jwt.private_key_pem_pkcs8
+    # Empty until the 1P ref is minted — admin-api then logs and skips sends
+    # instead of crashing (see docs/email.md).
+    POSTMARK_SERVER_TOKEN = var.yucca_postmark_server_token
   }
 
   lifecycle {
