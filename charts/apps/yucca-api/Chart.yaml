@@ -3,7 +3,7 @@ name: yucca-api
 description: Yucca REST API (NestJS)
 type: application
 version: 0.1.0
-appVersion: "0.36.0" # x-release-please-version
+appVersion: "0.37.0" # x-release-please-version
 dependencies:
   - name: yucca-common
     version: 0.2.0
