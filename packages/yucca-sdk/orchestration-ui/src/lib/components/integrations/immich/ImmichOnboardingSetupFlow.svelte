@@ -6,10 +6,7 @@
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
-  import {
-    confirmRecoveryKey,
-    type OnboardingStatusResponseDto,
-  } from "$lib/fetch-client";
+  import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
   import {
     handleSetupLocalStorage,
     handleStartYuccaLogin,
@@ -109,7 +106,7 @@
   };
 
   const onImportedKey = async (key: string) => {
-    await confirmRecoveryKey();
+    await handleConfirmRecoveryKey();
     code = key;
     stage = "connect";
   };
