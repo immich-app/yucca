@@ -90,7 +90,7 @@ export class AuthController {
   }
 
   @Sse('/oidc/device')
-  @ApiQuery({ name: 'connection_type', type: String, required: false, description: 'immich | restic' })
+  @ApiQuery({ name: 'connection_type', type: String, required: false, description: 'immich | standalone | restic' })
   @ApiQuery({ name: 'connection_name', type: String, required: false, description: 'Instance name, e.g. a hostname' })
   oidcDeviceFlow(
     @Query('connection_type') connectionType?: string,

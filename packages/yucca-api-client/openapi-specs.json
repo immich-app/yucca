@@ -97,7 +97,7 @@
             "name": "connection_type",
             "required": false,
             "in": "query",
-            "description": "immich | restic",
+            "description": "immich | standalone | restic",
             "schema": {
               "type": "string"
             }
@@ -789,6 +789,7 @@
             "type": "string",
             "enum": [
               "immich",
+              "standalone",
               "restic"
             ]
           },
@@ -850,6 +851,7 @@
             "type": "string",
             "enum": [
               "immich",
+              "standalone",
               "restic"
             ]
           },

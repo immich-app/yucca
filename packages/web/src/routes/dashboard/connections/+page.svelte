@@ -27,8 +27,12 @@
     return map;
   });
 
-  const typeColor = (type: string) =>
-    type === "immich" ? "primary" : "success";
+  const TYPE_COLORS: Record<string, "primary" | "secondary" | "success"> = {
+    immich: "primary",
+    standalone: "secondary",
+  };
+
+  const typeColor = (type: string) => TYPE_COLORS[type] ?? "success";
 </script>
 
 <svelte:head><title>{$t`Connections`} &middot; FUTO Backups</title></svelte:head

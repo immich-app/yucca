@@ -8,6 +8,11 @@ describe('billableBytes (storage-tier billing floor)', () => {
     expect(billableBytes('immich', 1024, 500)).toBe(1024);
   });
 
+  it('floors standalone like restic', () => {
+    expect(billableBytes('standalone', 1024, 500)).toBe(500 * MIB);
+    expect(billableBytes('standalone', 800 * MIB, 500)).toBe(800 * MIB);
+  });
+
   it('floors small restic objects at 1 MiB each', () => {
     expect(billableBytes('restic', 1024, 100)).toBe(100 * MIB);
   });

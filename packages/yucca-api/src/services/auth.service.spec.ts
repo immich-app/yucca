@@ -329,6 +329,22 @@ describe(AuthService.name, () => {
       );
     });
 
+    it('binds a standalone instance for everyone (no flag needed)', async () => {
+      mocks.connection.getByUserTypeName.mockResolvedValue(void 0);
+      mocks.connection.create.mockResolvedValue({ id: 'standalone-nas' } as never);
+
+      await expect(sut.oidcDeviceFlow(jest.fn(), 'standalone', 'nas')).resolves.toEqual({ accessToken });
+
+      expect(mocks.connection.create).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        type: 'standalone',
+        name: 'nas',
+      });
+      expect(mocks.session.create).toHaveBeenCalledWith(
+        expect.objectContaining({ connectionId: 'standalone-nas', kind: 'device' }),
+      );
+    });
+
     it('creates a restic connection instance when connection-restic is on', async () => {
       mocks.user.getFeatureOverrides.mockResolvedValue([{ flag: 'connection-restic', value: true }]);
       mocks.connection.getByUserTypeName.mockResolvedValue(void 0);

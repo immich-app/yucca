@@ -68,6 +68,16 @@ describe('ConnectionController (e2e)', () => {
       expect(body.connection).toMatchObject({ type: 'immich', name: 'second-server', repositoryCount: 0 });
     });
 
+    it('lets anyone create a standalone connection (no flag)', async () => {
+      const { body } = await request(app.getHttpServer())
+        .post('/api/connections')
+        .set('Cookie', cookie())
+        .send({ type: 'standalone', name: 'nas' })
+        .expect(201);
+
+      expect(body.connection).toMatchObject({ type: 'standalone', name: 'nas', repositoryCount: 0 });
+    });
+
     it('403s creating a restic connection without connection-restic', async () => {
       await request(app.getHttpServer())
         .post('/api/connections')
