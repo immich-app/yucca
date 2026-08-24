@@ -23,16 +23,22 @@ export class AuthService {
     readonly repository: RepositoryRepository,
   ) {}
 
+  private connectionType(): string {
+    return this.moduleConfig.get().immichIntegration ? 'immich' : 'standalone';
+  }
+
   private connectionName(): string {
+    const fallback = hostname() || this.connectionType();
     const external = this.moduleConfig.get().externalBaseUrl;
     if (external) {
       try {
         return new URL(external).host;
       } catch {
-        return hostname() || 'immich';
+        return fallback;
       }
     }
-    return hostname() || 'immich';
+
+    return fallback;
   }
 
   private async adoptOwnRepositories(endpoint: string | undefined, accessToken: string): Promise<void> {
@@ -114,7 +120,7 @@ export class AuthService {
     const endpoint = await yuccaWellKnown.getBaseUrl();
 
     const url = new URL('/api/auth/oidc/device', endpoint);
-    url.searchParams.set('connection_type', 'immich');
+    url.searchParams.set('connection_type', this.connectionType());
     url.searchParams.set('connection_name', this.connectionName());
 
     const events: EventSourceClient = createEventSource({

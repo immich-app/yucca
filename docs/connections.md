@@ -28,6 +28,7 @@ per-user/instance state is data. The descriptor lives in
 | Type | Metering tiers | Reports activity | Min object size | Revocable | Self-serve flag |
 |---|---|---|---|---|---|
 | `immich` | storage, transfer, activity | yes | 0 | no | none (always on) |
+| `standalone` | storage, transfer, activity | yes | 1 MiB | no | none (always on) |
 | `restic` | storage, transfer | no | 1 MiB | yes | `connection-restic` |
 | `s3` *(future)* | storage | no | 1 MiB | yes |, |
 
@@ -35,11 +36,11 @@ per-user/instance state is data. The descriptor lives in
 
 Billing keys off **storage**, the only universal tier.
 
-| Tier | Source | immich | restic | s3 |
-|---|---|---|---|---|
-| **Storage** (bytes, objects) → **billed** | RadosGW | ✅ | ✅ | ✅ |
-| Transfer | michael | ✅ | ✅ | ❌ |
-| Activity (backup start/end) | client | ✅ | ❌ | ❌ |
+| Tier | Source | immich | standalone | restic | s3 |
+|---|---|---|---|---|---|
+| **Storage** (bytes, objects) → **billed** | RadosGW | ✅ | ✅ | ✅ | ✅ |
+| Transfer | michael | ✅ | ✅ | ✅ | ❌ |
+| Activity (backup start/end) | client | ✅ | ✅ | ❌ | ❌ |
 
 ## Billing rollup
 
@@ -55,9 +56,10 @@ returns the rollup per connection.
 billableBytes = max(sizeBytes, objectCount * minObjectSizeBytes)
 ```
 
-immich is exempt (floor 0 → billed at raw size). Non-immich types bill each
-object at a minimum of 1 MiB. RadosGW exposes only total size + object count (no
-per-object histogram), so this is an **aggregate approximation** of
+immich is exempt (floor 0 → billed at raw size). Every other type, standalone
+included, bills each object at a minimum of 1 MiB. RadosGW exposes only total
+size + object count (no per-object histogram), so this is an **aggregate
+approximation** of
 `Σ max(objectSize_i, 1 MiB)`, it under-counts a repo that mixes large and small
 objects, but restic writes large pack files so `sizeBytes` dominates and the
 floor only bites for tiny/new repos or many-small-object raw-S3, the intended

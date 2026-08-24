@@ -58,7 +58,7 @@ export type MetaResponseDto = {
 };
 export type ConnectionDto = {
     id: string;
-    "type": "immich" | "restic";
+    "type": "immich" | "standalone" | "restic";
     name: string;
     createdAt: string;
     lastSeenAt?: string | null;
@@ -74,7 +74,7 @@ export type ConnectionListResponseDto = {
     connections: ConnectionDto[];
 };
 export type ConnectionCreateRequestDto = {
-    "type": "immich" | "restic";
+    "type": "immich" | "standalone" | "restic";
     name: string;
 };
 export type ConnectionResponseDto = {
