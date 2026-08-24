@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.1](https://github.com/immich-app/yucca/compare/v0.37.0...v0.37.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **migrations:** re-date again ([#535](https://github.com/immich-app/yucca/issues/535)) ([dd12594](https://github.com/immich-app/yucca/commit/dd12594761fc3511352c2cb4c4587bf362547c75))
+
 ## [0.37.0](https://github.com/immich-app/yucca/compare/v0.36.0...v0.37.0) (2026-08-24)
 
 
