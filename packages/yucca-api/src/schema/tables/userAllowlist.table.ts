@@ -20,6 +20,9 @@ export class UserAllowlistTable {
   @Column({ type: 'timestamp with time zone', nullable: true })
   inviteUsedAt!: Date | null;
 
+  @Column({ type: 'timestamp with time zone', nullable: true })
+  inviteEmailSentAt!: Date | null;
+
   @Column({ type: 'timestamp with time zone', default: () => 'now()' })
   createdAt!: Generated<Date>;
 }

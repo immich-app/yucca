@@ -1,6 +1,8 @@
+import type { EmailRepository } from '@common/server/email';
 import type { LoggerRepository, WideContextRepository } from '@common/server/otel';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
+import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
 
@@ -17,6 +19,24 @@ export const newOidcRepositoryMock = (): jest.Mocked<RepositoryInterface<OidcRep
     logout: jest.fn(),
     onModuleInit: jest.fn(),
     fetchUserInfo: jest.fn(),
+  };
+};
+
+export const newEmailRepositoryMock = (): jest.Mocked<RepositoryInterface<EmailRepository>> => {
+  return {
+    send: jest.fn(),
+    sendBatch: jest.fn(),
+  };
+};
+
+export const newUserAllowlistRepositoryMock = (): jest.Mocked<RepositoryInterface<UserAllowlistRepository>> => {
+  return {
+    list: jest.fn(),
+    getByEmail: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    deleteByEmail: jest.fn(),
+    oldestStaged: jest.fn(),
   };
 };
 
@@ -45,6 +65,8 @@ export const newMocks = () => {
   return {
     database: newDatabaseRepositoryMock(),
     oidc: newOidcRepositoryMock(),
+    email: newEmailRepositoryMock(),
+    allowlist: newUserAllowlistRepositoryMock(),
     logger: newLoggerRepositoryMock(),
     wideContext: newWideContextRepositoryMock(),
     metrics: newMetricServiceMock(),

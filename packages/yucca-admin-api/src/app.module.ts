@@ -1,3 +1,4 @@
+import { EmailRepository } from '@common/server/email';
 import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository } from '@common/server/otel';
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -61,6 +62,7 @@ export const controllers = [
 export const providers = [
   WideContextRepository,
   LoggerRepository,
+  EmailRepository,
   DatabaseRepository,
   DatabaseService,
   OidcRepository,

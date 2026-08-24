@@ -42,7 +42,7 @@ RUN pnpm install --frozen-lockfile
 
 # 2. Copy sources, build workspace libs yucca-admin-api imports at runtime
 COPY . ./
-RUN pnpm --filter @common/server build
+RUN pnpm --filter @common/server build && pnpm --filter @common/emails build
 
 EXPOSE 3030
 CMD ["pnpm", "--filter", "yucca-admin-api", "start:dev"]

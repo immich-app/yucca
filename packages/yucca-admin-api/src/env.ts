@@ -34,6 +34,8 @@ const schema = z.object({
   LEGACY_SITE_CODE: z.string(),
   LEGACY_STORAGE_CLUSTER_CODE: z.string(),
 
+  WEB_BASE_URL: z.url().default('http://localhost:5173'),
+
   OIDC_ADMIN_ISSUER: z.url().transform((url) => new URL(url)),
   OIDC_ADMIN_CLIENT_ID: z.string(),
   OIDC_ADMIN_CLIENT_SECRET: z.string(),

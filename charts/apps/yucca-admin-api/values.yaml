@@ -43,6 +43,9 @@ oidcLogoutRedirectUri: http://localhost:3030
 secretData:
   OIDC_ADMIN_CLIENT_ID: "client ID"
   OIDC_ADMIN_CLIENT_SECRET: "client secret"
+  # Any value satisfies the mock Postmark; prod gets the real token from the
+  # TF-provisioned Secret.
+  POSTMARK_SERVER_TOKEN: "dev token"
 
 # OPT-IN dev signing key for CLI session JWTs. The project's well-known
 # local-dev ES256 keypair (the same one committed in .mise/tasks/*/env and the
@@ -79,6 +82,13 @@ env:
     value: http://victoria-metrics:8428/opentelemetry/v1/metrics
   - name: OTEL_LOGGING
     value: http://victoria-logs:9428/insert/opentelemetry/v1/logs
+  # Invite emails land in the dev mock (→ Mailpit); the prod env list in the
+  # base HelmRelease omits this so the real Postmark default applies.
+  - name: POSTMARK_API_URL
+    value: http://yucca-mock-postmark:8093
+  # Invite links resolve via the Tilt web port-forward.
+  - name: WEB_BASE_URL
+    value: http://localhost:5173
 
 # Probes keep `tilt ci`/Flux honest: without them a crash-looping dev process
 # still counts as Ready (this masked two real bugs). The startupProbe budgets
