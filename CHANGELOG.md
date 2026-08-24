@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.37.0](https://github.com/immich-app/yucca/compare/v0.36.0...v0.37.0) (2026-08-24)
+
+
+### Features
+
+* 'standalone' connection type ([#534](https://github.com/immich-app/yucca/issues/534)) ([8832cda](https://github.com/immich-app/yucca/commit/8832cda5c01bb4eb39215dcd9378b6a2911414e3))
+* **ceph:** log firewall drops over nflog and ship them to o11y ([#518](https://github.com/immich-app/yucca/issues/518)) ([30eb44e](https://github.com/immich-app/yucca/commit/30eb44e6cb04ac7c5996127ce97e4a924840c01a))
+* **ceph:** persist the HDD write-cache disable and guard it to rotational media ([#531](https://github.com/immich-app/yucca/issues/531)) ([1cdf388](https://github.com/immich-app/yucca/commit/1cdf388cc9c4e399f3e56cd096150b65b04a1eca))
+* **common:** postmark-backed email repository ([#490](https://github.com/immich-app/yucca/issues/490)) ([2fc89b1](https://github.com/immich-app/yucca/commit/2fc89b105be9f939de7b93c3a60488a466997ee1))
+* **emails:** mailpit + mock-postmark local dev stack ([#491](https://github.com/immich-app/yucca/issues/491)) ([1d92b4b](https://github.com/immich-app/yucca/commit/1d92b4b0c1faec5c946dc01a8631e82c5817bec6))
+* **emails:** svelte invite email template rendered with the web theme ([#489](https://github.com/immich-app/yucca/issues/489)) ([54c8802](https://github.com/immich-app/yucca/commit/54c880229bae14df07ced56a861a4528d8cfe386))
+* **infra:** plumb postmark config into staging and prod ([#493](https://github.com/immich-app/yucca/issues/493)) ([4d3990e](https://github.com/immich-app/yucca/commit/4d3990e7f3311c4a4048b61b3f5497e7c93dae91))
+* **yucca sdk:** `warn` status for backups ([#520](https://github.com/immich-app/yucca/issues/520)) ([4ddc8e4](https://github.com/immich-app/yucca/commit/4ddc8e46660969bbd737c9c6050787a3b4c46e15))
+* **yucca sdk:** improve onboarding & path selection ([#521](https://github.com/immich-app/yucca/issues/521)) ([f91b803](https://github.com/immich-app/yucca/commit/f91b80335657de2e20304b7de62b0288d5305b27))
+* **yucca-admin-api:** send invite emails from the allowlist flow ([#492](https://github.com/immich-app/yucca/issues/492)) ([30166e0](https://github.com/immich-app/yucca/commit/30166e073395d0bb5492c5a5f5465041d4ada194))
+
 ## [0.36.0](https://github.com/immich-app/yucca/compare/v0.35.1...v0.36.0) (2026-08-21)
 
 
