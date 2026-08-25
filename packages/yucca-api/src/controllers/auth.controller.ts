@@ -89,6 +89,12 @@ export class AuthController {
     response.redirect(redirectTo);
   }
 
+  @Sse('/oidc/device/identity')
+  @ApiOkResponse({ type: DeviceFlowEventDto })
+  oidcDeviceFlowIdentity(): Observable<MessageEvent> {
+    return this.auth.oidcDeviceFlowIdentityObservable();
+  }
+
   @Sse('/oidc/device')
   @ApiOkResponse({ type: DeviceFlowEventDto })
   @ApiQuery({ name: 'connection_type', type: String, required: false, description: 'immich | standalone | restic' })

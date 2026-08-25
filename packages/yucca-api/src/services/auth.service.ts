@@ -206,11 +206,7 @@ export class AuthService {
     return connection.id;
   }
 
-  async oidcDeviceFlow(
-    callback: (data: { userCode: string; verificationUri: string }) => void,
-    connectionType?: string,
-    connectionName?: string,
-  ): Promise<{ accessToken: string }> {
+  private async runDeviceFlow(callback: (data: { userCode: string; verificationUri: string }) => void) {
     const { userCode, verificationUri, claims: pendingClaims } = await this.oidc.deviceFlow();
 
     callback({ userCode, verificationUri });
@@ -226,6 +222,24 @@ export class AuthService {
     const user = await this.getOrCreateUser(claims);
 
     this.wideContext.addContext('customerId', user.id);
+
+    return user;
+  }
+
+  async oidcDeviceFlowIdentity(
+    callback: (data: { userCode: string; verificationUri: string }) => void,
+  ): Promise<{ userId: string }> {
+    const user = await this.runDeviceFlow(callback);
+
+    return { userId: user.id };
+  }
+
+  async oidcDeviceFlow(
+    callback: (data: { userCode: string; verificationUri: string }) => void,
+    connectionType?: string,
+    connectionName?: string,
+  ): Promise<{ accessToken: string }> {
+    const user = await this.runDeviceFlow(callback);
 
     const overrides = await this.user.getFeatureOverrides(user.id);
     const connectionId = await this.resolveDeviceConnection(
@@ -250,6 +264,20 @@ export class AuthService {
     };
   }
 
+  oidcDeviceFlowIdentityObservable() {
+    return from(
+      new EventIterator<MessageEvent>(
+        (queue) =>
+          void this.oidcDeviceFlowIdentity((data) =>
+            queue.push({ data: { type: DeviceFlowEventType.Start, ...data } } as MessageEvent),
+          )
+            .then(({ userId }) => queue.push({ data: { type: DeviceFlowEventType.Success, userId } } as MessageEvent))
+            .catch((error) => this.pushDeviceFlowFailure(queue, error))
+            .finally(() => queue.stop()),
+      ),
+    );
+  }
+
   oidcDeviceFlowObservable(connectionType?: string, connectionName?: string) {
     return from(
       new EventIterator<MessageEvent>(
@@ -268,19 +296,23 @@ export class AuthService {
             .then(({ accessToken }) =>
               queue.push({ data: { type: DeviceFlowEventType.Success, accessToken } } as MessageEvent),
             )
-            .catch((error) => {
-              this.wideContext.setErrorCause(error);
-              this.logger.error('oidcDeviceFlow error:', error);
-              let reason = DeviceFlowFailureReason.Unknown;
-              if (error instanceof EmailNotAllowedException) {
-                reason = DeviceFlowFailureReason.EmailNotAllowed;
-              } else if (error instanceof FeatureNotEnabledException) {
-                reason = DeviceFlowFailureReason.FeatureNotEnabled;
-              }
-              queue.push({ data: { type: DeviceFlowEventType.Failure, reason } } as MessageEvent);
-            })
+            .catch((error) => this.pushDeviceFlowFailure(queue, error))
             .finally(() => queue.stop()),
       ),
     );
+  }
+
+  private pushDeviceFlowFailure(queue: { push: (value: MessageEvent) => void }, error: unknown) {
+    this.wideContext.setErrorCause(error);
+    this.logger.error('oidcDeviceFlow error:', error);
+
+    let reason = DeviceFlowFailureReason.Unknown;
+    if (error instanceof EmailNotAllowedException) {
+      reason = DeviceFlowFailureReason.EmailNotAllowed;
+    } else if (error instanceof FeatureNotEnabledException) {
+      reason = DeviceFlowFailureReason.FeatureNotEnabled;
+    }
+
+    queue.push({ data: { type: DeviceFlowEventType.Failure, reason } } as MessageEvent);
   }
 }

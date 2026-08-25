@@ -34,6 +34,9 @@ export class DeviceFlowEventDto {
   @ApiProperty({ type: String, required: false })
   accessToken?: string;
 
+  @ApiProperty({ type: String, required: false })
+  userId?: string;
+
   @ApiProperty({ enum: DeviceFlowFailureReason, enumName: 'DeviceFlowFailureReason', required: false })
   reason?: DeviceFlowFailureReason;
 }

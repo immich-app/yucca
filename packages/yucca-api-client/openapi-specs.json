@@ -89,6 +89,27 @@
         ]
       }
     },
+    "/api/auth/oidc/device/identity": {
+      "get": {
+        "operationId": "oidcDeviceFlowIdentity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceFlowEventDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/auth/oidc/device": {
       "get": {
         "operationId": "oidcDeviceFlow",
@@ -698,6 +719,9 @@
             "type": "string"
           },
           "accessToken": {
+            "type": "string"
+          },
+          "userId": {
             "type": "string"
           },
           "reason": {

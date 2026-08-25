@@ -31,6 +31,7 @@ export type DeviceFlowEventDto = {
     userCode?: string;
     verificationUri?: string;
     accessToken?: string;
+    userId?: string;
     reason?: DeviceFlowFailureReason;
 };
 export type MetaConfigDto = {
@@ -196,6 +197,14 @@ export function oidcAuthorize(codeChallenge: string, state: string, { inviteCode
 }
 export function oidcCallback(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/auth/oidc/callback", {
+        ...opts
+    }));
+}
+export function oidcDeviceFlowIdentity(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DeviceFlowEventDto;
+    }>("/api/auth/oidc/device/identity", {
         ...opts
     }));
 }
