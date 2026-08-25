@@ -55,15 +55,39 @@ export class DiscordRepository {
     ]);
   }
 
-  async ensurePinnedSupportMessage(message: MessageCreateOptions): Promise<void> {
+  async ensurePinnedSupportMessage(message: MessageCreateOptions, buttonId: string): Promise<void> {
     const channel = await this.supportChannel();
-    const pinned = await channel.messages.fetchPinned();
+    const [pinned, recent] = await Promise.all([
+      channel.messages.fetchPinned(),
+      channel.messages.fetch({ limit: 100 }),
+    ]);
     const botId = this.requireClient().user?.id;
-    if (pinned.some((pin) => pin.author.id === botId)) {
-      return;
+    const candidates = new Map([...pinned.entries(), ...recent.entries()]);
+    const stickies = [...candidates.values()]
+      .filter(
+        (candidate) =>
+          candidate.author.id === botId &&
+          candidate.components.some(
+            (row) =>
+              'components' in row &&
+              row.components.some((component) => 'customId' in component && component.customId === buttonId),
+          ),
+      )
+      .toSorted((a, b) => a.createdTimestamp - b.createdTimestamp);
+
+    const keep = stickies[0] ?? (await channel.send(message));
+    for (const extra of stickies.slice(1)) {
+      await extra
+        .delete()
+        .catch((error: unknown) => this.logger.warn(error, 'could not delete a duplicate support message'));
     }
-    const sent = await channel.send(message);
-    await sent.pin();
+    if (!keep.pinned) {
+      await keep
+        .pin()
+        .catch((error: unknown) =>
+          this.logger.warn(error, 'could not pin the support message — is Pin Messages granted?'),
+        );
+    }
   }
 
   async createTicketThread(name: string, discordUserId: string): Promise<ThreadChannel> {

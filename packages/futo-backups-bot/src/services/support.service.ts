@@ -61,10 +61,13 @@ export class SupportService implements OnApplicationBootstrap {
     } catch (error) {
       this.logger.error(error, 'failed to register slash commands — is the applications.commands scope granted?');
     }
-    await this.discord.ensurePinnedSupportMessage({
-      content: 'Need help with FUTO Backups? Click below to open a private ticket with our staff.',
-      components: [this.buttonRow(ComponentId.OpenTicket, 'Get support')],
-    });
+    await this.discord.ensurePinnedSupportMessage(
+      {
+        content: 'Need help with FUTO Backups? Click below to open a private ticket with our staff.',
+        components: [this.buttonRow(ComponentId.OpenTicket, 'Get support')],
+      },
+      ComponentId.OpenTicket,
+    );
   }
 
   async handleInteraction(interaction: Interaction): Promise<void> {
