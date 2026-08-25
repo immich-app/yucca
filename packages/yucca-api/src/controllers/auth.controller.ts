@@ -8,6 +8,7 @@ import { CookieName } from 'src/enum';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { AuthService } from 'src/services/auth.service';
 import { EmailNotAllowedException } from 'src/utils/exceptions';
+import { isInAppPath } from 'src/utils/redirect';
 
 @Controller('/auth')
 export class AuthController {
@@ -32,10 +33,12 @@ export class AuthController {
   @ApiQuery({ name: 'code_challenge', type: String })
   @ApiQuery({ name: 'state', type: String })
   @ApiQuery({ name: 'invite_code', type: String, required: false })
+  @ApiQuery({ name: 'redirect', type: String, required: false, description: 'In-app path to land on after login' })
   async oidcAuthorize(
     @Query('code_challenge') codeChallenge: string,
     @Query('state') state: string,
     @Query('invite_code') inviteCode: string | undefined,
+    @Query('redirect') redirect: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     const { redirectTo, state: newState, codeVerifier } = await this.auth.oidcAuthorize(codeChallenge, state);
@@ -45,6 +48,14 @@ export class AuthController {
 
     if (inviteCode) {
       response.cookie(CookieName.InviteCode, inviteCode, {
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: Duration.fromObject({ minutes: 10 }).toMillis(),
+      });
+    }
+
+    if (redirect && isInAppPath(redirect)) {
+      response.cookie(CookieName.RedirectPath, redirect, {
         httpOnly: true,
         sameSite: 'lax',
         maxAge: Duration.fromObject({ minutes: 10 }).toMillis(),
@@ -63,6 +74,7 @@ export class AuthController {
       response.clearCookie(CookieName.OidcState);
       response.clearCookie(CookieName.OidcCodeVerifier);
       response.clearCookie(CookieName.InviteCode);
+      response.clearCookie(CookieName.RedirectPath);
 
       if (error instanceof EmailNotAllowedException) {
         response.redirect('/login/invite?error=not_allowed');
@@ -77,6 +89,7 @@ export class AuthController {
     response.clearCookie(CookieName.OidcState);
     response.clearCookie(CookieName.OidcCodeVerifier);
     response.clearCookie(CookieName.InviteCode);
+    response.clearCookie(CookieName.RedirectPath);
 
     response.cookie(CookieName.AccessToken, accessToken, {
       path: '/',
