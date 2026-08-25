@@ -64,10 +64,10 @@ ops_password: "{{ vault_ops_password }}"
 ceph_dashboard_user: admin
 ceph_dashboard_password: "{{ vault_ceph_dashboard_password }}"
 
-# S3 svc-user (yucca-restic consumer) — TF+1P-predetermined keys passed to
-# `radosgw-admin user create --access-key=... --secret-key=...` so the Yucca
-# app can be pre-configured with matching credentials. Rotation path documented
-# in docs/runbooks/rotate-secrets.md.
+# S3 svc-user (yucca-restic consumer) — the user is terraform-owned
+# (rgw-users.tf); these TF+1P-predetermined keys serve the gated key-rotation
+# converge (rgw.yml Step 15, rotate_s3_keys). Rotation path documented in
+# docs/runbooks/rotate-secrets.md.
 ceph_rgw_s3_user_access_key: "{{ vault_s3_restic_access_key }}"
 ceph_rgw_s3_user_secret_key: "{{ vault_s3_restic_secret_key }}"
 
@@ -101,25 +101,16 @@ ceph_rgw_replicated_size: 2
 ceph_rgw_replicated_min_size: 1
 ceph_rgw_port: 443
 ceph_rgw_s3_user_uid: svc-yucca-restic
-ceph_rgw_s3_user_display_name: "yucca/restic service account"
 
-# Metrics-worker RGW admin (read-only). Keys TF-minted in 1P
-# (SIETCH_METRICS_WORKER_{ACCESS,SECRET}_KEY); the metrics worker scrapes RGW
-# usage/bucket/user stats via the admin ops API. Read-only admin caps only.
-ceph_rgw_metrics_user_uid: metrics-worker
-ceph_rgw_metrics_user_display_name: "yucca/metrics-worker RGW admin (read-only)"
-ceph_rgw_metrics_user_access_key: "{{ vault_metrics_worker_access_key }}"
-ceph_rgw_metrics_user_secret_key: "{{ vault_metrics_worker_secret_key }}"
-ceph_rgw_metrics_user_caps: "buckets=read;usage=read;metadata=read;users=read"
-
-# CNPG database-backup S3 user: the yucca-database cluster's Barman Cloud
-# plugin archives WALs/base backups to its own bucket. Keys TF-minted in 1P
-# (SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_{ACCESS,SECRET}_KEY); rgw.yml (Step 14.6)
-# creates the user with max-buckets=1.
-ceph_rgw_db_backup_user_uid: svc-yucca-db-backup
-ceph_rgw_db_backup_user_display_name: "yucca/db-backup service account (CNPG barman)"
-ceph_rgw_db_backup_user_access_key: "{{ vault_db_backup_access_key }}"
-ceph_rgw_db_backup_user_secret_key: "{{ vault_db_backup_secret_key }}"
+# Terraform RGW admin (write): the radosgw provider in the ceph TF stack
+# authenticates as this user to manage the RGW service users. Keys TF-minted
+# in 1P (SIETCH_CEPH_TF_ADMIN_{ACCESS,SECRET}_KEY); rgw.yml (Step 14.7) is the
+# one-time bootstrap -- see tf/deployment/staging/austin/ceph/rgw-users.tf.
+ceph_rgw_tf_admin_user_uid: svc-yucca-terraform
+ceph_rgw_tf_admin_user_display_name: "yucca/terraform RGW admin (user management)"
+ceph_rgw_tf_admin_user_access_key: "{{ vault_tf_admin_access_key }}"
+ceph_rgw_tf_admin_user_secret_key: "{{ vault_tf_admin_secret_key }}"
+ceph_rgw_tf_admin_user_caps: "buckets=*;metadata=*;users=*"
 
 # --- RGW DNS + TLS ---
 # Virtual-hosted S3 support: setting rgw_dns_name tells RGW to strip this

@@ -383,26 +383,17 @@ ceph_rgw_ingress_enabled: true
 ceph_rgw_ingress_vip: "10.40.20.250"
 ceph_rgw_ingress_vip_prefix: 23   # matches public_network 10.40.20.0/23
 ceph_rgw_s3_user_uid: svc-yucca-restic
-ceph_rgw_s3_user_display_name: "yucca/restic service account"
-# Metrics-worker RGW admin user (read-only): the yucca-metrics-worker service
-# reads bucket usage from RadosGW. Keys are TF-minted (SPICE_METRICS_WORKER_*)
-# and injected via secrets.yml.tpl as vault_metrics_worker_*; rgw.yml (Step 14.5)
-# creates the user with these caps. Without this block the RGW phase fails with
-# AnsibleUndefinedVariable. Mirror of the sietch definition.
-ceph_rgw_metrics_user_uid: metrics-worker
-ceph_rgw_metrics_user_display_name: "yucca/metrics-worker RGW admin (read-only)"
-ceph_rgw_metrics_user_access_key: "{{ vault_metrics_worker_access_key }}"
-ceph_rgw_metrics_user_secret_key: "{{ vault_metrics_worker_secret_key }}"
-ceph_rgw_metrics_user_caps: "buckets=read;usage=read;metadata=read;users=read"
 
-# CNPG database-backup S3 user: the yucca-database cluster's Barman Cloud
-# plugin archives WALs/base backups to its own bucket. Keys TF-minted in 1P
-# (SPICE_CEPH_S3_SVC_YUCCA_DB_BACKUP_*); rgw.yml (Step 14.6) creates the user
-# with max-buckets=1. Mirror of the sietch definition.
-ceph_rgw_db_backup_user_uid: svc-yucca-db-backup
-ceph_rgw_db_backup_user_display_name: "yucca/db-backup service account (CNPG barman)"
-ceph_rgw_db_backup_user_access_key: "{{ vault_db_backup_access_key }}"
-ceph_rgw_db_backup_user_secret_key: "{{ vault_db_backup_secret_key }}"
+# Terraform RGW admin (write): the radosgw provider in the ceph TF stack
+# authenticates as this user to manage the RGW service users. Keys TF-minted
+# in 1P (SPICE_CEPH_TF_ADMIN_{ACCESS,SECRET}_KEY); rgw.yml (Step 14.7) is the
+# one-time bootstrap -- see tf/deployment/prod/htz-fsn1/ceph/rgw-users.tf.
+# Mirror of the sietch definition.
+ceph_rgw_tf_admin_user_uid: svc-yucca-terraform
+ceph_rgw_tf_admin_user_display_name: "yucca/terraform RGW admin (user management)"
+ceph_rgw_tf_admin_user_access_key: "{{ vault_tf_admin_access_key }}"
+ceph_rgw_tf_admin_user_secret_key: "{{ vault_tf_admin_secret_key }}"
+ceph_rgw_tf_admin_user_caps: "buckets=*;metadata=*;users=*"
 
 # === Monitoring Stack ===
 ceph_prometheus_port: 9095

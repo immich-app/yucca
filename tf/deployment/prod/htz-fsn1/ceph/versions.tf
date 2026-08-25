@@ -16,5 +16,11 @@ terraform {
       source  = "1Password/onepassword"
       version = "~> 2.1"
     }
+    # Manages the RGW service users over the admin API (rgw-users.tf). Only
+    # instantiated for clusters with manage_rgw_users = true.
+    radosgw = {
+      source  = "fitbeard/radosgw"
+      version = "~> 1.6"
+    }
   }
 }

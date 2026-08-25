@@ -437,10 +437,12 @@ jobs:
           fi
 
       # talos + fabric read data sources over the overlay on PLAN (talos_cluster_health;
-      # the switch vme), so they must join NetBird. The cloud-API stacks (ceph/dns/
-      # netbird) need no overlay. The setup key already exists in 1P (bootstrapped).
+      # the switch vme), so they must join NetBird; ceph joined them when its radosgw
+      # provider started refreshing RGW users against the RFC1918 S3 endpoint
+      # (rgw-users.tf). The cloud-API stacks (dns/netbird) need no overlay. The
+      # setup key already exists in 1P (bootstrapped).
       - name: Resolve NetBird CI setup-key ref
-        if: matrix.stack == 'talos' || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || matrix.stack == 'fabric' || matrix.stack == 'ceph'
         run: |
           set -euo pipefail
           if [ "$PARTITION" = "prod" ]; then
@@ -451,7 +453,7 @@ jobs:
             echo "NB_CI_KEY_REF=op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
           fi
       - name: Connect to NetBird
-        if: matrix.stack == 'talos' || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || matrix.stack == 'fabric' || matrix.stack == 'ceph'
         uses: ./.github/actions/netbird-connect
         with:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
@@ -629,11 +631,12 @@ jobs:
           echo "fabric apply gate → ${run:-false}"
 
       # Node-touching stacks join the overlay: talos (provisions over the LAN),
-      # ceph (the Ansible convergence below), fabric (the switch vme + the mgmt
-      # converge below). NetBird stacks themselves are pure api.netbird.io. The
-      # key was minted by an earlier (lower-order) netbird apply in this same run.
+      # ceph (the radosgw provider's RGW admin-API calls on every apply, plus the
+      # Ansible convergence below), fabric (the switch vme + the mgmt converge
+      # below). NetBird stacks themselves are pure api.netbird.io. The key was
+      # minted by an earlier (lower-order) netbird apply in this same run.
       - name: Resolve NetBird CI setup-key ref
-        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
+        if: matrix.stack == 'talos' || matrix.stack == 'ceph' || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
         run: |
           set -euo pipefail
           if [ "$PARTITION" = "prod" ]; then
@@ -643,7 +646,7 @@ jobs:
             echo "NB_CI_KEY_REF=op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
           fi
       - name: Connect to NetBird
-        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
+        if: matrix.stack == 'talos' || matrix.stack == 'ceph' || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
         uses: ./.github/actions/netbird-connect
         with:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
