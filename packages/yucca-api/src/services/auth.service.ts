@@ -8,7 +8,7 @@ import { IncomingHttpHeaders } from 'node:http';
 import { UserInfoResponse } from 'openid-client';
 import { from } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
-import { CookieName } from 'src/enum';
+import { CookieName, DeviceFlowEventType, DeviceFlowFailureReason } from 'src/enum';
 import { env } from 'src/env';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
@@ -258,24 +258,26 @@ export class AuthService {
             (data) =>
               queue.push({
                 data: {
-                  type: 'START',
+                  type: DeviceFlowEventType.Start,
                   ...data,
                 },
               } as MessageEvent),
             connectionType,
             connectionName,
           )
-            .then(({ accessToken }) => queue.push({ data: { type: 'SUCCESS', accessToken } } as MessageEvent))
+            .then(({ accessToken }) =>
+              queue.push({ data: { type: DeviceFlowEventType.Success, accessToken } } as MessageEvent),
+            )
             .catch((error) => {
               this.wideContext.setErrorCause(error);
               this.logger.error('oidcDeviceFlow error:', error);
-              let reason = 'UNKNOWN';
+              let reason = DeviceFlowFailureReason.Unknown;
               if (error instanceof EmailNotAllowedException) {
-                reason = 'EMAIL_NOT_ALLOWED';
+                reason = DeviceFlowFailureReason.EmailNotAllowed;
               } else if (error instanceof FeatureNotEnabledException) {
-                reason = 'FEATURE_NOT_ENABLED';
+                reason = DeviceFlowFailureReason.FeatureNotEnabled;
               }
-              queue.push({ data: { type: 'FAILURE', reason } } as MessageEvent);
+              queue.push({ data: { type: DeviceFlowEventType.Failure, reason } } as MessageEvent);
             })
             .finally(() => queue.stop()),
       ),
