@@ -2,7 +2,7 @@
   import DeviceFlowCode from "$lib/components/util/DeviceFlowCode.svelte";
   import { createDeviceFlow } from "$lib/services/deviceFlow.service.svelte";
   import { useCreateSession } from "$lib/services/session.service";
-  import { Modal, ModalBody, Text } from "@immich/ui";
+  import { Button, Modal, ModalBody, Text } from "@immich/ui";
   import { onDestroy } from "svelte";
   import OnboardingStepLayout, {
     type OnboardingStepAction,
@@ -47,6 +47,14 @@
           {/if}
         </Text>
       </DeviceFlowCode>
+
+      <Button
+        class="mt-4"
+        shape="round"
+        color="secondary"
+        variant="outline"
+        onclick={flow.start}>Start again</Button
+      >
     {:else}
       <OnboardingStepLayout
         title="Log in to manage backups"
