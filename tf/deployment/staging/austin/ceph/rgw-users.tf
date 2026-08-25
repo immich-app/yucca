@@ -47,6 +47,13 @@ locals {
       access_role  = "db_backup_access"
       secret_role  = "db_backup_secret"
     }
+    transcripts = {
+      user_id      = "svc-yucca-transcripts"
+      display_name = "yucca/futo-backups-bot ticket transcripts"
+      max_buckets  = 1
+      access_role  = "transcripts_access"
+      secret_role  = "transcripts_secret"
+    }
   }
 
   rgw_cluster_users = merge([
@@ -59,10 +66,11 @@ locals {
     }
   ]...)
 
-  # Every key this file reads from 1P: the provider's own admin credential plus
-  # each service user's key pair. Data lookups (not the onepassword_item
-  # resources in secrets.tf) so out-of-band roles (s3_restic_*) and TF-managed
-  # roles resolve uniformly.
+  # Every key this file needs: the provider's own admin credential plus each
+  # service user's key pair. Stack-minted roles resolve from the
+  # onepassword_item resources in secrets.tf (resource attr, so a brand-new
+  # service user and its keys bootstrap in a single apply); out-of-band roles
+  # (s3_restic_*) resolve via data lookups.
   rgw_key_roles = concat(
     ["tf_admin_access", "tf_admin_secret"],
     flatten([for u in local.rgw_users : [u.access_role, u.secret_role]]),
@@ -74,6 +82,7 @@ locals {
         vault = coalesce(c.vault, "Yucca")
         title = module.cluster[cname].secrets[role]
       }
+      if !contains(keys(local.ceph_secret_items), "${cname}.${role}")
     }
   ]...)
 }
@@ -85,13 +94,20 @@ data "onepassword_item" "rgw_key" {
   title = each.value.title
 }
 
+locals {
+  rgw_keys = merge(
+    { for k, d in data.onepassword_item.rgw_key : k => d.password },
+    { for k, r in onepassword_item.ceph_password : k => r.password },
+  )
+}
+
 provider "radosgw" {
   alias    = "cluster"
   for_each = local.rgw_managed_clusters
 
   endpoint   = "https://s3.${each.value.domain}"
-  access_key = data.onepassword_item.rgw_key["${each.key}.tf_admin_access"].password
-  secret_key = data.onepassword_item.rgw_key["${each.key}.tf_admin_secret"].password
+  access_key = local.rgw_keys["${each.key}.tf_admin_access"]
+  secret_key = local.rgw_keys["${each.key}.tf_admin_secret"]
   # The RGW frontend serves the self-signed cert from rgw.yml Step 11.6; there
   # is no CA to pin (the dashboard's RGW client skips verification the same way).
   tls_insecure_skip_verify = true
@@ -111,8 +127,8 @@ resource "radosgw_iam_access_key" "svc" {
   provider = radosgw.cluster[each.value.cluster]
 
   user_id    = radosgw_iam_user.svc[each.key].user_id
-  access_key = data.onepassword_item.rgw_key["${each.value.cluster}.${each.value.access_role}"].password
-  secret_key = data.onepassword_item.rgw_key["${each.value.cluster}.${each.value.secret_role}"].password
+  access_key = local.rgw_keys["${each.value.cluster}.${each.value.access_role}"]
+  secret_key = local.rgw_keys["${each.value.cluster}.${each.value.secret_role}"]
 }
 
 # Read-only admin caps for the usage/bucket/user stats scrape.

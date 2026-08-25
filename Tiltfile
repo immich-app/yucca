@@ -252,6 +252,32 @@ docker_build(
     ],
 )
 
+docker_build(
+    'futo-backups-bot',
+    context='.',
+    dockerfile='packages/futo-backups-bot/Dockerfile',
+    target='dev',
+    only=[
+        './pnpm-workspace.yaml',
+        './pnpm-lock.yaml',
+        './package.json',
+        './.npmrc',
+        './packages',
+    ],
+    ignore=[
+        '**/node_modules',
+        '**/dist',
+        '**/.svelte-kit',
+        'packages/michael',
+        'packages/e2e',
+    ],
+    live_update=[
+        sync('./packages/futo-backups-bot', '/app/packages/futo-backups-bot'),
+        sync('./packages/common', '/app/packages/common'),
+        run('cd /app && pnpm --filter @common/server build', trigger=['./packages/common/src']),
+    ],
+)
+
 # mock-oidc-provider has no dev target (config-only via env); a plain build is
 # enough — it rarely changes and is reconfigured through Helm values.
 docker_build(
@@ -296,11 +322,12 @@ docker_build(
 # ---------------------------------------------------------------------------
 local_resource(
     'helm-deps',
-    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/dev/mock-oidc/charts charts/dev/mock-postmark/charts charts/dev/mailpit/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/meta charts/apps/michael charts/dev/mock-oidc charts/dev/mock-postmark charts/dev/mailpit; do (cd $d && helm dependency build); done',
+    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/futo-backups-bot/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/dev/mock-oidc/charts charts/dev/mock-postmark/charts charts/dev/mailpit/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/futo-backups-bot charts/apps/web charts/apps/meta charts/apps/michael charts/dev/mock-oidc charts/dev/mock-postmark charts/dev/mailpit; do (cd $d && helm dependency build); done',
     deps=[
         'charts/apps/yucca-api',
         'charts/apps/yucca-admin-api',
         'charts/apps/yucca-metrics-worker',
+        'charts/apps/futo-backups-bot',
         'charts/apps/web',
         'charts/apps/meta',
         'charts/apps/michael',
@@ -337,6 +364,9 @@ APP_WIRING = {
     'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
     'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user', 'yucca-topology'], 'dev_env': True},
+    # Idle without a DISCORD_BOT_TOKEN (supplied via .env → yucca-dev-env);
+    # only talks to yucca-api's internal endpoints, never the DB.
+    'futo-backups-bot':       {'build': 'futo-backups-bot',    'deps': ['yucca-api'], 'dev_env': True},
     # Likewise: the dev server reaches yucca-api per request, not at boot.
     'yucca-web':              {'build': 'web',                'deps': []},
     # Stock upstream nginx serving the .well-known pointer — nothing to build,

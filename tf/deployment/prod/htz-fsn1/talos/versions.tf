@@ -27,5 +27,10 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
+    # Internal-API shared secret generation (secrets.tf).
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 }

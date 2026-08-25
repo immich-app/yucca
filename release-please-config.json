@@ -63,6 +63,11 @@
           "jsonpath": "$.version"
         },
         {
+          "type": "json",
+          "path": "packages/futo-backups-bot/package.json",
+          "jsonpath": "$.version"
+        },
+        {
           "type": "generic",
           "path": "packages/michael/internal/version/version.go"
         },
@@ -85,6 +90,10 @@
         {
           "type": "generic",
           "path": "charts/apps/yucca-metrics-worker/Chart.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "charts/apps/futo-backups-bot/Chart.yaml"
         },
         {
           "type": "generic",

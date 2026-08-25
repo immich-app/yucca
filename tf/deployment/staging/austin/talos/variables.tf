@@ -218,3 +218,44 @@ variable "clusters" {
     config_patches = optional(list(string), [])
   }))
 }
+
+variable "yucca_discord_bot_token" {
+  description = "Discord bot token for futo-backups-bot (FUTOBackupsBot). Empty = the bot boots idle; ref stays commented in tf/.env until minted."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "sietch_transcripts_access_key" {
+  description = "Sietch RGW (S3) access key for futo-backups-bot ticket transcripts (svc-yucca-transcripts, TF-minted SIETCH_CEPH_S3_SVC_YUCCA_TRANSCRIPTS_ACCESS_KEY). Empty = the archive sweep skips."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "sietch_transcripts_secret_key" {
+  description = "Sietch RGW (S3) secret key for futo-backups-bot ticket transcripts (svc-yucca-transcripts)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_discord_guild_id" {
+  description = "Discord server id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS, written by core-infra-tf's discord apply). Empty = the bot idles."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_staff_role_id" {
+  description = "Staff (Yucca) role id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_support_channel_id" {
+  description = "#support channel id for futo-backups-bot's pinned button (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+

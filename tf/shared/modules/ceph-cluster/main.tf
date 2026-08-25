@@ -70,13 +70,15 @@ locals {
   secret_prefix = "${upper(var.cluster_name)}_CEPH"
 
   secrets = merge({
-    ops              = "${local.secret_prefix}_OPS_PASSWORD"
-    dashboard        = "${local.secret_prefix}_DASHBOARD_PASSWORD"
-    grafana          = "${local.secret_prefix}_GRAFANA_PASSWORD"
-    s3_restic_access = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_ACCESS_KEY"
-    s3_restic_secret = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_SECRET_KEY"
-    db_backup_access = "${local.secret_prefix}_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY"
-    db_backup_secret = "${local.secret_prefix}_S3_SVC_YUCCA_DB_BACKUP_SECRET_KEY"
+    ops                = "${local.secret_prefix}_OPS_PASSWORD"
+    dashboard          = "${local.secret_prefix}_DASHBOARD_PASSWORD"
+    grafana            = "${local.secret_prefix}_GRAFANA_PASSWORD"
+    s3_restic_access   = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_ACCESS_KEY"
+    s3_restic_secret   = "${local.secret_prefix}_S3_SVC_YUCCA_RESTIC_SECRET_KEY"
+    db_backup_access   = "${local.secret_prefix}_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY"
+    db_backup_secret   = "${local.secret_prefix}_S3_SVC_YUCCA_DB_BACKUP_SECRET_KEY"
+    transcripts_access = "${local.secret_prefix}_S3_SVC_YUCCA_TRANSCRIPTS_ACCESS_KEY"
+    transcripts_secret = "${local.secret_prefix}_S3_SVC_YUCCA_TRANSCRIPTS_SECRET_KEY"
     # RGW admin (read-only) keys for the metrics worker. Titled <CLUSTER>_
     # METRICS_WORKER_* (no _CEPH infix) to match the metrics-worker consumer's
     # 1P contract, which is named by cluster, not by the ceph subsystem.

@@ -52,6 +52,7 @@ jobs:
           - { name: yucca-api, dockerfile: packages/yucca-api/Dockerfile }
           - { name: yucca-admin-api, dockerfile: packages/yucca-admin-api/Dockerfile }
           - { name: yucca-metrics-worker, dockerfile: packages/yucca-metrics-worker/Dockerfile }
+          - { name: futo-backups-bot, dockerfile: packages/futo-backups-bot/Dockerfile }
           - { name: web, dockerfile: packages/web/Dockerfile }
           - { name: michael, dockerfile: packages/michael/Dockerfile }
     steps:
