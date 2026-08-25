@@ -150,4 +150,7 @@ ceph_alertmanager_fix_route_tree: false
 #
 # Only meaningful when the receiver resolves annotations by name. Harmless
 # otherwise, but defaults false so no cluster changes alert content implicitly.
+#
+# The same gated override also drops alerts on the NetBird wt0 interface, whose
+# packet-error noise belongs to mesh monitoring.
 ceph_prometheus_drop_description_label: false

@@ -305,7 +305,14 @@
                                "    # EC profile) that shadows the same-named annotation in any\n"
                                "    # receiver that resolves by field name.\n"
                                "    - regex: 'description'\n"
-                               "      action: labeldrop\n",
+                               "      action: labeldrop\n"
+                               "    # yucca: wt0 is the NetBird management overlay; interface-error alerts\n"
+                               "    # on it are mesh weather, not ceph (2026-08-24: one relay bounce made\n"
+                               "    # CephNodeNetworkPacketErrors deliver 1000+ messages). Drop any alert\n"
+                               "    # scoped to that device.\n"
+                               "    - source_labels: ['device']\n"
+                               "      regex: 'wt0'\n"
+                               "      action: drop\n",
                 },
             ],
             "expect": lambda src: "alert_relabel_configs" not in src,
