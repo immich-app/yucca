@@ -27,6 +27,31 @@ provider "registry.opentofu.org/1password/onepassword" {
   ]
 }
 
+provider "registry.opentofu.org/fitbeard/radosgw" {
+  version     = "1.6.1"
+  constraints = "~> 1.6"
+  hashes = [
+    "h1:JYsrM9bWyiVMYNLnBB/wmRDBkyv+axvM3tsG8z9D5A8=",
+    "h1:cN8l4svIr0CdvWGP7OYgPILaChyHBi8GsuWOHUsGpZE=",
+    "h1:ccJenZcN0DGSSxduQ3BVBybVxI4fCwHHK/vCCT5njaU=",
+    "h1:igFuURHMzTI7rPIMZjp4QLvulLXAXszxs7njr6oPmZ0=",
+    "zh:005d66c5061ae2e7ee65715531483bce347227abf39632b04ec1fc04139f5446",
+    "zh:053445eb5d79f7702973e7e0d0bafba80949f51a8e87ec7187d588dc2c9ad8a6",
+    "zh:0552f576d6c5ec38f1a721dadb3c10a1e8775c8a6e11354fb32be2a00733bc4a",
+    "zh:15b8c468dbb4b62c2ef7c488b77b711992ea667e0167fad8b6d85061d1b92f9d",
+    "zh:2a7af61b6754464fc36e37651852449702e2704c54af3305d2461b353e577f49",
+    "zh:3248f6c21ef37c0505ed05269c73ceda972382faad8811b196e2670e6884fc7f",
+    "zh:6c62cd59903a201605c9319b6b1e4e25e7a2ea8eb43ecaf717e4ca17b284a891",
+    "zh:6fda43406bfb49dc68b30ebc3286ad6ea0c0c052045bcd0dd5447e9df389d22c",
+    "zh:8f30b2b469932b13e4780f253d903c0423a4f9d81b9a93543c8b1e590e33d476",
+    "zh:a9ee6ef2483545c9ca3b3f78eb58d37b2b78e225cf88b42d7b5456c4ed48bf95",
+    "zh:b4f08e0f0a72659d9fbcc3d84e1b0c829dae0da0edaa501e4f7604d0453c8343",
+    "zh:bac0f40534a1d07e49bf7b4c3edf68fd8f4cc5df254b945f4902fdd04864b070",
+    "zh:ef470b212eb3dc9bd8489e8ae6f5bfba2fff310336646bb531a20bbf1daedd01",
+    "zh:f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32",
+  ]
+}
+
 provider "registry.opentofu.org/hashicorp/local" {
   version     = "2.9.0"
   constraints = "~> 2.5"

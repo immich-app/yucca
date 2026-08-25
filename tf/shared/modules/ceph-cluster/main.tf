@@ -82,6 +82,11 @@ locals {
     # 1P contract, which is named by cluster, not by the ceph subsystem.
     metrics_worker_access = "${upper(var.cluster_name)}_METRICS_WORKER_ACCESS_KEY"
     metrics_worker_secret = "${upper(var.cluster_name)}_METRICS_WORKER_SECRET_KEY"
+    # RGW admin (write) keys for the radosgw terraform provider (the ceph
+    # stacks' rgw-users.tf). The svc-yucca-terraform user itself is bootstrapped
+    # by ansible (rgw.yml) with these keys -- TF cannot create its own admin.
+    tf_admin_access = "${local.secret_prefix}_TF_ADMIN_ACCESS_KEY"
+    tf_admin_secret = "${local.secret_prefix}_TF_ADMIN_SECRET_KEY"
     },
     # Alertmanager receiver URL. Opt-in per cluster, and provisioned OUT OF BAND:
     # the value is an externally-issued webhook (Zulip/Opsgenie/etc), not a

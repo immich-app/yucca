@@ -23,6 +23,7 @@ clusters = {
     ansible_ssh_key   = "~/.ssh/id_ed25519_sietch"
     vault             = "yucca_tf_staging"
     provision_profile = "debian-live"
+    manage_rgw_users  = true
     hosts = [
       { name = "laurel", bond_ip = "10.10.10.90", bootstrap = true },
       { name = "lawson", bond_ip = "10.10.10.91" },

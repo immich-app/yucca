@@ -28,6 +28,10 @@ clusters = {
     ansible_ssh_key   = "~/.ssh/id_ed25519_spice"
     vault             = "yucca_tf_prod"
     provision_profile = null
+    manage_rgw_users  = true
+    # 0 = no bucket limit (RGW semantics): michael mints one bucket per restic
+    # repository, so prod must not cap them.
+    rgw_restic_max_buckets = 0
     # SPICE_CEPH_ALERTMANAGER_WEBHOOK_URL is provisioned out of band (Zulip
     # incoming webhook) and referenced, never generated. See secrets.tf.
     alertmanager_webhook = true
