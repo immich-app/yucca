@@ -1,15 +1,23 @@
-import { adoptRepositories, getAuth } from '@futo-org/backups-api-client';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  adoptRepositories,
+  getAuth,
+  type DeviceFlowEventDto as UpstreamDeviceFlowEvent,
+} from '@futo-org/backups-api-client';
+import { Injectable } from '@nestjs/common';
+import { EventIterator } from 'event-iterator';
 import { createEventSource, EventSourceClient } from 'eventsource-client';
 import { hostname } from 'node:os';
+import { from } from 'rxjs';
 import { REPOSITORY_DEFAULT_CLOUD_UUID } from '../const';
-import { BackendType, CookieName } from '../enum';
+import { DeviceFlowEventDto } from '../dto/auth.dto';
+import { BackendType, CookieName, DeviceFlowEventType, DeviceFlowFailureReason } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { yuccaWellKnown } from '../wellKnown';
+import { SessionService } from './session.service';
 import { TelemetryService } from './telemetry.service';
 
 @Injectable()
@@ -21,6 +29,7 @@ export class AuthService {
     readonly events: EventsGateway,
     readonly telemetry: TelemetryService,
     readonly repository: RepositoryRepository,
+    readonly session: SessionService,
   ) {}
 
   private connectionType(): string {
@@ -71,57 +80,46 @@ export class AuthService {
     }
   }
 
-  private async waitForDeviceFlow(events: EventSourceClient, overrideEndpoint: string | undefined, endpoint: string) {
-    for await (const { data } of events) {
-      const { type, accessToken } = JSON.parse(data);
+  private async connectBackend(endpoint: string, accessToken: string, userId: string): Promise<void> {
+    const claimedUserId = await this.session.claimedUserId();
 
-      switch (type) {
-        case 'SUCCESS': {
-          await this.backend.updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
-            type: BackendType.Yucca,
-            accessToken,
-            url: overrideEndpoint,
-          });
+    await this.backend.updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
+      type: BackendType.Yucca,
+      accessToken,
+      userId,
+    });
 
-          await this.adoptOwnRepositories(endpoint, accessToken);
-
-          this.telemetry.submitStructuredLog('Connected FUTO Backups backend', {
-            backendId: REPOSITORY_DEFAULT_CLOUD_UUID,
-          });
-
-          this.events.publish({
-            type: 'BackendCreate',
-            backend: {
-              id: REPOSITORY_DEFAULT_CLOUD_UUID,
-              type: BackendType.Yucca,
-              description: 'FUTO Backups',
-              isOnline: true,
-            },
-          });
-
-          break;
-        }
-        case 'FAILURE': {
-          this.telemetry.submitStructuredLog('Device flow authentication failed', {});
-
-          this.events.publish({
-            type: 'DeviceFlowFailure',
-          });
-
-          break;
-        }
-      }
+    if (claimedUserId && claimedUserId !== userId) {
+      await this.config.rotateSessionSecret();
     }
 
-    events.close();
+    await this.adoptOwnRepositories(endpoint, accessToken);
+
+    this.telemetry.submitStructuredLog('Connected FUTO Backups backend', {
+      backendId: REPOSITORY_DEFAULT_CLOUD_UUID,
+    });
+
+    this.events.publish({
+      type: 'BackendCreate',
+      backend: {
+        id: REPOSITORY_DEFAULT_CLOUD_UUID,
+        type: BackendType.Yucca,
+        description: 'FUTO Backups',
+        isOnline: true,
+      },
+    });
   }
 
-  async oidcDeviceFlow(): Promise<{ userCode: string; verificationUri: string }> {
-    const endpoint = await yuccaWellKnown.getBaseUrl();
-
-    const url = new URL('/api/auth/oidc/device', endpoint);
-    url.searchParams.set('connection_type', this.connectionType());
-    url.searchParams.set('connection_name', this.connectionName());
+  private async relayDeviceFlow(
+    identity: boolean,
+    endpoint: string,
+    publish: (event: DeviceFlowEventDto) => void,
+  ): Promise<UpstreamDeviceFlowEvent | undefined> {
+    const url = new URL(identity ? '/api/auth/oidc/device/identity' : '/api/auth/oidc/device', endpoint);
+    if (!identity) {
+      url.searchParams.set('connection_type', this.connectionType());
+      url.searchParams.set('connection_name', this.connectionName());
+    }
 
     const events: EventSourceClient = createEventSource({
       url,
@@ -130,21 +128,100 @@ export class AuthService {
 
     const connectTimeout = setTimeout(() => events.close(), 10_000);
 
-    for await (const { data } of events) {
+    try {
+      for await (const { data } of events) {
+        clearTimeout(connectTimeout);
+        const message = JSON.parse(data) as UpstreamDeviceFlowEvent;
+
+        if (message.type === 'START') {
+          publish({
+            type: DeviceFlowEventType.Start,
+            userCode: message.userCode,
+            verificationUri: message.verificationUri,
+          });
+          continue;
+        }
+
+        if (message.type === 'SUCCESS') {
+          return message;
+        }
+
+        if (message.type === 'FAILURE') {
+          this.telemetry.submitStructuredLog('Device flow authentication failed', { reason: message.reason });
+          return;
+        }
+      }
+    } finally {
       clearTimeout(connectTimeout);
-      const { userCode, verificationUri } = JSON.parse(data);
+      events.close();
+    }
+  }
 
-      void this.waitForDeviceFlow(events, undefined, endpoint).catch((error) => {
-        this.telemetry.submitStructuredLog('Device flow authentication errored', { error });
-        this.events.publish({ type: 'DeviceFlowFailure' });
-      });
-
-      return {
-        userCode,
-        verificationUri,
-      };
+  private async runDeviceFlow(identity: boolean, publish: (event: DeviceFlowEventDto) => void): Promise<void> {
+    const claimedUserId = await this.session.claimedUserId();
+    if (identity && !claimedUserId) {
+      publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.NotConnected });
+      return;
     }
 
-    throw new InternalServerErrorException('Failed to start authentication with FUTO Backups');
+    const endpoint = await yuccaWellKnown.getBaseUrl();
+    const upstream = await this.relayDeviceFlow(identity, endpoint, publish);
+    if (!upstream) {
+      publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.DeviceFlowFailed });
+      return;
+    }
+
+    let userId: string;
+
+    if (identity) {
+      if (!upstream.userId) {
+        publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.DeviceFlowFailed });
+        return;
+      }
+
+      userId = upstream.userId;
+
+      if (userId !== claimedUserId) {
+        publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.WrongAccount });
+        return;
+      }
+    } else {
+      const { accessToken } = upstream;
+      if (!accessToken) {
+        publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.DeviceFlowFailed });
+        return;
+      }
+
+      const auth = await getAuth({
+        baseUrl: endpoint,
+        headers: { cookie: `${CookieName.YuccaAccessToken}=${accessToken}` },
+      });
+
+      userId = auth.id;
+      await this.connectBackend(endpoint, accessToken, userId);
+    }
+
+    const isRequired = await this.session.isRequired();
+
+    publish({
+      type: DeviceFlowEventType.Success,
+      token: isRequired ? await this.session.issue(userId) : undefined,
+    });
+  }
+
+  deviceFlow(identity: boolean) {
+    return from(
+      new EventIterator<MessageEvent>(
+        (queue) =>
+          void this.runDeviceFlow(identity, (event) => queue.push({ data: event } as MessageEvent))
+            .catch((error) => {
+              this.telemetry.submitStructuredLog('Device flow authentication errored', { error });
+              queue.push({
+                data: { type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.Unknown },
+              } as MessageEvent);
+            })
+            .finally(() => queue.stop()),
+      ),
+    );
   }
 }

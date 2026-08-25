@@ -21,6 +21,10 @@ export enum ConfigurationKey {
   SessionSecret = 'session-secret',
 }
 
+export enum MetadataKey {
+  PublicRoute = 'public-route',
+}
+
 export enum BackendType {
   Yucca = 'yucca',
   Local = 'local',
@@ -43,6 +47,19 @@ export enum TaskType {
 
 export enum InternalEvent {
   ModuleConfigUpdated = 'yucca.moduleConfig.updated',
+}
+
+export enum DeviceFlowEventType {
+  Start = 'START',
+  Success = 'SUCCESS',
+  Failure = 'FAILURE',
+}
+
+export enum DeviceFlowFailureReason {
+  NotConnected = 'NOT_CONNECTED',
+  DeviceFlowFailed = 'DEVICE_FLOW_FAILED',
+  WrongAccount = 'WRONG_ACCOUNT',
+  Unknown = 'UNKNOWN',
 }
 
 export enum BootstrapStatus {

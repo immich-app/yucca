@@ -6,6 +6,7 @@ import { LocalRepositoryDto, RunDto } from '../dto/repository.dto';
 import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { ScheduleDto } from '../dto/schedule.dto';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { SessionService } from '../services/session.service';
 
 export type GatewayEvent =
   | {
@@ -64,9 +65,6 @@ export type GatewayEvent =
       runId: string;
       repositoryId: string;
       run: Partial<RunDto>;
-    }
-  | {
-      type: 'DeviceFlowFailure';
     };
 
 @WebSocketGateway({
@@ -75,7 +73,10 @@ export type GatewayEvent =
   transports: ['websocket'],
 })
 export class EventsGateway implements OnGatewayConnection {
-  constructor(private readonly moduleConfig: ModuleConfigRepository) {}
+  constructor(
+    private readonly moduleConfig: ModuleConfigRepository,
+    private readonly session: SessionService,
+  ) {}
 
   @WebSocketServer()
   server?: Server;
@@ -106,6 +107,14 @@ export class EventsGateway implements OnGatewayConnection {
     if (!authenticate) {
       if (requireWsAuth) {
         throw new Error('Auth function not set');
+      }
+
+      if (await this.session.isRequired()) {
+        const session = await this.session.fromCookieHeader(client.handshake.headers.cookie);
+
+        if (!session) {
+          throw new Error('No session cookie.');
+        }
       }
 
       return {
