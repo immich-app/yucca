@@ -46,8 +46,8 @@ spec:
             maxDataPoints: 43200
             expr: >-
               sum by (cluster)
-              (rate(node_network_receive_errs_total{device="wt0"}[5m]) +
-              rate(node_network_transmit_errs_total{device="wt0"}[5m]))
+              (rate(node_network_receive_errs_total{device="wt0", project="yucca"}[5m]) +
+              rate(node_network_transmit_errs_total{device="wt0", project="yucca"}[5m]))
         - refId: B
           relativeTimeRange:
             from: 600
@@ -62,8 +62,9 @@ spec:
                   params: [1]
                   type: gt
     # node_network_up{device="wt0"} is permanently 0 for TUN interfaces (no
-    # carrier), so presence-of-series is the only honest down signal. 30d
-    # backtest: one borderline 15-minute blip.
+    # carrier), so presence-of-series is the only honest down signal. The unless
+    # join returns an empty vector when every scraped host has wt0, so
+    # noDataState OK is load-bearing. 30d backtest: clean.
     - uid: netbird-overlay-interface-missing
       title: NetBirdOverlayInterfaceMissing
       condition: B
@@ -93,9 +94,9 @@ spec:
             maxDataPoints: 43200
             expr: >-
               count by (cluster)
-              (last_over_time(up{job=~"(ceph-)?node-exporter"}[5m]) == 1) -
-              count by (cluster)
-              (last_over_time(node_network_receive_bytes_total{device="wt0"}[5m]))
+              (last_over_time(up{job=~"(ceph-)?node-exporter", project="yucca"}[5m]) == 1
+              unless on (cluster, instance)
+              last_over_time(node_network_receive_bytes_total{device="wt0", project="yucca"}[5m]))
         - refId: B
           relativeTimeRange:
             from: 600
