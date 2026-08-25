@@ -19,6 +19,12 @@ export class ConfigRepository {
     if (!hasKey) {
       await this.set(ConfigurationKey.EncryptionKey, randomBytes(32).toString('hex'));
     }
+
+    const hasSecret = await this.hasSessionSecret();
+
+    if (!hasSecret) {
+      await this.set(ConfigurationKey.SessionSecret, randomBytes(32).toString('hex'));
+    }
   }
 
   private async set(key: ConfigurationKey, value: string) {
@@ -112,6 +118,18 @@ export class ConfigRepository {
 
   async skipExtraConfig() {
     return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
+  }
+
+  async hasSessionSecret() {
+    return this.has(ConfigurationKey.SessionSecret);
+  }
+
+  async getSessionSecret(): Promise<Buffer> {
+    return Buffer.from(await this.get(ConfigurationKey.SessionSecret), 'hex');
+  }
+
+  async rotateSessionSecret() {
+    return this.set(ConfigurationKey.SessionSecret, randomBytes(32).toString('hex'));
   }
 
   async getResticOptions(

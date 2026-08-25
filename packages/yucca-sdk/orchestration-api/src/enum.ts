@@ -17,6 +17,7 @@ export enum ConfigurationKey {
   Telemetry = 'telemetry',
   SkippedOnboardingExtraConfig = 'skipped-onboarding-extra-config',
   ResticOptionRestConnections = 'restic-o-rest-connections',
+  SessionSecret = 'session-secret',
 }
 
 export enum BackendType {
