@@ -1,5 +1,5 @@
 import { DynamicModule, FactoryProvider, Module, ModuleMetadata } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -21,6 +21,7 @@ import { RunningTasksController } from './controllers/runningTasks.controller';
 import { ScheduleController } from './controllers/schedule.controller';
 import { EventsGateway } from './events/events.gateway';
 import { TelemetryErrorInterceptor } from './interceptors/telemetry-error.interceptor';
+import { SessionGuard } from './middleware/session.guard';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { BootstrapRepository } from './repositories/bootstrap.repository';
@@ -162,6 +163,7 @@ export class OrchestrationApiModule {
       controllers,
       providers: [
         { provide: APP_INTERCEPTOR, useClass: TelemetryErrorInterceptor },
+        { provide: APP_GUARD, useClass: SessionGuard },
         EventsGateway,
         ...repositories,
         ...services,

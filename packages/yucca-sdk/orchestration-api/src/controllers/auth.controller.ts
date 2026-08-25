@@ -4,6 +4,7 @@ import { type Request, type Response } from 'express';
 import { SESSION_TTL_MS } from '../const';
 import { CreateSessionRequestDto, DeviceFlowEventDto } from '../dto/auth.dto';
 import { CookieName } from '../enum';
+import { PublicRoute } from '../middleware/session.guard';
 import { AuthService } from '../services/auth.service';
 import { SessionService } from '../services/session.service';
 
@@ -21,12 +22,14 @@ export class AuthController {
   }
 
   @Sse('/session/device')
+  @PublicRoute()
   @ApiOkResponse({ type: DeviceFlowEventDto })
   sessionDeviceFlow() {
     return this.auth.deviceFlow(true);
   }
 
   @Post('/session')
+  @PublicRoute()
   @ApiBody({ type: CreateSessionRequestDto })
   async createSession(
     @Body() dto: CreateSessionRequestDto,
