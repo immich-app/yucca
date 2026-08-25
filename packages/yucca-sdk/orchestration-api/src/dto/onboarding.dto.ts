@@ -13,6 +13,12 @@ export class OnboardingStatusResponseDto {
   hasTelemetry!: TelemetryLevel;
 
   @ApiProperty({ type: Boolean })
+  requiresAuthentication!: boolean;
+
+  @ApiProperty({ type: Boolean })
+  isAuthenticated!: boolean;
+
+  @ApiProperty({ type: Boolean })
   hasOnboardedKey!: boolean;
 
   @ApiProperty({ type: Boolean })
