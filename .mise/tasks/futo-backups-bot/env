@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+export FUTO_BACKUPS_BOT_PORT=${FUTO_BACKUPS_BOT_PORT:-3050}
+
+export YUCCA_API_URL=${YUCCA_API_URL:-http://localhost:3020}
+export INTERNAL_SECRET=${INTERNAL_SECRET:-dev-internal-secret}
+export WEB_URL=${WEB_URL:-http://localhost:5173}
