@@ -751,7 +751,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum by (cluster) (rate(node_network_receive_errs_total{device=\"wt0\"}[5m]) + rate(node_network_transmit_errs_total{device=\"wt0\"}[5m]))",
+          "expr": "sum by (cluster) (rate(node_network_receive_errs_total{device=\"wt0\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) + rate(node_network_transmit_errs_total{device=\"wt0\", project=\"yucca\", cluster=~\"$cluster\"}[5m]))",
           "refId": "A",
           "legendFormat": "{{cluster}}"
         }
@@ -825,7 +825,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "count by (cluster) (last_over_time(up{job=~\"(ceph-)?node-exporter\"}[5m]) == 1) - count by (cluster) (last_over_time(node_network_receive_bytes_total{device=\"wt0\"}[5m]))",
+          "expr": "count by (cluster) (last_over_time(up{job=~\"(ceph-)?node-exporter\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) == 1 unless on (cluster, instance) last_over_time(node_network_receive_bytes_total{device=\"wt0\", project=\"yucca\", cluster=~\"$cluster\"}[5m]))",
           "refId": "A",
           "legendFormat": "{{cluster}}"
         }
@@ -861,7 +861,8 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "noValue": "0"
         },
         "overrides": []
       }
