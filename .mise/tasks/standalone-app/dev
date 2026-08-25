@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Run standalone-app in development mode (vite UI + tsx server)"
-#MISE depends=["yucca-sdk:orchestration-ui:generate-fetch-client", "yucca-sdk:orchestration-api:build"]
+#MISE depends=["yucca-sdk:orchestration-ui:generate-fetch-client", "yucca-sdk:orchestration-api:build", "yucca-sdk:orchestration-ui:build"]
 set -e
 export STANDALONE_WEB_PORT=${STANDALONE_WEB_PORT:-36067}
 export PORT=${PORT:-22676}

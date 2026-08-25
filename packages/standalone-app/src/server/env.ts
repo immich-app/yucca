@@ -10,6 +10,7 @@ const schema = z.object({
   YUCCA_STATE_PATH: z.string().trim().min(1).default(resolve(homedir(), '.yucca')),
   YUCCA_WELL_KNOWN_URL: optionalString,
   YUCCA_UI_PATH: optionalString,
+  YUCCA_DISABLE_AUTH: z.stringbool().default(false),
 });
 
 export type Env = {
@@ -18,6 +19,7 @@ export type Env = {
   statePath: string;
   wellKnownUrl?: string;
   uiPath?: string;
+  disableAuth: boolean;
 };
 
 export const readEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
@@ -36,5 +38,6 @@ export const readEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
     statePath: resolve(parsed.YUCCA_STATE_PATH),
     wellKnownUrl: parsed.YUCCA_WELL_KNOWN_URL,
     uiPath: parsed.YUCCA_UI_PATH ? resolve(parsed.YUCCA_UI_PATH) : undefined,
+    disableAuth: parsed.YUCCA_DISABLE_AUTH,
   };
 };

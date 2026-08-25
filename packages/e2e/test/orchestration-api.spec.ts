@@ -10,10 +10,23 @@ import { waitForLog } from 'src/victoria-logs';
 const baseUrl = `http://localhost:22676`;
 let socket: Socket;
 
+const startDeviceFlow = async () => {
+  const events = createEventSource(`${baseUrl}/api/yucca/auth/oidc/device`);
+
+  for await (const { data } of events) {
+    const message = JSON.parse(data);
+    if (message.type === 'START') {
+      return { events, userCode: message.userCode as string, verificationUri: message.verificationUri as string };
+    }
+  }
+
+  throw new Error('Device flow ended before it started');
+};
+
 const login = async () => {
   const backendCreated = waitForMessage('BackendCreate');
 
-  const { userCode, verificationUri } = await sdk.oidcDeviceFlow();
+  const { events, userCode, verificationUri } = await startDeviceFlow();
 
   const approveUrl = new URL('/api/form/device', verificationUri);
   approveUrl.searchParams.set('user_code', userCode);
@@ -25,6 +38,7 @@ const login = async () => {
   }
 
   await backendCreated;
+  events.close();
 };
 
 beforeAll(async () => {
@@ -61,6 +75,8 @@ describe('Onboarding (before setup)', () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
       status: 'ready',
       hasTelemetry: 'none',
+      requiresAuthentication: false,
+      isAuthenticated: false,
       hasBackend: false,
       hasOnboardedKey: false,
       hasBackup: false,
@@ -72,10 +88,11 @@ describe('Onboarding (before setup)', () => {
 
 describe('Auth', () => {
   it('provides an OIDC device flow code', async () => {
-    await expect(sdk.oidcDeviceFlow()).resolves.toEqual({
-      userCode: expect.any(String),
-      verificationUri: expect.any(String),
-    });
+    const { events, userCode, verificationUri } = await startDeviceFlow();
+    events.close();
+
+    expect(userCode).toEqual(expect.any(String));
+    expect(verificationUri).toEqual(expect.any(String));
   });
 
   it('should log us in using IdP', async () => {
@@ -168,6 +185,8 @@ describe('Onboarding', () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
       status: 'ready',
       hasTelemetry: 'none',
+      requiresAuthentication: false,
+      isAuthenticated: false,
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: false,
@@ -182,6 +201,8 @@ describe('Onboarding', () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
       status: 'ready',
       hasTelemetry: 'none',
+      requiresAuthentication: false,
+      isAuthenticated: false,
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: false,
@@ -254,6 +275,8 @@ describe('Repository', () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
       status: 'ready',
       hasTelemetry: 'none',
+      requiresAuthentication: false,
+      isAuthenticated: false,
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: true,
@@ -521,6 +544,8 @@ describe('Schedule', () => {
     await expect(sdk.onboardingStatus()).resolves.toEqual({
       status: 'ready',
       hasTelemetry: 'none',
+      requiresAuthentication: false,
+      isAuthenticated: false,
       hasBackend: true,
       hasOnboardedKey: true,
       hasBackup: true,
