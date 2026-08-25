@@ -152,6 +152,10 @@ msgstr "Continue"
 #~ msgid "Created {0} · expires {1}"
 #~ msgstr "Created {0} · expires {1}"
 
+#: src/routes/link/discord/+page.svelte
+msgid "Discord account linked. You can head back to Discord."
+msgstr "Discord account linked. You can head back to Discord."
+
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Done"
 #~ msgstr "Done"
@@ -218,8 +222,25 @@ msgstr "Invite code"
 #~ msgid "Key label"
 #~ msgstr "Key label"
 
+#: src/routes/link/discord/+page.svelte
+msgid "Link account"
+msgstr "Link account"
+
+#: src/routes/link/discord/+page.svelte
+msgid "Link Discord"
+msgstr "Link Discord"
+
+#: src/routes/link/discord/+page.svelte
+msgid "Link Discord account @{0} to {1}?"
+msgstr "Link Discord account @{0} to {1}?"
+
+#: src/routes/link/discord/+page.svelte
+msgid "Log in to link your Discord account."
+msgstr "Log in to link your Discord account."
+
 #: src/routes/+page.svelte
 #: src/routes/+page.svelte
+#: src/routes/link/discord/+page.svelte
 msgid "Login"
 msgstr "Login"
 
@@ -308,6 +329,14 @@ msgstr "Logout"
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "This connection type can't be added from here — see the note above."
 #~ msgstr "This connection type can't be added from here — see the note above."
+
+#: src/routes/link/discord/+page.svelte
+msgid "This link is invalid or has expired. Click the support button in Discord to get a new one."
+msgstr "This link is invalid or has expired. Click the support button in Discord to get a new one."
+
+#: src/routes/link/discord/+page.svelte
+msgid "Unable to link your Discord account."
+msgstr "Unable to link your Discord account."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Write-once (WORM)"
