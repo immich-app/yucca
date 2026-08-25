@@ -28,6 +28,7 @@
   "dependencies": {
     "@futo-org/restic-wrapper": "catalog:",
     "@nestjs/event-emitter": "catalog:",
+    "@nestjs/jwt": "catalog:",
     "better-sqlite3": "catalog:",
     "class-validator": "catalog:",
     "cookie": "catalog:",

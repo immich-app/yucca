@@ -2,6 +2,7 @@ export enum CookieName {
   NextUrl = 'sdk-next',
   OidcState = 'sdk-oidc-state',
   OidcCodeVerifier = 'sdk-oidc-code-verifier',
+  SessionToken = 'sdk-session',
   YuccaAccessToken = 'yucca-access-token',
   YuccaOidcState = 'yucca-oidc-state',
   YuccaOidcCodeVerifier = 'yucca-oidc-code-verifier',
