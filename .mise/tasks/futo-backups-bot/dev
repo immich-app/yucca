@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#MISE description="Run futo-backups-bot in development mode"
+#MISE depends=["common:build"]
+#MISE dir="{{config_root}}"
+set -e
+source "$(dirname "$0")/env"
+
+if command -v op &>/dev/null; then
+  op run --env-file="./.env" -- pnpm --filter futo-backups-bot start:dev
+else
+  pnpm --filter futo-backups-bot start:dev
+fi

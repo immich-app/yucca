@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Build futo-backups-bot"
+#MISE depends=["common:build"]
+set -e
+
+NODE_ENV=production pnpm --filter futo-backups-bot build

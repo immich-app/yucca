@@ -69,11 +69,11 @@ stays pure account-linking.
   click jumps to the existing channel.
 - **Close** (staff-only button/command): strips the user's overwrite and
   moves the channel to the Archived category, stamping closedAt in the topic.
-- **Sweep** (daily): archived channels closed **> 14 days** ago are rendered
-  to a plain-text transcript (timestamp / author / content, attachments as
-  URLs), uploaded with a summary embed to the staff log channel, then
-  deleted. History survives as the transcript; the 500-channel guild cap
-  stays far away.
+- **Sweep** (daily): archived channels closed **> 14 days** ago
+  (`TICKET_RETENTION_DAYS`) are rendered to a plain-text transcript
+  (timestamp / author / content, attachments as URLs), uploaded to S3
+  (`TRANSCRIPT_S3_*`, Ceph RGW in prod), then deleted. History survives as
+  the transcript; the 500-channel guild cap stays far away.
 
 ## Configuration
 
@@ -88,9 +88,11 @@ through `.env`.
 | `DISCORD_STAFF_ROLE_ID` | role granted on every ticket |
 | `DISCORD_SUPPORT_CHANNEL_ID` | public channel holding the pinned button |
 | `DISCORD_TICKET_CATEGORY_ID` / `DISCORD_ARCHIVE_CATEGORY_ID` | open / closed tickets |
-| `DISCORD_STAFF_LOG_CHANNEL_ID` | transcripts + summaries |
-| `GRAFANA_USER_DASHBOARD_URL` | URL template, user id substituted |
+| `GRAFANA_USER_DASHBOARD_URL` | URL template, `{userId}` substituted |
 | `YUCCA_API_URL`, `INTERNAL_SECRET` | internal API access |
+| `WEB_URL` | base for the link-confirmation URL |
+| `TICKET_RETENTION_DAYS` | archive retention before transcript + delete (14) |
+| `TRANSCRIPT_S3_*` | endpoint, bucket, credentials, region for transcripts |
 
 ## Where things live
 

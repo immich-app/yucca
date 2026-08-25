@@ -79,6 +79,7 @@ catalog:
   cron: ^4.4.0
   cron-validate: ^1.5.3
   cronstrue: ^3.14.0
+  discord.js: ^14.16.3
   eslint: ^9.39.2
   eslint-config-prettier: ^10.1.8
   eslint-plugin-prettier: ^5.5.4
