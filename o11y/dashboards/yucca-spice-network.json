@@ -1,0 +1,1102 @@
+{
+  "uid": "yucca-spice-network",
+  "title": "Ceph / Network",
+  "description": "Fleet networking for the spice cluster: 25G bond fabric, VLAN split, NetBird wt0 overlay, WAN and TCP health. Companion to the o11y/alerts/netbird.yaml rules; provisioned from the repo, edit the file not the UI.",
+  "tags": [
+    "spice",
+    "ceph",
+    "network",
+    "prod"
+  ],
+  "timezone": "",
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "version": 1,
+  "links": [],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Data Source",
+        "refresh": 1,
+        "hide": 0,
+        "current": {
+          "text": "VictoriaMetrics Fleet",
+          "value": "VictoriaMetricsFleet"
+        },
+        "options": [],
+        "regex": "/^VictoriaMetrics Fleet$/",
+        "skipUrlSync": false
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "includeAll": true,
+        "label": "Env",
+        "multi": true,
+        "name": "env",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\"}, env)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "includeAll": true,
+        "label": "Provider",
+        "multi": true,
+        "name": "provider",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\", env=~\"$env\"}, provider)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "uid": "$datasource"
+        },
+        "includeAll": true,
+        "label": "Region",
+        "multi": true,
+        "name": "region",
+        "options": [],
+        "query": "label_values(up{project=\"yucca\", env=~\"$env\", provider=~\"$provider\"}, region)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "name": "cluster",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "$datasource"
+        },
+        "query": "label_values(ceph_health_status{env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)",
+        "label": "Cluster",
+        "refresh": 1,
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "allValue": null,
+        "current": {},
+        "options": [],
+        "regex": "",
+        "sort": 1,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "25G fabric",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Fleet total (25G members)",
+      "description": "Aggregate over every 25G bond member in the fleet.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=~\"enp19[37]s0f[01]\"}[$__rate_interval])) * 8",
+          "refId": "A",
+          "legendFormat": "rx"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=~\"enp19[37]s0f[01]\"}[$__rate_interval])) * 8",
+          "refId": "B",
+          "legendFormat": "tx"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Top 10 hosts by bond0 throughput",
+      "description": "rx+tx over the bond; a single host pinned here while the fleet idles is the interesting case.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "topk(10, sum by (instance) ((rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=\"bond0\"}[$__rate_interval]) + rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=\"bond0\"}[$__rate_interval])) * 8))",
+          "refId": "A",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Per-member balance",
+      "description": "The two 25G members should carry comparable load; a skewed split means the LACP hash is unhappy.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (device) ((rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=~\"enp193s0f[01]\"}[$__rate_interval]) + rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=~\"enp193s0f[01]\"}[$__rate_interval])) * 8)",
+          "refId": "A",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "row",
+      "title": "Bond health",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "panels": []
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Degraded bonds",
+      "description": "Bonds running with fewer active members than configured.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count(node_bonding_active{cluster=~\"$cluster\"} < node_bonding_slaves{cluster=~\"$cluster\"}) or vector(0)",
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Carrier changes, top 10 devices",
+      "description": "Link flaps on the physical members; anything above zero repeats is cabling or optics.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 18,
+        "x": 6,
+        "y": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "topk(10, rate(node_network_carrier_changes_total{cluster=~\"$cluster\", device=~\"enp.*\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{instance}} {{device}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "VLANs",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "panels": []
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Traffic by VLAN subinterface",
+      "description": "Ceph public (bond0.120) vs replication (bond0.122) split.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 19
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (device) ((rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=~\"bond0\\\\..*\"}[$__rate_interval]) + rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=~\"bond0\\\\..*\"}[$__rate_interval])) * 8)",
+          "refId": "A",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "MTU by device",
+      "description": "Jumbo is VLAN-122 only; every host must agree per device.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 19
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "max by (device) (node_network_mtu_bytes{cluster=~\"$cluster\", device=~\"bond0\\\\..*|wt0\"})",
+          "refId": "A",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "NetBird overlay",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "wt0 traffic",
+      "description": "Management-plane volume over the WireGuard overlay.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (cluster) (rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=\"wt0\"}[$__rate_interval])) * 8",
+          "refId": "A",
+          "legendFormat": "rx {{cluster}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (cluster) (rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=\"wt0\"}[$__rate_interval])) * 8",
+          "refId": "B",
+          "legendFormat": "tx {{cluster}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "wt0 packet errors",
+      "description": "The NetBirdOverlayPacketErrors alert expression; the line marks its 1 pkt/s threshold.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 28
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum by (cluster) (rate(node_network_receive_errs_total{device=\"wt0\"}[5m]) + rate(node_network_transmit_errs_total{device=\"wt0\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none",
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Hosts missing wt0",
+      "description": "The NetBirdOverlayInterfaceMissing alert expression: scraped nodes exposing no wt0 series.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 28
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "count by (cluster) (last_over_time(up{job=~\"(ceph-)?node-exporter\"}[5m]) == 1) - count by (cluster) (last_over_time(node_network_receive_bytes_total{device=\"wt0\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "{{cluster}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "WAN + TCP",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "panels": []
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "WAN (enp197s0) traffic",
+      "description": "The 1G WAN link; IaC, apt and Hetzner traffic only, the data plane lives on the bond.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(node_network_receive_bytes_total{cluster=~\"$cluster\", device=\"enp197s0\"}[$__rate_interval])) * 8",
+          "refId": "A",
+          "legendFormat": "rx"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "sum(rate(node_network_transmit_bytes_total{cluster=~\"$cluster\", device=\"enp197s0\"}[$__rate_interval])) * 8",
+          "refId": "B",
+          "legendFormat": "tx"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "TCP retransmits, top 10 hosts",
+      "description": "Sustained retransmits on a subset of hosts points at a fabric path, not the application.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 37
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "topk(10, rate(node_netstat_Tcp_RetransSegs{cluster=~\"$cluster\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Conntrack entries vs limit",
+      "description": "The limit is per host; the fleet max leading the pack toward it is early warning.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 37
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "max(node_nf_conntrack_entries{cluster=~\"$cluster\"})",
+          "refId": "A",
+          "legendFormat": "max entries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "min(node_nf_conntrack_entries_limit{cluster=~\"$cluster\"})",
+          "refId": "B",
+          "legendFormat": "limit"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 18,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisLabel": "",
+            "gradientMode": "none"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
