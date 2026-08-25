@@ -103,6 +103,23 @@ policies = {
     }]
   }
 
+  # CI plans/applies the ceph TF stack: the radosgw provider refreshes RGW users
+  # against s3.<domain> (cls1_public VIPs). ceph_nets is split from `resources`,
+  # so ci-to-resources does not cover it; without this grant the refresh
+  # blackholes and every prod ceph plan hangs until cancelled. The route
+  # installs on the ephemeral CI peers only.
+  ci-to-ceph-nets = {
+    description = "CI -> cls1 networks, RGW S3 endpoint only."
+    rules = [{
+      name          = "ci-to-ceph-nets"
+      protocol      = "tcp"
+      bidirectional = false
+      sources       = ["ci"]
+      destinations  = ["ceph_nets"]
+      ports         = ["443"]
+    }]
+  }
+
   # Talos nodes → o11y's prod mesh gateway (external group, resolved in
   # netbird.tf): vmagent + victoria-logs-collector remote-write to the
   # UNAUTHENTICATED mesh vmauth (vmauth.o11y.futo.network:443) — this ACL is
