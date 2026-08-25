@@ -12,6 +12,22 @@ spec:
   hostnames:
     - "${APP_DOMAIN}"
   rules:
+    # Longest-prefix match wins: /api/internal never reaches yucca-api from the
+    # internet — the internal-404 filter answers instead. Pod-to-pod callers
+    # (futo-backups-bot) bypass the gateway entirely.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/internal
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: internal-404
+      backendRefs:
+        - name: yucca-api
+          port: 3020
     - matches:
         - path:
             type: PathPrefix
@@ -22,3 +38,11 @@ spec:
     - backendRefs:
         - name: yucca-web
           port: 5173
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: HTTPRouteFilter
+metadata:
+  name: internal-404
+spec:
+  directResponse:
+    statusCode: 404

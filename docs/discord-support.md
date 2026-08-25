@@ -2,9 +2,9 @@
 
 Support runs through Discord: a pinned message in the public support channel
 carries a **Get support** button; clicking it links the Discord account to the
-user's yucca account (once), then opens a **private ticket channel** with the
-user and the staff role, seeded with the user's issue description and a
-staff-only context thread.
+user's yucca account (once), then opens a **private ticket thread** under the
+support channel with the user, seeded with the user's issue description and
+paired with a staff-only context thread.
 
 ```
 click button ──> linked? ──no──> one-time web link ──> login + confirm ──> discordLinks row
@@ -12,8 +12,8 @@ click button ──> linked? ──no──> one-time web link ──> login + c
                     └──────────────> description modal <────── bot polls ───────┘
                                           │submit
                                           v
-                     #ticket-<username>  (user + staff role)
-                       └─ private "staff-notes" thread (Grafana link + account summary)
+             private thread ticket-<user> (member: user; staff via Manage Threads)
+               + private thread staff-<user> (Grafana link + account summary)
 ```
 
 ## The service
@@ -47,52 +47,60 @@ identity by the normal web session. The nonce marries the two:
   until the link exists (or the nonce expires), then edits the ephemeral
   reply to an **Open ticket** button (a modal needs a fresh interaction).
 
-Linking is **required**: every ticket belongs to a known account.
-Pre-signup questions stay in public channels.
+Linking is **required** for the self-serve button: every self-opened ticket
+belongs to a known account. Staff can bypass it with **`/ticket user:<user>`**
+(staff-only slash command) — the thread is opened for the target user directly,
+and the staff note records whether a linked account exists. Pre-signup
+questions stay in public channels or go through that override.
 
 ## Tickets: Discord is the source of truth
 
-No ticket table. State is which category the channel sits in; metadata
-(linked `userId`, closedAt) lives in the channel topic. yucca-api's scope
-stays pure account-linking.
+No ticket table. A ticket is a **private thread** under the support channel;
+closed = **locked + archived** (locked distinguishes a real close from
+Discord's auto-archive on idle), and Discord's own `archiveTimestamp` drives
+retention. yucca-api's scope stays pure account-linking.
 
 - **Open**: the button (always, when linked) opens a **modal with a required
-  description field**; the channel is only created on submit. The bot creates
-  `ticket-<username>` under the Support category with permission overwrites
-  (the user + `DISCORD_STAFF_ROLE_ID`), posts the description as the opening
-  message, and creates a **private `staff-notes` thread** containing the
+  description field**; the thread is only created on submit. The bot creates
+  private thread `ticket-<username>-<id suffix>`, adds the user as a member,
+  and posts the description with a mention of the user and
+  `DISCORD_STAFF_ROLE_ID` (mentioning the role adds staff to the thread). A
+  sibling private thread `staff-<same suffix>` with **no members** carries the
   user's Grafana dashboard link (`GRAFANA_USER_DASHBOARD_URL` template; the
   dashboard itself is o11y-owned) and an account summary from
   **`GET /internal/discord/users/:userId/summary`** (email, connections,
-  repository count, last seen). Staff see the thread via a Manage Threads
-  grant on the category; the user cannot. One open ticket per user; a second
-  click jumps to the existing channel.
-- **Close** (staff-only button/command): strips the user's overwrite and
-  moves the channel to the Archived category, stamping closedAt in the topic.
-- **Sweep** (daily): archived channels closed **> 14 days** ago
+  repository count, last seen) — staff see it via Manage Threads on the
+  support channel; the user cannot. One open ticket per user (membership scan
+  of active threads); a second submit points at the existing thread.
+- **Close** (staff-only button): locks + archives the ticket thread and its
+  staff sibling. The user keeps read access to their own closed ticket but
+  cannot post or reopen; staff can unarchive via Manage Threads.
+- **Sweep** (daily): locked threads archived **> 14 days** ago
   (`TICKET_RETENTION_DAYS`) are rendered to a plain-text transcript
   (timestamp / author / content, attachments as URLs), uploaded to S3
   (`TRANSCRIPT_S3_*`, Ceph RGW in prod), then deleted. History survives as
-  the transcript; the 500-channel guild cap stays far away.
+  the transcript; threads never touch the guild's channel cap.
 
 ## Configuration
 
-Deployment config (ops-owned): env via cluster-settings; the bot token is a
-Terraform-provisioned secret (`op://` ref), dev uses the existing dev guild
-through `.env`.
+The Discord surface itself is Terraform in **core-infra-tf** (community
+discord module): the FUTO Backups category with #general + #support, the
+hidden archive category, and a per-env `YUCCA_DISCORD_SUPPORT_IDS` 1P item
+carrying the ids (dev Immich server ↔ yucca staging, prod Immich ↔ yucca
+prod). Yucca's talos stack reads everything secretish via `op://` refs into
+the `futo-backups-bot` Secret; only the leftovers ride cluster-settings. Dev
+uses the dev guild through `.env`.
 
-| Variable | What |
+| Variable | Source |
 |---|---|
-| `DISCORD_BOT_TOKEN` | secret |
-| `DISCORD_GUILD_ID` | the guild |
-| `DISCORD_STAFF_ROLE_ID` | role granted on every ticket |
-| `DISCORD_SUPPORT_CHANNEL_ID` | public channel holding the pinned button |
-| `DISCORD_TICKET_CATEGORY_ID` / `DISCORD_ARCHIVE_CATEGORY_ID` | open / closed tickets |
-| `GRAFANA_USER_DASHBOARD_URL` | URL template, `{userId}` substituted |
-| `YUCCA_API_URL`, `INTERNAL_SECRET` | internal API access |
-| `WEB_URL` | base for the link-confirmation URL |
+| `DISCORD_BOT_TOKEN` | Secret ← `YUCCA_DISCORD_BOT_TOKEN` (manual item) |
+| `DISCORD_GUILD_ID`, `DISCORD_STAFF_ROLE_ID`, `DISCORD_SUPPORT_CHANNEL_ID` | Secret ← `YUCCA_DISCORD_SUPPORT_IDS` (written by core-infra-tf's discord apply) |
+| `INTERNAL_SECRET` | Secret ← TF-generated (`random_password`, shared with yucca-api) |
+| `TRANSCRIPT_S3_ACCESS_KEY_ID` / `..._SECRET_ACCESS_KEY` | Secret ← ceph-stack-minted `*_CEPH_S3_SVC_YUCCA_TRANSCRIPTS_*` |
+| `TRANSCRIPT_S3_ENDPOINT`, `TRANSCRIPT_S3_BUCKET` | cluster-settings |
+| `GRAFANA_USER_DASHBOARD_URL` | cluster-settings; URL template, `{userId}` substituted |
+| `YUCCA_API_URL`, `WEB_URL` | HelmRelease env |
 | `TICKET_RETENTION_DAYS` | archive retention before transcript + delete (14) |
-| `TRANSCRIPT_S3_*` | endpoint, bucket, credentials, region for transcripts |
 
 ## Where things live
 

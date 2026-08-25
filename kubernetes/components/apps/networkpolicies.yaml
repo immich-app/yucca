@@ -51,6 +51,11 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: web
+        # futo-backups-bot → /api/internal/discord/* (shared-secret guarded;
+        # the gateway 404-shadows /api/internal so pod-to-pod is the only way in).
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: futo-backups-bot
       ports:
         - { port: 3020, protocol: TCP }
 ---

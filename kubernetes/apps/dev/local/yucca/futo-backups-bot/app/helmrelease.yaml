@@ -1,0 +1,34 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: futo-backups-bot
+  namespace: yucca
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/apps/futo-backups-bot
+      sourceRef:
+        kind: GitRepository
+        name: yucca
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    # DEV-ONLY relaxation: Tilt live_update syncs source into /app inside the
+    # running container, which needs a writable rootfs (the chart default is
+    # readOnlyRootFilesystem: true).
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop: [ALL]
+    image:
+      repository: ghcr.io/immich-app/yucca/futo-backups-bot
+      tag: 0.0.1

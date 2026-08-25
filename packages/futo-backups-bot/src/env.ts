@@ -17,13 +17,10 @@ const schema = z.object({
 
   TICKET_RETENTION_DAYS: z.coerce.number().default(14),
 
-  TRANSCRIPT_S3_ENDPOINT: z
-    .url()
-    .transform((url) => new URL(url))
-    .optional(),
-  TRANSCRIPT_S3_BUCKET: z.string().optional(),
-  TRANSCRIPT_S3_ACCESS_KEY_ID: z.string().optional(),
-  TRANSCRIPT_S3_SECRET_ACCESS_KEY: z.string().optional(),
+  TRANSCRIPT_S3_ENDPOINT: z.string().default(''),
+  TRANSCRIPT_S3_BUCKET: z.string().default(''),
+  TRANSCRIPT_S3_ACCESS_KEY_ID: z.string().default(''),
+  TRANSCRIPT_S3_SECRET_ACCESS_KEY: z.string().default(''),
   TRANSCRIPT_S3_REGION: z.string().default('rgw'),
 });
 
