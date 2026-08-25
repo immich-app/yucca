@@ -17,6 +17,8 @@ Ls1C0ncCcmRhqKA7UxLknn0ji5FcKaku1zBOhxQYcxFVmsYtAxZ1ljgN
 
 export ALLOWED_EMAIL_DOMAINS=${ALLOWED_EMAIL_DOMAINS:-example.test}
 
+export INTERNAL_SECRET=${INTERNAL_SECRET:-dev-internal-secret}
+
 export OIDC_ISSUER=${OIDC_ISSUER:-http://localhost:8092}
 export OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-client ID}
 export OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-client secret}

@@ -1,6 +1,8 @@
 import { Database } from '@immich/sql-tools';
 import { ConnectionTable } from './tables/connection.table';
 import { ConnectionMetricsTable } from './tables/connectionMetrics.table';
+import { DiscordLinkTable } from './tables/discordLink.table';
+import { DiscordLinkRequestTable } from './tables/discordLinkRequest.table';
 import { RepositoryTable } from './tables/repository.table';
 import { RepositoryMeterTable } from './tables/repositoryMeter.table';
 import { RepositoryMeterHistoryTable } from './tables/repositoryMeterHistory.table';
@@ -27,6 +29,8 @@ export class ImmichDatabase {
     UserAllowlistTable,
     SettingsTable,
     UserFeatureFlagOverrideTable,
+    DiscordLinkTable,
+    DiscordLinkRequestTable,
   ];
 
   functions = [];
@@ -47,4 +51,6 @@ export interface DB {
   userAllowlist: UserAllowlistTable;
   settings: SettingsTable;
   userFeatureFlagOverride: UserFeatureFlagOverrideTable;
+  discordLinks: DiscordLinkTable;
+  discordLinkRequests: DiscordLinkRequestTable;
 }

@@ -57,6 +57,15 @@
             }
           },
           {
+            "name": "redirect",
+            "required": false,
+            "in": "query",
+            "description": "In-app path to land on after login",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "invite_code",
             "required": false,
             "in": "query",
@@ -277,6 +286,59 @@
         },
         "tags": [
           "Connection"
+        ]
+      }
+    },
+    "/api/discord/link-requests/{code}": {
+      "get": {
+        "operationId": "getDiscordLinkRequest",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordLinkRequestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Discord"
+        ]
+      }
+    },
+    "/api/discord/link-requests/{code}/confirm": {
+      "post": {
+        "operationId": "confirmDiscordLinkRequest",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Discord"
         ]
       }
     },
@@ -899,6 +961,17 @@
         },
         "required": [
           "repositoryIds"
+        ]
+      },
+      "DiscordLinkRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "discordUsername": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "discordUsername"
         ]
       },
       "SubmitBackupEndRequestDto": {

@@ -87,6 +87,9 @@ export type ConnectionAdoptRequestDto = {
     /** Repositories to move from the default connection to this one */
     repositoryIds: string[];
 };
+export type DiscordLinkRequestResponseDto = {
+    discordUsername: string;
+};
 export type SubmitBackupEndRequestDto = {
     success: boolean;
     durationMs: number;
@@ -174,12 +177,14 @@ export function logout(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(codeChallenge: string, state: string, { inviteCode }: {
+export function oidcAuthorize(codeChallenge: string, state: string, { redirect, inviteCode }: {
+    redirect?: string;
     inviteCode?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
         code_challenge: codeChallenge,
         state,
+        redirect,
         invite_code: inviteCode
     }))}`, {
         ...opts
@@ -246,6 +251,20 @@ export function adoptRepositories(id: string, connectionAdoptRequestDto: Connect
         method: "POST",
         body: connectionAdoptRequestDto
     })));
+}
+export function getDiscordLinkRequest(code: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DiscordLinkRequestResponseDto;
+    }>(`/api/discord/link-requests/${encodeURIComponent(code)}`, {
+        ...opts
+    }));
+}
+export function confirmDiscordLinkRequest(code: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/discord/link-requests/${encodeURIComponent(code)}/confirm`, {
+        ...opts,
+        method: "POST"
+    }));
 }
 export function submitMetricBackupStart(repositoryId: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/metrics/submit/${encodeURIComponent(repositoryId)}/backup/start`, {

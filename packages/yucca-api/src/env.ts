@@ -20,6 +20,8 @@ const schema = z.object({
   POSTGRES_DATABASE: z.string(),
   POSTGRES_SSL: z.union([z.enum(['require', 'allow', 'prefer', 'verify-full']), z.boolean()]).default(false),
 
+  INTERNAL_SECRET: z.string().default(''),
+
   ALLOWED_EMAIL_DOMAINS: z
     .string()
     .default('')
