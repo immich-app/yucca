@@ -172,6 +172,7 @@ export class AuthService {
     }
 
     let userId: string;
+    let backendId: string | undefined;
 
     if (identity) {
       if (!upstream.userId) {
@@ -198,6 +199,7 @@ export class AuthService {
       });
 
       userId = auth.id;
+      backendId = REPOSITORY_DEFAULT_CLOUD_UUID;
       await this.connectBackend(endpoint, accessToken, userId);
     }
 
@@ -206,6 +208,7 @@ export class AuthService {
     publish({
       type: DeviceFlowEventType.Success,
       token: isRequired ? await this.session.issue(userId) : undefined,
+      backendId,
     });
   }
 

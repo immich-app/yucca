@@ -15,6 +15,9 @@ export class DeviceFlowEventDto {
   @ApiProperty({ type: String, required: false })
   token?: string;
 
+  @ApiProperty({ type: String, required: false })
+  backendId?: string;
+
   @ApiProperty({ enum: DeviceFlowFailureReason, enumName: 'DeviceFlowFailureReason', required: false })
   reason?: DeviceFlowFailureReason;
 }

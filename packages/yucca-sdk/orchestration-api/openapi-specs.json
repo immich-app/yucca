@@ -1185,6 +1185,9 @@
           "token": {
             "type": "string"
           },
+          "backendId": {
+            "type": "string"
+          },
           "reason": {
             "allOf": [
               {

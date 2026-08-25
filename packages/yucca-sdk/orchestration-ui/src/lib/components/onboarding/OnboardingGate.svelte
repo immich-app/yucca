@@ -4,6 +4,7 @@
   import { LoadingSpinner } from "@immich/ui";
   import { onMount, type Snippet } from "svelte";
   import OnboardingBootstrapError from "./OnboardingBootstrapError.svelte";
+  import OnboardingLogin from "./OnboardingLogin.svelte";
   import SampleOnboarding from "./SampleOnboarding.svelte";
 
   type Props = {
@@ -23,6 +24,8 @@
   function onSkip() {
     onboarding = {
       status: "ready",
+      requiresAuthentication: false,
+      isAuthenticated: true,
       hasTelemetry: "full",
       hasBackend: true,
       hasOnboardedKey: true,
@@ -37,6 +40,10 @@
   <LoadingSpinner />
 {:else if onboarding.status === "error"}
   <OnboardingBootstrapError error={onboarding.error} onQuit={onExit} />
+{:else if onboarding.requiresAuthentication && !onboarding.isAuthenticated}
+  <OnboardingLogin
+    onAuthenticated={() => (onboarding!.isAuthenticated = true)}
+  />
 {:else if onboarding.hasTelemetry === "none" || !(onboarding.hasBackend && onboarding.hasOnboardedKey)}
   <SampleOnboarding
     status={onboarding}

@@ -21,6 +21,7 @@ export type DeviceFlowEventDto = {
     userCode?: string;
     verificationUri?: string;
     token?: string;
+    backendId?: string;
     reason?: DeviceFlowFailureReason;
 };
 export type CreateSessionRequestDto = {
