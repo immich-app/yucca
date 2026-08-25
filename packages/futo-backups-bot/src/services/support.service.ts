@@ -56,7 +56,11 @@ export class SupportService implements OnApplicationBootstrap {
       return;
     }
     await this.discord.start((interaction) => this.handleInteraction(interaction));
-    await this.discord.registerCommands();
+    try {
+      await this.discord.registerCommands();
+    } catch (error) {
+      this.logger.error(error, 'failed to register slash commands — is the applications.commands scope granted?');
+    }
     await this.discord.ensurePinnedSupportMessage({
       content: 'Need help with FUTO Backups? Click below to open a private ticket with our staff.',
       components: [this.buttonRow(ComponentId.OpenTicket, 'Get support')],
