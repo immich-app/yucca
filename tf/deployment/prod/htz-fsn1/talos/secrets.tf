@@ -255,6 +255,7 @@ resource "kubernetes_secret_v1" "futo_backups_bot" {
     DISCORD_SUPPORT_CHANNEL_ID      = var.yucca_discord_support_channel_id
     TRANSCRIPT_S3_ACCESS_KEY_ID     = var.spice_transcripts_access_key
     TRANSCRIPT_S3_SECRET_ACCESS_KEY = var.spice_transcripts_secret_key
+    TRANSCRIPT_S3_CA_CERT           = var.spice_rgw_tls_cert
   }
 }
 

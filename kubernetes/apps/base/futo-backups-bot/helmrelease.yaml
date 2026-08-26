@@ -51,6 +51,23 @@ spec:
       - name: GRAFANA_USER_DASHBOARD_URL
         value: ${GRAFANA_USER_DASHBOARD_URL:=}
       - name: TRANSCRIPT_S3_ENDPOINT
-        value: ${TRANSCRIPT_S3_ENDPOINT:=}
+        value: ${S3_ENDPOINT:=}
       - name: TRANSCRIPT_S3_BUCKET
-        value: ${TRANSCRIPT_S3_BUCKET:=}
+        value: ${TRANSCRIPT_S3_BUCKET:=yucca-support-transcripts}
+      # The RGW serves a self-signed cert; trust exactly it instead of blanket
+      # NODE_TLS_REJECT_UNAUTHORIZED=0 (which would also disable TLS checks
+      # toward Discord). Node warns and continues if the file is absent.
+      - name: NODE_EXTRA_CA_CERTS
+        value: /etc/yucca/rgw-ca.crt
+    volumes:
+      - name: rgw-ca
+        secret:
+          secretName: futo-backups-bot
+          optional: true
+          items:
+            - key: TRANSCRIPT_S3_CA_CERT
+              path: rgw-ca.crt
+    volumeMounts:
+      - name: rgw-ca
+        mountPath: /etc/yucca
+        readOnly: true
