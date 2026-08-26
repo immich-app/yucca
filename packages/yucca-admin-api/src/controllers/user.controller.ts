@@ -5,6 +5,8 @@ import { ConnectionListResponseDto } from 'src/dto/connection.dto';
 import { FeatureOverrideDto, FeatureOverrideSetRequestDto, UserFeaturesResponseDto } from 'src/dto/features.dto';
 import { SessionListResponseDto } from 'src/dto/session.dto';
 import {
+  UserDiscordLinkDto,
+  UserDiscordLinkRequestDto,
   UserGetResponseDto,
   UserListQueryDto,
   UserListResponseDto,
@@ -52,6 +54,20 @@ export class UserController {
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteUser(@Param('id') id: string): Promise<void> {
     return this.user.delete(id);
+  }
+
+  @Put('/:id/discord')
+  @AuthRoute()
+  @ApiOkResponse({ type: UserDiscordLinkDto })
+  linkUserDiscord(@Param('id') id: string, @Body() dto: UserDiscordLinkRequestDto): Promise<UserDiscordLinkDto> {
+    return this.user.linkDiscord(id, dto);
+  }
+
+  @Delete('/:id/discord')
+  @AuthRoute()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  unlinkUserDiscord(@Param('id') id: string): Promise<void> {
+    return this.user.unlinkDiscord(id);
   }
 
   @Get('/:userId/session')

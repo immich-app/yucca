@@ -16,6 +16,7 @@ import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { ConnectionRepository } from './repositories/connection.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { DiscordLinkRepository } from './repositories/discordLink.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
@@ -64,6 +65,7 @@ export const providers = [
   LoggerRepository,
   EmailRepository,
   DatabaseRepository,
+  DiscordLinkRepository,
   DatabaseService,
   OidcRepository,
   UserRepository,
