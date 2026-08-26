@@ -172,11 +172,12 @@ the **CLI loopback login flow** — no IdP client secret ever reaches the
 operator machine:
 
 1. Resolve the partition's **primary** region (`discovery.role == "primary"`)
-   and derive the admin-api base URL from its k8s `api_endpoint`
+   and take the admin-api host from its k8s discovery `admin_api_host` (= the
+   region's `YUCCA_ADMIN_HOST`), falling back to deriving it from `api_endpoint`
    (`kube.<cluster>.<region>.<provider>.yucca.futo.network` →
-   `https://admin.<…>` — the same overlay host as `YUCCA_ADMIN_HOST`); override
-   with `--admin-url` or `YUCTL_ADMIN_API_URL`. The host is on the NetBird
-   overlay, so the operator (and their browser) must be connected.
+   `https://admin.<…>`) for pre-contract state; override with `--admin-url` or
+   `YUCTL_ADMIN_API_URL`. The host is on the NetBird overlay, so the operator
+   (and their browser) must be connected.
 2. Start a listener on `127.0.0.1:<random port>` and open the browser at
    `GET /api/auth/cli/login?port&state&code_challenge` (S256 challenge; the
    verifier never leaves yuctl). `--no-browser` prints the URL instead.

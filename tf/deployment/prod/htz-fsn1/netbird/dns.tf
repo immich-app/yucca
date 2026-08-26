@@ -119,3 +119,17 @@ output "kube_api_fqdn" {
   description = "father API endpoint FQDN — NetBird peers resolve it (round-robin) to the CPs."
   value       = local.father_kube_api_fqdn
 }
+
+# luke (staging@austin) admin-api — the ONLY non-father record, living here
+# because the account-wide zone does (see the NB above; move it out together
+# with the zone). Points at luke's internal admin gateway VIP, L2-announced on
+# the Austin LAN and reachable over the staging 10.10.10.0/24 NetBird route —
+# never the public NAT. VIP pinned in kubernetes/apps/staging/austin/admin/
+# (lbipam annotation) and allocated from cilium-lb.yaml; keep the three in sync.
+resource "netbird_dns_record" "luke_admin" {
+  zone_id = netbird_dns_zone.yucca_internal.id
+  name    = "admin.luke.aus.int.yucca.futo.network"
+  type    = "A"
+  content = "10.10.10.17"
+  ttl     = 300
+}

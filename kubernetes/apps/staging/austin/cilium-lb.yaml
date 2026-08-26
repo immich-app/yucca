@@ -6,8 +6,11 @@
 # resources), so the VIP is LITERAL here — keep in sync with INGRESS_VIP
 # in clusters/staging/austin/cluster-settings.yaml.
 #
-# Single-address LB-IPAM pool for the ingress VIP. The envoy Service requests it
-# explicitly via the `lbipam.cilium.io/ips` annotation (see envoyproxy.yaml).
+# Single-address LB-IPAM blocks; each Service pins its VIP explicitly via the
+# `lbipam.cilium.io/ips` annotation (see envoyproxy.yaml / admin/gateway.yaml).
+# .16 is the app-gateway ingress VIP the public NAT forwards to; .17 is the
+# admin gateway — LAN/NetBird-only, deliberately NOT NAT-forwarded (the
+# admin.luke NetBird record in prod/htz-fsn1/netbird/dns.tf points here).
 apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
@@ -15,6 +18,7 @@ metadata:
 spec:
   blocks:
     - cidr: 10.10.10.16/32
+    - cidr: 10.10.10.17/32
 ---
 # Announce LoadBalancer IPs via L2 (ARP) on the node bond so the VIP is
 # reachable on the LAN. Requires l2announcements enabled in the Cilium config

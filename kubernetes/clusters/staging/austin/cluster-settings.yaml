@@ -20,8 +20,10 @@ data:
   # everyone else needs a `yuctl users allowlist` entry or invite code.
   ALLOWED_EMAIL_DOMAINS: futo.org
 
-  # admin-api host on the NetBird overlay; the admin OIDC redirect URIs derive
-  # from this (see base yucca-admin-api HR).
+  # admin-api host on the NetBird overlay (served by the internal admin gateway,
+  # apps/staging/austin/admin); the admin OIDC redirect URIs derive from this
+  # (see base yucca-admin-api HR). Mirrored in the talos stack's discovery
+  # admin_api_host for yuctl.
   YUCCA_ADMIN_HOST: admin.luke.aus.int.yucca.futo.network
 
   # ─── Fleet topology ──────────────────────────────────────────────────

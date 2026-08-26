@@ -45,6 +45,7 @@ type RegionMeta struct {
 type Kubernetes struct {
 	ClusterName      string   `json:"cluster_name"`
 	APIEndpoint      string   `json:"api_endpoint"`
+	AdminAPIHost     string   `json:"admin_api_host"` // host serving yucca-admin-api (no scheme)
 	OperatorEndpoint string   `json:"operator_endpoint"`
 	CPNodeIPs        []string `json:"cp_node_ips"`
 	KubeconfigRef    string   `json:"kubeconfig_ref"`  // op:// reference

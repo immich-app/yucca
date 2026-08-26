@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+---
+# staging-only internal admin gateway (./admin) — father serves admin from its
+# netops gateway instead.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: admin-ingress
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: envoy-proxy
+    - name: yucca-admin-api
+  interval: 1h
+  retryInterval: 2m
+  timeout: 5m
+  path: ./kubernetes/apps/staging/austin/admin
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: ${MANIFEST_SOURCE:=flux-system}
+    namespace: flux-system

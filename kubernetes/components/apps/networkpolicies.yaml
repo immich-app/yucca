@@ -16,7 +16,8 @@
 #                               cron worker) — the default-deny is their whole
 #                               policy here. father additionally opens admin-api
 #                               to its netops gateway (apps/prod/htz-fsn1/netops/
-#                               httproutes.yaml, NetBird-only access).
+#                               httproutes.yaml, NetBird-only access); luke to its
+#                               internal admin gateway (apps/staging/austin/admin).
 #   nothing scrapes this namespace; logs are collected node-side; kubelet
 #   probes are exempt from NetworkPolicy
 apiVersion: networking.k8s.io/v1
