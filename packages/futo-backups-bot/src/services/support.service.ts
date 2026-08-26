@@ -248,7 +248,10 @@ export class SupportService implements OnApplicationBootstrap {
           return null;
         })
       : null;
-    await this.discord.createStaffThread(`staff-${suffix}`, this.staffNote(link, summary));
+    await this.discord.createStaffThread(
+      `staff-${suffix}`,
+      `<@&${env.DISCORD_STAFF_ROLE_ID}>\n${this.staffNote(link, summary)}`,
+    );
 
     return thread;
   }
