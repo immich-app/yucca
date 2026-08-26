@@ -130,7 +130,7 @@ describe(DiscordService.name, () => {
         sut.createInvite({ discordUserId: '123456789', discordUsername: 'someone', batchId: 'batch' }),
       ).resolves.toEqual({ code: 'token', expiresAt: request.expiresAt, remaining: 2 });
 
-      expect(mocks.discord.claimInvite).toHaveBeenCalledWith('123456789', 'batch', 'invite-code');
+      expect(mocks.discord.claimInvite).toHaveBeenCalledWith('123456789', 'someone', 'batch', 'invite-code');
       expect(mocks.discord.createRequest).toHaveBeenCalledWith(expect.objectContaining({ allowlistId: 'entry' }));
     });
 
@@ -148,6 +148,7 @@ describe(DiscordService.name, () => {
       ['linked', 'ALREADY_LINKED'],
       ['used', 'INVITE_USED'],
       ['exhausted', 'BATCH_EXHAUSTED'],
+      ['cancelled', 'BATCH_CANCELLED'],
     ] as const)('rejects a %s claim with a conflict', async (status, message) => {
       mocks.discord.claimInvite.mockResolvedValue({ status });
 

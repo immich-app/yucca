@@ -7,6 +7,7 @@ import { KyselyModule } from 'nestjs-kysely';
 import { createPublicKey } from 'node:crypto';
 import { AllowlistController } from './controllers/allowlist.controller';
 import { AuthController } from './controllers/auth.controller';
+import { DiscordInviteController } from './controllers/discordInvite.controller';
 import { FeaturesController } from './controllers/features.controller';
 import { RepositoryController } from './controllers/repository.controller';
 import { SessionController } from './controllers/session.controller';
@@ -16,8 +17,10 @@ import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { ConnectionRepository } from './repositories/connection.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { DiscordInviteRepository } from './repositories/discordInvite.repository';
 import { DiscordLinkRepository } from './repositories/discordLink.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
+import { FutoBackupsBotRepository } from './repositories/futoBackupsBot.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
 import { SessionRepository } from './repositories/session.repository';
@@ -29,6 +32,7 @@ import { UserAllowlistRepository } from './repositories/userAllowlist.repository
 import { AllowlistService } from './services/allowlist.service';
 import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
+import { DiscordInviteService } from './services/discordInvite.service';
 import { FeaturesService } from './services/features.service';
 import { RepositoryService } from './services/repository.service';
 import { SessionService } from './services/session.service';
@@ -56,6 +60,7 @@ export const controllers = [
   SessionController,
   RepositoryController,
   AllowlistController,
+  DiscordInviteController,
   SettingsController,
   FeaturesController,
 ];
@@ -65,7 +70,9 @@ export const providers = [
   LoggerRepository,
   EmailRepository,
   DatabaseRepository,
+  DiscordInviteRepository,
   DiscordLinkRepository,
+  FutoBackupsBotRepository,
   DatabaseService,
   OidcRepository,
   UserRepository,
@@ -78,6 +85,7 @@ export const providers = [
   ConnectionRepository,
   FeatureFlagRepository,
   AllowlistService,
+  DiscordInviteService,
   AuthService,
   UserService,
   SessionService,

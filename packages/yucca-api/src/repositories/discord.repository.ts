@@ -7,7 +7,7 @@ import { DiscordLinkRequestTable } from 'src/schema/tables/discordLinkRequest.ta
 import { UserAllowlistTable } from 'src/schema/tables/userAllowlist.table';
 
 export type InviteClaimResult =
-  | { status: 'linked' | 'used' | 'unknownBatch' | 'exhausted' }
+  | { status: 'linked' | 'used' | 'unknownBatch' | 'exhausted' | 'cancelled' }
   | { status: 'ok'; entry: Selectable<UserAllowlistTable>; remaining: number | null };
 
 @Injectable()
@@ -109,7 +109,12 @@ export class DiscordRepository {
     return updated !== undefined;
   }
 
-  claimInvite(discordUserId: string, batchId: string | null, inviteCode: string): Promise<InviteClaimResult> {
+  claimInvite(
+    discordUserId: string,
+    discordUsername: string,
+    batchId: string | null,
+    inviteCode: string,
+  ): Promise<InviteClaimResult> {
     return this.db.transaction().execute(async (trx): Promise<InviteClaimResult> => {
       const lockKey = batchId ?? discordUserId;
       await sql`SELECT pg_advisory_xact_lock(least(hashtext(${discordUserId}), hashtext(${lockKey}))),
@@ -143,6 +148,9 @@ export class DiscordRepository {
         if (!batch) {
           return { status: 'unknownBatch' };
         }
+        if (batch.cancelledAt) {
+          return { status: 'cancelled' };
+        }
         const { claimed } = await trx
           .selectFrom('userAllowlist')
           .select((eb) => eb.fn.countAll<number>().as('claimed'))
@@ -156,7 +164,7 @@ export class DiscordRepository {
 
       const entry = await trx
         .insertInto('userAllowlist')
-        .values({ inviteCode, invited: true, discordUserId, batchId })
+        .values({ inviteCode, invited: true, discordUserId, discordUsername, batchId })
         .returningAll()
         .executeTakeFirstOrThrow();
       return { status: 'ok', entry, remaining };

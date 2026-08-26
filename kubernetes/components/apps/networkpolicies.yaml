@@ -9,6 +9,7 @@
 #   yucca-api → michael       = hairpin via the ingress VIP, so it ARRIVES as
 #                               envoy traffic — no direct pod-to-pod allow needed
 #   web (SSR)                 → yucca-api:3020
+#   yucca-admin-api           → futo-backups-bot:3050
 #   api/admin-api/worker      → CNPG pods :5432 (yucca-db-rw/-ro)
 #   CNPG replication          → CNPG pods :5432 (pod↔pod)
 #   cnpg-system operator      → CNPG pods :8000 (instance manager)
@@ -124,6 +125,26 @@ spec:
               app.kubernetes.io/name: envoy
       ports:
         - { port: 3010, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-futo-backups-bot
+  namespace: yucca
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: futo-backups-bot
+  policyTypes: [Ingress]
+  ingress:
+    # yucca-admin-api → /internal/drops/* (shared-secret guarded): eager
+    # invite-drop closure from `yuctl invites cancel`.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: yucca-admin-api
+      ports:
+        - { port: 3050, protocol: TCP }
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
