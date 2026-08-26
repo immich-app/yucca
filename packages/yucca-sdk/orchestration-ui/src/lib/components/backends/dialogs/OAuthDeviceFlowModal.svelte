@@ -12,7 +12,7 @@
     Modal,
     ModalBody,
     ModalFooter,
-    toastManager,
+    Text,
   } from "@immich/ui";
   import { onDestroy } from "svelte";
   import OnEvents from "../../util/OnEvents.svelte";
@@ -37,10 +37,6 @@
 
       onClose();
     },
-    onFailure: (message) => {
-      toastManager.danger(message);
-      onClose();
-    },
   });
 
   flow.start();
@@ -57,6 +53,8 @@
   <ModalBody>
     {#if flow.state.userCode}
       <DeviceFlowCode userCode={flow.state.userCode} />
+    {:else if flow.state.error}
+      <Text color="danger">{flow.state.error}</Text>
     {:else}
       <LoadingSpinner />
     {/if}
