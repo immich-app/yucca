@@ -16,6 +16,10 @@ data:
 
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
+  # Staging o11y Grafana (futo-backups-bot staff notes); prod rides the code
+  # default grafana.futostatus.com.
+  GRAFANA_URL: https://grafana.staging.futostatus.com
+
   # Beta gate: these email domains may sign up without an allowlist entry;
   # everyone else needs a `yuctl users allowlist` entry or invite code.
   ALLOWED_EMAIL_DOMAINS: futo.org

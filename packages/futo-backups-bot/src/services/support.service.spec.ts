@@ -145,6 +145,10 @@ describe(SupportService.name, () => {
         'staff-someone-6789',
         expect.stringContaining('someone@example.test'),
       );
+      expect(mocks.discord.createStaffThread).toHaveBeenCalledWith(
+        'staff-someone-6789',
+        expect.stringContaining('/d/yucca-per-user?var-user=user-1'),
+      );
       expect((interaction as { deferReply: jest.Mock }).deferReply).toHaveBeenCalled();
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('thread-1') }),

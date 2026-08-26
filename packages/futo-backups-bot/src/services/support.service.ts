@@ -302,9 +302,8 @@ export class SupportService implements OnApplicationBootstrap {
       lines.push('No linked FUTO Backups account.');
       return lines.join('\n');
     }
-    if (env.GRAFANA_USER_DASHBOARD_URL) {
-      lines.push(`Grafana: ${env.GRAFANA_USER_DASHBOARD_URL.replaceAll('{userId}', link.userId)}`);
-    }
+    const grafanaBase = env.GRAFANA_URL.replace(/\/+$/, '');
+    lines.push(`Grafana: ${grafanaBase}/d/yucca-per-user?var-user=${encodeURIComponent(link.userId)}`);
     if (summary) {
       lines.push(
         `Account: ${summary.name} <${summary.email}>`,

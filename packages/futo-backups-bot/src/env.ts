@@ -13,7 +13,10 @@ const schema = z.object({
   YUCCA_API_URL: z.url().default('http://localhost:3020'),
   INTERNAL_SECRET: z.string().default(''),
   WEB_URL: z.url().default('http://localhost:5173'),
-  GRAFANA_USER_DASHBOARD_URL: z.string().default(''),
+  GRAFANA_URL: z
+    .string()
+    .default('')
+    .transform((value) => value || 'https://grafana.futostatus.com'),
 
   TICKET_RETENTION_DAYS: z.coerce.number().default(14),
 

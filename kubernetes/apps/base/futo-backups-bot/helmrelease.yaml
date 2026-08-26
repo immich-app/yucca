@@ -48,8 +48,8 @@ spec:
         value: http://yucca-api:3020
       - name: WEB_URL
         value: https://${APP_DOMAIN}
-      - name: GRAFANA_USER_DASHBOARD_URL
-        value: ${GRAFANA_USER_DASHBOARD_URL:=}
+      - name: GRAFANA_URL
+        value: ${GRAFANA_URL:=}
       - name: TRANSCRIPT_S3_ENDPOINT
         value: ${TRANSCRIPT_S3_ENDPOINT:=}
       - name: TRANSCRIPT_S3_BUCKET
