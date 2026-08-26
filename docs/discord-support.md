@@ -66,8 +66,8 @@ retention. yucca-api's scope stays pure account-linking.
   and posts the description with a mention of the user and
   `DISCORD_STAFF_ROLE_ID` (mentioning the role adds staff to the thread). A
   sibling private thread `staff-<same suffix>` with **no members** carries the
-  user's Grafana dashboard link (`GRAFANA_USER_DASHBOARD_URL` template; the
-  dashboard itself is o11y-owned) and an account summary from
+  user's Grafana dashboard link (`GRAFANA_URL` base + the `yucca-per-user`
+  dashboard, mirroring yuctl's view-dashboard; the dashboard itself is o11y-owned) and an account summary from
   **`GET /internal/discord/users/:userId/summary`** (email, connections,
   repository count, last seen) — staff see it via Manage Threads on the
   support channel; the user cannot. One open ticket per user (membership scan
@@ -98,7 +98,7 @@ uses the dev guild through `.env`.
 | `INTERNAL_SECRET` | Secret ← TF-generated (`random_password`, shared with yucca-api) |
 | `TRANSCRIPT_S3_ACCESS_KEY_ID` / `..._SECRET_ACCESS_KEY` | Secret ← ceph-stack-minted `*_CEPH_S3_SVC_YUCCA_TRANSCRIPTS_*` |
 | `TRANSCRIPT_S3_ENDPOINT`, `TRANSCRIPT_S3_BUCKET` | cluster-settings |
-| `GRAFANA_USER_DASHBOARD_URL` | cluster-settings; URL template, `{userId}` substituted |
+| `GRAFANA_URL` | defaults to grafana.futostatus.com; cluster-settings override |
 | `YUCCA_API_URL`, `WEB_URL` | HelmRelease env |
 | `TICKET_RETENTION_DAYS` | archive retention before transcript + delete (14) |
 
