@@ -30,11 +30,16 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
   return {
     createRequest: jest.fn(),
     getRequestByCode: jest.fn(),
+    consumeInviteRequest: jest.fn(),
     deleteExpiredRequests: jest.fn(),
     getLinkByDiscordUserId: jest.fn(),
     getLinkByUserId: jest.fn(),
     link: jest.fn(),
+    linkDirect: jest.fn(),
     updateUsername: jest.fn(),
+    createBatch: jest.fn(),
+    setBatchMessage: jest.fn(),
+    claimInvite: jest.fn(),
     getUserSummary: jest.fn(),
   };
 };

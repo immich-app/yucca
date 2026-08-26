@@ -12,6 +12,11 @@ import {
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import {
+  DiscordInviteBatchCreateDto,
+  DiscordInviteBatchDto,
+  DiscordInviteBatchMessageDto,
+  DiscordInviteCreateDto,
+  DiscordInviteCreatedDto,
   DiscordLinkDto,
   DiscordLinkRequestCreateDto,
   DiscordLinkRequestCreatedDto,
@@ -44,6 +49,25 @@ export class DiscordInternalController {
     @Body() dto: DiscordLinkUsernameUpdateDto,
   ): Promise<void> {
     return this.discord.updateLinkUsername(discordUserId, dto);
+  }
+
+  @Post('/invite-batches')
+  createInviteBatch(@Body() dto: DiscordInviteBatchCreateDto): Promise<DiscordInviteBatchDto> {
+    return this.discord.createInviteBatch(dto);
+  }
+
+  @Patch('/invite-batches/:batchId/message')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  setInviteBatchMessage(
+    @Param('batchId', ParseUUIDPipe) batchId: string,
+    @Body() dto: DiscordInviteBatchMessageDto,
+  ): Promise<void> {
+    return this.discord.setInviteBatchMessage(batchId, dto);
+  }
+
+  @Post('/invites')
+  createInvite(@Body() dto: DiscordInviteCreateDto): Promise<DiscordInviteCreatedDto> {
+    return this.discord.createInvite(dto);
   }
 
   @Get('/users/:userId/summary')

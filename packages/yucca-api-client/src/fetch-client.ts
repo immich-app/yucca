@@ -87,6 +87,9 @@ export type ConnectionAdoptRequestDto = {
     /** Repositories to move from the default connection to this one */
     repositoryIds: string[];
 };
+export type DiscordInviteResponseDto = {
+    discordUsername: string;
+};
 export type DiscordLinkRequestResponseDto = {
     discordUsername: string;
 };
@@ -177,14 +180,16 @@ export function logout(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
-export function oidcAuthorize(codeChallenge: string, state: string, { redirect, inviteCode }: {
+export function oidcAuthorize(codeChallenge: string, state: string, { redirect, discordInvite, inviteCode }: {
     redirect?: string;
+    discordInvite?: string;
     inviteCode?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/login${QS.query(QS.explode({
         code_challenge: codeChallenge,
         state,
         redirect,
+        discord_invite: discordInvite,
         invite_code: inviteCode
     }))}`, {
         ...opts
@@ -251,6 +256,14 @@ export function adoptRepositories(id: string, connectionAdoptRequestDto: Connect
         method: "POST",
         body: connectionAdoptRequestDto
     })));
+}
+export function getDiscordInvite(code: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DiscordInviteResponseDto;
+    }>(`/api/discord/invites/${encodeURIComponent(code)}`, {
+        ...opts
+    }));
 }
 export function getDiscordLinkRequest(code: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

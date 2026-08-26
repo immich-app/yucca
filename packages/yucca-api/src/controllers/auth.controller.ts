@@ -33,11 +33,13 @@ export class AuthController {
   @ApiQuery({ name: 'code_challenge', type: String })
   @ApiQuery({ name: 'state', type: String })
   @ApiQuery({ name: 'invite_code', type: String, required: false })
+  @ApiQuery({ name: 'discord_invite', type: String, required: false, description: 'Discord beta-invite token' })
   @ApiQuery({ name: 'redirect', type: String, required: false, description: 'In-app path to land on after login' })
   async oidcAuthorize(
     @Query('code_challenge') codeChallenge: string,
     @Query('state') state: string,
     @Query('invite_code') inviteCode: string | undefined,
+    @Query('discord_invite') discordInvite: string | undefined,
     @Query('redirect') redirect: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
@@ -48,6 +50,14 @@ export class AuthController {
 
     if (inviteCode) {
       response.cookie(CookieName.InviteCode, inviteCode, {
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: Duration.fromObject({ minutes: 10 }).toMillis(),
+      });
+    }
+
+    if (discordInvite) {
+      response.cookie(CookieName.DiscordInvite, discordInvite, {
         httpOnly: true,
         sameSite: 'lax',
         maxAge: Duration.fromObject({ minutes: 10 }).toMillis(),
@@ -74,6 +84,7 @@ export class AuthController {
       response.clearCookie(CookieName.OidcState);
       response.clearCookie(CookieName.OidcCodeVerifier);
       response.clearCookie(CookieName.InviteCode);
+      response.clearCookie(CookieName.DiscordInvite);
       response.clearCookie(CookieName.RedirectPath);
 
       if (error instanceof EmailNotAllowedException) {
@@ -89,6 +100,7 @@ export class AuthController {
     response.clearCookie(CookieName.OidcState);
     response.clearCookie(CookieName.OidcCodeVerifier);
     response.clearCookie(CookieName.InviteCode);
+    response.clearCookie(CookieName.DiscordInvite);
     response.clearCookie(CookieName.RedirectPath);
 
     response.cookie(CookieName.AccessToken, accessToken, {

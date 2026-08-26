@@ -77,7 +77,9 @@ export class AllowlistService {
   }
 
   private async sendInviteEmails(items: AllowlistEntryDto[]): Promise<AllowlistEntryDto[]> {
-    const pending = items.filter((entry) => !entry.inviteEmailSentAt);
+    const pending = items.filter(
+      (entry): entry is AllowlistEntryDto & { email: string } => Boolean(entry.email) && !entry.inviteEmailSentAt,
+    );
     if (pending.length === 0) {
       return items;
     }
