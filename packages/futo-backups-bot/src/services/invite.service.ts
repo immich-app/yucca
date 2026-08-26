@@ -47,8 +47,18 @@ export class InviteService {
       interaction,
       channel!.id,
       interaction.options.getInteger('limit'),
-      interaction.options.getRole('mention')?.id ?? null,
+      this.roleMention(interaction),
     );
+  }
+
+  private roleMention(interaction: ChatInputCommandInteraction): string | null {
+    const role = interaction.options.getRole('mention');
+    if (!role) {
+      return null;
+    }
+    // The everyone role's id is the guild id; <@&guildId> renders as a broken
+    // "@@everyone" and pings nobody.
+    return role.id === interaction.guildId ? '@everyone' : `<@&${role.id}>`;
   }
 
   private async inviteUser(interaction: ChatInputCommandInteraction, target: User): Promise<void> {
@@ -78,7 +88,7 @@ export class InviteService {
     interaction: ChatInputCommandInteraction,
     channelId: string,
     limit: number | null,
-    mentionRoleId: string | null,
+    mention: string | null,
   ): Promise<void> {
     if (!limit) {
       await interaction.editReply({ content: 'Set a limit when posting invites to a channel.' });
@@ -92,7 +102,7 @@ export class InviteService {
       interaction.user.id,
     );
     const message = await this.discord.sendMessage(channelId, {
-      content: `${mentionRoleId ? `<@&${mentionRoleId}> ` : ''}We're opening ${limit} spot${limit === 1 ? '' : 's'} in the FUTO Backups closed beta — first come, first served.`,
+      content: `${mention ? `${mention} ` : ''}We're opening ${limit} spot${limit === 1 ? '' : 's'} in the FUTO Backups closed beta — first come, first served.`,
       components: [this.claimRow(batchId, 'Claim your invite')],
     });
     // The message id is audit-only (disabling edits interaction.message), so a

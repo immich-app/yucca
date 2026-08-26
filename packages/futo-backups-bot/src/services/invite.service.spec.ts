@@ -150,6 +150,19 @@ describe(InviteService.name, () => {
       });
     });
 
+    it('mentions the everyone role as a literal @everyone', async () => {
+      mocks.api.createInviteBatch.mockResolvedValue('batch-1');
+      mocks.discord.sendMessage.mockResolvedValue({ id: 'message-1' } as never);
+      const interaction = newCommandInteraction({ channel: { id: 'c1' }, limit: 2, mention: { id: 'guild-1' } });
+
+      await sut.onInviteCommand(interaction);
+
+      expect(mocks.discord.sendMessage).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ content: expect.stringMatching(/^@everyone We're opening 2 spots/) }),
+      );
+    });
+
     it('mentions the requested role in the channel post', async () => {
       mocks.api.createInviteBatch.mockResolvedValue('batch-1');
       mocks.discord.sendMessage.mockResolvedValue({ id: 'message-1' } as never);
