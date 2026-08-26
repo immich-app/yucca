@@ -42,6 +42,14 @@ spec:
               annotations:
                 # Cilium LB-IPAM assigns this specific VIP to the Service.
                 lbipam.cilium.io/ips: "${INGRESS_VIP}"
+            spec:
+              # Local (the EG default) preserves client IPs but only answers on
+              # nodes running a replica. Safe under father's BGP (the VIP is
+              # advertised only from backend nodes); a blackhole hazard under
+              # staging's L2 announcements (the lease election is locality-blind
+              # and can land on a pod-less node), so staging overrides to
+              # Cluster via cluster-settings.
+              externalTrafficPolicy: ${INGRESS_ETP:=Local}
   telemetry:
     metrics:
       prometheus: {}

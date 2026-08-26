@@ -23,6 +23,13 @@ spec:
                 # The LAN/NetBird-only VIP — see cilium-lb.yaml; the admin.luke
                 # NetBird record must agree.
                 lbipam.cilium.io/ips: "10.10.10.17"
+            spec:
+              # Cluster, not the EG-default Local: Cilium's L2 announcer ignores
+              # backend locality, so with one replica a Local policy blackholes
+              # whenever the lease lands on a pod-less node. Source IPs are
+              # already masqueraded by the NetBird routing peer, so Local's
+              # client-IP preservation buys nothing here.
+              externalTrafficPolicy: Cluster
   telemetry:
     metrics:
       prometheus: {}

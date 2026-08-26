@@ -54,6 +54,11 @@ data:
   # ignored here (the pool matches by IP annotation, no serviceSelector).
   INGRESS_LB_LABEL: internal
   INGRESS_VIP: 10.10.10.16
+  # Cluster, not the Local default: L2 lease election is locality-blind, so
+  # Local blackholes ingress whenever the lease lands on a node without an
+  # envoy replica (father keeps Local — its BGP advertises the VIP only from
+  # backend nodes and the api wants real client IPs).
+  INGRESS_ETP: Cluster
   INGRESS_PUBLIC_IP: 97.77.242.205
   # michael's gw. route attaches to the dedicated gw Gateway, same as father —
   # but Austin has one NAT'd entry, so the app gateway SNI-passes ${GW_HOST}
