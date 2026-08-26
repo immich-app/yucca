@@ -4,6 +4,7 @@ import {
   AnyThreadChannel,
   ChannelType,
   Client,
+  DiscordAPIError,
   GatewayIntentBits,
   Guild,
   Interaction,
@@ -117,11 +118,18 @@ export class DiscordRepository {
     const channel = await this.supportChannel();
     const active = await channel.threads.fetchActive();
     for (const thread of active.threads.values()) {
-      if (!thread.name.startsWith('ticket-')) {
+      if (thread.parentId !== channel.id || !thread.name.startsWith('ticket-')) {
         continue;
       }
-      const members = await thread.members.fetch();
-      if (members.has(discordUserId)) {
+      // Listing thread members needs the privileged GUILD_MEMBERS intent; the
+      // single-member fetch does not (404 = not a member).
+      const member = await thread.members.fetch(discordUserId).catch((error: unknown) => {
+        if (error instanceof DiscordAPIError && Number(error.status) === 404) {
+          return null;
+        }
+        throw error;
+      });
+      if (member) {
         return thread;
       }
     }
@@ -131,7 +139,7 @@ export class DiscordRepository {
   async findSupportThreadByName(name: string): Promise<AnyThreadChannel | undefined> {
     const channel = await this.supportChannel();
     const active = await channel.threads.fetchActive();
-    const match = [...active.threads.values()].find((thread) => thread.name === name);
+    const match = [...active.threads.values()].find((thread) => thread.parentId === channel.id && thread.name === name);
     if (match) {
       return match;
     }
