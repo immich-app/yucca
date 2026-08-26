@@ -114,9 +114,10 @@ export class DiscordRepository {
     await thread.send(content);
   }
 
-  async findOpenTicketThread(discordUserId: string): Promise<ThreadChannel | undefined> {
+  async listOpenTicketThreads(discordUserId: string): Promise<ThreadChannel[]> {
     const channel = await this.supportChannel();
     const active = await channel.threads.fetchActive();
+    const open: ThreadChannel[] = [];
     for (const thread of active.threads.values()) {
       if (thread.parentId !== channel.id || !thread.name.startsWith('ticket-')) {
         continue;
@@ -130,10 +131,10 @@ export class DiscordRepository {
         throw error;
       });
       if (member) {
-        return thread;
+        open.push(thread);
       }
     }
-    return undefined;
+    return open;
   }
 
   async findSupportThreadByName(name: string): Promise<AnyThreadChannel | undefined> {

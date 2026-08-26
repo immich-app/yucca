@@ -186,9 +186,11 @@ export class SupportService implements OnApplicationBootstrap {
     }
     this.creating.add(interaction.user.id);
     try {
-      const existing = await this.discord.findOpenTicketThread(interaction.user.id);
-      if (existing) {
-        await interaction.editReply({ content: `You already have an open ticket: <#${existing.id}>` });
+      const open = await this.discord.listOpenTicketThreads(interaction.user.id);
+      if (open.length >= env.TICKET_USER_LIMIT) {
+        await interaction.editReply({
+          content: `You already have ${open.length} open tickets: ${open.map((thread) => `<#${thread.id}>`).join(' ')}. Close one before opening another.`,
+        });
         return;
       }
 
@@ -215,9 +217,11 @@ export class SupportService implements OnApplicationBootstrap {
     }
     this.creating.add(target.id);
     try {
-      const existing = await this.discord.findOpenTicketThread(target.id);
-      if (existing) {
-        await interaction.editReply({ content: `<@${target.id}> already has an open ticket: <#${existing.id}>` });
+      const open = await this.discord.listOpenTicketThreads(target.id);
+      if (open.length >= env.TICKET_USER_LIMIT) {
+        await interaction.editReply({
+          content: `<@${target.id}> already has ${open.length} open tickets: ${open.map((thread) => `<#${thread.id}>`).join(' ')}.`,
+        });
         return;
       }
 
@@ -293,7 +297,7 @@ export class SupportService implements OnApplicationBootstrap {
   }
 
   private ticketSuffix(username: string, discordUserId: string): string {
-    return `${username.toLowerCase().replaceAll(/[^a-z0-9-]/g, '')}-${discordUserId.slice(-4)}`;
+    return `${username.toLowerCase().replaceAll(/[^a-z0-9-]/g, '')}-${discordUserId.slice(-4)}-${Date.now().toString(36)}`;
   }
 
   private staffNote(link: DiscordLink | null, summary: UserSummary | null): string {

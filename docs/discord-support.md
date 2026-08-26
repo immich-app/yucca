@@ -70,8 +70,9 @@ retention. yucca-api's scope stays pure account-linking.
   dashboard, mirroring yuctl's view-dashboard; the dashboard itself is o11y-owned) and an account summary from
   **`GET /internal/discord/users/:userId/summary`** (email, connections,
   repository count, last seen) — staff see it via Manage Threads on the
-  support channel; the user cannot. One open ticket per user (membership scan
-  of active threads); a second submit points at the existing thread.
+  support channel; the user cannot. Up to `TICKET_USER_LIMIT`
+  (3) open tickets per user (membership scan of active threads); at the limit
+  a submit points at the existing threads.
 - **Close** (staff-only button): locks + archives the ticket thread and its
   staff sibling. The user keeps read access to their own closed ticket but
   cannot post or reopen; staff can unarchive via Manage Threads.

@@ -116,15 +116,19 @@ describe(SupportService.name, () => {
   });
 
   describe('ticket modal', () => {
-    it('points a user with an open ticket at it instead of creating another', async () => {
+    it('blocks a fourth concurrent ticket', async () => {
       mocks.api.getLink.mockResolvedValue(link);
-      mocks.discord.findOpenTicketThread.mockResolvedValue(asThread({ id: 'thread-1', name: 'ticket-someone-6789' }));
+      mocks.discord.listOpenTicketThreads.mockResolvedValue([
+        asThread({ id: 'thread-1', name: 'ticket-someone-6789-a' }),
+        asThread({ id: 'thread-2', name: 'ticket-someone-6789-b' }),
+        asThread({ id: 'thread-3', name: 'ticket-someone-6789-c' }),
+      ]);
       const interaction = newModalInteraction('My backups are failing.');
 
       await sut.handleInteraction(interaction);
 
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('thread-1') }),
+        expect.objectContaining({ content: expect.stringContaining('3 open tickets') }),
       );
       expect(mocks.discord.createTicketThread).not.toHaveBeenCalled();
     });
@@ -132,17 +136,19 @@ describe(SupportService.name, () => {
     it('creates the ticket thread with a staff thread and replies with a pointer', async () => {
       mocks.api.getLink.mockResolvedValue(link);
       mocks.api.getUserSummary.mockResolvedValue(summary);
-      mocks.discord.findOpenTicketThread.mockResolvedValue(void 0);
       const send = jest.fn();
       mocks.discord.createTicketThread.mockResolvedValue(asThread({ id: 'thread-1', send }));
       const interaction = newModalInteraction('My backups are failing.');
 
       await sut.handleInteraction(interaction);
 
-      expect(mocks.discord.createTicketThread).toHaveBeenCalledWith('ticket-someone-6789', '123456789');
+      expect(mocks.discord.createTicketThread).toHaveBeenCalledWith(
+        expect.stringMatching(/^ticket-someone-6789-/),
+        '123456789',
+      );
       expect(send).toHaveBeenCalled();
       expect(mocks.discord.createStaffThread).toHaveBeenCalledWith(
-        'staff-someone-6789',
+        expect.stringMatching(/^staff-someone-6789-/),
         expect.stringContaining('someone@example.test'),
       );
       expect(mocks.discord.createStaffThread).toHaveBeenCalledWith(
@@ -170,7 +176,6 @@ describe(SupportService.name, () => {
 
     it('opens a ticket for an unlinked user without requiring a link', async () => {
       mocks.api.getLink.mockResolvedValue(null);
-      mocks.discord.findOpenTicketThread.mockResolvedValue(void 0);
       const send = jest.fn();
       mocks.discord.createTicketThread.mockResolvedValue(asThread({ id: 'thread-9', send }));
       const interaction = newCommandInteraction(
@@ -181,9 +186,12 @@ describe(SupportService.name, () => {
       await sut.handleInteraction(interaction);
 
       expect(mocks.api.createLinkRequest).not.toHaveBeenCalled();
-      expect(mocks.discord.createTicketThread).toHaveBeenCalledWith('ticket-guest-5000', '555000');
+      expect(mocks.discord.createTicketThread).toHaveBeenCalledWith(
+        expect.stringMatching(/^ticket-guest-5000-/),
+        '555000',
+      );
       expect(mocks.discord.createStaffThread).toHaveBeenCalledWith(
-        'staff-guest-5000',
+        expect.stringMatching(/^staff-guest-5000-/),
         expect.stringContaining('No linked FUTO Backups account'),
       );
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
