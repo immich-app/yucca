@@ -89,6 +89,9 @@ export class SupportService implements OnApplicationBootstrap {
       if (interaction.isChatInputCommand() && interaction.commandName === 'ticket') {
         return await this.onStaffTicket(interaction);
       }
+      if (interaction.isChatInputCommand() && interaction.commandName === 'staff-notes') {
+        return await this.onStaffNotesRequested(interaction);
+      }
     } catch (error) {
       this.logger.error(error, 'failed to handle interaction');
       if (!interaction.isButton() && !interaction.isModalSubmit() && !interaction.isChatInputCommand()) {
@@ -262,6 +265,29 @@ export class SupportService implements OnApplicationBootstrap {
     );
 
     return thread;
+  }
+
+  private async onStaffNotesRequested(interaction: ChatInputCommandInteraction) {
+    if (!this.isStaff(interaction)) {
+      await interaction.reply({ content: 'Only staff can view staff notes.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    const thread = interaction.channel;
+    if (
+      !(thread instanceof ThreadChannel) ||
+      thread.parentId !== env.DISCORD_SUPPORT_CHANNEL_ID ||
+      !thread.name.startsWith('ticket-')
+    ) {
+      await interaction.reply({ content: 'This channel is not a ticket.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const staffThread = await this.discord.findSupportThreadByName(thread.name.replace(/^ticket-/, 'staff-'), true);
+    await interaction.editReply({
+      content: staffThread ? `Staff notes: <#${staffThread.id}>` : 'No staff-notes thread found for this ticket.',
+    });
   }
 
   private async onCloseRequested(interaction: ButtonInteraction) {

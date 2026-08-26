@@ -210,6 +210,38 @@ describe(SupportService.name, () => {
     });
   });
 
+  describe('/staff-notes command', () => {
+    it('links the paired staff thread for staff inside a ticket', async () => {
+      const thread = asThread({ id: 'thread-1', name: 'ticket-someone-6789-x', parentId: 'support-channel' });
+      mocks.discord.findSupportThreadByName.mockResolvedValue(
+        asThread({ id: 'thread-2', name: 'staff-someone-6789-x' }),
+      );
+      const interaction = newCommandInteraction(
+        {},
+        { commandName: 'staff-notes', member: { roles: ['staff-role'] }, channel: thread },
+      );
+
+      await sut.handleInteraction(interaction);
+
+      expect(mocks.discord.findSupportThreadByName).toHaveBeenCalledWith('staff-someone-6789-x', true);
+      expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('thread-2') }),
+      );
+    });
+
+    it('rejects non-staff', async () => {
+      const thread = asThread({ id: 'thread-1', name: 'ticket-someone-6789-x', parentId: 'support-channel' });
+      const interaction = newCommandInteraction({}, { commandName: 'staff-notes', channel: thread });
+
+      await sut.handleInteraction(interaction);
+
+      expect(mocks.discord.findSupportThreadByName).not.toHaveBeenCalled();
+      expect((interaction as { reply: jest.Mock }).reply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('staff') }),
+      );
+    });
+  });
+
   describe('close ticket button', () => {
     it('rejects non-staff', async () => {
       const interaction = newButtonInteraction(ComponentId.CloseTicket);
