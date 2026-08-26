@@ -50,6 +50,15 @@ export class YuccaApiRepository {
     return linkSchema.parse(await response.json());
   }
 
+  async updateLinkUsername(discordUserId: string, discordUsername: string): Promise<void> {
+    await this.request(
+      'PATCH',
+      `/api/internal/discord/links/${encodeURIComponent(discordUserId)}`,
+      { discordUsername },
+      [404],
+    );
+  }
+
   async getUserSummary(userId: string): Promise<UserSummary> {
     const response = await this.request('GET', `/api/internal/discord/users/${encodeURIComponent(userId)}/summary`);
     return userSummarySchema.parse(await response.json());

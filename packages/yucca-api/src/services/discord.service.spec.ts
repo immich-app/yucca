@@ -91,6 +91,24 @@ describe(DiscordService.name, () => {
     });
   });
 
+  describe('updateLinkUsername', () => {
+    it('updates the stored username', async () => {
+      mocks.discord.updateUsername.mockResolvedValue(true);
+
+      await sut.updateLinkUsername('123456789', { discordUsername: 'renamed' });
+
+      expect(mocks.discord.updateUsername).toHaveBeenCalledWith('123456789', 'renamed');
+    });
+
+    it('rejects an unlinked discord user', async () => {
+      mocks.discord.updateUsername.mockResolvedValue(false);
+
+      await expect(sut.updateLinkUsername('123456789', { discordUsername: 'renamed' })).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('getLink', () => {
     it('rejects an unlinked discord user', async () => {
       mocks.discord.getLinkByDiscordUserId.mockResolvedValue(void 0);

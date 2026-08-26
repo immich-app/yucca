@@ -16,6 +16,12 @@ export class DiscordLinkRequestCreateDto {
   discordUsername!: string;
 }
 
+export class DiscordLinkUsernameUpdateDto {
+  @IsString()
+  @MaxLength(120)
+  discordUsername!: string;
+}
+
 export class DiscordLinkRequestCreatedDto {
   code!: string;
   expiresAt!: Date;

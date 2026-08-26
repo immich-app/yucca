@@ -34,6 +34,7 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
     getLinkByDiscordUserId: jest.fn(),
     getLinkByUserId: jest.fn(),
     link: jest.fn(),
+    updateUsername: jest.fn(),
     getUserSummary: jest.fn(),
   };
 };

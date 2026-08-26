@@ -119,6 +119,7 @@ export class SupportService implements OnApplicationBootstrap {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       return this.startLinkFlow(interaction);
     }
+    this.syncUsername(link, interaction.user);
 
     await interaction.showModal(
       new ModalBuilder()
@@ -246,6 +247,9 @@ export class SupportService implements OnApplicationBootstrap {
       this.logger.error(error, 'failed to look up link for staff note');
       return null;
     });
+    if (link) {
+      this.syncUsername(link, user);
+    }
     const summary = link
       ? await this.api.getUserSummary(link.userId).catch((error: unknown) => {
           this.logger.error(error, 'failed to fetch user summary');
@@ -294,6 +298,15 @@ export class SupportService implements OnApplicationBootstrap {
     return Array.isArray(roles)
       ? roles.includes(env.DISCORD_STAFF_ROLE_ID)
       : roles.cache.has(env.DISCORD_STAFF_ROLE_ID);
+  }
+
+  private syncUsername(link: DiscordLink, user: User) {
+    if (!user.username || link.discordUsername === user.username) {
+      return;
+    }
+    void this.api
+      .updateLinkUsername(user.id, user.username)
+      .catch((error: unknown) => this.logger.warn(error, 'failed to sync discord username'));
   }
 
   private ticketSuffix(username: string, discordUserId: string): string {

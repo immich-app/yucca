@@ -35,6 +35,7 @@ export const newYuccaApiRepositoryMock = (): jest.Mocked<RepositoryInterface<Yuc
   return {
     createLinkRequest: jest.fn(),
     getLink: jest.fn(),
+    updateLinkUsername: jest.fn().mockResolvedValue(void 0),
     getUserSummary: jest.fn(),
   };
 };

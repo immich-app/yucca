@@ -53,6 +53,16 @@ export class DiscordRepository {
     });
   }
 
+  async updateUsername(discordUserId: string, discordUsername: string): Promise<boolean> {
+    const updated = await this.db
+      .updateTable('discordLinks')
+      .set({ discordUsername })
+      .where('discordUserId', '=', discordUserId)
+      .returning('id')
+      .executeTakeFirst();
+    return updated !== undefined;
+  }
+
   getUserSummary(userId: string) {
     return this.db
       .selectFrom('users')
