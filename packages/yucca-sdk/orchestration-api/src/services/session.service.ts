@@ -6,6 +6,9 @@ import { BackendType, CookieName } from '../enum';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { BackendConfiguration } from '../schema/tables/backend.table';
+
+export type CloudConfiguration = BackendConfiguration & { type: BackendType.Yucca };
 
 export type Session = {
   userId: string;
@@ -20,18 +23,16 @@ export class SessionService {
     private readonly jwt: JwtService,
   ) {}
 
-  async cloudConfiguration() {
+  async cloudConfiguration(): Promise<CloudConfiguration | undefined> {
     const cloud = await this.backend.getBackend(REPOSITORY_DEFAULT_CLOUD_UUID);
 
     return cloud?.configuration.type === BackendType.Yucca ? cloud.configuration : undefined;
   }
 
-  async isRequired(): Promise<boolean> {
+  isRequired(configuration: CloudConfiguration | undefined): boolean {
     if (!this.moduleConfig.get().requireSession) {
       return false;
     }
-
-    const configuration = await this.cloudConfiguration();
 
     return configuration !== undefined;
   }
@@ -47,22 +48,25 @@ export class SessionService {
     );
   }
 
-  async verify(token: string | undefined): Promise<Session | undefined> {
-    if (!token) {
+  async verify(token: string | undefined, configuration: CloudConfiguration | undefined): Promise<Session | undefined> {
+    const claimedUserId = configuration?.userId;
+    if (!token || !claimedUserId) {
       return;
     }
 
     try {
-      const { sub } = await this.jwt.verifyAsync<{ sub: string }>(token, { secret: await this.signingKey() });
-
-      return { userId: sub };
+      await this.jwt.verifyAsync(token, { secret: await this.signingKey(), subject: claimedUserId });
     } catch {
       return;
     }
+
+    return { userId: claimedUserId };
   }
 
   async authenticate(token: string): Promise<Session> {
-    const session = await this.verify(token);
+    const configuration = await this.cloudConfiguration();
+    const session = await this.verify(token, configuration);
+
     if (!session) {
       throw new UnauthorizedException('Session token is invalid or expired');
     }
@@ -70,12 +74,15 @@ export class SessionService {
     return session;
   }
 
-  async fromCookieHeader(header: string | undefined): Promise<Session | undefined> {
+  async fromCookieHeader(
+    header: string | undefined,
+    configuration: CloudConfiguration | undefined,
+  ): Promise<Session | undefined> {
     if (!header) {
       return;
     }
 
-    return this.verify(parseCookies(header)[CookieName.SessionToken]);
+    return this.verify(parseCookies(header)[CookieName.SessionToken], configuration);
   }
 
   private async signingKey(): Promise<Buffer> {

@@ -23,7 +23,8 @@ export class OnboardingService {
 
   async onboardingStatus(session?: Session): Promise<OnboardingStatusResponseDto> {
     const status = this.bootstrap.getStatus();
-    const requiresAuthentication = await this.session.isRequired();
+    const configuration = await this.session.cloudConfiguration();
+    const requiresAuthentication = this.session.isRequired(configuration);
     const isAuthenticated = session !== undefined;
 
     if (status !== BootstrapStatus.Ready) {

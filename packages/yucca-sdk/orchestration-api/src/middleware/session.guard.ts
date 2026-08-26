@@ -19,20 +19,15 @@ export class SessionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<SessionRequest>();
-    request.session = await this.session.fromCookieHeader(request.headers.cookie);
+    const configuration = await this.session.cloudConfiguration();
+    request.session = await this.session.fromCookieHeader(request.headers.cookie, configuration);
 
     const isPublic = this.reflector.getAllAndOverride<boolean | undefined>(MetadataKey.PublicRoute, [
       context.getHandler(),
       context.getClass(),
     ]);
 
-    if (isPublic) {
-      return true;
-    }
-
-    const isRequired = await this.session.isRequired();
-
-    if (!isRequired) {
+    if (isPublic || !this.session.isRequired(configuration)) {
       return true;
     }
 

@@ -90,17 +90,11 @@ export class AuthService {
   }
 
   private async connectBackend(endpoint: string, accessToken: string, userId: string): Promise<void> {
-    const previous = await this.session.cloudConfiguration();
-
     await this.backend.updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
       type: BackendType.Yucca,
       accessToken,
       userId,
     });
-
-    if (previous?.userId && previous.userId !== userId) {
-      await this.config.rotateSessionSecret();
-    }
 
     await this.adoptOwnRepositories(endpoint, accessToken);
 
@@ -210,7 +204,8 @@ export class AuthService {
       await this.connectBackend(endpoint, accessToken, userId);
     }
 
-    const isRequired = await this.session.isRequired();
+    const configuration = await this.session.cloudConfiguration();
+    const isRequired = this.session.isRequired(configuration);
 
     publish({
       type: DeviceFlowEventType.Success,

@@ -12,55 +12,49 @@ describe(SessionService.name, () => {
     };
     const moduleConfig = { get: () => ({ requireSession: overrides.requireSession ?? true }) };
     const connected = overrides.connected ?? true;
-    const backend = {
-      getBackend: jest.fn().mockResolvedValue(
-        connected
-          ? {
-              configuration: {
-                type: 'yucca',
-                userId: 'claimedUserId' in overrides ? overrides.claimedUserId : userId,
-              },
-            }
-          : undefined,
-      ),
-    };
+    const configuration = connected
+      ? { type: 'yucca', userId: 'claimedUserId' in overrides ? overrides.claimedUserId : userId }
+      : undefined;
+    const backend = { getBackend: jest.fn().mockResolvedValue(connected ? { configuration } : undefined) };
 
     return {
       service: new SessionService(config as never, moduleConfig as never, backend as never, new JwtService()),
       config,
       backend,
+      configuration: configuration as never,
     };
   };
 
   it('verifies a token it issued', async () => {
-    const { service } = makeService();
+    const { service, configuration } = makeService();
+    const token = await service.issue(userId);
 
-    await expect(service.verify(await service.issue(userId))).resolves.toEqual({ userId });
+    await expect(service.verify(token, configuration)).resolves.toEqual({ userId });
   });
 
-  it('rejects a token signed with a rotated secret', async () => {
-    const { service, config } = makeService();
+  it('rejects a token signed with a different secret', async () => {
+    const { service, config, configuration } = makeService();
     const token = await service.issue(userId);
     config.getSessionSecret.mockResolvedValue(Buffer.alloc(32, 2));
 
-    await expect(service.verify(token)).resolves.toBeUndefined();
+    await expect(service.verify(token, configuration)).resolves.toBeUndefined();
   });
 
-  it('is required once the cloud backend is connected, even without a recorded account', async () => {
-    const { service } = makeService({ claimedUserId: void 0 });
+  it('is required once the cloud backend is connected, even without a recorded account', () => {
+    const { service, configuration } = makeService({ claimedUserId: void 0 });
 
-    await expect(service.isRequired()).resolves.toBe(true);
+    expect(service.isRequired(configuration)).toBe(true);
   });
 
-  it('is not required without a cloud backend', async () => {
-    const { service } = makeService({ connected: false });
+  it('is not required without a cloud backend', () => {
+    const { service, configuration } = makeService({ connected: false });
 
-    await expect(service.isRequired()).resolves.toBe(false);
+    expect(service.isRequired(configuration)).toBe(false);
   });
 
-  it('is not required when the host does not opt in', async () => {
-    const { service } = makeService({ requireSession: false });
+  it('is not required when the host does not opt in', () => {
+    const { service, configuration } = makeService({ requireSession: false });
 
-    await expect(service.isRequired()).resolves.toBe(false);
+    expect(service.isRequired(configuration)).toBe(false);
   });
 });

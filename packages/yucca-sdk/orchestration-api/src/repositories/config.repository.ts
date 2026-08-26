@@ -128,10 +128,6 @@ export class ConfigRepository {
     return Buffer.from(await this.get(ConfigurationKey.SessionSecret), 'hex');
   }
 
-  async rotateSessionSecret() {
-    return this.set(ConfigurationKey.SessionSecret, randomBytes(32).toString('hex'));
-  }
-
   async getResticOptions(
     placement: ResticPlacement,
   ): Promise<{ connections: number; packSizeMib: number | undefined }> {

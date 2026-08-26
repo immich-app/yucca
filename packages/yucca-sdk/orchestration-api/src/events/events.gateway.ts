@@ -109,8 +109,10 @@ export class EventsGateway implements OnGatewayConnection {
         throw new Error('Auth function not set');
       }
 
-      if (await this.session.isRequired()) {
-        const session = await this.session.fromCookieHeader(client.handshake.headers.cookie);
+      const configuration = await this.session.cloudConfiguration();
+
+      if (this.session.isRequired(configuration)) {
+        const session = await this.session.fromCookieHeader(client.handshake.headers.cookie, configuration);
 
         if (!session) {
           throw new Error('No session cookie.');
