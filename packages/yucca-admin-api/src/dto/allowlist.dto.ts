@@ -6,8 +6,8 @@ export class AllowlistEntryDto {
   @ApiProperty()
   id!: string;
 
-  @ApiProperty()
-  email!: string;
+  @ApiProperty({ type: 'string', required: false, nullable: true })
+  email!: string | null;
 
   @ApiProperty()
   inviteCode!: string;

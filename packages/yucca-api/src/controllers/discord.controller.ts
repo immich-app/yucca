@@ -1,13 +1,19 @@
 import { Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { AuthDto } from 'src/dto/auth.dto';
-import { DiscordLinkRequestResponseDto } from 'src/dto/discord.dto';
+import { DiscordInviteResponseDto, DiscordLinkRequestResponseDto } from 'src/dto/discord.dto';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { DiscordService } from 'src/services/discord.service';
 
 @Controller('/discord')
 export class DiscordController {
   constructor(private readonly discord: DiscordService) {}
+
+  @Get('/invites/:code')
+  @ApiOkResponse({ type: DiscordInviteResponseDto })
+  getDiscordInvite(@Param('code') code: string): Promise<DiscordInviteResponseDto> {
+    return this.discord.getInvite(code);
+  }
 
   @Get('/link-requests/:code')
   @AuthRoute()

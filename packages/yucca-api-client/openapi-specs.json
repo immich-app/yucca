@@ -66,6 +66,15 @@
             }
           },
           {
+            "name": "discord_invite",
+            "required": false,
+            "in": "query",
+            "description": "Discord beta-invite token",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "invite_code",
             "required": false,
             "in": "query",
@@ -286,6 +295,36 @@
         },
         "tags": [
           "Connection"
+        ]
+      }
+    },
+    "/api/discord/invites/{code}": {
+      "get": {
+        "operationId": "getDiscordInvite",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordInviteResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Discord"
         ]
       }
     },
@@ -961,6 +1000,17 @@
         },
         "required": [
           "repositoryIds"
+        ]
+      },
+      "DiscordInviteResponseDto": {
+        "type": "object",
+        "properties": {
+          "discordUsername": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "discordUsername"
         ]
       },
       "DiscordLinkRequestResponseDto": {

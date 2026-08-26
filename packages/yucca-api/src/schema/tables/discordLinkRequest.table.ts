@@ -1,4 +1,5 @@
-import { Column, type Generated, Table } from '@immich/sql-tools';
+import { Column, ForeignKeyColumn, type Generated, Table } from '@immich/sql-tools';
+import { UserAllowlistTable } from './userAllowlist.table';
 
 @Table({ name: 'discordLinkRequests' })
 export class DiscordLinkRequestTable {
@@ -7,6 +8,14 @@ export class DiscordLinkRequestTable {
 
   @Column({ unique: true })
   code!: string;
+
+  @ForeignKeyColumn(() => UserAllowlistTable, {
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
+    nullable: true,
+    index: false,
+  })
+  allowlistId!: string | null;
 
   @Column()
   discordUserId!: string;
