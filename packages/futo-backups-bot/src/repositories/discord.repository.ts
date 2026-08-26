@@ -18,6 +18,7 @@ import { env } from 'src/env';
 import { TranscriptMessage } from 'src/utils/transcript';
 
 const THREAD_AUTO_ARCHIVE_MINUTES = 10_080;
+const CANNOT_MESSAGE_USER = 50_007;
 
 @Injectable()
 export class DiscordRepository {
@@ -62,6 +63,25 @@ export class DiscordRepository {
         .setName('claim-backups-role')
         .setDescription('Claim the FUTO Backups customer role for your linked account')
         .toJSON(),
+      new SlashCommandBuilder()
+        .setName('beta-invite')
+        .setDescription('Invite a user to the closed beta or post a claim button (staff only)')
+        .addUserOption((option) => option.setName('user').setDescription('DM a personal invite to this user'))
+        .addChannelOption((option) =>
+          option
+            .setName('channel')
+            .setDescription('Post a claim button in this channel')
+            .addChannelTypes(ChannelType.GuildText),
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName('limit')
+            .setDescription('How many invites the channel post hands out')
+            .setMinValue(1)
+            .setMaxValue(500),
+        )
+        .addRoleOption((option) => option.setName('mention').setDescription('Role to mention in the channel post'))
+        .toJSON(),
     ]);
   }
 
@@ -71,9 +91,22 @@ export class DiscordRepository {
     return [...messages.values()];
   }
 
-  async sendMessage(channelId: string, message: MessageCreateOptions): Promise<void> {
+  async sendMessage(channelId: string, message: MessageCreateOptions): Promise<Message> {
     const channel = await this.textChannel(channelId);
-    await channel.send(message);
+    return channel.send(message);
+  }
+
+  async sendDirectMessage(discordUserId: string, message: MessageCreateOptions): Promise<boolean> {
+    const user = await this.requireClient().users.fetch(discordUserId);
+    try {
+      await user.send(message);
+      return true;
+    } catch (error) {
+      if (error instanceof DiscordAPIError && error.code === CANNOT_MESSAGE_USER) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   async addRoleToMember(discordUserId: string, roleId: string): Promise<void> {

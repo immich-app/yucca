@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DiscordRepository } from './repositories/discord.repository';
 import { TranscriptStorageRepository } from './repositories/transcriptStorage.repository';
 import { YuccaApiRepository } from './repositories/yuccaApi.repository';
+import { InviteService } from './services/invite.service';
 import { SupportService } from './services/support.service';
 import { SweepService } from './services/sweep.service';
 
@@ -16,6 +17,7 @@ export const providers = [
   DiscordRepository,
   YuccaApiRepository,
   TranscriptStorageRepository,
+  InviteService,
   SupportService,
   SweepService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },

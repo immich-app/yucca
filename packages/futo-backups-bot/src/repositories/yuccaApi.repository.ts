@@ -13,6 +13,20 @@ const linkSchema = z.object({
   discordUsername: z.string(),
 });
 
+const inviteBatchCreatedSchema = z.object({
+  id: z.string(),
+});
+
+const inviteCreatedSchema = z.object({
+  code: z.string(),
+  expiresAt: z.coerce.date(),
+  remaining: z.number().nullable(),
+});
+
+const conflictSchema = z.object({
+  message: z.string(),
+});
+
 const userSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -26,6 +40,9 @@ const userSummarySchema = z.object({
 export type DiscordLink = z.infer<typeof linkSchema>;
 export type UserSummary = z.infer<typeof userSummarySchema>;
 export type LinkRequestCreated = z.infer<typeof linkRequestCreatedSchema>;
+export type InviteResult =
+  | ({ status: 'ok' } & z.infer<typeof inviteCreatedSchema>)
+  | { status: 'already-linked' | 'invite-used' | 'exhausted' };
 
 @Injectable()
 export class YuccaApiRepository {
@@ -57,6 +74,52 @@ export class YuccaApiRepository {
       { discordUsername },
       [404],
     );
+  }
+
+  async createInviteBatch(
+    guildId: string,
+    channelId: string,
+    maxClaims: number,
+    createdByDiscordUserId: string,
+  ): Promise<string> {
+    const response = await this.request('POST', '/api/internal/discord/invite-batches', {
+      guildId,
+      channelId,
+      maxClaims,
+      createdByDiscordUserId,
+    });
+    return inviteBatchCreatedSchema.parse(await response.json()).id;
+  }
+
+  async setInviteBatchMessage(batchId: string, messageId: string): Promise<void> {
+    await this.request('PATCH', `/api/internal/discord/invite-batches/${encodeURIComponent(batchId)}/message`, {
+      messageId,
+    });
+  }
+
+  async createInvite(discordUserId: string, discordUsername: string, batchId?: string): Promise<InviteResult> {
+    const response = await this.request(
+      'POST',
+      '/api/internal/discord/invites',
+      { discordUserId, discordUsername, ...(batchId ? { batchId } : {}) },
+      [409],
+    );
+    if (response.status === 409) {
+      const { message } = conflictSchema.parse(await response.json());
+      switch (message) {
+        case 'ALREADY_LINKED': {
+          return { status: 'already-linked' };
+        }
+        case 'INVITE_USED': {
+          return { status: 'invite-used' };
+        }
+        case 'BATCH_EXHAUSTED': {
+          return { status: 'exhausted' };
+        }
+      }
+      throw new Error(`Unexpected invite conflict: ${message}`);
+    }
+    return { status: 'ok', ...inviteCreatedSchema.parse(await response.json()) };
   }
 
   async getUserSummary(userId: string): Promise<UserSummary> {
