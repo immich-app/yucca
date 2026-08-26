@@ -16,6 +16,6 @@
     shape="round"
     fullWidth
     disabled={!flow.state.verificationUri}
-    onclick={flow.open}>Open FUTO Backups</Button
+    onclick={flow.open}>Continue to login</Button
   >
 {/if}

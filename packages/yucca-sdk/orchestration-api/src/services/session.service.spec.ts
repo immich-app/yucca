@@ -6,15 +6,23 @@ jest.mock('@futo-org/backups-api-client', () => ({}));
 describe(SessionService.name, () => {
   const userId = 'a06b5b4e-3d21-4d3f-9d4b-c0ffee000001';
 
-  const makeService = (overrides: { requireSession?: boolean; claimedUserId?: string } = {}) => {
+  const makeService = (overrides: { requireSession?: boolean; connected?: boolean; claimedUserId?: string } = {}) => {
     const config = {
       getSessionSecret: jest.fn().mockResolvedValue(Buffer.alloc(32, 1)),
     };
     const moduleConfig = { get: () => ({ requireSession: overrides.requireSession ?? true }) };
+    const connected = overrides.connected ?? true;
     const backend = {
-      getBackend: jest.fn().mockResolvedValue({
-        configuration: { type: 'yucca', userId: 'claimedUserId' in overrides ? overrides.claimedUserId : userId },
-      }),
+      getBackend: jest.fn().mockResolvedValue(
+        connected
+          ? {
+              configuration: {
+                type: 'yucca',
+                userId: 'claimedUserId' in overrides ? overrides.claimedUserId : userId,
+              },
+            }
+          : undefined,
+      ),
     };
 
     return {
@@ -38,8 +46,14 @@ describe(SessionService.name, () => {
     await expect(service.verify(token)).resolves.toBeUndefined();
   });
 
-  it('is not required until the instance is claimed', async () => {
+  it('is required once the cloud backend is connected, even without a recorded account', async () => {
     const { service } = makeService({ claimedUserId: void 0 });
+
+    await expect(service.isRequired()).resolves.toBe(true);
+  });
+
+  it('is not required without a cloud backend', async () => {
+    const { service } = makeService({ connected: false });
 
     await expect(service.isRequired()).resolves.toBe(false);
   });

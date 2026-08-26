@@ -20,10 +20,10 @@ export class SessionService {
     private readonly jwt: JwtService,
   ) {}
 
-  async claimedUserId(): Promise<string | undefined> {
+  async cloudConfiguration() {
     const cloud = await this.backend.getBackend(REPOSITORY_DEFAULT_CLOUD_UUID);
 
-    return cloud?.configuration.type === BackendType.Yucca ? cloud.configuration.userId : undefined;
+    return cloud?.configuration.type === BackendType.Yucca ? cloud.configuration : undefined;
   }
 
   async isRequired(): Promise<boolean> {
@@ -31,9 +31,9 @@ export class SessionService {
       return false;
     }
 
-    const claimedUserId = await this.claimedUserId();
+    const configuration = await this.cloudConfiguration();
 
-    return claimedUserId !== undefined;
+    return configuration !== undefined;
   }
 
   async issue(userId: string): Promise<string> {

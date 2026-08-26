@@ -80,8 +80,17 @@ export class AuthService {
     }
   }
 
+  private async fetchBackendUserId(endpoint: string, accessToken: string): Promise<string> {
+    const auth = await getAuth({
+      baseUrl: endpoint,
+      headers: { cookie: `${CookieName.YuccaAccessToken}=${accessToken}` },
+    });
+
+    return auth.id;
+  }
+
   private async connectBackend(endpoint: string, accessToken: string, userId: string): Promise<void> {
-    const claimedUserId = await this.session.claimedUserId();
+    const previous = await this.session.cloudConfiguration();
 
     await this.backend.updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, {
       type: BackendType.Yucca,
@@ -89,7 +98,7 @@ export class AuthService {
       userId,
     });
 
-    if (claimedUserId && claimedUserId !== userId) {
+    if (previous?.userId && previous.userId !== userId) {
       await this.config.rotateSessionSecret();
     }
 
@@ -158,8 +167,8 @@ export class AuthService {
   }
 
   private async runDeviceFlow(identity: boolean, publish: (event: DeviceFlowEventDto) => void): Promise<void> {
-    const claimedUserId = await this.session.claimedUserId();
-    if (identity && !claimedUserId) {
+    const cloud = await this.session.cloudConfiguration();
+    if (identity && !cloud) {
       publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.NotConnected });
       return;
     }
@@ -171,16 +180,21 @@ export class AuthService {
       return;
     }
 
-    let userId: string;
+    if (!upstream.userId) {
+      throw new Error('Device flow succeeded without a user');
+    }
+
+    const userId = upstream.userId;
     let backendId: string | undefined;
 
     if (identity) {
-      if (!upstream.userId) {
-        publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.DeviceFlowFailed });
-        return;
-      }
+      const configuration = cloud!;
+      let claimedUserId = configuration.userId;
 
-      userId = upstream.userId;
+      if (!claimedUserId) {
+        claimedUserId = await this.fetchBackendUserId(endpoint, configuration.accessToken);
+        await this.backend.updateBackend(REPOSITORY_DEFAULT_CLOUD_UUID, { ...configuration, userId: claimedUserId });
+      }
 
       if (userId !== claimedUserId) {
         publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.WrongAccount });
@@ -189,16 +203,9 @@ export class AuthService {
     } else {
       const { accessToken } = upstream;
       if (!accessToken) {
-        publish({ type: DeviceFlowEventType.Failure, reason: DeviceFlowFailureReason.DeviceFlowFailed });
-        return;
+        throw new Error('Device flow succeeded without an access token');
       }
 
-      const auth = await getAuth({
-        baseUrl: endpoint,
-        headers: { cookie: `${CookieName.YuccaAccessToken}=${accessToken}` },
-      });
-
-      userId = auth.id;
       backendId = REPOSITORY_DEFAULT_CLOUD_UUID;
       await this.connectBackend(endpoint, accessToken, userId);
     }

@@ -238,7 +238,7 @@ export class AuthService {
     callback: (data: { userCode: string; verificationUri: string }) => void,
     connectionType?: string,
     connectionName?: string,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<{ accessToken: string; userId: string }> {
     const user = await this.runDeviceFlow(callback);
 
     const overrides = await this.user.getFeatureOverrides(user.id);
@@ -261,6 +261,7 @@ export class AuthService {
 
     return {
       accessToken,
+      userId: user.id,
     };
   }
 
@@ -293,8 +294,8 @@ export class AuthService {
             connectionType,
             connectionName,
           )
-            .then(({ accessToken }) =>
-              queue.push({ data: { type: DeviceFlowEventType.Success, accessToken } } as MessageEvent),
+            .then(({ accessToken, userId }) =>
+              queue.push({ data: { type: DeviceFlowEventType.Success, accessToken, userId } } as MessageEvent),
             )
             .catch((error) => this.pushDeviceFlowFailure(queue, error))
             .finally(() => queue.stop()),
