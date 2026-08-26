@@ -8,6 +8,7 @@ import {
   GatewayIntentBits,
   Guild,
   Interaction,
+  Message,
   MessageCreateOptions,
   SlashCommandBuilder,
   TextChannel,
@@ -57,11 +58,32 @@ export class DiscordRepository {
         .setName('staff-notes')
         .setDescription("Link this ticket's staff-notes thread (staff only)")
         .toJSON(),
+      new SlashCommandBuilder()
+        .setName('claim-backups-role')
+        .setDescription('Claim the FUTO Backups customer role for your linked account')
+        .toJSON(),
     ]);
   }
 
-  async ensurePinnedSupportMessage(message: MessageCreateOptions, buttonId: string): Promise<void> {
-    const channel = await this.supportChannel();
+  async listRecentMessages(channelId: string, limit: number): Promise<Message[]> {
+    const channel = await this.textChannel(channelId);
+    const messages = await channel.messages.fetch({ limit });
+    return [...messages.values()];
+  }
+
+  async sendMessage(channelId: string, message: MessageCreateOptions): Promise<void> {
+    const channel = await this.textChannel(channelId);
+    await channel.send(message);
+  }
+
+  async addRoleToMember(discordUserId: string, roleId: string): Promise<void> {
+    const guild = await this.guild();
+    const member = await guild.members.fetch(discordUserId);
+    await member.roles.add(roleId);
+  }
+
+  async ensurePinnedMessage(channelId: string, message: MessageCreateOptions, buttonId: string): Promise<void> {
+    const channel = await this.textChannel(channelId);
     const [pinned, recent] = await Promise.all([
       channel.messages.fetchPinned(),
       channel.messages.fetch({ limit: 100 }),
