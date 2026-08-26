@@ -25,6 +25,15 @@ const schema = z.object({
   TICKET_USER_LIMIT: z.coerce.number().int().positive().default(3),
   CLAIM_PROMPT_MIN_MESSAGES: z.coerce.number().int().positive().default(25),
 
+  FRESHDESK_URL: z.string().default(''),
+  FRESHDESK_API_KEY: z.string().default(''),
+  FRESHDESK_WEBHOOK_SECRET: z.string().default(''),
+  FRESHDESK_TAGS: z.string().default(''),
+  FRESHDESK_GROUP_ID: z.string().default(''),
+  FRESHDESK_DUMMY_EMAIL_DOMAIN: z.string().default('no.futo.org'),
+  TICKET_MIRROR_DEBOUNCE_SECONDS: z.coerce.number().int().positive().default(120),
+  TICKET_MIRROR_MAX_WAIT_SECONDS: z.coerce.number().int().positive().default(600),
+
   TRANSCRIPT_S3_ENDPOINT: z.string().default(''),
   TRANSCRIPT_S3_BUCKET: z.string().default(''),
   TRANSCRIPT_S3_ACCESS_KEY_ID: z.string().default(''),

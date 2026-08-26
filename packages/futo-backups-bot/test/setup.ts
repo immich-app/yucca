@@ -5,3 +5,6 @@ process.env.DISCORD_SUPPORT_CHANNEL_ID ??= 'support-channel';
 process.env.DISCORD_GENERAL_CHANNEL_ID ??= 'general-channel';
 process.env.DISCORD_CHAT_CHANNEL_ID ??= 'chat-channel';
 process.env.DISCORD_CUSTOMER_ROLE_ID ??= 'customer-role';
+process.env.FRESHDESK_URL ??= 'https://example.freshdesk.test';
+process.env.FRESHDESK_API_KEY ??= 'test-key';
+process.env.FRESHDESK_WEBHOOK_SECRET ??= 'test-webhook-secret';
