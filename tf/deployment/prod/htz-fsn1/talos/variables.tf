@@ -287,3 +287,22 @@ variable "yucca_discord_support_channel_id" {
 }
 
 
+
+
+variable "yucca_discord_chat_channel_id" {
+  description = "#chat channel id mentioned after a role claim (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_customer_role_id" {
+  description = "FUTO Backups customer role id futo-backups-bot assigns on claim (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_general_channel_id" {
+  description = "#general channel id for futo-backups-bot's daily claim prompt (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}

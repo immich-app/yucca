@@ -9,6 +9,9 @@ const schema = z.object({
   DISCORD_GUILD_ID: z.string().default(''),
   DISCORD_STAFF_ROLE_ID: z.string().default(''),
   DISCORD_SUPPORT_CHANNEL_ID: z.string().default(''),
+  DISCORD_GENERAL_CHANNEL_ID: z.string().default(''),
+  DISCORD_CHAT_CHANNEL_ID: z.string().default(''),
+  DISCORD_CUSTOMER_ROLE_ID: z.string().default(''),
 
   YUCCA_API_URL: z.url().default('http://localhost:3020'),
   INTERNAL_SECRET: z.string().default(''),
@@ -20,6 +23,7 @@ const schema = z.object({
 
   TICKET_RETENTION_DAYS: z.coerce.number().default(14),
   TICKET_USER_LIMIT: z.coerce.number().int().positive().default(3),
+  CLAIM_PROMPT_MIN_MESSAGES: z.coerce.number().int().positive().default(25),
 
   TRANSCRIPT_S3_ENDPOINT: z.string().default(''),
   TRANSCRIPT_S3_BUCKET: z.string().default(''),

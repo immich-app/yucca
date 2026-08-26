@@ -66,6 +66,15 @@ const newModalInteraction = (description: string, overrides: object = {}) =>
     ...overrides,
   }) as never;
 
+const humanMessage = (ts: number) => ({ author: { bot: false }, createdTimestamp: ts, components: [] }) as never;
+const promptMessage = (ts: number, del = jest.fn().mockResolvedValue(void 0)) =>
+  ({
+    author: { bot: true },
+    createdTimestamp: ts,
+    components: [{ components: [{ customId: ComponentId.ClaimRole }] }],
+    delete: del,
+  }) as never;
+
 const asThread = (properties: object): ThreadChannel =>
   Object.assign(Object.create(ThreadChannel.prototype) as ThreadChannel, properties);
 
@@ -207,6 +216,73 @@ describe(SupportService.name, () => {
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('thread-9') }),
       );
+    });
+  });
+
+  describe('/claim-backups-role command', () => {
+    it('grants the customer role to a linked user', async () => {
+      mocks.api.getLink.mockResolvedValue(link);
+      const interaction = newCommandInteraction(
+        {},
+        { commandName: 'claim-backups-role', user: { id: '123456789', username: 'Someone' } },
+      );
+
+      await sut.handleInteraction(interaction);
+
+      expect(mocks.discord.addRoleToMember).toHaveBeenCalledWith('123456789', 'customer-role');
+      expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('chat-channel') }),
+      );
+    });
+
+    it('grants the role after linking for an unlinked user', async () => {
+      mocks.api.getLink.mockResolvedValueOnce(null).mockResolvedValue(link);
+      mocks.api.createLinkRequest.mockResolvedValue({ code: 'code-1', expiresAt: new Date(Date.now() + 2000) });
+      const interaction = newCommandInteraction(
+        {},
+        { commandName: 'claim-backups-role', user: { id: '123456789', username: 'Someone' } },
+      );
+
+      await sut.handleInteraction(interaction);
+
+      expect(mocks.api.createLinkRequest).toHaveBeenCalledWith('123456789', 'Someone');
+      expect(mocks.discord.addRoleToMember).toHaveBeenCalledWith('123456789', 'customer-role');
+      expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('role claimed') }),
+      );
+    });
+  });
+
+  describe('daily claim prompt', () => {
+    it('skips a quiet channel', async () => {
+      mocks.discord.listRecentMessages.mockResolvedValue([humanMessage(1), humanMessage(2)]);
+
+      await sut.postClaimPrompt();
+
+      expect(mocks.discord.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('replaces the old prompt when the channel is active', async () => {
+      const del = jest.fn().mockResolvedValue(void 0);
+      const messages = [promptMessage(100, del), ...Array.from({ length: 30 }, (_, i) => humanMessage(200 + i))];
+      mocks.discord.listRecentMessages.mockResolvedValue(messages);
+
+      await sut.postClaimPrompt();
+
+      expect(del).toHaveBeenCalled();
+      expect(mocks.discord.sendMessage).toHaveBeenCalledWith(
+        'general-channel',
+        expect.objectContaining({ content: expect.stringContaining('chat-channel') }),
+      );
+    });
+
+    it('ignores activity that predates the last prompt', async () => {
+      const messages = [...Array.from({ length: 30 }, (_, i) => humanMessage(10 + i)), promptMessage(100)];
+      mocks.discord.listRecentMessages.mockResolvedValue(messages);
+
+      await sut.postClaimPrompt();
+
+      expect(mocks.discord.sendMessage).not.toHaveBeenCalled();
     });
   });
 

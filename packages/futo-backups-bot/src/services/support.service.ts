@@ -1,5 +1,6 @@
 import { LoggerRepository } from '@common/server/otel';
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -8,6 +9,7 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
   Interaction,
+  Message,
   MessageFlags,
   ModalBuilder,
   ModalSubmitInteraction,
@@ -61,7 +63,8 @@ export class SupportService implements OnApplicationBootstrap {
     } catch (error) {
       this.logger.error(error, 'failed to register slash commands — is the applications.commands scope granted?');
     }
-    await this.discord.ensurePinnedSupportMessage(
+    await this.discord.ensurePinnedMessage(
+      env.DISCORD_SUPPORT_CHANNEL_ID,
       {
         content: 'Need help with FUTO Backups? Click below to open a private ticket with our staff.',
         components: [this.buttonRow(ComponentId.OpenTicket, 'Get support')],
@@ -81,6 +84,9 @@ export class SupportService implements OnApplicationBootstrap {
           case ComponentId.CloseTicket: {
             return await this.onCloseRequested(interaction);
           }
+          case ComponentId.ClaimRole: {
+            return await this.onClaimRequested(interaction);
+          }
         }
       }
       if (interaction.isModalSubmit() && interaction.customId === ComponentId.TicketModal) {
@@ -91,6 +97,9 @@ export class SupportService implements OnApplicationBootstrap {
       }
       if (interaction.isChatInputCommand() && interaction.commandName === 'staff-notes') {
         return await this.onStaffNotesRequested(interaction);
+      }
+      if (interaction.isChatInputCommand() && interaction.commandName === 'claim-backups-role') {
+        return await this.onClaimRequested(interaction);
       }
     } catch (error) {
       this.logger.error(error, 'failed to handle interaction');
@@ -142,7 +151,79 @@ export class SupportService implements OnApplicationBootstrap {
     );
   }
 
-  private async startLinkFlow(interaction: ButtonInteraction) {
+  private async onClaimRequested(interaction: ButtonInteraction | ChatInputCommandInteraction) {
+    if (!env.DISCORD_CUSTOMER_ROLE_ID) {
+      await interaction.reply({ content: 'Role claiming is not available yet.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    let link: DiscordLink | null;
+    try {
+      link = await withTimeout(this.api.getLink(interaction.user.id), LINK_LOOKUP_TIMEOUT_MS);
+    } catch (error) {
+      this.logger.error(error, 'link lookup failed');
+      await interaction.reply({
+        content: 'Role claiming is temporarily unavailable, please try again.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!link) {
+      return this.startLinkFlow(interaction, async () => {
+        await this.discord.addRoleToMember(interaction.user.id, env.DISCORD_CUSTOMER_ROLE_ID);
+        return { content: `Account linked and role claimed — welcome!${this.chatMention()}` };
+      });
+    }
+
+    await this.discord.addRoleToMember(interaction.user.id, env.DISCORD_CUSTOMER_ROLE_ID);
+    await interaction.editReply({ content: `Role claimed — welcome!${this.chatMention()}` });
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_NOON)
+  async postClaimPrompt() {
+    if (!this.discord.enabled || !env.DISCORD_GENERAL_CHANNEL_ID || !env.DISCORD_CUSTOMER_ROLE_ID) {
+      return;
+    }
+
+    const messages = await this.discord.listRecentMessages(env.DISCORD_GENERAL_CHANNEL_ID, 50);
+    const isPrompt = (message: Message) =>
+      message.author.bot &&
+      message.components.some(
+        (row) =>
+          'components' in row &&
+          row.components.some((component) => 'customId' in component && component.customId === ComponentId.ClaimRole),
+      );
+    const lastPrompt = messages
+      .filter((message) => isPrompt(message))
+      .toSorted((a, b) => b.createdTimestamp - a.createdTimestamp)[0];
+    const activity = messages.filter(
+      (message) => !message.author.bot && (!lastPrompt || message.createdTimestamp > lastPrompt.createdTimestamp),
+    );
+    if (activity.length < env.CLAIM_PROMPT_MIN_MESSAGES) {
+      return;
+    }
+
+    if (lastPrompt) {
+      await lastPrompt
+        .delete()
+        .catch((error: unknown) => this.logger.warn(error, 'could not delete the previous claim prompt'));
+    }
+    await this.discord.sendMessage(env.DISCORD_GENERAL_CHANNEL_ID, {
+      content: `FUTO Backups customer? Claim your role to unlock${env.DISCORD_CHAT_CHANNEL_ID ? ` <#${env.DISCORD_CHAT_CHANNEL_ID}>` : ' the customer chat'}.`,
+      components: [this.buttonRow(ComponentId.ClaimRole, 'Claim your role')],
+    });
+  }
+
+  private chatMention(): string {
+    return env.DISCORD_CHAT_CHANNEL_ID ? ` Say hi in <#${env.DISCORD_CHAT_CHANNEL_ID}>.` : '';
+  }
+
+  private async startLinkFlow(
+    interaction: ButtonInteraction | ChatInputCommandInteraction,
+    onLinked?: () => Promise<{ content: string; components?: ActionRowBuilder<ButtonBuilder>[] }>,
+  ) {
     const { code, expiresAt } = await this.api.createLinkRequest(interaction.user.id, interaction.user.username);
     const url = `${env.WEB_URL}/link/discord?code=${code}`;
 
@@ -156,15 +237,18 @@ export class SupportService implements OnApplicationBootstrap {
     });
 
     while (Date.now() < expiresAt.getTime()) {
-      await sleep(LINK_POLL_INTERVAL_MS);
       const link = await this.api.getLink(interaction.user.id).catch(() => null);
       if (link) {
-        await interaction.editReply({
-          content: 'Account linked! Now open your ticket.',
-          components: [this.buttonRow(ComponentId.CreateTicket, 'Open ticket')],
-        });
+        const success = onLinked
+          ? await onLinked()
+          : {
+              content: 'Account linked! Now open your ticket.',
+              components: [this.buttonRow(ComponentId.CreateTicket, 'Open ticket')],
+            };
+        await interaction.editReply({ components: [], ...success });
         return;
       }
+      await sleep(LINK_POLL_INTERVAL_MS);
     }
 
     await interaction.editReply({

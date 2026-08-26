@@ -251,6 +251,9 @@ resource "kubernetes_secret_v1" "futo_backups_bot" {
     DISCORD_GUILD_ID                = var.yucca_discord_guild_id
     DISCORD_STAFF_ROLE_ID           = var.yucca_discord_staff_role_id
     DISCORD_SUPPORT_CHANNEL_ID      = var.yucca_discord_support_channel_id
+    DISCORD_GENERAL_CHANNEL_ID      = var.yucca_discord_general_channel_id
+    DISCORD_CHAT_CHANNEL_ID         = var.yucca_discord_chat_channel_id
+    DISCORD_CUSTOMER_ROLE_ID        = var.yucca_discord_customer_role_id
     TRANSCRIPT_S3_ACCESS_KEY_ID     = var.sietch_transcripts_access_key
     TRANSCRIPT_S3_SECRET_ACCESS_KEY = var.sietch_transcripts_secret_key
   }

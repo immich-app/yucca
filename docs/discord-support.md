@@ -53,6 +53,18 @@ belongs to a known account. Staff can bypass it with **`/ticket user:<user>`**
 and the staff note records whether a linked account exists. Pre-signup
 questions stay in public channels or go through that override.
 
+## Channels and the customer role
+
+The FUTO Backups category is private (Team/FUTO/Yucca/Contributor/Support
+Crew see it; flipping it public later is the rollout switch). `#general` is
+open chat for everyone who sees the category plus customers. The
+**`/claim-backups-role`** command (also offered by a daily bot prompt in
+`#general`, skipped when the channel is quiet) runs the same link flow as
+support and then grants the plain **FUTO Backups** role — linked customers get it instantly,
+unlinked ones link first. The role unlocks `#customer` (customer chat, also visible to
+Admin/Team/Yucca/FUTO). `#support` stays visible to everyone;
+ticket threads live under it as before.
+
 ## Tickets: Discord is the source of truth
 
 No ticket table. A ticket is a **private thread** under the support channel;
@@ -95,7 +107,7 @@ uses the dev guild through `.env`.
 | Variable | Source |
 |---|---|
 | `DISCORD_BOT_TOKEN` | Secret ← `YUCCA_DISCORD_BOT_TOKEN` (manual item) |
-| `DISCORD_GUILD_ID`, `DISCORD_STAFF_ROLE_ID`, `DISCORD_SUPPORT_CHANNEL_ID` | Secret ← `YUCCA_DISCORD_SUPPORT_IDS` (written by core-infra-tf's discord apply) |
+| `DISCORD_GUILD_ID`, `DISCORD_STAFF_ROLE_ID`, `DISCORD_SUPPORT_CHANNEL_ID`, `DISCORD_GENERAL_CHANNEL_ID`, `DISCORD_CHAT_CHANNEL_ID`, `DISCORD_CUSTOMER_ROLE_ID` | Secret ← `YUCCA_DISCORD_SUPPORT_IDS` (written by core-infra-tf's discord apply) |
 | `INTERNAL_SECRET` | Secret ← TF-generated (`random_password`, shared with yucca-api) |
 | `TRANSCRIPT_S3_ACCESS_KEY_ID` / `..._SECRET_ACCESS_KEY` | Secret ← ceph-stack-minted `*_CEPH_S3_SVC_YUCCA_TRANSCRIPTS_*` |
 | `TRANSCRIPT_S3_ENDPOINT`, `TRANSCRIPT_S3_BUCKET` | cluster-settings |
