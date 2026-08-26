@@ -91,6 +91,7 @@ func TestParseDiscovery_K8s(t *testing.T) {
 	const k8sState = `{"outputs":{"discovery":{"value":{
 		"partition":"staging","region":"austin","stack_type":"region-k8s","role":"primary",
 		"kubernetes":{"cluster_name":"yucca_staging_austin","api_endpoint":"https://10.0.0.1:6443",
+		"admin_api_host":"admin.staging.example.com",
 		"cp_node_ips":["10.0.0.1","10.0.0.2"],"talosconfig_ref":"op://v/talos/cfg","kubeconfig_ref":"op://v/kube/cfg"}}}}}`
 	d, err := ParseDiscovery([]byte(k8sState))
 	if err != nil {
@@ -101,5 +102,8 @@ func TestParseDiscovery_K8s(t *testing.T) {
 	}
 	if len(d.Kubernetes.CPNodeIPs) != 2 || d.Kubernetes.TalosconfigRef != "op://v/talos/cfg" {
 		t.Errorf("kubernetes payload mismatch: %+v", d.Kubernetes)
+	}
+	if d.Kubernetes.AdminAPIHost != "admin.staging.example.com" {
+		t.Errorf("admin_api_host = %q", d.Kubernetes.AdminAPIHost)
 	}
 }

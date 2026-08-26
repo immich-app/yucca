@@ -1,0 +1,17 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cert-manager.io/certificate_v1.json
+# Let's Encrypt DNS-01 (cloudflare, futo.network zone — split-horizon: only the
+# ACME TXT records are public, the A record lives in the NetBird zone). Needs
+# the shared bootstrap cloudflare token (tf/.env), not the futo.cloud-only one.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: admin-luke
+  namespace: envoy-system
+spec:
+  secretName: admin-luke-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+    - admin.luke.aus.int.yucca.futo.network

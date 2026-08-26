@@ -34,8 +34,10 @@ output "discovery" {
       domain        = var.domain
     }
     kubernetes = {
-      cluster_name      = var.cluster.name
-      api_endpoint      = local.cluster_endpoint  # https://<api_dns_name>:6443 (VIP)
+      cluster_name = var.cluster.name
+      api_endpoint = local.cluster_endpoint # https://<api_dns_name>:6443 (VIP)
+      # NetBird-only netops record (netbird/dns.tf) = YUCCA_ADMIN_HOST.
+      admin_api_host    = "admin.${trimprefix(local.api_dns_name, "kube.")}"
       api_vip           = local.api_vip           # Talos-elected VIP on kube-cp (the api_dns_name A record)
       operator_endpoint = local.operator_endpoint # direct bootstrap-CP apiserver
       cp_node_ips       = local.cp_ips            # kube-cp IPs; operators/yuctl reach via NetBird

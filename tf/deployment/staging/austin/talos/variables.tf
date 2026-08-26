@@ -143,9 +143,10 @@ variable "sietch_rgw_tls_cert" {
 }
 
 # Cloudflare API token for the cert-manager DNS-01 ClusterIssuer (futo.cloud
-# zone). Same 1P item the dns stack uses. Injected via TF_VAR from 1P.
+# for the app domain + futo.network for the admin cert — the shared bootstrap
+# token, see tf/.env). Injected via TF_VAR from 1P.
 variable "cloudflare_api_token" {
-  description = "Cloudflare API token (Zone:Read + DNS:Edit on futo.cloud) for cert-manager DNS-01. Injected via TF_VAR from 1P."
+  description = "Cloudflare API token (Zone:Read + DNS:Edit on futo.cloud and futo.network) for cert-manager DNS-01. Injected via TF_VAR from 1P."
   type        = string
   sensitive   = true
   default     = ""

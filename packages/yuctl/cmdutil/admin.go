@@ -126,13 +126,20 @@ func (a *AdminFlags) resolveAdminURL(topo *discovery.Topology, cc *ctxstore.Cont
 }
 
 // deriveAdminURL builds the admin-api origin for the partition's primary
-// region from its k8s discovery payload: the Talos API endpoint lives at
-// kube.<cluster>.<region>.<provider>.yucca.futo.network, and the admin-api is
-// published on the same NetBird overlay zone as admin.<...> (the
-// YUCCA_ADMIN_HOST cluster-setting follows the same convention).
+// region from its k8s discovery payload: admin_api_host when the stack emits
+// it (= the region's YUCCA_ADMIN_HOST cluster-setting), otherwise the legacy
+// derivation from the Talos API endpoint — kube.<cluster>.<region>.<provider>.
+// yucca.futo.network, with the admin-api published on the same NetBird overlay
+// zone as admin.<...>.
 func deriveAdminURL(topo *discovery.Topology, partition, region string) (string, error) {
 	k8s := topo.Kubernetes(partition, region)
-	if k8s == nil || k8s.APIEndpoint == "" {
+	if k8s == nil {
+		return "", fmt.Errorf("no kubernetes discovery payload for %s@%s; pass --admin-url or set YUCTL_ADMIN_API_URL", partition, region)
+	}
+	if k8s.AdminAPIHost != "" {
+		return "https://" + k8s.AdminAPIHost, nil
+	}
+	if k8s.APIEndpoint == "" {
 		return "", fmt.Errorf("no kubernetes discovery payload for %s@%s; pass --admin-url or set YUCTL_ADMIN_API_URL", partition, region)
 	}
 	u, err := url.Parse(k8s.APIEndpoint)
