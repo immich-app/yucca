@@ -22,7 +22,7 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
     ensurePinnedSupportMessage: jest.fn(),
     createTicketThread: jest.fn(),
     createStaffThread: jest.fn(),
-    findOpenTicketThread: jest.fn(),
+    listOpenTicketThreads: jest.fn().mockResolvedValue([]),
     findSupportThreadByName: jest.fn(),
     closeThread: jest.fn(),
     listClosedTicketThreads: jest.fn().mockResolvedValue([]),

@@ -16,6 +16,7 @@ const schema = z.object({
   GRAFANA_USER_DASHBOARD_URL: z.string().default(''),
 
   TICKET_RETENTION_DAYS: z.coerce.number().default(14),
+  TICKET_USER_LIMIT: z.coerce.number().default(3),
 
   TRANSCRIPT_S3_ENDPOINT: z.string().default(''),
   TRANSCRIPT_S3_BUCKET: z.string().default(''),
