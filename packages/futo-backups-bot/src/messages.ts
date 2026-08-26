@@ -25,7 +25,7 @@ export const Messages = {
   staffOnlyClose: 'Only staff can close tickets.',
   staffNotesLink: (threadId: string) => `Staff notes: <#${threadId}>`,
   staffNotesMissing: 'No staff-notes thread found for this ticket.',
-  staffNoteHeader: 'Staff notes — not visible to the user.',
+  staffNoteHeader: 'Staff notes, not visible to the user.',
   staffNoteNoLink: 'No linked FUTO Backups account.',
 
   linkIntro: 'First, link your Discord account to your FUTO Backups account. The link is valid for 10 minutes.',
@@ -37,8 +37,8 @@ export const Messages = {
 
   claimNotAvailable: 'Role claiming is not available yet.',
   claimUnavailable: 'Role claiming is temporarily unavailable, please try again.',
-  roleClaimed: (chatMention: string) => `Role claimed — welcome!${chatMention}`,
-  linkedAndClaimed: (chatMention: string) => `Account linked and role claimed — welcome!${chatMention}`,
+  roleClaimed: (chatMention: string) => `Role claimed, welcome!${chatMention}`,
+  linkedAndClaimed: (chatMention: string) => `Account linked and role claimed, welcome!${chatMention}`,
   chatMention: (chatChannelId: string) => (chatChannelId ? ` Say hi in <#${chatChannelId}>.` : ''),
   claimPrompt: (chatChannelId: string) =>
     `FUTO Backups customer? Claim your role to unlock${chatChannelId ? ` <#${chatChannelId}>` : ' the customer chat'}.`,
@@ -52,15 +52,15 @@ export const Messages = {
   inviteSent: (userId: string) => `Invite sent to <@${userId}>.`,
   inviteDmsClosed: (userId: string, url: string) =>
     `<@${userId}> has DMs closed — pass this personal link along: ${url}`,
-  inviteAlreadyLinked: (userId: string) => `<@${userId}> already has a FUTO Backups account — no invite needed.`,
+  inviteAlreadyLinked: (userId: string) => `<@${userId}> already has a FUTO Backups account, no invite needed.`,
   inviteUsed: (userId: string) => `<@${userId}> already used their beta invite.`,
   inviteDrop: (limit: number, mention: string | null, creatorId: string) =>
-    `${mention ? `${mention}, ` : ''}<@${creatorId}> has opened up ${limit} spot${limit === 1 ? '' : 's'} in the FUTO Backups closed beta — first come, first served.`,
+    `${mention ? `${mention}, ` : ''}<@${creatorId}> has opened up ${limit} spot${limit === 1 ? '' : 's'} in the FUTO Backups closed beta, first come, first served.\nFUTO Backups is **FREE** while in the closed beta.`,
   inviteDropButton: 'Claim your invite',
   inviteDropClaimedButton: 'All invites claimed',
   inviteDropPosted: (limit: number, channelId: string) => `Posted ${limit} invites in <#${channelId}>.`,
-  claimSuccess: "You're in! This personal link is valid for 10 minutes — claim again if it expires.",
-  claimAlreadyLinked: 'You already have a FUTO Backups account — no invite needed.',
+  claimSuccess: "You're in! This personal link is valid for 10 minutes, claim again if it expires.",
+  claimAlreadyLinked: 'You already have a FUTO Backups account, no invite needed.',
   claimInviteUsed: 'You already used your beta invite.',
-  claimExhausted: 'All invites have been claimed — keep an eye out for the next drop.',
+  claimExhausted: 'All invites have been claimed, keep an eye out for the next drop.',
 };
