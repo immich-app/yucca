@@ -1,5 +1,6 @@
 import { ComponentId } from 'src/enum';
 import { env } from 'src/env';
+import { Messages } from 'src/messages';
 import { InviteService } from 'src/services/invite.service';
 import { Mocks, newMocks } from '../../test/mocks';
 
@@ -61,7 +62,7 @@ describe(InviteService.name, () => {
       await sut.onInviteCommand(interaction);
 
       expect((interaction as { reply: jest.Mock }).reply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: 'Only staff can send beta invites.' }),
+        expect.objectContaining({ content: Messages.inviteStaffOnly }),
       );
       expect(mocks.api.createInvite).not.toHaveBeenCalled();
     });
@@ -75,7 +76,7 @@ describe(InviteService.name, () => {
 
       for (const interaction of [both, neither]) {
         expect((interaction as { reply: jest.Mock }).reply).toHaveBeenCalledWith(
-          expect.objectContaining({ content: 'Pick either a user to DM or a channel to post in.' }),
+          expect.objectContaining({ content: Messages.invitePickOne }),
         );
       }
       expect(mocks.api.createInvite).not.toHaveBeenCalled();
@@ -90,10 +91,10 @@ describe(InviteService.name, () => {
       expect(mocks.api.createInvite).toHaveBeenCalledWith('u1', 'target');
       expect(mocks.discord.sendDirectMessage).toHaveBeenCalledWith(
         'u1',
-        expect.objectContaining({ content: expect.stringContaining('closed beta') }),
+        expect.objectContaining({ content: Messages.inviteDm }),
       );
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
-        content: 'Invite sent to <@u1>.',
+        content: Messages.inviteSent('u1'),
       });
     });
 
@@ -117,7 +118,7 @@ describe(InviteService.name, () => {
 
       expect(mocks.discord.sendDirectMessage).not.toHaveBeenCalled();
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
-        content: '<@u1> already has a FUTO Backups account — no invite needed.',
+        content: Messages.inviteAlreadyLinked('u1'),
       });
     });
 
@@ -127,7 +128,7 @@ describe(InviteService.name, () => {
       await sut.onInviteCommand(interaction);
 
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
-        content: 'Set a limit when posting invites to a channel.',
+        content: Messages.inviteLimitRequired,
       });
       expect(mocks.api.createInviteBatch).not.toHaveBeenCalled();
     });
@@ -142,11 +143,11 @@ describe(InviteService.name, () => {
       expect(mocks.api.createInviteBatch).toHaveBeenCalledWith('guild-1', 'c1', 10, 'staff-1');
       expect(mocks.discord.sendMessage).toHaveBeenCalledWith(
         'c1',
-        expect.objectContaining({ content: expect.stringContaining('10 spots') }),
+        expect.objectContaining({ content: Messages.inviteDrop(10, null, 'staff-1') }),
       );
       expect(mocks.api.setInviteBatchMessage).toHaveBeenCalledWith('batch-1', 'message-1');
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
-        content: 'Posted 10 invites in <#c1>.',
+        content: Messages.inviteDropPosted(10, 'c1'),
       });
     });
 
@@ -159,7 +160,7 @@ describe(InviteService.name, () => {
 
       expect(mocks.discord.sendMessage).toHaveBeenCalledWith(
         'c1',
-        expect.objectContaining({ content: expect.stringMatching(/^@everyone We're opening 2 spots/) }),
+        expect.objectContaining({ content: Messages.inviteDrop(2, '@everyone', 'staff-1') }),
       );
     });
 
@@ -172,7 +173,7 @@ describe(InviteService.name, () => {
 
       expect(mocks.discord.sendMessage).toHaveBeenCalledWith(
         'c1',
-        expect.objectContaining({ content: expect.stringMatching(/^<@&role-1> We're opening 5 spots/) }),
+        expect.objectContaining({ content: Messages.inviteDrop(5, '<@&role-1>', 'staff-1') }),
       );
     });
   });
@@ -186,7 +187,7 @@ describe(InviteService.name, () => {
 
       expect(mocks.api.createInvite).toHaveBeenCalledWith('123456789', 'Someone', 'batch-1');
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining("You're in!") }),
+        expect.objectContaining({ content: Messages.claimSuccess }),
       );
       expect((interaction as { message: { edit: jest.Mock } }).message.edit).not.toHaveBeenCalled();
     });
@@ -208,7 +209,7 @@ describe(InviteService.name, () => {
 
       expect((interaction as { message: { edit: jest.Mock } }).message.edit).toHaveBeenCalled();
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
-        content: 'All invites have been claimed — keep an eye out for the next drop.',
+        content: Messages.claimExhausted,
       });
     });
 
@@ -219,7 +220,7 @@ describe(InviteService.name, () => {
       await sut.onClaimInvite(interaction);
 
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
-        content: 'You already have a FUTO Backups account — no invite needed.',
+        content: Messages.claimAlreadyLinked,
       });
     });
 
@@ -230,7 +231,7 @@ describe(InviteService.name, () => {
       await sut.onClaimInvite(interaction);
 
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
-        content: 'You already used your beta invite.',
+        content: Messages.claimInviteUsed,
       });
     });
   });

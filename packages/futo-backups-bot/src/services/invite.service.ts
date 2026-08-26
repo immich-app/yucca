@@ -11,6 +11,7 @@ import {
 } from 'discord.js';
 import { ComponentId } from 'src/enum';
 import { env } from 'src/env';
+import { Messages } from 'src/messages';
 import { DiscordRepository } from 'src/repositories/discord.repository';
 import { YuccaApiRepository } from 'src/repositories/yuccaApi.repository';
 import { isStaff } from 'src/utils/staff';
@@ -25,7 +26,7 @@ export class InviteService {
 
   async onInviteCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     if (!isStaff(interaction)) {
-      await interaction.reply({ content: 'Only staff can send beta invites.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: Messages.inviteStaffOnly, flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -33,7 +34,7 @@ export class InviteService {
     const channel = interaction.options.getChannel('channel');
     if (Boolean(target) === Boolean(channel)) {
       await interaction.reply({
-        content: 'Pick either a user to DM or a channel to post in.',
+        content: Messages.invitePickOne,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -65,22 +66,18 @@ export class InviteService {
     const result = await this.api.createInvite(target.id, target.username);
     if (result.status !== 'ok') {
       const content =
-        result.status === 'invite-used'
-          ? `<@${target.id}> already used their beta invite.`
-          : `<@${target.id}> already has a FUTO Backups account — no invite needed.`;
+        result.status === 'invite-used' ? Messages.inviteUsed(target.id) : Messages.inviteAlreadyLinked(target.id);
       await interaction.editReply({ content });
       return;
     }
 
     const url = this.inviteUrl(result.code);
     const delivered = await this.discord.sendDirectMessage(target.id, {
-      content: "You're invited to the FUTO Backups closed beta! This personal link is valid for 10 minutes.",
+      content: Messages.inviteDm,
       components: [this.linkRow(url)],
     });
     await interaction.editReply({
-      content: delivered
-        ? `Invite sent to <@${target.id}>.`
-        : `<@${target.id}> has DMs closed — pass this personal link along: ${url}`,
+      content: delivered ? Messages.inviteSent(target.id) : Messages.inviteDmsClosed(target.id, url),
     });
   }
 
@@ -91,7 +88,7 @@ export class InviteService {
     mention: string | null,
   ): Promise<void> {
     if (!limit) {
-      await interaction.editReply({ content: 'Set a limit when posting invites to a channel.' });
+      await interaction.editReply({ content: Messages.inviteLimitRequired });
       return;
     }
 
@@ -102,15 +99,15 @@ export class InviteService {
       interaction.user.id,
     );
     const message = await this.discord.sendMessage(channelId, {
-      content: `${mention ? `${mention} ` : ''}We're opening ${limit} spot${limit === 1 ? '' : 's'} in the FUTO Backups closed beta — first come, first served.`,
-      components: [this.claimRow(batchId, 'Claim your invite')],
+      content: Messages.inviteDrop(limit, mention, interaction.user.id),
+      components: [this.claimRow(batchId, Messages.inviteDropButton)],
     });
     // The message id is audit-only (disabling edits interaction.message), so a
     // failure here must not report a live drop as failed and invite a repost.
     await this.api
       .setInviteBatchMessage(batchId, message.id)
       .catch((error: unknown) => this.logger.warn(error, 'could not record the invite drop message id'));
-    await interaction.editReply({ content: `Posted ${limit} invites in <#${channelId}>.` });
+    await interaction.editReply({ content: Messages.inviteDropPosted(limit, channelId) });
   }
 
   async onClaimInvite(interaction: ButtonInteraction): Promise<void> {
@@ -120,24 +117,24 @@ export class InviteService {
     const result = await this.api.createInvite(interaction.user.id, interaction.user.username, batchId);
     switch (result.status) {
       case 'already-linked': {
-        await interaction.editReply({ content: 'You already have a FUTO Backups account — no invite needed.' });
+        await interaction.editReply({ content: Messages.claimAlreadyLinked });
         return;
       }
       case 'invite-used': {
-        await interaction.editReply({ content: 'You already used your beta invite.' });
+        await interaction.editReply({ content: Messages.claimInviteUsed });
         return;
       }
       case 'exhausted': {
         await this.disableClaimButton(interaction, batchId);
         await interaction.editReply({
-          content: 'All invites have been claimed — keep an eye out for the next drop.',
+          content: Messages.claimExhausted,
         });
         return;
       }
     }
 
     await interaction.editReply({
-      content: "You're in! This personal link is valid for 10 minutes — claim again if it expires.",
+      content: Messages.claimSuccess,
       components: [this.linkRow(this.inviteUrl(result.code))],
     });
     if (result.remaining === 0) {
@@ -147,7 +144,7 @@ export class InviteService {
 
   private async disableClaimButton(interaction: ButtonInteraction, batchId: string): Promise<void> {
     await interaction.message
-      .edit({ components: [this.claimRow(batchId, 'All invites claimed', true)] })
+      .edit({ components: [this.claimRow(batchId, Messages.inviteDropClaimedButton, true)] })
       .catch((error: unknown) => this.logger.warn(error, 'could not disable the claim button'));
   }
 
@@ -157,7 +154,7 @@ export class InviteService {
 
   private linkRow(url: string) {
     return new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Join the beta').setURL(url),
+      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(Messages.inviteLinkButton).setURL(url),
     );
   }
 
