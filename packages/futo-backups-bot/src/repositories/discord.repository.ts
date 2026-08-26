@@ -53,6 +53,10 @@ export class DiscordRepository {
           option.setName('user').setDescription('The user to open the ticket for').setRequired(true),
         )
         .toJSON(),
+      new SlashCommandBuilder()
+        .setName('staff-notes')
+        .setDescription("Link this ticket's staff-notes thread (staff only)")
+        .toJSON(),
     ]);
   }
 
@@ -137,7 +141,7 @@ export class DiscordRepository {
     return open;
   }
 
-  async findSupportThreadByName(name: string): Promise<AnyThreadChannel | undefined> {
+  async findSupportThreadByName(name: string, includeLocked = false): Promise<AnyThreadChannel | undefined> {
     const channel = await this.supportChannel();
     const active = await channel.threads.fetchActive();
     const match = [...active.threads.values()].find((thread) => thread.parentId === channel.id && thread.name === name);
@@ -145,7 +149,7 @@ export class DiscordRepository {
       return match;
     }
     const archived = await this.fetchAllArchivedThreads(channel, 'private');
-    return archived.find((thread) => thread.name === name && thread.locked !== true);
+    return archived.find((thread) => thread.name === name && (includeLocked || thread.locked !== true));
   }
 
   async closeThread(thread: AnyThreadChannel): Promise<void> {
