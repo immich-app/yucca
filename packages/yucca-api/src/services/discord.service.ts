@@ -6,6 +6,7 @@ import {
   DiscordLinkRequestCreateDto,
   DiscordLinkRequestCreatedDto,
   DiscordLinkRequestResponseDto,
+  DiscordLinkUsernameUpdateDto,
   DiscordUserSummaryDto,
 } from 'src/dto/discord.dto';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
@@ -58,6 +59,12 @@ export class DiscordService {
       throw new NotFoundException(`No link for Discord user ${discordUserId}`);
     }
     return link;
+  }
+
+  async updateLinkUsername(discordUserId: string, dto: DiscordLinkUsernameUpdateDto): Promise<void> {
+    if (!(await this.discord.updateUsername(discordUserId, dto.discordUsername))) {
+      throw new NotFoundException(`No link for Discord user ${discordUserId}`);
+    }
   }
 
   async getUserSummary(userId: string): Promise<DiscordUserSummaryDto> {

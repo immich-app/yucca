@@ -113,6 +113,16 @@ describe(SupportService.name, () => {
 
       expect((interaction as { showModal: jest.Mock }).showModal).toHaveBeenCalled();
     });
+
+    it('backfills a stale stored username', async () => {
+      mocks.api.getLink.mockResolvedValue({ ...link, discordUsername: '' });
+      mocks.api.updateLinkUsername.mockResolvedValue(void 0);
+      const interaction = newButtonInteraction(ComponentId.OpenTicket);
+
+      await sut.handleInteraction(interaction);
+
+      expect(mocks.api.updateLinkUsername).toHaveBeenCalledWith('123456789', 'Someone');
+    });
   });
 
   describe('ticket modal', () => {
@@ -152,7 +162,7 @@ describe(SupportService.name, () => {
         expect.stringContaining('someone@example.test'),
       );
       expect(mocks.discord.createStaffThread).toHaveBeenCalledWith(
-        'staff-someone-6789',
+        expect.stringMatching(/^staff-someone-6789-/),
         expect.stringContaining('/d/yucca-per-user?var-user=user-1'),
       );
       expect((interaction as { deferReply: jest.Mock }).deferReply).toHaveBeenCalled();
