@@ -25,6 +25,10 @@ msgstr ""
 #~ msgid "{num, plural, one {# item} other {# items}}"
 #~ msgstr "{num, plural, one {# hello} other {# hellos}}"
 
+#: src/routes/login/invite/+page.svelte
+msgid "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
+msgstr ""
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "1 year"
 #~ msgstr ""
@@ -218,6 +222,10 @@ msgstr ""
 msgid "Invite code"
 msgstr ""
 
+#: src/routes/login/invite/+page.svelte
+msgid "Join the beta"
+msgstr ""
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Key label"
 #~ msgstr ""
@@ -329,6 +337,10 @@ msgstr ""
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "This connection type can't be added from here — see the note above."
 #~ msgstr ""
+
+#: src/routes/login/invite/+page.svelte
+msgid "This invite link has expired. Go back to Discord and claim it again to get a fresh one."
+msgstr ""
 
 #: src/routes/link/discord/+page.svelte
 msgid "This link is invalid or has expired. Click the support button in Discord to get a new one."
