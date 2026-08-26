@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Insertable, Kysely, Selectable, sql } from 'kysely';
+import { Insertable, Kysely, Selectable, Updateable, sql } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
 import { DiscordInviteBatchTable } from 'src/schema/tables/discordInviteBatch.table';
 import { DiscordLinkRequestTable } from 'src/schema/tables/discordLinkRequest.table';
+import { DiscordTicketTable } from 'src/schema/tables/discordTicket.table';
 import { UserAllowlistTable } from 'src/schema/tables/userAllowlist.table';
 
 export type InviteClaimResult =
@@ -169,6 +170,56 @@ export class DiscordRepository {
         .executeTakeFirstOrThrow();
       return { status: 'ok', entry, remaining };
     });
+  }
+
+  createTicket(ticket: Insertable<DiscordTicketTable>) {
+    return this.db.transaction().execute(async (trx) => {
+      await trx
+        .insertInto('discordTickets')
+        .values(ticket)
+        .onConflict((oc) => oc.column('threadId').doNothing())
+        .execute();
+      return trx
+        .selectFrom('discordTickets')
+        .selectAll()
+        .where('threadId', '=', ticket.threadId)
+        .executeTakeFirstOrThrow();
+    });
+  }
+
+  getTicketByThread(threadId: string) {
+    return this.db
+      .selectFrom('discordTickets')
+      .selectAll()
+      .where((eb) => eb.or([eb('threadId', '=', threadId), eb('staffThreadId', '=', threadId)]))
+      .executeTakeFirst();
+  }
+
+  getTicketByFreshdeskId(freshdeskTicketId: string) {
+    return this.db
+      .selectFrom('discordTickets')
+      .selectAll()
+      .where('freshdeskTicketId', '=', freshdeskTicketId)
+      .executeTakeFirst();
+  }
+
+  listOpenTickets() {
+    return this.db
+      .selectFrom('discordTickets')
+      .selectAll()
+      .where('closedAt', 'is', null)
+      .orderBy('createdAt', 'asc')
+      .execute();
+  }
+
+  async updateTicket(id: string, updates: Updateable<DiscordTicketTable>): Promise<boolean> {
+    const updated = await this.db
+      .updateTable('discordTickets')
+      .set(updates)
+      .where('id', '=', sql<string>`${id}::uuid`)
+      .returning('id')
+      .executeTakeFirst();
+    return updated !== undefined;
   }
 
   getUserSummary(userId: string) {
