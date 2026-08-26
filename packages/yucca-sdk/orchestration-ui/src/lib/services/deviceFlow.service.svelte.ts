@@ -26,11 +26,13 @@ export function createDeviceFlow(
     verificationUri: string | undefined;
     error: string | undefined;
     pending: boolean;
+    opened: boolean;
   }>({
     userCode: undefined,
     verificationUri: undefined,
     error: undefined,
     pending: false,
+    opened: false,
   });
 
   let close: (() => void) | undefined;
@@ -55,13 +57,13 @@ export function createDeviceFlow(
     state.userCode = undefined;
     state.error = undefined;
     state.pending = true;
+    state.opened = false;
 
     close = startDeviceFlow(kind, (event) => {
       switch (event.type) {
         case 'START': {
           state.userCode = event.userCode;
           state.verificationUri = event.verificationUri;
-          window.open(event.verificationUri, 'futo-backups-device');
           break;
         }
         case 'SUCCESS': {
@@ -82,9 +84,21 @@ export function createDeviceFlow(
     });
   };
 
+  const open = () => {
+    if (!state.verificationUri) {
+      return;
+    }
+
+    state.opened = true;
+    window.open(state.verificationUri, 'futo-backups-device');
+  };
+
   return {
     state,
     start,
     stop,
+    open,
   };
 }
+
+export type DeviceFlow = ReturnType<typeof createDeviceFlow>;

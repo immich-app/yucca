@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DeviceFlowAction from "$lib/components/util/DeviceFlowAction.svelte";
   import DeviceFlowCode from "$lib/components/util/DeviceFlowCode.svelte";
   import type { SocketEvent } from "$lib/events";
   import { type BackendDto } from "$lib/fetch-client";
@@ -52,7 +53,7 @@
 <Modal title="Logging into FUTO Backups" icon={false} {onClose}>
   <ModalBody>
     {#if flow.state.userCode}
-      <DeviceFlowCode userCode={flow.state.userCode} />
+      <DeviceFlowCode {flow} />
     {:else if flow.state.error}
       <Text color="danger">{flow.state.error}</Text>
     {:else}
@@ -64,12 +65,7 @@
       <Button shape="round" color="secondary" fullWidth onclick={onClose}>
         Cancel
       </Button>
-      <Button
-        shape="round"
-        fullWidth
-        onclick={flow.start}
-        disabled={flow.state.pending && !flow.state.userCode}>Try again</Button
-      >
+      <DeviceFlowAction {flow} />
     </HStack>
   </ModalFooter>
 </Modal>

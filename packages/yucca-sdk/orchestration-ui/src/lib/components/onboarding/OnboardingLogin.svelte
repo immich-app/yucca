@@ -1,12 +1,18 @@
 <script lang="ts">
+  import DeviceFlowAction from "$lib/components/util/DeviceFlowAction.svelte";
   import DeviceFlowCode from "$lib/components/util/DeviceFlowCode.svelte";
   import { createDeviceFlow } from "$lib/services/deviceFlow.service.svelte";
   import { useCreateSession } from "$lib/services/session.service";
-  import { Button, Modal, ModalBody, Text } from "@immich/ui";
+  import {
+    Button,
+    HStack,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    Stack,
+    Text,
+  } from "@immich/ui";
   import { onDestroy } from "svelte";
-  import OnboardingStepLayout, {
-    type OnboardingStepAction,
-  } from "./steps/OnboardingStepLayout.svelte";
 
   type Props = {
     onAuthenticated: () => void;
@@ -22,49 +28,37 @@
   });
 
   onDestroy(flow.stop);
-
-  const actions: OnboardingStepAction[] = $derived([
-    {
-      label: "Log in with FUTO",
-      onClick: flow.start,
-      loading: flow.state.pending,
-    },
-  ]);
 </script>
 
-<Modal size="small" title="FUTO Backups" icon={false} onClose={() => {}}>
+<Modal title="Log in to FUTO Backups" icon={false} onClose={() => {}}>
   <ModalBody>
     {#if flow.state.userCode}
-      <DeviceFlowCode userCode={flow.state.userCode}>
-        <Text>
-          Waiting for you to confirm login
-          {#if flow.state.verificationUri}
-            at <a
-              href={flow.state.verificationUri}
-              target="_blank"
-              rel="noreferrer">{flow.state.verificationUri}</a
-            >
-          {/if}
-        </Text>
-      </DeviceFlowCode>
-
-      <Button
-        class="mt-4"
-        shape="round"
-        color="secondary"
-        variant="outline"
-        onclick={flow.start}>Start again</Button
-      >
+      <DeviceFlowCode {flow} />
     {:else}
-      <OnboardingStepLayout
-        title="Log in to manage backups"
-        description="This instance is connected to a FUTO Backups account. Log in with that account to manage it."
-        {actions}
-      >
+      <Stack gap={4}>
+        <Text>
+          This instance is connected to a FUTO Backups account. Log in with that
+          account to manage it.
+        </Text>
+
         {#if flow.state.error}
-          <Text color="danger" size="small">{flow.state.error}</Text>
+          <Text color="danger">{flow.state.error}</Text>
         {/if}
-      </OnboardingStepLayout>
+      </Stack>
     {/if}
   </ModalBody>
+  <ModalFooter>
+    <HStack fullWidth>
+      {#if flow.state.userCode}
+        <DeviceFlowAction {flow} />
+      {:else}
+        <Button
+          shape="round"
+          fullWidth
+          loading={flow.state.pending}
+          onclick={flow.start}>Log in with FUTO</Button
+        >
+      {/if}
+    </HStack>
+  </ModalFooter>
 </Modal>
