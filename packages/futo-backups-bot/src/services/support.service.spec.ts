@@ -152,7 +152,7 @@ describe(SupportService.name, () => {
         expect.stringContaining('someone@example.test'),
       );
       expect(mocks.discord.createStaffThread).toHaveBeenCalledWith(
-        'staff-someone-6789',
+        expect.stringMatching(/^staff-someone-6789-/),
         expect.stringContaining('/d/yucca-per-user?var-user=user-1'),
       );
       expect((interaction as { deferReply: jest.Mock }).deferReply).toHaveBeenCalled();
