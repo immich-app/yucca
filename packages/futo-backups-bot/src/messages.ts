@@ -63,4 +63,6 @@ export const Messages = {
   claimAlreadyLinked: 'You already have a FUTO Backups account, no invite needed.',
   claimInviteUsed: 'You already used your beta invite.',
   claimExhausted: 'All invites have been claimed, keep an eye out for the next drop.',
+  claimDropEnded: 'This drop has ended, keep an eye out for the next one.',
+  inviteDropEndedButton: 'Drop ended',
 };

@@ -2,6 +2,7 @@ import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { InternalController } from './controllers/internal.controller';
 import { DiscordRepository } from './repositories/discord.repository';
 import { TranscriptStorageRepository } from './repositories/transcriptStorage.repository';
 import { YuccaApiRepository } from './repositories/yuccaApi.repository';
@@ -25,6 +26,7 @@ export const providers = [
 
 @Module({
   imports: [OtelModule, ...imports],
+  controllers: [InternalController],
   providers,
 })
 export class AppModule {}

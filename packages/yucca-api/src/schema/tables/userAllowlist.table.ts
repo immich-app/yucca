@@ -27,6 +27,9 @@ export class UserAllowlistTable {
   @Column({ unique: true, nullable: true })
   discordUserId!: string | null;
 
+  @Column({ nullable: true })
+  discordUsername!: string | null;
+
   @ForeignKeyColumn(() => DiscordInviteBatchTable, {
     onUpdate: 'CASCADE',
     onDelete: 'SET NULL',

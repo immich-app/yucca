@@ -10,6 +10,7 @@ import {
   Interaction,
   Message,
   MessageCreateOptions,
+  MessageEditOptions,
   SlashCommandBuilder,
   TextChannel,
   ThreadChannel,
@@ -94,6 +95,12 @@ export class DiscordRepository {
   async sendMessage(channelId: string, message: MessageCreateOptions): Promise<Message> {
     const channel = await this.textChannel(channelId);
     return channel.send(message);
+  }
+
+  async editMessage(channelId: string, messageId: string, edit: MessageEditOptions): Promise<void> {
+    const channel = await this.textChannel(channelId);
+    const message = await channel.messages.fetch(messageId);
+    await message.edit(edit);
   }
 
   async sendDirectMessage(discordUserId: string, message: MessageCreateOptions): Promise<boolean> {

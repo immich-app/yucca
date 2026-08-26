@@ -42,7 +42,7 @@ export type UserSummary = z.infer<typeof userSummarySchema>;
 export type LinkRequestCreated = z.infer<typeof linkRequestCreatedSchema>;
 export type InviteResult =
   | ({ status: 'ok' } & z.infer<typeof inviteCreatedSchema>)
-  | { status: 'already-linked' | 'invite-used' | 'exhausted' };
+  | { status: 'already-linked' | 'invite-used' | 'exhausted' | 'cancelled' };
 
 @Injectable()
 export class YuccaApiRepository {
@@ -115,6 +115,9 @@ export class YuccaApiRepository {
         }
         case 'BATCH_EXHAUSTED': {
           return { status: 'exhausted' };
+        }
+        case 'BATCH_CANCELLED': {
+          return { status: 'cancelled' };
         }
       }
       throw new Error(`Unexpected invite conflict: ${message}`);

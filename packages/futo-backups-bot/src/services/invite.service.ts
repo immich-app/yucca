@@ -131,6 +131,13 @@ export class InviteService {
         });
         return;
       }
+      case 'cancelled': {
+        await interaction.message
+          .edit({ components: [this.claimRow(batchId, Messages.inviteDropEndedButton, true)] })
+          .catch((error: unknown) => this.logger.warn(error, 'could not disable the claim button'));
+        await interaction.editReply({ content: Messages.claimDropEnded });
+        return;
+      }
     }
 
     await interaction.editReply({
@@ -140,6 +147,12 @@ export class InviteService {
     if (result.remaining === 0) {
       await this.disableClaimButton(interaction, batchId);
     }
+  }
+
+  async closeDrop(batchId: string, channelId: string, messageId: string): Promise<void> {
+    await this.discord.editMessage(channelId, messageId, {
+      components: [this.claimRow(batchId, Messages.inviteDropEndedButton, true)],
+    });
   }
 
   private async disableClaimButton(interaction: ButtonInteraction, batchId: string): Promise<void> {

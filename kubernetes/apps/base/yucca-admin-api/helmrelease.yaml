@@ -64,5 +64,9 @@ spec:
       # TF-provisioned Secret above; links point at the public web app.
       - name: WEB_BASE_URL
         value: https://${APP_DOMAIN}
+      # Eager invite-drop closure (yuctl invites cancel); the shared
+      # INTERNAL_SECRET arrives via the TF-provisioned Secret.
+      - name: FUTO_BACKUPS_BOT_URL
+        value: http://futo-backups-bot:3050
       - name: EMAIL_FROM_ADDRESS
         value: ${EMAIL_FROM_ADDRESS}

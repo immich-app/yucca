@@ -1,13 +1,33 @@
 import type { EmailRepository } from '@common/server/email';
 import type { LoggerRepository, WideContextRepository } from '@common/server/otel';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
+import type { DiscordInviteRepository } from 'src/repositories/discordInvite.repository';
 import type { DiscordLinkRepository } from 'src/repositories/discordLink.repository';
+import type { FutoBackupsBotRepository } from 'src/repositories/futoBackupsBot.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
 import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
+
+export const newDiscordInviteRepositoryMock = (): jest.Mocked<RepositoryInterface<DiscordInviteRepository>> => {
+  return {
+    listClaims: jest.fn().mockResolvedValue([]),
+    getClaim: jest.fn(),
+    deleteClaim: jest.fn().mockResolvedValue('deleted'),
+    listBatches: jest.fn().mockResolvedValue([]),
+    getBatch: jest.fn(),
+    cancelBatch: jest.fn().mockResolvedValue(0),
+  };
+};
+
+export const newFutoBackupsBotRepositoryMock = (): jest.Mocked<RepositoryInterface<FutoBackupsBotRepository>> => {
+  return {
+    enabled: true,
+    closeDrop: jest.fn().mockResolvedValue(void 0),
+  };
+};
 
 export const newDatabaseRepositoryMock = (): jest.Mocked<RepositoryInterface<DatabaseRepository>> => {
   return {
@@ -94,6 +114,8 @@ export const newMetricServiceMock = () => ({
 
 export const newMocks = () => {
   return {
+    discordInvite: newDiscordInviteRepositoryMock(),
+    bot: newFutoBackupsBotRepositoryMock(),
     database: newDatabaseRepositoryMock(),
     discordLink: newDiscordLinkRepositoryMock(),
     user: newUserRepositoryMock(),

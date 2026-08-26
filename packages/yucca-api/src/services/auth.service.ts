@@ -171,7 +171,12 @@ export class AuthService {
 
     if (invite?.allowlistId) {
       await this.discord.linkDirect(user.id, invite.discordUserId, invite.discordUsername);
-      await this.allowlist.markUsed(invite.allowlistId);
+      if (!(await this.allowlist.markUsed(invite.allowlistId))) {
+        this.logger.warn(
+          { userId: user.id, discordUserId: invite.discordUserId },
+          'invite claim was revoked mid-redemption — the account exists without a claim record',
+        );
+      }
     }
 
     return user;

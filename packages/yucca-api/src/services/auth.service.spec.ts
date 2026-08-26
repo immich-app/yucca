@@ -29,7 +29,7 @@ describe(AuthService.name, () => {
   beforeEach(() => {
     mocks = newMocks();
     sut = new AuthService(
-      mocks.jwt as never,
+      mocks.logger as never,
       mocks.oidc as never,
       mocks.user as never,
       mocks.userAllowlist as never,
@@ -481,6 +481,7 @@ describe(AuthService.name, () => {
 
       it('should allow a new user with a valid discord invite, link the account, and mark the claim used', async () => {
         mocks.discord.consumeInviteRequest.mockResolvedValue(inviteRequest);
+        mocks.userAllowlist.markUsed.mockResolvedValue({ id: 'entry' } as never);
 
         await expect(sut.getOrCreateUser(claims, undefined, 'token')).resolves.toBe(mockUser);
 
@@ -500,9 +501,19 @@ describe(AuthService.name, () => {
         expect(mocks.user.create).not.toHaveBeenCalled();
       });
 
+      it('should warn instead of failing when the claim was revoked mid-redemption', async () => {
+        mocks.discord.consumeInviteRequest.mockResolvedValue(inviteRequest);
+        mocks.userAllowlist.markUsed.mockResolvedValue(void 0);
+
+        await expect(sut.getOrCreateUser(claims, undefined, 'token')).resolves.toBe(mockUser);
+
+        expect(mocks.logger.warn).toHaveBeenCalled();
+      });
+
       it('should link an existing user who redeems a discord invite', async () => {
         mocks.user.getBySub.mockResolvedValue(mockUser);
         mocks.discord.consumeInviteRequest.mockResolvedValue(inviteRequest);
+        mocks.userAllowlist.markUsed.mockResolvedValue({ id: 'entry' } as never);
 
         await expect(sut.getOrCreateUser(claims, undefined, 'token')).resolves.toEqual(mockUser);
 

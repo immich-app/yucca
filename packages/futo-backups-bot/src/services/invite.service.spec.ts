@@ -178,6 +178,18 @@ describe(InviteService.name, () => {
     });
   });
 
+  describe('closeDrop', () => {
+    it('disables the drop button on the posted message', async () => {
+      await sut.closeDrop('batch-1', 'channel-1', 'message-1');
+
+      expect(mocks.discord.editMessage).toHaveBeenCalledWith(
+        'channel-1',
+        'message-1',
+        expect.objectContaining({ components: [expect.anything()] }),
+      );
+    });
+  });
+
   describe('onClaimInvite', () => {
     it('replies with a personal link on a successful claim', async () => {
       mocks.api.createInvite.mockResolvedValue({ ...okInvite, remaining: 3 });
@@ -221,6 +233,18 @@ describe(InviteService.name, () => {
 
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
         content: Messages.claimAlreadyLinked,
+      });
+    });
+
+    it('reports a cancelled drop and disables the button', async () => {
+      mocks.api.createInvite.mockResolvedValue({ status: 'cancelled' });
+      const interaction = newClaimInteraction();
+
+      await sut.onClaimInvite(interaction);
+
+      expect((interaction as { message: { edit: jest.Mock } }).message.edit).toHaveBeenCalled();
+      expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith({
+        content: Messages.claimDropEnded,
       });
     });
 

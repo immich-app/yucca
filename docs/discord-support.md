@@ -97,6 +97,15 @@ only claim and ties the new account to their Discord identity.
 - Web: `/login/invite?token=` validates via the public
   **`GET /api/discord/invites/:code`** and offers *Join the beta*; an expired
   token points back at the Discord button.
+- Ops: **`yuctl invites list | batches | revoke | cancel`** (admin-api
+  `/discord-invites*`). `batches` shows claimed/redeemed counts; `cancel`
+  soft-cancels a drop (`cancelledAt` — further claims get *This drop has
+  ended*), eagerly disables the posted button via the bot's
+  `POST /internal/drops/close` (admin-api → bot, same shared secret; lazy
+  fallback on the next click if the bot is unreachable), and with
+  `--revoke-unused` also deletes the drop's unredeemed claims. `revoke`
+  deletes one unredeemed claim; redeemed claims are refused — manage the
+  account instead.
 
 ## Tickets: Discord is the source of truth
 

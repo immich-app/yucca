@@ -20,6 +20,9 @@ export class DiscordInviteBatchTable {
   @Column()
   createdByDiscordUserId!: string;
 
+  @Column({ type: 'timestamp with time zone', nullable: true })
+  cancelledAt!: Date | null;
+
   @Column({ type: 'timestamp with time zone', default: () => 'now()' })
   createdAt!: Generated<Date>;
 }

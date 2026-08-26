@@ -46,6 +46,8 @@ secretData:
   # Any value satisfies the mock Postmark; prod gets the real token from the
   # TF-provisioned Secret.
   POSTMARK_SERVER_TOKEN: "dev token"
+  # Must match the bot's dev default so eager drop closure works under Tilt.
+  INTERNAL_SECRET: dev-internal-secret
 
 # OPT-IN dev signing key for CLI session JWTs. The project's well-known
 # local-dev ES256 keypair (the same one committed in .mise/tasks/*/env and the

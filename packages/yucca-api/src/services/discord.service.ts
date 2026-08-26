@@ -91,7 +91,12 @@ export class DiscordService {
 
   async createInvite(dto: DiscordInviteCreateDto): Promise<DiscordInviteCreatedDto> {
     await this.discord.deleteExpiredRequests();
-    const claim = await this.discord.claimInvite(dto.discordUserId, dto.batchId ?? null, this.crypto.randomHex(16));
+    const claim = await this.discord.claimInvite(
+      dto.discordUserId,
+      dto.discordUsername,
+      dto.batchId ?? null,
+      this.crypto.randomHex(16),
+    );
     switch (claim.status) {
       case 'linked': {
         throw new ConflictException('ALREADY_LINKED');
@@ -101,6 +106,9 @@ export class DiscordService {
       }
       case 'exhausted': {
         throw new ConflictException('BATCH_EXHAUSTED');
+      }
+      case 'cancelled': {
+        throw new ConflictException('BATCH_CANCELLED');
       }
       case 'unknownBatch': {
         throw new NotFoundException(`No invite batch with id ${dto.batchId}`);

@@ -24,6 +24,7 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
     listRecentMessages: jest.fn().mockResolvedValue([]),
     sendMessage: jest.fn(),
     sendDirectMessage: jest.fn().mockResolvedValue(true),
+    editMessage: jest.fn().mockResolvedValue(void 0),
     createTicketThread: jest.fn(),
     createStaffThread: jest.fn(),
     listOpenTicketThreads: jest.fn().mockResolvedValue([]),
