@@ -61,7 +61,7 @@ export function createDeviceFlow(
         case 'START': {
           state.userCode = event.userCode;
           state.verificationUri = event.verificationUri;
-          window.open(event.verificationUri, '_blank');
+          window.open(event.verificationUri, 'futo-backups-device');
           break;
         }
         case 'SUCCESS': {
