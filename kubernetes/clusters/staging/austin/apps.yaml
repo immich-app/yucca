@@ -13,7 +13,9 @@
 #
 # Substitution precedence (last wins): cluster-settings-generated (TF) ->
 # cluster-settings (human) -> image-versions (CI-rewritten in-cluster, see the
-# flux-system ResourceSet); keys are disjoint by design. Injected into the
+# flux-system ResourceSet), then cluster-secrets (TF-provisioned Secret,
+# optional: values like the Freshdesk webhook path that must never appear in
+# git or CI — defaults in the manifests keep secret-less renders working). Keys are disjoint by design. Injected into the
 # NESTED Kustomizations via the patches block (both layers' direct objects use
 # no ${vars} themselves).
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -42,6 +44,9 @@ spec:
         name: cluster-settings
       - kind: ConfigMap
         name: image-versions
+      - kind: Secret
+        name: cluster-secrets
+        optional: true
   patches:
     - target:
         group: kustomize.toolkit.fluxcd.io
@@ -60,6 +65,9 @@ spec:
                 name: cluster-settings
               - kind: ConfigMap
                 name: image-versions
+              - kind: Secret
+                name: cluster-secrets
+                optional: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -86,6 +94,9 @@ spec:
         name: cluster-settings
       - kind: ConfigMap
         name: image-versions
+      - kind: Secret
+        name: cluster-secrets
+        optional: true
   patches:
     - target:
         group: kustomize.toolkit.fluxcd.io
@@ -104,3 +115,6 @@ spec:
                 name: cluster-settings
               - kind: ConfigMap
                 name: image-versions
+              - kind: Secret
+                name: cluster-secrets
+                optional: true

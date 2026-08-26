@@ -268,6 +268,32 @@ variable "spice_transcripts_secret_key" {
   default     = ""
 }
 
+variable "yucca_freshdesk_url" {
+  description = "Freshdesk base URL for the futo-backups-bot ticket sync (manual YUCCA_FRESHDESK_URL item). Empty = the sync stays dormant (placeholder items until filled)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_freshdesk_api_key" {
+  description = "Freshdesk API key of the dedicated bot agent (manual YUCCA_FRESHDESK_API_KEY item)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_freshdesk_admin_api_key" {
+  description = "Freshdesk API key of an ADMIN agent, used only by the freshdesk provider to manage the automation rule and group (manual YUCCA_FRESHDESK_ADMIN_API_KEY item; never lands in the cluster). Empty = the rules are unmanaged."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_app_domain" {
+  description = "Public app domain the Freshdesk webhook rule targets. Must match APP_DOMAIN in the cluster-settings.generated.yaml of this cluster."
+  type        = string
+  default     = "backups.futo.cloud"
+}
+
 variable "yucca_discord_guild_id" {
   description = "Discord server id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS, written by core-infra-tf's discord apply). Empty = the bot idles."
   type        = string

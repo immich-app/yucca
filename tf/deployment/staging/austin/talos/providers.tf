@@ -34,3 +34,11 @@ provider "kubernetes" {
 # service-account token in OP_SERVICE_ACCOUNT_TOKEN (injected by `op run`, the
 # same token the rest of the stack uses); no Connect host needed.
 provider "onepassword" {}
+
+# Freshdesk automation rule + group (freshdesk.tf). Fallbacks keep the
+# provider configurable while the manual items are unfilled — never contacted,
+# every freshdesk resource is count-gated on the real config.
+provider "freshdesk" {
+  domain  = coalesce(local.freshdesk_url, "https://freshdesk.invalid")
+  api_key = coalesce(local.freshdesk_admin_api_key, "unset")
+}

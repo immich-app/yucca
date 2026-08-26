@@ -29,5 +29,10 @@ terraform {
       source  = "1Password/onepassword"
       version = "~> 2.1"
     }
+    # Freshdesk automation rule + agent group (freshdesk.tf).
+    freshdesk = {
+      source  = "registry.terraform.io/slop-place/freshdesk"
+      version = "~> 0.1"
+    }
   }
 }

@@ -240,11 +240,54 @@ resource "onepassword_item" "yucca_internal_secret" {
   password = random_password.yucca_internal_secret.result
 }
 
+# Freshdesk webhook credentials, both TF-generated and mirrored into 1P: the
+# header secret rides the bot Secret; the capability-URL path segment reaches
+# the HTTPRoute via cluster-secrets (below) so it never appears in git or CI.
+resource "random_password" "yucca_freshdesk_webhook_secret" {
+  length  = 48
+  special = false
+}
+
+resource "onepassword_item" "yucca_freshdesk_webhook_secret" {
+  vault    = data.onepassword_vault.prod.uuid
+  title    = "YUCCA_FRESHDESK_WEBHOOK_SECRET"
+  category = "password"
+
+  password = random_password.yucca_freshdesk_webhook_secret.result
+}
+
+resource "random_password" "yucca_freshdesk_webhook_path" {
+  length  = 32
+  special = false
+}
+
+resource "onepassword_item" "yucca_freshdesk_webhook_path" {
+  vault    = data.onepassword_vault.prod.uuid
+  title    = "YUCCA_FRESHDESK_WEBHOOK_PATH"
+  category = "password"
+
+  password = random_password.yucca_freshdesk_webhook_path.result
+}
+
+# Substituted into the Flux tree (apps.yaml postBuild, optional Secret source):
+# the one config channel that bypasses the git-committed cluster-settings.
+resource "kubernetes_secret_v1" "cluster_secrets" {
+  metadata {
+    name      = "cluster-secrets"
+    namespace = "flux-system"
+  }
+  data = {
+    FRESHDESK_WEBHOOK_PATH = random_password.yucca_freshdesk_webhook_path.result
+  }
+  depends_on = [helm_release.flux_operator]
+}
+
 # futo-backups-bot: Discord gateway token + the shared internal-API secret
-# + spice RGW keys for ticket transcripts. Deliberately no precondition: the
-# token and S3 keys default empty so this Secret can land before their 1P
-# items exist — the bot idles without a token and skips the archive sweep
-# without S3 keys.
+# + spice RGW keys for ticket transcripts + Freshdesk sync credentials.
+# Deliberately no precondition: the token, S3 keys and Freshdesk creds default
+# empty so this Secret can land before their 1P items exist — the bot idles
+# without a token, skips the archive sweep without S3 keys and leaves the
+# Freshdesk sync dormant without creds.
 resource "kubernetes_secret_v1" "futo_backups_bot" {
   metadata {
     name      = "futo-backups-bot"
@@ -261,6 +304,12 @@ resource "kubernetes_secret_v1" "futo_backups_bot" {
     DISCORD_CUSTOMER_ROLE_ID        = var.yucca_discord_customer_role_id
     TRANSCRIPT_S3_ACCESS_KEY_ID     = var.spice_transcripts_access_key
     TRANSCRIPT_S3_SECRET_ACCESS_KEY = var.spice_transcripts_secret_key
+    # REPLACE_ME-guarded locals (freshdesk.tf) — an unfilled placeholder
+    # keeps the sync dormant.
+    FRESHDESK_URL            = local.freshdesk_url
+    FRESHDESK_API_KEY        = local.freshdesk_api_key
+    FRESHDESK_GROUP_ID       = try(tostring(freshdesk_group.discord[0].id), "")
+    FRESHDESK_WEBHOOK_SECRET = random_password.yucca_freshdesk_webhook_secret.result
   }
 }
 
