@@ -360,10 +360,11 @@ describe('AuthController (e2e)', () => {
         await fetch(approveUrl);
 
         const successMessage = await firstValueFrom(replay.pipe(skip(1)));
-        const success = successMessage.data as { type: string; accessToken: string };
+        const success = successMessage.data as { type: string; accessToken: string; userId: string };
         expect(success).toEqual({
           type: 'SUCCESS',
           accessToken: expect.any(String),
+          userId: expect.any(String),
         });
 
         await expect(testUtils.getUserBySub('device-flow-user')).resolves.toBeTruthy();
