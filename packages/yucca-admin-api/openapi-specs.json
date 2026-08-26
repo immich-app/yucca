@@ -279,6 +279,67 @@
         ]
       }
     },
+    "/api/user/{id}/discord": {
+      "put": {
+        "operationId": "linkUserDiscord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserDiscordLinkRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDiscordLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      },
+      "delete": {
+        "operationId": "unlinkUserDiscord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
     "/api/user/{userId}/session": {
       "get": {
         "operationId": "listUserSessions",
@@ -1120,11 +1181,38 @@
           "items"
         ]
       },
+      "UserDiscordLinkDto": {
+        "type": "object",
+        "properties": {
+          "discordUserId": {
+            "type": "string"
+          },
+          "discordUsername": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "discordUserId",
+          "discordUsername",
+          "createdAt"
+        ]
+      },
       "UserGetResponseDto": {
         "type": "object",
         "properties": {
           "user": {
             "$ref": "#/components/schemas/UserDto"
+          },
+          "discordLink": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserDiscordLinkDto"
+              }
+            ]
           }
         },
         "required": [
@@ -1148,6 +1236,20 @@
         },
         "required": [
           "user"
+        ]
+      },
+      "UserDiscordLinkRequestDto": {
+        "type": "object",
+        "properties": {
+          "discordUserId": {
+            "type": "string"
+          },
+          "discordUsername": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "discordUserId"
         ]
       },
       "SessionDto": {
@@ -1422,6 +1524,7 @@
             "type": "string",
             "enum": [
               "immich",
+              "standalone",
               "restic"
             ],
             "description": "Connection type for the owning connection; defaults to 'restic' (manual use)"

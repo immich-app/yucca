@@ -1,7 +1,10 @@
 import type { EmailRepository } from '@common/server/email';
 import type { LoggerRepository, WideContextRepository } from '@common/server/otel';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
+import type { DiscordLinkRepository } from 'src/repositories/discordLink.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
+import type { SessionRepository } from 'src/repositories/session.repository';
+import type { UserRepository } from 'src/repositories/user.repository';
 import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
@@ -40,6 +43,34 @@ export const newUserAllowlistRepositoryMock = (): jest.Mocked<RepositoryInterfac
   };
 };
 
+export const newDiscordLinkRepositoryMock = (): jest.Mocked<RepositoryInterface<DiscordLinkRepository>> => {
+  return {
+    getByUserId: jest.fn(),
+    link: jest.fn(),
+    unlink: jest.fn(),
+  };
+};
+
+export const newUserRepositoryMock = (): jest.Mocked<RepositoryInterface<UserRepository>> => {
+  return {
+    list: jest.fn(),
+    get: jest.fn(),
+    getBySub: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    hasRepositories: jest.fn(),
+  };
+};
+
+export const newSessionRepositoryMock = (): jest.Mocked<RepositoryInterface<SessionRepository>> => {
+  return {
+    delete: jest.fn(),
+    deleteByUser: jest.fn(),
+    getByUser: jest.fn(),
+  };
+};
+
 export const newLoggerRepositoryMock = (): jest.Mocked<RepositoryInterface<LoggerRepository>> => {
   return {
     debug: jest.fn(),
@@ -64,6 +95,9 @@ export const newMetricServiceMock = () => ({
 export const newMocks = () => {
   return {
     database: newDatabaseRepositoryMock(),
+    discordLink: newDiscordLinkRepositoryMock(),
+    user: newUserRepositoryMock(),
+    session: newSessionRepositoryMock(),
     oidc: newOidcRepositoryMock(),
     email: newEmailRepositoryMock(),
     allowlist: newUserAllowlistRepositoryMock(),

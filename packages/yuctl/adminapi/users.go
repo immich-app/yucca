@@ -159,3 +159,44 @@ func ParseLimit(s string) (int, error) {
 	}
 	return n, nil
 }
+
+// DiscordLink mirrors the admin-api UserDiscordLinkDto.
+type DiscordLink struct {
+	DiscordUserID   string `json:"discordUserId"`
+	DiscordUsername string `json:"discordUsername"`
+	CreatedAt       string `json:"createdAt"`
+}
+
+// UserDetail is the GET /api/user/:id envelope.
+type UserDetail struct {
+	User        User         `json:"user"`
+	DiscordLink *DiscordLink `json:"discordLink"`
+}
+
+// GetUser returns a user with everything the admin-api knows about them.
+func (c *Client) GetUser(ctx context.Context, userID string) (*UserDetail, error) {
+	var out UserDetail
+	if err := c.getJSON(ctx, "/api/user/"+url.PathEscape(userID), nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// LinkDiscord binds a discord account to the user, replacing any existing link
+// on either side.
+func (c *Client) LinkDiscord(ctx context.Context, userID, discordID, discordUsername string) (*DiscordLink, error) {
+	body := map[string]string{"discordUserId": discordID}
+	if discordUsername != "" {
+		body["discordUsername"] = discordUsername
+	}
+	var out DiscordLink
+	if err := c.putJSON(ctx, "/api/user/"+url.PathEscape(userID)+"/discord", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UnlinkDiscord removes the user's discord link.
+func (c *Client) UnlinkDiscord(ctx context.Context, userID string) error {
+	return c.deleteReq(ctx, "/api/user/"+url.PathEscape(userID)+"/discord")
+}

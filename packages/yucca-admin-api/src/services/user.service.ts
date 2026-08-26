@@ -1,11 +1,14 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  UserDiscordLinkDto,
+  UserDiscordLinkRequestDto,
   UserGetResponseDto,
   UserListQueryDto,
   UserListResponseDto,
   UserUpdateRequestDto,
   UserUpdateResponseDto,
 } from 'src/dto/user.dto';
+import { DiscordLinkRepository } from 'src/repositories/discordLink.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { resolveLimit } from 'src/utils/pagination';
@@ -15,6 +18,7 @@ export class UserService {
   constructor(
     private readonly users: UserRepository,
     private readonly sessions: SessionRepository,
+    private readonly discordLinks: DiscordLinkRepository,
   ) {}
 
   list(query: UserListQueryDto): Promise<UserListResponseDto> {
@@ -22,7 +26,20 @@ export class UserService {
   }
 
   async get(id: string): Promise<UserGetResponseDto> {
-    return { user: await this.users.get(id) };
+    const [user, link] = await Promise.all([this.users.get(id), this.discordLinks.getByUserId(id)]);
+    return { user, discordLink: link ? toDiscordLinkDto(link) : null };
+  }
+
+  async linkDiscord(id: string, dto: UserDiscordLinkRequestDto): Promise<UserDiscordLinkDto> {
+    await this.users.get(id);
+    const link = await this.discordLinks.link(id, dto.discordUserId, dto.discordUsername ?? '');
+    return toDiscordLinkDto(link);
+  }
+
+  async unlinkDiscord(id: string): Promise<void> {
+    if (!(await this.discordLinks.unlink(id))) {
+      throw new NotFoundException(`No discord link for user ${id}`);
+    }
   }
 
   async update(id: string, dto: UserUpdateRequestDto): Promise<UserUpdateResponseDto> {
@@ -40,3 +57,13 @@ export class UserService {
     await this.users.delete(id);
   }
 }
+
+const toDiscordLinkDto = (link: {
+  discordUserId: string;
+  discordUsername: string;
+  createdAt: Date;
+}): UserDiscordLinkDto => ({
+  discordUserId: link.discordUserId,
+  discordUsername: link.discordUsername,
+  createdAt: link.createdAt,
+});
