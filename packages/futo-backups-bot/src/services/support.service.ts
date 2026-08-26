@@ -20,6 +20,7 @@ import {
 } from 'discord.js';
 import { ComponentId } from 'src/enum';
 import { env } from 'src/env';
+import { Messages } from 'src/messages';
 import { DiscordRepository } from 'src/repositories/discord.repository';
 import { DiscordLink, UserSummary, YuccaApiRepository } from 'src/repositories/yuccaApi.repository';
 import { InviteService } from 'src/services/invite.service';
@@ -69,8 +70,8 @@ export class SupportService implements OnApplicationBootstrap {
     await this.discord.ensurePinnedMessage(
       env.DISCORD_SUPPORT_CHANNEL_ID,
       {
-        content: 'Need help with FUTO Backups? Click below to open a private ticket with our staff.',
-        components: [this.buttonRow(ComponentId.OpenTicket, 'Get support')],
+        content: Messages.supportSticky,
+        components: [this.buttonRow(ComponentId.OpenTicket, Messages.supportStickyButton)],
       },
       ComponentId.OpenTicket,
     );
@@ -115,7 +116,7 @@ export class SupportService implements OnApplicationBootstrap {
       if (!interaction.isButton() && !interaction.isModalSubmit() && !interaction.isChatInputCommand()) {
         return;
       }
-      const content = 'Something went wrong, please try again.';
+      const content = Messages.somethingWentWrong;
       if (interaction.deferred) {
         await interaction.editReply({ content }).catch(() => {});
       } else if (!interaction.replied) {
@@ -131,7 +132,7 @@ export class SupportService implements OnApplicationBootstrap {
     } catch (error) {
       this.logger.error(error, 'link lookup failed');
       await interaction.reply({
-        content: 'Support is temporarily unavailable, please try again.',
+        content: Messages.supportUnavailable,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -145,12 +146,12 @@ export class SupportService implements OnApplicationBootstrap {
     await interaction.showModal(
       new ModalBuilder()
         .setCustomId(ComponentId.TicketModal)
-        .setTitle('Get support')
+        .setTitle(Messages.ticketModalTitle)
         .addComponents(
           new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
               .setCustomId(ComponentId.TicketDescription)
-              .setLabel('Describe your issue')
+              .setLabel(Messages.ticketModalLabel)
               .setStyle(TextInputStyle.Paragraph)
               .setRequired(true)
               .setMinLength(10)
@@ -162,7 +163,7 @@ export class SupportService implements OnApplicationBootstrap {
 
   private async onClaimRequested(interaction: ButtonInteraction | ChatInputCommandInteraction) {
     if (!env.DISCORD_CUSTOMER_ROLE_ID) {
-      await interaction.reply({ content: 'Role claiming is not available yet.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: Messages.claimNotAvailable, flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -172,7 +173,7 @@ export class SupportService implements OnApplicationBootstrap {
     } catch (error) {
       this.logger.error(error, 'link lookup failed');
       await interaction.reply({
-        content: 'Role claiming is temporarily unavailable, please try again.',
+        content: Messages.claimUnavailable,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -182,12 +183,12 @@ export class SupportService implements OnApplicationBootstrap {
     if (!link) {
       return this.startLinkFlow(interaction, async () => {
         await this.discord.addRoleToMember(interaction.user.id, env.DISCORD_CUSTOMER_ROLE_ID);
-        return { content: `Account linked and role claimed — welcome!${this.chatMention()}` };
+        return { content: Messages.linkedAndClaimed(Messages.chatMention(env.DISCORD_CHAT_CHANNEL_ID)) };
       });
     }
 
     await this.discord.addRoleToMember(interaction.user.id, env.DISCORD_CUSTOMER_ROLE_ID);
-    await interaction.editReply({ content: `Role claimed — welcome!${this.chatMention()}` });
+    await interaction.editReply({ content: Messages.roleClaimed(Messages.chatMention(env.DISCORD_CHAT_CHANNEL_ID)) });
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_NOON)
@@ -220,8 +221,8 @@ export class SupportService implements OnApplicationBootstrap {
         .catch((error: unknown) => this.logger.warn(error, 'could not delete the previous claim prompt'));
     }
     await this.discord.sendMessage(env.DISCORD_GENERAL_CHANNEL_ID, {
-      content: `FUTO Backups customer? Claim your role to unlock${env.DISCORD_CHAT_CHANNEL_ID ? ` <#${env.DISCORD_CHAT_CHANNEL_ID}>` : ' the customer chat'}.`,
-      components: [this.buttonRow(ComponentId.ClaimRole, 'Claim your role')],
+      content: Messages.claimPrompt(env.DISCORD_CHAT_CHANNEL_ID),
+      components: [this.buttonRow(ComponentId.ClaimRole, Messages.claimPromptButton)],
     });
   }
 
@@ -237,10 +238,10 @@ export class SupportService implements OnApplicationBootstrap {
     const url = `${env.WEB_URL}/link/discord?code=${code}`;
 
     await interaction.editReply({
-      content: 'First, link your Discord account to your FUTO Backups account. The link is valid for 10 minutes.',
+      content: Messages.linkIntro,
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Link account').setURL(url),
+          new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(Messages.linkButton).setURL(url),
         ),
       ],
     });
@@ -251,8 +252,8 @@ export class SupportService implements OnApplicationBootstrap {
         const success = onLinked
           ? await onLinked()
           : {
-              content: 'Account linked! Now open your ticket.',
-              components: [this.buttonRow(ComponentId.CreateTicket, 'Open ticket')],
+              content: Messages.linkedOpenTicket,
+              components: [this.buttonRow(ComponentId.CreateTicket, Messages.openTicketButton)],
             };
         await interaction.editReply({ components: [], ...success });
         return;
@@ -261,7 +262,7 @@ export class SupportService implements OnApplicationBootstrap {
     }
 
     await interaction.editReply({
-      content: 'The link expired. Click the support button again to get a new one.',
+      content: Messages.linkExpired,
       components: [],
     });
   }
@@ -272,13 +273,13 @@ export class SupportService implements OnApplicationBootstrap {
     const link = await this.api.getLink(interaction.user.id);
     if (!link) {
       await interaction.editReply({
-        content: 'Your Discord account is no longer linked. Click the support button to link it again.',
+        content: Messages.linkGone,
       });
       return;
     }
 
     if (this.creating.has(interaction.user.id)) {
-      await interaction.editReply({ content: 'Your ticket is already being created.' });
+      await interaction.editReply({ content: Messages.ticketAlreadyCreating });
       return;
     }
     this.creating.add(interaction.user.id);
@@ -286,14 +287,14 @@ export class SupportService implements OnApplicationBootstrap {
       const open = await this.discord.listOpenTicketThreads(interaction.user.id);
       if (open.length >= env.TICKET_USER_LIMIT) {
         await interaction.editReply({
-          content: `You already have ${open.length} open tickets: ${open.map((thread) => `<#${thread.id}>`).join(' ')}. Close one before opening another.`,
+          content: Messages.ticketLimit(open.length, open.map((thread) => `<#${thread.id}>`).join(' ')),
         });
         return;
       }
 
       const description = interaction.fields.getTextInputValue(ComponentId.TicketDescription);
       const thread = await this.openTicket(interaction.user, description);
-      await interaction.editReply({ content: `Your ticket is ready: <#${thread.id}>` });
+      await interaction.editReply({ content: Messages.ticketReady(thread.id) });
     } finally {
       this.creating.delete(interaction.user.id);
     }
@@ -301,7 +302,7 @@ export class SupportService implements OnApplicationBootstrap {
 
   private async onStaffTicket(interaction: ChatInputCommandInteraction) {
     if (!isStaff(interaction)) {
-      await interaction.reply({ content: 'Only staff can open tickets for users.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: Messages.staffOnlyTickets, flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -309,7 +310,7 @@ export class SupportService implements OnApplicationBootstrap {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     if (this.creating.has(target.id)) {
-      await interaction.editReply({ content: 'A ticket for that user is already being created.' });
+      await interaction.editReply({ content: Messages.ticketAlreadyCreatingStaff });
       return;
     }
     this.creating.add(target.id);
@@ -317,13 +318,13 @@ export class SupportService implements OnApplicationBootstrap {
       const open = await this.discord.listOpenTicketThreads(target.id);
       if (open.length >= env.TICKET_USER_LIMIT) {
         await interaction.editReply({
-          content: `<@${target.id}> already has ${open.length} open tickets: ${open.map((thread) => `<#${thread.id}>`).join(' ')}.`,
+          content: Messages.ticketLimitStaff(target.id, open.length, open.map((thread) => `<#${thread.id}>`).join(' ')),
         });
         return;
       }
 
-      const thread = await this.openTicket(target, `Opened by staff (<@${interaction.user.id}>).`);
-      await interaction.editReply({ content: `Ticket ready: <#${thread.id}>` });
+      const thread = await this.openTicket(target, Messages.ticketOpenedByStaff(interaction.user.id));
+      await interaction.editReply({ content: Messages.ticketReadyStaff(thread.id) });
     } finally {
       this.creating.delete(target.id);
     }
@@ -335,8 +336,8 @@ export class SupportService implements OnApplicationBootstrap {
 
     await thread.send({
       content: `<@${user.id}> <@&${env.DISCORD_STAFF_ROLE_ID}>`,
-      embeds: [new EmbedBuilder().setTitle('Support ticket').setDescription(description)],
-      components: [this.buttonRow(ComponentId.CloseTicket, 'Close ticket', ButtonStyle.Danger)],
+      embeds: [new EmbedBuilder().setTitle(Messages.ticketEmbedTitle).setDescription(description)],
+      components: [this.buttonRow(ComponentId.CloseTicket, Messages.closeTicketButton, ButtonStyle.Danger)],
     });
 
     const link = await this.api.getLink(user.id).catch((error: unknown) => {
@@ -362,7 +363,7 @@ export class SupportService implements OnApplicationBootstrap {
 
   private async onStaffNotesRequested(interaction: ChatInputCommandInteraction) {
     if (!isStaff(interaction)) {
-      await interaction.reply({ content: 'Only staff can view staff notes.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: Messages.staffOnlyNotes, flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -372,20 +373,20 @@ export class SupportService implements OnApplicationBootstrap {
       thread.parentId !== env.DISCORD_SUPPORT_CHANNEL_ID ||
       !thread.name.startsWith('ticket-')
     ) {
-      await interaction.reply({ content: 'This channel is not a ticket.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: Messages.notATicket, flags: MessageFlags.Ephemeral });
       return;
     }
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const staffThread = await this.discord.findSupportThreadByName(thread.name.replace(/^ticket-/, 'staff-'), true);
     await interaction.editReply({
-      content: staffThread ? `Staff notes: <#${staffThread.id}>` : 'No staff-notes thread found for this ticket.',
+      content: staffThread ? Messages.staffNotesLink(staffThread.id) : Messages.staffNotesMissing,
     });
   }
 
   private async onCloseRequested(interaction: ButtonInteraction) {
     if (!isStaff(interaction)) {
-      await interaction.reply({ content: 'Only staff can close tickets.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: Messages.staffOnlyClose, flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -395,12 +396,12 @@ export class SupportService implements OnApplicationBootstrap {
       thread.parentId !== env.DISCORD_SUPPORT_CHANNEL_ID ||
       !thread.name.startsWith('ticket-')
     ) {
-      await interaction.reply({ content: 'This channel is not a ticket.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: Messages.notATicket, flags: MessageFlags.Ephemeral });
       return;
     }
 
     await interaction.deferReply();
-    await interaction.editReply({ content: `Ticket closed by <@${interaction.user.id}>.` });
+    await interaction.editReply({ content: Messages.ticketClosedBy(interaction.user.id) });
 
     const staffThread = await this.discord.findSupportThreadByName(thread.name.replace(/^ticket-/, 'staff-'));
     if (staffThread) {
@@ -423,9 +424,9 @@ export class SupportService implements OnApplicationBootstrap {
   }
 
   private staffNote(link: DiscordLink | null, summary: UserSummary | null): string {
-    const lines = ['Staff notes — not visible to the user.'];
+    const lines = [Messages.staffNoteHeader];
     if (!link) {
-      lines.push('No linked FUTO Backups account.');
+      lines.push(Messages.staffNoteNoLink);
       return lines.join('\n');
     }
     const grafanaBase = env.GRAFANA_URL.replace(/\/+$/, '');
