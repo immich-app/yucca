@@ -23,6 +23,7 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
     addRoleToMember: jest.fn(),
     listRecentMessages: jest.fn().mockResolvedValue([]),
     sendMessage: jest.fn(),
+    sendDirectMessage: jest.fn().mockResolvedValue(true),
     createTicketThread: jest.fn(),
     createStaffThread: jest.fn(),
     listOpenTicketThreads: jest.fn().mockResolvedValue([]),
@@ -39,6 +40,9 @@ export const newYuccaApiRepositoryMock = (): jest.Mocked<RepositoryInterface<Yuc
     createLinkRequest: jest.fn(),
     getLink: jest.fn(),
     updateLinkUsername: jest.fn().mockResolvedValue(void 0),
+    createInviteBatch: jest.fn(),
+    setInviteBatchMessage: jest.fn().mockResolvedValue(void 0),
+    createInvite: jest.fn(),
     getUserSummary: jest.fn(),
   };
 };

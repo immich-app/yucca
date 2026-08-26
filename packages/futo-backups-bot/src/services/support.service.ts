@@ -22,6 +22,8 @@ import { ComponentId } from 'src/enum';
 import { env } from 'src/env';
 import { DiscordRepository } from 'src/repositories/discord.repository';
 import { DiscordLink, UserSummary, YuccaApiRepository } from 'src/repositories/yuccaApi.repository';
+import { InviteService } from 'src/services/invite.service';
+import { isStaff } from 'src/utils/staff';
 
 const LINK_POLL_INTERVAL_MS = 5000;
 const LINK_LOOKUP_TIMEOUT_MS = 2000;
@@ -51,6 +53,7 @@ export class SupportService implements OnApplicationBootstrap {
     private readonly logger: LoggerRepository,
     private readonly discord: DiscordRepository,
     private readonly api: YuccaApiRepository,
+    private readonly invite: InviteService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -75,6 +78,9 @@ export class SupportService implements OnApplicationBootstrap {
 
   async handleInteraction(interaction: Interaction): Promise<void> {
     try {
+      if (interaction.isButton() && interaction.customId.startsWith(`${ComponentId.ClaimInvite}:`)) {
+        return await this.invite.onClaimInvite(interaction);
+      }
       if (interaction.isButton()) {
         switch (interaction.customId) {
           case ComponentId.OpenTicket:
@@ -100,6 +106,9 @@ export class SupportService implements OnApplicationBootstrap {
       }
       if (interaction.isChatInputCommand() && interaction.commandName === 'claim-backups-role') {
         return await this.onClaimRequested(interaction);
+      }
+      if (interaction.isChatInputCommand() && interaction.commandName === 'beta-invite') {
+        return await this.invite.onInviteCommand(interaction);
       }
     } catch (error) {
       this.logger.error(error, 'failed to handle interaction');
@@ -291,7 +300,7 @@ export class SupportService implements OnApplicationBootstrap {
   }
 
   private async onStaffTicket(interaction: ChatInputCommandInteraction) {
-    if (!this.isStaff(interaction)) {
+    if (!isStaff(interaction)) {
       await interaction.reply({ content: 'Only staff can open tickets for users.', flags: MessageFlags.Ephemeral });
       return;
     }
@@ -352,7 +361,7 @@ export class SupportService implements OnApplicationBootstrap {
   }
 
   private async onStaffNotesRequested(interaction: ChatInputCommandInteraction) {
-    if (!this.isStaff(interaction)) {
+    if (!isStaff(interaction)) {
       await interaction.reply({ content: 'Only staff can view staff notes.', flags: MessageFlags.Ephemeral });
       return;
     }
@@ -375,7 +384,7 @@ export class SupportService implements OnApplicationBootstrap {
   }
 
   private async onCloseRequested(interaction: ButtonInteraction) {
-    if (!this.isStaff(interaction)) {
+    if (!isStaff(interaction)) {
       await interaction.reply({ content: 'Only staff can close tickets.', flags: MessageFlags.Ephemeral });
       return;
     }
@@ -398,16 +407,6 @@ export class SupportService implements OnApplicationBootstrap {
       await this.discord.closeThread(staffThread);
     }
     await this.discord.closeThread(thread);
-  }
-
-  private isStaff(interaction: ButtonInteraction | ChatInputCommandInteraction): boolean {
-    const roles = interaction.member?.roles;
-    if (!roles) {
-      return false;
-    }
-    return Array.isArray(roles)
-      ? roles.includes(env.DISCORD_STAFF_ROLE_ID)
-      : roles.cache.has(env.DISCORD_STAFF_ROLE_ID);
   }
 
   private syncUsername(link: DiscordLink, user: User) {

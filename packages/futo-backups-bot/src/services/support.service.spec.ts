@@ -1,5 +1,6 @@
 import { ThreadChannel } from 'discord.js';
 import { ComponentId } from 'src/enum';
+import { InviteService } from 'src/services/invite.service';
 import { SupportService } from 'src/services/support.service';
 import { Mocks, newMocks } from '../../test/mocks';
 
@@ -84,7 +85,12 @@ describe(SupportService.name, () => {
 
   beforeEach(() => {
     mocks = newMocks();
-    sut = new SupportService(mocks.logger as never, mocks.discord as never, mocks.api as never);
+    sut = new SupportService(
+      mocks.logger as never,
+      mocks.discord as never,
+      mocks.api as never,
+      new InviteService(mocks.logger as never, mocks.discord as never, mocks.api as never),
+    );
   });
 
   describe('open ticket button', () => {

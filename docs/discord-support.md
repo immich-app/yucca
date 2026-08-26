@@ -65,6 +65,39 @@ unlinked ones link first. The role unlocks `#customer` (customer chat, also visi
 Admin/Team/Yucca/FUTO). `#support` stays visible to everyone;
 ticket threads live under it as before.
 
+## Closed-beta invites
+
+Staff (`DISCORD_STAFF_ROLE_ID`) hand out beta access from Discord with
+**`/beta-invite`** — either `user:<user>` (the bot DMs a personal
+link; if DMs are closed the invoker gets it ephemerally to pass on) or
+`channel:<channel> limit:<n>` (the bot posts a **Claim your invite** button;
+each click hands out one invite until the limit, then the button flips to a
+disabled *All invites claimed*). An optional `mention:<role>` prefixes the
+channel post with a role ping.
+
+An invite is a `userAllowlist` row minted without an email (`email` is
+nullable; `discordUserId` unique ties the claim to the Discord account —
+one claim ever per account, and already-linked accounts are refused). Batches
+live in `discordInviteBatches` (`maxClaims`, counted transactionally under
+the same advisory-lock pattern as linking, so concurrent clicks cannot
+overshoot). The raw `inviteCode` is never shown; the claimer gets
+`https://<web>/login/invite?token=<nonce>` where the nonce is a 10-minute
+single-use `discordLinkRequests` row pointing at the claim (`allowlistId`).
+Re-clicking re-issues a fresh nonce for the *same* claim. Redeeming rides the
+OIDC signup path (`discord_invite` cookie next to the classic invite-code
+cookie) and — the anti-forwarding binding — **auto-creates the Discord link
+to the claimer's Discord account**, so a forwarded link burns the claimer's
+only claim and ties the new account to their Discord identity.
+
+- Bot: **`POST /internal/discord/invites`** `{discordUserId,
+  discordUsername, batchId?}` → `{code, expiresAt, remaining}` (409
+  `ALREADY_LINKED` / `INVITE_USED` / `BATCH_EXHAUSTED`),
+  **`POST /internal/discord/invite-batches`**, and a `PATCH .../message` to
+  record the posted message id.
+- Web: `/login/invite?token=` validates via the public
+  **`GET /api/discord/invites/:code`** and offers *Join the beta*; an expired
+  token points back at the Discord button.
+
 ## Tickets: Discord is the source of truth
 
 No ticket table. A ticket is a **private thread** under the support channel;
