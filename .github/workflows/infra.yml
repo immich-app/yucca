@@ -124,6 +124,15 @@ on:
         description: 'Apply the fabric (switch) stack'
         type: boolean
         default: false
+      force_apply:
+        description: "Force-apply a partition's TF stacks without a code change (fabric/ceph/mgmt still need their own toggles)"
+        type: choice
+        options:
+          - none
+          - staging
+          - prod
+          - both
+        default: none
 
 # Serialize: the OVH S3 backend has no state locking (single-operator model),
 # so never let two infra runs apply concurrently. This workflow-wide concurrency
@@ -252,6 +261,7 @@ jobs:
           DISPATCH_CEPH: ${{ inputs.run_ceph_ansible }}
           DISPATCH_MGMT: ${{ inputs.run_mgmt_ansible }}
           DISPATCH_FABRIC: ${{ inputs.run_fabric }}
+          DISPATCH_FORCE: ${{ inputs.force_apply }}
           CEPH_CLUSTER: ${{ inputs.ceph_cluster }}
         run: |
           set -euo pipefail
@@ -276,6 +286,13 @@ jobs:
             fi
             [ "$DISPATCH_MGMT" = "true" ] && active[prod]=1
             [ "$DISPATCH_FABRIC" = "true" ] && active[prod]=1
+            # force_apply -> the named partition(s), full TF apply, no code change
+            # needed; the fabric/ceph/mgmt step-level gates still hold.
+            case "${DISPATCH_FORCE:-none}" in
+              staging) active[staging]=1 ;;
+              prod)    active[prod]=1 ;;
+              both)    active[staging]=1; active[prod]=1 ;;
+            esac
             if [ "${#active[@]}" -eq 0 ]; then
               active[staging]=1; active[prod]=1   # bare dispatch = plan-only preview
             fi
@@ -437,10 +454,12 @@ jobs:
           fi
 
       # talos + fabric read data sources over the overlay on PLAN (talos_cluster_health;
-      # the switch vme), so they must join NetBird. The cloud-API stacks (ceph/dns/
-      # netbird) need no overlay. The setup key already exists in 1P (bootstrapped).
+      # the switch vme), so they must join NetBird; ceph joined them when its radosgw
+      # provider started refreshing RGW users against the RFC1918 S3 endpoint
+      # (rgw-users.tf). The cloud-API stacks (dns/netbird) need no overlay. The
+      # setup key already exists in 1P (bootstrapped).
       - name: Resolve NetBird CI setup-key ref
-        if: matrix.stack == 'talos' || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || matrix.stack == 'fabric' || matrix.stack == 'ceph'
         run: |
           set -euo pipefail
           if [ "$PARTITION" = "prod" ]; then
@@ -451,7 +470,7 @@ jobs:
             echo "NB_CI_KEY_REF=op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
           fi
       - name: Connect to NetBird
-        if: matrix.stack == 'talos' || matrix.stack == 'fabric'
+        if: matrix.stack == 'talos' || matrix.stack == 'fabric' || matrix.stack == 'ceph'
         uses: ./.github/actions/netbird-connect
         with:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
@@ -510,15 +529,16 @@ jobs:
     name: Apply ${{ matrix.partition }}@${{ matrix.region }}/${{ matrix.stack }} (gated)
     needs: [changes, discover, plan-staging]
     # Only on merge to main (or a SCOPED manual dispatch) -- never on PRs. A bare
-    # workflow_dispatch (no run_ceph_ansible / run_mgmt_ansible / run_fabric) is
-    # plan-only: the apply job is skipped so a manual "just look" run can never
-    # apply every emitted stack unreviewed.
+    # workflow_dispatch (no run_ceph_ansible / run_mgmt_ansible / run_fabric /
+    # force_apply) is plan-only: the apply job is skipped so a manual "just look"
+    # run can never apply every emitted stack unreviewed.
     if: >-
       needs.discover.outputs.has_staging == 'true'
       && (
         github.event_name == 'push'
         || (github.event_name == 'workflow_dispatch'
-            && (inputs.run_ceph_ansible || inputs.run_mgmt_ansible || inputs.run_fabric))
+            && (inputs.run_ceph_ansible || inputs.run_mgmt_ansible || inputs.run_fabric
+                || inputs.force_apply == 'staging' || inputs.force_apply == 'both'))
       )
     runs-on: ubuntu-latest
     # Ceiling for a worst-case entry (TF apply + up to 90-min ceph converge).
@@ -629,11 +649,12 @@ jobs:
           echo "fabric apply gate → ${run:-false}"
 
       # Node-touching stacks join the overlay: talos (provisions over the LAN),
-      # ceph (the Ansible convergence below), fabric (the switch vme + the mgmt
-      # converge below). NetBird stacks themselves are pure api.netbird.io. The
-      # key was minted by an earlier (lower-order) netbird apply in this same run.
+      # ceph (the radosgw provider's RGW admin-API calls on every apply, plus the
+      # Ansible convergence below), fabric (the switch vme + the mgmt converge
+      # below). NetBird stacks themselves are pure api.netbird.io. The key was
+      # minted by an earlier (lower-order) netbird apply in this same run.
       - name: Resolve NetBird CI setup-key ref
-        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
+        if: matrix.stack == 'talos' || matrix.stack == 'ceph' || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
         run: |
           set -euo pipefail
           if [ "$PARTITION" = "prod" ]; then
@@ -643,7 +664,7 @@ jobs:
             echo "NB_CI_KEY_REF=op://yucca_tf_staging/NETBIRD_YUCCA_STAGING_CI_SETUP_KEY/password" >> "$GITHUB_ENV"
           fi
       - name: Connect to NetBird
-        if: matrix.stack == 'talos' || (matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true') || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
+        if: matrix.stack == 'talos' || matrix.stack == 'ceph' || (matrix.stack == 'fabric' && (steps.fabric_gate.outputs.run == 'true' || steps.ansible_gate.outputs.mgmt == 'true'))
         uses: ./.github/actions/netbird-connect
         with:
           setup-key-ref: ${{ env.NB_CI_KEY_REF }}
@@ -740,7 +761,8 @@ jobs:
       && (
         github.event_name == 'push'
         || (github.event_name == 'workflow_dispatch'
-            && (inputs.run_ceph_ansible || inputs.run_mgmt_ansible || inputs.run_fabric))
+            && (inputs.run_ceph_ansible || inputs.run_mgmt_ansible || inputs.run_fabric
+                || inputs.force_apply == 'prod' || inputs.force_apply == 'both'))
       )
     runs-on: ubuntu-latest
     timeout-minutes: 120

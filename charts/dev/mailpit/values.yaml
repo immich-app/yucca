@@ -1,0 +1,28 @@
+replicas: 1
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+# mock-postmark delivers here; e2e assertions read the message API.
+fullnameOverride: yucca-mailpit
+
+image:
+  repository: axllent/mailpit
+  tag: v1.30.7@sha256:d5ecbb067db3705fa953d79e1b7f81ef84038df67aba6c52825d8c02a1ea748a
+  pullPolicy: IfNotPresent
+
+# 8025 serves both the web inbox and the REST API (SMTP on 1025 stays
+# unexposed — delivery arrives over the HTTP send API).
+ports:
+  - name: http
+    containerPort: 8025
+    servicePort: 8025
+
+service:
+  type: ClusterIP
+
+startupProbe:
+  httpGet: { path: /readyz, port: http }
+  periodSeconds: 2
+  failureThreshold: 60
+readinessProbe:
+  httpGet: { path: /readyz, port: http }
+  periodSeconds: 10

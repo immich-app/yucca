@@ -16,12 +16,18 @@ data:
 
   OIDC_ISSUER: https://external-dev-gkhk8b.us1.zitadel.cloud
 
+  # Staging o11y Grafana (futo-backups-bot staff notes); prod rides the code
+  # default grafana.futostatus.com.
+  GRAFANA_URL: https://grafana.staging.futostatus.com
+
   # Beta gate: these email domains may sign up without an allowlist entry;
   # everyone else needs a `yuctl users allowlist` entry or invite code.
   ALLOWED_EMAIL_DOMAINS: futo.org
 
-  # admin-api host on the NetBird overlay; the admin OIDC redirect URIs derive
-  # from this (see base yucca-admin-api HR).
+  # admin-api host on the NetBird overlay (served by the internal admin gateway,
+  # apps/staging/austin/admin); the admin OIDC redirect URIs derive from this
+  # (see base yucca-admin-api HR). Mirrored in the talos stack's discovery
+  # admin_api_host for yuctl.
   YUCCA_ADMIN_HOST: admin.luke.aus.int.yucca.futo.network
 
   # ─── Fleet topology ──────────────────────────────────────────────────
@@ -48,6 +54,11 @@ data:
   # ignored here (the pool matches by IP annotation, no serviceSelector).
   INGRESS_LB_LABEL: internal
   INGRESS_VIP: 10.10.10.16
+  # Cluster, not the Local default: L2 lease election is locality-blind, so
+  # Local blackholes ingress whenever the lease lands on a node without an
+  # envoy replica (father keeps Local — its BGP advertises the VIP only from
+  # backend nodes and the api wants real client IPs).
+  INGRESS_ETP: Cluster
   INGRESS_PUBLIC_IP: 97.77.242.205
   # michael's gw. route attaches to the dedicated gw Gateway, same as father —
   # but Austin has one NAT'd entry, so the app gateway SNI-passes ${GW_HOST}
@@ -61,6 +72,10 @@ data:
 
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
+
+  # From header for invite/transactional email (must match a Postmark-verified
+  # sender signature).
+  EMAIL_FROM_ADDRESS: "FUTO Backups Staging <noreply@staging.backups.futo.cloud>"
 
   # ─── Storage ─────────────────────────────────────────────────────────
   # CNPG database PVs: node-local NVMe via the overlay's spare-disk SC.

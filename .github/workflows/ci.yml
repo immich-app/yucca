@@ -23,6 +23,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # Advisory only — this runs against origin/main at PR time, so a branch
+      # that goes stale after a migration re-date on main slips past it; the
+      # deploy workflow's gate is the authoritative check.
+      - name: Migration ordering vs main
+        run: .mise/tasks/yucca-api/check-migration-order origin/main
+
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
         env:
@@ -78,7 +84,7 @@ jobs:
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
 
       # Cluster bring-up and the workspace install touch none of the same files,
-      # so they overlap. Only @common/server is built: the suites run from
+      # so they overlap. Only the @common/* libs are built: the suites run from
       # TypeScript source via ts-jest, so `mise prepare`'s other packages are
       # never loaded here.
       - name: Stand up k3d infra, install deps and build shared libs
@@ -87,6 +93,7 @@ jobs:
           infra=$!
           mise run install:frozen
           mise run common:server:build
+          mise run common:emails:build
           wait "$infra" || { echo "::error::k3d infra failed"; cat /tmp/k3d-infra.log; exit 1; }
           echo "::group::k3d infra log"; cat /tmp/k3d-infra.log; echo "::endgroup::"
 

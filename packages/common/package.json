@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "@common/server",
-  "version": "0.36.0",
+  "version": "0.37.1",
   "description": "Common code for the NestJS applications",
   "keywords": [],
   "author": "",
@@ -49,6 +49,10 @@
     "./otel": {
       "types": "./dist/otel/index.d.ts",
       "default": "./dist/otel/index.js"
+    },
+    "./email": {
+      "types": "./dist/email/index.d.ts",
+      "default": "./dist/email/index.js"
     }
   }
 }

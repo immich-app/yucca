@@ -845,100 +845,54 @@
   register: dashboard_caps
   changed_when: "'CHANGED' in dashboard_caps.stdout"
 
-# --- Step 14: Create S3 user ---
-
-- name: Check if S3 user exists
-  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_s3_user_uid }}"
-  register: s3_user_check
-  when: inventory_hostname in groups['ceph_bootstrap']
-  changed_when: false
-  failed_when: false
-
-- name: Create S3 service user with predetermined keys for {{ ceph_rgw_s3_user_uid }}
-  ansible.builtin.command: >
-    radosgw-admin user create
-    --uid={{ ceph_rgw_s3_user_uid }}
-    --display-name='{{ ceph_rgw_s3_user_display_name }}'
-    --access-key='{{ ceph_rgw_s3_user_access_key }}'
-    --secret-key='{{ ceph_rgw_s3_user_secret_key }}'
-    --max-buckets=100
-  register: s3_user_create
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - s3_user_check.rc != 0
-  changed_when: true
-  no_log: true
-
-# --- Step 14.5: Metrics-worker RGW admin user (read-only) ---
+# --- Step 14: RGW service users — terraform-owned ---
 #
-# A dedicated RGW user the metrics worker uses to scrape usage/bucket/user
-# stats via the radosgw admin ops API. Keys are TF-minted in 1P
-# (<CLUSTER>_METRICS_WORKER_{ACCESS,SECRET}_KEY) and passed here so the consumer
-# is pre-configured with matching credentials. Read-only admin caps only -- it
-# can read stats but cannot mutate buckets or users.
+# svc-yucca-restic, metrics-worker and svc-yucca-db-backup are managed by the
+# ceph TF stack's rgw-users.tf (radosgw provider), pushing the same TF-minted
+# 1P keys this play used to push. On a fresh cluster they appear on the first
+# apply after the cluster's manage_rgw_users flag is flipped — see the
+# rgw-users.tf header for the bootstrap sequence. Ansible keeps exactly one
+# RGW user: the provider's admin credential below.
 
-- name: Check if metrics-worker RGW user exists
-  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_metrics_user_uid }}"
-  register: metrics_user_check
+# --- Step 14.7: Terraform RGW admin user (write) ---
+#
+# The admin user the radosgw terraform provider authenticates as (the ceph
+# stacks' rgw-users.tf manages the service users via the RGW admin API).
+# Keys are TF-minted in 1P (<CLUSTER>_CEPH_TF_ADMIN_{ACCESS,SECRET}_KEY).
+# Ansible must bootstrap this ONE user because terraform cannot mint its own
+# admin credential on a fresh cluster; every other RGW user is TF-owned once
+# the cluster's manage_rgw_users flag is flipped.
+
+- name: Check if terraform RGW admin user exists
+  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_tf_admin_user_uid }}"
+  register: tf_admin_user_check
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
   failed_when: false
 
-- name: Create metrics-worker RGW user with predetermined keys for {{ ceph_rgw_metrics_user_uid }}
+- name: Create terraform RGW admin user with predetermined keys for {{ ceph_rgw_tf_admin_user_uid }}
   ansible.builtin.command: >
     radosgw-admin user create
-    --uid={{ ceph_rgw_metrics_user_uid }}
-    --display-name='{{ ceph_rgw_metrics_user_display_name }}'
-    --access-key='{{ ceph_rgw_metrics_user_access_key }}'
-    --secret-key='{{ ceph_rgw_metrics_user_secret_key }}'
+    --uid={{ ceph_rgw_tf_admin_user_uid }}
+    --display-name='{{ ceph_rgw_tf_admin_user_display_name }}'
+    --access-key='{{ ceph_rgw_tf_admin_user_access_key }}'
+    --secret-key='{{ ceph_rgw_tf_admin_user_secret_key }}'
     --max-buckets=0
-  register: metrics_user_create
+  register: tf_admin_user_create
   when:
     - inventory_hostname in groups['ceph_bootstrap']
-    - metrics_user_check.rc != 0
+    - tf_admin_user_check.rc != 0
   changed_when: true
   no_log: true
 
-# --- Step 14.6: CNPG database-backup S3 user ---
-#
-# A dedicated S3 user the yucca-database CNPG cluster (Barman Cloud plugin)
-# archives WALs and base backups with. Keys are TF-minted in 1P
-# (<CLUSTER>_CEPH_S3_SVC_YUCCA_DB_BACKUP_{ACCESS,SECRET}_KEY) and passed here so
-# the consumer is pre-configured with matching credentials. max-buckets=1: the
-# yucca-db-backups bucket is created out-of-band with this user's own creds
-# (barman does NOT auto-create it — see docs/s3-integration.md), and the cap
-# means this user can never create another.
-
-- name: Check if db-backup RGW user exists
-  ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_db_backup_user_uid }}"
-  register: db_backup_user_check
-  when: inventory_hostname in groups['ceph_bootstrap']
-  changed_when: false
-  failed_when: false
-
-- name: Create db-backup S3 user with predetermined keys for {{ ceph_rgw_db_backup_user_uid }}
-  ansible.builtin.command: >
-    radosgw-admin user create
-    --uid={{ ceph_rgw_db_backup_user_uid }}
-    --display-name='{{ ceph_rgw_db_backup_user_display_name }}'
-    --access-key='{{ ceph_rgw_db_backup_user_access_key }}'
-    --secret-key='{{ ceph_rgw_db_backup_user_secret_key }}'
-    --max-buckets=1
-  register: db_backup_user_create
-  when:
-    - inventory_hostname in groups['ceph_bootstrap']
-    - db_backup_user_check.rc != 0
-  changed_when: true
-  no_log: true
-
-- name: Ensure metrics-worker RGW user has read-only admin caps
+- name: Ensure terraform RGW admin user has user-management caps
   ansible.builtin.shell: |
     set -o pipefail
-    CAPS=$(radosgw-admin user info --uid={{ ceph_rgw_metrics_user_uid }} --format json 2>/dev/null \
+    CAPS=$(radosgw-admin user info --uid={{ ceph_rgw_tf_admin_user_uid }} --format json 2>/dev/null \
       | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('caps',[])))")
-    if [ "$CAPS" -lt 4 ]; then
-      radosgw-admin caps add --uid={{ ceph_rgw_metrics_user_uid }} \
-        --caps='{{ ceph_rgw_metrics_user_caps }}' >/dev/null 2>&1
+    if [ "$CAPS" -lt 3 ]; then
+      radosgw-admin caps add --uid={{ ceph_rgw_tf_admin_user_uid }} \
+        --caps='{{ ceph_rgw_tf_admin_user_caps }}' >/dev/null 2>&1
       echo "CHANGED"
     else
       echo "OK"
@@ -946,8 +900,8 @@
   args:
     executable: /bin/bash
   when: inventory_hostname in groups['ceph_bootstrap']
-  register: metrics_caps
-  changed_when: "'CHANGED' in metrics_caps.stdout"
+  register: tf_admin_caps
+  changed_when: "'CHANGED' in tf_admin_caps.stdout"
 
 # --- Step 15: Converge S3 user keys to the 1P canonical key (gated rotation) ---
 #
@@ -960,19 +914,26 @@
 # removed, so the user is never left without a working key. (A stray with the
 # same access key but a different secret is not auto-corrected; that is rare and
 # would need a manual key create.)
+#
+# The user itself is terraform-owned (Step 14), so the whole chain skips when
+# it doesn't exist yet — a fresh cluster converges before the TF flip that
+# creates it.
 
 - name: Get current S3 user info
   ansible.builtin.command: "radosgw-admin user info --uid={{ ceph_rgw_s3_user_uid }}"
   register: s3_user_info
   when: inventory_hostname in groups['ceph_bootstrap']
   changed_when: false
+  failed_when: false
   no_log: true
   tags: [s3_keys]
 
 - name: Compute S3 access keys present on the user
   ansible.builtin.set_fact:
     s3_access_keys: "{{ (s3_user_info.stdout | from_json)['keys'] | map(attribute='access_key') | list }}"
-  when: inventory_hostname in groups['ceph_bootstrap']
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - s3_user_info.rc == 0
   no_log: true
   tags: [s3_keys]
 
@@ -980,7 +941,9 @@
   ansible.builtin.set_fact:
     s3_canonical_missing: "{{ ceph_rgw_s3_user_access_key not in s3_access_keys }}"
     s3_stray_keys: "{{ s3_access_keys | difference([ceph_rgw_s3_user_access_key]) }}"
-  when: inventory_hostname in groups['ceph_bootstrap']
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - s3_user_info.rc == 0
   no_log: true
   tags: [s3_keys]
 
@@ -991,7 +954,9 @@
       canonical_present={{ not s3_canonical_missing }}
       stray_count={{ s3_stray_keys | length }}
       rotate_s3_keys={{ rotate_s3_keys | default(false) | bool }}
-  when: inventory_hostname in groups['ceph_bootstrap']
+  when:
+    - inventory_hostname in groups['ceph_bootstrap']
+    - s3_user_info.rc == 0
   tags: [s3_keys]
 
 - name: Add canonical S3 key from 1P (rotate_s3_keys=true, key missing)

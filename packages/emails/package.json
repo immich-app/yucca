@@ -1,0 +1,33 @@
+{
+  "private": true,
+  "name": "@common/emails",
+  "version": "0.30.1",
+  "description": "Transactional email templates for the NestJS applications, rendered from Svelte with the web theme",
+  "license": "UNLICENSED",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "preview": "bse dev"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@better-svelte-email/server": "catalog:"
+  },
+  "devDependencies": {
+    "@better-svelte-email/cli": "catalog:",
+    "@better-svelte-email/components": "catalog:",
+    "@sveltejs/vite-plugin-svelte": "catalog:",
+    "@types/node": "catalog:",
+    "svelte": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

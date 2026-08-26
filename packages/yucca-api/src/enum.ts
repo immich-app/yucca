@@ -3,6 +3,7 @@ export enum CookieName {
   OidcState = 'yucca-oidc-state',
   OidcCodeVerifier = 'yucca-oidc-code-verifier',
   InviteCode = 'yucca-invite-code',
+  RedirectPath = 'yucca-redirect-path',
 }
 
 export enum MetadataKey {

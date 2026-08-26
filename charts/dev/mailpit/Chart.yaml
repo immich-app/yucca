@@ -1,0 +1,10 @@
+apiVersion: v2
+name: mailpit
+description: Mailpit inbox for local dev — catches everything mock-postmark delivers
+type: application
+version: 0.1.0
+appVersion: "1.30.7"
+dependencies:
+  - name: yucca-common
+    version: 0.2.0
+    repository: "file://../../lib/yucca-common"

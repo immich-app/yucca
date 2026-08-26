@@ -216,9 +216,11 @@ docker_build(
     live_update=[
         sync('./packages/yucca-admin-api', '/app/packages/yucca-admin-api'),
         sync('./packages/common', '/app/packages/common'),
+        sync('./packages/emails', '/app/packages/emails'),
         # yucca-admin-api/src/schema is a symlink into yucca-api; keep it synced.
         sync('./packages/yucca-api', '/app/packages/yucca-api'),
         run('cd /app && pnpm --filter @common/server build', trigger=['./packages/common/src']),
+        run('cd /app && pnpm --filter @common/emails build', trigger=['./packages/emails/src']),
     ],
 )
 
@@ -250,6 +252,32 @@ docker_build(
     ],
 )
 
+docker_build(
+    'futo-backups-bot',
+    context='.',
+    dockerfile='packages/futo-backups-bot/Dockerfile',
+    target='dev',
+    only=[
+        './pnpm-workspace.yaml',
+        './pnpm-lock.yaml',
+        './package.json',
+        './.npmrc',
+        './packages',
+    ],
+    ignore=[
+        '**/node_modules',
+        '**/dist',
+        '**/.svelte-kit',
+        'packages/michael',
+        'packages/e2e',
+    ],
+    live_update=[
+        sync('./packages/futo-backups-bot', '/app/packages/futo-backups-bot'),
+        sync('./packages/common', '/app/packages/common'),
+        run('cd /app && pnpm --filter @common/server build', trigger=['./packages/common/src']),
+    ],
+)
+
 # mock-oidc-provider has no dev target (config-only via env); a plain build is
 # enough — it rarely changes and is reconfigured through Helm values.
 docker_build(
@@ -269,21 +297,43 @@ docker_build(
     ],
 )
 
+# Same config-only posture as mock-oidc: a plain build, reconfigured through
+# Helm values.
+docker_build(
+    'mock-postmark-provider',
+    context='.',
+    dockerfile='packages/mock-postmark-provider/Dockerfile',
+    only=[
+        './pnpm-workspace.yaml',
+        './pnpm-lock.yaml',
+        './package.json',
+        './.npmrc',
+        './packages/mock-postmark-provider',
+    ],
+    ignore=[
+        '**/node_modules',
+        '**/dist',
+    ],
+)
+
 # ---------------------------------------------------------------------------
 # First-party Helm charts that depend on the yucca-common library need their
 # subchart snapshot built before `helm upgrade` can render them.
 # ---------------------------------------------------------------------------
 local_resource(
     'helm-deps',
-    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/dev/mock-oidc/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/web charts/apps/meta charts/apps/michael charts/dev/mock-oidc; do (cd $d && helm dependency build); done',
+    cmd='rm -rf charts/apps/yucca-api/charts charts/apps/yucca-admin-api/charts charts/apps/yucca-metrics-worker/charts charts/apps/futo-backups-bot/charts charts/apps/web/charts charts/apps/meta/charts charts/apps/michael/charts charts/dev/mock-oidc/charts charts/dev/mock-postmark/charts charts/dev/mailpit/charts && for d in charts/apps/yucca-api charts/apps/yucca-admin-api charts/apps/yucca-metrics-worker charts/apps/futo-backups-bot charts/apps/web charts/apps/meta charts/apps/michael charts/dev/mock-oidc charts/dev/mock-postmark charts/dev/mailpit; do (cd $d && helm dependency build); done',
     deps=[
         'charts/apps/yucca-api',
         'charts/apps/yucca-admin-api',
         'charts/apps/yucca-metrics-worker',
+        'charts/apps/futo-backups-bot',
         'charts/apps/web',
         'charts/apps/meta',
         'charts/apps/michael',
         'charts/dev/mock-oidc',
+        'charts/dev/mock-postmark',
+        'charts/dev/mailpit',
         'charts/lib/yucca-common',
     ],
     # `helm dependency build` rewrites these; if Tilt watches them we re-enter
@@ -312,8 +362,11 @@ APP_WIRING = {
     # calls it at boot. Tilt builds an image only when ready to deploy, so that
     # edge parked this build (and web's) behind Rook-Ceph instead of alongside.
     'yucca-api':              {'build': 'yucca-api',          'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
-    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_keypair': True},
+    'yucca-admin-api':        {'build': 'yucca-admin-api',    'deps': ['yucca-database', 'yucca-mock-oidc', 'yucca-topology'], 'dev_env': True, 'dev_keypair': True},
     'yucca-metrics-worker':   {'build': 'yucca-metrics-worker', 'deps': ['yucca-database', 'yucca-metrics-object-user', 'yucca-topology'], 'dev_env': True},
+    # Idle without a DISCORD_BOT_TOKEN (supplied via .env → yucca-dev-env);
+    # only talks to yucca-api's internal endpoints, never the DB.
+    'futo-backups-bot':       {'build': 'futo-backups-bot',    'deps': ['yucca-api'], 'dev_env': True},
     # Likewise: the dev server reaches yucca-api per request, not at boot.
     'yucca-web':              {'build': 'web',                'deps': []},
     # Stock upstream nginx serving the .well-known pointer — nothing to build,
@@ -322,6 +375,8 @@ APP_WIRING = {
     'yucca-meta':             {'build': None,                 'deps': []},
     'yucca-michael':          {'build': 'michael',            'deps': ['yucca-object-user'], 'dev_keypair': True},
     'yucca-mock-oidc':        {'build': 'mock-oidc-provider', 'deps': []},
+    'yucca-mailpit':          {'build': None,                 'deps': []},
+    'yucca-mock-postmark':    {'build': 'mock-postmark-provider', 'deps': ['yucca-mailpit']},
     'yucca-database':         {'build': None,                 'deps': ['cloudnative-pg']},
     # The CephObjectStoreUser creates no pods (just a Secret once Rook mints the
     # RGW user), so Tilt's pod tracking would hang at "pending". Mark ready on
@@ -515,6 +570,8 @@ kubectl port-forward -n yucca svc/yucca-web 5173:5173 &
 kubectl port-forward -n yucca svc/yucca-meta 8081:8080 &
 kubectl port-forward -n yucca svc/yucca-michael 3010:3010 &
 kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 &
+kubectl port-forward -n yucca svc/yucca-mailpit 8025:8025 &
+kubectl port-forward -n yucca svc/yucca-mock-postmark 8093:8093 &
 kubectl port-forward -n rook-ceph svc/rook-ceph-rgw-yucca 9000:80 &
 kubectl port-forward -n yucca svc/victoria-metrics 8428:8428 &
 kubectl port-forward -n yucca svc/victoria-logs 9428:9428 &
@@ -528,6 +585,8 @@ wait''',
         link('http://localhost:3010', 'michael'),
         link('http://localhost:8081/.well-known/yucca.json', 'meta (.well-known)'),
         link('http://localhost:8092', 'mock-oidc'),
+        link('http://localhost:8025', 'mailpit (inbox)'),
+        link('http://localhost:8093', 'mock-postmark'),
         link('http://localhost:9000', 'ceph rgw (s3)'),
         link('http://localhost:8428', 'victoria-metrics'),
         link('http://localhost:9428', 'victoria-logs'),

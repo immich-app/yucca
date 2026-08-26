@@ -31,8 +31,12 @@ output "discovery" {
       domain        = var.domain
     }
     kubernetes = {
-      cluster_name      = local.only_cluster_key
-      api_endpoint      = local.k8s.cluster_endpoint
+      cluster_name = local.only_cluster_key
+      api_endpoint = local.k8s.cluster_endpoint
+      # NetBird-only: the record lives in the prod/htz-fsn1/netbird stack (the
+      # account-wide yucca.futo.network zone is there), the internal admin VIP +
+      # gateway in kubernetes/apps/staging/austin/admin. = YUCCA_ADMIN_HOST.
+      admin_api_host    = "admin.${local.only_cluster_key}.${var.region_code}.${var.provider_code}.yucca.futo.network"
       operator_endpoint = local.k8s.operator_endpoint
       cp_node_ips       = local.k8s.cp_node_ips
       kubeconfig_ref    = "op://${local._disc_vault}/${local._kubeconfig_title}/password"

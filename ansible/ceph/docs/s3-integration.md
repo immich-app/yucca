@@ -50,12 +50,16 @@ radosgw-admin user create \
 
 | UID | Purpose | Buckets | Caps |
 |---|---|---|---|
-| `svc-yucca-restic` | michael's restic object store (one bucket per repository) | 100 | — |
+| `svc-yucca-restic` | michael's restic object store (one bucket per repository) | per-cluster `rgw_restic_max_buckets` (sietch 100, spice 0 = unlimited) | — |
 | `metrics-worker` | yucca-metrics-worker usage scraping via the RGW admin API | 0 | `buckets=read;usage=read;metadata=read;users=read` |
 | `svc-yucca-db-backup` | CNPG (yucca-database) WAL archiving + base backups via the Barman Cloud plugin | 1 | — |
+| `svc-yucca-terraform` | the radosgw terraform provider's admin credential (manages the users above) | 0 | `buckets=*;metadata=*;users=*` |
 
-All three are created by `rgw.yml` with predetermined, TF-minted keys (see
-[secrets.md](secrets.md)). `svc-yucca-db-backup`'s bucket is NOT auto-created —
+All four use predetermined, TF-minted keys (see [secrets.md](secrets.md)).
+`svc-yucca-terraform` is bootstrapped by `rgw.yml` (Step 14.7); the three
+service users are terraform-managed via the ceph stack's `rgw-users.tf`,
+created on the first apply after the cluster's `manage_rgw_users` flag is
+set. `svc-yucca-db-backup`'s bucket is NOT auto-created —
 barman-cloud fails with `NoSuchBucket` until it exists. Create it once per
 cluster with the user's own credentials (`--max-buckets=1` permits exactly this
 one bucket):

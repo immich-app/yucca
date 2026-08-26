@@ -17,6 +17,7 @@ import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
 import { EmailNotAllowedException, FeatureNotEnabledException } from 'src/utils/exceptions';
+import { isInAppPath } from 'src/utils/redirect';
 
 @Injectable()
 export class AuthService {
@@ -84,6 +85,7 @@ export class AuthService {
       [CookieName.OidcState]: expectedState,
       [CookieName.OidcCodeVerifier]: codeVerifier,
       [CookieName.InviteCode]: inviteCode,
+      [CookieName.RedirectPath]: redirectPath,
     } = cookies;
 
     if (!expectedState) {
@@ -115,7 +117,7 @@ export class AuthService {
     });
 
     return {
-      redirectTo: '/',
+      redirectTo: redirectPath && isInAppPath(redirectPath) ? redirectPath : '/',
       accessToken,
     };
   }

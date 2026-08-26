@@ -1,0 +1,53 @@
+# Single replica ON PURPOSE: one Discord gateway session; two replicas would
+# double-handle every interaction.
+replicas: 1
+
+resources:
+  requests: { cpu: 50m, memory: 256Mi }
+  limits: { memory: 1Gi }
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: futo-backups-bot
+
+image:
+  repository: k3d-registry.localhost:5000/futo-backups-bot
+  tag: dev
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 3050
+
+# Empty token on purpose: the bot idles without one, so dev without a Discord
+# guild stays green. Real dev values arrive via the yucca-dev-env extraEnvFrom
+# layer (last envFrom wins), prod's via the TF-provisioned Secret of the same
+# name (secretData nulled in the base HelmRelease).
+secretData:
+  DISCORD_BOT_TOKEN: ""
+  INTERNAL_SECRET: dev-internal-secret
+
+extraEnvFrom: []
+
+env:
+  - name: NODE_ENV
+    value: development
+  - name: FUTO_BACKUPS_BOT_PORT
+    value: "3050"
+  - name: YUCCA_API_URL
+    value: http://yucca-api:3020
+  - name: WEB_URL
+    value: http://localhost:5173
+  - name: LOG_LEVEL
+    value: debug
+  - name: OTEL_METRICS
+    value: http://victoria-metrics:8428/opentelemetry/v1/metrics
+  - name: OTEL_LOGGING
+    value: http://victoria-logs:9428/insert/opentelemetry/v1/logs
+
+startupProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 5
+  failureThreshold: 60
+readinessProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 10

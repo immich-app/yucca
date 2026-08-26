@@ -31,6 +31,7 @@ victoria-logs-collector.
 | `yucca-spice-blockdb-bluefs.json` | block.db headroom: spillover tripwire, per-OSD utilization and growth, BlueFS internals | `ceph_bluefs_*`, `ceph_bluestore_onode_*`, `ceph_osd_metadata` |
 | `yucca-spice-recovery-backfill.json` | Rebalance throughput in bytes and work outstanding, during an OSD purge / reweight / host drain. Complements the recovery ops/s on `yucca-spice-ceph-health` | `ceph_pool_recovering_*`, `ceph_pg_{backfilling,backfill_wait,remapped}`, `ceph_num_objects_{misplaced,degraded}` |
 | `yucca-spice-scrub.json` | Scrub progress: which hosts are still scrubbing (regular vs deep, as scrub primary), PGs in flight per level, and work outstanding for the deep cycle (bytes scrubbed vs raw used over the configured interval; needs that much retention) | `ceph_pg_{scrubbing,deep,wait}`, `ceph_osd_scrub_{sh,dp}_*_chunk_selected`, `ceph_osd_scrub_*_read_bytes`, `ceph_osd_{num_scrubs_started,successful_scrubs,failed_scrubs}_*`, `ceph_osd_stat_bytes_used`, `ceph_osd_metadata` |
+| `yucca-spice-network.json` | Fleet networking: 25G bond fabric + balance, bond health, VLAN split, NetBird wt0 overlay (mirrors the `netbird.yaml` alert exprs), WAN, TCP retransmits/conntrack | `node_network_*`, `node_bonding_*`, `node_netstat_*`, `node_nf_conntrack_*` |
 | `yucca-father-kubernetes.json` | apiserver, coredns, workloads, PVCs, kubelet | `apiserver_*`, `container_*`, `kubelet_*`, `coredns_*` |
 | `yucca-fabric-htz-fsn1.json` | Switch fabric: sFlow 5s rates, NETCONF, BGP, alarms | `sflow_*`, `junos_*` (port of the in-cluster netops board) |
 | `yucca-telemetry-pipeline.json` | Is telemetry itself healthy: scrape + remote-write | `up`, `vmagent_remotewrite_*`, `vm_*` |
@@ -198,6 +199,7 @@ Conventions:
 | `kubernetes.yaml` | flux reconciliation, cert-manager expiry/readiness, node not ready, crashloops, PVC fill 90% warning / 95% critical (father+luke) |
 | `cilium.yaml` | agent daemonset, BGP control-plane sessions (k8s side of the fabric peering) |
 | `fabric.yaml` | transit BGP per-carrier (critical; peer IPs pinned from `fabric.tf`), all-transits-down, other BGP sessions, chassis alarms, interface errors, exporter/sFlow liveness |
+| `netbird.yaml` | NetBird wt0 overlay: cluster-scoped packet errors, hosts missing the interface (replaces the per-node ceph noise #539 drops) |
 | `telemetry.yaml` | per-cluster "stopped shipping metrics" (father/luke/netops/spice) |
 
 Known gaps (no metric exists yet): michael token-introspection outages and

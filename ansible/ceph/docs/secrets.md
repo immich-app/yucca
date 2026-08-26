@@ -63,17 +63,19 @@ public half, retire the old one.
 | `SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` | `private_key` | `~/.ssh/id_ed25519_sietch` on operator workstation |
 | `SIETCH_CEPH_ANSIBLE_IAC_SSH_KEY` | `public_key` | sietch nodes' `ansible-iac@:~/.ssh/authorized_keys` |
 
-**S3 service-user items** (predetermined keys passed to
-`radosgw-admin user create --access-key=X --secret-key=Y` at deploy
-time -- Yucca app / restic client can be pre-configured with matching
-credentials without waiting for post-bootstrap capture):
+**S3 service-user items** (predetermined keys the ceph TF stack's
+`rgw-users.tf` pushes to RGW over the admin API -- Yucca app / restic client
+can be pre-configured with matching credentials without waiting for
+post-bootstrap capture):
 
 | Item | Field | Consumed as |
 |---|---|---|
-| `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY` | `password` | `vault_s3_restic_access_key` -> `ceph_rgw_s3_user_access_key` |
-| `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY` | `password` | `vault_s3_restic_secret_key` -> `ceph_rgw_s3_user_secret_key` |
-| `SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY` | `password` | `vault_db_backup_access_key` -> `ceph_rgw_db_backup_user_access_key` (also read by the talos stack into the `yucca-db-backup-s3` Secret for CNPG barman) |
-| `SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_SECRET_KEY` | `password` | `vault_db_backup_secret_key` -> `ceph_rgw_db_backup_user_secret_key` (same dual consumption) |
+| `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_ACCESS_KEY` | `password` | `rgw-users.tf` key material; also `vault_s3_restic_access_key` -> `ceph_rgw_s3_user_access_key` for the gated key-rotation converge (rgw.yml Step 15) |
+| `SIETCH_CEPH_S3_SVC_YUCCA_RESTIC_SECRET_KEY` | `password` | same, secret half |
+| `SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_ACCESS_KEY` | `password` | `rgw-users.tf` key material; also read by the talos stack into the `yucca-db-backup-s3` Secret for CNPG barman |
+| `SIETCH_CEPH_S3_SVC_YUCCA_DB_BACKUP_SECRET_KEY` | `password` | same, secret half |
+| `SIETCH_CEPH_TF_ADMIN_ACCESS_KEY` | `password` | the radosgw terraform provider's credential in `rgw-users.tf`; also `vault_tf_admin_access_key` -> `ceph_rgw_tf_admin_user_access_key` for the rgw.yml Step 14.7 bootstrap |
+| `SIETCH_CEPH_TF_ADMIN_SECRET_KEY` | `password` | same, secret half |
 
 **Disaster-recovery items** (populated by `mise run capture` after
 deploy -- stored in 1P for recovery if the bootstrap node's filesystem

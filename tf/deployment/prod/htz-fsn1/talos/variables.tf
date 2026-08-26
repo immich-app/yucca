@@ -188,6 +188,13 @@ variable "yucca_oidc_admin_client_secret" {
   default     = ""
 }
 
+variable "yucca_postmark_server_token" {
+  description = "Postmark server API token for invite/transactional email (ref stays commented in tf/.env.prod until minted; empty token = admin-api logs and skips sends)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "yucca_rgw_access_key_id" {
   description = "Spice RGW (S3) access key for michael (svc-yucca-restic, out-of-band contract item)."
   type        = string
@@ -237,5 +244,65 @@ variable "vmauth_remote_write_password" {
   description = "o11y prod vmauth bearer token for vmagent/logs remote-write (shared_tf_prod/O11Y_VICTORIAMETRICS_VMAUTH_PASSWORD)."
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "yucca_discord_bot_token" {
+  description = "Discord bot token for futo-backups-bot (FUTOBackupsBot). Empty = the bot boots idle; ref stays commented in tf/.env.prod until minted."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "spice_transcripts_access_key" {
+  description = "Spice RGW (S3) access key for futo-backups-bot ticket transcripts (svc-yucca-transcripts, TF-minted SPICE_CEPH_S3_SVC_YUCCA_TRANSCRIPTS_ACCESS_KEY). Empty = the archive sweep skips."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "spice_transcripts_secret_key" {
+  description = "Spice RGW (S3) secret key for futo-backups-bot ticket transcripts (svc-yucca-transcripts)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_discord_guild_id" {
+  description = "Discord server id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS, written by core-infra-tf's discord apply). Empty = the bot idles."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_staff_role_id" {
+  description = "Staff (Yucca) role id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_support_channel_id" {
+  description = "#support channel id for futo-backups-bot's pinned button (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+
+
+
+variable "yucca_discord_chat_channel_id" {
+  description = "#chat channel id mentioned after a role claim (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_customer_role_id" {
+  description = "FUTO Backups customer role id futo-backups-bot assigns on claim (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_general_channel_id" {
+  description = "#general channel id for futo-backups-bot's daily claim prompt (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
   default     = ""
 }

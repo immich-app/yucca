@@ -40,6 +40,26 @@ services:
       retries: 30
       start_period: 5s
 
+  mailpit:
+    image: axllent/mailpit:v1.30.7@sha256:d5ecbb067db3705fa953d79e1b7f81ef84038df67aba6c52825d8c02a1ea748a
+    ports:
+      - 8025:8025
+
+  mock-postmark-provider:
+    build:
+      context: .
+      dockerfile: packages/mock-postmark-provider/Dockerfile
+    environment:
+      MAILPIT_URL: http://mailpit:8025
+    ports:
+      - 8093:80
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost/health > /dev/null']
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
   victoria-metrics:
     image: victoriametrics/victoria-metrics:latest@sha256:dc030542eb0cd262287c9ec32e5867f8dcccc0efd5906c10f7fc8176c53d34d7
     ports:

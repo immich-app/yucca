@@ -15,6 +15,7 @@ resources:
   - ./flux-system
   - ./cilium-lb.yaml # L2/ARP ingress pool (cluster-specific LB topology)
   - ./openebs # per-spare-NVMe StorageClasses (cluster-specific disk layout)
+  - ./admin.yaml # internal admin gateway (staging-only; father uses netops)
 components:
   - ../../../components/platform
   - ../../../components/roles/primary

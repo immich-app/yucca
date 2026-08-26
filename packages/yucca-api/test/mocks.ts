@@ -2,6 +2,7 @@ import type { LoggerRepository, WideContextRepository } from '@common/server/ote
 import type { ConnectionRepository } from 'src/repositories/connection.repository';
 import type { CryptoRepository } from 'src/repositories/crypto.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
+import type { DiscordRepository } from 'src/repositories/discord.repository';
 import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { RepositoryRepository } from 'src/repositories/repository.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
@@ -22,6 +23,19 @@ export const newDatabaseRepositoryMock = (): jest.Mocked<RepositoryInterface<Dat
   return {
     runMigrations: jest.fn(),
     shutdown: jest.fn(),
+  };
+};
+
+export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<DiscordRepository>> => {
+  return {
+    createRequest: jest.fn(),
+    getRequestByCode: jest.fn(),
+    deleteExpiredRequests: jest.fn(),
+    getLinkByDiscordUserId: jest.fn(),
+    getLinkByUserId: jest.fn(),
+    link: jest.fn(),
+    updateUsername: jest.fn(),
+    getUserSummary: jest.fn(),
   };
 };
 
@@ -135,6 +149,7 @@ export const newMocks = () => {
     connection: newConnectionRepositoryMock(),
     crypto: newCryptoRepositoryMock(),
     database: newDatabaseRepositoryMock(),
+    discord: newDiscordRepositoryMock(),
     oidc: newOidcRepositoryMock(),
     session: newSessionRepositoryMock(),
     user: newUserRepositoryMock(),

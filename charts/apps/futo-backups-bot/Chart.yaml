@@ -1,0 +1,10 @@
+apiVersion: v2
+name: futo-backups-bot
+description: FUTO Backups Discord support bot (NestJS)
+type: application
+version: 0.1.0
+appVersion: "0.37.1" # x-release-please-version
+dependencies:
+  - name: yucca-common
+    version: 0.2.0
+    repository: "file://../../lib/yucca-common"

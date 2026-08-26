@@ -78,6 +78,10 @@ data:
   # ACME registration contact for Let's Encrypt. TODO: real ops address.
   ACME_EMAIL: fubar-prod@futo.org
 
+  # From header for invite/transactional email (must match a Postmark-verified
+  # sender signature).
+  EMAIL_FROM_ADDRESS: "FUTO Backups <noreply@futo.cloud>"
+
   # ─── OpenEBS (shared apps/base/openebs, see the father openebs wrapper) ──
   # Mayastor ON: openebs-replicated (repl=2) on the r-mayastor partitions.
   # LocalPV on the u-localpv xfs partition (node-local; CNPG replicates itself).

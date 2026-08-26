@@ -1,3 +1,4 @@
+import { EmailRepository } from '@common/server/email';
 import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository } from '@common/server/otel';
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -15,6 +16,7 @@ import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
 import { ConnectionRepository } from './repositories/connection.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { DiscordLinkRepository } from './repositories/discordLink.repository';
 import { FeatureFlagRepository } from './repositories/featureFlag.repository';
 import { OidcRepository } from './repositories/oidc.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
@@ -61,7 +63,9 @@ export const controllers = [
 export const providers = [
   WideContextRepository,
   LoggerRepository,
+  EmailRepository,
   DatabaseRepository,
+  DiscordLinkRepository,
   DatabaseService,
   OidcRepository,
   UserRepository,

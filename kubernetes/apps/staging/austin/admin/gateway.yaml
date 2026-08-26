@@ -1,0 +1,62 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.envoyproxy.io/envoyproxy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: admin-envoy
+  namespace: envoy-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        # One replica (vs the app gateway's spread pair): operator-only traffic,
+        # and a brief admin outage on node reboot is acceptable in staging.
+        replicas: 1
+      envoyService:
+        type: LoadBalancer
+        patch:
+          type: StrategicMerge
+          value:
+            metadata:
+              annotations:
+                # The LAN/NetBird-only VIP — see cilium-lb.yaml; the admin.luke
+                # NetBird record must agree.
+                lbipam.cilium.io/ips: "10.10.10.17"
+            spec:
+              # Cluster, not the EG-default Local: Cilium's L2 announcer ignores
+              # backend locality, so with one replica a Local policy blackholes
+              # whenever the lease lands on a pod-less node. Source IPs are
+              # already masqueraded by the NetBird routing peer, so Local's
+              # client-IP preservation buys nothing here.
+              externalTrafficPolicy: Cluster
+  telemetry:
+    metrics:
+      prometheus: {}
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: admin
+  namespace: envoy-system
+spec:
+  gatewayClassName: envoy
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: admin-envoy
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: admin.luke.aus.int.yucca.futo.network
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: admin-luke-tls

@@ -84,6 +84,13 @@ variable "yucca_oidc_admin_client_secret" {
   default     = ""
 }
 
+variable "yucca_postmark_server_token" {
+  description = "Postmark server API token for invite/transactional email (ref stays commented in tf/.env until minted; empty token = admin-api logs and skips sends). Injected via TF_VAR from 1P."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # michael S3 credentials — the `svc-yucca-restic` RGW user on the bare-metal
 # Ceph (sietch / dev Ceph), created by the ceph Ansible with predetermined keys;
 # duplicated into yucca_tf_staging (op://yucca_tf_staging/SIETCH_CEPH_S3_SVC_
@@ -136,9 +143,10 @@ variable "sietch_rgw_tls_cert" {
 }
 
 # Cloudflare API token for the cert-manager DNS-01 ClusterIssuer (futo.cloud
-# zone). Same 1P item the dns stack uses. Injected via TF_VAR from 1P.
+# for the app domain + futo.network for the admin cert — the shared bootstrap
+# token, see tf/.env). Injected via TF_VAR from 1P.
 variable "cloudflare_api_token" {
-  description = "Cloudflare API token (Zone:Read + DNS:Edit on futo.cloud) for cert-manager DNS-01. Injected via TF_VAR from 1P."
+  description = "Cloudflare API token (Zone:Read + DNS:Edit on futo.cloud and futo.network) for cert-manager DNS-01. Injected via TF_VAR from 1P."
   type        = string
   sensitive   = true
   default     = ""
@@ -210,4 +218,64 @@ variable "clusters" {
 
     config_patches = optional(list(string), [])
   }))
+}
+
+variable "yucca_discord_bot_token" {
+  description = "Discord bot token for futo-backups-bot (FUTOBackupsBot). Empty = the bot boots idle; ref stays commented in tf/.env until minted."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "sietch_transcripts_access_key" {
+  description = "Sietch RGW (S3) access key for futo-backups-bot ticket transcripts (svc-yucca-transcripts, TF-minted SIETCH_CEPH_S3_SVC_YUCCA_TRANSCRIPTS_ACCESS_KEY). Empty = the archive sweep skips."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "sietch_transcripts_secret_key" {
+  description = "Sietch RGW (S3) secret key for futo-backups-bot ticket transcripts (svc-yucca-transcripts)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_discord_guild_id" {
+  description = "Discord server id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS, written by core-infra-tf's discord apply). Empty = the bot idles."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_staff_role_id" {
+  description = "Staff (Yucca) role id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_support_channel_id" {
+  description = "#support channel id for futo-backups-bot's pinned button (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+
+
+
+variable "yucca_discord_chat_channel_id" {
+  description = "#chat channel id mentioned after a role claim (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_customer_role_id" {
+  description = "FUTO Backups customer role id futo-backups-bot assigns on claim (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_discord_general_channel_id" {
+  description = "#general channel id for futo-backups-bot's daily claim prompt (YUCCA_DISCORD_SUPPORT_IDS)."
+  type        = string
+  default     = ""
 }

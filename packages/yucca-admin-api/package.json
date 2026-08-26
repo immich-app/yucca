@@ -1,6 +1,6 @@
 {
   "name": "yucca-admin-api",
-  "version": "0.36.0",
+  "version": "0.37.1",
   "description": "",
   "author": "",
   "private": true,
@@ -20,6 +20,7 @@
     "dist"
   ],
   "dependencies": {
+    "@common/emails": "workspace:^",
     "@common/server": "workspace:^",
     "@immich/sql-tools": "catalog:",
     "@nestjs/common": "catalog:",

@@ -52,6 +52,7 @@ oidcLogoutRedirectUri: http://localhost:5173
 secretData:
   OIDC_CLIENT_ID: "client ID"
   OIDC_CLIENT_SECRET: "client secret"
+  INTERNAL_SECRET: dev-internal-secret
 
 # OPT-IN dev signing key. The project's well-known local-dev ES256 keypair
 # (the same one committed in .mise/tasks/*/env; michael verifies with the
