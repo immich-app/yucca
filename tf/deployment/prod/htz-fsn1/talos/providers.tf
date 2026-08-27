@@ -23,10 +23,10 @@ provider "kubernetes" {
 # via OP_SERVICE_ACCOUNT_TOKEN (op run).
 provider "onepassword" {}
 
-# Freshdesk automation rule + group (freshdesk.tf). Fallbacks keep the
-# provider configurable while the manual items are unfilled — never contacted,
-# every freshdesk resource is count-gated on the real config.
+# TRANSITIONAL (see versions.tf): authenticates the destroys of the state-held
+# freshdesk resources; the group/rule are now owned by the partition's
+# global/freshdesk stack.
 provider "freshdesk" {
   domain  = coalesce(local.freshdesk_url, "https://freshdesk.invalid")
-  api_key = coalesce(local.freshdesk_admin_api_key, "unset")
+  api_key = coalesce(var.yucca_freshdesk_admin_api_key == "REPLACE_ME" ? "" : var.yucca_freshdesk_admin_api_key, "unset")
 }

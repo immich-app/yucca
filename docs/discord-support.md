@@ -188,10 +188,13 @@ self-heals by re-reading messages after the stored cursors. Dormant unless
 
 **Freshdesk-side setup**: the ticket-update **automation rule** (reply /
 public note / status change, performed by agent → webhook to the capability
-URL with the `x-freshdesk-secret` header) and the per-env **agent group** are
-**TF-managed** (`freshdesk.tf` in each talos stack, `slop-place/freshdesk`
-provider); the rule's events/actions JSON is validated by Freshdesk itself on
-first apply. What stays
+URL with the `x-freshdesk-secret` header), the per-env **agent group**, and
+the webhook credentials themselves are owned by the partition-wide
+**`tf/deployment/<partition>/global/freshdesk` stack** (`slop-place/freshdesk`
+provider); the talos stack consumes the minted values back through 1P
+(`YUCCA_FRESHDESK_WEBHOOK_{PATH,SECRET}`, `YUCCA_FRESHDESK_GROUP_ID`) into
+the bot Secret and cluster-secrets. The rule's events/actions JSON is
+validated by Freshdesk itself on first apply. What stays
 manual, once per account: create a dedicated **bot agent** and put its API
 key in the `YUCCA_FRESHDESK_API_KEY` item (with `YUCCA_FRESHDESK_URL` beside
 it), and put an **admin** agent's key in `YUCCA_FRESHDESK_ADMIN_API_KEY` —

@@ -237,38 +237,6 @@ resource "onepassword_item" "yucca_internal_secret" {
   password = random_password.yucca_internal_secret[0].result
 }
 
-# Freshdesk webhook credentials, both TF-generated and mirrored into 1P: the
-# header secret rides the bot Secret; the capability-URL path segment reaches
-# the HTTPRoute via cluster-secrets (below) so it never appears in git or CI.
-resource "random_password" "yucca_freshdesk_webhook_secret" {
-  count   = local.provision_secrets ? 1 : 0
-  length  = 48
-  special = false
-}
-
-resource "onepassword_item" "yucca_freshdesk_webhook_secret" {
-  count    = local.provision_secrets ? 1 : 0
-  vault    = data.onepassword_vault.staging[0].uuid
-  title    = "YUCCA_FRESHDESK_WEBHOOK_SECRET"
-  category = "password"
-
-  password = random_password.yucca_freshdesk_webhook_secret[0].result
-}
-
-resource "random_password" "yucca_freshdesk_webhook_path" {
-  count   = local.provision_secrets ? 1 : 0
-  length  = 32
-  special = false
-}
-
-resource "onepassword_item" "yucca_freshdesk_webhook_path" {
-  count    = local.provision_secrets ? 1 : 0
-  vault    = data.onepassword_vault.staging[0].uuid
-  title    = "YUCCA_FRESHDESK_WEBHOOK_PATH"
-  category = "password"
-
-  password = random_password.yucca_freshdesk_webhook_path[0].result
-}
 
 # Substituted into the Flux tree (apps.yaml postBuild, optional Secret source):
 # the one config channel that bypasses the git-committed cluster-settings.
@@ -279,7 +247,7 @@ resource "kubernetes_secret_v1" "cluster_secrets" {
     namespace = "flux-system"
   }
   data = {
-    FRESHDESK_WEBHOOK_PATH = random_password.yucca_freshdesk_webhook_path[0].result
+    FRESHDESK_WEBHOOK_PATH = var.yucca_freshdesk_webhook_path
   }
   depends_on = [helm_release.flux_operator]
 }
@@ -289,6 +257,13 @@ resource "kubernetes_secret_v1" "cluster_secrets" {
 # token and S3 keys default empty so this Secret can land before their 1P
 # items exist — the bot idles without a token and skips the archive sweep
 # without S3 keys.
+locals {
+  # yucca-manual-secrets placeholders read back literally as REPLACE_ME —
+  # never let that masquerade as config.
+  freshdesk_url     = var.yucca_freshdesk_url == "REPLACE_ME" ? "" : var.yucca_freshdesk_url
+  freshdesk_api_key = var.yucca_freshdesk_api_key == "REPLACE_ME" ? "" : var.yucca_freshdesk_api_key
+}
+
 resource "kubernetes_secret_v1" "futo_backups_bot" {
   count = local.provision_secrets ? 1 : 0
   metadata {
@@ -306,12 +281,13 @@ resource "kubernetes_secret_v1" "futo_backups_bot" {
     DISCORD_CUSTOMER_ROLE_ID        = var.yucca_discord_customer_role_id
     TRANSCRIPT_S3_ACCESS_KEY_ID     = var.sietch_transcripts_access_key
     TRANSCRIPT_S3_SECRET_ACCESS_KEY = var.sietch_transcripts_secret_key
-    # REPLACE_ME-guarded locals (freshdesk.tf) — an unfilled placeholder
-    # keeps the sync dormant.
+    # REPLACE_ME-guarded locals (below) — an unfilled placeholder keeps the
+    # sync dormant. The webhook credentials and group id come from the
+    # partition's global/freshdesk stack via 1P.
     FRESHDESK_URL            = local.freshdesk_url
     FRESHDESK_API_KEY        = local.freshdesk_api_key
-    FRESHDESK_GROUP_ID       = try(tostring(freshdesk_group.discord[0].id), "")
-    FRESHDESK_WEBHOOK_SECRET = random_password.yucca_freshdesk_webhook_secret[0].result
+    FRESHDESK_GROUP_ID       = var.yucca_freshdesk_group_id
+    FRESHDESK_WEBHOOK_SECRET = var.yucca_freshdesk_webhook_secret
     # Staging shares the prod Freshdesk account; the tag keeps its tickets
     # filterable in the agent view.
     FRESHDESK_TAGS = "staging"
