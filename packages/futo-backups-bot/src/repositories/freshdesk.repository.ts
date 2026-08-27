@@ -139,8 +139,10 @@ export class FreshdeskRepository {
     if (cached) {
       return cached;
     }
-    const response = await this.request('GET', `/api/v2/agents/${agentId}`, undefined, [404]);
-    const name = response.status === 404 ? 'Support' : agentSchema.parse(await response.json()).contact.name;
+    // Reading other agents' profiles needs privileges the group-scoped bot
+    // key does not have — 403 falls back like 404 instead of failing ingest.
+    const response = await this.request('GET', `/api/v2/agents/${agentId}`, undefined, [403, 404]);
+    const name = response.ok ? agentSchema.parse(await response.json()).contact.name : 'Support';
     this.agentNames.set(agentId, name);
     return name;
   }
