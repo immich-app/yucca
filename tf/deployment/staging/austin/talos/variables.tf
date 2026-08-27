@@ -255,16 +255,30 @@ variable "yucca_freshdesk_api_key" {
 }
 
 variable "yucca_freshdesk_admin_api_key" {
-  description = "Freshdesk API key of an ADMIN agent, used only by the freshdesk provider to manage the automation rule and group (manual YUCCA_FRESHDESK_ADMIN_API_KEY item; never lands in the cluster). Empty = the rules are unmanaged."
+  description = "TRANSITIONAL (see versions.tf): admin key for destroying the state-held freshdesk resources (manual YUCCA_FRESHDESK_ADMIN_API_KEY item)."
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "yucca_app_domain" {
-  description = "Public app domain the Freshdesk webhook rule targets. Must match APP_DOMAIN in the cluster-settings.generated.yaml of this cluster."
+variable "yucca_freshdesk_webhook_secret" {
+  description = "Webhook header secret minted by the staging/global/freshdesk stack (YUCCA_FRESHDESK_WEBHOOK_SECRET); refs stay commented in tf/.env until its first apply."
   type        = string
-  default     = "staging.backups.futo.cloud"
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_freshdesk_webhook_path" {
+  description = "Capability-URL path segment minted by the staging/global/freshdesk stack (YUCCA_FRESHDESK_WEBHOOK_PATH); substituted into the Flux tree via cluster-secrets."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_freshdesk_group_id" {
+  description = "Freshdesk agent-group id minted by the staging/global/freshdesk stack (YUCCA_FRESHDESK_GROUP_ID)."
+  type        = string
+  default     = ""
 }
 
 variable "yucca_discord_guild_id" {

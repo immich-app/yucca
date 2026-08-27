@@ -10,6 +10,14 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    # TRANSITIONAL: no freshdesk resources remain in config — the declaration
+    # only lets tofu destroy the state-held group/rule from the pre-
+    # global/freshdesk layout. Remove together with the provider block and
+    # yucca_freshdesk_admin_api_key after one apply.
+    freshdesk = {
+      source  = "registry.terraform.io/slop-place/freshdesk"
+      version = "~> 0.1"
+    }
     helm = {
       source  = "hashicorp/helm"
       version = "~> 3.1"
@@ -28,11 +36,6 @@ terraform {
     onepassword = {
       source  = "1Password/onepassword"
       version = "~> 2.1"
-    }
-    # Freshdesk automation rule + agent group (freshdesk.tf).
-    freshdesk = {
-      source  = "registry.terraform.io/slop-place/freshdesk"
-      version = "~> 0.1"
     }
   }
 }

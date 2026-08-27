@@ -21,7 +21,7 @@ variable "users" {
   # key landing in a read-only class, as happened with nutgood/netops both at
   # uid 3000).
   validation {
-    condition = length(distinct([for u in var.users : u.uid if u.uid != null])) == length([for u in var.users : u.uid if u.uid != null])
+    condition     = length(distinct([for u in var.users : u.uid if u.uid != null])) == length([for u in var.users : u.uid if u.uid != null])
     error_message = "Duplicate uid across login users: Junos treats same-uid logins as one user and silently merges their classes/keys. Give every user a unique uid."
   }
 }
