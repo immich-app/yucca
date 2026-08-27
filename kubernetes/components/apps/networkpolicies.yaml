@@ -5,7 +5,7 @@
 # NOT restricted in this pass (external RGW/OIDC/Polar egress needs FQDN rules
 # — a CiliumNetworkPolicy follow-up). Flow inventory:
 #   envoy (envoy-system)      → yucca-api:3020, web:5173, michael:3010,
-#                               meta:8080 (HTTPRoutes)
+#                               meta:8080, futo-backups-bot:3050 (HTTPRoutes)
 #   yucca-api → michael       = hairpin via the ingress VIP, so it ARRIVES as
 #                               envoy traffic — no direct pod-to-pod allow needed
 #   web (SSR)                 → yucca-api:3020
@@ -143,6 +143,17 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: yucca-admin-api
+      ports:
+        - { port: 3050, protocol: TCP }
+    # Freshdesk automation webhooks via the public gateway (/hooks/freshdesk
+    # HTTPRoute; x-freshdesk-secret guarded).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: envoy
       ports:
         - { port: 3050, protocol: TCP }
 ---

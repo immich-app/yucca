@@ -131,3 +131,24 @@ provider "registry.opentofu.org/siderolabs/talos" {
     "zh:d218bab0f67a2a8b15add9b51df3d30f514b57e9a7c1d733ebe97966ea132acb",
   ]
 }
+
+provider "registry.terraform.io/slop-place/freshdesk" {
+  version     = "0.1.1"
+  constraints = "~> 0.1"
+  hashes = [
+    "h1:VyOKR4IfX4LWwW1Gv6rAa5A5x/h0IEDqKHL4hjliao8=",
+    "zh:19326bde07045235a0b41a1e0936a0929ee5b8a63d1856199dde34c1e2a2f641",
+    "zh:2221a63af314b9fae115bd455564e80105ead873856ebff4a9ae967fa91b9408",
+    "zh:239a2dc1433199705b587470fc86fc5d75761e2b6b2d640a112d416966676479",
+    "zh:4b7678d13a51cf6525ea7aec5788e2fcb96c8ef6b9f853937d224946f928ddb4",
+    "zh:74e33bffa31c664a3ae1cb20d098c804ff92c83fc042ec7d24b68f0ebd8f027f",
+    "zh:7943bf339e8f825b56c109ad92702102cdf4d07d577c48e45228e2f0d7889eaf",
+    "zh:7d4958ed366239294b085542859d5cc135b8041e1c5c5ab2a0b8c278c45df665",
+    "zh:91b8bcc4e58ba08f4e3380d07d6df32719d8464607cc1a0c56f75978cccd0cc9",
+    "zh:9deb669d3cd5dd598f83d51112987540c71c46f49b6d7841fd72a88fcb84f3f0",
+    "zh:ae3a04d72429f1b45db0cb1b1741ff007fc558c864c3b64652a48f1ab636f102",
+    "zh:d477d2919ff96f3d58be4df678f8eca52fb24254d53590fddca6b34d49d48215",
+    "zh:dd743e45b051dcff9b4f88bd99a6c5c24be9a614ee750625f900b4d0022634e8",
+    "zh:f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32",
+  ]
+}

@@ -29,11 +29,12 @@ spec:
       tag: ${YUCCA_IMAGE_TAG:=}
     # Drop the chart's dev-fixture Secret — the real DISCORD_BOT_TOKEN,
     # INTERNAL_SECRET, DISCORD_* ids (from the YUCCA_DISCORD_SUPPORT_IDS item
-    # core-infra-tf's discord apply writes), and TRANSCRIPT_S3_* credentials
-    # all arrive via the TF-provisioned futo-backups-bot Secret
-    # (tf .../secrets.tf). Until they land there the bot boots idle instead of
-    # crashing. NB: the ids must NOT appear under env: — explicit env beats
-    # envFrom, so an empty value here would shadow the Secret.
+    # core-infra-tf's discord apply writes), TRANSCRIPT_S3_* credentials, and
+    # FRESHDESK_* sync config all arrive via the TF-provisioned
+    # futo-backups-bot Secret (tf .../secrets.tf). Until they land there the
+    # bot boots idle instead of crashing. NB: the ids must NOT appear under
+    # env: — explicit env beats envFrom, so an empty value here would shadow
+    # the Secret.
     secretData: null
     env:
       - name: NODE_ENV

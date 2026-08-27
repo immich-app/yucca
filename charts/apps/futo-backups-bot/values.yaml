@@ -18,6 +18,9 @@ ports:
   - name: http
     containerPort: 3050
 
+service:
+  type: ClusterIP
+
 # Empty token on purpose: the bot idles without one, so dev without a Discord
 # guild stays green. Real dev values arrive via the yucca-dev-env extraEnvFrom
 # layer (last envFrom wins), prod's via the TF-provisioned Secret of the same

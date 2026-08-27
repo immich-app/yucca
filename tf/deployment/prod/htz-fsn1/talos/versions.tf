@@ -32,5 +32,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    # Freshdesk automation rule + agent group (freshdesk.tf).
+    freshdesk = {
+      source  = "registry.terraform.io/slop-place/freshdesk"
+      version = "~> 0.1"
+    }
   }
 }
