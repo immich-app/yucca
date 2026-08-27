@@ -214,4 +214,72 @@ describe(DiscordService.name, () => {
       await expect(sut.getUserSummary('user-id')).rejects.toBeInstanceOf(NotFoundException);
     });
   });
+
+  describe('tickets', () => {
+    const ticket = {
+      id: 'ticket-id',
+      threadId: 'thread-1',
+      staffThreadId: 'staff-1',
+      freshdeskTicketId: '42',
+      discordUserId: '123456789',
+      userId: 'user-id',
+      emailSubscribed: false,
+      lastMirroredMessageId: null,
+      lastStaffMirroredMessageId: null,
+      lastFreshdeskConversationId: null,
+      closedAt: null,
+      createdAt: new Date(),
+    };
+
+    it('creates a mapping with defaulted nullables', async () => {
+      mocks.discord.createTicket.mockResolvedValue(ticket);
+
+      await expect(
+        sut.createTicket({ threadId: 'thread-1', freshdeskTicketId: '42', discordUserId: '123456789' }),
+      ).resolves.toEqual(ticket);
+
+      expect(mocks.discord.createTicket).toHaveBeenCalledWith({
+        threadId: 'thread-1',
+        staffThreadId: null,
+        freshdeskTicketId: '42',
+        discordUserId: '123456789',
+        userId: null,
+        lastMirroredMessageId: null,
+        lastStaffMirroredMessageId: null,
+      });
+    });
+
+    it('rejects an unknown thread', async () => {
+      mocks.discord.getTicketByThread.mockResolvedValue(void 0);
+
+      await expect(sut.getTicketByThread('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects an unknown freshdesk ticket', async () => {
+      mocks.discord.getTicketByFreshdeskId.mockResolvedValue(void 0);
+
+      await expect(sut.getTicketByFreshdeskId('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('translates closed into a closedAt timestamp', async () => {
+      await sut.updateTicket('ticket-id', { closed: true, lastFreshdeskConversationId: '7' });
+
+      expect(mocks.discord.updateTicket).toHaveBeenCalledWith('ticket-id', {
+        lastFreshdeskConversationId: '7',
+        closedAt: expect.any(Date),
+      });
+    });
+
+    it('leaves closedAt untouched when closed is not passed', async () => {
+      await sut.updateTicket('ticket-id', { emailSubscribed: true });
+
+      expect(mocks.discord.updateTicket).toHaveBeenCalledWith('ticket-id', { emailSubscribed: true });
+    });
+
+    it('rejects updates to an unknown ticket', async () => {
+      mocks.discord.updateTicket.mockResolvedValue(false);
+
+      await expect(sut.updateTicket('ticket-id', { closed: true })).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
 });

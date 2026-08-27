@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 
 export class DiscordLinkRequestResponseDto {
   @ApiProperty()
@@ -88,6 +88,83 @@ export class DiscordInviteCreatedDto {
 export class DiscordInviteResponseDto {
   @ApiProperty()
   discordUsername!: string;
+}
+
+export class DiscordTicketCreateDto {
+  @IsString()
+  @MaxLength(64)
+  threadId!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  staffThreadId?: string;
+
+  @IsString()
+  @MaxLength(64)
+  freshdeskTicketId!: string;
+
+  @IsString()
+  @MaxLength(64)
+  discordUserId!: string;
+
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  lastMirroredMessageId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  lastStaffMirroredMessageId?: string;
+}
+
+export class DiscordTicketUpdateDto {
+  @IsOptional()
+  @IsBoolean()
+  emailSubscribed?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  lastMirroredMessageId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  lastStaffMirroredMessageId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  lastFreshdeskConversationId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  closed?: boolean;
+}
+
+export class DiscordTicketDto {
+  id!: string;
+  threadId!: string;
+  staffThreadId!: string | null;
+  freshdeskTicketId!: string;
+  discordUserId!: string;
+  userId!: string | null;
+  emailSubscribed!: boolean;
+  lastMirroredMessageId!: string | null;
+  lastStaffMirroredMessageId!: string | null;
+  lastFreshdeskConversationId!: string | null;
+  closedAt!: Date | null;
+  createdAt!: Date;
+}
+
+export class DiscordTicketListDto {
+  items!: DiscordTicketDto[];
 }
 
 export class DiscordUserSummaryDto {

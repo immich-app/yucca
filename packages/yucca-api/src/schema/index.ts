@@ -4,6 +4,7 @@ import { ConnectionMetricsTable } from './tables/connectionMetrics.table';
 import { DiscordInviteBatchTable } from './tables/discordInviteBatch.table';
 import { DiscordLinkTable } from './tables/discordLink.table';
 import { DiscordLinkRequestTable } from './tables/discordLinkRequest.table';
+import { DiscordTicketTable } from './tables/discordTicket.table';
 import { RepositoryTable } from './tables/repository.table';
 import { RepositoryMeterTable } from './tables/repositoryMeter.table';
 import { RepositoryMeterHistoryTable } from './tables/repositoryMeterHistory.table';
@@ -33,6 +34,7 @@ export class ImmichDatabase {
     DiscordLinkTable,
     DiscordLinkRequestTable,
     DiscordInviteBatchTable,
+    DiscordTicketTable,
   ];
 
   functions = [];
@@ -56,4 +58,5 @@ export interface DB {
   discordLinks: DiscordLinkTable;
   discordLinkRequests: DiscordLinkRequestTable;
   discordInviteBatches: DiscordInviteBatchTable;
+  discordTickets: DiscordTicketTable;
 }

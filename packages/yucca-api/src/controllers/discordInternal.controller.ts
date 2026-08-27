@@ -21,6 +21,10 @@ import {
   DiscordLinkRequestCreateDto,
   DiscordLinkRequestCreatedDto,
   DiscordLinkUsernameUpdateDto,
+  DiscordTicketCreateDto,
+  DiscordTicketDto,
+  DiscordTicketListDto,
+  DiscordTicketUpdateDto,
   DiscordUserSummaryDto,
 } from 'src/dto/discord.dto';
 import { InternalGuard } from 'src/middleware/internal.guard';
@@ -73,5 +77,31 @@ export class DiscordInternalController {
   @Get('/users/:userId/summary')
   getUserSummary(@Param('userId', ParseUUIDPipe) userId: string): Promise<DiscordUserSummaryDto> {
     return this.discord.getUserSummary(userId);
+  }
+
+  @Post('/tickets')
+  createTicket(@Body() dto: DiscordTicketCreateDto): Promise<DiscordTicketDto> {
+    return this.discord.createTicket(dto);
+  }
+
+  @Get('/tickets/open')
+  listOpenTickets(): Promise<DiscordTicketListDto> {
+    return this.discord.listOpenTickets();
+  }
+
+  @Get('/tickets/by-thread/:threadId')
+  getTicketByThread(@Param('threadId') threadId: string): Promise<DiscordTicketDto> {
+    return this.discord.getTicketByThread(threadId);
+  }
+
+  @Get('/tickets/by-freshdesk/:freshdeskTicketId')
+  getTicketByFreshdeskId(@Param('freshdeskTicketId') freshdeskTicketId: string): Promise<DiscordTicketDto> {
+    return this.discord.getTicketByFreshdeskId(freshdeskTicketId);
+  }
+
+  @Patch('/tickets/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  updateTicket(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DiscordTicketUpdateDto): Promise<void> {
+    return this.discord.updateTicket(id, dto);
   }
 }
