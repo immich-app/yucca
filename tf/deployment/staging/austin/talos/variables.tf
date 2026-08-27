@@ -262,7 +262,7 @@ variable "yucca_freshdesk_admin_api_key" {
 }
 
 variable "yucca_freshdesk_webhook_secret" {
-  description = "Webhook header secret minted by the staging/global/freshdesk stack (YUCCA_FRESHDESK_WEBHOOK_SECRET); refs stay commented in tf/.env until its first apply."
+  description = "Webhook header secret minted by the staging/global/freshdesk stack (YUCCA_FRESHDESK_WEBHOOK_SECRET)."
   type        = string
   sensitive   = true
   default     = ""
