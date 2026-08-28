@@ -12,6 +12,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.npmrc'
+      - '.dockerignore'
       - '.mise/**'
       - '.github/workflows/build-check.yml'
 
@@ -50,6 +51,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.npmrc'
+              - '.dockerignore'
               - '.mise/**'
             yucca-admin-api: *node
             yucca-metrics-worker: *node
