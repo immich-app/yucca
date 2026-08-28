@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run unit tests for monk"
+#MISE dir="{{config_root}}/packages/monk"
+set -e
+
+go test ./... "$@"
