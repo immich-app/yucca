@@ -46,11 +46,14 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
 
 export const newOidcRepositoryMock = (): jest.Mocked<RepositoryInterface<OidcRepository>> => {
   return {
-    authorize: jest.fn(),
-    callback: jest.fn(),
-    deviceFlow: jest.fn(),
-    logout: jest.fn(),
     onModuleInit: jest.fn(),
+    authorize: jest.fn(),
+    authorizeTicket: jest.fn(),
+    callback: jest.fn(),
+    callbackTicket: jest.fn(),
+    logout: jest.fn(),
+    revoke: jest.fn(),
+    deviceFlow: jest.fn(),
   };
 };
 

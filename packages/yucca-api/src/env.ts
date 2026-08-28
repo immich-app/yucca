@@ -39,6 +39,8 @@ const schema = z.object({
   OIDC_REQUIRE_PKCE: z.coerce.boolean().default(true),
   OIDC_REDIRECT_URI: z.string(),
   OIDC_LOGOUT_REDIRECT_URI: z.string(),
+  OIDC_TICKET_REDIRECT_URI: z.string(),
+  OIDC_TICKET_MAX_AGE: z.coerce.number().default(300),
   OIDC_SCOPE: z.string().default('openid profile email'),
 
   OIDC_DEVICE_ISSUER: z.url().transform((url) => new URL(url)),

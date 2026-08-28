@@ -52,6 +52,25 @@ export class OidcRepository implements OnModuleInit {
     return { redirectTo, state, codeVerifier };
   }
 
+  async authorizeTicket(oidcState: string, oidcCodeVerifier: string, loginHint: string): Promise<{ redirectTo: URL }> {
+    const codeChallenge = await client.calculatePKCECodeChallenge(oidcCodeVerifier);
+
+    const parameters: Record<string, string> = {
+      redirect_uri: env.OIDC_TICKET_REDIRECT_URI,
+      scope: 'openid',
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+      state: oidcState,
+      prompt: 'login',
+      max_age: '0',
+      login_hint: loginHint,
+    };
+
+    const redirectTo: URL = client.buildAuthorizationUrl(this.config, parameters);
+
+    return { redirectTo };
+  }
+
   async callback(url: URL, expectedState: string, pkceCodeVerifier: string): Promise<client.IDToken | undefined> {
     const tokens = await client.authorizationCodeGrant(this.config, url, {
       pkceCodeVerifier,
@@ -76,6 +95,20 @@ export class OidcRepository implements OnModuleInit {
     return { ...claims, ...userInfo };
   }
 
+  async callbackTicket(
+    url: URL,
+    expectedState: string,
+    pkceCodeVerifier: string,
+  ): Promise<{ claims?: client.IDToken; accessToken: string }> {
+    const tokens = await client.authorizationCodeGrant(this.config, url, {
+      pkceCodeVerifier,
+      expectedState,
+      maxAge: env.OIDC_TICKET_MAX_AGE,
+    });
+
+    return { claims: tokens.claims(), accessToken: tokens.access_token };
+  }
+
   logout(): URL | void {
     const endpoint = this.config.serverMetadata().end_session_endpoint;
 
@@ -85,6 +118,10 @@ export class OidcRepository implements OnModuleInit {
       url.searchParams.set('post_logout_redirect_uri', env.OIDC_LOGOUT_REDIRECT_URI);
       return url;
     }
+  }
+
+  async revoke(token: string): Promise<void> {
+    await client.tokenRevocation(this.config, token);
   }
 
   async deviceFlow(): Promise<{
