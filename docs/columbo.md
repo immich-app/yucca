@@ -22,8 +22,27 @@ ticket opened (futo-backups-bot, linked users only)
 Both hops use the partition's shared internal secret (the same
 `YUCCA_INTERNAL_API_SECRET` the bot presents to yucca-api) with the
 constant-time hashed compare, failing closed when unset. NetworkPolicies pin
-the only ingress to columbo to the bot's pods, and the bot's `:3050` admits
-columbo only for the staff-notes endpoint.
+columbo's ingress to the bot and yucca-admin-api pods, and the bot's `:3050`
+admits columbo only for the staff-notes endpoint.
+
+## Ad-hoc investigations (`yuctl columbo investigate`)
+
+Staff can run an investigation without a ticket:
+
+```
+yuctl columbo investigate --user someone@example.com --prompt "backups slow since Tuesday?"
+```
+
+The flow is asynchronous because the admin gateway would kill a minutes-long
+synchronous call: yuctl resolves the email to a user id, `POST
+/api/columbo/investigations` on the admin-api starts the job (columbo
+`POST /internal/investigations/adhoc`), and yuctl polls
+`GET /api/columbo/investigations/:id` every 5s until it is `done`/`failed`,
+then prints the note (stdout) and the executed queries (stderr). Ad-hoc runs
+skip triage (staff asked explicitly), use the same scoped toolbox and
+timeout, are bounded by the same worker count (busy ⇒ 503, retry), and their
+results are held in columbo's memory for an hour — single replica, no
+persistence, an ops convenience rather than a record.
 
 ## Trust model
 

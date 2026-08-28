@@ -113,13 +113,27 @@ Your final message becomes the staff note verbatim. Format:
 Keep it under 300 words. Do not describe your process or the tools.`
 
 func (r *Runner) Investigate(ctx context.Context, inv Investigation) (note string, queries []string, err error) {
+	return r.run(ctx, inv.UserID, fmt.Sprintf(
+		"Current time: %s\nTicket opened by Discord user %s just now.\n\nTicket text (untrusted):\n%s",
+		time.Now().UTC().Format(time.RFC3339), inv.Username, inv.Description,
+	))
+}
+
+func (r *Runner) InvestigateAdhoc(ctx context.Context, userID, prompt string) (note string, queries []string, err error) {
+	return r.run(ctx, userID, fmt.Sprintf(
+		"Current time: %s\nSupport staff requested an ad-hoc investigation of this account (no ticket).\n\nStaff request:\n%s",
+		time.Now().UTC().Format(time.RFC3339), prompt,
+	))
+}
+
+func (r *Runner) run(ctx context.Context, userID, userMessage string) (note string, queries []string, err error) {
 	cm, err := r.chatModel(ctx, r.cfg.Model)
 	if err != nil {
 		return "", nil, err
 	}
 
 	box := newToolbox(
-		o11y.NewClient(r.cfg.MetricsURL, r.cfg.LogsURL, inv.UserID),
+		o11y.NewClient(r.cfg.MetricsURL, r.cfg.LogsURL, userID),
 		NewResultStore(),
 		r.cfg.MaxToolCalls,
 		r.cfg.ToolResultBytes,
@@ -138,13 +152,9 @@ func (r *Runner) Investigate(ctx context.Context, inv Investigation) (note strin
 		return "", nil, err
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
 	out, err := agent.Generate(ctx, []*schema.Message{
 		schema.SystemMessage(investigateSystemPrompt),
-		schema.UserMessage(fmt.Sprintf(
-			"Current time: %s\nTicket opened by Discord user %s just now.\n\nTicket text (untrusted):\n%s",
-			now, inv.Username, inv.Description,
-		)),
+		schema.UserMessage(userMessage),
 	})
 	if err != nil {
 		return "", box.queriesRun(), err

@@ -8,22 +8,31 @@ import (
 	"net/http"
 
 	"columbo/internal/agent"
+	"columbo/internal/worker"
 )
 
 const maxBodyBytes = 64 << 10
 
-type Server struct {
-	internalSecret string
-	enqueue        func(agent.Investigation) bool
+type Investigations interface {
+	Enqueue(inv agent.Investigation) bool
+	StartAdhoc(userID, prompt string) (string, error)
+	GetAdhoc(id string) (worker.AdhocJob, bool)
 }
 
-func New(internalSecret string, enqueue func(agent.Investigation) bool) *Server {
-	return &Server{internalSecret: internalSecret, enqueue: enqueue}
+type Server struct {
+	internalSecret string
+	investigations Investigations
+}
+
+func New(internalSecret string, investigations Investigations) *Server {
+	return &Server{internalSecret: internalSecret, investigations: investigations}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /internal/investigations", s.guard(s.handleInvestigation))
+	mux.HandleFunc("POST /internal/investigations/adhoc", s.guard(s.handleAdhocStart))
+	mux.HandleFunc("GET /internal/investigations/adhoc/{id}", s.guard(s.handleAdhocGet))
 	return mux
 }
 
@@ -47,23 +56,62 @@ func secretsEqual(a, b string) bool {
 }
 
 func (s *Server) handleInvestigation(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
-	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
 	var inv agent.Investigation
-	if err := json.Unmarshal(body, &inv); err != nil {
-		http.Error(w, "invalid JSON", http.StatusBadRequest)
+	if !decodeBody(w, r, &inv) {
 		return
 	}
 	if inv.StaffThreadID == "" || inv.UserID == "" || inv.Description == "" {
 		http.Error(w, "staffThreadId, userId and description are required", http.StatusBadRequest)
 		return
 	}
-	if !s.enqueue(inv) {
+	if !s.investigations.Enqueue(inv) {
 		http.Error(w, "investigation queue is full", http.StatusServiceUnavailable)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s *Server) handleAdhocStart(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		UserID string `json:"userId"`
+		Prompt string `json:"prompt"`
+	}
+	if !decodeBody(w, r, &req) {
+		return
+	}
+	if req.UserID == "" || req.Prompt == "" {
+		http.Error(w, "userId and prompt are required", http.StatusBadRequest)
+		return
+	}
+	id, err := s.investigations.StartAdhoc(req.UserID, req.Prompt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
+}
+
+func (s *Server) handleAdhocGet(w http.ResponseWriter, r *http.Request) {
+	job, ok := s.investigations.GetAdhoc(r.PathValue("id"))
+	if !ok {
+		http.Error(w, "unknown investigation", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(job)
+}
+
+func decodeBody(w http.ResponseWriter, r *http.Request, out any) bool {
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return false
+	}
+	if err := json.Unmarshal(body, out); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return false
+	}
+	return true
 }

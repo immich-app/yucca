@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -56,19 +57,11 @@ func main() {
 		MaxToolCalls:    cfg.MaxToolCalls,
 		ToolResultBytes: cfg.ToolResultBytes,
 	})
-	pool := worker.NewPool(runner, bot.NewClient(cfg.BotURL, cfg.InternalSecret), cfg.InvestigationTimeout)
-
-	enqueue := func(inv agent.Investigation) bool {
-		if !enabled {
-			log.Info().Str("staffThreadId", inv.StaffThreadID).Msg("dropping investigation request (no API key)")
-			return true
-		}
-		return pool.Enqueue(inv)
-	}
+	pool := worker.NewPool(runner, bot.NewClient(cfg.BotURL, cfg.InternalSecret), cfg.InvestigationTimeout, cfg.Workers)
 
 	httpSrv := &http.Server{
 		Addr:    addr,
-		Handler: server.New(cfg.InternalSecret, enqueue).Handler(),
+		Handler: server.New(cfg.InternalSecret, &gatedPool{Pool: pool, enabled: enabled}).Handler(),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -95,4 +88,28 @@ func main() {
 	pool.Wait()
 
 	log.Info().Msg("shutdown complete")
+}
+
+// gatedPool degrades gracefully without an API key, mirroring the bot's
+// tokenless idle: ticket investigations are accepted and dropped (the bot
+// must never see an error for a best-effort feature), while ad-hoc requests
+// fail loudly so the operator learns why nothing is happening.
+type gatedPool struct {
+	*worker.Pool
+	enabled bool
+}
+
+func (g *gatedPool) Enqueue(inv agent.Investigation) bool {
+	if !g.enabled {
+		log.Info().Str("staffThreadId", inv.StaffThreadID).Msg("dropping investigation request (no API key)")
+		return true
+	}
+	return g.Pool.Enqueue(inv)
+}
+
+func (g *gatedPool) StartAdhoc(userID, prompt string) (string, error) {
+	if !g.enabled {
+		return "", errors.New("columbo is disabled (OPENROUTER_API_KEY is unset)")
+	}
+	return g.Pool.StartAdhoc(userID, prompt)
 }

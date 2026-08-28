@@ -1,10 +1,15 @@
 // Package worker drains the investigation queue with bounded concurrency and
 // a hard per-investigation deadline, so a wedged model call can never pile up
-// goroutines or hold a ticket's investigation open indefinitely.
+// goroutines or hold a ticket's investigation open indefinitely. Ad-hoc
+// (staff-requested) investigations run under the same deadline through a
+// separate semaphore, with their results held in memory for polling.
 package worker
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"sync"
 	"time"
 
@@ -14,22 +19,50 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const queueSize = 32
+const (
+	queueSize      = 32
+	adhocRetention = time.Hour
+)
+
+var ErrBusy = errors.New("all investigation workers are busy — retry shortly")
+
+type Investigator interface {
+	Triage(ctx context.Context, inv agent.Investigation) (bool, string, error)
+	Investigate(ctx context.Context, inv agent.Investigation) (string, []string, error)
+	InvestigateAdhoc(ctx context.Context, userID, prompt string) (string, []string, error)
+}
+
+type AdhocJob struct {
+	ID      string   `json:"id"`
+	Status  string   `json:"status"`
+	Note    string   `json:"note,omitempty"`
+	Queries []string `json:"queries,omitempty"`
+	Error   string   `json:"error,omitempty"`
+
+	finishedAt time.Time
+}
 
 type Pool struct {
-	runner  *agent.Runner
+	runner  Investigator
 	bot     *bot.Client
 	timeout time.Duration
 	queue   chan agent.Investigation
 	wg      sync.WaitGroup
+
+	baseCtx  context.Context
+	adhocSem chan struct{}
+	adhocMu  sync.Mutex
+	adhoc    map[string]*AdhocJob
 }
 
-func NewPool(runner *agent.Runner, botClient *bot.Client, timeout time.Duration) *Pool {
+func NewPool(runner Investigator, botClient *bot.Client, timeout time.Duration, workers int) *Pool {
 	return &Pool{
-		runner:  runner,
-		bot:     botClient,
-		timeout: timeout,
-		queue:   make(chan agent.Investigation, queueSize),
+		runner:   runner,
+		bot:      botClient,
+		timeout:  timeout,
+		queue:    make(chan agent.Investigation, queueSize),
+		adhocSem: make(chan struct{}, workers),
+		adhoc:    map[string]*AdhocJob{},
 	}
 }
 
@@ -43,6 +76,7 @@ func (p *Pool) Enqueue(inv agent.Investigation) bool {
 }
 
 func (p *Pool) Run(ctx context.Context, workers int) {
+	p.baseCtx = ctx
 	for range workers {
 		p.wg.Add(1)
 		go func() {
@@ -61,6 +95,71 @@ func (p *Pool) Run(ctx context.Context, workers int) {
 
 func (p *Pool) Wait() {
 	p.wg.Wait()
+}
+
+func (p *Pool) StartAdhoc(userID, prompt string) (string, error) {
+	select {
+	case p.adhocSem <- struct{}{}:
+	default:
+		return "", ErrBusy
+	}
+
+	id := newJobID()
+	job := &AdhocJob{ID: id, Status: "running"}
+	p.adhocMu.Lock()
+	p.pruneLocked()
+	p.adhoc[id] = job
+	p.adhocMu.Unlock()
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		defer func() { <-p.adhocSem }()
+
+		ctx, cancel := context.WithTimeout(p.baseCtx, p.timeout)
+		defer cancel()
+		note, queries, err := p.runner.InvestigateAdhoc(ctx, userID, prompt)
+
+		p.adhocMu.Lock()
+		defer p.adhocMu.Unlock()
+		job.Queries = queries
+		job.finishedAt = time.Now()
+		if err != nil {
+			log.Error().Err(err).Str("jobId", id).Str("userId", userID).Msg("ad-hoc investigation failed")
+			job.Status = "failed"
+			job.Error = err.Error()
+			return
+		}
+		job.Status = "done"
+		job.Note = note
+		log.Info().Str("jobId", id).Str("userId", userID).Int("queries", len(queries)).Msg("ad-hoc investigation done")
+	}()
+
+	return id, nil
+}
+
+func (p *Pool) GetAdhoc(id string) (AdhocJob, bool) {
+	p.adhocMu.Lock()
+	defer p.adhocMu.Unlock()
+	job, ok := p.adhoc[id]
+	if !ok {
+		return AdhocJob{}, false
+	}
+	return *job, true
+}
+
+func (p *Pool) pruneLocked() {
+	for id, job := range p.adhoc {
+		if !job.finishedAt.IsZero() && time.Since(job.finishedAt) > adhocRetention {
+			delete(p.adhoc, id)
+		}
+	}
+}
+
+func newJobID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func (p *Pool) process(ctx context.Context, inv agent.Investigation) {
