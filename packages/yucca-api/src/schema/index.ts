@@ -1,4 +1,5 @@
 import { Database } from '@immich/sql-tools';
+import { ticket_action_enum } from './enums';
 import { ConnectionTable } from './tables/connection.table';
 import { ConnectionMetricsTable } from './tables/connectionMetrics.table';
 import { DiscordInviteBatchTable } from './tables/discordInviteBatch.table';
@@ -11,6 +12,7 @@ import { RepositoryMetricsTable } from './tables/repositoryMetrics.table';
 import { RepositoryMetricsHistoryTable } from './tables/repositoryMetricsHistory.table';
 import { SessionTable } from './tables/session.table';
 import { SettingsTable } from './tables/settings.table';
+import { TicketTable } from './tables/ticket.table';
 import { UserTable } from './tables/user.table';
 import { UserAllowlistTable } from './tables/userAllowlist.table';
 import { UserFeatureFlagOverrideTable } from './tables/userFeatureFlagOverride.table';
@@ -33,11 +35,12 @@ export class ImmichDatabase {
     DiscordLinkTable,
     DiscordLinkRequestTable,
     DiscordInviteBatchTable,
+    TicketTable,
   ];
 
   functions = [];
 
-  enum = [];
+  enum = [ticket_action_enum];
 }
 
 export interface DB {
@@ -56,4 +59,5 @@ export interface DB {
   discordLinks: DiscordLinkTable;
   discordLinkRequests: DiscordLinkRequestTable;
   discordInviteBatches: DiscordInviteBatchTable;
+  tickets: TicketTable;
 }

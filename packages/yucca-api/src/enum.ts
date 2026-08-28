@@ -7,6 +7,11 @@ export enum CookieName {
   RedirectPath = 'yucca-redirect-path',
 }
 
+export enum TicketAction {
+  DeleteRepository = 'repository.delete',
+  DisableWorm = 'repository.disable-worm',
+}
+
 export enum MetadataKey {
   Auth = 'AUTH',
   Feature = 'FEATURE',
