@@ -69,6 +69,7 @@ table inet filter {
         ip saddr {{ net }} tcp dport {{ ceph_firewall_node_exporter_port }} accept
         ip saddr {{ net }} tcp dport {{ ceph_firewall_mgr_exporter_port }} accept
         ip saddr {{ net }} tcp dport {{ ceph_firewall_ceph_exporter_port }} accept
+        ip saddr {{ net }} tcp dport {{ ceph_firewall_scrub_exporter_port }} accept
         ip saddr {{ net }} tcp dport {{ ceph_firewall_fluentbit_port }} accept
         ip saddr {{ net }} tcp dport {{ ceph_firewall_service_discovery_port }} accept
 {% if ceph_firewall_iscsi_enabled | bool %}
