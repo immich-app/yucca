@@ -9,6 +9,7 @@ const schema = z.object({
   DEVICE_CLIENT_ID: z.string().default('device client ID'),
 
   REDIRECT_URI: z.url().default('http://localhost:36033/api/auth/oidc/callback'),
+  TICKET_REDIRECT_URI: z.url().default('http://localhost:36033/api/auth/ticket/callback'),
   POST_LOGOUT_REDIRECT_URI: z.url().default('http://localhost:36033'),
 
   ADMIN_REDIRECT_URI: z.url().default('http://localhost:3030/api/auth/oidc/callback'),

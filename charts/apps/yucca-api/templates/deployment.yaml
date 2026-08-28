@@ -1,6 +1,7 @@
 {{- $_ := set .Values "env" (concat .Values.env (list
   (dict "name" "OIDC_ISSUER" "value" .Values.oidcIssuer)
   (dict "name" "OIDC_REDIRECT_URI" "value" .Values.oidcRedirectUri)
+  (dict "name" "OIDC_TICKET_REDIRECT_URI" "value" .Values.oidcTicketRedirectUri)
   (dict "name" "OIDC_LOGOUT_REDIRECT_URI" "value" .Values.oidcLogoutRedirectUri)
   (dict "name" "POSTGRES_HOST" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "host")))
   (dict "name" "POSTGRES_PORT" "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-app" .Values.postgresClusterName) "key" "port")))
