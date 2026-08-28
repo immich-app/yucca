@@ -59,7 +59,6 @@ jobs:
             web: *node
             michael: ['packages/michael/**', '.dockerignore']
             columbo: ['packages/columbo/**', '.dockerignore']
-            monk: ['packages/monk/**', '.dockerignore']
 
   build:
     name: Build ${{ matrix.app }}
