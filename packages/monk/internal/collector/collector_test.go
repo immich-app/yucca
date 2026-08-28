@@ -2,9 +2,13 @@ package collector
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 var testIntervals = map[Depth]time.Duration{
@@ -165,5 +169,49 @@ func TestComputeCountsUnparsableStampsOverdue(t *testing.T) {
 				t.Errorf("AgeBucketBytes[%s][%d]: got %d, want 100", d, i, b)
 			}
 		}
+	}
+}
+
+func TestExporterMetricSurface(t *testing.T) {
+	now := testNow(t)
+	deepStamp, err := time.Parse(stampLayout, "2026-07-01T00:00:00.000000+0000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "7.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-07-01T00:00:00.000000+0000", "scrub_schedule": "periodic scrub scheduled @ 2026-09-02T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}}
+	]}`)
+	snap, err := Compute(raw, now, testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exporter := &Exporter{Intervals: testIntervals}
+	exporter.Store(snap, time.Second)
+
+	if problems, err := testutil.CollectAndLint(exporter); err != nil || len(problems) > 0 {
+		t.Fatalf("lint: %v %v", problems, err)
+	}
+
+	expected := fmt.Sprintf(`
+# HELP ceph_pg_last_deep_scrub_stamp Oldest per-PG last_deep_scrub_stamp in the pool (seconds since epoch)
+# TYPE ceph_pg_last_deep_scrub_stamp gauge
+ceph_pg_last_deep_scrub_stamp{pool_id="7"} %g
+# HELP ceph_scrub_collect_success Whether the last pg ls collection succeeded
+# TYPE ceph_scrub_collect_success gauge
+ceph_scrub_collect_success 1
+# HELP ceph_scrub_overdue_bytes Bytes in PGs whose last scrub at this depth is older than the target interval
+# TYPE ceph_scrub_overdue_bytes gauge
+ceph_scrub_overdue_bytes{depth="deep",pool_id="7"} 100
+ceph_scrub_overdue_bytes{depth="shallow",pool_id="7"} 0
+# HELP ceph_scrub_target_interval_seconds Configured scrub target interval
+# TYPE ceph_scrub_target_interval_seconds gauge
+ceph_scrub_target_interval_seconds{depth="deep"} 2.4192e+06
+ceph_scrub_target_interval_seconds{depth="shallow"} 604800
+`, float64(deepStamp.UnixMicro())/1e6)
+	err = testutil.CollectAndCompare(exporter, strings.NewReader(expected),
+		"ceph_pg_last_deep_scrub_stamp", "ceph_scrub_collect_success",
+		"ceph_scrub_overdue_bytes", "ceph_scrub_target_interval_seconds")
+	if err != nil {
+		t.Error(err)
 	}
 }

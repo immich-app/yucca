@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 )
@@ -53,7 +54,12 @@ type PoolStats struct {
 	OldestStamp  map[Depth]time.Time
 	OverduePGs   map[Depth]int
 	OverdueBytes map[Depth]int64
-	// Cumulative bytes in PGs whose scrub age <= bucket, indexed like AgeBuckets.
+	// Age histogram weighted by bytes: each stored byte observes its PG's scrub
+	// age. ParsedBytes is the observation count (PGs with unparsable stamps are
+	// excluded), AgeSum the sum, AgeBucketBytes the cumulative buckets indexed
+	// like AgeBuckets.
+	ParsedBytes    map[Depth]int64
+	AgeSum         map[Depth]float64
 	AgeBucketBytes map[Depth][]int64
 }
 
@@ -65,7 +71,7 @@ type Snapshot struct {
 }
 
 func Fetch(ctx context.Context, cephCmd []string) ([]byte, error) {
-	args := append(cephCmd[1:], "pg", "ls", "-f", "json")
+	args := slices.Concat(cephCmd[1:], []string{"pg", "ls", "-f", "json"})
 	cmd := exec.CommandContext(ctx, cephCmd[0], args...)
 	// A wrapper cephCmd (cephadm shell) leaves a grandchild holding stdout past
 	// the context kill; WaitDelay lets Output return anyway.
@@ -106,6 +112,8 @@ func Compute(raw []byte, now time.Time, intervals map[Depth]time.Duration) (*Sna
 				OldestStamp:    map[Depth]time.Time{},
 				OverduePGs:     map[Depth]int{},
 				OverdueBytes:   map[Depth]int64{},
+				ParsedBytes:    map[Depth]int64{},
+				AgeSum:         map[Depth]float64{},
 				AgeBucketBytes: map[Depth][]int64{Shallow: make([]int64, len(AgeBuckets)), Deep: make([]int64, len(AgeBuckets))},
 			}
 			snap.Pools[pool] = ps
@@ -130,6 +138,8 @@ func Compute(raw []byte, now time.Time, intervals map[Depth]time.Duration) (*Sna
 				ps.OverduePGs[depth]++
 				ps.OverdueBytes[depth] += pg.StatSum.NumBytes
 			}
+			ps.ParsedBytes[depth] += pg.StatSum.NumBytes
+			ps.AgeSum[depth] += age.Seconds() * float64(pg.StatSum.NumBytes)
 			for i, le := range AgeBuckets {
 				if age <= le {
 					ps.AgeBucketBytes[depth][i] += pg.StatSum.NumBytes

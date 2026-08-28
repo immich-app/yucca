@@ -64,9 +64,11 @@ func main() {
 		}
 	}()
 
-	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	server := &http.Server{Addr: *listen, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	log.Info().Str("version", version.Version).Str("listen", *listen).Msg("serving")
-	if err := http.ListenAndServe(*listen, nil); err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal().Err(err).Msg("listen failed")
 	}
 }

@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -17,7 +16,7 @@ var (
 	descPoolBytes    = prometheus.NewDesc("ceph_scrub_pool_bytes", "Stored bytes in the pool (sum of PG stat_sum.num_bytes)", []string{"pool_id"}, nil)
 	descOverduePGs   = prometheus.NewDesc("ceph_scrub_overdue_pgs", "PGs whose last scrub at this depth is older than the target interval", []string{"pool_id", "depth"}, nil)
 	descOverdueBytes = prometheus.NewDesc("ceph_scrub_overdue_bytes", "Bytes in PGs whose last scrub at this depth is older than the target interval", []string{"pool_id", "depth"}, nil)
-	descAgeBytes     = prometheus.NewDesc("ceph_scrub_age_bytes", "Cumulative bytes in PGs whose scrub age is <= le seconds", []string{"pool_id", "depth", "le"}, nil)
+	descAgeHist      = prometheus.NewDesc("ceph_scrub_age_seconds", "Scrub age distribution weighted by bytes: each stored byte observes its PG's age", []string{"pool_id", "depth"}, nil)
 	descSchedule     = prometheus.NewDesc("ceph_scrub_schedule_pgs", "PGs by scrub_schedule state", []string{"state"}, nil)
 	descInterval     = prometheus.NewDesc("ceph_scrub_target_interval_seconds", "Configured scrub target interval", []string{"depth"}, nil)
 
@@ -82,11 +81,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		for _, depth := range Depths {
 			ch <- prometheus.MustNewConstMetric(descOverduePGs, prometheus.GaugeValue, float64(ps.OverduePGs[depth]), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverdueBytes, prometheus.GaugeValue, float64(ps.OverdueBytes[depth]), pool, string(depth))
+			buckets := make(map[float64]uint64, len(AgeBuckets))
 			for i, le := range AgeBuckets {
-				ch <- prometheus.MustNewConstMetric(descAgeBytes, prometheus.GaugeValue, float64(ps.AgeBucketBytes[depth][i]),
-					pool, string(depth), strconv.FormatInt(int64(le.Seconds()), 10))
+				buckets[le.Seconds()] = uint64(ps.AgeBucketBytes[depth][i])
 			}
-			ch <- prometheus.MustNewConstMetric(descAgeBytes, prometheus.GaugeValue, float64(ps.Bytes), pool, string(depth), "+Inf")
+			ch <- prometheus.MustNewConstHistogram(descAgeHist, uint64(ps.ParsedBytes[depth]), ps.AgeSum[depth], buckets, pool, string(depth))
 		}
 	}
 }
