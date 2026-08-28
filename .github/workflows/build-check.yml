@@ -57,9 +57,9 @@ jobs:
             yucca-metrics-worker: *node
             futo-backups-bot: *node
             web: *node
-            michael: ['packages/michael/**']
-            columbo: ['packages/columbo/**']
-            monk: ['packages/monk/**']
+            michael: ['packages/michael/**', '.dockerignore']
+            columbo: ['packages/columbo/**', '.dockerignore']
+            monk: ['packages/monk/**', '.dockerignore']
 
   build:
     name: Build ${{ matrix.app }}
