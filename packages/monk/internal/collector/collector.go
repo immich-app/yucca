@@ -34,8 +34,6 @@ const (
 
 var Depths = []Depth{Shallow, Deep}
 
-// Intervals is the resolved overdue policy: the cluster-wide targets plus any
-// per-pool overrides from pool options.
 type Intervals struct {
 	Global  map[Depth]time.Duration
 	PerPool map[string]map[Depth]time.Duration
@@ -85,10 +83,9 @@ type PoolStats struct {
 	OldestStamp  map[Depth]time.Time
 	OverduePGs   map[Depth]int
 	OverdueBytes map[Depth]int64
-	// Age histogram weighted by bytes: each stored byte observes its PG's scrub
-	// age. ParsedBytes is the observation count (PGs with unparsable stamps are
-	// excluded), AgeSum the sum, AgeBucketBytes the cumulative buckets indexed
-	// like AgeBuckets.
+	// The age histogram observes each stored byte at its PG's scrub age; PGs
+	// with unparsable stamps are excluded, and AgeBucketBytes is indexed like
+	// AgeBuckets.
 	ParsedBytes    map[Depth]int64
 	AgeSum         map[Depth]float64
 	AgeBucketBytes map[Depth][]int64
