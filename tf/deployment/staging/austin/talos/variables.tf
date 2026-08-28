@@ -281,6 +281,13 @@ variable "yucca_freshdesk_group_id" {
   default     = ""
 }
 
+variable "yucca_openrouter_api_key" {
+  description = "OpenRouter API key for columbo (manual YUCCA_OPENROUTER_API_KEY item). Empty = columbo idles."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "yucca_discord_guild_id" {
   description = "Discord server id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS, written by core-infra-tf's discord apply). Empty = the bot idles."
   type        = string

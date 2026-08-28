@@ -27,6 +27,7 @@ export const Messages = {
   staffNotesMissing: 'No staff-notes thread found for this ticket.',
   staffNoteHeader: 'Staff notes, not visible to the user.',
   staffNoteNoLink: 'No linked FUTO Backups account.',
+  investigationTitle: 'Columbo investigation',
 
   linkIntro: 'First, link your Discord account to your FUTO Backups account. The link is valid for 10 minutes.',
   linkButton: 'Link account',

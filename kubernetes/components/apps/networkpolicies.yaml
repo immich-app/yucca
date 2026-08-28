@@ -10,6 +10,8 @@
 #                               envoy traffic — no direct pod-to-pod allow needed
 #   web (SSR)                 → yucca-api:3020
 #   yucca-admin-api           → futo-backups-bot:3050
+#   futo-backups-bot          → columbo:3060 (investigation requests)
+#   columbo                   → futo-backups-bot:3050 (staff notes)
 #   api/admin-api/worker      → CNPG pods :5432 (yucca-db-rw/-ro)
 #   CNPG replication          → CNPG pods :5432 (pod↔pod)
 #   cnpg-system operator      → CNPG pods :8000 (instance manager)
@@ -156,6 +158,34 @@ spec:
               app.kubernetes.io/name: envoy
       ports:
         - { port: 3050, protocol: TCP }
+    # columbo → /internal/staff-notes (shared-secret guarded): investigation
+    # results, the agent's ONLY write path.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: columbo
+      ports:
+        - { port: 3050, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-columbo
+  namespace: yucca
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: columbo
+  policyTypes: [Ingress]
+  ingress:
+    # futo-backups-bot → /internal/investigations (shared-secret guarded):
+    # ticket-open triggers. Nothing else may reach the agent.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: futo-backups-bot
+      ports:
+        - { port: 3060, protocol: TCP }
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

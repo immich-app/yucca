@@ -47,6 +47,8 @@ spec:
         value: http://${VMAGENT_OTLP}/opentelemetry/v1/metrics
       - name: YUCCA_API_URL
         value: http://yucca-api:3020
+      - name: COLUMBO_URL
+        value: http://columbo:3060
       - name: WEB_URL
         value: https://${APP_DOMAIN}
       - name: GRAFANA_URL

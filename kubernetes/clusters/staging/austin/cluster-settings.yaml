@@ -20,6 +20,15 @@ data:
   # default grafana.futostatus.com.
   GRAFANA_URL: https://grafana.staging.futostatus.com
 
+  # Columbo reads from o11y STAGING's mesh vmauth; prod rides the base
+  # helmrelease defaults (vmauth.o11y.futo.network, resolved by coredns).
+  # The hostAliases pin mirrors the observability overlay: the NetBird DNS
+  # zone is not distributed to the staging talos peers, and 10.69.1.10 is the
+  # netbox-registered gateway VIP.
+  O11Y_SELECT_METRICS_URL: https://vmauth.staging.o11y.futo.network/select/0/prometheus
+  O11Y_SELECT_LOGS_URL: https://vmauth.staging.o11y.futo.network
+  O11Y_VMAUTH_HOST_ALIASES: '[{"ip": "10.69.1.10", "hostnames": ["vmauth.staging.o11y.futo.network"]}]'
+
   # Beta gate: these email domains may sign up without an allowlist entry;
   # everyone else needs a `yuctl users allowlist` entry or invite code.
   ALLOWED_EMAIL_DOMAINS: futo.org

@@ -1,4 +1,5 @@
 import type { LoggerRepository } from '@common/server/otel';
+import type { ColumboRepository } from 'src/repositories/columbo.repository';
 import type { DiscordRepository } from 'src/repositories/discord.repository';
 import type { FreshdeskRepository } from 'src/repositories/freshdesk.repository';
 import type { TranscriptStorageRepository } from 'src/repositories/transcriptStorage.repository';
@@ -87,6 +88,13 @@ export const newYuccaApiRepositoryMock = (): jest.Mocked<RepositoryInterface<Yuc
   };
 };
 
+export const newColumboRepositoryMock = (): jest.Mocked<RepositoryInterface<ColumboRepository>> => {
+  return {
+    enabled: true,
+    requestInvestigation: jest.fn().mockResolvedValue(void 0),
+  };
+};
+
 export const newTranscriptStorageRepositoryMock = (): jest.Mocked<RepositoryInterface<TranscriptStorageRepository>> => {
   return {
     enabled: true,
@@ -102,6 +110,7 @@ export const newMocks = () => {
     storage: newTranscriptStorageRepositoryMock(),
     freshdesk: newFreshdeskRepositoryMock(),
     freshdeskSync: newFreshdeskSyncServiceMock(),
+    columbo: newColumboRepositoryMock(),
   };
 };
 
