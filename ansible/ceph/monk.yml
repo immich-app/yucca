@@ -9,10 +9,14 @@
 # against the final nftables ruleset, and alongside logging.yml in spirit: a
 # node that cannot export scrub metrics must never block convergence.
 #
+# ceph_mon, not ceph_nodes: the TF-rendered group holds the hosts whose roles
+# include "mon" on any cluster shape (all of sietch, 5 of spice's 48). A
+# per-host mon var only exists on clusters that pin their quorum.
+#
 #   Canary:   mise run monk -- --limit spice-ceph-adelia
 #   Fleet:    mise run monk
 - name: Scrub-backlog exporter
-  hosts: ceph_nodes
+  hosts: ceph_mon
   become: true
   max_fail_percentage: 20
   tasks:
