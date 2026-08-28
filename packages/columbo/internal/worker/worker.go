@@ -116,8 +116,10 @@ func (p *Pool) StartAdhoc(userID, prompt string) (string, error) {
 		defer p.wg.Done()
 		defer func() { <-p.adhocSem }()
 
-		ctx, cancel := context.WithTimeout(p.baseCtx, p.timeout)
+		logger := log.With().Str("investigationId", id).Str("userId", userID).Str("trigger", "adhoc").Logger()
+		ctx, cancel := context.WithTimeout(logger.WithContext(p.baseCtx), p.timeout)
 		defer cancel()
+		logger.Info().Str("audit", "adhoc_start").Str("prompt", prompt).Msg("columbo audit: ad-hoc investigation start")
 		note, queries, err := p.runner.InvestigateAdhoc(ctx, userID, prompt)
 
 		p.adhocMu.Lock()
@@ -125,14 +127,14 @@ func (p *Pool) StartAdhoc(userID, prompt string) (string, error) {
 		job.Queries = queries
 		job.finishedAt = time.Now()
 		if err != nil {
-			log.Error().Err(err).Str("jobId", id).Str("userId", userID).Msg("ad-hoc investigation failed")
+			logger.Error().Err(err).Str("audit", "adhoc_failed").Msg("ad-hoc investigation failed")
 			job.Status = "failed"
 			job.Error = err.Error()
 			return
 		}
 		job.Status = "done"
 		job.Note = note
-		log.Info().Str("jobId", id).Str("userId", userID).Int("queries", len(queries)).Msg("ad-hoc investigation done")
+		logger.Info().Str("audit", "note").Str("note", note).Int("queries", len(queries)).Msg("ad-hoc investigation done")
 	}()
 
 	return id, nil
@@ -163,9 +165,16 @@ func newJobID() string {
 }
 
 func (p *Pool) process(ctx context.Context, inv agent.Investigation) {
-	logger := log.With().Str("staffThreadId", inv.StaffThreadID).Str("userId", inv.UserID).Logger()
-	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	id := newJobID()
+	logger := log.With().
+		Str("investigationId", id).
+		Str("staffThreadId", inv.StaffThreadID).
+		Str("userId", inv.UserID).
+		Str("trigger", "ticket").
+		Logger()
+	ctx, cancel := context.WithTimeout(logger.WithContext(ctx), p.timeout)
 	defer cancel()
+	logger.Info().Str("audit", "ticket_start").Str("description", inv.Description).Msg("columbo audit: ticket investigation start")
 
 	investigate, reason, err := p.runner.Triage(ctx, inv)
 	if err != nil {
@@ -188,15 +197,15 @@ func (p *Pool) process(ctx context.Context, inv agent.Investigation) {
 	// budget, so posting gets its own deadline.
 	postCtx, postCancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer postCancel()
-	if err := p.bot.PostStaffNote(postCtx, inv.StaffThreadID, formatNote(note, queries)); err != nil {
+	if err := p.bot.PostStaffNote(postCtx, inv.StaffThreadID, formatNote(note, queries, id)); err != nil {
 		logger.Error().Err(err).Msg("failed to post the staff note")
 		return
 	}
-	logger.Info().Int("queries", len(queries)).Msg("investigation posted")
+	logger.Info().Str("audit", "note").Str("note", note).Int("queries", len(queries)).Msg("investigation posted")
 }
 
-func formatNote(note string, queries []string) string {
-	out := note + "\n\n-# AI-generated from this user's metrics and logs — verify before acting on it."
+func formatNote(note string, queries []string, id string) string {
+	out := note + "\n\n-# AI-generated from this user's metrics and logs — verify before acting on it. Investigation " + id
 	if len(queries) > 0 {
 		out += "\n-# Queries: "
 		for i, q := range queries {

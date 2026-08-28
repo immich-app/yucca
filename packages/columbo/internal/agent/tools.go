@@ -15,6 +15,7 @@ import (
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
 	"github.com/itchyny/gojq"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -45,19 +46,48 @@ func newToolbox(client *o11y.Client, store *ResultStore, maxCalls, maxResult int
 }
 
 func (t *toolbox) tools() ([]tool.BaseTool, error) {
-	metrics, err := utils.InferTool("query_metrics", metricsDescription, t.queryMetrics)
+	metrics, err := utils.InferTool("query_metrics", metricsDescription, audited("query_metrics", t.queryMetrics))
 	if err != nil {
 		return nil, err
 	}
-	logs, err := utils.InferTool("query_logs", logsDescription, t.queryLogs)
+	logs, err := utils.InferTool("query_logs", logsDescription, audited("query_logs", t.queryLogs))
 	if err != nil {
 		return nil, err
 	}
-	jq, err := utils.InferTool("jq", jqDescription, t.jq)
+	jq, err := utils.InferTool("jq", jqDescription, audited("jq", t.jq))
 	if err != nil {
 		return nil, err
 	}
-	return []tool.BaseTool{metrics, logs, jq}, nil
+	// Tool failures (a bad query, an exhausted budget) become tool RESULTS,
+	// not run failures: the model gets the error text and can correct itself
+	// instead of the whole investigation dying on a syntax error. MaxStep
+	// still bounds a model that never recovers.
+	wrapped := make([]tool.BaseTool, 0, 3)
+	for _, t := range []tool.BaseTool{metrics, logs, jq} {
+		wrapped = append(wrapped, utils.WrapToolWithErrorHandler(t, func(_ context.Context, err error) string {
+			return "ERROR: " + err.Error()
+		}))
+	}
+	return wrapped, nil
+}
+
+func audited[T any](name string, fn func(context.Context, T) (string, error)) func(context.Context, T) (string, error) {
+	return func(ctx context.Context, args T) (string, error) {
+		started := time.Now()
+		result, err := fn(ctx, args)
+		event := zerolog.Ctx(ctx).Info().
+			Str("audit", "tool_call").
+			Str("tool", name).
+			Interface("args", args).
+			Dur("durationMs", time.Since(started))
+		if err != nil {
+			event = event.Str("error", err.Error())
+		} else {
+			event = event.Int("resultBytes", len(result)).Str("result", result)
+		}
+		event.Msg("columbo audit: tool call")
+		return result, err
+	}
 }
 
 func (t *toolbox) queriesRun() []string {

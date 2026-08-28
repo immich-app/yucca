@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/cloudwego/eino/components/tool"
 )
 
 func testBox(maxCalls, maxResult int) *toolbox {
@@ -103,6 +105,24 @@ func TestJqRejectsUnknownRef(t *testing.T) {
 	box := testBox(4, 1024)
 	if _, err := box.jq(context.Background(), jqArgs{Program: ".", Ref: "r99"}); err == nil {
 		t.Fatal("expected an unknown-ref error")
+	}
+}
+
+func TestToolErrorsBecomeToolResults(t *testing.T) {
+	box := testBox(4, 1024)
+	tools, err := box.tools()
+	if err != nil {
+		t.Fatal(err)
+	}
+	jq := tools[2].(interface {
+		InvokableRun(ctx context.Context, argumentsInJSON string, opts ...tool.Option) (string, error)
+	})
+	out, err := jq.InvokableRun(context.Background(), `{"program":".","ref":"r99"}`)
+	if err != nil {
+		t.Fatalf("tool error leaked as a run error: %v", err)
+	}
+	if !strings.Contains(out, "ERROR:") || !strings.Contains(out, "unknown ref") {
+		t.Fatalf("out = %q", out)
 	}
 }
 

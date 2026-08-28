@@ -14,9 +14,14 @@ import (
 	"columbo/internal/o11y"
 
 	"github.com/cloudwego/eino-ext/components/model/openai"
+	"github.com/cloudwego/eino/callbacks"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
+	ucallbacks "github.com/cloudwego/eino/utils/callbacks"
+	"github.com/rs/zerolog"
 )
 
 const maxNoteChars = 3800
@@ -73,6 +78,7 @@ func (r *Runner) Triage(ctx context.Context, inv Investigation) (bool, string, e
 	if err != nil {
 		return false, "", err
 	}
+	zerolog.Ctx(ctx).Info().Str("audit", "triage").Str("response", out.Content).Msg("columbo audit: triage response")
 	verdict, err := parseTriage(out.Content)
 	if err != nil {
 		return false, "", fmt.Errorf("unparseable triage verdict %q: %w", out.Content, err)
@@ -143,7 +149,7 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (note stri
 		return "", nil, err
 	}
 
-	agent, err := react.NewAgent(ctx, &react.AgentConfig{
+	loop, err := react.NewAgent(ctx, &react.AgentConfig{
 		ToolCallingModel: cm,
 		ToolsConfig:      compose.ToolsNodeConfig{Tools: tools},
 		MaxStep:          2*r.cfg.MaxToolCalls + 4,
@@ -152,14 +158,51 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (note stri
 		return "", nil, err
 	}
 
-	out, err := agent.Generate(ctx, []*schema.Message{
-		schema.SystemMessage(investigateSystemPrompt),
-		schema.UserMessage(userMessage),
-	})
+	zerolog.Ctx(ctx).Info().
+		Str("audit", "investigation_start").
+		Str("model", r.cfg.Model).
+		Str("userMessage", userMessage).
+		Msg("columbo audit: investigation start")
+
+	out, err := loop.Generate(
+		ctx,
+		[]*schema.Message{schema.SystemMessage(investigateSystemPrompt), schema.UserMessage(userMessage)},
+		agent.WithComposeOptions(compose.WithCallbacks(auditModelHandler())),
+	)
 	if err != nil {
 		return "", box.queriesRun(), err
 	}
 	return truncateNote(out.Content), box.queriesRun(), nil
+}
+
+// auditModelHandler records the full model trajectory — every assistant turn
+// with its visible content, reasoning, tool calls, and token usage — so an
+// investigation is fully reconstructable from the audit log alone.
+func auditModelHandler() callbacks.Handler {
+	return ucallbacks.NewHandlerHelper().ChatModel(&ucallbacks.ModelCallbackHandler{
+		OnEnd: func(ctx context.Context, _ *callbacks.RunInfo, output *model.CallbackOutput) context.Context {
+			if output == nil || output.Message == nil {
+				return ctx
+			}
+			toolCalls, _ := json.Marshal(output.Message.ToolCalls)
+			event := zerolog.Ctx(ctx).Info().
+				Str("audit", "model_message").
+				Str("role", string(output.Message.Role)).
+				Str("content", output.Message.Content).
+				Str("reasoning", output.Message.ReasoningContent).
+				RawJSON("toolCalls", toolCalls)
+			if output.TokenUsage != nil {
+				event = event.Int("promptTokens", output.TokenUsage.PromptTokens).
+					Int("completionTokens", output.TokenUsage.CompletionTokens)
+			}
+			event.Msg("columbo audit: model message")
+			return ctx
+		},
+		OnError: func(ctx context.Context, _ *callbacks.RunInfo, err error) context.Context {
+			zerolog.Ctx(ctx).Error().Str("audit", "model_error").Err(err).Msg("columbo audit: model error")
+			return ctx
+		},
+	}).Handler()
 }
 
 func truncateNote(note string) string {
