@@ -117,11 +117,20 @@ prompt/description, the triage response, every model message (visible
 content, reasoning, tool calls, token usage — `audit=model_message`), every
 tool call with its raw arguments and result (`audit=tool_call`), the exact
 post-scoping request each backend received (`audit=backend_query`), and the
-final note (`audit=note`). The staff note carries its investigation id, so a
-note can always be traced back to everything the model thought, said, and
-queried to produce it. Tool failures (bad query syntax, exhausted budget)
+final note (`audit=note`). The staff note links its investigation id to the
+`yucca-columbo` Grafana dashboard (`o11y/dashboards/yucca-columbo.json`),
+which renders the whole trajectory for one id, so a note can always be
+traced back to everything the model thought, said, and queried to produce
+it. Tool failures (bad query syntax, exhausted budget)
 are returned to the model as tool results rather than aborting the run;
 `MaxStep` still bounds a model that never recovers.
+
+The note (and the ad-hoc API response / yuctl output) also reports the
+investigation's cost — tool calls, prompt/completion tokens, duration — and
+the same numbers ship as fleet metrics over the normal OTLP route
+(`columbo.investigations`, `columbo.tool_calls`, `columbo.tokens`,
+`columbo.investigation.duration`, labelled by trigger/outcome only, never by
+user), rendered in the dashboard's Fleet row.
 
 ## Known deviations / follow-ups
 

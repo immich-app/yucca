@@ -96,6 +96,12 @@ func (t *toolbox) queriesRun() []string {
 	return append([]string(nil), t.queries...)
 }
 
+func (t *toolbox) callsMade() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.calls
+}
+
 func (t *toolbox) spend(description string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()

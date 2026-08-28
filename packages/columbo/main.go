@@ -15,6 +15,7 @@ import (
 	"columbo/internal/agent"
 	"columbo/internal/bot"
 	"columbo/internal/config"
+	"columbo/internal/metrics"
 	"columbo/internal/server"
 	"columbo/internal/version"
 	"columbo/internal/worker"
@@ -57,7 +58,17 @@ func main() {
 		MaxToolCalls:    cfg.MaxToolCalls,
 		ToolResultBytes: cfg.ToolResultBytes,
 	})
+	recorder, err := metrics.Setup(cfg.OTLPMetricsEndpoint, cfg.OTLPMetricsURLPath, cfg.OTLPMetricsInterval)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to set up metrics")
+	}
+	if recorder != nil {
+		log.Info().Str("endpoint", cfg.OTLPMetricsEndpoint).Msg("OpenTelemetry metrics enabled")
+	}
+
 	pool := worker.NewPool(runner, bot.NewClient(cfg.BotURL, cfg.InternalSecret), cfg.InvestigationTimeout, cfg.Workers)
+	pool.GrafanaURL = cfg.GrafanaURL
+	pool.Metrics = recorder
 
 	httpSrv := &http.Server{
 		Addr:    addr,
@@ -86,6 +97,10 @@ func main() {
 		log.Fatal().Err(err).Msg("shutdown error")
 	}
 	pool.Wait()
+
+	if err := recorder.Shutdown(shutdownCtx); err != nil {
+		log.Error().Err(err).Msg("meter provider shutdown error")
+	}
 
 	log.Info().Msg("shutdown complete")
 }

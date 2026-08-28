@@ -1922,12 +1922,24 @@
           "error": {
             "type": "string",
             "nullable": true
+          },
+          "toolCalls": {
+            "type": "number"
+          },
+          "promptTokens": {
+            "type": "number"
+          },
+          "completionTokens": {
+            "type": "number"
           }
         },
         "required": [
           "id",
           "status",
-          "queries"
+          "queries",
+          "toolCalls",
+          "promptTokens",
+          "completionTokens"
         ]
       },
       "DiscordInviteBatchDto": {

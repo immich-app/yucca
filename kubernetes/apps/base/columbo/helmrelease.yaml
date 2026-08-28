@@ -51,4 +51,10 @@ spec:
         value: ${COLUMBO_MODEL:=z-ai/glm-5.3-flash}
       - name: COLUMBO_TRIAGE_MODEL
         value: ${COLUMBO_TRIAGE_MODEL:=deepseek/deepseek-v4-flash-0731}
+      - name: GRAFANA_URL
+        value: ${GRAFANA_URL:=}
+      - name: OTLP_METRICS_ENDPOINT
+        value: ${VMAGENT_OTLP}
+      - name: OTLP_METRICS_URL_PATH
+        value: /opentelemetry/v1/metrics
     hostAliases: ${O11Y_VMAUTH_HOST_ALIASES:=[]}

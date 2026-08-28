@@ -36,6 +36,9 @@ describe(ColumboService.name, () => {
         note: null,
         queries: [],
         error: null,
+        toolCalls: 0,
+        promptTokens: 0,
+        completionTokens: 0,
       });
       expect(mocks.columbo.startInvestigation).toHaveBeenCalledWith('user-1', 'why slow');
     });
@@ -49,7 +52,7 @@ describe(ColumboService.name, () => {
     });
 
     it('returns the job with defaults filled in', async () => {
-      mocks.columbo.getInvestigation.mockResolvedValue({ id: 'job-1', status: 'done', note: 'all good' });
+      mocks.columbo.getInvestigation.mockResolvedValue({ id: 'job-1', status: 'done', note: 'all good', toolCalls: 3 });
 
       await expect(sut.getInvestigation('job-1')).resolves.toEqual({
         id: 'job-1',
@@ -57,6 +60,9 @@ describe(ColumboService.name, () => {
         note: 'all good',
         queries: [],
         error: null,
+        toolCalls: 3,
+        promptTokens: 0,
+        completionTokens: 0,
       });
     });
   });

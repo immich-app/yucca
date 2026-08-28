@@ -89,6 +89,8 @@ func newInvestigateCmd(f *cmdutil.Factory) *cobra.Command {
 					fmt.Fprintf(f.IO.Err, "  %s\n", q)
 				}
 			}
+			fmt.Fprintf(f.IO.Err, "\ncost: %d tool calls · %d in / %d out tokens\n",
+				job.ToolCalls, job.PromptTokens, job.CompletionTokens)
 			return nil
 		},
 	}

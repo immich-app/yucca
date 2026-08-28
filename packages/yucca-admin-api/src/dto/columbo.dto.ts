@@ -27,4 +27,13 @@ export class ColumboInvestigationDto {
 
   @ApiProperty({ type: 'string', required: false, nullable: true })
   error!: string | null;
+
+  @ApiProperty()
+  toolCalls!: number;
+
+  @ApiProperty()
+  promptTokens!: number;
+
+  @ApiProperty()
+  completionTokens!: number;
 }
