@@ -57,6 +57,17 @@ export const newOidcRepositoryMock = (): jest.Mocked<RepositoryInterface<OidcRep
   };
 };
 
+export const newTicketRepositoryMock = (): jest.Mocked<RepositoryInterface<TicketRepository>> => {
+  return {
+    create: jest.fn(),
+    getPending: jest.fn(),
+    getByOidcState: jest.fn(),
+    activate: jest.fn(),
+    spend: jest.fn(),
+    deleteExpired: jest.fn(),
+  };
+};
+
 export const newSessionRepositoryMock = (): jest.Mocked<RepositoryInterface<SessionRepository>> => {
   return {
     create: jest.fn(),
@@ -159,6 +170,7 @@ export const newMocks = () => {
     database: newDatabaseRepositoryMock(),
     discord: newDiscordRepositoryMock(),
     oidc: newOidcRepositoryMock(),
+    ticket: newTicketRepositoryMock(),
     session: newSessionRepositoryMock(),
     user: newUserRepositoryMock(),
     userAllowlist: newUserAllowlistRepositoryMock(),

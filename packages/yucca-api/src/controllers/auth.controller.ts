@@ -1,10 +1,13 @@
-import { Controller, Get, Query, Req, Res, Sse } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, Sse } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import { parse } from 'cookie';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
 import { type Observable } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
+import { TicketCreateRequestDto, TicketCreateResponseDto, TicketDto } from 'src/dto/ticket.dto';
 import { CookieName } from 'src/enum';
+import { env } from 'src/env';
 import { Auth, AuthRoute } from 'src/middleware/auth.guard';
 import { AuthService } from 'src/services/auth.service';
 import { EmailNotAllowedException } from 'src/utils/exceptions';
@@ -122,5 +125,34 @@ export class AuthController {
     @Query('connection_name') connectionName?: string,
   ): Observable<MessageEvent> {
     return this.auth.oidcDeviceFlowObservable(connectionType, connectionName);
+  }
+
+  @Post('/ticket')
+  @AuthRoute()
+  @ApiOkResponse({ type: TicketCreateResponseDto })
+  createTicket(@Auth() auth: AuthDto, @Body() dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    return this.auth.createTicket(auth, dto);
+  }
+
+  @Get('/ticket')
+  @ApiOkResponse({ type: TicketDto })
+  getTicket(@Req() request: Request): Promise<TicketDto> {
+    const cookies = parse(request.headers.cookie ?? '');
+
+    return this.auth.getTicket(cookies[CookieName.TicketId] ?? '');
+  }
+
+  @Get('/ticket/callback')
+  async ticketCallback(@Req() request: Request, @Res() response: Response) {
+    const { ticketId, redirectTo } = await this.auth.ticketCallback(request);
+
+    response.cookie(CookieName.TicketId, ticketId, {
+      sameSite: 'lax',
+      httpOnly: true,
+      secure: request.protocol === 'https',
+      maxAge: env.TICKET_TTL.toMillis(),
+    });
+
+    response.redirect(redirectTo);
   }
 }

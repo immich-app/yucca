@@ -5,6 +5,7 @@ export enum CookieName {
   InviteCode = 'yucca-invite-code',
   DiscordInvite = 'yucca-discord-invite',
   RedirectPath = 'yucca-redirect-path',
+  TicketId = 'yucca-ticket-id',
 }
 
 export enum TicketAction {

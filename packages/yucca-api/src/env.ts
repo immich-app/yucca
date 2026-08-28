@@ -1,3 +1,4 @@
+import { Duration } from 'luxon';
 import type { StringValue } from 'ms';
 import { z } from 'zod';
 
@@ -47,6 +48,11 @@ const schema = z.object({
   OIDC_DEVICE_CLIENT_ID: z.string(),
   OIDC_DEVICE_ALLOW_INSECURE: z.coerce.boolean().default(false),
   OIDC_DEVICE_SCOPE: z.string().default('openid profile email'),
+
+  TICKET_TTL: z.coerce
+    .number()
+    .default(600)
+    .transform((seconds) => Duration.fromObject({ seconds })),
 
   TOPOLOGY_FILE: z.string().default('./topology.dev.json'),
   API_ROOT: z.string().default('http://localhost:3020/api'),

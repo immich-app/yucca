@@ -38,6 +38,8 @@ describe(AuthService.name, () => {
       mocks.wideContext,
       mocks.connection as never,
       mocks.discord as never,
+      mocks.ticket as never,
+      mocks.repository as never,
     );
     allowedEmailDomains = env.ALLOWED_EMAIL_DOMAINS;
     env.ALLOWED_EMAIL_DOMAINS = [];
