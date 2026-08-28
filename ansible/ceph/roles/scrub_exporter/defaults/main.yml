@@ -9,10 +9,6 @@ ceph_scrub_exporter_image: ""
 
 ceph_scrub_exporter_port: 9284
 ceph_scrub_exporter_refresh: 2m
-# Match the cluster's osd_scrub_max_interval / osd_deep_scrub_interval
-# (ceph-config.generated.yml); monk does not read them from the cluster.
-ceph_scrub_exporter_shallow_interval: 168h
-ceph_scrub_exporter_deep_interval: 672h
 
 # Read-only identity; the keyring lands only on mon-role hosts. The container
 # runs as the ceph image's uid 167, which must be able to read it.

@@ -10,9 +10,7 @@ ExecStart=/usr/bin/podman run --rm --name monk --net host \
   {{ ceph_scrub_exporter_image }} \
   -listen {{ ceph_service_ip }}:{{ ceph_scrub_exporter_port }} \
   -ceph-cmd "ceph --id {{ ceph_scrub_exporter_auth_entity | regex_replace('^client\\.', '') }}" \
-  -refresh {{ ceph_scrub_exporter_refresh }} \
-  -shallow-interval {{ ceph_scrub_exporter_shallow_interval }} \
-  -deep-interval {{ ceph_scrub_exporter_deep_interval }}
+  -refresh {{ ceph_scrub_exporter_refresh }}
 ExecStop=/usr/bin/podman stop monk
 Restart=always
 RestartSec=10
