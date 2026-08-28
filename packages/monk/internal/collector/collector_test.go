@@ -125,3 +125,45 @@ func TestComputeRejectsEmpty(t *testing.T) {
 		t.Error("empty pg_stats should error, not report zero work outstanding")
 	}
 }
+
+func TestComputeCountsUnparsableStampsOverdue(t *testing.T) {
+	now := testNow(t)
+	goodStamp, err := time.Parse(stampLayout, "2026-08-31T00:00:00.000000+0000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "7.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "7.b", "last_scrub_stamp": "", "last_deep_scrub_stamp": "", "stat_sum": {"num_bytes": 40}}
+	]}`)
+	snap, err := Compute(raw, now, testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.ParseErrors != 2 {
+		t.Errorf("ParseErrors: got %d, want 2", snap.ParseErrors)
+	}
+	ps := snap.Pools["7"]
+	if ps == nil {
+		t.Fatal("pool 7 missing")
+	}
+	if ps.PGs != 2 || ps.Bytes != 140 {
+		t.Errorf("pool totals: got %d PGs / %d bytes, want 2 / 140", ps.PGs, ps.Bytes)
+	}
+	for _, d := range Depths {
+		if ps.OverduePGs[d] != 1 {
+			t.Errorf("OverduePGs[%s]: got %d, want 1", d, ps.OverduePGs[d])
+		}
+		if ps.OverdueBytes[d] != 40 {
+			t.Errorf("OverdueBytes[%s]: got %d, want 40", d, ps.OverdueBytes[d])
+		}
+		if !ps.OldestStamp[d].Equal(goodStamp) {
+			t.Errorf("OldestStamp[%s]: got %v, want %v", d, ps.OldestStamp[d], goodStamp)
+		}
+		for i, b := range ps.AgeBucketBytes[d] {
+			if b != 100 {
+				t.Errorf("AgeBucketBytes[%s][%d]: got %d, want 100", d, i, b)
+			}
+		}
+	}
+}

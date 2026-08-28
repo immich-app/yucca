@@ -36,6 +36,7 @@ func main() {
 	}
 
 	exporter := &collector.Exporter{Intervals: intervals}
+	exporter.MarkFailed()
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(exporter)
 
@@ -56,8 +57,8 @@ func main() {
 		log.Error().Err(err).Msg("collection failed")
 	}
 
-	collect()
 	go func() {
+		collect()
 		for range time.Tick(*refresh) {
 			collect()
 		}

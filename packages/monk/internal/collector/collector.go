@@ -66,7 +66,11 @@ type Snapshot struct {
 
 func Fetch(ctx context.Context, cephCmd []string) ([]byte, error) {
 	args := append(cephCmd[1:], "pg", "ls", "-f", "json")
-	out, err := exec.CommandContext(ctx, cephCmd[0], args...).Output()
+	cmd := exec.CommandContext(ctx, cephCmd[0], args...)
+	// A wrapper cephCmd (cephadm shell) leaves a grandchild holding stdout past
+	// the context kill; WaitDelay lets Output return anyway.
+	cmd.WaitDelay = time.Second
+	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
 			return nil, fmt.Errorf("%s: %w: %s", cephCmd[0], err, strings.TrimSpace(string(ee.Stderr)))
@@ -114,6 +118,8 @@ func Compute(raw []byte, now time.Time, intervals map[Depth]time.Duration) (*Sna
 			stamp, err := time.Parse(stampLayout, stampStr)
 			if err != nil {
 				snap.ParseErrors++
+				ps.OverduePGs[depth]++
+				ps.OverdueBytes[depth] += pg.StatSum.NumBytes
 				continue
 			}
 			if old, ok := ps.OldestStamp[depth]; !ok || stamp.Before(old) {
