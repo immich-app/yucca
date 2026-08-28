@@ -1,5 +1,11 @@
 import { WideContextRepository } from '@common/server/otel';
-import { BadRequestException, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Scope,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
@@ -98,6 +104,6 @@ export class RepositoryService {
   async delete(userId: string, id: string) {
     await this.getOwned(userId, id);
 
-    await this.repositoryRepository.delete(id);
+    throw new InternalServerErrorException('unimplemented, needs to hook up to prune mechanism');
   }
 }
