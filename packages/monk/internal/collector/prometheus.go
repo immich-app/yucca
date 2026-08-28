@@ -18,7 +18,7 @@ var (
 	descOverdueBytes = prometheus.NewDesc("ceph_scrub_overdue_bytes", "Bytes in PGs whose last scrub at this depth is older than the target interval", []string{"pool_id", "depth"}, nil)
 	descAgeHist      = prometheus.NewDesc("ceph_scrub_age_seconds", "Scrub age distribution weighted by bytes: each stored byte observes its PG's age", []string{"pool_id", "depth"}, nil)
 	descSchedule     = prometheus.NewDesc("ceph_scrub_schedule_pgs", "PGs by scrub_schedule state", []string{"state"}, nil)
-	descInterval     = prometheus.NewDesc("ceph_scrub_target_interval_seconds", "Configured scrub target interval", []string{"depth"}, nil)
+	descInterval     = prometheus.NewDesc("ceph_scrub_target_interval_seconds", "Scrub target interval the pool's overdue numbers were judged against", []string{"pool_id", "depth"}, nil)
 
 	descSuccess     = prometheus.NewDesc("ceph_scrub_collect_success", "Whether the last pg ls collection succeeded", nil, nil)
 	descDuration    = prometheus.NewDesc("ceph_scrub_collect_duration_seconds", "Duration of the last successful collection", nil, nil)
@@ -27,8 +27,6 @@ var (
 )
 
 type Exporter struct {
-	Intervals map[Depth]time.Duration
-
 	snapshot     atomic.Pointer[Snapshot]
 	lastDuration atomic.Int64
 	failed       atomic.Bool
@@ -54,9 +52,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		success = 1.0
 	}
 	ch <- prometheus.MustNewConstMetric(descSuccess, prometheus.GaugeValue, success)
-	for depth, iv := range e.Intervals {
-		ch <- prometheus.MustNewConstMetric(descInterval, prometheus.GaugeValue, iv.Seconds(), string(depth))
-	}
 
 	snap := e.snapshot.Load()
 	if snap == nil {
@@ -79,6 +74,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(descLastDeepScrub, prometheus.GaugeValue, float64(s.UnixMicro())/1e6, pool)
 		}
 		for _, depth := range Depths {
+			ch <- prometheus.MustNewConstMetric(descInterval, prometheus.GaugeValue, ps.Interval[depth].Seconds(), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverduePGs, prometheus.GaugeValue, float64(ps.OverduePGs[depth]), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverdueBytes, prometheus.GaugeValue, float64(ps.OverdueBytes[depth]), pool, string(depth))
 			buckets := make(map[float64]uint64, len(AgeBuckets))

@@ -23,12 +23,14 @@ monk                                  # cluster host with ceph CLI + keyring
 monk -ceph-cmd "cephadm shell -- ceph"
 ```
 
-Flags: `-listen :9284`, `-refresh 2m`, `-timeout 90s`,
-`-shallow-interval 168h`, `-deep-interval 672h`, `-ceph-cmd ceph`
-(space-split command prefix). Keep the interval flags in step with the
-cluster's `osd_scrub_max_interval` / `osd_deep_scrub_interval`. Per-pool
-interval overrides (the `scrub_max_interval` family of pool options) are not
-read; a pool carrying one diverges silently from monk's overdue accounting.
+Flags: `-listen :9284`, `-refresh 2m`, `-timeout 90s`, `-ceph-cmd ceph`
+(space-split command prefix). Overdue targets follow the cluster: each
+refresh reads `osd_scrub_max_interval` / `osd_deep_scrub_interval` from
+`ceph config get osd` plus per-pool overrides from `osd pool ls detail`, so
+the thresholds cannot drift from what the scrub scheduler targets.
+`-shallow-interval` / `-deep-interval` pin a depth explicitly instead (pins
+also suppress that depth's pool overrides); a failed interval read keeps the
+last-known targets and logs a warning.
 
 ## Metrics
 
@@ -40,7 +42,7 @@ read; a pool carrying one diverges silently from monk's overdue accounting.
 | `ceph_scrub_overdue_pgs` / `ceph_scrub_overdue_bytes` | pool_id, depth | PGs / bytes whose stamp is older than the target interval; PGs with unparsable stamps count here |
 | `ceph_scrub_age_seconds` | pool_id, depth | histogram of scrub age weighted by bytes (buckets 1d..49d); `_sum/_count` gives mean data age, `histogram_quantile` the age of the Nth-percentile byte |
 | `ceph_scrub_schedule_pgs` | state | PGs by scrub_schedule state (scheduled, queued, scrubbing, blocked, reserving, none, other) |
-| `ceph_scrub_target_interval_seconds` | depth | the configured interval flags, so dashboards read targets from the scrape |
+| `ceph_scrub_target_interval_seconds` | pool_id, depth | the interval each pool's overdue numbers were judged against (cluster-read, or the pin) |
 | `ceph_scrub_collect_success` / `_duration_seconds` / `_timestamp_seconds`, `ceph_scrub_parse_errors` | | collection health; alert on success == 0, or on a timestamp older than about three refresh intervals |
 
 Pool names come from joining `ceph_pool_metadata` (mgr module) on `pool_id`.

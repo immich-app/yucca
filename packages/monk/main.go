@@ -18,10 +18,10 @@ import (
 
 func main() {
 	listen := flag.String("listen", ":9284", "metrics listen address")
-	refresh := flag.Duration("refresh", 2*time.Minute, "pg ls refresh interval")
-	timeout := flag.Duration("timeout", 90*time.Second, "pg ls command timeout")
-	shallowInterval := flag.Duration("shallow-interval", 7*24*time.Hour, "target interval for shallow scrubs")
-	deepInterval := flag.Duration("deep-interval", 28*24*time.Hour, "target interval for deep scrubs")
+	refresh := flag.Duration("refresh", 2*time.Minute, "refresh interval")
+	timeout := flag.Duration("timeout", 90*time.Second, "ceph command timeout")
+	shallowPin := flag.String("shallow-interval", "", "pin the shallow target interval (e.g. 168h); empty follows the cluster")
+	deepPin := flag.String("deep-interval", "", "pin the deep target interval (e.g. 672h); empty follows the cluster")
 	cephCmd := flag.String("ceph-cmd", "ceph", "command prefix to reach the ceph CLI, split on spaces")
 	flag.Parse()
 
@@ -30,12 +30,37 @@ func main() {
 	if len(cmd) == 0 {
 		log.Fatal().Msg("empty -ceph-cmd")
 	}
-	intervals := map[collector.Depth]time.Duration{
-		collector.Shallow: *shallowInterval,
-		collector.Deep:    *deepInterval,
+	pins := map[collector.Depth]time.Duration{}
+	for depth, pin := range map[collector.Depth]string{collector.Shallow: *shallowPin, collector.Deep: *deepPin} {
+		if pin == "" {
+			continue
+		}
+		d, err := time.ParseDuration(pin)
+		if err != nil || d <= 0 {
+			log.Fatal().Str("value", pin).Msg("invalid interval pin")
+		}
+		pins[depth] = d
 	}
 
-	exporter := &collector.Exporter{Intervals: intervals}
+	// Until the first successful cluster read, unpinned depths fall back to
+	// ceph's own defaults so a cold start with an unreachable mon still serves
+	// sane thresholds; the target-interval metric shows what was used.
+	intervals := collector.Intervals{Global: map[collector.Depth]time.Duration{
+		collector.Shallow: 7 * 24 * time.Hour,
+		collector.Deep:    28 * 24 * time.Hour,
+	}}
+	applyPins := func(iv collector.Intervals) collector.Intervals {
+		for depth, d := range pins {
+			iv.Global[depth] = d
+			for _, overrides := range iv.PerPool {
+				delete(overrides, depth)
+			}
+		}
+		return iv
+	}
+	intervals = applyPins(intervals)
+
+	exporter := &collector.Exporter{}
 	exporter.MarkFailed()
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(exporter)
@@ -44,6 +69,13 @@ func main() {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 		defer cancel()
+		if len(pins) < len(collector.Depths) {
+			if iv, err := collector.FetchIntervals(ctx, cmd); err == nil {
+				intervals = applyPins(iv)
+			} else {
+				log.Warn().Err(err).Msg("interval read failed, keeping previous targets")
+			}
+		}
 		raw, err := collector.Fetch(ctx, cmd)
 		if err == nil {
 			var snap *collector.Snapshot

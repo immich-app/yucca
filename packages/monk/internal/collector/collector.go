@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,6 +34,27 @@ const (
 
 var Depths = []Depth{Shallow, Deep}
 
+// Intervals is the resolved overdue policy: the cluster-wide targets plus any
+// per-pool overrides from pool options.
+type Intervals struct {
+	Global  map[Depth]time.Duration
+	PerPool map[string]map[Depth]time.Duration
+}
+
+func (iv Intervals) For(pool string, d Depth) time.Duration {
+	if overrides, ok := iv.PerPool[pool]; ok {
+		if v, ok := overrides[d]; ok && v > 0 {
+			return v
+		}
+	}
+	return iv.Global[d]
+}
+
+var intervalOptions = map[Depth]string{
+	Shallow: "osd_scrub_max_interval",
+	Deep:    "osd_deep_scrub_interval",
+}
+
 type pgStat struct {
 	PGID               string `json:"pgid"`
 	State              string `json:"state"`
@@ -48,9 +70,18 @@ type pgLs struct {
 	PGStats []pgStat `json:"pg_stats"`
 }
 
+type poolDetail struct {
+	PoolID  int64 `json:"pool_id"`
+	Options struct {
+		ScrubMaxInterval  float64 `json:"scrub_max_interval"`
+		DeepScrubInterval float64 `json:"deep_scrub_interval"`
+	} `json:"options"`
+}
+
 type PoolStats struct {
 	PGs          int
 	Bytes        int64
+	Interval     map[Depth]time.Duration
 	OldestStamp  map[Depth]time.Time
 	OverduePGs   map[Depth]int
 	OverdueBytes map[Depth]int64
@@ -70,23 +101,87 @@ type Snapshot struct {
 	ParseErrors    int
 }
 
-func Fetch(ctx context.Context, cephCmd []string) ([]byte, error) {
-	args := slices.Concat(cephCmd[1:], []string{"pg", "ls", "-f", "json"})
-	cmd := exec.CommandContext(ctx, cephCmd[0], args...)
+func cephOutput(ctx context.Context, cephCmd []string, args ...string) ([]byte, error) {
+	full := slices.Concat(cephCmd[1:], args)
+	cmd := exec.CommandContext(ctx, cephCmd[0], full...)
 	// A wrapper cephCmd (cephadm shell) leaves a grandchild holding stdout past
 	// the context kill; WaitDelay lets Output return anyway.
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("%s: %w: %s", cephCmd[0], err, strings.TrimSpace(string(ee.Stderr)))
+			return nil, fmt.Errorf("%s %s: %w: %s", cephCmd[0], args[0], err, strings.TrimSpace(string(ee.Stderr)))
 		}
-		return nil, fmt.Errorf("%s: %w", cephCmd[0], err)
+		return nil, fmt.Errorf("%s %s: %w", cephCmd[0], args[0], err)
 	}
 	return out, nil
 }
 
-func Compute(raw []byte, now time.Time, intervals map[Depth]time.Duration) (*Snapshot, error) {
+func Fetch(ctx context.Context, cephCmd []string) ([]byte, error) {
+	return cephOutput(ctx, cephCmd, "pg", "ls", "-f", "json")
+}
+
+// FetchIntervals reads the overdue policy from the cluster itself: the osd
+// section's effective intervals plus per-pool option overrides, so monk's
+// thresholds cannot drift from what the scrub scheduler actually targets.
+func FetchIntervals(ctx context.Context, cephCmd []string) (Intervals, error) {
+	iv := Intervals{Global: map[Depth]time.Duration{}, PerPool: map[string]map[Depth]time.Duration{}}
+	for depth, option := range intervalOptions {
+		out, err := cephOutput(ctx, cephCmd, "config", "get", "osd", option)
+		if err != nil {
+			return Intervals{}, err
+		}
+		d, err := parseIntervalSeconds(string(out))
+		if err != nil {
+			return Intervals{}, fmt.Errorf("%s: %w", option, err)
+		}
+		iv.Global[depth] = d
+	}
+	out, err := cephOutput(ctx, cephCmd, "osd", "pool", "ls", "detail", "-f", "json")
+	if err != nil {
+		return Intervals{}, err
+	}
+	perPool, err := parsePoolIntervals(out)
+	if err != nil {
+		return Intervals{}, err
+	}
+	iv.PerPool = perPool
+	return iv, nil
+}
+
+func parseIntervalSeconds(s string) (time.Duration, error) {
+	secs, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse interval %q: %w", s, err)
+	}
+	if secs <= 0 {
+		return 0, fmt.Errorf("interval %q is not positive", s)
+	}
+	return time.Duration(secs * float64(time.Second)), nil
+}
+
+func parsePoolIntervals(raw []byte) (map[string]map[Depth]time.Duration, error) {
+	var pools []poolDetail
+	if err := json.Unmarshal(raw, &pools); err != nil {
+		return nil, fmt.Errorf("parse pool ls detail: %w", err)
+	}
+	perPool := map[string]map[Depth]time.Duration{}
+	for _, p := range pools {
+		overrides := map[Depth]time.Duration{}
+		if p.Options.ScrubMaxInterval > 0 {
+			overrides[Shallow] = time.Duration(p.Options.ScrubMaxInterval * float64(time.Second))
+		}
+		if p.Options.DeepScrubInterval > 0 {
+			overrides[Deep] = time.Duration(p.Options.DeepScrubInterval * float64(time.Second))
+		}
+		if len(overrides) > 0 {
+			perPool[strconv.FormatInt(p.PoolID, 10)] = overrides
+		}
+	}
+	return perPool, nil
+}
+
+func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) {
 	var data pgLs
 	if err := json.Unmarshal(raw, &data); err != nil {
 		return nil, fmt.Errorf("parse pg ls: %w", err)
@@ -109,6 +204,10 @@ func Compute(raw []byte, now time.Time, intervals map[Depth]time.Duration) (*Sna
 		ps := snap.Pools[pool]
 		if ps == nil {
 			ps = &PoolStats{
+				Interval: map[Depth]time.Duration{
+					Shallow: intervals.For(pool, Shallow),
+					Deep:    intervals.For(pool, Deep),
+				},
 				OldestStamp:    map[Depth]time.Time{},
 				OverduePGs:     map[Depth]int{},
 				OverdueBytes:   map[Depth]int64{},
@@ -134,7 +233,7 @@ func Compute(raw []byte, now time.Time, intervals map[Depth]time.Duration) (*Sna
 				ps.OldestStamp[depth] = stamp
 			}
 			age := now.Sub(stamp)
-			if age > intervals[depth] {
+			if age > ps.Interval[depth] {
 				ps.OverduePGs[depth]++
 				ps.OverdueBytes[depth] += pg.StatSum.NumBytes
 			}

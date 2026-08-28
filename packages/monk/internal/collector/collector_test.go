@@ -11,10 +11,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-var testIntervals = map[Depth]time.Duration{
+var testIntervals = Intervals{Global: map[Depth]time.Duration{
 	Shallow: 7 * 24 * time.Hour,
 	Deep:    28 * 24 * time.Hour,
-}
+}}
 
 func testNow(t *testing.T) time.Time {
 	t.Helper()
@@ -59,7 +59,7 @@ func TestComputeAgainstBruteForce(t *testing.T) {
 			if err != nil {
 				t.Fatalf("fixture stamp %q: %v", s, err)
 			}
-			if now.Sub(stamp) > testIntervals[depth] {
+			if now.Sub(stamp) > testIntervals.Global[depth] {
 				overdue[depth]++
 			}
 		}
@@ -185,7 +185,7 @@ func TestExporterMetricSurface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exporter := &Exporter{Intervals: testIntervals}
+	exporter := &Exporter{}
 	exporter.Store(snap, time.Second)
 
 	if problems, err := testutil.CollectAndLint(exporter); err != nil || len(problems) > 0 {
@@ -203,15 +203,83 @@ ceph_scrub_collect_success 1
 # TYPE ceph_scrub_overdue_bytes gauge
 ceph_scrub_overdue_bytes{depth="deep",pool_id="7"} 100
 ceph_scrub_overdue_bytes{depth="shallow",pool_id="7"} 0
-# HELP ceph_scrub_target_interval_seconds Configured scrub target interval
+# HELP ceph_scrub_target_interval_seconds Scrub target interval the pool's overdue numbers were judged against
 # TYPE ceph_scrub_target_interval_seconds gauge
-ceph_scrub_target_interval_seconds{depth="deep"} 2.4192e+06
-ceph_scrub_target_interval_seconds{depth="shallow"} 604800
+ceph_scrub_target_interval_seconds{depth="deep",pool_id="7"} 2.4192e+06
+ceph_scrub_target_interval_seconds{depth="shallow",pool_id="7"} 604800
 `, float64(deepStamp.UnixMicro())/1e6)
 	err = testutil.CollectAndCompare(exporter, strings.NewReader(expected),
 		"ceph_pg_last_deep_scrub_stamp", "ceph_scrub_collect_success",
 		"ceph_scrub_overdue_bytes", "ceph_scrub_target_interval_seconds")
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestParseIntervalSeconds(t *testing.T) {
+	d, err := parseIntervalSeconds("2419200.000000\n")
+	if err != nil || d != 28*24*time.Hour {
+		t.Errorf("deep: got %v %v, want 672h", d, err)
+	}
+	d, err = parseIntervalSeconds("604800.000000\n")
+	if err != nil || d != 7*24*time.Hour {
+		t.Errorf("shallow: got %v %v, want 168h", d, err)
+	}
+	for _, bad := range []string{"", "abc", "0.000000", "-1"} {
+		if _, err := parseIntervalSeconds(bad); err == nil {
+			t.Errorf("parseIntervalSeconds(%q) should error", bad)
+		}
+	}
+}
+
+func TestParsePoolIntervals(t *testing.T) {
+	raw := []byte(`[
+		{"pool_id": 2, "pool_name": "data", "options": {}},
+		{"pool_id": 7, "pool_name": "ctl", "options": {"deep_scrub_interval": 1209600.0}},
+		{"pool_id": 8, "pool_name": "meta", "options": {"scrub_max_interval": 86400.0, "deep_scrub_interval": 0}}
+	]`)
+	perPool, err := parsePoolIntervals(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := perPool["2"]; ok {
+		t.Error("pool 2 has no overrides but appeared")
+	}
+	if got := perPool["7"][Deep]; got != 14*24*time.Hour {
+		t.Errorf("pool 7 deep override: got %v, want 336h", got)
+	}
+	if _, ok := perPool["7"][Shallow]; ok {
+		t.Error("pool 7 has no shallow override but one appeared")
+	}
+	if got := perPool["8"][Shallow]; got != 24*time.Hour {
+		t.Errorf("pool 8 shallow override: got %v, want 24h", got)
+	}
+	if _, ok := perPool["8"][Deep]; ok {
+		t.Error("pool 8 deep override is 0 (unset) but appeared")
+	}
+}
+
+func TestComputeAppliesPoolOverride(t *testing.T) {
+	now := testNow(t)
+	iv := Intervals{
+		Global:  map[Depth]time.Duration{Shallow: 7 * 24 * time.Hour, Deep: 28 * 24 * time.Hour},
+		PerPool: map[string]map[Depth]time.Duration{"7": {Deep: 24 * time.Hour}},
+	}
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "7.a", "last_scrub_stamp": "2026-08-29T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-29T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "2.a", "last_scrub_stamp": "2026-08-29T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-29T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}}
+	]}`)
+	snap, err := Compute(raw, now, iv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := snap.Pools["7"].OverduePGs[Deep]; got != 1 {
+		t.Errorf("pool 7 deep overdue under 24h override: got %d, want 1 (stamp is 3d old)", got)
+	}
+	if got := snap.Pools["2"].OverduePGs[Deep]; got != 0 {
+		t.Errorf("pool 2 deep overdue under 28d global: got %d, want 0", got)
+	}
+	if got := snap.Pools["7"].Interval[Deep]; got != 24*time.Hour {
+		t.Errorf("pool 7 recorded interval: got %v, want 24h", got)
 	}
 }
