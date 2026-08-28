@@ -69,6 +69,7 @@
   ansible.builtin.command: podman pull {{ ceph_scrub_exporter_image }}
   register: scrub_exporter_pull
   changed_when: "'Copying blob' in scrub_exporter_pull.stderr"
+  notify: Restart monk
 
 - name: Install the monk unit
   ansible.builtin.template:
