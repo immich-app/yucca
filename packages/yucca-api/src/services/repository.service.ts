@@ -37,8 +37,12 @@ export class RepositoryService {
   }
 
   async get(auth: AuthDto, id: string) {
+    return this.getOwned(auth.id, id);
+  }
+
+  private async getOwned(userId: string, id: string) {
     const repository = await this.repositoryRepository.get(id);
-    if (repository.userId !== auth.id) {
+    if (repository.userId !== userId) {
       throw new UnauthorizedException();
     }
 
@@ -53,10 +57,19 @@ export class RepositoryService {
     const repository = await this.get(auth, id);
 
     if (repository.worm && typeof dto.worm === 'boolean' && dto.worm !== repository.worm) {
-      throw new BadRequestException('Refusing to disable write-only on repository');
+      throw new BadRequestException('Refusing to disable write-only on repository, use DELETE /repository/:id/worm');
     }
 
     return { repository: await this.repositoryRepository.update(id, dto) };
+  }
+
+  async disableWorm(userId: string, id: string) {
+    const repository = await this.getOwned(userId, id);
+    if (!repository.worm) {
+      throw new BadRequestException('Repository is not write-only');
+    }
+
+    return { repository: await this.repositoryRepository.update(id, { worm: false }) };
   }
 
   async createUrl(auth: AuthDto, id: string) {
@@ -82,11 +95,8 @@ export class RepositoryService {
     return { url: `rest:${url.href}` };
   }
 
-  async delete(auth: AuthDto, id: string) {
-    const repository = await this.get(auth, id);
-    if (repository.worm) {
-      throw new BadRequestException('Refusing to delete write-only repository');
-    }
+  async delete(userId: string, id: string) {
+    await this.getOwned(userId, id);
 
     await this.repositoryRepository.delete(id);
   }
