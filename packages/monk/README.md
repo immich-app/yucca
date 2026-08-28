@@ -9,9 +9,10 @@ polls `ceph pg ls -f json` and serves pool-level aggregates so scrub-cycle
 dashboards report ground truth instead of estimates derived from scrub
 read-byte counters.
 
-Runs on the cluster's mon hosts via the `scrub_exporter` ansible role (not
-Kubernetes); the image is the cluster ceph image plus the monk binary, and the
-container needs `/etc/ceph` with a read-only keyring (mon r, mgr r) mounted.
+Runs on the cluster's mon hosts, not Kubernetes; the ansible role that deploys
+it lands in a follow-up PR. The image is the cluster ceph image plus the monk
+binary, and the container needs `/etc/ceph` with a read-only keyring (mon r,
+mgr r) mounted.
 
 ## Run
 
