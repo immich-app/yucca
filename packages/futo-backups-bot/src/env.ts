@@ -14,6 +14,7 @@ const schema = z.object({
   DISCORD_CUSTOMER_ROLE_ID: z.string().default(''),
 
   YUCCA_API_URL: z.url().default('http://localhost:3020'),
+  COLUMBO_URL: z.string().default(''),
   INTERNAL_SECRET: z.string().default(''),
   WEB_URL: z.url().default('http://localhost:5173'),
   GRAFANA_URL: z

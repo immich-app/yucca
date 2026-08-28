@@ -125,7 +125,10 @@ The only ticket state in postgres is the Freshdesk mapping row
   dashboard, mirroring yuctl's view-dashboard; the dashboard itself is o11y-owned) and an account summary from
   **`GET /internal/discord/users/:userId/summary`** (email, connections,
   repository count, last seen) — staff see it via Manage Threads on the
-  support channel; the user cannot. Up to `TICKET_USER_LIMIT`
+  support channel; the user cannot. For linked users the bot also
+  fires-and-forgets an investigation request to columbo, which may post an
+  AI-generated telemetry brief into the staff thread (see `docs/columbo.md`).
+  Up to `TICKET_USER_LIMIT`
   (3) open tickets per user (membership scan of active threads); at the limit
   a submit points at the existing threads.
 - **Close** (staff-only button): locks + archives the ticket thread and its

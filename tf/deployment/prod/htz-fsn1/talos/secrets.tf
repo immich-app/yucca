@@ -293,6 +293,24 @@ resource "kubernetes_secret_v1" "futo_backups_bot" {
   }
 }
 
+# columbo: OpenRouter key + the shared internal-API secret. Deliberately no
+# precondition: the key defaults empty (manual YUCCA_OPENROUTER_API_KEY item)
+# and columbo idles without it, accepting and dropping investigation requests.
+locals {
+  openrouter_api_key = var.yucca_openrouter_api_key == "REPLACE_ME" ? "" : var.yucca_openrouter_api_key
+}
+
+resource "kubernetes_secret_v1" "columbo" {
+  metadata {
+    name      = "columbo"
+    namespace = kubernetes_namespace_v1.yucca.metadata[0].name
+  }
+  data = {
+    OPENROUTER_API_KEY = local.openrouter_api_key
+    INTERNAL_SECRET    = random_password.yucca_internal_secret.result
+  }
+}
+
 # yucca-database backups: the spice RGW svc-yucca-db-backup S3 keys for the
 # CNPG Barman Cloud plugin, plus the RGW's self-signed cert as the CA bundle
 # (barman cannot skip TLS verification). The cert comes from the DR item that

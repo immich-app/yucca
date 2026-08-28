@@ -4,6 +4,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { InternalController } from './controllers/internal.controller';
 import { WebhookController } from './controllers/webhook.controller';
+import { ColumboRepository } from './repositories/columbo.repository';
 import { DiscordRepository } from './repositories/discord.repository';
 import { FreshdeskRepository } from './repositories/freshdesk.repository';
 import { TranscriptStorageRepository } from './repositories/transcriptStorage.repository';
@@ -18,6 +19,7 @@ export const imports = [ScheduleModule.forRoot()];
 export const providers = [
   WideContextRepository,
   LoggerRepository,
+  ColumboRepository,
   DiscordRepository,
   YuccaApiRepository,
   FreshdeskRepository,

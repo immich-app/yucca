@@ -899,6 +899,67 @@
         ]
       }
     },
+    "/api/columbo/investigations": {
+      "post": {
+        "operationId": "startInvestigation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColumboInvestigateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColumboInvestigationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Columbo"
+        ]
+      }
+    },
+    "/api/columbo/investigations/{id}": {
+      "get": {
+        "operationId": "getInvestigation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColumboInvestigationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Columbo"
+        ]
+      }
+    },
     "/api/discord-invites/batches": {
       "get": {
         "operationId": "listBatches",
@@ -1817,6 +1878,56 @@
         },
         "required": [
           "count"
+        ]
+      },
+      "ColumboInvestigateRequestDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "prompt"
+        ]
+      },
+      "ColumboInvestigationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "done",
+              "failed"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "queries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "queries"
         ]
       },
       "DiscordInviteBatchDto": {

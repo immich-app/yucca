@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: columbo
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: charts/apps/columbo
+      # Repackage on every git revision — the in-repo charts keep a static
+      # version, so the default ChartVersion strategy never ships template edits.
+      reconcileStrategy: Revision
+      sourceRef:
+        kind: GitRepository
+        name: ${CHART_SOURCE:=flux-system}
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/immich-app/yucca/columbo
+      tag: ${YUCCA_IMAGE_TAG:=}
+    # Drop the chart's dev-fixture Secret — the real OPENROUTER_API_KEY and
+    # INTERNAL_SECRET arrive via the TF-provisioned columbo Secret
+    # (tf .../secrets.tf). Until they land there columbo boots idle (accepts
+    # and drops investigation requests) instead of crashing.
+    secretData: null
+    env:
+      - name: COLUMBO_PORT
+        value: "3060"
+      - name: LOG_LEVEL
+        value: info
+      - name: FUTO_BACKUPS_BOT_URL
+        value: http://futo-backups-bot:3050
+      # The o11y fleet's vmauth select endpoints (unauthenticated from the
+      # cluster — the NetBird ACL is the gate; per-user scoping is enforced
+      # by columbo itself). Staging overrides these to its own o11y tier and
+      # pins the mesh name via O11Y_VMAUTH_HOST_ALIASES (cluster-settings) —
+      # its talos peers don't get the NetBird DNS zone.
+      - name: O11Y_METRICS_URL
+        value: ${O11Y_SELECT_METRICS_URL:=https://vmauth.o11y.futo.network/select/0/prometheus}
+      - name: O11Y_LOGS_URL
+        value: ${O11Y_SELECT_LOGS_URL:=https://vmauth.o11y.futo.network}
+      - name: COLUMBO_MODEL
+        value: ${COLUMBO_MODEL:=z-ai/glm-5.3-flash}
+      - name: COLUMBO_TRIAGE_MODEL
+        value: ${COLUMBO_TRIAGE_MODEL:=deepseek/deepseek-v4-flash-0731}
+    hostAliases: ${O11Y_VMAUTH_HOST_ALIASES:=[]}

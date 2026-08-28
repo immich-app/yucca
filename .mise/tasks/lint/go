@@ -3,7 +3,7 @@
 set -e
 
 status=0
-for pkg in michael yuctl; do
+for pkg in michael yuctl columbo; do
   (cd "packages/$pkg" && golangci-lint run ./... "$@") || status=1
 done
 exit $status

@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { InternalGuard } from 'src/middleware/internal.guard';
 import { InviteService } from 'src/services/invite.service';
+import { SupportService } from 'src/services/support.service';
 import { z } from 'zod';
 
 const closeDropSchema = z.object({
@@ -9,12 +10,20 @@ const closeDropSchema = z.object({
   messageId: z.string().min(1),
 });
 
-@Controller('/internal/drops')
+const staffNoteSchema = z.object({
+  staffThreadId: z.string().min(1),
+  content: z.string().min(1).max(8192),
+});
+
+@Controller('/internal')
 @UseGuards(InternalGuard)
 export class InternalController {
-  constructor(private readonly invite: InviteService) {}
+  constructor(
+    private readonly invite: InviteService,
+    private readonly support: SupportService,
+  ) {}
 
-  @Post('/close')
+  @Post('/drops/close')
   @HttpCode(HttpStatus.NO_CONTENT)
   async closeDrop(@Body() body: unknown): Promise<void> {
     const parsed = closeDropSchema.safeParse(body);
@@ -22,5 +31,15 @@ export class InternalController {
       throw new BadRequestException(parsed.error.message);
     }
     await this.invite.closeDrop(parsed.data.batchId, parsed.data.channelId, parsed.data.messageId);
+  }
+
+  @Post('/staff-notes')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async postStaffNote(@Body() body: unknown): Promise<void> {
+    const parsed = staffNoteSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.message);
+    }
+    await this.support.postStaffNote(parsed.data.staffThreadId, parsed.data.content);
   }
 }

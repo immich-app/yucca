@@ -1,5 +1,5 @@
 import { LoggerRepository } from '@common/server/otel';
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { BadRequestException, Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   ActionRowBuilder,
@@ -21,6 +21,7 @@ import {
 import { ComponentId } from 'src/enum';
 import { env } from 'src/env';
 import { Messages } from 'src/messages';
+import { ColumboRepository } from 'src/repositories/columbo.repository';
 import { DiscordRepository } from 'src/repositories/discord.repository';
 import { DiscordLink, UserSummary, YuccaApiRepository } from 'src/repositories/yuccaApi.repository';
 import { FreshdeskSyncService } from 'src/services/freshdeskSync.service';
@@ -57,6 +58,7 @@ export class SupportService implements OnApplicationBootstrap {
     private readonly api: YuccaApiRepository,
     private readonly invite: InviteService,
     private readonly freshdeskSync: FreshdeskSyncService,
+    private readonly columbo: ColumboRepository,
   ) {}
 
   async onApplicationBootstrap() {
@@ -381,7 +383,30 @@ export class SupportService implements OnApplicationBootstrap {
       })
       .catch((error: unknown) => this.logger.error(error, 'failed to open the freshdesk ticket'));
 
+    if (link) {
+      void this.columbo
+        .requestInvestigation({
+          ticketThreadId: thread.id,
+          staffThreadId: staff.thread.id,
+          discordUserId: user.id,
+          username: user.username,
+          userId: link.userId,
+          description,
+        })
+        .catch((error: unknown) => this.logger.error(error, 'failed to request an investigation'));
+    }
+
     return thread;
+  }
+
+  async postStaffNote(staffThreadId: string, content: string): Promise<void> {
+    const thread = await this.discord.getThreadById(staffThreadId);
+    if (thread.parentId !== env.DISCORD_SUPPORT_CHANNEL_ID || !thread.name.startsWith('staff-')) {
+      throw new BadRequestException(`thread ${staffThreadId} is not a staff thread`);
+    }
+    await this.discord.sendToThread(staffThreadId, {
+      embeds: [new EmbedBuilder().setTitle(Messages.investigationTitle).setDescription(content.slice(0, 4096))],
+    });
   }
 
   private async onStaffNotesRequested(interaction: ChatInputCommandInteraction) {

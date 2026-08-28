@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: columbo
+  namespace: flux-system
+spec:
+  # Invoked by futo-backups-bot on ticket creation and answers back through
+  # its /internal/staff-notes endpoint — no point converging before the bot.
+  dependsOn:
+    - name: futo-backups-bot
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: columbo
+      namespace: yucca
+  interval: 1h
+  retryInterval: 2m
+  timeout: 10m
+  path: ./kubernetes/apps/base/columbo
+  prune: true
+  wait: true
+  sourceRef:
+    kind: GitRepository
+    name: ${MANIFEST_SOURCE:=flux-system}
+    namespace: flux-system
+  targetNamespace: yucca

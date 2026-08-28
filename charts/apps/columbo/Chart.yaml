@@ -1,0 +1,10 @@
+apiVersion: v2
+name: columbo
+description: Ticket investigation agent (Go)
+type: application
+version: 0.1.0
+appVersion: "0.37.1" # x-release-please-version
+dependencies:
+  - name: yucca-common
+    version: 0.2.0
+    repository: "file://../../lib/yucca-common"

@@ -73,6 +73,10 @@
         },
         {
           "type": "generic",
+          "path": "packages/columbo/internal/version/version.go"
+        },
+        {
+          "type": "generic",
           "path": "charts/apps/michael/Chart.yaml"
         },
         {
@@ -94,6 +98,10 @@
         {
           "type": "generic",
           "path": "charts/apps/futo-backups-bot/Chart.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "charts/apps/columbo/Chart.yaml"
         },
         {
           "type": "generic",
