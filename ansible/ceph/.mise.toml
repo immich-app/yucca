@@ -104,6 +104,10 @@ run = "scripts/ansible-play.sh drift.yml"
 description = "Ship ceph node journald to o11y over the overlay (fluent-bit)"
 run = "scripts/ansible-play.sh logging.yml"
 
+[tasks.monk]
+description = "Deploy monk, the scrub-backlog exporter, on the mon hosts"
+run = "scripts/ansible-play.sh monk.yml"
+
 [tasks.netbird]
 description = "Enroll ceph nodes into NetBird (reads the setup key from 1Password)"
 run = """

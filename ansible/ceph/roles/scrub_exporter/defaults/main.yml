@@ -1,0 +1,20 @@
+---
+ceph_scrub_exporter_enabled: false
+
+# Delivered by yucca CI (deploy.yml pushes ghcr.io/immich-app/yucca/monk on
+# merge to main). No tag exists until the first release after the monk package
+# lands, so there is no usable default: pin a v<version> tag per cluster and
+# bump it deliberately, like the cluster ceph image.
+ceph_scrub_exporter_image: ""
+
+ceph_scrub_exporter_port: 9284
+ceph_scrub_exporter_refresh: 2m
+# Match the cluster's osd_scrub_max_interval / osd_deep_scrub_interval
+# (ceph-config.generated.yml); monk does not read them from the cluster.
+ceph_scrub_exporter_shallow_interval: 168h
+ceph_scrub_exporter_deep_interval: 672h
+
+# Read-only identity; the keyring lands only on mon-role hosts. The container
+# runs as the ceph image's uid 167, which must be able to read it.
+ceph_scrub_exporter_auth_entity: client.scrub-exporter
+ceph_scrub_exporter_config_dir: /etc/ceph/monk

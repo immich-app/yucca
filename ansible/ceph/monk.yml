@@ -1,0 +1,22 @@
+---
+# Run monk (the measured scrub-backlog exporter, packages/monk) on the
+# mon-role hosts. The mgr prometheus module exports no per-PG scrub stamps, so
+# the scrub dashboard's backlog numbers are estimates until monk serves the
+# measured ones on :9284 over the fabric, next to the other exporters vmagent
+# scrapes.
+#
+# Not on the Ceph critical path; runs after harden.yml so the unit starts
+# against the final nftables ruleset, and alongside logging.yml in spirit: a
+# node that cannot export scrub metrics must never block convergence.
+#
+#   Canary:   mise run monk -- --limit spice-ceph-adelia
+#   Fleet:    mise run monk
+- name: Scrub-backlog exporter
+  hosts: ceph_nodes
+  become: true
+  max_fail_percentage: 20
+  tasks:
+    - name: Deploy monk via the scrub_exporter role
+      ansible.builtin.import_role:
+        name: scrub_exporter
+      when: ceph_scrub_exporter_enabled | default(false) | bool

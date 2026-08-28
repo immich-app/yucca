@@ -1,0 +1,40 @@
+---
+- name: Require an image pin when the exporter is enabled
+  ansible.builtin.assert:
+    that:
+      - ceph_scrub_exporter_image | length > 0
+    fail_msg: >-
+      ceph_scrub_exporter_enabled is true but ceph_scrub_exporter_image is
+      empty; pin a released ghcr.io/immich-app/yucca/monk tag.
+  run_once: true
+
+# Cluster-level reads run once on the bootstrap host (the only host holding
+# admin creds) and register for every host in the play; the mon gate sits on
+# the host tasks, not here, so the play's first host not being a mon cannot
+# skip the registration.
+- name: Create the read-only auth identity
+  ansible.builtin.command:
+    argv:
+      - ceph
+      - auth
+      - get-or-create
+      - "{{ ceph_scrub_exporter_auth_entity }}"
+      - mon
+      - allow r
+      - mgr
+      - allow r
+  register: scrub_exporter_keyring
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
+
+- name: Render the minimal cluster config
+  ansible.builtin.command: ceph config generate-minimal-conf
+  register: scrub_exporter_conf
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
+
+- name: Deploy the exporter on mon hosts
+  ansible.builtin.include_tasks: host.yml
+  when: mon | default(false) | bool
