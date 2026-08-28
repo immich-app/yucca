@@ -107,6 +107,7 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Same DB + JWT validation. |
 | `michael` | Go | **Production** restic REST backend — S3 proxy with JWT verification, WORM enforcement, backend pooling. |
 | `columbo` | Go | Ticket investigation agent: LLM loop (OpenRouter) over per-user-scoped o11y queries, answers only into staff threads. See `docs/columbo.md`. |
+| `monk` | Go | Ceph scrub-backlog exporter: polls `pg ls`, serves measured per-pool scrub-age metrics on :9284. Deployed onto mon hosts by ansible, not K8s. |
 | `restic-api` | NestJS | Earlier TS implementation of the restic backend, kept as **reference**; not deployed. |
 | `yucca-metrics-worker` | NestJS | 5-min cron: RadosGW usage → meter tables → per-connection rollup (`connectionMetrics`, billing floor), OTel gauges. |
 | `redis` (valkey) | | Shared platform cache (ephemeral; keys `yucca:<service>:<purpose>:*`). Primary-region only. |

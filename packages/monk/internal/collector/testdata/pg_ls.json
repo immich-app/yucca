@@ -1,0 +1,290 @@
+{
+ "pg_stats": [
+  {
+   "pgid": "1.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T17:21:29.956752+0000",
+   "last_deep_scrub_stamp": "2026-08-21T10:11:56.049721+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 440,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T02:13:18.699625+0000",
+   "stat_sum": {
+    "num_bytes": 1883701808,
+    "num_objects": 451
+   }
+  },
+  {
+   "pgid": "2.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-28T10:46:31.252225+0000",
+   "last_deep_scrub_stamp": "2026-08-24T17:43:41.738507+0000",
+   "last_scrub_duration": 200,
+   "objects_scrubbed": 530196,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T16:47:21.152387+0000",
+   "stat_sum": {
+    "num_bytes": 2212516228864,
+    "num_objects": 530196
+   }
+  },
+  {
+   "pgid": "2.1",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T09:00:34.940514+0000",
+   "last_deep_scrub_stamp": "2026-08-17T05:30:11.743003+0000",
+   "last_scrub_duration": 207,
+   "objects_scrubbed": 530388,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-28T19:01:02.402388+0000",
+   "stat_sum": {
+    "num_bytes": 2213451628745,
+    "num_objects": 530387
+   }
+  },
+  {
+   "pgid": "2.2",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T22:18:10.315448+0000",
+   "last_deep_scrub_stamp": "2026-08-23T19:27:00.859775+0000",
+   "last_scrub_duration": 199,
+   "objects_scrubbed": 530267,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-28T22:54:53.156730+0000",
+   "stat_sum": {
+    "num_bytes": 2212961245624,
+    "num_objects": 530267
+   }
+  },
+  {
+   "pgid": "3.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-28T01:01:45.257141+0000",
+   "last_deep_scrub_stamp": "2026-08-17T21:53:16.465546+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 688,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T10:23:13.278334+0000",
+   "stat_sum": {
+    "num_bytes": 0,
+    "num_objects": 688
+   }
+  },
+  {
+   "pgid": "3.1",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-28T07:43:32.041802+0000",
+   "last_deep_scrub_stamp": "2026-08-17T22:02:35.040955+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 680,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T18:31:58.192529+0000",
+   "stat_sum": {
+    "num_bytes": 0,
+    "num_objects": 680
+   }
+  },
+  {
+   "pgid": "3.2",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T13:57:50.569609+0000",
+   "last_deep_scrub_stamp": "2026-08-16T00:07:09.531128+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 716,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-28T19:24:11.325451+0000",
+   "stat_sum": {
+    "num_bytes": 0,
+    "num_objects": 716
+   }
+  },
+  {
+   "pgid": "4.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T23:12:13.363017+0000",
+   "last_deep_scrub_stamp": "2026-08-20T07:05:29.182890+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 35,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T03:19:21.777444+0000",
+   "stat_sum": {
+    "num_bytes": 2415,
+    "num_objects": 35
+   }
+  },
+  {
+   "pgid": "4.1",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T17:45:45.186565+0000",
+   "last_deep_scrub_stamp": "2026-08-25T01:37:27.651221+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 38,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T01:26:30.517739+0000",
+   "stat_sum": {
+    "num_bytes": 2622,
+    "num_objects": 38
+   }
+  },
+  {
+   "pgid": "4.2",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-28T15:19:12.392950+0000",
+   "last_deep_scrub_stamp": "2026-08-14T11:41:09.135850+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 27,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T16:49:49.131901+0000",
+   "stat_sum": {
+    "num_bytes": 1863,
+    "num_objects": 27
+   }
+  },
+  {
+   "pgid": "5.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-28T16:32:32.292060+0000",
+   "last_deep_scrub_stamp": "2026-08-19T21:34:19.067197+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 3,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T17:14:26.177300+0000",
+   "stat_sum": {
+    "num_bytes": 1188,
+    "num_objects": 3
+   }
+  },
+  {
+   "pgid": "5.1",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T18:19:04.430717+0000",
+   "last_deep_scrub_stamp": "2026-08-24T12:12:19.113097+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 0,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-28T23:56:19.098763+0000",
+   "stat_sum": {
+    "num_bytes": 0,
+    "num_objects": 0
+   }
+  },
+  {
+   "pgid": "5.2",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T18:16:38.017516+0000",
+   "last_deep_scrub_stamp": "2026-08-16T04:09:15.999326+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 1,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T00:16:22.427448+0000",
+   "stat_sum": {
+    "num_bytes": 46,
+    "num_objects": 1
+   }
+  },
+  {
+   "pgid": "6.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T21:11:51.367181+0000",
+   "last_deep_scrub_stamp": "2026-08-18T23:25:57.472621+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 18,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T03:42:56.158465+0000",
+   "stat_sum": {
+    "num_bytes": 40268876,
+    "num_objects": 18
+   }
+  },
+  {
+   "pgid": "6.1",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T16:33:01.498452+0000",
+   "last_deep_scrub_stamp": "2026-08-14T19:00:51.641852+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 16,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-28T22:46:41.362714+0000",
+   "stat_sum": {
+    "num_bytes": 1248,
+    "num_objects": 16
+   }
+  },
+  {
+   "pgid": "6.2",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-28T06:47:32.082745+0000",
+   "last_deep_scrub_stamp": "2026-08-13T21:34:53.985785+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 16,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T08:29:18.978331+0000",
+   "stat_sum": {
+    "num_bytes": 1554,
+    "num_objects": 16
+   }
+  },
+  {
+   "pgid": "7.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T10:57:47.564210+0000",
+   "last_deep_scrub_stamp": "2026-08-14T14:09:28.660259+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 1,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-28T22:34:15.820830+0000",
+   "stat_sum": {
+    "num_bytes": 0,
+    "num_objects": 1
+   }
+  },
+  {
+   "pgid": "7.1",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T22:55:17.096136+0000",
+   "last_deep_scrub_stamp": "2026-08-23T05:24:28.263044+0000",
+   "last_scrub_duration": 0,
+   "objects_scrubbed": 0,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T05:40:41.091974+0000",
+   "stat_sum": {
+    "num_bytes": 0,
+    "num_objects": 0
+   }
+  },
+  {
+   "pgid": "7.2",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T12:08:56.770232+0000",
+   "last_deep_scrub_stamp": "2026-08-16T13:07:27.578722+0000",
+   "last_scrub_duration": 0,
+   "objects_scrubbed": 0,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-28T18:47:21.697049+0000",
+   "stat_sum": {
+    "num_bytes": 0,
+    "num_objects": 0
+   }
+  },
+  {
+   "pgid": "8.0",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T18:20:40.182316+0000",
+   "last_deep_scrub_stamp": "2026-08-16T07:44:47.720307+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 14,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T01:58:44.836369+0000",
+   "stat_sum": {
+    "num_bytes": 3840,
+    "num_objects": 14
+   }
+  },
+  {
+   "pgid": "8.1",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-27T19:09:19.772513+0000",
+   "last_deep_scrub_stamp": "2026-08-16T05:42:55.050154+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 14,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T00:38:47.801912+0000",
+   "stat_sum": {
+    "num_bytes": 4943,
+    "num_objects": 14
+   }
+  },
+  {
+   "pgid": "8.2",
+   "state": "active+clean",
+   "last_scrub_stamp": "2026-08-28T03:41:06.684834+0000",
+   "last_deep_scrub_stamp": "2026-08-17T10:05:04.126426+0000",
+   "last_scrub_duration": 1,
+   "objects_scrubbed": 22,
+   "scrub_schedule": "periodic scrub scheduled @ 2026-08-29T09:43:27.122526+0000",
+   "stat_sum": {
+    "num_bytes": 7273,
+    "num_objects": 22
+   }
+  }
+ ]
+}
