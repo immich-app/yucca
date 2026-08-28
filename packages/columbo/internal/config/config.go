@@ -25,12 +25,17 @@ type Config struct {
 	MetricsURL string
 	LogsURL    string
 
-	BotURL string
+	BotURL     string
+	GrafanaURL string
 
 	MaxToolCalls         int
 	InvestigationTimeout time.Duration
 	ToolResultBytes      int
 	Workers              int
+
+	OTLPMetricsEndpoint string
+	OTLPMetricsURLPath  string
+	OTLPMetricsInterval time.Duration
 
 	LogLevel  zerolog.Level
 	LogPretty bool
@@ -75,10 +80,14 @@ func LoadConfig() Config {
 		MetricsURL:           envOr("O11Y_METRICS_URL", "http://localhost:8428"),
 		LogsURL:              envOr("O11Y_LOGS_URL", "http://localhost:9428"),
 		BotURL:               envOr("FUTO_BACKUPS_BOT_URL", "http://localhost:3050"),
+		GrafanaURL:           envOr("GRAFANA_URL", "https://grafana.futostatus.com"),
 		MaxToolCalls:         envIntMin("COLUMBO_MAX_TOOL_CALLS", 16, 1),
 		InvestigationTimeout: time.Duration(envIntMin("COLUMBO_TIMEOUT_SECONDS", 300, 10)) * time.Second,
 		ToolResultBytes:      envIntMin("COLUMBO_TOOL_RESULT_BYTES", 12288, 512),
 		Workers:              envIntMin("COLUMBO_WORKERS", 2, 1),
+		OTLPMetricsEndpoint:  os.Getenv("OTLP_METRICS_ENDPOINT"),
+		OTLPMetricsURLPath:   os.Getenv("OTLP_METRICS_URL_PATH"),
+		OTLPMetricsInterval:  time.Duration(envIntMin("OTLP_METRICS_INTERVAL_MS", 15000, 100)) * time.Millisecond,
 		LogLevel:             logLevel,
 		LogPretty:            logPretty,
 	}

@@ -12,6 +12,9 @@ const jobSchema = z.object({
   note: z.string().optional(),
   queries: z.array(z.string()).optional(),
   error: z.string().optional(),
+  toolCalls: z.number().optional(),
+  promptTokens: z.number().optional(),
+  completionTokens: z.number().optional(),
 });
 
 export type ColumboJob = z.infer<typeof jobSchema>;

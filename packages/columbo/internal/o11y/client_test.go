@@ -65,6 +65,51 @@ func TestQueryLogsWrapsQueryInCustomerFilter(t *testing.T) {
 	}
 }
 
+func TestScopeLogsQLSplitsPipes(t *testing.T) {
+	scoped, err := scopeLogsQL("user-1", `_time:24h | sort by (_time) desc | limit 10`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `(user:="user-1" or customerId:="user-1") and (_time:24h) | sort by (_time) desc | limit 10`
+	if scoped != want {
+		t.Fatalf("scoped = %q, want %q", scoped, want)
+	}
+}
+
+func TestScopeLogsQLIgnoresQuotedPipes(t *testing.T) {
+	scoped, err := scopeLogsQL("user-1", `_msg:"a|b" error`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `(user:="user-1" or customerId:="user-1") and (_msg:"a|b" error)`
+	if scoped != want {
+		t.Fatalf("scoped = %q, want %q", scoped, want)
+	}
+}
+
+func TestScopeLogsQLDefaultsEmptyFilter(t *testing.T) {
+	scoped, err := scopeLogsQL("user-1", `| stats count()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `(user:="user-1" or customerId:="user-1") and (*) | stats count()`
+	if scoped != want {
+		t.Fatalf("scoped = %q, want %q", scoped, want)
+	}
+}
+
+func TestScopeLogsQLRejectsJoinAndUnion(t *testing.T) {
+	for _, query := range []string{
+		`error | join by (request_id) (customerId:="someone-else")`,
+		`error | union(customerId:="someone-else")`,
+		`error | UNION (whatever)`,
+	} {
+		if _, err := scopeLogsQL("user-1", query); err == nil {
+			t.Fatalf("expected %q to be rejected", query)
+		}
+	}
+}
+
 func TestOversizedResponseIsRejected(t *testing.T) {
 	srv, _, _ := recordingServer(t, http.StatusOK, strings.Repeat("x", maxResponseBytes+1))
 	client := NewClient(srv.URL, srv.URL, "user-1")

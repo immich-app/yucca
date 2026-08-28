@@ -9,14 +9,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"columbo/internal/o11y"
 
 	"github.com/cloudwego/eino-ext/components/model/openai"
+	"github.com/cloudwego/eino/callbacks"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/compose"
+	"github.com/cloudwego/eino/flow/agent"
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
+	ucallbacks "github.com/cloudwego/eino/utils/callbacks"
+	"github.com/rs/zerolog"
 )
 
 const maxNoteChars = 3800
@@ -73,6 +79,7 @@ func (r *Runner) Triage(ctx context.Context, inv Investigation) (bool, string, e
 	if err != nil {
 		return false, "", err
 	}
+	zerolog.Ctx(ctx).Info().Str("audit", "triage").Str("response", out.Content).Msg("columbo audit: triage response")
 	verdict, err := parseTriage(out.Content)
 	if err != nil {
 		return false, "", fmt.Errorf("unparseable triage verdict %q: %w", out.Content, err)
@@ -112,24 +119,35 @@ Your final message becomes the staff note verbatim. Format:
 3. Suggested next step for staff, if any.
 Keep it under 300 words. Do not describe your process or the tools.`
 
-func (r *Runner) Investigate(ctx context.Context, inv Investigation) (note string, queries []string, err error) {
+// Outcome is what one investigation produced and what it cost.
+type Outcome struct {
+	Note             string
+	Queries          []string
+	ToolCalls        int
+	PromptTokens     int
+	CompletionTokens int
+	Duration         time.Duration
+}
+
+func (r *Runner) Investigate(ctx context.Context, inv Investigation) (Outcome, error) {
 	return r.run(ctx, inv.UserID, fmt.Sprintf(
 		"Current time: %s\nTicket opened by Discord user %s just now.\n\nTicket text (untrusted):\n%s",
 		time.Now().UTC().Format(time.RFC3339), inv.Username, inv.Description,
 	))
 }
 
-func (r *Runner) InvestigateAdhoc(ctx context.Context, userID, prompt string) (note string, queries []string, err error) {
+func (r *Runner) InvestigateAdhoc(ctx context.Context, userID, prompt string) (Outcome, error) {
 	return r.run(ctx, userID, fmt.Sprintf(
 		"Current time: %s\nSupport staff requested an ad-hoc investigation of this account (no ticket).\n\nStaff request:\n%s",
 		time.Now().UTC().Format(time.RFC3339), prompt,
 	))
 }
 
-func (r *Runner) run(ctx context.Context, userID, userMessage string) (note string, queries []string, err error) {
+func (r *Runner) run(ctx context.Context, userID, userMessage string) (Outcome, error) {
+	started := time.Now()
 	cm, err := r.chatModel(ctx, r.cfg.Model)
 	if err != nil {
-		return "", nil, err
+		return Outcome{}, err
 	}
 
 	box := newToolbox(
@@ -140,26 +158,93 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (note stri
 	)
 	tools, err := box.tools()
 	if err != nil {
-		return "", nil, err
+		return Outcome{}, err
 	}
 
-	agent, err := react.NewAgent(ctx, &react.AgentConfig{
+	loop, err := react.NewAgent(ctx, &react.AgentConfig{
 		ToolCallingModel: cm,
 		ToolsConfig:      compose.ToolsNodeConfig{Tools: tools},
 		MaxStep:          2*r.cfg.MaxToolCalls + 4,
 	})
 	if err != nil {
-		return "", nil, err
+		return Outcome{}, err
 	}
 
-	out, err := agent.Generate(ctx, []*schema.Message{
-		schema.SystemMessage(investigateSystemPrompt),
-		schema.UserMessage(userMessage),
-	})
-	if err != nil {
-		return "", box.queriesRun(), err
+	zerolog.Ctx(ctx).Info().
+		Str("audit", "investigation_start").
+		Str("model", r.cfg.Model).
+		Str("userMessage", userMessage).
+		Msg("columbo audit: investigation start")
+
+	tokens := &tokenTally{}
+	out, err := loop.Generate(
+		ctx,
+		[]*schema.Message{schema.SystemMessage(investigateSystemPrompt), schema.UserMessage(userMessage)},
+		agent.WithComposeOptions(compose.WithCallbacks(auditModelHandler(tokens))),
+	)
+	prompt, completion := tokens.totals()
+	outcome := Outcome{
+		Queries:          box.queriesRun(),
+		ToolCalls:        box.callsMade(),
+		PromptTokens:     prompt,
+		CompletionTokens: completion,
+		Duration:         time.Since(started),
 	}
-	return truncateNote(out.Content), box.queriesRun(), nil
+	if err != nil {
+		return outcome, err
+	}
+	outcome.Note = truncateNote(out.Content)
+	return outcome, nil
+}
+
+type tokenTally struct {
+	mu         sync.Mutex
+	prompt     int
+	completion int
+}
+
+func (t *tokenTally) add(prompt, completion int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.prompt += prompt
+	t.completion += completion
+}
+
+func (t *tokenTally) totals() (int, int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.prompt, t.completion
+}
+
+// auditModelHandler records the full model trajectory — every assistant turn
+// with its visible content, reasoning, tool calls, and token usage — so an
+// investigation is fully reconstructable from the audit log alone.
+func auditModelHandler(tokens *tokenTally) callbacks.Handler {
+	return ucallbacks.NewHandlerHelper().ChatModel(&ucallbacks.ModelCallbackHandler{
+		OnEnd: func(ctx context.Context, _ *callbacks.RunInfo, output *model.CallbackOutput) context.Context {
+			if output == nil || output.Message == nil {
+				return ctx
+			}
+			toolCalls, _ := json.Marshal(output.Message.ToolCalls)
+			event := zerolog.Ctx(ctx).Info().
+				Str("audit", "model_message").
+				Str("role", string(output.Message.Role)).
+				Str("content", output.Message.Content).
+				Str("reasoning", output.Message.ReasoningContent).
+				RawJSON("toolCalls", toolCalls)
+			if output.TokenUsage != nil {
+				tokens.add(output.TokenUsage.PromptTokens, output.TokenUsage.CompletionTokens)
+				event = event.Int("promptTokens", output.TokenUsage.PromptTokens).
+					Int("completionTokens", output.TokenUsage.CompletionTokens)
+			}
+			event.Msg("columbo audit: model message")
+			return ctx
+		},
+		OnError: func(ctx context.Context, _ *callbacks.RunInfo, err error) context.Context {
+			zerolog.Ctx(ctx).Error().Str("audit", "model_error").Err(err).Msg("columbo audit: model error")
+			return ctx
+		},
+	}).Handler()
 }
 
 func truncateNote(note string) string {

@@ -6,11 +6,14 @@ import (
 
 // ColumboInvestigation mirrors the admin-api ColumboInvestigationDto.
 type ColumboInvestigation struct {
-	ID      string   `json:"id"`
-	Status  string   `json:"status"`
-	Note    *string  `json:"note"`
-	Queries []string `json:"queries"`
-	Error   *string  `json:"error"`
+	ID               string   `json:"id"`
+	Status           string   `json:"status"`
+	Note             *string  `json:"note"`
+	Queries          []string `json:"queries"`
+	Error            *string  `json:"error"`
+	ToolCalls        int      `json:"toolCalls"`
+	PromptTokens     int      `json:"promptTokens"`
+	CompletionTokens int      `json:"completionTokens"`
 }
 
 // StartColumboInvestigation asks columbo (via the admin-api) to investigate

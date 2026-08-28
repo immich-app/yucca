@@ -10,18 +10,18 @@ import (
 )
 
 type fakeInvestigator struct {
-	adhoc func(ctx context.Context, userID, prompt string) (string, []string, error)
+	adhoc func(ctx context.Context, userID, prompt string) (agent.Outcome, error)
 }
 
 func (f *fakeInvestigator) Triage(context.Context, agent.Investigation) (bool, string, error) {
 	return false, "", nil
 }
 
-func (f *fakeInvestigator) Investigate(context.Context, agent.Investigation) (string, []string, error) {
-	return "", nil, nil
+func (f *fakeInvestigator) Investigate(context.Context, agent.Investigation) (agent.Outcome, error) {
+	return agent.Outcome{}, nil
 }
 
-func (f *fakeInvestigator) InvestigateAdhoc(ctx context.Context, userID, prompt string) (string, []string, error) {
+func (f *fakeInvestigator) InvestigateAdhoc(ctx context.Context, userID, prompt string) (agent.Outcome, error) {
 	return f.adhoc(ctx, userID, prompt)
 }
 
@@ -44,11 +44,17 @@ func waitForStatus(t *testing.T, pool *Pool, id, want string) AdhocJob {
 
 func TestAdhocJobLifecycle(t *testing.T) {
 	investigator := &fakeInvestigator{
-		adhoc: func(_ context.Context, userID, prompt string) (string, []string, error) {
+		adhoc: func(_ context.Context, userID, prompt string) (agent.Outcome, error) {
 			if userID != "user-1" || prompt != "why slow" {
-				return "", nil, errors.New("wrong arguments")
+				return agent.Outcome{}, errors.New("wrong arguments")
 			}
-			return "note text", []string{"metrics: up"}, nil
+			return agent.Outcome{
+				Note:             "note text",
+				Queries:          []string{"metrics: up"},
+				ToolCalls:        1,
+				PromptTokens:     1200,
+				CompletionTokens: 80,
+			}, nil
 		},
 	}
 	pool := NewPool(investigator, nil, time.Second, 1)
@@ -71,8 +77,8 @@ func TestAdhocJobLifecycle(t *testing.T) {
 
 func TestAdhocFailureIsRecorded(t *testing.T) {
 	investigator := &fakeInvestigator{
-		adhoc: func(context.Context, string, string) (string, []string, error) {
-			return "", []string{"logs: error"}, errors.New("model exploded")
+		adhoc: func(context.Context, string, string) (agent.Outcome, error) {
+			return agent.Outcome{Queries: []string{"logs: error"}}, errors.New("model exploded")
 		},
 	}
 	pool := NewPool(investigator, nil, time.Second, 1)
@@ -93,12 +99,12 @@ func TestAdhocFailureIsRecorded(t *testing.T) {
 func TestAdhocConcurrencyIsBounded(t *testing.T) {
 	release := make(chan struct{})
 	investigator := &fakeInvestigator{
-		adhoc: func(ctx context.Context, _, _ string) (string, []string, error) {
+		adhoc: func(ctx context.Context, _, _ string) (agent.Outcome, error) {
 			select {
 			case <-release:
 			case <-ctx.Done():
 			}
-			return "done", nil, nil
+			return agent.Outcome{Note: "done"}, nil
 		},
 	}
 	pool := NewPool(investigator, nil, time.Minute, 1)

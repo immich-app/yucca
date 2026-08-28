@@ -18,7 +18,16 @@ export class ColumboService {
       throw new NotFoundException(`No user with id ${dto.userId}`);
     });
     const id = await this.columbo.startInvestigation(dto.userId, dto.prompt);
-    return { id, status: 'running', note: null, queries: [], error: null };
+    return {
+      id,
+      status: 'running',
+      note: null,
+      queries: [],
+      error: null,
+      toolCalls: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+    };
   }
 
   async getInvestigation(id: string): Promise<ColumboInvestigationDto> {
@@ -39,6 +48,9 @@ export class ColumboService {
       note: job.note ?? null,
       queries: job.queries ?? [],
       error: job.error ?? null,
+      toolCalls: job.toolCalls ?? 0,
+      promptTokens: job.promptTokens ?? 0,
+      completionTokens: job.completionTokens ?? 0,
     };
   }
 }

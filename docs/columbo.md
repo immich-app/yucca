@@ -59,9 +59,13 @@ The split is **harness vs. model**, not "the agent service is trusted":
 Per-user scoping is enforced by the harness on every request, regardless of
 the query text: `extra_label=customerId=<userId>` for VictoriaMetrics
 (server-side ANDed into every selector), and a parenthesized
-`(user:="<userId>" or customerId:="<userId>") and (<query>)` wrapper for
+`(user:="<userId>" or customerId:="<userId>") and (<filter>)` wrapper for
 VictoriaLogs — michael logs the account id as `user`, the NestJS services as
-`customerId`, mirroring the yucca-per-user dashboard's scoping. This is
+`customerId`, mirroring the yucca-per-user dashboard's scoping. LogsQL pipes
+cannot live inside parentheses, so the wrapper splits the query at its first
+top-level pipe and wraps only the filter half — pipes transform the already
+scoped rows and cannot widen them, except `join`/`union` (whose inner
+queries would run unscoped), which are refused outright. This is
 load-bearing, not defense-in-depth: the o11y vmauth endpoints are
 unauthenticated from the cluster (the NetBird ACL is the gate), so this
 filter is the only wall between the agent and other users' telemetry —
@@ -103,6 +107,30 @@ TF-provisioned `columbo` Secret (OpenRouter key from the manual
 o11y URLs at its own tier and pins the mesh hostname via
 `O11Y_VMAUTH_HOST_ALIASES` (its talos peers don't receive the NetBird DNS
 zone); prod resolves the mesh name through coredns.
+
+## Audit log
+
+Every investigation — ticket-triggered or ad-hoc — gets an `investigationId`
+and emits the complete trajectory as JSON log events under it (shipped to
+VictoriaLogs with the rest of the service logs): the trigger and its
+prompt/description, the triage response, every model message (visible
+content, reasoning, tool calls, token usage — `audit=model_message`), every
+tool call with its raw arguments and result (`audit=tool_call`), the exact
+post-scoping request each backend received (`audit=backend_query`), and the
+final note (`audit=note`). The staff note links its investigation id to the
+`yucca-columbo` Grafana dashboard (`o11y/dashboards/yucca-columbo.json`),
+which renders the whole trajectory for one id, so a note can always be
+traced back to everything the model thought, said, and queried to produce
+it. Tool failures (bad query syntax, exhausted budget)
+are returned to the model as tool results rather than aborting the run;
+`MaxStep` still bounds a model that never recovers.
+
+The note (and the ad-hoc API response / yuctl output) also reports the
+investigation's cost — tool calls, prompt/completion tokens, duration — and
+the same numbers ship as fleet metrics over the normal OTLP route
+(`columbo.investigations`, `columbo.tool_calls`, `columbo.tokens`,
+`columbo.investigation.duration`, labelled by trigger/outcome only, never by
+user), rendered in the dashboard's Fleet row.
 
 ## Known deviations / follow-ups
 

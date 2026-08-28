@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 const maxResponseBytes = 4 << 20
@@ -49,15 +51,76 @@ func (c *Client) QueryMetricsRange(ctx context.Context, query, start, end, step 
 }
 
 func (c *Client) QueryLogs(ctx context.Context, query, start, end string, limit int) (string, error) {
+	scoped, err := scopeLogsQL(c.CustomerID, query)
+	if err != nil {
+		return "", err
+	}
 	params := url.Values{}
-	params.Set("query", fmt.Sprintf("(user:=%q or customerId:=%q) and (%s)", c.CustomerID, c.CustomerID, query))
+	params.Set("query", scoped)
 	params.Set("start", start)
 	params.Set("end", end)
 	params.Set("limit", strconv.Itoa(limit))
 	return c.do(ctx, c.LogsURL+"/select/logsql/query", params)
 }
 
+// scopeLogsQL wraps the filter part of a LogsQL query in the per-user scope.
+// Pipes cannot live inside parentheses, so the query is split at its first
+// top-level pipe and only the filter half is wrapped — pipes never widen the
+// row set, they only transform it. The exceptions are join and union, whose
+// inner queries would run unscoped, so they are refused outright.
+func scopeLogsQL(customerID, query string) (string, error) {
+	filter, pipes := splitLogsQLPipes(query)
+	if filter == "" {
+		filter = "*"
+	}
+	if err := rejectScopeEscapingPipes(pipes); err != nil {
+		return "", err
+	}
+	scoped := fmt.Sprintf("(user:=%q or customerId:=%q) and (%s)", customerID, customerID, filter)
+	if pipes != "" {
+		scoped += " |" + pipes
+	}
+	return scoped, nil
+}
+
+func splitLogsQLPipes(query string) (filter, pipes string) {
+	inQuote := byte(0)
+	for i := 0; i < len(query); i++ {
+		ch := query[i]
+		switch {
+		case inQuote != 0:
+			switch ch {
+			case '\\':
+				i++
+			case inQuote:
+				inQuote = 0
+			}
+		case ch == '"' || ch == '\'' || ch == '`':
+			inQuote = ch
+		case ch == '|':
+			return strings.TrimSpace(query[:i]), query[i+1:]
+		}
+	}
+	return strings.TrimSpace(query), ""
+}
+
+func rejectScopeEscapingPipes(pipes string) error {
+	for _, token := range strings.FieldsFunc(strings.ToLower(pipes), func(r rune) bool {
+		return r == ' ' || r == '\t' || r == '\n' || r == '|' || r == '('
+	}) {
+		if token == "join" || token == "union" {
+			return fmt.Errorf("the %s pipe is not allowed: its inner query would not be scoped to this user", token)
+		}
+	}
+	return nil
+}
+
 func (c *Client) do(ctx context.Context, endpoint string, params url.Values) (string, error) {
+	zerolog.Ctx(ctx).Info().
+		Str("audit", "backend_query").
+		Str("endpoint", endpoint).
+		Str("params", params.Encode()).
+		Msg("columbo audit: backend query")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(params.Encode()))
 	if err != nil {
 		return "", err
