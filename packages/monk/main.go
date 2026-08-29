@@ -76,6 +76,9 @@ func main() {
 	buildInfo.Set(1)
 	registry.MustRegister(buildInfo)
 
+	// Transitions log at error/info; steady states stay quiet so a mon outage
+	// does not write an identical line every refresh forever.
+	collectFailing, intervalFailing := false, false
 	collect := func() {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -84,9 +87,16 @@ func main() {
 			if iv, err := collector.FetchIntervals(ctx, cmd); err == nil {
 				intervals = applyPins(iv)
 				exporter.StoreIntervalRead(true, start)
+				if intervalFailing {
+					intervalFailing = false
+					log.Info().Msg("interval read recovered")
+				}
 			} else {
 				exporter.StoreIntervalRead(false, start)
-				log.Warn().Err(err).Msg("interval read failed, keeping previous targets")
+				if !intervalFailing {
+					intervalFailing = true
+					log.Warn().Err(err).Msg("interval read failing, keeping previous targets")
+				}
 			}
 		} else {
 			exporter.StoreIntervalRead(true, start)
@@ -96,12 +106,19 @@ func main() {
 			var snap *collector.Snapshot
 			if snap, err = collector.Compute(raw, start, intervals); err == nil {
 				exporter.Store(snap, time.Since(start))
-				log.Info().Dur("took", time.Since(start)).Int("pools", len(snap.Pools)).Int("parse_errors", snap.ParseErrors).Msg("collected")
+				if collectFailing {
+					collectFailing = false
+					log.Info().Msg("collection recovered")
+				}
+				log.Debug().Dur("took", time.Since(start)).Int("pools", len(snap.Pools)).Int("parse_errors", snap.ParseErrors).Msg("collected")
 				return
 			}
 		}
 		exporter.MarkFailed()
-		log.Error().Err(err).Msg("collection failed")
+		if !collectFailing {
+			collectFailing = true
+			log.Error().Err(err).Msg("collection failing")
+		}
 	}
 
 	go func() {
