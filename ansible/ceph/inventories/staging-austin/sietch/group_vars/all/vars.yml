@@ -139,3 +139,9 @@ ceph_grafana_port: 3000
 ceph_alertmanager_port: 9093
 ceph_grafana_admin_user: admin
 ceph_grafana_admin_password: "{{ vault_grafana_admin_password }}"
+
+# monk, the scrub-backlog exporter (roles/scrub_exporter): mon hosts, :9284.
+# Digest-pinned immutable monorepo build tag (0.0.355 is the first build with
+# the exporter hardening from PR 592); bump deliberately.
+ceph_scrub_exporter_enabled: true
+ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.355@sha256:01b315fd8616c2992320985ef6ddda69c0834d32f13b4ec22d8b6537a4245a1b
