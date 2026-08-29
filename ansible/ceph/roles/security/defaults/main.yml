@@ -44,7 +44,10 @@ ceph_firewall_mgr_exporter_port: 9283
 ceph_firewall_ceph_exporter_port: 9926
 # monk, the scrub-backlog exporter (roles/scrub_exporter). Mon hosts only, but
 # opened everywhere like fluentbit: where the unit is absent nothing listens.
-ceph_firewall_scrub_exporter_port: 9284
+# roles/scrub_exporter asserts this rule is in the LIVE ruleset before it
+# deploys; the roles run in different playbooks, so neither references the
+# other beyond that check.
+ceph_firewall_scrub_exporter_port: "{{ ceph_scrub_exporter_port | default(9284) }}"
 # Fluent Bit's own metrics (roles/fluentbit). Bound to the fabric public address
 # so vmagent reaches it the same way as the exporters above. Opening the port
 # where the agent is not enabled is inert: nothing listens.

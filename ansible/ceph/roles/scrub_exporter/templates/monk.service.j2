@@ -6,6 +6,7 @@ After=network-online.target
 [Service]
 ExecStartPre=-/usr/bin/podman rm -f monk
 ExecStart=/usr/bin/podman run --rm --name monk --net host \
+  --cap-drop=ALL --security-opt=no-new-privileges \
   -v {{ ceph_scrub_exporter_config_dir }}:/etc/ceph:ro \
   {{ ceph_scrub_exporter_image }} \
   -listen {{ ceph_service_ip }}:{{ ceph_scrub_exporter_port }} \
@@ -14,6 +15,8 @@ ExecStart=/usr/bin/podman run --rm --name monk --net host \
 ExecStop=/usr/bin/podman stop monk
 Restart=always
 RestartSec=10
+MemoryMax={{ ceph_scrub_exporter_memory_max }}
+CPUQuota={{ ceph_scrub_exporter_cpu_quota }}
 
 [Install]
 WantedBy=multi-user.target
