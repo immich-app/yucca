@@ -3,11 +3,13 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -23,7 +25,10 @@ var AgeBuckets = []time.Duration{
 	28 * 24 * time.Hour,
 	35 * 24 * time.Hour,
 	49 * 24 * time.Hour,
+	98 * 24 * time.Hour,
 }
+
+var scheduleStateNames = []string{"scheduled", "queued", "scrubbing", "blocked", "reserving", "none", "other"}
 
 type Depth string
 
@@ -101,11 +106,18 @@ type Snapshot struct {
 func cephOutput(ctx context.Context, cephCmd []string, args ...string) ([]byte, error) {
 	full := slices.Concat(cephCmd[1:], args)
 	cmd := exec.CommandContext(ctx, cephCmd[0], full...)
-	// A wrapper cephCmd (cephadm shell) leaves a grandchild holding stdout past
-	// the context kill; WaitDelay lets Output return anyway.
+	// A wrapper cephCmd (cephadm shell) spawns grandchildren that inherit
+	// stdout: kill the whole process group on cancel so none leak, and let a
+	// WaitDelay expiry with complete output count as success (the command
+	// finished; only an inherited pipe stayed open).
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if err != nil {
+		if errors.Is(err, exec.ErrWaitDelay) && len(out) > 0 {
+			return out, nil
+		}
 		if ee, ok := err.(*exec.ExitError); ok {
 			return nil, fmt.Errorf("%s %s: %w: %s", cephCmd[0], args[0], err, strings.TrimSpace(string(ee.Stderr)))
 		}
@@ -192,6 +204,9 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 		Pools:          map[string]*PoolStats{},
 		ScheduleStates: map[string]int{},
 	}
+	for _, state := range scheduleStateNames {
+		snap.ScheduleStates[state] = 0
+	}
 	for _, pg := range data.PGStats {
 		pool, _, ok := strings.Cut(pg.PGID, ".")
 		if !ok {
@@ -214,8 +229,11 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 			}
 			snap.Pools[pool] = ps
 		}
+		// PG stats go transiently negative under split/backfill churn; a
+		// negative value would wrap the histogram's uint64 buckets.
+		bytes := max(pg.StatSum.NumBytes, 0)
 		ps.PGs++
-		ps.Bytes += pg.StatSum.NumBytes
+		ps.Bytes += bytes
 		snap.ScheduleStates[scheduleState(pg.ScrubSchedule)]++
 
 		for depth, stampStr := range map[Depth]string{Shallow: pg.LastScrubStamp, Deep: pg.LastDeepScrubStamp} {
@@ -223,25 +241,30 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 			if err != nil {
 				snap.ParseErrors++
 				ps.OverduePGs[depth]++
-				ps.OverdueBytes[depth] += pg.StatSum.NumBytes
+				ps.OverdueBytes[depth] += bytes
 				continue
 			}
 			if old, ok := ps.OldestStamp[depth]; !ok || stamp.Before(old) {
 				ps.OldestStamp[depth] = stamp
 			}
-			age := now.Sub(stamp)
+			age := max(now.Sub(stamp), 0)
 			if age > ps.Interval[depth] {
 				ps.OverduePGs[depth]++
-				ps.OverdueBytes[depth] += pg.StatSum.NumBytes
+				ps.OverdueBytes[depth] += bytes
 			}
-			ps.ParsedBytes[depth] += pg.StatSum.NumBytes
-			ps.AgeSum[depth] += age.Seconds() * float64(pg.StatSum.NumBytes)
+			ps.ParsedBytes[depth] += bytes
+			ps.AgeSum[depth] += age.Seconds() * float64(bytes)
 			for i, le := range AgeBuckets {
 				if age <= le {
-					ps.AgeBucketBytes[depth][i] += pg.StatSum.NumBytes
+					ps.AgeBucketBytes[depth][i] += bytes
 				}
 			}
 		}
+	}
+	// A correlated parse failure (a stamp-format change) must read as an
+	// outage, not as the whole cluster suddenly overdue.
+	if attempts := 2 * len(data.PGStats); snap.ParseErrors*5 > attempts {
+		return nil, fmt.Errorf("%d of %d stamp fields failed to parse", snap.ParseErrors, attempts)
 	}
 	return snap, nil
 }

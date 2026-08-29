@@ -138,7 +138,10 @@ func TestComputeCountsUnparsableStampsOverdue(t *testing.T) {
 	}
 	raw := []byte(`{"pg_stats": [
 		{"pgid": "7.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
-		{"pgid": "7.b", "last_scrub_stamp": "", "last_deep_scrub_stamp": "", "stat_sum": {"num_bytes": 40}}
+		{"pgid": "7.b", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "7.c", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "7.d", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "7.e", "last_scrub_stamp": "", "last_deep_scrub_stamp": "", "stat_sum": {"num_bytes": 40}}
 	]}`)
 	snap, err := Compute(raw, now, testIntervals)
 	if err != nil {
@@ -151,8 +154,8 @@ func TestComputeCountsUnparsableStampsOverdue(t *testing.T) {
 	if ps == nil {
 		t.Fatal("pool 7 missing")
 	}
-	if ps.PGs != 2 || ps.Bytes != 140 {
-		t.Errorf("pool totals: got %d PGs / %d bytes, want 2 / 140", ps.PGs, ps.Bytes)
+	if ps.PGs != 5 || ps.Bytes != 440 {
+		t.Errorf("pool totals: got %d PGs / %d bytes, want 5 / 440", ps.PGs, ps.Bytes)
 	}
 	for _, d := range Depths {
 		if ps.OverduePGs[d] != 1 {
@@ -165,10 +168,66 @@ func TestComputeCountsUnparsableStampsOverdue(t *testing.T) {
 			t.Errorf("OldestStamp[%s]: got %v, want %v", d, ps.OldestStamp[d], goodStamp)
 		}
 		for i, b := range ps.AgeBucketBytes[d] {
-			if b != 100 {
-				t.Errorf("AgeBucketBytes[%s][%d]: got %d, want 100", d, i, b)
+			if b != 400 {
+				t.Errorf("AgeBucketBytes[%s][%d]: got %d, want 400", d, i, b)
 			}
 		}
+	}
+}
+
+func TestComputeClampsNegativeBytes(t *testing.T) {
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "7.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "7.b", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": -50}}
+	]}`)
+	snap, err := Compute(raw, testNow(t), testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps := snap.Pools["7"]
+	if ps.Bytes != 100 {
+		t.Errorf("Bytes: got %d, want 100 (negative clamped)", ps.Bytes)
+	}
+	for _, d := range Depths {
+		if ps.ParsedBytes[d] != 100 {
+			t.Errorf("ParsedBytes[%s]: got %d, want 100", d, ps.ParsedBytes[d])
+		}
+		for i, b := range ps.AgeBucketBytes[d] {
+			if b < 0 || b > 100 {
+				t.Errorf("AgeBucketBytes[%s][%d] escaped the clamp: %d", d, i, b)
+			}
+		}
+	}
+}
+
+func TestComputeFailsOnCorrelatedParseErrors(t *testing.T) {
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "7.a", "last_scrub_stamp": "", "last_deep_scrub_stamp": "", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "7.b", "last_scrub_stamp": "", "last_deep_scrub_stamp": "", "stat_sum": {"num_bytes": 100}}
+	]}`)
+	if _, err := Compute(raw, testNow(t), testIntervals); err == nil {
+		t.Error("a cluster-wide stamp-format change must read as an outage, not as everything overdue")
+	}
+}
+
+func TestExporterExpiresSnapshotAfterConsecutiveFailures(t *testing.T) {
+	snap, err := Compute(loadFixture(t), testNow(t), testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exporter := &Exporter{}
+	exporter.Store(snap, time.Second)
+	if n := testutil.CollectAndCount(exporter, "ceph_scrub_pool_bytes"); n == 0 {
+		t.Fatal("pool series missing after Store")
+	}
+	for range expireAfterFailures {
+		exporter.MarkFailed()
+	}
+	if n := testutil.CollectAndCount(exporter, "ceph_scrub_pool_bytes"); n != 0 {
+		t.Errorf("pool series still served after %d consecutive failures: %d", expireAfterFailures, n)
+	}
+	if n := testutil.CollectAndCount(exporter, "ceph_scrub_collect_success"); n != 1 {
+		t.Errorf("health series must survive expiry, got %d", n)
 	}
 }
 
