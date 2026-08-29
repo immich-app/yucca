@@ -42,6 +42,9 @@ jobs:
     name: Build ${{ matrix.app.name }}
     needs: migration-order
     runs-on: ubuntu-latest
+    # The default 360m would hold the workflow concurrency slot long enough to
+    # coalesce away a queued release run (see the release-tag step).
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -73,17 +76,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Release commits (release-please merges) additionally get the release
-      # image tag, v<version> from the stamped root package.json — the same tag
-      # release-please pins into prod's pin files in that very commit. Prod's
-      # rollout stalls harmlessly (old pods keep serving) until this build
-      # pushes; no retag/promote workflow needed.
+      # The release image tag, v<version> from the stamped root package.json,
+      # is the same tag release-please pins into prod's pin files on the
+      # release commit. Computed from the tree and the registry rather than
+      # gated on the head commit message: queue coalescing can cancel the
+      # release commit's own run, and this way ANY later main build (or a
+      # workflow_dispatch) backfills the missing tag, while post-release
+      # builds find it already present and push nothing. Prod's rollout
+      # stalls harmlessly (old pods keep serving) until the tag exists.
       - name: Compute release image tag
         id: release
-        if: "startsWith(github.event.head_commit.message, 'chore(main): release')"
         env:
           APP: ${{ matrix.app.name }}
-        run: echo "tag=${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          REF="${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)"
+          if docker manifest inspect "$REF" >/dev/null 2>&1; then
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$REF" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and push
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0

@@ -4,17 +4,11 @@ name: Image Build Check
 # failure past review and surfaces post-merge (fail-fast is off there; the bad
 # app just never delivers). This builds changed apps' images on the PR, without
 # pushing, so the Dockerfile is exercised where the diff is still reviewable.
+# No paths filter: a workflow that sometimes does not run can never be a
+# required status. The changes job is the cheap always-on gate; PRs outside
+# the image surface skip every build.
 on:
   pull_request:
-    paths:
-      - 'packages/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - '.npmrc'
-      - '.dockerignore'
-      - '.mise/**'
-      - '.github/workflows/build-check.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,9 +32,9 @@ jobs:
       # packages/<app>/Dockerfile, which is what the build job derives.
       #
       # The node images build from `COPY . ./` plus the mise toolchain, so any
-      # package or root-manifest change is an input to all five and per-app
-      # precision would be fiction; only the Go images, which copy nothing but
-      # their own package, filter narrowly.
+      # package or root-manifest change is an input to every one of them and
+      # per-app precision would be fiction; only the Go images, which copy
+      # nothing but their own package, filter narrowly.
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: filter
         with:
@@ -57,9 +51,28 @@ jobs:
             yucca-metrics-worker: *node
             futo-backups-bot: *node
             web: *node
+            standalone-app: *node
             michael: ['packages/michael/**', '.dockerignore']
             columbo: ['packages/columbo/**', '.dockerignore']
             monk: ['packages/monk/**', '.dockerignore']
+
+      # A Dockerfile without a filter is the silent gap this workflow exists
+      # to close: its first build would happen post-merge (or at release, for
+      # publish-only apps). The two mocks are built by tilt inside CI runs and
+      # never delivered.
+      - name: Require every Dockerfile to carry a filter
+        run: |
+          covered='yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web standalone-app michael columbo monk'
+          excluded='mock-oidc-provider mock-postmark-provider'
+          fail=0
+          for d in packages/*/Dockerfile; do
+            app=$(basename "$(dirname "$d")")
+            case " $covered $excluded " in
+              *" $app "*) ;;
+              *) echo "::error::packages/$app/Dockerfile has no build-check filter; register it above or exclude it here"; fail=1 ;;
+            esac
+          done
+          exit $fail
 
   build:
     name: Build ${{ matrix.app }}
