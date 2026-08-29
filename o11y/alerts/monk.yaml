@@ -1,0 +1,194 @@
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanaalertrulegroup_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: yucca-monk
+spec:
+  folderRef: yucca
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  interval: 1m
+  rules:
+    # Per instance, not deduped: one wedged monk is invisible in max-by
+    # queries precisely because the healthy replicas win the dedup.
+    - uid: monk-collect-failing
+      title: MonkCollectFailing
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: a monk instance cannot collect scrub data
+        description: >-
+          ceph_scrub_collect_success is 0 on {{ $labels.instance }}
+          (cluster {{ $labels.cluster }}) — the exporter cannot run its ceph
+          commands. After five consecutive failures its pool series go
+          absent; overdue numbers then rest on the remaining mons.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              last_over_time(ceph_scrub_collect_success{project="yucca"}[5m])
+              == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Serving is not collecting: a wedged instance keeps serving its last
+    # snapshot until expiry, so staleness needs its own signal.
+    - uid: monk-snapshot-stale
+      title: MonkSnapshotStale
+      condition: B
+      for: 5m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: a monk instance serves a stale snapshot
+        description: >-
+          {{ $labels.instance }} (cluster {{ $labels.cluster }}) last
+          refreshed scrub data over 15 minutes ago (refresh is 2m); its
+          panels and the dedup that prefers its values are running on old
+          numbers.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              time()
+              - last_over_time(ceph_scrub_collect_timestamp_seconds{project="yucca"}[5m])
+              - 900
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # Stale thresholds judge overdue silently: the exporter keeps last-known
+    # intervals when the cluster read fails, which is correct and invisible.
+    - uid: monk-interval-read-failing
+      title: MonkIntervalReadFailing
+      condition: B
+      for: 1h
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: monk cannot read the cluster's scrub intervals
+        description: >-
+          ceph_scrub_interval_read_success is 0 on {{ $labels.instance }}
+          (cluster {{ $labels.cluster }}) for an hour — overdue thresholds
+          no longer track the cluster's scrub configuration.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              last_over_time(ceph_scrub_interval_read_success{project="yucca"}[5m])
+              == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
+    # A stamp-format drift below the outage threshold: some PGs unparsable
+    # (counted overdue, fail-safe) while the refresh still succeeds.
+    - uid: monk-parse-errors
+      title: MonkParseErrors
+      condition: B
+      for: 15m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: monk is skipping unparsable scrub records
+        description: >-
+          ceph_scrub_parse_errors is nonzero on {{ $labels.instance }}
+          (cluster {{ $labels.cluster }}) — some PG stamps no longer parse
+          (format drift?); affected PGs count as overdue until fixed.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              last_over_time(ceph_scrub_parse_errors{project="yucca"}[5m])
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
