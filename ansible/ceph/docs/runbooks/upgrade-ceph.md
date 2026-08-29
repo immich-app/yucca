@@ -127,3 +127,15 @@ not merely the latest. `baseline_held_packages` controls which packages are held
   procedure inline.
 - `docs/runbooks/replace-host.md`, `docs/runbooks/add-node.md` -- related day-2
   ops that also drive `ceph` from the bootstrap node.
+
+## Post-upgrade: monk
+
+monk (`roles/scrub_exporter`) runs on the mon hosts from a container based
+on the cluster ceph image. After an upgrade: bump `ARG CEPH_IMAGE` in
+`packages/monk/Dockerfile` to the new release (the mons' layer dedup depends
+on it), re-pin `ceph_scrub_exporter_image` once CI publishes the rebuilt
+tag, and re-run `mise run monk`. Then watch two canaries for format drift in
+the new release: `ceph_scrub_schedule_pgs{state="other"}` staying 0, and the
+parse-error alert staying quiet. A flapping monk unit triages like any
+podman systemd unit: `journalctl -u monk` on the mon; the exporter logs only
+state transitions, so the last error line is the current failure.

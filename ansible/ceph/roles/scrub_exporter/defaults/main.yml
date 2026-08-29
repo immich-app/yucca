@@ -1,4 +1,9 @@
 ---
+# Retirement contract: monk serves upstream ceph PR #68925's metric names
+# with locally chosen MIN-stamp-per-pool semantics; upstream's draft
+# aggregated the MAX. If a ceph release's mgr exporter starts serving
+# ceph_pg_last_scrub_stamp, diff the semantics first, then flip this off;
+# never feed both into the same store.
 ceph_scrub_exporter_enabled: false
 
 # Delivered by yucca CI (deploy.yml pushes ghcr.io/immich-app/yucca/monk on
