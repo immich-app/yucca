@@ -121,12 +121,11 @@ A metric absent from the "metrics with data" list below means that activity neve
 
 Per-user logs catalog (structured JSON; _time:24h error is a good first query):
 - yucca-api / yucca-admin-api (control plane): one entry per request, _msg like "GET RepositoryController.getRepositories (OK)", fields: method, path, status_code, duration_ms, request_id.
-- michael (restic backend): one entry per restic-protocol request, _msg like "POST /{path}/{type}/{name} (200)", fields: user, repository, path (the real URL), method, status, duration (ms), size (bytes), client_ip, user_agent.
-Michael route semantics (restic REST protocol — read these from method + the path's type segment):
-- POST /{repo}/{type}/{name} = a blob write (the saveBlob handler), but what it MEANS depends on the type: /data/ = backup content uploading; /index/ = index flush; /snapshots/ = a backup COMPLETED (the snapshot record is written last); /keys/ = repository key setup. /locks/ is the exception — restic writes a lock at the start of EVERY operation, including read-only ones (restore, check), so lock POSTs prove activity, not backups.
-- GET /{repo}/{type}/{name} = blob read (restores, checks); HEAD = existence probe; DELETE = cleanup (locks after every operation; data/index during prune).
-- GET /{repo}/{type}/ = listing; POST /{repo}/config = repository initialization (happens once, before the first backup); POST /{repo}/ = repository creation.
-So: method:="POST" path:~"/snapshots/" = completed backups; method:="POST" path:~"/data/" = backup traffic; status:>=400 on michael = failing restic requests.
+- michael (restic backend): one entry per restic-protocol request, _msg like "POST /{path}/{type}/{name} (200)", fields: user, repository, op (handler: save_blob/get_blob/check_blob/delete_blob/list_blobs/save_config/get_config/check_config/delete_config/create_repository/delete_repository), blob_type (data/index/keys/locks/snapshots), route (resolved pattern), path (the real URL), method, status, duration (ms), size (bytes), client_ip, user_agent. Older entries may predate op/blob_type — fall back to method + path regexes there (e.g. method:="POST" path:~"/data/").
+Michael operation semantics (restic REST protocol):
+- op:="save_blob" = a blob write; what it MEANS depends on blob_type: data = backup content uploading; index = index flush; snapshots = a backup COMPLETED (the snapshot record is written last); keys = repository key setup. locks is the exception — restic writes a lock at the start of EVERY operation, including read-only ones (restore, check), so lock writes prove activity, not backups.
+- get_blob = blob read (restores, checks); check_blob = existence probe; delete_blob = cleanup (locks after every operation; data/index during prune); list_blobs = listing; save_config = repository initialization (happens once, before the first backup); create_repository = repository creation.
+So: op:="save_blob" blob_type:="snapshots" = completed backups; op:="save_blob" blob_type:="data" = backup traffic; status:>=400 on michael = failing restic requests.
 
 Your final message becomes the staff note verbatim. Format:
 1. One-line verdict (e.g. "Backups from connection X have failed with 507 since 14:02 UTC").

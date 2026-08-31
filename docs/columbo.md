@@ -52,9 +52,11 @@ customerId-carrying metric with its labels and meaning (`api_request_count`,
 `http.server.request.count`, the `blobs.*` byte counters with the restic
 blob-type label, the `client.*` duration histograms, the `rgw_repository_*`
 gauges), plus the log shapes of both planes — the NestJS request lines and
-michael's restic access logs with their route semantics (POST
-`/{repo}/{type}/{name}` = saveBlob; a POST to `/snapshots/` marks a
-completed backup, steady POSTs to `/data/` a backup in progress). The
+michael's restic access logs with their operation semantics (`op` +
+`blob_type` fields since fix(michael) #597: `op:="save_blob"
+blob_type:="snapshots"` marks a completed backup, steady `data` saves a
+backup in progress, `locks` writes any operation including read-only ones;
+path regexes remain the fallback for older entries in retention). The
 catalog is maintained by hand in `investigateSystemPrompt`; update it when a
 service adds or renames per-user telemetry. On top of that, each investigation opens with a free scoped
 lookup of which of those names actually carry data for THIS account in the
