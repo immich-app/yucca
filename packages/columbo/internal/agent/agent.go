@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -41,11 +42,12 @@ type Config struct {
 	APIKey           string
 	Model            string
 	TriageModel      string
-	MetricsURL       string
-	LogsURL          string
-	MaxToolCalls     int
-	ToolResultBytes  int
-	ModelCallTimeout time.Duration
+	MetricsURL        string
+	LogsURL           string
+	MaxToolCalls      int
+	ToolResultBytes   int
+	ModelCallTimeout  time.Duration
+	ModelCallAttempts int
 }
 
 type Runner struct {
@@ -281,19 +283,26 @@ func truncateNote(note string) string {
 	return note[:maxNoteChars] + "…"
 }
 
-// chatModel's per-request timeout guards against a wedged connection; the
-// investigation context is the real budget, so this stays close to it rather
-// than killing merely-slow completions (a 120s cap took down an otherwise
-// healthy run on one slow OpenRouter provider).
+// chatModel routes requests through the retrying transport: per-ATTEMPT
+// deadlines with a couple of retries, because OpenRouter tail latency varies
+// wildly across the providers it balances over — a 120s stall on one
+// provider took down an otherwise healthy run. The investigation context
+// remains the overall budget.
 func (r *Runner) chatModel(ctx context.Context, model string) (*openai.ChatModel, error) {
 	timeout := r.cfg.ModelCallTimeout
 	if timeout <= 0 {
-		timeout = 240 * time.Second
+		timeout = 120 * time.Second
+	}
+	attempts := r.cfg.ModelCallAttempts
+	if attempts <= 0 {
+		attempts = 3
 	}
 	return openai.NewChatModel(ctx, &openai.ChatModelConfig{
 		BaseURL: r.cfg.OpenRouterURL,
 		APIKey:  r.cfg.APIKey,
 		Model:   model,
-		Timeout: timeout,
+		HTTPClient: &http.Client{
+			Transport: &retryTransport{base: http.DefaultTransport, attempts: attempts, perAttempt: timeout},
+		},
 	})
 }

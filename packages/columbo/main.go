@@ -55,9 +55,10 @@ func main() {
 		TriageModel:      cfg.TriageModel,
 		MetricsURL:       cfg.MetricsURL,
 		LogsURL:          cfg.LogsURL,
-		MaxToolCalls:     cfg.MaxToolCalls,
-		ToolResultBytes:  cfg.ToolResultBytes,
-		ModelCallTimeout: cfg.ModelCallTimeout,
+		MaxToolCalls:      cfg.MaxToolCalls,
+		ToolResultBytes:   cfg.ToolResultBytes,
+		ModelCallTimeout:  cfg.ModelCallTimeout,
+		ModelCallAttempts: cfg.ModelCallAttempts,
 	})
 	recorder, err := metrics.Setup(cfg.OTLPMetricsEndpoint, cfg.OTLPMetricsURLPath, cfg.OTLPMetricsInterval)
 	if err != nil {
