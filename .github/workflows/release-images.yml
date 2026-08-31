@@ -68,7 +68,7 @@ jobs:
             fi
             echo "Deploy run for ${COMMIT} is ${status:-not listed yet}; polling again in 60s"
             sleep 60
-          done < <(printf '%s\n' "$apps")
+          done
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
@@ -137,5 +137,5 @@ jobs:
               --cache-from "type=gha,scope=${app}" \
               --cache-to "type=gha,mode=max,scope=${app}" \
               . || failed="$failed $app"
-          done
+          done < <(printf '%s\n' "$apps")
           [ -z "$failed" ] || { echo "::error::publish failed for:$failed"; exit 1; }
