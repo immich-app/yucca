@@ -37,14 +37,15 @@ type Investigation struct {
 }
 
 type Config struct {
-	OpenRouterURL   string
-	APIKey          string
-	Model           string
-	TriageModel     string
-	MetricsURL      string
-	LogsURL         string
-	MaxToolCalls    int
-	ToolResultBytes int
+	OpenRouterURL    string
+	APIKey           string
+	Model            string
+	TriageModel      string
+	MetricsURL       string
+	LogsURL          string
+	MaxToolCalls     int
+	ToolResultBytes  int
+	ModelCallTimeout time.Duration
 }
 
 type Runner struct {
@@ -280,11 +281,19 @@ func truncateNote(note string) string {
 	return note[:maxNoteChars] + "…"
 }
 
+// chatModel's per-request timeout guards against a wedged connection; the
+// investigation context is the real budget, so this stays close to it rather
+// than killing merely-slow completions (a 120s cap took down an otherwise
+// healthy run on one slow OpenRouter provider).
 func (r *Runner) chatModel(ctx context.Context, model string) (*openai.ChatModel, error) {
+	timeout := r.cfg.ModelCallTimeout
+	if timeout <= 0 {
+		timeout = 240 * time.Second
+	}
 	return openai.NewChatModel(ctx, &openai.ChatModelConfig{
 		BaseURL: r.cfg.OpenRouterURL,
 		APIKey:  r.cfg.APIKey,
 		Model:   model,
-		Timeout: 120 * time.Second,
+		Timeout: timeout,
 	})
 }
