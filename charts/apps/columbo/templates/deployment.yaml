@@ -1,0 +1,4 @@
+{{- $_ := set .Values "envFrom" (concat
+  (list (dict "secretRef" (dict "name" (include "yucca-common.fullname" .) "optional" true)))
+  (.Values.extraEnvFrom | default (list))) }}
+{{- include "yucca-common.deployment" . }}

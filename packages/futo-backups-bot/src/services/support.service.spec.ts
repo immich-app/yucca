@@ -90,6 +90,8 @@ describe(SupportService.name, () => {
       mocks.discord as never,
       mocks.api as never,
       new InviteService(mocks.logger as never, mocks.discord as never, mocks.api as never),
+      mocks.freshdeskSync as never,
+      mocks.columbo as never,
     );
   });
 
@@ -161,7 +163,7 @@ describe(SupportService.name, () => {
     it('creates the ticket thread with a staff thread and replies with a pointer', async () => {
       mocks.api.getLink.mockResolvedValue(link);
       mocks.api.getUserSummary.mockResolvedValue(summary);
-      const send = jest.fn();
+      const send = jest.fn().mockResolvedValue({ id: 'seed-1' });
       mocks.discord.createTicketThread.mockResolvedValue(asThread({ id: 'thread-1', send }));
       const interaction = newModalInteraction('My backups are failing.');
 
@@ -184,6 +186,48 @@ describe(SupportService.name, () => {
       expect((interaction as { editReply: jest.Mock }).editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('thread-1') }),
       );
+      expect(mocks.freshdeskSync.onTicketOpened).toHaveBeenCalledWith(
+        expect.objectContaining({
+          threadId: 'thread-1',
+          seedMessageId: 'seed-1',
+          staffThreadId: 'staff-thread-1',
+          staffSeedMessageId: 'staff-seed-1',
+          userId: 'user-1',
+          description: 'My backups are failing.',
+        }),
+      );
+      expect(mocks.columbo.requestInvestigation).toHaveBeenCalledWith({
+        ticketThreadId: 'thread-1',
+        staffThreadId: 'staff-thread-1',
+        discordUserId: '123456789',
+        username: 'Someone',
+        userId: 'user-1',
+        description: 'My backups are failing.',
+      });
+    });
+  });
+
+  describe('staff note posting', () => {
+    it('posts into a staff thread', async () => {
+      mocks.discord.getThreadById.mockResolvedValue(
+        asThread({ id: 'staff-thread-1', name: 'staff-someone-6789-a', parentId: 'support-channel' }) as never,
+      );
+
+      await sut.postStaffNote('staff-thread-1', 'Nothing suspicious in the logs.');
+
+      expect(mocks.discord.sendToThread).toHaveBeenCalledWith(
+        'staff-thread-1',
+        expect.objectContaining({ embeds: [expect.anything()] }),
+      );
+    });
+
+    it('refuses a thread that is not a staff thread', async () => {
+      mocks.discord.getThreadById.mockResolvedValue(
+        asThread({ id: 'thread-1', name: 'ticket-someone-6789-a', parentId: 'support-channel' }) as never,
+      );
+
+      await expect(sut.postStaffNote('thread-1', 'note')).rejects.toThrow('not a staff thread');
+      expect(mocks.discord.sendToThread).not.toHaveBeenCalled();
     });
   });
 
@@ -201,7 +245,7 @@ describe(SupportService.name, () => {
 
     it('opens a ticket for an unlinked user without requiring a link', async () => {
       mocks.api.getLink.mockResolvedValue(null);
-      const send = jest.fn();
+      const send = jest.fn().mockResolvedValue({ id: 'seed-9' });
       mocks.discord.createTicketThread.mockResolvedValue(asThread({ id: 'thread-9', send }));
       const interaction = newCommandInteraction(
         { id: '555000', username: 'Guest' },

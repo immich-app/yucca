@@ -13,6 +13,10 @@ import {
   DiscordLinkRequestCreatedDto,
   DiscordLinkRequestResponseDto,
   DiscordLinkUsernameUpdateDto,
+  DiscordTicketCreateDto,
+  DiscordTicketDto,
+  DiscordTicketListDto,
+  DiscordTicketUpdateDto,
   DiscordUserSummaryDto,
 } from 'src/dto/discord.dto';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
@@ -130,6 +134,49 @@ export class DiscordService {
       throw new NotFoundException('Unknown or expired link code');
     }
     return { discordUsername: request.discordUsername };
+  }
+
+  createTicket(dto: DiscordTicketCreateDto): Promise<DiscordTicketDto> {
+    return this.discord.createTicket({
+      threadId: dto.threadId,
+      staffThreadId: dto.staffThreadId ?? null,
+      freshdeskTicketId: dto.freshdeskTicketId,
+      discordUserId: dto.discordUserId,
+      userId: dto.userId ?? null,
+      lastMirroredMessageId: dto.lastMirroredMessageId ?? null,
+      lastStaffMirroredMessageId: dto.lastStaffMirroredMessageId ?? null,
+    });
+  }
+
+  async getTicketByThread(threadId: string): Promise<DiscordTicketDto> {
+    const ticket = await this.discord.getTicketByThread(threadId);
+    if (!ticket) {
+      throw new NotFoundException(`No ticket for thread ${threadId}`);
+    }
+    return ticket;
+  }
+
+  async getTicketByFreshdeskId(freshdeskTicketId: string): Promise<DiscordTicketDto> {
+    const ticket = await this.discord.getTicketByFreshdeskId(freshdeskTicketId);
+    if (!ticket) {
+      throw new NotFoundException(`No ticket for Freshdesk ticket ${freshdeskTicketId}`);
+    }
+    return ticket;
+  }
+
+  async listOpenTickets(): Promise<DiscordTicketListDto> {
+    return { items: await this.discord.listOpenTickets() };
+  }
+
+  async updateTicket(id: string, dto: DiscordTicketUpdateDto): Promise<void> {
+    const { closed, ...updates } = dto;
+    const updated = await this.discord.updateTicket(id, {
+      ...updates,
+      ...(closed === undefined ? {} : { closedAt: closed ? new Date() : null }),
+    });
+    if (!updated) {
+      throw new NotFoundException(`No ticket with id ${id}`);
+    }
   }
 
   async getUserSummary(userId: string): Promise<DiscordUserSummaryDto> {

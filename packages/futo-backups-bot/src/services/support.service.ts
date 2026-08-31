@@ -1,5 +1,5 @@
 import { LoggerRepository } from '@common/server/otel';
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { BadRequestException, Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   ActionRowBuilder,
@@ -21,8 +21,10 @@ import {
 import { ComponentId } from 'src/enum';
 import { env } from 'src/env';
 import { Messages } from 'src/messages';
+import { ColumboRepository } from 'src/repositories/columbo.repository';
 import { DiscordRepository } from 'src/repositories/discord.repository';
 import { DiscordLink, UserSummary, YuccaApiRepository } from 'src/repositories/yuccaApi.repository';
+import { FreshdeskSyncService } from 'src/services/freshdeskSync.service';
 import { InviteService } from 'src/services/invite.service';
 import { isStaff } from 'src/utils/staff';
 
@@ -55,13 +57,18 @@ export class SupportService implements OnApplicationBootstrap {
     private readonly discord: DiscordRepository,
     private readonly api: YuccaApiRepository,
     private readonly invite: InviteService,
+    private readonly freshdeskSync: FreshdeskSyncService,
+    private readonly columbo: ColumboRepository,
   ) {}
 
   async onApplicationBootstrap() {
     if (!this.discord.enabled) {
       return;
     }
-    await this.discord.start((interaction) => this.handleInteraction(interaction));
+    await this.discord.start(
+      (interaction) => this.handleInteraction(interaction),
+      (message) => this.freshdeskSync.handleMessage(message),
+    );
     try {
       await this.discord.registerCommands();
     } catch (error) {
@@ -107,6 +114,12 @@ export class SupportService implements OnApplicationBootstrap {
       }
       if (interaction.isChatInputCommand() && interaction.commandName === 'claim-backups-role') {
         return await this.onClaimRequested(interaction);
+      }
+      if (interaction.isChatInputCommand() && interaction.commandName === 'email-updates') {
+        return await this.freshdeskSync.onEmailUpdatesCommand(interaction);
+      }
+      if (interaction.isChatInputCommand() && interaction.commandName === 'handoff') {
+        return await this.freshdeskSync.onHandoffCommand(interaction);
       }
       if (interaction.isChatInputCommand() && interaction.commandName === 'beta-invite') {
         return await this.invite.onInviteCommand(interaction);
@@ -334,7 +347,7 @@ export class SupportService implements OnApplicationBootstrap {
     const suffix = this.ticketSuffix(user.username, user.id);
     const thread = await this.discord.createTicketThread(`ticket-${suffix}`, user.id);
 
-    await thread.send({
+    const seed = await thread.send({
       content: `<@${user.id}> <@&${env.DISCORD_STAFF_ROLE_ID}>`,
       embeds: [new EmbedBuilder().setTitle(Messages.ticketEmbedTitle).setDescription(description)],
       components: [this.buttonRow(ComponentId.CloseTicket, Messages.closeTicketButton, ButtonStyle.Danger)],
@@ -353,12 +366,47 @@ export class SupportService implements OnApplicationBootstrap {
           return null;
         })
       : null;
-    await this.discord.createStaffThread(
-      `staff-${suffix}`,
-      `<@&${env.DISCORD_STAFF_ROLE_ID}>\n${this.staffNote(link, summary)}`,
-    );
+    const note = this.staffNote(link, summary);
+    const staff = await this.discord.createStaffThread(`staff-${suffix}`, `<@&${env.DISCORD_STAFF_ROLE_ID}>\n${note}`);
+
+    void this.freshdeskSync
+      .onTicketOpened({
+        threadId: thread.id,
+        seedMessageId: seed.id,
+        staffThreadId: staff.thread.id,
+        staffSeedMessageId: staff.seed.id,
+        discordUserId: user.id,
+        username: user.username,
+        userId: link?.userId ?? null,
+        description,
+        staffNote: note,
+      })
+      .catch((error: unknown) => this.logger.error(error, 'failed to open the freshdesk ticket'));
+
+    if (link) {
+      void this.columbo
+        .requestInvestigation({
+          ticketThreadId: thread.id,
+          staffThreadId: staff.thread.id,
+          discordUserId: user.id,
+          username: user.username,
+          userId: link.userId,
+          description,
+        })
+        .catch((error: unknown) => this.logger.error(error, 'failed to request an investigation'));
+    }
 
     return thread;
+  }
+
+  async postStaffNote(staffThreadId: string, content: string): Promise<void> {
+    const thread = await this.discord.getThreadById(staffThreadId);
+    if (thread.parentId !== env.DISCORD_SUPPORT_CHANNEL_ID || !thread.name.startsWith('staff-')) {
+      throw new BadRequestException(`thread ${staffThreadId} is not a staff thread`);
+    }
+    await this.discord.sendToThread(staffThreadId, {
+      embeds: [new EmbedBuilder().setTitle(Messages.investigationTitle).setDescription(content.slice(0, 4096))],
+    });
   }
 
   private async onStaffNotesRequested(interaction: ChatInputCommandInteraction) {
@@ -408,6 +456,10 @@ export class SupportService implements OnApplicationBootstrap {
       await this.discord.closeThread(staffThread);
     }
     await this.discord.closeThread(thread);
+
+    void this.freshdeskSync
+      .onTicketClosed(thread.id)
+      .catch((error: unknown) => this.logger.error(error, 'failed to resolve the freshdesk ticket'));
   }
 
   private syncUsername(link: DiscordLink, user: User) {

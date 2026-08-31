@@ -42,6 +42,9 @@ ceph_firewall_alertmanager_port: "{{ ceph_alertmanager_port | default(9093) }}"
 ceph_firewall_node_exporter_port: 9100
 ceph_firewall_mgr_exporter_port: 9283
 ceph_firewall_ceph_exporter_port: 9926
+# monk, the scrub-backlog exporter (roles/scrub_exporter). Mon hosts only, but
+# opened everywhere like fluentbit: where the unit is absent nothing listens.
+ceph_firewall_scrub_exporter_port: 9284
 # Fluent Bit's own metrics (roles/fluentbit). Bound to the fabric public address
 # so vmagent reaches it the same way as the exporters above. Opening the port
 # where the agent is not enabled is inert: nothing listens.

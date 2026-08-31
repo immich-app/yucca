@@ -34,3 +34,11 @@ provider "kubernetes" {
 # service-account token in OP_SERVICE_ACCOUNT_TOKEN (injected by `op run`, the
 # same token the rest of the stack uses); no Connect host needed.
 provider "onepassword" {}
+
+# TRANSITIONAL (see versions.tf): authenticates the destroys of the state-held
+# freshdesk resources; the group/rule are now owned by the partition's
+# global/freshdesk stack.
+provider "freshdesk" {
+  domain  = coalesce(local.freshdesk_url, "https://freshdesk.invalid")
+  api_key = coalesce(var.yucca_freshdesk_admin_api_key == "REPLACE_ME" ? "" : var.yucca_freshdesk_admin_api_key, "unset")
+}

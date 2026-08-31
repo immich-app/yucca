@@ -268,6 +268,53 @@ variable "spice_transcripts_secret_key" {
   default     = ""
 }
 
+variable "yucca_freshdesk_url" {
+  description = "Freshdesk base URL for the futo-backups-bot ticket sync (manual YUCCA_FRESHDESK_URL item). Empty = the sync stays dormant (placeholder items until filled)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_freshdesk_api_key" {
+  description = "Freshdesk API key of the dedicated bot agent (manual YUCCA_FRESHDESK_API_KEY item)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_freshdesk_admin_api_key" {
+  description = "TRANSITIONAL (see versions.tf): admin key for destroying the state-held freshdesk resources (manual YUCCA_FRESHDESK_ADMIN_API_KEY item)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_freshdesk_webhook_secret" {
+  description = "Webhook header secret minted by the prod/global/freshdesk stack (YUCCA_FRESHDESK_WEBHOOK_SECRET)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_freshdesk_webhook_path" {
+  description = "Capability-URL path segment minted by the prod/global/freshdesk stack (YUCCA_FRESHDESK_WEBHOOK_PATH); substituted into the Flux tree via cluster-secrets."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "yucca_freshdesk_group_id" {
+  description = "Freshdesk agent-group id minted by the prod/global/freshdesk stack (YUCCA_FRESHDESK_GROUP_ID)."
+  type        = string
+  default     = ""
+}
+
+variable "yucca_openrouter_api_key" {
+  description = "OpenRouter API key for columbo (manual YUCCA_OPENROUTER_API_KEY item). Empty = columbo idles."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "yucca_discord_guild_id" {
   description = "Discord server id for futo-backups-bot (YUCCA_DISCORD_SUPPORT_IDS, written by core-infra-tf's discord apply). Empty = the bot idles."
   type        = string

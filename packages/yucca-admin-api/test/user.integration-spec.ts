@@ -92,6 +92,7 @@ describe('UserController (e2e)', () => {
         .expect(200);
 
       expect(body).toEqual({
+        discordLink: null,
         user: {
           id: user.id,
           sub: user.sub,

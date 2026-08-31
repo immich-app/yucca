@@ -1,5 +1,6 @@
 import type { EmailRepository } from '@common/server/email';
 import type { LoggerRepository, WideContextRepository } from '@common/server/otel';
+import type { ColumboRepository } from 'src/repositories/columbo.repository';
 import type { DatabaseRepository } from 'src/repositories/database.repository';
 import type { DiscordInviteRepository } from 'src/repositories/discordInvite.repository';
 import type { DiscordLinkRepository } from 'src/repositories/discordLink.repository';
@@ -26,6 +27,14 @@ export const newFutoBackupsBotRepositoryMock = (): jest.Mocked<RepositoryInterfa
   return {
     enabled: true,
     closeDrop: jest.fn().mockResolvedValue(void 0),
+  };
+};
+
+export const newColumboRepositoryMock = (): jest.Mocked<RepositoryInterface<ColumboRepository>> => {
+  return {
+    enabled: true,
+    startInvestigation: jest.fn().mockResolvedValue('job-1'),
+    getInvestigation: jest.fn(),
   };
 };
 
@@ -116,6 +125,7 @@ export const newMocks = () => {
   return {
     discordInvite: newDiscordInviteRepositoryMock(),
     bot: newFutoBackupsBotRepositoryMock(),
+    columbo: newColumboRepositoryMock(),
     database: newDatabaseRepositoryMock(),
     discordLink: newDiscordLinkRepositoryMock(),
     user: newUserRepositoryMock(),

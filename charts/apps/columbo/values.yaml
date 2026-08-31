@@ -1,0 +1,51 @@
+replicas: 1
+
+resources:
+  requests: { cpu: 25m, memory: 64Mi }
+  limits: { memory: 256Mi }
+
+# Stable in-cluster name, independent of the Helm release name (dev == prod).
+fullnameOverride: columbo
+
+image:
+  repository: k3d-registry.localhost:5000/columbo
+  tag: dev
+  pullPolicy: IfNotPresent
+
+ports:
+  - name: http
+    containerPort: 3060
+
+service:
+  type: ClusterIP
+
+# Empty key on purpose: columbo idles without one, so dev without an
+# OpenRouter account stays green. Prod's arrives via the TF-provisioned Secret
+# of the same name (secretData nulled in the base HelmRelease).
+secretData:
+  OPENROUTER_API_KEY: ""
+  INTERNAL_SECRET: dev-internal-secret
+
+extraEnvFrom: []
+
+env:
+  - name: COLUMBO_PORT
+    value: "3060"
+  - name: FUTO_BACKUPS_BOT_URL
+    value: http://futo-backups-bot:3050
+  - name: O11Y_METRICS_URL
+    value: http://victoria-metrics:8428
+  - name: O11Y_LOGS_URL
+    value: http://victoria-logs:9428
+  - name: LOG_LEVEL
+    value: debug
+
+hostAliases: []
+
+startupProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 5
+  failureThreshold: 60
+readinessProbe:
+  tcpSocket: { port: http }
+  periodSeconds: 10

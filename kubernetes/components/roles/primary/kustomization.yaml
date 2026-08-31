@@ -21,3 +21,4 @@ resources:
   - ../../apps/michael.yaml
   - ../../apps/yucca-metrics-worker.yaml
   - ../../apps/futo-backups-bot.yaml
+  - ../../apps/columbo.yaml

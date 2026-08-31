@@ -1,0 +1,88 @@
+---
+- name: Require an image pin when the exporter is enabled
+  ansible.builtin.assert:
+    that:
+      - ceph_scrub_exporter_image | length > 0
+    fail_msg: >-
+      ceph_scrub_exporter_enabled is true but ceph_scrub_exporter_image is
+      empty; pin a released ghcr.io/immich-app/yucca/monk tag.
+  run_once: true
+
+# Cluster-level reads run once on the bootstrap host (the only host holding
+# admin creds) and register for every host in the play.
+- name: Create the read-only auth identity
+  ansible.builtin.command:
+    argv:
+      - ceph
+      - auth
+      - get-or-create
+      - "{{ ceph_scrub_exporter_auth_entity }}"
+      - mon
+      - allow r
+      - mgr
+      - allow r
+  register: scrub_exporter_keyring
+  changed_when: false
+  no_log: true
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
+
+- name: Render the minimal cluster config
+  ansible.builtin.command: ceph config generate-minimal-conf
+  register: scrub_exporter_conf
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
+
+- name: Create the config directory
+  ansible.builtin.file:
+    path: "{{ ceph_scrub_exporter_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# The trailing newline is load-bearing: ceph's conf_read_file rejects a file
+# without one, and ansible's .stdout strips it.
+- name: Stage ceph.conf
+  ansible.builtin.copy:
+    content: "{{ scrub_exporter_conf.stdout }}\n"
+    dest: "{{ ceph_scrub_exporter_config_dir }}/ceph.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart monk
+
+# uid 167 = the ceph user inside the image; monk runs as it, not root, and a
+# root-owned 0600 keyring fails as "no keyring found".
+- name: Stage the keyring
+  ansible.builtin.copy:
+    content: "{{ scrub_exporter_keyring.stdout }}\n"
+    dest: "{{ ceph_scrub_exporter_config_dir }}/ceph.{{ ceph_scrub_exporter_auth_entity }}.keyring"
+    owner: "167"
+    group: "167"
+    mode: "0400"
+  no_log: true
+  notify: Restart monk
+
+- name: Pull the monk image
+  ansible.builtin.command: podman pull {{ ceph_scrub_exporter_image }}
+  register: scrub_exporter_pull
+  changed_when: "'Copying blob' in scrub_exporter_pull.stderr"
+  notify: Restart monk
+
+- name: Install the monk unit
+  ansible.builtin.template:
+    src: monk.service.j2
+    dest: /etc/systemd/system/monk.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart monk
+
+- name: Enable and start monk
+  ansible.builtin.systemd:
+    name: monk
+    enabled: true
+    state: started
+    daemon_reload: true

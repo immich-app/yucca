@@ -5,11 +5,14 @@
 # NOT restricted in this pass (external RGW/OIDC/Polar egress needs FQDN rules
 # — a CiliumNetworkPolicy follow-up). Flow inventory:
 #   envoy (envoy-system)      → yucca-api:3020, web:5173, michael:3010,
-#                               meta:8080 (HTTPRoutes)
+#                               meta:8080, futo-backups-bot:3050 (HTTPRoutes)
 #   yucca-api → michael       = hairpin via the ingress VIP, so it ARRIVES as
 #                               envoy traffic — no direct pod-to-pod allow needed
 #   web (SSR)                 → yucca-api:3020
 #   yucca-admin-api           → futo-backups-bot:3050
+#   futo-backups-bot          → columbo:3060 (investigation requests)
+#   yucca-admin-api           → columbo:3060 (ad-hoc investigations)
+#   columbo                   → futo-backups-bot:3050 (staff notes)
 #   api/admin-api/worker      → CNPG pods :5432 (yucca-db-rw/-ro)
 #   CNPG replication          → CNPG pods :5432 (pod↔pod)
 #   cnpg-system operator      → CNPG pods :8000 (instance manager)
@@ -145,6 +148,50 @@ spec:
               app.kubernetes.io/name: yucca-admin-api
       ports:
         - { port: 3050, protocol: TCP }
+    # Freshdesk automation webhooks via the public gateway (/hooks/freshdesk
+    # HTTPRoute; x-freshdesk-secret guarded).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: envoy
+      ports:
+        - { port: 3050, protocol: TCP }
+    # columbo → /internal/staff-notes (shared-secret guarded): investigation
+    # results, the agent's ONLY write path.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: columbo
+      ports:
+        - { port: 3050, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-columbo
+  namespace: yucca
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: columbo
+  policyTypes: [Ingress]
+  ingress:
+    # futo-backups-bot → /internal/investigations (ticket-open triggers) and
+    # yucca-admin-api → /internal/investigations/adhoc (yuctl columbo
+    # investigate), both shared-secret guarded. Nothing else may reach the
+    # agent.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: futo-backups-bot
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: yucca-admin-api
+      ports:
+        - { port: 3060, protocol: TCP }
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

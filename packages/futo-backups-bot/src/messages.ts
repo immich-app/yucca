@@ -27,6 +27,7 @@ export const Messages = {
   staffNotesMissing: 'No staff-notes thread found for this ticket.',
   staffNoteHeader: 'Staff notes, not visible to the user.',
   staffNoteNoLink: 'No linked FUTO Backups account.',
+  investigationTitle: 'Columbo investigation',
 
   linkIntro: 'First, link your Discord account to your FUTO Backups account. The link is valid for 10 minutes.',
   linkButton: 'Link account',
@@ -65,4 +66,25 @@ export const Messages = {
   claimExhausted: 'All invites have been claimed, keep an eye out for the next drop.',
   claimDropEnded: 'This drop has ended, keep an eye out for the next one.',
   inviteDropEndedButton: 'Drop ended',
+
+  emailUpdatesNotAvailable: 'Email updates are not available.',
+  emailUpdatesNotATicket: 'Run this inside your ticket thread.',
+  emailUpdatesOwnerOnly: 'Only the ticket owner can change email updates.',
+  emailUpdatesNoAccount: 'This ticket has no linked FUTO Backups account, so there is no email to send updates to.',
+  emailUpdatesClosed: 'This ticket is closed.',
+  emailUpdatesOn: (email: string) => `Email updates are on, staff replies will also be sent to ${email}.`,
+  emailUpdatesOff: 'Email updates are off, this ticket stays on Discord only.',
+  ticketResolvedByAgent: 'This ticket was resolved by our support staff.',
+  staffOnlyHandoff: 'Only staff can hand a ticket off.',
+  handoffNotATicket: 'Run this inside a ticket thread.',
+  handoffClosed: 'This ticket is already closed.',
+  handoffNoAccount: 'This ticket has no linked FUTO Backups account, so there is no email address to hand off to.',
+  handoffAnnouncement: (userId: string) =>
+    `<@${userId}>, we're moving this ticket to email. Our support team will follow up at the email address on your FUTO Backups account.`,
+  handoffDone: 'Handed off. The Freshdesk ticket stays open and agent replies now go to the customer by email.',
+  handoffNote: (staffUsername: string) =>
+    `Handed off from Discord by ${staffUsername}. The Discord thread is closed — continue with the customer by email.`,
+  supportAuthor: (name: string) => `${name} (FUTO support)`,
+  viaEmailAuthor: 'Customer (via email)',
+  attachmentTooLarge: (name: string, url: string) => `Attachment (too large to re-upload): [${name}](${url})`,
 };

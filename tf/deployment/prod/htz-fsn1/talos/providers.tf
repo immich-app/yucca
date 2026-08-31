@@ -22,3 +22,11 @@ provider "kubernetes" {
 # 1Password — persists the kube/talosconfig into yucca_tf_prod (secrets.tf). Auth
 # via OP_SERVICE_ACCOUNT_TOKEN (op run).
 provider "onepassword" {}
+
+# TRANSITIONAL (see versions.tf): authenticates the destroys of the state-held
+# freshdesk resources; the group/rule are now owned by the partition's
+# global/freshdesk stack.
+provider "freshdesk" {
+  domain  = coalesce(local.freshdesk_url, "https://freshdesk.invalid")
+  api_key = coalesce(var.yucca_freshdesk_admin_api_key == "REPLACE_ME" ? "" : var.yucca_freshdesk_admin_api_key, "unset")
+}
