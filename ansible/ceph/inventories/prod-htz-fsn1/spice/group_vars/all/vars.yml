@@ -452,7 +452,7 @@ ceph_fluentbit_enabled: false
 # stamps on :9284 for the mon hosts. Digest-pinned to the build sietch has
 # been running; bump deliberately.
 #
-# OFF until the canary proves the path end to end. site.yml carries monk.yml,
+# OFF until the canary proves the exporter on one mon. site.yml carries monk.yml,
 # so flipping this on lands monk on all five mons at the next converge.
 # Canary first, harden before monk since the :9284 accept rule ships in
 # roles/security and the role asserts it is live:
