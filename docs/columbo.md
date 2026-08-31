@@ -71,8 +71,9 @@ The split is **harness vs. model**, not "the agent service is trusted":
 - **Harness (trusted, holds the secrets)**: the Go process. It owns the
   OpenRouter key and the internal secret, executes every tool call itself,
   and posts the final note. The model only ever sees tool *results*.
-- **Model (untrusted)**: fills the parameters of three typed tools —
-  `query_metrics` (PromQL), `query_logs` (LogsQL), `jq` (in-process gojq over
+- **Model (untrusted)**: fills the parameters of four typed tools —
+  `query_metrics` (PromQL), `query_logs` (LogsQL), `query_health` (a probe
+  name from a fixed registry, see below), `jq` (in-process gojq over
   stored results, no shell, no subprocess). No tool takes a URL, header, or
   credential. There is no command execution and no filesystem access.
 
@@ -92,6 +93,17 @@ filter is the only wall between the agent and other users' telemetry —
 which is why it lives in `internal/o11y` with tests asserting a query that
 names another user still comes back scoped.
 
+`query_health` is the one deliberate exception: fleet-wide platform health
+(michael error rates and latency, storage-backend health, Ceph/RGW health,
+pool capacity), so a user's 5xx errors can be correlated with a platform
+incident. The model never composes the query — it picks a probe *name* from
+the hand-maintained registry in `internal/agent/health.go` and a time range,
+and the harness runs that probe's fixed PromQL unscoped
+(`o11y.QueryFleetRange`). Cross-tenant leakage stays structurally
+impossible: the registry must never include series carrying per-customer
+labels (customerId, asn, repository ids), which is the review bar for adding
+a probe.
+
 Prompt injection is the main residual threat: ticket text and log lines are
 user-influenceable model input. The blast radius is bounded structurally —
 read-only user-scoped tools, output only to the staff thread, note stamped
@@ -99,7 +111,7 @@ as AI-generated with the executed queries listed — so the worst case is a
 misleading note that staff are told to verify.
 
 Hard limits per investigation: tool-call budget (`COLUMBO_MAX_TOOL_CALLS`,
-16), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 600), model calls retried on
+20), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 600), model calls retried on
 transport errors/timeouts/5xx with per-attempt deadlines
 (`COLUMBO_MODEL_TIMEOUT_SECONDS` 120 × `COLUMBO_MODEL_ATTEMPTS` 3 — the
 response body is buffered per attempt so a mid-body stall retries instead of

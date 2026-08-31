@@ -111,6 +111,24 @@ func TestScopeLogsQLRejectsJoinAndUnion(t *testing.T) {
 	}
 }
 
+func TestQueryFleetRangeIsUnscoped(t *testing.T) {
+	srv, captured, form := recordingServer(t, http.StatusOK, `{"status":"success"}`)
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	if _, err := client.QueryFleetRange(context.Background(), "ceph_health_status", "0", "1", "5m"); err != nil {
+		t.Fatal(err)
+	}
+	if captured.URL.Path != "/api/v1/query_range" {
+		t.Fatalf("unexpected path %q", captured.URL.Path)
+	}
+	if got := formValue(t, *form, "extra_label"); got != "" {
+		t.Fatalf("extra_label = %q, want none on the fleet path", got)
+	}
+	if got := formValue(t, *form, "query"); got != "ceph_health_status" {
+		t.Fatalf("query = %q", got)
+	}
+}
+
 func TestMetricNamesIsScopedToCustomer(t *testing.T) {
 	srv, captured, form := recordingServer(t, http.StatusOK, `{"status":"success","data":["api_request_count","blobs.uploaded_bytes"]}`)
 	client := NewClient(srv.URL, srv.URL, "user-1")
