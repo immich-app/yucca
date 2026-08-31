@@ -25,7 +25,9 @@ jobs:
   images:
     name: Publish release images
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # Covers the 60m wait bound plus a fully cold eight-app fallback with
+    # margin; the loop probes per app, so a rerun finishes any remainder.
+    timeout-minutes: 180
     permissions:
       actions: read
       contents: read
