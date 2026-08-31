@@ -1,11 +1,12 @@
 ---
-- name: Require an image pin when the exporter is enabled
+- name: Require an image pin and a bootstrap host
   ansible.builtin.assert:
     that:
       - ceph_scrub_exporter_image | length > 0
+      - groups['ceph_bootstrap'] | default([]) | length > 0
     fail_msg: >-
-      ceph_scrub_exporter_enabled is true but ceph_scrub_exporter_image is
-      empty; pin a released ghcr.io/immich-app/yucca/monk tag.
+      scrub_exporter needs ceph_scrub_exporter_image pinned to an immutable
+      ghcr.io/immich-app/yucca/monk tag and a non-empty ceph_bootstrap group.
   run_once: true
 
 # Cluster-level reads run once on the bootstrap host (the only host holding
@@ -17,13 +18,26 @@
       - auth
       - get-or-create
       - "{{ ceph_scrub_exporter_auth_entity }}"
+  register: scrub_exporter_keyring
+  changed_when: false
+  no_log: true
+  run_once: true
+  delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
+
+# get-or-create with caps hard-fails (behind no_log) on any mismatch, so the
+# bare form above only mints the key and this task alone owns the caps.
+- name: Reconcile the identity caps
+  ansible.builtin.command:
+    argv:
+      - ceph
+      - auth
+      - caps
+      - "{{ ceph_scrub_exporter_auth_entity }}"
       - mon
       - allow r
       - mgr
       - allow r
-  register: scrub_exporter_keyring
   changed_when: false
-  no_log: true
   run_once: true
   delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
 
@@ -33,6 +47,27 @@
   changed_when: false
   run_once: true
   delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
+
+# The 9284 accept rule ships in roles/security; converging monk onto a fleet
+# whose LIVE ruleset predates it leaves the exporter unreachable off-host. The
+# kernel ruleset is checked, not /etc/nftables.conf: a written-but-unloaded
+# file is exactly the divergence that bites.
+- name: Read the live nftables ruleset
+  ansible.builtin.command: nft list ruleset
+  register: scrub_exporter_nft
+  changed_when: false
+  check_mode: false
+  when: ceph_firewall_enabled | default(true) | bool
+
+- name: Require the scrub-exporter firewall rule
+  ansible.builtin.assert:
+    that:
+      - "('dport ' ~ ceph_scrub_exporter_port) in scrub_exporter_nft.stdout"
+    fail_msg: >-
+      the live nftables ruleset has no rule for port
+      {{ ceph_scrub_exporter_port }}; converge site.yml, or run harden.yml
+      first, so ceph_firewall_scrub_exporter_port is applied.
+  when: ceph_firewall_enabled | default(true) | bool
 
 - name: Create the config directory
   ansible.builtin.file:
@@ -65,10 +100,21 @@
   no_log: true
   notify: Restart monk
 
+# Image IDs are compared instead of parsing pull progress: podman prints
+# "Copying blob" even for cached layers, which read every converge as changed
+# and bounced the exporter fleet-wide for nothing.
+- name: Read the present monk image id
+  ansible.builtin.command: >-
+    podman image inspect --format {% raw %}{{.Id}}{% endraw %}
+    {{ ceph_scrub_exporter_image }}
+  register: scrub_exporter_image_pre
+  changed_when: false
+  failed_when: false
+
 - name: Pull the monk image
-  ansible.builtin.command: podman pull {{ ceph_scrub_exporter_image }}
+  ansible.builtin.command: podman pull -q {{ ceph_scrub_exporter_image }}
   register: scrub_exporter_pull
-  changed_when: "'Copying blob' in scrub_exporter_pull.stderr"
+  changed_when: scrub_exporter_pull.stdout != scrub_exporter_image_pre.stdout
   notify: Restart monk
 
 - name: Install the monk unit
@@ -80,9 +126,29 @@
     mode: "0644"
   notify: Restart monk
 
+# Flushing here keeps an aborted later play from stranding a running monk on
+# old unit arguments until some future converge.
+- name: Apply any pending monk restart
+  ansible.builtin.meta: flush_handlers
+
 - name: Enable and start monk
   ansible.builtin.systemd:
     name: monk
     enabled: true
     state: started
     daemon_reload: true
+
+# monk answers 200 while collection fails (async collect starts MarkFailed);
+# only a collect_success sample proves the keyring, caps, and mon path. The
+# window covers the 90s first-collect ceph timeout plus a restart.
+- name: Wait for monk to report a successful collection
+  ansible.builtin.uri:
+    url: "http://{{ ceph_service_ip }}:{{ ceph_scrub_exporter_port }}/metrics"
+    return_content: true
+  register: scrub_exporter_probe
+  retries: 24
+  delay: 5
+  until: >-
+    scrub_exporter_probe.status == 200 and
+    'ceph_scrub_collect_success 1' in scrub_exporter_probe.content
+  changed_when: false
