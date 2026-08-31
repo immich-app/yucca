@@ -59,7 +59,8 @@ jobs:
       # A Dockerfile without a filter is the silent gap this workflow exists
       # to close: its first build would happen post-merge (or at release, for
       # publish-only apps). The two mocks are built by tilt inside CI runs and
-      # never delivered.
+      # never delivered. The covered list drifts the other way too: a covered
+      # name whose filter key is renamed or dropped never builds again.
       - name: Require every Dockerfile to carry a filter
         run: |
           covered='yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web standalone-app michael columbo monk'
@@ -71,6 +72,10 @@ jobs:
               *" $app "*) ;;
               *) echo "::error::packages/$app/Dockerfile has no build-check filter; register it above or exclude it here"; fail=1 ;;
             esac
+          done
+          for app in $covered; do
+            grep -Eq "^ +${app}:" .github/workflows/build-check.yml \
+              || { echo "::error::$app is in the covered list but has no filter key in build-check.yml"; fail=1; }
           done
           exit $fail
 
@@ -102,3 +107,24 @@ jobs:
           file: packages/${{ matrix.app }}/Dockerfile
           push: false
           cache-from: type=gha,scope=${{ matrix.app }}
+
+  # The build legs come from a dynamic matrix, so they cannot be named in
+  # branch protection, and a failed leg would otherwise not block the merge.
+  # "Result" is the one check branch protection must require: it fails on any
+  # upstream failure and passes when build was skipped (no app changed).
+  result:
+    name: Result
+    if: always()
+    needs: [changes, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail when an upstream job failed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          echo "changes=$CHANGES build=$BUILD"
+          if [ "$CHANGES" = 'failure' ] || [ "$BUILD" = 'failure' ]; then
+            exit 1
+          fi

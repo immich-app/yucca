@@ -16,18 +16,19 @@ env:
   IMAGE_PREFIX: ghcr.io/immich-app/yucca
   # Monotonic monorepo build tag (all 5 apps ship together). The staging
   # ResourceSetInputProvider picks the highest 0.0.<n> from GHCR and deploys it
-  # in-cluster — pull-based, so CI never needs cluster/Tailscale access.
+  # in-cluster: pull-based, so CI never needs cluster/Tailscale access.
   BUILD_TAG: 0.0.${{ github.run_number }}
 
 jobs:
   # A migration that sorts before one already executed makes every yucca-api /
   # yucca-admin-api pod crashloop at boot (Kysely refuses the whole set), and
-  # the stale-branch case escapes PR CI — checks don't re-run when main moves
+  # the stale-branch case escapes PR CI: checks don't re-run when main moves
   # (incident: #492 merged after #510's re-date). Gate the build on HEAD^ so a
   # bad merge stops here instead of rolling out.
   migration-order:
     name: Migration ordering gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -35,8 +36,8 @@ jobs:
           fetch-depth: 2
       - run: .mise/tasks/yucca-api/check-migration-order HEAD^
 
-  # ── Build + push every app image (the ONLY delivery action CI performs) ──
-  # Release commits build like any other — they're the stamped tree the release
+  # == Build + push every app image (the ONLY delivery action CI performs) ==
+  # Release commits build like any other: they're the stamped tree the release
   # tag points at, and they additionally push v<version> image tags (below).
   build:
     name: Build ${{ matrix.app.name }}
@@ -65,6 +66,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+          fetch-depth: 2
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
@@ -76,24 +78,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The release image tag, v<version> from the stamped root package.json,
-      # is the same tag release-please pins into prod's pin files on the
-      # release commit. Computed from the tree and the registry rather than
-      # gated on the head commit message: queue coalescing can cancel the
-      # release commit's own run, and this way ANY later main build (or a
-      # workflow_dispatch) backfills the missing tag, while post-release
-      # builds find it already present and push nothing. Prod's rollout
-      # stalls harmlessly (old pods keep serving) until the tag exists.
+      # The release commit is the one that changes the stamped root version
+      # (release-please bumps package.json on the release PR merge alone), so
+      # compare against HEAD^ rather than trusting a coalescible head commit
+      # message. v<version> is the tag release-please pins into prod's pin
+      # files; heal-release below backfills if this run never pushes it, and
+      # prod's rollout stalls harmlessly (old pods keep serving) until then.
       - name: Compute release image tag
         id: release
         env:
           APP: ${{ matrix.app.name }}
         run: |
-          REF="${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)"
-          if docker manifest inspect "$REF" >/dev/null 2>&1; then
-            echo "tag=" >> "$GITHUB_OUTPUT"
+          if [ "$(jq -r .version package.json)" != "$(git show HEAD^:package.json | jq -r .version)" ]; then
+            echo "tag=${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=$REF" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push
@@ -102,7 +101,8 @@ jobs:
           context: .
           file: ${{ matrix.app.dockerfile }}
           push: true
-          # The empty line when steps.release is skipped is filtered out.
+          # steps.release emits an empty tag when the run is not the release
+          # commit; the empty line is filtered out.
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:${{ env.BUILD_TAG }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:sha-${{ github.sha }}
@@ -110,6 +110,85 @@ jobs:
             ${{ steps.release.outputs.tag }}
           cache-from: type=gha,scope=${{ matrix.app.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
+
+  # The v-tag push above happens only on the release commit's own run, which
+  # queue coalescing can cancel. Backfill from the tagged tree itself: a later
+  # main HEAD may already carry post-release commits, so it is never a valid
+  # source for v-tag images.
+  heal-release:
+    name: Heal release image tags
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Find the release tag
+        id: tag
+        run: |
+          V="v$(jq -r .version package.json)"
+          rc=0
+          git ls-remote --exit-code --tags origin "refs/tags/$V" >/dev/null || rc=$?
+          case "$rc" in
+            0) echo "name=$V" >> "$GITHUB_OUTPUT" ;;
+            2) echo "refs/tags/$V is not on origin yet; nothing to heal" ;;
+            *) exit "$rc" ;;
+          esac
+
+      - name: Checkout release tree
+        if: steps.tag.outputs.name
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.name }}
+          path: release-tree
+          persist-credentials: false
+
+      - name: Set up Buildx
+        if: steps.tag.outputs.name
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Log in to GHCR
+        if: steps.tag.outputs.name
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Only a probe that distinguishes absent from broken may trigger a
+      # build; any other registry failure must not republish anything.
+      - name: Build missing release images from the release tree
+        if: steps.tag.outputs.name
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          for app in yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web michael columbo monk; do
+            ref="${IMAGE_PREFIX}/${app}:${TAG}"
+            if err=$(docker manifest inspect "$ref" 2>&1 >/dev/null); then
+              echo "$ref present"
+              continue
+            fi
+            case "$err" in
+              *"manifest unknown"* | *"no such manifest"* | *"not found"*) ;;
+              *)
+                echo "::error::probe for $ref failed: $err"
+                exit 1
+                ;;
+            esac
+            echo "$ref missing; building from refs/tags/$TAG"
+            docker buildx build --push \
+              --file "release-tree/packages/${app}/Dockerfile" \
+              --tag "$ref" \
+              --cache-from "type=gha,scope=${app}" \
+              --cache-to "type=gha,mode=max,scope=${app}" \
+              release-tree
+          done
 
   # Staging deploys automatically: the flux-operator ResourceSetInputProvider in
   # kubernetes/apps/staging/flux-system/ detects the new ${BUILD_TAG} in GHCR and
@@ -119,7 +198,7 @@ jobs:
   # Production promotion is the release-please PR itself: it stamps the new
   # tag into both prod pins (kubernetes/clusters/prod/htz-fsn1/
   # {flux-release,image-versions}.yaml, extra-files), so merging it commits
-  # the promotion through normal review — no promote workflow, no bot push to
+  # the promotion through normal review: no promote workflow, no bot push to
   # main. Prod Flux pulls the pins from main and the app tree + charts from
   # the tag; images are the v<version> tags pushed by the build job above on
   # that same release commit. Rollback = revert the two stamped lines in a
