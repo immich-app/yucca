@@ -138,13 +138,17 @@
     state: started
     daemon_reload: true
 
-# "started" on a Restart=always unit proves nothing; the scrape endpoint does.
-- name: Wait for monk to serve metrics
+# monk answers 200 while collection fails (async collect starts MarkFailed);
+# only a collect_success sample proves the keyring, caps, and mon path. The
+# window covers the 90s first-collect ceph timeout plus a restart.
+- name: Wait for monk to report a successful collection
   ansible.builtin.uri:
     url: "http://{{ ceph_service_ip }}:{{ ceph_scrub_exporter_port }}/metrics"
-    return_content: false
+    return_content: true
   register: scrub_exporter_probe
-  retries: 12
+  retries: 24
   delay: 5
-  until: scrub_exporter_probe.status == 200
+  until: >-
+    scrub_exporter_probe.status == 200 and
+    'ceph_scrub_collect_success 1' in scrub_exporter_probe.content
   changed_when: false
