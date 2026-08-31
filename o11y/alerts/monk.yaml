@@ -12,6 +12,50 @@ spec:
   rules:
     # Per instance, not deduped: one wedged monk is invisible in max-by
     # queries precisely because the healthy replicas win the dedup.
+    - uid: monk-down
+      title: MonkDown
+      condition: B
+      for: 10m
+      noDataState: OK
+      execErrState: Error
+      isPaused: false
+      labels:
+        severity: warning
+      annotations:
+        summary: a monk instance is not being scraped
+        description: >-
+          the ceph-scrub scrape of {{ $labels.instance }} (cluster
+          {{ $labels.cluster }}) is failing; vmagent synthesizes up per
+          target, so this rule survives the exporter's own series going
+          absent and catches the dead instance the other rules cannot see.
+      data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: VictoriaMetricsFleet
+          model:
+            refId: A
+            instant: true
+            range: false
+            intervalMs: 300000
+            maxDataPoints: 43200
+            expr: >-
+              last_over_time(up{job="ceph-scrub", project="yucca"}[5m])
+              == bool 0
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            refId: B
+            type: threshold
+            expression: A
+            conditions:
+              - evaluator:
+                  params: [0]
+                  type: gt
     - uid: monk-collect-failing
       title: MonkCollectFailing
       condition: B
@@ -25,9 +69,10 @@ spec:
         summary: a monk instance cannot collect scrub data
         description: >-
           ceph_scrub_collect_success is 0 on {{ $labels.instance }}
-          (cluster {{ $labels.cluster }}) — the exporter cannot run its ceph
-          commands. After five consecutive failures its pool series go
-          absent; overdue numbers then rest on the remaining mons.
+          (cluster {{ $labels.cluster }}): the exporter cannot run its
+          ceph commands. The exporter drops its snapshot after five
+          consecutive failures (10m), after which its pool series go
+          absent and MonkDown covers the instance.
       data:
         - refId: A
           relativeTimeRange:
@@ -71,9 +116,10 @@ spec:
         summary: a monk instance serves a stale snapshot
         description: >-
           {{ $labels.instance }} (cluster {{ $labels.cluster }}) last
-          refreshed scrub data over 15 minutes ago (refresh is 2m); its
+          refreshed scrub data over 6 minutes ago (refresh is 2m); its
           panels and the dedup that prefers its values are running on old
-          numbers.
+          numbers. After the 10m snapshot expiry the series go absent and
+          MonkDown plus dedup absence take over.
       data:
         - refId: A
           relativeTimeRange:
@@ -89,7 +135,7 @@ spec:
             expr: >-
               time()
               - last_over_time(ceph_scrub_collect_timestamp_seconds{project="yucca"}[5m])
-              - 900
+              - 360
         - refId: B
           relativeTimeRange:
             from: 600
@@ -118,7 +164,7 @@ spec:
         summary: monk cannot read the cluster's scrub intervals
         description: >-
           ceph_scrub_interval_read_success is 0 on {{ $labels.instance }}
-          (cluster {{ $labels.cluster }}) for an hour — overdue thresholds
+          (cluster {{ $labels.cluster }}) for an hour; overdue thresholds
           no longer track the cluster's scrub configuration.
       data:
         - refId: A
@@ -163,7 +209,7 @@ spec:
         summary: monk is skipping unparsable scrub records
         description: >-
           ceph_scrub_parse_errors is nonzero on {{ $labels.instance }}
-          (cluster {{ $labels.cluster }}) — some PG stamps no longer parse
+          (cluster {{ $labels.cluster }}): some PG stamps no longer parse
           (format drift?); affected PGs count as overdue until fixed.
       data:
         - refId: A
