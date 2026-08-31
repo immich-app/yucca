@@ -29,6 +29,10 @@ jobs:
     name: Migration ordering gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Delivery is main-only: a workflow_dispatch on any other ref would build
+    # and tag images (including healed v-tags) from an unmerged tree. Every
+    # later job needs this one, so the gate cascades.
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -182,6 +186,11 @@ jobs:
       # roster is the build matrix read from this workflow file, so the two
       # cannot drift; an app newer than the release tag has no Dockerfile in
       # the release tree and nothing to heal.
+      #
+      # Current version only, by design: older releases' images already exist
+      # in GHCR and nothing prunes them, so rollback pins stay valid. If a
+      # registry cleanup policy ever lands, it must exempt v-tags or this
+      # heal grows a version roster.
       - name: Build missing release images from the release tree
         if: steps.tag.outputs.name
         env:
