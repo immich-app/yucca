@@ -62,8 +62,11 @@ open chat for everyone who sees the category plus customers. The
 `#general`, skipped when the channel is quiet) runs the same link flow as
 support and then grants the plain **FUTO Backups** role — linked customers get it instantly,
 unlinked ones link first. The role unlocks `#customer` (customer chat, also visible to
-Admin/Team/Yucca/FUTO). `#support` stays visible to everyone;
-ticket threads live under it as before.
+Admin/Team/Yucca/FUTO). `#support` is restricted to the same audience plus
+the customer role — Discord derives thread permissions from the parent channel,
+so a customer needs view on `#support` to reach their own ticket thread.
+Granting `@everyone` view there is the rollout switch that opens self-serve
+support to the whole server.
 
 ## Closed-beta invites
 
