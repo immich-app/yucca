@@ -9,12 +9,12 @@ polls `ceph pg ls -f json` and serves pool-level aggregates so scrub-cycle
 dashboards report ground truth instead of estimates derived from scrub
 read-byte counters.
 
-Runs on the cluster's mon hosts, not Kubernetes; the ansible role that deploys
-it lands in a follow-up PR. The image is the cluster ceph image plus the monk
-binary, and the container needs `/etc/ceph` with a read-only keyring (mon r,
-mgr r) mounted. The container runs as the image's `ceph` user (uid 167), so
-the keyring file must be readable by that uid; a root-owned 0600 keyring fails
-as `no keyring found`.
+Runs on the cluster's mon hosts, not Kubernetes; the scrub_exporter ansible
+role (ansible/ceph/monk.yml) deploys it. The image is the cluster ceph image
+plus the monk binary, and the container needs `/etc/ceph` with a read-only
+keyring (mon r, mgr r) mounted. The container runs as the image's `ceph` user
+(uid 167), so the keyring file must be readable by that uid; a root-owned
+0600 keyring fails as `no keyring found`.
 
 ## Run
 

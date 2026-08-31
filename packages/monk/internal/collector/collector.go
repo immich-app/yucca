@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"slices"
 	"strconv"
@@ -107,27 +108,38 @@ func cephOutput(ctx context.Context, cephCmd []string, args ...string) ([]byte, 
 	full := slices.Concat(cephCmd[1:], args)
 	cmd := exec.CommandContext(ctx, cephCmd[0], full...)
 	// A wrapper cephCmd (cephadm shell) spawns grandchildren that inherit
-	// stdout: kill the whole process group on cancel so none leak, and let a
-	// WaitDelay expiry with complete output count as success (the command
-	// finished; only an inherited pipe stayed open).
+	// stdout: kill the whole process group on cancel so none leak. A group
+	// already gone (ESRCH) means the process finished; reporting it as a
+	// cancellation error would turn a successful exit into a failure.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.Cancel = func() error {
+		if err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); !errors.Is(err, syscall.ESRCH) {
+			return err
+		}
+		return os.ErrProcessDone
+	}
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if err != nil {
-		if errors.Is(err, exec.ErrWaitDelay) && len(out) > 0 {
-			return out, nil
-		}
 		if ee, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("%s %s: %w: %s", cephCmd[0], args[0], err, strings.TrimSpace(string(ee.Stderr)))
+			return out, fmt.Errorf("%s %s: %w: %s", cephCmd[0], args[0], err, strings.TrimSpace(string(ee.Stderr)))
 		}
-		return nil, fmt.Errorf("%s %s: %w", cephCmd[0], args[0], err)
+		return out, fmt.Errorf("%s %s: %w", cephCmd[0], args[0], err)
 	}
 	return out, nil
 }
 
+// An ErrWaitDelay after a clean exit means the pipes closed before I/O
+// completed, so the output may be a truncated prefix. Only this JSON path
+// tolerates it, because Compute's json.Unmarshal fails safe on truncation;
+// interval reads have no such completeness check and treat it as a hard
+// error, keeping the last-known thresholds.
 func Fetch(ctx context.Context, cephCmd []string) ([]byte, error) {
-	return cephOutput(ctx, cephCmd, "pg", "ls", "-f", "json")
+	out, err := cephOutput(ctx, cephCmd, "pg", "ls", "-f", "json")
+	if err != nil && errors.Is(err, exec.ErrWaitDelay) && len(out) > 0 {
+		return out, nil
+	}
+	return out, err
 }
 
 // FetchIntervals reads the overdue policy from the cluster itself: the osd

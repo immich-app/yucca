@@ -25,7 +25,7 @@ func main() {
 	cephCmd := flag.String("ceph-cmd", "ceph", "command prefix to reach the ceph CLI, split on spaces")
 	flag.Parse()
 
-	log := zerolog.New(os.Stderr).With().Timestamp().Logger()
+	log := zerolog.New(os.Stderr).Level(zerolog.InfoLevel).With().Timestamp().Logger()
 	cmd := strings.Fields(*cephCmd)
 	if len(cmd) == 0 {
 		log.Fatal().Msg("empty -ceph-cmd")
@@ -76,9 +76,11 @@ func main() {
 	buildInfo.Set(1)
 	registry.MustRegister(buildInfo)
 
-	// Transitions log at error/info; steady states stay quiet so a mon outage
-	// does not write an identical line every refresh forever.
+	// Transitions and changed causes log at error/info; a repeat of the same
+	// failure stays quiet so a mon outage does not write an identical line
+	// every refresh forever.
 	collectFailing, intervalFailing := false, false
+	var lastCollectErr, lastIntervalErr string
 	collect := func() {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -93,8 +95,9 @@ func main() {
 				}
 			} else {
 				exporter.StoreIntervalRead(false, start)
-				if !intervalFailing {
+				if !intervalFailing || err.Error() != lastIntervalErr {
 					intervalFailing = true
+					lastIntervalErr = err.Error()
 					log.Warn().Err(err).Msg("interval read failing, keeping previous targets")
 				}
 			}
@@ -115,8 +118,9 @@ func main() {
 			}
 		}
 		exporter.MarkFailed()
-		if !collectFailing {
+		if !collectFailing || err.Error() != lastCollectErr {
 			collectFailing = true
+			lastCollectErr = err.Error()
 			log.Error().Err(err).Msg("collection failing")
 		}
 	}

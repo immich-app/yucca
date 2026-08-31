@@ -1,9 +1,12 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -272,6 +275,25 @@ ceph_scrub_target_interval_seconds{depth="shallow",pool_id="7"} 604800
 		"ceph_scrub_overdue_bytes", "ceph_scrub_target_interval_seconds")
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestFetchToleratesWaitDelayWithOutput(t *testing.T) {
+	pipeHolder := []string{"sh", "-c", `echo '{"pg_stats":[]}'; sleep 3 & exit 0`}
+	out, err := Fetch(context.Background(), pipeHolder)
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if got := strings.TrimSpace(string(out)); got != `{"pg_stats":[]}` {
+		t.Errorf("output: %q", got)
+	}
+}
+
+func TestFetchIntervalsFailsOnWaitDelay(t *testing.T) {
+	pipeHolder := []string{"sh", "-c", `echo 604800.0; sleep 3 & exit 0`}
+	_, err := FetchIntervals(context.Background(), pipeHolder)
+	if !errors.Is(err, exec.ErrWaitDelay) {
+		t.Errorf("want ErrWaitDelay, got %v", err)
 	}
 }
 
