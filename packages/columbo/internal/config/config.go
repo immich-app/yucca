@@ -30,6 +30,8 @@ type Config struct {
 
 	MaxToolCalls         int
 	InvestigationTimeout time.Duration
+	ModelCallTimeout     time.Duration
+	ModelCallAttempts    int
 	ToolResultBytes      int
 	Workers              int
 
@@ -82,7 +84,9 @@ func LoadConfig() Config {
 		BotURL:               envOr("FUTO_BACKUPS_BOT_URL", "http://localhost:3050"),
 		GrafanaURL:           envOr("GRAFANA_URL", "https://grafana.futostatus.com"),
 		MaxToolCalls:         envIntMin("COLUMBO_MAX_TOOL_CALLS", 16, 1),
-		InvestigationTimeout: time.Duration(envIntMin("COLUMBO_TIMEOUT_SECONDS", 300, 10)) * time.Second,
+		InvestigationTimeout: time.Duration(envIntMin("COLUMBO_TIMEOUT_SECONDS", 600, 10)) * time.Second,
+		ModelCallTimeout:     time.Duration(envIntMin("COLUMBO_MODEL_TIMEOUT_SECONDS", 120, 10)) * time.Second,
+		ModelCallAttempts:    envIntMin("COLUMBO_MODEL_ATTEMPTS", 3, 1),
 		ToolResultBytes:      envIntMin("COLUMBO_TOOL_RESULT_BYTES", 12288, 512),
 		Workers:              envIntMin("COLUMBO_WORKERS", 2, 1),
 		OTLPMetricsEndpoint:  os.Getenv("OTLP_METRICS_ENDPOINT"),
