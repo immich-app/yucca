@@ -48,10 +48,11 @@ jobs:
 
       # Deploy's run for this commit is created as queued the moment the
       # commit lands, and queue: max never coalesces it away; poll it to
-      # completion (any conclusion) so the probes below see final state,
-      # bounded by the job timeout. The loop exits immediately for a long
-      # finished run, and proceeds when no run is listed after three polls
-      # (a dispatch for a release whose runs aged out of retention).
+      # completion (any conclusion) so the probes below can retag its images
+      # digest-identically. The wait is an optimization, never a gate: after
+      # 60 minutes (a deep FIFO queue), or three polls with no run listed
+      # (runs aged out of retention), proceed and let the fallback build
+      # from the tag tree.
       - name: Wait for the release commit's Deploy run
         env:
           GH_TOKEN: ${{ github.token }}
@@ -59,6 +60,7 @@ jobs:
         run: |
           runs="repos/immich-app/yucca/actions/workflows/deploy.yml/runs?head_sha=${COMMIT}&branch=main&per_page=1"
           missing=0
+          polls=0
           while :; do
             status=$(gh api "$runs" --jq '.workflow_runs[0].status' || true)
             [ "$status" = "completed" ] && break
@@ -66,6 +68,8 @@ jobs:
               missing=$((missing + 1))
               [ "$missing" -ge 3 ] && { echo "no Deploy run listed for ${COMMIT}; proceeding"; break; }
             fi
+            polls=$((polls + 1))
+            [ "$polls" -ge 60 ] && { echo "Deploy run still ${status} after 60m; proceeding to the fallback"; break; }
             echo "Deploy run for ${COMMIT} is ${status:-not listed yet}; polling again in 60s"
             sleep 60
           done
