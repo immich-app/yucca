@@ -3,18 +3,27 @@ package worker
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"columbo/internal/agent"
+	"columbo/internal/bot"
 )
 
 type fakeInvestigator struct {
-	adhoc func(ctx context.Context, userID, prompt string) (agent.Outcome, error)
+	adhoc  func(ctx context.Context, userID, prompt string) (agent.Outcome, error)
+	triage func(ctx context.Context, inv agent.Investigation) (bool, string, error)
 }
 
-func (f *fakeInvestigator) Triage(context.Context, agent.Investigation) (bool, string, error) {
-	return false, "", nil
+func (f *fakeInvestigator) Triage(ctx context.Context, inv agent.Investigation) (bool, string, error) {
+	if f.triage == nil {
+		return false, "", nil
+	}
+	return f.triage(ctx, inv)
 }
 
 func (f *fakeInvestigator) Investigate(context.Context, agent.Investigation) (agent.Outcome, error) {
@@ -93,6 +102,40 @@ func TestAdhocFailureIsRecorded(t *testing.T) {
 	job := waitForStatus(t, pool, id, "failed")
 	if job.Error != "model exploded" || len(job.Queries) != 1 {
 		t.Fatalf("unexpected job %+v", job)
+	}
+}
+
+func TestTriageRefusalPostsASkipNote(t *testing.T) {
+	posted := make(chan string, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		posted <- r.URL.Path + " " + string(body)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	investigator := &fakeInvestigator{
+		triage: func(context.Context, agent.Investigation) (bool, string, error) {
+			return false, "billing question, telemetry cannot help", nil
+		},
+	}
+	pool := NewPool(investigator, bot.NewClient(srv.URL, "secret"), time.Second, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	pool.Run(ctx, 1)
+
+	if !pool.Enqueue(agent.Investigation{StaffThreadID: "s1", UserID: "user-1", Description: "refund please"}) {
+		t.Fatal("enqueue failed")
+	}
+	select {
+	case got := <-posted:
+		for _, want := range []string{"/internal/staff-notes", "s1", "No investigation needed — billing question"} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("posted %q, missing %q", got, want)
+			}
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no staff note was posted")
 	}
 }
 
