@@ -137,5 +137,5 @@ on it), re-pin `ceph_scrub_exporter_image` once CI publishes the rebuilt
 tag, and re-run `mise run monk`. Then watch two canaries for format drift in
 the new release: `ceph_scrub_schedule_pgs{state="other"}` staying 0, and the
 parse-error alert staying quiet. A flapping monk unit triages like any
-podman systemd unit: `journalctl -u monk` on the mon; the exporter logs only
-state transitions, so the last error line is the current failure.
+podman systemd unit: `journalctl -u monk` on the mon; the newest error or
+warn line is the current failure.

@@ -18,18 +18,14 @@
       - auth
       - get-or-create
       - "{{ ceph_scrub_exporter_auth_entity }}"
-      - mon
-      - allow r
-      - mgr
-      - allow r
   register: scrub_exporter_keyring
   changed_when: false
   no_log: true
   run_once: true
   delegate_to: "{{ groups['ceph_bootstrap'] | first }}"
 
-# get-or-create hard-fails (behind no_log) if the entity exists with different
-# caps; reconciling separately keeps a caps change convergeable.
+# get-or-create with caps hard-fails (behind no_log) on any mismatch, so the
+# bare form above only mints the key and this task alone owns the caps.
 - name: Reconcile the identity caps
   ansible.builtin.command:
     argv:
@@ -60,6 +56,7 @@
   ansible.builtin.command: nft list ruleset
   register: scrub_exporter_nft
   changed_when: false
+  check_mode: false
   when: ceph_firewall_enabled | default(true) | bool
 
 - name: Require the scrub-exporter firewall rule
