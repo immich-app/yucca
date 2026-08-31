@@ -71,8 +71,9 @@ spec:
           ceph_scrub_collect_success is 0 on {{ $labels.instance }}
           (cluster {{ $labels.cluster }}): the exporter cannot run its
           ceph commands. The exporter drops its snapshot after five
-          consecutive failures (10m), after which its pool series go
-          absent and MonkDown covers the instance.
+          consecutive failures (10m); its pool series then go absent
+          and dedup stops preferring the instance, while this rule
+          keeps firing because the health series survive expiry.
       data:
         - refId: A
           relativeTimeRange:
@@ -118,8 +119,9 @@ spec:
           {{ $labels.instance }} (cluster {{ $labels.cluster }}) last
           refreshed scrub data over 6 minutes ago (refresh is 2m); its
           panels and the dedup that prefers its values are running on old
-          numbers. After the 10m snapshot expiry the series go absent and
-          MonkDown plus dedup absence take over.
+          numbers. After the 10m snapshot expiry the series go absent,
+          this rule resolves, and MonkCollectFailing keeps covering the
+          instance.
       data:
         - refId: A
           relativeTimeRange:
