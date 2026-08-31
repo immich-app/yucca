@@ -83,7 +83,7 @@ func LoadConfig() Config {
 		LogsURL:              envOr("O11Y_LOGS_URL", "http://localhost:9428"),
 		BotURL:               envOr("FUTO_BACKUPS_BOT_URL", "http://localhost:3050"),
 		GrafanaURL:           envOr("GRAFANA_URL", "https://grafana.futostatus.com"),
-		MaxToolCalls:         envIntMin("COLUMBO_MAX_TOOL_CALLS", 16, 1),
+		MaxToolCalls:         envIntMin("COLUMBO_MAX_TOOL_CALLS", 20, 1),
 		InvestigationTimeout: time.Duration(envIntMin("COLUMBO_TIMEOUT_SECONDS", 600, 10)) * time.Second,
 		ModelCallTimeout:     time.Duration(envIntMin("COLUMBO_MODEL_TIMEOUT_SECONDS", 120, 10)) * time.Second,
 		ModelCallAttempts:    envIntMin("COLUMBO_MODEL_ATTEMPTS", 3, 1),

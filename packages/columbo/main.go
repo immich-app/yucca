@@ -49,12 +49,12 @@ func main() {
 	}
 
 	runner := agent.NewRunner(agent.Config{
-		OpenRouterURL:    cfg.OpenRouterURL,
-		APIKey:           cfg.OpenRouterAPIKey,
-		Model:            cfg.Model,
-		TriageModel:      cfg.TriageModel,
-		MetricsURL:       cfg.MetricsURL,
-		LogsURL:          cfg.LogsURL,
+		OpenRouterURL:     cfg.OpenRouterURL,
+		APIKey:            cfg.OpenRouterAPIKey,
+		Model:             cfg.Model,
+		TriageModel:       cfg.TriageModel,
+		MetricsURL:        cfg.MetricsURL,
+		LogsURL:           cfg.LogsURL,
 		MaxToolCalls:      cfg.MaxToolCalls,
 		ToolResultBytes:   cfg.ToolResultBytes,
 		ModelCallTimeout:  cfg.ModelCallTimeout,

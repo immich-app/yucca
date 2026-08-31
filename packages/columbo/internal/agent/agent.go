@@ -38,10 +38,10 @@ type Investigation struct {
 }
 
 type Config struct {
-	OpenRouterURL    string
-	APIKey           string
-	Model            string
-	TriageModel      string
+	OpenRouterURL     string
+	APIKey            string
+	Model             string
+	TriageModel       string
 	MetricsURL        string
 	LogsURL           string
 	MaxToolCalls      int
@@ -129,6 +129,8 @@ Michael operation semantics (restic REST protocol):
 - op:="save_blob" = a blob write; what it MEANS depends on blob_type: data = backup content uploading; index = index flush; snapshots = a backup COMPLETED (the snapshot record is written last); keys = repository key setup. locks is the exception — restic writes a lock at the start of EVERY operation, including read-only ones (restore, check), so lock writes prove activity, not backups.
 - get_blob = blob read (restores, checks); check_blob = existence probe; delete_blob = cleanup (locks after every operation; data/index during prune); list_blobs = listing; save_config = repository initialization (happens once, before the first backup); create_repository = repository creation.
 So: op:="save_blob" blob_type:="snapshots" = completed backups; op:="save_blob" blob_type:="data" = backup traffic; status:>=400 on michael = failing restic requests.
+
+Platform health (fleet-wide, not user-specific): the query_health tool runs fixed named probes over platform telemetry — michael error rates and latency, storage-backend health, Ceph/RGW health, pool capacity. When the user's telemetry shows server-side errors (5xx, timeouts), check whether a platform incident overlaps their error window; a healthy platform during that window is itself evidence. One or two probes over the incident window usually suffice — do not audit the whole platform.
 
 Your final message becomes the staff note verbatim. Format:
 1. One-line verdict (e.g. "Backups from connection X have failed with 507 since 14:02 UTC").

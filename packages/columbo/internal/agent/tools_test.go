@@ -114,7 +114,7 @@ func TestToolErrorsBecomeToolResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	jq := tools[2].(interface {
+	jq := tools[3].(interface {
 		InvokableRun(ctx context.Context, argumentsInJSON string, opts ...tool.Option) (string, error)
 	})
 	out, err := jq.InvokableRun(context.Background(), `{"program":".","ref":"r99"}`)
