@@ -59,7 +59,10 @@ spec:
     - uid: monk-collect-failing
       title: MonkCollectFailing
       condition: B
-      for: 15m
+      # 10m, inside MonkSnapshotStale's firing window (6m to 15m): this rule
+      # is already firing when the staleness rule's series expire and it
+      # auto-resolves, so a persistent failure never emits an all-clear.
+      for: 10m
       noDataState: OK
       execErrState: Error
       isPaused: false
