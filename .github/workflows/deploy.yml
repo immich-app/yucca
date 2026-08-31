@@ -130,7 +130,10 @@ jobs:
   # source for v-tag images.
   heal-release:
     name: Heal release image tags
-    needs: build
+    needs: [migration-order, build]
+    # Heal after any build outcome (failure and timeout included). !cancelled()
+    # also lifts the main-only gate that cascades via success(); re-assert it.
+    if: ${{ !cancelled() && needs.migration-order.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -198,6 +201,7 @@ jobs:
         run: |
           apps="$(yq '.jobs.build.strategy.matrix.app[].name' .github/workflows/deploy.yml)"
           [ -n "$apps" ] || { echo "::error::no apps parsed from the build matrix"; exit 1; }
+          failed=""
           for app in $apps; do
             if [ ! -f "release-tree/packages/${app}/Dockerfile" ]; then
               echo "$app has no Dockerfile in refs/tags/$TAG; skipping"
@@ -221,8 +225,9 @@ jobs:
               --tag "$ref" \
               --cache-from "type=gha,scope=${app}" \
               --cache-to "type=gha,mode=max,scope=${app}" \
-              release-tree
+              release-tree || failed="$failed $app"
           done
+          [ -z "$failed" ] || { echo "::error::heal failed for:$failed"; exit 1; }
 
   # Staging deploys automatically: the flux-operator ResourceSetInputProvider in
   # kubernetes/apps/staging/flux-system/ detects the new ${BUILD_TAG} in GHCR and
