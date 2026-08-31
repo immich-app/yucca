@@ -22,6 +22,7 @@ const newButtonInteraction = (customId: string, overrides: object = {}) =>
     isModalSubmit: () => false,
     isChatInputCommand: () => false,
     customId,
+    guildId: 'guild',
     user: { id: '123456789', username: 'Someone' },
     replied: false,
     deferred: false,
@@ -40,6 +41,7 @@ const newCommandInteraction = (targetUser: object, overrides: object = {}) =>
     isModalSubmit: () => false,
     isChatInputCommand: () => true,
     commandName: 'ticket',
+    guildId: 'guild',
     user: { id: 'staff-1', username: 'Staffer' },
     options: { getUser: jest.fn().mockReturnValue(targetUser) },
     replied: false,
@@ -57,6 +59,7 @@ const newModalInteraction = (description: string, overrides: object = {}) =>
     isModalSubmit: () => true,
     isChatInputCommand: () => false,
     customId: ComponentId.TicketModal,
+    guildId: 'guild',
     user: { id: '123456789', username: 'Someone' },
     replied: false,
     deferred: false,
@@ -93,6 +96,18 @@ describe(SupportService.name, () => {
       mocks.freshdeskSync as never,
       mocks.columbo as never,
     );
+  });
+
+  describe('guild scoping', () => {
+    it('ignores an interaction from another guild', async () => {
+      mocks.api.getLink.mockResolvedValue(link);
+      const interaction = newButtonInteraction(ComponentId.OpenTicket, { guildId: 'other-guild' });
+
+      await sut.handleInteraction(interaction);
+
+      expect(mocks.api.getLink).not.toHaveBeenCalled();
+      expect((interaction as { showModal: jest.Mock }).showModal).not.toHaveBeenCalled();
+    });
   });
 
   describe('open ticket button', () => {
