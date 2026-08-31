@@ -454,13 +454,10 @@ ceph_fluentbit_enabled: false
 #
 # OFF until the canary proves the path end to end. site.yml carries monk.yml,
 # so flipping this on lands monk on all five mons at the next converge.
-# Canary first:
+# Canary first, harden before monk since the :9284 accept rule ships in
+# roles/security and the role asserts it is live:
+#   scripts/ansible-play.sh harden.yml --limit spice-ceph-adelia
 #   mise run monk -- --limit spice-ceph-adelia -e ceph_scrub_exporter_enabled=true
 # then flip this to true in its own change.
-#
-# The default 2m refresh is deliberate and holds at this cluster's size: pg ls
-# is 11.5 MB over 4222 PGs and costs the active mgr 0.78 cpu-s (measured on
-# adelia, 20 saturated queries against a paired idle window), so five mons
-# polling independently cost it ~3% of one core.
 ceph_scrub_exporter_enabled: false
 ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.355@sha256:01b315fd8616c2992320985ef6ddda69c0834d32f13b4ec22d8b6537a4245a1b
