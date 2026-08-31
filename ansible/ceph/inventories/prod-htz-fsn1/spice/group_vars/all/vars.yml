@@ -458,6 +458,6 @@ ceph_fluentbit_enabled: false
 # roles/security and the role asserts it is live:
 #   scripts/ansible-play.sh harden.yml --limit spice-ceph-adelia
 #   mise run monk -- --limit spice-ceph-adelia -e ceph_scrub_exporter_enabled=true
-# then flip this to true in its own change.
+# then flip this to true, with the vmagent ceph-scrub job, in its own change.
 ceph_scrub_exporter_enabled: false
 ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.355@sha256:01b315fd8616c2992320985ef6ddda69c0834d32f13b4ec22d8b6537a4245a1b
