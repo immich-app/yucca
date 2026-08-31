@@ -49,14 +49,16 @@ func main() {
 	}
 
 	runner := agent.NewRunner(agent.Config{
-		OpenRouterURL:   cfg.OpenRouterURL,
-		APIKey:          cfg.OpenRouterAPIKey,
-		Model:           cfg.Model,
-		TriageModel:     cfg.TriageModel,
-		MetricsURL:      cfg.MetricsURL,
-		LogsURL:         cfg.LogsURL,
-		MaxToolCalls:    cfg.MaxToolCalls,
-		ToolResultBytes: cfg.ToolResultBytes,
+		OpenRouterURL:    cfg.OpenRouterURL,
+		APIKey:           cfg.OpenRouterAPIKey,
+		Model:            cfg.Model,
+		TriageModel:      cfg.TriageModel,
+		MetricsURL:       cfg.MetricsURL,
+		LogsURL:          cfg.LogsURL,
+		MaxToolCalls:      cfg.MaxToolCalls,
+		ToolResultBytes:   cfg.ToolResultBytes,
+		ModelCallTimeout:  cfg.ModelCallTimeout,
+		ModelCallAttempts: cfg.ModelCallAttempts,
 	})
 	recorder, err := metrics.Setup(cfg.OTLPMetricsEndpoint, cfg.OTLPMetricsURLPath, cfg.OTLPMetricsInterval)
 	if err != nil {
