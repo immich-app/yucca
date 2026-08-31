@@ -14,7 +14,7 @@ permissions:
 
 env:
   IMAGE_PREFIX: ghcr.io/immich-app/yucca
-  # Monotonic monorepo build tag (all 5 apps ship together). The staging
+  # Monotonic monorepo build tag (every app ships together). The staging
   # ResourceSetInputProvider picks the highest 0.0.<n> from GHCR and deploys it
   # in-cluster: pull-based, so CI never needs cluster/Tailscale access.
   BUILD_TAG: 0.0.${{ github.run_number }}
@@ -78,22 +78,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The release commit is the one that changes the stamped root version
-      # (release-please bumps package.json on the release PR merge alone), so
-      # compare against HEAD^ rather than trusting a coalescible head commit
-      # message. v<version> is the tag release-please pins into prod's pin
-      # files; heal-release below backfills if this run never pushes it, and
-      # prod's rollout stalls harmlessly (old pods keep serving) until then.
+      # The release commit is the one that moves the stamped root version
+      # forward (release-please bumps package.json on the release PR merge
+      # alone), so compare against HEAD^ rather than trusting a coalescible
+      # head commit message; a bare != would also fire on a revert of the
+      # release merge and repush the old release's v-tag from a tree carrying
+      # every post-release commit, so a version that did not increase, or a
+      # v-tag already on origin pointing at another commit, mints nothing.
+      # v<version> is the tag release-please pins into prod's pin files;
+      # heal-release below backfills if this run never pushes it, and prod's
+      # rollout stalls harmlessly (old pods keep serving) until then.
       - name: Compute release image tag
         id: release
         env:
           APP: ${{ matrix.app.name }}
         run: |
-          if [ "$(jq -r .version package.json)" != "$(git show HEAD^:package.json | jq -r .version)" ]; then
-            echo "tag=${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=" >> "$GITHUB_OUTPUT"
+          NEW="$(jq -r .version package.json)"
+          OLD="$(git show HEAD^:package.json | jq -r .version)"
+          TAG=''
+          if [ "$NEW" != "$OLD" ] && [ "$(printf '%s\n%s\n' "$OLD" "$NEW" | sort -V | tail -n1)" = "$NEW" ]; then
+            existing="$(git ls-remote --tags origin "v${NEW}" "v${NEW}^{}")"
+            if [ -z "$existing" ] || printf '%s\n' "$existing" | grep -q "^${GITHUB_SHA}"; then
+              TAG="${IMAGE_PREFIX}/${APP}:v${NEW}"
+            fi
           fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
@@ -161,14 +170,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The runner injects ACTIONS_RUNTIME_TOKEN/ACTIONS_RESULTS_URL into
+      # action steps only, and buildx invoked from run: silently drops
+      # type=gha cache without them.
+      - name: Expose GitHub runtime for buildx gha cache
+        if: steps.tag.outputs.name
+        uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+
       # Only a probe that distinguishes absent from broken may trigger a
-      # build; any other registry failure must not republish anything.
+      # build; any other registry failure must not republish anything. The
+      # roster is the build matrix read from this workflow file, so the two
+      # cannot drift; an app newer than the release tag has no Dockerfile in
+      # the release tree and nothing to heal.
       - name: Build missing release images from the release tree
         if: steps.tag.outputs.name
         env:
           TAG: ${{ steps.tag.outputs.name }}
         run: |
-          for app in yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web michael columbo monk; do
+          apps="$(yq '.jobs.build.strategy.matrix.app[].name' .github/workflows/deploy.yml)"
+          [ -n "$apps" ] || { echo "::error::no apps parsed from the build matrix"; exit 1; }
+          for app in $apps; do
+            if [ ! -f "release-tree/packages/${app}/Dockerfile" ]; then
+              echo "$app has no Dockerfile in refs/tags/$TAG; skipping"
+              continue
+            fi
             ref="${IMAGE_PREFIX}/${app}:${TAG}"
             if err=$(docker manifest inspect "$ref" 2>&1 >/dev/null); then
               echo "$ref present"

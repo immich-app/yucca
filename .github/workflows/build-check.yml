@@ -110,8 +110,9 @@ jobs:
 
   # The build legs come from a dynamic matrix, so they cannot be named in
   # branch protection, and a failed leg would otherwise not block the merge.
-  # "Result" is the one check branch protection must require: it fails on any
-  # upstream failure and passes when build was skipped (no app changed).
+  # "Result" is the one check branch protection must require: it allow-lists
+  # the good outcomes (build may be skipped when no app changed) so failed
+  # and cancelled runs both stay red.
   result:
     name: Result
     if: always()
@@ -119,12 +120,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Fail when an upstream job failed
+      - name: Fail unless upstream succeeded or was skipped
         env:
           CHANGES: ${{ needs.changes.result }}
           BUILD: ${{ needs.build.result }}
         run: |
           echo "changes=$CHANGES build=$BUILD"
-          if [ "$CHANGES" = 'failure' ] || [ "$BUILD" = 'failure' ]; then
-            exit 1
-          fi
+          [ "$CHANGES" = 'success' ] || exit 1
+          [ "$BUILD" = 'success' ] || [ "$BUILD" = 'skipped' ] || exit 1
