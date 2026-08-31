@@ -214,6 +214,12 @@ prod). Yucca's talos stack reads everything secretish via `op://` refs into
 the `futo-backups-bot` Secret; only the leftovers ride cluster-settings. Dev
 uses the dev guild through `.env`.
 
+Both environments run the **same Discord application**, so each pod is a member
+of both guilds and the gateway delivers it both guilds' interactions — custom
+ids and command names are identical across them. `handleInteraction` therefore
+drops anything whose `guildId` is not `DISCORD_GUILD_ID`; message mirroring is
+already scoped by the support-channel parent and the ticket mapping.
+
 | Variable | Source |
 |---|---|
 | `DISCORD_BOT_TOKEN` | Secret ← `YUCCA_DISCORD_BOT_TOKEN` (manual item) |
