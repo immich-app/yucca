@@ -11,6 +11,7 @@ package o11y
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +39,26 @@ func NewClient(metricsURL, logsURL, customerID string) *Client {
 		CustomerID: customerID,
 		HTTPClient: &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+// MetricNames lists the metric names that actually carry data for this user
+// within the lookback, so the agent starts from what exists instead of
+// guessing. Scoped the same way as every query.
+func (c *Client) MetricNames(ctx context.Context, lookback time.Duration) ([]string, error) {
+	params := url.Values{}
+	params.Set("start", strconv.FormatInt(time.Now().Add(-lookback).Unix(), 10))
+	params.Set("extra_label", "customerId="+c.CustomerID)
+	body, err := c.do(ctx, c.MetricsURL+"/api/v1/label/__name__/values", params)
+	if err != nil {
+		return nil, err
+	}
+	var parsed struct {
+		Data []string `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		return nil, err
+	}
+	return parsed.Data, nil
 }
 
 func (c *Client) QueryMetricsRange(ctx context.Context, query, start, end, step string) (string, error) {

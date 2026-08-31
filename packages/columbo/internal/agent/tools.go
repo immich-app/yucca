@@ -96,6 +96,23 @@ func (t *toolbox) queriesRun() []string {
 	return append([]string(nil), t.queries...)
 }
 
+// availableMetrics is the free (no tool budget) prefetch of which metric
+// names carry data for this user; nil means the lookup failed and the model
+// is told to discover instead.
+func (t *toolbox) availableMetrics(ctx context.Context) []string {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	names, err := t.o11y.MetricNames(ctx, 30*24*time.Hour)
+	if err != nil {
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("metric-name prefetch failed")
+		return nil
+	}
+	if names == nil {
+		names = []string{}
+	}
+	return names
+}
+
 func (t *toolbox) callsMade() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()

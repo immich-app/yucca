@@ -126,6 +126,18 @@ func TestToolErrorsBecomeToolResults(t *testing.T) {
 	}
 }
 
+func TestAvailableMetricsLine(t *testing.T) {
+	if got := availableMetricsLine(nil); !strings.Contains(got, "lookup unavailable") {
+		t.Fatalf("nil case = %q", got)
+	}
+	if got := availableMetricsLine([]string{}); !strings.Contains(got, "none — this account has produced no metrics") {
+		t.Fatalf("empty case = %q", got)
+	}
+	if got := availableMetricsLine([]string{"api_request_count", "blobs.uploaded_bytes"}); !strings.Contains(got, "api_request_count, blobs.uploaded_bytes") {
+		t.Fatalf("listing case = %q", got)
+	}
+}
+
 func TestParseTriage(t *testing.T) {
 	verdict, err := parseTriage("Sure thing!\n{\"investigate\": true, \"reason\": \"backup errors\"}\n")
 	if err != nil {

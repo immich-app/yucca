@@ -110,8 +110,23 @@ Rules:
 - If the telemetry shows nothing relevant, say exactly that — a clear "nothing found" is a useful result. Never invent or embellish findings.
 - Write for staff, not the user. Be concrete: quote the relevant log lines or numbers, with timestamps.
 
-Metrics tips: series are labelled by connection and repository; rate() over counters for request/error rates.
-Logs tips: entries are structured JSON from the API and storage services; _time:24h error is a good first query.
+Per-user metrics catalog (names contain dots — select with {__name__="..."}; all carry repositoryId, and env/cluster/region):
+- api_request_count — yucca-api (control plane) requests. Labels: handler (Controller.method), method, status.
+- http.server.request.count — michael (restic backend) requests. Labels: route, method, status, connection.
+- blobs.requested_bytes / blobs.downloaded_bytes / blobs.uploaded_bytes / blobs.stored_bytes — michael data-plane byte counters. Labels: type (restic blob type: data/index/keys/locks/snapshots/config), connection. uploaded_bytes rising = backups actually writing; stored_bytes = net new data.
+- client.request.seconds / client.request.ttfb_seconds — michael request-duration histograms per connection.
+- client.requests.peak — peak concurrent restic requests per client.
+- rgw_repository_size_bytes / rgw_repository_object_count — gauges: current stored size/objects per repository (5-minute resolution).
+A metric absent from the "metrics with data" list below means that activity never happened — e.g. no blobs.* at all means no restic client ever wrote for this account.
+
+Per-user logs catalog (structured JSON; _time:24h error is a good first query):
+- yucca-api / yucca-admin-api (control plane): one entry per request, _msg like "GET RepositoryController.getRepositories (OK)", fields: method, path, status_code, duration_ms, request_id.
+- michael (restic backend): one entry per restic-protocol request, _msg like "POST /{path}/{type}/{name} (200)", fields: user, repository, path (the real URL), method, status, duration (ms), size (bytes), client_ip, user_agent.
+Michael route semantics (restic REST protocol — read these from method + the path's type segment):
+- POST /{repo}/{type}/{name} = a blob write (the saveBlob handler), but what it MEANS depends on the type: /data/ = backup content uploading; /index/ = index flush; /snapshots/ = a backup COMPLETED (the snapshot record is written last); /keys/ = repository key setup. /locks/ is the exception — restic writes a lock at the start of EVERY operation, including read-only ones (restore, check), so lock POSTs prove activity, not backups.
+- GET /{repo}/{type}/{name} = blob read (restores, checks); HEAD = existence probe; DELETE = cleanup (locks after every operation; data/index during prune).
+- GET /{repo}/{type}/ = listing; POST /{repo}/config = repository initialization (happens once, before the first backup); POST /{repo}/ = repository creation.
+So: method:="POST" path:~"/snapshots/" = completed backups; method:="POST" path:~"/data/" = backup traffic; status:>=400 on michael = failing restic requests.
 
 Your final message becomes the staff note verbatim. Format:
 1. One-line verdict (e.g. "Backups from connection X have failed with 507 since 14:02 UTC").
@@ -170,6 +185,8 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (Outcome, 
 		return Outcome{}, err
 	}
 
+	userMessage += "\n\n" + availableMetricsLine(box.availableMetrics(ctx))
+
 	zerolog.Ctx(ctx).Info().
 		Str("audit", "investigation_start").
 		Str("model", r.cfg.Model).
@@ -195,6 +212,16 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (Outcome, 
 	}
 	outcome.Note = truncateNote(out.Content)
 	return outcome, nil
+}
+
+func availableMetricsLine(names []string) string {
+	if names == nil {
+		return "Metrics with data for this account: (lookup unavailable — query to find out)"
+	}
+	if len(names) == 0 {
+		return "Metrics with data for this account (last 30d): none — this account has produced no metrics at all."
+	}
+	return "Metrics with data for this account (last 30d): " + strings.Join(names, ", ")
 }
 
 type tokenTally struct {
