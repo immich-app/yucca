@@ -1,0 +1,141 @@
+name: Release Images
+
+# Publishes ghcr.io/immich-app/yucca/<app>:v<version> for a release tag,
+# independent of Deploy: nothing that cancels, coalesces, or fails a Deploy
+# run can suppress these images.
+on:
+  release:
+    types: [published]
+  # Manual heal for a release whose images are missing.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish images for (e.g. v0.38.0)
+        required: true
+        type: string
+
+concurrency:
+  group: release-images-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: Publish release images
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+    env:
+      IMAGE_PREFIX: ghcr.io/immich-app/yucca
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Checkout release tree
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+
+      # Peel to the commit in case the tag is annotated; sha- image tags name
+      # commits, never tag objects.
+      - name: Resolve the tagged commit
+        id: commit
+        run: echo "sha=$(git rev-parse "refs/tags/${TAG}^{commit}")" >> "$GITHUB_OUTPUT"
+
+      # Deploy's run for this commit is created as queued the moment the
+      # commit lands, and queue: max never coalesces it away; poll it to
+      # completion (any conclusion) so the probes below see final state,
+      # bounded by the job timeout. The loop exits immediately for a long
+      # finished run, and proceeds when no run is listed after three polls
+      # (a dispatch for a release whose runs aged out of retention).
+      - name: Wait for the release commit's Deploy run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ steps.commit.outputs.sha }}
+        run: |
+          runs="repos/immich-app/yucca/actions/workflows/deploy.yml/runs?head_sha=${COMMIT}&branch=main&per_page=1"
+          missing=0
+          while :; do
+            status=$(gh api "$runs" --jq '.workflow_runs[0].status' || true)
+            [ "$status" = "completed" ] && break
+            if [ -z "$status" ]; then
+              missing=$((missing + 1))
+              [ "$missing" -ge 3 ] && { echo "no Deploy run listed for ${COMMIT}; proceeding"; break; }
+            fi
+            echo "Deploy run for ${COMMIT} is ${status:-not listed yet}; polling again in 60s"
+            sleep 60
+          done < <(printf '%s\n' "$apps")
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The runner injects ACTIONS_RUNTIME_TOKEN/ACTIONS_RESULTS_URL into
+      # action steps only, and buildx invoked from run: silently drops
+      # type=gha cache without them.
+      - name: Expose GitHub runtime for buildx gha cache
+        uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+
+      # The roster is the Deploy build matrix read from this tag's tree, so
+      # the two cannot drift; an app newer than the tag has no Dockerfile
+      # here and nothing to publish. When sha-<commit> exists it is retagged
+      # (--prefer-index=false keeps the single-platform manifest format), so
+      # the v-tag digest equals the digest staging ran; when it does not,
+      # the fallback builds the same tree content under a new digest.
+      - name: Publish release images
+        env:
+          COMMIT: ${{ steps.commit.outputs.sha }}
+        run: |
+          apps="$(yq '.jobs.build.strategy.matrix.app[] | .name + " " + .dockerfile' .github/workflows/deploy.yml)"
+          [ -n "$apps" ] || { echo "::error::no apps parsed from the build matrix"; exit 1; }
+          # 0 = present, 1 = absent; any probe failure that is neither must
+          # not lead to a publish.
+          probe() {
+            local err
+            if err=$(docker manifest inspect "$1" 2>&1 >/dev/null); then
+              return 0
+            fi
+            case "$err" in
+              *"manifest unknown"* | *"no such manifest"* | *"not found"*) return 1 ;;
+            esac
+            echo "::error::probe for $1 failed: $err"
+            exit 1
+          }
+          failed=""
+          while read -r app df; do
+            if [ ! -f "$df" ]; then
+              echo "::error::$app dockerfile $df missing in $TAG"
+              failed="$failed $app"
+              continue
+            fi
+            vref="${IMAGE_PREFIX}/${app}:${TAG}"
+            if probe "$vref"; then
+              echo "$vref present"
+              continue
+            fi
+            sha_ref="${IMAGE_PREFIX}/${app}:sha-${COMMIT}"
+            if probe "$sha_ref"; then
+              echo "$vref missing; retagging $sha_ref"
+              docker buildx imagetools create --prefer-index=false \
+                -t "$vref" "$sha_ref" || failed="$failed $app"
+              continue
+            fi
+            echo "$vref missing and $sha_ref absent; building from the tag tree"
+            docker buildx build --push \
+              --file "$df" \
+              --tag "$vref" \
+              --cache-from "type=gha,scope=${app}" \
+              --cache-to "type=gha,mode=max,scope=${app}" \
+              . || failed="$failed $app"
+          done
+          [ -z "$failed" ] || { echo "::error::publish failed for:$failed"; exit 1; }

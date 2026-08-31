@@ -52,9 +52,11 @@ a kubeconfig or joins the tailnet.
    tag into BOTH prod pins (`clusters/prod/htz-fsn1/flux-release.yaml` and
    `image-versions.yaml`, extra-files), so **merging the release PR is the promotion**:
    prod's `flux-release` GitRepository jumps to the tag (manifests + charts) and
-   `${YUCCA_IMAGE_TAG}` selects the matching `v<version>` images (pushed by the same
-   commit's build job — the rollout stalls harmlessly for the few minutes that build
-   takes). No promote workflow, no bot commit, still no cluster access from CI.
+   `${YUCCA_IMAGE_TAG}` selects the matching `v<version>` images, published by the
+   Release Images workflow on the release event (it waits for the commit's Deploy
+   build, then retags its images digest-identically, or builds from the tag tree;
+   the rollout stalls harmlessly until then). No promote workflow, no bot commit,
+   still no cluster access from CI.
    **Rollback** = revert the two stamped lines in a normal PR; the old tag's images
    still exist.
 4. **visibility** — notification-controller's GitHub `Provider`/`Alert`

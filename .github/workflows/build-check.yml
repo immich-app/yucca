@@ -65,6 +65,10 @@ jobs:
         run: |
           covered='yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web standalone-app michael columbo monk'
           excluded='mock-oidc-provider mock-postmark-provider'
+          # Apps with no Deploy leg, delivered by the release-event workflows.
+          publish_only='standalone-app'
+          deploy_apps="$(yq '.jobs.build.strategy.matrix.app[].name' .github/workflows/deploy.yml | tr '\n' ' ')"
+          [ -n "${deploy_apps// /}" ] || { echo "::error::no apps parsed from the Deploy build matrix"; exit 1; }
           fail=0
           for d in packages/*/Dockerfile; do
             app=$(basename "$(dirname "$d")")
@@ -76,6 +80,10 @@ jobs:
           for app in $covered; do
             grep -Eq "^ +${app}:" .github/workflows/build-check.yml \
               || { echo "::error::$app is in the covered list but has no filter key in build-check.yml"; fail=1; }
+            case " $deploy_apps $publish_only " in
+              *" $app "*) ;;
+              *) echo "::error::$app is covered here but in neither the Deploy build matrix nor the publish_only list"; fail=1 ;;
+            esac
           done
           exit $fail
 
