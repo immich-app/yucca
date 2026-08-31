@@ -161,6 +161,14 @@ data:
               "10.40.20.40:9926", "10.40.20.41:9926", "10.40.20.42:9926", "10.40.20.43:9926", "10.40.20.44:9926", "10.40.20.45:9926",
               "10.40.20.46:9926", "10.40.20.47:9926", "10.40.20.48:9926", "10.40.20.49:9926", "10.40.20.50:9926", "10.40.20.51:9926"
             ]
+      # monk, the scrub-backlog exporter (packages/monk), on the mon hosts
+      # only: roles/scrub_exporter follows the pinned quorum, so unlike the
+      # mgr these five targets are stable. 60s: monk refreshes every 2m.
+      - job_name: ceph-scrub
+        scrape_interval: 60s
+        static_configs:
+          - labels: { cluster: spice }
+            targets: ["10.40.20.4:9284", "10.40.20.14:9284", "10.40.20.24:9284", "10.40.20.34:9284", "10.40.20.44:9284"]
       # Cluster-level metrics (health, pools) from the mgr prometheus module.
       # mgr is count:3 with cephadm-chosen placement that MOVES on redeploy, so
       # scrape :9283 on every node: only mgr hosts answer (active = full set,
