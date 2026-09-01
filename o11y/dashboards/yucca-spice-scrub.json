@@ -1732,27 +1732,36 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "histogram_quantile(0.5, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})))",
+          "refId": "A",
           "legendFormat": "p50 byte age",
-          "refId": "A"
+          "expr": "histogram_quantile(0.5, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})))"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})))",
+          "refId": "B",
           "legendFormat": "p95 byte age",
-          "refId": "B"
+          "expr": "histogram_quantile(0.95, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})))"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "max(ceph_scrub_target_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})",
-          "legendFormat": "target interval",
-          "refId": "C"
+          "refId": "C",
+          "legendFormat": "target (shortest)",
+          "expr": "min(ceph_scrub_target_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "D",
+          "legendFormat": "target (longest)",
+          "expr": "max(ceph_scrub_target_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})"
         }
       ],
       "options": {
@@ -1799,7 +1808,22 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "target interval"
+              "options": "target (shortest)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "target (longest)"
             },
             "properties": [
               {
@@ -1813,7 +1837,7 @@
           }
         ]
       },
-      "description": "Age of the median and 95th-percentile stored byte since its last deep scrub, against the interval read live from the cluster rather than a hardcoded assumption. The histogram carries gauge semantics under a histogram type: never apply rate() or increase() to these series, and its _count counts bytes, not events. Buckets are deduped per le across instances, so snapshots taken a refresh apart can briefly invert two adjacent buckets; the engine clamps them monotonic, which nudges the quantile rather than failing the query."
+      "description": "Age of the median and 95th-percentile stored byte since its last deep scrub, against the interval read live from the cluster rather than a hardcoded assumption. The quantiles merge every pool, but the target is per pool, so both bounds are drawn: below the shortest target nothing is overdue, above the longest everything is, and between them the merged view cannot say which pool a byte belongs to. The two lines coincide while every pool shares an interval and separate the moment one is overridden; the overdue stats beside this panel stay authoritative either way. The histogram carries gauge semantics under a histogram type: never apply rate() or increase() to these series, and its _count counts bytes, not events. Buckets are deduped per le across instances, so snapshots taken a refresh apart can briefly invert two adjacent buckets; the engine clamps them monotonic, which nudges the quantile rather than failing the query."
     },
     {
       "id": 24,
