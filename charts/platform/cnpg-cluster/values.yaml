@@ -17,8 +17,7 @@ resources: {}
 # default "preferred" can co-schedule two instances, and local PVs
 # (WaitForFirstConsumer) then pin that co-location permanently.
 affinity: {}
-# CNPG spec.postgresql.synchronous (quorum commit). Empty = the CNPG default,
-# fully async replication. Real clusters turn this on.
+# CNPG spec.postgresql.synchronous. Empty = async, the CNPG default.
 synchronous: {}
 # Barman Cloud plugin backups (WAL archiving + daily base backup) to an
 # S3-compatible object store. Requires the plugin-barman-cloud release in
