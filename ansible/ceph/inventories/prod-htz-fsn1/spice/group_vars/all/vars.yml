@@ -449,15 +449,10 @@ ceph_fluentbit_enabled: false
 
 # === Scrub backlog exporter ===
 # monk (packages/monk, roles/scrub_exporter) serves measured per-pool scrub
-# stamps on :9284 for the mon hosts. Digest-pinned to the build sietch has
-# been running; bump deliberately.
-#
-# OFF until the canary proves the exporter on one mon. site.yml carries monk.yml,
-# so flipping this on lands monk on all five mons at the next converge.
-# Canary first, harden before monk since the :9284 accept rule ships in
-# roles/security and the role asserts it is live:
-#   scripts/ansible-play.sh harden.yml --limit spice-ceph-adelia
-#   mise run monk -- --limit spice-ceph-adelia -e ceph_scrub_exporter_enabled=true
-# then flip this to true, with the vmagent ceph-scrub job, in its own change.
-ceph_scrub_exporter_enabled: false
+# stamps on :9284 from the mon hosts. Every instance reports the same
+# cluster-wide data, so vmagent scrapes all five for availability and every
+# query dedups with max by (cluster, pool_id). A manual monk.yml run needs
+# harden.yml first, for the :9284 accept rule the role asserts on; site.yml
+# already orders them. Digest-pinned; bump deliberately.
+ceph_scrub_exporter_enabled: true
 ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.355@sha256:01b315fd8616c2992320985ef6ddda69c0834d32f13b4ec22d8b6537a4245a1b
