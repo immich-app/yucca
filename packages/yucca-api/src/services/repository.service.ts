@@ -1,11 +1,5 @@
 import { WideContextRepository } from '@common/server/otel';
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  Scope,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';

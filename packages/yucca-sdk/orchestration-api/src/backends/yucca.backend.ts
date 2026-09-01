@@ -2,7 +2,6 @@ import {
   createRepository,
   createResticUrl,
   createTicket,
-  deleteRepository,
   getAuth,
   getRepositories,
   getRepository,

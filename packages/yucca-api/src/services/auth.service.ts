@@ -8,7 +8,6 @@ import { IncomingHttpHeaders } from 'node:http';
 import * as client from 'openid-client';
 import { UserInfoResponse } from 'openid-client';
 import { from } from 'rxjs';
-import { TICKET_HEADER } from 'src/consts';
 import { AuthDto } from 'src/dto/auth.dto';
 import { TicketCreateRequestDto, TicketCreateResponseDto, TicketDto } from 'src/dto/ticket.dto';
 import { CookieName, TicketAction } from 'src/enum';
