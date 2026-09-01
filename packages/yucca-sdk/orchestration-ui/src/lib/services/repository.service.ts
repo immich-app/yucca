@@ -129,16 +129,6 @@ export const useReconfigureRepositoryPrimaryBackend = () =>
     () => queryClient,
   );
 
-export const useRemoveRepository = () =>
-  createMutation(
-    () => ({
-      mutationFn: ({ id, local = false }: { id: string; local?: boolean }) =>
-        local ? sdk.deleteRepository(id) : deleteRepository(id),
-      onError: (error) => handleError(error, 'Failed to delete repository'),
-    }),
-    () => queryClient,
-  );
-
 export const handleCreateBackup = async (id: string) => {
   try {
     toastManager.info('Started backup');
