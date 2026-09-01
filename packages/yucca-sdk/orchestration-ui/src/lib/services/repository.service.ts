@@ -20,13 +20,23 @@ import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createTicket } from '@futo-org/backups-api-client';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
-import { mdiCog, mdiFormatListBulletedType, mdiHistory, mdiImport, mdiListStatus, mdiPlay, mdiTrashCan } from '@mdi/js';
+import {
+  mdiCog,
+  mdiFormatListBulletedType,
+  mdiHistory,
+  mdiImport,
+  mdiListStatus,
+  mdiPlay,
+  mdiTrashCan,
+} from '@mdi/js';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const repositoryKeys = {
   all: ['repositories'] as const,
-  inspect: (backendId?: string) => ['repositories', 'inspect', backendId] as const,
-  checkImport: (id: string, backendId: string) => ['repositories', id, 'check-import', backendId] as const,
+  inspect: (backendId?: string) =>
+    ['repositories', 'inspect', backendId] as const,
+  checkImport: (id: string, backendId: string) =>
+    ['repositories', id, 'check-import', backendId] as const,
 };
 
 export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
@@ -42,11 +52,17 @@ export const useRepositories = (initialData?: LocalRepositoryDto[]) =>
     () => queryClient,
   );
 
-export const useInspectRepositories = (backendId?: string, initialData?: InspectedLocalRepositoryDto[]) =>
+export const useInspectRepositories = (
+  backendId?: string,
+  initialData?: InspectedLocalRepositoryDto[],
+) =>
   createQuery(
     () => ({
       queryKey: repositoryKeys.inspect(backendId),
-      queryFn: () => inspectRepositories({ backend: backendId }).then(({ repositories }) => repositories),
+      queryFn: () =>
+        inspectRepositories({ backend: backendId }).then(
+          ({ repositories }) => repositories,
+        ),
       initialData,
     }),
     () => queryClient,
@@ -55,11 +71,19 @@ export const useInspectRepositories = (backendId?: string, initialData?: Inspect
 export const useRepositoryEventHandler = () => {
   return {
     onRepositoryCreate(event: SocketEvent<{ repository: LocalRepositoryDto }>) {
-      queryClient.setQueryData(repositoryKeys.all, (data: LocalRepositoryDto[] | undefined) => {
-        return data
-          ? [...data.filter((entry) => entry.id !== event.data.repository.id), event.data.repository]
-          : void 0;
-      });
+      queryClient.setQueryData(
+        repositoryKeys.all,
+        (data: LocalRepositoryDto[] | undefined) => {
+          return data
+            ? [
+                ...data.filter(
+                  (entry) => entry.id !== event.data.repository.id,
+                ),
+                event.data.repository,
+              ]
+            : void 0;
+        },
+      );
     },
     onRepositoryUpdate(
       event: SocketEvent<{
@@ -67,15 +91,24 @@ export const useRepositoryEventHandler = () => {
         repository: Partial<LocalRepositoryDto>;
       }>,
     ) {
-      queryClient.setQueryData(repositoryKeys.all, (data: LocalRepositoryDto[] | undefined) => {
-        return data
-          ? data.map((entry) => (entry.id === event.data.repositoryId ? { ...entry, ...event.data.repository } : entry))
-          : void 0;
-      });
+      queryClient.setQueryData(
+        repositoryKeys.all,
+        (data: LocalRepositoryDto[] | undefined) => {
+          return data
+            ? data.map((entry) =>
+                entry.id === event.data.repositoryId
+                  ? { ...entry, ...event.data.repository }
+                  : entry,
+              )
+            : void 0;
+        },
+      );
     },
     onRepositoryDelete(event: SocketEvent<{ repositoryId: string }>) {
-      queryClient.setQueryData(repositoryKeys.all, (data: LocalRepositoryDto[] | undefined) =>
-        data?.filter((entry) => entry.id !== event.data.repositoryId),
+      queryClient.setQueryData(
+        repositoryKeys.all,
+        (data: LocalRepositoryDto[] | undefined) =>
+          data?.filter((entry) => entry.id !== event.data.repositoryId),
       );
     },
   };
@@ -93,7 +126,8 @@ export const useCheckImportRepository = (id: string, backendId: string) =>
 export const useCreateRepository = () =>
   createMutation(
     () => ({
-      mutationFn: (dto: RepositoryCreateRequestDto) => sdk.createRepository(dto),
+      mutationFn: (dto: RepositoryCreateRequestDto) =>
+        sdk.createRepository(dto),
       onError: (error) => handleError(error, 'Failed to create repository'),
     }),
     () => queryClient,
@@ -102,7 +136,8 @@ export const useCreateRepository = () =>
 export const useImportRepository = () =>
   createMutation(
     () => ({
-      mutationFn: ({ id, backendId }: { id: string; backendId: string }) => sdk.importRepository(id, backendId),
+      mutationFn: ({ id, backendId }: { id: string; backendId: string }) =>
+        sdk.importRepository(id, backendId),
       onError: (error) => handleError(error, 'Failed to import repository'),
     }),
     () => queryClient,
@@ -111,8 +146,15 @@ export const useImportRepository = () =>
 export const useUpdateRepository = () =>
   createMutation(
     () => ({
-      mutationFn: ({ id, dto, local = false }: { id: string; dto: RepositoryUpdateRequestDto; local?: boolean }) =>
-        local ? sdk.updateRepository(id, dto) : updateRepository(id, dto),
+      mutationFn: ({
+        id,
+        dto,
+        local = false,
+      }: {
+        id: string;
+        dto: RepositoryUpdateRequestDto;
+        local?: boolean;
+      }) => (local ? sdk.updateRepository(id, dto) : updateRepository(id, dto)),
       onError: (error) => handleError(error, 'Failed to update repository'),
     }),
     () => queryClient,
@@ -158,7 +200,10 @@ export const handlePruneRepository = async (id: string) => {
   }
 };
 
-export const handleDeleteRepository = async (repositoryId: string, local?: boolean) => {
+export const handleDeleteRepository = async (
+  repositoryId: string,
+  local?: boolean,
+) => {
   try {
     const action = local ? sdk.createTicket : createTicket;
 
@@ -174,7 +219,10 @@ export const handleDeleteRepository = async (repositoryId: string, local?: boole
   }
 };
 
-export const handleDisableWormRepository = async (repositoryId: string, local?: boolean) => {
+export const handleDisableWormRepository = async (
+  repositoryId: string,
+  local?: boolean,
+) => {
   try {
     const action = local ? sdk.createTicket : createTicket;
 
@@ -190,8 +238,13 @@ export const handleDisableWormRepository = async (repositoryId: string, local?: 
   }
 };
 
-export const getRepositoryActions = (repository: LocalRepositoryDto, local?: boolean) => {
-  const online = Boolean(repository.configuration && repository.backends?.primary.online);
+export const getRepositoryActions = (
+  repository: LocalRepositoryDto,
+  local?: boolean,
+) => {
+  const online = Boolean(
+    repository.configuration && repository.backends?.primary.online,
+  );
   const configured = Boolean(repository.configuration);
 
   const BackupNow: ActionItem = {
@@ -228,7 +281,8 @@ export const getRepositoryActions = (repository: LocalRepositoryDto, local?: boo
   const Import: ActionItem = {
     title: 'Import',
     icon: mdiImport,
-    onAction: () => void modalManager.open(ImportRepositoryModal, { repository }),
+    onAction: () =>
+      void modalManager.open(ImportRepositoryModal, { repository }),
     $if: () => Boolean(repository.backends && !repository.configuration),
   };
 
@@ -243,7 +297,8 @@ export const getRepositoryActions = (repository: LocalRepositoryDto, local?: boo
     title: 'Delete repository',
     icon: mdiTrashCan,
     onAction: () => void handleDeleteRepository(repository.id, local),
-    $if: () => !repository.backends || repository.backends.primary.type === 'yucca',
+    $if: () =>
+      !repository.backends || repository.backends.primary.type === 'yucca',
   };
 
   return {
