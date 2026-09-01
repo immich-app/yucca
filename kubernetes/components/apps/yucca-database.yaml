@@ -16,6 +16,9 @@ spec:
   # release and — through dependsOn — freezes the image rollout of every app
   # behind it, even though the primary is up and taking queries. readyInstances
   # is the field that tracks "someone can serve"; the Ready condition is not.
+  # The threshold is 2, not 1: one stranded instance must not freeze the fleet,
+  # but a cluster down to a lone primary has no standby to fail over to, and
+  # rolling new images onto it is how a bad deploy becomes an outage.
   healthChecks:
     - apiVersion: postgresql.cnpg.io/v1
       kind: Cluster
@@ -24,7 +27,7 @@ spec:
   healthCheckExprs:
     - apiVersion: postgresql.cnpg.io/v1
       kind: Cluster
-      current: status.readyInstances >= 1
+      current: status.readyInstances >= 2
   interval: 1h
   retryInterval: 2m
   timeout: 10m
