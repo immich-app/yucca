@@ -10,15 +10,9 @@ spec:
     - name: cnpg-operator
     - name: cnpg-plugin-barman
     - name: openebs
-  # Gate dependents on the database SERVING, not on Helm succeeding. CNPG holds
-  # the Cluster's Ready condition False while any instance is short (e.g. a lost
-  # node strands an instance on its node-local PV), which times out the Helm
-  # release and — through dependsOn — freezes the image rollout of every app
-  # behind it, even though the primary is up and taking queries. readyInstances
-  # is the field that tracks "someone can serve"; the Ready condition is not.
-  # The threshold is 2, not 1: one stranded instance must not freeze the fleet,
-  # but a cluster down to a lone primary has no standby to fail over to, and
-  # rolling new images onto it is how a bad deploy becomes an outage.
+  # Gate on serving, not on Helm succeeding: CNPG holds Ready False whenever an
+  # instance is short, which froze every dependent app's images for 18h.
+  # Threshold 2 — one stranded instance is survivable, a lone primary is not.
   healthChecks:
     - apiVersion: postgresql.cnpg.io/v1
       kind: Cluster
