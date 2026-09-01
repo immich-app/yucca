@@ -5,6 +5,8 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  TicketCreateRequestDto,
+  TicketCreateResponseDto,
 } from '@futo-org/backups-api-client';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
@@ -21,6 +23,7 @@ export abstract class Backend {
   abstract getRepository(id: string): Promise<RepositoryGetResponseDto>;
   abstract getRepositories(): Promise<RepositoryListResponseDto>;
   abstract deleteRepository(id: string): Promise<void>;
+  abstract createTicket(dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto>;
 
   abstract getResticEndpoint(id: string): Promise<string>;
 

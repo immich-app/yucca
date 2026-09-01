@@ -18,6 +18,16 @@ export type DeviceFlowResponseDto = {
     userCode: string;
     verificationUri: string;
 };
+export type TicketAction = "repository.delete" | "repository.disable-worm";
+export type TicketCreateRequestDto = {
+    action: TicketAction;
+    /** Repository the ticket is bound to */
+    repositoryId: string;
+};
+export type TicketCreateResponseDto = {
+    /** Identity provider URL the browser must be sent to */
+    redirectTo: string;
+};
 export type BackendType = "yucca" | "local" | "s3";
 export type BackendDto = {
     id: string;
@@ -286,6 +296,16 @@ export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
     }>("/api/yucca/auth/oidc/device", {
         ...opts
     }));
+}
+export function createTicket(ticketCreateRequestDto: TicketCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TicketCreateResponseDto;
+    }>("/api/yucca/auth/ticket", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: ticketCreateRequestDto
+    })));
 }
 export function getBackends(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

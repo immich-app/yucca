@@ -1,8 +1,9 @@
-import { adoptRepositories, getAuth } from '@futo-org/backups-api-client';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { adoptRepositories, getAuth, TicketCreateRequestDto } from '@futo-org/backups-api-client';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { createEventSource, EventSourceClient } from 'eventsource-client';
 import { hostname } from 'node:os';
 import { REPOSITORY_DEFAULT_CLOUD_UUID } from '../const';
+import { TicketCreateResponseDto } from '../dto/ticket.dto';
 import { BackendType, CookieName } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
@@ -146,5 +147,22 @@ export class AuthService {
     }
 
     throw new InternalServerErrorException('Failed to start authentication with FUTO Backups');
+  }
+
+  async createTicket(dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    const localRepository = await this.repository.get(dto.repositoryId);
+    if (!localRepository) {
+      throw new NotFoundException('Repository not found locally');
+    }
+
+    const result = await this.backend.getBackend(localRepository.backendId);
+    if (!result) {
+      throw new NotFoundException('Backend not found locally');
+    }
+
+    return await result.backend.createTicket({
+      action: dto.action,
+      repositoryId: localRepository.remoteId,
+    });
   }
 }

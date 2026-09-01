@@ -1,3 +1,4 @@
+export { default as Suspense } from './components/util/Suspense.svelte';
 export { default as BackendsList } from './components/backends/BackendsList.svelte';
 export { default as BackupsList } from './components/backups/BackupsList.svelte';
 export { default as ViewStatusModal } from './components/backups/dialogs/ViewStatusModal.svelte';

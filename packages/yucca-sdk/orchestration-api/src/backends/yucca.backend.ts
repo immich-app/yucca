@@ -1,6 +1,7 @@
 import {
   createRepository,
   createResticUrl,
+  createTicket,
   deleteRepository,
   getAuth,
   getRepositories,
@@ -11,6 +12,8 @@ import {
   submitMetricBackupStart,
   submitMetricRepositorySize,
   submitStructuredLog,
+  TicketCreateRequestDto,
+  TicketCreateResponseDto,
   updateRepository,
 } from '@futo-org/backups-api-client';
 import { BackendType, CookieName } from '../enum';
@@ -63,8 +66,10 @@ export class YuccaBackend extends Backend {
     return await getRepositories(await this.getRequestOptions());
   }
 
-  async deleteRepository(id: string) {
-    return await deleteRepository(id, await this.getRequestOptions());
+  async deleteRepository() {}
+
+  async createTicket(dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    return await createTicket(dto, await this.getRequestOptions());
   }
 
   async getResticEndpoint(id: string) {
