@@ -35,6 +35,25 @@ spec:
       backendRefs:
         - name: yucca-api
           port: 3020
+    # Freshdesk automation webhooks (docs/discord-support.md). Capability URL:
+    # the path segment is a TF-generated secret arriving via the optional
+    # cluster-secrets Secret (never in git or CI; the default keeps secret-less
+    # renders working, and dev). The rewrite pins the bot's fixed mount, so the
+    # secret never reaches the pod; the x-freshdesk-secret header is the second
+    # wall, and the payload is an untrusted hint either way.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /hooks/${FRESHDESK_WEBHOOK_PATH:=freshdesk}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /hooks/freshdesk
+      backendRefs:
+        - name: futo-backups-bot
+          port: 3050
     - backendRefs:
         - name: yucca-web
           port: 5173

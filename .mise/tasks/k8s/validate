@@ -12,8 +12,8 @@ set -euo pipefail
 # Charts are role-grouped: apps/* (services), platform/* (operators/CRs),
 # lib/yucca-common (shared library), dev/* (dev-only). Paths below are
 # relative to charts/.
-LIB_CONSUMERS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/futo-backups-bot apps/web apps/meta apps/michael dev/mock-oidc dev/mock-postmark dev/mailpit)
-ALL_CHARTS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/futo-backups-bot apps/web apps/meta apps/michael dev/mock-oidc dev/mock-postmark dev/mailpit platform/cnpg-cluster platform/ceph-objectuser platform/rook-ceph-cluster)
+LIB_CONSUMERS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/futo-backups-bot apps/columbo apps/web apps/meta apps/michael dev/mock-oidc dev/mock-postmark dev/mailpit)
+ALL_CHARTS=(apps/yucca-api apps/yucca-admin-api apps/yucca-metrics-worker apps/futo-backups-bot apps/columbo apps/web apps/meta apps/michael dev/mock-oidc dev/mock-postmark dev/mailpit platform/cnpg-cluster platform/ceph-objectuser platform/rook-ceph-cluster)
 
 echo "==> helm dependency build (yucca-common consumers)"
 for c in "${LIB_CONSUMERS[@]}"; do

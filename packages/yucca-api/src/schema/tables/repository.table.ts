@@ -16,10 +16,10 @@ export class RepositoryTable {
   @Column({ type: 'text' })
   name!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', default: 'local' })
   siteCode!: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', default: 'local-dev' })
   storageClusterCode!: string;
 
   @ForeignKeyColumn(() => ConnectionTable, { onUpdate: 'CASCADE', onDelete: 'RESTRICT', index: true })

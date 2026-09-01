@@ -30,11 +30,21 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
   return {
     createRequest: jest.fn(),
     getRequestByCode: jest.fn(),
+    consumeInviteRequest: jest.fn(),
     deleteExpiredRequests: jest.fn(),
     getLinkByDiscordUserId: jest.fn(),
     getLinkByUserId: jest.fn(),
     link: jest.fn(),
+    linkDirect: jest.fn(),
     updateUsername: jest.fn(),
+    createBatch: jest.fn(),
+    setBatchMessage: jest.fn(),
+    claimInvite: jest.fn(),
+    createTicket: jest.fn(),
+    getTicketByThread: jest.fn(),
+    getTicketByFreshdeskId: jest.fn(),
+    listOpenTickets: jest.fn().mockResolvedValue([]),
+    updateTicket: jest.fn().mockResolvedValue(true),
     getUserSummary: jest.fn(),
   };
 };

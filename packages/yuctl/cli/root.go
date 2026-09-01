@@ -14,9 +14,11 @@ import (
 	"github.com/spf13/cobra"
 
 	cephcmd "yuctl/cli/ceph"
+	columbocmd "yuctl/cli/columbo"
 	configcmd "yuctl/cli/config"
 	featurescmd "yuctl/cli/features"
 	infracmd "yuctl/cli/infra"
+	invitescmd "yuctl/cli/invites"
 	toolscmd "yuctl/cli/tools"
 	userscmd "yuctl/cli/users"
 	"yuctl/cmdutil"
@@ -58,6 +60,8 @@ func NewRootCmd() *cobra.Command {
 		cephcmd.New(f),
 		infracmd.New(f),
 		userscmd.New(f),
+		invitescmd.New(f),
+		columbocmd.New(f),
 		configcmd.New(f),
 		featurescmd.New(f),
 		toolscmd.New(f),

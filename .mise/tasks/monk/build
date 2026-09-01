@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build monk"
+set -e
+
+cd packages/monk && go build -o ../../dist/monk .

@@ -36,3 +36,6 @@
 
 - name: Host log shipping (journald to o11y; gated by ceph_fluentbit_enabled)
   import_playbook: logging.yml
+
+- name: Scrub-backlog exporter (monk on mon hosts; gated by ceph_scrub_exporter_enabled)
+  import_playbook: monk.yml

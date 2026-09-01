@@ -172,6 +172,9 @@ resource "kubernetes_secret_v1" "yucca_admin_api" {
     # bench): deliberately the yucca_jwt SIGNING key — michael only accepts
     # tokens from that keypair. Admin session JWTs stay on yucca_admin_jwt.
     RESTIC_JWT_PRIVATE_KEY = tls_private_key.yucca_jwt[0].private_key_pem_pkcs8
+    # Shared internal-API secret: presented to futo-backups-bot's
+    # /internal/drops/* for eager invite-drop closure.
+    INTERNAL_SECRET = random_password.yucca_internal_secret[0].result
     # Empty until the 1P ref is minted — admin-api then logs and skips sends
     # instead of crashing (see docs/email.md).
     POSTMARK_SERVER_TOKEN = var.yucca_postmark_server_token
@@ -234,11 +237,33 @@ resource "onepassword_item" "yucca_internal_secret" {
   password = random_password.yucca_internal_secret[0].result
 }
 
+
+# Substituted into the Flux tree (apps.yaml postBuild, optional Secret source):
+# the one config channel that bypasses the git-committed cluster-settings.
+resource "kubernetes_secret_v1" "cluster_secrets" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name      = "cluster-secrets"
+    namespace = "flux-system"
+  }
+  data = {
+    FRESHDESK_WEBHOOK_PATH = var.yucca_freshdesk_webhook_path
+  }
+  depends_on = [helm_release.flux_operator]
+}
+
 # futo-backups-bot: Discord gateway token + the shared internal-API secret
 # + sietch RGW keys for ticket transcripts. Deliberately no precondition: the
 # token and S3 keys default empty so this Secret can land before their 1P
 # items exist — the bot idles without a token and skips the archive sweep
 # without S3 keys.
+locals {
+  # yucca-manual-secrets placeholders read back literally as REPLACE_ME —
+  # never let that masquerade as config.
+  freshdesk_url     = var.yucca_freshdesk_url == "REPLACE_ME" ? "" : var.yucca_freshdesk_url
+  freshdesk_api_key = var.yucca_freshdesk_api_key == "REPLACE_ME" ? "" : var.yucca_freshdesk_api_key
+}
+
 resource "kubernetes_secret_v1" "futo_backups_bot" {
   count = local.provision_secrets ? 1 : 0
   metadata {
@@ -256,6 +281,35 @@ resource "kubernetes_secret_v1" "futo_backups_bot" {
     DISCORD_CUSTOMER_ROLE_ID        = var.yucca_discord_customer_role_id
     TRANSCRIPT_S3_ACCESS_KEY_ID     = var.sietch_transcripts_access_key
     TRANSCRIPT_S3_SECRET_ACCESS_KEY = var.sietch_transcripts_secret_key
+    # REPLACE_ME-guarded locals (below) — an unfilled placeholder keeps the
+    # sync dormant. The webhook credentials and group id come from the
+    # partition's global/freshdesk stack via 1P.
+    FRESHDESK_URL            = local.freshdesk_url
+    FRESHDESK_API_KEY        = local.freshdesk_api_key
+    FRESHDESK_GROUP_ID       = var.yucca_freshdesk_group_id
+    FRESHDESK_WEBHOOK_SECRET = var.yucca_freshdesk_webhook_secret
+    # Staging shares the prod Freshdesk account; the tag keeps its tickets
+    # filterable in the agent view.
+    FRESHDESK_TAGS = "staging"
+  }
+}
+
+# columbo: OpenRouter key + the shared internal-API secret. Deliberately no
+# precondition: the key defaults empty (manual YUCCA_OPENROUTER_API_KEY item)
+# and columbo idles without it, accepting and dropping investigation requests.
+locals {
+  openrouter_api_key = var.yucca_openrouter_api_key == "REPLACE_ME" ? "" : var.yucca_openrouter_api_key
+}
+
+resource "kubernetes_secret_v1" "columbo" {
+  count = local.provision_secrets ? 1 : 0
+  metadata {
+    name      = "columbo"
+    namespace = kubernetes_namespace_v1.yucca[0].metadata[0].name
+  }
+  data = {
+    OPENROUTER_API_KEY = local.openrouter_api_key
+    INTERNAL_SECRET    = random_password.yucca_internal_secret[0].result
   }
 }
 

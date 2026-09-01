@@ -12,6 +12,7 @@ import { CookieName, DeviceFlowEventType, DeviceFlowFailureReason } from 'src/en
 import { env } from 'src/env';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
+import { DiscordRepository } from 'src/repositories/discord.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
 import { UserRepository } from 'src/repositories/user.repository';
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly session: SessionRepository,
     private readonly wideContext: WideContextRepository,
     private readonly connection: ConnectionRepository,
+    private readonly discord: DiscordRepository,
   ) {}
 
   async authenticate(headers: IncomingHttpHeaders): Promise<AuthDto> {
@@ -85,6 +87,7 @@ export class AuthService {
       [CookieName.OidcState]: expectedState,
       [CookieName.OidcCodeVerifier]: codeVerifier,
       [CookieName.InviteCode]: inviteCode,
+      [CookieName.DiscordInvite]: discordInvite,
       [CookieName.RedirectPath]: redirectPath,
     } = cookies;
 
@@ -104,7 +107,7 @@ export class AuthService {
 
     this.wideContext.assignContext({ claims });
 
-    const user = await this.getOrCreateUser(claims, inviteCode);
+    const user = await this.getOrCreateUser(claims, inviteCode, discordInvite);
 
     this.wideContext.addContext('customerId', user.id);
 
@@ -122,7 +125,11 @@ export class AuthService {
     };
   }
 
-  async getOrCreateUser(claims: Pick<UserInfoResponse, 'sub' | 'name' | 'email'>, inviteCode?: string) {
+  async getOrCreateUser(
+    claims: Pick<UserInfoResponse, 'sub' | 'name' | 'email'>,
+    inviteCode?: string,
+    discordInvite?: string,
+  ) {
     if (typeof claims.name !== 'string') {
       throw new InternalServerErrorException('name is missing from claims');
     }
@@ -142,8 +149,16 @@ export class AuthService {
         name: claims.name,
         email: claims.email,
       });
-    } else {
-      await this.assertEmailAllowed(claims.email.toLowerCase(), inviteCode);
+    }
+
+    // Consumed before the user row exists: a concurrent redemption of the same
+    // single-use token loses here and falls through to the allowlist gate.
+    const invite = discordInvite ? await this.discord.consumeInviteRequest(discordInvite) : undefined;
+
+    if (!user) {
+      if (!invite) {
+        await this.assertEmailAllowed(claims.email.toLowerCase(), inviteCode);
+      }
 
       user = await this.user.create({
         sub: claims.sub,
@@ -152,6 +167,16 @@ export class AuthService {
       });
 
       await this.connection.getOrCreateDefault(user.id);
+    }
+
+    if (invite?.allowlistId) {
+      await this.discord.linkDirect(user.id, invite.discordUserId, invite.discordUsername);
+      if (!(await this.allowlist.markUsed(invite.allowlistId))) {
+        this.logger.warn(
+          { userId: user.id, discordUserId: invite.discordUserId },
+          'invite claim was revoked mid-redemption — the account exists without a claim record',
+        );
+      }
     }
 
     return user;

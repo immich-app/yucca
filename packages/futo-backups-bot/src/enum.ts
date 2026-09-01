@@ -5,4 +5,5 @@ export enum ComponentId {
   TicketModal = 'ticket-modal',
   TicketDescription = 'ticket-description',
   ClaimRole = 'claim-role',
+  ClaimInvite = 'claim-invite',
 }

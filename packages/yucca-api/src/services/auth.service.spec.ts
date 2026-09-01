@@ -29,7 +29,7 @@ describe(AuthService.name, () => {
   beforeEach(() => {
     mocks = newMocks();
     sut = new AuthService(
-      mocks.jwt as never,
+      mocks.logger as never,
       mocks.oidc as never,
       mocks.user as never,
       mocks.userAllowlist as never,
@@ -37,6 +37,7 @@ describe(AuthService.name, () => {
       mocks.session as never,
       mocks.wideContext,
       mocks.connection as never,
+      mocks.discord as never,
     );
     allowedEmailDomains = env.ALLOWED_EMAIL_DOMAINS;
     env.ALLOWED_EMAIL_DOMAINS = [];
@@ -477,6 +478,60 @@ describe(AuthService.name, () => {
 
       expect(mocks.userAllowlist.getByEmail).not.toHaveBeenCalled();
       expect(mocks.user.update).toHaveBeenCalledWith(mockUser.id, { name: claims.name, email: claims.email });
+    });
+
+    describe('discord invites', () => {
+      const inviteRequest = {
+        id: 'request-id',
+        code: 'token',
+        allowlistId: 'entry',
+        discordUserId: '123456789',
+        discordUsername: 'someone',
+        expiresAt: new Date(Date.now() + 60_000),
+        createdAt: new Date(),
+      };
+
+      it('should allow a new user with a valid discord invite, link the account, and mark the claim used', async () => {
+        mocks.discord.consumeInviteRequest.mockResolvedValue(inviteRequest);
+        mocks.userAllowlist.markUsed.mockResolvedValue({ id: 'entry' } as never);
+
+        await expect(sut.getOrCreateUser(claims, undefined, 'token')).resolves.toBe(mockUser);
+
+        expect(mocks.discord.consumeInviteRequest).toHaveBeenCalledWith('token');
+        expect(mocks.userAllowlist.getByEmail).not.toHaveBeenCalled();
+        expect(mocks.discord.linkDirect).toHaveBeenCalledWith(mockUser.id, '123456789', 'someone');
+        expect(mocks.userAllowlist.markUsed).toHaveBeenCalledWith('entry');
+      });
+
+      it('should consume the token before creating the user so a lost race falls back to the allowlist', async () => {
+        mocks.discord.consumeInviteRequest.mockResolvedValue(void 0);
+
+        await expect(sut.getOrCreateUser(claims, undefined, 'token')).rejects.toThrowErrorMatchingInlineSnapshot(
+          `"Email is not allowed during the beta"`,
+        );
+        expect(mocks.discord.linkDirect).not.toHaveBeenCalled();
+        expect(mocks.user.create).not.toHaveBeenCalled();
+      });
+
+      it('should warn instead of failing when the claim was revoked mid-redemption', async () => {
+        mocks.discord.consumeInviteRequest.mockResolvedValue(inviteRequest);
+        mocks.userAllowlist.markUsed.mockResolvedValue(void 0);
+
+        await expect(sut.getOrCreateUser(claims, undefined, 'token')).resolves.toBe(mockUser);
+
+        expect(mocks.logger.warn).toHaveBeenCalled();
+      });
+
+      it('should link an existing user who redeems a discord invite', async () => {
+        mocks.user.getBySub.mockResolvedValue(mockUser);
+        mocks.discord.consumeInviteRequest.mockResolvedValue(inviteRequest);
+        mocks.userAllowlist.markUsed.mockResolvedValue({ id: 'entry' } as never);
+
+        await expect(sut.getOrCreateUser(claims, undefined, 'token')).resolves.toEqual(mockUser);
+
+        expect(mocks.discord.linkDirect).toHaveBeenCalledWith(mockUser.id, '123456789', 'someone');
+        expect(mocks.userAllowlist.markUsed).toHaveBeenCalledWith('entry');
+      });
     });
   });
 });

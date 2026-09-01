@@ -147,30 +147,43 @@ func (s *Server) Handler() http.Handler {
 		// is still attributed to the identity that sent it.
 		r.Use(s.clusterMiddleware)
 
-		r.Post("/", s.createRepository)
-		r.Delete("/", s.deleteRepository)
+		r.Post("/", op("create_repository", s.createRepository))
+		r.Delete("/", op("delete_repository", s.deleteRepository))
 
-		r.Head("/config", s.checkConfig)
-		r.Get("/config", s.getConfig)
-		r.Post("/config", s.saveConfig)
-		r.Delete("/config", s.deleteConfig)
+		r.Head("/config", op("check_config", s.checkConfig))
+		r.Get("/config", op("get_config", s.getConfig))
+		r.Post("/config", op("save_config", s.saveConfig))
+		r.Delete("/config", op("delete_config", s.deleteConfig))
 
 		r.Group(func(r chi.Router) {
 			r.Use(validateBlobType)
-			r.Get("/{type}", s.listBlobs)
-			r.Get("/{type}/", s.listBlobs)
+			r.Get("/{type}", op("list_blobs", s.listBlobs))
+			r.Get("/{type}/", op("list_blobs", s.listBlobs))
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(validateBlobType)
 			r.Use(validateBlobName)
-			r.Head("/{type}/{name}", s.checkBlob)
-			r.Get("/{type}/{name}", s.getBlob)
-			r.Post("/{type}/{name}", s.saveBlob)
-			r.Delete("/{type}/{name}", s.deleteBlob)
+			r.Head("/{type}/{name}", op("check_blob", s.checkBlob))
+			r.Get("/{type}/{name}", op("get_blob", s.getBlob))
+			r.Post("/{type}/{name}", op("save_blob", s.saveBlob))
+			r.Delete("/{type}/{name}", op("delete_blob", s.deleteBlob))
 		})
 	})
 
 	return r
+}
+
+// op stamps the operation name and the resolved route pattern onto the request
+// logger. RoutePattern is only final once routing has reached the handler;
+// read from middleware it is the coarse mount pattern /{path}/*.
+func op(name string, h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		route := chi.RouteContext(r.Context()).RoutePattern()
+		hlog.FromRequest(r).UpdateContext(func(c zerolog.Context) zerolog.Context {
+			return c.Str("op", name).Str("route", route)
+		})
+		h(w, r)
+	}
 }
 
 func validateBlobType(next http.Handler) http.Handler {
@@ -180,6 +193,9 @@ func validateBlobType(next http.Handler) http.Handler {
 			writeError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid blob type: %s", blobType))
 			return
 		}
+		hlog.FromRequest(r).UpdateContext(func(c zerolog.Context) zerolog.Context {
+			return c.Str("blob_type", blobType)
+		})
 		next.ServeHTTP(w, r)
 	})
 }
@@ -213,13 +229,12 @@ func clientLogContext(next http.Handler) http.Handler {
 func authLogContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a := auth.FromContext(r.Context())
-		route := chi.RouteContext(r.Context()).RoutePattern()
 		// Mutate the request logger in place instead of deriving a new one:
 		// the AccessHandler completion line logs through the outer request's
 		// logger pointer, so this is what puts user/repository on access logs.
 		// method is omitted — the access line already carries it.
 		hlog.FromRequest(r).UpdateContext(func(c zerolog.Context) zerolog.Context {
-			return c.Str("user", a.User).Str("repository", a.Repository).Str("route", route)
+			return c.Str("user", a.User).Str("repository", a.Repository)
 		})
 		next.ServeHTTP(w, r)
 	})

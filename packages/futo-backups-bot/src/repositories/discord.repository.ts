@@ -10,6 +10,7 @@ import {
   Interaction,
   Message,
   MessageCreateOptions,
+  MessageEditOptions,
   SlashCommandBuilder,
   TextChannel,
   ThreadChannel,
@@ -18,6 +19,7 @@ import { env } from 'src/env';
 import { TranscriptMessage } from 'src/utils/transcript';
 
 const THREAD_AUTO_ARCHIVE_MINUTES = 10_080;
+const CANNOT_MESSAGE_USER = 50_007;
 
 @Injectable()
 export class DiscordRepository {
@@ -29,7 +31,10 @@ export class DiscordRepository {
     return Boolean(env.DISCORD_BOT_TOKEN);
   }
 
-  async start(onInteraction: (interaction: Interaction) => Promise<void>): Promise<void> {
+  async start(
+    onInteraction: (interaction: Interaction) => Promise<void>,
+    onMessage?: (message: Message) => Promise<void>,
+  ): Promise<void> {
     if (!env.DISCORD_BOT_TOKEN) {
       this.logger.info('DISCORD_BOT_TOKEN is not set — the bot stays idle');
       return;
@@ -39,6 +44,9 @@ export class DiscordRepository {
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
     });
     client.on('interactionCreate', (interaction) => void onInteraction(interaction));
+    if (onMessage) {
+      client.on('messageCreate', (message) => void onMessage(message));
+    }
     client.on('error', (error) => this.logger.error(error, 'discord client error'));
     await client.login(env.DISCORD_BOT_TOKEN);
     this.client = client;
@@ -62,6 +70,33 @@ export class DiscordRepository {
         .setName('claim-backups-role')
         .setDescription('Claim the FUTO Backups customer role for your linked account')
         .toJSON(),
+      new SlashCommandBuilder()
+        .setName('email-updates')
+        .setDescription('Toggle email copies of staff replies for this ticket')
+        .toJSON(),
+      new SlashCommandBuilder()
+        .setName('handoff')
+        .setDescription('Close this ticket on Discord and hand it to email support (staff only)')
+        .toJSON(),
+      new SlashCommandBuilder()
+        .setName('beta-invite')
+        .setDescription('Invite a user to the closed beta or post a claim button (staff only)')
+        .addUserOption((option) => option.setName('user').setDescription('DM a personal invite to this user'))
+        .addChannelOption((option) =>
+          option
+            .setName('channel')
+            .setDescription('Post a claim button in this channel')
+            .addChannelTypes(ChannelType.GuildText),
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName('limit')
+            .setDescription('How many invites the channel post hands out')
+            .setMinValue(1)
+            .setMaxValue(500),
+        )
+        .addRoleOption((option) => option.setName('mention').setDescription('Role to mention in the channel post'))
+        .toJSON(),
     ]);
   }
 
@@ -71,9 +106,28 @@ export class DiscordRepository {
     return [...messages.values()];
   }
 
-  async sendMessage(channelId: string, message: MessageCreateOptions): Promise<void> {
+  async sendMessage(channelId: string, message: MessageCreateOptions): Promise<Message> {
     const channel = await this.textChannel(channelId);
-    await channel.send(message);
+    return channel.send(message);
+  }
+
+  async editMessage(channelId: string, messageId: string, edit: MessageEditOptions): Promise<void> {
+    const channel = await this.textChannel(channelId);
+    const message = await channel.messages.fetch(messageId);
+    await message.edit(edit);
+  }
+
+  async sendDirectMessage(discordUserId: string, message: MessageCreateOptions): Promise<boolean> {
+    const user = await this.requireClient().users.fetch(discordUserId);
+    try {
+      await user.send(message);
+      return true;
+    } catch (error) {
+      if (error instanceof DiscordAPIError && error.code === CANNOT_MESSAGE_USER) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   async addRoleToMember(discordUserId: string, roleId: string): Promise<void> {
@@ -129,7 +183,7 @@ export class DiscordRepository {
     return thread;
   }
 
-  async createStaffThread(name: string, content: string): Promise<void> {
+  async createStaffThread(name: string, content: string): Promise<{ thread: ThreadChannel; seed: Message }> {
     const channel = await this.supportChannel();
     const thread = await channel.threads.create({
       name,
@@ -137,7 +191,40 @@ export class DiscordRepository {
       invitable: false,
       autoArchiveDuration: THREAD_AUTO_ARCHIVE_MINUTES,
     });
-    await thread.send(content);
+    const seed = await thread.send(content);
+    return { thread, seed };
+  }
+
+  async getThreadById(threadId: string): Promise<AnyThreadChannel> {
+    const guild = await this.guild();
+    const channel = await guild.channels.fetch(threadId);
+    if (!channel?.isThread()) {
+      throw new TypeError(`Channel ${threadId} is not a thread`);
+    }
+    return channel;
+  }
+
+  async sendToThread(threadId: string, message: MessageCreateOptions): Promise<void> {
+    const thread = await this.getThreadById(threadId);
+    await thread.send(message);
+  }
+
+  async fetchMessagesAfter(threadId: string, afterId: string | null): Promise<Message[]> {
+    const thread = await this.getThreadById(threadId);
+    const all: Message[] = [];
+    let after = afterId ?? '0';
+    for (;;) {
+      const batch = await thread.messages.fetch({ limit: 100, after });
+      if (batch.size === 0) {
+        return all;
+      }
+      const ascending = [...batch.values()].toSorted((a, b) => a.createdTimestamp - b.createdTimestamp);
+      all.push(...ascending);
+      after = ascending.at(-1)!.id;
+      if (batch.size < 100) {
+        return all;
+      }
+    }
   }
 
   async listOpenTicketThreads(discordUserId: string): Promise<ThreadChannel[]> {

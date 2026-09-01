@@ -1,0 +1,139 @@
+name: Image Build Check
+
+# Deploy builds images only on merge to main, so a broken Dockerfile ships its
+# failure past review and surfaces post-merge (fail-fast is off there; the bad
+# app just never delivers). This builds changed apps' images on the PR, without
+# pushing, so the Dockerfile is exercised where the diff is still reviewable.
+# No paths filter: a workflow that sometimes does not run can never be a
+# required status. The changes job is the cheap always-on gate; PRs outside
+# the image surface skip every build.
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changed apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      apps: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      # Filter names are app names; each app's Dockerfile lives at
+      # packages/<app>/Dockerfile, which is what the build job derives.
+      #
+      # The node images build from `COPY . ./` plus the mise toolchain, so any
+      # package or root-manifest change is an input to every one of them and
+      # per-app precision would be fiction; only the Go images, which copy
+      # nothing but their own package, filter narrowly.
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: filter
+        with:
+          filters: |
+            yucca-api: &node
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.npmrc'
+              - '.dockerignore'
+              - '.mise/**'
+            yucca-admin-api: *node
+            yucca-metrics-worker: *node
+            futo-backups-bot: *node
+            web: *node
+            standalone-app: *node
+            michael: ['packages/michael/**', '.dockerignore']
+            columbo: ['packages/columbo/**', '.dockerignore']
+            monk: ['packages/monk/**', '.dockerignore']
+
+      # A Dockerfile without a filter is the silent gap this workflow exists
+      # to close: its first build would happen post-merge (or at release, for
+      # publish-only apps). The two mocks are built by tilt inside CI runs and
+      # never delivered. The covered list drifts the other way too: a covered
+      # name whose filter key is renamed or dropped never builds again.
+      - name: Require every Dockerfile to carry a filter
+        run: |
+          covered='yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web standalone-app michael columbo monk'
+          excluded='mock-oidc-provider mock-postmark-provider'
+          # Apps with no Deploy leg, delivered by the release-event workflows.
+          publish_only='standalone-app'
+          deploy_apps="$(yq '.jobs.build.strategy.matrix.app[].name' .github/workflows/deploy.yml | tr '\n' ' ')"
+          [ -n "${deploy_apps// /}" ] || { echo "::error::no apps parsed from the Deploy build matrix"; exit 1; }
+          fail=0
+          for d in packages/*/Dockerfile; do
+            app=$(basename "$(dirname "$d")")
+            case " $covered $excluded " in
+              *" $app "*) ;;
+              *) echo "::error::packages/$app/Dockerfile has no build-check filter; register it above or exclude it here"; fail=1 ;;
+            esac
+          done
+          for app in $covered; do
+            grep -Eq "^ +${app}:" .github/workflows/build-check.yml \
+              || { echo "::error::$app is in the covered list but has no filter key in build-check.yml"; fail=1; }
+            case " $deploy_apps $publish_only " in
+              *" $app "*) ;;
+              *) echo "::error::$app is covered here but in neither the Deploy build matrix nor the publish_only list"; fail=1 ;;
+            esac
+          done
+          exit $fail
+
+  build:
+    name: Build ${{ matrix.app }}
+    needs: changes
+    if: needs.changes.outputs.apps != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.changes.outputs.apps) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      # cache-from only: reads the per-app cache Deploy maintains on main
+      # (standalone-app has no Deploy scope and always builds cold), and
+      # writes nothing back, so PR builds stay fast without polluting it.
+      - name: Build (no push)
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: .
+          file: packages/${{ matrix.app }}/Dockerfile
+          push: false
+          cache-from: type=gha,scope=${{ matrix.app }}
+
+  # The build legs come from a dynamic matrix, so they cannot be named in
+  # branch protection, and a failed leg would otherwise not block the merge.
+  # "Result" is the one check branch protection must require: it allow-lists
+  # the good outcomes (build may be skipped when no app changed) so failed
+  # and cancelled runs both stay red.
+  result:
+    name: Result
+    if: always()
+    needs: [changes, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless upstream succeeded or was skipped
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          echo "changes=$CHANGES build=$BUILD"
+          [ "$CHANGES" = 'success' ] || exit 1
+          [ "$BUILD" = 'success' ] || [ "$BUILD" = 'skipped' ] || exit 1

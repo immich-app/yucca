@@ -899,6 +899,175 @@
         ]
       }
     },
+    "/api/columbo/investigations": {
+      "post": {
+        "operationId": "startInvestigation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColumboInvestigateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColumboInvestigationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Columbo"
+        ]
+      }
+    },
+    "/api/columbo/investigations/{id}": {
+      "get": {
+        "operationId": "getInvestigation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColumboInvestigationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Columbo"
+        ]
+      }
+    },
+    "/api/discord-invites/batches": {
+      "get": {
+        "operationId": "listBatches",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordInviteBatchListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "DiscordInvite"
+        ]
+      }
+    },
+    "/api/discord-invites/batches/{id}": {
+      "delete": {
+        "operationId": "cancelBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revokeUnused",
+            "required": false,
+            "in": "query",
+            "description": "Also delete the batch’s unredeemed claims",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordInviteBatchCancelResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "DiscordInvite"
+        ]
+      }
+    },
+    "/api/discord-invites": {
+      "get": {
+        "operationId": "listClaims",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordInviteClaimListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "DiscordInvite"
+        ]
+      }
+    },
+    "/api/discord-invites/{discordUserId}": {
+      "delete": {
+        "operationId": "revokeClaim",
+        "parameters": [
+          {
+            "name": "discordUserId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "DiscordInvite"
+        ]
+      }
+    },
     "/api/settings": {
       "get": {
         "operationId": "listSettings",
@@ -1596,7 +1765,8 @@
             "type": "string"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "inviteCode": {
             "type": "string"
@@ -1621,7 +1791,6 @@
         },
         "required": [
           "id",
-          "email",
           "inviteCode",
           "invited",
           "inviteUsed",
@@ -1709,6 +1878,194 @@
         },
         "required": [
           "count"
+        ]
+      },
+      "ColumboInvestigateRequestDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "prompt"
+        ]
+      },
+      "ColumboInvestigationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "done",
+              "failed"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "queries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "toolCalls": {
+            "type": "number"
+          },
+          "promptTokens": {
+            "type": "number"
+          },
+          "completionTokens": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "queries",
+          "toolCalls",
+          "promptTokens",
+          "completionTokens"
+        ]
+      },
+      "DiscordInviteBatchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "guildId": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxClaims": {
+            "type": "number"
+          },
+          "claimed": {
+            "type": "number"
+          },
+          "used": {
+            "type": "number"
+          },
+          "createdByDiscordUserId": {
+            "type": "string"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "guildId",
+          "channelId",
+          "maxClaims",
+          "claimed",
+          "used",
+          "createdByDiscordUserId",
+          "createdAt"
+        ]
+      },
+      "DiscordInviteBatchListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscordInviteBatchDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "DiscordInviteBatchCancelResponseDto": {
+        "type": "object",
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/DiscordInviteBatchDto"
+          },
+          "revokedClaims": {
+            "type": "number",
+            "description": "Unredeemed claims deleted by --revoke-unused"
+          }
+        },
+        "required": [
+          "batch",
+          "revokedClaims"
+        ]
+      },
+      "DiscordInviteClaimDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "discordUserId": {
+            "type": "string"
+          },
+          "discordUsername": {
+            "type": "string",
+            "nullable": true
+          },
+          "batchId": {
+            "type": "string",
+            "nullable": true
+          },
+          "inviteUsed": {
+            "type": "boolean"
+          },
+          "inviteUsedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "discordUserId",
+          "inviteUsed",
+          "createdAt"
+        ]
+      },
+      "DiscordInviteClaimListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscordInviteClaimDto"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "SettingsValueDto": {

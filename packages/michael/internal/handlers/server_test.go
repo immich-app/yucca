@@ -255,6 +255,15 @@ func TestAccessLogOutput(t *testing.T) {
 	if accessLog["method"] != "GET" {
 		t.Errorf("expected method=GET, got %v", accessLog["method"])
 	}
+	if accessLog["route"] != "/{path}/{type}" {
+		t.Errorf("expected route=/{path}/{type}, got %v", accessLog["route"])
+	}
+	if accessLog["op"] != "list_blobs" {
+		t.Errorf("expected op=list_blobs, got %v", accessLog["op"])
+	}
+	if accessLog["blob_type"] != "data" {
+		t.Errorf("expected blob_type=data, got %v", accessLog["blob_type"])
+	}
 }
 
 func TestErrorLogOutput(t *testing.T) {

@@ -1,12 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Duration } from 'luxon';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
+  DiscordInviteBatchCreateDto,
+  DiscordInviteBatchDto,
+  DiscordInviteBatchMessageDto,
+  DiscordInviteCreateDto,
+  DiscordInviteCreatedDto,
+  DiscordInviteResponseDto,
   DiscordLinkDto,
   DiscordLinkRequestCreateDto,
   DiscordLinkRequestCreatedDto,
   DiscordLinkRequestResponseDto,
   DiscordLinkUsernameUpdateDto,
+  DiscordTicketCreateDto,
+  DiscordTicketDto,
+  DiscordTicketListDto,
+  DiscordTicketUpdateDto,
   DiscordUserSummaryDto,
 } from 'src/dto/discord.dto';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
@@ -64,6 +74,108 @@ export class DiscordService {
   async updateLinkUsername(discordUserId: string, dto: DiscordLinkUsernameUpdateDto): Promise<void> {
     if (!(await this.discord.updateUsername(discordUserId, dto.discordUsername))) {
       throw new NotFoundException(`No link for Discord user ${discordUserId}`);
+    }
+  }
+
+  async createInviteBatch(dto: DiscordInviteBatchCreateDto): Promise<DiscordInviteBatchDto> {
+    const batch = await this.discord.createBatch({
+      guildId: dto.guildId,
+      channelId: dto.channelId,
+      maxClaims: dto.maxClaims,
+      createdByDiscordUserId: dto.createdByDiscordUserId,
+    });
+    return { id: batch.id, maxClaims: batch.maxClaims, claimed: 0 };
+  }
+
+  async setInviteBatchMessage(batchId: string, dto: DiscordInviteBatchMessageDto): Promise<void> {
+    if (!(await this.discord.setBatchMessage(batchId, dto.messageId))) {
+      throw new NotFoundException(`No invite batch with id ${batchId}`);
+    }
+  }
+
+  async createInvite(dto: DiscordInviteCreateDto): Promise<DiscordInviteCreatedDto> {
+    await this.discord.deleteExpiredRequests();
+    const claim = await this.discord.claimInvite(
+      dto.discordUserId,
+      dto.discordUsername,
+      dto.batchId ?? null,
+      this.crypto.randomHex(16),
+    );
+    switch (claim.status) {
+      case 'linked': {
+        throw new ConflictException('ALREADY_LINKED');
+      }
+      case 'used': {
+        throw new ConflictException('INVITE_USED');
+      }
+      case 'exhausted': {
+        throw new ConflictException('BATCH_EXHAUSTED');
+      }
+      case 'cancelled': {
+        throw new ConflictException('BATCH_CANCELLED');
+      }
+      case 'unknownBatch': {
+        throw new NotFoundException(`No invite batch with id ${dto.batchId}`);
+      }
+    }
+    const request = await this.discord.createRequest({
+      code: this.crypto.randomHex(32),
+      discordUserId: dto.discordUserId,
+      discordUsername: dto.discordUsername,
+      allowlistId: claim.entry.id,
+      expiresAt: new Date(Date.now() + LINK_REQUEST_TTL.toMillis()),
+    });
+    return { code: request.code, expiresAt: request.expiresAt, remaining: claim.remaining };
+  }
+
+  async getInvite(code: string): Promise<DiscordInviteResponseDto> {
+    const request = await this.getValidRequest(code);
+    if (!request.allowlistId) {
+      throw new NotFoundException('Unknown or expired link code');
+    }
+    return { discordUsername: request.discordUsername };
+  }
+
+  createTicket(dto: DiscordTicketCreateDto): Promise<DiscordTicketDto> {
+    return this.discord.createTicket({
+      threadId: dto.threadId,
+      staffThreadId: dto.staffThreadId ?? null,
+      freshdeskTicketId: dto.freshdeskTicketId,
+      discordUserId: dto.discordUserId,
+      userId: dto.userId ?? null,
+      lastMirroredMessageId: dto.lastMirroredMessageId ?? null,
+      lastStaffMirroredMessageId: dto.lastStaffMirroredMessageId ?? null,
+    });
+  }
+
+  async getTicketByThread(threadId: string): Promise<DiscordTicketDto> {
+    const ticket = await this.discord.getTicketByThread(threadId);
+    if (!ticket) {
+      throw new NotFoundException(`No ticket for thread ${threadId}`);
+    }
+    return ticket;
+  }
+
+  async getTicketByFreshdeskId(freshdeskTicketId: string): Promise<DiscordTicketDto> {
+    const ticket = await this.discord.getTicketByFreshdeskId(freshdeskTicketId);
+    if (!ticket) {
+      throw new NotFoundException(`No ticket for Freshdesk ticket ${freshdeskTicketId}`);
+    }
+    return ticket;
+  }
+
+  async listOpenTickets(): Promise<DiscordTicketListDto> {
+    return { items: await this.discord.listOpenTickets() };
+  }
+
+  async updateTicket(id: string, dto: DiscordTicketUpdateDto): Promise<void> {
+    const { closed, ...updates } = dto;
+    const updated = await this.discord.updateTicket(id, {
+      ...updates,
+      ...(closed === undefined ? {} : { closedAt: closed ? new Date() : null }),
+    });
+    if (!updated) {
+      throw new NotFoundException(`No ticket with id ${id}`);
     }
   }
 

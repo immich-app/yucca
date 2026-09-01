@@ -1,0 +1,70 @@
+# This file is maintained automatically by "tofu init".
+# Manual edits may be lost in future updates.
+
+provider "registry.opentofu.org/1password/onepassword" {
+  version     = "2.2.1"
+  constraints = "~> 2.1"
+  hashes = [
+    "h1:aH5pZUimlQdiGnDLHRC49W4xnkx52wfd8XRLt69+764=",
+    "zh:025709a6b5f1b3685d277f2c48f7cb8b53d14b3699c1123d7e9a2135c099c533",
+    "zh:037fc89d150063a8aacdcab08ba26038b489fe2468d509b842d298ea59096ca6",
+    "zh:233777182b25faf1658e8ce171b684460983bb41cff79fb243662f3f9dc5ca6c",
+    "zh:2fb5ca2fc8c37b1d1c54da646ed13bf40897941fe92eece784fba496f677b533",
+    "zh:4b25b5ce1f694ec265e65234fc85d6bdf3810297ffeaced54ad46a1ba28142de",
+    "zh:5509d1e4fb7b45c63124ec66fd1f9d6757daa8bf1f7bdd724d5adb2965b61436",
+    "zh:890df766e9b839623b1f0437355032a3c006226a6c200cd911e15ee1a9014e9f",
+    "zh:a23ba946c629ec912b2fcbf606a2eb8853626ec0e0bee749f2d39146a872c082",
+    "zh:a3d3024485426237d7b4a4350b12dda4d29d88f3942246a9370be35ec2a51e9e",
+    "zh:a6ef65544ab8fc26d468b38636407a3d2d902e35c51b648729bf97c31d1937f9",
+    "zh:afbe9480a0da0ad8dc514b277f1e4be36b8931f045021d05c21665ef1ac0b7c8",
+    "zh:b2e96e69fa9ff7e179dccdef5b785cd020eb46bb2b3d1d507d009d71be6b0c26",
+    "zh:ceefaede9e8a3104463523ba267e3e985b27a706f7628a9ddd37330c2ca59d4d",
+    "zh:ea77786bd6809ff4f8043b84a0212fec4de18b7d51bc420417ba10999ca99887",
+    "zh:f7d8160c3669c8ab76a2da14ea740d91a08ca23d1fb657669e52a840b2b113d9",
+  ]
+}
+
+provider "registry.opentofu.org/hashicorp/random" {
+  version     = "3.9.0"
+  constraints = "~> 3.6"
+  hashes = [
+    "h1:U8KXqGCoNI9/guYbTvzgdtVk3fRthoG0UXwm1JoEpIs=",
+    "zh:03f1114cc20b8913523735ab76e0f0a2b16ce13c92923a53304bf85f07fc0dbc",
+    "zh:105b678ee72322a3067f105d7e05e940f6143238f377f6e87ff4ec909246ac2a",
+    "zh:55f3bbf13ea18cbace61a706566a80f25f33fe2b1780b6f3d7b582af2a05b6d2",
+    "zh:63adf996db48f082f7a6351eb485e219cd88795fc71e6ec60a837263ab0d2cb1",
+    "zh:7e99550738a4e3cc68b8a467714b0d69371025fe95e3326d5323d026d55653e9",
+    "zh:8342b54af3a18a37e075eeae61be57f4de2ba71b35d95c5075d402dd2c1f289d",
+    "zh:83ee18e32ac9dd5fc91298554b7c4cfa4c3a1db50f4c797945637cc93c0844ae",
+    "zh:993ecc0adbf6bd535a59fbc9b735d8c33950e6f6eb5e621d750da9b71d65d80a",
+    "zh:ad722bc59d4edbf1415e827fc007c0efe6e0e9462d5568bae20b34be1058a261",
+    "zh:ae9448e1f87b2f9a6c5197a0e9862162ec6b137cb3a3835e11522995d8939e7c",
+    "zh:bc9cdd3aac784f759125c6627f6f6416e8726a1c184eb9cf3e55b9edbc94c627",
+    "zh:c8e35b89572ba1c40a9b20022e033a3395fb8d42e7604d50c900f193ba10382e",
+    "zh:e2deaa8a9975ef81d9f62baed12c41286918b0a10908e0e031f13f69a3b730a1",
+    "zh:ee39707557210a0ab1098aa357d2cdfe502e5a312d0dbdffb09d08facc4d3fc5",
+    "zh:f81afe4eb63e8aa9e0ea71be6c990f0dc69cb360e7191c0742a991f4a5081b64",
+  ]
+}
+
+provider "registry.terraform.io/slop-place/freshdesk" {
+  version     = "0.1.2"
+  constraints = "~> 0.1"
+  hashes = [
+    "h1:d9KM5Jmyhf7INtZrXH5nzM5DchL+HxMzl2/61wt7YY4=",
+    "h1:w56cv2N79/1mLLTlY3+6oCmzNFoqZuH4eslyskjPFpY=",
+    "zh:0260faccf550904793e5500ec70148bbe83d8b65dd8b58362218bba80e012cb7",
+    "zh:09017c3661fd6c9f4948ae2beb7ce2e3ac96479f16da33f624c1bcee409adddd",
+    "zh:1dcaaf8ca7f6c14344d5c321f0e19d50ac262ed336f872599556b64dbcf599a2",
+    "zh:5f16dcd40bfb939a716ed7f5c9592bcc9ecac51107263a55cddec40668858293",
+    "zh:66f7488a1f485f5a3a1308cef6f981b16473c0951b1853397f58051b1066123f",
+    "zh:8527f8565943137948db402906c1fc120647becadd807581a38635248cef6fa8",
+    "zh:ad49376f8c9643294cf8209d7ca0fbd35a354184948e3e61bdf0e62eac60d43f",
+    "zh:b17bfb0c1b0a07e0e3dab54f7b2b05a7e9e191b5145d3c57690cd17c3dc22fcb",
+    "zh:b75499635026c1f905dc712f4795ddeed7a223f4f7500c3861b16e610666707c",
+    "zh:c2d12f2d86ce501f39a4125c4091e2f53a078dac7865b9448a0b447940b04b34",
+    "zh:f1f95036ea2bba76b72b9cc54f6186f00c207d2c1d837c6be1e0cd5250f8808b",
+    "zh:f809ab383cca0a5f83072981c64208cbd7fa67e986a86ee02dd2c82333221e32",
+    "zh:fea33bee029d6c0df5948e046dfe5057962d536a30bbd9f59531a1d86d94d20c",
+  ]
+}

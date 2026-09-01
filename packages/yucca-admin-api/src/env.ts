@@ -36,6 +36,10 @@ const schema = z.object({
 
   WEB_BASE_URL: z.url().default('http://localhost:5173'),
 
+  FUTO_BACKUPS_BOT_URL: z.string().default(''),
+  COLUMBO_URL: z.string().default(''),
+  INTERNAL_SECRET: z.string().default(''),
+
   OIDC_ADMIN_ISSUER: z.url().transform((url) => new URL(url)),
   OIDC_ADMIN_CLIENT_ID: z.string(),
   OIDC_ADMIN_CLIENT_SECRET: z.string(),

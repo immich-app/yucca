@@ -1,0 +1,413 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Full audit trail of one columbo investigation: everything the model thought, said, and queried. Paste the investigation id from the staff note (or pick one from Recent investigations).",
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "description": "Investigation start events in the selected time range \u2014 copy an investigationId from the log details into the variable above.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "expr": "kubernetes.container_name:=\"columbo\" (audit:=\"ticket_start\" or audit:=\"adhoc_start\")"
+        }
+      ],
+      "title": "Recent investigations",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "description": "Every assistant turn: visible content, reasoning, tool calls, and token usage, oldest first.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "expr": "investigationId:=\"$investigation\" audit:=\"model_message\""
+        }
+      ],
+      "title": "Model trajectory (thinks + speaks)",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "description": "Tool invocations with their raw model-supplied arguments and results, oldest first.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "expr": "investigationId:=\"$investigation\" audit:=\"tool_call\""
+        }
+      ],
+      "title": "Tool calls",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "description": "The exact post-scoping requests each o11y backend received \u2014 the ground truth of what was read.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "expr": "investigationId:=\"$investigation\" audit:=\"backend_query\""
+        }
+      ],
+      "title": "Backend queries (post-scoping)",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "$logs_datasource"
+      },
+      "description": "Every event for this investigation, including triage, the final note, and failures.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "$logs_datasource"
+          },
+          "refId": "A",
+          "expr": "investigationId:=\"$investigation\""
+        }
+      ],
+      "title": "Full audit stream",
+      "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Fleet (metrics)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "description": "By trigger and outcome, from the columbo.investigations counter.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 43
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (trigger, outcome) (increase({__name__=\"columbo.investigations\"}[1h]))",
+          "legendFormat": "__auto"
+        }
+      ],
+      "title": "Investigations / h",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "description": "Model tokens spent, by direction \u2014 the fleet-level cost signal.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 43
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum by (direction) (increase({__name__=\"columbo.tokens\"}[1h]))",
+          "legendFormat": "__auto"
+        }
+      ],
+      "title": "Tokens / h",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "description": "increase(sum)/increase(count) over the duration histogram.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 43
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "expr": "sum(increase({__name__=\"columbo.investigation.duration_sum\"}[1h])) / sum(increase({__name__=\"columbo.investigation.duration_count\"}[1h]))",
+          "legendFormat": "__auto"
+        }
+      ],
+      "title": "Mean investigation duration",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [
+    "yucca",
+    "columbo",
+    "prod"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "label": "Data source",
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "label": "Logs data source",
+        "name": "logs_datasource",
+        "options": [],
+        "query": "victoriametrics-logs-datasource",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "label": "Investigation id",
+        "name": "investigation",
+        "options": [],
+        "query": "",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "utc",
+  "title": "Yucca / Columbo Investigation",
+  "uid": "yucca-columbo"
+}

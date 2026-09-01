@@ -194,3 +194,14 @@ terragrunt apply
 
 This regenerates the password in 1Password; the apply step to the live
 cluster (dashboard / grafana commands above) is still required.
+
+## Cluster-minted identities (not in 1Password)
+
+### monk scrub-exporter key (`client.scrub-exporter`)
+
+A cephx identity minted on the cluster itself (caps `mon allow r, mgr allow
+r`), staged onto each mon host by `roles/scrub_exporter`. To rotate: `ceph
+auth del client.scrub-exporter` on the bootstrap node, then re-run `mise run
+monk` -- `get-or-create` mints a fresh key and the role restages the keyring
+and restarts every mon's unit. Read-only: compromise exposes cluster
+metadata reads, not object data (see `docs/security-model.md`).

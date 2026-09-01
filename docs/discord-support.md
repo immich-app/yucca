@@ -65,12 +65,55 @@ unlinked ones link first. The role unlocks `#customer` (customer chat, also visi
 Admin/Team/Yucca/FUTO). `#support` stays visible to everyone;
 ticket threads live under it as before.
 
+## Closed-beta invites
+
+Staff (`DISCORD_STAFF_ROLE_ID`) hand out beta access from Discord with
+**`/beta-invite`** — either `user:<user>` (the bot DMs a personal
+link; if DMs are closed the invoker gets it ephemerally to pass on) or
+`channel:<channel> limit:<n>` (the bot posts a **Claim your invite** button;
+each click hands out one invite until the limit, then the button flips to a
+disabled *All invites claimed*). An optional `mention:<role>` prefixes the
+channel post with a role ping.
+
+An invite is a `userAllowlist` row minted without an email (`email` is
+nullable; `discordUserId` unique ties the claim to the Discord account —
+one claim ever per account, and already-linked accounts are refused). Batches
+live in `discordInviteBatches` (`maxClaims`, counted transactionally under
+the same advisory-lock pattern as linking, so concurrent clicks cannot
+overshoot). The raw `inviteCode` is never shown; the claimer gets
+`https://<web>/login/invite?token=<nonce>` where the nonce is a 10-minute
+single-use `discordLinkRequests` row pointing at the claim (`allowlistId`).
+Re-clicking re-issues a fresh nonce for the *same* claim. Redeeming rides the
+OIDC signup path (`discord_invite` cookie next to the classic invite-code
+cookie) and — the anti-forwarding binding — **auto-creates the Discord link
+to the claimer's Discord account**, so a forwarded link burns the claimer's
+only claim and ties the new account to their Discord identity.
+
+- Bot: **`POST /internal/discord/invites`** `{discordUserId,
+  discordUsername, batchId?}` → `{code, expiresAt, remaining}` (409
+  `ALREADY_LINKED` / `INVITE_USED` / `BATCH_EXHAUSTED`),
+  **`POST /internal/discord/invite-batches`**, and a `PATCH .../message` to
+  record the posted message id.
+- Web: `/login/invite?token=` validates via the public
+  **`GET /api/discord/invites/:code`** and offers *Join the beta*; an expired
+  token points back at the Discord button.
+- Ops: **`yuctl invites list | batches | revoke | cancel`** (admin-api
+  `/discord-invites*`). `batches` shows claimed/redeemed counts; `cancel`
+  soft-cancels a drop (`cancelledAt` — further claims get *This drop has
+  ended*), eagerly disables the posted button via the bot's
+  `POST /internal/drops/close` (admin-api → bot, same shared secret; lazy
+  fallback on the next click if the bot is unreachable), and with
+  `--revoke-unused` also deletes the drop's unredeemed claims. `revoke`
+  deletes one unredeemed claim; redeemed claims are refused — manage the
+  account instead.
+
 ## Tickets: Discord is the source of truth
 
-No ticket table. A ticket is a **private thread** under the support channel;
-closed = **locked + archived** (locked distinguishes a real close from
-Discord's auto-archive on idle), and Discord's own `archiveTimestamp` drives
-retention. yucca-api's scope stays pure account-linking.
+A ticket is a **private thread** under the support channel; closed =
+**locked + archived** (locked distinguishes a real close from Discord's
+auto-archive on idle), and Discord's own `archiveTimestamp` drives retention.
+The only ticket state in postgres is the Freshdesk mapping row
+(`discordTickets`, below) — the conversation itself lives in Discord.
 
 - **Open**: the button (always, when linked) opens a **modal with a required
   description field**; the thread is only created on submit. The bot creates
@@ -82,7 +125,10 @@ retention. yucca-api's scope stays pure account-linking.
   dashboard, mirroring yuctl's view-dashboard; the dashboard itself is o11y-owned) and an account summary from
   **`GET /internal/discord/users/:userId/summary`** (email, connections,
   repository count, last seen) — staff see it via Manage Threads on the
-  support channel; the user cannot. Up to `TICKET_USER_LIMIT`
+  support channel; the user cannot. For linked users the bot also
+  fires-and-forgets an investigation request to columbo, which may post an
+  AI-generated telemetry brief into the staff thread (see `docs/columbo.md`).
+  Up to `TICKET_USER_LIMIT`
   (3) open tickets per user (membership scan of active threads); at the limit
   a submit points at the existing threads.
 - **Close** (staff-only button): locks + archives the ticket thread and its
@@ -94,6 +140,70 @@ retention. yucca-api's scope stays pure account-linking.
   (`TRANSCRIPT_S3_*`, Ceph RGW in prod), then deleted. History survives as
   the transcript; threads never touch the guild's channel cap.
 
+## Freshdesk sync
+
+Every ticket thread is mirrored **live and bidirectionally** into a Freshdesk
+ticket, so agents can work from either side. The mapping (thread id ↔ FD
+ticket id, plus the mirror cursors) is the `discordTickets` table in yucca-api
+(`/internal/discord/tickets*`); the bot holds no state across restarts and
+self-heals by re-reading messages after the stored cursors. Dormant unless
+`FRESHDESK_URL` + `FRESHDESK_API_KEY` are set.
+
+- **Open**: the bot creates the FD ticket (tags `discord` + `FRESHDESK_TAGS`,
+  e.g. `staging`; assigned to the per-env TF-managed group when
+  `FRESHDESK_GROUP_ID` is set) with the requester set to a **non-deliverable dummy**
+  `<discordUserId>@no.futo.org` — nothing emails the user while the
+  conversation lives in Discord. The staff-thread context (Grafana link,
+  account summary) lands as a private note with a link back to the thread.
+- **Discord → FD**: customer messages mirror immediately as incoming public
+  notes; staff messages are **debounced** (`TICKET_MIRROR_DEBOUNCE_SECONDS`,
+  quiet-period, capped by `TICKET_MIRROR_MAX_WAIT_SECONDS`) and coalesce into
+  one public reply per burst — one burst = at most one email to a subscribed
+  requester. Staff-thread messages mirror as private notes. Attachments are
+  re-uploaded (Discord CDN URLs expire); oversized ones degrade to an
+  omission note.
+- **FD → Discord**: automation rules POST `{"ticket_id": {{ticket.id}}}` to
+  the capability URL `https://<web>/hooks/<YUCCA_FRESHDESK_WEBHOOK_PATH>`
+  (a TF-generated path segment, substituted into the HTTPRoute from the
+  cluster-secrets Secret and rewritten to the bot's fixed `/hooks/freshdesk`
+  mount — read it from 1P, it is never in git) with the `x-freshdesk-secret`
+  header; the
+  bot treats the payload as a hint and re-reads the conversation via the API
+  (so forged payloads are inert), posting agent replies into the thread as
+  embeds. A 5-minute `updated_since` poll catches anything the hand-configured
+  rules miss and doubles as the crash-recovery sweep.
+- **`/email-updates`** (ticket owner, per ticket): swaps the FD requester to
+  the account's real email so native agent replies email them too; running it
+  again swaps back. FD-native reply emails are 1:1 per deliberate agent reply.
+- **Close**: either side wins. The Discord Close button resolves the FD
+  ticket; resolving/closing in FD posts a closing note and locks + archives
+  the threads. Both paths then swap the requester to the real email
+  (resolve-first ordering, so no close-time email goes out) — purely so the
+  closed ticket sits on the real customer's FD contact for cross-channel
+  history. The retention sweep is unchanged: by deletion time FD already
+  holds the full conversation.
+- **`/handoff`** (staff, in a ticket thread): moves the ticket to email
+  support. The Discord side closes (with a "we'll follow up by email" note to
+  the user) but the FD ticket **stays open** with the requester swapped to
+  the real email and a private note naming the handing-off staffer — a
+  Freshdesk agent takes it from there. Requires a linked account (no email,
+  no handoff).
+
+**Freshdesk-side setup**: the ticket-update **automation rule** (reply /
+public note / status change, performed by agent → webhook to the capability
+URL with the `x-freshdesk-secret` header), the per-env **agent group**, and
+the webhook credentials themselves are owned by the partition-wide
+**`tf/deployment/<partition>/global/freshdesk` stack** (`slop-place/freshdesk`
+provider); the talos stack consumes the minted values back through 1P
+(`YUCCA_FRESHDESK_WEBHOOK_{PATH,SECRET}`, `YUCCA_FRESHDESK_GROUP_ID`) into
+the bot Secret and cluster-secrets. The rule's events/actions JSON is
+validated by Freshdesk itself on first apply. What stays
+manual, once per account: create a dedicated **bot agent** and put its API
+key in the `YUCCA_FRESHDESK_API_KEY` item (with `YUCCA_FRESHDESK_URL` beside
+it), and put an **admin** agent's key in `YUCCA_FRESHDESK_ADMIN_API_KEY` —
+used only by TF for rule/group CRUD, never shipped to the cluster. Staging
+shares the account; its tickets carry the `staging` tag and its own group.
+
 ## Configuration
 
 The Discord surface itself is Terraform in **core-infra-tf** (community
@@ -104,6 +214,12 @@ prod). Yucca's talos stack reads everything secretish via `op://` refs into
 the `futo-backups-bot` Secret; only the leftovers ride cluster-settings. Dev
 uses the dev guild through `.env`.
 
+Both environments run the **same Discord application**, so each pod is a member
+of both guilds and the gateway delivers it both guilds' interactions — custom
+ids and command names are identical across them. `handleInteraction` therefore
+drops anything whose `guildId` is not `DISCORD_GUILD_ID`; message mirroring is
+already scoped by the support-channel parent and the ticket mapping.
+
 | Variable | Source |
 |---|---|
 | `DISCORD_BOT_TOKEN` | Secret ← `YUCCA_DISCORD_BOT_TOKEN` (manual item) |
@@ -111,6 +227,12 @@ uses the dev guild through `.env`.
 | `INTERNAL_SECRET` | Secret ← TF-generated (`random_password`, shared with yucca-api) |
 | `TRANSCRIPT_S3_ACCESS_KEY_ID` / `..._SECRET_ACCESS_KEY` | Secret ← ceph-stack-minted `*_CEPH_S3_SVC_YUCCA_TRANSCRIPTS_*` |
 | `TRANSCRIPT_S3_ENDPOINT`, `TRANSCRIPT_S3_BUCKET` | cluster-settings |
+| `FRESHDESK_URL`, `FRESHDESK_API_KEY` | Secret ← `YUCCA_FRESHDESK_{URL,API_KEY}` (manual items) |
+| `FRESHDESK_GROUP_ID` | Secret ← TF (restapi-created per-env group) |
+| `FRESHDESK_WEBHOOK_SECRET` | Secret ← TF-generated (mirrored to 1P) |
+| webhook URL path segment | TF-generated → flux-system `cluster-secrets` Secret → HTTPRoute (`YUCCA_FRESHDESK_WEBHOOK_PATH` in 1P; never in git) |
+| `FRESHDESK_TAGS` | Secret (TF literal; `staging` on luke, empty on prod) |
+| `TICKET_MIRROR_DEBOUNCE_SECONDS` / `TICKET_MIRROR_MAX_WAIT_SECONDS` | staff-mirror coalescing window (120 / 600) |
 | `GRAFANA_URL` | defaults to grafana.futostatus.com; cluster-settings override |
 | `YUCCA_API_URL`, `WEB_URL` | HelmRelease env |
 | `TICKET_RETENTION_DAYS` | archive retention before transcript + delete (14) |
@@ -119,8 +241,8 @@ uses the dev guild through `.env`.
 
 | Concern | Location |
 |---|---|
-| Bot (gateway client, tickets, sweep) | `packages/futo-backups-bot/` |
-| Schema (`discordLinks`, `discordLinkRequests`) | `packages/yucca-api/src/schema/` |
+| Bot (gateway client, tickets, sweep, freshdesk sync) | `packages/futo-backups-bot/` |
+| Schema (`discordLinks`, `discordLinkRequests`, `discordTickets`) | `packages/yucca-api/src/schema/` |
 | Link endpoints (internal + public) | `packages/yucca-api/src/{controllers,services}/` |
 | Confirm page | `packages/web/src/routes/link/discord/` |
 | Chart / Flux wiring | `charts/apps/futo-backups-bot/`, `kubernetes/apps/`, `kubernetes/components/apps/` |

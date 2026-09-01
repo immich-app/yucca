@@ -1,0 +1,6 @@
+---
+- name: Restart monk
+  ansible.builtin.systemd:
+    name: monk
+    state: restarted
+    daemon_reload: true

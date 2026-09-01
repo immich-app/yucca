@@ -1,0 +1,27 @@
+---
+# Retirement contract: monk serves upstream ceph PR #68925's metric names
+# with locally chosen MIN-stamp-per-pool semantics; upstream's draft
+# aggregated the MAX. If a ceph release's mgr exporter starts serving
+# ceph_pg_last_scrub_stamp, diff the semantics first, then flip this off;
+# never feed both into the same store.
+ceph_scrub_exporter_enabled: false
+
+# Delivered by yucca CI (deploy.yml pushes ghcr.io/immich-app/yucca/monk on
+# merge to main). No usable default: pin an immutable reference per cluster
+# (a v<version> or 0.0.<n> tag, ideally with @sha256 digest) and bump it
+# deliberately, like the cluster ceph image.
+ceph_scrub_exporter_image: ""
+
+ceph_scrub_exporter_port: 9284
+ceph_scrub_exporter_refresh: 2m
+
+# Colocated with mon quorum, and monk's working set scales with pg ls output
+# (a few MB per thousand PGs plus the ceph CLI); generous ceilings that a
+# runaway can never blow past.
+ceph_scrub_exporter_memory_max: 1G
+ceph_scrub_exporter_cpu_quota: 100%
+
+# Read-only identity; the keyring lands only on mon-role hosts. The container
+# runs as the ceph image's uid 167, which must be able to read it.
+ceph_scrub_exporter_auth_entity: client.scrub-exporter
+ceph_scrub_exporter_config_dir: /etc/ceph/monk

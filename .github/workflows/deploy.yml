@@ -7,6 +7,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}
+  # Queue every run FIFO instead of coalescing pending ones; BUILD_TAG stays monotonic.
+  queue: max
   cancel-in-progress: false
 
 permissions:
@@ -14,34 +16,48 @@ permissions:
 
 env:
   IMAGE_PREFIX: ghcr.io/immich-app/yucca
-  # Monotonic monorepo build tag (all 5 apps ship together). The staging
+  # Monotonic monorepo build tag (every app ships together). The staging
   # ResourceSetInputProvider picks the highest 0.0.<n> from GHCR and deploys it
-  # in-cluster — pull-based, so CI never needs cluster/Tailscale access.
+  # in-cluster: pull-based, so CI never needs cluster/Tailscale access.
   BUILD_TAG: 0.0.${{ github.run_number }}
 
 jobs:
   # A migration that sorts before one already executed makes every yucca-api /
   # yucca-admin-api pod crashloop at boot (Kysely refuses the whole set), and
-  # the stale-branch case escapes PR CI — checks don't re-run when main moves
+  # the stale-branch case escapes PR CI: checks don't re-run when main moves
   # (incident: #492 merged after #510's re-date). Gate the build on HEAD^ so a
   # bad merge stops here instead of rolling out.
   migration-order:
     name: Migration ordering gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
+      # Delivery is main-only: a workflow_dispatch on any other ref would
+      # build and tag images from an unmerged tree. Fail instead of skip so
+      # a branch dispatch cannot conclude green as a silent no-op; every
+      # later job needs this one, so the refusal cascades.
+      - name: Refuse non-main refs
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Deploy delivers main only, not ${GITHUB_REF}"
+          exit 1
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           fetch-depth: 2
       - run: .mise/tasks/yucca-api/check-migration-order HEAD^
 
-  # ── Build + push every app image (the ONLY delivery action CI performs) ──
-  # Release commits build like any other — they're the stamped tree the release
-  # tag points at, and they additionally push v<version> image tags (below).
+  # == Build + push every app image (the ONLY delivery action CI performs) ==
+  # Release commits build like any other. v<version> image tags are published
+  # by the release-images workflow on the release event, decoupled from this
+  # workflow's queue.
   build:
     name: Build ${{ matrix.app.name }}
     needs: migration-order
     runs-on: ubuntu-latest
+    # A hung build would hold the group's single running slot and stall every
+    # queued run behind it; fail fast instead of the default 360m.
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -55,6 +71,8 @@ jobs:
           - { name: futo-backups-bot, dockerfile: packages/futo-backups-bot/Dockerfile }
           - { name: web, dockerfile: packages/web/Dockerfile }
           - { name: michael, dockerfile: packages/michael/Dockerfile }
+          - { name: columbo, dockerfile: packages/columbo/Dockerfile }
+          - { name: monk, dockerfile: packages/monk/Dockerfile }
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -71,30 +89,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Release commits (release-please merges) additionally get the release
-      # image tag, v<version> from the stamped root package.json — the same tag
-      # release-please pins into prod's pin files in that very commit. Prod's
-      # rollout stalls harmlessly (old pods keep serving) until this build
-      # pushes; no retag/promote workflow needed.
-      - name: Compute release image tag
-        id: release
-        if: "startsWith(github.event.head_commit.message, 'chore(main): release')"
-        env:
-          APP: ${{ matrix.app.name }}
-        run: echo "tag=${IMAGE_PREFIX}/${APP}:v$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
-
       - name: Build and push
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: .
           file: ${{ matrix.app.dockerfile }}
           push: true
-          # The empty line when steps.release is skipped is filtered out.
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:${{ env.BUILD_TAG }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:sha-${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.app.name }}:main
-            ${{ steps.release.outputs.tag }}
           cache-from: type=gha,scope=${{ matrix.app.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
 
@@ -106,8 +110,8 @@ jobs:
   # Production promotion is the release-please PR itself: it stamps the new
   # tag into both prod pins (kubernetes/clusters/prod/htz-fsn1/
   # {flux-release,image-versions}.yaml, extra-files), so merging it commits
-  # the promotion through normal review — no promote workflow, no bot push to
+  # the promotion through normal review: no promote workflow, no bot push to
   # main. Prod Flux pulls the pins from main and the app tree + charts from
-  # the tag; images are the v<version> tags pushed by the build job above on
-  # that same release commit. Rollback = revert the two stamped lines in a
-  # normal PR.
+  # the tag; images are the v<version> tags the release-images workflow
+  # publishes on the release event, decoupled from this workflow's queue.
+  # Rollback = revert the two stamped lines in a normal PR.

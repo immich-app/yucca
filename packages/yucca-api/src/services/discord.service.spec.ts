@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AuthDto } from 'src/dto/auth.dto';
 import { DiscordService } from 'src/services/discord.service';
 import { Mocks, newMocks } from '../../test/mocks';
@@ -10,6 +10,7 @@ describe(DiscordService.name, () => {
   const request = {
     id: 'request-id',
     code: 'code',
+    allowlistId: null,
     discordUserId: '123456789',
     discordUsername: 'someone',
     expiresAt: new Date(Date.now() + 60_000),
@@ -117,6 +118,79 @@ describe(DiscordService.name, () => {
     });
   });
 
+  describe('createInvite', () => {
+    const entry = { id: 'entry' } as never;
+
+    it('mints a claim and a single-use token', async () => {
+      mocks.crypto.randomHex.mockReturnValueOnce('invite-code').mockReturnValueOnce('token');
+      mocks.discord.claimInvite.mockResolvedValue({ status: 'ok', entry, remaining: 2 });
+      mocks.discord.createRequest.mockResolvedValue({ ...request, code: 'token', allowlistId: 'entry' });
+
+      await expect(
+        sut.createInvite({ discordUserId: '123456789', discordUsername: 'someone', batchId: 'batch' }),
+      ).resolves.toEqual({ code: 'token', expiresAt: request.expiresAt, remaining: 2 });
+
+      expect(mocks.discord.claimInvite).toHaveBeenCalledWith('123456789', 'someone', 'batch', 'invite-code');
+      expect(mocks.discord.createRequest).toHaveBeenCalledWith(expect.objectContaining({ allowlistId: 'entry' }));
+    });
+
+    it('re-issues a token for an existing unused claim without consuming a batch slot', async () => {
+      mocks.crypto.randomHex.mockReturnValueOnce('invite-code').mockReturnValueOnce('token');
+      mocks.discord.claimInvite.mockResolvedValue({ status: 'ok', entry, remaining: null });
+      mocks.discord.createRequest.mockResolvedValue({ ...request, code: 'token', allowlistId: 'entry' });
+
+      await expect(sut.createInvite({ discordUserId: '123456789', discordUsername: 'someone' })).resolves.toEqual(
+        expect.objectContaining({ remaining: null }),
+      );
+    });
+
+    it.each([
+      ['linked', 'ALREADY_LINKED'],
+      ['used', 'INVITE_USED'],
+      ['exhausted', 'BATCH_EXHAUSTED'],
+      ['cancelled', 'BATCH_CANCELLED'],
+    ] as const)('rejects a %s claim with a conflict', async (status, message) => {
+      mocks.discord.claimInvite.mockResolvedValue({ status });
+
+      await expect(sut.createInvite({ discordUserId: '123456789', discordUsername: 'someone' })).rejects.toThrow(
+        new ConflictException(message),
+      );
+      expect(mocks.discord.createRequest).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown batch', async () => {
+      mocks.discord.claimInvite.mockResolvedValue({ status: 'unknownBatch' });
+
+      await expect(
+        sut.createInvite({ discordUserId: '123456789', discordUsername: 'someone', batchId: 'nope' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('getInvite', () => {
+    it('returns the discord username for a valid invite token', async () => {
+      mocks.discord.getRequestByCode.mockResolvedValue({ ...request, allowlistId: 'entry' });
+
+      await expect(sut.getInvite('code')).resolves.toEqual({ discordUsername: 'someone' });
+    });
+
+    it('rejects a link-request token that is not an invite', async () => {
+      mocks.discord.getRequestByCode.mockResolvedValue({ ...request, allowlistId: null });
+
+      await expect(sut.getInvite('code')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('setInviteBatchMessage', () => {
+    it('rejects an unknown batch', async () => {
+      mocks.discord.setBatchMessage.mockResolvedValue(false);
+
+      await expect(sut.setInviteBatchMessage('nope', { messageId: 'message' })).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('getUserSummary', () => {
     it('coerces counts to numbers', async () => {
       mocks.discord.getUserSummary.mockResolvedValue({
@@ -138,6 +212,74 @@ describe(DiscordService.name, () => {
       mocks.discord.getUserSummary.mockResolvedValue(void 0);
 
       await expect(sut.getUserSummary('user-id')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('tickets', () => {
+    const ticket = {
+      id: 'ticket-id',
+      threadId: 'thread-1',
+      staffThreadId: 'staff-1',
+      freshdeskTicketId: '42',
+      discordUserId: '123456789',
+      userId: 'user-id',
+      emailSubscribed: false,
+      lastMirroredMessageId: null,
+      lastStaffMirroredMessageId: null,
+      lastFreshdeskConversationId: null,
+      closedAt: null,
+      createdAt: new Date(),
+    };
+
+    it('creates a mapping with defaulted nullables', async () => {
+      mocks.discord.createTicket.mockResolvedValue(ticket);
+
+      await expect(
+        sut.createTicket({ threadId: 'thread-1', freshdeskTicketId: '42', discordUserId: '123456789' }),
+      ).resolves.toEqual(ticket);
+
+      expect(mocks.discord.createTicket).toHaveBeenCalledWith({
+        threadId: 'thread-1',
+        staffThreadId: null,
+        freshdeskTicketId: '42',
+        discordUserId: '123456789',
+        userId: null,
+        lastMirroredMessageId: null,
+        lastStaffMirroredMessageId: null,
+      });
+    });
+
+    it('rejects an unknown thread', async () => {
+      mocks.discord.getTicketByThread.mockResolvedValue(void 0);
+
+      await expect(sut.getTicketByThread('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects an unknown freshdesk ticket', async () => {
+      mocks.discord.getTicketByFreshdeskId.mockResolvedValue(void 0);
+
+      await expect(sut.getTicketByFreshdeskId('nope')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('translates closed into a closedAt timestamp', async () => {
+      await sut.updateTicket('ticket-id', { closed: true, lastFreshdeskConversationId: '7' });
+
+      expect(mocks.discord.updateTicket).toHaveBeenCalledWith('ticket-id', {
+        lastFreshdeskConversationId: '7',
+        closedAt: expect.any(Date),
+      });
+    });
+
+    it('leaves closedAt untouched when closed is not passed', async () => {
+      await sut.updateTicket('ticket-id', { emailSubscribed: true });
+
+      expect(mocks.discord.updateTicket).toHaveBeenCalledWith('ticket-id', { emailSubscribed: true });
+    });
+
+    it('rejects updates to an unknown ticket', async () => {
+      mocks.discord.updateTicket.mockResolvedValue(false);
+
+      await expect(sut.updateTicket('ticket-id', { closed: true })).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

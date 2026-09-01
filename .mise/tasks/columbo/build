@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build columbo"
+set -e
+
+cd packages/columbo && go build -o ../../dist/columbo .

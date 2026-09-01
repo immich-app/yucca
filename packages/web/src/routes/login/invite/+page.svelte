@@ -12,6 +12,8 @@
   } from "@immich/ui";
   import { t } from "svelte-i18n-lingui";
 
+  let { data } = $props();
+
   let inviteCode = $state("");
 
   const notAllowed = page.url.searchParams.get("error") === "not_allowed";
@@ -26,6 +28,13 @@
       defaults.baseUrl +
       "api/auth/oidc/login?invite_code=" +
       encodeURIComponent(code);
+  };
+
+  const join = () => {
+    location.href =
+      defaults.baseUrl +
+      "api/auth/oidc/login?discord_invite=" +
+      encodeURIComponent(data.token);
   };
 </script>
 
@@ -43,17 +52,29 @@
               >{$t`Your email isn't part of the beta yet.`}</Alert
             >
           {/if}
-          <p>{$t`Enter an invite code to continue.`}</p>
-          <form onsubmit={submit}>
-            <VStack>
-              <Input
-                bind:value={inviteCode}
-                placeholder={$t`Invite code`}
-                aria-label={$t`Invite code`}
-              />
-              <Button type="submit">{$t`Continue`}</Button>
-            </VStack>
-          </form>
+          {#if data.invite}
+            <p>
+              {$t`@${data.invite.discordUsername}, you're invited to the FUTO Backups beta. Sign in to join.`}
+            </p>
+            <Button onclick={join}>{$t`Join the beta`}</Button>
+          {:else}
+            {#if data.token}
+              <Alert color="warning"
+                >{$t`This invite link has expired. Go back to Discord and claim it again to get a fresh one.`}</Alert
+              >
+            {/if}
+            <p>{$t`Enter an invite code to continue.`}</p>
+            <form onsubmit={submit}>
+              <VStack>
+                <Input
+                  bind:value={inviteCode}
+                  placeholder={$t`Invite code`}
+                  aria-label={$t`Invite code`}
+                />
+                <Button type="submit">{$t`Continue`}</Button>
+              </VStack>
+            </form>
+          {/if}
         </VStack>
       </CardBody>
     </Card>
