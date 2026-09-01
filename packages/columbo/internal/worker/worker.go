@@ -208,6 +208,11 @@ func (p *Pool) process(ctx context.Context, inv agent.Investigation) {
 	if !investigate {
 		logger.Info().Str("reason", reason).Msg("triage: no investigation needed")
 		p.Metrics.Record(context.WithoutCancel(ctx), "ticket", "skipped", agent.Outcome{})
+		postCtx, postCancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer postCancel()
+		if err := p.bot.PostStaffNote(postCtx, inv.StaffThreadID, p.skipNote(reason, id)); err != nil {
+			logger.Error().Err(err).Msg("failed to post the skip note")
+		}
 		return
 	}
 	logger.Info().Str("reason", reason).Msg("triage: investigating")
@@ -237,12 +242,23 @@ func (p *Pool) process(ctx context.Context, inv agent.Investigation) {
 		Msg("investigation posted")
 }
 
-func (p *Pool) formatNote(outcome agent.Outcome, id string) string {
+func (p *Pool) skipNote(reason, id string) string {
+	if reason == "" {
+		reason = "the ticket does not look telemetry-related"
+	}
+	return "No investigation needed — " + reason + "\n\n-# AI triage decision, no telemetry was read. " + p.investigationLink(id)
+}
+
+func (p *Pool) investigationLink(id string) string {
 	investigation := "Investigation " + id
 	if p.GrafanaURL != "" {
 		investigation = fmt.Sprintf("[%s](%s/d/yucca-columbo?var-investigation=%s)", investigation, strings.TrimRight(p.GrafanaURL, "/"), id)
 	}
-	out := outcome.Note + "\n\n-# AI-generated from this user's metrics and logs — verify before acting on it. " + investigation
+	return investigation
+}
+
+func (p *Pool) formatNote(outcome agent.Outcome, id string) string {
+	out := outcome.Note + "\n\n-# AI-generated from this user's metrics and logs — verify before acting on it. " + p.investigationLink(id)
 	out += fmt.Sprintf(
 		"\n-# Cost: %d tool calls · %s in / %s out tokens · %ds",
 		outcome.ToolCalls, formatTokens(outcome.PromptTokens), formatTokens(outcome.CompletionTokens),

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func recordingServer(t *testing.T, status int, body string) (*httptest.Server, *http.Request, *[]byte) {
@@ -107,6 +108,43 @@ func TestScopeLogsQLRejectsJoinAndUnion(t *testing.T) {
 		if _, err := scopeLogsQL("user-1", query); err == nil {
 			t.Fatalf("expected %q to be rejected", query)
 		}
+	}
+}
+
+func TestQueryFleetRangeIsUnscoped(t *testing.T) {
+	srv, captured, form := recordingServer(t, http.StatusOK, `{"status":"success"}`)
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	if _, err := client.QueryFleetRange(context.Background(), "ceph_health_status", "0", "1", "5m"); err != nil {
+		t.Fatal(err)
+	}
+	if captured.URL.Path != "/api/v1/query_range" {
+		t.Fatalf("unexpected path %q", captured.URL.Path)
+	}
+	if got := formValue(t, *form, "extra_label"); got != "" {
+		t.Fatalf("extra_label = %q, want none on the fleet path", got)
+	}
+	if got := formValue(t, *form, "query"); got != "ceph_health_status" {
+		t.Fatalf("query = %q", got)
+	}
+}
+
+func TestMetricNamesIsScopedToCustomer(t *testing.T) {
+	srv, captured, form := recordingServer(t, http.StatusOK, `{"status":"success","data":["api_request_count","blobs.uploaded_bytes"]}`)
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	names, err := client.MetricNames(context.Background(), 30*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if captured.URL.Path != "/api/v1/label/__name__/values" {
+		t.Fatalf("unexpected path %q", captured.URL.Path)
+	}
+	if got := formValue(t, *form, "extra_label"); got != "customerId=user-1" {
+		t.Fatalf("extra_label = %q, want customerId=user-1", got)
+	}
+	if len(names) != 2 || names[1] != "blobs.uploaded_bytes" {
+		t.Fatalf("names = %v", names)
 	}
 }
 

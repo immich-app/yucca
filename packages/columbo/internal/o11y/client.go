@@ -6,11 +6,13 @@
 // are unauthenticated from the cluster), so it must never depend on the
 // model composing its queries correctly. Logs match either per-user field
 // convention: michael writes `user`, the NestJS services `customerId`
-// (mirroring the yucca-per-user dashboard's scoping).
+// (mirroring the yucca-per-user dashboard's scoping). QueryFleetRange is the
+// single unscoped exception; see its doc.
 package o11y
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +40,40 @@ func NewClient(metricsURL, logsURL, customerID string) *Client {
 		CustomerID: customerID,
 		HTTPClient: &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+// MetricNames lists the metric names that actually carry data for this user
+// within the lookback, so the agent starts from what exists instead of
+// guessing. Scoped the same way as every query.
+func (c *Client) MetricNames(ctx context.Context, lookback time.Duration) ([]string, error) {
+	params := url.Values{}
+	params.Set("start", strconv.FormatInt(time.Now().Add(-lookback).Unix(), 10))
+	params.Set("extra_label", "customerId="+c.CustomerID)
+	body, err := c.do(ctx, c.MetricsURL+"/api/v1/label/__name__/values", params)
+	if err != nil {
+		return nil, err
+	}
+	var parsed struct {
+		Data []string `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		return nil, err
+	}
+	return parsed.Data, nil
+}
+
+// QueryFleetRange runs a platform-health query with NO per-user scope. It is
+// the one deliberate exception to this package's scoping rule and must only
+// ever receive queries from the harness's fixed probe registry, never
+// model-composed text — the registry is what keeps this path from becoming a
+// cross-tenant hole.
+func (c *Client) QueryFleetRange(ctx context.Context, query, start, end, step string) (string, error) {
+	params := url.Values{}
+	params.Set("query", query)
+	params.Set("start", start)
+	params.Set("end", end)
+	params.Set("step", step)
+	return c.do(ctx, c.MetricsURL+"/api/v1/query_range", params)
 }
 
 func (c *Client) QueryMetricsRange(ctx context.Context, query, start, end, step string) (string, error) {

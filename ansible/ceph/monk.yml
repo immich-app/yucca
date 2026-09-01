@@ -13,7 +13,7 @@
 # include "mon" on any cluster shape (all of sietch, 5 of spice's 48). A
 # per-host mon var only exists on clusters that pin their quorum.
 #
-#   Canary:   mise run monk -- --limit spice-ceph-adelia
+#   Canary:   mise run monk -- --limit <mon-host>
 #   Fleet:    mise run monk
 - name: Scrub-backlog exporter
   hosts: ceph_mon

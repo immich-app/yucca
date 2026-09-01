@@ -12,7 +12,8 @@ and its only output channel is a staff note.**
 ```
 ticket opened (futo-backups-bot, linked users only)
   └─ void POST columbo /internal/investigations   ← X-Internal-Secret
-       ├─ triage: cheap model call on the ticket text → investigate? (skip = silent)
+       ├─ triage: cheap model call on the ticket text → investigate?
+       │          (a refusal posts "No investigation needed — <reason>" to the staff thread)
        ├─ investigation: tool loop, every query scoped to the ticket's userId
        └─ POST bot /internal/staff-notes           ← X-Internal-Secret
             └─ bot validates the target IS a staff-<suffix> thread under the
@@ -44,6 +45,25 @@ timeout, are bounded by the same worker count (busy ⇒ 503, retry), and their
 results are held in columbo's memory for an hour — single replica, no
 persistence, an ops convenience rather than a record.
 
+## What the model knows going in
+
+The system prompt teaches the per-user telemetry catalog: every
+customerId-carrying metric with its labels and meaning (`api_request_count`,
+`http.server.request.count`, the `blobs.*` byte counters with the restic
+blob-type label, the `client.*` duration histograms, the `rgw_repository_*`
+gauges), plus the log shapes of both planes — the NestJS request lines and
+michael's restic access logs with their operation semantics (`op` +
+`blob_type` fields since fix(michael) #597: `op:="save_blob"
+blob_type:="snapshots"` marks a completed backup, steady `data` saves a
+backup in progress, `locks` writes any operation including read-only ones;
+path regexes remain the fallback for older entries in retention). The
+catalog is maintained by hand in `investigateSystemPrompt`; update it when a
+service adds or renames per-user telemetry. On top of that, each investigation opens with a free scoped
+lookup of which of those names actually carry data for THIS account in the
+last 30 days (`/api/v1/label/__name__/values` + `extra_label`), so an
+account with no backup traffic is recognized in turn one instead of after a
+string of empty queries.
+
 ## Trust model
 
 The split is **harness vs. model**, not "the agent service is trusted":
@@ -51,8 +71,9 @@ The split is **harness vs. model**, not "the agent service is trusted":
 - **Harness (trusted, holds the secrets)**: the Go process. It owns the
   OpenRouter key and the internal secret, executes every tool call itself,
   and posts the final note. The model only ever sees tool *results*.
-- **Model (untrusted)**: fills the parameters of three typed tools —
-  `query_metrics` (PromQL), `query_logs` (LogsQL), `jq` (in-process gojq over
+- **Model (untrusted)**: fills the parameters of four typed tools —
+  `query_metrics` (PromQL), `query_logs` (LogsQL), `query_health` (a probe
+  name from a fixed registry, see below), `jq` (in-process gojq over
   stored results, no shell, no subprocess). No tool takes a URL, header, or
   credential. There is no command execution and no filesystem access.
 
@@ -72,6 +93,17 @@ filter is the only wall between the agent and other users' telemetry —
 which is why it lives in `internal/o11y` with tests asserting a query that
 names another user still comes back scoped.
 
+`query_health` is the one deliberate exception: fleet-wide platform health
+(michael error rates and latency, storage-backend health, Ceph/RGW health,
+pool capacity), so a user's 5xx errors can be correlated with a platform
+incident. The model never composes the query — it picks a probe *name* from
+the hand-maintained registry in `internal/agent/health.go` and a time range,
+and the harness runs that probe's fixed PromQL unscoped
+(`o11y.QueryFleetRange`). Cross-tenant leakage stays structurally
+impossible: the registry must never include series carrying per-customer
+labels (customerId, asn, repository ids), which is the review bar for adding
+a probe.
+
 Prompt injection is the main residual threat: ticket text and log lines are
 user-influenceable model input. The blast radius is bounded structurally —
 read-only user-scoped tools, output only to the staff thread, note stamped
@@ -79,7 +111,11 @@ as AI-generated with the executed queries listed — so the worst case is a
 misleading note that staff are told to verify.
 
 Hard limits per investigation: tool-call budget (`COLUMBO_MAX_TOOL_CALLS`,
-16), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 300), tool results truncated to
+20), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 600), model calls retried on
+transport errors/timeouts/5xx with per-attempt deadlines
+(`COLUMBO_MODEL_TIMEOUT_SECONDS` 120 × `COLUMBO_MODEL_ATTEMPTS` 3 — the
+response body is buffered per attempt so a mid-body stall retries instead of
+killing the run), tool results truncated to
 `COLUMBO_TOOL_RESULT_BYTES` with the full payload kept harness-side for jq,
 bounded queue + workers, note capped to the embed limit. Model-supplied
 query parameters are clamped in the harness before the backend sees them —

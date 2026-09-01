@@ -254,3 +254,4 @@ routable from the public internet.
 | `ops` password auth | Password-based SSH is not disabled. | Password is stored in 1Password, rotated via Ansible. Interactive use only -- automation uses key-only `ansible-iac`. |
 | Operator SSH keys distributed out-of-band | No automated key lifecycle for `ops` user. | Acceptable for non-production. Production should use centralized key management (e.g., Teleport, Vault SSH CA). |
 | RGW S3 credentials static | No automatic rotation of S3 access/secret keys. | Keys stored in 1Password with access control. `radosgw-admin key create/rm` available for manual rotation. |
+| Shared `client.scrub-exporter` keyring on every mon | Compromise of one mon host exposes a fleet-wide cluster-METADATA-read credential (pg stats, config; not object data). | Inherent to any scraping identity; caps are `mon allow r, mgr allow r`, verified non-escalatable. Rotation runbook in `rotate-secrets.md`. |

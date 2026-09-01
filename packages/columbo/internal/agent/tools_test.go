@@ -114,7 +114,7 @@ func TestToolErrorsBecomeToolResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	jq := tools[2].(interface {
+	jq := tools[3].(interface {
 		InvokableRun(ctx context.Context, argumentsInJSON string, opts ...tool.Option) (string, error)
 	})
 	out, err := jq.InvokableRun(context.Background(), `{"program":".","ref":"r99"}`)
@@ -123,6 +123,18 @@ func TestToolErrorsBecomeToolResults(t *testing.T) {
 	}
 	if !strings.Contains(out, "ERROR:") || !strings.Contains(out, "unknown ref") {
 		t.Fatalf("out = %q", out)
+	}
+}
+
+func TestAvailableMetricsLine(t *testing.T) {
+	if got := availableMetricsLine(nil); !strings.Contains(got, "lookup unavailable") {
+		t.Fatalf("nil case = %q", got)
+	}
+	if got := availableMetricsLine([]string{}); !strings.Contains(got, "none — this account has produced no metrics") {
+		t.Fatalf("empty case = %q", got)
+	}
+	if got := availableMetricsLine([]string{"api_request_count", "blobs.uploaded_bytes"}); !strings.Contains(got, "api_request_count, blobs.uploaded_bytes") {
+		t.Fatalf("listing case = %q", got)
 	}
 }
 

@@ -85,6 +85,13 @@ export class SupportService implements OnApplicationBootstrap {
   }
 
   async handleInteraction(interaction: Interaction): Promise<void> {
+    // Staging and prod share one Discord application, so every pod is a member
+    // of every bound guild and sees the others' interactions. Custom ids and
+    // command names are identical across guilds, so without this both pods act
+    // on the same click.
+    if (env.DISCORD_GUILD_ID && interaction.guildId !== env.DISCORD_GUILD_ID) {
+      return;
+    }
     try {
       if (interaction.isButton() && interaction.customId.startsWith(`${ComponentId.ClaimInvite}:`)) {
         return await this.invite.onClaimInvite(interaction);

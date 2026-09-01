@@ -28,8 +28,9 @@ const (
 var errToolBudget = errors.New("tool budget exhausted — write your conclusion with what you have")
 
 // toolbox is the complete capability surface the model gets: two read-only
-// queries pre-scoped to one user, and an in-process jq over stored results.
-// No tool takes a URL, a header, or a credential.
+// queries pre-scoped to one user, a fixed-probe fleet-health check, and an
+// in-process jq over stored results. No tool takes a URL, a header, or a
+// credential.
 type toolbox struct {
 	o11y  *o11y.Client
 	store *ResultStore
@@ -54,6 +55,10 @@ func (t *toolbox) tools() ([]tool.BaseTool, error) {
 	if err != nil {
 		return nil, err
 	}
+	health, err := utils.InferTool("query_health", healthDescription(), audited("query_health", t.queryHealth))
+	if err != nil {
+		return nil, err
+	}
 	jq, err := utils.InferTool("jq", jqDescription, audited("jq", t.jq))
 	if err != nil {
 		return nil, err
@@ -62,8 +67,8 @@ func (t *toolbox) tools() ([]tool.BaseTool, error) {
 	// not run failures: the model gets the error text and can correct itself
 	// instead of the whole investigation dying on a syntax error. MaxStep
 	// still bounds a model that never recovers.
-	wrapped := make([]tool.BaseTool, 0, 3)
-	for _, t := range []tool.BaseTool{metrics, logs, jq} {
+	wrapped := make([]tool.BaseTool, 0, 4)
+	for _, t := range []tool.BaseTool{metrics, logs, health, jq} {
 		wrapped = append(wrapped, utils.WrapToolWithErrorHandler(t, func(_ context.Context, err error) string {
 			return "ERROR: " + err.Error()
 		}))
@@ -94,6 +99,23 @@ func (t *toolbox) queriesRun() []string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return append([]string(nil), t.queries...)
+}
+
+// availableMetrics is the free (no tool budget) prefetch of which metric
+// names carry data for this user; nil means the lookup failed and the model
+// is told to discover instead.
+func (t *toolbox) availableMetrics(ctx context.Context) []string {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	names, err := t.o11y.MetricNames(ctx, 30*24*time.Hour)
+	if err != nil {
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("metric-name prefetch failed")
+		return nil
+	}
+	if names == nil {
+		names = []string{}
+	}
+	return names
 }
 
 func (t *toolbox) callsMade() int {

@@ -25,10 +25,13 @@ func main() {
 	cephCmd := flag.String("ceph-cmd", "ceph", "command prefix to reach the ceph CLI, split on spaces")
 	flag.Parse()
 
-	log := zerolog.New(os.Stderr).With().Timestamp().Logger()
+	log := zerolog.New(os.Stderr).Level(zerolog.InfoLevel).With().Timestamp().Logger()
 	cmd := strings.Fields(*cephCmd)
 	if len(cmd) == 0 {
 		log.Fatal().Msg("empty -ceph-cmd")
+	}
+	if *refresh <= 0 || *timeout <= 0 {
+		log.Fatal().Dur("refresh", *refresh).Dur("timeout", *timeout).Msg("refresh and timeout must be positive")
 	}
 	pins := map[collector.Depth]time.Duration{}
 	for depth, pin := range map[collector.Depth]string{collector.Shallow: *shallowPin, collector.Deep: *deepPin} {
@@ -43,11 +46,13 @@ func main() {
 	}
 
 	// Until the first successful cluster read, unpinned depths fall back to
-	// ceph's own defaults so a cold start with an unreachable mon still serves
-	// sane thresholds; the target-interval metric shows what was used.
+	// ceph's own defaults (both one week; osd_deep_scrub_interval's 28d on
+	// spice is that cluster's tuning, not ceph's default) so a cold start with
+	// an unreachable mon still serves sane thresholds; the target-interval and
+	// interval-read metrics show what was used and whether it is live.
 	intervals := collector.Intervals{Global: map[collector.Depth]time.Duration{
 		collector.Shallow: 7 * 24 * time.Hour,
-		collector.Deep:    28 * 24 * time.Hour,
+		collector.Deep:    7 * 24 * time.Hour,
 	}}
 	applyPins := func(iv collector.Intervals) collector.Intervals {
 		for depth, d := range pins {
@@ -61,10 +66,21 @@ func main() {
 	intervals = applyPins(intervals)
 
 	exporter := &collector.Exporter{}
-	exporter.MarkFailed()
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(exporter)
+	buildInfo := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name:        "ceph_scrub_build_info",
+		Help:        "monk build metadata",
+		ConstLabels: prometheus.Labels{"version": version.Version},
+	})
+	buildInfo.Set(1)
+	registry.MustRegister(buildInfo)
 
+	// Transitions and changed causes log at error/info; a repeat of the same
+	// failure stays quiet so a mon outage does not write an identical line
+	// every refresh forever.
+	collectFailing, intervalFailing := false, false
+	var lastCollectErr, lastIntervalErr string
 	collect := func() {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -72,21 +88,41 @@ func main() {
 		if len(pins) < len(collector.Depths) {
 			if iv, err := collector.FetchIntervals(ctx, cmd); err == nil {
 				intervals = applyPins(iv)
+				exporter.StoreIntervalRead(true, start)
+				if intervalFailing {
+					intervalFailing = false
+					log.Info().Msg("interval read recovered")
+				}
 			} else {
-				log.Warn().Err(err).Msg("interval read failed, keeping previous targets")
+				exporter.StoreIntervalRead(false, start)
+				if !intervalFailing || err.Error() != lastIntervalErr {
+					intervalFailing = true
+					lastIntervalErr = err.Error()
+					log.Warn().Err(err).Msg("interval read failing, keeping previous targets")
+				}
 			}
+		} else {
+			exporter.StoreIntervalRead(true, start)
 		}
 		raw, err := collector.Fetch(ctx, cmd)
 		if err == nil {
 			var snap *collector.Snapshot
 			if snap, err = collector.Compute(raw, start, intervals); err == nil {
 				exporter.Store(snap, time.Since(start))
-				log.Info().Dur("took", time.Since(start)).Int("pools", len(snap.Pools)).Int("parse_errors", snap.ParseErrors).Msg("collected")
+				if collectFailing {
+					collectFailing = false
+					log.Info().Msg("collection recovered")
+				}
+				log.Debug().Dur("took", time.Since(start)).Int("pools", len(snap.Pools)).Int("parse_errors", snap.ParseErrors).Msg("collected")
 				return
 			}
 		}
 		exporter.MarkFailed()
-		log.Error().Err(err).Msg("collection failed")
+		if !collectFailing || err.Error() != lastCollectErr {
+			collectFailing = true
+			lastCollectErr = err.Error()
+			log.Error().Err(err).Msg("collection failing")
+		}
 	}
 
 	go func() {
@@ -98,7 +134,13 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
-	server := &http.Server{Addr: *listen, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	server := &http.Server{
+		Addr:              *listen,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
 	log.Info().Str("version", version.Version).Str("listen", *listen).Msg("serving")
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal().Err(err).Msg("listen failed")

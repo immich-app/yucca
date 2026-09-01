@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -37,14 +38,16 @@ type Investigation struct {
 }
 
 type Config struct {
-	OpenRouterURL   string
-	APIKey          string
-	Model           string
-	TriageModel     string
-	MetricsURL      string
-	LogsURL         string
-	MaxToolCalls    int
-	ToolResultBytes int
+	OpenRouterURL     string
+	APIKey            string
+	Model             string
+	TriageModel       string
+	MetricsURL        string
+	LogsURL           string
+	MaxToolCalls      int
+	ToolResultBytes   int
+	ModelCallTimeout  time.Duration
+	ModelCallAttempts int
 }
 
 type Runner struct {
@@ -110,8 +113,24 @@ Rules:
 - If the telemetry shows nothing relevant, say exactly that — a clear "nothing found" is a useful result. Never invent or embellish findings.
 - Write for staff, not the user. Be concrete: quote the relevant log lines or numbers, with timestamps.
 
-Metrics tips: series are labelled by connection and repository; rate() over counters for request/error rates.
-Logs tips: entries are structured JSON from the API and storage services; _time:24h error is a good first query.
+Per-user metrics catalog (names contain dots — select with {__name__="..."}; all carry repositoryId, and env/cluster/region):
+- api_request_count — yucca-api (control plane) requests. Labels: handler (Controller.method), method, status.
+- http.server.request.count — michael (restic backend) requests. Labels: route, method, status, connection.
+- blobs.requested_bytes / blobs.downloaded_bytes / blobs.uploaded_bytes / blobs.stored_bytes — michael data-plane byte counters. Labels: type (restic blob type: data/index/keys/locks/snapshots/config), connection. uploaded_bytes rising = backups actually writing; stored_bytes = net new data.
+- client.request.seconds / client.request.ttfb_seconds — michael request-duration histograms per connection.
+- client.requests.peak — peak concurrent restic requests per client.
+- rgw_repository_size_bytes / rgw_repository_object_count — gauges: current stored size/objects per repository (5-minute resolution).
+A metric absent from the "metrics with data" list below means that activity never happened — e.g. no blobs.* at all means no restic client ever wrote for this account.
+
+Per-user logs catalog (structured JSON; _time:24h error is a good first query):
+- yucca-api / yucca-admin-api (control plane): one entry per request, _msg like "GET RepositoryController.getRepositories (OK)", fields: method, path, status_code, duration_ms, request_id.
+- michael (restic backend): one entry per restic-protocol request, _msg like "POST /{path}/{type}/{name} (200)", fields: user, repository, op (handler: save_blob/get_blob/check_blob/delete_blob/list_blobs/save_config/get_config/check_config/delete_config/create_repository/delete_repository), blob_type (data/index/keys/locks/snapshots), route (resolved pattern), path (the real URL), method, status, duration (ms), size (bytes), client_ip, user_agent. Older entries may predate op/blob_type — fall back to method + path regexes there (e.g. method:="POST" path:~"/data/").
+Michael operation semantics (restic REST protocol):
+- op:="save_blob" = a blob write; what it MEANS depends on blob_type: data = backup content uploading; index = index flush; snapshots = a backup COMPLETED (the snapshot record is written last); keys = repository key setup. locks is the exception — restic writes a lock at the start of EVERY operation, including read-only ones (restore, check), so lock writes prove activity, not backups.
+- get_blob = blob read (restores, checks); check_blob = existence probe; delete_blob = cleanup (locks after every operation; data/index during prune); list_blobs = listing; save_config = repository initialization (happens once, before the first backup); create_repository = repository creation.
+So: op:="save_blob" blob_type:="snapshots" = completed backups; op:="save_blob" blob_type:="data" = backup traffic; status:>=400 on michael = failing restic requests.
+
+Platform health (fleet-wide, not user-specific): the query_health tool runs fixed named probes over platform telemetry — michael error rates and latency, storage-backend health, Ceph/RGW health, pool capacity. When the user's telemetry shows server-side errors (5xx, timeouts), check whether a platform incident overlaps their error window; a healthy platform during that window is itself evidence. One or two probes over the incident window usually suffice — do not audit the whole platform.
 
 Your final message becomes the staff note verbatim. Format:
 1. One-line verdict (e.g. "Backups from connection X have failed with 507 since 14:02 UTC").
@@ -170,6 +189,8 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (Outcome, 
 		return Outcome{}, err
 	}
 
+	userMessage += "\n\n" + availableMetricsLine(box.availableMetrics(ctx))
+
 	zerolog.Ctx(ctx).Info().
 		Str("audit", "investigation_start").
 		Str("model", r.cfg.Model).
@@ -195,6 +216,16 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (Outcome, 
 	}
 	outcome.Note = truncateNote(out.Content)
 	return outcome, nil
+}
+
+func availableMetricsLine(names []string) string {
+	if names == nil {
+		return "Metrics with data for this account: (lookup unavailable — query to find out)"
+	}
+	if len(names) == 0 {
+		return "Metrics with data for this account (last 30d): none — this account has produced no metrics at all."
+	}
+	return "Metrics with data for this account (last 30d): " + strings.Join(names, ", ")
 }
 
 type tokenTally struct {
@@ -254,11 +285,26 @@ func truncateNote(note string) string {
 	return note[:maxNoteChars] + "…"
 }
 
+// chatModel routes requests through the retrying transport: per-ATTEMPT
+// deadlines with a couple of retries, because OpenRouter tail latency varies
+// wildly across the providers it balances over — a 120s stall on one
+// provider took down an otherwise healthy run. The investigation context
+// remains the overall budget.
 func (r *Runner) chatModel(ctx context.Context, model string) (*openai.ChatModel, error) {
+	timeout := r.cfg.ModelCallTimeout
+	if timeout <= 0 {
+		timeout = 120 * time.Second
+	}
+	attempts := r.cfg.ModelCallAttempts
+	if attempts <= 0 {
+		attempts = 3
+	}
 	return openai.NewChatModel(ctx, &openai.ChatModelConfig{
 		BaseURL: r.cfg.OpenRouterURL,
 		APIKey:  r.cfg.APIKey,
 		Model:   model,
-		Timeout: 120 * time.Second,
+		HTTPClient: &http.Client{
+			Transport: &retryTransport{base: http.DefaultTransport, attempts: attempts, perAttempt: timeout},
+		},
 	})
 }
