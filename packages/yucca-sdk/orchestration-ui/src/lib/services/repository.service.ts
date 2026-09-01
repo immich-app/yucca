@@ -175,6 +175,22 @@ export const handleDeleteRepository = async (repositoryId: string, local?: boole
   }
 };
 
+export const handleDisableWormRepository = async (repositoryId: string, local?: boolean) => {
+  try {
+    const action = local ? sdk.createTicket : createTicket;
+
+    const { redirectTo } = await action({
+      action: 'repository.disable-worm',
+      repositoryId,
+    });
+
+    window.open(redirectTo, '_blank');
+  } catch (error) {
+    handleError(error, 'Failed to start disable write-only process');
+    throw error;
+  }
+};
+
 export const getRepositoryActions = (repository: LocalRepositoryDto, local?: boolean) => {
   const online = Boolean(repository.configuration && repository.backends?.primary.online);
   const configured = Boolean(repository.configuration);
