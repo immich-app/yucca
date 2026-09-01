@@ -200,7 +200,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0) or vector(0)",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -264,7 +264,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0) or vector(0)",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -328,7 +328,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(ceph_pg_scrubbing{cluster=~\"$cluster\"}) - sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "expr": "sum(ceph_pg_scrubbing{project=\"yucca\", cluster=~\"$cluster\"}) - sum(ceph_pg_deep{project=\"yucca\", cluster=~\"$cluster\"})",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -392,7 +392,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "expr": "sum(ceph_pg_deep{project=\"yucca\", cluster=~\"$cluster\"})",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -456,7 +456,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(ceph_pg_wait{cluster=~\"$cluster\"})",
+          "expr": "sum(ceph_pg_wait{project=\"yucca\", cluster=~\"$cluster\"})",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -520,7 +520,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "ceph_osd_flag_noscrub{cluster=~\"$cluster\"}",
+          "expr": "ceph_osd_flag_noscrub{project=\"yucca\", cluster=~\"$cluster\"}",
           "legendFormat": "noscrub",
           "refId": "A",
           "instant": true,
@@ -531,7 +531,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "ceph_osd_flag_nodeep_scrub{cluster=~\"$cluster\"}",
+          "expr": "ceph_osd_flag_nodeep_scrub{project=\"yucca\", cluster=~\"$cluster\"}",
           "legendFormat": "nodeep-scrub",
           "refId": "B",
           "instant": true,
@@ -626,7 +626,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "2 * (sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > bool 0) + (sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > bool 0)",
+          "expr": "2 * (sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > bool 0) + (sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > bool 0)",
           "legendFormat": "{{hostname}}",
           "refId": "A"
         }
@@ -726,7 +726,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "label_replace(count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or 0 * count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
+          "expr": "label_replace(count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0) or 0 * count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -738,7 +738,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "label_replace(count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or 0 * count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
+          "expr": "label_replace(count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0) or 0 * count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
           "legendFormat": "",
           "refId": "B",
           "instant": true,
@@ -750,7 +750,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "label_replace(sum by (hostname) ((rate(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"}[5m])) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) and on (hostname) (count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0)), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
+          "expr": "label_replace(sum by (hostname) ((rate(ceph_osd_scrub_replicated_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_scrub_ec_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[5m])) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) and on (hostname) (count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0) or count by (hostname) (sum by (ceph_daemon, hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0)), \"hostname\", \"$1\", \"hostname\", \"spice-ceph-(.*)\")",
           "legendFormat": "",
           "refId": "C",
           "instant": true,
@@ -928,7 +928,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(ceph_pg_scrubbing{cluster=~\"$cluster\"}) - sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "expr": "sum(ceph_pg_scrubbing{project=\"yucca\", cluster=~\"$cluster\"}) - sum(ceph_pg_deep{project=\"yucca\", cluster=~\"$cluster\"})",
           "legendFormat": "regular",
           "refId": "A"
         },
@@ -937,7 +937,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(ceph_pg_deep{cluster=~\"$cluster\"})",
+          "expr": "sum(ceph_pg_deep{project=\"yucca\", cluster=~\"$cluster\"})",
           "legendFormat": "deep",
           "refId": "B"
         },
@@ -946,7 +946,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(ceph_pg_wait{cluster=~\"$cluster\"})",
+          "expr": "sum(ceph_pg_wait{project=\"yucca\", cluster=~\"$cluster\"})",
           "legendFormat": "waiting for reservations",
           "refId": "C"
         }
@@ -1061,7 +1061,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum by (name) (ceph_pg_scrubbing{cluster=~\"$cluster\"} * on (cluster, pool_id) group_left(name) ceph_pool_metadata{cluster=~\"$cluster\"} > 0)",
+          "expr": "sum by (name) (ceph_pg_scrubbing{project=\"yucca\", cluster=~\"$cluster\"} * on (cluster, pool_id) group_left(name) ceph_pool_metadata{project=\"yucca\", cluster=~\"$cluster\"} > 0)",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -1130,7 +1130,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(rate(ceph_osd_num_scrubs_started_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_num_scrubs_started_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "expr": "sum(rate(ceph_osd_num_scrubs_started_replicated{project=\"yucca\", cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_num_scrubs_started_ec{project=\"yucca\", cluster=~\"$cluster\"}[5m])) * 60",
           "legendFormat": "started",
           "refId": "A"
         },
@@ -1139,7 +1139,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(rate(ceph_osd_num_scrubs_past_reservation_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_num_scrubs_past_reservation_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "expr": "sum(rate(ceph_osd_num_scrubs_past_reservation_replicated{project=\"yucca\", cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_num_scrubs_past_reservation_ec{project=\"yucca\", cluster=~\"$cluster\"}[5m])) * 60",
           "legendFormat": "past reservation",
           "refId": "B"
         },
@@ -1148,7 +1148,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(rate(ceph_osd_successful_scrubs_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_successful_scrubs_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "expr": "sum(rate(ceph_osd_successful_scrubs_replicated{project=\"yucca\", cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_successful_scrubs_ec{project=\"yucca\", cluster=~\"$cluster\"}[5m])) * 60",
           "legendFormat": "completed",
           "refId": "C"
         },
@@ -1157,7 +1157,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(rate(ceph_osd_failed_scrubs_replicated{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_failed_scrubs_ec{cluster=~\"$cluster\"}[5m])) * 60",
+          "expr": "sum(rate(ceph_osd_failed_scrubs_replicated{project=\"yucca\", cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_failed_scrubs_ec{project=\"yucca\", cluster=~\"$cluster\"}[5m])) * 60",
           "legendFormat": "failed",
           "refId": "D"
         }
@@ -1848,7 +1848,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_sh_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0) or vector(0)",
           "legendFormat": "regular",
           "refId": "A"
         },
@@ -1857,7 +1857,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0) or vector(0)",
+          "expr": "count(sum by (hostname) (rate({__name__=~\"ceph_osd_scrub_dp_(repl|ec)_chunk_selected\", project=\"yucca\", cluster=~\"$cluster\"}[5m]) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0) or vector(0)",
           "legendFormat": "deep",
           "refId": "B"
         }
@@ -1957,7 +1957,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum by (hostname) ((rate(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"}[5m])) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{cluster=~\"$cluster\"}) > 0",
+          "expr": "sum by (hostname) ((rate(ceph_osd_scrub_replicated_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[5m]) + rate(ceph_osd_scrub_ec_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[5m])) * on (ceph_daemon) group_left(hostname) ceph_osd_metadata{project=\"yucca\", cluster=~\"$cluster\"}) > 0",
           "legendFormat": "{{hostname}}",
           "refId": "A"
         }
