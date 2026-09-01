@@ -1,6 +1,35 @@
 {
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "name": "Deep scrub paused",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "$datasource"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "orange",
+        "expr": "ceph_osd_flag_nodeep_scrub{project=\"yucca\", cluster=~\"$cluster\"} == 1",
+        "titleFormat": "Deep scrub paused",
+        "textFormat": "{{cluster}}",
+        "step": "60s"
+      },
+      {
+        "name": "Scrub paused",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "$datasource"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "yellow",
+        "expr": "ceph_osd_flag_noscrub{project=\"yucca\", cluster=~\"$cluster\"} == 1",
+        "titleFormat": "Scrub paused",
+        "textFormat": "{{cluster}}",
+        "step": "60s"
+      }
+    ]
   },
   "editable": true,
   "graphTooltip": 1,
@@ -12,14 +41,149 @@
       "title": "What this covers",
       "gridPos": {
         "h": 7,
-        "w": 24,
+        "w": 19,
         "x": 0,
         "y": 0
       },
       "options": {
         "mode": "markdown",
-        "content": "Ceph guards against silent data corruption by **scrubbing**: re-reading stored data and checking it is still intact. A **regular** scrub compares the bookkeeping of every copy; a **deep** scrub reads all the data back and verifies checksums, which is the slow, disk-heavy part. Every slice of data (a **PG**) must get a regular scrub every 7 days and a deep scrub every 28 days on spice. At petabyte scale a deep cycle takes weeks, so this board answers three questions: what is scrubbing right now, which hosts are busy with it, and is the cycle keeping up.\n\n**Now / PGs**: how many PGs the cluster flags as scrubbing. A PG is flagged from the moment it is queued, so these counts run ahead of the scrubs actually reading data.\n\n**Hosts**: a host counts as scrubbing when one of its disks is leading a scrub that made progress in the last 5 minutes. The data being checked is spread across many hosts, so other hosts read for it too; the read-throughput panel shows that load.\n\n**Work outstanding**: measured, not estimated. monk reads every PG's last-scrub timestamp on the mon hosts and reports, per pool, how much data is older than the target interval it reads from the cluster's own config. 100% coverage means nothing is overdue. Byte figures in this row are stored (logical) bytes and must not be compared with raw capacity without the per-pool expansion factor."
+        "content": "Ceph guards against silent data corruption by **scrubbing**: re-reading stored data and checking it is still intact. A **regular** scrub compares the bookkeeping of every copy; a **deep** scrub reads all the data back and verifies checksums, which is the slow, disk-heavy part. Every slice of data (a **PG**) must get a regular scrub every 7 days and a deep scrub every 28 days on spice. At petabyte scale a deep cycle takes weeks, so this board answers three questions: what is scrubbing right now, which hosts are busy with it, and is the cycle keeping up.\n\n**Now / PGs**: how many PGs the cluster flags as scrubbing. A PG is flagged from the moment it is queued, so these counts run ahead of the scrubs actually reading data.\n\n**Hosts**: a host counts as scrubbing when one of its disks is leading a scrub that made progress in the last 5 minutes. The data being checked is spread across many hosts, so other hosts read for it too; the read-throughput panel shows that load.\n\n**Work outstanding**: measured, not estimated. monk reads every PG's last-scrub timestamp on the mon hosts and reports, per pool, how much data is older than the target interval it reads from the cluster's own config. 100% coverage means nothing is overdue. Byte figures in this row are stored (logical) bytes and must not be compared with raw capacity without the per-pool expansion factor.\n\n**What good looks like**: the status block reads *On track*, cycle coverage is 100.00%, and nothing is overdue. Orange or red bands across the charts mark periods when scrubbing was deliberately paused, which is the usual explanation for a flat line."
       }
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "Deep scrub status",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 5,
+        "x": 19,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "expr": "max((time() - max by (cluster, pool_id) (ceph_pg_last_deep_scrub_stamp{project=\"yucca\", cluster=~\"$cluster\"})) / max by (cluster, pool_id) (ceph_scrub_target_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.9,
+                "result": {
+                  "text": "On track",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.9,
+                "to": 1,
+                "result": {
+                  "text": "Due soon",
+                  "color": "yellow",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 1,
+                "to": 1.25,
+                "result": {
+                  "text": "Slipping",
+                  "color": "orange",
+                  "index": 2
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 1.25,
+                "to": null,
+                "result": {
+                  "text": "Behind",
+                  "color": "red",
+                  "index": 3
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No data",
+                  "color": "text",
+                  "index": 4
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.9
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 1.25
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Plain-language verdict for the deep-scrub cycle. It tracks the oldest PG in the worst pool against that pool's own target interval, so it is a leading indicator: it moves the moment anything falls behind, while cycle coverage still reads near 100% until a large share of data is already late. On track is under 90% of the interval, Due soon up to it, Slipping just past, Behind beyond 125%."
     },
     {
       "id": 2,
@@ -1171,7 +1335,7 @@
               }
             ]
           },
-          "decimals": 0
+          "decimals": 2
         },
         "overrides": []
       },
@@ -1226,7 +1390,28 @@
             "mode": "thresholds",
             "fixedColor": "blue"
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "no data",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "None",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1294,7 +1479,18 @@
             "mode": "thresholds",
             "fixedColor": "blue"
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "None",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1527,7 +1723,8 @@
               }
             ]
           },
-          "max": 1
+          "max": 1,
+          "decimals": 2
         },
         "overrides": []
       },
