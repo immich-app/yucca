@@ -32,6 +32,21 @@ spec:
     # (WaitForFirstConsumer) then pin that co-location permanently.
     affinity:
       podAntiAffinityType: required
+    # Quorum commit: a write is only acked once one standby has flushed the WAL,
+    # so losing the primary cannot take recent commits with it — otherwise the
+    # DB and the Ceph object store diverge (repositories with no row, rows with
+    # no objects). dataDurability is deliberately "preferred", not "required":
+    # the instances sit on node-local PVs under required anti-affinity, so a
+    # dead node strands its instance until a human replaces it. "required" would
+    # turn that stranding into a write outage; "preferred" drops back to async
+    # for as long as the cluster is short. failoverQuorum still refuses to
+    # promote a standby that cannot prove it holds the committed data, so a
+    # degraded window costs RPO but never a silent data-loss failover.
+    synchronous:
+      method: any
+      number: 1
+      failoverQuorum: true
+      dataDurability: preferred
     # Generous requests, huge memory limit (no CPU limit — CFS throttling hurts
     # postgres tail latency more than contention does).
     resources:

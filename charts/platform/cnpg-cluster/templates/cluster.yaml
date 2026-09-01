@@ -11,6 +11,10 @@ spec:
   {{- with .Values.affinity }}
   affinity: {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with .Values.synchronous }}
+  postgresql:
+    synchronous: {{- toYaml . | nindent 6 }}
+  {{- end }}
   storage:
     size: {{ .Values.storage }}
     {{- with .Values.storageClass }}
