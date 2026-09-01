@@ -141,10 +141,9 @@ export class AuthService {
 
     const oidcState = this.crypto.randomHex(32);
     const oidcCodeVerifier = client.randomPKCECodeVerifier();
-    const token = this.crypto.randomHex(32);
 
     await this.ticket.create({
-      token,
+      token: this.crypto.randomHex(32),
       oidcState,
       oidcCodeVerifier,
       userId: auth.id,
@@ -155,10 +154,10 @@ export class AuthService {
 
     const { redirectTo } = await this.oidc.authorizeTicket(oidcState, oidcCodeVerifier, auth.email);
 
-    return { token, redirectTo: redirectTo.href };
+    return { redirectTo: redirectTo.href };
   }
 
-  async ticketCallback(request: Request): Promise<{ ticketId: string; redirectTo: string }> {
+  async ticketCallback(request: Request): Promise<{ token: string; redirectTo: string }> {
     const redirectUri = new URL(env.OIDC_TICKET_REDIRECT_URI);
     const url = new URL(`${redirectUri.origin}${request.originalUrl}`);
 
@@ -171,19 +170,22 @@ export class AuthService {
       throw new BadRequestException('missing state');
     }
 
-    const pending = await this.ticket.getByOidcState(oidcState);
-    if (!pending) {
+    const ticket = await this.ticket.getPending(oidcState);
+    if (!ticket) {
       throw new BadRequestException('Confirmation flow has expired');
     }
 
-    const { claims, accessToken } = await this.oidc.callbackTicket(url, oidcState, pending.oidcCodeVerifier);
+    const { claims, accessToken } = await this.oidc.callbackTicket(url, oidcState, ticket.oidcCodeVerifier);
 
     if (!claims?.auth_time) {
       throw new InternalServerErrorException('no id token with auth_time received');
     }
 
+    console.info('auth_time:', claims.auth_time);
+    // TODO: validate auth_time
+
     const user = await this.user.getBySub(claims.sub);
-    if (user?.id !== pending.userId) {
+    if (user?.id !== ticket.userId) {
       throw new UnauthorizedException('Signed in as a different account');
     }
 
@@ -191,35 +193,29 @@ export class AuthService {
       this.logger.warn({ error }, 'failed to revoke the ticket access token');
     });
 
-    const ticket = await this.ticket.activate(oidcState, new Date(claims.auth_time * 1000));
+    await this.ticket.activate(ticket.id);
+
+    return { token: ticket.token, redirectTo: `/tickets/${ticket.id}` };
+  }
+
+  async getTicket(ticketId: string, headers: IncomingHttpHeaders): Promise<TicketDto> {
+    const cookies = parse(headers.cookie ?? '');
+    const token = cookies[CookieName.TicketToken] ?? '';
+
+    console.info('why are we here?');
+    const ticket = await this.ticket.getActive(ticketId, token);
     if (!ticket) {
       throw new BadRequestException('Confirmation flow has expired');
     }
 
-    return { ticketId: ticket.id, redirectTo: `/tickets/${ticket.id}` };
+    return ticket;
   }
 
-  async getTicket(ticketId: string): Promise<TicketDto> {
-    const ticket = await this.ticket.getPending(ticketId);
-    if (!ticket) {
-      throw new BadRequestException('Confirmation flow has expired');
-    }
+  async spendTicket(action: TicketAction, repositoryId: string, ticketId: string, headers: IncomingHttpHeaders) {
+    const cookies = parse(headers.cookie ?? '');
+    const token = cookies[CookieName.TicketToken] ?? '';
 
-    return {
-      id: ticket.id,
-      action: ticket.action,
-      repositoryId: ticket.repositoryId,
-      repositoryName: ticket.name,
-    };
-  }
-
-  async spendTicket(action: TicketAction, repositoryId: string, request: Request) {
-    const token = request.headers[TICKET_HEADER];
-    if (typeof token !== 'string') {
-      throw new TicketRequiredException(action);
-    }
-
-    const ticket = await this.ticket.spend(token, action, repositoryId);
+    const ticket = await this.ticket.spend(ticketId, token, action, repositoryId);
     if (!ticket) {
       throw new TicketRequiredException(action);
     }

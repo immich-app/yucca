@@ -103,7 +103,6 @@ export class RepositoryService {
 
   async delete(userId: string, id: string) {
     await this.getOwned(userId, id);
-
-    throw new InternalServerErrorException('unimplemented, needs to hook up to prune mechanism');
+    await this.repositoryRepository.delete(id);
   }
 }

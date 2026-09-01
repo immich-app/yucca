@@ -1,6 +1,5 @@
-import { Body, Controller, Get, Post, Query, Req, Res, Sse } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, Sse } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
-import { parse } from 'cookie';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
 import { type Observable } from 'rxjs';
@@ -130,23 +129,16 @@ export class AuthController {
   @Post('/ticket')
   @AuthRoute()
   @ApiOkResponse({ type: TicketCreateResponseDto })
-  createTicket(@Auth() auth: AuthDto, @Body() dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
-    return this.auth.createTicket(auth, dto);
-  }
-
-  @Get('/ticket')
-  @ApiOkResponse({ type: TicketDto })
-  getTicket(@Req() request: Request): Promise<TicketDto> {
-    const cookies = parse(request.headers.cookie ?? '');
-
-    return this.auth.getTicket(cookies[CookieName.TicketId] ?? '');
+  async createTicket(@Auth() auth: AuthDto, @Body() dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    return await this.auth.createTicket(auth, dto);
   }
 
   @Get('/ticket/callback')
   async ticketCallback(@Req() request: Request, @Res() response: Response) {
-    const { ticketId, redirectTo } = await this.auth.ticketCallback(request);
+    const { token, redirectTo } = await this.auth.ticketCallback(request);
 
-    response.cookie(CookieName.TicketId, ticketId, {
+    response.clearCookie(CookieName.TicketId);
+    response.cookie(CookieName.TicketToken, token, {
       sameSite: 'lax',
       httpOnly: true,
       secure: request.protocol === 'https',
@@ -154,5 +146,11 @@ export class AuthController {
     });
 
     response.redirect(redirectTo);
+  }
+
+  @Get('/ticket/:id')
+  @ApiOkResponse({ type: TicketDto })
+  getTicket(@Param('id') ticketId: string, @Req() request: Request): Promise<TicketDto> {
+    return this.auth.getTicket(ticketId, request.headers);
   }
 }

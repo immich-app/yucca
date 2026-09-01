@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsUUID } from 'class-validator';
 import { TicketAction } from 'src/enum';
+import { RepositoryMeterDto, RepositoryMetricsDto } from './repository.dto';
 
 export class TicketCreateRequestDto {
   @ApiProperty({ enum: TicketAction, enumName: 'TicketAction' })
@@ -13,10 +14,7 @@ export class TicketCreateRequestDto {
 }
 
 export class TicketCreateResponseDto {
-  @ApiProperty({ description: 'Presented on the action request once the ticket is active' })
-  token!: string;
-
-  @ApiProperty({ description: 'Identity provider URL the browser must be sent to' })
+  @ApiProperty({ description: 'IdP URL the browser must be sent to' })
   redirectTo!: string;
 }
 
@@ -32,4 +30,10 @@ export class TicketDto {
 
   @ApiProperty()
   repositoryName!: string;
+
+  @ApiProperty()
+  metrics!: RepositoryMetricsDto;
+
+  @ApiProperty({ required: false })
+  meter?: RepositoryMeterDto;
 }

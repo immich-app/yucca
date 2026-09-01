@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request } from 'express';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
@@ -70,17 +70,25 @@ export class RepositoryController {
   }
 
   @Delete('/:id')
-  async deleteRepository(@Param('id') id: string, @Req() request: Request) {
-    const ticket = await this.auth.spendTicket(TicketAction.DeleteRepository, id, request);
-
-    return this.repository.delete(ticket.userId, id);
+  @ApiQuery({ name: 'ticketId', type: String })
+  async deleteRepository(
+    @Param('id') repositoryId: string,
+    @Query('ticketId') ticketId: string,
+    @Req() request: Request,
+  ) {
+    const ticket = await this.auth.spendTicket(TicketAction.DeleteRepository, repositoryId, ticketId, request.headers);
+    return this.repository.delete(ticket.userId, repositoryId);
   }
 
   @Delete('/:id/worm')
+  @ApiQuery({ name: 'ticketId', type: String })
   @ApiOkResponse({ type: RepositoryUpdateResponseDto })
-  async disableWorm(@Param('id') id: string, @Req() request: Request): Promise<RepositoryUpdateResponseDto> {
-    const ticket = await this.auth.spendTicket(TicketAction.DisableWorm, id, request);
-
-    return this.repository.disableWorm(ticket.userId, id);
+  async disableWorm(
+    @Param('id') repositoryId: string,
+    @Query('ticketId') ticketId: string,
+    @Req() request: Request,
+  ): Promise<RepositoryUpdateResponseDto> {
+    const ticket = await this.auth.spendTicket(TicketAction.DisableWorm, repositoryId, ticketId, request.headers);
+    return this.repository.disableWorm(ticket.userId, repositoryId);
   }
 }

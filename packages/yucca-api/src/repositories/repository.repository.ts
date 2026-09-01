@@ -5,7 +5,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
 import { RepositoryTable } from 'src/schema/tables/repository.table';
 
-const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
+export const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
     lastBackup: eb.ref('repositoryMetrics.lastBackup'),
@@ -13,7 +13,7 @@ const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetri
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   }).as('metrics');
 
-const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
+export const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)),
     objectCount: eb.fn.coalesce('repositoryMeter.objectCount', eb.val(0)),

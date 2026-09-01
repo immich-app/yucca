@@ -4,6 +4,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { TicketAction } from 'src/enum';
 import { DB } from 'src/schema';
 import { TicketTable } from 'src/schema/tables/ticket.table';
+import { meterJson, metricsJson } from './repository.repository';
 
 @Injectable()
 export class TicketRepository {
@@ -13,37 +14,50 @@ export class TicketRepository {
     return this.db.insertInto('tickets').values(ticket).returningAll().executeTakeFirstOrThrow();
   }
 
-  getPending(id: string) {
+  getPending(oidcState: string) {
     return this.db
       .selectFrom('tickets')
-      .innerJoin('repositories', 'repositories.id', 'tickets.repositoryId')
-      .select(['tickets.id', 'tickets.action', 'tickets.repositoryId', 'repositories.name'])
-      .where('tickets.id', '=', id)
-      .where('tickets.validAt', 'is not', null)
+      .selectAll('tickets')
+      .where('tickets.oidcState', '=', oidcState)
+      .where('tickets.validAt', 'is', null)
       .where('tickets.consumedAt', 'is', null)
       .where('tickets.expiresAt', '>', new Date())
       .executeTakeFirst();
   }
 
-  activate(oidcState: string, authTime: Date) {
+  getActive(id: string, token: string) {
+    return this.db
+      .selectFrom('tickets')
+      .innerJoin('repositories', 'repositories.id', 'tickets.repositoryId')
+      .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
+      .leftJoin('repositoryMeter', 'repositoryMeter.repositoryId', 'repositories.id')
+      .select(['tickets.id', 'tickets.action', 'tickets.repositoryId', 'repositories.name as repositoryName'])
+      .where('tickets.id', '=', id)
+      .where('tickets.token', '=', token)
+      .where('tickets.validAt', 'is not', null)
+      .where('tickets.consumedAt', 'is', null)
+      .where('tickets.expiresAt', '>', new Date())
+      .select(metricsJson)
+      .select(meterJson)
+      .executeTakeFirst();
+  }
+
+  activate(id: string) {
     return this.db
       .updateTable('tickets')
-      .set({ authTime, validAt: new Date() })
-      .where('oidcState', '=', oidcState)
+      .set({ validAt: new Date() })
+      .where('id', '=', id)
       .where('validAt', 'is', null)
       .where('expiresAt', '>', new Date())
       .returningAll()
       .executeTakeFirst();
   }
 
-  getByOidcState(oidcState: string) {
-    return this.db.selectFrom('tickets').selectAll().where('oidcState', '=', oidcState).executeTakeFirst();
-  }
-
-  spend(token: string, action: TicketAction, repositoryId: string) {
+  spend(id: string, token: string, action: TicketAction, repositoryId: string) {
     return this.db
       .updateTable('tickets')
       .set({ consumedAt: new Date() })
+      .where('id', '=', id)
       .where('token', '=', token)
       .where('action', '=', action)
       .where('repositoryId', '=', repositoryId)

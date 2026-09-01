@@ -20,6 +20,7 @@ function getDb() {
 export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
+    await db.deleteFrom('tickets').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('connections').execute();
@@ -116,6 +117,10 @@ export const testUtils = {
     const db = getDb();
     const userRepository = new UserRepository(db);
     return userRepository.getByAccessToken(accessToken);
+  },
+
+  getTicketByToken: (token: string) => {
+    return getDb().selectFrom('tickets').selectAll().where('token', '=', token).executeTakeFirst();
   },
 
   createRepository: async (userId: string, name = 'My Repository', worm = false) => {

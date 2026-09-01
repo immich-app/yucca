@@ -28,9 +28,6 @@ export class TicketTable {
   action!: TicketAction;
 
   @Column({ type: 'timestamp with time zone', nullable: true })
-  authTime!: Date | null;
-
-  @Column({ type: 'timestamp with time zone', nullable: true })
   validAt!: Date | null;
 
   @Column({ type: 'timestamp with time zone' })
