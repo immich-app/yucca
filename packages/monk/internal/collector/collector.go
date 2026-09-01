@@ -114,10 +114,30 @@ type Snapshot struct {
 	PGState map[string]PGState
 }
 
+// Two fields rather than a map keyed by Depth: this is allocated once per PG
+// per refresh, so on a cluster with thousands of PGs the map header and bucket
+// dominate the struct it holds. A zero stamp means the depth was unparsable.
 type PGState struct {
-	Pool  string
-	Bytes int64
-	Stamp map[Depth]time.Time
+	Pool    string
+	Bytes   int64
+	Shallow time.Time
+	Deep    time.Time
+}
+
+func (p PGState) StampAt(d Depth) (time.Time, bool) {
+	t := p.Shallow
+	if d == Deep {
+		t = p.Deep
+	}
+	return t, !t.IsZero()
+}
+
+func (p *PGState) setStamp(d Depth, t time.Time) {
+	if d == Deep {
+		p.Deep = t
+		return
+	}
+	p.Shallow = t
 }
 
 func cephOutput(ctx context.Context, cephCmd []string, args ...string) ([]byte, error) {
@@ -267,7 +287,7 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 		ps.Bytes += bytes
 		ps.OmapBytes += omap
 		snap.ScheduleStates[scheduleState(pg.ScrubSchedule)]++
-		pgs := PGState{Pool: pool, Bytes: bytes, Stamp: map[Depth]time.Time{}}
+		pgs := PGState{Pool: pool, Bytes: bytes}
 
 		for depth, stampStr := range map[Depth]string{Shallow: pg.LastScrubStamp, Deep: pg.LastDeepScrubStamp} {
 			stamp, err := time.Parse(stampLayout, stampStr)
@@ -287,7 +307,7 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 				ps.OverdueBytes[depth] += bytes
 				ps.OverdueOmapBytes[depth] += omap
 			}
-			pgs.Stamp[depth] = stamp
+			pgs.setStamp(depth, stamp)
 			ps.ParsedBytes[depth] += bytes
 			ps.AgeSum[depth] += age.Seconds() * float64(bytes)
 			for i, le := range AgeBuckets {

@@ -74,10 +74,11 @@ func (e *Exporter) Store(snap *Snapshot, took time.Duration) {
 
 // accumulate counts the PGs whose stamp advanced between two snapshots. A PG
 // absent from either side is skipped rather than counted: pool deletion and PG
-// splits would otherwise register as scrub completions. The first snapshot
-// after start has no predecessor, so its completions are unobservable and the
-// counters simply begin at zero.
-func accumulate(prevN map[string]map[Depth]uint64, prevB map[string]map[Depth]uint64, old, new *Snapshot) (map[string]map[Depth]uint64, map[string]map[Depth]uint64) {
+// splits would otherwise register as scrub completions. A refresh with no
+// predecessor counts nothing: that is the first snapshot after start, and also
+// the first one after an outage long enough to expire the stored snapshot, so
+// scrubs completed during an outage are unobservable rather than backfilled.
+func accumulate(prevN map[string]map[Depth]uint64, prevB map[string]map[Depth]uint64, old, cur *Snapshot) (map[string]map[Depth]uint64, map[string]map[Depth]uint64) {
 	n := map[string]map[Depth]uint64{}
 	b := map[string]map[Depth]uint64{}
 	for pool, byDepth := range prevN {
@@ -92,28 +93,28 @@ func accumulate(prevN map[string]map[Depth]uint64, prevB map[string]map[Depth]ui
 			b[pool][d] = v
 		}
 	}
-	if old == nil || new == nil {
+	if old == nil || cur == nil {
 		return n, b
 	}
-	for pgid, cur := range new.PGState {
+	for pgid, now := range cur.PGState {
 		was, ok := old.PGState[pgid]
 		if !ok {
 			continue
 		}
 		for _, depth := range Depths {
-			newStamp, okNew := cur.Stamp[depth]
-			oldStamp, okOld := was.Stamp[depth]
+			newStamp, okNew := now.StampAt(depth)
+			oldStamp, okOld := was.StampAt(depth)
 			if !okNew || !okOld || !newStamp.After(oldStamp) {
 				continue
 			}
-			if n[cur.Pool] == nil {
-				n[cur.Pool] = map[Depth]uint64{}
+			if n[now.Pool] == nil {
+				n[now.Pool] = map[Depth]uint64{}
 			}
-			if b[cur.Pool] == nil {
-				b[cur.Pool] = map[Depth]uint64{}
+			if b[now.Pool] == nil {
+				b[now.Pool] = map[Depth]uint64{}
 			}
-			n[cur.Pool][depth]++
-			b[cur.Pool][depth] += uint64(max(cur.Bytes, 0))
+			n[now.Pool][depth]++
+			b[now.Pool][depth] += uint64(max(now.Bytes, 0))
 		}
 	}
 	return n, b
@@ -160,6 +161,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(descIntervalTime, prometheus.GaugeValue, float64(s.intervalReadTime.Unix()))
 	}
 
+	for pool, byDepth := range s.completions {
+		for depth, v := range byDepth {
+			ch <- prometheus.MustNewConstMetric(descCompletions, prometheus.CounterValue, float64(v), pool, string(depth))
+		}
+	}
+	for pool, byDepth := range s.completedBytes {
+		for depth, v := range byDepth {
+			ch <- prometheus.MustNewConstMetric(descCompletedB, prometheus.CounterValue, float64(v), pool, string(depth))
+		}
+	}
+
+	// Counters above survive snapshot expiry: they are process-lifetime state,
+	// and letting them go absent would read downstream as a counter reset.
 	snap := s.snapshot
 	if snap == nil {
 		return
@@ -170,16 +184,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	for state, n := range snap.ScheduleStates {
 		ch <- prometheus.MustNewConstMetric(descSchedule, prometheus.GaugeValue, float64(n), state)
-	}
-	for pool, byDepth := range s.completions {
-		for depth, v := range byDepth {
-			ch <- prometheus.MustNewConstMetric(descCompletions, prometheus.CounterValue, float64(v), pool, string(depth))
-		}
-	}
-	for pool, byDepth := range s.completedBytes {
-		for depth, v := range byDepth {
-			ch <- prometheus.MustNewConstMetric(descCompletedB, prometheus.CounterValue, float64(v), pool, string(depth))
-		}
 	}
 	for pool, ps := range snap.Pools {
 		ch <- prometheus.MustNewConstMetric(descPoolPGs, prometheus.GaugeValue, float64(ps.PGs), pool)
