@@ -1124,7 +1124,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{cluster=~\"$cluster\"}))",
+          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{project=\"yucca\", cluster=~\"$cluster\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1197,7 +1197,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"}))",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1265,7 +1265,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_pgs{cluster=~\"$cluster\", depth=\"deep\"}))",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1333,7 +1333,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "max((time() - max by (cluster, pool_id) (ceph_pg_last_deep_scrub_stamp{cluster=~\"$cluster\"})) / max by (cluster, pool_id) (ceph_scrub_target_interval_seconds{cluster=~\"$cluster\", depth=\"deep\"}))",
+          "expr": "max((time() - max by (cluster, pool_id) (ceph_pg_last_deep_scrub_stamp{project=\"yucca\", cluster=~\"$cluster\"})) / max by (cluster, pool_id) (ceph_scrub_target_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1405,7 +1405,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum by (name) (max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"}) * on (cluster, pool_id) group_left(name) ceph_pool_metadata{cluster=~\"$cluster\"})",
+          "expr": "sum by (name) (max by (cluster, pool_id) (ceph_scrub_overdue_bytes{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}) * on (cluster, pool_id) group_left(name) ceph_pool_metadata{project=\"yucca\", cluster=~\"$cluster\"})",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -1452,7 +1452,7 @@
         },
         "overrides": []
       },
-      "description": "Overdue stored bytes per pool, named by joining ceph_pool_metadata on (cluster, pool_id). Pools with nothing overdue drop out rather than drawing a zero line."
+      "description": "Overdue stored bytes per pool, named by joining ceph_pool_metadata on (cluster, pool_id). monk emits a series per pool and depth even at zero, so a caught-up pool draws a flat zero line rather than dropping out."
     },
     {
       "id": 22,
@@ -1474,7 +1474,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{cluster=~\"$cluster\"}))",
+          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{project=\"yucca\", cluster=~\"$cluster\"}))",
           "legendFormat": "deep",
           "refId": "A"
         },
@@ -1483,7 +1483,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"shallow\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{cluster=~\"$cluster\"}))",
+          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{project=\"yucca\", cluster=~\"$cluster\", depth=\"shallow\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{project=\"yucca\", cluster=~\"$cluster\"}))",
           "legendFormat": "regular",
           "refId": "B"
         }
@@ -1553,7 +1553,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "histogram_quantile(0.5, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{cluster=~\"$cluster\", depth=\"deep\"})))",
+          "expr": "histogram_quantile(0.5, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})))",
           "legendFormat": "p50 byte age",
           "refId": "A"
         },
@@ -1562,7 +1562,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{cluster=~\"$cluster\", depth=\"deep\"})))",
+          "expr": "histogram_quantile(0.95, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})))",
           "legendFormat": "p95 byte age",
           "refId": "B"
         },
@@ -1571,7 +1571,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "max(ceph_scrub_target_interval_seconds{cluster=~\"$cluster\", depth=\"deep\"})",
+          "expr": "max(ceph_scrub_target_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})",
           "legendFormat": "target interval",
           "refId": "C"
         }
@@ -1634,7 +1634,7 @@
           }
         ]
       },
-      "description": "Age of the median and 95th-percentile stored byte since its last deep scrub, against the interval read live from the cluster rather than a hardcoded assumption. The histogram carries gauge semantics under a histogram type: never apply rate() or increase() to these series, and its _count counts bytes, not events."
+      "description": "Age of the median and 95th-percentile stored byte since its last deep scrub, against the interval read live from the cluster rather than a hardcoded assumption. The histogram carries gauge semantics under a histogram type: never apply rate() or increase() to these series, and its _count counts bytes, not events. Buckets are deduped per le across instances, so snapshots taken a refresh apart can briefly invert two adjacent buckets; the engine clamps them monotonic, which nudges the quantile rather than failing the query."
     },
     {
       "id": 24,
@@ -1945,7 +1945,7 @@
           "type": "prometheus",
           "uid": "$datasource"
         },
-        "query": "label_values(ceph_health_status{env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)",
+        "query": "label_values(ceph_health_status{project=\"yucca\", env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)",
         "current": {},
         "hide": 0,
         "refresh": 1,
@@ -1954,7 +1954,7 @@
         "regex": "",
         "sort": 1,
         "skipUrlSync": false,
-        "definition": "label_values(ceph_health_status{env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)"
+        "definition": "label_values(ceph_health_status{project=\"yucca\", env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)"
       }
     ]
   },
