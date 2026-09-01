@@ -10,11 +10,21 @@ spec:
     - name: cnpg-operator
     - name: cnpg-plugin-barman
     - name: openebs
+  # Gate dependents on the database SERVING, not on Helm succeeding. CNPG holds
+  # the Cluster's Ready condition False while any instance is short (e.g. a lost
+  # node strands an instance on its node-local PV), which times out the Helm
+  # release and — through dependsOn — freezes the image rollout of every app
+  # behind it, even though the primary is up and taking queries. readyInstances
+  # is the field that tracks "someone can serve"; the Ready condition is not.
   healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: yucca-database
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: yucca-db
       namespace: yucca
+  healthCheckExprs:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      current: status.readyInstances >= 1
   interval: 1h
   retryInterval: 2m
   timeout: 10m
