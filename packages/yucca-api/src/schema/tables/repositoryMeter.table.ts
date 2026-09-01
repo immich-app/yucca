@@ -12,7 +12,7 @@ export class RepositoryMeterTable {
   @Column({ type: 'bigint' })
   objectCount!: number;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', default: 'local-dev' })
   storageClusterCode!: string;
 
   @Column({ type: 'timestamp with time zone', default: () => 'now()' })
