@@ -2032,7 +2032,7 @@
     {
       "id": 32,
       "type": "timeseries",
-      "title": "Disk read bandwidth: scrub vs other",
+      "title": "Scrub reads vs physical disk reads",
       "datasource": {
         "type": "prometheus",
         "uid": "$datasource"
@@ -2050,7 +2050,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "legendFormat": "scrub",
+          "legendFormat": "scrub reads (OSD)",
           "expr": "sum(rate(ceph_osd_scrub_replicated_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]) + rate(ceph_osd_scrub_ec_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]))"
         },
         {
@@ -2059,8 +2059,8 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "legendFormat": "everything else",
-          "expr": "clamp_min(sum(rate(node_disk_read_bytes_total{project=\"yucca\", cluster=~\"$cluster\", device!~\"dm-.*|md.*\"}[$__rate_interval])) - (sum(rate(ceph_osd_scrub_replicated_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]) + rate(ceph_osd_scrub_ec_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]))), 0)"
+          "legendFormat": "physical disk reads",
+          "expr": "sum(rate(node_disk_read_bytes_total{project=\"yucca\", cluster=~\"$cluster\", device!~\"dm-.*|md.*\"}[$__rate_interval]))"
         }
       ],
       "options": {
@@ -2085,11 +2085,11 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 1,
-            "fillOpacity": 35,
+            "fillOpacity": 10,
             "showPoints": "never",
             "spanNulls": false,
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -2105,7 +2105,7 @@
         },
         "overrides": []
       },
-      "description": "How much of the fleet's physical disk read bandwidth scrubbing takes, against everything else reading the same disks. Stacked, so the top of the band is total physical read throughput. dm-* and md* are excluded because LVM layers double count reads already attributed to the sd and nvme devices beneath them. Both series are device-level, unlike the pool-level client counters on the health dashboard, which are logical bytes. Note that pool rate panels can spike to implausible values when mgr counters dip under PG churn and rate() reads the dip as a counter reset; resets() over the window tells you whether a spike is real."
+      "description": "Scrub read bytes from the OSD counters against physical device reads from node-exporter, plotted separately rather than stacked because they measure different layers: an OSD read served from page cache never reaches a disk, so scrub can and does exceed device reads (1.05x at peak over the last 30 days). dm-* and md* are excluded from the device series because LVM layers re-count reads already attributed to the sd and nvme devices beneath them. Client counters on the health dashboard are pool-level logical bytes and belong to neither series here."
     },
     {
       "id": 31,
@@ -2154,30 +2154,23 @@
           "unit": "percentunit",
           "decimals": 1,
           "color": {
-            "mode": "thresholds"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 0.5
-              },
-              {
-                "color": "red",
-                "value": 0.8
               }
             ]
           }
         },
         "overrides": []
       },
-      "description": "Share of the fleet's physical disk read bandwidth currently spent on scrubbing. Device-mapper and md devices are excluded from the denominator: LVM volumes sit on top of the same disks, so counting both layers roughly triples the apparent total and understates this share. Client figures on the health dashboard are pool-level logical bytes and must not be stacked with these."
+      "description": "Scrub read bytes as a share of physical device reads. Deliberately uncolored: on this fleet scrub is nearly all read load whenever clients are write-heavy, so the median over 30 days is 92 percent and a red-above-80 rule would sit red permanently and signal nothing. It can exceed 100 percent, because OSD reads served from page cache never reach a disk. Read it as context for disk contention, not as a health signal."
     }
   ],
   "refresh": "1h",
