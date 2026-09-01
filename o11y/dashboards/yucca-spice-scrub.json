@@ -18,7 +18,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "Ceph guards against silent data corruption by **scrubbing**: re-reading stored data and checking it is still intact. A **regular** scrub compares the bookkeeping of every copy; a **deep** scrub reads all the data back and verifies checksums, which is the slow, disk-heavy part. Every slice of data (a **PG**) must get a regular scrub every 7 days and a deep scrub every 28 days on spice. At petabyte scale a deep cycle takes weeks, so this board answers three questions: what is scrubbing right now, which hosts are busy with it, and is the cycle keeping up.\n\n**Now / PGs**: how many PGs the cluster flags as scrubbing. A PG is flagged from the moment it is queued, so these counts run ahead of the scrubs actually reading data.\n\n**Hosts**: a host counts as scrubbing when one of its disks is leading a scrub that made progress in the last 5 minutes. The data being checked is spread across many hosts, so other hosts read for it too; the read-throughput panel shows that load.\n\n**Work outstanding**: how much of the cluster's data was deep-scrubbed inside the last 28 days. 100% means everything was checked within one cycle; lower means part of the data is overdue. This is an estimate from bytes read, because the cluster does not report a per-PG last-checked date, and it needs 28 days of stored metrics before it is meaningful. If the cluster's intervals differ, change the two interval variables at the top."
+        "content": "Ceph guards against silent data corruption by **scrubbing**: re-reading stored data and checking it is still intact. A **regular** scrub compares the bookkeeping of every copy; a **deep** scrub reads all the data back and verifies checksums, which is the slow, disk-heavy part. Every slice of data (a **PG**) must get a regular scrub every 7 days and a deep scrub every 28 days on spice. At petabyte scale a deep cycle takes weeks, so this board answers three questions: what is scrubbing right now, which hosts are busy with it, and is the cycle keeping up.\n\n**Now / PGs**: how many PGs the cluster flags as scrubbing. A PG is flagged from the moment it is queued, so these counts run ahead of the scrubs actually reading data.\n\n**Hosts**: a host counts as scrubbing when one of its disks is leading a scrub that made progress in the last 5 minutes. The data being checked is spread across many hosts, so other hosts read for it too; the read-throughput panel shows that load.\n\n**Work outstanding**: measured, not estimated. monk reads every PG's last-scrub timestamp on the mon hosts and reports, per pool, how much data is older than the target interval it reads from the cluster's own config. 100% coverage means nothing is overdue. Byte figures in this row are stored (logical) bytes and must not be compared with raw capacity without the per-pool expansion factor."
       }
     },
     {
@@ -1094,7 +1094,7 @@
     {
       "id": 16,
       "type": "row",
-      "title": "Work outstanding (deep-scrub cycle)",
+      "title": "Work outstanding (measured)",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -1107,7 +1107,7 @@
     {
       "id": 17,
       "type": "stat",
-      "title": "Cycle coverage",
+      "title": "Deep cycle coverage",
       "datasource": {
         "type": "prometheus",
         "uid": "$datasource"
@@ -1124,7 +1124,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)) / sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"})",
+          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{cluster=~\"$cluster\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1175,12 +1175,12 @@
         },
         "overrides": []
       },
-      "description": "Share of raw used bytes that scrubs read within the last $deep_interval_days days. 100% means the whole cluster was deep-scrubbed inside one cycle; below that, the remainder is overdue or still queued. Shard reads on every OSD are counted, so it compares like-for-like with raw used."
+      "description": "Share of stored bytes whose last deep scrub is inside the target interval, measured from every PG's last_deep_scrub_stamp rather than inferred from read counters. Both sides are stored (logical) bytes and are deduped per (cluster, pool_id), because every monk instance reports the same cluster-wide data."
     },
     {
       "id": 18,
       "type": "stat",
-      "title": "Raw bytes still due",
+      "title": "Data overdue (deep)",
       "datasource": {
         "type": "prometheus",
         "uid": "$datasource"
@@ -1197,7 +1197,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "clamp_min(sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"}) - sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)), 0)",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1223,8 +1223,8 @@
         "defaults": {
           "unit": "bytes",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "orange"
+            "mode": "thresholds",
+            "fixedColor": "blue"
           },
           "mappings": [],
           "thresholds": {
@@ -1233,19 +1233,22 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
               }
             ]
-          },
-          "decimals": 2
+          }
         },
         "overrides": []
       },
-      "description": "Raw used bytes minus bytes scrubbed in the current cycle window. Zero when the cycle is keeping up."
+      "description": "Stored bytes in PGs whose last deep scrub is older than the target interval. These are logical bytes: do not compare them with raw capacity metrics such as ceph_osd_stat_bytes_used without applying the per-pool expansion factor ceph_pool_stored_raw / ceph_pool_stored."
     },
     {
       "id": 19,
       "type": "stat",
-      "title": "Scrub reads, last 24h",
+      "title": "PGs overdue (deep)",
       "datasource": {
         "type": "prometheus",
         "uid": "$datasource"
@@ -1262,7 +1265,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset 1d, 0))",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_pgs{cluster=~\"$cluster\", depth=\"deep\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1286,10 +1289,10 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes",
+          "unit": "short",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "purple"
+            "mode": "thresholds",
+            "fixedColor": "blue"
           },
           "mappings": [],
           "thresholds": {
@@ -1298,19 +1301,22 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
               }
             ]
-          },
-          "decimals": 2
+          }
         },
         "overrides": []
       },
-      "description": "Bytes read by scrubs across all OSDs in the last 24h. Compare with the required pace on the panel below."
+      "description": "PGs whose last deep scrub is older than the target interval. PGs whose stamp could not be parsed are counted here, so a format change reads as overdue rather than as silently clean."
     },
     {
       "id": 20,
       "type": "stat",
-      "title": "Days to clear at this pace",
+      "title": "Oldest deep scrub vs target",
       "datasource": {
         "type": "prometheus",
         "uid": "$datasource"
@@ -1327,7 +1333,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "clamp_min(sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"}) - sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)), 0) / sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset 1d, 0))",
+          "expr": "max((time() - max by (cluster, pool_id) (ceph_pg_last_deep_scrub_stamp{cluster=~\"$cluster\"})) / max by (cluster, pool_id) (ceph_scrub_target_interval_seconds{cluster=~\"$cluster\", depth=\"deep\"}))",
           "legendFormat": "",
           "refId": "A",
           "instant": true,
@@ -1351,7 +1357,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "d",
+          "unit": "percentunit",
           "color": {
             "mode": "thresholds",
             "fixedColor": "blue"
@@ -1366,24 +1372,23 @@
               },
               {
                 "color": "orange",
-                "value": 7
+                "value": 1
               },
               {
                 "color": "red",
-                "value": 28
+                "value": 1.5
               }
             ]
-          },
-          "decimals": 1
+          }
         },
         "overrides": []
       },
-      "description": "Raw bytes still due divided by the last 24h of scrub reads. A rough ETA: assumes today's pace holds and ignores new writes."
+      "description": "Age of the worst pool's oldest deep-scrub stamp, expressed against that pool's own target interval read from the cluster. 100% means a PG has just reached the interval; above that it is overdue. Stated as a ratio rather than days so the panel is correct on any cluster: spice targets 28 days and sietch 7, and a fixed threshold would be wrong on one of them."
     },
     {
       "id": 21,
       "type": "timeseries",
-      "title": "Scrub reads per day vs required pace",
+      "title": "Overdue by pool (deep)",
       "datasource": {
         "type": "prometheus",
         "uid": "$datasource"
@@ -1400,18 +1405,9 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset 1d, 0))",
-          "legendFormat": "read per day",
+          "expr": "sum by (name) (max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"}) * on (cluster, pool_id) group_left(name) ceph_pool_metadata{cluster=~\"$cluster\"})",
+          "legendFormat": "{{name}}",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "$datasource"
-          },
-          "expr": "sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"}) / $deep_interval_days",
-          "legendFormat": "required (raw used / $deep_interval_days d)",
-          "refId": "B"
         }
       ],
       "options": {
@@ -1454,41 +1450,9 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "required (raw used / $deep_interval_days d)"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "read per day"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "purple"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
-      "description": "Rolling 24h scrub reads against the bytes per day needed to deep-scrub all raw used data once per cycle. Below the line for long and the cycle falls behind.",
-      "interval": "1h"
+      "description": "Overdue stored bytes per pool, named by joining ceph_pool_metadata on (cluster, pool_id). Pools with nothing overdue drop out rather than drawing a zero line."
     },
     {
       "id": 22,
@@ -1510,9 +1474,18 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(clamp_min(ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_ec_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0) + clamp_min(ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_scrub_replicated_read_bytes{cluster=~\"$cluster\"} offset ${deep_interval_days}d, 0)) / sum(ceph_osd_stat_bytes_used{cluster=~\"$cluster\"})",
-          "legendFormat": "coverage",
+          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"deep\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{cluster=~\"$cluster\"}))",
+          "legendFormat": "deep",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{cluster=~\"$cluster\", depth=\"shallow\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_bytes{cluster=~\"$cluster\"}))",
+          "legendFormat": "regular",
+          "refId": "B"
         }
       ],
       "options": {
@@ -1537,7 +1510,7 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 1,
-            "fillOpacity": 10,
+            "fillOpacity": 0,
             "showPoints": "never",
             "spanNulls": false,
             "stacking": {
@@ -1553,33 +1526,17 @@
                 "value": null
               }
             ]
-          }
+          },
+          "max": 1
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "coverage"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "purple"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
-      "description": "The Cycle coverage stat over time: a rolling $deep_interval_days-day window, so it needs that much history before it is meaningful.",
-      "interval": "1h"
+      "description": "Coverage over time for both scrub depths. Unlike the read-counter estimate this replaces, it needs no warm-up window: it is true from the first scrape."
     },
     {
       "id": 23,
       "type": "timeseries",
-      "title": "Scrubs completed per day vs required",
+      "title": "Scrub age vs target (deep)",
       "datasource": {
         "type": "prometheus",
         "uid": "$datasource"
@@ -1596,8 +1553,8 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(clamp_min(ceph_osd_successful_scrubs_ec{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_successful_scrubs_ec{cluster=~\"$cluster\"} offset 1d, 0) + clamp_min(ceph_osd_successful_scrubs_replicated{cluster=~\"$cluster\"} - on (cluster, ceph_daemon) ceph_osd_successful_scrubs_replicated{cluster=~\"$cluster\"} offset 1d, 0))",
-          "legendFormat": "completed per day",
+          "expr": "histogram_quantile(0.5, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{cluster=~\"$cluster\", depth=\"deep\"})))",
+          "legendFormat": "p50 byte age",
           "refId": "A"
         },
         {
@@ -1605,9 +1562,18 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "sum(ceph_pg_total{cluster=~\"$cluster\"}) * (1 / $shallow_interval_days + 1 / $deep_interval_days)",
-          "legendFormat": "required (PGs / intervals)",
+          "expr": "histogram_quantile(0.95, sum by (le) (max by (cluster, pool_id, le) (ceph_scrub_age_seconds_bucket{cluster=~\"$cluster\", depth=\"deep\"})))",
+          "legendFormat": "p95 byte age",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "expr": "max(ceph_scrub_target_interval_seconds{cluster=~\"$cluster\", depth=\"deep\"})",
+          "legendFormat": "target interval",
+          "refId": "C"
         }
       ],
       "options": {
@@ -1624,7 +1590,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "s",
           "min": 0,
           "color": {
             "mode": "palette-classic"
@@ -1654,37 +1620,21 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "required (PGs / intervals)"
+              "options": "target interval"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "red"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "completed per day"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "green"
+                  "fixedColor": "purple"
                 }
               }
             ]
           }
         ]
       },
-      "description": "Scrub sessions that finished successfully in a rolling 24h, all levels and pools, against the number every PG needs to scrub once per interval (PGs / $shallow_interval_days d + PGs / $deep_interval_days d). Replicated metadata pools scrub fast and often, so this overstates progress on the data pool.",
-      "interval": "1h"
+      "description": "Age of the median and 95th-percentile stored byte since its last deep scrub, against the interval read live from the cluster rather than a hardcoded assumption. The histogram carries gauge semantics under a histogram type: never apply rate() or increase() to these series, and its _count counts bytes, not events."
     },
     {
       "id": 24,
@@ -2005,48 +1955,6 @@
         "sort": 1,
         "skipUrlSync": false,
         "definition": "label_values(ceph_health_status{env=~\"$env\", provider=~\"$provider\", region=~\"$region\"}, cluster)"
-      },
-      {
-        "name": "shallow_interval_days",
-        "label": "shallow interval (days)",
-        "type": "custom",
-        "query": "7",
-        "hide": 0,
-        "multi": false,
-        "includeAll": false,
-        "options": [
-          {
-            "selected": true,
-            "text": "7",
-            "value": "7"
-          }
-        ],
-        "current": {
-          "selected": true,
-          "text": "7",
-          "value": "7"
-        }
-      },
-      {
-        "name": "deep_interval_days",
-        "label": "deep interval (days)",
-        "type": "custom",
-        "query": "28",
-        "hide": 0,
-        "multi": false,
-        "includeAll": false,
-        "options": [
-          {
-            "selected": true,
-            "text": "28",
-            "value": "28"
-          }
-        ],
-        "current": {
-          "selected": true,
-          "text": "28",
-          "value": "28"
-        }
       }
     ]
   },
