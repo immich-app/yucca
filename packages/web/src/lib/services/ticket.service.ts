@@ -1,5 +1,10 @@
 import { handleError } from '$lib/utils/handle-error';
-import { deleteRepository, disableWorm, getTicket, type TicketDto } from '@futo-org/backups-api-client';
+import {
+  deleteRepository,
+  disableWorm,
+  getTicket,
+  type TicketDto,
+} from '@futo-org/backups-api-client';
 import { queryClient } from '@futo-org/backups-orchestrator-ui';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
 
