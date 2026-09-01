@@ -6,6 +6,11 @@ export enum CookieName {
   CliLogin = 'yucca-admin-cli-login',
 }
 
+export enum TicketAction {
+  DeleteRepository = 'repository.delete',
+  DisableWorm = 'repository.disable-worm',
+}
+
 // Audiences of the ES256 JWTs this service mints for the CLI login flow.
 export enum JwtAudience {
   // One-time authorization code handed to the loopback redirect (short TTL).
