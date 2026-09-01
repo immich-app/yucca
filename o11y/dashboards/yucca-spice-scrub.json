@@ -1842,7 +1842,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 63
       },
       "panels": []
     },
@@ -1858,7 +1858,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 56
+        "y": 64
       },
       "targets": [
         {
@@ -1967,7 +1967,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 56
+        "y": 64
       },
       "targets": [
         {
@@ -2033,6 +2033,169 @@
           }
         }
       ]
+    },
+    {
+      "id": 33,
+      "type": "row",
+      "title": "Bandwidth",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      }
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Disk read bandwidth: scrub vs other",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 18,
+        "x": 0,
+        "y": 73
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "legendFormat": "scrub",
+          "expr": "sum(rate(ceph_osd_scrub_replicated_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]) + rate(ceph_osd_scrub_ec_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]))"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "legendFormat": "everything else",
+          "expr": "clamp_min(sum(rate(node_disk_read_bytes_total{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval])) - (sum(rate(ceph_osd_scrub_replicated_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]) + rate(ceph_osd_scrub_ec_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]))), 0)"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 35,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "How much of the fleet's disk read bandwidth scrubbing takes, against everything else reading from the same disks. Stacked, so the top of the band is total disk read throughput. Both series are device-level, unlike the pool-level client counters on the health dashboard: those are logical bytes and would understate disk load. Note that pool rate panels can spike to implausible values when mgr counters dip under PG churn and rate() reads the dip as a counter reset; resets() over the window tells you whether a spike is real."
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Scrub share of disk reads",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 73
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "expr": "sum(rate(ceph_osd_scrub_replicated_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]) + rate(ceph_osd_scrub_ec_read_bytes{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval])) / sum(rate(node_disk_read_bytes_total{project=\"yucca\", cluster=~\"$cluster\"}[$__rate_interval]))"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Share of the fleet's disk read bandwidth currently spent on scrubbing. Both sides are device-level counters, so this is a like-for-like ratio; client figures on the health dashboard are pool-level logical bytes and must not be stacked with these."
     }
   ],
   "refresh": "1h",
