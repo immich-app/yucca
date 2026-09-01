@@ -1,0 +1,5 @@
+[tasks.dev]
+run = "go run ."
+
+[tasks.build]
+run = "go build -o ../../dist/restic-proxy ."
