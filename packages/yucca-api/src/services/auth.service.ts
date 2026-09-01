@@ -180,8 +180,9 @@ export class AuthService {
       throw new InternalServerErrorException('no id token with auth_time received');
     }
 
-    console.info('auth_time:', claims.auth_time);
-    // TODO: validate auth_time
+    if (new Date(claims.auth_time * 1000) < ticket.createdAt) {
+      throw new UnauthorizedException('Session is older than ticket');
+    }
 
     const user = await this.user.getBySub(claims.sub);
     if (user?.id !== ticket.userId) {
