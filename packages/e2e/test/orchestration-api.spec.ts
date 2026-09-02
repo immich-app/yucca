@@ -416,6 +416,9 @@ describe('Snapshot browsing and restore', () => {
   let snapshotId: string;
   let workingDir: string;
 
+  // The timeout covers a real restic backup racing four other suites under
+  // `jest --maxWorkers=3` for one orchestration API; at 60s this hook was the
+  // most frequent e2e failure in CI.
   beforeAll(async () => {
     workingDir = await mkdtemp(join(tmpdir(), 'browse-'));
     await writeFile(join(workingDir, 'top-file'), 'top');
@@ -435,7 +438,7 @@ describe('Snapshot browsing and restore', () => {
     ({
       snapshots: [{ id: snapshotId }],
     } = await sdk.getSnapshots(repository.id));
-  }, 60_000);
+  }, 180_000);
 
   it('navigates into a subdirectory of a snapshot', async () => {
     await expect(sdk.getSnapshotListing(repository.id, snapshotId, { path: workingDir })).resolves.toEqual({
