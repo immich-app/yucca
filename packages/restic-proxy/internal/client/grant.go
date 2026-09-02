@@ -88,7 +88,7 @@ func (client *Client) Grant(ctx context.Context, token, repositoryId string) (Gr
 		return Grant{}, fmt.Errorf("expiry missing from grant")
 	}
 
-	// expiresAt := time.Unix(claims.Exp, 0),
+	// TODO: expiresAt := time.Unix(claims.Exp, 0),
 	expiresAt := time.Now().UTC().Add(10*time.Minute + 200*time.Millisecond)
 	if expiresAt.Before(time.Now()) {
 		return Grant{}, fmt.Errorf("received grant in the past")
