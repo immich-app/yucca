@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/rs/zerolog/log"
 )
 
 const wellKnownUrl = "https://meta.futo.cloud/.well-known/yucca.json"
@@ -17,9 +15,10 @@ func GetMetaUrl() (string, error) {
 		return "", err
 	}
 
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
-		log.Error().Int("status_code", response.StatusCode).Msg("could not fetch well-known")
-		return "", fmt.Errorf("could not fetch well-known")
+		return "", fmt.Errorf("could not fetch well-known: %s", response.Status)
 	}
 
 	body, err := io.ReadAll(response.Body)

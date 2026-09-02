@@ -37,6 +37,12 @@ func (client *Client) Grant(ctx context.Context, token, repositoryId string) (Gr
 		return Grant{}, err
 	}
 
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return Grant{}, fmt.Errorf("could not generate restic URL: %s", response.Status)
+	}
+
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return Grant{}, err

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/rs/zerolog/log"
 )
 
 type Meta struct {
@@ -20,9 +18,10 @@ func GetMeta(metaUrl string) (Meta, error) {
 		return meta, err
 	}
 
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
-		log.Error().Int("status_code", response.StatusCode).Msg("could not fetch meta")
-		return meta, fmt.Errorf("could not fetch meta")
+		return meta, fmt.Errorf("could not fetch meta: %s", response.Status)
 	}
 
 	body, err := io.ReadAll(response.Body)
