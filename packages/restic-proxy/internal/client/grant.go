@@ -24,6 +24,7 @@ func (err *StatusError) Error() string {
 }
 
 type Grant struct {
+	Token    string
 	Username string
 	Password string
 	Scheme   string
@@ -103,6 +104,7 @@ func (client *Client) Grant(ctx context.Context, token string, repositoryId stri
 	}
 
 	return Grant{
+		Token:    token,
 		Username: parsed.User.Username(),
 		Password: tokenString,
 		Scheme:   parsed.Scheme,

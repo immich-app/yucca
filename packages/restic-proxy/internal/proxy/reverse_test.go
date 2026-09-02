@@ -57,6 +57,7 @@ func TestReverse_BackendUnreachable(t *testing.T) {
 	backend.Close()
 
 	handler.grants.Set(testRepository, client.Grant{
+		Token:     testToken,
 		Scheme:    "http",
 		Host:      host,
 		Path:      "/" + testRepository,

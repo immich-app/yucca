@@ -254,6 +254,7 @@ func TestGrant_ServesCachedGrant(t *testing.T) {
 	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, &mints))
 
 	handler.grants.Set(testRepository, client.Grant{
+		Token:     testToken,
 		Scheme:    "http",
 		Host:      hostOf(t, backend.URL),
 		Path:      "/" + testRepository,
@@ -268,12 +269,58 @@ func TestGrant_ServesCachedGrant(t *testing.T) {
 	}
 }
 
+func TestGrant_DifferentTokenDoesNotReuseGrant(t *testing.T) {
+	var seen backendRequest
+	backend := newBackend(t, http.StatusOK, &seen)
+	var mints atomic.Int64
+	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, &mints))
+
+	handler.grants.Set(testRepository, client.Grant{
+		Token:     testToken,
+		Scheme:    "http",
+		Host:      hostOf(t, backend.URL),
+		Path:      "/" + testRepository,
+		Password:  "someone-elses-jwt",
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+
+	do(t, proxy, "/config", testRepository, "a-different-token")
+
+	if mints.Load() != 1 {
+		t.Errorf("expected a fresh mint for an unrecognised token, got %d", mints.Load())
+	}
+	if seen.password == "someone-elses-jwt" {
+		t.Error("expected the cached grant not to be reused for a different token")
+	}
+}
+
+func TestGrant_RejectedTokenDoesNotReuseGrant(t *testing.T) {
+	backend := newBackend(t, http.StatusOK, nil)
+	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusUnauthorized, nil))
+
+	handler.grants.Set(testRepository, client.Grant{
+		Token:     testToken,
+		Scheme:    "http",
+		Host:      hostOf(t, backend.URL),
+		Path:      "/" + testRepository,
+		Password:  "someone-elses-jwt",
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+
+	response := do(t, proxy, "/config", testRepository, "a-different-token")
+
+	if response.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", response.StatusCode)
+	}
+}
+
 func TestGrant_MintsWhenExpired(t *testing.T) {
 	var mints atomic.Int64
 	backend := newBackend(t, http.StatusOK, nil)
 	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, &mints))
 
 	handler.grants.Set(testRepository, client.Grant{
+		Token:     testToken,
 		Scheme:    "http",
 		Host:      hostOf(t, backend.URL),
 		Path:      "/" + testRepository,
@@ -382,6 +429,7 @@ func TestGrant_RefreshesInBackground(t *testing.T) {
 	handler, proxy := newProxy(t, cl)
 
 	stale := client.Grant{
+		Token:     testToken,
 		Scheme:    "http",
 		Host:      hostOf(t, backend.URL),
 		Path:      "/" + testRepository,
@@ -415,6 +463,7 @@ func TestGrant_RefreshFailureKeepsServing(t *testing.T) {
 	handler, proxy := newProxy(t, cl)
 
 	stale := client.Grant{
+		Token:     testToken,
 		Scheme:    "http",
 		Host:      hostOf(t, backend.URL),
 		Path:      "/" + testRepository,

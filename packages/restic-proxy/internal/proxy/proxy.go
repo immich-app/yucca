@@ -83,6 +83,11 @@ func describe(err error) (int, string) {
 
 func (handler *Handler) grant(key string, token string) (client.Grant, error) {
 	grant, ok := handler.grants.Get(key)
+
+	if grant.Token != token {
+		return handler.mint(key, token)
+	}
+
 	if ok && time.Until(grant.ExpiresAt) > refreshTime {
 		return grant, nil
 	}
@@ -105,7 +110,7 @@ func (handler *Handler) refresh(key string, token string) {
 }
 
 func (handler *Handler) mint(key string, token string) (client.Grant, error) {
-	value, err, _ := handler.minting.Do(key, func() (any, error) {
+	value, err, _ := handler.minting.Do(token+key, func() (any, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), refreshTimeout)
 		defer cancel()
 

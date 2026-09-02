@@ -110,5 +110,5 @@ And then point restic at it:
 
 ```bash
 # parameters subject to change
-restic -r rest:http://<REPOSITORY>:<SESSION TOKEN>@127.0.0.1:1434 ..
+restic -r rest:http://<REPOSITORY>:<SESSION TOKEN>@127.0.0.1:1434 init
 ```
