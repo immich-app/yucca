@@ -1,6 +1,6 @@
 { pkgs ? import (fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/b51242d7d43689db2f3be91bd05d5b24fbb469c4.tar.gz";
-    sha256 = "0ldd02kkfzndk0x98zsg992gqz84ip18hvrq01wws6p96ki176rb";
+    url = "https://github.com/NixOS/nixpkgs/archive/e8be7818e19ada32105a8af937a6a473b38167ca.tar.gz";
+    sha256 = "06sil8mb0psrx1x49yfrxxr7sd6fqjz77amyx7bhr7rp3216gpyh";
   }) {},
 
   # Playwright v1.59.1
@@ -28,7 +28,7 @@ in pkgs.mkShell {
     openssl.dev
     python3
     (writeShellScriptBin "fish" ''
-      exec ${pkgs.fish}/bin/fish -C 'mise activate fish | source' "$@"
+      exec ${pkgs.fish}/bin/fish -C '${pkgs.mise}/bin/mise activate fish | source' "$@"
     '')
   ];
 
@@ -37,7 +37,7 @@ in pkgs.mkShell {
     export NIX_LD_LIBRARY_PATH="${nix-ld-libs}/lib"
 
     export MISE_NODE_COMPILE=false
-    eval "$(mise activate bash)"
+    eval "$(${pkgs.mise}/bin/mise activate bash)"
 
     export PLAYWRIGHT_BROWSERS_PATH=${unstablePkgs.playwright-driver.browsers}
     export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
