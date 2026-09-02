@@ -1,5 +1,8 @@
 monorepo_root = true
 
+[monorepo]
+config_roots = ["ansible/ceph", "ansible/talos"]
+
 [tools]
 node = "25.9.0"
 pnpm = "10.28.1"

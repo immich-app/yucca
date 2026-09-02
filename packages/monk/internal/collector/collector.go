@@ -66,7 +66,8 @@ type pgStat struct {
 	LastDeepScrubStamp string `json:"last_deep_scrub_stamp"`
 	ScrubSchedule      string `json:"scrub_schedule"`
 	StatSum            struct {
-		NumBytes int64 `json:"num_bytes"`
+		NumBytes     int64 `json:"num_bytes"`
+		NumOmapBytes int64 `json:"num_omap_bytes"`
 	} `json:"stat_sum"`
 }
 
@@ -83,12 +84,17 @@ type poolDetail struct {
 }
 
 type PoolStats struct {
-	PGs          int
-	Bytes        int64
-	Interval     map[Depth]time.Duration
-	OldestStamp  map[Depth]time.Time
-	OverduePGs   map[Depth]int
-	OverdueBytes map[Depth]int64
+	PGs   int
+	Bytes int64
+	// Omap is tracked apart from Bytes because num_bytes excludes it: an
+	// index pool reports zero data bytes while holding the whole bucket
+	// listing, so byte-weighted coverage cannot see it fall behind.
+	OmapBytes        int64
+	OverdueOmapBytes map[Depth]int64
+	Interval         map[Depth]time.Duration
+	OldestStamp      map[Depth]time.Time
+	OverduePGs       map[Depth]int
+	OverdueBytes     map[Depth]int64
 	// The age histogram observes each stored byte at its PG's scrub age; PGs
 	// with unparsable stamps are excluded, and AgeBucketBytes is indexed like
 	// AgeBuckets.
@@ -102,6 +108,36 @@ type Snapshot struct {
 	Pools          map[string]*PoolStats
 	ScheduleStates map[string]int
 	ParseErrors    int
+	// PGState carries the per-PG stamps forward so the next refresh can count
+	// which PGs actually completed a scrub, which is the only measured way to
+	// answer how fast the backlog is draining.
+	PGState map[string]PGState
+}
+
+// Two fields rather than a map keyed by Depth: this is allocated once per PG
+// per refresh, so on a cluster with thousands of PGs the map header and bucket
+// dominate the struct it holds. A zero stamp means the depth was unparsable.
+type PGState struct {
+	Pool    string
+	Bytes   int64
+	Shallow time.Time
+	Deep    time.Time
+}
+
+func (p PGState) StampAt(d Depth) (time.Time, bool) {
+	t := p.Shallow
+	if d == Deep {
+		t = p.Deep
+	}
+	return t, !t.IsZero()
+}
+
+func (p *PGState) setStamp(d Depth, t time.Time) {
+	if d == Deep {
+		p.Deep = t
+		return
+	}
+	p.Shallow = t
 }
 
 func cephOutput(ctx context.Context, cephCmd []string, args ...string) ([]byte, error) {
@@ -215,6 +251,7 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 		Taken:          now,
 		Pools:          map[string]*PoolStats{},
 		ScheduleStates: map[string]int{},
+		PGState:        make(map[string]PGState, len(data.PGStats)),
 	}
 	for _, state := range scheduleStateNames {
 		snap.ScheduleStates[state] = 0
@@ -232,21 +269,25 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 					Shallow: intervals.For(pool, Shallow),
 					Deep:    intervals.For(pool, Deep),
 				},
-				OldestStamp:    map[Depth]time.Time{},
-				OverduePGs:     map[Depth]int{},
-				OverdueBytes:   map[Depth]int64{},
-				ParsedBytes:    map[Depth]int64{},
-				AgeSum:         map[Depth]float64{},
-				AgeBucketBytes: map[Depth][]int64{Shallow: make([]int64, len(AgeBuckets)), Deep: make([]int64, len(AgeBuckets))},
+				OldestStamp:      map[Depth]time.Time{},
+				OverduePGs:       map[Depth]int{},
+				OverdueBytes:     map[Depth]int64{},
+				OverdueOmapBytes: map[Depth]int64{},
+				ParsedBytes:      map[Depth]int64{},
+				AgeSum:           map[Depth]float64{},
+				AgeBucketBytes:   map[Depth][]int64{Shallow: make([]int64, len(AgeBuckets)), Deep: make([]int64, len(AgeBuckets))},
 			}
 			snap.Pools[pool] = ps
 		}
 		// PG stats go transiently negative under split/backfill churn; a
 		// negative value would wrap the histogram's uint64 buckets.
 		bytes := max(pg.StatSum.NumBytes, 0)
+		omap := max(pg.StatSum.NumOmapBytes, 0)
 		ps.PGs++
 		ps.Bytes += bytes
+		ps.OmapBytes += omap
 		snap.ScheduleStates[scheduleState(pg.ScrubSchedule)]++
+		pgs := PGState{Pool: pool, Bytes: bytes}
 
 		for depth, stampStr := range map[Depth]string{Shallow: pg.LastScrubStamp, Deep: pg.LastDeepScrubStamp} {
 			stamp, err := time.Parse(stampLayout, stampStr)
@@ -254,6 +295,7 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 				snap.ParseErrors++
 				ps.OverduePGs[depth]++
 				ps.OverdueBytes[depth] += bytes
+				ps.OverdueOmapBytes[depth] += omap
 				continue
 			}
 			if old, ok := ps.OldestStamp[depth]; !ok || stamp.Before(old) {
@@ -263,7 +305,9 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 			if age > ps.Interval[depth] {
 				ps.OverduePGs[depth]++
 				ps.OverdueBytes[depth] += bytes
+				ps.OverdueOmapBytes[depth] += omap
 			}
+			pgs.setStamp(depth, stamp)
 			ps.ParsedBytes[depth] += bytes
 			ps.AgeSum[depth] += age.Seconds() * float64(bytes)
 			for i, le := range AgeBuckets {
@@ -272,6 +316,7 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 				}
 			}
 		}
+		snap.PGState[pg.PGID] = pgs
 	}
 	// A correlated parse failure (a stamp-format change) must read as an
 	// outage, not as the whole cluster suddenly overdue.

@@ -10,17 +10,26 @@ spec:
     - name: cnpg-operator
     - name: cnpg-plugin-barman
     - name: openebs
+  # Gate on serving, not on Helm succeeding: CNPG holds Ready False whenever an
+  # instance is short, which froze every dependent app's images for 18h.
+  # Threshold 2 — one stranded instance is survivable, a lone primary is not.
+  # wait MUST stay false: it health-checks the whole inventory and ignores
+  # healthChecks, which puts the stuck HelmRelease back in the way.
   healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: yucca-database
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: yucca-db
       namespace: yucca
+  healthCheckExprs:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      current: status.readyInstances >= 2
   interval: 1h
   retryInterval: 2m
   timeout: 10m
   path: ./kubernetes/apps/base/yucca-database
   prune: true
-  wait: true
+  wait: false
   sourceRef:
     kind: GitRepository
     name: ${MANIFEST_SOURCE:=flux-system}
