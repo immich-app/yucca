@@ -6,8 +6,6 @@ import (
 	"restic-proxy/internal/config"
 )
 
-// newChain stands up the two discovery hops, counting each so a test can prove
-// a configured URL short-circuits the request rather than merely overriding it.
 type chain struct {
 	wellKnownUrl string
 	metaUrl      string

@@ -85,8 +85,6 @@ func TestGetMeta_Unreachable(t *testing.T) {
 	}
 }
 
-// newTruncatedServer promises more bytes than it delivers, then drops the
-// connection, so the read fails after the status check has passed.
 func newTruncatedServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {

@@ -15,7 +15,6 @@ func TestReverse_BackendUnauthorizedBecomesRetryable(t *testing.T) {
 
 	response := do(t, proxy, "/config", testRepository, testToken)
 
-	// 401 is permanent for restic, 503 is retried: the retry mints afresh.
 	if response.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("expected 503, got %d", response.StatusCode)
 	}
@@ -90,7 +89,6 @@ func TestBufferPool_RoundTrip(t *testing.T) {
 func TestNewTransport_DoesNotCompress(t *testing.T) {
 	transport := newTransport()
 
-	// restic bodies are already compressed; re-encoding them wastes CPU on both ends.
 	if !transport.DisableCompression {
 		t.Error("expected compression to be disabled")
 	}

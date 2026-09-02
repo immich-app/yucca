@@ -26,8 +26,6 @@ const (
 	testRepository = "repo-1"
 )
 
-// The proxy logs a line per forwarded request at debug. Run at the shipped
-// default so neither tests nor benchmarks measure the logger.
 func TestMain(m *testing.M) {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	os.Exit(m.Run())
@@ -48,8 +46,6 @@ type backendRequest struct {
 	password string
 }
 
-// newBackend stands in for michael: it records what the proxy forwarded and
-// answers with status.
 func newBackend(t *testing.T, status int, seen *backendRequest) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -64,7 +60,6 @@ func newBackend(t *testing.T, status int, seen *backendRequest) *httptest.Server
 	return server
 }
 
-// newAPI stands in for yucca-api, handing out grants that point at backendURL.
 func newAPI(t *testing.T, backendURL string, status int, mints *atomic.Int64) client.Client {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
@@ -209,8 +204,6 @@ func TestServeHTTP_RepositoryComesFromCredential(t *testing.T) {
 	backend := newBackend(t, http.StatusOK, &seen)
 	_, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, nil))
 
-	// A leading segment that looks like a repository is part of the path now:
-	// only the credential names the repository.
 	do(t, proxy, "/repo-x/config", testRepository, testToken)
 
 	if seen.path != "/"+testRepository+"/repo-x/config" {
@@ -250,7 +243,6 @@ func TestServeHTTP_ApiUnreachableIsRetryable(t *testing.T) {
 
 	response := do(t, proxy, "/config", testRepository, testToken)
 
-	// 503 is retried by restic; 401 would abort the backup permanently.
 	if response.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("expected 503, got %d", response.StatusCode)
 	}
@@ -338,8 +330,6 @@ func TestDescribe(t *testing.T) {
 	}
 }
 
-// newSignallingAPI reports each mint on the returned channel so a test can wait
-// for a background refresh instead of sleeping.
 func newSignallingAPI(t *testing.T, backendURL string, status int) (client.Client, chan struct{}) {
 	t.Helper()
 	minted := make(chan struct{}, 4)
@@ -370,9 +360,6 @@ func awaitMint(t *testing.T, minted chan struct{}) {
 	}
 }
 
-// awaitGrant waits for the stored grant to satisfy want. The API answering is
-// not enough: the refresh stores the grant after the response is read, so the
-// mint signal alone races the write.
 func awaitGrant(t *testing.T, handler *Handler, want func(client.Grant) bool) client.Grant {
 	t.Helper()
 
@@ -394,8 +381,6 @@ func TestGrant_RefreshesInBackground(t *testing.T) {
 	cl, minted := newSignallingAPI(t, backend.URL, http.StatusCreated)
 	handler, proxy := newProxy(t, cl)
 
-	// Inside the refresh margin but still valid: the request must be served
-	// from cache while the replacement is minted behind it.
 	stale := client.Grant{
 		Scheme:    "http",
 		Host:      hostOf(t, backend.URL),

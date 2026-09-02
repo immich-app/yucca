@@ -13,8 +13,6 @@ import (
 	"restic-proxy/internal/meta"
 )
 
-// sink discards the proxied response so the benchmark measures the proxy rather
-// than the recorder's buffering.
 type sink struct{ header http.Header }
 
 func (s *sink) Header() http.Header {
@@ -105,8 +103,6 @@ func BenchmarkDownload16MiB(b *testing.B) { benchmarkDownload(b, 16<<20) }
 
 func BenchmarkDownload64KiB(b *testing.B) { benchmarkDownload(b, 64<<10) }
 
-// BenchmarkGrantCacheHit isolates the per-request cost the proxy adds on top of
-// the round trip: the grant lookup every request pays.
 func BenchmarkGrantCacheHit(b *testing.B) {
 	handler := New(client.New(meta.Api{Url: "http://unused.example"}))
 	handler.grants.Set(testRepository, client.Grant{ExpiresAt: time.Now().Add(time.Hour)})

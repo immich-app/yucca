@@ -37,8 +37,6 @@ type request struct {
 	cookie string
 }
 
-// newAPI answers every request with status and body, recording what it saw so a
-// test can assert on the request the client built rather than only the reply.
 func newAPI(t *testing.T, status int, body string, seen *request) Client {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, r *http.Request) {
