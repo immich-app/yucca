@@ -42,7 +42,7 @@ func New(cl client.Client) *Handler {
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	log := zerolog.Ctx(request.Context())
 
-	_, token, ok := request.BasicAuth()
+	repositoryId, token, ok := request.BasicAuth()
 	if !ok || token == "" {
 		writer.Header().Set("WWW-Authenticate", `Basic realm="restic"`)
 		http.Error(writer, "no credential specified", http.StatusUnauthorized)
@@ -51,11 +51,6 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	}
 
 	path := strings.TrimPrefix(request.URL.Path, "/")
-	repositoryId, segments, _ := strings.Cut(path, "/")
-
-	// TODO: embed the repositoryId into the token
-	// => this will mean token becomes the grant key again
-	// => reverse.go: need to prepend repoId
 
 	grant, err := handler.grant(repositoryId, token)
 	if err != nil {
@@ -66,7 +61,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	}
 
 	log.Debug().Msg("handled request")
-	route := routed{key: repositoryId, grant: grant, path: segments}
+	route := routed{key: repositoryId, grant: grant, path: path}
 	handler.reverse.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), contextKey{}, route)))
 }
 

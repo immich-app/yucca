@@ -67,7 +67,7 @@ func main() {
 	}
 
 	log.Info().Str("address", listener.Addr().String()).Msg("Listening for requests")
-	log.Info().Msg(fmt.Sprintf("Point restic at rest:http://restic:<TOKEN>@%s/<REPOSITORY>", listener.Addr().String()))
+	log.Info().Msg(fmt.Sprintf("Point restic at rest:http://<REPOSITORY>:<TOKEN>@%s", listener.Addr().String()))
 
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal().Err(err).Msg("server stopped")
