@@ -49,9 +49,8 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	path := request.URL.EscapedPath()
-
-	repositoryId, segments, _ := strings.Cut(strings.TrimPrefix(path, "/"), "/")
+	path := strings.TrimPrefix(request.URL.Path, "/")
+	repositoryId, segments, _ := strings.Cut(path, "/")
 
 	grant, err := handler.grant(request.Context(), repositoryId, token)
 	if err != nil {
