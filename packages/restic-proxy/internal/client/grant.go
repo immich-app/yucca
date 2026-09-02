@@ -39,7 +39,7 @@ func (client *Client) Grant(ctx context.Context, token, repositoryId string) (Gr
 
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusCreated {
 		return Grant{}, fmt.Errorf("could not generate restic URL: %s", response.Status)
 	}
 
@@ -92,6 +92,6 @@ func (client *Client) Grant(ctx context.Context, token, repositoryId string) (Gr
 		Path:     parsed.Path,
 
 		// ExpiresAt: time.Unix(claims.Exp, 0),
-		ExpiresAt: time.Now().UTC().Add(10*time.Minute + 5*time.Second),
+		ExpiresAt: time.Now().UTC().Add(10*time.Minute + 200*time.Millisecond),
 	}, nil
 }
