@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Host string `env:"RESTIC_PROXY_HOST" envDefault:"127.0.0.1"`
-	Port int    `env:"RESTIC_PROXY_PORT" envDefault:"1434"`
+	Host      string `env:"RESTIC_PROXY_HOST" envDefault:"127.0.0.1"`
+	Port      int    `env:"RESTIC_PROXY_PORT" envDefault:"1434"`
+	WellKnown string `env:"RESTIC_PROXY_WELL_KNOWN" envDefault:"https://meta.futo.cloud/.well-known/yucca.json"`
 
 	LogLevel  LogLevelNewType  `env:"LOG_LEVEL" envDefault:"info"`
 	LogPretty LogPrettyNewType `env:"LOG_FORMAT" envDefault:"pretty"`

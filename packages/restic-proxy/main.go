@@ -34,9 +34,9 @@ func main() {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 	}
 
-	log.Info().Msg("Loaded config for restic proxy")
+	log.Info().Str("wellknown", cfg.WellKnown).Msg("Loaded config for restic proxy")
 
-	metaUrl, err := meta.GetMetaUrl()
+	metaUrl, err := meta.GetMetaUrl(cfg.WellKnown)
 	if err != nil {
 		log.Error().Err(err).Str("request", "well-known").Msg("failed to resolve FUTO Backups")
 		os.Exit(4)

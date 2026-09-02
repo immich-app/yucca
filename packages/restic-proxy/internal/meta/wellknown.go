@@ -8,9 +8,7 @@ import (
 	"time"
 )
 
-const wellKnownUrl = "https://meta.futo.cloud/.well-known/yucca.json"
-
-func GetMetaUrl() (string, error) {
+func GetMetaUrl(wellKnownUrl string) (string, error) {
 	client := http.Client{Timeout: 30 * time.Second}
 
 	response, err := client.Get(wellKnownUrl)
