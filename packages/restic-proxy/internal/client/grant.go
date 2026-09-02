@@ -14,6 +14,15 @@ import (
 
 var accessTokenCookie = "yucca-access-token"
 
+type StatusError struct {
+	Code   int
+	Status string
+}
+
+func (err *StatusError) Error() string {
+	return fmt.Sprintf("could not generate restic URL: %s", err.Status)
+}
+
 type Grant struct {
 	Username string
 	Password string
@@ -40,7 +49,7 @@ func (client *Client) Grant(ctx context.Context, token, repositoryId string) (Gr
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusCreated {
-		return Grant{}, fmt.Errorf("could not generate restic URL: %s", response.Status)
+		return Grant{}, &StatusError{Code: response.StatusCode, Status: response.Status}
 	}
 
 	body, err := io.ReadAll(response.Body)

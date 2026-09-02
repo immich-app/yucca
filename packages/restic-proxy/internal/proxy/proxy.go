@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httputil"
 	"restic-proxy/internal/client"
@@ -58,14 +59,31 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	grant, err := handler.grant(repositoryId, token)
 	if err != nil {
-		http.Error(writer, "failed to generated restic URL", http.StatusUnauthorized)
-		log.Error().Err(err).Msg("failed to generate restic URL")
+		status, message := describe(err)
+		http.Error(writer, message, status)
+		log.Error().Err(err).Int("status", status).Msg("failed to generate restic URL")
 		return
 	}
 
 	log.Debug().Msg("handled request")
 	route := routed{key: repositoryId, grant: grant, path: segments}
 	handler.reverse.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), contextKey{}, route)))
+}
+
+func describe(err error) (int, string) {
+	var status *client.StatusError
+	if !errors.As(err, &status) {
+		return http.StatusServiceUnavailable, "backups unreachable"
+	}
+
+	switch status.Code {
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return http.StatusUnauthorized, "access token rejected"
+	case http.StatusNotFound:
+		return http.StatusNotFound, "no such repository"
+	default:
+		return http.StatusServiceUnavailable, "backups unavailable"
+	}
 }
 
 func (handler *Handler) grant(key string, token string) (client.Grant, error) {
