@@ -85,3 +85,30 @@ docker compose up -d
 > This will bump you to the latest<sup>†</sup> `main`/development version of Immich.
 >
 > <sup>†</sup> Or at least, generally quite recent.
+
+### Using with restic
+
+> [!CAUTION]
+> This is experimental.
+
+> [!CAUTION]
+> This is intentionally left uncomplete, as the token side of things is still being worked on.
+
+```yaml
+# compose.yml
+name: futo-backups-proxy
+
+services:
+  restic-proxy:
+    image: ghcr.io/immich-app/futo-backups-restic-proxy:v0
+    ports:
+      - 127.0.0.1:1434:1434
+    restart: always
+```
+
+And then point restic at it:
+
+```bash
+# parameters subject to change
+restic -r rest:http://<REPOSITORY>:<SESSION TOKEN>@127.0.0.1:1434 ..
+```
