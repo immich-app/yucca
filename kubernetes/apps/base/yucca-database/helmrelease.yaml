@@ -32,6 +32,15 @@ spec:
     # (WaitForFirstConsumer) then pin that co-location permanently.
     affinity:
       podAntiAffinityType: required
+    # Quorum commit, so a lost primary can't take recent commits with it and
+    # leave the DB and the object store diverged. "preferred", not "required":
+    # instances sit on node-local PVs, so a dead node strands one until a human
+    # replaces it, and "required" would make that a write outage.
+    synchronous:
+      method: any
+      number: 1
+      failoverQuorum: true
+      dataDurability: preferred
     # Generous requests, huge memory limit (no CPU limit — CFS throttling hurts
     # postgres tail latency more than contention does).
     resources:
