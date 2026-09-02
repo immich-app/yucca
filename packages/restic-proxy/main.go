@@ -24,8 +24,8 @@ func main() {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to parse config")
-		os.Exit(1)
+		log.Error().Err(err).Msg("failed to parse config")
+		os.Exit(3)
 	}
 
 	zerolog.SetGlobalLevel(cfg.LogLevel.Level)
@@ -38,14 +38,14 @@ func main() {
 
 	metaUrl, err := meta.GetMetaUrl()
 	if err != nil {
-		log.Panic().Err(err).Str("request", "well-known").Msg("failed to resolve FUTO Backups")
-		os.Exit(3)
+		log.Error().Err(err).Str("request", "well-known").Msg("failed to resolve FUTO Backups")
+		os.Exit(4)
 	}
 
 	meta, err := meta.GetMeta(metaUrl)
 	if err != nil {
-		log.Panic().Err(err).Str("request", "meta").Msg("failed to resolve FUTO Backups")
-		os.Exit(3)
+		log.Error().Err(err).Str("request", "meta").Msg("failed to resolve FUTO Backups")
+		os.Exit(5)
 	}
 
 	log.Info().Str("api_url", meta.ApiUrl).Msg("Found FUTO Backups")
@@ -53,8 +53,8 @@ func main() {
 	listen := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	listener, err := net.Listen("tcp", listen)
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to bind listener")
-		os.Exit(2)
+		log.Error().Err(err).Msg("failed to bind listener")
+		os.Exit(6)
 	}
 
 	client := client.New(meta)
@@ -71,6 +71,5 @@ func main() {
 
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal().Err(err).Msg("server stopped")
-		os.Exit(1)
 	}
 }
