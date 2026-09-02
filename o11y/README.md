@@ -62,6 +62,7 @@ linter's PromQL rule stays away from LogsQL.
 | `yucca-logs-web.json` | web | unstructured stdout; keyword-based error detection |
 | `yucca-logs-metrics-worker.json` | yucca-metrics-worker | sync-run markers (5m cron heartbeat) + sync log |
 | `yucca-logs-meta.json` | meta | nginx access lines; 4xx/5xx via regex |
+| `yucca-logs-futo-backups-bot.json` | futo-backups-bot | ticket-sweep markers (04:00 UTC cron), freshdesk failure breakdown, webhook/internal request lines (unsampled) |
 
 Log-level conventions baked into the queries: pino services log numeric
 levels as strings (`30` info / `40` warn / `50` error / `60` fatal), michael
