@@ -147,12 +147,15 @@ if [ -f ansible.log ] && [ "$(wc -c < ansible.log)" -gt 1048576 ]; then
   mv ansible.log "ansible.$(date +%Y%m%dT%H%M%S).log"
   echo "Rotated ansible.log (>1MB)"
 fi
-echo "=== Baseline ==="       && scripts/ansible-play.sh baseline.yml
-echo "=== OS tuning ==="      && scripts/ansible-play.sh tune-os.yml
-echo "=== Hardware tuning ===" && scripts/ansible-play.sh tune-hardware.yml
-echo "=== Deploy Ceph ==="     && scripts/ansible-play.sh deploy-ceph.yml
-echo "=== Ceph tuning ==="     && scripts/ansible-play.sh tune-ceph.yml
-echo "=== Harden ==="          && scripts/ansible-play.sh harden.yml
+# mise appends task arguments to a single-command task but not to a script
+# block, so each play forwards "$@" explicitly. Without it a --limit passed to
+# this task is silently dropped and every host converges.
+echo "=== Baseline ==="       && scripts/ansible-play.sh baseline.yml "$@"
+echo "=== OS tuning ==="      && scripts/ansible-play.sh tune-os.yml "$@"
+echo "=== Hardware tuning ===" && scripts/ansible-play.sh tune-hardware.yml "$@"
+echo "=== Deploy Ceph ==="     && scripts/ansible-play.sh deploy-ceph.yml "$@"
+echo "=== Ceph tuning ==="     && scripts/ansible-play.sh tune-ceph.yml "$@"
+echo "=== Harden ==="          && scripts/ansible-play.sh harden.yml "$@"
 """
 
 [tasks.destroy]
