@@ -34,10 +34,10 @@ jobs:
         with:
           version: 2026.8.6
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - run: mise prepare
+      - run: mise run prepare
 
       - name: Run checks
-        run: mise check
+        run: mise run check
 
   k8s-validate:
     name: Validate Kubernetes Surface
