@@ -35,9 +35,10 @@ name: Infra (Terraform)
 # planning/applying concurrently touch disjoint state. The job bodies are shared
 # via YAML anchors; every step keys off `matrix.*`, so they stay identical.
 #
-# The two post-apply Ansible converges are gated independently of their TF apply.
+# The two Ansible converges are gated independently of their TF apply, and a
+# ceph-converge dispatch skips the apply entirely (see the Terragrunt apply step).
 # They differ by blast radius:
-#   - ceph (full baseline -> tune -> deploy -> harden against a LIVE bare-metal
+#   - ceph (the playbook named by ceph_playbook, against a LIVE bare-metal
 #     cluster) is DELIBERATE: it runs ONLY on workflow_dispatch with
 #     run_ceph_ansible=true, targeting the single cluster named by the
 #     ceph_cluster input (spice = prod/htz-fsn1, sietch = staging/austin). A push
@@ -117,7 +118,7 @@ on:
           - spice
         default: sietch
       ceph_playbook:
-        description: 'Which converge to run. deploy is the full provisioning pipeline; the rest are single playbooks'
+        description: 'Which converge to run. site is every playbook; deploy is the provisioning subset; the rest are single playbooks'
         type: choice
         options:
           - deploy
@@ -129,7 +130,7 @@ on:
           - status
         default: deploy
       ceph_limit:
-        description: 'Optional ansible --limit for the ceph converge, e.g. a single host to canary'
+        description: 'Optional ansible --limit. Single-playbook runs canary one host; deploy and site must also include the bootstrap host'
         type: string
         default: ''
       run_mgmt_ansible:
@@ -699,7 +700,17 @@ jobs:
       # Everything else: direct terragrunt apply of the reviewed plan file with
       # the partition's write SA (no -auto-approve -- the plan is pre-approved).
       - name: Terragrunt apply
-        if: matrix.stack != 'fabric'
+        # A ceph-converge dispatch does not apply Terraform. run_ceph_ansible
+        # activates this partition so the converge steps below can run, but the
+        # inventory is rendered from TF STATE rather than from an apply, so
+        # applying every stack was blast radius the operator never asked for.
+        # force_apply stays the explicit way to apply without a code change.
+        if: >-
+          matrix.stack != 'fabric'
+          && !(github.event_name == 'workflow_dispatch'
+               && inputs.run_ceph_ansible
+               && inputs.force_apply != matrix.partition
+               && inputs.force_apply != 'both')
         timeout-minutes: 30
         env:
           STACK_DIR: ${{ matrix.dir }}
@@ -767,7 +778,15 @@ jobs:
             args=(--limit "${CEPH_LIMIT}")
           fi
           echo "converge: ${CEPH_PLAYBOOK} on ${CEPH_ENV}${CEPH_LIMIT:+ (limit ${CEPH_LIMIT})}"
-          mise run "${CEPH_PLAYBOOK}" -- "${args[@]}"
+          # A limit naming a host outside the play's target group leaves ansible
+          # with nothing to do, which it reports as success: monk targets
+          # ceph_mon, five of spice's forty-eight. Fail instead of going green
+          # on a converge that touched nothing.
+          mise run "${CEPH_PLAYBOOK}" -- "${args[@]}" 2>&1 | tee "${RUNNER_TEMP}/converge.out"
+          if grep -q 'skipping: no hosts matched' "${RUNNER_TEMP}/converge.out"; then
+            echo "::error::limit '${CEPH_LIMIT}' matched no hosts in a play's target group; nothing converged"
+            exit 1
+          fi
 
       # == Mgmt convergence (Ansible) - fabric stack, gated on the converge gate 
       # Renders the mgmt inventory from TF (tf/render/ansible-mgmt) then converges
