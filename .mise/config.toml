@@ -1,7 +1,7 @@
 monorepo_root = true
 
 [monorepo]
-config_roots = ["ansible/ceph", "ansible/talos"]
+config_roots = ["ansible/ceph", "ansible/talos", "packages/restic-proxy"]
 
 [tools]
 node = "25.9.0"
