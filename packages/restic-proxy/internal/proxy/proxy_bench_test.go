@@ -31,12 +31,12 @@ func warmHandler(b *testing.B, backendURL string) *Handler {
 
 	handler := New(client.New(meta.Api{Url: "http://unused.example"}))
 	handler.grants.Set(testRepository, client.Grant{
-		Token:     testToken,
-		Scheme:    "http",
-		Host:      hostForBench(b, backendURL),
-		Path:      "/" + testRepository,
-		Password:  "minted-jwt",
-		ExpiresAt: time.Now().Add(time.Hour),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         hostForBench(b, backendURL),
+		Path:         "/" + testRepository,
+		Password:     "minted-jwt",
+		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	return handler
@@ -106,7 +106,7 @@ func BenchmarkDownload64KiB(b *testing.B) { benchmarkDownload(b, 64<<10) }
 
 func BenchmarkGrantCacheHit(b *testing.B) {
 	handler := New(client.New(meta.Api{Url: "http://unused.example"}))
-	handler.grants.Set(testRepository, client.Grant{Token: testToken, ExpiresAt: time.Now().Add(time.Hour)})
+	handler.grants.Set(testRepository, client.Grant{SessionToken: testToken, ExpiresAt: time.Now().Add(time.Hour)})
 
 	b.ReportAllocs()
 	b.ResetTimer()

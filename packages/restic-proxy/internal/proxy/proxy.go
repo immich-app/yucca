@@ -17,12 +17,19 @@ import (
 
 const refreshTime = 10 * time.Minute
 const refreshTimeout = 30 * time.Second
+const denialTime = time.Minute
+
+type denial struct {
+	err       error
+	expiresAt time.Time
+}
 
 type Handler struct {
 	client  client.Client
 	reverse *httputil.ReverseProxy
 
 	grants  *hashmap.Map[string, client.Grant]
+	denials *hashmap.Map[string, denial]
 	minting singleflight.Group
 }
 
@@ -30,8 +37,9 @@ func New(cl client.Client) *Handler {
 	grants := hashmap.New[string, client.Grant]()
 
 	handler := &Handler{
-		client: cl,
-		grants: grants,
+		client:  cl,
+		grants:  grants,
+		denials: hashmap.New[string, denial](),
 
 		reverse: reverseProxy(grants),
 	}
@@ -42,8 +50,8 @@ func New(cl client.Client) *Handler {
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	log := zerolog.Ctx(request.Context())
 
-	repositoryId, token, ok := request.BasicAuth()
-	if !ok || repositoryId == "" || token == "" {
+	repositoryId, sessionToken, ok := request.BasicAuth()
+	if !ok || repositoryId == "" || sessionToken == "" {
 		writer.Header().Set("WWW-Authenticate", `Basic realm="restic"`)
 		http.Error(writer, "no credential specified", http.StatusUnauthorized)
 		log.Error().Msg("no credential specified")
@@ -52,7 +60,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	path := strings.TrimPrefix(request.URL.Path, "/")
 
-	grant, err := handler.grant(repositoryId, token)
+	grant, err := handler.grant(repositoryId, sessionToken)
 	if err != nil {
 		status, message := describe(err)
 		http.Error(writer, message, status)
@@ -81,11 +89,11 @@ func describe(err error) (int, string) {
 	}
 }
 
-func (handler *Handler) grant(key string, token string) (client.Grant, error) {
+func (handler *Handler) grant(key string, sessionToken string) (client.Grant, error) {
 	grant, ok := handler.grants.Get(key)
 
-	if grant.Token != token {
-		return handler.mint(key, token)
+	if grant.SessionToken != sessionToken {
+		return handler.mint(key, sessionToken)
 	}
 
 	if ok && time.Until(grant.ExpiresAt) > refreshTime {
@@ -93,11 +101,11 @@ func (handler *Handler) grant(key string, token string) (client.Grant, error) {
 	}
 
 	if ok && time.Until(grant.ExpiresAt) > 0 {
-		handler.refresh(key, token)
+		handler.refresh(key, sessionToken)
 		return grant, nil
 	}
 
-	return handler.mint(key, token)
+	return handler.mint(key, sessionToken)
 }
 
 func (handler *Handler) refresh(key string, token string) {
@@ -109,13 +117,21 @@ func (handler *Handler) refresh(key string, token string) {
 	}()
 }
 
-func (handler *Handler) mint(key string, token string) (client.Grant, error) {
-	value, err, _ := handler.minting.Do(token+key, func() (any, error) {
+func (handler *Handler) mint(key string, sessionToken string) (client.Grant, error) {
+	reference := sessionToken + key
+
+	denied, ok := handler.denials.Get(reference)
+	if ok && time.Now().Before(denied.expiresAt) {
+		return client.Grant{}, denied.err
+	}
+
+	value, err, _ := handler.minting.Do(reference, func() (any, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), refreshTimeout)
 		defer cancel()
 
-		grant, err := handler.client.Grant(ctx, token, key)
+		grant, err := handler.client.Grant(ctx, sessionToken, key)
 		if err != nil {
+			handler.deny(reference, err)
 			return client.Grant{}, err
 		}
 
@@ -129,4 +145,15 @@ func (handler *Handler) mint(key string, token string) (client.Grant, error) {
 	}
 
 	return value.(client.Grant), nil
+}
+
+func (handler *Handler) deny(reference string, err error) {
+	status, _ := describe(err)
+	if status == http.StatusServiceUnavailable {
+		return
+	}
+
+	expiresAt := time.Now().Add(denialTime)
+	log.Warn().Time("expires_at", expiresAt).Msg("Token minting temporarily denied")
+	handler.denials.Set(reference, denial{err: err, expiresAt: expiresAt})
 }

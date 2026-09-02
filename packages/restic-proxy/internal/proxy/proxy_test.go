@@ -254,12 +254,12 @@ func TestGrant_ServesCachedGrant(t *testing.T) {
 	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, &mints))
 
 	handler.grants.Set(testRepository, client.Grant{
-		Token:     testToken,
-		Scheme:    "http",
-		Host:      hostOf(t, backend.URL),
-		Path:      "/" + testRepository,
-		Password:  "cached-jwt",
-		ExpiresAt: time.Now().Add(time.Hour),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         hostOf(t, backend.URL),
+		Path:         "/" + testRepository,
+		Password:     "cached-jwt",
+		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	do(t, proxy, "/config", testRepository, testToken)
@@ -276,12 +276,12 @@ func TestGrant_DifferentTokenDoesNotReuseGrant(t *testing.T) {
 	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, &mints))
 
 	handler.grants.Set(testRepository, client.Grant{
-		Token:     testToken,
-		Scheme:    "http",
-		Host:      hostOf(t, backend.URL),
-		Path:      "/" + testRepository,
-		Password:  "someone-elses-jwt",
-		ExpiresAt: time.Now().Add(time.Hour),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         hostOf(t, backend.URL),
+		Path:         "/" + testRepository,
+		Password:     "someone-elses-jwt",
+		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	do(t, proxy, "/config", testRepository, "a-different-token")
@@ -299,12 +299,12 @@ func TestGrant_RejectedTokenDoesNotReuseGrant(t *testing.T) {
 	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusUnauthorized, nil))
 
 	handler.grants.Set(testRepository, client.Grant{
-		Token:     testToken,
-		Scheme:    "http",
-		Host:      hostOf(t, backend.URL),
-		Path:      "/" + testRepository,
-		Password:  "someone-elses-jwt",
-		ExpiresAt: time.Now().Add(time.Hour),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         hostOf(t, backend.URL),
+		Path:         "/" + testRepository,
+		Password:     "someone-elses-jwt",
+		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	response := do(t, proxy, "/config", testRepository, "a-different-token")
@@ -314,18 +314,82 @@ func TestGrant_RejectedTokenDoesNotReuseGrant(t *testing.T) {
 	}
 }
 
+func TestGrant_MintFailureCaching(t *testing.T) {
+	cases := []struct {
+		name  string
+		api   int
+		mints int64
+	}{
+		{name: "session rejected", api: http.StatusUnauthorized, mints: 1},
+		{name: "session forbidden", api: http.StatusForbidden, mints: 1},
+		{name: "unknown repository", api: http.StatusNotFound, mints: 1},
+		{name: "api broken", api: http.StatusInternalServerError, mints: 2},
+		{name: "api shedding", api: http.StatusBadGateway, mints: 2},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var mints atomic.Int64
+			_, proxy := newProxy(t, newAPI(t, "http://unused.example", tc.api, &mints))
+
+			first := do(t, proxy, "/config", testRepository, testToken)
+			second := do(t, proxy, "/config", testRepository, testToken)
+
+			if first.StatusCode != second.StatusCode {
+				t.Errorf("expected the cached rejection to match the fresh one, got %d then %d", first.StatusCode, second.StatusCode)
+			}
+			if mints.Load() != tc.mints {
+				t.Errorf("expected %d mints, got %d", tc.mints, mints.Load())
+			}
+		})
+	}
+}
+
+func TestGrant_DeniedSessionIsRecheckedWhenStale(t *testing.T) {
+	var mints atomic.Int64
+	handler, proxy := newProxy(t, newAPI(t, "http://unused.example", http.StatusUnauthorized, &mints))
+
+	do(t, proxy, "/config", testRepository, testToken)
+
+	denied, ok := handler.denials.Get(testToken + testRepository)
+	if !ok {
+		t.Fatal("expected the rejection to be cached")
+	}
+	denied.expiresAt = time.Now().Add(-time.Second)
+	handler.denials.Set(testToken+testRepository, denied)
+
+	do(t, proxy, "/config", testRepository, testToken)
+
+	if mints.Load() != 2 {
+		t.Errorf("expected the session to be rechecked once the denial went stale, got %d mints", mints.Load())
+	}
+}
+
+func TestGrant_DeniedSessionIsPerCredential(t *testing.T) {
+	var mints atomic.Int64
+	_, proxy := newProxy(t, newAPI(t, "http://unused.example", http.StatusUnauthorized, &mints))
+
+	do(t, proxy, "/config", testRepository, testToken)
+	do(t, proxy, "/config", testRepository, "another-session-token")
+	do(t, proxy, "/config", "repo-2", testToken)
+
+	if mints.Load() != 3 {
+		t.Errorf("expected each credential to be checked once, got %d mints", mints.Load())
+	}
+}
+
 func TestGrant_MintsWhenExpired(t *testing.T) {
 	var mints atomic.Int64
 	backend := newBackend(t, http.StatusOK, nil)
 	handler, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, &mints))
 
 	handler.grants.Set(testRepository, client.Grant{
-		Token:     testToken,
-		Scheme:    "http",
-		Host:      hostOf(t, backend.URL),
-		Path:      "/" + testRepository,
-		Password:  "stale-jwt",
-		ExpiresAt: time.Now().Add(-time.Minute),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         hostOf(t, backend.URL),
+		Path:         "/" + testRepository,
+		Password:     "stale-jwt",
+		ExpiresAt:    time.Now().Add(-time.Minute),
 	})
 
 	do(t, proxy, "/config", testRepository, testToken)
@@ -429,12 +493,12 @@ func TestGrant_RefreshesInBackground(t *testing.T) {
 	handler, proxy := newProxy(t, cl)
 
 	stale := client.Grant{
-		Token:     testToken,
-		Scheme:    "http",
-		Host:      hostOf(t, backend.URL),
-		Path:      "/" + testRepository,
-		Password:  "cached-jwt",
-		ExpiresAt: time.Now().Add(time.Minute),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         hostOf(t, backend.URL),
+		Path:         "/" + testRepository,
+		Password:     "cached-jwt",
+		ExpiresAt:    time.Now().Add(time.Minute),
 	}
 	handler.grants.Set(testRepository, stale)
 
@@ -463,12 +527,12 @@ func TestGrant_RefreshFailureKeepsServing(t *testing.T) {
 	handler, proxy := newProxy(t, cl)
 
 	stale := client.Grant{
-		Token:     testToken,
-		Scheme:    "http",
-		Host:      hostOf(t, backend.URL),
-		Path:      "/" + testRepository,
-		Password:  "cached-jwt",
-		ExpiresAt: time.Now().Add(time.Minute),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         hostOf(t, backend.URL),
+		Path:         "/" + testRepository,
+		Password:     "cached-jwt",
+		ExpiresAt:    time.Now().Add(time.Minute),
 	}
 	handler.grants.Set(testRepository, stale)
 

@@ -24,12 +24,12 @@ func (err *StatusError) Error() string {
 }
 
 type Grant struct {
-	Token    string
-	Username string
-	Password string
-	Scheme   string
-	Host     string
-	Path     string
+	SessionToken string
+	Username     string
+	Password     string
+	Scheme       string
+	Host         string
+	Path         string
 
 	ExpiresAt time.Time
 }
@@ -104,12 +104,12 @@ func (client *Client) Grant(ctx context.Context, token string, repositoryId stri
 	}
 
 	return Grant{
-		Token:    token,
-		Username: parsed.User.Username(),
-		Password: tokenString,
-		Scheme:   parsed.Scheme,
-		Host:     parsed.Host,
-		Path:     parsed.Path,
+		SessionToken: token,
+		Username:     parsed.User.Username(),
+		Password:     tokenString,
+		Scheme:       parsed.Scheme,
+		Host:         parsed.Host,
+		Path:         parsed.Path,
 
 		ExpiresAt: expiresAt,
 	}, nil
