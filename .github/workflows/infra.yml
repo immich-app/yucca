@@ -4,13 +4,13 @@ name: Infra (Terraform)
 # when its own files change. Connectivity to the bare-metal/private nodes is over
 # the NetBird overlay (Tailscale fully retired).
 #
-# Topology model: partition (prod | staging | dev) → region (htz-fsn1, austin,
-# local, plus the reserved `global` pseudo-region for partition-wide stacks) →
+# Topology model: partition (prod | staging | dev) -> region (htz-fsn1, austin,
+# local, plus the reserved `global` pseudo-region for partition-wide stacks) ->
 # stack. Stacks live at tf/deployment/<partition>/<region>/<stack>/terragrunt.hcl
 # (e.g. staging/austin/ceph, staging/global/{dns,netbird}, prod/htz-fsn1/{fabric,
 # netbird}, prod/global). A single `discover` job scans that tree into one matrix
 # PER PARTITION of {partition, region, stack, dir, order}, so adding a stack/region
-# needs no workflow edit — only its terragrunt.hcl and a matching GitHub Environment.
+# needs no workflow edit - only its terragrunt.hcl and a matching GitHub Environment.
 #
 # Per-partition selection (Actions can't index secrets dynamically, hence the
 # ternaries):
@@ -19,7 +19,7 @@ name: Infra (Terraform)
 #     The prod `fabric` stack applies with the READ SA and self-escalates to the
 #     write SA in-vault via `mise run infra:apply`; the prod netbird stacks
 #     (global + site) apply with the WRITE SA directly.
-#   - dev is local-only (no remote state, no CI service account) → never emitted.
+#   - dev is local-only (no remote state, no CI service account) -> never emitted.
 #
 # Apply ordering (preserved via a per-entry `order` + max-parallel: 1 on each
 # partition's sorted matrix): global-region stacks first (account NetBird + DNS),
@@ -29,7 +29,7 @@ name: Infra (Terraform)
 # prod/global must precede prod/htz-fsn1/netbird (a real terragrunt dependency).
 #
 # The partitions are INDEPENDENT pipelines: plan/apply are split per partition
-# (plan-staging → apply-staging, plan-prod → apply-prod), so a failed staging
+# (plan-staging -> apply-staging, plan-prod -> apply-prod), so a failed staging
 # plan never blocks a prod apply (and vice versa). Every ordering dependency
 # above is intra-partition, and state files are per-stack, so the partitions
 # planning/applying concurrently touch disjoint state. The job bodies are shared
@@ -78,13 +78,13 @@ name: Infra (Terraform)
 #     (read) + OP_TF_YUCCA_PROD_ENV_WRITE (netbird apply / write escalation source).
 #   - GitHub Environments with required reviewers (staging-austin, staging-global,
 #     prod-global, prod-htz-fsn1): DEFERRED -- the approval gate is parked (above).
-#   - BOOTSTRAP — the netbird stacks applied ONCE out-of-band so the CI/mgmt setup
+#   - BOOTSTRAP - the netbird stacks applied ONCE out-of-band so the CI/mgmt setup
 #     keys exist in 1P before anything tries to connect (CI can't mint them itself:
 #     the apply that mints them is gated behind the plan that needs them). E.g.:
 #       OP_SERVICE_ACCOUNT_TOKEN=<staging write SA> \
 #         tf/op-run.sh terragrunt --working-dir tf/deployment/staging/global/netbird apply
-#     (staging: NETBIRD_YUCCA_STAGING_CI_SETUP_KEY — partition-scoped, minted by the
-#     account/global netbird; prod: NETBIRD_YUCCA_PROD_<REGION>_* — region-scoped,
+#     (staging: NETBIRD_YUCCA_STAGING_CI_SETUP_KEY - partition-scoped, minted by the
+#     account/global netbird; prod: NETBIRD_YUCCA_PROD_<REGION>_* - region-scoped,
 #     minted by the per-site netbird). Also: NetBird routes advertising the node
 #     subnets (staging 10.10.10.0/24; prod the site subnets via the mgmt peers).
 #   - 1P items: NET_SWITCHES_TERRAFORM_SSH_PRIVATE_KEY (yucca_tf_prod),
@@ -106,7 +106,7 @@ on:
   workflow_dispatch:
     inputs:
       run_ceph_ansible:
-        description: 'Run the Ceph Ansible converge (full pipeline) against ceph_cluster'
+        description: 'Run a Ceph Ansible converge against ceph_cluster'
         type: boolean
         default: false
       ceph_cluster:
@@ -116,6 +116,22 @@ on:
           - sietch
           - spice
         default: sietch
+      ceph_playbook:
+        description: 'Which converge to run. deploy is the full provisioning pipeline; the rest are single playbooks'
+        type: choice
+        options:
+          - deploy
+          - site
+          - monk
+          - harden
+          - logs
+          - drift
+          - status
+        default: deploy
+      ceph_limit:
+        description: 'Optional ansible --limit for the ceph converge, e.g. a single host to canary'
+        type: string
+        default: ''
       run_mgmt_ansible:
         description: 'Run the mgmt Ansible converge after the fabric apply'
         type: boolean
@@ -147,7 +163,7 @@ permissions:
   contents: read
 
 jobs:
-  # ── Which partitions changed? Partition-keyed; `shared` forces all. ──────────
+  # == Which partitions changed? Partition-keyed; `shared` forces all. ==========
   changes:
     name: Detect changes
     # Skip on fork PRs (no access to secrets / the overlay anyway).
@@ -164,7 +180,7 @@ jobs:
       # mgmt hosts. (The ceph converge is workflow_dispatch-only -- no push gate.)
       ansible_mgmt: ${{ steps.filter.outputs.ansible_mgmt }}
       # Fabric-apply gate: the fabric (switch) stack applies only when its own
-      # surface changed — not on every prod change.
+      # surface changed - not on every prod change.
       fabric: ${{ steps.filter.outputs.fabric }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -195,7 +211,7 @@ jobs:
               # a `shared` force still reasons about every partition uniformly.
               - 'tf/deployment/dev/**'
             shared:
-              # Cross-partition surfaces — a hit forces every partition's matrix.
+              # Cross-partition surfaces - a hit forces every partition's matrix.
               - 'tf/shared/**'
               - 'tf/op-run.sh'
               - '.mise/config.toml'
@@ -210,9 +226,9 @@ jobs:
               - 'ansible/mgmt/**'
               - 'tf/render/ansible-mgmt/**'
               - '.mise/tasks/mgmt/**'
-            # ── Fabric-apply gate (stack-step level) ──
+            # == Fabric-apply gate (stack-step level) ==
             # The fabric stack + the shared modules/providers/tasks it consumes.
-            # A hit means the switch config (or its plumbing) changed → apply it.
+            # A hit means the switch config (or its plumbing) changed -> apply it.
             fabric:
               - 'tf/deployment/prod/htz-fsn1/fabric/**'
               - 'tf/shared/modules/core-fabric/**'
@@ -225,7 +241,7 @@ jobs:
               - '.mise/tasks/fabric/**'
               - '.mise/tasks/infra/**'
 
-  # ── Discover the stack matrix from the deployment tree ───────────────────────
+  # == Discover the stack matrix from the deployment tree =======================
   discover:
     name: Discover stacks
     needs: changes
@@ -393,9 +409,9 @@ jobs:
             exit 1
           }
 
-  # ── Plan every changed stack (parallel; read-only) ───────────────────────────
+  # == Plan every changed stack (parallel; read-only) ===========================
   # One plan job per partition so each partition's gated apply depends ONLY on
-  # its own plans — a failed staging plan must never block a prod apply. The two
+  # its own plans - a failed staging plan must never block a prod apply. The two
   # jobs share their body via the &plan-env/&plan-steps YAML anchors; every step
   # keys off `matrix.*`, so the body is partition-agnostic.
   plan-staging:
@@ -449,7 +465,7 @@ jobs:
           vars="tf/deployment/$STACK_DIR/variables.tf"
           # The default lives in the flux_git_ref variable block.
           if ! awk '/variable "flux_git_ref"/,/^}/' "$vars" | grep -q 'default[[:space:]]*=[[:space:]]*"main"'; then
-            echo "::error file=$vars::flux_git_ref default is not \"main\" on the main branch — prod Flux would track a dead ref. Flip the default." >&2
+            echo "::error file=$vars::flux_git_ref default is not \"main\" on the main branch - prod Flux would track a dead ref. Flip the default." >&2
             exit 1
           fi
 
@@ -522,7 +538,7 @@ jobs:
     env: *plan-env
     steps: *plan-steps
 
-  # ── Apply (gated, ordered within each partition) ─────────────────────────────
+  # == Apply (gated, ordered within each partition) =============================
   # One apply job per partition, each needing only its OWN partition's plans (see
   # the plan jobs above). Bodies shared via the &apply-env/&apply-steps anchors.
   apply-staging:
@@ -646,7 +662,7 @@ jobs:
           set -euo pipefail
           if [ "$DISPATCH" = "true" ]; then run=$DISPATCH_FABRIC; else run=$CHANGED_FABRIC; fi
           echo "run=${run:-false}" >> "$GITHUB_OUTPUT"
-          echo "fabric apply gate → ${run:-false}"
+          echo "fabric apply gate -> ${run:-false}"
 
       # Node-touching stacks join the overlay: talos (provisions over the LAN),
       # ceph (the radosgw provider's RGW admin-API calls on every apply, plus the
@@ -725,21 +741,35 @@ jobs:
           mise trust
           mise install
           mise run setup
-      - name: Deploy Ceph (full pipeline -- baseline -> tune -> deploy -> harden)
+      - name: Converge Ceph (${{ inputs.ceph_playbook }})
         if: matrix.stack == 'ceph' && steps.ansible_gate.outputs.ceph == 'true'
         timeout-minutes: 90
         # Run from ansible/ceph so mise loads ansible/ceph/.mise.toml (where the
-        # `deploy` task + CEPH_ENV-relative inventory paths live); the root config
-        # has no `deploy` task.
+        # ceph tasks + CEPH_ENV-relative inventory paths live); the root config
+        # has none of them. Stays correct once #612 turns on monorepo mode, which
+        # adds root-addressable names without removing directory-local ones.
         working-directory: ansible/ceph
         # CI runner has no known_hosts for the bare-metal nodes; first contact is
         # over the NetBird overlay, so disable strict host-key checking for this run.
+        #
+        # ceph_limit is free text, so it reaches the shell as an environment
+        # variable rather than a template expansion: interpolating a dispatch
+        # input into the script body would let a dispatcher inject shell.
         env:
           ANSIBLE_HOST_KEY_CHECKING: 'false'
           CEPH_ENV: inventories/${{ matrix.partition }}-${{ matrix.region }}/${{ inputs.ceph_cluster }}/inventory.ini
-        run: mise run deploy
+          CEPH_PLAYBOOK: ${{ inputs.ceph_playbook }}
+          CEPH_LIMIT: ${{ inputs.ceph_limit }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ -n "${CEPH_LIMIT}" ]; then
+            args=(--limit "${CEPH_LIMIT}")
+          fi
+          echo "converge: ${CEPH_PLAYBOOK} on ${CEPH_ENV}${CEPH_LIMIT:+ (limit ${CEPH_LIMIT})}"
+          mise run "${CEPH_PLAYBOOK}" -- "${args[@]}"
 
-      # ── Mgmt convergence (Ansible) — fabric stack, gated on the converge gate ─
+      # == Mgmt convergence (Ansible) - fabric stack, gated on the converge gate 
       # Renders the mgmt inventory from TF (tf/render/ansible-mgmt) then converges
       # the mgmt hosts over the overlay. No-op for regions without an ansible/mgmt
       # inventory. Runs under the same (already-approved) gate as the fabric apply.
