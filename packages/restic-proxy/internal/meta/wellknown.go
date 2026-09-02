@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 const wellKnownUrl = "https://meta.futo.cloud/.well-known/yucca.json"
 
 func GetMetaUrl() (string, error) {
-	response, err := http.Get(wellKnownUrl)
+	client := http.Client{Timeout: 30 * time.Second}
+
+	response, err := client.Get(wellKnownUrl)
 	if err != nil {
 		return "", err
 	}

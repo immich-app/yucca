@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 type Meta struct {
@@ -12,8 +13,10 @@ type Meta struct {
 }
 
 func GetMeta(metaUrl string) (Meta, error) {
+	client := http.Client{Timeout: 30 * time.Second}
+
 	var meta Meta
-	response, err := http.Get(metaUrl)
+	response, err := client.Get(metaUrl)
 	if err != nil {
 		return meta, err
 	}
