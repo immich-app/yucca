@@ -785,20 +785,18 @@ jobs:
             args=(--limit "${CEPH_LIMIT}")
           fi
           echo "converge: ${CEPH_PLAYBOOK} on ${CEPH_ENV}${CEPH_LIMIT:+ (limit ${CEPH_LIMIT})}"
-          # A limit naming a host outside the play's target group leaves ansible
-          # with nothing to do, which it reports as success: monk targets
-          # ceph_mon, five of spice's forty-eight. Fail instead of going green
-          # on a converge that touched nothing.
           mise run "${CEPH_PLAYBOOK}" -- "${args[@]}" 2>&1 | tee "${RUNNER_TEMP}/converge.out"
+          # A limit outside a play's target group leaves that play with nothing
+          # to do, which ansible reports as success. Only a run where NO play
+          # matched anything is a failure: site narrowed to a non-mon host still
+          # converges its other eight plays, and failing that would call a real
+          # partial converge a no-op. A single skipped play is worth saying out
+          # loud, though, since monk targets ceph_mon, five of spice's forty-eight.
           if grep -q 'skipping: no hosts matched' "${RUNNER_TEMP}/converge.out"; then
-            echo "::error::limit '${CEPH_LIMIT}' matched no hosts in a play's target group; nothing converged"
-            exit 1
+            echo "::warning::a play matched no hosts under limit '${CEPH_LIMIT}'; check the recap for what actually converged"
           fi
-          # The check above keys on ansible's wording, so it fails open if that
-          # ever changes. This one fails closed: a run that converged something
-          # always leaves recap lines.
           if ! grep -q 'ok=' "${RUNNER_TEMP}/converge.out"; then
-            echo "::error::no PLAY RECAP host lines; the converge reported no hosts at all"
+            echo "::error::no play matched any host; nothing converged"
             exit 1
           fi
 
