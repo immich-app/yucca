@@ -28,6 +28,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	zerolog.SetGlobalLevel(cfg.LogLevel.Level)
+
 	if cfg.LogPretty.Pretty {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 	}
