@@ -52,6 +52,10 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	path := strings.TrimPrefix(request.URL.Path, "/")
 	repositoryId, segments, _ := strings.Cut(path, "/")
 
+	// TODO: embed the repositoryId into the token
+	// => this will mean token becomes the grant key again
+	// => reverse.go: need to prepend repoId
+
 	grant, err := handler.grant(request.Context(), repositoryId, token)
 	if err != nil {
 		http.Error(writer, "failed to generated restic URL", http.StatusUnauthorized)
