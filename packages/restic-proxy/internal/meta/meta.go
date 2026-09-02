@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"restic-proxy/internal/config"
 	"time"
 )
 
@@ -37,4 +38,17 @@ func GetMeta(metaUrl string) (Meta, error) {
 	}
 
 	return meta, nil
+}
+
+func MetaUrlFromConfig(cfg config.Config) (string, error) {
+	if cfg.MetaUrl != "" {
+		return cfg.MetaUrl, nil
+	}
+
+	wellKnown, err := WellKnownFromConfig(cfg)
+	if err != nil {
+		return "", err
+	}
+
+	return wellKnown.MetaUrl, nil
 }

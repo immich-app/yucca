@@ -107,3 +107,13 @@ func TestGetMeta_TruncatedBody(t *testing.T) {
 		t.Fatal("expected an error when the body is cut short")
 	}
 }
+
+func newCountingServer(t *testing.T, hits *int, body func() string) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		*hits++
+		fmt.Fprint(writer, body())
+	}))
+	t.Cleanup(server.Close)
+	return server
+}

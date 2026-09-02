@@ -81,7 +81,7 @@ func newAPI(t *testing.T, backendURL string, status int, mints *atomic.Int64) cl
 		fmt.Fprintf(writer, `{"url":"rest:%s://restic:%s@%s/%s"}`, "http", token, hostOf(t, backendURL), testRepository)
 	}))
 	t.Cleanup(server.Close)
-	return client.New(meta.Meta{ApiUrl: server.URL})
+	return client.New(meta.Api{Url: server.URL})
 }
 
 func hostOf(t *testing.T, rawURL string) string {
@@ -246,7 +246,7 @@ func TestServeHTTP_MintFailureStatuses(t *testing.T) {
 }
 
 func TestServeHTTP_ApiUnreachableIsRetryable(t *testing.T) {
-	_, proxy := newProxy(t, client.New(meta.Meta{ApiUrl: "http://127.0.0.1:1"}))
+	_, proxy := newProxy(t, client.New(meta.Api{Url: "http://127.0.0.1:1"}))
 
 	response := do(t, proxy, "/config", testRepository, testToken)
 
@@ -358,7 +358,7 @@ func newSignallingAPI(t *testing.T, backendURL string, status int) (client.Clien
 	}))
 	t.Cleanup(server.Close)
 
-	return client.New(meta.Meta{ApiUrl: server.URL}), minted
+	return client.New(meta.Api{Url: server.URL}), minted
 }
 
 func awaitMint(t *testing.T, minted chan struct{}) {

@@ -34,7 +34,7 @@ type Grant struct {
 }
 
 func (client *Client) Grant(ctx context.Context, token string, repositoryId string) (Grant, error) {
-	request, err := http.NewRequestWithContext(ctx, "POST", client.meta.ApiUrl+"/repository/"+repositoryId+"/restic", nil)
+	request, err := http.NewRequestWithContext(ctx, "POST", client.api.Url+"/repository/"+repositoryId+"/restic", nil)
 	if err != nil {
 		return Grant{}, err
 	}

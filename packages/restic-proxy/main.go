@@ -36,19 +36,13 @@ func main() {
 
 	log.Info().Str("wellknown", cfg.WellKnown).Msg("Loaded config for restic proxy")
 
-	metaUrl, err := meta.GetMetaUrl(cfg.WellKnown)
+	api, err := meta.ApiFromConfig(cfg)
 	if err != nil {
-		log.Error().Err(err).Str("request", "well-known").Msg("failed to resolve FUTO Backups")
+		log.Error().Err(err).Msg("failed to find API url")
 		os.Exit(4)
 	}
 
-	meta, err := meta.GetMeta(metaUrl)
-	if err != nil {
-		log.Error().Err(err).Str("request", "meta").Msg("failed to resolve FUTO Backups")
-		os.Exit(5)
-	}
-
-	log.Info().Str("api_url", meta.ApiUrl).Msg("Found FUTO Backups")
+	log.Info().Str("api_url", api.Url).Msg("Resolved API")
 
 	listen := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	listener, err := net.Listen("tcp", listen)
@@ -57,7 +51,7 @@ func main() {
 		os.Exit(6)
 	}
 
-	client := client.New(meta)
+	client := client.New(api)
 	proxy := proxy.New(client)
 	handler := hlog.NewHandler(log.Logger)(hlog.MethodHandler("method")(hlog.URLHandler("path")(hlog.RemoteAddrHandler("remote_addr")(proxy))))
 

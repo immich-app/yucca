@@ -53,7 +53,7 @@ func newAPI(t *testing.T, status int, body string, seen *request) Client {
 		fmt.Fprint(writer, body)
 	}))
 	t.Cleanup(server.Close)
-	return New(meta.Meta{ApiUrl: server.URL})
+	return New(meta.Api{Url: server.URL})
 }
 
 func resticURL(t *testing.T, host string) string {
@@ -182,7 +182,7 @@ func TestGrant_ExpiryMissing(t *testing.T) {
 }
 
 func TestGrant_Unreachable(t *testing.T) {
-	client := New(meta.Meta{ApiUrl: "http://127.0.0.1:1"})
+	client := New(meta.Api{Url: "http://127.0.0.1:1"})
 
 	_, err := client.Grant(context.Background(), testToken, "repo-1")
 	if err == nil {
@@ -223,7 +223,7 @@ func TestGrant_TruncatedBody(t *testing.T) {
 		panic(http.ErrAbortHandler)
 	}))
 	t.Cleanup(server.Close)
-	client := New(meta.Meta{ApiUrl: server.URL})
+	client := New(meta.Api{Url: server.URL})
 
 	if _, err := client.Grant(context.Background(), testToken, "repo-1"); err == nil {
 		t.Fatal("expected an error when the body is cut short")
@@ -243,7 +243,7 @@ func TestGrant_UnparseableResticURL(t *testing.T) {
 }
 
 func TestGrant_UnbuildableRequest(t *testing.T) {
-	client := New(meta.Meta{ApiUrl: "http://api.example\n"})
+	client := New(meta.Api{Url: "http://api.example\n"})
 
 	if _, err := client.Grant(context.Background(), testToken, "repo-1"); err == nil {
 		t.Fatal("expected an error when the API URL cannot form a request")

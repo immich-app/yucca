@@ -8,13 +8,13 @@ import (
 )
 
 type Client struct {
-	meta meta.Meta
+	api  meta.Api
 	http *http.Client
 }
 
-func New(meta meta.Meta) Client {
+func New(api meta.Api) Client {
 	return Client{
-		meta: meta,
+		api: api,
 		http: &http.Client{
 			Timeout: 30 * time.Second,
 		},

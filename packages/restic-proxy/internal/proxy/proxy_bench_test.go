@@ -31,7 +31,7 @@ func (s *sink) WriteHeader(int) {}
 func warmHandler(b *testing.B, backendURL string) *Handler {
 	b.Helper()
 
-	handler := New(client.New(meta.Meta{ApiUrl: "http://unused.example"}))
+	handler := New(client.New(meta.Api{Url: "http://unused.example"}))
 	handler.grants.Set(testRepository, client.Grant{
 		Scheme:    "http",
 		Host:      hostForBench(b, backendURL),
@@ -108,7 +108,7 @@ func BenchmarkDownload64KiB(b *testing.B) { benchmarkDownload(b, 64<<10) }
 // BenchmarkGrantCacheHit isolates the per-request cost the proxy adds on top of
 // the round trip: the grant lookup every request pays.
 func BenchmarkGrantCacheHit(b *testing.B) {
-	handler := New(client.New(meta.Meta{ApiUrl: "http://unused.example"}))
+	handler := New(client.New(meta.Api{Url: "http://unused.example"}))
 	handler.grants.Set(testRepository, client.Grant{ExpiresAt: time.Now().Add(time.Hour)})
 
 	b.ReportAllocs()

@@ -5,35 +5,41 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"restic-proxy/internal/config"
 	"time"
 )
 
-func GetMetaUrl(wellKnownUrl string) (string, error) {
+type WellKnown struct {
+	MetaUrl string `json:"meta_url"`
+}
+
+func GetWellKnown(wellKnownUrl string) (WellKnown, error) {
 	client := http.Client{Timeout: 30 * time.Second}
 
 	response, err := client.Get(wellKnownUrl)
 	if err != nil {
-		return "", err
+		return WellKnown{}, err
 	}
 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("could not fetch well-known: %s", response.Status)
+		return WellKnown{}, fmt.Errorf("could not fetch well-known: %s", response.Status)
 	}
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return WellKnown{}, err
 	}
 
-	var wellKnown struct {
-		MetaUrl string `json:"meta_url"`
-	}
-
+	wellKnown := WellKnown{}
 	if err := json.Unmarshal(body, &wellKnown); err != nil {
-		return "", err
+		return wellKnown, err
 	}
 
-	return wellKnown.MetaUrl, nil
+	return wellKnown, nil
+}
+
+func WellKnownFromConfig(cfg config.Config) (WellKnown, error) {
+	return GetWellKnown(cfg.WellKnown)
 }
