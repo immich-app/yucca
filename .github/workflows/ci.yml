@@ -30,8 +30,9 @@ jobs:
         run: .mise/tasks/yucca-api/check-migration-order origin/main
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
+          version: 2026.8.6
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
@@ -48,8 +49,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
+          version: 2026.8.6
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # helm template + kubeconform per chart, then flux-local builds the whole
@@ -69,8 +71,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
+          version: 2026.8.6
           github_token: ${{ secrets.GITHUB_TOKEN }}
       # The stack (dev images, k3s) is heavy; the stock runner has ~14GB free,
       # so drop the biggest unused toolchains up front.
@@ -112,8 +115,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
+          version: 2026.8.6
           github_token: ${{ secrets.GITHUB_TOKEN }}
       # Paths from the GitHub-hosted image; absent on a self-hosted runner, and
       # -n so a runner without passwordless sudo fails instead of hanging.
