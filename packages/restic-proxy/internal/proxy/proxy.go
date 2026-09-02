@@ -43,7 +43,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	log := zerolog.Ctx(request.Context())
 
 	repositoryId, token, ok := request.BasicAuth()
-	if !ok || token == "" {
+	if !ok || repositoryId == "" || token == "" {
 		writer.Header().Set("WWW-Authenticate", `Basic realm="restic"`)
 		http.Error(writer, "no credential specified", http.StatusUnauthorized)
 		log.Error().Msg("no credential specified")
