@@ -30,6 +30,7 @@ func reverseProxy(grants *hashmap.Map[string, client.Grant]) *httputil.ReversePr
 			request.Out.URL.Host = route.grant.Host
 			request.Out.Host = route.grant.Host
 			request.Out.URL.Path = route.grant.Path + "/" + route.path
+			request.Out.URL.RawPath = ""
 			request.Out.SetBasicAuth("restic", route.grant.Password)
 			log.Debug().Any("host", request.Out.Host).Str("path", request.Out.URL.Path).Msg("forwarded request")
 		},
