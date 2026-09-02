@@ -30,11 +30,9 @@ jobs:
         run: .mise/tasks/yucca-api/check-migration-order origin/main
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
-        env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - run: mise prepare
 
       - name: Run checks
@@ -50,11 +48,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
-        env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       # helm template + kubeconform per chart, then flux-local builds the whole
       # kubernetes/ tree the way Flux would. No cluster involved. One retry:
@@ -73,11 +69,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
-        env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       # The stack (dev images, k3s) is heavy; the stock runner has ~14GB free,
       # so drop the biggest unused toolchains up front.
       - name: Free runner disk space
@@ -118,11 +112,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
-        env:
-          # mise downloads tools from GitHub releases; anonymous requests hit
-          # API rate limits with four parallel jobs.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: immich-app/devtools/actions/use-mise@06a9ef925332c91be647d6256642b86b398592c8 # use-mise-action-v3.2.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       # Paths from the GitHub-hosted image; absent on a self-hosted runner, and
       # -n so a runner without passwordless sudo fails instead of hanging.
       - name: Free runner disk space
