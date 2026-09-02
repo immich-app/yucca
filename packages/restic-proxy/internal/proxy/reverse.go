@@ -13,7 +13,7 @@ import (
 )
 
 type routed struct {
-	token string
+	key   string
 	grant client.Grant
 	path  string
 }
@@ -39,7 +39,7 @@ func reverseProxy(grants *hashmap.Map[string, client.Grant]) *httputil.ReversePr
 			}
 
 			route := response.Request.Context().Value(contextKey{}).(routed)
-			grants.Del(route.token)
+			grants.Del(route.key)
 
 			if err := response.Body.Close(); err != nil {
 				return err

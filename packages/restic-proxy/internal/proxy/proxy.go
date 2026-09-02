@@ -53,7 +53,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	repositoryId, segments, _ := strings.Cut(strings.TrimPrefix(path, "/"), "/")
 
-	grant, err := handler.grant(request.Context(), token, repositoryId)
+	grant, err := handler.grant(request.Context(), repositoryId, token)
 	if err != nil {
 		http.Error(writer, "failed to generated restic URL", http.StatusUnauthorized)
 		log.Error().Err(err).Msg("failed to generate restic URL")
@@ -61,12 +61,12 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	}
 
 	log.Debug().Msg("handled request")
-	route := routed{token: token, grant: grant, path: segments}
+	route := routed{key: repositoryId, grant: grant, path: segments}
 	handler.reverse.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), contextKey{}, route)))
 }
 
-func (handler *Handler) grant(ctx context.Context, token string, repositoryId string) (client.Grant, error) {
-	grant, ok := handler.grants.Get(token)
+func (handler *Handler) grant(ctx context.Context, key string, token string) (client.Grant, error) {
+	grant, ok := handler.grants.Get(key)
 	if ok && time.Until(grant.ExpiresAt) > refreshTime {
 		return grant, nil
 	}
@@ -79,12 +79,12 @@ func (handler *Handler) grant(ctx context.Context, token string, repositoryId st
 
 	defer handler.refreshMutex.Unlock()
 
-	grant, err := handler.client.Grant(ctx, token, repositoryId)
+	grant, err := handler.client.Grant(ctx, token, key)
 	if err != nil {
 		return client.Grant{}, err
 	}
 
 	log.Info().Time("expires_at", grant.ExpiresAt).Msg("Minted a new token")
-	handler.grants.Set(token, grant)
+	handler.grants.Set(key, grant)
 	return grant, nil
 }
