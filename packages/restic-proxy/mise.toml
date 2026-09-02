@@ -1,5 +1,8 @@
+[tools]
+air = "latest"
+
 [tasks.dev]
-run = "go run ."
+run = "air"
 
 [tasks.build]
 run = "go build -o ../../dist/restic-proxy ."

@@ -6,10 +6,15 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"restic-proxy/internal/config"
 	"time"
 
+	"restic-proxy/internal/client"
+	"restic-proxy/internal/config"
+	"restic-proxy/internal/meta"
+	"restic-proxy/internal/proxy"
+
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,6 +32,22 @@ func main() {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 	}
 
+	log.Info().Msg("Loaded config for restic proxy")
+
+	metaUrl, err := meta.GetMetaUrl()
+	if err != nil {
+		log.Panic().Err(err).Str("request", "well-known").Msg("failed to resolve FUTO Backups")
+		os.Exit(3)
+	}
+
+	meta, err := meta.GetMeta(metaUrl)
+	if err != nil {
+		log.Panic().Err(err).Str("request", "meta").Msg("failed to resolve FUTO Backups")
+		os.Exit(3)
+	}
+
+	log.Info().Str("api_url", meta.ApiUrl).Msg("Found FUTO Backups")
+
 	listen := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	listener, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -34,12 +55,9 @@ func main() {
 		os.Exit(2)
 	}
 
-	handler := http.HandlerFunc(func(
-		writer http.ResponseWriter, request *http.Request,
-	) {
-		log.Printf("%s %s", request.Method, request.URL.Path)
-		http.Error(writer, "not forwarding yet", http.StatusNotImplemented)
-	})
+	client := client.New(meta)
+	proxy := proxy.New(client)
+	handler := hlog.NewHandler(log.Logger)(hlog.MethodHandler("method")(hlog.URLHandler("path")(hlog.RemoteAddrHandler("remote_addr")(proxy))))
 
 	server := &http.Server{
 		Handler:           handler,
