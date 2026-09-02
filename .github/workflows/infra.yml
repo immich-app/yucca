@@ -762,8 +762,10 @@ jobs:
         timeout-minutes: 90
         # Run from ansible/ceph so mise loads ansible/ceph/.mise.toml (where the
         # ceph tasks + CEPH_ENV-relative inventory paths live); the root config
-        # has none of them. Stays correct once #612 turns on monorepo mode, which
-        # adds root-addressable names without removing directory-local ones.
+        # has none of them, and CEPH_ENV is relative to this directory. Verified
+        # against the monorepo mode #612 turned on: ansible/ceph is a config_root,
+        # so the tasks are also addressable as //ansible/ceph:<task>, and the bare
+        # name still resolves and still forwards arguments from inside the root.
         working-directory: ansible/ceph
         # CI runner has no known_hosts for the bare-metal nodes; first contact is
         # over the NetBird overlay, so disable strict host-key checking for this run.
