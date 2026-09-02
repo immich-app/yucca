@@ -118,17 +118,17 @@ on:
           - spice
         default: sietch
       ceph_playbook:
-        description: 'Which converge to run. site is every playbook; deploy is the provisioning subset; the rest are single playbooks'
+        description: 'Which converge to run. Defaults to the read-only status check; deploy is the provisioning subset and site is every playbook'
         type: choice
         options:
-          - deploy
-          - site
+          - status
+          - drift
           - monk
           - harden
           - logs
-          - drift
-          - status
-        default: deploy
+          - deploy
+          - site
+        default: status
       ceph_limit:
         description: 'Optional ansible --limit. Single-playbook runs canary one host; deploy and site must also include the bootstrap host'
         type: string
@@ -705,6 +705,11 @@ jobs:
         # inventory is rendered from TF STATE rather than from an apply, so
         # applying every stack was blast radius the operator never asked for.
         # force_apply stays the explicit way to apply without a code change.
+        #
+        # The trade: state means the LAST apply. Merging a clusters.auto.tfvars
+        # change and converging without applying renders the previous host list
+        # and ceph-config.generated.yml. Always applying used to hide that. Use
+        # force_apply when the TF surface moved.
         if: >-
           matrix.stack != 'fabric'
           && !(github.event_name == 'workflow_dispatch'
@@ -785,6 +790,13 @@ jobs:
           mise run "${CEPH_PLAYBOOK}" -- "${args[@]}" 2>&1 | tee "${RUNNER_TEMP}/converge.out"
           if grep -q 'skipping: no hosts matched' "${RUNNER_TEMP}/converge.out"; then
             echo "::error::limit '${CEPH_LIMIT}' matched no hosts in a play's target group; nothing converged"
+            exit 1
+          fi
+          # The check above keys on ansible's wording, so it fails open if that
+          # ever changes. This one fails closed: a run that converged something
+          # always leaves recap lines.
+          if ! grep -q 'ok=' "${RUNNER_TEMP}/converge.out"; then
+            echo "::error::no PLAY RECAP host lines; the converge reported no hosts at all"
             exit 1
           fi
 
