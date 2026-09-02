@@ -1,6 +1,7 @@
 ARG ALPINE_IMAGE=alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
 ARG NODE_IMAGE=node:25-alpine3.23@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
 ARG MISE_IMAGE=ghcr.io/jdx/mise:2026.7.18@sha256:ed804bc4b6c6c8db9bbd0883e489db17b70c4a4ee2ef60b1841c43d295ff430e
+ARG GOLANG_IMAGE=golang:1.27-alpine3.23@sha256:4441ef16de1cbb69a44ab7c3cadc2c4b85d6e63494a4c0df252c5aae6204b865
 
 FROM ${ALPINE_IMAGE} AS manifests
 WORKDIR /src
@@ -23,6 +24,13 @@ ENV MISE_DATA_DIR=/mise-data
 RUN --mount=type=cache,id=mise-${TARGETPLATFORM},target=/mise-data \
     mise install restic && \
     cp "$(mise which restic)" /usr/local/bin/restic
+
+FROM ${GOLANG_IMAGE} AS proxy
+WORKDIR /src
+COPY packages/restic-proxy/go.mod packages/restic-proxy/go.sum ./
+RUN go mod download
+COPY packages/restic-proxy/ ./
+RUN CGO_ENABLED=0 go build -o /restic-proxy .
 
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /build-stage
@@ -52,6 +60,7 @@ RUN apk add --no-cache libstdc++ dumb-init su-exec \
 
 COPY --from=builder /usr/local/bin/node /usr/local/bin/
 COPY --from=tools /usr/local/bin/restic /usr/local/bin/
+COPY --from=proxy /restic-proxy /usr/local/bin/
 COPY --from=builder /deploy ./
 COPY --chmod=0755 packages/standalone-app/docker-entrypoint.sh /usr/local/bin/
 
