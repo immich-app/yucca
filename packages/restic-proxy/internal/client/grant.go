@@ -80,8 +80,12 @@ func (client *Client) Grant(ctx context.Context, token, repositoryId string) (Gr
 		Exp int64 `json:"exp"`
 	}
 
-	if err := json.Unmarshal(payload, &claims); err != nil || claims.Exp == 0 {
+	if err := json.Unmarshal(payload, &claims); err != nil {
 		return Grant{}, err
+	}
+
+	if claims.Exp == 0 {
+		return Grant{}, fmt.Errorf("received JWT that is already expired")
 	}
 
 	return Grant{
