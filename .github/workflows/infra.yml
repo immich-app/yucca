@@ -802,7 +802,7 @@ jobs:
             exit 1
           fi
 
-      # == Mgmt convergence (Ansible) - fabric stack, gated on the converge gate 
+      # == Mgmt convergence (Ansible) - fabric stack, gated on the converge gate
       # Renders the mgmt inventory from TF (tf/render/ansible-mgmt) then converges
       # the mgmt hosts over the overlay. No-op for regions without an ansible/mgmt
       # inventory. Runs under the same (already-approved) gate as the fabric apply.
