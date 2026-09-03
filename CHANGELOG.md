@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.39.0](https://github.com/immich-app/yucca/compare/v0.38.0...v0.39.0) (2026-09-03)
+
+
+### Features
+
+* **bot:** add dashboard ([#622](https://github.com/immich-app/yucca/issues/622)) ([85c936a](https://github.com/immich-app/yucca/commit/85c936abc6d9d51620e3f1c1099d7ad7989d530b))
+* **ceph:** enable monk on the spice mons and restore its scrape job ([#615](https://github.com/immich-app/yucca/issues/615)) ([c713549](https://github.com/immich-app/yucca/commit/c7135494197423c01507533eee3ea6fa6f435896))
+* **cnpg:** enable quorum commit on the real database clusters ([#613](https://github.com/immich-app/yucca/issues/613)) ([56a1b18](https://github.com/immich-app/yucca/commit/56a1b18061b079d34511a67018dbce58a361fe72))
+* destructive actions - delete repos & disable write-only ([#607](https://github.com/immich-app/yucca/issues/607)) ([f31f9be](https://github.com/immich-app/yucca/commit/f31f9be024db7d8cedbe8bc9db741c60dda47da7))
+* enable mise mono repo ([#612](https://github.com/immich-app/yucca/issues/612)) ([f8497b8](https://github.com/immich-app/yucca/commit/f8497b8033bc887206025f0bc46c8219f9bfa00a))
+* **infra:** activate the futo-backups-bot prod creds ([#601](https://github.com/immich-app/yucca/issues/601)) ([f164032](https://github.com/immich-app/yucca/commit/f1640326b9a52efb915c4c8372d903d6f7c8b769))
+* **monk:** count scrub completions and track omap bytes ([#617](https://github.com/immich-app/yucca/issues/617)) ([b9d60c6](https://github.com/immich-app/yucca/commit/b9d60c667fc199aad6d122ee4cc0ae76dc4488f6))
+* **o11y:** put the scrub work-outstanding row on measured metrics ([#616](https://github.com/immich-app/yucca/issues/616)) ([078c8f7](https://github.com/immich-app/yucca/commit/078c8f756cec196c8767796ed3083a21aa9bebe3))
+* restic proxy ([#611](https://github.com/immich-app/yucca/issues/611)) ([76d48c2](https://github.com/immich-app/yucca/commit/76d48c26b4084d24e7eab0797e62acfbff4b4962))
+* standalone app login & work around Zitadel race condition ([#556](https://github.com/immich-app/yucca/issues/556)) ([312062e](https://github.com/immich-app/yucca/commit/312062e33c6026db633c2c39a004ff08828fc0e7))
+
+
+### Bug Fixes
+
+* **flux:** gate the database kustomization on a serving primary ([#610](https://github.com/immich-app/yucca/issues/610)) ([2044b50](https://github.com/immich-app/yucca/commit/2044b5095ef6824419416bc6c08f7fada7dfd454))
+* **flux:** make the database health check actually apply ([#614](https://github.com/immich-app/yucca/issues/614)) ([ec696ed](https://github.com/immich-app/yucca/commit/ec696ed7623c222172f7f1f45631eba33c6c99a8))
+
 ## [0.38.0](https://github.com/immich-app/yucca/compare/v0.37.1...v0.38.0) (2026-09-01)
 
 
