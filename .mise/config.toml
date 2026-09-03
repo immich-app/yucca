@@ -36,7 +36,7 @@ uv = "0.9.18"
 opentofu = "1.11.5"
 terragrunt = "0.99.5"
 # ansible/mgmt convergence (mgmt:ansible task, run from CI on prod apply).
-"pipx:ansible-core" = "2.21.2"
+"pipx:ansible-core" = "2.21.3"
 [tasks.dev]
 description = "Start all services in development mode"
 depends = ["install:deps", "common:build", "docker:start"]
