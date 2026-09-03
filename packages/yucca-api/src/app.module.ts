@@ -23,6 +23,7 @@ import { RepositoryMetricsHistoryRepository } from './repositories/repositoryMet
 import { SessionRepository } from './repositories/session.repository';
 import { SettingsRepository } from './repositories/settings.repository';
 import { StorageRepository } from './repositories/storage.repository';
+import { TicketRepository } from './repositories/ticket.repository';
 import { TopologyRepository } from './repositories/topology.repository';
 import { UserRepository } from './repositories/user.repository';
 import { UserAllowlistRepository } from './repositories/userAllowlist.repository';
@@ -66,6 +67,7 @@ export const providers = [
   DiscordRepository,
   CryptoRepository,
   OidcRepository,
+  TicketRepository,
   UserRepository,
   UserAllowlistRepository,
   RepositoryRepository,

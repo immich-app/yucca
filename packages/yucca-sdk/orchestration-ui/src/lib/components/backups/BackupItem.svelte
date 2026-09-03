@@ -9,9 +9,10 @@
 
   type Props = {
     repository: LocalRepositoryDto;
+    local?: boolean
   };
 
-  const { repository }: Props = $props();
+  const { repository, local }: Props = $props();
 
   const BackendNames = {
     yucca: "FUTO Backups",
@@ -21,14 +22,29 @@
 
   const outcome = $derived(getBackupOutcome(repository.metrics));
 
-  const { BackupNow, Snapshots, History, Configure, Import, MetricsHistory } =
-    $derived(getRepositoryActions(repository));
+  const {
+    BackupNow,
+    Snapshots,
+    History,
+    Configure,
+    Import,
+    MetricsHistory,
+    Delete,
+  } = $derived(getRepositoryActions(repository, local));
 </script>
 
 <StackListItem
   title={repository.name}
   color={outcome === "failed" ? "danger" : "primary"}
-  actions={[BackupNow, Snapshots, History, Configure, Import, MetricsHistory]}
+  actions={[
+    BackupNow,
+    Snapshots,
+    History,
+    Configure,
+    Import,
+    MetricsHistory,
+    Delete,
+  ]}
 >
   {#snippet icon()}
     <Icon icon={mdiArchiveOutline} />

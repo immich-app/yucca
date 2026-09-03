@@ -45,6 +45,7 @@ postgresClusterName: yucca-db
 # OIDC provider in-cluster service
 oidcIssuer: http://yucca-mock-oidc:8092
 oidcRedirectUri: http://localhost:5173/api/auth/oidc/callback
+oidcTicketRedirectUri: http://localhost:5173/api/auth/ticket/callback
 oidcLogoutRedirectUri: http://localhost:5173
 
 # DEV FIXTURES — not secrets (mock-oidc placeholder client). Prod replaces

@@ -9,6 +9,7 @@
     useIntegrations,
   } from "$lib/services/integrations.service";
   import {
+  handleDisableWormRepository,
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
@@ -85,7 +86,6 @@
     }
 
     name = repository.name;
-    worm = repository.worm;
 
     const policy = repository.configuration?.retentionPolicy ?? null;
     retentionKey =
@@ -153,17 +153,13 @@
       <BackendsList {repository} />
 
       {#if repository?.worm}
-        <Field
-          label="Write-only"
-          description="Once written, backups can't be removed. This can't be turned off again."
-          readOnly // @immich/ui forces enabled={false} when disabled={true}
-        >
-          <Switch checked class="cursor-not-allowed opacity-38" />
-        </Field>
+        <Button onclick={() => handleDisableWormRepository(repository.id, true)}>
+          Disable write-only
+        </Button>
       {:else}
         <Field
           label="Write-only"
-          description="Once written, backups can't be removed. This can't be turned off again."
+          description="Once written, backups can't be removed."
         >
           <Switch bind:checked={worm} />
         </Field>

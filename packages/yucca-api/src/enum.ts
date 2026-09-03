@@ -5,6 +5,18 @@ export enum CookieName {
   InviteCode = 'yucca-invite-code',
   DiscordInvite = 'yucca-discord-invite',
   RedirectPath = 'yucca-redirect-path',
+  TicketId = 'yucca-ticket-id',
+  TicketToken = 'yucca-ticket-token',
+}
+
+export enum TicketAction {
+  DeleteRepository = 'repository.delete',
+  DisableWorm = 'repository.disable-worm',
+}
+
+export enum AuditAction {
+  DeleteRepository = 'repository.delete',
+  DisableWorm = 'repository.disable-worm',
 }
 
 export enum MetadataKey {

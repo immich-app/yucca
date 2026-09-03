@@ -4,15 +4,12 @@
   import { type LocalRepositoryDto } from "$lib/fetch-client";
   import { options } from "$lib/options";
   import {
-    useRemoveRepository,
     useUpdateRepository,
   } from "$lib/services/repository.service";
   import {
-    Button,
     Field,
     FormModal,
     Input,
-    modalManager,
     Stack,
   } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
@@ -32,7 +29,6 @@
   const local = $derived(typeof repository.configuration === "object");
 
   const updateMutation = useUpdateRepository();
-  const removeMutation = useRemoveRepository();
 
   const onSubmit = () =>
     updateMutation.mutate(
@@ -40,30 +36,12 @@
       { onSuccess: () => onClose() },
     );
 
-  const onRemove = async () => {
-    const confirm = await modalManager.showDialog({
-      confirmText: local ? "Remove" : "Delete",
-      title: local ? "Remove Repository" : "Delete Repository",
-      prompt: local
-        ? "Repository will be removed locally."
-        : "This repository will be removed.",
-    });
-
-    if (!confirm) return;
-
-    removeMutation.mutate(
-      { id: repository.id, local },
-      { onSuccess: () => onClose() },
-    );
-  };
-
   const { advanced } = options;
 </script>
 
 <FormModal
   disabled={name.length === 0 ||
-    updateMutation.isPending ||
-    removeMutation.isPending}
+    updateMutation.isPending}
   title={`Configure ${name}`}
   size="large"
   {onSubmit}
@@ -88,10 +66,6 @@
         {#snippet empty()}No paths configured yet.{/snippet}
       </PathListField>
     {/if}
-
-    <Button color="danger" loading={removeMutation.isPending} onclick={onRemove}
-      >Remove Repository from This Device</Button
-    >
 
     {#if advanced}
       <BackendsList {repository} />

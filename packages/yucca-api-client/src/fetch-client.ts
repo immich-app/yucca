@@ -24,6 +24,35 @@ export type AuthDto = {
         [key: string]: boolean;
     };
 };
+export type TicketAction = "repository.delete" | "repository.disable-worm";
+export type TicketCreateRequestDto = {
+    action: TicketAction;
+    /** Repository the ticket is bound to */
+    repositoryId: string;
+};
+export type TicketCreateResponseDto = {
+    /** IdP URL the browser must be sent to */
+    redirectTo: string;
+};
+export type RepositoryMetricsDto = {
+    lastBackup?: string;
+    lastSuccessfulBackup?: string;
+    lastBackupDuration?: number;
+    sizeBytes: number;
+};
+export type RepositoryMeterDto = {
+    sizeBytes: number;
+    objectCount: number;
+    lastUpdated?: string;
+};
+export type TicketDto = {
+    id: string;
+    action: TicketAction;
+    repositoryId: string;
+    repositoryName: string;
+    metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
+};
 export type MetaConfigDto = {
     restic_pack_size_mib: number;
     /** Client-evaluated expression: integers, cores, min, max, + - * / */
@@ -124,17 +153,6 @@ export type RepositoryCreateRequestDto = {
     /** Internal site code from /meta; defaults to default_site */
     site?: string;
 };
-export type RepositoryMetricsDto = {
-    lastBackup?: string;
-    lastSuccessfulBackup?: string;
-    lastBackupDuration?: number;
-    sizeBytes: number;
-};
-export type RepositoryMeterDto = {
-    sizeBytes: number;
-    objectCount: number;
-    lastUpdated?: string;
-};
 export type RepositoryWithMetricsDto = {
     id: string;
     worm: boolean;
@@ -208,6 +226,29 @@ export function oidcDeviceFlow({ connectionType, connectionName }: {
         connection_type: connectionType,
         connection_name: connectionName
     }))}`, {
+        ...opts
+    }));
+}
+export function createTicket(ticketCreateRequestDto: TicketCreateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TicketCreateResponseDto;
+    }>("/api/auth/ticket", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: ticketCreateRequestDto
+    })));
+}
+export function ticketCallback(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/auth/ticket/callback", {
+        ...opts
+    }));
+}
+export function getTicket(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TicketDto;
+    }>(`/api/auth/ticket/${encodeURIComponent(id)}`, {
         ...opts
     }));
 }
@@ -356,8 +397,10 @@ export function updateRepository(id: string, repositoryUpdateRequestDto: Reposit
         body: repositoryUpdateRequestDto
     })));
 }
-export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}`, {
+export function deleteRepository(id: string, ticketId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}${QS.query(QS.explode({
+        ticketId
+    }))}`, {
         ...opts,
         method: "DELETE"
     }));
@@ -369,5 +412,13 @@ export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
     }>(`/api/repository/${encodeURIComponent(id)}/restic`, {
         ...opts,
         method: "POST"
+    }));
+}
+export function disableWorm(id: string, ticketId: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/worm${QS.query(QS.explode({
+        ticketId
+    }))}`, {
+        ...opts,
+        method: "DELETE"
     }));
 }

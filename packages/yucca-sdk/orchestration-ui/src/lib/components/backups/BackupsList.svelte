@@ -46,7 +46,7 @@
 
         <Suspense {query}>
           {#each localRepositories as repository (repository.id)}
-            <BackupItem {repository} />
+            <BackupItem {repository} {local} />
           {/each}
 
           {#if localRepositories.length === 0}

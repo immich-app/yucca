@@ -7,6 +7,8 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  TicketCreateRequestDto,
+  TicketCreateResponseDto,
 } from '@futo-org/backups-api-client';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, stat } from 'node:fs/promises';
@@ -108,6 +110,10 @@ export class LocalBackend extends Backend {
 
   async deleteRepository(_id: string): Promise<void> {
     throw new Error('Method not implemented.');
+  }
+
+  async createTicket(_dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    throw new Error('Invalid backend for method');
   }
 
   async getResticEndpoint(id: string): Promise<string> {

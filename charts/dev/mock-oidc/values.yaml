@@ -35,6 +35,8 @@ env:
   # Browser-facing callbacks resolve via the Tilt port-forwards.
   - name: REDIRECT_URI
     value: http://localhost:5173/api/auth/oidc/callback
+  - name: TICKET_REDIRECT_URI
+    value: http://localhost:5173/api/auth/ticket/callback
   - name: POST_LOGOUT_REDIRECT_URI
     value: http://localhost:5173
   - name: ADMIN_REDIRECT_URI

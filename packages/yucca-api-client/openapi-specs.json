@@ -140,6 +140,81 @@
         ]
       }
     },
+    "/api/auth/ticket": {
+      "post": {
+        "operationId": "createTicket",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketCreateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/ticket/callback": {
+      "get": {
+        "operationId": "ticketCallback",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/ticket/{id}": {
+      "get": {
+        "operationId": "getTicket",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/meta": {
       "get": {
         "operationId": "getMeta",
@@ -668,6 +743,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "ticketId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -703,6 +786,37 @@
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "Repository"
+        ]
+      }
+    },
+    "/api/repository/{id}/worm": {
+      "delete": {
+        "operationId": "disableWorm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ticketId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
           }
         },
         "tags": [
@@ -757,6 +871,117 @@
           "email",
           "sessionId",
           "features"
+        ]
+      },
+      "TicketAction": {
+        "type": "string",
+        "enum": [
+          "repository.delete",
+          "repository.disable-worm"
+        ]
+      },
+      "TicketCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketAction"
+              }
+            ]
+          },
+          "repositoryId": {
+            "type": "string",
+            "description": "Repository the ticket is bound to"
+          }
+        },
+        "required": [
+          "action",
+          "repositoryId"
+        ]
+      },
+      "TicketCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "redirectTo": {
+            "type": "string",
+            "description": "IdP URL the browser must be sent to"
+          }
+        },
+        "required": [
+          "redirectTo"
+        ]
+      },
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastBackup": {
+            "type": "string"
+          },
+          "lastSuccessfulBackup": {
+            "type": "string"
+          },
+          "lastBackupDuration": {
+            "type": "number"
+          },
+          "sizeBytes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "objectCount": {
+            "type": "number"
+          },
+          "lastUpdated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
+      "TicketDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketAction"
+              }
+            ]
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "repositoryName": {
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "repositoryId",
+          "repositoryName",
+          "metrics"
         ]
       },
       "MetaConfigDto": {
@@ -1134,44 +1359,6 @@
         "required": [
           "name",
           "worm"
-        ]
-      },
-      "RepositoryMetricsDto": {
-        "type": "object",
-        "properties": {
-          "lastBackup": {
-            "type": "string"
-          },
-          "lastSuccessfulBackup": {
-            "type": "string"
-          },
-          "lastBackupDuration": {
-            "type": "number"
-          },
-          "sizeBytes": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "sizeBytes"
-        ]
-      },
-      "RepositoryMeterDto": {
-        "type": "object",
-        "properties": {
-          "sizeBytes": {
-            "type": "number"
-          },
-          "objectCount": {
-            "type": "number"
-          },
-          "lastUpdated": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "sizeBytes",
-          "objectCount"
         ]
       },
       "RepositoryWithMetricsDto": {

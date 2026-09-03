@@ -41,6 +41,7 @@ namespace_create('yucca')
 DEV_ENV_VALUE_KEYS = {
     'OIDC_ISSUER': 'oidcIssuer',
     'OIDC_REDIRECT_URI': 'oidcRedirectUri',
+    'OIDC_TICKET_REDIRECT_URI': 'oidcTicketRedirectUri',
     'OIDC_LOGOUT_REDIRECT_URI': 'oidcLogoutRedirectUri',
 }
 

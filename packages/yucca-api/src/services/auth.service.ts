@@ -5,19 +5,24 @@ import { parse } from 'cookie';
 import EventIterator from 'event-iterator';
 import { Request } from 'express';
 import { IncomingHttpHeaders } from 'node:http';
+import * as client from 'openid-client';
 import { UserInfoResponse } from 'openid-client';
 import { from } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
-import { CookieName } from 'src/enum';
+import { TicketCreateRequestDto, TicketCreateResponseDto, TicketDto } from 'src/dto/ticket.dto';
+import { CookieName, TicketAction } from 'src/enum';
 import { env } from 'src/env';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { DiscordRepository } from 'src/repositories/discord.repository';
 import { OidcRepository } from 'src/repositories/oidc.repository';
+import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
+import { TicketRepository } from 'src/repositories/ticket.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
-import { EmailNotAllowedException, FeatureNotEnabledException } from 'src/utils/exceptions';
+import { EmailNotAllowedException, FeatureNotEnabledException, TicketRequiredException } from 'src/utils/exceptions';
+
 import { isInAppPath } from 'src/utils/redirect';
 
 @Injectable()
@@ -32,6 +37,8 @@ export class AuthService {
     private readonly wideContext: WideContextRepository,
     private readonly connection: ConnectionRepository,
     private readonly discord: DiscordRepository,
+    private readonly ticket: TicketRepository,
+    private readonly repository: RepositoryRepository,
   ) {}
 
   async authenticate(headers: IncomingHttpHeaders): Promise<AuthDto> {
@@ -123,6 +130,97 @@ export class AuthService {
       redirectTo: redirectPath && isInAppPath(redirectPath) ? redirectPath : '/',
       accessToken,
     };
+  }
+
+  async createTicket(auth: AuthDto, dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    const repository = await this.repository.get(dto.repositoryId);
+    if (repository.userId !== auth.id) {
+      throw new UnauthorizedException();
+    }
+
+    const oidcState = this.crypto.randomHex(32);
+    const oidcCodeVerifier = client.randomPKCECodeVerifier();
+
+    await this.ticket.create({
+      token: this.crypto.randomHex(32),
+      oidcState,
+      oidcCodeVerifier,
+      userId: auth.id,
+      repositoryId: dto.repositoryId,
+      action: dto.action,
+      expiresAt: new Date(Date.now() + env.TICKET_TTL.toMillis()),
+    });
+
+    const { redirectTo } = await this.oidc.authorizeTicket(oidcState, oidcCodeVerifier, auth.email);
+
+    return { redirectTo: redirectTo.href };
+  }
+
+  async ticketCallback(request: Request): Promise<{ token: string; redirectTo: string }> {
+    const redirectUri = new URL(env.OIDC_TICKET_REDIRECT_URI);
+    const url = new URL(`${redirectUri.origin}${request.originalUrl}`);
+
+    if (url.searchParams.has('error')) {
+      throw new BadRequestException(`OIDC error: ${url.searchParams.get('error_description') ?? 'access denied'}`);
+    }
+
+    const oidcState = url.searchParams.get('state');
+    if (!oidcState) {
+      throw new BadRequestException('missing state');
+    }
+
+    const ticket = await this.ticket.getPending(oidcState);
+    if (!ticket) {
+      throw new BadRequestException('Confirmation flow has expired');
+    }
+
+    const { claims, accessToken } = await this.oidc.callbackTicket(url, oidcState, ticket.oidcCodeVerifier);
+
+    if (!claims?.auth_time) {
+      throw new InternalServerErrorException('no id token with auth_time received');
+    }
+
+    const createdAtSeconds = Math.floor(ticket.createdAt.getTime() / 1000);
+    if (claims.auth_time < createdAtSeconds) {
+      throw new UnauthorizedException('Session is older than ticket');
+    }
+
+    const user = await this.user.getBySub(claims.sub);
+    if (user?.id !== ticket.userId) {
+      throw new UnauthorizedException('Signed in as a different account');
+    }
+
+    await this.oidc.revoke(accessToken).catch((error: unknown) => {
+      this.logger.warn({ error }, 'failed to revoke the ticket access token');
+    });
+
+    await this.ticket.activate(ticket.id);
+
+    return { token: ticket.token, redirectTo: `/tickets/${ticket.id}` };
+  }
+
+  async getTicket(ticketId: string, headers: IncomingHttpHeaders): Promise<TicketDto> {
+    const cookies = parse(headers.cookie ?? '');
+    const token = cookies[CookieName.TicketToken] ?? '';
+
+    const ticket = await this.ticket.getActive(ticketId, token);
+    if (!ticket) {
+      throw new BadRequestException('Confirmation flow has expired');
+    }
+
+    return ticket;
+  }
+
+  async spendTicket(action: TicketAction, repositoryId: string, ticketId: string, headers: IncomingHttpHeaders) {
+    const cookies = parse(headers.cookie ?? '');
+    const token = cookies[CookieName.TicketToken] ?? '';
+
+    const ticket = await this.ticket.spend(ticketId, token, action, repositoryId);
+    if (!ticket) {
+      throw new TicketRequiredException(action);
+    }
+
+    return ticket;
   }
 
   async getOrCreateUser(

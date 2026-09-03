@@ -7,6 +7,7 @@ import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { RepositoryRepository } from 'src/repositories/repository.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { SettingsRepository } from 'src/repositories/settings.repository';
+import type { TicketRepository } from 'src/repositories/ticket.repository';
 import type { TopologyRepository } from 'src/repositories/topology.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
 import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
@@ -51,11 +52,25 @@ export const newDiscordRepositoryMock = (): jest.Mocked<RepositoryInterface<Disc
 
 export const newOidcRepositoryMock = (): jest.Mocked<RepositoryInterface<OidcRepository>> => {
   return {
-    authorize: jest.fn(),
-    callback: jest.fn(),
-    deviceFlow: jest.fn(),
-    logout: jest.fn(),
     onModuleInit: jest.fn(),
+    authorize: jest.fn(),
+    authorizeTicket: jest.fn(),
+    callback: jest.fn(),
+    callbackTicket: jest.fn(),
+    logout: jest.fn(),
+    revoke: jest.fn(),
+    deviceFlow: jest.fn(),
+  };
+};
+
+export const newTicketRepositoryMock = (): jest.Mocked<RepositoryInterface<TicketRepository>> => {
+  return {
+    create: jest.fn(),
+    getPending: jest.fn(),
+    getActive: jest.fn(),
+    activate: jest.fn(),
+    spend: jest.fn(),
+    deleteExpired: jest.fn(),
   };
 };
 
@@ -90,6 +105,7 @@ export const newRepositoryRepositoryMock = (): jest.Mocked<RepositoryInterface<R
     get: jest.fn(),
     getByUser: jest.fn(),
     update: jest.fn(),
+    disableWorm: jest.fn(),
     delete: jest.fn(),
   };
 };
@@ -161,6 +177,7 @@ export const newMocks = () => {
     database: newDatabaseRepositoryMock(),
     discord: newDiscordRepositoryMock(),
     oidc: newOidcRepositoryMock(),
+    ticket: newTicketRepositoryMock(),
     session: newSessionRepositoryMock(),
     user: newUserRepositoryMock(),
     userAllowlist: newUserAllowlistRepositoryMock(),
