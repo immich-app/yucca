@@ -5,6 +5,8 @@ Application code lives under `packages/`. Infrastructure that operates Yucca
 Terraform+1Password) lives at the top level in `ansible/`, `tf/`, and
 `kubernetes/`.
 
+Documentation is published at https://docs.futo.cloud from `packages/docs`.
+
 ## Development Guide (application)
 
 Ensure you have prerequisites installed:

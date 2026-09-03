@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build docs"
+set -e
+
+NODE_ENV=production pnpm --filter docs build

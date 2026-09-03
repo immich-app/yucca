@@ -1,0 +1,59 @@
+name: Docs preview destroy
+
+on:
+  # zizmor: ignore[dangerous-triggers]
+  # Runs the base branch's teardown; never executes PR code.
+  pull_request_target:
+    types: [closed]
+    paths:
+      - 'packages/docs/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.npmrc'
+      - '.mise/config.toml'
+      - '.mise/tasks/docs/**'
+      - 'tf/pages/**'
+      - 'tf/op-run.sh'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number whose preview (stage pr-<number>) to tear down'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  destroy:
+    name: Destroy preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      ENVIRONMENT: dev
+      TF_VAR_stage: pr-${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || github.event.number }}
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_TF_YUCCA_STAGING_ENV }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+
+      - run: mise run docs:destroy
+
+      - name: Remove preview comment
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: immich-app/devtools/actions/sticky-comment@0135acd12ad9f3369b94a2aa3c0ae8c835a4e926 # sticky-comment-action-v1.0.0
+        with:
+          id: docs-preview
+          delete: true

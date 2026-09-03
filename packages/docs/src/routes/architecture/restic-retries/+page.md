@@ -1,4 +1,8 @@
-# Restic client retry behavior
+---
+title: Restic client retry behavior
+description: Which errors restic retries, for how long, and what that means for michael's status codes
+order: 6
+---
 
 What the restic client does when michael returns an error. Michael's own
 resilience mechanisms (the S3 backend pool, its retries and circuit breakers)
@@ -30,12 +34,12 @@ Consequences for michael:
 operation immediately. Everything else — 500, 502, **503**, timeouts, resets,
 any transport error — is retried for the full window.
 
-| michael returns | restic does |
-|---|---|
-| 500 / 503 | retries with backoff, up to 15 min |
-| 403 (WORM violation, "already exists") | fails the operation permanently |
-| 404 on HEAD | treats as "does not exist" (permanent, but often the expected answer) |
-| 400 | retried (not in the permanent set) — avoid for terminal conditions |
+| michael returns                         | restic does                                                          |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| 500 / 503                               | retries with backoff, up to 15 min                                   |
+| 403 (WORM violation, "already exists")  | fails the operation permanently                                      |
+| 404 on HEAD                             | treats as "does not exist" (permanent, but often the expected answer) |
+| 400                                     | retried (not in the permanent set) — avoid for terminal conditions   |
 
 Restic does **not** read `Retry-After`; its backoff is fixed client-side. The
 header is still worth sending for other clients, but it cannot pace restic.

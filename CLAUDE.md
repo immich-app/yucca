@@ -52,6 +52,7 @@ Yucca is a multi-tenant **backup service**: OIDC-authenticated users get S3-back
 ```bash
 mise dev                  # compose-based dev: deps, docker infra (postgres/minio/mock-oidc/victoria-*), all *:dev
 mise <pkg>:dev            # one service, e.g. mise web:dev, mise yucca-api:dev
+mise docs:dev             # docs site (packages/docs) on :36034
 
 mise check                # lint + format check + svelte-check + unit tests (= the `checks` CI job)
 mise fix                  # autofix lint/format + lingui extract
@@ -106,7 +107,7 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `yucca-api` | NestJS | User-facing API. Owns auth (OIDC code + device flow, ES256 JWTs), repositories, **DB schema + migrations**. |
 | `yucca-admin-api` | NestJS | Admin API (user/session/repository management). Same DB + JWT validation. |
 | `michael` | Go | **Production** restic REST backend — S3 proxy with JWT verification, WORM enforcement, backend pooling. |
-| `columbo` | Go | Ticket investigation agent: LLM loop (OpenRouter) over per-user-scoped o11y queries, answers only into staff threads. See `docs/columbo.md`. |
+| `columbo` | Go | Ticket investigation agent: LLM loop (OpenRouter) over per-user-scoped o11y queries, answers only into staff threads. See `packages/docs/src/routes/architecture/columbo/+page.md`. |
 | `monk` | Go | Ceph scrub-backlog exporter: polls `pg ls`, serves measured per-pool scrub-age metrics on :9284. Deployed onto mon hosts by ansible, not K8s. |
 | `restic-api` | NestJS | Earlier TS implementation of the restic backend, kept as **reference**; not deployed. |
 | `yucca-metrics-worker` | NestJS | 5-min cron: RadosGW usage → meter tables → per-connection rollup (`connectionMetrics`, billing floor), OTel gauges. |
@@ -114,10 +115,15 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `mock-oidc-provider` | Node | Dev/test OIDC IdP (code + device flow). |
 | `mock-postmark-provider` | Node | Dev/test Postmark API mock; delivers into the Mailpit inbox. |
 | `common` (`@common/server`) | TS lib | OTel init, pino repository, **feature-flag registry + connection-type registry**, Postmark `EmailRepository` (`@common/server/email`). |
-| `emails` (`@common/emails`) | Svelte lib | Transactional email templates (better-svelte-email, web theme), prebuilt to JS for the NestJS apps. See `docs/email.md`. |
+| `emails` (`@common/emails`) | Svelte lib | Transactional email templates (better-svelte-email, web theme), prebuilt to JS for the NestJS apps. See `packages/docs/src/routes/architecture/email/+page.md`. |
 
 **Frontend** (`packages/web`): SvelteKit 5 + Tailwind 4, `@immich/ui`, lingui i18n
 (`mise web:lingui:*`; compiled locales are generated, not edited), generated API client.
+**Docs** (`packages/docs`, https://docs.futo.cloud): SvelteKit + `adapter-static`; every page is a
+`src/routes/<section>/<slug>/+page.md` compiled by `@immich/svelte-markdown-preprocess` (front matter
+`title`/`description`/`order`; sections declared in `src/lib/index.ts`). Deployed to Cloudflare Pages
+(`tf/pages/docs` + `.github/workflows/docs.yml`; every PR gets a preview at docs.pr-<n>.dev.futo.cloud). The site's
+"Writing documentation" page is the authoring guide.
 **`packages/yucca-sdk/`** (orchestration-api + orchestration-ui) is separately versioned and
 added explicitly in `pnpm-workspace.yaml`.
 
@@ -134,7 +140,7 @@ resolve topology and drive day-2 ops. See `packages/yuctl/README.md`.
 
 ### Connections, feature flags, token revocation
 
-Full detail: `docs/connections.md`. The essentials:
+Full detail: `packages/docs/src/routes/architecture/connections/+page.md`. The essentials:
 
 - **Connections**: a user has N connection instances of type `immich`/`restic`; every repository
   has a NOT NULL `connectionId`. Device flow binds via `?connection_type=&connection_name=`;

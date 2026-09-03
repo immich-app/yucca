@@ -1,4 +1,8 @@
-# Discord support (futo-backups-bot)
+---
+title: Discord support
+description: How the futo-backups-bot runs support through Discord, from account linking and private ticket threads to beta invites and the Freshdesk mirror
+order: 4
+---
 
 Support runs through Discord: a pinned message in the public support channel
 carries a **Get support** button; clicking it links the Discord account to the
@@ -6,7 +10,7 @@ user's yucca account (once), then opens a **private ticket thread** under the
 support channel with the user, seeded with the user's issue description and
 paired with a staff-only context thread.
 
-```
+```text
 click button ──> linked? ──no──> one-time web link ──> login + confirm ──> discordLinks row
                     │yes                                                        │
                     └──────────────> description modal <────── bot polls ───────┘
@@ -130,7 +134,7 @@ The only ticket state in postgres is the Freshdesk mapping row
   repository count, last seen) — staff see it via Manage Threads on the
   support channel; the user cannot. For linked users the bot also
   fires-and-forgets an investigation request to columbo, which may post an
-  AI-generated telemetry brief into the staff thread (see `docs/columbo.md`).
+  AI-generated telemetry brief into the staff thread (see [Columbo](/architecture/columbo)).
   Up to `TICKET_USER_LIMIT`
   (3) open tickets per user (membership scan of active threads); at the limit
   a submit points at the existing threads.
