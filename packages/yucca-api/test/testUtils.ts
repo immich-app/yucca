@@ -1,4 +1,5 @@
 import { Kysely } from 'kysely';
+import { TicketAction } from 'src/enum';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
@@ -21,6 +22,7 @@ export const testUtils = {
   resetDatabase: async () => {
     const db = getDb();
     await db.deleteFrom('tickets').execute();
+    await db.deleteFrom('auditLog').execute();
     await db.deleteFrom('repositories').execute();
     await db.deleteFrom('sessions').execute();
     await db.deleteFrom('connections').execute();
@@ -119,8 +121,43 @@ export const testUtils = {
     return userRepository.getByAccessToken(accessToken);
   },
 
+  createActiveTicket: (userId: string, repositoryId: string, action: TicketAction) => {
+    const crypto = new CryptoRepository();
+    return getDb()
+      .insertInto('tickets')
+      .values({
+        token: crypto.randomHex(32),
+        oidcState: crypto.randomHex(32),
+        oidcCodeVerifier: 'verifier',
+        userId,
+        repositoryId,
+        action,
+        validAt: new Date(),
+        expiresAt: new Date(Date.now() + 600_000),
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  },
+
+  getPendingTicket: (repositoryId: string) => {
+    return getDb()
+      .selectFrom('tickets')
+      .selectAll()
+      .where('repositoryId', '=', repositoryId)
+      .where('validAt', 'is', null)
+      .executeTakeFirst();
+  },
+
   getTicketByToken: (token: string) => {
     return getDb().selectFrom('tickets').selectAll().where('token', '=', token).executeTakeFirst();
+  },
+
+  getAuditLog: () => {
+    return getDb().selectFrom('auditLog').selectAll().execute();
+  },
+
+  getRepository: (id: string) => {
+    return getDb().selectFrom('repositories').selectAll().where('id', '=', id).executeTakeFirst();
   },
 
   createRepository: async (userId: string, name = 'My Repository', worm = false) => {

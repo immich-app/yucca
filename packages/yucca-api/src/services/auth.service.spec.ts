@@ -1,4 +1,6 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { AuthDto } from 'src/dto/auth.dto';
+import { TicketAction } from 'src/enum';
 import { env } from 'src/env';
 import { Mocks, newMocks } from '../../test/mocks';
 import { AuthService } from './auth.service';
@@ -19,6 +21,20 @@ const mockUser = {
   sub: 'oidc-sub',
   sessionId: 'session',
   connectionId: null,
+};
+
+const mockTicket = {
+  id: 'ticket',
+  token: 'ticket-token',
+  oidcState: 'state',
+  oidcCodeVerifier: 'verifier',
+  userId: 'user',
+  repositoryId: 'repository',
+  action: TicketAction.DeleteRepository,
+  validAt: null,
+  expiresAt: new Date('2026-01-01T00:10:00Z'),
+  consumedAt: null,
+  createdAt: new Date('2026-01-01T00:00:00Z'),
 };
 
 describe(AuthService.name, () => {
@@ -522,6 +538,173 @@ describe(AuthService.name, () => {
         expect(mocks.discord.linkDirect).toHaveBeenCalledWith(mockUser.id, '123456789', 'someone');
         expect(mocks.userAllowlist.markUsed).toHaveBeenCalledWith('entry');
       });
+    });
+  });
+
+  describe('createTicket', () => {
+    const dto = { action: TicketAction.DeleteRepository, repositoryId: 'repository' };
+
+    it('should refuse a repository owned by someone else', async () => {
+      mocks.repository.get.mockResolvedValue({ id: 'repository', userId: 'someone-else' } as never);
+
+      await expect(sut.createTicket(mockAuth, dto)).rejects.toThrow(UnauthorizedException);
+      expect(mocks.ticket.create).not.toHaveBeenCalled();
+    });
+
+    it('should store a pending ticket and send the browser to the IdP', async () => {
+      mocks.repository.get.mockResolvedValue({ id: 'repository', userId: mockAuth.id } as never);
+      mocks.crypto.randomHex.mockReturnValue('random');
+      mocks.oidc.authorizeTicket.mockResolvedValue({ redirectTo: new URL('https://idp.example.test/authorize') });
+
+      await expect(sut.createTicket(mockAuth, dto)).resolves.toEqual({
+        redirectTo: 'https://idp.example.test/authorize',
+      });
+
+      expect(mocks.ticket.create).toHaveBeenCalledWith({
+        token: 'random',
+        oidcState: 'random',
+        oidcCodeVerifier: expect.any(String),
+        userId: mockAuth.id,
+        repositoryId: 'repository',
+        action: TicketAction.DeleteRepository,
+        expiresAt: expect.any(Date),
+      });
+      expect(mocks.oidc.authorizeTicket).toHaveBeenCalledWith('random', expect.any(String), mockAuth.email);
+    });
+  });
+
+  describe('ticketCallback', () => {
+    const request = { originalUrl: '/api/auth/ticket/callback?code=code&state=state' };
+
+    beforeEach(() => {
+      mocks.ticket.getPending.mockResolvedValue(mockTicket);
+      mocks.oidc.callbackTicket.mockResolvedValue({
+        claims: { sub: mockUser.sub, auth_time: mockTicket.createdAt.getTime() / 1000 + 1 } as never,
+        accessToken: 'access-token',
+      });
+      mocks.user.getBySub.mockResolvedValue(mockUser as never);
+      mocks.oidc.revoke.mockResolvedValue();
+    });
+
+    it('should fail if error in URL', async () => {
+      await expect(
+        sut.ticketCallback({ originalUrl: '?error=abc&error_description=failure' } as never),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`"OIDC error: failure"`);
+    });
+
+    it('should fail if state is missing', async () => {
+      await expect(
+        sut.ticketCallback({ originalUrl: '?code=code' } as never),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`"missing state"`);
+    });
+
+    it('should fail if no pending ticket matches the state', async () => {
+      mocks.ticket.getPending.mockResolvedValue(void 0);
+
+      await expect(sut.ticketCallback(request as never)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Confirmation flow has expired"`,
+      );
+      expect(mocks.oidc.callbackTicket).not.toHaveBeenCalled();
+    });
+
+    it('should fail if the id token carries no auth_time', async () => {
+      mocks.oidc.callbackTicket.mockResolvedValue({
+        claims: { sub: mockUser.sub } as never,
+        accessToken: 'access-token',
+      });
+
+      await expect(sut.ticketCallback(request as never)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"no id token with auth_time received"`,
+      );
+    });
+
+    it('should fail if the IdP session predates the ticket', async () => {
+      mocks.oidc.callbackTicket.mockResolvedValue({
+        claims: { sub: mockUser.sub, auth_time: mockTicket.createdAt.getTime() / 1000 - 60 } as never,
+        accessToken: 'access-token',
+      });
+
+      await expect(sut.ticketCallback(request as never)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Session is older than ticket"`,
+      );
+      expect(mocks.ticket.activate).not.toHaveBeenCalled();
+    });
+
+    it('should fail if a different account confirmed', async () => {
+      mocks.user.getBySub.mockResolvedValue({ ...mockUser, id: 'someone-else' } as never);
+
+      await expect(sut.ticketCallback(request as never)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Signed in as a different account"`,
+      );
+      expect(mocks.ticket.activate).not.toHaveBeenCalled();
+    });
+
+    it('should activate the ticket and revoke the IdP token', async () => {
+      await expect(sut.ticketCallback(request as never)).resolves.toEqual({
+        token: mockTicket.token,
+        redirectTo: `/tickets/${mockTicket.id}`,
+      });
+
+      expect(mocks.oidc.callbackTicket).toHaveBeenCalledWith(expect.any(URL), 'state', mockTicket.oidcCodeVerifier);
+      expect(mocks.oidc.revoke).toHaveBeenCalledWith('access-token');
+      expect(mocks.ticket.activate).toHaveBeenCalledWith(mockTicket.id);
+    });
+
+    it('should still activate when revocation fails', async () => {
+      mocks.oidc.revoke.mockRejectedValue(new Error('revocation unavailable'));
+
+      await expect(sut.ticketCallback(request as never)).resolves.toEqual(
+        expect.objectContaining({ token: mockTicket.token }),
+      );
+
+      expect(mocks.logger.warn).toHaveBeenCalled();
+      expect(mocks.ticket.activate).toHaveBeenCalledWith(mockTicket.id);
+    });
+  });
+
+  describe('getTicket', () => {
+    it('should fail if no active ticket matches the cookie', async () => {
+      mocks.ticket.getActive.mockResolvedValue(void 0);
+
+      await expect(sut.getTicket(mockTicket.id, {})).rejects.toThrowErrorMatchingInlineSnapshot(
+        `"Confirmation flow has expired"`,
+      );
+      expect(mocks.ticket.getActive).toHaveBeenCalledWith(mockTicket.id, '');
+    });
+
+    it('should return the ticket matching the cookie', async () => {
+      const ticket = Symbol('Ticket');
+      mocks.ticket.getActive.mockResolvedValue(ticket as never);
+
+      await expect(sut.getTicket(mockTicket.id, { cookie: 'yucca-ticket-token=secret' })).resolves.toBe(ticket);
+      expect(mocks.ticket.getActive).toHaveBeenCalledWith(mockTicket.id, 'secret');
+    });
+  });
+
+  describe('spendTicket', () => {
+    it('should fail if the ticket cannot be spent', async () => {
+      mocks.ticket.spend.mockResolvedValue(void 0);
+
+      await expect(
+        sut.spendTicket(TicketAction.DeleteRepository, 'repository', mockTicket.id, {}),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(`"Action 'repository.delete' has not been confirmed"`);
+    });
+
+    it('should consume the ticket bound to the action and repository', async () => {
+      mocks.ticket.spend.mockResolvedValue(mockTicket);
+
+      await expect(
+        sut.spendTicket(TicketAction.DeleteRepository, 'repository', mockTicket.id, {
+          cookie: 'yucca-ticket-token=secret',
+        }),
+      ).resolves.toBe(mockTicket);
+
+      expect(mocks.ticket.spend).toHaveBeenCalledWith(
+        mockTicket.id,
+        'secret',
+        TicketAction.DeleteRepository,
+        'repository',
+      );
     });
   });
 });

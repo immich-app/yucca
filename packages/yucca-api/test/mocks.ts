@@ -7,6 +7,7 @@ import type { OidcRepository } from 'src/repositories/oidc.repository';
 import type { RepositoryRepository } from 'src/repositories/repository.repository';
 import type { SessionRepository } from 'src/repositories/session.repository';
 import type { SettingsRepository } from 'src/repositories/settings.repository';
+import type { TicketRepository } from 'src/repositories/ticket.repository';
 import type { TopologyRepository } from 'src/repositories/topology.repository';
 import type { UserRepository } from 'src/repositories/user.repository';
 import type { UserAllowlistRepository } from 'src/repositories/userAllowlist.repository';
@@ -66,7 +67,7 @@ export const newTicketRepositoryMock = (): jest.Mocked<RepositoryInterface<Ticke
   return {
     create: jest.fn(),
     getPending: jest.fn(),
-    getByOidcState: jest.fn(),
+    getActive: jest.fn(),
     activate: jest.fn(),
     spend: jest.fn(),
     deleteExpired: jest.fn(),
@@ -104,6 +105,7 @@ export const newRepositoryRepositoryMock = (): jest.Mocked<RepositoryInterface<R
     get: jest.fn(),
     getByUser: jest.fn(),
     update: jest.fn(),
+    disableWorm: jest.fn(),
     delete: jest.fn(),
   };
 };

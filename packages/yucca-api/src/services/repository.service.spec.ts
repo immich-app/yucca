@@ -1,11 +1,38 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { AuthDto } from 'src/dto/auth.dto';
+import { TicketAction } from 'src/enum';
 import { RepositoryService } from 'src/services/repository.service';
 import { Mocks, newMocks } from '../../test/mocks';
 
 const auth = { id: 'b6b7c231-6dc0-4bdc-82c1-92677b1e6c1c', features: {} } as AuthDto;
 
 const repoId = 'e2b47875-91a9-4c67-a3cd-fd6c0a5b6d11';
+
+const repository = {
+  id: repoId,
+  userId: auth.id,
+  name: 'backup',
+  worm: false,
+  connectionId: 'conn',
+  connectionType: 'immich',
+  siteCode: 'father',
+  storageClusterCode: 'father-spice',
+  metrics: { sizeBytes: 42 },
+};
+
+const ticket = {
+  id: 'ticket',
+  token: 'token',
+  oidcState: 'state',
+  oidcCodeVerifier: 'verifier',
+  userId: auth.id,
+  repositoryId: repoId,
+  action: TicketAction.DeleteRepository,
+  validAt: new Date('2026-01-01T00:00:05Z'),
+  expiresAt: new Date('2026-01-01T00:10:00Z'),
+  consumedAt: new Date('2026-01-01T00:00:10Z'),
+  createdAt: new Date('2026-01-01T00:00:00Z'),
+};
 
 const site = {
   code: 'father',
@@ -88,6 +115,64 @@ describe(RepositoryService.name, () => {
         connection: 'immich',
       });
       expect(url).toBe(`rest:https://restic:signed-token@rest.htz-fsn1.backups.futo.cloud/${repoId}`);
+    });
+  });
+
+  describe('update', () => {
+    it('refuses to disable write-only through a plain update', async () => {
+      mocks.repository.get.mockResolvedValue({ id: repoId, userId: auth.id, worm: true } as never);
+
+      await expect(sut.update(auth, repoId, { worm: false })).rejects.toThrow(BadRequestException);
+      expect(mocks.repository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('disableWorm', () => {
+    it('rejects a repository owned by someone else', async () => {
+      mocks.repository.get.mockResolvedValue({ ...repository, userId: 'someone-else', worm: true } as never);
+
+      await expect(sut.disableWorm(ticket, repoId)).rejects.toThrow(UnauthorizedException);
+      expect(mocks.repository.disableWorm).not.toHaveBeenCalled();
+    });
+
+    it('rejects a repository that is not write-only', async () => {
+      mocks.repository.get.mockResolvedValue({ ...repository, worm: false } as never);
+
+      await expect(sut.disableWorm(ticket, repoId)).rejects.toThrow(BadRequestException);
+      expect(mocks.repository.disableWorm).not.toHaveBeenCalled();
+    });
+
+    it('clears the worm flag and records who confirmed it', async () => {
+      mocks.repository.get.mockResolvedValue({ ...repository, worm: true } as never);
+
+      await sut.disableWorm(ticket, repoId);
+
+      expect(mocks.repository.disableWorm).toHaveBeenCalledWith(repoId, {
+        action: 'repository.disable-worm',
+        userId: auth.id,
+        detail: { ticket: { id: ticket.id, validAt: ticket.validAt }, repository: { ...repository, worm: true } },
+      });
+    });
+  });
+
+  describe('delete', () => {
+    it('rejects a repository owned by someone else', async () => {
+      mocks.repository.get.mockResolvedValue({ ...repository, userId: 'someone-else' } as never);
+
+      await expect(sut.delete(ticket, repoId)).rejects.toThrow(UnauthorizedException);
+      expect(mocks.repository.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes a write-only repository and records who confirmed it', async () => {
+      mocks.repository.get.mockResolvedValue({ ...repository, worm: true } as never);
+
+      await sut.delete(ticket, repoId);
+
+      expect(mocks.repository.delete).toHaveBeenCalledWith(repoId, {
+        action: 'repository.delete',
+        userId: auth.id,
+        detail: { ticket: { id: ticket.id, validAt: ticket.validAt }, repository: { ...repository, worm: true } },
+      });
     });
   });
 });
