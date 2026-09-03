@@ -167,10 +167,10 @@ jobs:
       # surface changed — not on every prod change.
       fabric: ${{ steps.filter.outputs.fabric }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
@@ -246,7 +246,7 @@ jobs:
       has_staging: ${{ steps.gen.outputs.has_staging }}
       has_prod: ${{ steps.gen.outputs.has_prod }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - id: gen
@@ -415,7 +415,7 @@ jobs:
       PARTITION: ${{ matrix.partition }}
     steps: &plan-steps
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       # Filesystem-safe artifact id for this stack (stack may nest '/').
@@ -427,7 +427,7 @@ jobs:
       - name: Set up mise (go + opentofu + terragrunt)
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
       - name: Install 1Password CLI
-        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+        uses: 1password/install-cli-action@1a3160d5e9de1ae0803eaa08a88746f5ae3daa50 # v4.1.0
         with:
           # Pin, don't resolve "latest": the version-check endpoint 1P hits to
           # resolve "latest" intermittently returns empty JSON (all parallel
@@ -567,7 +567,7 @@ jobs:
       PARTITION: ${{ matrix.partition }}
     steps: &apply-steps
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       # Same filesystem-safe id the plan job used to name the artifact.
@@ -579,7 +579,7 @@ jobs:
       - name: Set up mise (go + opentofu + terragrunt + ansible)
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
       - name: Install 1Password CLI
-        uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
+        uses: 1password/install-cli-action@1a3160d5e9de1ae0803eaa08a88746f5ae3daa50 # v4.1.0
         with:
           # See the plan job's note: pin to skip the flaky "latest" resolution.
           version: '2.31.1'
