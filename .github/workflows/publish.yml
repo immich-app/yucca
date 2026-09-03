@@ -21,7 +21,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
       - run: mise run prepare
 
       - name: Publish

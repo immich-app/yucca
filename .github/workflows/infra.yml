@@ -425,7 +425,7 @@ jobs:
           DIR: ${{ matrix.dir }}
         run: echo "id=$(printf '%s' "$DIR" | tr '/' '-')" >> "$GITHUB_OUTPUT"
       - name: Set up mise (go + opentofu + terragrunt)
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
         with:
@@ -577,7 +577,7 @@ jobs:
           DIR: ${{ matrix.dir }}
         run: echo "id=$(printf '%s' "$DIR" | tr '/' '-')" >> "$GITHUB_OUTPUT"
       - name: Set up mise (go + opentofu + terragrunt + ansible)
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
         with:
