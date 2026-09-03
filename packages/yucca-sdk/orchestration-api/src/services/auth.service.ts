@@ -1,15 +1,17 @@
 import {
   adoptRepositories,
   getAuth,
+  TicketCreateRequestDto,
   type DeviceFlowEventDto as UpstreamDeviceFlowEvent,
 } from '@futo-org/backups-api-client';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventIterator } from 'event-iterator';
 import { createEventSource, EventSourceClient } from 'eventsource-client';
 import { hostname } from 'node:os';
 import { from } from 'rxjs';
 import { REPOSITORY_DEFAULT_CLOUD_UUID } from '../const';
 import { DeviceFlowEventDto } from '../dto/auth.dto';
+import { TicketCreateResponseDto } from '../dto/ticket.dto';
 import { BackendType, CookieName, DeviceFlowEventType, DeviceFlowFailureReason } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { BackendRepository } from '../repositories/backend.repository';
@@ -228,5 +230,22 @@ export class AuthService {
             .finally(() => queue.stop()),
       ),
     );
+  }
+
+  async createTicket(dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    const localRepository = await this.repository.get(dto.repositoryId);
+    if (!localRepository) {
+      throw new NotFoundException('Repository not found locally');
+    }
+
+    const result = await this.backend.getBackend(localRepository.backendId);
+    if (!result) {
+      throw new NotFoundException('Backend not found locally');
+    }
+
+    return await result.backend.createTicket({
+      action: dto.action,
+      repositoryId: localRepository.remoteId,
+    });
   }
 }

@@ -1,4 +1,6 @@
 import { Database } from '@immich/sql-tools';
+import { audit_action_enum, ticket_action_enum } from './enums';
+import { AuditLogTable } from './tables/auditLog.table';
 import { ConnectionTable } from './tables/connection.table';
 import { ConnectionMetricsTable } from './tables/connectionMetrics.table';
 import { DiscordInviteBatchTable } from './tables/discordInviteBatch.table';
@@ -12,6 +14,7 @@ import { RepositoryMetricsTable } from './tables/repositoryMetrics.table';
 import { RepositoryMetricsHistoryTable } from './tables/repositoryMetricsHistory.table';
 import { SessionTable } from './tables/session.table';
 import { SettingsTable } from './tables/settings.table';
+import { TicketTable } from './tables/ticket.table';
 import { UserTable } from './tables/user.table';
 import { UserAllowlistTable } from './tables/userAllowlist.table';
 import { UserFeatureFlagOverrideTable } from './tables/userFeatureFlagOverride.table';
@@ -31,6 +34,8 @@ export class ImmichDatabase {
     UserAllowlistTable,
     SettingsTable,
     UserFeatureFlagOverrideTable,
+    TicketTable,
+    AuditLogTable,
     DiscordLinkTable,
     DiscordLinkRequestTable,
     DiscordInviteBatchTable,
@@ -39,7 +44,7 @@ export class ImmichDatabase {
 
   functions = [];
 
-  enum = [];
+  enum = [ticket_action_enum, audit_action_enum];
 }
 
 export interface DB {
@@ -55,6 +60,8 @@ export interface DB {
   userAllowlist: UserAllowlistTable;
   settings: SettingsTable;
   userFeatureFlagOverride: UserFeatureFlagOverrideTable;
+  tickets: TicketTable;
+  auditLog: AuditLogTable;
   discordLinks: DiscordLinkTable;
   discordLinkRequests: DiscordLinkRequestTable;
   discordInviteBatches: DiscordInviteBatchTable;

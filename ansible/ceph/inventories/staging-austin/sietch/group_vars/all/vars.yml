@@ -48,23 +48,23 @@ baseline_extra_packages:
 # Deploy keypair path on the controller. Both {path} and {path}.pub must
 # exist before running provision.yml (the preflight play in provision.yml
 # enforces this). ansible-iac's authorized_keys on every node is populated
-# by a file lookup at provision time — rotating the key on the controller
+# by a file lookup at provision time - rotating the key on the controller
 # automatically propagates on the next re-provision.
 provision_iac_ssh_key_path: "~/.ssh/id_ed25519_sietch"
 
 # 1P vault for cluster secret lookups (e.g., rotate-ssh-key.yml reads pubkey from here).
 cluster_secrets_vault: yucca_tf_staging
 
-# Secret aliases — vault_* vars populated by scripts/ansible-play.sh via op inject
+# Secret aliases - vault_* vars populated by scripts/ansible-play.sh via op inject
 #
-# Note: the deploy public key is NOT a secret — it's public data and lives
+# Note: the deploy public key is NOT a secret - it's public data and lives
 # at {{ provision_iac_ssh_key_path }}.pub on the controller. Reading it via
 # file lookup avoids drift between vault and disk.
 ops_password: "{{ vault_ops_password }}"
 ceph_dashboard_user: admin
 ceph_dashboard_password: "{{ vault_ceph_dashboard_password }}"
 
-# S3 svc-user (yucca-restic consumer) — the user is terraform-owned
+# S3 svc-user (yucca-restic consumer) - the user is terraform-owned
 # (rgw-users.tf); these TF+1P-predetermined keys serve the gated key-rotation
 # converge (rgw.yml Step 15, rotate_s3_keys). Rotation path documented in
 # docs/runbooks/rotate-secrets.md.
@@ -141,7 +141,7 @@ ceph_grafana_admin_user: admin
 ceph_grafana_admin_password: "{{ vault_grafana_admin_password }}"
 
 # monk, the scrub-backlog exporter (roles/scrub_exporter): mon hosts, :9284.
-# Digest-pinned immutable monorepo build tag (0.0.355 is the first build with
-# the exporter hardening from PR 592); bump deliberately.
+# Digest-pinned immutable monorepo build tag; bump deliberately. 0.0.371 adds
+# the scrub-completion counters, so pace and time-to-clear become measured.
 ceph_scrub_exporter_enabled: true
-ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.355@sha256:01b315fd8616c2992320985ef6ddda69c0834d32f13b4ec22d8b6537a4245a1b
+ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.371@sha256:9e52fd39814203d1aa7f4a2825b76e1fb691eec080a473b2e33cee880534992d

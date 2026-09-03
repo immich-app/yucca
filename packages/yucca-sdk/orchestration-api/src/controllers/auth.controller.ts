@@ -3,6 +3,7 @@ import { ApiBody, ApiOkResponse } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { SESSION_TTL_MS } from '../const';
 import { CreateSessionRequestDto, DeviceFlowEventDto } from '../dto/auth.dto';
+import { TicketCreateRequestDto, TicketCreateResponseDto } from '../dto/ticket.dto';
 import { CookieName } from '../enum';
 import { PublicRoute } from '../middleware/session.guard';
 import { AuthService } from '../services/auth.service';
@@ -45,5 +46,11 @@ export class AuthController {
       secure: request.protocol === 'https',
       maxAge: SESSION_TTL_MS,
     });
+  }
+
+  @Post('/ticket')
+  @ApiOkResponse({ type: TicketCreateResponseDto })
+  async createTicket(@Body() dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    return await this.auth.createTicket(dto);
   }
 }

@@ -24,6 +24,7 @@ export OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-client ID}
 export OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-client secret}
 export OIDC_ALLOW_INSECURE=${OIDC_ALLOW_INSECURE:-true}
 export OIDC_REDIRECT_URI=${OIDC_REDIRECT_URI:-http://localhost:36033/api/auth/oidc/callback}
+export OIDC_TICKET_REDIRECT_URI=${OIDC_TICKET_REDIRECT_URI:-http://localhost:36033/api/auth/ticket/callback}
 export OIDC_LOGOUT_REDIRECT_URI=${OIDC_LOGOUT_REDIRECT_URI:-http://localhost:36033}
 
 export OIDC_DEVICE_ISSUER=${OIDC_DEVICE_ISSUER:-http://localhost:8092}

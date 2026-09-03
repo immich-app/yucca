@@ -67,6 +67,37 @@
         ]
       }
     },
+    "/api/yucca/auth/ticket": {
+      "post": {
+        "operationId": "createTicket",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketCreateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketCreateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/yucca/backend": {
       "get": {
         "operationId": "getBackends",
@@ -1209,6 +1240,45 @@
         },
         "required": [
           "token"
+        ]
+      },
+      "TicketAction": {
+        "type": "string",
+        "enum": [
+          "repository.delete",
+          "repository.disable-worm"
+        ]
+      },
+      "TicketCreateRequestDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketAction"
+              }
+            ]
+          },
+          "repositoryId": {
+            "type": "string",
+            "description": "Repository the ticket is bound to"
+          }
+        },
+        "required": [
+          "action",
+          "repositoryId"
+        ]
+      },
+      "TicketCreateResponseDto": {
+        "type": "object",
+        "properties": {
+          "redirectTo": {
+            "type": "string",
+            "description": "Identity provider URL the browser must be sent to"
+          }
+        },
+        "required": [
+          "redirectTo"
         ]
       },
       "BackendType": {

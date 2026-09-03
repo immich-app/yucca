@@ -1,11 +1,14 @@
 import { WideContextRepository } from '@common/server/otel';
 import { BadRequestException, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Selectable } from 'kysely';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
+import { AuditAction } from 'src/enum';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
+import { TicketTable } from 'src/schema/tables/ticket.table';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RepositoryService {
@@ -37,8 +40,12 @@ export class RepositoryService {
   }
 
   async get(auth: AuthDto, id: string) {
+    return this.getOwned(auth.id, id);
+  }
+
+  private async getOwned(userId: string, id: string) {
     const repository = await this.repositoryRepository.get(id);
-    if (repository.userId !== auth.id) {
+    if (repository.userId !== userId) {
       throw new UnauthorizedException();
     }
 
@@ -53,10 +60,23 @@ export class RepositoryService {
     const repository = await this.get(auth, id);
 
     if (repository.worm && typeof dto.worm === 'boolean' && dto.worm !== repository.worm) {
-      throw new BadRequestException('Refusing to disable write-only on repository');
+      throw new BadRequestException('Refusing to disable write-only on repository, use DELETE /repository/:id/worm');
     }
 
     return { repository: await this.repositoryRepository.update(id, dto) };
+  }
+
+  async disableWorm(ticket: Selectable<TicketTable>, id: string) {
+    const repository = await this.getOwned(ticket.userId, id);
+    if (!repository.worm) {
+      throw new BadRequestException('Repository is not write-only');
+    }
+
+    await this.repositoryRepository.disableWorm(id, {
+      action: AuditAction.DisableWorm,
+      userId: ticket.userId,
+      detail: { ticket: { id: ticket.id, validAt: ticket.validAt }, repository },
+    });
   }
 
   async createUrl(auth: AuthDto, id: string) {
@@ -82,12 +102,12 @@ export class RepositoryService {
     return { url: `rest:${url.href}` };
   }
 
-  async delete(auth: AuthDto, id: string) {
-    const repository = await this.get(auth, id);
-    if (repository.worm) {
-      throw new BadRequestException('Refusing to delete write-only repository');
-    }
-
-    await this.repositoryRepository.delete(id);
+  async delete(ticket: Selectable<TicketTable>, id: string) {
+    const repository = await this.getOwned(ticket.userId, id);
+    await this.repositoryRepository.delete(id, {
+      action: AuditAction.DeleteRepository,
+      userId: ticket.userId,
+      detail: { ticket: { id: ticket.id, validAt: ticket.validAt }, repository },
+    });
   }
 }

@@ -7,7 +7,6 @@ import RunHistoryModal from '$lib/components/backups/run-history/RunHistoryModal
 import SnapshotsListModal from '$lib/components/backups/snapshots-list/SnapshotsListModal.svelte';
 import { SocketEvent } from '$lib/events';
 import {
-  deleteRepository,
   inspectRepositories,
   reconfigureRepositoryPrimaryBackend,
   updateRepository,
@@ -19,6 +18,7 @@ import {
 import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
+import { createTicket } from '@futo-org/backups-api-client';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
 import {
   mdiCog,
@@ -27,6 +27,7 @@ import {
   mdiImport,
   mdiListStatus,
   mdiPlay,
+  mdiTrashCan,
 } from '@mdi/js';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
 
@@ -169,16 +170,6 @@ export const useReconfigureRepositoryPrimaryBackend = () =>
     () => queryClient,
   );
 
-export const useRemoveRepository = () =>
-  createMutation(
-    () => ({
-      mutationFn: ({ id, local = false }: { id: string; local?: boolean }) =>
-        local ? sdk.deleteRepository(id) : deleteRepository(id),
-      onError: (error) => handleError(error, 'Failed to delete repository'),
-    }),
-    () => queryClient,
-  );
-
 export const handleCreateBackup = async (id: string) => {
   try {
     toastManager.info('Started backup');
@@ -209,7 +200,48 @@ export const handlePruneRepository = async (id: string) => {
   }
 };
 
-export const getRepositoryActions = (repository: LocalRepositoryDto) => {
+export const handleDeleteRepository = async (
+  repositoryId: string,
+  local?: boolean,
+) => {
+  try {
+    const action = local ? sdk.createTicket : createTicket;
+
+    const { redirectTo } = await action({
+      action: 'repository.delete',
+      repositoryId,
+    });
+
+    window.open(redirectTo, '_blank');
+  } catch (error) {
+    handleError(error, 'Failed to start deletion');
+    throw error;
+  }
+};
+
+export const handleDisableWormRepository = async (
+  repositoryId: string,
+  local?: boolean,
+) => {
+  try {
+    const action = local ? sdk.createTicket : createTicket;
+
+    const { redirectTo } = await action({
+      action: 'repository.disable-worm',
+      repositoryId,
+    });
+
+    window.open(redirectTo, '_blank');
+  } catch (error) {
+    handleError(error, 'Failed to start disable write-only process');
+    throw error;
+  }
+};
+
+export const getRepositoryActions = (
+  repository: LocalRepositoryDto,
+  local?: boolean,
+) => {
   const online = Boolean(
     repository.configuration && repository.backends?.primary.online,
   );
@@ -261,5 +293,21 @@ export const getRepositoryActions = (repository: LocalRepositoryDto) => {
     $if: () => !repository.backends,
   };
 
-  return { BackupNow, Snapshots, History, Configure, Import, MetricsHistory };
+  const Delete: ActionItem = {
+    title: 'Delete repository',
+    icon: mdiTrashCan,
+    onAction: () => void handleDeleteRepository(repository.id, local),
+    $if: () =>
+      !repository.backends || repository.backends.primary.type === 'yucca',
+  };
+
+  return {
+    BackupNow,
+    Snapshots,
+    History,
+    Configure,
+    Import,
+    MetricsHistory,
+    Delete,
+  };
 };

@@ -3,9 +3,10 @@ import { ExpressionBuilder, Insertable, Kysely, Updateable } from 'kysely';
 import { jsonBuildObject } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
+import { AuditLogTable } from 'src/schema/tables/auditLog.table';
 import { RepositoryTable } from 'src/schema/tables/repository.table';
 
-const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
+export const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
     lastBackup: eb.ref('repositoryMetrics.lastBackup'),
@@ -13,7 +14,7 @@ const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetri
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   }).as('metrics');
 
-const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
+export const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)),
     objectCount: eb.fn.coalesce('repositoryMeter.objectCount', eb.val(0)),
@@ -62,8 +63,18 @@ export class RepositoryRepository {
     return this.get(id);
   }
 
-  async delete(id: string) {
-    await this.db.deleteFrom('repositories').where('id', '=', id).execute();
+  async disableWorm(id: string, audit: Insertable<AuditLogTable>) {
+    await this.db.transaction().execute(async (trx) => {
+      await trx.updateTable('repositories').where('id', '=', id).set({ worm: false }).execute();
+      await trx.insertInto('auditLog').values(audit).execute();
+    });
+  }
+
+  async delete(id: string, audit: Insertable<AuditLogTable>) {
+    await this.db.transaction().execute(async (trx) => {
+      await trx.insertInto('auditLog').values(audit).execute();
+      await trx.deleteFrom('repositories').where('id', '=', id).execute();
+    });
   }
 
   getByIds(ids: string[]) {

@@ -22,7 +22,7 @@ jobs:
 
       - name: Setup Mise
         uses: immich-app/devtools/actions/use-mise@cd24790a7f5f6439ac32cc94f5523cb2de8bfa8c # use-mise-action-v1.1.0
-      - run: mise prepare
+      - run: mise run prepare
 
       - name: Publish
         run: |
@@ -43,3 +43,15 @@ jobs:
       image: futo-backups-standalone
       context: .
       dockerfile: packages/standalone-app/Dockerfile
+
+  docker-restic-proxy:
+    name: Publish restic-proxy image
+    uses: immich-app/devtools/.github/workflows/multi-runner-build.yml@50dc3a14f0606ecd8fc28d78d3a3c655115ab695 # multi-runner-build-workflow-v3.1.0
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    with:
+      image: futo-backups-restic-proxy
+      context: .
+      dockerfile: packages/restic-proxy/Dockerfile

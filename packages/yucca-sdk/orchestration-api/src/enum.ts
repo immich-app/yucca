@@ -12,6 +12,11 @@ export enum ImmichCookie {
   MaintenanceToken = 'immich_maintenance_token',
 }
 
+export enum TicketAction {
+  DeleteRepository = 'repository.delete',
+  DisableWorm = 'repository.disable-worm',
+}
+
 export enum ConfigurationKey {
   EncryptionKey = 'encryption-key',
   OnboardedKey = 'onboarded-key',

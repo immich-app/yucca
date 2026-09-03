@@ -340,6 +340,153 @@ describe('AuthController (e2e)', () => {
     });
   });
 
+  describe('ticket confirmation flow', () => {
+    let repository: { id: string; name: string };
+
+    beforeEach(async () => {
+      repository = await testUtils.createRepository(user.id);
+    });
+
+    const startTicket = (accessToken: string, repositoryId: string) =>
+      request(app.getHttpServer())
+        .post('/api/auth/ticket')
+        .set('Cookie', `yucca-access-token=${accessToken}`)
+        .send({ action: 'repository.delete', repositoryId });
+
+    const confirmAtIdp = async (redirectTo: string, sub: string) => {
+      const redirectUrl = new URL(redirectTo);
+      redirectUrl.pathname = '/api/form';
+      redirectUrl.searchParams.set('sub', sub);
+
+      const { headers } = await fetch(redirectUrl, { redirect: 'manual' });
+      const callbackUrl = new URL(headers.get('location')!);
+
+      return callbackUrl.pathname + callbackUrl.search;
+    };
+
+    const confirmedTicket = async () => {
+      const { body } = await startTicket(session.accessToken, repository.id).expect(201);
+      const callbackPath = await confirmAtIdp(body.redirectTo, user.sub);
+      const { header } = await request(app.getHttpServer()).get(callbackPath).expect(302);
+      const cookies = parse((header['set-cookie'] as never as string[]).join('; '));
+      const token = cookies['yucca-ticket-token']!;
+      const ticket = await testUtils.getTicketByToken(token);
+
+      return { id: ticket!.id, token, location: header.location as string };
+    };
+
+    describe('POST /auth/ticket', () => {
+      it('fails if not authenticated', async () => {
+        await request(app.getHttpServer())
+          .post('/api/auth/ticket')
+          .send({ action: 'repository.delete', repositoryId: repository.id })
+          .expect(401);
+      });
+
+      it('refuses a repository owned by someone else', async () => {
+        const other = await testUtils.createUser('other', 'other@example.com', 'other');
+
+        await startTicket(other.session.accessToken, repository.id).expect(401);
+      });
+
+      it('rejects an unknown action', async () => {
+        await request(app.getHttpServer())
+          .post('/api/auth/ticket')
+          .set('Cookie', `yucca-access-token=${session.accessToken}`)
+          .send({ action: 'repository.explode', repositoryId: repository.id })
+          .expect(400);
+      });
+
+      it('sends the browser to the IdP demanding a fresh login', async () => {
+        const { body } = await startTicket(session.accessToken, repository.id).expect(201);
+
+        const redirectTo = new URL(body.redirectTo);
+        expect(redirectTo.href).toEqual(expect.stringContaining(env.OIDC_ISSUER.href));
+        expect(redirectTo.searchParams.get('prompt')).toBe('login');
+        expect(redirectTo.searchParams.get('max_age')).toBe('0');
+        expect(redirectTo.searchParams.get('login_hint')).toBe(user.email);
+        expect(redirectTo.searchParams.get('redirect_uri')).toBe(env.OIDC_TICKET_REDIRECT_URI);
+      });
+    });
+
+    describe('GET /auth/ticket/callback', () => {
+      it('rejects an unknown state', async () => {
+        await request(app.getHttpServer()).get('/api/auth/ticket/callback?code=code&state=unknown').expect(400);
+      });
+
+      it('rejects confirmation by a different account', async () => {
+        const { body } = await startTicket(session.accessToken, repository.id).expect(201);
+        const callbackPath = await confirmAtIdp(body.redirectTo, 'someone-else');
+
+        await request(app.getHttpServer()).get(callbackPath).expect(401);
+        await expect(testUtils.getPendingTicket(repository.id)).resolves.toBeTruthy();
+      });
+
+      it('activates the ticket and hands the browser its token', async () => {
+        const ticket = await confirmedTicket();
+
+        await expect(testUtils.getTicketByToken(ticket.token)).resolves.toEqual(
+          expect.objectContaining({
+            id: ticket.id,
+            userId: user.id,
+            repositoryId: repository.id,
+            action: 'repository.delete',
+            validAt: expect.any(Date),
+            consumedAt: null,
+          }),
+        );
+        expect(ticket.location).toBe(`/tickets/${ticket.id}`);
+      });
+
+      it('refuses to replay a callback', async () => {
+        const { body } = await startTicket(session.accessToken, repository.id).expect(201);
+        const callbackPath = await confirmAtIdp(body.redirectTo, user.sub);
+
+        await request(app.getHttpServer()).get(callbackPath).expect(302);
+        await request(app.getHttpServer()).get(callbackPath).expect(400);
+      });
+    });
+
+    describe('GET /auth/ticket/:id', () => {
+      it('fails without the ticket token cookie', async () => {
+        const ticket = await confirmedTicket();
+
+        await request(app.getHttpServer())
+          .get(`/api/auth/ticket/${ticket.id}`)
+          .set('Cookie', `yucca-access-token=${session.accessToken}`)
+          .expect(400);
+      });
+
+      it('fails for a ticket that was never confirmed', async () => {
+        await startTicket(session.accessToken, repository.id).expect(201);
+        const pending = await testUtils.getPendingTicket(repository.id);
+
+        await request(app.getHttpServer())
+          .get(`/api/auth/ticket/${pending!.id}`)
+          .set('Cookie', `yucca-ticket-token=${pending!.token}`)
+          .expect(400);
+      });
+
+      it('describes the confirmed action and its repository', async () => {
+        const ticket = await confirmedTicket();
+
+        const { body } = await request(app.getHttpServer())
+          .get(`/api/auth/ticket/${ticket.id}`)
+          .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+          .expect(200);
+
+        expect(body).toEqual({
+          id: ticket.id,
+          action: 'repository.delete',
+          repositoryId: repository.id,
+          repositoryName: repository.name,
+          metrics: expect.any(Object),
+          meter: expect.any(Object),
+        });
+      });
+    });
+  });
+
   describe('GET /auth/oidc/device (SSE)', () => {
     it('completes device flow and creates user', async () => {
       const replay = new ReplaySubject<MessageEvent>();

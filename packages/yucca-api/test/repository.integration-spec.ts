@@ -1,6 +1,7 @@
 import { MetricService } from '@common/server/otel';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { TicketAction } from 'src/enum';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { controllers, imports, providers } from '../src/app.module';
@@ -166,6 +167,207 @@ describe('RepositoryController (e2e)', () => {
   });
 
   describe('DELETE /repository/:id', () => {
-    it.todo('deletes a repository');
+    it('refuses without a confirmed ticket', async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=00000000-0000-0000-0000-000000000000`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(403);
+
+      await expect(testUtils.getRepository(repository.id)).resolves.toBeTruthy();
+    });
+
+    it('refuses a ticket confirmed for a different action', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, repository.id, TicketAction.DisableWorm);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(403);
+
+      await expect(testUtils.getRepository(repository.id)).resolves.toBeTruthy();
+    });
+
+    it('refuses a ticket confirmed for a different repository', async () => {
+      const other = await testUtils.createRepository(user.id, 'Other');
+      const ticket = await testUtils.createActiveTicket(user.id, other.id, TicketAction.DeleteRepository);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(403);
+
+      await expect(testUtils.getRepository(repository.id)).resolves.toBeTruthy();
+    });
+
+    it('refuses a ticket without its token cookie', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, repository.id, TicketAction.DeleteRepository);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(403);
+
+      await expect(testUtils.getRepository(repository.id)).resolves.toBeTruthy();
+    });
+
+    it('deletes a repository with a confirmed ticket', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, repository.id, TicketAction.DeleteRepository);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(200);
+
+      await expect(testUtils.getRepository(repository.id)).resolves.toBeUndefined();
+    });
+
+    it('deletes a write-only repository with a confirmed ticket', async () => {
+      const worm = await testUtils.createRepository(user.id, 'Locked', true);
+      const ticket = await testUtils.createActiveTicket(user.id, worm.id, TicketAction.DeleteRepository);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${worm.id}?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(200);
+
+      await expect(testUtils.getRepository(worm.id)).resolves.toBeUndefined();
+    });
+
+    it('records the deletion in the audit log', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, repository.id, TicketAction.DeleteRepository);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(200);
+
+      await expect(testUtils.getAuditLog()).resolves.toEqual([
+        expect.objectContaining({
+          action: 'repository.delete',
+          userId: user.id,
+          detail: {
+            ticket: { id: ticket.id, validAt: ticket.validAt!.toISOString() },
+            repository: expect.objectContaining({
+              id: repository.id,
+              name: 'My Repository',
+              worm: false,
+              connectionId: repository.connectionId,
+              siteCode: 'local',
+              storageClusterCode: 'local-dev',
+              metrics: expect.objectContaining({ sizeBytes: 0 }),
+            }),
+          },
+        }),
+      ]);
+    });
+
+    it('writes no audit entry when the ticket is refused', async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=00000000-0000-0000-0000-000000000000`)
+        .expect(403);
+
+      await expect(testUtils.getAuditLog()).resolves.toEqual([]);
+    });
+
+    it('drops the tickets with the repository', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, repository.id, TicketAction.DeleteRepository);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(200);
+
+      await expect(testUtils.getTicketByToken(ticket.token)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('DELETE /repository/:id/worm', () => {
+    let worm: { id: string };
+
+    beforeEach(async () => {
+      worm = await testUtils.createRepository(user.id, 'Locked', true);
+    });
+
+    it('refuses without a confirmed ticket', async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${worm.id}/worm?ticketId=00000000-0000-0000-0000-000000000000`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(403);
+
+      await expect(testUtils.getRepository(worm.id)).resolves.toEqual(expect.objectContaining({ worm: true }));
+    });
+
+    it('refuses a ticket confirmed for deletion', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, worm.id, TicketAction.DeleteRepository);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${worm.id}/worm?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(403);
+
+      await expect(testUtils.getRepository(worm.id)).resolves.toEqual(expect.objectContaining({ worm: true }));
+    });
+
+    it('rejects a repository that is not write-only', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, repository.id, TicketAction.DisableWorm);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${repository.id}/worm?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(400);
+    });
+
+    it('disables write-only with a confirmed ticket', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, worm.id, TicketAction.DisableWorm);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${worm.id}/worm?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(200);
+
+      await expect(testUtils.getRepository(worm.id)).resolves.toEqual(expect.objectContaining({ worm: false }));
+      await expect(testUtils.getAuditLog()).resolves.toEqual([
+        expect.objectContaining({
+          action: 'repository.disable-worm',
+          userId: user.id,
+          detail: {
+            ticket: { id: ticket.id, validAt: ticket.validAt!.toISOString() },
+            repository: expect.objectContaining({ name: 'Locked', worm: true }),
+          },
+        }),
+      ]);
+    });
+
+    it('spends the ticket so it cannot be reused', async () => {
+      const ticket = await testUtils.createActiveTicket(user.id, worm.id, TicketAction.DisableWorm);
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${worm.id}/worm?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(200);
+
+      await expect(testUtils.getTicketByToken(ticket.token)).resolves.toEqual(
+        expect.objectContaining({ consumedAt: expect.any(Date) }),
+      );
+
+      await request(app.getHttpServer())
+        .delete(`/api/repository/${worm.id}/worm?ticketId=${ticket.id}`)
+        .set('Cookie', `yucca-ticket-token=${ticket.token}`)
+        .expect(403);
+    });
+  });
+
+  describe('PATCH /repository/:id', () => {
+    it('refuses to disable write-only without a ticket', async () => {
+      const worm = await testUtils.createRepository(user.id, 'Locked', true);
+
+      await request(app.getHttpServer())
+        .patch(`/api/repository/${worm.id}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .send({ worm: false })
+        .expect(400);
+
+      await expect(testUtils.getRepository(worm.id)).resolves.toEqual(expect.objectContaining({ worm: true }));
+    });
   });
 });

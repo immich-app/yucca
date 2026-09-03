@@ -7,6 +7,8 @@ import {
   RepositoryListResponseDto,
   RepositoryUpdateRequestDto,
   RepositoryUpdateResponseDto,
+  TicketCreateRequestDto,
+  TicketCreateResponseDto,
 } from '@futo-org/backups-api-client';
 import { BackendType } from '../enum';
 import { BackendConfiguration } from '../schema/tables/backend.table';
@@ -45,6 +47,10 @@ export class S3Backend extends Backend {
 
   async deleteRepository(_id: string): Promise<void> {
     throw new Error('Method not implemented.');
+  }
+
+  async createTicket(_dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
+    throw new Error('Invalid backend for method');
   }
 
   async getResticEndpoint(id: string): Promise<string> {

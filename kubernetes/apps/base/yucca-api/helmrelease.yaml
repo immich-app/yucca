@@ -46,6 +46,7 @@ spec:
     # TODO(ingress): confirm callback host once envoy-gateway + DNS land.
     oidcIssuer: ${OIDC_ISSUER}
     oidcRedirectUri: https://${APP_DOMAIN}/api/auth/oidc/callback
+    oidcTicketRedirectUri: https://${APP_DOMAIN}/api/auth/ticket/callback
     oidcLogoutRedirectUri: https://${APP_DOMAIN}
     # Full replacement of the chart's dev env: production mode, no
     # *_ALLOW_INSECURE (real HTTPS issuer), OTLP to the in-cluster agents.

@@ -9,7 +9,8 @@ const configuration: Configuration = {
     {
       client_id: env.CLIENT_ID,
       client_secret: env.CLIENT_SECRET,
-      redirect_uris: [env.REDIRECT_URI, env.ADMIN_REDIRECT_URI],
+      redirect_uris: [env.REDIRECT_URI, env.TICKET_REDIRECT_URI, env.ADMIN_REDIRECT_URI],
+      require_auth_time: true,
       post_logout_redirect_uris: [env.POST_LOGOUT_REDIRECT_URI, env.ADMIN_POST_LOGOUT_REDIRECT_URI],
       grant_types: ['authorization_code'],
       response_types: ['code'],
@@ -33,6 +34,10 @@ const configuration: Configuration = {
   pkce: { required: () => true },
   scopes: ['openid', 'profile', 'email'],
   claims: {
+    acr: null,
+    sid: null,
+    auth_time: null,
+    iss: null,
     openid: ['sub'],
     profile: ['name'],
     email: ['email', 'email_verified'],
@@ -74,6 +79,10 @@ async function issueAuthorizationCode(provider: Provider, ctx: ProviderCtx): Pro
 
   const code = new provider.AuthorizationCode({
     accountId: sub,
+    authTime: Math.floor(Date.now() / 1000),
+    // /api/form skips the authorization endpoint, so assign_claims never marks
+    // auth_time essential the way require_auth_time would.
+    claims: { id_token: { auth_time: { essential: true } } },
     client,
     redirectUri: redirect_uri,
     scope: grantedScope,

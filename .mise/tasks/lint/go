@@ -3,7 +3,7 @@
 set -e
 
 status=0
-for pkg in michael yuctl columbo monk; do
+for pkg in michael yuctl columbo monk restic-proxy; do
   (cd "packages/$pkg" && golangci-lint run ./... "$@") || status=1
 done
 exit $status

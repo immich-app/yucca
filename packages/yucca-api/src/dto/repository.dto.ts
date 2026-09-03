@@ -53,7 +53,7 @@ export class RepositoryWithMetricsDto extends RepositoryDto {
   @ApiProperty()
   metrics!: RepositoryMetricsDto;
 
-  @ApiProperty({ type: RepositoryMeterDto, required: false })
+  @ApiProperty({ required: false })
   meter?: RepositoryMeterDto;
 }
 
