@@ -1,5 +1,5 @@
 [tools]
-python = "3.12"
+python = "3.14.7"
 
 [env]
 # Project-local virtualenv for all Python tooling
