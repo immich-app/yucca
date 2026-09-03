@@ -52,6 +52,7 @@ Yucca is a multi-tenant **backup service**: OIDC-authenticated users get S3-back
 ```bash
 mise dev                  # compose-based dev: deps, docker infra (postgres/minio/mock-oidc/victoria-*), all *:dev
 mise <pkg>:dev            # one service, e.g. mise web:dev, mise yucca-api:dev
+mise docs:dev             # docs site (packages/docs) on :36034
 
 mise check                # lint + format check + svelte-check + unit tests (= the `checks` CI job)
 mise fix                  # autofix lint/format + lingui extract
@@ -118,6 +119,12 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 
 **Frontend** (`packages/web`): SvelteKit 5 + Tailwind 4, `@immich/ui`, lingui i18n
 (`mise web:lingui:*`; compiled locales are generated, not edited), generated API client.
+**Docs** (`packages/docs`, https://docs.futo.cloud): the **end-user** documentation site (beta setup
+guides for Immich and the standalone container). SvelteKit + `adapter-static`; every page is a
+`src/routes/<section>/<slug>/+page.md` compiled by `@immich/svelte-markdown-preprocess` (front matter
+`title`/`description`/`order`; sections in `src/lib/index.ts`). Deployed to Cloudflare Pages
+(`tf/pages/docs` + `.github/workflows/docs.yml`; every PR gets a preview). Internal/developer docs stay
+in `docs/` and the per-directory READMEs — do not move them onto the site.
 **`packages/yucca-sdk/`** (orchestration-api + orchestration-ui) is separately versioned and
 added explicitly in `pnpm-workspace.yaml`.
 
