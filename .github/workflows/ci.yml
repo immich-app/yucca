@@ -130,18 +130,31 @@ jobs:
       # Rook-Ceph converging is the long pole of this job and is nearly all
       # waiting. `tilt:ci-ceph` builds no images, so unlike the full stack it
       # never tars the workspace and cannot race the build writing into it —
-      # which is what makes running these together safe.
-      - name: Start Ceph converging while installing deps and Playwright
+      # which is what makes running these together safe. Each of the four
+      # annotates its own failure: unattributed, a workspace build error read
+      # as "Ceph failed to converge" for most of a week.
+      - name: Build the workspace while Ceph converges
         run: |
           ( mise tilt:ci-ceph ) > /tmp/k3d-ceph.log 2>&1 &
           ceph=$!
-          mise run install:frozen
+          mise run install:frozen || { echo "::error::workspace install failed"; exit 1; }
           pnpm --filter web exec playwright install --with-deps chromium > /tmp/playwright.log 2>&1 &
           playwright=$!
-          mise run build
+          mise run build || { echo "::error::workspace build failed"; exit 1; }
           wait "$playwright" || { echo "::error::playwright install failed"; cat /tmp/playwright.log; exit 1; }
           wait "$ceph" || { echo "::error::Ceph failed to converge"; cat /tmp/k3d-ceph.log; exit 1; }
           echo "::group::Ceph bring-up log"; cat /tmp/k3d-ceph.log; echo "::endgroup::"
+
+      # Every OSD in the cluster is blocked on this DaemonSet attaching the
+      # loop device it consumes. Waiting on it here costs nothing on the happy
+      # path (Rook is still converging either way) and turns its failure into
+      # a five-minute error that names the cause, instead of the half-hour
+      # `yucca-michael:runtime CreateContainerConfigError` timeout it reaches
+      # by way of no OSDs -> no RGW -> no object-user Secret.
+      - name: Wait for the OSD loop device
+        run: |
+          kubectl wait --for=create daemonset/rook-ceph-loop-device -n rook-ceph --timeout=2m
+          kubectl rollout status daemonset/rook-ceph-loop-device -n rook-ceph --timeout=5m
 
       # Images build here while Rook finishes; yucca-michael mounts the
       # object-user Secret, so this is where the job blocks on Ceph serving S3.
@@ -155,3 +168,17 @@ jobs:
 
       - name: Run end-to-end tests against the cluster
         run: mise test:e2e:k3d
+
+      # The cluster dies with the runner, so anything not captured here is gone
+      # by the time anyone reads the log.
+      - name: Dump cluster state
+        if: failure()
+        run: |
+          echo "::group::pods"; kubectl get pods -A -o wide; echo "::endgroup::"
+          echo "::group::not-running pods"
+          kubectl get pods -A --field-selector=status.phase!=Running \
+            -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}{end}' \
+            | while read -r ns name; do kubectl describe pod -n "$ns" "$name" || true; done
+          echo "::endgroup::"
+          echo "::group::ceph cluster"; kubectl -n rook-ceph get cephcluster,cephobjectstore -o wide; echo "::endgroup::"
+          echo "::group::recent events"; kubectl get events -A --sort-by=.lastTimestamp | tail -80; echo "::endgroup::"
