@@ -10,7 +10,7 @@ go = "1.27.0"
 golangci-lint = "2.13.1"
 restic = "0.19.1"
 
-gh = "2.25.0"
+gh = "2.98.0"
 "github:git-town/git-town" = "22.7.1"
 
 k3d = "5.9.0"

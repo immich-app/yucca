@@ -40,29 +40,33 @@ url_api = "https://api.github.com/repos/fluxcd/flux2/releases/assets/487338179"
 url = "https://github.com/fluxcd/flux2/releases/download/v2.9.3/provenance.intoto.jsonl"
 
 [[tools.gh]]
-version = "2.25.0"
+version = "2.98.0"
 backend = "aqua:cli/cli"
-specifiers = ["2.25.0"]
+specifiers = ["2.98.0"]
 
 [tools.gh."platforms.linux-arm64"]
-checksum = "sha256:e4d95a7f8bc820a0b1d694cb323ee8aec7922a0d1edf191a847d86a0e3091473"
-url = "https://github.com/cli/cli/releases/download/v2.25.0/gh_2.25.0_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/cli/cli/releases/assets/100209723"
+checksum = "sha256:cf689084f3a3618f7eae4a2420d335d74626d65f5e594b9828d125d69f800d86"
+url = "https://github.com/cli/cli/releases/download/v2.98.0/gh_2.98.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/cli/cli/releases/assets/522857902"
+provenance = "github-attestations"
 
 [tools.gh."platforms.linux-x64"]
-checksum = "sha256:be919ddfb95cf3c87e542cb048b593368e17e962bf7c4743541855cd339cd814"
-url = "https://github.com/cli/cli/releases/download/v2.25.0/gh_2.25.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/cli/cli/releases/assets/100209721"
+checksum = "sha256:3b8ac6b30336802fc1a858d7c084e11cdf24ac1a761ca90b68022d7d729208de"
+url = "https://github.com/cli/cli/releases/download/v2.98.0/gh_2.98.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/cli/cli/releases/assets/522857901"
+provenance = "github-attestations"
 
 [tools.gh."platforms.macos-arm64"]
-checksum = "sha256:a05cafc451b99e3703523d8fa6e9e80e2ce3565709ba6093864c124839152978"
-url = "https://github.com/cli/cli/releases/download/v2.25.0/gh_2.25.0_macOS_arm64.tar.gz"
-url_api = "https://api.github.com/repos/cli/cli/releases/assets/100209726"
+checksum = "sha256:8cfb027cc5310675f2b830eac8f9865c1155a45ffcf9757f699fdd5a22046ca4"
+url = "https://github.com/cli/cli/releases/download/v2.98.0/gh_2.98.0_macOS_arm64.zip"
+url_api = "https://api.github.com/repos/cli/cli/releases/assets/522857972"
+provenance = "github-attestations"
 
 [tools.gh."platforms.macos-x64"]
-checksum = "sha256:789447abbb8da6ba757029daa9c6b486e1912f5b8f2b19cbbf6db5ccd76d4b45"
-url = "https://github.com/cli/cli/releases/download/v2.25.0/gh_2.25.0_macOS_amd64.tar.gz"
-url_api = "https://api.github.com/repos/cli/cli/releases/assets/100209724"
+checksum = "sha256:734c7bbd0bc56a3974500ee9aea74d60f0e5b89be09e92b9d9148939a3a1e0e6"
+url = "https://github.com/cli/cli/releases/download/v2.98.0/gh_2.98.0_macOS_amd64.zip"
+url_api = "https://api.github.com/repos/cli/cli/releases/assets/522857971"
+provenance = "github-attestations"
 
 [[tools."github:git-town/git-town"]]
 version = "22.7.1"
