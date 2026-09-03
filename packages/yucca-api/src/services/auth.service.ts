@@ -180,7 +180,8 @@ export class AuthService {
       throw new InternalServerErrorException('no id token with auth_time received');
     }
 
-    if (new Date(claims.auth_time * 1000) < ticket.createdAt) {
+    const createdAtSeconds = Math.floor(ticket.createdAt.getTime() / 1000);
+    if (claims.auth_time < createdAtSeconds) {
       throw new UnauthorizedException('Session is older than ticket');
     }
 
@@ -202,7 +203,6 @@ export class AuthService {
     const cookies = parse(headers.cookie ?? '');
     const token = cookies[CookieName.TicketToken] ?? '';
 
-    console.info('why are we here?');
     const ticket = await this.ticket.getActive(ticketId, token);
     if (!ticket) {
       throw new BadRequestException('Confirmation flow has expired');
