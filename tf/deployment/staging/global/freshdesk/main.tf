@@ -53,12 +53,31 @@ resource "onepassword_item" "webhook_path" {
   password = random_password.webhook_path.result
 }
 
+data "freshdesk_agents" "all" {
+  count = local.enabled ? 1 : 0
+}
+
+locals {
+  bot_agent_ids = local.enabled ? [
+    for a in data.freshdesk_agents.all[0].agents : a.id if a.email == var.yucca_freshdesk_bot_email
+  ] : []
+}
+
 # Bot-created tickets land here; the id reaches the bot Secret through the
-# 1P item below.
+# 1P item below. The bot agent is group-scoped (ticket_scope 2), so group
+# membership IS its authorization to touch the tickets it creates — without
+# it every note/reply 403s.
 resource "freshdesk_group" "support" {
   count       = local.enabled ? 1 : 0
+  agent_ids   = local.bot_agent_ids
   name        = "FUTO Cloud (Staging)"
   description = "FUTO Backups support tickets from staging, managed by yucca tf"
+  lifecycle {
+    precondition {
+      condition     = !local.enabled || length(local.bot_agent_ids) == 1
+      error_message = "yucca_freshdesk_bot_email must match exactly one Freshdesk agent — a memberless group strands the group-scoped bot with 403s."
+    }
+  }
 }
 
 resource "onepassword_item" "group_id" {

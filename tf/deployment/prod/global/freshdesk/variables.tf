@@ -69,3 +69,9 @@ variable "yucca_app_domain" {
   type        = string
   default     = "backups.futo.cloud"
 }
+
+variable "yucca_freshdesk_bot_email" {
+  description = "Email of the bot agent whose API key the futo-backups-bot uses; bound into the support group so its group-scoped key may touch the tickets it creates."
+  type        = string
+  default     = "freshdesk-bot@futo.org"
+}
