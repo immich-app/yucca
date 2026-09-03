@@ -9,7 +9,7 @@ PATH = "{{config_root}}/.venv/bin:{{env.PATH}}"
 # overrides shell-exported values, which silently sends operators to the
 # wrong cluster. Operators must export CEPH_ENV once per shell session:
 #   export CEPH_ENV=inventories/staging-austin/sietch/inventory.ini
-# Inventory files are TF-generated — `mise run tf:apply` (from yucca root) if missing.
+# Inventory files are TF-generated - `mise run tf:apply` (from yucca root) if missing.
 
 [tasks.setup]
 description = "Bootstrap development environment"
@@ -52,7 +52,7 @@ echo "=== shellcheck ==="
 if command -v shellcheck &>/dev/null; then
   shellcheck scripts/*.sh && echo "All scripts pass"
 else
-  echo "shellcheck not installed — skipping (install: pacman -S shellcheck)"
+  echo "shellcheck not installed - skipping (install: pacman -S shellcheck)"
 fi
 """
 
@@ -61,7 +61,7 @@ description = "Syntax-check all playbooks (no 1P access required)"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
-# Syntax-check only parses YAML — any valid inventory works. Default to
+# Syntax-check only parses YAML - any valid inventory works. Default to
 # sietch when CEPH_ENV isn't inline-prefixed; the parse is identical.
 CEPH_ENV="${CEPH_ENV:-inventories/staging-austin/sietch/inventory.ini}"
 for pb in *.yml; do
@@ -95,6 +95,14 @@ run = "scripts/preflight.sh"
 [tasks.status]
 description = "Quick cluster health check (read-only)"
 run = "scripts/ansible-play.sh status.yml"
+
+[tasks.harden]
+description = "Apply the nftables firewall and sshd hardening (roles/security)"
+run = "scripts/ansible-play.sh harden.yml"
+
+[tasks.site]
+description = "Converge every playbook in order (baseline through monk); the whole cluster surface"
+run = "scripts/ansible-play.sh site.yml"
 
 [tasks.drift]
 description = "Detect configuration drift from expected state"
@@ -130,7 +138,7 @@ scripts/ansible-play.sh netbird.yml \
 """
 
 [tasks.deploy]
-description = "Full deploy: baseline → tune → deploy → tune ceph → harden"
+description = "Full deploy: baseline -> tune -> deploy -> tune ceph -> harden"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
@@ -139,12 +147,15 @@ if [ -f ansible.log ] && [ "$(wc -c < ansible.log)" -gt 1048576 ]; then
   mv ansible.log "ansible.$(date +%Y%m%dT%H%M%S).log"
   echo "Rotated ansible.log (>1MB)"
 fi
-echo "=== Baseline ==="       && scripts/ansible-play.sh baseline.yml
-echo "=== OS tuning ==="      && scripts/ansible-play.sh tune-os.yml
-echo "=== Hardware tuning ===" && scripts/ansible-play.sh tune-hardware.yml
-echo "=== Deploy Ceph ==="     && scripts/ansible-play.sh deploy-ceph.yml
-echo "=== Ceph tuning ==="     && scripts/ansible-play.sh tune-ceph.yml
-echo "=== Harden ==="          && scripts/ansible-play.sh harden.yml
+# mise appends task arguments to a single-command task but not to a script
+# block, so each play forwards "$@" explicitly. Without it a --limit passed to
+# this task is silently dropped and every host converges.
+echo "=== Baseline ==="       && scripts/ansible-play.sh baseline.yml "$@"
+echo "=== OS tuning ==="      && scripts/ansible-play.sh tune-os.yml "$@"
+echo "=== Hardware tuning ===" && scripts/ansible-play.sh tune-hardware.yml "$@"
+echo "=== Deploy Ceph ==="     && scripts/ansible-play.sh deploy-ceph.yml "$@"
+echo "=== Ceph tuning ==="     && scripts/ansible-play.sh tune-ceph.yml "$@"
+echo "=== Harden ==="          && scripts/ansible-play.sh harden.yml "$@"
 """
 
 [tasks.destroy]
@@ -201,7 +212,7 @@ description = "Snapshot per-node hardware facts to JSON (informational only)"
 run = "scripts/ansible-play.sh hardware-inventory.yml"
 
 [tasks."migrate-networkd"]
-description = "One-shot ifupdown→networkd migration (rolling, serial=1, noout-gated)"
+description = "One-shot ifupdown->networkd migration (rolling, serial=1, noout-gated)"
 run = "scripts/ansible-play.sh migrate-networkd.yml"
 
 [tasks.reprovision]
