@@ -438,29 +438,29 @@ url = "https://github.com/gruntwork-io/terragrunt/releases/download/v0.99.5/terr
 url_api = "https://api.github.com/repos/gruntwork-io/terragrunt/releases/assets/382118909"
 
 [[tools.tilt]]
-version = "0.34.5"
+version = "0.37.7"
 backend = "aqua:tilt-dev/tilt"
-specifiers = ["0.34.5"]
+specifiers = ["0.37.7"]
 
 [tools.tilt."platforms.linux-arm64"]
-checksum = "sha256:69646e9336e1c79b4e5c69e56194eeb60ce5cc376b184a3304f46118581b8f0a"
-url = "https://github.com/tilt-dev/tilt/releases/download/v0.34.5/tilt.0.34.5.linux.arm64.tar.gz"
-url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/259182442"
+checksum = "sha256:9f381347fa18ffca3f1d3dcdd3f6745281a6647e6107199832ceaa62a461964a"
+url = "https://github.com/tilt-dev/tilt/releases/download/v0.37.7/tilt.0.37.7.linux.arm64.tar.gz"
+url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/515151327"
 
 [tools.tilt."platforms.linux-x64"]
-checksum = "sha256:8991f01b8247682dacdc1fc580fa96ec004f28bfc7ca18a01931b5b47ea246ff"
-url = "https://github.com/tilt-dev/tilt/releases/download/v0.34.5/tilt.0.34.5.linux.x86_64.tar.gz"
-url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/259182450"
+checksum = "sha256:b695193fab68def8310cb971fa60bbe47ba0a782e24f54ebad287c13316a61b0"
+url = "https://github.com/tilt-dev/tilt/releases/download/v0.37.7/tilt.0.37.7.linux.x86_64.tar.gz"
+url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/515151324"
 
 [tools.tilt."platforms.macos-arm64"]
-checksum = "sha256:779414dbb00efcb67e864c76da7226d6c51839902cfba3579737422497dd680e"
-url = "https://github.com/tilt-dev/tilt/releases/download/v0.34.5/tilt.0.34.5.mac.arm64.tar.gz"
-url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/259182440"
+checksum = "sha256:7f54afff29cae67e2751c13df00a66d56f6fbc4463573089059ba673cf128687"
+url = "https://github.com/tilt-dev/tilt/releases/download/v0.37.7/tilt.0.37.7.mac.arm64.tar.gz"
+url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/515151344"
 
 [tools.tilt."platforms.macos-x64"]
-checksum = "sha256:e8bad9d3abf607453fb75bed4ed495f6629192290063660f606d0976f2a37331"
-url = "https://github.com/tilt-dev/tilt/releases/download/v0.34.5/tilt.0.34.5.mac.x86_64.tar.gz"
-url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/259182439"
+checksum = "sha256:2022e675f9a32cdc651e8096a12caa38720be2d692d7347798607873a107fd61"
+url = "https://github.com/tilt-dev/tilt/releases/download/v0.37.7/tilt.0.37.7.mac.x86_64.tar.gz"
+url_api = "https://api.github.com/repos/tilt-dev/tilt/releases/assets/515151325"
 
 [[tools.uv]]
 version = "0.9.18"
