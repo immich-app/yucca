@@ -5,7 +5,6 @@ import { SocketEvent } from '$lib/events';
 import {
   createLocalBackend,
   getBackends,
-  oidcDeviceFlow,
   type BackendDto,
   type CreateLocalBackendRequestDto,
   type LocalRepositoryDto,
@@ -19,7 +18,6 @@ import { createMutation, createQuery } from '@tanstack/svelte-query';
 
 export const backendKeys = {
   all: ['backends'] as const,
-  deviceFlow: (uid: string) => ['deviceFlow', uid] as const,
 };
 
 export const useBackends = () =>
@@ -27,24 +25,6 @@ export const useBackends = () =>
     () => ({
       queryKey: backendKeys.all,
       queryFn: () => getBackends().then(({ backends }) => backends),
-    }),
-    () => queryClient,
-  );
-
-export const useDeviceFlow = (uid: string) =>
-  createQuery(
-    () => ({
-      queryKey: backendKeys.deviceFlow(uid),
-      queryFn: async () => {
-        const response = await oidcDeviceFlow();
-        window.open(response.verificationUri, '_blank');
-        return response;
-      },
-      gcTime: Infinity,
-      retry: 0,
-      refetchOnReconnect: false,
-      refetchOnWindowFocus: false,
-      refetchOnMount: true,
     }),
     () => queryClient,
   );

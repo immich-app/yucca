@@ -30,6 +30,7 @@ export type ModuleConfig = {
   wellKnownUrl?: string;
   externalBaseUrl?: string;
   requireWsAuth?: boolean;
+  requireSession?: boolean;
   requireLock?: boolean;
   developmentMode?: boolean;
 

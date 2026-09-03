@@ -6,6 +6,7 @@ import { BootstrapRepository } from '../repositories/bootstrap.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
 import { ScheduleRepository } from '../repositories/schedule.repository';
+import { Session, SessionService } from './session.service';
 import { TelemetryService } from './telemetry.service';
 
 @Injectable()
@@ -17,10 +18,14 @@ export class OnboardingService {
     private readonly config: ConfigRepository,
     private readonly bootstrap: BootstrapRepository,
     private readonly telemetry: TelemetryService,
+    private readonly session: SessionService,
   ) {}
 
-  async onboardingStatus(): Promise<OnboardingStatusResponseDto> {
+  async onboardingStatus(session?: Session): Promise<OnboardingStatusResponseDto> {
     const status = this.bootstrap.getStatus();
+    const configuration = await this.session.cloudConfiguration();
+    const requiresAuthentication = this.session.isRequired(configuration);
+    const isAuthenticated = session !== undefined;
 
     if (status !== BootstrapStatus.Ready) {
       let error = this.bootstrap.getError();
@@ -30,6 +35,8 @@ export class OnboardingService {
         status,
         error,
         hasTelemetry: TelemetryLevel.None,
+        requiresAuthentication,
+        isAuthenticated,
         hasOnboardedKey: false,
         hasBackend: false,
         hasBackup: false,
@@ -45,6 +52,8 @@ export class OnboardingService {
     return {
       status: BootstrapStatus.Ready,
       hasTelemetry: (await this.config.hasTelemetry()) ? TelemetryLevel.Full : TelemetryLevel.None,
+      requiresAuthentication,
+      isAuthenticated,
       hasOnboardedKey: await this.config.hasOnboardedKey(),
       hasBackend: backends.length > 0,
       hasBackup: repositories.length > 0,

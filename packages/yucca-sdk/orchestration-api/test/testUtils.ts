@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import { Test, TestingModule } from '@nestjs/testing';
 import Database from 'better-sqlite3';
@@ -73,6 +74,7 @@ export async function createTestingModule(): Promise<TestContext> {
         },
       ]),
       EventEmitterModule.forRoot(),
+      JwtModule.register({}),
       ScheduleModule.forRoot(),
     ],
     controllers,

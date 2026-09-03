@@ -3,7 +3,7 @@ import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
 import { type Observable } from 'rxjs';
-import { AuthDto } from 'src/dto/auth.dto';
+import { AuthDto, DeviceFlowEventDto } from 'src/dto/auth.dto';
 import { TicketCreateRequestDto, TicketCreateResponseDto, TicketDto } from 'src/dto/ticket.dto';
 import { CookieName } from 'src/enum';
 import { env } from 'src/env';
@@ -116,7 +116,14 @@ export class AuthController {
     response.redirect(redirectTo);
   }
 
+  @Sse('/oidc/device/identity')
+  @ApiOkResponse({ type: DeviceFlowEventDto })
+  oidcDeviceFlowIdentity(): Observable<MessageEvent> {
+    return this.auth.oidcDeviceFlowIdentityObservable();
+  }
+
   @Sse('/oidc/device')
+  @ApiOkResponse({ type: DeviceFlowEventDto })
   @ApiQuery({ name: 'connection_type', type: String, required: false, description: 'immich | standalone | restic' })
   @ApiQuery({ name: 'connection_name', type: String, required: false, description: 'Instance name, e.g. a hostname' })
   oidcDeviceFlow(

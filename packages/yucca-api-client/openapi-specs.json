@@ -107,6 +107,27 @@
         ]
       }
     },
+    "/api/auth/oidc/device/identity": {
+      "get": {
+        "operationId": "oidcDeviceFlowIdentity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceFlowEventDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/auth/oidc/device": {
       "get": {
         "operationId": "oidcDeviceFlow",
@@ -132,7 +153,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceFlowEventDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -871,6 +899,56 @@
           "email",
           "sessionId",
           "features"
+        ]
+      },
+      "DeviceFlowEventType": {
+        "type": "string",
+        "enum": [
+          "START",
+          "SUCCESS",
+          "FAILURE"
+        ]
+      },
+      "DeviceFlowFailureReason": {
+        "type": "string",
+        "enum": [
+          "UNKNOWN",
+          "EMAIL_NOT_ALLOWED",
+          "FEATURE_NOT_ENABLED"
+        ]
+      },
+      "DeviceFlowEventDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeviceFlowEventType"
+              }
+            ]
+          },
+          "userCode": {
+            "type": "string"
+          },
+          "verificationUri": {
+            "type": "string"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeviceFlowFailureReason"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type"
         ]
       },
       "TicketAction": {

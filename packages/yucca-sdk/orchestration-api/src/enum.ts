@@ -2,6 +2,7 @@ export enum CookieName {
   NextUrl = 'sdk-next',
   OidcState = 'sdk-oidc-state',
   OidcCodeVerifier = 'sdk-oidc-code-verifier',
+  SessionToken = 'sdk-session',
   YuccaAccessToken = 'yucca-access-token',
   YuccaOidcState = 'yucca-oidc-state',
   YuccaOidcCodeVerifier = 'yucca-oidc-code-verifier',
@@ -22,6 +23,11 @@ export enum ConfigurationKey {
   Telemetry = 'telemetry',
   SkippedOnboardingExtraConfig = 'skipped-onboarding-extra-config',
   ResticOptionRestConnections = 'restic-o-rest-connections',
+  SessionSecret = 'session-secret',
+}
+
+export enum MetadataKey {
+  PublicRoute = 'public-route',
 }
 
 export enum BackendType {
@@ -46,6 +52,19 @@ export enum TaskType {
 
 export enum InternalEvent {
   ModuleConfigUpdated = 'yucca.moduleConfig.updated',
+}
+
+export enum DeviceFlowEventType {
+  Start = 'START',
+  Success = 'SUCCESS',
+  Failure = 'FAILURE',
+}
+
+export enum DeviceFlowFailureReason {
+  NotConnected = 'NOT_CONNECTED',
+  DeviceFlowFailed = 'DEVICE_FLOW_FAILED',
+  WrongAccount = 'WRONG_ACCOUNT',
+  Unknown = 'UNKNOWN',
 }
 
 export enum BootstrapStatus {

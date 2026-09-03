@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { DeviceFlowEventType, DeviceFlowFailureReason } from 'src/enum';
 
 export class AuthDto {
   @ApiProperty()
@@ -18,4 +19,24 @@ export class AuthDto {
 
   @ApiProperty({ type: 'object', additionalProperties: { type: 'boolean' } })
   features!: Record<string, boolean>;
+}
+
+export class DeviceFlowEventDto {
+  @ApiProperty({ enum: DeviceFlowEventType, enumName: 'DeviceFlowEventType' })
+  type!: DeviceFlowEventType;
+
+  @ApiProperty({ type: String, required: false })
+  userCode?: string;
+
+  @ApiProperty({ type: String, required: false })
+  verificationUri?: string;
+
+  @ApiProperty({ type: String, required: false })
+  accessToken?: string;
+
+  @ApiProperty({ type: String, required: false })
+  userId?: string;
+
+  @ApiProperty({ enum: DeviceFlowFailureReason, enumName: 'DeviceFlowFailureReason', required: false })
+  reason?: DeviceFlowFailureReason;
 }

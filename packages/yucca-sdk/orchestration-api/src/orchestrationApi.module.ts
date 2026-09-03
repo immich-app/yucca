@@ -1,6 +1,7 @@
 import { DynamicModule, FactoryProvider, Module, ModuleMetadata } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import Database from 'better-sqlite3';
 import { SqliteDialect } from 'kysely';
@@ -20,6 +21,7 @@ import { RunningTasksController } from './controllers/runningTasks.controller';
 import { ScheduleController } from './controllers/schedule.controller';
 import { EventsGateway } from './events/events.gateway';
 import { TelemetryErrorInterceptor } from './interceptors/telemetry-error.interceptor';
+import { SessionGuard } from './middleware/session.guard';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
 import { BackendRepository } from './repositories/backend.repository';
 import { BootstrapRepository } from './repositories/bootstrap.repository';
@@ -47,6 +49,7 @@ import { RepositoryService } from './services/repository.service';
 import { RunHistoryService } from './services/runHistory.service';
 import { RunningTasksService } from './services/runningTasks.service';
 import { ScheduleService } from './services/schedule.service';
+import { SessionService } from './services/session.service';
 import { TelemetryService } from './services/telemetry.service';
 import { YuccaService } from './services/yucca.service';
 import { yuccaWellKnown } from './wellKnown';
@@ -94,6 +97,7 @@ export const services = [
   RunHistoryService,
   RunningTasksService,
   ScheduleService,
+  SessionService,
   TelemetryService,
   YuccaService,
 ];
@@ -153,11 +157,13 @@ export class OrchestrationApiModule {
           },
         }),
         EventEmitterModule.forRoot(),
+        JwtModule.register({}),
         ScheduleModule.forRoot(),
       ],
       controllers,
       providers: [
         { provide: APP_INTERCEPTOR, useClass: TelemetryErrorInterceptor },
+        { provide: APP_GUARD, useClass: SessionGuard },
         EventsGateway,
         ...repositories,
         ...services,

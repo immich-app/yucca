@@ -14,9 +14,18 @@ const oazapfts = Oazapfts.runtime(defaults);
 export const servers = {
     server1: "http://localhost:22676"
 };
-export type DeviceFlowResponseDto = {
-    userCode: string;
-    verificationUri: string;
+export type DeviceFlowEventType = "START" | "SUCCESS" | "FAILURE";
+export type DeviceFlowFailureReason = "NOT_CONNECTED" | "DEVICE_FLOW_FAILED" | "WRONG_ACCOUNT" | "UNKNOWN";
+export type DeviceFlowEventDto = {
+    "type": DeviceFlowEventType;
+    userCode?: string;
+    verificationUri?: string;
+    token?: string;
+    backendId?: string;
+    reason?: DeviceFlowFailureReason;
+};
+export type CreateSessionRequestDto = {
+    token: string;
 };
 export type TicketAction = "repository.delete" | "repository.disable-worm";
 export type TicketCreateRequestDto = {
@@ -109,6 +118,8 @@ export type OnboardingStatusResponseDto = {
     status: BootstrapStatus;
     error?: string;
     hasTelemetry: TelemetryLevel;
+    requiresAuthentication: boolean;
+    isAuthenticated: boolean;
     hasOnboardedKey: boolean;
     hasBackend: boolean;
     hasBackup: boolean;
@@ -289,13 +300,28 @@ export type ScheduleUpdateRequestDto = {
 export type ScheduleUpdateResponseDto = {
     schedule: ScheduleDto;
 };
-export function oidcDeviceFlow(opts?: Oazapfts.RequestOpts) {
+export function connectDeviceFlow(opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
-        data: DeviceFlowResponseDto;
+        data: DeviceFlowEventDto;
     }>("/api/yucca/auth/oidc/device", {
         ...opts
     }));
+}
+export function sessionDeviceFlow(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DeviceFlowEventDto;
+    }>("/api/yucca/auth/session/device", {
+        ...opts
+    }));
+}
+export function createSession(createSessionRequestDto: CreateSessionRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/auth/session", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: createSessionRequestDto
+    })));
 }
 export function createTicket(ticketCreateRequestDto: TicketCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{

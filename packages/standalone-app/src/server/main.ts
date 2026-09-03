@@ -21,6 +21,7 @@ async function bootstrap() {
       useFactory: () => ({
         statePath: env.statePath,
         wellKnownUrl: env.wellKnownUrl,
+        requireSession: !env.disableAuth,
       }),
     }),
   );

@@ -3,7 +3,7 @@
   "paths": {
     "/api/yucca/auth/oidc/device": {
       "get": {
-        "operationId": "oidcDeviceFlow",
+        "operationId": "connectDeviceFlow",
         "parameters": [],
         "responses": {
           "200": {
@@ -11,10 +11,55 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DeviceFlowResponseDto"
+                  "$ref": "#/components/schemas/DeviceFlowEventDto"
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/yucca/auth/session/device": {
+      "get": {
+        "operationId": "sessionDeviceFlow",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceFlowEventDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/yucca/auth/session": {
+      "post": {
+        "operationId": "createSession",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
           }
         },
         "tags": [
@@ -1135,19 +1180,66 @@
   ],
   "components": {
     "schemas": {
-      "DeviceFlowResponseDto": {
+      "DeviceFlowEventType": {
+        "type": "string",
+        "enum": [
+          "START",
+          "SUCCESS",
+          "FAILURE"
+        ]
+      },
+      "DeviceFlowFailureReason": {
+        "type": "string",
+        "enum": [
+          "NOT_CONNECTED",
+          "DEVICE_FLOW_FAILED",
+          "WRONG_ACCOUNT",
+          "UNKNOWN"
+        ]
+      },
+      "DeviceFlowEventDto": {
         "type": "object",
         "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeviceFlowEventType"
+              }
+            ]
+          },
           "userCode": {
             "type": "string"
           },
           "verificationUri": {
             "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "backendId": {
+            "type": "string"
+          },
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeviceFlowFailureReason"
+              }
+            ]
           }
         },
         "required": [
-          "userCode",
-          "verificationUri"
+          "type"
+        ]
+      },
+      "CreateSessionRequestDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
         ]
       },
       "TicketAction": {
@@ -1556,6 +1648,12 @@
               }
             ]
           },
+          "requiresAuthentication": {
+            "type": "boolean"
+          },
+          "isAuthenticated": {
+            "type": "boolean"
+          },
           "hasOnboardedKey": {
             "type": "boolean"
           },
@@ -1575,6 +1673,8 @@
         "required": [
           "status",
           "hasTelemetry",
+          "requiresAuthentication",
+          "isAuthenticated",
           "hasOnboardedKey",
           "hasBackend",
           "hasBackup",

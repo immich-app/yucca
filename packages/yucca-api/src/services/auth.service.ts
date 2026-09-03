@@ -10,7 +10,7 @@ import { UserInfoResponse } from 'openid-client';
 import { from } from 'rxjs';
 import { AuthDto } from 'src/dto/auth.dto';
 import { TicketCreateRequestDto, TicketCreateResponseDto, TicketDto } from 'src/dto/ticket.dto';
-import { CookieName, TicketAction } from 'src/enum';
+import { CookieName, DeviceFlowEventType, DeviceFlowFailureReason, TicketAction } from 'src/enum';
 import { env } from 'src/env';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
@@ -331,11 +331,7 @@ export class AuthService {
     return connection.id;
   }
 
-  async oidcDeviceFlow(
-    callback: (data: { userCode: string; verificationUri: string }) => void,
-    connectionType?: string,
-    connectionName?: string,
-  ): Promise<{ accessToken: string }> {
+  private async runDeviceFlow(callback: (data: { userCode: string; verificationUri: string }) => void) {
     const { userCode, verificationUri, claims: pendingClaims } = await this.oidc.deviceFlow();
 
     callback({ userCode, verificationUri });
@@ -351,6 +347,24 @@ export class AuthService {
     const user = await this.getOrCreateUser(claims);
 
     this.wideContext.addContext('customerId', user.id);
+
+    return user;
+  }
+
+  async oidcDeviceFlowIdentity(
+    callback: (data: { userCode: string; verificationUri: string }) => void,
+  ): Promise<{ userId: string }> {
+    const user = await this.runDeviceFlow(callback);
+
+    return { userId: user.id };
+  }
+
+  async oidcDeviceFlow(
+    callback: (data: { userCode: string; verificationUri: string }) => void,
+    connectionType?: string,
+    connectionName?: string,
+  ): Promise<{ accessToken: string; userId: string }> {
+    const user = await this.runDeviceFlow(callback);
 
     const overrides = await this.user.getFeatureOverrides(user.id);
     const connectionId = await this.resolveDeviceConnection(
@@ -372,7 +386,22 @@ export class AuthService {
 
     return {
       accessToken,
+      userId: user.id,
     };
+  }
+
+  oidcDeviceFlowIdentityObservable() {
+    return from(
+      new EventIterator<MessageEvent>(
+        (queue) =>
+          void this.oidcDeviceFlowIdentity((data) =>
+            queue.push({ data: { type: DeviceFlowEventType.Start, ...data } } as MessageEvent),
+          )
+            .then(({ userId }) => queue.push({ data: { type: DeviceFlowEventType.Success, userId } } as MessageEvent))
+            .catch((error) => this.pushDeviceFlowFailure(queue, error))
+            .finally(() => queue.stop()),
+      ),
+    );
   }
 
   oidcDeviceFlowObservable(connectionType?: string, connectionName?: string) {
@@ -383,27 +412,33 @@ export class AuthService {
             (data) =>
               queue.push({
                 data: {
-                  type: 'START',
+                  type: DeviceFlowEventType.Start,
                   ...data,
                 },
               } as MessageEvent),
             connectionType,
             connectionName,
           )
-            .then(({ accessToken }) => queue.push({ data: { type: 'SUCCESS', accessToken } } as MessageEvent))
-            .catch((error) => {
-              this.wideContext.setErrorCause(error);
-              this.logger.error('oidcDeviceFlow error:', error);
-              let reason = 'UNKNOWN';
-              if (error instanceof EmailNotAllowedException) {
-                reason = 'EMAIL_NOT_ALLOWED';
-              } else if (error instanceof FeatureNotEnabledException) {
-                reason = 'FEATURE_NOT_ENABLED';
-              }
-              queue.push({ data: { type: 'FAILURE', reason } } as MessageEvent);
-            })
+            .then(({ accessToken, userId }) =>
+              queue.push({ data: { type: DeviceFlowEventType.Success, accessToken, userId } } as MessageEvent),
+            )
+            .catch((error) => this.pushDeviceFlowFailure(queue, error))
             .finally(() => queue.stop()),
       ),
     );
+  }
+
+  private pushDeviceFlowFailure(queue: { push: (value: MessageEvent) => void }, error: unknown) {
+    this.wideContext.setErrorCause(error);
+    this.logger.error('oidcDeviceFlow error:', error);
+
+    let reason = DeviceFlowFailureReason.Unknown;
+    if (error instanceof EmailNotAllowedException) {
+      reason = DeviceFlowFailureReason.EmailNotAllowed;
+    } else if (error instanceof FeatureNotEnabledException) {
+      reason = DeviceFlowFailureReason.FeatureNotEnabled;
+    }
+
+    queue.push({ data: { type: DeviceFlowEventType.Failure, reason } } as MessageEvent);
   }
 }

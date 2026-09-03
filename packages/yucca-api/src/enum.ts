@@ -24,6 +24,18 @@ export enum MetadataKey {
   Feature = 'FEATURE',
 }
 
+export enum DeviceFlowEventType {
+  Start = 'START',
+  Success = 'SUCCESS',
+  Failure = 'FAILURE',
+}
+
+export enum DeviceFlowFailureReason {
+  Unknown = 'UNKNOWN',
+  EmailNotAllowed = 'EMAIL_NOT_ALLOWED',
+  FeatureNotEnabled = 'FEATURE_NOT_ENABLED',
+}
+
 export enum DatabaseLock {
   Migrations = 67,
 }

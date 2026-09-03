@@ -9,8 +9,8 @@
 > [!NOTE]
 > The user interface for the standalone app is unpolished and may have some rough edges.
 
-> [!WARNING]
-> The app has no authentication, take care when exposing any ports.
+> [!NOTE]
+> This app does not require authentication until FUTO Backups account is connected. After which, you can only use the environment flag `YUCCA_DISABLE_AUTH=true` to disable it.
 
 Run using Docker:
 

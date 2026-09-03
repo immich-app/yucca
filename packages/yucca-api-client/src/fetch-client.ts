@@ -24,6 +24,16 @@ export type AuthDto = {
         [key: string]: boolean;
     };
 };
+export type DeviceFlowEventType = "START" | "SUCCESS" | "FAILURE";
+export type DeviceFlowFailureReason = "UNKNOWN" | "EMAIL_NOT_ALLOWED" | "FEATURE_NOT_ENABLED";
+export type DeviceFlowEventDto = {
+    "type": DeviceFlowEventType;
+    userCode?: string;
+    verificationUri?: string;
+    accessToken?: string;
+    userId?: string;
+    reason?: DeviceFlowFailureReason;
+};
 export type TicketAction = "repository.delete" | "repository.disable-worm";
 export type TicketCreateRequestDto = {
     action: TicketAction;
@@ -218,11 +228,22 @@ export function oidcCallback(opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function oidcDeviceFlowIdentity(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DeviceFlowEventDto;
+    }>("/api/auth/oidc/device/identity", {
+        ...opts
+    }));
+}
 export function oidcDeviceFlow({ connectionType, connectionName }: {
     connectionType?: string;
     connectionName?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText(`/api/auth/oidc/device${QS.query(QS.explode({
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: DeviceFlowEventDto;
+    }>(`/api/auth/oidc/device${QS.query(QS.explode({
         connection_type: connectionType,
         connection_name: connectionName
     }))}`, {
