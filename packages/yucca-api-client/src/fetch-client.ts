@@ -415,10 +415,7 @@ export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
     }));
 }
 export function disableWorm(id: string, ticketId: string, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
-        data: RepositoryUpdateResponseDto;
-    }>(`/api/repository/${encodeURIComponent(id)}/worm${QS.query(QS.explode({
+    return oazapfts.ok(oazapfts.fetchText(`/api/repository/${encodeURIComponent(id)}/worm${QS.query(QS.explode({
         ticketId
     }))}`, {
         ...opts,

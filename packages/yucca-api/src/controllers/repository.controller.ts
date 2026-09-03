@@ -77,18 +77,13 @@ export class RepositoryController {
     @Req() request: Request,
   ) {
     const ticket = await this.auth.spendTicket(TicketAction.DeleteRepository, repositoryId, ticketId, request.headers);
-    return this.repository.delete(ticket.userId, repositoryId);
+    return this.repository.delete(ticket, repositoryId);
   }
 
   @Delete('/:id/worm')
   @ApiQuery({ name: 'ticketId', type: String })
-  @ApiOkResponse({ type: RepositoryUpdateResponseDto })
-  async disableWorm(
-    @Param('id') repositoryId: string,
-    @Query('ticketId') ticketId: string,
-    @Req() request: Request,
-  ): Promise<RepositoryUpdateResponseDto> {
+  async disableWorm(@Param('id') repositoryId: string, @Query('ticketId') ticketId: string, @Req() request: Request) {
     const ticket = await this.auth.spendTicket(TicketAction.DisableWorm, repositoryId, ticketId, request.headers);
-    return this.repository.disableWorm(ticket.userId, repositoryId);
+    return this.repository.disableWorm(ticket, repositoryId);
   }
 }

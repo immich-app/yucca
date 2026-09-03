@@ -1,11 +1,14 @@
 import { WideContextRepository } from '@common/server/otel';
 import { BadRequestException, Injectable, Scope, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Selectable } from 'kysely';
 import { AuthDto } from 'src/dto/auth.dto';
 import { RepositoryCreateRequestDto, RepositoryUpdateRequestDto } from 'src/dto/repository.dto';
+import { AuditAction } from 'src/enum';
 import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { TopologyRepository } from 'src/repositories/topology.repository';
+import { TicketTable } from 'src/schema/tables/ticket.table';
 
 @Injectable({ scope: Scope.REQUEST })
 export class RepositoryService {
@@ -63,13 +66,17 @@ export class RepositoryService {
     return { repository: await this.repositoryRepository.update(id, dto) };
   }
 
-  async disableWorm(userId: string, id: string) {
-    const repository = await this.getOwned(userId, id);
+  async disableWorm(ticket: Selectable<TicketTable>, id: string) {
+    const repository = await this.getOwned(ticket.userId, id);
     if (!repository.worm) {
       throw new BadRequestException('Repository is not write-only');
     }
 
-    return { repository: await this.repositoryRepository.update(id, { worm: false }) };
+    await this.repositoryRepository.disableWorm(id, {
+      action: AuditAction.DisableWorm,
+      userId: ticket.userId,
+      detail: { ticket: { id: ticket.id, validAt: ticket.validAt }, repository },
+    });
   }
 
   async createUrl(auth: AuthDto, id: string) {
@@ -95,8 +102,12 @@ export class RepositoryService {
     return { url: `rest:${url.href}` };
   }
 
-  async delete(userId: string, id: string) {
-    await this.getOwned(userId, id);
-    await this.repositoryRepository.delete(id);
+  async delete(ticket: Selectable<TicketTable>, id: string) {
+    const repository = await this.getOwned(ticket.userId, id);
+    await this.repositoryRepository.delete(id, {
+      action: AuditAction.DeleteRepository,
+      userId: ticket.userId,
+      detail: { ticket: { id: ticket.id, validAt: ticket.validAt }, repository },
+    });
   }
 }

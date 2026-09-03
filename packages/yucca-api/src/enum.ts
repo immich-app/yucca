@@ -14,6 +14,11 @@ export enum TicketAction {
   DisableWorm = 'repository.disable-worm',
 }
 
+export enum AuditAction {
+  DeleteRepository = 'repository.delete',
+  DisableWorm = 'repository.disable-worm',
+}
+
 export enum MetadataKey {
   Auth = 'AUTH',
   Feature = 'FEATURE',
