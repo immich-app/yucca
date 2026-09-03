@@ -1,4 +1,8 @@
-# Email
+---
+title: Email
+description: The templates, the Postmark client and the invite flow, plus how email works in local dev
+order: 3
+---
 
 Yucca sends transactional email through [Postmark](https://postmarkapp.com/). The first (and so
 far only) sender is the invite flow in yucca-admin-api; anything that later needs to email a user
@@ -25,7 +29,7 @@ Environments that don't care about email keep working; nothing crashes at boot.
 email every affected entry whose `userAllowlist.inviteEmailSentAt` is still null, then stamp it on
 success. Re-running an invite is therefore a safe retry that only reaches the not-yet-emailed
 entries; a rejected address stays null and is retried next time. The email carries the invite code
-and links to `${WEB_BASE_URL}/login/invite`.
+and links to `/login/invite` under `WEB_BASE_URL`.
 
 ## Configuration
 
@@ -36,7 +40,7 @@ and links to `${WEB_BASE_URL}/login/invite`.
 | `EMAIL_FROM_ADDRESS` | `From` header | `FUTO Backups <noreply@backups.futo.cloud>` |
 | `WEB_BASE_URL` | Base for links in emails (yucca-admin-api) | `http://localhost:5173` |
 
-The boundary rule from [feature-flags.md](feature-flags.md) applies: these are deployment config
+The boundary rule from [feature flags](/architecture/feature-flags) applies: these are deployment config
 (env/Secret/cluster-settings), not feature flags. In staging/prod the token rides in the
 TF-provisioned `yucca-admin-api` Secret; the from-address and `WEB_BASE_URL` come from the base
 HelmRelease + cluster-settings.
@@ -48,12 +52,12 @@ which delivers into a [Mailpit](https://mailpit.axllent.org/) inbox:
 
 - **compose (`mise dev`)**: `mock-postmark-provider` on `localhost:8093`, Mailpit UI on
   `http://localhost:8025`. The yucca-admin-api dev env defaults point at the mock.
-- **k3d/Tilt**: `yucca-mock-postmark` + `yucca-mailpit` (dev-only HelmReleases under
+- **[k3d/Tilt](/development/kubernetes)**: `yucca-mock-postmark` + `yucca-mailpit` (dev-only HelmReleases under
   `kubernetes/apps/dev/local`), same ports via the Tilt port-forwards.
 - **e2e/tests**: assert through Mailpit's REST API (`GET /api/v1/messages`, search, message body);
   unit/integration tests mock or override `EmailRepository` instead.
 
-To send *real* email from a dev machine, set `POSTMARK_API_URL` + `POSTMARK_SERVER_TOKEN` in
+To send _real_ email from a dev machine, set `POSTMARK_API_URL` + `POSTMARK_SERVER_TOKEN` in
 `.env` (see `.env.example`).
 
 ## Adding a template

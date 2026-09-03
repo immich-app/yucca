@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+@import '@immich/ui/theme/default.css';
+@source '../node_modules/@immich/ui';
+
+article td {
+  display: table-cell;
+  overflow: visible;
+  -webkit-line-clamp: none;
+  text-align: start;
+  text-overflow: clip;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}

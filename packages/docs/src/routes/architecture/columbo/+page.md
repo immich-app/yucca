@@ -1,4 +1,8 @@
-# Columbo: automated ticket investigations
+---
+title: Columbo
+description: The Go agent that investigates new support tickets against the o11y stack and reports into the staff thread
+order: 5
+---
 
 `packages/columbo` is a Go service that investigates freshly opened support
 tickets against the o11y stack and posts its findings into the ticket's staff
@@ -26,9 +30,9 @@ constant-time hashed compare, failing closed when unset. NetworkPolicies pin
 columbo's ingress to the bot and yucca-admin-api pods, and the bot's `:3050`
 admits columbo only for the staff-notes endpoint.
 
-## Ad-hoc investigations (`yuctl columbo investigate`)
+## Ad-hoc investigations
 
-Staff can run an investigation without a ticket:
+Staff can run an investigation without a ticket with `yuctl columbo investigate`:
 
 ```
 yuctl columbo investigate --user someone@example.com --prompt "backups slow since Tuesday?"

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run unit tests for docs"
+set -e
+
+pnpm --filter docs test:unit "$@"

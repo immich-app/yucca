@@ -1,10 +1,14 @@
-# Connections
+---
+title: Connections
+description: The connection model that attributes a user's backup usage to each source, its code-defined types, billing rollup, token revocation and self-serve restic
+order: 1
+---
 
 A **connection** is what backs up a user's account. It makes "what is using this
 account" first-class, so usage can be attributed and billed per source and so a
 user can run more than one backup client against one account.
 
-```
+```text
 User ──1:N──> Connection ──1:N──> Repository ──1:1──> S3 bucket (via michael)
 ```
 
@@ -25,22 +29,22 @@ per-user/instance state is data. The descriptor lives in
 `packages/common/src/connections.ts` (`ConnectionTypeInfos`), exported from
 `@common/server`. Adding a type is a one-object change there.
 
-| Type | Metering tiers | Reports activity | Min object size | Revocable | Self-serve flag |
-|---|---|---|---|---|---|
-| `immich` | storage, transfer, activity | yes | 0 | no | none (always on) |
-| `standalone` | storage, transfer, activity | yes | 1 MiB | no | none (always on) |
-| `restic` | storage, transfer | no | 1 MiB | yes | `connection-restic` |
-| `s3` *(future)* | storage | no | 1 MiB | yes |, |
+| Type             | Metering tiers              | Reports activity | Min object size | Revocable | Self-serve flag    |
+| ---------------- | --------------------------- | ---------------- | --------------- | --------- | ------------------ |
+| `immich`         | storage, transfer, activity | yes              | 0               | no        | none (always on)   |
+| `standalone`     | storage, transfer, activity | yes              | 1 MiB           | no        | none (always on)   |
+| `restic`         | storage, transfer           | no               | 1 MiB           | yes       | `connection-restic` |
+| `s3` _(future)_  | storage                     | no               | 1 MiB           | yes       | TBD                |
 
 ### Metering tiers
 
 Billing keys off **storage**, the only universal tier.
 
-| Tier | Source | immich | standalone | restic | s3 |
-|---|---|---|---|---|---|
-| **Storage** (bytes, objects) → **billed** | RadosGW | ✅ | ✅ | ✅ | ✅ |
-| Transfer | michael | ✅ | ✅ | ✅ | ❌ |
-| Activity (backup start/end) | client | ✅ | ✅ | ❌ | ❌ |
+| Tier                                    | Source  | immich | standalone | restic | s3  |
+| --------------------------------------- | ------- | ------ | ---------- | ------ | --- |
+| **Storage** (bytes, objects) → **billed** | RadosGW | ✅     | ✅         | ✅     | ✅  |
+| Transfer                                | michael | ✅     | ✅         | ✅     | ❌  |
+| Activity (backup start/end)             | client  | ✅     | ✅         | ❌     | ❌  |
 
 ## Billing rollup
 
@@ -52,7 +56,7 @@ returns the rollup per connection.
 **Billable bytes** apply a per-type object-size floor via
 `billableBytes(type, sizeBytes, objectCount)`:
 
-```
+```text
 billableBytes = max(sizeBytes, objectCount * minObjectSizeBytes)
 ```
 
@@ -65,7 +69,7 @@ objects, but restic writes large pack files so `sizeBytes` dominates and the
 floor only bites for tiny/new repos or many-small-object raw-S3, the intended
 cases. Exact per-object billing (S3 `ListObjects`) is a documented future option.
 
-*(This produces billable-bytes only. Pricing/plan/quota is a separate later layer.)*
+_(This produces billable-bytes only. Pricing/plan/quota is a separate later layer.)_
 
 ## Revocation: postgres truth, layered caches, bounded grace
 
@@ -73,7 +77,7 @@ restic tokens are long-lived, so their liveness is checked against the **source
 of truth, postgres** (`resticTokens`), fronted by yucca-api's internal
 introspection endpoint and two cache layers in michael:
 
-```
+```text
 michael request ──> L1 (per-process, fresh 60s / grace 30min)
                       └miss──> L2 (shared valkey, yucca:michael:verdict:<jti>, TTL 5min)
                                  └miss/error──> GET yucca-api /internal/restic-tokens/:jti  (postgres)
@@ -85,24 +89,24 @@ michael request ──> L1 (per-process, fresh 60s / grace 30min)
   restores unexpired ones). Unknown, malformed, revoked, expired, and
   disabled-owner jtis all answer `active:false`.
   The route is **unreachable from the public internet**: the gateway
-  short-circuits `/api/internal/*` to a bare 404 (`HTTPRouteFilter
-  internal-404` shadowing the `/api` rule), so only pod-to-pod traffic,
+  short-circuits `/api/internal/*` to a bare 404 (`HTTPRouteFilter internal-404`
+  shadowing the `/api` rule), so only pod-to-pod traffic,
   admitted by `allow-ingress-yucca-api`, ever reaches it; the shared secret
   is the second wall, not the only one.
 - **Mint** writes only the postgres row, no cache writes; the first request
   populates the caches read-through.
 - **Revoke** flips the DB row, then best-effort **DELs the L2 verdict key**,
   the revoke lands on every michael replica within ~the L1 fresh TTL
-  (`REVOCATION_FRESH_TTL_MS`, default 60 s). A *missed* DEL self-heals when the
+  (`REVOCATION_FRESH_TTL_MS`, default 60 s). A _missed_ DEL self-heals when the
   L2 entry's TTL (`VERDICT_CACHE_TTL_MS`, default 5 min) lapses and the next
   miss re-asks postgres, no reconcile job exists or is needed.
 - **Valkey restart/outage is harmless**: L2 is pure cache, a miss or error
   falls through to introspection. (This is why the old marker model's
   restart-deny-window and reconcile cron are gone.)
 - **Introspection outage** (yucca-api/postgres unreachable): michael keeps
-  honoring a *previously-valid* jti until a bounded **grace** window elapses
+  honoring a _previously-valid_ jti until a bounded **grace** window elapses
   (`REVOCATION_GRACE_MS`, default 30 min), then fails **closed**. The horizon is
-  anchored to the last *authoritative* confirmation (L2 hits carry the entry's
+  anchored to the last _authoritative_ confirmation (L2 hits carry the entry's
   age via PTTL), so 30 min is a true end-to-end bound; repeated failures are
   also debounced (a short backoff gates introspection dials, so an outage never
   turns restic's request concurrency into a control-plane storm). A jti never
@@ -138,7 +142,7 @@ A user with the `connection-restic` flag can stand up a restic backup in one cal
   michael's cached verdict.
 
 The `/connections` surface (list, create, adopt, manage) is open to **every**
-authenticated user; the individual non-default *type* is flag-gated on every
+authenticated user; the individual non-default _type_ is flag-gated on every
 **credential-creating** operation, creating a connection of the type, creating
 a repository under one, and minting a URL, so a `false` override is a real
 kill-switch for new self-service credentials (existing tokens keep working until
@@ -161,13 +165,13 @@ reminder. Per-repository access keys are listed/revoked/re-minted in `ManageToke
 
 ## Where things live
 
-| Concern | Location |
-|---|---|
-| Type descriptor + billing floor | `packages/common/src/connections.ts` |
-| Schema (`connections`, `connectionMetrics`, `resticTokens`) | `packages/yucca-api/src/schema/` |
-| Connection + self-serve restic API | `packages/yucca-api/src/{controllers,services}/` |
-| Web Connections page + restic modals | `packages/web/src/routes/dashboard/connections/`, `packages/web/src/lib/components/connections/` |
-| Billing rollup | `packages/yucca-metrics-worker/` |
-| Validity check (michael: L1/L2/introspection) | `packages/michael/internal/revocation/` |
-| Introspection endpoint | `packages/yucca-api/src/controllers/introspection.controller.ts` |
-| Admin provisioning | `packages/yucca-admin-api/`, `packages/yuctl/` |
+| Concern                                                     | Location                                                                                                    |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Type descriptor + billing floor                             | `packages/common/src/connections.ts`                                                                        |
+| Schema (`connections`, `connectionMetrics`, `resticTokens`) | `packages/yucca-api/src/schema/`                                                                            |
+| Connection + self-serve restic API                          | `packages/yucca-api/src/{controllers,services}/`                                                            |
+| Web Connections page + restic modals                        | `packages/web/src/routes/dashboard/connections/`, `packages/web/src/lib/components/connections/`            |
+| Billing rollup                                              | `packages/yucca-metrics-worker/`                                                                            |
+| Validity check (michael: L1/L2/introspection)               | `packages/michael/internal/revocation/`                                                                     |
+| Introspection endpoint                                      | `packages/yucca-api/src/controllers/introspection.controller.ts`                                            |
+| Admin provisioning                                          | `packages/yucca-admin-api/`, `packages/yuctl/`                                                              |

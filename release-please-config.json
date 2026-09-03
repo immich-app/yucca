@@ -49,6 +49,11 @@
         },
         {
           "type": "json",
+          "path": "packages/docs/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
           "path": "packages/yucca-admin-api/package.json",
           "jsonpath": "$.version"
         },
