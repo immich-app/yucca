@@ -55,6 +55,7 @@ jobs:
             michael: ['packages/michael/**', '.dockerignore']
             columbo: ['packages/columbo/**', '.dockerignore']
             monk: ['packages/monk/**', '.dockerignore']
+            restic-proxy: ['packages/restic-proxy/**', '.dockerignore']
 
       # A Dockerfile without a filter is the silent gap this workflow exists
       # to close: its first build would happen post-merge (or at release, for
@@ -63,10 +64,10 @@ jobs:
       # name whose filter key is renamed or dropped never builds again.
       - name: Require every Dockerfile to carry a filter
         run: |
-          covered='yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web standalone-app michael columbo monk'
+          covered='yucca-api yucca-admin-api yucca-metrics-worker futo-backups-bot web standalone-app michael columbo monk restic-proxy'
           excluded='mock-oidc-provider mock-postmark-provider'
           # Apps with no Deploy leg, delivered by the release-event workflows.
-          publish_only='standalone-app'
+          publish_only='standalone-app restic-proxy'
           deploy_apps="$(yq '.jobs.build.strategy.matrix.app[].name' .github/workflows/deploy.yml | tr '\n' ' ')"
           [ -n "${deploy_apps// /}" ] || { echo "::error::no apps parsed from the Deploy build matrix"; exit 1; }
           fail=0

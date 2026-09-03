@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.38.0](https://github.com/immich-app/yucca/compare/v0.37.1...v0.38.0) (2026-09-01)
+
+
+### Features
+
+* **ceph:** deploy monk onto the mon hosts ([#588](https://github.com/immich-app/yucca/issues/588)) ([be10b15](https://github.com/immich-app/yucca/commit/be10b15a122019682918182445266352fe3f5e49))
+* **ceph:** enable monk on sietch ([#591](https://github.com/immich-app/yucca/issues/591)) ([b762917](https://github.com/immich-app/yucca/commit/b7629172be0db2d5432740742c77ba6fff9c441b))
+* **ceph:** move user creation inside terraform ([#541](https://github.com/immich-app/yucca/issues/541)) ([8392f4f](https://github.com/immich-app/yucca/commit/8392f4f3796030b2a5b59777b2c66c0ae7a27dd7))
+* **ceph:** pin monk on spice, gated behind a canary ([#599](https://github.com/immich-app/yucca/issues/599)) ([55f37fe](https://github.com/immich-app/yucca/commit/55f37fe7d5902ddc5dd6a761c12d7a0fb58555d7))
+* **columbo:** add columbo ([#585](https://github.com/immich-app/yucca/issues/585)) ([88267dc](https://github.com/immich-app/yucca/commit/88267dc1f7cfb4e0857e113ef52955d692851c85))
+* **columbo:** give the agent fixed fleet-health probes and a bigger tool budget ([#600](https://github.com/immich-app/yucca/issues/600)) ([bb0cd74](https://github.com/immich-app/yucca/commit/bb0cd74bee699a8faae3e434214423295e563a97))
+* **columbo:** per-investigation audit log, tool-error recovery, pipe-aware log scoping ([#586](https://github.com/immich-app/yucca/issues/586)) ([b3aa57d](https://github.com/immich-app/yucca/commit/b3aa57dc5d0448dd5ae718bf46dfb06ded879185))
+* **columbo:** retry model calls with per-attempt deadlines ([#598](https://github.com/immich-app/yucca/issues/598)) ([8e9cd64](https://github.com/immich-app/yucca/commit/8e9cd64c165ebdb5b7a2cdd69c447b13cf956da9))
+* **columbo:** triage-refusal staff notes + per-user telemetry catalog ([#596](https://github.com/immich-app/yucca/issues/596)) ([500107b](https://github.com/immich-app/yucca/commit/500107b5ce046d8d944d29db44c6d06958723455))
+* **futo-backups-bot:** /beta-invite with personal links, claim batches, and optional role mention ([#571](https://github.com/immich-app/yucca/issues/571)) ([9abf625](https://github.com/immich-app/yucca/commit/9abf625652c8b844f6a8ea5c4e7b3dac99b30540))
+* **futo-backups-bot:** /claim-backups-role grants the customer role ([#567](https://github.com/immich-app/yucca/issues/567)) ([f7e60f0](https://github.com/immich-app/yucca/commit/f7e60f0d41df05823ceaecaa2c1c3c2c42cee7bd))
+* **futo-backups-bot:** /staff-notes links the paired staff thread ([#566](https://github.com/immich-app/yucca/issues/566)) ([2172679](https://github.com/immich-app/yucca/commit/2172679a36a24291c822556a51760f2a35d6b4ff))
+* **futo-backups-bot:** allow up to three open tickets per user ([#561](https://github.com/immich-app/yucca/issues/561)) ([290e3d7](https://github.com/immich-app/yucca/commit/290e3d7a657bbdeab66ddec21cacaa30ff7dd642))
+* **futo-backups-bot:** bidirectional freshdesk sync for support tickets ([#577](https://github.com/immich-app/yucca/issues/577)) ([4e56080](https://github.com/immich-app/yucca/commit/4e56080e0b23cf81463bd5e38f73af5e6faf7189))
+* **futo-backups-bot:** discord support bot ([#544](https://github.com/immich-app/yucca/issues/544)) ([474879f](https://github.com/immich-app/yucca/commit/474879f39961885a95a8cb36f95fb95c61647389))
+* **futo-backups-bot:** grafana per-user link in staff notes ([#560](https://github.com/immich-app/yucca/issues/560)) ([5eaf0f3](https://github.com/immich-app/yucca/commit/5eaf0f349df284e440bdd9d45d5fb826b260ad00))
+* **futo-backups-bot:** sync the stored discord username from interactions ([#563](https://github.com/immich-app/yucca/issues/563)) ([4442740](https://github.com/immich-app/yucca/commit/4442740ad9e7849331fad9174fdb78e4f530cbb6))
+* **infra:** activate futo-backups-bot staging creds ([#549](https://github.com/immich-app/yucca/issues/549)) ([2883404](https://github.com/immich-app/yucca/commit/28834042cbfa710a3f49019dee90e0d0bf450d4e))
+* **infra:** activate the claim-flow ids for staging ([#568](https://github.com/immich-app/yucca/issues/568)) ([1fbed25](https://github.com/immich-app/yucca/commit/1fbed25c5336ebc95aee2b64eb17d0cd8a42e540))
+* **infra:** deploy futo-backups-bot ([#545](https://github.com/immich-app/yucca/issues/545)) ([5ad08e2](https://github.com/immich-app/yucca/commit/5ad08e27d7204052dc6d73db44f8c20eceb5dc36))
+* **infra:** force_apply dispatch input for prod/staging ([#548](https://github.com/immich-app/yucca/issues/548)) ([a757e14](https://github.com/immich-app/yucca/commit/a757e14ed088c5d3908a6e7c2118df8a920eb504))
+* **infra:** wire the freshdesk webhook route, network policy and secrets ([#578](https://github.com/immich-app/yucca/issues/578)) ([64371fb](https://github.com/immich-app/yucca/commit/64371fbaa99d2232f05c12dd30a8771a1181453c))
+* **monk:** add monk, a measured ceph scrub-backlog exporter ([#587](https://github.com/immich-app/yucca/issues/587)) ([919398b](https://github.com/immich-app/yucca/commit/919398b0c917cf0b3656fa8eda41fe3a21f1e801))
+* **o11y:** scrape monk on the spice mons and alert on its health ([#595](https://github.com/immich-app/yucca/issues/595)) ([30c38f7](https://github.com/immich-app/yucca/commit/30c38f7f8e05382b0e8fc39c7d958aa9bb4fa20a))
+* **o11y:** watch the NetBird overlay and give spice networking a dashboard ([#540](https://github.com/immich-app/yucca/issues/540)) ([9e4387e](https://github.com/immich-app/yucca/commit/9e4387e8fd3c036d378c4cbf3a963ebb5001f795))
+* **web:** discord beta-invite redemption on the invite page ([#570](https://github.com/immich-app/yucca/issues/570)) ([6a37d26](https://github.com/immich-app/yucca/commit/6a37d2674afa54e923d2d2a26d81a3a5f73e453e))
+* **web:** discord link confirmation page ([#543](https://github.com/immich-app/yucca/issues/543)) ([93d90e3](https://github.com/immich-app/yucca/commit/93d90e3ecf98adf269bc950636fbea2dd8454b38))
+* **yucca-admin-api:** manage and cancel discord beta-invite drops via yuctl ([#575](https://github.com/immich-app/yucca/issues/575)) ([b726229](https://github.com/immich-app/yucca/commit/b726229b14f99fbf4caf72a3b8911a9d16076d17))
+* **yucca-admin-api:** manage discord links via admin-api and yuctl ([#562](https://github.com/immich-app/yucca/issues/562)) ([3167a48](https://github.com/immich-app/yucca/commit/3167a4858379cd3c2e5694d26c255b80b177862e))
+* **yucca-api:** discord account linking ([#542](https://github.com/immich-app/yucca/issues/542)) ([7f61914](https://github.com/immich-app/yucca/commit/7f61914cd8e368a2e1bb2f81ab88d16514163f8f))
+* **yucca-api:** discord closed-beta invite claims and nonced redemption ([#569](https://github.com/immich-app/yucca/issues/569)) ([85f3a59](https://github.com/immich-app/yucca/commit/85f3a59b2ab64aa00ba47a9b8e627492083837be))
+* **yucca-api:** discord ticket to freshdesk mapping table and internal endpoints ([#576](https://github.com/immich-app/yucca/issues/576)) ([121987f](https://github.com/immich-app/yucca/commit/121987ff79a4ae928e0630d25b8c7598e375ba3e))
+
+
+### Bug Fixes
+
+* **admin:** wire-in the admin-api like prod ([#559](https://github.com/immich-app/yucca/issues/559)) ([eb89c13](https://github.com/immich-app/yucca/commit/eb89c13118686424b4487272010e2c069f0fa454))
+* align migrations to actual schema & correct migrations task ([#608](https://github.com/immich-app/yucca/issues/608)) ([a08e47f](https://github.com/immich-app/yucca/commit/a08e47ff8a4a694b1988933c2a54a7dcb1bcf29f))
+* **all:** various fixes ([#537](https://github.com/immich-app/yucca/issues/537)) ([c78ddee](https://github.com/immich-app/yucca/commit/c78ddee105162518b00176d6577fcad81b9070bf))
+* **ceph:** converge-safe pulls, live-ruleset gate, and container hardening for monk ([#593](https://github.com/immich-app/yucca/issues/593)) ([6eca8f0](https://github.com/immich-app/yucca/commit/6eca8f094b5af7b2772d4aea481238fbb80b622d))
+* **ceph:** drop wt0 interface alerts before they reach alertmanager ([#539](https://github.com/immich-app/yucca/issues/539)) ([30431b8](https://github.com/immich-app/yucca/commit/30431b8d01b8e107b7a83d651fd9a57dfea9d339))
+* **futo-backups-bot:** avoid the privileged thread-member listing ([#557](https://github.com/immich-app/yucca/issues/557)) ([e61dabe](https://github.com/immich-app/yucca/commit/e61dabe7e3758ba4b01ded21f2bb82684d0d43f2))
+* **futo-backups-bot:** dedupe the support sticky and survive pin failures ([#551](https://github.com/immich-app/yucca/issues/551)) ([bed87ba](https://github.com/immich-app/yucca/commit/bed87ba085b001e4a2248cf308b5237eaf52c2ef))
+* **futo-backups-bot:** fall back to a generic agent name when the profile read is forbidden ([#584](https://github.com/immich-app/yucca/issues/584)) ([7988ac3](https://github.com/immich-app/yucca/commit/7988ac348754df991fb7cc5408a7d3da9d544329))
+* **futo-backups-bot:** ignore interactions from other guilds ([#602](https://github.com/immich-app/yucca/issues/602)) ([7750b71](https://github.com/immich-app/yucca/commit/7750b71620bb3b2e76e2ec469b7d256cc1b40672))
+* **futo-backups-bot:** mention the everyone role as a literal [@everyone](https://github.com/everyone) ([#573](https://github.com/immich-app/yucca/issues/573)) ([003cb71](https://github.com/immich-app/yucca/commit/003cb71435e021451d5e2498e13a27f3e6f29ee1))
+* **futo-backups-bot:** pull staff into the staff-notes thread ([#558](https://github.com/immich-app/yucca/issues/558)) ([717ab17](https://github.com/immich-app/yucca/commit/717ab17e181a7e07cc08df58094021cd7f733e5d))
+* **futo-backups-bot:** survive missing applications.commands scope ([#550](https://github.com/immich-app/yucca/issues/550)) ([f1bd9cf](https://github.com/immich-app/yucca/commit/f1bd9cf33e3893c133e763a7935da63dd616b024))
+* **futo-backups-bot:** unbreak the staff-thread spec after the suffix change ([#565](https://github.com/immich-app/yucca/issues/565)) ([6f892c8](https://github.com/immich-app/yucca/commit/6f892c8ba6713789b4b19046a40c397305f96f0e))
+* **michael:** log the resolved route plus op and blob_type on access lines ([#597](https://github.com/immich-app/yucca/issues/597)) ([ce32472](https://github.com/immich-app/yucca/commit/ce32472f89702f983180711efe7697cf425a8831))
+* **monk:** harden failure paths, exec handling, and the metric contract ([#592](https://github.com/immich-app/yucca/issues/592)) ([16d9c70](https://github.com/immich-app/yucca/commit/16d9c700ce10784c1cee64f72bccee8b680c850e))
+* **netbird:** grant CI tcp/443 to the cls1 networks ([#547](https://github.com/immich-app/yucca/issues/547)) ([932860d](https://github.com/immich-app/yucca/commit/932860d0ddb0c8d3fc3f501a8aa01b447363293e))
+* **staging:** fix ingress locality in staging ([#564](https://github.com/immich-app/yucca/issues/564)) ([769572d](https://github.com/immich-app/yucca/commit/769572dea8a65f8abd33756d2747ef01042c2ba8))
+
 ## [0.37.1](https://github.com/immich-app/yucca/compare/v0.37.0...v0.37.1) (2026-08-24)
 
 

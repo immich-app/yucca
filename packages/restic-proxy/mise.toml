@@ -1,0 +1,22 @@
+[tools]
+air = "latest"
+
+[tasks.build]
+description = "Build restic-proxy"
+run = "go build -o ../../dist/restic-proxy ."
+
+[tasks.dev]
+description = "Run restic-proxy in development mode"
+run = "air"
+
+[tasks.test]
+description = "Run unit tests for restic-proxy"
+run = "go test ./..."
+
+[tasks.vet]
+description = "Vet restic-proxy"
+run = ["go vet ./..."]
+
+[tasks.lint]
+description = "Lint restic-proxy"
+run = ["golangci-lint run ./..."]

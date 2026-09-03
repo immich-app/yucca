@@ -12,9 +12,9 @@ the alert rules.
 Every series at o11y carries `cluster` (`father` k8s / `spice` ceph / `netops`
 fabric tier / `luke` staging), `site`, `env`, and `project="yucca"`. Dashboard
 titles follow o11y's `Component / Subarea` convention (`Yucca / Overview`,
-`Ceph / Health`, `Kubernetes / Views / Global`, `Logs / michael`, …); the
+`Ceph / Health`, `Kubernetes / Views / Global`, `Logs / michael`, ...); the
 `yucca` folder is what distinguishes our copies from o11y's own. Each dashboard uses a
-`$datasource` variable — no datasource UIDs are baked in. Dashboards with logs
+`$datasource` variable - no datasource UIDs are baked in. Dashboards with logs
 panels additionally use a `$logs_datasource` variable (the VictoriaLogs grafana
 datasource); log lines carry the same `cluster`/`site`/`env` fields, stamped by
 victoria-logs-collector.
@@ -30,7 +30,7 @@ victoria-logs-collector.
 | `yucca-spice-nodes.json` | 48-node fleet hotspots: CPU/mem/disk/fabric VLANs | `node_*` (job `ceph-node-exporter`) |
 | `yucca-spice-blockdb-bluefs.json` | block.db headroom: spillover tripwire, per-OSD utilization and growth, BlueFS internals | `ceph_bluefs_*`, `ceph_bluestore_onode_*`, `ceph_osd_metadata` |
 | `yucca-spice-recovery-backfill.json` | Rebalance throughput in bytes and work outstanding, during an OSD purge / reweight / host drain. Complements the recovery ops/s on `yucca-spice-ceph-health` | `ceph_pool_recovering_*`, `ceph_pg_{backfilling,backfill_wait,remapped}`, `ceph_num_objects_{misplaced,degraded}` |
-| `yucca-spice-scrub.json` | Scrub progress: which hosts are still scrubbing (regular vs deep, as scrub primary), PGs in flight per level, and work outstanding for the deep cycle (bytes scrubbed vs raw used over the configured interval; needs that much retention) | `ceph_pg_{scrubbing,deep,wait}`, `ceph_osd_scrub_{sh,dp}_*_chunk_selected`, `ceph_osd_scrub_*_read_bytes`, `ceph_osd_{num_scrubs_started,successful_scrubs,failed_scrubs}_*`, `ceph_osd_stat_bytes_used`, `ceph_osd_metadata` |
+| `yucca-spice-scrub.json` | Scrub progress: which hosts are still scrubbing (regular vs deep, as scrub primary), PGs in flight per level, and measured work outstanding for the deep cycle (per-PG scrub stamps from monk, judged against the interval read from the cluster; no retention warm-up needed) | `ceph_pg_{scrubbing,deep,wait}`, `ceph_osd_scrub_{sh,dp}_*_chunk_selected`, `ceph_osd_scrub_*_read_bytes`, `ceph_osd_{num_scrubs_started,successful_scrubs,failed_scrubs}_*`, `ceph_scrub_{pool_bytes,pool_pgs,overdue_bytes,overdue_pgs,target_interval_seconds,age_seconds}`, `ceph_pg_last_{,deep_}scrub_stamp`, `node_disk_read_bytes_total`, `ceph_osd_metadata` |
 | `yucca-spice-network.json` | Fleet networking: 25G bond fabric + balance, bond health, VLAN split, NetBird wt0 overlay (mirrors the `netbird.yaml` alert exprs), WAN, TCP retransmits/conntrack | `node_network_*`, `node_bonding_*`, `node_netstat_*`, `node_nf_conntrack_*` |
 | `yucca-father-kubernetes.json` | apiserver, coredns, workloads, PVCs, kubelet | `apiserver_*`, `container_*`, `kubelet_*`, `coredns_*` |
 | `yucca-fabric-htz-fsn1.json` | Switch fabric: sFlow 5s rates, NETCONF, BGP, alarms | `sflow_*`, `junos_*` (port of the in-cluster netops board) |
@@ -50,23 +50,24 @@ a custom `cluster` var and LogsQL textboxes (`$search` free-form filter;
 `$request_id` on the request-serving services). Every query was validated
 against the live VictoriaLogs before landing; query types are the plugin's
 real enum (`instant` for streams/tables, `statsRange` for time series, `hits`
-for the by-level volume histograms) — NOT the `raw_logs` fallback. These
+for the by-level volume histograms) - NOT the `raw_logs` fallback. These
 dashboards deliberately carry no prometheus `$datasource` variable so the
 linter's PromQL rule stays away from LogsQL.
 
 | File (= uid) | Service | Beyond the common set (volume by level/pod, error stream + top messages, live stream) |
 | --- | --- | --- |
-| `yucca-logs-yucca-api.json` | yucca-api | status_code breakdown, top handlers with avg latency, slowest requests, 5xx lines — request lines are SAMPLED |
+| `yucca-logs-yucca-api.json` | yucca-api | status_code breakdown, top handlers with avg latency, slowest requests, 5xx lines - request lines are SAMPLED |
 | `yucca-logs-admin-api.json` | yucca-admin-api | same as yucca-api |
 | `yucca-logs-michael.json` | michael | requests by status, top routes/users/source networks with bytes, slowest requests |
 | `yucca-logs-web.json` | web | unstructured stdout; keyword-based error detection |
 | `yucca-logs-metrics-worker.json` | yucca-metrics-worker | sync-run markers (5m cron heartbeat) + sync log |
 | `yucca-logs-meta.json` | meta | nginx access lines; 4xx/5xx via regex |
+| `yucca-logs-futo-backups-bot.json` | futo-backups-bot | ticket-sweep markers (04:00 UTC cron), freshdesk failure breakdown, webhook/internal request lines (unsampled) |
 
 Log-level conventions baked into the queries: pino services log numeric
 levels as strings (`30` info / `40` warn / `50` error / `60` fatal), michael
 logs zerolog strings (`info`/`warn`/`error`), web and meta have no level
-field (keyword heuristics). Regex filters use LogsQL backtick strings —
+field (keyword heuristics). Regex filters use LogsQL backtick strings -
 single-quoted regex strings fail to parse.
 
 ## Imported dashboards
@@ -82,7 +83,7 @@ one). Provenance and pinned versions live in the script; each dashboard's
 | File (= uid) | Upstream |
 | --- | --- |
 | `yucca-k8s-{global,namespaces,nodes,pods,apiserver,coredns}.json` | dotdc/grafana-dashboards-kubernetes |
-| `yucca-cilium.json`, `yucca-cilium-operator.json`, `yucca-hubble.json` | cilium/cilium (pinned to the deployed version; hubble http panels pruned — only dns/drop/tcp/flow/icmp metric sets are enabled) |
+| `yucca-cilium.json`, `yucca-cilium-operator.json`, `yucca-hubble.json` | cilium/cilium (pinned to the deployed version; hubble http panels pruned - only dns/drop/tcp/flow/icmp metric sets are enabled) |
 | `yucca-node-exporter.json` | rfmoz/grafana-dashboards node-exporter-full |
 | `yucca-flux.json`, `yucca-flux-controllers.json` | fluxcd/flux2-monitoring-example |
 | `yucca-cnpg.json` | cloudnative-pg/grafana-dashboards, plus an appended Backups row (Barman Cloud: base-backup/PITR ages, WAL archive queue) mirroring the `yucca-database` alert group |
@@ -99,36 +100,36 @@ yucca-metrics-worker gauges authoritative RGW bucket usage every 5 min
 (`rgw_repository_*`), yucca-api / admin-api count every request per handler and
 customer (`api_request_count`, unsampled even though the request log lines are
 sampled), and yucca-api gauges client-reported backup health
-(`user_repository_size`, `user_last_*` — labels `user_id`/`repository_id`).
+(`user_repository_size`, `user_last_*` - labels `user_id`/`repository_id`).
 Known gaps: no API-side latency histograms, no per-client retry count (restic
 retries are invisible to michael and the orchestrator's restic wrapper drops
 stderr on success), and nothing scrapes CNPG or the envoy gateways on father.
 
 **Reading the per-client instruments.** `client.request.seconds` is a counter of
 accumulated request-seconds labeled by identity only (`customerId`,
-`repositoryId`, `connection` — no route or status). Its rate IS average
+`repositoryId`, `connection` - no route or status). Its rate IS average
 parallelism, by Little's Law: `rate(client.request.seconds[5m])` is the mean
 number of that client's requests in flight over the window, needing no
 per-client state to compute. Dividing by the matching request rate gives mean
 duration, and `client.request.ttfb_seconds` does the same for time-to-first-byte
-— duration includes streaming the body, so the two diverging is how you tell a
+- duration includes streaming the body, so the two diverging is how you tell a
 slow client from a slow backend. `client.requests.peak` covers what an average
 cannot, a client that saturates its `rest.connections` budget in bursts; it is
 per michael replica, so summing across replicas is an upper bound whereas the
 Little's Law average sums exactly.
 
 Source-network inventory (the "Source networks" row on the michael board):
-michael also counts traffic by the CLIENT's autonomous system —
+michael also counts traffic by the CLIENT's autonomous system -
 `traffic.{uploaded_bytes,downloaded_bytes,requests}`, labels `asn`/`asOrg`.
 These are deliberately separate from the `blobs.*` family: `blobs.*` answers
 "which customer moved this" and only counts authenticated 2xx requests, the
 `traffic.*` counters answer "which network is this coming from" and count every
 request, including the unauthenticated and rejected ones. The client address
-comes from the LAST `X-Forwarded-For` entry — the only one the gateway wrote
-itself (`CLIENT_IP_HEADER`) — and is resolved against an IP→ASN database baked
+comes from the LAST `X-Forwarded-For` entry - the only one the gateway wrote
+itself (`CLIENT_IP_HEADER`) - and is resolved against an IP->ASN database baked
 into the michael image at `/etc/michael/asn.mmdb` (`ASN_DB_PATH`; DB-IP's free
 ASN Lite, MaxMind-DB format, CC BY 4.0). Sources reaching us on-net report as
-`private`, public addresses the database does not resolve as `unknown` — which
+`private`, public addresses the database does not resolve as `unknown` - which
 is also what an image built while db-ip.com was unreachable reports for
 everything, since a missing database warns rather than failing the pod.
 **Addresses are not a metric label** (unbounded cardinality): `client_ip`,
@@ -138,25 +139,25 @@ the "Top source addresses" table aggregates out of VictoriaLogs.
 ## Alerts
 
 `alerts/*.yaml` are `GrafanaAlertRuleGroup` CRs, evaluated by o11y's Grafana
-(Grafana-managed alerting). Dropping a file here is the whole job: delivery —
-contact points, notification policy, Discord — is configured on the o11y side
+(Grafana-managed alerting). Dropping a file here is the whole job: delivery -
+contact points, notification policy, Discord - is configured on the o11y side
 and out of scope for this repo. Two bindings the CRs must get right:
 `folderRef: yucca` (the bundle's own `GrafanaFolder`), and `datasourceUid:
-VictoriaMetricsFleet` on every query node — alert rules cannot use a
+VictoriaMetricsFleet` on every query node - alert rules cannot use a
 `$datasource` variable the way dashboards do. NEVER pin the default
 `VictoriaMetrics` datasource: it fronts `vmauth-self-select`, which serves
 ONLY the o11y cluster's own series, so every rule over yucca/fabric/ceph data
 evaluates to NoData and sits Normal through real outages (this shipped, and
 the Colt transit outage went unalerted until it was caught). Only
-`VictoriaMetricsFleet` (vmselect direct) sees the whole fleet — the same
+`VictoriaMetricsFleet` (vmselect direct) sees the whole fleet - the same
 reason every dashboard's `$datasource` variable carries the
 `/^VictoriaMetrics Fleet$/` regex.
 
 Conventions:
 
 - **`project="yucca"` on every selector**: the fleet datasource serves every
-  tenant's series (harbor, o11y itself, …), so each rule query is scoped to
-  the project label our vmagents stamp on all yucca-owned data — without it,
+  tenant's series (harbor, o11y itself, ...), so each rule query is scoped to
+  the project label our vmagents stamp on all yucca-owned data - without it,
   generic selectors (flux, cert-manager, k8s) fire on other tenants'
   clusters.
 - **Severity**: rules carry a `severity` label (`critical` | `warning`) for
@@ -164,7 +165,7 @@ Conventions:
   annotation that names the cluster/host, so a notification is actionable
   without opening Grafana.
 - **Grafana threshold semantics**: the condition is "query A > 0", and Grafana
-  treats a value of 0 as normal — so `== 0`-style PromQL uses `== bool 0`
+  treats a value of 0 as normal - so `== 0`-style PromQL uses `== bool 0`
   (firing value 1), and value-carrying expressions are shaped to stay positive
   while firing (e.g. cert expiry alerts on seconds *inside* the warning
   window, which keeps growing past expiry, not seconds-to-expiry, which would
@@ -172,7 +173,7 @@ Conventions:
 - **Wrap slow-cadence instant selectors in `last_over_time(...[5m])`**:
   Grafana sends the rule group's evaluation interval as the instant query's
   `step`, and VictoriaMetrics uses `step` as the staleness lookback (setting
-  `intervalMs` on the query model does NOT change it — measured). A metric
+  `intervalMs` on the query model does NOT change it - measured). A metric
   whose cadence is at or above the step loses that race often enough that a
   multi-minute `for` can never sustain: the rule sits Normal via
   `noDataState: OK` while the condition is true. This silently killed the
@@ -227,7 +228,7 @@ The artifact is a single `application/vnd.cncf.flux.content.v1.tar+gzip` layer
 (`folder.yaml` + `dashboards/` + `alerts/` in the tarball; no
 `kustomization.yaml`, the kustomize-controller generates one recursively for
 plain manifests), the native format a Flux `OCIRepository` extracts. It is
-signed by digest (keyless, GitHub OIDC → Fulcio/Rekor), so every tag on that
+signed by digest (keyless, GitHub OIDC -> Fulcio/Rekor), so every tag on that
 digest is covered and o11y's `OCIRepository` can gate on it via `spec.verify`.
 Verify manually with:
 
@@ -287,18 +288,18 @@ spec:
   track releases only. Reference the tag *only* (no `digest`) or auto-updates stop.
 - **Latency.** The only wait is the `OCIRepository` noticing a new digest: its
   `interval`, or ~instant if CI pings a Flux webhook `Receiver`. Everything
-  downstream (Kustomization apply → operator sync) is event-driven.
+  downstream (Kustomization apply -> operator sync) is event-driven.
 - Make the `o11y-manifests` GHCR package public (like the app images), or set
   `secretRef` on the `OCIRepository`.
 
 ## Editing
 
-Edit in Grafana, export (share → JSON), save over the file keeping the `uid`
+Edit in Grafana, export (share -> JSON), save over the file keeping the `uid`
 (the file name must stay `<uid>.json`). CI lints every dashboard with
 [dashboard-linter](https://github.com/grafana/dashboard-linter) (`--strict`;
 rule exclusions live in `dashboards/.lint`). Alerts are plain
 `GrafanaAlertRuleGroup` CRs dropped into `alerts/` (see the Alerts section).
-Merge to main → CI pushes
-the `:main` artifact → o11y's `OCIRepository` picks it up at its `interval` (or
+Merge to main -> CI pushes
+the `:main` artifact -> o11y's `OCIRepository` picks it up at its `interval` (or
 instantly via webhook). Michael's OTel metrics have dotted names; query them as
 `{__name__="http.server.request.count", ...}` (VictoriaMetrics).

@@ -39,6 +39,8 @@ last-known targets and logs a warning.
 | `ceph_pg_last_scrub_stamp` | pool_id | oldest per-PG shallow stamp in the pool, epoch seconds (name follows ceph PR #68925) |
 | `ceph_pg_last_deep_scrub_stamp` | pool_id | oldest per-PG deep stamp in the pool |
 | `ceph_scrub_pool_pgs` / `ceph_scrub_pool_bytes` | pool_id | PG count / logical (data) bytes per pool; do not mix with raw-capacity metrics like `ceph_osd_stat_bytes_used` |
+| `ceph_scrub_pool_omap_bytes` / `ceph_scrub_overdue_omap_bytes` | pool_id (+ depth) | omap bytes, which `num_bytes` and therefore `ceph_scrub_pool_bytes` exclude. An index pool stores its whole bucket listing in omap and reports zero data bytes, so byte-weighted coverage cannot see it fall behind; judge those pools on PGs or on these |
+| `ceph_scrub_completions_total` / `ceph_scrub_completed_bytes_total` | pool_id, depth | PGs / bytes observed completing a scrub, counted by diffing stamps between refreshes. Dedup these by rating FIRST: `max by (cluster, pool_id) (rate(...[1h]))`. Taking `max` of the counters before `rate` reads an instance restart as a jump, because instances start at different times and each counts independently |
 | `ceph_scrub_overdue_pgs` / `ceph_scrub_overdue_bytes` | pool_id, depth | PGs / bytes whose stamp is older than the target interval; PGs with unparsable stamps count here |
 | `ceph_scrub_age_seconds` | pool_id, depth | histogram of scrub age weighted by bytes (buckets 1d..98d); `_sum/_count` gives mean data age, `histogram_quantile` the age of the Nth-percentile byte. Gauge semantics under a histogram TYPE: never apply `rate()`/`increase()` to its series (counter-reset math fabricates spikes), and `_count` counts bytes, not events |
 | `ceph_scrub_schedule_pgs` | state | PGs by scrub_schedule state (scheduled, queued, scrubbing, blocked, reserving, none, other) |
@@ -52,9 +54,22 @@ Several monk instances are scraped for availability, and pool_ids repeat
 across clusters, so every query dedups with `max by (cluster, pool_id)` and
 applies the identical dedup to both sides of any ratio.
 
+Completions are counted, not sampled: monk diffs each PG's stamp against the
+previous refresh, so a PG appearing or disappearing (pool deletion, PG split)
+is skipped rather than counted as a scrub. The first refresh after start has no
+predecessor, so the counters begin at zero and the first interval's completions
+are unobservable.
+
 ```
 # work outstanding, bytes
 sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{depth="deep"}))
+
+# deep scrubs completed per day
+sum(max by (cluster, pool_id) (rate(ceph_scrub_completions_total{depth="deep"}[6h]))) * 86400
+
+# days to clear the deep backlog at the current pace
+sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{depth="deep"}))
+  / (sum(max by (cluster, pool_id) (rate(ceph_scrub_completed_bytes_total{depth="deep"}[6h]))) * 86400)
 
 # deep-scrub cycle coverage
 1 - sum(max by (cluster, pool_id) (ceph_scrub_overdue_bytes{depth="deep"}))
