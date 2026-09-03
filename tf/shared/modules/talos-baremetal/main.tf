@@ -228,7 +228,7 @@ resource "talos_machine_configuration_apply" "controlplane" {
   node                        = each.value.address
   endpoint                    = each.value.address
   config_patches              = local.per_node_patches[each.key]
-  apply_mode                  = "auto"
+  apply_mode = "staged_if_needing_reboot"
 
   # Reset + reboot on destroy so `tf:destroy` wipes the node back toward
   # maintenance mode rather than leaving a half-configured install.
@@ -266,7 +266,8 @@ resource "talos_machine_configuration_apply" "worker" {
   node                        = each.value.address
   endpoint                    = each.value.address
   config_patches              = local.per_node_patches[each.key]
-  apply_mode                  = "auto"
+  # Staged instead of auto-reboot; see the controlplane apply above.
+  apply_mode = "staged_if_needing_reboot"
 
   on_destroy = {
     reboot   = true
