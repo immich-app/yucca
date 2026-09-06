@@ -363,29 +363,29 @@ backend = "pipx:ansible-core"
 specifiers = ["2.21.2"]
 
 [[tools.pnpm]]
-version = "10.28.1"
+version = "10.34.5"
 backend = "aqua:pnpm/pnpm"
-specifiers = ["10.28.1"]
+specifiers = ["10.34.5"]
 
 [tools.pnpm."platforms.linux-arm64"]
-checksum = "sha256:bbc6860d6c7eb33bcafe670874323cd6617b03e46f8b34163bb0691eac8156f3"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.28.1/pnpm-linux-arm64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/342724196"
+checksum = "sha256:22391362c31edf522fd698d0b43d38fe9228e28d5b5e32124ffd0038fb60f9f0"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.5/pnpm-linux-arm64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/472419173"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:e1a90745bbab7aad1de6886e5c6da978463fe8382953d1406e0e30661d0613a1"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.28.1/pnpm-linux-x64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/342724198"
+checksum = "sha256:69a535476f407fb0f64427913c2b592ca2ed6bf93f92e2cb82a32349e31f36eb"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.5/pnpm-linux-x64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/472419171"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:6c123dcd8c7eab530f51f0544e7c893a5249cabda5a9469db63262cc7a738fcb"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.28.1/pnpm-macos-arm64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/342724192"
+checksum = "sha256:888389e8dd5ed45279043c1d3383c0942a8248b3d29ce614b302f468191f7659"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.5/pnpm-macos-arm64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/472419170"
 
 [tools.pnpm."platforms.macos-x64"]
-checksum = "sha256:11cc2b5c9e6f0e1d6e2bfb414e0db3d26f07378a76c2c045ec9dbecc91050bd4"
-url = "https://github.com/pnpm/pnpm/releases/download/v10.28.1/pnpm-macos-x64"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/342724195"
+checksum = "sha256:4deaaaf1c0246fc4230f6450959f932dbc2abfd2686f8515dabf97b0717cb9b1"
+url = "https://github.com/pnpm/pnpm/releases/download/v10.34.5/pnpm-macos-x64"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/472419168"
 
 [[tools.restic]]
 version = "0.19.1"
