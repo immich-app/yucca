@@ -45,17 +45,10 @@ clusters = {
     # its own copy for PG_NOT_DEEP_SCRUBBED, so an `osd` entry leaves the health
     # check on the 7-day default.
     #
-    # Two settings gate scrub scheduling. Both must be open or scrubbing stops.
-    #
-    # 1. Window off (0/0 = all day), overriding the role's 02:00-06:00. Tentacle
+    # Window off (0/0 = all day), overriding the role's 02:00-06:00. Tentacle
     # has no `overdue` urgency, so the window gates a scrub however overdue it
     # is. Client load here is hour-of-day independent, so the window protects
     # nothing.
-    #
-    # 2. osd_scrub_during_recovery. The role default (false) does not scale with
-    # EC width: a recovering OSD refuses scrub reservations, and a k16+m4 PG
-    # needs all 20 shards free, so any nontrivial rebalance stops scrubbing
-    # outright. Costs roughly 4x recovery throughput while scrubs run.
     #
     # osd_scrub_cost and osd_deep_scrub_stride are upstream defaults. They and
     # osd_scrub_disable_reservation_queuing (removed) came from the squid scrub
@@ -65,13 +58,16 @@ clusters = {
         osd_deep_scrub_interval = "2419200" # 28 days
       }
       osd = {
+        # Recovery IOPS outrank scrubbing. A k16+m4 PG needs all 20 shards free,
+        # so it goes unscrubbed for the length of any rebalance.
+        osd_scrub_during_recovery = "false"
         osd_scrub_begin_hour      = "0" # 0/0 = no window
         osd_scrub_end_hour        = "0"
-        osd_scrub_during_recovery = "true"
         osd_max_scrubs            = "6"
-        osd_scrub_cost            = "52428800" # upstream default
-        osd_deep_scrub_stride     = "524288"   # upstream default, 512 KiB
-        osd_mclock_profile        = "high_recovery_ops"
+        osd_scrub_cost            = "52428800"        # upstream default
+        osd_deep_scrub_stride     = "524288"          # upstream default, 512 KiB
+        osd_mclock_profile        = "high_client_ops" # high_recovery_ops starves clients under backfill
+        osd_max_backfills         = "6"               # at 1, EC recovery reserves every peer and runs 2-3 PGs at a time
       }
     }
     hosts = [
