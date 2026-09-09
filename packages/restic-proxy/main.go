@@ -10,6 +10,7 @@ import (
 
 	"restic-proxy/internal/client"
 	"restic-proxy/internal/config"
+	"restic-proxy/internal/ipc"
 	"restic-proxy/internal/meta"
 	"restic-proxy/internal/proxy"
 
@@ -49,6 +50,12 @@ func main() {
 	if err != nil {
 		log.Error().Err(err).Msg("failed to bind listener")
 		os.Exit(6)
+	}
+
+	err := ipc.ReportReadyFromConfig(cfg, listener.Addr())
+	if err != nil {
+		log.Error().Err(err).Msg("failed to push address to parent process")
+		os.Exit(7)
 	}
 
 	client := client.New(api)
