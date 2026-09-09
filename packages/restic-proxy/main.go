@@ -52,7 +52,7 @@ func main() {
 		os.Exit(6)
 	}
 
-	err := ipc.ReportReadyFromConfig(cfg, listener.Addr())
+	err = ipc.ReportReadyFromConfig(cfg, listener.Addr())
 	if err != nil {
 		log.Error().Err(err).Msg("failed to push address to parent process")
 		os.Exit(7)
