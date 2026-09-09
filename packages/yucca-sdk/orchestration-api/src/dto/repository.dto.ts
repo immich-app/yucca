@@ -4,7 +4,7 @@ import { BackendType, TaskStatus, TaskType } from '../enum';
 import type { RunType } from '../schema/tables/runHistory.table';
 
 export class RetentionPolicyDto {
-  @ApiProperty({ type: Number, required: false })
+  @ApiProperty({ type: 'integer', required: false })
   keepLast?: number;
 
   @ApiProperty({ type: String, required: false })

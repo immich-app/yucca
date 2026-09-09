@@ -1515,7 +1515,7 @@
         "type": "object",
         "properties": {
           "keepLast": {
-            "type": "number"
+            "type": "integer"
           },
           "keepWithin": {
             "type": "string"
