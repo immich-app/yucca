@@ -2,6 +2,7 @@ import { ChildProcess, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { access, constants } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
+import { createInterface, Interface } from 'node:readline';
 import { Readable } from 'node:stream';
 
 const RESTIC_PROXY_BIN = 'restic-proxy';
@@ -56,25 +57,42 @@ export class ResticProxy {
   createUrl(repositoryId: string, accessToken: string) {
     return `rest:http://${repositoryId}:${accessToken}@${this.address}`;
   }
+
+  async stop() {
+    if (this.process.exitCode !== null || this.process.signalCode !== null) {
+      return;
+    }
+
+    this.process.kill();
+    await once(this.process, 'exit');
+  }
 }
 
 async function readReady(child: ChildProcess): Promise<ResticProxyReady> {
   const pipe = child.stdio[RESTIC_PROXY_READY_FD] as Readable;
+  const lines = createInterface({ input: pipe });
   const settled = new AbortController();
   const signal = AbortSignal.any([settled.signal, AbortSignal.timeout(RESTIC_PROXY_READY_TIMEOUT_MS)]);
 
   try {
-    const chunks: Buffer[] = await Promise.race([pipe.toArray({ signal }), rejectOnSpawnError(child, signal)]);
-    if (chunks.length === 0) {
-      throw new Error(`${RESTIC_PROXY_BIN} exited before reporting an address`);
-    }
+    const [line] = await Promise.race([
+      once(lines, 'line', { signal }),
+      rejectOnClose(lines, signal),
+      rejectOnSpawnError(child, signal),
+    ]);
 
-    return JSON.parse(Buffer.concat(chunks).toString()) as ResticProxyReady;
+    return JSON.parse(line as string) as ResticProxyReady;
   } catch (error) {
     throw new Error(`${RESTIC_PROXY_BIN} did not report an address`, { cause: error });
   } finally {
     settled.abort();
+    lines.close();
   }
+}
+
+async function rejectOnClose(lines: Interface, signal: AbortSignal): Promise<never> {
+  await once(lines, 'close', { signal });
+  throw new Error(`${RESTIC_PROXY_BIN} exited before reporting an address`);
 }
 
 async function rejectOnSpawnError(child: ChildProcess, signal: AbortSignal): Promise<never> {

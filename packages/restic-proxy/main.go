@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -52,7 +53,7 @@ func main() {
 		os.Exit(6)
 	}
 
-	err = ipc.ReportReadyFromConfig(cfg, listener.Addr())
+	parent, err := ipc.ReportReadyFromConfig(cfg, listener.Addr())
 	if err != nil {
 		log.Error().Err(err).Msg("failed to push address to parent process")
 		os.Exit(7)
@@ -65,6 +66,17 @@ func main() {
 	server := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 30 * time.Second,
+	}
+
+	if parent != nil {
+		go func() {
+			ipc.WaitForParentExit(parent)
+			log.Info().Msg("Parent process exited, shutting down")
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = server.Shutdown(ctx)
+		}()
 	}
 
 	log.Info().Str("address", listener.Addr().String()).Msg("Listening for requests")

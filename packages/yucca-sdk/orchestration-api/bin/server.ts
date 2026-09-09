@@ -32,11 +32,13 @@ async function bootstrap() {
         },
       }),
     }),
+    { forceCloseConnections: true },
   );
 
   const logger = await app.resolve(LoggingRepository);
   logger.setContext('Bootstrap');
 
+  app.enableShutdownHooks();
   app.enableCors({ origin: 'http://localhost:36066' });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.setGlobalPrefix('api');

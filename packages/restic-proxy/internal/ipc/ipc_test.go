@@ -5,17 +5,22 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"restic-proxy/internal/config"
 )
 
 func TestReportReady_WithoutFdDoesNothing(t *testing.T) {
-	if err := ReportReady(0, Ready{Address: "127.0.0.1:1434", Port: 1434}); err != nil {
+	pipe, err := ReportReady(0, Ready{Address: "127.0.0.1:1434", Port: 1434})
+	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if pipe != nil {
+		t.Error("expected no pipe without a ready fd")
 	}
 }
 
-func TestReportReadyFromConfig_WritesAndClosesThePipe(t *testing.T) {
+func TestReportReadyFromConfig_WritesAndKeepsThePipeOpen(t *testing.T) {
 	read, write, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
@@ -30,9 +35,15 @@ func TestReportReadyFromConfig_WritesAndClosesThePipe(t *testing.T) {
 
 	defer listener.Close()
 
-	if err := ReportReadyFromConfig(config.Config{ReadyFd: int(write.Fd())}, listener.Addr()); err != nil {
+	pipe, err := ReportReadyFromConfig(config.Config{ReadyFd: int(write.Fd())}, listener.Addr())
+	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if pipe == nil {
+		t.Fatal("expected the pipe to be returned")
+	}
+
+	defer pipe.Close()
 
 	ready := Ready{}
 	if err := json.NewDecoder(read).Decode(&ready); err != nil {
@@ -56,7 +67,34 @@ func TestReportReadyFromConfig_RejectsNonTcpAddresses(t *testing.T) {
 		t.Fatalf("resolve: %v", err)
 	}
 
-	if err := ReportReadyFromConfig(config.Config{ReadyFd: 3}, addr); err == nil {
+	if _, err := ReportReadyFromConfig(config.Config{ReadyFd: 3}, addr); err == nil {
 		t.Error("expected a non-TCP address to be rejected")
+	}
+}
+
+func TestWaitForParentExit_ReturnsWhenTheParentClosesThePipe(t *testing.T) {
+	read, write, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+
+	exited := make(chan struct{})
+	go func() {
+		WaitForParentExit(read)
+		close(exited)
+	}()
+
+	select {
+	case <-exited:
+		t.Fatal("returned while the parent still held the pipe")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	write.Close()
+
+	select {
+	case <-exited:
+	case <-time.After(time.Second):
+		t.Fatal("did not return after the parent closed the pipe")
 	}
 }

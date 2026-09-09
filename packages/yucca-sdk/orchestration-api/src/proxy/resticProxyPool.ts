@@ -1,6 +1,8 @@
+import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { ResticProxy } from './resticProxy';
 
-export class ResticProxyPool {
+@Injectable()
+export class ResticProxyPool implements OnApplicationShutdown {
   static pool = new Map<string, Promise<ResticProxy>>();
   static available: Promise<boolean> | undefined;
 
@@ -24,5 +26,11 @@ export class ResticProxyPool {
 
     ResticProxyPool.pool.set(apiUrl, pending);
     return pending;
+  }
+
+  async onApplicationShutdown() {
+    const outcomes = await Promise.allSettled(ResticProxyPool.pool.values());
+    const running = outcomes.filter((outcome) => outcome.status === 'fulfilled').map((outcome) => outcome.value);
+    await Promise.all(running.map((proxy) => proxy.stop()));
   }
 }

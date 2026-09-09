@@ -24,11 +24,13 @@ async function bootstrap() {
         requireSession: !env.disableAuth,
       }),
     }),
+    { forceCloseConnections: true },
   );
 
   const logger = await app.resolve(LoggingRepository);
   logger.setContext('Bootstrap');
 
+  app.enableShutdownHooks();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.setGlobalPrefix('api');
 
