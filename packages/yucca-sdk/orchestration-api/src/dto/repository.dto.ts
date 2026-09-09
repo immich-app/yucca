@@ -50,10 +50,10 @@ export class RepositoryMetricsDto {
   @ApiProperty({ enumName: 'TaskStatus', enum: TaskStatus, required: false })
   lastBackupStatus?: TaskStatus;
 
-  @ApiProperty({ type: Number, required: false })
+  @ApiProperty({ type: 'integer', required: false })
   lastBackupDuration?: number;
 
-  @ApiProperty({ type: Number })
+  @ApiProperty({ type: 'integer' })
   sizeBytes!: number;
 }
 
