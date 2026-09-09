@@ -16,6 +16,7 @@ import {
   updateRepository,
 } from '@futo-org/backups-api-client';
 import { BackendType, CookieName } from '../enum';
+import { ResticProxyPool } from '../proxy/resticProxyPool';
 import { LoggingRepository } from '../repositories/logging.repository';
 import { BackendConfiguration } from '../schema/tables/backend.table';
 import { yuccaWellKnown } from '../wellKnown';
@@ -23,6 +24,7 @@ import { Backend } from './backend';
 
 export class YuccaBackend extends Backend {
   private readonly logger = LoggingRepository.create(YuccaBackend.name);
+  private readonly proxyPool = new ResticProxyPool();
 
   constructor(protected readonly configuration: BackendConfiguration & { type: BackendType.Yucca; url?: string }) {
     super(configuration);
@@ -72,7 +74,19 @@ export class YuccaBackend extends Backend {
   }
 
   async getResticEndpoint(id: string) {
-    const { url } = await createResticUrl(id, await this.getRequestOptions());
+    const requestOptions = await this.getRequestOptions();
+
+    const proxyAvailable = await this.proxyPool.isAvailable();
+    if (proxyAvailable) {
+      try {
+        const proxy = await this.proxyPool.getProxy(`${requestOptions.baseUrl}/api`);
+        return proxy.createUrl(id, this.configuration.accessToken);
+      } catch (error) {
+        this.logger.warn('Falling back to a direct restic URL', error);
+      }
+    }
+
+    const { url } = await createResticUrl(id, requestOptions);
     return url;
   }
 

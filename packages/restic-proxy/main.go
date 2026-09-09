@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -10,6 +11,7 @@ import (
 
 	"restic-proxy/internal/client"
 	"restic-proxy/internal/config"
+	"restic-proxy/internal/ipc"
 	"restic-proxy/internal/meta"
 	"restic-proxy/internal/proxy"
 
@@ -51,6 +53,12 @@ func main() {
 		os.Exit(6)
 	}
 
+	parent, err := ipc.ReportReadyFromConfig(cfg, listener.Addr())
+	if err != nil {
+		log.Error().Err(err).Msg("failed to push address to parent process")
+		os.Exit(7)
+	}
+
 	client := client.New(api)
 	proxy := proxy.New(client)
 	handler := hlog.NewHandler(log.Logger)(hlog.MethodHandler("method")(hlog.URLHandler("path")(hlog.RemoteAddrHandler("remote_addr")(proxy))))
@@ -58,6 +66,17 @@ func main() {
 	server := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 30 * time.Second,
+	}
+
+	if parent != nil {
+		go func() {
+			ipc.WaitForParentExit(parent)
+			log.Info().Msg("Parent process exited, shutting down")
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = server.Shutdown(ctx)
+		}()
 	}
 
 	log.Info().Str("address", listener.Addr().String()).Msg("Listening for requests")

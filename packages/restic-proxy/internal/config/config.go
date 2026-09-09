@@ -13,6 +13,7 @@ type Config struct {
 	WellKnown string `env:"RESTIC_PROXY_WELL_KNOWN" envDefault:"https://meta.futo.cloud/.well-known/yucca.json"`
 	MetaUrl   string `env:"RESTIC_PROXY_META_URL"`
 	ApiUrl    string `env:"RESTIC_PROXY_API_URL"`
+	ReadyFd   int    `env:"RESTIC_PROXY_READY_FD"`
 
 	LogLevel  LogLevelNewType  `env:"LOG_LEVEL" envDefault:"info"`
 	LogPretty LogPrettyNewType `env:"LOG_FORMAT" envDefault:"pretty"`

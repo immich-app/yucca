@@ -23,6 +23,7 @@ import { EventsGateway } from './events/events.gateway';
 import { TelemetryErrorInterceptor } from './interceptors/telemetry-error.interceptor';
 import { SessionGuard } from './middleware/session.guard';
 import { type ModuleConfig, ModuleConfigProvider } from './moduleConfig';
+import { ResticProxyPool } from './proxy/resticProxyPool';
 import { BackendRepository } from './repositories/backend.repository';
 import { BootstrapRepository } from './repositories/bootstrap.repository';
 import { ConfigRepository } from './repositories/config.repository';
@@ -165,6 +166,7 @@ export class OrchestrationApiModule {
         { provide: APP_INTERCEPTOR, useClass: TelemetryErrorInterceptor },
         { provide: APP_GUARD, useClass: SessionGuard },
         EventsGateway,
+        ResticProxyPool,
         ...repositories,
         ...services,
       ],
