@@ -1752,10 +1752,10 @@
             ]
           },
           "lastBackupDuration": {
-            "type": "number"
+            "type": "integer"
           },
           "sizeBytes": {
-            "type": "number"
+            "type": "integer"
           }
         },
         "required": [
