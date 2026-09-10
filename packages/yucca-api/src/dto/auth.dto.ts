@@ -1,42 +1,28 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
 import { DeviceFlowEventType, DeviceFlowFailureReason } from 'src/enum';
+import { z } from 'zod';
 
-export class AuthDto {
-  @ApiProperty()
-  id!: string;
+const AuthSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    sessionId: z.string(),
+    connectionId: z.string().nullable(),
+    features: z.record(z.string(), z.boolean()),
+  })
+  .meta({ id: 'AuthDto' });
 
-  @ApiProperty()
-  name!: string;
+const DeviceFlowEventSchema = z
+  .object({
+    type: z.enum(DeviceFlowEventType).meta({ id: 'DeviceFlowEventType' }),
+    userCode: z.string().optional(),
+    verificationUri: z.string().optional(),
+    accessToken: z.string().optional(),
+    userId: z.string().optional(),
+    reason: z.enum(DeviceFlowFailureReason).meta({ id: 'DeviceFlowFailureReason' }).optional(),
+  })
+  .meta({ id: 'DeviceFlowEventDto' });
 
-  @ApiProperty()
-  email!: string;
-
-  @ApiProperty()
-  sessionId!: string;
-
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  connectionId!: string | null;
-
-  @ApiProperty({ type: 'object', additionalProperties: { type: 'boolean' } })
-  features!: Record<string, boolean>;
-}
-
-export class DeviceFlowEventDto {
-  @ApiProperty({ enum: DeviceFlowEventType, enumName: 'DeviceFlowEventType' })
-  type!: DeviceFlowEventType;
-
-  @ApiProperty({ type: String, required: false })
-  userCode?: string;
-
-  @ApiProperty({ type: String, required: false })
-  verificationUri?: string;
-
-  @ApiProperty({ type: String, required: false })
-  accessToken?: string;
-
-  @ApiProperty({ type: String, required: false })
-  userId?: string;
-
-  @ApiProperty({ enum: DeviceFlowFailureReason, enumName: 'DeviceFlowFailureReason', required: false })
-  reason?: DeviceFlowFailureReason;
-}
+export class AuthDto extends createZodDto(AuthSchema) {}
+export class DeviceFlowEventDto extends createZodDto(DeviceFlowEventSchema) {}

@@ -1,5 +1,5 @@
 import { MetricService } from '@common/server/otel';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TicketAction } from 'src/enum';
 import request from 'supertest';
@@ -26,7 +26,6 @@ describe('RepositoryController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('/api');
-    app.useGlobalPipes(new ValidationPipe());
     await app.init();
   });
 

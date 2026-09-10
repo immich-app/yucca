@@ -1,8 +1,9 @@
 import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository } from '@common/server/otel';
-import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { Module, Provider } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
+import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { AuthController } from './controllers/auth.controller';
 import { ConnectionController } from './controllers/connection.controller';
 import { DiscordController } from './controllers/discord.controller';
@@ -56,7 +57,7 @@ export const controllers = [
   RepositoryController,
 ];
 
-export const providers = [
+export const providers: Provider[] = [
   WideContextRepository,
   LoggerRepository,
   StorageRepository,
@@ -83,7 +84,9 @@ export const providers = [
   ConnectionService,
   DiscordService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+  { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },
+  { provide: APP_PIPE, useClass: ZodValidationPipe },
 ];
 
 @Module({

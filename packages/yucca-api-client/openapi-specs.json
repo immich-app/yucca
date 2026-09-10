@@ -614,6 +614,8 @@
             "required": false,
             "in": "query",
             "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
               "type": "string"
             }
           },
@@ -622,6 +624,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "pattern": "^\\d+$",
               "default": 50,
               "type": "string"
             }
@@ -898,6 +901,7 @@
           "name",
           "email",
           "sessionId",
+          "connectionId",
           "features"
         ]
       },
@@ -921,11 +925,7 @@
         "type": "object",
         "properties": {
           "type": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/DeviceFlowEventType"
-              }
-            ]
+            "$ref": "#/components/schemas/DeviceFlowEventType"
           },
           "userCode": {
             "type": "string"
@@ -940,11 +940,7 @@
             "type": "string"
           },
           "reason": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/DeviceFlowFailureReason"
-              }
-            ]
+            "$ref": "#/components/schemas/DeviceFlowFailureReason"
           }
         },
         "required": [
@@ -962,14 +958,12 @@
         "type": "object",
         "properties": {
           "action": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TicketAction"
-              }
-            ]
+            "$ref": "#/components/schemas/TicketAction"
           },
           "repositoryId": {
             "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
             "description": "Repository the ticket is bound to"
           }
         },
@@ -994,10 +988,18 @@
         "type": "object",
         "properties": {
           "lastBackup": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
           },
           "lastSuccessfulBackup": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
           },
           "lastBackupDuration": {
             "type": "number"
@@ -1007,6 +1009,8 @@
           }
         },
         "required": [
+          "lastBackup",
+          "lastSuccessfulBackup",
           "sizeBytes"
         ]
       },
@@ -1020,12 +1024,17 @@
             "type": "number"
           },
           "lastUpdated": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
           }
         },
         "required": [
           "sizeBytes",
-          "objectCount"
+          "objectCount",
+          "lastUpdated"
         ]
       },
       "TicketDto": {
@@ -1035,11 +1044,7 @@
             "type": "string"
           },
           "action": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/TicketAction"
-              }
-            ]
+            "$ref": "#/components/schemas/TicketAction"
           },
           "repositoryId": {
             "type": "string"
@@ -1078,42 +1083,6 @@
           "connections_math"
         ]
       },
-      "MetaConfigOverridesDto": {
-        "type": "object",
-        "properties": {
-          "restic_pack_size_mib": {
-            "type": "number"
-          },
-          "connections_math": {
-            "type": "string",
-            "description": "Client-evaluated expression: integers, cores, min, max, + - * /"
-          }
-        }
-      },
-      "MetaClusterDto": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "display_name": {
-            "type": "string"
-          },
-          "cluster_config": {
-            "description": "Per-cluster overrides of the global and site config",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MetaConfigOverridesDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "code",
-          "display_name",
-          "cluster_config"
-        ]
-      },
       "MetaSiteDto": {
         "type": "object",
         "properties": {
@@ -1134,11 +1103,7 @@
           },
           "site_config": {
             "description": "Per-site overrides of the global config",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MetaConfigOverridesDto"
-              }
-            ]
+            "$ref": "#/components/schemas/MetaConfigOverridesDto"
           },
           "clusters": {
             "type": "array",
@@ -1155,6 +1120,38 @@
           "default_cluster",
           "site_config",
           "clusters"
+        ]
+      },
+      "MetaConfigOverridesDto": {
+        "type": "object",
+        "properties": {
+          "restic_pack_size_mib": {
+            "type": "number"
+          },
+          "connections_math": {
+            "description": "Client-evaluated expression: integers, cores, min, max, + - * /",
+            "type": "string"
+          }
+        }
+      },
+      "MetaClusterDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "cluster_config": {
+            "description": "Per-cluster overrides of the global and site config",
+            "$ref": "#/components/schemas/MetaConfigOverridesDto"
+          }
+        },
+        "required": [
+          "code",
+          "display_name",
+          "cluster_config"
         ]
       },
       "MetaResponseDto": {
@@ -1201,10 +1198,16 @@
             "type": "string"
           },
           "createdAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           },
           "lastSeenAt": {
+            "example": "2024-01-01T00:00:00.000Z",
             "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
             "nullable": true
           },
           "repositoryCount": {
@@ -1228,6 +1231,7 @@
           "type",
           "name",
           "createdAt",
+          "lastSeenAt",
           "repositoryCount",
           "sizeBytes",
           "objectCount",
@@ -1260,7 +1264,8 @@
             ]
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 120
           }
         },
         "required": [
@@ -1283,7 +1288,8 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 120
           }
         },
         "required": [
@@ -1294,11 +1300,14 @@
         "type": "object",
         "properties": {
           "repositoryIds": {
-            "description": "Repositories to move from the default connection to this one",
+            "minItems": 1,
             "type": "array",
             "items": {
-              "type": "string"
-            }
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "Repositories to move from the default connection to this one"
           }
         },
         "required": [
@@ -1334,7 +1343,9 @@
             "type": "boolean"
           },
           "durationMs": {
-            "type": "number"
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -1346,7 +1357,9 @@
         "type": "object",
         "properties": {
           "sizeBytes": {
-            "type": "number"
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -1360,7 +1373,8 @@
             "type": "string"
           },
           "data": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": {}
           }
         },
         "required": [
@@ -1378,22 +1392,39 @@
             "type": "string"
           },
           "createdAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           },
           "sizeBytes": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           },
           "started": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
           },
           "backup": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
           },
           "successfulBackup": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
           },
           "backupDuration": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           }
         },
         "required": [
@@ -1417,7 +1448,8 @@
           }
         },
         "required": [
-          "items"
+          "items",
+          "nextCursor"
         ]
       },
       "RepositoryCreateRequestDto": {
@@ -1430,8 +1462,8 @@
             "type": "boolean"
           },
           "site": {
-            "type": "string",
-            "description": "Internal site code from /meta; defaults to default_site"
+            "description": "Internal site code from /meta; defaults to default_site",
+            "type": "string"
           }
         },
         "required": [
@@ -1453,13 +1485,13 @@
           },
           "siteCode": {
             "type": "string",
-            "nullable": true,
-            "description": "Stable internal site code the repository lives in"
+            "description": "Stable internal site code the repository lives in",
+            "nullable": true
           },
           "storageClusterCode": {
             "type": "string",
-            "nullable": true,
-            "description": "Stable, globally unique internal storage cluster code"
+            "description": "Stable, globally unique internal storage cluster code",
+            "nullable": true
           },
           "connectionId": {
             "type": "string"

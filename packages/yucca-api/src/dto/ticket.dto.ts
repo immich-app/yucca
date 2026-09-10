@@ -1,39 +1,32 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsUUID } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
 import { TicketAction } from 'src/enum';
-import { RepositoryMeterDto, RepositoryMetricsDto } from './repository.dto';
+import { z } from 'zod';
+import { RepositoryMeterSchema, RepositoryMetricsSchema } from './repository.dto';
 
-export class TicketCreateRequestDto {
-  @ApiProperty({ enum: TicketAction, enumName: 'TicketAction' })
-  @IsEnum(TicketAction)
-  action!: TicketAction;
+const TicketActionSchema = z.enum(TicketAction).meta({ id: 'TicketAction' });
 
-  @ApiProperty({ description: 'Repository the ticket is bound to' })
-  @IsUUID()
-  repositoryId!: string;
-}
+const TicketCreateRequestSchema = z
+  .object({
+    action: TicketActionSchema,
+    repositoryId: z.uuid().describe('Repository the ticket is bound to'),
+  })
+  .meta({ id: 'TicketCreateRequestDto' });
 
-export class TicketCreateResponseDto {
-  @ApiProperty({ description: 'IdP URL the browser must be sent to' })
-  redirectTo!: string;
-}
+const TicketCreateResponseSchema = z
+  .object({ redirectTo: z.string().describe('IdP URL the browser must be sent to') })
+  .meta({ id: 'TicketCreateResponseDto' });
 
-export class TicketDto {
-  @ApiProperty()
-  id!: string;
+const TicketSchema = z
+  .object({
+    id: z.string(),
+    action: TicketActionSchema,
+    repositoryId: z.string(),
+    repositoryName: z.string(),
+    metrics: RepositoryMetricsSchema,
+    meter: RepositoryMeterSchema.optional(),
+  })
+  .meta({ id: 'TicketDto' });
 
-  @ApiProperty({ enum: TicketAction, enumName: 'TicketAction' })
-  action!: TicketAction;
-
-  @ApiProperty()
-  repositoryId!: string;
-
-  @ApiProperty()
-  repositoryName!: string;
-
-  @ApiProperty()
-  metrics!: RepositoryMetricsDto;
-
-  @ApiProperty({ required: false })
-  meter?: RepositoryMeterDto;
-}
+export class TicketCreateRequestDto extends createZodDto(TicketCreateRequestSchema) {}
+export class TicketCreateResponseDto extends createZodDto(TicketCreateResponseSchema) {}
+export class TicketDto extends createZodDto(TicketSchema) {}

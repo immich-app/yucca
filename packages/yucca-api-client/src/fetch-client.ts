@@ -19,7 +19,7 @@ export type AuthDto = {
     name: string;
     email: string;
     sessionId: string;
-    connectionId?: string | null;
+    connectionId: string | null;
     features: {
         [key: string]: boolean;
     };
@@ -45,15 +45,15 @@ export type TicketCreateResponseDto = {
     redirectTo: string;
 };
 export type RepositoryMetricsDto = {
-    lastBackup?: string;
-    lastSuccessfulBackup?: string;
+    lastBackup: string | null;
+    lastSuccessfulBackup: string | null;
     lastBackupDuration?: number;
     sizeBytes: number;
 };
 export type RepositoryMeterDto = {
     sizeBytes: number;
     objectCount: number;
-    lastUpdated?: string;
+    lastUpdated: string | null;
 };
 export type TicketDto = {
     id: string;
@@ -100,7 +100,7 @@ export type ConnectionDto = {
     "type": "immich" | "standalone" | "restic";
     name: string;
     createdAt: string;
-    lastSeenAt?: string | null;
+    lastSeenAt: string | null;
     repositoryCount: number;
     /** Rolled-up storage across this connection’s repositories (RGW size). */
     sizeBytes: number;
@@ -141,21 +141,23 @@ export type SubmitUpdateSizeRequestDto = {
 };
 export type SubmitStructuredLogRequestDto = {
     summary: string;
-    data: object;
+    data: {
+        [key: string]: any;
+    };
 };
 export type RepositoryMetricsHistoryDto = {
     id: string;
     repositoryId: string;
     createdAt: string;
-    sizeBytes?: number;
-    started?: string;
-    backup?: string;
-    successfulBackup?: string;
-    backupDuration?: number;
+    sizeBytes?: number | null;
+    started?: string | null;
+    backup?: string | null;
+    successfulBackup?: string | null;
+    backupDuration?: number | null;
 };
 export type RepositoryMetricsHistoryListResponseDto = {
     items: RepositoryMetricsHistoryDto[];
-    nextCursor?: string | null;
+    nextCursor: string | null;
 };
 export type RepositoryCreateRequestDto = {
     name: string;

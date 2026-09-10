@@ -1,5 +1,5 @@
 import { MetricService } from '@common/server/otel';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { parse } from 'cookie';
 import { firstValueFrom, ReplaySubject, skip } from 'rxjs';
@@ -29,7 +29,6 @@ describe('AuthController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('/api');
-    app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
     auth = await moduleFixture.resolve(AuthService);
@@ -56,7 +55,6 @@ describe('AuthController (e2e)', () => {
         .expect(200)
         .expect({
           id: user.id,
-          sub: user.sub,
           name: user.name,
           email: user.email,
           sessionId: session.id,

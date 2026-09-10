@@ -1,110 +1,82 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class RepositoryDto {
-  @ApiProperty()
-  id!: string;
+const RepositorySchema = z
+  .object({
+    id: z.string(),
+    worm: z.boolean(),
+    name: z.string(),
+    siteCode: z.string().nullable().describe('Stable internal site code the repository lives in'),
+    storageClusterCode: z.string().nullable().describe('Stable, globally unique internal storage cluster code'),
+    connectionId: z.string(),
+    connectionType: z.string(),
+  })
+  .meta({ id: 'RepositoryDto' });
 
-  @ApiProperty()
-  worm!: boolean;
+export const RepositoryMetricsSchema = z
+  .object({
+    lastBackup: isoDatetimeToDate.nullable(),
+    lastSuccessfulBackup: isoDatetimeToDate.nullable(),
+    lastBackupDuration: z.number().optional(),
+    sizeBytes: z.number(),
+  })
+  .meta({ id: 'RepositoryMetricsDto' });
 
-  @ApiProperty()
-  name!: string;
+export const RepositoryMeterSchema = z
+  .object({
+    sizeBytes: z.number(),
+    objectCount: z.number(),
+    lastUpdated: isoDatetimeToDate.nullable(),
+  })
+  .meta({ id: 'RepositoryMeterDto' });
 
-  @ApiProperty({ type: 'string', nullable: true, description: 'Stable internal site code the repository lives in' })
-  siteCode!: string | null;
+const RepositoryWithMetricsSchema = RepositorySchema.extend({
+  metrics: RepositoryMetricsSchema,
+  meter: RepositoryMeterSchema.optional(),
+}).meta({ id: 'RepositoryWithMetricsDto' });
 
-  @ApiProperty({ type: 'string', nullable: true, description: 'Stable, globally unique internal storage cluster code' })
-  storageClusterCode!: string | null;
+const RepositoryCreateRequestSchema = z
+  .object({
+    name: z.string(),
+    worm: z.boolean(),
+    site: z.string().optional().describe('Internal site code from /meta; defaults to default_site'),
+  })
+  .meta({ id: 'RepositoryCreateRequestDto' });
 
-  @ApiProperty()
-  connectionId!: string;
+const RepositoryUpdateRequestSchema = z
+  .object({
+    name: z.string().optional(),
+    worm: z.boolean().optional(),
+  })
+  .meta({ id: 'RepositoryUpdateRequestDto' });
 
-  @ApiProperty()
-  connectionType!: string;
-}
+const RepositoryCreateResponseSchema = z
+  .object({ repository: RepositoryWithMetricsSchema })
+  .meta({ id: 'RepositoryCreateResponseDto' });
 
-export class RepositoryMetricsDto {
-  @ApiProperty({ type: 'string', required: false })
-  lastBackup!: Date | null;
+const RepositoryGetResponseSchema = z
+  .object({ repository: RepositoryWithMetricsSchema })
+  .meta({ id: 'RepositoryGetResponseDto' });
 
-  @ApiProperty({ type: 'string', required: false })
-  lastSuccessfulBackup!: Date | null;
+const RepositoryListResponseSchema = z
+  .object({ repositories: z.array(RepositoryWithMetricsSchema) })
+  .meta({ id: 'RepositoryListResponseDto' });
 
-  @ApiProperty({ required: false })
-  lastBackupDuration?: number;
+const RepositoryUpdateResponseSchema = z
+  .object({ repository: RepositoryWithMetricsSchema })
+  .meta({ id: 'RepositoryUpdateResponseDto' });
 
-  @ApiProperty()
-  sizeBytes!: number;
-}
+const RepositoryCreateResticUrlSchema = z.object({ url: z.string() }).meta({ id: 'RepositoryCreateResticUrlDto' });
 
-export class RepositoryMeterDto {
-  @ApiProperty()
-  sizeBytes!: number;
-
-  @ApiProperty()
-  objectCount!: number;
-
-  @ApiProperty({ type: 'string', required: false })
-  lastUpdated!: Date | null;
-}
-
-export class RepositoryWithMetricsDto extends RepositoryDto {
-  @ApiProperty()
-  metrics!: RepositoryMetricsDto;
-
-  @ApiProperty({ required: false })
-  meter?: RepositoryMeterDto;
-}
-
-export class RepositoryCreateRequestDto {
-  @ApiProperty()
-  @IsString()
-  name!: string;
-
-  @ApiProperty()
-  @IsBoolean()
-  worm!: boolean;
-
-  @ApiProperty({ required: false, description: 'Internal site code from /meta; defaults to default_site' })
-  @IsOptional()
-  @IsString()
-  site?: string;
-}
-
-export class RepositoryCreateResponseDto {
-  @ApiProperty()
-  repository!: RepositoryWithMetricsDto;
-}
-
-export class RepositoryGetResponseDto {
-  @ApiProperty()
-  repository!: RepositoryWithMetricsDto;
-}
-
-export class RepositoryListResponseDto {
-  @ApiProperty({ type: [RepositoryWithMetricsDto] })
-  repositories!: RepositoryWithMetricsDto[];
-}
-
-export class RepositoryUpdateRequestDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsBoolean()
-  worm?: boolean;
-}
-
-export class RepositoryUpdateResponseDto {
-  @ApiProperty()
-  repository!: RepositoryWithMetricsDto;
-}
-
-export class RepositoryCreateResticUrlDto {
-  @ApiProperty()
-  url!: string;
-}
+export class RepositoryDto extends createZodDto(RepositorySchema) {}
+export class RepositoryMetricsDto extends createZodDto(RepositoryMetricsSchema) {}
+export class RepositoryMeterDto extends createZodDto(RepositoryMeterSchema) {}
+export class RepositoryWithMetricsDto extends createZodDto(RepositoryWithMetricsSchema) {}
+export class RepositoryCreateRequestDto extends createZodDto(RepositoryCreateRequestSchema) {}
+export class RepositoryCreateResponseDto extends createZodDto(RepositoryCreateResponseSchema) {}
+export class RepositoryGetResponseDto extends createZodDto(RepositoryGetResponseSchema) {}
+export class RepositoryListResponseDto extends createZodDto(RepositoryListResponseSchema) {}
+export class RepositoryUpdateRequestDto extends createZodDto(RepositoryUpdateRequestSchema) {}
+export class RepositoryUpdateResponseDto extends createZodDto(RepositoryUpdateResponseSchema) {}
+export class RepositoryCreateResticUrlDto extends createZodDto(RepositoryCreateResticUrlSchema) {}

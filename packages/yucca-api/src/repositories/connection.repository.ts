@@ -30,7 +30,13 @@ export class ConnectionRepository {
     return this.db
       .selectFrom('connections')
       .leftJoin('connectionMetrics', 'connectionMetrics.connectionId', 'connections.id')
-      .selectAll('connections')
+      .select([
+        'connections.id',
+        'connections.type',
+        'connections.name',
+        'connections.createdAt',
+        'connections.lastSeenAt',
+      ])
       .select(['connectionMetrics.sizeBytes', 'connectionMetrics.objectCount', 'connectionMetrics.billableBytes'])
       .select((eb) =>
         eb

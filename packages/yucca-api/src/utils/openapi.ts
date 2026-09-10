@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerCustomOptions, SwaggerDocumentOptions, SwaggerModule } from '@nestjs/swagger';
+import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -12,7 +13,7 @@ export const useSwagger = (app: INestApplication, { write }: { write: boolean })
     operationIdFactory: (_: string, methodKey: string) => methodKey,
   };
 
-  const specification = SwaggerModule.createDocument(app, config, options);
+  const specification = cleanupOpenApiDoc(SwaggerModule.createDocument(app, config, options));
 
   const customOptions: SwaggerCustomOptions = {
     swaggerOptions: {
