@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.40.0](https://github.com/immich-app/yucca/compare/v0.39.0...v0.40.0) (2026-09-10)
+
+
+### Features
+
+* use zod for validation ([#636](https://github.com/immich-app/yucca/issues/636)) ([eed6684](https://github.com/immich-app/yucca/commit/eed66845c88313efbe3cf9f910158d7e87ce5c4a))
+
+
+### Bug Fixes
+
+* more types that should be integers ([#634](https://github.com/immich-app/yucca/issues/634)) ([87e0066](https://github.com/immich-app/yucca/commit/87e0066ff20bc57cb6c999040d8dccbb625f56f1))
+
 ## [0.39.0](https://github.com/immich-app/yucca/compare/v0.38.0...v0.39.0) (2026-09-09)
 
 
