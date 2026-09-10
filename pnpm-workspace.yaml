@@ -67,7 +67,7 @@ catalog:
   '@types/ms': ^2.1.0
   '@types/node': ^25.2.1
   '@types/oidc-provider': ^9.5.0
-  '@types/supertest': ^6.0.2
+  '@types/supertest': ^7.0.0
   '@types/tail': ^2.2.3
   '@vitest/browser': ^4.0.18
   '@vitest/browser-playwright': ^4.0.18
