@@ -12904,7 +12904,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "description": "Rate of octets sent and received at the IP layer, as reported by /proc/net/netstat",
+          "description": "IP-layer traffic in bits/s, from the octet counters in /proc/net/netstat",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -12952,7 +12952,7 @@
                   }
                 ]
               },
-              "unit": "Bps"
+              "unit": "bps"
             },
             "overrides": [
               {
@@ -12998,7 +12998,7 @@
           "targets": [
             {
               "editorMode": "code",
-              "expr": "rate(node_netstat_IpExt_InOctets{instance=\"$node\",job=\"$job\", cluster=~\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(node_netstat_IpExt_InOctets{instance=\"$node\",job=\"$job\", cluster=~\"$cluster\"}[$__rate_interval]) * 8",
               "format": "time_series",
               "interval": "",
               "legendFormat": "IP Rx in",
@@ -13008,7 +13008,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "rate(node_netstat_IpExt_OutOctets{instance=\"$node\",job=\"$job\", cluster=~\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(node_netstat_IpExt_OutOctets{instance=\"$node\",job=\"$job\", cluster=~\"$cluster\"}[$__rate_interval]) * 8",
               "format": "time_series",
               "legendFormat": "IP Tx out",
               "range": true,

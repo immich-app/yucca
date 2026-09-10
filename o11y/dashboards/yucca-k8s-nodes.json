@@ -1951,7 +1951,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -1982,7 +1982,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(node_network_receive_bytes_total{instance=\"$instance\", cluster=\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate(node_network_receive_bytes_total{instance=\"$instance\", cluster=\"$cluster\"}[$__rate_interval])) * 8",
           "interval": "$resolution",
           "legendFormat": "In",
           "range": true,
@@ -1994,14 +1994,14 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "- sum(rate(node_network_transmit_bytes_total{instance=\"$instance\", cluster=\"$cluster\"}[$__rate_interval]))",
+          "expr": "- sum(rate(node_network_transmit_bytes_total{instance=\"$instance\", cluster=\"$cluster\"}[$__rate_interval])) * 8",
           "interval": "$resolution",
           "legendFormat": "Out",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "Network usage (bytes/s)",
+      "title": "Network usage (bits/s)",
       "type": "timeseries"
     },
     {

@@ -2278,7 +2278,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -2309,7 +2309,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(node_network_receive_bytes_total{device!~\"(veth|azv|lxc).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (device)",
+          "expr": "sum(rate(node_network_receive_bytes_total{device!~\"(veth|azv|lxc).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (device) * 8",
           "interval": "$resolution",
           "legendFormat": "Received : {{ device }}",
           "range": true,
@@ -2321,7 +2321,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "- sum(rate(node_network_transmit_bytes_total{device!~\"(veth|azv|lxc).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (device)",
+          "expr": "- sum(rate(node_network_transmit_bytes_total{device!~\"(veth|azv|lxc).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (device) * 8",
           "interval": "$resolution",
           "legendFormat": "Transmitted : {{ device }}",
           "range": true,
@@ -2497,7 +2497,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -2528,7 +2528,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(container_network_receive_bytes_total{cluster=\"$cluster\"}[$__rate_interval])) by (namespace)",
+          "expr": "sum(rate(container_network_receive_bytes_total{cluster=\"$cluster\"}[$__rate_interval])) by (namespace) * 8",
           "interval": "$resolution",
           "legendFormat": "Received : {{ namespace }}",
           "range": true,
@@ -2539,7 +2539,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "- sum(rate(container_network_transmit_bytes_total{cluster=\"$cluster\"}[$__rate_interval])) by (namespace)",
+          "expr": "- sum(rate(container_network_transmit_bytes_total{cluster=\"$cluster\"}[$__rate_interval])) by (namespace) * 8",
           "hide": false,
           "interval": "$resolution",
           "legendFormat": "Transmitted : {{ namespace }}",
@@ -2606,7 +2606,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -2637,9 +2637,9 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(node_network_receive_bytes_total{cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "sum(rate(node_network_receive_bytes_total{cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance) * 8",
           "interval": "$resolution",
-          "legendFormat": "Received bytes in {{ instance }}",
+          "legendFormat": "Received : {{ instance }}",
           "range": true,
           "refId": "A"
         },
@@ -2648,10 +2648,10 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "- sum(rate(node_network_transmit_bytes_total{cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "- sum(rate(node_network_transmit_bytes_total{cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance) * 8",
           "hide": false,
           "interval": "$resolution",
-          "legendFormat": "Transmitted bytes in {{ instance }}",
+          "legendFormat": "Transmitted : {{ instance }}",
           "range": true,
           "refId": "B"
         }
@@ -2716,7 +2716,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -2747,9 +2747,9 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(node_network_receive_bytes_total{device!~\"(veth|azv|lxc|lo).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "sum(rate(node_network_receive_bytes_total{device!~\"(veth|azv|lxc|lo).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance) * 8",
           "interval": "$resolution",
-          "legendFormat": "Received bytes in {{ instance }}",
+          "legendFormat": "Received : {{ instance }}",
           "range": true,
           "refId": "A"
         },
@@ -2758,10 +2758,10 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "- sum(rate(node_network_transmit_bytes_total{device!~\"(veth|azv|lxc|lo).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "- sum(rate(node_network_transmit_bytes_total{device!~\"(veth|azv|lxc|lo).*\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance) * 8",
           "hide": false,
           "interval": "$resolution",
-          "legendFormat": "Transmitted bytes in {{ instance }}",
+          "legendFormat": "Transmitted : {{ instance }}",
           "range": true,
           "refId": "B"
         }
@@ -2826,7 +2826,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -2857,9 +2857,9 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(node_network_receive_bytes_total{device=\"lo\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "sum(rate(node_network_receive_bytes_total{device=\"lo\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance) * 8",
           "interval": "$resolution",
-          "legendFormat": "Received bytes in {{ instance }}",
+          "legendFormat": "Received : {{ instance }}",
           "range": true,
           "refId": "A"
         },
@@ -2868,10 +2868,10 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "- sum(rate(node_network_transmit_bytes_total{device=\"lo\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "- sum(rate(node_network_transmit_bytes_total{device=\"lo\", cluster=\"$cluster\", job=\"$job\"}[$__rate_interval])) by (instance) * 8",
           "hide": false,
           "interval": "$resolution",
-          "legendFormat": "Transmitted bytes in {{ instance }}",
+          "legendFormat": "Transmitted : {{ instance }}",
           "range": true,
           "refId": "B"
         }

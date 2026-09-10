@@ -2336,7 +2336,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -2367,7 +2367,7 @@
             "uid": "$datasource"
           },
           "exemplar": true,
-          "expr": "sum(rate(container_network_receive_bytes_total{namespace=\"$namespace\", pod=~\"$pod\", cluster=\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate(container_network_receive_bytes_total{namespace=\"$namespace\", pod=~\"$pod\", cluster=\"$cluster\"}[$__rate_interval])) * 8",
           "interval": "$resolution",
           "legendFormat": "Received",
           "refId": "A"
@@ -2377,7 +2377,7 @@
             "uid": "$datasource"
           },
           "exemplar": true,
-          "expr": "- sum(rate(container_network_transmit_bytes_total{namespace=\"$namespace\", pod=~\"$pod\", cluster=\"$cluster\"}[$__rate_interval]))",
+          "expr": "- sum(rate(container_network_transmit_bytes_total{namespace=\"$namespace\", pod=~\"$pod\", cluster=\"$cluster\"}[$__rate_interval])) * 8",
           "interval": "$resolution",
           "legendFormat": "Transmitted",
           "refId": "B"

@@ -297,7 +297,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -329,7 +329,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(rate({__name__=\"s3.backend.uploaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval]))"
+          "expr": "sum(rate({__name__=\"s3.backend.uploaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval])) * 8"
         }
       ],
       "title": "Upload to S3",
@@ -355,7 +355,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -387,7 +387,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(rate({__name__=\"s3.backend.downloaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval]))"
+          "expr": "sum(rate({__name__=\"s3.backend.downloaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval])) * 8"
         }
       ],
       "title": "Download from S3",
@@ -946,7 +946,7 @@
       "datasource": {
         "uid": "$datasource"
       },
-      "description": "Request-body bytes/s from each client autonomous system \u2014 backup uploads. Sources on-net (NetBird, the internal gateway VIP) report as `private`; public addresses the ASN database does not resolve report as `unknown`.",
+      "description": "Request-body bits/s from each client autonomous system \u2014 backup uploads. Sources on-net (NetBird, the internal gateway VIP) report as `private`; public addresses the ASN database does not resolve report as `unknown`.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -984,7 +984,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -1017,7 +1017,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "topk(15, sum by (asn, asOrg) (rate({__name__=\"traffic.uploaded_bytes\"}[$__rate_interval])))",
+          "expr": "topk(15, sum by (asn, asOrg) (rate({__name__=\"traffic.uploaded_bytes\"}[$__rate_interval]))) * 8",
           "legendFormat": "{{asn}} {{asOrg}}"
         }
       ],
@@ -1028,7 +1028,7 @@
       "datasource": {
         "uid": "$datasource"
       },
-      "description": "Response bytes/s to each client autonomous system \u2014 restores and repository reads.",
+      "description": "Response bits/s to each client autonomous system \u2014 restores and repository reads.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1066,7 +1066,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -1099,7 +1099,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "topk(15, sum by (asn, asOrg) (rate({__name__=\"traffic.downloaded_bytes\"}[$__rate_interval])))",
+          "expr": "topk(15, sum by (asn, asOrg) (rate({__name__=\"traffic.downloaded_bytes\"}[$__rate_interval]))) * 8",
           "legendFormat": "{{asn}} {{asOrg}}"
         }
       ],
@@ -1660,7 +1660,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -1693,7 +1693,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(rate({__name__=\"s3.backend.uploaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"s3.backend.uploaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "upload (PUT)"
         },
         {
@@ -1701,7 +1701,7 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "expr": "sum(rate({__name__=\"s3.backend.downloaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"s3.backend.downloaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "download (GET)"
         }
       ],

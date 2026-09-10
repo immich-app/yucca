@@ -900,7 +900,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -924,12 +924,12 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(ceph_rgw_op_get_obj_bytes{cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate(ceph_rgw_op_get_obj_bytes{cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "GET",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(ceph_rgw_op_put_obj_bytes{cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate(ceph_rgw_op_put_obj_bytes{cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "PUT",
           "refId": "B"
         }
@@ -1650,7 +1650,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": [
           {
@@ -1687,12 +1687,12 @@
       },
       "targets": [
         {
-          "expr": "rate(node_network_receive_bytes_total{job=\"node\", device=\"bond0\"}[$__rate_interval])",
+          "expr": "rate(node_network_receive_bytes_total{job=\"node\", device=\"bond0\"}[$__rate_interval]) * 8",
           "legendFormat": "{{instance}} RX",
           "refId": "A"
         },
         {
-          "expr": "rate(node_network_transmit_bytes_total{job=\"node\", device=\"bond0\"}[$__rate_interval])",
+          "expr": "rate(node_network_transmit_bytes_total{job=\"node\", device=\"bond0\"}[$__rate_interval]) * 8",
           "legendFormat": "{{instance}} TX",
           "refId": "B"
         }
@@ -2148,7 +2148,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": [
           {
@@ -2190,7 +2190,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "rate(ceph_pool_rd_bytes{cluster=~\"$cluster\"}[$__rate_interval]) * on(pool_id) group_left(name) ceph_pool_metadata{name=~\"$pool_name\", cluster=~\"$cluster\"}",
+          "expr": "rate(ceph_pool_rd_bytes{cluster=~\"$cluster\"}[$__rate_interval]) * on(pool_id) group_left(name) ceph_pool_metadata{name=~\"$pool_name\", cluster=~\"$cluster\"} * 8",
           "legendFormat": "reads",
           "refId": "A"
         },
@@ -2199,7 +2199,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "expr": "rate(ceph_pool_wr_bytes{cluster=~\"$cluster\"}[$__rate_interval]) * on(pool_id) group_left(name) ceph_pool_metadata{name=~\"$pool_name\", cluster=~\"$cluster\"}",
+          "expr": "rate(ceph_pool_wr_bytes{cluster=~\"$cluster\"}[$__rate_interval]) * on(pool_id) group_left(name) ceph_pool_metadata{name=~\"$pool_name\", cluster=~\"$cluster\"} * 8",
           "legendFormat": "writes",
           "refId": "B"
         }
