@@ -30,6 +30,7 @@
     "@nestjs/swagger": "catalog:",
     "@nestjs/websockets": "catalog:",
     "express": "catalog:",
+    "nestjs-zod": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

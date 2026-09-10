@@ -1,5 +1,5 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { ZodValidationPipe } from 'nestjs-zod';
 import { LoggingRepository, ORCHESTRATION_PORT, OrchestrationApiModule } from '../src';
 
 async function bootstrap() {
@@ -39,8 +39,8 @@ async function bootstrap() {
   logger.setContext('Bootstrap');
 
   app.enableShutdownHooks();
-  app.enableCors({ origin: 'http://localhost:36066' });
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.enableCors({ origin: 'http://localhost:36066', credentials: true });
+  app.useGlobalPipes(new ZodValidationPipe());
   app.setGlobalPrefix('api');
   await app.listen(ORCHESTRATION_PORT, '127.0.0.1');
 

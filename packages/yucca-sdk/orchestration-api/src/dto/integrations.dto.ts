@@ -1,120 +1,74 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsDefined, IsObject, IsOptional, IsString } from 'class-validator';
-import { RetentionPolicyDto } from './repository.dto';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
+import { RetentionPolicySchema } from './repository.dto';
 
-export class ImmichLibraryDto {
-  @ApiProperty({ type: String })
-  id!: string;
+const LibrariesSchema = z.union([z.literal('all'), z.array(z.string())]);
 
-  @ApiProperty({ type: String })
-  name!: string;
-
-  @ApiProperty({ type: [String] })
-  importPaths!: string[];
-
-  @ApiProperty({ type: [String] })
-  exclusionPatterns!: string[];
-}
-
-export class ImmichStateDto {
-  @ApiProperty({ type: String })
-  dataPath!: string;
-
-  @ApiProperty({ type: [String] })
-  dataFolders!: string[];
-
-  @ApiProperty({ type: [ImmichLibraryDto] })
-  libraries!: ImmichLibraryDto[];
-}
-
-export class ImmichIntegrationConfigurationDto {
-  @ApiProperty({ type: [String] })
-  dataFolders!: string[];
-
-  @ApiProperty({ type: Boolean })
-  backupConfiguration!: boolean;
-
-  @ApiProperty({
-    oneOf: [
-      { type: 'string', enum: ['all'] },
-      { type: 'array', items: { type: 'string' } },
-    ],
+const ImmichLibrarySchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    importPaths: z.array(z.string()),
+    exclusionPatterns: z.array(z.string()),
   })
-  libraries!: 'all' | string[];
-}
+  .meta({ id: 'ImmichLibraryDto' });
 
-export class ImmichIntegrationDto {
-  @ApiProperty({ type: String })
-  id!: string;
-
-  @ApiProperty({ type: String })
-  scheduleId!: string;
-
-  @ApiProperty({ type: ImmichIntegrationConfigurationDto })
-  configuration!: ImmichIntegrationConfigurationDto;
-}
-
-export class IntegrationsResponseDto {
-  @ApiProperty({ type: ImmichStateDto, required: false })
-  immichState?: ImmichStateDto;
-
-  @ApiProperty({ type: ImmichIntegrationDto, required: false })
-  immichIntegration?: ImmichIntegrationDto;
-}
-
-export class ConfigureImmichIntegrationRequestDto {
-  @ApiProperty({ type: String })
-  @IsString()
-  name!: string;
-
-  @ApiProperty({ type: Boolean })
-  @IsBoolean()
-  worm!: boolean;
-
-  @ApiProperty({ type: String })
-  @IsString()
-  cron!: string;
-
-  @ApiProperty({ type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  dataFolders!: string[];
-
-  @ApiProperty({ type: Boolean })
-  @IsBoolean()
-  backupConfiguration!: boolean;
-
-  @ApiProperty({
-    oneOf: [
-      { type: 'string', enum: ['all'] },
-      { type: 'array', items: { type: 'string' } },
-    ],
+const ImmichStateSchema = z
+  .object({
+    dataPath: z.string(),
+    dataFolders: z.array(z.string()),
+    libraries: z.array(ImmichLibrarySchema),
   })
-  @IsDefined()
-  libraries!: 'all' | string[];
+  .meta({ id: 'ImmichStateDto' });
 
-  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
-  @IsOptional()
-  @IsObject()
-  retentionPolicy?: RetentionPolicyDto | null;
+const ImmichIntegrationConfigurationSchema = z
+  .object({
+    dataFolders: z.array(z.string()),
+    backupConfiguration: z.boolean(),
+    libraries: LibrariesSchema,
+  })
+  .meta({ id: 'ImmichIntegrationConfigurationDto' });
 
-  @ApiProperty({ type: Boolean, required: false })
-  @IsOptional()
-  @IsBoolean()
-  paused?: boolean;
-}
+const ImmichIntegrationSchema = z
+  .object({
+    id: z.string(),
+    scheduleId: z.string(),
+    configuration: ImmichIntegrationConfigurationSchema,
+  })
+  .meta({ id: 'ImmichIntegrationDto' });
 
-export class ImmichRollbackRequestDto {
-  @ApiProperty({ type: String })
-  @IsString()
-  repositoryId!: string;
+const IntegrationsResponseSchema = z
+  .object({
+    immichState: ImmichStateSchema.optional(),
+    immichIntegration: ImmichIntegrationSchema.optional(),
+  })
+  .meta({ id: 'IntegrationsResponseDto' });
 
-  @ApiProperty({ type: String })
-  @IsString()
-  snapshotId!: string;
+const ConfigureImmichIntegrationRequestSchema = z
+  .object({
+    name: z.string(),
+    worm: z.boolean(),
+    cron: z.string(),
+    dataFolders: z.array(z.string()),
+    backupConfiguration: z.boolean(),
+    libraries: LibrariesSchema,
+    retentionPolicy: RetentionPolicySchema.nullable().optional(),
+    paused: z.boolean().optional(),
+  })
+  .meta({ id: 'ConfigureImmichIntegrationRequestDto' });
 
-  @ApiProperty({ type: String, required: false })
-  @IsOptional()
-  @IsString()
-  backupFileName?: string;
-}
+const ImmichRollbackRequestSchema = z
+  .object({
+    repositoryId: z.string(),
+    snapshotId: z.string(),
+    backupFileName: z.string().optional(),
+  })
+  .meta({ id: 'ImmichRollbackRequestDto' });
+
+export class ImmichLibraryDto extends createZodDto(ImmichLibrarySchema) {}
+export class ImmichStateDto extends createZodDto(ImmichStateSchema) {}
+export class ImmichIntegrationConfigurationDto extends createZodDto(ImmichIntegrationConfigurationSchema) {}
+export class ImmichIntegrationDto extends createZodDto(ImmichIntegrationSchema) {}
+export class IntegrationsResponseDto extends createZodDto(IntegrationsResponseSchema) {}
+export class ConfigureImmichIntegrationRequestDto extends createZodDto(ConfigureImmichIntegrationRequestSchema) {}
+export class ImmichRollbackRequestDto extends createZodDto(ImmichRollbackRequestSchema) {}

@@ -1,18 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsUUID } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 import { TicketAction } from '../enum';
 
-export class TicketCreateRequestDto {
-  @ApiProperty({ enum: TicketAction, enumName: 'TicketAction' })
-  @IsEnum(TicketAction)
-  action!: TicketAction;
+const TicketCreateRequestSchema = z
+  .object({
+    action: z.enum(TicketAction).meta({ id: 'TicketAction' }),
+    repositoryId: z.uuid().describe('Repository the ticket is bound to'),
+  })
+  .meta({ id: 'TicketCreateRequestDto' });
 
-  @ApiProperty({ description: 'Repository the ticket is bound to' })
-  @IsUUID()
-  repositoryId!: string;
-}
+const TicketCreateResponseSchema = z
+  .object({ redirectTo: z.string().describe('Identity provider URL the browser must be sent to') })
+  .meta({ id: 'TicketCreateResponseDto' });
 
-export class TicketCreateResponseDto {
-  @ApiProperty({ description: 'Identity provider URL the browser must be sent to' })
-  redirectTo!: string;
-}
+export class TicketCreateRequestDto extends createZodDto(TicketCreateRequestSchema) {}
+export class TicketCreateResponseDto extends createZodDto(TicketCreateResponseSchema) {}

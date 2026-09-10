@@ -141,7 +141,7 @@ export type RepositoryCreateRequestDto = {
 };
 export type TaskStatus = "incomplete" | "complete" | "warn" | "failed";
 export type RepositoryMetricsDto = {
-    lastBackup?: string;
+    lastBackup?: string | null;
     lastBackupStatus?: TaskStatus;
     lastBackupDuration?: number;
     sizeBytes: number;
@@ -149,7 +149,7 @@ export type RepositoryMetricsDto = {
 export type RepositoryMeterDto = {
     sizeBytes: number;
     objectCount: number;
-    lastUpdated?: string;
+    lastUpdated?: string | null;
 };
 export type RepositoryBackendDto = {
     id: string;
@@ -206,7 +206,7 @@ export type InspectedLocalRepositoryDto = {
     meter?: RepositoryMeterDto;
     backends?: RepositoryBackendsDto;
     configuration?: RepositoryConfigurationDto;
-    snapshots: SnapshotDto[];
+    snapshots?: SnapshotDto[];
 };
 export type RepositoryInspectResponseDto = {
     repositories: InspectedLocalRepositoryDto[];
@@ -235,7 +235,7 @@ export type RunDto = {
     id: string;
     repositoryId: string;
     start: string;
-    end: string;
+    end?: string;
     logFilePath: string;
     status: RunStatus;
     "type": RunType;

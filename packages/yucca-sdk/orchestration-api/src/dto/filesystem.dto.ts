@@ -1,28 +1,25 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class FilesystemListingRequestDto {
-  @ApiProperty({ type: () => String, required: false })
-  @IsOptional()
-  @IsString()
-  path?: string;
-}
+const FilesystemListingRequestSchema = z
+  .object({ path: z.string().optional() })
+  .meta({ id: 'FilesystemListingRequestDto' });
 
-export class FilesystemListingItemDto {
-  @ApiProperty({ type: () => String })
-  path!: string;
+const FilesystemListingItemSchema = z
+  .object({
+    path: z.string(),
+    isDirectory: z.boolean(),
+  })
+  .meta({ id: 'FilesystemListingItemDto' });
 
-  @ApiProperty({ type: () => Boolean })
-  isDirectory!: boolean;
-}
+const FilesystemListingResponseSchema = z
+  .object({
+    parent: z.string(),
+    path: z.string(),
+    items: z.array(FilesystemListingItemSchema),
+  })
+  .meta({ id: 'FilesystemListingResponseDto' });
 
-export class FilesystemListingResponseDto {
-  @ApiProperty({ type: () => String })
-  parent!: string;
-
-  @ApiProperty({ type: () => String })
-  path!: string;
-
-  @ApiProperty({ type: () => [FilesystemListingItemDto] })
-  items!: FilesystemListingItemDto[];
-}
+export class FilesystemListingRequestDto extends createZodDto(FilesystemListingRequestSchema) {}
+export class FilesystemListingItemDto extends createZodDto(FilesystemListingItemSchema) {}
+export class FilesystemListingResponseDto extends createZodDto(FilesystemListingResponseSchema) {}

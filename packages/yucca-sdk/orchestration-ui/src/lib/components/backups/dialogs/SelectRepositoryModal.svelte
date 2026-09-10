@@ -57,6 +57,7 @@
         <Suspense {query}>
           {#each sortedRepositories ?? [] as repository (repository.id)}
             {@const accessible = repository.snapshots !== undefined}
+            {@const snapshots = repository.snapshots ?? []}
 
             <StackListOption
               title={repository.name}
@@ -65,10 +66,8 @@
             >
               {#if !accessible}
                 Can't access, is your recovery key correct?
-              {:else if repository.snapshots.length}
-                Last backup: {new Date(
-                  repository.snapshots[0].time,
-                ).toLocaleDateString()}
+              {:else if snapshots.length}
+                Last backup: {new Date(snapshots[0].time).toLocaleDateString()}
               {:else}
                 No backups yet
               {/if}

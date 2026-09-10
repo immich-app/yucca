@@ -1,29 +1,30 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 import { TaskStatus, TaskType } from '../enum';
 
-export class ActiveScheduleItemDto {
-  @ApiProperty({ type: String })
-  repositoryId!: string;
+export const TaskStatusSchema = z.enum(TaskStatus).meta({ id: 'TaskStatus' });
+export const TaskTypeSchema = z.enum(TaskType).meta({ id: 'TaskType' });
 
-  @ApiProperty({ enumName: 'TaskStatus', enum: TaskStatus })
-  status!: TaskStatus;
-}
+const ActiveScheduleItemSchema = z
+  .object({
+    repositoryId: z.string(),
+    status: TaskStatusSchema,
+  })
+  .meta({ id: 'ActiveScheduleItemDto' });
 
-export class RunningTaskDto {
-  @ApiProperty({ type: String })
-  parentId!: string;
+const RunningTaskSchema = z
+  .object({
+    parentId: z.string(),
+    type: TaskTypeSchema,
+    logId: z.string().optional(),
+    scheduleStatus: z.array(ActiveScheduleItemSchema).optional(),
+  })
+  .meta({ id: 'RunningTaskDto' });
 
-  @ApiProperty({ enumName: 'TaskType', enum: TaskType })
-  type!: TaskType;
+const RunningTaskListResponseSchema = z
+  .object({ tasks: z.array(RunningTaskSchema) })
+  .meta({ id: 'RunningTaskListResponse' });
 
-  @ApiProperty({ type: String, required: false })
-  logId?: string;
-
-  @ApiProperty({ type: [ActiveScheduleItemDto], required: false })
-  scheduleStatus?: ActiveScheduleItemDto[];
-}
-
-export class RunningTaskListResponse {
-  @ApiProperty({ type: [RunningTaskDto] })
-  tasks!: RunningTaskDto[];
-}
+export class ActiveScheduleItemDto extends createZodDto(ActiveScheduleItemSchema) {}
+export class RunningTaskDto extends createZodDto(RunningTaskSchema) {}
+export class RunningTaskListResponse extends createZodDto(RunningTaskListResponseSchema) {}
