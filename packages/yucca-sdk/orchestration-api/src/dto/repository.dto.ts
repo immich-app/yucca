@@ -30,8 +30,8 @@ const RepositoryMetricsSchema = z
   .object({
     lastBackup: z.string().nullable().optional(),
     lastBackupStatus: TaskStatusSchema.optional(),
-    lastBackupDuration: z.number().optional(),
-    sizeBytes: z.number(),
+    lastBackupDuration: z.int().optional(),
+    sizeBytes: z.int(),
   })
   .meta({ id: 'RepositoryMetricsDto' });
 
