@@ -29,8 +29,7 @@
     "@nestjs/jwt": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "@opentelemetry/api": "catalog:",
-    "class-transformer": "catalog:",
-    "class-validator": "catalog:",
+    "nestjs-zod": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
     "zod": "catalog:"

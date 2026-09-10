@@ -5,9 +5,10 @@ import {
   shutdownOtel,
   WideContextRepository,
 } from '@common/server/otel';
-import { Module, type OnApplicationShutdown } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { Module, type OnApplicationShutdown, Provider } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { AppController } from './controllers/app.controller';
 import { env } from './env';
 import { AuthGuard } from './middleware/auth.guard';
@@ -26,7 +27,7 @@ export const imports = [
 
 export const controllers = [AppController];
 
-export const providers = [
+export const providers: Provider[] = [
   WideContextRepository,
   LoggerRepository,
   StorageRepository,
@@ -35,6 +36,8 @@ export const providers = [
   { provide: APP_GUARD, useClass: AuthGuard },
   { provide: APP_INTERCEPTOR, useClass: ResticInterceptor },
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+  { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
+  { provide: APP_PIPE, useClass: ZodValidationPipe },
 ];
 
 @Module({

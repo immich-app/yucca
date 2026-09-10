@@ -1,14 +1,12 @@
-import { IsEnum, IsNotEmpty, Matches } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 import { BlobType } from './enum';
 
-export class BlobParamsDto {
-  @IsNotEmpty()
-  @IsEnum(BlobType)
-  type!: BlobType;
-}
+const BlobParamsSchema = z.object({ type: z.enum(BlobType) }).meta({ id: 'BlobParamsDto' });
 
-export class BlobWithNameParamsDto extends BlobParamsDto {
-  @IsNotEmpty()
-  @Matches(/^[a-f0-9]{64}$/)
-  name!: string;
-}
+const BlobWithNameParamsSchema = BlobParamsSchema.extend({
+  name: z.string().regex(/^[a-f0-9]{64}$/),
+}).meta({ id: 'BlobWithNameParamsDto' });
+
+export class BlobParamsDto extends createZodDto(BlobParamsSchema) {}
+export class BlobWithNameParamsDto extends createZodDto(BlobWithNameParamsSchema) {}

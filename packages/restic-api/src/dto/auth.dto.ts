@@ -1,12 +1,12 @@
-import { IsBoolean, IsUUID } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class AuthDto {
-  @IsUUID()
-  user!: string;
+const AuthSchema = z
+  .object({
+    user: z.uuid(),
+    repository: z.uuid(),
+    writeOnce: z.boolean(),
+  })
+  .meta({ id: 'AuthDto' });
 
-  @IsUUID()
-  repository!: string;
-
-  @IsBoolean()
-  writeOnce!: boolean;
-}
+export class AuthDto extends createZodDto(AuthSchema) {}
