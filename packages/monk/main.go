@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"maps"
 	"net/http"
 	"os"
 	"strings"
@@ -50,10 +51,13 @@ func main() {
 	// spice is that cluster's tuning, not ceph's default) so a cold start with
 	// an unreachable mon still serves sane thresholds; the target-interval and
 	// interval-read metrics show what was used and whether it is live.
-	intervals := collector.Intervals{Global: map[collector.Depth]time.Duration{
-		collector.Shallow: 7 * 24 * time.Hour,
-		collector.Deep:    7 * 24 * time.Hour,
-	}}
+	intervals := collector.Intervals{
+		Global: map[collector.Depth]time.Duration{
+			collector.Shallow: 7 * 24 * time.Hour,
+			collector.Deep:    7 * 24 * time.Hour,
+		},
+		WarnRatio: maps.Clone(collector.DefaultWarnRatios),
+	}
 	applyPins := func(iv collector.Intervals) collector.Intervals {
 		for depth, d := range pins {
 			iv.Global[depth] = d

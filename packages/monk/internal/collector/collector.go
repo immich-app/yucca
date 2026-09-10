@@ -43,6 +43,9 @@ var Depths = []Depth{Shallow, Deep}
 type Intervals struct {
 	Global  map[Depth]time.Duration
 	PerPool map[string]map[Depth]time.Duration
+	// The target interval is when ceph may act; the interval scaled by
+	// 1+WarnRatio is when the mon calls it a problem. Different questions.
+	WarnRatio map[Depth]float64
 }
 
 func (iv Intervals) For(pool string, d Depth) time.Duration {
@@ -54,10 +57,28 @@ func (iv Intervals) For(pool string, d Depth) time.Duration {
 	return iv.Global[d]
 }
 
+// Deadline is the age at which PG_NOT_SCRUBBED / PG_NOT_DEEP_SCRUBBED fires, so
+// a breach count derived from it cannot disagree with `ceph health`.
+func (iv Intervals) Deadline(pool string, d Depth) time.Duration {
+	ratio, ok := iv.WarnRatio[d]
+	if !ok || ratio < 0 {
+		ratio = DefaultWarnRatios[d]
+	}
+	return time.Duration(float64(iv.For(pool, d)) * (1 + ratio))
+}
+
 var intervalOptions = map[Depth]string{
 	Shallow: "osd_scrub_max_interval",
 	Deep:    "osd_deep_scrub_interval",
 }
+
+var warnRatioOptions = map[Depth]string{
+	Shallow: "mon_warn_pg_not_scrubbed_ratio",
+	Deep:    "mon_warn_pg_not_deep_scrubbed_ratio",
+}
+
+// Ceph's own defaults, used until the first successful cluster read.
+var DefaultWarnRatios = map[Depth]float64{Shallow: 0.5, Deep: 0.75}
 
 type pgStat struct {
 	PGID               string `json:"pgid"`
@@ -92,9 +113,21 @@ type PoolStats struct {
 	OmapBytes        int64
 	OverdueOmapBytes map[Depth]int64
 	Interval         map[Depth]time.Duration
+	Deadline         map[Depth]time.Duration
 	OldestStamp      map[Depth]time.Time
-	OverduePGs       map[Depth]int
-	OverdueBytes     map[Depth]int64
+	// Three counters because they answer three questions. Overdue is age past
+	// the target interval, which ceph does not treat as late: it randomizes
+	// eligibility past the interval and pushes deferred targets, so overdue
+	// has a nonzero floor on a healthy cluster and must not drive a verdict.
+	// Due is age past the target ceph itself published: the scheduler losing
+	// ground. Breach is age past the mon's warning deadline: the policy miss.
+	OverduePGs   map[Depth]int
+	OverdueBytes map[Depth]int64
+	DuePGs       map[Depth]int
+	DueBytes     map[Depth]int64
+	MaxLate      map[Depth]time.Duration
+	BreachPGs    map[Depth]int
+	BreachBytes  map[Depth]int64
 	// The age histogram observes each stored byte at its PG's scrub age; PGs
 	// with unparsable stamps are excluded, and AgeBucketBytes is indexed like
 	// AgeBuckets.
@@ -108,6 +141,10 @@ type Snapshot struct {
 	Pools          map[string]*PoolStats
 	ScheduleStates map[string]int
 	ParseErrors    int
+	// Counted apart from ParseErrors so a schedule-format change shows up as
+	// its own signal instead of silently zeroing DuePGs. It is not part of the
+	// correlated-parse-error gate, whose denominator is the two stamp fields.
+	ScheduleParseErrors int
 	// PGState carries the per-PG stamps forward so the next refresh can count
 	// which PGs actually completed a scrub, which is the only measured way to
 	// answer how fast the backlog is draining.
@@ -182,7 +219,11 @@ func Fetch(ctx context.Context, cephCmd []string) ([]byte, error) {
 // section's effective intervals plus per-pool option overrides, so monk's
 // thresholds cannot drift from what the scrub scheduler actually targets.
 func FetchIntervals(ctx context.Context, cephCmd []string) (Intervals, error) {
-	iv := Intervals{Global: map[Depth]time.Duration{}, PerPool: map[string]map[Depth]time.Duration{}}
+	iv := Intervals{
+		Global:    map[Depth]time.Duration{},
+		PerPool:   map[string]map[Depth]time.Duration{},
+		WarnRatio: map[Depth]float64{},
+	}
 	for depth, option := range intervalOptions {
 		out, err := cephOutput(ctx, cephCmd, "config", "get", "osd", option)
 		if err != nil {
@@ -193,6 +234,17 @@ func FetchIntervals(ctx context.Context, cephCmd []string) (Intervals, error) {
 			return Intervals{}, fmt.Errorf("%s: %w", option, err)
 		}
 		iv.Global[depth] = d
+	}
+	for depth, option := range warnRatioOptions {
+		out, err := cephOutput(ctx, cephCmd, "config", "get", "mon", option)
+		if err != nil {
+			return Intervals{}, err
+		}
+		r, err := parseWarnRatio(string(out))
+		if err != nil {
+			return Intervals{}, fmt.Errorf("%s: %w", option, err)
+		}
+		iv.WarnRatio[depth] = r
 	}
 	out, err := cephOutput(ctx, cephCmd, "osd", "pool", "ls", "detail", "-f", "json")
 	if err != nil {
@@ -215,6 +267,19 @@ func parseIntervalSeconds(s string) (time.Duration, error) {
 		return 0, fmt.Errorf("interval %q is not positive", s)
 	}
 	return time.Duration(secs * float64(time.Second)), nil
+}
+
+// A zero ratio is legitimate: it means the mon warns the moment a PG passes the
+// target interval. Negative would move the deadline before the interval.
+func parseWarnRatio(s string) (float64, error) {
+	ratio, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse warn ratio %q: %w", s, err)
+	}
+	if ratio < 0 {
+		return 0, fmt.Errorf("warn ratio %q is negative", s)
+	}
+	return ratio, nil
 }
 
 func parsePoolIntervals(raw []byte) (map[string]map[Depth]time.Duration, error) {
@@ -269,10 +334,19 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 					Shallow: intervals.For(pool, Shallow),
 					Deep:    intervals.For(pool, Deep),
 				},
+				Deadline: map[Depth]time.Duration{
+					Shallow: intervals.Deadline(pool, Shallow),
+					Deep:    intervals.Deadline(pool, Deep),
+				},
 				OldestStamp:      map[Depth]time.Time{},
 				OverduePGs:       map[Depth]int{},
 				OverdueBytes:     map[Depth]int64{},
 				OverdueOmapBytes: map[Depth]int64{},
+				DuePGs:           map[Depth]int{},
+				DueBytes:         map[Depth]int64{},
+				MaxLate:          map[Depth]time.Duration{},
+				BreachPGs:        map[Depth]int{},
+				BreachBytes:      map[Depth]int64{},
 				ParsedBytes:      map[Depth]int64{},
 				AgeSum:           map[Depth]float64{},
 				AgeBucketBytes:   map[Depth][]int64{Shallow: make([]int64, len(AgeBuckets)), Deep: make([]int64, len(AgeBuckets))},
@@ -286,16 +360,33 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 		ps.PGs++
 		ps.Bytes += bytes
 		ps.OmapBytes += omap
-		snap.ScheduleStates[scheduleState(pg.ScrubSchedule)]++
+		state := scheduleState(pg.ScrubSchedule)
+		snap.ScheduleStates[state]++
+		// Ceph publishes a target for one depth at a time; a PG stale at the
+		// other depth is not late, ceph has simply not picked it yet.
+		if state == "scheduled" {
+			depth, target, ok := scrubTarget(pg.ScrubSchedule)
+			if !ok {
+				snap.ScheduleParseErrors++
+			} else if late := now.Sub(target); late > 0 {
+				ps.DuePGs[depth]++
+				ps.DueBytes[depth] += bytes
+				ps.MaxLate[depth] = max(ps.MaxLate[depth], late)
+			}
+		}
 		pgs := PGState{Pool: pool, Bytes: bytes}
 
 		for depth, stampStr := range map[Depth]string{Shallow: pg.LastScrubStamp, Deep: pg.LastDeepScrubStamp} {
 			stamp, err := time.Parse(stampLayout, stampStr)
 			if err != nil {
+				// A PG whose age cannot be established is counted against every
+				// threshold: an unreadable stamp must not read as verified.
 				snap.ParseErrors++
 				ps.OverduePGs[depth]++
 				ps.OverdueBytes[depth] += bytes
 				ps.OverdueOmapBytes[depth] += omap
+				ps.BreachPGs[depth]++
+				ps.BreachBytes[depth] += bytes
 				continue
 			}
 			if old, ok := ps.OldestStamp[depth]; !ok || stamp.Before(old) {
@@ -306,6 +397,10 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 				ps.OverduePGs[depth]++
 				ps.OverdueBytes[depth] += bytes
 				ps.OverdueOmapBytes[depth] += omap
+			}
+			if age > ps.Deadline[depth] {
+				ps.BreachPGs[depth]++
+				ps.BreachBytes[depth] += bytes
 			}
 			pgs.setStamp(depth, stamp)
 			ps.ParsedBytes[depth] += bytes
@@ -324,6 +419,24 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 		return nil, fmt.Errorf("%d of %d stamp fields failed to parse", snap.ParseErrors, attempts)
 	}
 	return snap, nil
+}
+
+// A false return is a dated form monk could not read; callers gate on
+// scheduleState first, so it never means "no target scheduled".
+func scrubTarget(s string) (Depth, time.Time, bool) {
+	kind, stamp, ok := strings.Cut(s, " scheduled @ ")
+	if !ok {
+		return "", time.Time{}, false
+	}
+	target, err := time.Parse(stampLayout, strings.TrimSpace(stamp))
+	if err != nil {
+		return "", time.Time{}, false
+	}
+	depth := Shallow
+	if strings.Contains(kind, "deep") {
+		depth = Deep
+	}
+	return depth, target, true
 }
 
 func scheduleState(s string) string {

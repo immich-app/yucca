@@ -265,14 +265,27 @@ ceph_scrub_collect_success 1
 # TYPE ceph_scrub_overdue_bytes gauge
 ceph_scrub_overdue_bytes{depth="deep",pool_id="7"} 100
 ceph_scrub_overdue_bytes{depth="shallow",pool_id="7"} 0
+# HELP ceph_scrub_due_pgs PGs whose next scrub at this depth was scheduled by ceph for a time already past
+# TYPE ceph_scrub_due_pgs gauge
+ceph_scrub_due_pgs{depth="deep",pool_id="7"} 0
+ceph_scrub_due_pgs{depth="shallow",pool_id="7"} 0
+# HELP ceph_scrub_breach_pgs PGs past the mon's not-scrubbed warning deadline at this depth
+# TYPE ceph_scrub_breach_pgs gauge
+ceph_scrub_breach_pgs{depth="deep",pool_id="7"} 1
+ceph_scrub_breach_pgs{depth="shallow",pool_id="7"} 0
 # HELP ceph_scrub_target_interval_seconds Scrub target interval the pool's overdue numbers were judged against
 # TYPE ceph_scrub_target_interval_seconds gauge
 ceph_scrub_target_interval_seconds{depth="deep",pool_id="7"} 2.4192e+06
 ceph_scrub_target_interval_seconds{depth="shallow",pool_id="7"} 604800
+# HELP ceph_scrub_warn_interval_seconds Age at which the mon warns about this pool and depth: target interval x (1 + mon_warn_pg_not_scrubbed_ratio)
+# TYPE ceph_scrub_warn_interval_seconds gauge
+ceph_scrub_warn_interval_seconds{depth="deep",pool_id="7"} 4.2336e+06
+ceph_scrub_warn_interval_seconds{depth="shallow",pool_id="7"} 907200
 `, float64(deepStamp.UnixMicro())/1e6)
 	err = testutil.CollectAndCompare(exporter, strings.NewReader(expected),
 		"ceph_pg_last_deep_scrub_stamp", "ceph_scrub_collect_success",
-		"ceph_scrub_overdue_bytes", "ceph_scrub_target_interval_seconds")
+		"ceph_scrub_overdue_bytes", "ceph_scrub_due_pgs", "ceph_scrub_breach_pgs",
+		"ceph_scrub_target_interval_seconds", "ceph_scrub_warn_interval_seconds")
 	if err != nil {
 		t.Error(err)
 	}
@@ -362,5 +375,141 @@ func TestComputeAppliesPoolOverride(t *testing.T) {
 	}
 	if got := snap.Pools["7"].Interval[Deep]; got != 24*time.Hour {
 		t.Errorf("pool 7 recorded interval: got %v, want 24h", got)
+	}
+}
+
+func TestScrubTarget(t *testing.T) {
+	cases := map[string]struct {
+		depth Depth
+		when  string
+		ok    bool
+	}{
+		"periodic scrub scheduled @ 2026-08-29T02:13:18.699625+0000":      {Shallow, "2026-08-29T02:13:18.699625Z", true},
+		"periodic deep scrub scheduled @ 2026-09-12T01:00:00.000000+0000": {Deep, "2026-09-12T01:00:00Z", true},
+		"queued for deep scrub":                            {ok: false},
+		"periodic scrub scheduled @ not-a-timestamp":       {ok: false},
+		"periodic deep scrub scheduled @ 2026-09-12T01:00": {ok: false},
+	}
+	for in, want := range cases {
+		depth, when, ok := scrubTarget(in)
+		if ok != want.ok {
+			t.Errorf("scrubTarget(%q) ok = %v, want %v", in, ok, want.ok)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		if depth != want.depth {
+			t.Errorf("scrubTarget(%q) depth = %q, want %q", in, depth, want.depth)
+		}
+		if got := when.UTC().Format(time.RFC3339Nano); got != want.when {
+			t.Errorf("scrubTarget(%q) time = %s, want %s", in, got, want.when)
+		}
+	}
+}
+
+// The regression this metric exists for: ceph randomizes eligibility past the
+// target interval and pushes deferred targets, so a PG can sit well past the
+// interval while ceph is still on schedule. Age past the interval must not
+// read as the scheduler being late.
+func TestComputeDueIgnoresPGsCephHasNotScheduledYet(t *testing.T) {
+	now := testNow(t)
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "2.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-07-31T00:00:00.000000+0000", "scrub_schedule": "periodic deep scrub scheduled @ 2026-09-02T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "2.b", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-07-31T00:00:00.000000+0000", "scrub_schedule": "periodic deep scrub scheduled @ 2026-08-31T00:00:00.000000+0000", "stat_sum": {"num_bytes": 200}}
+	]}`)
+	snap, err := Compute(raw, now, testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps := snap.Pools["2"]
+	if got := ps.OverduePGs[Deep]; got != 2 {
+		t.Errorf("both PGs are past the 28d interval, OverduePGs = %d, want 2", got)
+	}
+	if got := ps.DuePGs[Deep]; got != 1 {
+		t.Errorf("only 2.b is past its ceph-scheduled time, DuePGs = %d, want 1", got)
+	}
+	if got := ps.DueBytes[Deep]; got != 200 {
+		t.Errorf("DueBytes = %d, want 200", got)
+	}
+	if got := ps.MaxLate[Deep]; got != 24*time.Hour {
+		t.Errorf("MaxLate = %s, want 24h", got)
+	}
+	if got := ps.BreachPGs[Deep]; got != 0 {
+		t.Errorf("32d is inside the 49d warn deadline, BreachPGs = %d, want 0", got)
+	}
+}
+
+func TestComputeBreachTracksWarnDeadline(t *testing.T) {
+	now := testNow(t)
+	// 48d and 50d past a 28d interval: the mon warns at 28d x 1.75 = 49d.
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "2.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-07-15T00:00:00.000000+0000", "scrub_schedule": "queued for deep scrub", "stat_sum": {"num_bytes": 100}},
+		{"pgid": "2.b", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-07-13T00:00:00.000000+0000", "scrub_schedule": "queued for deep scrub", "stat_sum": {"num_bytes": 200}}
+	]}`)
+	snap, err := Compute(raw, now, testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps := snap.Pools["2"]
+	if got := ps.Deadline[Deep]; got != 49*24*time.Hour {
+		t.Errorf("Deadline = %s, want 1176h", got)
+	}
+	if got := ps.BreachPGs[Deep]; got != 1 {
+		t.Errorf("BreachPGs = %d, want 1", got)
+	}
+	if got := ps.BreachBytes[Deep]; got != 200 {
+		t.Errorf("BreachBytes = %d, want 200", got)
+	}
+}
+
+func TestComputeCountsUnreadableScheduleSeparately(t *testing.T) {
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "2.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "scrub_schedule": "periodic scrub scheduled @ tomorrow-ish", "stat_sum": {"num_bytes": 100}}
+	]}`)
+	snap, err := Compute(raw, testNow(t), testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.ScheduleParseErrors != 1 {
+		t.Errorf("ScheduleParseErrors = %d, want 1", snap.ScheduleParseErrors)
+	}
+	if snap.ParseErrors != 0 {
+		t.Errorf("a bad schedule must not spend the stamp-parse budget, ParseErrors = %d", snap.ParseErrors)
+	}
+	if got := snap.Pools["2"].DuePGs[Shallow]; got != 0 {
+		t.Errorf("an unreadable target must not read as late, DuePGs = %d", got)
+	}
+}
+
+func TestIntervalsDeadline(t *testing.T) {
+	iv := Intervals{
+		Global:    map[Depth]time.Duration{Deep: 28 * 24 * time.Hour},
+		PerPool:   map[string]map[Depth]time.Duration{"9": {Deep: 7 * 24 * time.Hour}},
+		WarnRatio: map[Depth]float64{Deep: 1.0},
+	}
+	if got := iv.Deadline("2", Deep); got != 56*24*time.Hour {
+		t.Errorf("Deadline = %s, want 1344h", got)
+	}
+	if got := iv.Deadline("9", Deep); got != 14*24*time.Hour {
+		t.Errorf("pool override should carry into the deadline, got %s, want 336h", got)
+	}
+	bare := Intervals{Global: map[Depth]time.Duration{Deep: 28 * 24 * time.Hour}}
+	if got := bare.Deadline("2", Deep); got != 49*24*time.Hour {
+		t.Errorf("missing ratio should fall back to ceph's default, got %s, want 1176h", got)
+	}
+}
+
+func TestParseWarnRatio(t *testing.T) {
+	for in, want := range map[string]float64{"0.75\n": 0.75, "0.500000": 0.5, "0": 0} {
+		got, err := parseWarnRatio(in)
+		if err != nil || got != want {
+			t.Errorf("parseWarnRatio(%q) = %v, %v; want %v", in, got, err, want)
+		}
+	}
+	for _, in := range []string{"-0.1", "", "half"} {
+		if _, err := parseWarnRatio(in); err == nil {
+			t.Errorf("parseWarnRatio(%q) should error", in)
+		}
 	}
 }

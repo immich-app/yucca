@@ -12,14 +12,22 @@ var (
 	descLastScrub     = prometheus.NewDesc("ceph_pg_last_scrub_stamp", "Oldest per-PG last_scrub_stamp in the pool (seconds since epoch)", []string{"pool_id"}, nil)
 	descLastDeepScrub = prometheus.NewDesc("ceph_pg_last_deep_scrub_stamp", "Oldest per-PG last_deep_scrub_stamp in the pool (seconds since epoch)", []string{"pool_id"}, nil)
 
-	descPoolPGs      = prometheus.NewDesc("ceph_scrub_pool_pgs", "PGs in the pool", []string{"pool_id"}, nil)
-	descPoolOmap     = prometheus.NewDesc("ceph_scrub_pool_omap_bytes", "Omap bytes in the pool (excluded from ceph_scrub_pool_bytes)", []string{"pool_id"}, nil)
-	descOverdueOmap  = prometheus.NewDesc("ceph_scrub_overdue_omap_bytes", "Omap bytes in PGs whose last scrub at this depth is older than the target interval", []string{"pool_id", "depth"}, nil)
-	descCompletions  = prometheus.NewDesc("ceph_scrub_completions_total", "PGs observed completing a scrub at this depth since process start", []string{"pool_id", "depth"}, nil)
-	descCompletedB   = prometheus.NewDesc("ceph_scrub_completed_bytes_total", "Stored bytes in PGs observed completing a scrub at this depth since process start", []string{"pool_id", "depth"}, nil)
-	descPoolBytes    = prometheus.NewDesc("ceph_scrub_pool_bytes", "Stored bytes in the pool (sum of PG stat_sum.num_bytes)", []string{"pool_id"}, nil)
+	descPoolPGs     = prometheus.NewDesc("ceph_scrub_pool_pgs", "PGs in the pool", []string{"pool_id"}, nil)
+	descPoolOmap    = prometheus.NewDesc("ceph_scrub_pool_omap_bytes", "Omap bytes in the pool (excluded from ceph_scrub_pool_bytes)", []string{"pool_id"}, nil)
+	descOverdueOmap = prometheus.NewDesc("ceph_scrub_overdue_omap_bytes", "Omap bytes in PGs whose last scrub at this depth is older than the target interval", []string{"pool_id", "depth"}, nil)
+	descCompletions = prometheus.NewDesc("ceph_scrub_completions_total", "PGs observed completing a scrub at this depth since process start", []string{"pool_id", "depth"}, nil)
+	descCompletedB  = prometheus.NewDesc("ceph_scrub_completed_bytes_total", "Stored bytes in PGs observed completing a scrub at this depth since process start", []string{"pool_id", "depth"}, nil)
+	descPoolBytes   = prometheus.NewDesc("ceph_scrub_pool_bytes", "Stored bytes in the pool (sum of PG stat_sum.num_bytes)", []string{"pool_id"}, nil)
+	// overdue has a nonzero floor on a healthy cluster and must not drive a
+	// verdict; due and breach are the two that can read zero. See PoolStats.
 	descOverduePGs   = prometheus.NewDesc("ceph_scrub_overdue_pgs", "PGs whose last scrub at this depth is older than the target interval", []string{"pool_id", "depth"}, nil)
 	descOverdueBytes = prometheus.NewDesc("ceph_scrub_overdue_bytes", "Bytes in PGs whose last scrub at this depth is older than the target interval", []string{"pool_id", "depth"}, nil)
+	descDuePGs       = prometheus.NewDesc("ceph_scrub_due_pgs", "PGs whose next scrub at this depth was scheduled by ceph for a time already past", []string{"pool_id", "depth"}, nil)
+	descDueBytes     = prometheus.NewDesc("ceph_scrub_due_bytes", "Bytes in PGs whose next scrub at this depth was scheduled by ceph for a time already past", []string{"pool_id", "depth"}, nil)
+	descDueMax       = prometheus.NewDesc("ceph_scrub_due_max_seconds", "How far past its ceph-scheduled time the latest PG at this depth is", []string{"pool_id", "depth"}, nil)
+	descBreachPGs    = prometheus.NewDesc("ceph_scrub_breach_pgs", "PGs past the mon's not-scrubbed warning deadline at this depth", []string{"pool_id", "depth"}, nil)
+	descBreachBytes  = prometheus.NewDesc("ceph_scrub_breach_bytes", "Bytes in PGs past the mon's not-scrubbed warning deadline at this depth", []string{"pool_id", "depth"}, nil)
+	descDeadline     = prometheus.NewDesc("ceph_scrub_warn_interval_seconds", "Age at which the mon warns about this pool and depth: target interval x (1 + mon_warn_pg_not_scrubbed_ratio)", []string{"pool_id", "depth"}, nil)
 	descAgeHist      = prometheus.NewDesc("ceph_scrub_age_seconds", "Scrub age distribution weighted by bytes: each stored byte observes its PG's age", []string{"pool_id", "depth"}, nil)
 	descSchedule     = prometheus.NewDesc("ceph_scrub_schedule_pgs", "PGs by scrub_schedule state", []string{"state"}, nil)
 	descInterval     = prometheus.NewDesc("ceph_scrub_target_interval_seconds", "Scrub target interval the pool's overdue numbers were judged against", []string{"pool_id", "depth"}, nil)
@@ -29,6 +37,7 @@ var (
 	descDuration     = prometheus.NewDesc("ceph_scrub_collect_duration_seconds", "Duration of the last successful collection", nil, nil)
 	descTimestamp    = prometheus.NewDesc("ceph_scrub_collect_timestamp_seconds", "Time of the last successful collection", nil, nil)
 	descParseErrors  = prometheus.NewDesc("ceph_scrub_parse_errors", "Records skipped during the last successful collection", nil, nil)
+	descSchedErrors  = prometheus.NewDesc("ceph_scrub_schedule_parse_errors", "Dated scrub_schedule strings monk could not read during the last successful collection", nil, nil)
 	descIntervalOK   = prometheus.NewDesc("ceph_scrub_interval_read_success", "Whether the last read of the cluster's scrub intervals succeeded", nil, nil)
 	descIntervalTime = prometheus.NewDesc("ceph_scrub_interval_read_timestamp_seconds", "Time of the last successful interval read", nil, nil)
 )
@@ -181,6 +190,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(descDuration, prometheus.GaugeValue, s.duration.Seconds())
 	ch <- prometheus.MustNewConstMetric(descTimestamp, prometheus.GaugeValue, float64(snap.Taken.Unix()))
 	ch <- prometheus.MustNewConstMetric(descParseErrors, prometheus.GaugeValue, float64(snap.ParseErrors))
+	ch <- prometheus.MustNewConstMetric(descSchedErrors, prometheus.GaugeValue, float64(snap.ScheduleParseErrors))
 
 	for state, n := range snap.ScheduleStates {
 		ch <- prometheus.MustNewConstMetric(descSchedule, prometheus.GaugeValue, float64(n), state)
@@ -197,9 +207,15 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 		for _, depth := range Depths {
 			ch <- prometheus.MustNewConstMetric(descInterval, prometheus.GaugeValue, ps.Interval[depth].Seconds(), pool, string(depth))
+			ch <- prometheus.MustNewConstMetric(descDeadline, prometheus.GaugeValue, ps.Deadline[depth].Seconds(), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverduePGs, prometheus.GaugeValue, float64(ps.OverduePGs[depth]), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverdueBytes, prometheus.GaugeValue, float64(ps.OverdueBytes[depth]), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverdueOmap, prometheus.GaugeValue, float64(ps.OverdueOmapBytes[depth]), pool, string(depth))
+			ch <- prometheus.MustNewConstMetric(descDuePGs, prometheus.GaugeValue, float64(ps.DuePGs[depth]), pool, string(depth))
+			ch <- prometheus.MustNewConstMetric(descDueBytes, prometheus.GaugeValue, float64(ps.DueBytes[depth]), pool, string(depth))
+			ch <- prometheus.MustNewConstMetric(descDueMax, prometheus.GaugeValue, ps.MaxLate[depth].Seconds(), pool, string(depth))
+			ch <- prometheus.MustNewConstMetric(descBreachPGs, prometheus.GaugeValue, float64(ps.BreachPGs[depth]), pool, string(depth))
+			ch <- prometheus.MustNewConstMetric(descBreachBytes, prometheus.GaugeValue, float64(ps.BreachBytes[depth]), pool, string(depth))
 			buckets := make(map[float64]uint64, len(AgeBuckets))
 			for i, le := range AgeBuckets {
 				buckets[le.Seconds()] = uint64(ps.AgeBucketBytes[depth][i])
