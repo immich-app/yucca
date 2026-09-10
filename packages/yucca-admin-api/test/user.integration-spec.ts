@@ -1,5 +1,5 @@
 import { MetricService } from '@common/server/otel';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { OidcRepository } from 'src/repositories/oidc.repository';
 import request from 'supertest';
@@ -27,7 +27,6 @@ describe('UserController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('/api');
-    app.useGlobalPipes(new ValidationPipe());
     await app.init();
   });
 

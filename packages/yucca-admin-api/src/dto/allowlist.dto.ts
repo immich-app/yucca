@@ -1,75 +1,58 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ArrayNotEmpty, IsBoolean, IsEmail, IsInt, IsOptional, Max, Min } from 'class-validator';
-import { CursorPaginationDto } from 'src/dto/pagination.dto';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { CursorPaginationSchema } from 'src/dto/pagination.dto';
+import { z } from 'zod';
 
-export class AllowlistEntryDto {
-  @ApiProperty()
-  id!: string;
+const AllowlistEntrySchema = z
+  .object({
+    id: z.string(),
+    email: z.string().nullable(),
+    inviteCode: z.string(),
+    invited: z.boolean(),
+    inviteUsed: z.boolean(),
+    inviteUsedAt: isoDatetimeToDate.nullable(),
+    inviteEmailSentAt: isoDatetimeToDate.nullable(),
+    createdAt: isoDatetimeToDate,
+  })
+  .meta({ id: 'AllowlistEntryDto' });
 
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  email!: string | null;
+const AllowlistListQuerySchema = z.object(CursorPaginationSchema.shape).meta({ id: 'AllowlistListQueryDto' });
 
-  @ApiProperty()
-  inviteCode!: string;
+const AllowlistListResponseSchema = z
+  .object({
+    items: z.array(AllowlistEntrySchema),
+    nextCursor: z.string().nullable(),
+  })
+  .meta({ id: 'AllowlistListResponseDto' });
 
-  @ApiProperty()
-  invited!: boolean;
+const AllowlistAddRequestSchema = z
+  .object({
+    email: z.email(),
+    staged: z.boolean().optional().describe('Stage the entry without allowing login yet'),
+  })
+  .meta({ id: 'AllowlistAddRequestDto' });
 
-  @ApiProperty()
-  inviteUsed!: boolean;
+const AllowlistInviteRequestSchema = z
+  .object({ emails: z.array(z.email()).nonempty() })
+  .meta({ id: 'AllowlistInviteRequestDto' });
 
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  inviteUsedAt!: Date | null;
+const AllowlistInviteBatchRequestSchema = z
+  .object({ count: z.int().min(1).max(500) })
+  .meta({ id: 'AllowlistInviteBatchRequestDto' });
 
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  inviteEmailSentAt!: Date | null;
+const AllowlistEntryResponseSchema = z
+  .object({ entry: AllowlistEntrySchema })
+  .meta({ id: 'AllowlistEntryResponseDto' });
 
-  @ApiProperty({ type: 'string' })
-  createdAt!: Date;
-}
+const AllowlistEntriesResponseSchema = z
+  .object({ items: z.array(AllowlistEntrySchema) })
+  .meta({ id: 'AllowlistEntriesResponseDto' });
 
-export class AllowlistListQueryDto extends CursorPaginationDto {}
-
-export class AllowlistListResponseDto {
-  @ApiProperty({ type: [AllowlistEntryDto] })
-  items!: AllowlistEntryDto[];
-
-  @ApiProperty({ required: false, nullable: true })
-  nextCursor!: string | null;
-}
-
-export class AllowlistAddRequestDto {
-  @ApiProperty()
-  @IsEmail()
-  email!: string;
-
-  @ApiProperty({ required: false, description: 'Stage the entry without allowing login yet' })
-  @IsOptional()
-  @IsBoolean()
-  staged?: boolean;
-}
-
-export class AllowlistInviteRequestDto {
-  @ApiProperty({ type: [String] })
-  @ArrayNotEmpty()
-  @IsEmail({}, { each: true })
-  emails!: string[];
-}
-
-export class AllowlistInviteBatchRequestDto {
-  @ApiProperty()
-  @IsInt()
-  @Min(1)
-  @Max(500)
-  count!: number;
-}
-
-export class AllowlistEntryResponseDto {
-  @ApiProperty()
-  entry!: AllowlistEntryDto;
-}
-
-export class AllowlistEntriesResponseDto {
-  @ApiProperty({ type: [AllowlistEntryDto] })
-  items!: AllowlistEntryDto[];
-}
+export class AllowlistEntryDto extends createZodDto(AllowlistEntrySchema) {}
+export class AllowlistListQueryDto extends createZodDto(AllowlistListQuerySchema) {}
+export class AllowlistListResponseDto extends createZodDto(AllowlistListResponseSchema) {}
+export class AllowlistAddRequestDto extends createZodDto(AllowlistAddRequestSchema) {}
+export class AllowlistInviteRequestDto extends createZodDto(AllowlistInviteRequestSchema) {}
+export class AllowlistInviteBatchRequestDto extends createZodDto(AllowlistInviteBatchRequestSchema) {}
+export class AllowlistEntryResponseDto extends createZodDto(AllowlistEntryResponseSchema) {}
+export class AllowlistEntriesResponseDto extends createZodDto(AllowlistEntriesResponseSchema) {}

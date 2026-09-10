@@ -1,9 +1,10 @@
 import { EmailRepository } from '@common/server/email';
 import { LoggerRepository, LoggingInterceptor, OtelModule, WideContextRepository } from '@common/server/otel';
-import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { Module, Provider } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { KyselyModule } from 'nestjs-kysely';
+import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { createPublicKey } from 'node:crypto';
 import { AllowlistController } from './controllers/allowlist.controller';
 import { AuthController } from './controllers/auth.controller';
@@ -69,7 +70,7 @@ export const controllers = [
   FeaturesController,
 ];
 
-export const providers = [
+export const providers: Provider[] = [
   WideContextRepository,
   LoggerRepository,
   EmailRepository,
@@ -100,7 +101,9 @@ export const providers = [
   RepositoryService,
   FeaturesService,
   { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+  { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
   { provide: APP_GUARD, useClass: AuthGuard },
+  { provide: APP_PIPE, useClass: ZodValidationPipe },
 ];
 
 @Module({

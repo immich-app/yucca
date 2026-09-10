@@ -1,26 +1,21 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class ConnectionAdminDto {
-  @ApiProperty()
-  id!: string;
+const ConnectionAdminSchema = z
+  .object({
+    id: z.string(),
+    userId: z.string(),
+    type: z.string().describe('immich | restic'),
+    name: z.string(),
+    createdAt: isoDatetimeToDate,
+    lastSeenAt: isoDatetimeToDate.nullable(),
+  })
+  .meta({ id: 'ConnectionAdminDto' });
 
-  @ApiProperty()
-  userId!: string;
+const ConnectionListResponseSchema = z
+  .object({ connections: z.array(ConnectionAdminSchema) })
+  .meta({ id: 'ConnectionListResponseDto' });
 
-  @ApiProperty({ description: 'immich | restic' })
-  type!: string;
-
-  @ApiProperty()
-  name!: string;
-
-  @ApiProperty({ type: 'string' })
-  createdAt!: Date;
-
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  lastSeenAt!: Date | null;
-}
-
-export class ConnectionListResponseDto {
-  @ApiProperty({ type: [ConnectionAdminDto] })
-  connections!: ConnectionAdminDto[];
-}
+export class ConnectionAdminDto extends createZodDto(ConnectionAdminSchema) {}
+export class ConnectionListResponseDto extends createZodDto(ConnectionListResponseSchema) {}

@@ -160,6 +160,8 @@
             "required": false,
             "in": "query",
             "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "type": "string"
             }
           },
@@ -168,6 +170,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "pattern": "^\\d+$",
               "default": 50,
               "type": "string"
             }
@@ -560,6 +563,8 @@
             "required": false,
             "in": "query",
             "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "type": "string"
             }
           },
@@ -568,6 +573,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "pattern": "^\\d+$",
               "default": 50,
               "type": "string"
             }
@@ -577,6 +583,8 @@
             "required": false,
             "in": "query",
             "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "type": "string"
             }
           }
@@ -755,6 +763,8 @@
             "required": false,
             "in": "query",
             "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "type": "string"
             }
           },
@@ -763,6 +773,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "pattern": "^\\d+$",
               "default": 50,
               "type": "string"
             }
@@ -1272,10 +1283,12 @@
         "properties": {
           "code": {
             "type": "string",
+            "minLength": 1,
             "description": "One-time code delivered to the loopback redirect"
           },
           "codeVerifier": {
             "type": "string",
+            "minLength": 1,
             "description": "Plaintext verifier whose S256 hash was sent as code_challenge on /auth/cli/login"
           }
         },
@@ -1342,12 +1355,13 @@
             }
           },
           "nextCursor": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           }
         },
         "required": [
-          "items"
+          "items",
+          "nextCursor"
         ]
       },
       "UserDiscordLinkDto": {
@@ -1360,7 +1374,10 @@
             "type": "string"
           },
           "createdAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
@@ -1376,16 +1393,17 @@
             "$ref": "#/components/schemas/UserDto"
           },
           "discordLink": {
-            "nullable": true,
             "allOf": [
               {
                 "$ref": "#/components/schemas/UserDiscordLinkDto"
               }
-            ]
+            ],
+            "nullable": true
           }
         },
         "required": [
-          "user"
+          "user",
+          "discordLink"
         ]
       },
       "UserUpdateRequestDto": {
@@ -1411,10 +1429,12 @@
         "type": "object",
         "properties": {
           "discordUserId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64
           },
           "discordUsername": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 120
           }
         },
         "required": [
@@ -1463,17 +1483,21 @@
             "type": "string"
           },
           "reason": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "updatedAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
           "flag",
           "value",
           "setBy",
+          "reason",
           "updatedAt"
         ]
       },
@@ -1530,10 +1554,16 @@
             "type": "string"
           },
           "createdAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           },
           "lastSeenAt": {
+            "example": "2024-01-01T00:00:00.000Z",
             "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
             "nullable": true
           }
         },
@@ -1542,7 +1572,8 @@
           "userId",
           "type",
           "name",
-          "createdAt"
+          "createdAt",
+          "lastSeenAt"
         ]
       },
       "ConnectionListResponseDto": {
@@ -1557,56 +1588,6 @@
         },
         "required": [
           "connections"
-        ]
-      },
-      "RepositoryOwnerDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "disabled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "email",
-          "disabled"
-        ]
-      },
-      "RepositoryMetricsDto": {
-        "type": "object",
-        "properties": {
-          "sizeBytes": {
-            "type": "number"
-          },
-          "lastStarted": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastBackup": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastSuccessfulBackup": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastBackupDuration": {
-            "type": "object",
-            "nullable": true
-          }
-        },
-        "required": [
-          "sizeBytes"
         ]
       },
       "RepositoryAdminDto": {
@@ -1654,6 +1635,69 @@
           "metrics"
         ]
       },
+      "RepositoryOwnerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "disabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "disabled"
+        ]
+      },
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "number"
+          },
+          "lastStarted": {
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
+          },
+          "lastBackup": {
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
+          },
+          "lastSuccessfulBackup": {
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
+          },
+          "lastBackupDuration": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "lastStarted",
+          "lastBackup",
+          "lastSuccessfulBackup",
+          "lastBackupDuration"
+        ]
+      },
       "RepositoryListResponseDto": {
         "type": "object",
         "properties": {
@@ -1664,12 +1708,13 @@
             }
           },
           "nextCursor": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           }
         },
         "required": [
-          "items"
+          "items",
+          "nextCursor"
         ]
       },
       "RepositoryCreateRequestDto": {
@@ -1679,24 +1724,26 @@
             "type": "string"
           },
           "userId": {
+            "description": "Owner; defaults to the admin service user",
             "type": "string",
-            "description": "Owner; defaults to the admin service user"
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "worm": {
             "type": "boolean"
           },
           "site": {
-            "type": "string",
-            "description": "Internal site code to place the repository in; defaults to the topology default site"
+            "description": "Internal site code to place the repository in; defaults to the topology default site",
+            "type": "string"
           },
           "connectionType": {
+            "description": "Connection type for the owning connection; defaults to 'restic' (manual use)",
             "type": "string",
             "enum": [
               "immich",
               "standalone",
               "restic"
-            ],
-            "description": "Connection type for the owning connection; defaults to 'restic' (manual use)"
+            ]
           }
         },
         "required": [
@@ -1778,22 +1825,34 @@
             "type": "boolean"
           },
           "inviteUsedAt": {
+            "example": "2024-01-01T00:00:00.000Z",
             "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
             "nullable": true
           },
           "inviteEmailSentAt": {
+            "example": "2024-01-01T00:00:00.000Z",
             "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
             "nullable": true
           },
           "createdAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
           "id",
+          "email",
           "inviteCode",
           "invited",
           "inviteUsed",
+          "inviteUsedAt",
+          "inviteEmailSentAt",
           "createdAt"
         ]
       },
@@ -1807,23 +1866,26 @@
             }
           },
           "nextCursor": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           }
         },
         "required": [
-          "items"
+          "items",
+          "nextCursor"
         ]
       },
       "AllowlistAddRequestDto": {
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
           },
           "staged": {
-            "type": "boolean",
-            "description": "Stage the entry without allowing login yet"
+            "description": "Stage the entry without allowing login yet",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1845,9 +1907,12 @@
         "type": "object",
         "properties": {
           "emails": {
+            "minItems": 1,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "email",
+              "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
             }
           }
         },
@@ -1873,7 +1938,9 @@
         "type": "object",
         "properties": {
           "count": {
-            "type": "number"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
           }
         },
         "required": [
@@ -1884,10 +1951,13 @@
         "type": "object",
         "properties": {
           "userId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "prompt": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 2000
           }
         },
         "required": [
@@ -1936,7 +2006,9 @@
         "required": [
           "id",
           "status",
+          "note",
           "queries",
+          "error",
           "toolCalls",
           "promptTokens",
           "completionTokens"
@@ -1971,21 +2043,29 @@
             "type": "string"
           },
           "cancelledAt": {
+            "example": "2024-01-01T00:00:00.000Z",
             "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
             "nullable": true
           },
           "createdAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
           "id",
           "guildId",
           "channelId",
+          "messageId",
           "maxClaims",
           "claimed",
           "used",
           "createdByDiscordUserId",
+          "cancelledAt",
           "createdAt"
         ]
       },
@@ -2040,17 +2120,26 @@
             "type": "boolean"
           },
           "inviteUsedAt": {
+            "example": "2024-01-01T00:00:00.000Z",
             "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
             "nullable": true
           },
           "createdAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
           "id",
           "discordUserId",
+          "discordUsername",
+          "batchId",
           "inviteUsed",
+          "inviteUsedAt",
           "createdAt"
         ]
       },
@@ -2068,18 +2157,6 @@
           "items"
         ]
       },
-      "SettingsValueDto": {
-        "type": "object",
-        "properties": {
-          "restic_pack_size_mib": {
-            "type": "number"
-          },
-          "connections_math": {
-            "type": "string",
-            "description": "Client-evaluated expression: integers, cores, min, max, + - * /"
-          }
-        }
-      },
       "SettingsEntryDto": {
         "type": "object",
         "properties": {
@@ -2091,7 +2168,10 @@
             "$ref": "#/components/schemas/SettingsValueDto"
           },
           "updatedAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
@@ -2099,6 +2179,18 @@
           "value",
           "updatedAt"
         ]
+      },
+      "SettingsValueDto": {
+        "type": "object",
+        "properties": {
+          "restic_pack_size_mib": {
+            "type": "number"
+          },
+          "connections_math": {
+            "description": "Client-evaluated expression: integers, cores, min, max, + - * /",
+            "type": "string"
+          }
+        }
       },
       "SettingsListResponseDto": {
         "type": "object",
@@ -2189,11 +2281,14 @@
             "type": "string"
           },
           "reason": {
-            "type": "object",
+            "type": "string",
             "nullable": true
           },
           "updatedAt": {
-            "type": "string"
+            "example": "2024-01-01T00:00:00.000Z",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
@@ -2201,6 +2296,7 @@
           "email",
           "value",
           "setBy",
+          "reason",
           "updatedAt"
         ]
       },
@@ -2222,7 +2318,9 @@
         "type": "object",
         "properties": {
           "count": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
             "description": "Enable for this many not-yet-overridden users, oldest first"
           }
         },

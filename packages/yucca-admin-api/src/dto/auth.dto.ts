@@ -1,30 +1,26 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class AuthDto {
-  @ApiProperty()
-  sub!: string;
-}
+const AuthSchema = z.object({ sub: z.string() }).meta({ id: 'AuthDto' });
 
-export class CliTokenRequestDto {
-  @ApiProperty({ description: 'One-time code delivered to the loopback redirect' })
-  @IsString()
-  @IsNotEmpty()
-  code!: string;
+const CliTokenRequestSchema = z
+  .object({
+    code: z.string().min(1).describe('One-time code delivered to the loopback redirect'),
+    codeVerifier: z
+      .string()
+      .min(1)
+      .describe('Plaintext verifier whose S256 hash was sent as code_challenge on /auth/cli/login'),
+  })
+  .meta({ id: 'CliTokenRequestDto' });
 
-  @ApiProperty({ description: 'Plaintext verifier whose S256 hash was sent as code_challenge on /auth/cli/login' })
-  @IsString()
-  @IsNotEmpty()
-  codeVerifier!: string;
-}
+const CliTokenResponseSchema = z
+  .object({
+    accessToken: z.string().describe('ES256 session JWT for Authorization: Bearer'),
+    expiresAt: z.string().describe('Session expiry, ISO 8601'),
+    sub: z.string(),
+  })
+  .meta({ id: 'CliTokenResponseDto' });
 
-export class CliTokenResponseDto {
-  @ApiProperty({ description: 'ES256 session JWT for Authorization: Bearer' })
-  accessToken!: string;
-
-  @ApiProperty({ description: 'Session expiry, ISO 8601' })
-  expiresAt!: string;
-
-  @ApiProperty()
-  sub!: string;
-}
+export class AuthDto extends createZodDto(AuthSchema) {}
+export class CliTokenRequestDto extends createZodDto(CliTokenRequestSchema) {}
+export class CliTokenResponseDto extends createZodDto(CliTokenResponseSchema) {}

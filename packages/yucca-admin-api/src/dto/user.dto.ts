@@ -1,74 +1,58 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
-import { CursorPaginationDto } from 'src/dto/pagination.dto';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { CursorPaginationSchema } from 'src/dto/pagination.dto';
+import { z } from 'zod';
 
-export class UserDto {
-  @ApiProperty()
-  id!: string;
+const UserSchema = z
+  .object({
+    id: z.string(),
+    sub: z.string(),
+    name: z.string(),
+    email: z.string(),
+    disabled: z.boolean(),
+  })
+  .meta({ id: 'UserDto' });
 
-  @ApiProperty()
-  sub!: string;
+const UserListQuerySchema = z.object(CursorPaginationSchema.shape).meta({ id: 'UserListQueryDto' });
 
-  @ApiProperty()
-  name!: string;
+const UserListResponseSchema = z
+  .object({
+    items: z.array(UserSchema),
+    nextCursor: z.string().nullable(),
+  })
+  .meta({ id: 'UserListResponseDto' });
 
-  @ApiProperty()
-  email!: string;
+const UserDiscordLinkSchema = z
+  .object({
+    discordUserId: z.string(),
+    discordUsername: z.string(),
+    createdAt: isoDatetimeToDate,
+  })
+  .meta({ id: 'UserDiscordLinkDto' });
 
-  @ApiProperty()
-  disabled!: boolean;
-}
+const UserGetResponseSchema = z
+  .object({
+    user: UserSchema,
+    discordLink: UserDiscordLinkSchema.nullable(),
+  })
+  .meta({ id: 'UserGetResponseDto' });
 
-export class UserListQueryDto extends CursorPaginationDto {}
+const UserDiscordLinkRequestSchema = z
+  .object({
+    discordUserId: z.string().max(64),
+    discordUsername: z.string().max(120).optional(),
+  })
+  .meta({ id: 'UserDiscordLinkRequestDto' });
 
-export class UserListResponseDto {
-  @ApiProperty({ type: [UserDto] })
-  items!: UserDto[];
+const UserUpdateRequestSchema = z.object({ disabled: z.boolean().optional() }).meta({ id: 'UserUpdateRequestDto' });
 
-  @ApiProperty({ required: false, nullable: true })
-  nextCursor!: string | null;
-}
+const UserUpdateResponseSchema = z.object({ user: UserSchema }).meta({ id: 'UserUpdateResponseDto' });
 
-export class UserDiscordLinkDto {
-  @ApiProperty()
-  discordUserId!: string;
-
-  @ApiProperty()
-  discordUsername!: string;
-
-  @ApiProperty({ type: 'string' })
-  createdAt!: Date;
-}
-
-export class UserGetResponseDto {
-  @ApiProperty()
-  user!: UserDto;
-
-  @ApiProperty({ type: UserDiscordLinkDto, required: false, nullable: true })
-  discordLink!: UserDiscordLinkDto | null;
-}
-
-export class UserDiscordLinkRequestDto {
-  @ApiProperty()
-  @IsString()
-  @MaxLength(64)
-  discordUserId!: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  discordUsername?: string;
-}
-
-export class UserUpdateRequestDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsBoolean()
-  disabled?: boolean;
-}
-
-export class UserUpdateResponseDto {
-  @ApiProperty()
-  user!: UserDto;
-}
+export class UserDto extends createZodDto(UserSchema) {}
+export class UserListQueryDto extends createZodDto(UserListQuerySchema) {}
+export class UserListResponseDto extends createZodDto(UserListResponseSchema) {}
+export class UserDiscordLinkDto extends createZodDto(UserDiscordLinkSchema) {}
+export class UserGetResponseDto extends createZodDto(UserGetResponseSchema) {}
+export class UserDiscordLinkRequestDto extends createZodDto(UserDiscordLinkRequestSchema) {}
+export class UserUpdateRequestDto extends createZodDto(UserUpdateRequestSchema) {}
+export class UserUpdateResponseDto extends createZodDto(UserUpdateResponseSchema) {}

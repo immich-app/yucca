@@ -1,30 +1,29 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class SettingsValueDto {
-  @ApiProperty({ required: false })
-  restic_pack_size_mib?: number;
+const SettingsValueSchema = z
+  .object({
+    restic_pack_size_mib: z.number().optional(),
+    connections_math: z.string().optional().describe('Client-evaluated expression: integers, cores, min, max, + - * /'),
+  })
+  .meta({ id: 'SettingsValueDto' });
 
-  @ApiProperty({ required: false, description: 'Client-evaluated expression: integers, cores, min, max, + - * /' })
-  connections_math?: string;
-}
+const SettingsEntrySchema = z
+  .object({
+    scope: z.string().describe("'global', 'site:<code>' or 'cluster:<code>'"),
+    value: SettingsValueSchema,
+    updatedAt: isoDatetimeToDate,
+  })
+  .meta({ id: 'SettingsEntryDto' });
 
-export class SettingsEntryDto {
-  @ApiProperty({ description: "'global', 'site:<code>' or 'cluster:<code>'" })
-  scope!: string;
+const SettingsEntryResponseSchema = z.object({ entry: SettingsEntrySchema }).meta({ id: 'SettingsEntryResponseDto' });
 
-  @ApiProperty({ type: SettingsValueDto })
-  value!: SettingsValueDto;
+const SettingsListResponseSchema = z
+  .object({ settings: z.array(SettingsEntrySchema) })
+  .meta({ id: 'SettingsListResponseDto' });
 
-  @ApiProperty({ type: 'string' })
-  updatedAt!: Date;
-}
-
-export class SettingsEntryResponseDto {
-  @ApiProperty({ type: SettingsEntryDto })
-  entry!: SettingsEntryDto;
-}
-
-export class SettingsListResponseDto {
-  @ApiProperty({ type: [SettingsEntryDto] })
-  settings!: SettingsEntryDto[];
-}
+export class SettingsValueDto extends createZodDto(SettingsValueSchema) {}
+export class SettingsEntryDto extends createZodDto(SettingsEntrySchema) {}
+export class SettingsEntryResponseDto extends createZodDto(SettingsEntryResponseSchema) {}
+export class SettingsListResponseDto extends createZodDto(SettingsListResponseSchema) {}
