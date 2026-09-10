@@ -97,6 +97,7 @@ catalog:
   luxon: ^3.7.2
   nestjs-kysely: ^3.1.2
   nestjs-otel: ^8.0.2
+  nestjs-zod: ^5.5.0
   nodemon: ^3.1.11
   oazapfts: ^7.0.1
   oidc-provider: ^9.8.3
