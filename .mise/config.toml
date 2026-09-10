@@ -15,7 +15,7 @@ gh = "2.25.0"
 
 k3d = "5.9.0"
 kubectl = "1.36.3"
-helm = "3.21.3"
+helm = "3.21.4"
 tilt = "0.34.5"
 
 # Static validation of the k8s surface (mise run k8s:validate, used by CI).

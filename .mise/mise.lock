@@ -195,25 +195,25 @@ url_api = "https://api.github.com/repos/golangci/golangci-lint/releases/assets/5
 provenance = "github-attestations"
 
 [[tools.helm]]
-version = "3.21.3"
+version = "3.21.4"
 backend = "aqua:helm/helm"
-specifiers = ["3.21.3"]
+specifiers = ["3.21.4"]
 
 [tools.helm."platforms.linux-arm64"]
-checksum = "sha256:67f58155079ff9ffab98ba5c88daff0ed9b542f3a4732f5dd426dde7dd0f5244"
-url = "https://get.helm.sh/helm-v3.21.3-linux-arm64.tar.gz"
+checksum = "sha256:b54c04b4e0b2540bbdc08c17a121dab70e9a2ed0de5705528fec68a5fd3b85a7"
+url = "https://get.helm.sh/helm-v3.21.4-linux-arm64.tar.gz"
 
 [tools.helm."platforms.linux-x64"]
-checksum = "sha256:15e041a93a590dce8100f39385cd98c84a765c9e36aeeb9e2dc6ff9e4769e2e0"
-url = "https://get.helm.sh/helm-v3.21.3-linux-amd64.tar.gz"
+checksum = "sha256:61f88ab166748cb19604d7884cb100ae9ccb13804ddeb98e08af167eacbb6a14"
+url = "https://get.helm.sh/helm-v3.21.4-linux-amd64.tar.gz"
 
 [tools.helm."platforms.macos-arm64"]
-checksum = "sha256:19879a848cad832b7a1ac24b767a481d20fb3b95ab53a220849649422ada144e"
-url = "https://get.helm.sh/helm-v3.21.3-darwin-arm64.tar.gz"
+checksum = "sha256:6e0bf5eb6daafc2b1ec34bb5ba04ef103f3afc16192fb19805c2924d7ea1033f"
+url = "https://get.helm.sh/helm-v3.21.4-darwin-arm64.tar.gz"
 
 [tools.helm."platforms.macos-x64"]
-checksum = "sha256:76d0db4730b05d3d625eee11e80f0721b32b4d8422f4e5d093de6337bf3ac9f8"
-url = "https://get.helm.sh/helm-v3.21.3-darwin-amd64.tar.gz"
+checksum = "sha256:9173d05edf9592c6be1d0412ffafd935448dfc7a63c2bc732b8c67e55503e8a8"
+url = "https://get.helm.sh/helm-v3.21.4-darwin-amd64.tar.gz"
 
 [[tools.k3d]]
 version = "5.9.0"
