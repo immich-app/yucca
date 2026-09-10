@@ -87,7 +87,7 @@ func TestCompletionsSurviveSnapshotExpiry(t *testing.T) {
 	e := &Exporter{}
 	e.Store(snapshot(t, []string{pgls("2.a", "2026-08-01T00:00:00.000000+0000", 10, 0)}, now), time.Second)
 	e.Store(snapshot(t, []string{pgls("2.a", "2026-08-15T00:00:00.000000+0000", 10, 0)}, now), time.Second)
-	for i := 0; i < expireAfterFailures; i++ {
+	for range expireAfterFailures {
 		e.MarkFailed()
 	}
 	want := `

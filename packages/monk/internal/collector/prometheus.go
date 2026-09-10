@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"maps"
 	"sync/atomic"
 	"time"
 
@@ -91,16 +92,10 @@ func accumulate(prevN map[string]map[Depth]uint64, prevB map[string]map[Depth]ui
 	n := map[string]map[Depth]uint64{}
 	b := map[string]map[Depth]uint64{}
 	for pool, byDepth := range prevN {
-		n[pool] = map[Depth]uint64{}
-		for d, v := range byDepth {
-			n[pool][d] = v
-		}
+		n[pool] = maps.Clone(byDepth)
 	}
 	for pool, byDepth := range prevB {
-		b[pool] = map[Depth]uint64{}
-		for d, v := range byDepth {
-			b[pool][d] = v
-		}
+		b[pool] = maps.Clone(byDepth)
 	}
 	if old == nil || cur == nil {
 		return n, b
