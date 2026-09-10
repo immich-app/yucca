@@ -28,6 +28,8 @@
   const { onBack, onFinish, repository }: Props = $props();
 
   let selectedSnapshot: SnapshotDto | undefined = $state();
+
+  const snapshots = $derived(repository.snapshots ?? []);
 </script>
 
 {#if selectedSnapshot}
@@ -45,7 +47,7 @@
   >
     <ModalBody>
       <StackList>
-        {#each repository.snapshots.toSorted((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) as snapshot (snapshot.id)}
+        {#each snapshots.toSorted((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) as snapshot (snapshot.id)}
           <HStack gap={2} class="px-4 py-3">
             <Stack gap={0} class="grow min-w-0">
               <HStack
@@ -67,7 +69,7 @@
             </Button>
           </HStack>
         {/each}
-        {#if repository.snapshots.length === 0}
+        {#if snapshots.length === 0}
           <Text class="text-center py-6" color="muted">
             No snapshots in this repository.
           </Text>

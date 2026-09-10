@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
+import { ZodSerializerDto } from 'nestjs-zod';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
   ConnectionAdoptRequestDto,
@@ -18,6 +19,7 @@ export class ConnectionController {
   @Get()
   @AuthRoute()
   @ApiOkResponse({ type: ConnectionListResponseDto })
+  @ZodSerializerDto(ConnectionListResponseDto)
   listConnections(@Auth() auth: AuthDto): Promise<ConnectionListResponseDto> {
     return this.connections.list(auth);
   }

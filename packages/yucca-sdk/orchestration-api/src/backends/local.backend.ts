@@ -50,6 +50,8 @@ export class LocalBackend extends Backend {
         connectionType: 'local',
         metrics: {
           sizeBytes: 0,
+          lastBackup: null,
+          lastSuccessfulBackup: null,
         },
       },
     };
@@ -67,6 +69,8 @@ export class LocalBackend extends Backend {
         connectionType: 'local',
         metrics: {
           sizeBytes: 0,
+          lastBackup: null,
+          lastSuccessfulBackup: null,
         },
       },
     };
@@ -99,6 +103,8 @@ export class LocalBackend extends Backend {
                   connectionType: 'local',
                   metrics: {
                     sizeBytes: 0, // in local cache
+                    lastBackup: null,
+                    lastSuccessfulBackup: null,
                   },
                 }
               : null,

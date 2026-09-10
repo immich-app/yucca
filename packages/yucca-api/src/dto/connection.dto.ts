@@ -1,67 +1,50 @@
-import { ConnectionTypes } from '@common/server';
-import { ApiProperty } from '@nestjs/swagger';
-import { ArrayNotEmpty, IsIn, IsString, IsUUID, MaxLength } from 'class-validator';
+import { ConnectionTypes, isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class ConnectionDto {
-  @ApiProperty()
-  id!: string;
+const ConnectionSchema = z
+  .object({
+    id: z.string(),
+    type: z.string().meta({ enum: ConnectionTypes }),
+    name: z.string(),
+    createdAt: isoDatetimeToDate,
+    lastSeenAt: isoDatetimeToDate.nullable(),
+    repositoryCount: z.number(),
+    sizeBytes: z.number().describe('Rolled-up storage across this connection’s repositories (RGW size).'),
+    objectCount: z.number().describe('Rolled-up object count across this connection’s repositories.'),
+    billableBytes: z.number().describe('Billed bytes: per-object min-size floor applied (immich exempt).'),
+  })
+  .meta({ id: 'ConnectionDto' });
 
-  @ApiProperty({ enum: ConnectionTypes })
-  type!: string;
+const ConnectionListResponseSchema = z
+  .object({ connections: z.array(ConnectionSchema) })
+  .meta({ id: 'ConnectionListResponseDto' });
 
-  @ApiProperty()
-  name!: string;
+const ConnectionCreateRequestSchema = z
+  .object({
+    type: z.enum(ConnectionTypes),
+    name: z.string().max(120),
+  })
+  .meta({ id: 'ConnectionCreateRequestDto' });
 
-  @ApiProperty({ type: 'string' })
-  createdAt!: Date;
+const ConnectionUpdateRequestSchema = z
+  .object({ name: z.string().max(120) })
+  .meta({ id: 'ConnectionUpdateRequestDto' });
 
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  lastSeenAt!: Date | null;
+const ConnectionResponseSchema = z.object({ connection: ConnectionSchema }).meta({ id: 'ConnectionResponseDto' });
 
-  @ApiProperty()
-  repositoryCount!: number;
+const ConnectionAdoptRequestSchema = z
+  .object({
+    repositoryIds: z
+      .array(z.uuid())
+      .nonempty()
+      .describe('Repositories to move from the default connection to this one'),
+  })
+  .meta({ id: 'ConnectionAdoptRequestDto' });
 
-  @ApiProperty({ description: 'Rolled-up storage across this connection’s repositories (RGW size).' })
-  sizeBytes!: number;
-
-  @ApiProperty({ description: 'Rolled-up object count across this connection’s repositories.' })
-  objectCount!: number;
-
-  @ApiProperty({ description: 'Billed bytes: per-object min-size floor applied (immich exempt).' })
-  billableBytes!: number;
-}
-
-export class ConnectionListResponseDto {
-  @ApiProperty({ type: [ConnectionDto] })
-  connections!: ConnectionDto[];
-}
-
-export class ConnectionCreateRequestDto {
-  @ApiProperty({ enum: ConnectionTypes })
-  @IsIn(ConnectionTypes)
-  type!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MaxLength(120)
-  name!: string;
-}
-
-export class ConnectionUpdateRequestDto {
-  @ApiProperty()
-  @IsString()
-  @MaxLength(120)
-  name!: string;
-}
-
-export class ConnectionResponseDto {
-  @ApiProperty()
-  connection!: ConnectionDto;
-}
-
-export class ConnectionAdoptRequestDto {
-  @ApiProperty({ type: [String], description: 'Repositories to move from the default connection to this one' })
-  @ArrayNotEmpty()
-  @IsUUID(undefined, { each: true })
-  repositoryIds!: string[];
-}
+export class ConnectionDto extends createZodDto(ConnectionSchema) {}
+export class ConnectionListResponseDto extends createZodDto(ConnectionListResponseSchema, { codec: true }) {}
+export class ConnectionCreateRequestDto extends createZodDto(ConnectionCreateRequestSchema) {}
+export class ConnectionUpdateRequestDto extends createZodDto(ConnectionUpdateRequestSchema) {}
+export class ConnectionResponseDto extends createZodDto(ConnectionResponseSchema) {}
+export class ConnectionAdoptRequestDto extends createZodDto(ConnectionAdoptRequestSchema) {}

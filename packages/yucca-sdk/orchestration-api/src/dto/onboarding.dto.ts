@@ -1,46 +1,28 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 import { BootstrapStatus, TelemetryLevel } from '../enum';
 
-export class OnboardingStatusResponseDto {
-  @ApiProperty({ enum: BootstrapStatus, enumName: 'BootstrapStatus' })
-  status!: BootstrapStatus;
+const OnboardingStatusResponseSchema = z
+  .object({
+    status: z.enum(BootstrapStatus).meta({ id: 'BootstrapStatus' }),
+    error: z.string().optional(),
+    hasTelemetry: z.enum(TelemetryLevel).meta({ id: 'TelemetryLevel' }),
+    requiresAuthentication: z.boolean(),
+    isAuthenticated: z.boolean(),
+    hasOnboardedKey: z.boolean(),
+    hasBackend: z.boolean(),
+    hasBackup: z.boolean(),
+    hasSchedule: z.boolean(),
+    hasSkippedExtraConfig: z.boolean(),
+  })
+  .meta({ id: 'OnboardingStatusResponseDto' });
 
-  @ApiProperty({ type: String, required: false })
-  error?: string;
+const CurrentRecoveryKeyResponseSchema = z
+  .object({ recoveryKey: z.string() })
+  .meta({ id: 'CurrentRecoveryKeyResponse' });
 
-  @ApiProperty({ enum: TelemetryLevel, enumName: 'TelemetryLevel' })
-  hasTelemetry!: TelemetryLevel;
+const ImportRecoveryKeyRequestSchema = z.object({ recoveryKey: z.string() }).meta({ id: 'ImportRecoveryKeyRequest' });
 
-  @ApiProperty({ type: Boolean })
-  requiresAuthentication!: boolean;
-
-  @ApiProperty({ type: Boolean })
-  isAuthenticated!: boolean;
-
-  @ApiProperty({ type: Boolean })
-  hasOnboardedKey!: boolean;
-
-  @ApiProperty({ type: Boolean })
-  hasBackend!: boolean;
-
-  @ApiProperty({ type: Boolean })
-  hasBackup!: boolean;
-
-  @ApiProperty({ type: Boolean })
-  hasSchedule!: boolean;
-
-  @ApiProperty({ type: Boolean })
-  hasSkippedExtraConfig!: boolean;
-}
-
-export class CurrentRecoveryKeyResponse {
-  @ApiProperty({ type: String })
-  recoveryKey!: string;
-}
-
-export class ImportRecoveryKeyRequest {
-  @ApiProperty({ type: String })
-  @IsString()
-  recoveryKey!: string;
-}
+export class OnboardingStatusResponseDto extends createZodDto(OnboardingStatusResponseSchema) {}
+export class CurrentRecoveryKeyResponse extends createZodDto(CurrentRecoveryKeyResponseSchema) {}
+export class ImportRecoveryKeyRequest extends createZodDto(ImportRecoveryKeyRequestSchema) {}

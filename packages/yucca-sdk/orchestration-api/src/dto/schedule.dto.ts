@@ -1,103 +1,58 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsBoolean,
-  IsOptional,
-  IsString,
-  Validate,
-  ValidatorConstraint,
-  type ValidatorConstraintInterface,
-} from 'class-validator';
 import { CronJob } from 'cron';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-@ValidatorConstraint({ name: 'cronValidator' })
-class CronValidator implements ValidatorConstraintInterface {
-  validate(expression: string): boolean {
-    try {
-      new CronJob(expression, () => {});
-      return true;
-    } catch {
-      return false;
-    }
+const isCronExpression = (expression: string): boolean => {
+  try {
+    new CronJob(expression, () => {});
+    return true;
+  } catch {
+    return false;
   }
-}
+};
 
-const IsCronExpression = () => Validate(CronValidator, { message: 'Invalid cron expression' });
+const CronExpressionSchema = z.string().refine(isCronExpression, 'Invalid cron expression');
 
-export class ScheduleDto {
-  @ApiProperty({ type: String })
-  id!: string;
+const ScheduleSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    paused: z.boolean(),
+    cron: z.string(),
+    repositories: z.array(z.string()),
+    lastRun: z.string().optional(),
+    lastFinished: z.string().optional(),
+  })
+  .meta({ id: 'ScheduleDto' });
 
-  @ApiProperty({ type: String })
-  name!: string;
+const ScheduleCreateRequestSchema = z
+  .object({
+    name: z.string(),
+    cron: CronExpressionSchema,
+    repositories: z.array(z.string()),
+  })
+  .meta({ id: 'ScheduleCreateRequestDto' });
 
-  @ApiProperty({ type: Boolean })
-  paused!: boolean;
+const ScheduleCreateResponseSchema = z.object({ schedule: ScheduleSchema }).meta({ id: 'ScheduleCreateResponseDto' });
 
-  @ApiProperty({ type: String })
-  cron!: string;
+const ScheduleUpdateRequestSchema = z
+  .object({
+    name: z.string().optional(),
+    paused: z.boolean().optional(),
+    cron: CronExpressionSchema.optional(),
+    repositories: z.array(z.string()).optional(),
+  })
+  .meta({ id: 'ScheduleUpdateRequestDto' });
 
-  @ApiProperty({ type: [String] })
-  repositories!: string[];
+const ScheduleUpdateResponseSchema = z.object({ schedule: ScheduleSchema }).meta({ id: 'ScheduleUpdateResponseDto' });
 
-  @ApiProperty({ type: String, required: false })
-  lastRun?: string;
+const ScheduleListResponseSchema = z
+  .object({ schedules: z.array(ScheduleSchema) })
+  .meta({ id: 'ScheduleListResponseDto' });
 
-  @ApiProperty({ type: String, required: false })
-  lastFinished?: string;
-}
-
-export class ScheduleCreateRequestDto {
-  @ApiProperty({ type: String })
-  @IsString()
-  name!: string;
-
-  @ApiProperty({ type: String })
-  @IsString()
-  @IsCronExpression()
-  cron!: string;
-
-  @ApiProperty({ type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  repositories!: string[];
-}
-
-export class ScheduleCreateResponseDto {
-  @ApiProperty({ type: ScheduleDto })
-  schedule!: ScheduleDto;
-}
-
-export class ScheduleUpdateRequestDto {
-  @ApiProperty({ type: String, required: false })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiProperty({ type: Boolean, required: false })
-  @IsOptional()
-  @IsBoolean()
-  paused?: boolean;
-
-  @ApiProperty({ type: String, required: false })
-  @IsOptional()
-  @IsString()
-  @IsCronExpression()
-  cron?: string;
-
-  @ApiProperty({ type: [String], required: false })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  repositories?: string[];
-}
-
-export class ScheduleUpdateResponseDto {
-  @ApiProperty({ type: ScheduleDto })
-  schedule!: ScheduleDto;
-}
-
-export class ScheduleListResponseDto {
-  @ApiProperty({ type: [ScheduleDto] })
-  schedules!: ScheduleDto[];
-}
+export class ScheduleDto extends createZodDto(ScheduleSchema) {}
+export class ScheduleCreateRequestDto extends createZodDto(ScheduleCreateRequestSchema) {}
+export class ScheduleCreateResponseDto extends createZodDto(ScheduleCreateResponseSchema) {}
+export class ScheduleUpdateRequestDto extends createZodDto(ScheduleUpdateRequestSchema) {}
+export class ScheduleUpdateResponseDto extends createZodDto(ScheduleUpdateResponseSchema) {}
+export class ScheduleListResponseDto extends createZodDto(ScheduleListResponseSchema) {}

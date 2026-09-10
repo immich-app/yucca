@@ -1,14 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class SessionDto {
-  @ApiProperty()
-  id!: string;
+const SessionSchema = z
+  .object({
+    id: z.string(),
+    userId: z.string(),
+  })
+  .meta({ id: 'SessionDto' });
 
-  @ApiProperty()
-  userId!: string;
-}
+const SessionListResponseSchema = z.object({ items: z.array(SessionSchema) }).meta({ id: 'SessionListResponseDto' });
 
-export class SessionListResponseDto {
-  @ApiProperty({ type: [SessionDto] })
-  items!: SessionDto[];
-}
+export class SessionDto extends createZodDto(SessionSchema) {}
+export class SessionListResponseDto extends createZodDto(SessionListResponseSchema) {}

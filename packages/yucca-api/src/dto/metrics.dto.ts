@@ -1,64 +1,47 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsObject, IsString, Min } from 'class-validator';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class SubmitBackupEndRequestDto {
-  @ApiProperty()
-  @IsBoolean()
-  success!: boolean;
+const SubmitBackupEndRequestSchema = z
+  .object({
+    success: z.boolean(),
+    durationMs: z.int().min(0),
+  })
+  .meta({ id: 'SubmitBackupEndRequestDto' });
 
-  @ApiProperty()
-  @IsInt()
-  @Min(0)
-  durationMs!: number;
-}
+const SubmitUpdateSizeRequestSchema = z
+  .object({ sizeBytes: z.int().min(0) })
+  .meta({ id: 'SubmitUpdateSizeRequestDto' });
 
-export class SubmitUpdateSizeRequestDto {
-  @ApiProperty()
-  @IsInt()
-  @Min(0)
-  sizeBytes!: number;
-}
+const RepositoryMetricsHistorySchema = z
+  .object({
+    id: z.string(),
+    repositoryId: z.string(),
+    createdAt: isoDatetimeToDate,
+    sizeBytes: z.number().nullable().optional(),
+    started: isoDatetimeToDate.nullable().optional(),
+    backup: isoDatetimeToDate.nullable().optional(),
+    successfulBackup: isoDatetimeToDate.nullable().optional(),
+    backupDuration: z.number().nullable().optional(),
+  })
+  .meta({ id: 'RepositoryMetricsHistoryDto' });
 
-export class RepositoryMetricsHistoryDto {
-  @ApiProperty()
-  id!: string;
+const RepositoryMetricsHistoryListResponseSchema = z
+  .object({
+    items: z.array(RepositoryMetricsHistorySchema),
+    nextCursor: z.string().nullable(),
+  })
+  .meta({ id: 'RepositoryMetricsHistoryListResponseDto' });
 
-  @ApiProperty()
-  repositoryId!: string;
+const SubmitStructuredLogRequestSchema = z
+  .object({
+    summary: z.string(),
+    data: z.record(z.string(), z.unknown()),
+  })
+  .meta({ id: 'SubmitStructuredLogRequestDto' });
 
-  @ApiProperty({ type: 'string' })
-  createdAt!: Date;
-
-  @ApiProperty({ required: false })
-  sizeBytes?: number;
-
-  @ApiProperty({ type: 'string', required: false })
-  started?: Date;
-
-  @ApiProperty({ type: 'string', required: false })
-  backup?: Date;
-
-  @ApiProperty({ type: 'string', required: false })
-  successfulBackup?: Date;
-
-  @ApiProperty({ required: false })
-  backupDuration?: number;
-}
-
-export class RepositoryMetricsHistoryListResponseDto {
-  @ApiProperty({ type: [RepositoryMetricsHistoryDto] })
-  items!: RepositoryMetricsHistoryDto[];
-
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  nextCursor!: string | null;
-}
-
-export class SubmitStructuredLogRequestDto {
-  @ApiProperty()
-  @IsString()
-  summary!: string;
-
-  @ApiProperty()
-  @IsObject()
-  data!: object;
-}
+export class SubmitBackupEndRequestDto extends createZodDto(SubmitBackupEndRequestSchema) {}
+export class SubmitUpdateSizeRequestDto extends createZodDto(SubmitUpdateSizeRequestSchema) {}
+export class RepositoryMetricsHistoryDto extends createZodDto(RepositoryMetricsHistorySchema) {}
+export class RepositoryMetricsHistoryListResponseDto extends createZodDto(RepositoryMetricsHistoryListResponseSchema) {}
+export class SubmitStructuredLogRequestDto extends createZodDto(SubmitStructuredLogRequestSchema) {}

@@ -1,105 +1,77 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class FeatureFlagDefDto {
-  @ApiProperty()
-  key!: string;
-
-  @ApiProperty({ description: 'Registry default when no override exists' })
-  default!: boolean;
-
-  @ApiProperty({ description: 'experimental | beta | ga | retired' })
-  stage!: string;
-
-  @ApiProperty()
-  description!: string;
-
-  @ApiProperty()
-  since!: string;
-
-  @ApiProperty({ description: 'Number of users with an override for this flag' })
-  overrides!: number;
-}
-
-export class FeatureFlagListResponseDto {
-  @ApiProperty({ type: [FeatureFlagDefDto] })
-  flags!: FeatureFlagDefDto[];
-}
-
-export class FeatureOverrideDto {
-  @ApiProperty()
-  flag!: string;
-
-  @ApiProperty()
-  value!: boolean;
-
-  @ApiProperty()
-  setBy!: string;
-
-  @ApiProperty({ required: false, nullable: true })
-  reason!: string | null;
-
-  @ApiProperty({ type: 'string' })
-  updatedAt!: Date;
-}
-
-export class UserFeaturesResponseDto {
-  @ApiProperty({
-    type: 'object',
-    additionalProperties: { type: 'boolean' },
-    description: 'Resolved flags: override, else registry default',
+const FeatureFlagDefSchema = z
+  .object({
+    key: z.string(),
+    default: z.boolean().describe('Registry default when no override exists'),
+    stage: z.string().describe('experimental | beta | ga | retired'),
+    description: z.string(),
+    since: z.string(),
+    overrides: z.number().describe('Number of users with an override for this flag'),
   })
-  features!: Record<string, boolean>;
+  .meta({ id: 'FeatureFlagDefDto' });
 
-  @ApiProperty({ type: [FeatureOverrideDto] })
-  overrides!: FeatureOverrideDto[];
-}
+const FeatureFlagListResponseSchema = z
+  .object({ flags: z.array(FeatureFlagDefSchema) })
+  .meta({ id: 'FeatureFlagListResponseDto' });
 
-export class FeatureOverrideSetRequestDto {
-  @ApiProperty()
-  @IsBoolean()
-  value!: boolean;
+const FeatureOverrideSchema = z
+  .object({
+    flag: z.string(),
+    value: z.boolean(),
+    setBy: z.string(),
+    reason: z.string().nullable(),
+    updatedAt: isoDatetimeToDate,
+  })
+  .meta({ id: 'FeatureOverrideDto' });
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  reason?: string;
-}
+const UserFeaturesResponseSchema = z
+  .object({
+    features: z.record(z.string(), z.boolean()).describe('Resolved flags: override, else registry default'),
+    overrides: z.array(FeatureOverrideSchema),
+  })
+  .meta({ id: 'UserFeaturesResponseDto' });
 
-export class FeatureEnableBatchRequestDto {
-  @ApiProperty({ description: 'Enable for this many not-yet-overridden users, oldest first' })
-  @IsInt()
-  @Min(1)
-  @Max(500)
-  count!: number;
-}
+const FeatureOverrideSetRequestSchema = z
+  .object({
+    value: z.boolean(),
+    reason: z.string().optional(),
+  })
+  .meta({ id: 'FeatureOverrideSetRequestDto' });
 
-export class FeatureUserDto {
-  @ApiProperty()
-  userId!: string;
+const FeatureEnableBatchRequestSchema = z
+  .object({
+    count: z.int().min(1).max(500).describe('Enable for this many not-yet-overridden users, oldest first'),
+  })
+  .meta({ id: 'FeatureEnableBatchRequestDto' });
 
-  @ApiProperty()
-  email!: string;
+const FeatureUserSchema = z
+  .object({
+    userId: z.string(),
+    email: z.string(),
+    value: z.boolean(),
+    setBy: z.string(),
+    reason: z.string().nullable(),
+    updatedAt: isoDatetimeToDate,
+  })
+  .meta({ id: 'FeatureUserDto' });
 
-  @ApiProperty()
-  value!: boolean;
+const FeatureUsersResponseSchema = z
+  .object({ items: z.array(FeatureUserSchema) })
+  .meta({ id: 'FeatureUsersResponseDto' });
 
-  @ApiProperty()
-  setBy!: string;
+const FeatureEnableBatchResponseSchema = z
+  .object({ enabled: z.array(FeatureUserSchema) })
+  .meta({ id: 'FeatureEnableBatchResponseDto' });
 
-  @ApiProperty({ required: false, nullable: true })
-  reason!: string | null;
-
-  @ApiProperty({ type: 'string' })
-  updatedAt!: Date;
-}
-
-export class FeatureUsersResponseDto {
-  @ApiProperty({ type: [FeatureUserDto] })
-  items!: FeatureUserDto[];
-}
-
-export class FeatureEnableBatchResponseDto {
-  @ApiProperty({ type: [FeatureUserDto] })
-  enabled!: FeatureUserDto[];
-}
+export class FeatureFlagDefDto extends createZodDto(FeatureFlagDefSchema) {}
+export class FeatureFlagListResponseDto extends createZodDto(FeatureFlagListResponseSchema) {}
+export class FeatureOverrideDto extends createZodDto(FeatureOverrideSchema) {}
+export class UserFeaturesResponseDto extends createZodDto(UserFeaturesResponseSchema) {}
+export class FeatureOverrideSetRequestDto extends createZodDto(FeatureOverrideSetRequestSchema) {}
+export class FeatureEnableBatchRequestDto extends createZodDto(FeatureEnableBatchRequestSchema) {}
+export class FeatureUserDto extends createZodDto(FeatureUserSchema) {}
+export class FeatureUsersResponseDto extends createZodDto(FeatureUsersResponseSchema) {}
+export class FeatureEnableBatchResponseDto extends createZodDto(FeatureEnableBatchResponseSchema) {}

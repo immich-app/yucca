@@ -1,39 +1,25 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, MaxLength } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class ColumboInvestigateRequestDto {
-  @ApiProperty()
-  @IsUUID()
-  userId!: string;
+const ColumboInvestigateRequestSchema = z
+  .object({
+    userId: z.uuid(),
+    prompt: z.string().max(2000),
+  })
+  .meta({ id: 'ColumboInvestigateRequestDto' });
 
-  @ApiProperty()
-  @IsString()
-  @MaxLength(2000)
-  prompt!: string;
-}
+const ColumboInvestigationSchema = z
+  .object({
+    id: z.string(),
+    status: z.enum(['running', 'done', 'failed']),
+    note: z.string().nullable(),
+    queries: z.array(z.string()),
+    error: z.string().nullable(),
+    toolCalls: z.number(),
+    promptTokens: z.number(),
+    completionTokens: z.number(),
+  })
+  .meta({ id: 'ColumboInvestigationDto' });
 
-export class ColumboInvestigationDto {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty({ enum: ['running', 'done', 'failed'] })
-  status!: 'running' | 'done' | 'failed';
-
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  note!: string | null;
-
-  @ApiProperty({ type: [String] })
-  queries!: string[];
-
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  error!: string | null;
-
-  @ApiProperty()
-  toolCalls!: number;
-
-  @ApiProperty()
-  promptTokens!: number;
-
-  @ApiProperty()
-  completionTokens!: number;
-}
+export class ColumboInvestigateRequestDto extends createZodDto(ColumboInvestigateRequestSchema) {}
+export class ColumboInvestigationDto extends createZodDto(ColumboInvestigationSchema) {}

@@ -1,82 +1,58 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsOptional } from 'class-validator';
+import { isoDatetimeToDate } from '@common/server';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class DiscordInviteClaimDto {
-  @ApiProperty()
-  id!: string;
+const DiscordInviteClaimSchema = z
+  .object({
+    id: z.string(),
+    discordUserId: z.string(),
+    discordUsername: z.string().nullable(),
+    batchId: z.string().nullable(),
+    inviteUsed: z.boolean(),
+    inviteUsedAt: isoDatetimeToDate.nullable(),
+    createdAt: isoDatetimeToDate,
+  })
+  .meta({ id: 'DiscordInviteClaimDto' });
 
-  @ApiProperty()
-  discordUserId!: string;
+const DiscordInviteClaimListResponseSchema = z
+  .object({ items: z.array(DiscordInviteClaimSchema) })
+  .meta({ id: 'DiscordInviteClaimListResponseDto' });
 
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  discordUsername!: string | null;
+const DiscordInviteBatchSchema = z
+  .object({
+    id: z.string(),
+    guildId: z.string(),
+    channelId: z.string(),
+    messageId: z.string().nullable(),
+    maxClaims: z.number(),
+    claimed: z.number(),
+    used: z.number(),
+    createdByDiscordUserId: z.string(),
+    cancelledAt: isoDatetimeToDate.nullable(),
+    createdAt: isoDatetimeToDate,
+  })
+  .meta({ id: 'DiscordInviteBatchDto' });
 
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  batchId!: string | null;
+const DiscordInviteBatchListResponseSchema = z
+  .object({ items: z.array(DiscordInviteBatchSchema) })
+  .meta({ id: 'DiscordInviteBatchListResponseDto' });
 
-  @ApiProperty()
-  inviteUsed!: boolean;
+const DiscordInviteBatchCancelQuerySchema = z
+  .object({
+    revokeUnused: z.enum(['true', 'false']).optional().describe('Also delete the batch’s unredeemed claims'),
+  })
+  .meta({ id: 'DiscordInviteBatchCancelQueryDto' });
 
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  inviteUsedAt!: Date | null;
+const DiscordInviteBatchCancelResponseSchema = z
+  .object({
+    batch: DiscordInviteBatchSchema,
+    revokedClaims: z.number().describe('Unredeemed claims deleted by --revoke-unused'),
+  })
+  .meta({ id: 'DiscordInviteBatchCancelResponseDto' });
 
-  @ApiProperty({ type: 'string' })
-  createdAt!: Date;
-}
-
-export class DiscordInviteClaimListResponseDto {
-  @ApiProperty({ type: [DiscordInviteClaimDto] })
-  items!: DiscordInviteClaimDto[];
-}
-
-export class DiscordInviteBatchDto {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty()
-  guildId!: string;
-
-  @ApiProperty()
-  channelId!: string;
-
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  messageId!: string | null;
-
-  @ApiProperty()
-  maxClaims!: number;
-
-  @ApiProperty()
-  claimed!: number;
-
-  @ApiProperty()
-  used!: number;
-
-  @ApiProperty()
-  createdByDiscordUserId!: string;
-
-  @ApiProperty({ type: 'string', required: false, nullable: true })
-  cancelledAt!: Date | null;
-
-  @ApiProperty({ type: 'string' })
-  createdAt!: Date;
-}
-
-export class DiscordInviteBatchListResponseDto {
-  @ApiProperty({ type: [DiscordInviteBatchDto] })
-  items!: DiscordInviteBatchDto[];
-}
-
-export class DiscordInviteBatchCancelQueryDto {
-  @ApiProperty({ required: false, enum: ['true', 'false'], description: 'Also delete the batch’s unredeemed claims' })
-  @IsOptional()
-  @IsIn(['true', 'false'])
-  revokeUnused?: string;
-}
-
-export class DiscordInviteBatchCancelResponseDto {
-  @ApiProperty({ type: DiscordInviteBatchDto })
-  batch!: DiscordInviteBatchDto;
-
-  @ApiProperty({ description: 'Unredeemed claims deleted by --revoke-unused' })
-  revokedClaims!: number;
-}
+export class DiscordInviteClaimDto extends createZodDto(DiscordInviteClaimSchema) {}
+export class DiscordInviteClaimListResponseDto extends createZodDto(DiscordInviteClaimListResponseSchema) {}
+export class DiscordInviteBatchDto extends createZodDto(DiscordInviteBatchSchema) {}
+export class DiscordInviteBatchListResponseDto extends createZodDto(DiscordInviteBatchListResponseSchema) {}
+export class DiscordInviteBatchCancelQueryDto extends createZodDto(DiscordInviteBatchCancelQuerySchema) {}
+export class DiscordInviteBatchCancelResponseDto extends createZodDto(DiscordInviteBatchCancelResponseSchema) {}

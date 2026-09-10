@@ -1,8 +1,6 @@
 import { WideContextRepository } from '@common/server/otel';
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
 import { type IncomingHttpHeaders } from 'node:http';
 import { AuthDto } from 'src/dto/auth.dto';
 import { contextFromAuth } from 'src/utils/meters';
@@ -37,13 +35,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid JWT Token');
     }
 
-    const instance = plainToInstance(AuthDto, jwt);
-    const errors = await validate(instance);
-    if (errors.length > 0) {
-      throw new BadRequestException(errors.flatMap((err) => Object.values(err.constraints ?? {})));
+    const result = AuthDto.schema.safeParse(jwt);
+    if (!result.success) {
+      throw new BadRequestException(result.error.issues.map((issue) => issue.message));
     }
 
-    this.wideContext.assignContext(contextFromAuth(instance));
-    return instance;
+    this.wideContext.assignContext(contextFromAuth(result.data));
+    return result.data;
   }
 }

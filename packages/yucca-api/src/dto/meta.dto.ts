@@ -1,65 +1,51 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class MetaConfigDto {
-  @ApiProperty()
-  restic_pack_size_mib!: number;
+const MetaConfigSchema = z
+  .object({
+    restic_pack_size_mib: z.number(),
+    connections_math: z.string().describe('Client-evaluated expression: integers, cores, min, max, + - * /'),
+  })
+  .meta({ id: 'MetaConfigDto' });
 
-  @ApiProperty({ description: 'Client-evaluated expression: integers, cores, min, max, + - * /' })
-  connections_math!: string;
-}
+const MetaConfigOverridesSchema = z
+  .object({
+    restic_pack_size_mib: z.number().optional(),
+    connections_math: z.string().optional().describe('Client-evaluated expression: integers, cores, min, max, + - * /'),
+  })
+  .meta({ id: 'MetaConfigOverridesDto' });
 
-export class MetaConfigOverridesDto {
-  @ApiProperty({ required: false })
-  restic_pack_size_mib?: number;
+const MetaClusterSchema = z
+  .object({
+    code: z.string(),
+    display_name: z.string(),
+    cluster_config: MetaConfigOverridesSchema.describe('Per-cluster overrides of the global and site config'),
+  })
+  .meta({ id: 'MetaClusterDto' });
 
-  @ApiProperty({ required: false, description: 'Client-evaluated expression: integers, cores, min, max, + - * /' })
-  connections_math?: string;
-}
+const MetaSiteSchema = z
+  .object({
+    code: z.string(),
+    display_name: z.string(),
+    description: z.string(),
+    rest_url: z.string(),
+    default_cluster: z.string(),
+    site_config: MetaConfigOverridesSchema.describe('Per-site overrides of the global config'),
+    clusters: z.array(MetaClusterSchema),
+  })
+  .meta({ id: 'MetaSiteDto' });
 
-export class MetaClusterDto {
-  @ApiProperty()
-  code!: string;
+const MetaResponseSchema = z
+  .object({
+    api_root: z.string(),
+    config: MetaConfigSchema,
+    default_site: z.string(),
+    sites: z.array(MetaSiteSchema),
+  })
+  .meta({ id: 'MetaResponseDto' });
 
-  @ApiProperty()
-  display_name!: string;
-
-  @ApiProperty({ description: 'Per-cluster overrides of the global and site config' })
-  cluster_config!: MetaConfigOverridesDto;
-}
-
-export class MetaSiteDto {
-  @ApiProperty()
-  code!: string;
-
-  @ApiProperty()
-  display_name!: string;
-
-  @ApiProperty()
-  description!: string;
-
-  @ApiProperty()
-  rest_url!: string;
-
-  @ApiProperty()
-  default_cluster!: string;
-
-  @ApiProperty({ description: 'Per-site overrides of the global config' })
-  site_config!: MetaConfigOverridesDto;
-
-  @ApiProperty({ type: [MetaClusterDto] })
-  clusters!: MetaClusterDto[];
-}
-
-export class MetaResponseDto {
-  @ApiProperty()
-  api_root!: string;
-
-  @ApiProperty()
-  config!: MetaConfigDto;
-
-  @ApiProperty()
-  default_site!: string;
-
-  @ApiProperty({ type: [MetaSiteDto] })
-  sites!: MetaSiteDto[];
-}
+export class MetaConfigDto extends createZodDto(MetaConfigSchema) {}
+export class MetaConfigOverridesDto extends createZodDto(MetaConfigOverridesSchema) {}
+export class MetaClusterDto extends createZodDto(MetaClusterSchema) {}
+export class MetaSiteDto extends createZodDto(MetaSiteSchema) {}
+export class MetaResponseDto extends createZodDto(MetaResponseSchema) {}

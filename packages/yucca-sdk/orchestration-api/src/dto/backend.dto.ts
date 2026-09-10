@@ -1,36 +1,26 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 import { BackendType } from '../enum';
 
-export class BackendDto {
-  @ApiProperty({ type: String })
-  id!: string;
+export const BackendTypeSchema = z.enum(BackendType).meta({ id: 'BackendType' });
 
-  @ApiProperty({ enumName: 'BackendType', enum: BackendType })
-  type!: BackendType;
+const BackendSchema = z
+  .object({
+    id: z.string(),
+    type: BackendTypeSchema,
+    description: z.string(),
+    isOnline: z.boolean(),
+    error: z.string().optional(),
+  })
+  .meta({ id: 'BackendDto' });
 
-  @ApiProperty({ type: String })
-  description!: string;
+const BackendsResponseSchema = z.object({ backends: z.array(BackendSchema) }).meta({ id: 'BackendsResponseDto' });
 
-  @ApiProperty({ type: Boolean })
-  isOnline!: boolean;
+const BackendResponseSchema = z.object({ backend: BackendSchema }).meta({ id: 'BackendResponseDto' });
 
-  @ApiProperty({ type: String, required: false })
-  error?: string;
-}
+const CreateLocalBackendRequestSchema = z.object({ path: z.string() }).meta({ id: 'CreateLocalBackendRequestDto' });
 
-export class BackendsResponseDto {
-  @ApiProperty({ type: [BackendDto] })
-  backends!: BackendDto[];
-}
-
-export class BackendResponseDto {
-  @ApiProperty({ type: BackendDto })
-  backend!: BackendDto;
-}
-
-export class CreateLocalBackendRequestDto {
-  @ApiProperty({ type: String })
-  @IsString()
-  path!: string;
-}
+export class BackendDto extends createZodDto(BackendSchema) {}
+export class BackendsResponseDto extends createZodDto(BackendsResponseSchema) {}
+export class BackendResponseDto extends createZodDto(BackendResponseSchema) {}
+export class CreateLocalBackendRequestDto extends createZodDto(CreateLocalBackendRequestSchema) {}

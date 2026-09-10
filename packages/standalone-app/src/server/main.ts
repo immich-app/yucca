@@ -1,8 +1,8 @@
 import { LoggingRepository, OrchestrationApiModule } from '@futo-org/backups-orchestrator-api';
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
+import { ZodValidationPipe } from 'nestjs-zod';
 import { mkdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { readEnv } from './env';
@@ -31,7 +31,7 @@ async function bootstrap() {
   logger.setContext('Bootstrap');
 
   app.enableShutdownHooks();
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.useGlobalPipes(new ZodValidationPipe());
   app.setGlobalPrefix('api');
 
   app.use(

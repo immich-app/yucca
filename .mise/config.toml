@@ -48,7 +48,7 @@ depends = ["*:build"]
 
 [tasks."common:build"]
 description = "Build all common packages"
-depends = ["install:deps", "common:*:build"]
+run = [{ task = "install:deps" }, { task = "common:*:build" }]
 
 [tasks.test]
 description = "Run all unit tests"

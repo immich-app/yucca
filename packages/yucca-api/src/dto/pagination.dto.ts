@@ -1,16 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsNumberString, IsOptional } from 'class-validator';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
 export const DEFAULT_PAGE_SIZE = 50;
 
-export class CursorPaginationDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsDateString()
-  cursor?: string;
+const CursorPaginationSchema = z
+  .object({
+    cursor: z.iso.datetime({ offset: true }).optional(),
+    limit: z.string().regex(/^\d+$/).optional().meta({ default: DEFAULT_PAGE_SIZE }),
+  })
+  .meta({ id: 'CursorPaginationDto' });
 
-  @ApiProperty({ required: false, default: DEFAULT_PAGE_SIZE })
-  @IsOptional()
-  @IsNumberString()
-  limit?: string;
-}
+export class CursorPaginationDto extends createZodDto(CursorPaginationSchema) {}

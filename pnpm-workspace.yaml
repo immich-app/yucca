@@ -73,8 +73,6 @@ catalog:
   '@vitest/browser-playwright': ^4.0.18
   aws4fetch: ^1.0.20
   better-sqlite3: ^12.6.2
-  class-transformer: ^0.5.1
-  class-validator: ^0.14.3
   cookie: ^1.1.1
   cron: ^4.4.0
   cron-validate: ^1.5.3
@@ -97,6 +95,7 @@ catalog:
   luxon: ^3.7.2
   nestjs-kysely: ^3.1.2
   nestjs-otel: ^8.0.2
+  nestjs-zod: ^5.5.0
   nodemon: ^3.1.11
   oazapfts: ^7.0.1
   oidc-provider: ^9.8.3

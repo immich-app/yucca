@@ -10,5 +10,12 @@ async function main() {
   await app.close();
 }
 
-// eslint-disable-next-line unicorn/no-process-exit
-void main().finally(() => process.exit(0));
+void main().then(
+  // eslint-disable-next-line unicorn/no-process-exit
+  () => process.exit(0),
+  (error: unknown) => {
+    console.error(error);
+    // eslint-disable-next-line unicorn/no-process-exit
+    process.exit(1);
+  },
+);

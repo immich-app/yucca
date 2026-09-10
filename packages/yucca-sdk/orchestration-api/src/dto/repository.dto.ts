@@ -1,306 +1,214 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
-import { BackendType, TaskStatus, TaskType } from '../enum';
-import type { RunType } from '../schema/tables/runHistory.table';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
+import { TaskStatus, TaskType } from '../enum';
+import { BackendTypeSchema } from './backend.dto';
+import { TaskStatusSchema } from './runningTasks.dto';
 
-export class RetentionPolicyDto {
-  @ApiProperty({ type: 'integer', required: false })
-  keepLast?: number;
-
-  @ApiProperty({ type: String, required: false })
-  keepWithin?: string;
-
-  @ApiProperty({ type: String, required: false })
-  keepWithinHourly?: string;
-
-  @ApiProperty({ type: String, required: false })
-  keepWithinDaily?: string;
-
-  @ApiProperty({ type: String, required: false })
-  keepWithinWeekly?: string;
-
-  @ApiProperty({ type: String, required: false })
-  keepWithinMonthly?: string;
-
-  @ApiProperty({ type: String, required: false })
-  keepWithinYearly?: string;
-}
-
-export class RepositoryDto {
-  @ApiProperty({ type: String })
-  id!: string;
-
-  @ApiProperty({ type: Boolean })
-  worm!: boolean;
-
-  @ApiProperty({ type: String })
-  name!: string;
-
-  @ApiProperty({ type: String, nullable: true })
-  siteCode!: string | null;
-
-  @ApiProperty({ type: String, nullable: true })
-  storageClusterCode!: string | null;
-}
-
-export class RepositoryMetricsDto {
-  @ApiProperty({ type: String, required: false })
-  lastBackup?: string;
-
-  @ApiProperty({ enumName: 'TaskStatus', enum: TaskStatus, required: false })
-  lastBackupStatus?: TaskStatus;
-
-  @ApiProperty({ type: 'integer', required: false })
-  lastBackupDuration?: number;
-
-  @ApiProperty({ type: 'integer' })
-  sizeBytes!: number;
-}
-
-export class RepositoryMeterDto {
-  @ApiProperty({ type: Number })
-  sizeBytes!: number;
-
-  @ApiProperty({ type: Number })
-  objectCount!: number;
-
-  @ApiProperty({ type: String, required: false })
-  lastUpdated?: string;
-}
-
-export class RepositoryWithMetricsDto extends RepositoryDto {
-  @ApiProperty({ type: RepositoryMetricsDto })
-  metrics!: RepositoryMetricsDto;
-
-  @ApiProperty({ type: RepositoryMeterDto, required: false })
-  meter?: RepositoryMeterDto;
-}
-
-export class RepositoryBackendDto {
-  @ApiProperty({ type: String })
-  id!: string;
-
-  @ApiProperty({ enumName: 'BackendType', enum: BackendType })
-  type!: BackendType;
-
-  @ApiProperty({ type: Boolean })
-  online!: boolean;
-}
-
-export class RepositoryBackendsDto {
-  @ApiProperty({ type: RepositoryBackendDto })
-  primary!: RepositoryBackendDto;
-
-  @ApiProperty({ type: [RepositoryBackendDto] })
-  secondary!: RepositoryBackendDto[];
-}
-
-export class RepositoryConfigurationDto {
-  @ApiProperty({ type: [String] })
-  paths!: string[];
-
-  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
-  retentionPolicy!: RetentionPolicyDto | null;
-}
-
-export class LocalRepositoryDto extends RepositoryWithMetricsDto {
-  @ApiProperty({ type: RepositoryBackendsDto, required: false })
-  backends?: RepositoryBackendsDto;
-
-  @ApiProperty({
-    type: RepositoryConfigurationDto,
-    required: false,
+export const RetentionPolicySchema = z
+  .object({
+    keepLast: z.int().optional(),
+    keepWithin: z.string().optional(),
+    keepWithinHourly: z.string().optional(),
+    keepWithinDaily: z.string().optional(),
+    keepWithinWeekly: z.string().optional(),
+    keepWithinMonthly: z.string().optional(),
+    keepWithinYearly: z.string().optional(),
   })
-  configuration?: RepositoryConfigurationDto;
-}
+  .meta({ id: 'RetentionPolicyDto' });
 
-export class RepositoryCreateRequestDto {
-  @ApiProperty({ type: String })
-  @IsString()
-  name!: string;
+const RepositorySchema = z
+  .object({
+    id: z.string(),
+    worm: z.boolean(),
+    name: z.string(),
+    siteCode: z.string().nullable(),
+    storageClusterCode: z.string().nullable(),
+  })
+  .meta({ id: 'RepositoryDto' });
 
-  @ApiProperty({ type: Boolean })
-  @IsBoolean()
-  worm!: boolean;
+const RepositoryMetricsSchema = z
+  .object({
+    lastBackup: z.string().nullable().optional(),
+    lastBackupStatus: TaskStatusSchema.optional(),
+    lastBackupDuration: z.int().optional(),
+    sizeBytes: z.int(),
+  })
+  .meta({ id: 'RepositoryMetricsDto' });
 
-  @ApiProperty({ type: String, required: false, description: 'Internal site code from environment metadata' })
-  @IsOptional()
-  @IsString()
-  site?: string;
+const RepositoryMeterSchema = z
+  .object({
+    sizeBytes: z.int(),
+    objectCount: z.int(),
+    lastUpdated: z.string().nullable().optional(),
+  })
+  .meta({ id: 'RepositoryMeterDto' });
 
-  @ApiProperty({ type: [String], required: false })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  paths?: string[];
-}
+const RepositoryWithMetricsSchema = RepositorySchema.extend({
+  metrics: RepositoryMetricsSchema,
+  meter: RepositoryMeterSchema.optional(),
+}).meta({ id: 'RepositoryWithMetricsDto' });
 
-export class RepositoryCreateResponseDto {
-  @ApiProperty({ type: LocalRepositoryDto })
-  repository!: LocalRepositoryDto;
-}
+const RepositoryBackendSchema = z
+  .object({
+    id: z.string(),
+    type: BackendTypeSchema,
+    online: z.boolean(),
+  })
+  .meta({ id: 'RepositoryBackendDto' });
 
-export class RepositoryPrimaryBackendReconfigureRequestDto {
-  @ApiProperty({ type: String, required: true })
-  @IsString()
-  backendId!: string;
-}
+const RepositoryBackendsSchema = z
+  .object({
+    primary: RepositoryBackendSchema,
+    secondary: z.array(RepositoryBackendSchema),
+  })
+  .meta({ id: 'RepositoryBackendsDto' });
 
-export class RepositoryUpdateRequestDto {
-  @ApiProperty({ type: String, required: false })
-  @IsOptional()
-  @IsString()
-  name?: string;
+const RepositoryConfigurationSchema = z
+  .object({
+    paths: z.array(z.string()),
+    retentionPolicy: RetentionPolicySchema.nullable().optional(),
+  })
+  .meta({ id: 'RepositoryConfigurationDto' });
 
-  @ApiProperty({ type: Boolean, required: false })
-  @IsOptional()
-  @IsBoolean()
-  worm?: boolean;
+const LocalRepositorySchema = RepositoryWithMetricsSchema.extend({
+  backends: RepositoryBackendsSchema.optional(),
+  configuration: RepositoryConfigurationSchema.optional(),
+}).meta({ id: 'LocalRepositoryDto' });
 
-  @ApiProperty({ type: [String], required: false })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  paths?: string[];
+const RepositoryCreateRequestSchema = z
+  .object({
+    name: z.string(),
+    worm: z.boolean(),
+    site: z.string().optional().describe('Internal site code from environment metadata'),
+    paths: z.array(z.string()).optional(),
+  })
+  .meta({ id: 'RepositoryCreateRequestDto' });
 
-  @ApiProperty({ type: RetentionPolicyDto, required: false, nullable: true })
-  @IsOptional()
-  @IsObject()
-  retentionPolicy?: RetentionPolicyDto | null;
-}
+const RepositoryCreateResponseSchema = z
+  .object({ repository: LocalRepositorySchema })
+  .meta({ id: 'RepositoryCreateResponseDto' });
 
-export class RepositoryUpdateResponseDto {
-  @ApiProperty()
-  repository!: LocalRepositoryDto;
-}
+const RepositoryPrimaryBackendReconfigureRequestSchema = z
+  .object({ backendId: z.string() })
+  .meta({ id: 'RepositoryPrimaryBackendReconfigureRequestDto' });
 
-export class RepositoryListResponseDto {
-  @ApiProperty({ type: [LocalRepositoryDto] })
-  repositories!: LocalRepositoryDto[];
-}
+const RepositoryUpdateRequestSchema = z
+  .object({
+    name: z.string().optional(),
+    worm: z.boolean().optional(),
+    paths: z.array(z.string()).optional(),
+    retentionPolicy: RetentionPolicySchema.nullable().optional(),
+  })
+  .meta({ id: 'RepositoryUpdateRequestDto' });
 
-export class RepositoryCheckImportResponseDto {
-  @ApiProperty({ type: Boolean })
-  readable!: boolean;
-}
+const RepositoryUpdateResponseSchema = z
+  .object({ repository: LocalRepositorySchema })
+  .meta({ id: 'RepositoryUpdateResponseDto' });
 
-export class RunDto {
-  @ApiProperty({ type: String })
-  id!: string;
+const RepositoryListResponseSchema = z
+  .object({ repositories: z.array(LocalRepositorySchema) })
+  .meta({ id: 'RepositoryListResponseDto' });
 
-  @ApiProperty({ type: String })
-  repositoryId!: string;
+const RepositoryCheckImportResponseSchema = z
+  .object({ readable: z.boolean() })
+  .meta({ id: 'RepositoryCheckImportResponseDto' });
 
-  @ApiProperty({ type: String })
-  start!: string;
+const RunSchema = z
+  .object({
+    id: z.string(),
+    repositoryId: z.string(),
+    start: z.string(),
+    end: z.string().optional(),
+    logFilePath: z.string(),
+    status: z.enum(TaskStatus).meta({ id: 'RunStatus' }),
+    type: z.enum(TaskType).meta({ id: 'RunType' }),
+  })
+  .meta({ id: 'RunDto' });
 
-  @ApiProperty({ type: String })
-  end?: string;
+const RunHistoryResponseSchema = z.object({ runs: z.array(RunSchema) }).meta({ id: 'RunHistoryResponseDto' });
 
-  @ApiProperty({ type: String })
-  logFilePath!: string;
+const RunResponseSchema = z.object({ run: RunSchema }).meta({ id: 'RunResponseDto' });
 
-  @ApiProperty({ enumName: 'RunStatus', enum: TaskStatus })
-  status!: TaskStatus;
+const SnapshotSummarySchema = z
+  .object({
+    filesNew: z.int(),
+    filesChanged: z.int(),
+    filesUnmodified: z.int(),
+    totalFiles: z.int(),
+    totalBytes: z.int(),
+    dataAdded: z.int(),
+  })
+  .meta({ id: 'SnapshotSummaryDto' });
 
-  @ApiProperty({ enumName: 'RunType', enum: TaskType })
-  type!: RunType;
-}
+const SnapshotSchema = z
+  .object({
+    id: z.string(),
+    time: z.string(),
+    paths: z.array(z.string()),
+    tags: z.array(z.string()).optional(),
+    summary: SnapshotSummarySchema.optional(),
+  })
+  .meta({ id: 'SnapshotDto' });
 
-export class RunHistoryResponseDto {
-  @ApiProperty({ type: [RunDto] })
-  runs!: RunDto[];
-}
+const ListSnapshotsResponseSchema = z
+  .object({ snapshots: z.array(SnapshotSchema) })
+  .meta({ id: 'ListSnapshotsResponseDto' });
 
-export class RunResponseDto {
-  @ApiProperty({ type: RunDto })
-  run!: RunDto;
-}
+const GetSnapshotResponseSchema = z.object({ snapshot: SnapshotSchema }).meta({ id: 'GetSnapshotResponseDto' });
 
-export class SnapshotSummaryDto {
-  @ApiProperty({ type: Number })
-  filesNew!: number;
+const RepositorySnapshotRestoreRequestSchema = z
+  .object({
+    target: z.string().optional(),
+    include: z.array(z.string()).optional(),
+  })
+  .meta({ id: 'RepositorySnapshotRestoreRequestDto' });
 
-  @ApiProperty({ type: Number })
-  filesChanged!: number;
+const RepositorySnapshotRestoreFromPointRequestSchema = z
+  .object({
+    yuccaConfig: z.string().optional(),
+    include: z.array(z.string()).optional(),
+  })
+  .meta({ id: 'RepositorySnapshotRestoreFromPointRequestDto' });
 
-  @ApiProperty({ type: Number })
-  filesUnmodified!: number;
+const LogResponseSchema = z.object({ logId: z.string() }).meta({ id: 'LogResponseDto' });
 
-  @ApiProperty({ type: Number })
-  totalFiles!: number;
+const InspectedLocalRepositorySchema = LocalRepositorySchema.extend({
+  snapshots: z.array(SnapshotSchema).optional(),
+}).meta({ id: 'InspectedLocalRepositoryDto' });
 
-  @ApiProperty({ type: Number })
-  totalBytes!: number;
+const RepositoryInspectResponseSchema = z
+  .object({ repositories: z.array(InspectedLocalRepositorySchema) })
+  .meta({ id: 'RepositoryInspectResponseDto' });
 
-  @ApiProperty({ type: Number })
-  dataAdded!: number;
-}
-
-export class SnapshotDto {
-  @ApiProperty({ type: String })
-  id!: string;
-
-  @ApiProperty({ type: String })
-  time!: string;
-
-  @ApiProperty({ type: [String] })
-  paths!: string[];
-
-  @ApiProperty({ type: [String], required: false })
-  tags?: string[];
-
-  @ApiProperty({ type: SnapshotSummaryDto, required: false })
-  summary?: SnapshotSummaryDto;
-}
-
-export class ListSnapshotsResponseDto {
-  @ApiProperty({ type: [SnapshotDto] })
-  snapshots!: SnapshotDto[];
-}
-
-export class GetSnapshotResponseDto {
-  @ApiProperty({ type: SnapshotDto })
-  snapshot!: SnapshotDto;
-}
-
-export class RepositorySnapshotRestoreRequestDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  target?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  include?: string[];
-}
-
-export class RepositorySnapshotRestoreFromPointRequestDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  yuccaConfig?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  include?: string[];
-}
-
-export class LogResponseDto {
-  @ApiProperty({ type: String })
-  logId!: string;
-}
-
-export class InspectedLocalRepositoryDto extends LocalRepositoryDto {
-  @ApiProperty({ type: [SnapshotDto] })
-  snapshots?: SnapshotDto[];
-}
-
-export class RepositoryInspectResponseDto {
-  @ApiProperty({ type: [InspectedLocalRepositoryDto] })
-  repositories!: InspectedLocalRepositoryDto[];
-}
+export class RetentionPolicyDto extends createZodDto(RetentionPolicySchema) {}
+export class RepositoryDto extends createZodDto(RepositorySchema) {}
+export class RepositoryMetricsDto extends createZodDto(RepositoryMetricsSchema) {}
+export class RepositoryMeterDto extends createZodDto(RepositoryMeterSchema) {}
+export class RepositoryWithMetricsDto extends createZodDto(RepositoryWithMetricsSchema) {}
+export class RepositoryBackendDto extends createZodDto(RepositoryBackendSchema) {}
+export class RepositoryBackendsDto extends createZodDto(RepositoryBackendsSchema) {}
+export class RepositoryConfigurationDto extends createZodDto(RepositoryConfigurationSchema) {}
+export class LocalRepositoryDto extends createZodDto(LocalRepositorySchema) {}
+export class RepositoryCreateRequestDto extends createZodDto(RepositoryCreateRequestSchema) {}
+export class RepositoryCreateResponseDto extends createZodDto(RepositoryCreateResponseSchema) {}
+export class RepositoryPrimaryBackendReconfigureRequestDto extends createZodDto(
+  RepositoryPrimaryBackendReconfigureRequestSchema,
+) {}
+export class RepositoryUpdateRequestDto extends createZodDto(RepositoryUpdateRequestSchema) {}
+export class RepositoryUpdateResponseDto extends createZodDto(RepositoryUpdateResponseSchema) {}
+export class RepositoryListResponseDto extends createZodDto(RepositoryListResponseSchema) {}
+export class RepositoryCheckImportResponseDto extends createZodDto(RepositoryCheckImportResponseSchema) {}
+export class RunDto extends createZodDto(RunSchema) {}
+export class RunHistoryResponseDto extends createZodDto(RunHistoryResponseSchema) {}
+export class RunResponseDto extends createZodDto(RunResponseSchema) {}
+export class SnapshotSummaryDto extends createZodDto(SnapshotSummarySchema) {}
+export class SnapshotDto extends createZodDto(SnapshotSchema) {}
+export class ListSnapshotsResponseDto extends createZodDto(ListSnapshotsResponseSchema) {}
+export class GetSnapshotResponseDto extends createZodDto(GetSnapshotResponseSchema) {}
+export class RepositorySnapshotRestoreRequestDto extends createZodDto(RepositorySnapshotRestoreRequestSchema) {}
+export class RepositorySnapshotRestoreFromPointRequestDto extends createZodDto(
+  RepositorySnapshotRestoreFromPointRequestSchema,
+) {}
+export class LogResponseDto extends createZodDto(LogResponseSchema) {}
+export class InspectedLocalRepositoryDto extends createZodDto(InspectedLocalRepositorySchema) {}
+export class RepositoryInspectResponseDto extends createZodDto(RepositoryInspectResponseSchema) {}
