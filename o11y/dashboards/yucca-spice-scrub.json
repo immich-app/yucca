@@ -41,7 +41,7 @@
       "title": "What this covers",
       "gridPos": {
         "h": 7,
-        "w": 19,
+        "w": 14,
         "x": 0,
         "y": 0
       },
@@ -59,9 +59,9 @@
         "uid": "$datasource"
       },
       "gridPos": {
-        "h": 7,
-        "w": 5,
-        "x": 19,
+        "h": 4,
+        "w": 10,
+        "x": 14,
         "y": 0
       },
       "targets": [
@@ -74,7 +74,7 @@
           "instant": true,
           "range": false,
           "legendFormat": "",
-          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})) / sum(max by (cluster, pool_id) (ceph_scrub_pool_pgs{project=\"yucca\", cluster=~\"$cluster\"}))"
+          "expr": "(4 * (max(ceph_osd_flag_nodeep_scrub{project=\"yucca\", cluster=~\"$cluster\"}) == 1))\nor (vector(3) and (sum(max by (cluster, pool_id) (ceph_scrub_breach_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})) > 0))\nor (vector(2) and (sum(max by (cluster, pool_id) (ceph_scrub_due_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})) > 0))\nor (vector(1) and (sum(max by (cluster, pool_id) (ceph_scrub_overdue_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})) > 0))\nor vector(0)"
         }
       ],
       "options": {
@@ -116,31 +116,117 @@
                 "0": {
                   "text": "On track",
                   "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Clearing backlog",
+                  "color": "blue",
                   "index": 1
-                }
-              }
-            },
-            {
-              "type": "range",
-              "options": {
-                "from": 0,
-                "to": 0.01,
-                "result": {
-                  "text": "Slipping",
+                },
+                "2": {
+                  "text": "Behind schedule",
                   "color": "orange",
                   "index": 2
-                }
-              }
-            },
-            {
-              "type": "range",
-              "options": {
-                "from": 0.01,
-                "to": null,
-                "result": {
-                  "text": "Behind",
+                },
+                "3": {
+                  "text": "Past warn deadline",
                   "color": "red",
                   "index": 3
+                },
+                "4": {
+                  "text": "Deep scrub paused",
+                  "color": "orange",
+                  "index": 4
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "blue",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 3
+              },
+              {
+                "color": "orange",
+                "value": 4
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "Deep-scrub verdict, worst state first. Deep scrub paused: nodeep-scrub is set, so every other number on this dashboard is explained by that. Past warn deadline: a PG is older than interval x (1 + mon_warn_pg_not_deep_scrubbed_ratio), the age the mon raises PG_NOT_DEEP_SCRUBBED at, so this state cannot disagree with ceph health. Behind schedule: ceph's own published scrub target for a PG is already in the past, meaning the scheduler is losing ground. Clearing backlog: PGs sit past the target interval but ceph is still on schedule for every one of them. That last state is normal, not a problem: ceph randomizes eligibility past the interval and pushes a deferred target, so PGs legitimately age past it. Judging this panel on age past the interval alone reported Behind on a HEALTH_OK cluster whose worst PG was minutes late."
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Behind ceph's schedule (deep)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 14,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "legendFormat": "",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_due_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "None",
+                  "color": "green",
+                  "index": 0
                 }
               }
             }
@@ -154,18 +240,92 @@
               },
               {
                 "color": "orange",
-                "value": 0.0001
-              },
-              {
-                "color": "red",
-                "value": 0.01
+                "value": 1
               }
             ]
           }
         },
         "overrides": []
       },
-      "description": "Plain-language verdict for the deep-scrub cycle, driven by the share of PGs whose last deep scrub is past its pool's target interval. It counts PGs rather than bytes deliberately: pools that store their data in omap, such as the RGW bucket index, report zero bytes and are invisible to the byte-weighted coverage stat. Ceph only makes a PG eligible for deep scrub once it reaches the interval, so the oldest PG's age sits just under the target in normal operation; keying off overdue PGs instead means On track is a state a healthy cluster actually reaches."
+      "description": "PGs whose next deep scrub ceph itself scheduled for a time already past. Unlike PGs overdue, this reads zero on a healthy cluster: it is ceph's own target, not a wall-clock age against the interval. Nonzero and sustained means the scheduler cannot keep up, and ceph_scrub_due_max_seconds says by how much; minutes is normal jitter, hours is a stall. scrub_schedule names only the nearest of a PG's two targets, so a PG late at both depths lands under whichever ceph named; read Past warn deadline, which comes from the stamps, when the depth has to be exact."
+    },
+    {
+      "id": 32,
+      "type": "stat",
+      "title": "Past warn deadline (deep)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 19,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "legendFormat": "",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_breach_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "None",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "PGs older than interval x (1 + mon_warn_pg_not_deep_scrubbed_ratio), the age at which the mon raises PG_NOT_DEEP_SCRUBBED. This is the number that means data verification has actually slipped and the one to escalate on. Anything nonzero here is also in ceph health detail."
     },
     {
       "id": 2,
@@ -1410,7 +1570,7 @@
         },
         "overrides": []
       },
-      "description": "Stored bytes in PGs whose last deep scrub is older than the target interval. These are logical bytes excluding omap: do not compare them with raw capacity metrics such as ceph_osd_stat_bytes_used without the per-pool expansion factor ceph_pool_stored_raw / ceph_pool_stored, and do not read None here as proof that nothing is overdue; PGs overdue is the byte-agnostic check."
+      "description": "Bytes in PGs whose last deep scrub is older than the pool's target interval. Same caveat as the PG count: work outstanding, not a breach. Logical bytes, so never mix it with raw capacity metrics like ceph_osd_stat_bytes_used."
     },
     {
       "id": 19,
@@ -1489,7 +1649,7 @@
         },
         "overrides": []
       },
-      "description": "PGs whose last deep scrub is older than the target interval. PGs whose stamp could not be parsed are counted here, so a format change reads as overdue rather than as silently clean."
+      "description": "PGs whose last deep scrub is older than the pool's target interval. This is workload outstanding, not lateness: ceph randomizes eligibility past the interval and pushes a deferred target's not_before, so a healthy cluster always carries some. Use Behind ceph's schedule and Past warn deadline for the verdict; use this one for how much work is queued up."
     },
     {
       "id": 20,
@@ -1762,6 +1922,17 @@
           "refId": "D",
           "legendFormat": "target (longest)",
           "expr": "max(ceph_scrub_target_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "E",
+          "instant": false,
+          "range": true,
+          "legendFormat": "mon warn deadline",
+          "expr": "max(ceph_scrub_warn_interval_seconds{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"})"
         }
       ],
       "options": {
@@ -1834,10 +2005,159 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mon warn deadline"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
           }
         ]
       },
       "description": "Age of the median and 95th-percentile stored byte since its last deep scrub, against the interval read live from the cluster rather than a hardcoded assumption. The quantiles merge every pool, but the target is per pool, so both bounds are drawn: below the shortest target nothing is overdue, above the longest everything is, and between them the merged view cannot say which pool a byte belongs to. The two lines coincide while every pool shares an interval and separate the moment one is overridden; the overdue stats beside this panel stay authoritative either way. The histogram carries gauge semantics under a histogram type: never apply rate() or increase() to these series, and its _count counts bytes, not events. Buckets are deduped per le across instances, so snapshots taken a refresh apart can briefly invert two adjacent buckets; the engine clamps them monotonic, which nudges the quantile rather than failing the query."
+    },
+    {
+      "id": 33,
+      "type": "timeseries",
+      "title": "Backlog composition (deep)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$datasource"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 55
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "A",
+          "instant": false,
+          "range": true,
+          "legendFormat": "past target interval",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_overdue_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "B",
+          "instant": false,
+          "range": true,
+          "legendFormat": "past ceph's own schedule",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_due_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+          },
+          "refId": "C",
+          "instant": false,
+          "range": true,
+          "legendFormat": "past the mon warn deadline",
+          "expr": "sum(max by (cluster, pool_id) (ceph_scrub_breach_pgs{project=\"yucca\", cluster=~\"$cluster\", depth=\"deep\"}))"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "past target interval"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "past ceph's own schedule"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "past the mon warn deadline"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "description": "The three thresholds together, which is how to tell a backlog that is draining from one that is growing. Blue is workload outstanding and has a nonzero floor on a healthy cluster. Orange is the scheduler losing ground. Red is the policy miss the mon warns on. A scrub pause shows here as blue climbing while orange and red stay flat, then all of it draining once the flag clears; the pause annotations mark the window."
     },
     {
       "id": 24,
@@ -2194,7 +2514,7 @@
         },
         "overrides": []
       },
-      "description": "Scrub read bytes as a share of physical device reads. Deliberately uncolored: on this fleet scrub is nearly all read load whenever clients are write-heavy, so the median over 30 days is 92 percent and a red-above-80 rule would sit red permanently and signal nothing. It can exceed 100 percent, because OSD reads served from page cache never reach a disk. Read it as context for disk contention, not as a health signal."
+      "description": "PGs whose next deep scrub ceph itself scheduled for a time already past. Unlike PGs overdue, this reads zero on a healthy cluster: it is ceph's own target, not a wall-clock age against the interval. Nonzero and sustained means the scheduler cannot keep up, and ceph_scrub_due_max_seconds says by how much; minutes is normal jitter, hours is a stall. scrub_schedule names only the nearest of a PG's two targets, so a PG late at both depths lands under whichever ceph named; read Past warn deadline, which comes from the stamps, when the depth has to be exact."
     }
   ],
   "refresh": "1h",

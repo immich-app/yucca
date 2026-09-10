@@ -199,8 +199,10 @@ spec:
               - evaluator:
                   params: [0]
                   type: gt
-    # A stamp-format drift below the outage threshold: some PGs unparsable
-    # (counted overdue, fail-safe) while the refresh still succeeds.
+    # A format drift below the outage threshold, while the refresh still
+    # succeeds. Unparsable stamps count overdue and breached, fail-safe; an
+    # unreadable scrub_schedule instead fails quiet, zeroing ceph_scrub_due_pgs,
+    # so that gauge is covered by the same rule.
     - uid: monk-parse-errors
       title: MonkParseErrors
       condition: B
@@ -211,11 +213,13 @@ spec:
       labels:
         severity: warning
       annotations:
-        summary: monk is skipping unparsable scrub records
+        summary: monk cannot read some scrub records
         description: >-
-          ceph_scrub_parse_errors is nonzero on {{ $labels.instance }}
-          (cluster {{ $labels.cluster }}): some PG stamps no longer parse
-          (format drift?); affected PGs count as overdue until fixed.
+          a monk parse-error gauge is nonzero on {{ $labels.instance }}
+          (cluster {{ $labels.cluster }}): some PG stamps or scrub_schedule
+          strings no longer parse (format drift?). Unparsable stamps count
+          overdue and breached; unreadable schedules drop out of
+          ceph_scrub_due_pgs, so treat that verdict as unreliable until fixed.
       data:
         - refId: A
           relativeTimeRange:
@@ -228,8 +232,14 @@ spec:
             range: false
             intervalMs: 300000
             maxDataPoints: 43200
+            # The schedule gauge is absent until every instance runs a monk
+            # that exports it, and a bare addition drops samples the right side
+            # cannot match, blanking the rule on noDataState OK. The or-branch
+            # supplies a same-labelled zero until then.
             expr: >-
               last_over_time(ceph_scrub_parse_errors{project="yucca"}[5m])
+              + (last_over_time(ceph_scrub_schedule_parse_errors{project="yucca"}[5m])
+              or last_over_time(ceph_scrub_parse_errors{project="yucca"}[5m]) * 0)
         - refId: B
           relativeTimeRange:
             from: 600
