@@ -7545,7 +7545,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "description": "Positive series show bytes written by vmagent producers into Kafka. Negative series show bytes read by vmagent consumers from Kafka. Read this together with Messages in / out: a stable byte rate with rising message rate usually means smaller Kafka payloads and higher per-message overhead. Producer Kafka metrics aggregate at job level because they do not expose the full remoteWrite URL label.\n\nDocs: <a href=\"https://docs.victoriametrics.com/victoriametrics/integrations/kafka/#estimating-message-size-and-rate\" target=\"_blank\">estimating message size and rate</a>. Kafka read docs: <a href=\"https://docs.victoriametrics.com/victoriametrics/integrations/kafka/#reading-metrics\" target=\"_blank\">reading metrics</a>.",
+          "description": "Positive series show bits written by vmagent producers into Kafka. Negative series show bits read by vmagent consumers from Kafka. Read this together with Messages in / out: a stable bit rate with rising message rate usually means smaller Kafka payloads and higher per-message overhead. Producer Kafka metrics aggregate at job level because they do not expose the full remoteWrite URL label.\n\nDocs: <a href=\"https://docs.victoriametrics.com/victoriametrics/integrations/kafka/#estimating-message-size-and-rate\" target=\"_blank\">estimating message size and rate</a>. Kafka read docs: <a href=\"https://docs.victoriametrics.com/victoriametrics/integrations/kafka/#reading-metrics\" target=\"_blank\">reading metrics</a>.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -7596,7 +7596,7 @@
                   }
                 ]
               },
-              "unit": "Bps"
+              "unit": "bps"
             },
             "overrides": []
           },
@@ -7641,7 +7641,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(vmagent_remotewrite_kafka_sent_bytes_total{job=~\"$job\", cluster=~\"$cluster\"}[$__rate_interval])) by (job)",
+              "expr": "sum(rate(vmagent_remotewrite_kafka_sent_bytes_total{job=~\"$job\", cluster=~\"$cluster\"}[$__rate_interval])) by (job) * 8",
               "legendFormat": "Produced to Kafka",
               "range": true,
               "refId": "A"
@@ -7651,13 +7651,13 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "-sum(rate(vmagent_kafka_consumer_read_bytes_total{job=~\"$job\", cluster=~\"$cluster\"}[$__rate_interval])) by (job)",
+              "expr": "- sum(rate(vmagent_kafka_consumer_read_bytes_total{job=~\"$job\", cluster=~\"$cluster\"}[$__rate_interval])) by (job) * 8",
               "legendFormat": "Consumed from Kafka",
               "range": true,
               "refId": "B"
             }
           ],
-          "title": "Traffic (bytes)",
+          "title": "Traffic (bits)",
           "type": "timeseries"
         },
         {

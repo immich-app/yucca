@@ -581,7 +581,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -614,7 +614,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum by (namespace) (rate(container_network_receive_bytes_total{cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum by (namespace) (rate(container_network_receive_bytes_total{cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "{{namespace}} RX"
         },
         {
@@ -622,7 +622,7 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "expr": "sum by (namespace) (rate(container_network_transmit_bytes_total{cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum by (namespace) (rate(container_network_transmit_bytes_total{cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "{{namespace}} TX"
         }
       ],

@@ -780,7 +780,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -813,7 +813,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(rate({__name__=\"blobs.uploaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"blobs.uploaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "upload"
         },
         {
@@ -821,7 +821,7 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "expr": "sum(rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "download"
         }
       ],
@@ -869,7 +869,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -902,7 +902,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum by (repositoryId) (rate({__name__=\"blobs.uploaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum by (repositoryId) (rate({__name__=\"blobs.uploaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "up {{repositoryId}}"
         },
         {
@@ -910,7 +910,7 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "expr": "sum by (repositoryId) (rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum by (repositoryId) (rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "down {{repositoryId}}"
         }
       ],
@@ -958,7 +958,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -991,7 +991,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(rate({__name__=\"blobs.requested_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"blobs.requested_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "requested"
         },
         {
@@ -999,7 +999,7 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "expr": "sum(rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "downloaded"
         }
       ],
@@ -1212,7 +1212,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -1245,7 +1245,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum by (type) (rate({__name__=\"blobs.uploaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum by (type) (rate({__name__=\"blobs.uploaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "up {{type}}"
         },
         {
@@ -1253,7 +1253,7 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "expr": "sum by (type) (rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum by (type) (rate({__name__=\"blobs.downloaded_bytes\", customerId=~\"$user\", cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "down {{type}}"
         }
       ],

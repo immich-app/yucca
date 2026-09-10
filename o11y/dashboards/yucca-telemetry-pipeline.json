@@ -412,7 +412,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -445,7 +445,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum by (cluster) (rate(vmagent_remotewrite_conn_bytes_written_total[$__rate_interval]))",
+          "expr": "sum by (cluster) (rate(vmagent_remotewrite_conn_bytes_written_total[$__rate_interval])) * 8",
           "legendFormat": "{{cluster}}"
         }
       ],

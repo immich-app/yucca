@@ -723,7 +723,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -756,7 +756,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "sum(rate(ceph_pool_rd_bytes{cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate(ceph_pool_rd_bytes{cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "read"
         },
         {
@@ -764,7 +764,7 @@
             "uid": "$datasource"
           },
           "refId": "B",
-          "expr": "sum(rate(ceph_pool_wr_bytes{cluster=~\"$cluster\"}[$__rate_interval]))",
+          "expr": "sum(rate(ceph_pool_wr_bytes{cluster=~\"$cluster\"}[$__rate_interval])) * 8",
           "legendFormat": "write"
         }
       ],

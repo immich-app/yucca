@@ -433,7 +433,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -466,7 +466,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "topk(10, sum by (customerId) (rate({__name__=\"blobs.uploaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "expr": "topk(10, sum by (customerId) (rate({__name__=\"blobs.uploaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval]))) * 8",
           "legendFormat": "{{customerId}}"
         }
       ],
@@ -514,7 +514,7 @@
               }
             ]
           },
-          "unit": "Bps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -547,7 +547,7 @@
             "uid": "$datasource"
           },
           "refId": "A",
-          "expr": "topk(10, sum by (customerId) (rate({__name__=\"blobs.downloaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval])))",
+          "expr": "topk(10, sum by (customerId) (rate({__name__=\"blobs.downloaded_bytes\", cluster=~\"$cluster\"}[$__rate_interval]))) * 8",
           "legendFormat": "{{customerId}}"
         }
       ],

@@ -2372,7 +2372,7 @@
               }
             ]
           },
-          "unit": "binBps"
+          "unit": "bps"
         },
         "overrides": []
       },
@@ -2403,7 +2403,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"$namespace\", pod=~\"${created_by}.*\", cluster=\"$cluster\"}[$__rate_interval])) by (pod)",
+          "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"$namespace\", pod=~\"${created_by}.*\", cluster=\"$cluster\"}[$__rate_interval])) by (pod) * 8",
           "interval": "$resolution",
           "legendFormat": "Received - {{ pod }}",
           "range": true,
@@ -2415,7 +2415,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "- sum(rate(container_network_transmit_bytes_total{namespace=~\"$namespace\", pod=~\"${created_by}.*\", cluster=\"$cluster\"}[$__rate_interval])) by (pod)",
+          "expr": "- sum(rate(container_network_transmit_bytes_total{namespace=~\"$namespace\", pod=~\"${created_by}.*\", cluster=\"$cluster\"}[$__rate_interval])) by (pod) * 8",
           "interval": "$resolution",
           "legendFormat": "Transmitted - {{ pod }}",
           "range": true,
