@@ -50,8 +50,8 @@ func main() {
 	// ceph's own defaults (max and deep intervals both one week, min interval
 	// one day; osd_deep_scrub_interval's 28d on spice is that cluster's
 	// tuning, not ceph's default) so a cold start with an unreachable mon
-	// still serves sane thresholds; the target-interval and interval-read
-	// metrics show what was used and whether it is live.
+	// still serves overdue; late and breach stay unexported until a read
+	// succeeds, and the interval-read metrics show whether it is live.
 	intervals := collector.Intervals{
 		Global: map[collector.Depth]time.Duration{
 			collector.Shallow: 7 * 24 * time.Hour,

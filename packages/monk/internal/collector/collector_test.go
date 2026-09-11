@@ -270,6 +270,7 @@ func TestExporterMetricSurface(t *testing.T) {
 	}
 	exporter := &Exporter{}
 	exporter.Store(snap, time.Second)
+	exporter.StoreIntervalRead(true, time.Now())
 
 	if problems, err := testutil.CollectAndLint(exporter); err != nil || len(problems) > 0 {
 		t.Fatalf("lint: %v %v", problems, err)
@@ -343,6 +344,7 @@ func TestExporterOmitsDisabledHealthCheck(t *testing.T) {
 	}
 	exporter := &Exporter{}
 	exporter.Store(snap, time.Second)
+	exporter.StoreIntervalRead(true, time.Now())
 	expected := `
 # HELP ceph_scrub_breach_pgs PGs past the mgr's not-scrubbed warning deadline at this depth; absent while that check is disabled
 # TYPE ceph_scrub_breach_pgs gauge
@@ -680,5 +682,37 @@ func TestParseRatio(t *testing.T) {
 		if _, err := parseRatio(in); err == nil {
 			t.Errorf("parseRatio(%q) should error", in)
 		}
+	}
+}
+
+func TestExporterWithholdsLateAndBreachUntilConfigRead(t *testing.T) {
+	now := testNow(t)
+	raw := []byte(`{"pg_stats": [
+		{"pgid": "7.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-07-01T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}}
+	]}`)
+	snap, err := Compute(raw, now, testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exporter := &Exporter{}
+	exporter.Store(snap, time.Second)
+	withheld := []string{
+		"ceph_scrub_latest_target_seconds", "ceph_scrub_late_pgs", "ceph_scrub_late_bytes",
+		"ceph_scrub_late_max_seconds", "ceph_scrub_warn_interval_seconds",
+		"ceph_scrub_breach_pgs", "ceph_scrub_breach_bytes",
+	}
+	if n := testutil.CollectAndCount(exporter, withheld...); n != 0 {
+		t.Errorf("before any config read: %d late/breach series, want 0", n)
+	}
+	if n := testutil.CollectAndCount(exporter, "ceph_scrub_overdue_pgs"); n == 0 {
+		t.Error("overdue must still be exported before the first config read")
+	}
+	exporter.StoreIntervalRead(false, now)
+	if n := testutil.CollectAndCount(exporter, withheld...); n != 0 {
+		t.Errorf("after a failed first read: %d late/breach series, want 0", n)
+	}
+	exporter.StoreIntervalRead(true, now)
+	if n := testutil.CollectAndCount(exporter, withheld...); n == 0 {
+		t.Error("after a successful read: late/breach series missing")
 	}
 }
