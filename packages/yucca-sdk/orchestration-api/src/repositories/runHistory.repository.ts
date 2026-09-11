@@ -260,10 +260,12 @@ export class RunHistoryRepository {
   }
 
   async markIncompleteAsFailed() {
-    await this.db
+    return this.db
       .updateTable('runHistory')
       .set('status', TaskStatus.Failed)
+      .set('end', new Date().toISOString())
       .where('status', '=', TaskStatus.Incomplete)
+      .returningAll()
       .execute();
   }
 }
