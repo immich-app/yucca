@@ -27,7 +27,7 @@
 
 <AppShell>
   <AppShellHeader>
-    <div class="flex h-full items-center justify-between p-4">
+    <div class="flex w-full h-full items-center justify-between p-4">
       <Heading size="tiny">FUTO Backups</Heading>
       <HStack>
         <Avatar name={data.user!.name} />
