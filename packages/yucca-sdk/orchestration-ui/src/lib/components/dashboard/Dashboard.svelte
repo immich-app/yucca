@@ -4,6 +4,7 @@
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
+  import { getProvider } from "$lib/providers";
   import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import { Alert, LoadingSpinner, Stack } from "@immich/ui";
   import OnEvents from "../util/OnEvents.svelte";
@@ -16,12 +17,13 @@
   import DashboardTotalStored from "./DashboardTotalStored.svelte";
 
   type Props = {
-    local?: boolean;
     initialData?: RepositoryListResponseDto;
     onViewBackups?: () => void;
   };
 
-  const { local, initialData, onViewBackups }: Props = $props();
+  const { initialData, onViewBackups }: Props = $props();
+
+  const local = getProvider().api === "orchestrator";
 
   // svelte-ignore state_referenced_locally
   const query = useRepositories(initialData?.repositories);
@@ -29,9 +31,7 @@
     useRepositoryEventHandler();
 </script>
 
-{#if local}
-  <OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
-{/if}
+<OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
 
 {#if query.isLoading}
   <LoadingSpinner />
@@ -40,11 +40,7 @@
 {:else if query.isSuccess}
   <Stack gap={6}>
     <Stack direction="row" gap={4}>
-      <DashboardBackupHealth
-        repositories={query.data}
-        {local}
-        {onViewBackups}
-      />
+      <DashboardBackupHealth repositories={query.data} {onViewBackups} />
 
       {#if !local}
         <DashboardInstall />
@@ -56,6 +52,6 @@
       <DashboardTotalStored repositories={query.data} />
       <DashboardCurrentUsage />
     </Stack>
-    <DashboardRecentBackups repositories={query.data} {local} />
+    <DashboardRecentBackups repositories={query.data} />
   </Stack>
 {/if}

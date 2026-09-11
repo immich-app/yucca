@@ -8,16 +8,18 @@
     CardTitle,
     HStack,
   } from "@immich/ui";
+  import { getProvider } from "$lib/providers";
   import { getBackupOutcome } from "$lib/utils/backup-status";
   import VisualisationSegmentedBar from "../ui/VisualisationSegmentedBar.svelte";
 
   type Props = {
     repositories: LocalRepositoryDto[];
-    local?: boolean;
     onViewBackups?: () => void;
   };
 
-  const { repositories, local, onViewBackups }: Props = $props();
+  const { repositories, onViewBackups }: Props = $props();
+
+  const local = getProvider().api === "orchestrator";
 
   const total = $derived(repositories.length);
 

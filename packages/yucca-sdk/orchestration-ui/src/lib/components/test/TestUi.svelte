@@ -99,9 +99,9 @@
 
   <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
     {#if route === "dashboard"}
-      <Dashboard local onViewBackups={() => (route = "backups")} />
+      <Dashboard onViewBackups={() => (route = "backups")} />
     {:else if route === "backups"}
-      <BackupsList local />
+      <BackupsList />
     {:else if route === "config"}
       <GlobalSettings />
     {:else if route === "schedules"}

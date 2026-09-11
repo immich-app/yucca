@@ -6,6 +6,7 @@
     mdiCloudOffOutline,
     mdiHistory,
   } from "@mdi/js";
+  import { getProvider } from "$lib/providers";
   import { getBackupOutcome } from "$lib/utils/backup-status";
   import MetricsHistoryModal from "../backups/metrics-history/MetricsHistoryModal.svelte";
   import StackList from "../ui/StackList.svelte";
@@ -15,10 +16,11 @@
 
   type Props = {
     repositories: LocalRepositoryDto[];
-    local?: boolean;
   };
 
-  const { repositories, local }: Props = $props();
+  const { repositories }: Props = $props();
+
+  const local = getProvider().api === "orchestrator";
 
   const recentAttempts = $derived(
     repositories

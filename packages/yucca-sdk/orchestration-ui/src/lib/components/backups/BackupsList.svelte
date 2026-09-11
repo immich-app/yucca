@@ -4,6 +4,7 @@
     useRepositories,
     useRepositoryEventHandler,
   } from "$lib/services/repository.service";
+  import { getProvider } from "$lib/providers";
   import { Button, HStack, modalManager, Stack } from "@immich/ui";
   import StackList from "../ui/StackList.svelte";
   import StackListPlaceholder from "../ui/StackListPlaceholder.svelte";
@@ -13,11 +14,12 @@
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
 
   type Props = {
-    local?: boolean;
     initialData?: RepositoryListResponseDto;
   };
 
-  const { local, initialData }: Props = $props();
+  const { initialData }: Props = $props();
+
+  const local = getProvider().api === "orchestrator";
 
   // svelte-ignore state_referenced_locally
   const query = useRepositories(initialData?.repositories);
@@ -36,9 +38,7 @@
   const createNewBackup = () => modalManager.show(CreateRepositoryModal);
 </script>
 
-{#if local}
-  <OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onRepositoryDelete} />
-{/if}
+<OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onRepositoryDelete} />
 
 <Stack gap={6}>
   {#if local}
@@ -48,7 +48,7 @@
 
         <Suspense {query}>
           {#each localRepositories as repository (repository.id)}
-            <BackupItem {repository} {local} />
+            <BackupItem {repository} />
           {/each}
 
           {#if localRepositories.length === 0}
