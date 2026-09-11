@@ -10,6 +10,7 @@ node_modules
 # Exception: tf/.env is committed — contains only op:// references to 1P items,
 # no literal secrets. Resolved at runtime by `op run --env-file=tf/.env -- ...`.
 !tf/.env
+!tf/pages/.env
 
 mise.local.toml
 

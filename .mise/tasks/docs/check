@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Run Svelte checks for docs"
+set -e
+
+pnpm --filter docs check

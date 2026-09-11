@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run docs in preview mode"
+#MISE depends=["docs:build"]
+set -e
+
+pnpm --filter docs preview --host

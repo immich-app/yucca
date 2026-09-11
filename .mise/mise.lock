@@ -490,3 +490,11 @@ checksum = "sha256:f86836c637333c65bbc7902acc9c49888eef9fbd15dccbc1946b10e30b041
 url = "https://github.com/astral-sh/uv/releases/download/0.9.18/uv-x86_64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/329397657"
 provenance = "github-attestations"
+
+[[tools.wrangler]]
+version = "4.127.0"
+backend = "npm:wrangler"
+specifiers = ["4.127.0"]
+
+[tools.wrangler.options]
+allow_builds = '["esbuild", "sharp", "workerd"]'
