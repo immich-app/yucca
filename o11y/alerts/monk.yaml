@@ -154,10 +154,10 @@ spec:
               - evaluator:
                   params: [0]
                   type: gt
-    # Stale thresholds judge overdue, late and breach silently: a failed read
-    # keeps the last-known scheduler inputs (osd section) and health-check
-    # inputs (mgr section), or ceph's built-in defaults if this instance has
-    # not read the cluster since it started, which is correct and invisible.
+    # Stale thresholds judge silently: a failed read keeps the last-known osd
+    # and mgr config. Before an instance's first successful read monk has only
+    # ceph's built-in defaults, so it withholds late and breach and judges
+    # overdue alone against them.
     - uid: monk-interval-read-failing
       title: MonkIntervalReadFailing
       condition: B
@@ -171,15 +171,14 @@ spec:
         summary: monk cannot read the cluster's scrub intervals
         description: >-
           ceph_scrub_interval_read_success is 0 on {{ $labels.instance }}
-          (cluster {{ $labels.cluster }}) for an hour; a failed read keeps
-          the last-known scheduler inputs (osd section) and health-check
-          inputs (mgr section), or ceph's built-in defaults if this instance
-          has not read the cluster since it started (7d for both scrub
-          intervals, min interval 1d, randomize ratio 0.5, deep interval cv
-          0.2, warn ratios 0.5 and 0.75); on a cluster tuned to a 28d deep
-          interval that overstates deep overdue, late and breach, so the
-          verdict may read Falling behind or Past warn deadline while ceph
-          is HEALTH_OK.
+          (cluster {{ $labels.cluster }}) for an hour. After a successful read
+          monk keeps the last-known osd and mgr scrub config, which goes stale
+          if the cluster's config changes. If this instance has not read the
+          cluster since it started, it withholds late and breach and judges
+          overdue against ceph's built-in defaults (7d for both intervals),
+          which overstates deep overdue on a cluster tuned to 28d; the verdict
+          can then read Work outstanding, but not Falling behind or Past warn
+          deadline, from this instance.
       data:
         - refId: A
           relativeTimeRange:
