@@ -1,10 +1,10 @@
 <script>
   import { TooltipProvider } from "@immich/ui";
-  import { orchestrationApiProvider, setProvider } from "$lib/providers";
+  import { configureYucca } from "$lib/providers";
 
   const { children } = $props();
 
-  setProvider(orchestrationApiProvider);
+  configureYucca({ api: "orchestrator" });
 </script>
 
 <TooltipProvider>

@@ -1,20 +1,13 @@
 <script lang="ts">
   import { TooltipProvider } from "@immich/ui";
   import { QueryClientProvider } from "@tanstack/svelte-query";
-  import { defaults as orchestrationDefaults } from "$lib/fetch-client";
   import type { Snippet } from "svelte";
 
   type Props = {
     children: Snippet;
-    baseUrl?: string;
   };
 
-  const { baseUrl, children }: Props = $props();
-
-  // svelte-ignore state_referenced_locally
-  if (typeof baseUrl === "string") {
-    orchestrationDefaults.baseUrl = baseUrl;
-  }
+  const { children }: Props = $props();
 
   import { queryClient } from "$lib/query-client";
 </script>

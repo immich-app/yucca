@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
 
 import * as sdk from '../src/lib/fetch-client';
+import { configureYucca } from '../src/lib/providers';
 
 test.beforeAll(async () => {
+  configureYucca({ api: 'orchestrator', baseUrl: 'http://localhost:22676' });
   await sdk.resetOrchestrator();
   await sdk.importRecoveryKey({
     recoveryKey: '0'.repeat(64),

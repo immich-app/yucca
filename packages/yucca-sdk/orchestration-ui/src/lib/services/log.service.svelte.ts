@@ -1,4 +1,4 @@
-import { defaults } from '$lib/fetch-client';
+import { getProvider } from '$lib/providers';
 import { formatDuration } from '$lib/utils/format';
 import debounce from 'lodash.debounce';
 
@@ -165,7 +165,7 @@ export function createLogObserver(logId: string) {
   };
 
   const source = new EventSource(
-    `${defaults.baseUrl}/api/yucca/logs/${logId}/stream`,
+    `${getProvider().baseUrl}/api/yucca/logs/${logId}/stream`,
   );
   source.addEventListener('message', ({ data }) => onEvent(JSON.parse(data)));
 

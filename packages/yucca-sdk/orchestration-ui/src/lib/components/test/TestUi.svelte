@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { orchestrationApiProvider, setProvider } from "$lib/providers";
   import {
     AppShell,
     AppShellHeader,
@@ -18,8 +17,6 @@
   import BackupsList from "../backups/BackupsList.svelte";
   import Dashboard from "../dashboard/Dashboard.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
-
-  setProvider(orchestrationApiProvider);
 
   let open = $state(true);
   let route = $state("dashboard");

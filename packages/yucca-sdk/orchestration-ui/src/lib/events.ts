@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { defaults } from './fetch-client';
+import { getProvider } from './providers';
 
 let socket: Socket;
 
@@ -15,7 +15,7 @@ export class SocketEvent<T> extends Event {
 }
 
 function createSocket() {
-  socket = io(defaults.baseUrl || undefined, {
+  socket = io(getProvider().baseUrl || undefined, {
     path: '/api/yucca/socket.io',
     transports: ['websocket'],
     autoConnect: false,

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { orchestrationApiProvider, setProvider } from "$lib/providers";
+  import { configureYucca } from "$lib/providers";
   import { themeManager, ThemePreference, toastManager } from "@immich/ui";
   import { YuccaContext } from "$lib";
   import "./layout.css";
 
   const { children } = $props();
 
-  setProvider(orchestrationApiProvider);
+  configureYucca({ api: "orchestrator", baseUrl: "http://localhost:22676" });
 
   themeManager.setPreference(ThemePreference.Light);
 
