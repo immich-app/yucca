@@ -250,7 +250,7 @@ func cephOutput(ctx context.Context, cephCmd []string, args ...string) ([]byte, 
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			return out, fmt.Errorf("%s %s: %w: %s", cephCmd[0], args[0], err, strings.TrimSpace(string(ee.Stderr)))
 		}
 		return out, fmt.Errorf("%s %s: %w", cephCmd[0], args[0], err)
@@ -408,7 +408,7 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 		return nil, fmt.Errorf("parse pg ls: %w", err)
 	}
 	if len(data.PGStats) == 0 {
-		return nil, fmt.Errorf("pg ls returned no pg_stats")
+		return nil, errors.New("pg ls returned no pg_stats")
 	}
 
 	snap := &Snapshot{
@@ -442,7 +442,11 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 		snap.ScheduleStates[scheduleState(pg.ScrubSchedule)]++
 		pgs := PGState{Pool: pool, Bytes: bytes}
 
-		for depth, stampStr := range map[Depth]string{Shallow: pg.LastScrubStamp, Deep: pg.LastDeepScrubStamp} {
+		for _, stamped := range [...]struct {
+			depth Depth
+			value string
+		}{{Shallow, pg.LastScrubStamp}, {Deep, pg.LastDeepScrubStamp}} {
+			depth, stampStr := stamped.depth, stamped.value
 			stamp, err := time.Parse(stampLayout, stampStr)
 			if err != nil {
 				// Unparsable stamps count as overdue but neither late nor

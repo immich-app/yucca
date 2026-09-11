@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"maps"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -100,9 +103,9 @@ func main() {
 	// every refresh forever.
 	collectFailing, intervalFailing := false, false
 	var lastCollectErr, lastIntervalErr string
-	collect := func() {
+	collect := func(parent context.Context) {
 		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		ctx, cancel := context.WithTimeout(parent, *timeout)
 		defer cancel()
 		if iv, err := collector.FetchIntervals(ctx, cmd); err == nil {
 			intervals = applyPins(iv)
@@ -140,10 +143,20 @@ func main() {
 		}
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	go func() {
-		collect()
-		for range time.Tick(*refresh) {
-			collect()
+		ticker := time.NewTicker(*refresh)
+		defer ticker.Stop()
+		collect(ctx)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				collect(ctx)
+			}
 		}
 	}()
 
@@ -157,7 +170,19 @@ func main() {
 		IdleTimeout:       2 * time.Minute,
 	}
 	log.Info().Str("version", version.Version).Str("listen", *listen).Msg("serving")
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal().Err(err).Msg("listen failed")
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("listen failed")
+		}
+	}()
+
+	<-ctx.Done()
+	log.Info().Msg("shutting down")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal().Err(err).Msg("shutdown error")
 	}
+	log.Info().Msg("shutdown complete")
 }
