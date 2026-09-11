@@ -161,6 +161,10 @@ func (s *Server) getBlob(w http.ResponseWriter, r *http.Request) {
 	rangeHeader := r.Header.Get("Range")
 	obj, err := s.store(r.Context()).GetObject(r.Context(), a.Repository, key, rangeHeader)
 	if err != nil {
+		if storage.IsNotFound(err) {
+			writeError(w, r, http.StatusNotFound, "Not Found")
+			return
+		}
 		hlog.FromRequest(r).Error().Err(err).Str("repository", a.Repository).Str("key", key).Msg("get blob failed: backend storage error")
 		if s.Metrics != nil {
 			s.Metrics.StorageErrors.Add(r.Context(), 1, metrics.StorageErrorOption("get", metrics.BlobType(r)))
