@@ -455,4 +455,4 @@ ceph_fluentbit_enabled: false
 # harden.yml first, for the :9284 accept rule the role asserts on; site.yml
 # already orders them. Digest-pinned; bump deliberately.
 ceph_scrub_exporter_enabled: true
-ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.371@sha256:9e52fd39814203d1aa7f4a2825b76e1fb691eec080a473b2e33cee880534992d
+ceph_scrub_exporter_image: ghcr.io/immich-app/yucca/monk:0.0.393@sha256:aaf4d0fc6e0b500dbc828db2221f1cf3b7dae702d681180e01f24e9f4a1b5393
