@@ -29,7 +29,9 @@
     useRepositoryEventHandler();
 </script>
 
-<OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
+{#if local}
+  <OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
+{/if}
 
 {#if query.isLoading}
   <LoadingSpinner />

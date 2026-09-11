@@ -36,7 +36,9 @@
   const createNewBackup = () => modalManager.show(CreateRepositoryModal);
 </script>
 
-<OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onRepositoryDelete} />
+{#if local}
+  <OnEvents {onRepositoryCreate} {onRepositoryUpdate} {onRepositoryDelete} />
+{/if}
 
 <Stack gap={6}>
   {#if local}
