@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.41.0](https://github.com/immich-app/yucca/compare/v0.40.2...v0.41.0) (2026-09-11)
+
+
+### Features
+
+* **monk:** measure scrub lateness and mirror the mgr not-scrubbed check ([#644](https://github.com/immich-app/yucca/issues/644)) ([5cafca4](https://github.com/immich-app/yucca/commit/5cafca4853b33413fb9c702af00b2888f6918287))
+
+
+### Bug Fixes
+
+* **monk:** shut down cleanly on SIGTERM and drop the per-PG map allocation ([5626011](https://github.com/immich-app/yucca/commit/5626011081b0680a1762b2aa713a55b16a75d98f))
+* **monk:** stop cleanly on SIGTERM and drop a per-PG map allocation ([#646](https://github.com/immich-app/yucca/issues/646)) ([5626011](https://github.com/immich-app/yucca/commit/5626011081b0680a1762b2aa713a55b16a75d98f))
+* **o11y:** key the deep scrub verdict on lateness, not interval age ([#645](https://github.com/immich-app/yucca/issues/645)) ([85273ac](https://github.com/immich-app/yucca/commit/85273ac719adc7ac47b250fa0e81cc3fd7c9afb4))
+
 ## [0.40.2](https://github.com/immich-app/yucca/compare/v0.40.1...v0.40.2) (2026-09-11)
 
 
