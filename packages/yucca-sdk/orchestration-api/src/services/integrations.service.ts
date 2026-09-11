@@ -58,19 +58,18 @@ export class IntegrationsService {
     }
 
     const existing = await this.repositoryIntegrationImmich.get();
+    const boundRepositoryId = dto.repositoryId ?? existing?.id;
 
     let repositoryId: string;
     let scheduleId: string;
 
-    if (existing) {
-      repositoryId = existing.id;
-      scheduleId = existing.scheduleId;
-      await this.repositoryService.updateRepository(existing.id, {
+    if (boundRepositoryId) {
+      repositoryId = boundRepositoryId;
+      await this.repositoryService.updateRepository(repositoryId, {
         name: dto.name,
         worm: dto.worm,
         retentionPolicy: dto.retentionPolicy,
       });
-      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron, paused: dto.paused });
     } else {
       ({
         repository: { id: repositoryId },
@@ -84,7 +83,20 @@ export class IntegrationsService {
           retentionPolicy: dto.retentionPolicy,
         });
       }
+    }
 
+    if (existing) {
+      scheduleId = existing.scheduleId;
+      await this.scheduleService.applyScheduleUpdate(scheduleId, {
+        cron: dto.cron,
+        paused: dto.paused,
+        repositories: [repositoryId],
+      });
+
+      if (existing.id !== repositoryId) {
+        await this.repositoryIntegrationImmich.delete();
+      }
+    } else {
       ({
         schedule: { id: scheduleId },
       } = await this.scheduleService.createSchedule({

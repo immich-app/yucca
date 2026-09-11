@@ -88,6 +88,13 @@ const RepositoryCreateResponseSchema = z
   .object({ repository: LocalRepositorySchema })
   .meta({ id: 'RepositoryCreateResponseDto' });
 
+const RepositoryLinkRequestSchema = z
+  .object({
+    remoteId: z.string().describe('Identifier of the existing repository on the backend'),
+    paths: z.array(z.string()).optional().describe('Defaults to the paths of the most recent snapshot'),
+  })
+  .meta({ id: 'RepositoryLinkRequestDto' });
+
 const RepositoryPrimaryBackendReconfigureRequestSchema = z
   .object({ backendId: z.string() })
   .meta({ id: 'RepositoryPrimaryBackendReconfigureRequestDto' });
@@ -191,6 +198,7 @@ export class RepositoryConfigurationDto extends createZodDto(RepositoryConfigura
 export class LocalRepositoryDto extends createZodDto(LocalRepositorySchema) {}
 export class RepositoryCreateRequestDto extends createZodDto(RepositoryCreateRequestSchema) {}
 export class RepositoryCreateResponseDto extends createZodDto(RepositoryCreateResponseSchema) {}
+export class RepositoryLinkRequestDto extends createZodDto(RepositoryLinkRequestSchema) {}
 export class RepositoryPrimaryBackendReconfigureRequestDto extends createZodDto(
   RepositoryPrimaryBackendReconfigureRequestSchema,
 ) {}

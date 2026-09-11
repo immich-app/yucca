@@ -8,6 +8,7 @@ import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryInspectResponseDto,
+  RepositoryLinkRequestDto,
   RepositoryListResponseDto,
   RepositoryPrimaryBackendReconfigureRequestDto,
   RepositorySnapshotRestoreFromPointRequestDto,
@@ -30,6 +31,16 @@ export class RepositoryController {
     @Query('backend') backendId?: string,
   ): Promise<RepositoryCreateResponseDto> {
     return this.service.createRepository(dto, backendId);
+  }
+
+  @Post('/link')
+  @ApiQuery({ name: 'backend', type: String, required: false })
+  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  linkRepository(
+    @Body() dto: RepositoryLinkRequestDto,
+    @Query('backend') backendId?: string,
+  ): Promise<RepositoryCreateResponseDto> {
+    return this.service.linkRepository(dto, backendId);
   }
 
   @Get()
