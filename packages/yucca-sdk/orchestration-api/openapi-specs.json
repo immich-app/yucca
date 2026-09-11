@@ -215,6 +215,27 @@
         ]
       }
     },
+    "/api/yucca/integrations/immich/status": {
+      "get": {
+        "operationId": "getImmichBackupStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImmichBackupStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/api/yucca/integrations/immich": {
       "post": {
         "operationId": "configureImmichIntegration",
@@ -1497,6 +1518,164 @@
           }
         }
       },
+      "LocalRepositoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worm": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "siteCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "storageClusterCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/RepositoryMetricsDto"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/RepositoryMeterDto"
+          },
+          "backends": {
+            "$ref": "#/components/schemas/RepositoryBackendsDto"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/RepositoryConfigurationDto"
+          }
+        },
+        "required": [
+          "id",
+          "worm",
+          "name",
+          "siteCode",
+          "storageClusterCode",
+          "metrics"
+        ]
+      },
+      "RepositoryMetricsDto": {
+        "type": "object",
+        "properties": {
+          "lastBackup": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastBackupStatus": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "lastBackupDuration": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "incomplete",
+          "complete",
+          "warn",
+          "failed"
+        ]
+      },
+      "RepositoryMeterDto": {
+        "type": "object",
+        "properties": {
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "objectCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "lastUpdated": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "sizeBytes",
+          "objectCount"
+        ]
+      },
+      "RepositoryBackendsDto": {
+        "type": "object",
+        "properties": {
+          "primary": {
+            "$ref": "#/components/schemas/RepositoryBackendDto"
+          },
+          "secondary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RepositoryBackendDto"
+            }
+          }
+        },
+        "required": [
+          "primary",
+          "secondary"
+        ]
+      },
+      "RepositoryBackendDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/BackendType"
+          },
+          "online": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "online"
+        ]
+      },
+      "RepositoryConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "retentionPolicy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetentionPolicyDto"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "paths"
+        ]
+      },
       "RetentionPolicyDto": {
         "type": "object",
         "properties": {
@@ -1522,6 +1701,114 @@
           },
           "keepWithinYearly": {
             "type": "string"
+          }
+        }
+      },
+      "ScheduleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "repositories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lastRun": {
+            "type": "string"
+          },
+          "lastFinished": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "paused",
+          "cron",
+          "repositories"
+        ]
+      },
+      "RunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "repositoryId": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "logFilePath": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RunType"
+          }
+        },
+        "required": [
+          "id",
+          "repositoryId",
+          "start",
+          "logFilePath",
+          "status",
+          "type"
+        ]
+      },
+      "RunStatus": {
+        "type": "string",
+        "enum": [
+          "incomplete",
+          "complete",
+          "warn",
+          "failed"
+        ]
+      },
+      "RunType": {
+        "type": "string",
+        "enum": [
+          "schedule",
+          "restore",
+          "backup",
+          "forget"
+        ]
+      },
+      "ImmichBackupStatusDto": {
+        "type": "object",
+        "properties": {
+          "integration": {
+            "$ref": "#/components/schemas/ImmichIntegrationDto"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/LocalRepositoryDto"
+          },
+          "backend": {
+            "$ref": "#/components/schemas/BackendDto"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ScheduleDto"
+          },
+          "latestBackupRun": {
+            "$ref": "#/components/schemas/RunDto"
           }
         }
       },
@@ -1707,164 +1994,6 @@
         "required": [
           "name",
           "worm"
-        ]
-      },
-      "LocalRepositoryDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "worm": {
-            "type": "boolean"
-          },
-          "name": {
-            "type": "string"
-          },
-          "siteCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "storageClusterCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/RepositoryMetricsDto"
-          },
-          "meter": {
-            "$ref": "#/components/schemas/RepositoryMeterDto"
-          },
-          "backends": {
-            "$ref": "#/components/schemas/RepositoryBackendsDto"
-          },
-          "configuration": {
-            "$ref": "#/components/schemas/RepositoryConfigurationDto"
-          }
-        },
-        "required": [
-          "id",
-          "worm",
-          "name",
-          "siteCode",
-          "storageClusterCode",
-          "metrics"
-        ]
-      },
-      "RepositoryMetricsDto": {
-        "type": "object",
-        "properties": {
-          "lastBackup": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastBackupStatus": {
-            "$ref": "#/components/schemas/TaskStatus"
-          },
-          "lastBackupDuration": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "sizeBytes": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "sizeBytes"
-        ]
-      },
-      "TaskStatus": {
-        "type": "string",
-        "enum": [
-          "incomplete",
-          "complete",
-          "warn",
-          "failed"
-        ]
-      },
-      "RepositoryMeterDto": {
-        "type": "object",
-        "properties": {
-          "sizeBytes": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "objectCount": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "lastUpdated": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "sizeBytes",
-          "objectCount"
-        ]
-      },
-      "RepositoryBackendsDto": {
-        "type": "object",
-        "properties": {
-          "primary": {
-            "$ref": "#/components/schemas/RepositoryBackendDto"
-          },
-          "secondary": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RepositoryBackendDto"
-            }
-          }
-        },
-        "required": [
-          "primary",
-          "secondary"
-        ]
-      },
-      "RepositoryBackendDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "$ref": "#/components/schemas/BackendType"
-          },
-          "online": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "type",
-          "online"
-        ]
-      },
-      "RepositoryConfigurationDto": {
-        "type": "object",
-        "properties": {
-          "paths": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "retentionPolicy": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/RetentionPolicyDto"
-              }
-            ],
-            "nullable": true
-          }
-        },
-        "required": [
-          "paths"
         ]
       },
       "RepositoryCreateResponseDto": {
@@ -2097,58 +2226,6 @@
           "backendId"
         ]
       },
-      "RunDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "repositoryId": {
-            "type": "string"
-          },
-          "start": {
-            "type": "string"
-          },
-          "end": {
-            "type": "string"
-          },
-          "logFilePath": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/RunStatus"
-          },
-          "type": {
-            "$ref": "#/components/schemas/RunType"
-          }
-        },
-        "required": [
-          "id",
-          "repositoryId",
-          "start",
-          "logFilePath",
-          "status",
-          "type"
-        ]
-      },
-      "RunStatus": {
-        "type": "string",
-        "enum": [
-          "incomplete",
-          "complete",
-          "warn",
-          "failed"
-        ]
-      },
-      "RunType": {
-        "type": "string",
-        "enum": [
-          "schedule",
-          "restore",
-          "backup",
-          "forget"
-        ]
-      },
       "RunHistoryResponseDto": {
         "type": "object",
         "properties": {
@@ -2296,42 +2373,6 @@
         },
         "required": [
           "name",
-          "cron",
-          "repositories"
-        ]
-      },
-      "ScheduleDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "paused": {
-            "type": "boolean"
-          },
-          "cron": {
-            "type": "string"
-          },
-          "repositories": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "lastRun": {
-            "type": "string"
-          },
-          "lastFinished": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "paused",
           "cron",
           "repositories"
         ]

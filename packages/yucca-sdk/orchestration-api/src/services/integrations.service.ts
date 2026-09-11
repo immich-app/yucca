@@ -3,15 +3,19 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { join } from 'node:path';
 import {
   ConfigureImmichIntegrationRequestDto,
+  ImmichBackupStatusDto,
   ImmichRollbackRequestDto,
   IntegrationsResponseDto,
 } from '../dto/integrations.dto';
-import { InternalEvent } from '../enum';
+import { InternalEvent, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import type { ImmichIntegration, ModuleConfig } from '../moduleConfig';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
+import { RunHistoryRepository } from '../repositories/runHistory.repository';
+import { BackendService } from './backend.service';
+import { ScheduleRepository } from '../repositories/schedule.repository';
 import { ImmichRepositoryConfig } from '../schema/tables/repositoryIntegrationImmich.table';
 import { RepositoryService } from './repository.service';
 import { ScheduleService } from './schedule.service';
@@ -20,11 +24,14 @@ import { TelemetryService } from './telemetry.service';
 @Injectable()
 export class IntegrationsService {
   constructor(
+    private readonly backendService: BackendService,
     private readonly events: EventsGateway,
     private readonly moduleConfig: ModuleConfigRepository,
     private readonly repositoryIntegrationImmich: RepositoryIntegrationImmichRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryService: RepositoryService,
+    private readonly runHistory: RunHistoryRepository,
+    private readonly schedule: ScheduleRepository,
     private readonly scheduleService: ScheduleService,
     private readonly telemetry: TelemetryService,
   ) {}
@@ -48,6 +55,30 @@ export class IntegrationsService {
     return {
       immichState,
       immichIntegration,
+    };
+  }
+
+  async getImmichBackupStatus(): Promise<ImmichBackupStatusDto> {
+    const integration = await this.repositoryIntegrationImmich.get();
+    if (!integration) {
+      return {};
+    }
+
+    const [{ repositories }, { backends }, schedule, latestBackupRun] = await Promise.all([
+      this.repositoryService.getRepositories(),
+      this.backendService.getBackends(),
+      this.schedule.get(integration.scheduleId),
+      this.runHistory.getLatest(integration.id, TaskType.Backup),
+    ]);
+
+    const repository = repositories.find((entry) => entry.id === integration.id);
+
+    return {
+      integration,
+      repository,
+      backend: backends.find((entry) => entry.id === repository?.backends?.primary.id),
+      schedule,
+      latestBackupRun,
     };
   }
 

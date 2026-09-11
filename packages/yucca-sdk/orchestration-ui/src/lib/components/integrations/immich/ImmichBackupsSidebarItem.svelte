@@ -2,23 +2,10 @@
   import OnEvents from "$lib/components/util/OnEvents.svelte";
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import {
-    useIntegrationEventHandler,
-    useIntegrations,
-  } from "$lib/services/integrations.service";
-  import {
-    useRepositories,
-    useRepositoryEventHandler,
-  } from "$lib/services/repository.service";
-  import {
-    useRunEventHandler,
-    useRunHistory,
-  } from "$lib/services/runHistory.service";
-  import {
-    useScheduleEventHandler,
-    useSchedules,
-  } from "$lib/services/schedule.service";
-  import { getBackupOutcome } from "$lib/utils/backup-status";
-  import { HStack, Icon, Text } from "@immich/ui";
+    useImmichBackupStatus,
+    useImmichBackupStatusEventHandler,
+  } from "$lib/services/immich.integration.service";
+  import { HStack, Icon, LoadingSpinner, Text } from "@immich/ui";
   import {
     mdiChevronRight,
     mdiCloudAlertOutline,
@@ -27,7 +14,7 @@
     mdiCloudUploadOutline,
   } from "@mdi/js";
 
-  type Color = "primary" | "success" | "warning" | "danger";
+  type Color = "primary" | "secondary" | "success" | "warning" | "danger";
 
   type Props = {
     href: string;
@@ -35,136 +22,97 @@
 
   const { href }: Props = $props();
 
-  // TODO: this should probably be condensed into one big request - since this loads on every initial Immich page load (in the future)
+  const backup = useImmichBackupStatus();
 
-  const integrations = useIntegrations();
-  const repositories = useRepositories();
-  const schedules = useSchedules();
+  const { status } = $derived(backup);
 
-  const { onIntegrationUpdate } = useIntegrationEventHandler();
-  const { onRepositoryCreate, onRepositoryUpdate, onRepositoryDelete } =
-    useRepositoryEventHandler();
-  const { onScheduleCreate, onScheduleUpdate, onScheduleDelete } =
-    useScheduleEventHandler();
-  const { onRunCreate, onRunUpdate } = useRunEventHandler();
+  const configured = $derived(status.kind !== "unconfigured");
 
-  const integration = $derived(integrations.data?.immichIntegration);
-
-  const repository = $derived(
-    integration
-      ? repositories.data?.find((entry) => entry.id === integration.id)
-      : undefined,
-  );
-
-  const runHistory = useRunHistory(() => repository?.id);
-
-  const latestBackupRun = $derived(
-    runHistory.data?.find(
-      (run) => run.type === "backup" || run.type === "schedule",
-    ),
-  );
-
-  const paused = $derived(
-    Boolean(
-      integration &&
-      schedules.data?.find((entry) => entry.id === integration.scheduleId)
-        ?.paused,
-    ),
-  );
-
-  const lastBackup = $derived(repository?.metrics.lastBackup ?? undefined);
-
-  const outcome = $derived(getBackupOutcome(repository?.metrics));
-
-  const loading = $derived(
-    integrations.isLoading || repositories.isLoading || schedules.isLoading,
-  );
-
-  const configured = $derived(Boolean(repository));
-  const running = $derived(latestBackupRun?.status === "incomplete");
-
-  const status = $derived.by(() => {
-    if (running) {
-      return { color: "primary", icon: mdiCloudUploadOutline } as const;
+  const appearance = $derived.by(() => {
+    switch (status.kind) {
+      case "loading": {
+        return { color: "secondary", icon: undefined } as const;
+      }
+      case "running": {
+        return { color: "primary", icon: mdiCloudUploadOutline } as const;
+      }
+      case "offline":
+      case "missing":
+      case "failed": {
+        return { color: "danger", icon: mdiCloudOffOutline } as const;
+      }
+      case "warn": {
+        return { color: "warning", icon: mdiCloudCheckVariantOutline } as const;
+      }
+      case "paused": {
+        return { color: "warning", icon: mdiCloudAlertOutline } as const;
+      }
+      case "unconfigured":
+      case "never": {
+        return { color: "warning", icon: mdiCloudOffOutline } as const;
+      }
+      case "complete": {
+        return { color: "success", icon: mdiCloudCheckVariantOutline } as const;
+      }
     }
-
-    if (outcome === "failed") {
-      return { color: "danger", icon: mdiCloudOffOutline } as const;
-    }
-
-    if (outcome === "warn") {
-      return { color: "warning", icon: mdiCloudCheckVariantOutline } as const;
-    }
-
-    if (paused) {
-      return { color: "warning", icon: mdiCloudAlertOutline } as const;
-    }
-
-    if (!configured || !lastBackup) {
-      return { color: "warning", icon: mdiCloudOffOutline } as const;
-    }
-
-    return { color: "success", icon: mdiCloudCheckVariantOutline } as const;
   });
 
   const tints: Record<Color, string> = {
     primary: "bg-primary-50 text-primary",
+    secondary: "bg-subtle text-muted",
     success: "bg-success-50 text-success-700",
     warning: "bg-warning-50 text-warning-800",
     danger: "bg-danger-50 text-danger-700",
   };
 </script>
 
-<OnEvents
-  {onIntegrationUpdate}
-  {onRepositoryCreate}
-  {onRepositoryUpdate}
-  {onRepositoryDelete}
-  {onScheduleCreate}
-  {onScheduleUpdate}
-  {onScheduleDelete}
-  {onRunCreate}
-  {onRunUpdate}
-/>
+<OnEvents {...useImmichBackupStatusEventHandler()} />
 
-{#if !loading}
-  <a
-    {href}
-    class="flex w-full cursor-pointer items-center gap-2 px-3 py-3 text-start text-sm {tints[
-      status.color
-    ]}"
-  >
-    <Icon color={status.color} icon={status.icon} size="1.25em" class="shrink-0" />
+<a
+  {href}
+  class="flex w-full cursor-pointer items-center gap-2 px-3 py-3 text-start text-sm {tints[
+    appearance.color
+  ]}"
+>
+  {#if appearance.icon}
+    <Icon icon={appearance.icon} size="1.25em" class="shrink-0" />
+  {:else}
+    <LoadingSpinner size="tiny" class="shrink-0" />
+  {/if}
 
-    <Text size="tiny" color={status.color} class="flex-1 truncate">
-      {#if running}
-        Backing up now
-      {:else if outcome === "failed"}
-        Backup failed
-      {:else if outcome === "warn" && lastBackup}
-        Backed up with warnings <RelativeTime time={lastBackup} />
-      {:else if paused}
-        Backups paused
-      {:else if !configured}
-        Not backed up
-      {:else if lastBackup}
-        Last backup <RelativeTime time={lastBackup} />
-      {:else}
-        Finish setting up backups
-      {/if}
-    </Text>
+  <Text size="tiny" class="flex-1 leading-tight">
+    {#if status.kind === "loading"}
+      Checking backup status
+    {:else if status.kind === "offline"}
+      Backup service is offline
+    {:else if status.kind === "missing"}
+      Backup missing on service
+    {:else if status.kind === "running"}
+      Backing up now
+    {:else if status.kind === "failed"}
+      Backup failed
+    {:else if status.kind === "warn"}
+      Backed up with warnings <RelativeTime time={status.lastBackup} />
+    {:else if status.kind === "paused"}
+      Backups paused
+    {:else if status.kind === "unconfigured"}
+      Not backed up
+    {:else if status.kind === "complete"}
+      Last backup <RelativeTime time={status.lastBackup} />
+    {:else}
+      Finish setting up backups
+    {/if}
+  </Text>
 
-    <HStack gap={0}>
-      {#if !configured}
-        <Text size="tiny" color="primary" class="shrink-0">Set up</Text>
-      {/if}
+  <HStack gap={0}>
+    {#if !configured}
+      <Text size="tiny" color="primary" class="shrink-0">Set up</Text>
+    {/if}
 
-      <Icon
-        color={configured ? status.color : "primary5"}
-        icon={mdiChevronRight}
-        size="1.25em"
-        class="shrink-0"
-      />
-    </HStack>
-  </a>
-{/if}
+    <Icon
+      icon={mdiChevronRight}
+      size="1.25em"
+      class={configured ? "shrink-0" : "shrink-0 text-primary"}
+    />
+  </HStack>
+</a>

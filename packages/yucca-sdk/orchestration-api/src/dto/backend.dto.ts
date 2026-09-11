@@ -4,7 +4,7 @@ import { BackendType } from '../enum';
 
 export const BackendTypeSchema = z.enum(BackendType).meta({ id: 'BackendType' });
 
-const BackendSchema = z
+export const BackendSchema = z
   .object({
     id: z.string(),
     type: BackendTypeSchema,

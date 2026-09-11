@@ -13,7 +13,7 @@ const isCronExpression = (expression: string): boolean => {
 
 const CronExpressionSchema = z.string().refine(isCronExpression, 'Invalid cron expression');
 
-const ScheduleSchema = z
+export const ScheduleSchema = z
   .object({
     id: z.string(),
     name: z.string(),

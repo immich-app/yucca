@@ -88,6 +88,27 @@ export type IntegrationsResponseDto = {
     immichState?: ImmichStateDto;
     immichIntegration?: ImmichIntegrationDto;
 };
+export type TaskStatus = "incomplete" | "complete" | "warn" | "failed";
+export type RepositoryMetricsDto = {
+    lastBackup?: string | null;
+    lastBackupStatus?: TaskStatus;
+    lastBackupDuration?: number;
+    sizeBytes: number;
+};
+export type RepositoryMeterDto = {
+    sizeBytes: number;
+    objectCount: number;
+    lastUpdated?: string | null;
+};
+export type RepositoryBackendDto = {
+    id: string;
+    "type": BackendType;
+    online: boolean;
+};
+export type RepositoryBackendsDto = {
+    primary: RepositoryBackendDto;
+    secondary: RepositoryBackendDto[];
+};
 export type RetentionPolicyDto = {
     keepLast?: number;
     keepWithin?: string;
@@ -96,6 +117,48 @@ export type RetentionPolicyDto = {
     keepWithinWeekly?: string;
     keepWithinMonthly?: string;
     keepWithinYearly?: string;
+};
+export type RepositoryConfigurationDto = {
+    paths: string[];
+    retentionPolicy?: (RetentionPolicyDto) | null;
+};
+export type LocalRepositoryDto = {
+    id: string;
+    worm: boolean;
+    name: string;
+    siteCode: string | null;
+    storageClusterCode: string | null;
+    metrics: RepositoryMetricsDto;
+    meter?: RepositoryMeterDto;
+    backends?: RepositoryBackendsDto;
+    configuration?: RepositoryConfigurationDto;
+};
+export type ScheduleDto = {
+    id: string;
+    name: string;
+    paused: boolean;
+    cron: string;
+    repositories: string[];
+    lastRun?: string;
+    lastFinished?: string;
+};
+export type RunStatus = "incomplete" | "complete" | "warn" | "failed";
+export type RunType = "schedule" | "restore" | "backup" | "forget";
+export type RunDto = {
+    id: string;
+    repositoryId: string;
+    start: string;
+    end?: string;
+    logFilePath: string;
+    status: RunStatus;
+    "type": RunType;
+};
+export type ImmichBackupStatusDto = {
+    integration?: ImmichIntegrationDto;
+    repository?: LocalRepositoryDto;
+    backend?: BackendDto;
+    schedule?: ScheduleDto;
+    latestBackupRun?: RunDto;
 };
 export type ConfigureImmichIntegrationRequestDto = {
     name: string;
@@ -138,42 +201,6 @@ export type RepositoryCreateRequestDto = {
     /** Internal site code from environment metadata */
     site?: string;
     paths?: string[];
-};
-export type TaskStatus = "incomplete" | "complete" | "warn" | "failed";
-export type RepositoryMetricsDto = {
-    lastBackup?: string | null;
-    lastBackupStatus?: TaskStatus;
-    lastBackupDuration?: number;
-    sizeBytes: number;
-};
-export type RepositoryMeterDto = {
-    sizeBytes: number;
-    objectCount: number;
-    lastUpdated?: string | null;
-};
-export type RepositoryBackendDto = {
-    id: string;
-    "type": BackendType;
-    online: boolean;
-};
-export type RepositoryBackendsDto = {
-    primary: RepositoryBackendDto;
-    secondary: RepositoryBackendDto[];
-};
-export type RepositoryConfigurationDto = {
-    paths: string[];
-    retentionPolicy?: (RetentionPolicyDto) | null;
-};
-export type LocalRepositoryDto = {
-    id: string;
-    worm: boolean;
-    name: string;
-    siteCode: string | null;
-    storageClusterCode: string | null;
-    metrics: RepositoryMetricsDto;
-    meter?: RepositoryMeterDto;
-    backends?: RepositoryBackendsDto;
-    configuration?: RepositoryConfigurationDto;
 };
 export type RepositoryCreateResponseDto = {
     repository: LocalRepositoryDto;
@@ -229,17 +256,6 @@ export type RepositoryCheckImportResponseDto = {
 export type RepositoryPrimaryBackendReconfigureRequestDto = {
     backendId: string;
 };
-export type RunStatus = "incomplete" | "complete" | "warn" | "failed";
-export type RunType = "schedule" | "restore" | "backup" | "forget";
-export type RunDto = {
-    id: string;
-    repositoryId: string;
-    start: string;
-    end?: string;
-    logFilePath: string;
-    status: RunStatus;
-    "type": RunType;
-};
 export type RunHistoryResponseDto = {
     runs: RunDto[];
 };
@@ -275,15 +291,6 @@ export type ScheduleCreateRequestDto = {
     name: string;
     cron: string;
     repositories: string[];
-};
-export type ScheduleDto = {
-    id: string;
-    name: string;
-    paused: boolean;
-    cron: string;
-    repositories: string[];
-    lastRun?: string;
-    lastFinished?: string;
 };
 export type ScheduleCreateResponseDto = {
     schedule: ScheduleDto;
@@ -374,6 +381,14 @@ export function getIntegrations(opts?: Oazapfts.RequestOpts) {
         status: 200;
         data: IntegrationsResponseDto;
     }>("/api/yucca/integrations", {
+        ...opts
+    }));
+}
+export function getImmichBackupStatus(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ImmichBackupStatusDto;
+    }>("/api/yucca/integrations/immich/status", {
         ...opts
     }));
 }

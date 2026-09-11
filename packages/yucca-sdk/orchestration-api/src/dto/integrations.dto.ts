@@ -1,6 +1,8 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { RetentionPolicySchema } from './repository.dto';
+import { BackendSchema } from './backend.dto';
+import { LocalRepositorySchema, RetentionPolicySchema, RunSchema } from './repository.dto';
+import { ScheduleSchema } from './schedule.dto';
 
 const LibrariesSchema = z.union([z.literal('all'), z.array(z.string())]);
 
@@ -44,6 +46,16 @@ const IntegrationsResponseSchema = z
   })
   .meta({ id: 'IntegrationsResponseDto' });
 
+const ImmichBackupStatusSchema = z
+  .object({
+    integration: ImmichIntegrationSchema.optional(),
+    repository: LocalRepositorySchema.optional(),
+    backend: BackendSchema.optional(),
+    schedule: ScheduleSchema.optional(),
+    latestBackupRun: RunSchema.optional(),
+  })
+  .meta({ id: 'ImmichBackupStatusDto' });
+
 const ConfigureImmichIntegrationRequestSchema = z
   .object({
     name: z.string(),
@@ -70,5 +82,6 @@ export class ImmichStateDto extends createZodDto(ImmichStateSchema) {}
 export class ImmichIntegrationConfigurationDto extends createZodDto(ImmichIntegrationConfigurationSchema) {}
 export class ImmichIntegrationDto extends createZodDto(ImmichIntegrationSchema) {}
 export class IntegrationsResponseDto extends createZodDto(IntegrationsResponseSchema) {}
+export class ImmichBackupStatusDto extends createZodDto(ImmichBackupStatusSchema) {}
 export class ConfigureImmichIntegrationRequestDto extends createZodDto(ConfigureImmichIntegrationRequestSchema) {}
 export class ImmichRollbackRequestDto extends createZodDto(ImmichRollbackRequestSchema) {}

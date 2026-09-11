@@ -70,7 +70,7 @@ const RepositoryConfigurationSchema = z
   })
   .meta({ id: 'RepositoryConfigurationDto' });
 
-const LocalRepositorySchema = RepositoryWithMetricsSchema.extend({
+export const LocalRepositorySchema = RepositoryWithMetricsSchema.extend({
   backends: RepositoryBackendsSchema.optional(),
   configuration: RepositoryConfigurationSchema.optional(),
 }).meta({ id: 'LocalRepositoryDto' });
@@ -113,7 +113,7 @@ const RepositoryCheckImportResponseSchema = z
   .object({ readable: z.boolean() })
   .meta({ id: 'RepositoryCheckImportResponseDto' });
 
-const RunSchema = z
+export const RunSchema = z
   .object({
     id: z.string(),
     repositoryId: z.string(),

@@ -25,7 +25,7 @@
           {@const seed = seedOf(groupIndex, index)}
           <div
             class="h-36 grow rounded-sm"
-            style="background-color: hsl(0 0% {grey(seed)}%); flex-basis: {aspect(
+            style="background-color: color-mix(in oklch, var(--immich-ui-light) {grey(seed)}%, var(--immich-ui-dark)); flex-basis: {aspect(
               seed,
             ) * 9}rem"
           ></div>
