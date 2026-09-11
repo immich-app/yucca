@@ -1,19 +1,29 @@
 import { backup, forget, init, keyList, ls, prune, restore, snapshots, stats, unlock } from '@futo-org/restic-wrapper';
 import { Injectable } from '@nestjs/common';
+import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import { RepositorySnapshotRestoreRequestDto } from '../dto/repository.dto';
 import { createSampledLogWriter, RetentionPolicy } from '../utils/restic';
 import { ConfigRepository, ResticPlacement } from './config.repository';
+import { ModuleConfigRepository } from './moduleConfig.repository';
 
 @Injectable()
 export class ResticRepository {
-  constructor(private readonly config: ConfigRepository) {}
+  constructor(
+    private readonly config: ConfigRepository,
+    private readonly moduleConfig: ModuleConfigRepository,
+  ) {}
+
+  private get cacheDir() {
+    return join(this.moduleConfig.get().statePath, 'restic-cache');
+  }
 
   async init(repository: string, key: Uint8Array, placement: ResticPlacement) {
     const { connections } = await this.config.getResticOptions(placement);
     await init()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .run();
   }
@@ -34,9 +44,11 @@ export class ResticRepository {
       .option(`rest.connections=${connections}`)
       .packSize(packSizeMib)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .tag(...tags)
       .addFile(...paths)
+      .exclude(this.cacheDir)
       .signal(signal)
       .on('event', write)
       .run();
@@ -57,6 +69,7 @@ export class ResticRepository {
     let command = restore()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
       .target(target ?? '/')
@@ -75,6 +88,7 @@ export class ResticRepository {
     return await ls()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
       .directory(path)
@@ -86,6 +100,7 @@ export class ResticRepository {
     return await stats()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .modeRawData()
       .run();
@@ -96,6 +111,7 @@ export class ResticRepository {
     return await snapshots()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .run();
   }
@@ -105,6 +121,7 @@ export class ResticRepository {
     return await snapshots()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
       .run();
@@ -122,6 +139,7 @@ export class ResticRepository {
     return await forget()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .snapshot(snapshotId)
       .prune(prune)
@@ -140,6 +158,7 @@ export class ResticRepository {
     return await forget()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .signal(signal)
       .keepLast(policy.keepLast)
@@ -158,6 +177,7 @@ export class ResticRepository {
       .option(`rest.connections=${connections}`)
       .packSize(packSizeMib)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .signal(signal)
       .run();
@@ -168,6 +188,7 @@ export class ResticRepository {
     return await keyList()
       .option(`rest.connections=${connections}`)
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .run();
   }
@@ -178,6 +199,7 @@ export class ResticRepository {
       .option(`rest.connections=${connections}`)
       .removeAll()
       .repository(repository)
+      .cacheDir(this.cacheDir)
       .password(Buffer.from(key).toString('hex'))
       .run();
   }
