@@ -103,6 +103,23 @@ export const services = [
   YuccaService,
 ];
 
+export function openStateDatabase(config: Pick<ModuleConfig, 'statePath'>, logger = LoggingRepository.create('State')) {
+  mkdirSync(config.statePath, { recursive: true });
+
+  const databasePath = resolve(config.statePath, 'state.sqlite3');
+
+  if (existsSync(databasePath)) {
+    logger.log(`Opened existing state database at ${databasePath}`);
+  } else {
+    logger.warn(`No state database at ${databasePath}, creating a new one`);
+  }
+
+  const database = new Database(databasePath);
+  database.pragma('journal_mode = WAL');
+
+  return database;
+}
+
 export interface OrchestrationApiModuleAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
   inject?: FactoryProvider['inject'];
   useFactory: (...args: any[]) => Promise<Partial<ModuleConfig>> | Partial<ModuleConfig>;
@@ -144,18 +161,9 @@ export class OrchestrationApiModule {
           namespace: 'orchestrator',
           imports: [configModule],
           inject: [ModuleConfigProvider],
-          useFactory: (config: ModuleConfig) => {
-            if (!existsSync(config.statePath)) {
-              mkdirSync(config.statePath, { recursive: true });
-            }
-
-            const database = new Database(resolve(config.statePath, 'state.sqlite3'));
-            database.pragma('journal_mode = WAL');
-
-            return {
-              dialect: new SqliteDialect({ database }),
-            };
-          },
+          useFactory: (config: ModuleConfig) => ({
+            dialect: new SqliteDialect({ database: openStateDatabase(config) }),
+          }),
         }),
         EventEmitterModule.forRoot(),
         JwtModule.register({}),
