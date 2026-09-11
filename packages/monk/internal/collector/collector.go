@@ -50,6 +50,9 @@ type Intervals struct {
 	PerPool   map[string]map[Depth]time.Duration
 	Scheduler Policy
 	Health    Policy
+	// Set only by FetchIntervals; late and breach are withheld from snapshots
+	// computed without it.
+	FromCluster bool
 }
 
 // Policy is one daemon's reading of a scrub rule. A depth missing from
@@ -197,6 +200,7 @@ type Snapshot struct {
 	Pools          map[string]*PoolStats
 	ScheduleStates map[string]int
 	ParseErrors    int
+	FromCluster    bool
 	// PGState carries the per-PG stamps forward so the next refresh can count
 	// which PGs actually completed a scrub, which is the only measured way to
 	// answer how fast the backlog is draining.
@@ -316,6 +320,7 @@ func FetchIntervals(ctx context.Context, cephCmd []string) (Intervals, error) {
 	if err := iv.setPoolOverrides(out); err != nil {
 		return Intervals{}, err
 	}
+	iv.FromCluster = true
 	return iv, nil
 }
 
@@ -408,6 +413,7 @@ func Compute(raw []byte, now time.Time, intervals Intervals) (*Snapshot, error) 
 
 	snap := &Snapshot{
 		Taken:          now,
+		FromCluster:    intervals.FromCluster,
 		Pools:          map[string]*PoolStats{},
 		ScheduleStates: map[string]int{},
 		PGState:        make(map[string]PGState, len(data.PGStats)),

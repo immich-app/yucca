@@ -194,10 +194,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for state, n := range snap.ScheduleStates {
 		ch <- prometheus.MustNewConstMetric(descSchedule, prometheus.GaugeValue, float64(n), state)
 	}
-	// Late and breach are claims about ceph's own config. Before this instance
-	// has read it they would be judged against built-in defaults, and the
-	// max-dedup across instances would publish the worst of them.
-	configRead := !s.intervalReadTime.IsZero()
+	// Late and breach are claims about ceph's own config. A snapshot computed
+	// from built-in defaults would have the max-dedup across instances publish
+	// the worst of them, even after a later read succeeds.
+	fromCluster := snap.FromCluster
 	for pool, ps := range snap.Pools {
 		ch <- prometheus.MustNewConstMetric(descPoolPGs, prometheus.GaugeValue, float64(ps.PGs), pool)
 		ch <- prometheus.MustNewConstMetric(descPoolBytes, prometheus.GaugeValue, float64(ps.Bytes), pool)
@@ -213,7 +213,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(descOverduePGs, prometheus.GaugeValue, float64(ps.OverduePGs[depth]), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverdueBytes, prometheus.GaugeValue, float64(ps.OverdueBytes[depth]), pool, string(depth))
 			ch <- prometheus.MustNewConstMetric(descOverdueOmap, prometheus.GaugeValue, float64(ps.OverdueOmapBytes[depth]), pool, string(depth))
-			if configRead {
+			if fromCluster {
 				ch <- prometheus.MustNewConstMetric(descLatestTarget, prometheus.GaugeValue, ps.LatestTarget[depth].Seconds(), pool, string(depth))
 				ch <- prometheus.MustNewConstMetric(descLatePGs, prometheus.GaugeValue, float64(ps.LatePGs[depth]), pool, string(depth))
 				ch <- prometheus.MustNewConstMetric(descLateBytes, prometheus.GaugeValue, float64(ps.LateBytes[depth]), pool, string(depth))

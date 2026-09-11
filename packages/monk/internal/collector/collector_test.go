@@ -269,8 +269,8 @@ func TestExporterMetricSurface(t *testing.T) {
 		t.Fatal(err)
 	}
 	exporter := &Exporter{}
+	snap.FromCluster = true
 	exporter.Store(snap, time.Second)
-	exporter.StoreIntervalRead(true, time.Now())
 
 	if problems, err := testutil.CollectAndLint(exporter); err != nil || len(problems) > 0 {
 		t.Fatalf("lint: %v %v", problems, err)
@@ -343,8 +343,8 @@ func TestExporterOmitsDisabledHealthCheck(t *testing.T) {
 		t.Errorf("BreachPGs[shallow] = %d under a disabled check, want 0", ps.BreachPGs[Shallow])
 	}
 	exporter := &Exporter{}
+	snap.FromCluster = true
 	exporter.Store(snap, time.Second)
-	exporter.StoreIntervalRead(true, time.Now())
 	expected := `
 # HELP ceph_scrub_breach_pgs PGs past the mgr's not-scrubbed warning deadline at this depth; absent while that check is disabled
 # TYPE ceph_scrub_breach_pgs gauge
@@ -433,8 +433,9 @@ esac
 	}
 
 	want := Intervals{
-		Global:  map[Depth]time.Duration{Shallow: 7 * day, Deep: 28 * day},
-		PerPool: map[string]map[Depth]time.Duration{"7": {Shallow: day, Deep: 14 * day}},
+		FromCluster: true,
+		Global:      map[Depth]time.Duration{Shallow: 7 * day, Deep: 28 * day},
+		PerPool:     map[string]map[Depth]time.Duration{"7": {Shallow: day, Deep: 14 * day}},
 		Scheduler: Policy{
 			Interval: map[Depth]time.Duration{Shallow: day, Deep: 28 * day},
 			PerPool:  map[string]map[Depth]time.Duration{"7": {Shallow: 12 * time.Hour, Deep: 14 * day}},
@@ -450,7 +451,6 @@ esac
 		t.Errorf("intervals:\n got %+v\nwant %+v", iv, want)
 	}
 
-	// What main's applyPins does to a pinned depth.
 	delete(iv.PerPool["7"], Deep)
 	if got := iv.Health.PerPool["7"][Deep]; got != 14*day {
 		t.Errorf("pinning PerPool leaked into the health view: got %v, want 336h", got)
@@ -685,34 +685,39 @@ func TestParseRatio(t *testing.T) {
 	}
 }
 
-func TestExporterWithholdsLateAndBreachUntilConfigRead(t *testing.T) {
+func TestExporterWithholdsLateAndBreachComputedFromDefaults(t *testing.T) {
 	now := testNow(t)
 	raw := []byte(`{"pg_stats": [
 		{"pgid": "7.a", "last_scrub_stamp": "2026-08-31T00:00:00.000000+0000", "last_deep_scrub_stamp": "2026-07-01T00:00:00.000000+0000", "stat_sum": {"num_bytes": 100}}
 	]}`)
-	snap, err := Compute(raw, now, testIntervals)
-	if err != nil {
-		t.Fatal(err)
-	}
-	exporter := &Exporter{}
-	exporter.Store(snap, time.Second)
 	withheld := []string{
 		"ceph_scrub_latest_target_seconds", "ceph_scrub_late_pgs", "ceph_scrub_late_bytes",
 		"ceph_scrub_late_max_seconds", "ceph_scrub_warn_interval_seconds",
 		"ceph_scrub_breach_pgs", "ceph_scrub_breach_bytes",
 	}
+	exporter := &Exporter{}
+
+	fromDefaults, err := Compute(raw, now, testIntervals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exporter.Store(fromDefaults, time.Second)
+	exporter.StoreIntervalRead(true, now)
 	if n := testutil.CollectAndCount(exporter, withheld...); n != 0 {
-		t.Errorf("before any config read: %d late/breach series, want 0", n)
+		t.Errorf("defaults snapshot after a later successful read: %d late/breach series, want 0", n)
 	}
 	if n := testutil.CollectAndCount(exporter, "ceph_scrub_overdue_pgs"); n == 0 {
-		t.Error("overdue must still be exported before the first config read")
+		t.Error("overdue must still be exported from a defaults snapshot")
 	}
-	exporter.StoreIntervalRead(false, now)
-	if n := testutil.CollectAndCount(exporter, withheld...); n != 0 {
-		t.Errorf("after a failed first read: %d late/breach series, want 0", n)
+
+	read := testIntervals
+	read.FromCluster = true
+	fromCluster, err := Compute(raw, now, read)
+	if err != nil {
+		t.Fatal(err)
 	}
-	exporter.StoreIntervalRead(true, now)
+	exporter.Store(fromCluster, time.Second)
 	if n := testutil.CollectAndCount(exporter, withheld...); n == 0 {
-		t.Error("after a successful read: late/breach series missing")
+		t.Error("snapshot computed from cluster config: late/breach series missing")
 	}
 }
