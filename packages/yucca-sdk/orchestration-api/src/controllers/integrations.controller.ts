@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Res } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 import {
   ConfigureImmichIntegrationRequestDto,
+  ConfigureImmichIntegrationResponseDto,
   ImmichBackupStatusDto,
   ImmichRollbackRequestDto,
   IntegrationsResponseDto,
@@ -28,7 +29,10 @@ export class IntegrationsController {
   }
 
   @Post('immich')
-  configureImmichIntegration(@Body() dto: ConfigureImmichIntegrationRequestDto) {
+  @ApiOkResponse({ type: ConfigureImmichIntegrationResponseDto })
+  configureImmichIntegration(
+    @Body() dto: ConfigureImmichIntegrationRequestDto,
+  ): Promise<ConfigureImmichIntegrationResponseDto> {
     return this.service.configureImmichIntegration(dto);
   }
 

@@ -14,9 +14,9 @@ import { ModuleConfigRepository } from '../repositories/moduleConfig.repository'
 import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
-import { BackendService } from './backend.service';
 import { ScheduleRepository } from '../repositories/schedule.repository';
 import { ImmichRepositoryConfig } from '../schema/tables/repositoryIntegrationImmich.table';
+import { BackendService } from './backend.service';
 import { RepositoryService } from './repository.service';
 import { ScheduleService } from './schedule.service';
 import { TelemetryService } from './telemetry.service';
@@ -82,7 +82,7 @@ export class IntegrationsService {
     };
   }
 
-  async configureImmichIntegration(dto: ConfigureImmichIntegrationRequestDto) {
+  async configureImmichIntegration(dto: ConfigureImmichIntegrationRequestDto): Promise<{ repositoryId: string }> {
     const { immichIntegration } = this.moduleConfig.get();
     if (!immichIntegration) {
       throw new BadRequestException('Immich integration is not enabled.');
@@ -147,6 +147,10 @@ export class IntegrationsService {
       type: 'IntegrationUpdate',
       integrations: await this.getIntegrationsConfig(),
     });
+
+    return {
+      repositoryId,
+    };
   }
 
   async enterImmichMaintenanceRollback(dto: ImmichRollbackRequestDto): Promise<{ jwt: string }> {

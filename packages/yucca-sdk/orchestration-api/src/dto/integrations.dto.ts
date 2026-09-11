@@ -69,6 +69,12 @@ const ConfigureImmichIntegrationRequestSchema = z
   })
   .meta({ id: 'ConfigureImmichIntegrationRequestDto' });
 
+const ConfigureImmichIntegrationResponseSchema = z
+  .object({
+    repositoryId: z.string(),
+  })
+  .meta({ id: 'ConfigureImmichIntegrationResponseDto' });
+
 const ImmichRollbackRequestSchema = z
   .object({
     repositoryId: z.string(),
@@ -84,4 +90,5 @@ export class ImmichIntegrationDto extends createZodDto(ImmichIntegrationSchema) 
 export class IntegrationsResponseDto extends createZodDto(IntegrationsResponseSchema) {}
 export class ImmichBackupStatusDto extends createZodDto(ImmichBackupStatusSchema) {}
 export class ConfigureImmichIntegrationRequestDto extends createZodDto(ConfigureImmichIntegrationRequestSchema) {}
+export class ConfigureImmichIntegrationResponseDto extends createZodDto(ConfigureImmichIntegrationResponseSchema) {}
 export class ImmichRollbackRequestDto extends createZodDto(ImmichRollbackRequestSchema) {}

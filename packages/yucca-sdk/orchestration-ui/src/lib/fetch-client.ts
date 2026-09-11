@@ -170,6 +170,9 @@ export type ConfigureImmichIntegrationRequestDto = {
     retentionPolicy?: (RetentionPolicyDto) | null;
     paused?: boolean;
 };
+export type ConfigureImmichIntegrationResponseDto = {
+    repositoryId: string;
+};
 export type ImmichRollbackRequestDto = {
     repositoryId: string;
     snapshotId: string;
@@ -393,7 +396,10 @@ export function getImmichBackupStatus(opts?: Oazapfts.RequestOpts) {
     }));
 }
 export function configureImmichIntegration(configureImmichIntegrationRequestDto: ConfigureImmichIntegrationRequestDto, opts?: Oazapfts.RequestOpts) {
-    return oazapfts.ok(oazapfts.fetchText("/api/yucca/integrations/immich", oazapfts.json({
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConfigureImmichIntegrationResponseDto;
+    }>("/api/yucca/integrations/immich", oazapfts.json({
         ...opts,
         method: "POST",
         body: configureImmichIntegrationRequestDto

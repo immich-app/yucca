@@ -13,13 +13,14 @@
   } from "$lib/services/backend.service";
   import {
     IMMICH_DEFAULT_CRON,
-    useConfigureImmichDefaults,
+    useConfigureAndStartImmichIntegration,
   } from "$lib/services/integrations.service";
   import {
     handleConfirmRecoveryKey,
     handleCurrentRecoveryKey,
     handleOnboardingStatus,
   } from "$lib/services/onboarding.service";
+  import { handleCreateBackup } from "$lib/services/repository.service";
   import { LoadingSpinner, Modal, ModalBody } from "@immich/ui";
   import cronstrue from "cronstrue";
   import { onMount, type Snippet } from "svelte";
@@ -48,7 +49,7 @@
   let resume: Stage = $state("intro");
   let confirming = $state(false);
 
-  const defaults = useConfigureImmichDefaults();
+  const defaults = useConfigureAndStartImmichIntegration();
 
   const schedule = cronstrue.toString(IMMICH_DEFAULT_CRON, { verbose: true });
 
@@ -116,7 +117,11 @@
   };
 
   const onStartBackup = () =>
-    defaults.mutate(undefined, { onSuccess: () => (stage = "finished") });
+    defaults.mutate(undefined, { onSuccess: ({ repositoryId }) => {
+        stage = "finished";
+        handleCreateBackup(repositoryId);
+      }
+    });
 </script>
 
 {#if status === undefined || status.status === "not-ready"}

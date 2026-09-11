@@ -251,8 +251,15 @@
           }
         },
         "responses": {
-          "201": {
-            "description": ""
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigureImmichIntegrationResponseDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1868,6 +1875,17 @@
           "dataFolders",
           "backupConfiguration",
           "libraries"
+        ]
+      },
+      "ConfigureImmichIntegrationResponseDto": {
+        "type": "object",
+        "properties": {
+          "repositoryId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repositoryId"
         ]
       },
       "ImmichRollbackRequestDto": {
