@@ -3,7 +3,7 @@ import { DocumentBuilder, SwaggerCustomOptions, SwaggerDocumentOptions, SwaggerM
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ORCHESTRATION_PORT, OrchestrationApiModule } from '../src';
+import { OrchestrationApiModule } from '../src';
 
 async function main() {
   const app = await NestFactory.create<NestApplication>(
@@ -14,10 +14,7 @@ async function main() {
 
   app.setGlobalPrefix('api');
 
-  const builder = new DocumentBuilder()
-    .setTitle('yucca')
-    .setDescription('yucca SDK')
-    .addServer('http://localhost:' + ORCHESTRATION_PORT);
+  const builder = new DocumentBuilder().setTitle('yucca').setDescription('yucca SDK');
 
   const config = builder.build();
 

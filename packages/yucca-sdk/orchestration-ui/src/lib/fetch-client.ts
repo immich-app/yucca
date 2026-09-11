@@ -8,12 +8,10 @@ import * as Oazapfts from "@oazapfts/runtime";
 import * as QS from "@oazapfts/runtime/query";
 export const defaults: Oazapfts.Defaults<Oazapfts.CustomHeaders> = {
     headers: {},
-    baseUrl: "http://localhost:22676"
+    baseUrl: "/"
 };
 const oazapfts = Oazapfts.runtime(defaults);
-export const servers = {
-    server1: "http://localhost:22676"
-};
+export const servers = {};
 export type DeviceFlowEventType = "START" | "SUCCESS" | "FAILURE";
 export type DeviceFlowFailureReason = "NOT_CONNECTED" | "DEVICE_FLOW_FAILED" | "WRONG_ACCOUNT" | "UNKNOWN";
 export type DeviceFlowEventDto = {

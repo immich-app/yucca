@@ -1201,11 +1201,7 @@
     "contact": {}
   },
   "tags": [],
-  "servers": [
-    {
-      "url": "http://localhost:22676"
-    }
-  ],
+  "servers": [],
   "components": {
     "schemas": {
       "DeviceFlowEventType": {
