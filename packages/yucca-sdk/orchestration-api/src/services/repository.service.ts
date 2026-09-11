@@ -15,6 +15,7 @@ import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryInspectResponseDto,
+  RepositoryLinkRequestDto,
   RepositoryListResponseDto,
   RepositoryMetricsDto,
   RepositoryPrimaryBackendReconfigureRequestDto,
@@ -156,6 +157,95 @@ export class RepositoryService {
     return {
       repository,
     };
+  }
+
+  async linkRepository(dto: RepositoryLinkRequestDto, backendId?: string): Promise<RepositoryCreateResponseDto> {
+    if (!backendId) {
+      const backends = await this.backend.getBackends();
+      backendId = backends[0].id;
+    }
+
+    const { backend, configuration } = await this.getBackendOrThrow(backendId);
+
+    if (await this.repository.getByRemoteId(backendId, dto.remoteId)) {
+      throw new BadRequestException('Repository is already linked locally');
+    }
+
+    const { repositories: remotes } = await backend.getRepositories();
+    const remote = remotes.find(({ id }) => id === dto.remoteId);
+    if (!remote) {
+      throw new NotFoundException('Repository not found on the backend');
+    }
+
+    const endpoint = await backend.getResticEndpoint(remote.id);
+    const placement = { siteCode: remote.siteCode, storageClusterCode: remote.storageClusterCode };
+    const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
+
+    try {
+      await this.restic.keyList(endpoint, key, placement);
+    } catch (error) {
+      this.logger.error(`Repository ${remote.id} rejected the derived encryption key`, error);
+      throw new BadRequestException('Repository could not be opened with this installation encryption key');
+    }
+
+    const id = randomUUID();
+
+    await this.repository.create({
+      id,
+      remoteId: remote.id,
+      backendId,
+      retentionPolicy: DEFAULT_RETENTION_POLICY,
+      siteCode: remote.siteCode,
+      storageClusterCode: remote.storageClusterCode,
+    });
+
+    const paths = dto.paths ?? (await this.getLatestSnapshotPaths(endpoint, key, placement));
+    for (const path of paths) {
+      await this.repositoryPath.create({ id, path });
+    }
+
+    const repository: LocalRepositoryDto = {
+      ...(await this.getLocalRepository(id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
+      ...remote,
+      id,
+      backends: {
+        primary: {
+          id: backendId,
+          online: true,
+          type: configuration.type,
+        },
+        secondary: [],
+      },
+    };
+
+    this.telemetry.submitStructuredLog('Linked repository', {
+      repositoryId: remote.id,
+      backendId,
+    });
+
+    this.events.publish({
+      type: 'RepositoryCreate',
+      repository,
+    });
+
+    return {
+      repository,
+    };
+  }
+
+  private async getLatestSnapshotPaths(
+    endpoint: string,
+    key: Uint8Array,
+    placement: ResticPlacement,
+  ): Promise<string[]> {
+    try {
+      const snapshots = await this.restic.snapshots(endpoint, key, placement);
+      snapshots.sort((a, b) => +b.time - +a.time);
+      return snapshots[0]?.paths ?? [];
+    } catch (error) {
+      this.logger.warn('Could not infer backup paths from snapshots', error);
+      return [];
+    }
   }
 
   async getRepositories(): Promise<RepositoryListResponseDto> {
@@ -758,64 +848,14 @@ export class RepositoryService {
     });
 
     try {
-      const { configuration, backend } = await this.getBackendOrThrow(backendId);
-      const { repository: remote } = await backend.getRepository(id);
-      const localId = randomUUID();
-
-      const endpoint = await backend.getResticEndpoint(remote.id);
-      const placement = { siteCode: remote.siteCode, storageClusterCode: remote.storageClusterCode };
-      const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
-      await this.restic.keyList(endpoint, key, placement);
-
-      let paths: string[] = [];
-      try {
-        const snapshots = await this.restic.snapshots(endpoint, key, placement);
-        snapshots.sort((a, b) => +b.time - +a.time);
-        paths = snapshots[0].paths;
-      } catch (error) {
-        this.telemetry.submitStructuredLog('Failed to infer backup paths during import', {
-          repositoryId: id,
-          backendId,
-          error,
-        });
-      }
-
-      await this.repository.create({
-        id: localId,
-        remoteId: remote.id,
-        backendId,
-        retentionPolicy: DEFAULT_RETENTION_POLICY,
-        siteCode: remote.siteCode,
-        storageClusterCode: remote.storageClusterCode,
-      });
-
-      const repository: LocalRepositoryDto = {
-        ...(await this.getLocalRepository(localId, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
-        ...remote,
-        id: localId,
-        backends: {
-          primary: {
-            id: backendId,
-            online: true,
-            type: configuration.type,
-          },
-          secondary: [],
-        },
-      };
+      const result = await this.linkRepository({ remoteId: id }, backendId);
 
       this.telemetry.submitStructuredLog('Finished repository import', {
         repositoryId: id,
         backendId,
       });
 
-      this.events.publish({
-        type: 'RepositoryCreate',
-        repository,
-      });
-
-      return {
-        repository,
-      };
+      return result;
     } catch (error) {
       this.telemetry.submitStructuredLog('Finished repository import', {
         repositoryId: id,

@@ -54,6 +54,7 @@ const ConfigureImmichIntegrationRequestSchema = z
     libraries: LibrariesSchema,
     retentionPolicy: RetentionPolicySchema.nullable().optional(),
     paused: z.boolean().optional(),
+    repositoryId: z.string().optional().describe('Bind to this existing repository instead of creating a new one'),
   })
   .meta({ id: 'ConfigureImmichIntegrationRequestDto' });
 

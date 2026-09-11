@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Kysely, Updateable } from 'kysely';
+import { Kysely, Selectable, Updateable } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from '../schema';
 import { RepositoryTable } from '../schema/tables/repository.table';
@@ -45,6 +45,17 @@ export class RepositoryRepository {
     await this.db.updateTable('repositories').set(set).where('id', '=', id).execute();
   }
 
+  private toRepositoryRow(row: Selectable<RepositoryTable>): RepositoryRow {
+    return {
+      id: row.id,
+      remoteId: row.remoteId,
+      backendId: row.backendId,
+      retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
+      siteCode: row.siteCode,
+      storageClusterCode: row.storageClusterCode,
+    };
+  }
+
   async get(id: string): Promise<RepositoryRow | undefined> {
     const row = await this.db
       .selectFrom('repositories')
@@ -52,28 +63,23 @@ export class RepositoryRepository {
       .where('id', '=', id)
       .executeTakeFirst();
 
-    if (row) {
-      return {
-        id: row.id,
-        remoteId: row.remoteId,
-        backendId: row.backendId,
-        retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
-        siteCode: row.siteCode,
-        storageClusterCode: row.storageClusterCode,
-      };
-    }
+    return row && this.toRepositoryRow(row);
+  }
+
+  async getByRemoteId(backendId: string, remoteId: string): Promise<RepositoryRow | undefined> {
+    const row = await this.db
+      .selectFrom('repositories')
+      .selectAll('repositories')
+      .where('backendId', '=', backendId)
+      .where('remoteId', '=', remoteId)
+      .executeTakeFirst();
+
+    return row && this.toRepositoryRow(row);
   }
 
   async getAll(): Promise<RepositoryRow[]> {
     const rows = await this.db.selectFrom('repositories').selectAll('repositories').execute();
-    return rows.map((row) => ({
-      id: row.id,
-      remoteId: row.remoteId,
-      backendId: row.backendId,
-      retentionPolicy: row.retentionPolicy === null ? null : (JSON.parse(row.retentionPolicy) as RetentionPolicy),
-      siteCode: row.siteCode,
-      storageClusterCode: row.storageClusterCode,
-    }));
+    return rows.map((row) => this.toRepositoryRow(row));
   }
 
   async delete(id: string) {
