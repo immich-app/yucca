@@ -1,16 +1,11 @@
 <script lang="ts">
-  import {
-    MockProvider,
-    orchestrationApiProvider,
-    setProvider,
-  } from "$lib/providers";
+  import { orchestrationApiProvider, setProvider } from "$lib/providers";
   import {
     AppShell,
     AppShellHeader,
     AppShellSidebar,
     Heading,
     NavbarItem,
-    Text,
     ThemeSwitcher,
   } from "@immich/ui";
   import {
@@ -24,14 +19,7 @@
   import Dashboard from "../dashboard/Dashboard.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
 
-  const { mock }: { mock: boolean } = $props();
-
-  // svelte-ignore state_referenced_locally
-  if (mock) {
-    setProvider(new MockProvider());
-  } else {
-    setProvider(orchestrationApiProvider);
-  }
+  setProvider(orchestrationApiProvider);
 
   let open = $state(true);
   let route = $state("dashboard");
@@ -41,15 +29,11 @@
   <AppShellHeader>
     <div class="flex items-center justify-between w-full px-4 py-2">
       <Heading>
-        {#if mock}
-          <Text class="h-12 font-bold">FUTO Backups</Text>
-        {:else}
-          <img
-            alt="App Name Here"
-            src="/app-name-here.png"
-            class="inline h-12"
-          />
-        {/if}
+        <img
+          alt="App Name Here"
+          src="/app-name-here.png"
+          class="inline h-12"
+        />
       </Heading>
       <ThemeSwitcher size="medium" color="secondary" />
     </div>
@@ -122,13 +106,9 @@
     {:else if route === "backups"}
       <BackupsList local />
     {:else if route === "config"}
-      {#if !mock}
-        <GlobalSettings />
-      {/if}
+      <GlobalSettings />
     {:else if route === "schedules"}
-      {#if !mock}
-        <ScheduleList />
-      {/if}
+      <ScheduleList />
     {/if}
   </div>
 </AppShell>

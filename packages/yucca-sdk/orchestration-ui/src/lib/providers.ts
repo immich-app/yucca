@@ -5,30 +5,9 @@ export abstract class BaseProvider {
   abstract getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto>;
 }
 
-/* eslint-disable @typescript-eslint/require-await */
 export const yuccaApiProvider = yuccaApiClient as BaseProvider;
 
 export const orchestrationApiProvider = orchestrationApiClient as BaseProvider;
-
-export class MockProvider extends BaseProvider {
-  async getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto> {
-    return {
-      repositories: [
-        {
-          id: 'repo1',
-          name: 'My Repository',
-          worm: false,
-          siteCode: 'local',
-          storageClusterCode: 'local-dev',
-          metrics: {
-            sizeBytes: 1337,
-          },
-        },
-      ],
-    };
-  }
-}
-/* eslint-enable @typescript-eslint/require-await */
 
 const KEY = '__yucca_provider__';
 

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { MockProvider, setProvider } from "$lib/providers";
+  import { orchestrationApiProvider, setProvider } from "$lib/providers";
   import { themeManager, ThemePreference, toastManager } from "@immich/ui";
   import { YuccaContext } from "$lib";
   import "./layout.css";
 
   const { children } = $props();
 
-  setProvider(new MockProvider());
+  setProvider(orchestrationApiProvider);
 
   themeManager.setPreference(ThemePreference.Light);
 

@@ -16,7 +16,7 @@
   } from "@immich/ui";
   import { onMount } from "svelte";
 
-  let mock: true | false | "immich" = $state(false);
+  let view: "orchestrator" | "immich" = $state("orchestrator");
 
   const { advanced, testUiRestore } = options;
 
@@ -34,10 +34,11 @@
 
   onMount(
     () =>
-      (mock = JSON.parse(localStorage.getItem("mock") ?? "{}").mock ?? true),
+      (view =
+        JSON.parse(localStorage.getItem("view") ?? "{}").view ?? "orchestrator"),
   );
 
-  $effect(() => localStorage.setItem("mock", JSON.stringify({ mock })));
+  $effect(() => localStorage.setItem("view", JSON.stringify({ view })));
 </script>
 
 <div class="flex h-dvh flex-col">
@@ -54,13 +55,12 @@
 
     <Stack align="end">
       <HStack>
-        <Button onclick={() => (mock = true)} disabled={mock === true}
-          >Use mock provider</Button
-        >
-        <Button onclick={() => (mock = false)} disabled={mock === false}
+        <Button
+          onclick={() => (view = "orchestrator")}
+          disabled={view === "orchestrator"}
           >Use orchestration API</Button
         >
-        <Button onclick={() => (mock = "immich")} disabled={mock === "immich"}
+        <Button onclick={() => (view = "immich")} disabled={view === "immich"}
           >Immich</Button
         >
         <Button onclick={onUpsellModal}>Upsell modal</Button>
@@ -83,13 +83,11 @@
   <hr />
 
   <div class="min-h-0 grow">
-    {#if mock === "immich"}
-      <ImmichTestUi onExit={() => (mock = true)} />
-    {:else if mock}
-      <TestUi mock={true} />
+    {#if view === "immich"}
+      <ImmichTestUi onExit={() => (view = "orchestrator")} />
     {:else}
-      <OnboardingGate onExit={() => (mock = true)}>
-        <TestUi mock={false} />
+      <OnboardingGate onExit={() => (view = "orchestrator")}>
+        <TestUi />
       </OnboardingGate>
     {/if}
   </div>
