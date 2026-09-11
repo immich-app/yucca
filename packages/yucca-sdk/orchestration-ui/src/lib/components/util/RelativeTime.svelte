@@ -8,7 +8,10 @@
 
   const props: Props = $props();
 
-  const format = () => DateTime.fromISO(props.time).toRelative();
+  const format = () => {
+    const time = DateTime.fromISO(props.time);
+    return DateTime.now().diff(time).as('minute') < 1 ? "a moment ago" : time.toRelative();
+  };
 
   let text = $state(format());
 
