@@ -6,7 +6,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.27.0",
+  "packageManager": "pnpm@10.34.5",
   "dependencies": {
     "@nestjs/common": "catalog:",
     "@opentelemetry/api": "catalog:",
