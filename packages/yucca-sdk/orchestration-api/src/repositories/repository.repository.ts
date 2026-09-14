@@ -76,6 +76,17 @@ export class RepositoryRepository {
     }));
   }
 
+  async hasRemoteRepository(backendId: string, remoteId: string): Promise<boolean> {
+    const repository = await this.db
+      .selectFrom('repositories')
+      .select('id')
+      .where('backendId', '=', backendId)
+      .where('remoteId', '=', remoteId)
+      .executeTakeFirst();
+
+    return repository !== undefined;
+  }
+
   async delete(id: string) {
     await this.db.deleteFrom('repositoryLocalMetrics').where('id', '=', id).execute();
     await this.db.deleteFrom('repositoryPaths').where('id', '=', id).execute();

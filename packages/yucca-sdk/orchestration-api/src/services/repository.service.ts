@@ -758,21 +758,32 @@ export class RepositoryService {
     }
   }
 
-  async importRepository(id: string, backendId: string): Promise<RepositoryCreateResponseDto> {
+  async importRepository(remoteId: string, backendId: string): Promise<RepositoryCreateResponseDto> {
+    const localId = randomUUID();
+
     this.telemetry.submitStructuredLog('Running repository import', {
-      repositoryId: id,
+      repositoryId: remoteId,
       backendId,
     });
 
     try {
+      if (await this.repository.hasRemoteRepository(backendId, remoteId)) {
+        throw new BadRequestException('Repository is already linked locally');
+      }
+
       const { configuration, backend } = await this.getBackendOrThrow(backendId);
-      const { repository: remote } = await backend.getRepository(id);
-      const localId = randomUUID();
+      const { repository: remote } = await backend.getRepository(remoteId);
 
       const endpoint = await backend.getResticEndpoint(remote.id);
       const placement = { siteCode: remote.siteCode, storageClusterCode: remote.storageClusterCode };
       const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
-      await this.restic.keyList(endpoint, key, placement);
+
+      try {
+        await this.restic.keyList(endpoint, key, placement);
+      } catch (error) {
+        this.logger.error(`Repository ${remote.id} rejected recovery key`, error);
+        throw new BadRequestException('Repository could not be opened with current recovery key');
+      }
 
       let paths: string[] = [];
       try {
@@ -781,7 +792,7 @@ export class RepositoryService {
         paths = snapshots[0].paths;
       } catch (error) {
         this.telemetry.submitStructuredLog('Failed to infer backup paths during import', {
-          repositoryId: id,
+          repositoryId: remoteId,
           backendId,
           error,
         });
@@ -811,7 +822,7 @@ export class RepositoryService {
       };
 
       this.telemetry.submitStructuredLog('Finished repository import', {
-        repositoryId: id,
+        repositoryId: remoteId,
         backendId,
       });
 
@@ -825,7 +836,7 @@ export class RepositoryService {
       };
     } catch (error) {
       this.telemetry.submitStructuredLog('Finished repository import', {
-        repositoryId: id,
+        repositoryId: remoteId,
         backendId,
         error,
       });
