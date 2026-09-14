@@ -6,6 +6,10 @@ metadata:
   name: michael
 spec:
   interval: 1h
+  # Well above helm's 5m default: with maxUnavailable 0 a terminating pod holds
+  # its slot until its in-flight restic requests drain, so father's 12 gateways
+  # roll at the pace of DRAIN_DELAY_MS + SHUTDOWN_TIMEOUT_MS per wave.
+  timeout: 15m
   chart:
     spec:
       chart: charts/apps/michael
@@ -42,6 +46,17 @@ spec:
         value: "3010"
       - name: LOG_LEVEL
         value: info
+      # Rollout drain. DRAIN_DELAY_MS is the window between /readyz going 503
+      # and the listener closing — it has to outlast readiness detection (2s
+      # probe x 2 failures) plus EndpointSlice and Envoy EDS propagation, or the
+      # gateway is still steering fresh restic requests at a closing socket.
+      # SHUTDOWN_TIMEOUT_MS then caps how long an in-flight blob transfer gets
+      # to finish. The chart's terminationGracePeriodSeconds must stay above
+      # their sum.
+      - name: DRAIN_DELAY_MS
+        value: "15000"
+      - name: SHUTDOWN_TIMEOUT_MS
+        value: "120000"
       # Must match the cluster's STORAGE_CLUSTER_CODE (topology ConfigMap):
       # yucca-api mints restic tokens with a storageCluster claim, and michael
       # fails closed on cluster codes it does not front.

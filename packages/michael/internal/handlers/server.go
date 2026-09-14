@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"michael/internal/auth"
@@ -33,7 +34,20 @@ type Server struct {
 	// metrics and the access log. Optional: nil leaves both unattributed, which
 	// is what the tests and any deployment without an ASN database get.
 	ResolveClient func(*http.Request) geoip.Client
+
+	draining atomic.Bool
 }
+
+// readyPath is the kubelet's readiness probe. A repository path is always a
+// UUID (auth rejects anything else), so no repository can collide with it.
+const readyPath = "/readyz"
+
+// BeginDrain fails readiness from here on. Nothing already running is touched
+// and requests that still arrive are still served in full — the point is only
+// to get this replica out of the gateway's endpoint set before the listener
+// closes, so a rollout moves restic to another replica instead of resetting it
+// mid-backup.
+func (s *Server) BeginDrain() { s.draining.Store(true) }
 
 // NewServer builds a single-cluster server: everything is served from s under
 // the default cluster code.
@@ -170,7 +184,28 @@ func (s *Server) Handler() http.Handler {
 		})
 	})
 
-	return r
+	return s.withReadiness(r)
+}
+
+// withReadiness answers the readiness probe ahead of the router, keeping a
+// probe every couple of seconds out of the access log and the request metrics.
+//
+// Backend health is deliberately not part of the answer: an RGW outage is
+// shared fate across every replica, so failing readiness on it would empty the
+// Service's endpoints and turn a degraded data plane into an unreachable one.
+// The pool sheds with 503 + Retry-After for that case instead.
+func (s *Server) withReadiness(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != readyPath {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if s.draining.Load() {
+			http.Error(w, "draining", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 }
 
 // op stamps the operation name and the resolved route pattern onto the request
