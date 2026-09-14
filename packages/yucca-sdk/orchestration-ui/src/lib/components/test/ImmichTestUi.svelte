@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { orchestrationApiProvider, setProvider } from "$lib/providers";
   import {
     AppShell,
     AppShellHeader,
@@ -72,9 +71,6 @@
 
   demoPadding.set(true);
   onDestroy(() => demoPadding.set(false));
-
-  // svelte-ignore state_referenced_locally
-  setProvider(orchestrationApiProvider);
 </script>
 
 {#snippet hideReminder()}
@@ -237,7 +233,11 @@
           icon={{ icon: mdiImageAlbum, flipped: true }}
         />
         <NavbarItem href="#" title="Utilities" icon={mdiToolboxOutline} />
-        <NavbarItem href="#" title="Archive" icon={mdiArchiveArrowDownOutline} />
+        <NavbarItem
+          href="#"
+          title="Archive"
+          icon={mdiArchiveArrowDownOutline}
+        />
         <NavbarItem href="#" title="Locked folder" icon={mdiLockOutline} />
         <NavbarItem href="#" title="Trash" icon={mdiTrashCanOutline} />
       {/if}

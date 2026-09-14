@@ -1,8 +1,5 @@
-import {
-  createSession,
-  defaults,
-  type DeviceFlowEventDto,
-} from '$lib/fetch-client';
+import { createSession, type DeviceFlowEventDto } from '$lib/fetch-client';
+import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createMutation } from '@tanstack/svelte-query';
@@ -14,7 +11,7 @@ export const startDeviceFlow = (
   onEvent: (event: DeviceFlowEventDto) => void,
 ) => {
   const source = new EventSource(
-    `${defaults.baseUrl.replace(/\/$/, '')}/api/yucca/auth/${kind}/device`,
+    `${getProvider().baseUrl}/api/yucca/auth/${kind}/device`,
     { withCredentials: true },
   );
 

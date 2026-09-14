@@ -1,5 +1,6 @@
 <script lang="ts">
   import { events, SocketEvent, useSocket } from "$lib/events";
+  import { getProvider } from "$lib/providers";
   import { onDestroy, onMount } from "svelte";
 
   type Props = {
@@ -7,7 +8,8 @@
   };
 
   const props: Props = $props();
-  const disconnect = useSocket();
+  const disconnect =
+    getProvider().api === "orchestrator" ? useSocket() : () => {};
 
   onMount(() => {
     for (const key of Object.keys(props)) {

@@ -220,6 +220,17 @@ export class RunHistoryRepository {
     return this.db.selectFrom('runHistory').selectAll('runHistory').where('repositoryId', '=', repositoryId).execute();
   }
 
+  async getLatest(repositoryId: string, type: RunType) {
+    return this.db
+      .selectFrom('runHistory')
+      .selectAll('runHistory')
+      .where('repositoryId', '=', repositoryId)
+      .where('type', '=', type)
+      .orderBy('start', 'desc')
+      .limit(1)
+      .executeTakeFirst();
+  }
+
   getObservable(id: string) {
     const db = this.db;
     const ephemeralPath = this.ephemeralLogs.get(id);
@@ -260,10 +271,12 @@ export class RunHistoryRepository {
   }
 
   async markIncompleteAsFailed() {
-    await this.db
+    return this.db
       .updateTable('runHistory')
       .set('status', TaskStatus.Failed)
+      .set('end', new Date().toISOString())
       .where('status', '=', TaskStatus.Incomplete)
+      .returningAll()
       .execute();
   }
 }
