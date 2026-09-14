@@ -221,6 +221,9 @@ spec:
             # empty entry means the default 0s (off). The local tier keeps every
             # sample at its 5s floor; o11y's vmselect serves 20s at best, so the
             # finer samples on that leg are paid for and then discarded on read.
+            # Deduplicator.MustStop does not flush, so stopping vmagent drops up
+            # to one interval of buffered samples on this leg; pendingSeries does
+            # not flush on stop either, so a restart already cost ~1s here.
             - -remoteWrite.streamAggr.dedupInterval=
             - -remoteWrite.streamAggr.dedupInterval=20s
             # Bound each URL's spill so two queues fit the 2Gi buffer emptyDir.
