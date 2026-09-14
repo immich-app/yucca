@@ -4,7 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import Database from 'better-sqlite3';
-import { SqliteDialect } from 'kysely';
+import { type SqliteDatabase, SqliteDialect } from 'kysely';
 import { KyselyModule } from 'nestjs-kysely';
 import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -103,7 +103,10 @@ export const services = [
   YuccaService,
 ];
 
-export function openStateDatabase(config: Pick<ModuleConfig, 'statePath'>, logger = LoggingRepository.create('State')) {
+export function openStateDatabase(
+  config: Pick<ModuleConfig, 'statePath'>,
+  logger = LoggingRepository.create('State'),
+): SqliteDatabase {
   mkdirSync(config.statePath, { recursive: true });
 
   const databasePath = resolve(config.statePath, 'state.sqlite3');
