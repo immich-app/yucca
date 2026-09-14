@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { join } from 'node:path';
 import {
@@ -11,6 +11,7 @@ import { InternalEvent, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import type { ImmichIntegration, ModuleConfig } from '../moduleConfig';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { RepositoryRepository } from '../repositories/repository.repository';
 import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
@@ -30,6 +31,7 @@ export class IntegrationsService {
     private readonly repositoryIntegrationImmich: RepositoryIntegrationImmichRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryService: RepositoryService,
+    private readonly repository: RepositoryRepository,
     private readonly runHistory: RunHistoryRepository,
     private readonly schedule: ScheduleRepository,
     private readonly scheduleService: ScheduleService,
@@ -88,45 +90,44 @@ export class IntegrationsService {
       throw new BadRequestException('Immich integration is not enabled.');
     }
 
-    const existing = await this.repositoryIntegrationImmich.get();
+    if (dto.repositoryId) {
+      const boundRepository = await this.repository.get(dto.repositoryId);
+      if (!boundRepository) {
+        throw new NotFoundException('Specified repository does not exist');
+      }
+    }
 
-    let repositoryId: string;
-    let scheduleId: string;
+    const existingConfiguration = await this.repositoryIntegrationImmich.get();
 
-    if (existing) {
-      repositoryId = existing.id;
-      scheduleId = existing.scheduleId;
-      await this.repositoryService.updateRepository(existing.id, {
+    let repositoryId: string | undefined = dto.repositoryId ?? existingConfiguration?.id;
+    if (repositoryId) {
+      await this.repositoryService.updateRepository(repositoryId, {
         name: dto.name,
         worm: dto.worm,
         retentionPolicy: dto.retentionPolicy,
       });
-      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron, paused: dto.paused });
     } else {
       ({
         repository: { id: repositoryId },
       } = await this.repositoryService.createRepository({
         name: dto.name,
         worm: dto.worm,
+        retentionPolicy: dto.retentionPolicy,
       }));
+    }
 
-      if (dto.retentionPolicy !== undefined) {
-        await this.repositoryService.updateRepository(repositoryId, {
-          retentionPolicy: dto.retentionPolicy,
-        });
-      }
-
+    let scheduleId: string | undefined = existingConfiguration?.scheduleId;
+    if (scheduleId) {
+      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron, paused: dto.paused });
+    } else {
       ({
         schedule: { id: scheduleId },
       } = await this.scheduleService.createSchedule({
         name: 'Immich Backup',
+        paused: dto.paused ?? false,
         cron: dto.cron,
         repositories: [repositoryId],
       }));
-
-      if (dto.paused) {
-        await this.scheduleService.applyScheduleUpdate(scheduleId, { paused: true });
-      }
     }
 
     const configuration: ImmichRepositoryConfig = {

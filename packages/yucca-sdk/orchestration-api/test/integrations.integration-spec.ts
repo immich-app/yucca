@@ -2,8 +2,9 @@ import { ModuleConfigRepository } from 'src/repositories/moduleConfig.repository
 import { RepositoryIntegrationImmichRepository } from 'src/repositories/repositoryIntegrationImmich.repository';
 import { RepositoryPathRepository } from 'src/repositories/repositoryPath.repository';
 import { IntegrationsService } from 'src/services/integrations.service';
+import { RepositoryService } from 'src/services/repository.service';
 import { ScheduleService } from 'src/services/schedule.service';
-import { createTestingModule, TestContext } from './testUtils';
+import { createRemoteRepository, createTestingModule, TestContext } from './testUtils';
 
 let ctx: TestContext;
 
@@ -198,5 +199,71 @@ describe('Integrations', () => {
 
     await immichRepository.delete();
     moduleConfig.update({ immichIntegration: undefined });
+  });
+});
+
+describe('Immich integration repository binding', () => {
+  const immichState = {
+    dataPath: '/data/immich',
+    dataFolders: ['upload'],
+    libraries: [],
+  };
+
+  const configuration = {
+    name: 'Immich Backup',
+    worm: false,
+    cron: '0 2 * * *',
+    dataFolders: ['upload'],
+    backupConfiguration: false,
+    libraries: 'all' as const,
+  };
+
+  beforeEach(() => {
+    ctx.resticMock.init.mockReset();
+    ctx.resticMock.keyList.mockReset().mockResolvedValue([{ id: 'key-1', current: true }]);
+    ctx.resticMock.snapshots.mockReset().mockResolvedValue([]);
+    ctx.module.get(ModuleConfigRepository).update({ immichIntegration: immichState });
+  });
+
+  afterEach(async () => {
+    await ctx.module.get(RepositoryIntegrationImmichRepository).delete();
+    ctx.module.get(ModuleConfigRepository).update({ immichIntegration: undefined });
+  });
+
+  it('binds to an existing repository instead of creating a new one', async () => {
+    const integrationsService = ctx.module.get(IntegrationsService);
+    const repositoryService = ctx.module.get(RepositoryService);
+    const immichRepository = ctx.module.get(RepositoryIntegrationImmichRepository);
+
+    const remoteId = await createRemoteRepository(ctx);
+    const { repository } = await repositoryService.linkRepository({ remoteId }, ctx.backendId);
+
+    await integrationsService.configureImmichIntegration({ ...configuration, repositoryId: repository.id });
+
+    const integration = await immichRepository.get();
+    expect(integration?.id).toBe(repository.id);
+  });
+
+  it('re-points an existing binding at another repository', async () => {
+    const integrationsService = ctx.module.get(IntegrationsService);
+    const repositoryService = ctx.module.get(RepositoryService);
+    const immichRepository = ctx.module.get(RepositoryIntegrationImmichRepository);
+    const scheduleService = ctx.module.get(ScheduleService);
+
+    await integrationsService.configureImmichIntegration(configuration);
+    const first = await immichRepository.get();
+
+    const remoteId = await createRemoteRepository(ctx);
+    const { repository } = await repositoryService.linkRepository({ remoteId }, ctx.backendId);
+
+    await integrationsService.configureImmichIntegration({ ...configuration, repositoryId: repository.id });
+
+    const second = await immichRepository.get();
+    expect(second?.id).toBe(repository.id);
+    expect(second?.id).not.toBe(first?.id);
+
+    const { schedules } = await scheduleService.getSchedules();
+    const immichSchedule = schedules.find((entry) => entry.id === second?.scheduleId);
+    expect(immichSchedule?.repositories).toEqual([repository.id]);
   });
 });
