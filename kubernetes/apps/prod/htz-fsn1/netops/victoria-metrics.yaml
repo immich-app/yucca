@@ -1,5 +1,5 @@
 # VictoriaMetrics single — the SHORT-TERM, HIGH-GRANULARITY tier of the hybrid
-# design: 30d retention at 10s scrape resolution, in-cluster. vmagent remote-writes
+# design: 30d retention, 5s dedup floor, in-cluster. vmagent remote-writes
 # here today and will FAN OUT to the o11y cluster later (second -remoteWrite.url in
 # vmagent.yaml) — this instance stays the fast local buffer, o11y the long-term one.
 #
@@ -38,7 +38,10 @@ spec:
           args:
             - -storageDataPath=/storage
             - -retentionPeriod=30d
-            - -dedup.minScrapeInterval=10s
+            # Tracks the FINEST scrape in the tier: sflow at 5s, itself pinned to
+            # the fabric's sFlow polling-interval (tf core-fabric). At 10s this
+            # dropped every other counter sample from that seconds-granularity feed.
+            - -dedup.minScrapeInterval=5s
             - -httpListenAddr=:8428
           ports:
             - containerPort: 8428
