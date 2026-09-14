@@ -119,7 +119,7 @@
   const onStartBackup = () =>
     defaults.mutate(undefined, { onSuccess: ({ repositoryId }) => {
         stage = "finished";
-        handleCreateBackup(repositoryId);
+        handleCreateBackup(repositoryId).catch(() => void 0);
       }
     });
 </script>
