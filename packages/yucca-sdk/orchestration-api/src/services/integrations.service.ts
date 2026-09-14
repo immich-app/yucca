@@ -118,7 +118,11 @@ export class IntegrationsService {
 
     let scheduleId: string | undefined = existingConfiguration?.scheduleId;
     if (scheduleId) {
-      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron, paused: dto.paused });
+      await this.scheduleService.applyScheduleUpdate(scheduleId, {
+        repositories: [repositoryId],
+        cron: dto.cron,
+        paused: dto.paused,
+      });
     } else {
       ({
         schedule: { id: scheduleId },
