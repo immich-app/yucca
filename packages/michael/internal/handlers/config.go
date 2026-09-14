@@ -40,6 +40,10 @@ func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
 	rangeHeader := r.Header.Get("Range")
 	obj, err := s.store(r.Context()).GetObject(r.Context(), a.Repository, "config", rangeHeader)
 	if err != nil {
+		if storage.IsNotFound(err) {
+			writeError(w, r, http.StatusNotFound, "Not Found")
+			return
+		}
 		hlog.FromRequest(r).Error().Err(err).Msg("get config failed")
 		writeStorageError(w, r, err)
 		return

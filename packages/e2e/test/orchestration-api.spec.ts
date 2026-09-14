@@ -8,6 +8,7 @@ import { io, Socket } from 'socket.io-client';
 import { waitForLog } from 'src/victoria-logs';
 
 const baseUrl = `http://localhost:22676`;
+sdk.defaults.baseUrl = baseUrl;
 let socket: Socket;
 
 const startDeviceFlow = async () => {

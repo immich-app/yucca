@@ -1,11 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import {
-    OnboardingGate,
-    orchestrationApiProvider,
-    setProvider,
-    YuccaContext,
-  } from '@futo-org/backups-orchestrator-ui';
+  import { configureYucca, OnboardingGate, YuccaContext } from '@futo-org/backups-orchestrator-ui';
   import {
     AppShell,
     AppShellHeader,
@@ -21,7 +16,7 @@
 
   const { children } = $props();
 
-  setProvider(orchestrationApiProvider);
+  configureYucca({ api: 'orchestrator' });
 
   toastManager.setOptions({
     class: 'fixed top-0 right-0 flex flex-col items-end justify-end gap-2 p-4',
@@ -33,7 +28,7 @@
 <svelte:head><title>FUTO Backups</title></svelte:head>
 
 <div class="bg-light text-dark min-h-dvh">
-  <YuccaContext baseUrl="">
+  <YuccaContext>
     <AppShell>
       <AppShellHeader>
         <div class="flex w-full items-center justify-between px-4 py-2">

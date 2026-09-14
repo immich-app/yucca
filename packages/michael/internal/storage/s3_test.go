@@ -89,6 +89,7 @@ func TestIsNotFound(t *testing.T) {
 		{"500", &httpError{statusCode: 500}, false},
 		{"types.NotFound", &types.NotFound{}, true},
 		{"types.NoSuchKey", &types.NoSuchKey{}, true},
+		{"types.NoSuchBucket", &types.NoSuchBucket{}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

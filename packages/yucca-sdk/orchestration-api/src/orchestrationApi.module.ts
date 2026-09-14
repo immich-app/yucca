@@ -151,6 +151,7 @@ export class OrchestrationApiModule {
 
             const database = new Database(resolve(config.statePath, 'state.sqlite3'));
             database.pragma('journal_mode = WAL');
+            database.pragma('wal_autocheckpoint = 1');
 
             return {
               dialect: new SqliteDialect({ database }),

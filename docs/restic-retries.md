@@ -35,6 +35,7 @@ any transport error — is retried for the full window.
 | 500 / 503 | retries with backoff, up to 15 min |
 | 403 (WORM violation, "already exists") | fails the operation permanently |
 | 404 on HEAD | treats as "does not exist" (permanent, but often the expected answer) |
+| 404 on GET | "does not exist", permanent; never trips the per-file breaker below. A lock deleted between list and load is re-listed within seconds — a 500 here instead burns the full 15-minute window first |
 | 400 | retried (not in the permanent set) — avoid for terminal conditions |
 
 Restic does **not** read `Retry-After`; its backoff is fixed client-side. The

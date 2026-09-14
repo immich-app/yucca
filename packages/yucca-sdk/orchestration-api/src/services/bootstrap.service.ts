@@ -2,7 +2,7 @@ import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { BootstrapRepository } from '../repositories/bootstrap.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { DatabaseRepository } from '../repositories/database.repository';
-import { RunHistoryRepository } from '../repositories/runHistory.repository';
+import { RunHistoryService } from './runHistory.service';
 import { ScheduleService } from './schedule.service';
 
 @Injectable()
@@ -11,8 +11,8 @@ export class BootstrapService implements OnApplicationBootstrap {
     private readonly database: DatabaseRepository,
     private readonly config: ConfigRepository,
     private readonly schedule: ScheduleService,
-    private readonly runHistoryRepository: RunHistoryRepository,
     private readonly bootstrap: BootstrapRepository,
+    private readonly runHistory: RunHistoryService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -20,7 +20,7 @@ export class BootstrapService implements OnApplicationBootstrap {
       await this.database.runMigrations();
       await this.config.bootstrap();
       await this.schedule.bootstrap();
-      await this.runHistoryRepository.markIncompleteAsFailed();
+      await this.runHistory.reconcileInterruptedRuns();
 
       this.bootstrap.markReady();
     } catch (error) {
