@@ -4,52 +4,20 @@
   import RepositorySnapshotsList from "$lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte";
   import PageLayout from "$lib/components/ui/PageLayout.svelte";
   import OnEvents from "$lib/components/util/OnEvents.svelte";
-  import { getBackupPageActions } from "$lib/services/immich.integration.service";
   import {
-    useIntegrationEventHandler,
-    useIntegrations,
-  } from "$lib/services/integrations.service";
-  import {
-    useRepositories,
-    useRepositoryEventHandler,
-  } from "$lib/services/repository.service";
-  import {
-    useScheduleEventHandler,
-    useSchedules,
-  } from "$lib/services/schedule.service";
+    getBackupPageActions,
+    useImmichBackupStatus,
+    useImmichBackupStatusEventHandler,
+  } from "$lib/services/immich.integration.service";
   import RepositoryRunHistoryPage from "$lib/components/backups/run-history/RepositoryRunHistoryPage.svelte";
   import RepositorySnapshotsPage from "$lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte";
   import ImmichBackupSettings from "./ImmichBackupSettings.svelte";
   import { Container, Stack } from "@immich/ui";
   import ImmichManageBackupOverview from "./ImmichManageBackupOverview.svelte";
 
-  const schedules = useSchedules();
-  const repositories = useRepositories();
-  const integrations = useIntegrations();
+  const backup = useImmichBackupStatus();
 
-  const { onScheduleCreate, onScheduleUpdate, onScheduleDelete } =
-    useScheduleEventHandler();
-  const { onRepositoryCreate, onRepositoryUpdate, onRepositoryDelete } =
-    useRepositoryEventHandler();
-  const { onIntegrationUpdate } = useIntegrationEventHandler();
-
-  const schedule = $derived(
-    integrations.data?.immichIntegration
-      ? schedules.data?.find(
-          (schedule) =>
-            schedule.id === integrations.data.immichIntegration!.scheduleId,
-        )
-      : undefined,
-  );
-
-  const repository = $derived(
-    integrations.data?.immichIntegration
-      ? repositories.data?.find(
-          (repository) =>
-            repository.id === integrations.data.immichIntegration!.id,
-        )
-      : undefined,
-  );
+  const { repository, schedule } = $derived(backup);
 
   let view = $state<"overview" | "attempts" | "snapshots" | "settings">(
     "overview",
@@ -60,15 +28,7 @@
   );
 </script>
 
-<OnEvents
-  {onScheduleCreate}
-  {onScheduleUpdate}
-  {onScheduleDelete}
-  {onRepositoryCreate}
-  {onRepositoryUpdate}
-  {onRepositoryDelete}
-  {onIntegrationUpdate}
-/>
+<OnEvents {...useImmichBackupStatusEventHandler()} />
 
 {#if view === "attempts" && repository}
   <PageLayout title="Backup attempts" onBack={() => (view = "overview")}>
@@ -97,7 +57,7 @@
     <Container size="medium" center>
       {#if repository && schedule}
         <Stack class="mt-4" gap={6}>
-          <ImmichManageBackupOverview {repository} {schedule} />
+          <ImmichManageBackupOverview {repository} {schedule} status={backup.status} />
           <BackendsList {repository} />
           <RepositoryRunHistory
             {repository}

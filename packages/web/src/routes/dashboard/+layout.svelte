@@ -11,23 +11,20 @@
     NavbarItem,
   } from "@immich/ui";
   import { mdiBackupRestore, mdiConnection, mdiViewDashboard } from "@mdi/js";
-  import {
-    setProvider,
-    yuccaApiProvider,
-  } from "@futo-org/backups-orchestrator-ui";
+  import { configureYucca } from "@futo-org/backups-orchestrator-ui";
   import { t } from "svelte-i18n-lingui";
   import { defaults } from "@futo-org/backups-api-client";
 
   const { data, children } = $props();
 
-  setProvider(yuccaApiProvider);
+  configureYucca({ api: "customer" });
 
   let open = $state(true);
 </script>
 
 <AppShell>
   <AppShellHeader>
-    <div class="flex h-full items-center justify-between p-4">
+    <div class="flex w-full h-full items-center justify-between p-4">
       <Heading size="tiny">FUTO Backups</Heading>
       <HStack>
         <Avatar name={data.user!.name} />

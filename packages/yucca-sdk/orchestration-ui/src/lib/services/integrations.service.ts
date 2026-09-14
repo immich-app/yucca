@@ -42,7 +42,7 @@ export const useConfigureImmichIntegration = () =>
     () => queryClient,
   );
 
-export const useConfigureImmichDefaults = () =>
+export const useConfigureAndStartImmichIntegration = () =>
   createMutation(
     () => ({
       mutationFn: async () => {
@@ -51,7 +51,7 @@ export const useConfigureImmichDefaults = () =>
           throw new Error('No Immich instance detected.');
         }
 
-        await configureImmichIntegration({
+        const { repositoryId } = await configureImmichIntegration({
           name: 'Immich',
           worm: false,
           cron: IMMICH_DEFAULT_CRON,
@@ -59,6 +59,8 @@ export const useConfigureImmichDefaults = () =>
           backupConfiguration: true,
           libraries: 'all',
         });
+
+        return { repositoryId };
       },
       onError: (error) => handleError(error, 'Failed to create backup'),
     }),
