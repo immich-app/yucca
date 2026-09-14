@@ -28,6 +28,7 @@ export const ScheduleSchema = z
 const ScheduleCreateRequestSchema = z
   .object({
     name: z.string(),
+    paused: z.boolean(),
     cron: CronExpressionSchema,
     repositories: z.array(z.string()),
   })

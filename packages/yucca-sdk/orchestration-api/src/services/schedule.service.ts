@@ -159,12 +159,12 @@ export class ScheduleService {
     });
   }
 
-  async createSchedule({ repositories, ...dto }: ScheduleCreateRequestDto): Promise<ScheduleCreateResponseDto> {
+  async createSchedule({ repositories, paused, ...dto }: ScheduleCreateRequestDto): Promise<ScheduleCreateResponseDto> {
     const id = randomUUID();
 
     const { ordering: _, ...model } = await this.schedule.create({
       id,
-      paused: 0,
+      paused: paused ? 1 : 0,
       ordering: JSON.stringify([]),
       ...dto,
     });

@@ -119,7 +119,7 @@ export class RepositoryService {
       id,
       remoteId: remote.id,
       backendId,
-      retentionPolicy: DEFAULT_RETENTION_POLICY,
+      retentionPolicy: dto.retentionPolicy ?? DEFAULT_RETENTION_POLICY,
       siteCode: remote.siteCode,
       storageClusterCode: remote.storageClusterCode,
     });
