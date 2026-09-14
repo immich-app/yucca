@@ -4,4 +4,4 @@
   import { Dashboard } from '@futo-org/backups-orchestrator-ui';
 </script>
 
-<Dashboard local onViewBackups={() => goto(resolve('/backups'))} />
+<Dashboard onViewBackups={() => goto(resolve('/backups'))} />
