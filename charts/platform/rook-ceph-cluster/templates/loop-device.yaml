@@ -4,6 +4,13 @@
 # DaemonSet creates a sparse image on the node and losetup-attaches it to a
 # FIXED loop device (storage.device / loopDevice.device) that the CephCluster
 # names explicitly. The container stays alive so the attachment persists.
+#
+# It runs on cephImage rather than something small like alpine because every
+# OSD in the cluster is blocked on this attachment: a registry the node has to
+# reach for this pod alone is a single point of failure, and a hung pull of one
+# surfaced half an hour later as an unrelated yucca-michael config error. This
+# image the node must pull anyway, and Tilt prepulls it the moment the cluster
+# exists. It carries losetup/truncate/mknod, so nothing has to be installed.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -22,14 +29,13 @@ spec:
       hostPID: true
       containers:
         - name: loop-device
-          image: {{ .Values.loopDevice.image }}
+          image: {{ .Values.cephImage }}
           securityContext:
             privileged: true
           command: ["/bin/sh", "-c"]
           args:
             - |
               set -eu
-              apk add --no-cache util-linux >/dev/null 2>&1 || true
               IMG="{{ .Values.loopDevice.path }}"
               DEV="{{ .Values.loopDevice.device }}"
               mkdir -p "$(dirname "$IMG")"

@@ -51,7 +51,6 @@ objectStore:
 # it; Rook's OSD then consumes it. Disable if your nodes have real disks.
 loopDevice:
   enabled: true
-  image: alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
   sizeGiB: 20
   # where the backing image file lives on the node (under dataDirHostPath)
   path: /var/lib/rook/osd-loop.img
