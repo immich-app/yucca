@@ -217,6 +217,12 @@ spec:
             # o11y long-term tier: the unauth mesh vmauth over NetBird (same
             # path as the observability agents; NetBird ACL is the only gate).
             - -remoteWrite.url=https://vmauth.o11y.futo.network/insert/0/prometheus/api/v1/write
+            # Per-URL array, one entry per -remoteWrite.url above, in order; an
+            # empty entry means the default 0s (off). The local tier keeps every
+            # sample at its 5s floor; o11y's vmselect serves 20s at best, so the
+            # finer samples on that leg are paid for and then discarded on read.
+            - -remoteWrite.streamAggr.dedupInterval=
+            - -remoteWrite.streamAggr.dedupInterval=20s
             # Bound each URL's spill so two queues fit the 2Gi buffer emptyDir.
             - -remoteWrite.maxDiskUsagePerURL=900MB
             - -remoteWrite.tmpDataPath=/buffer
