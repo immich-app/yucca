@@ -154,8 +154,10 @@ spec:
               - evaluator:
                   params: [0]
                   type: gt
-    # Stale thresholds judge overdue silently: the exporter keeps last-known
-    # intervals when the cluster read fails, which is correct and invisible.
+    # Stale thresholds judge silently: a failed read keeps the last-known osd
+    # and mgr config. Before an instance's first successful read monk has only
+    # ceph's built-in defaults, so it withholds late and breach and judges
+    # overdue alone against them.
     - uid: monk-interval-read-failing
       title: MonkIntervalReadFailing
       condition: B
@@ -169,8 +171,14 @@ spec:
         summary: monk cannot read the cluster's scrub intervals
         description: >-
           ceph_scrub_interval_read_success is 0 on {{ $labels.instance }}
-          (cluster {{ $labels.cluster }}) for an hour; overdue thresholds
-          no longer track the cluster's scrub configuration.
+          (cluster {{ $labels.cluster }}) for an hour. After a successful read
+          monk keeps the last-known osd and mgr scrub config, which goes stale
+          if the cluster's config changes. If this instance has not read the
+          cluster since it started, it withholds late and breach and judges
+          overdue against ceph's built-in defaults (7d for both intervals),
+          which overstates deep overdue on a cluster tuned to 28d; the verdict
+          can then read Work outstanding, but not Falling behind or Past warn
+          deadline, from this instance.
       data:
         - refId: A
           relativeTimeRange:
@@ -199,8 +207,10 @@ spec:
               - evaluator:
                   params: [0]
                   type: gt
-    # A stamp-format drift below the outage threshold: some PGs unparsable
-    # (counted overdue, fail-safe) while the refresh still succeeds.
+    # Unparsable stamps count toward overdue but toward neither
+    # ceph_scrub_late_* nor ceph_scrub_breach_*, so both undercount while
+    # this fires; treat the Falling behind and Past warn deadline verdicts
+    # as unreliable until fixed.
     - uid: monk-parse-errors
       title: MonkParseErrors
       condition: B
@@ -215,7 +225,9 @@ spec:
         description: >-
           ceph_scrub_parse_errors is nonzero on {{ $labels.instance }}
           (cluster {{ $labels.cluster }}): some PG stamps no longer parse
-          (format drift?); affected PGs count as overdue until fixed.
+          (format drift?); affected PGs count as overdue but toward neither
+          ceph_scrub_late_* nor ceph_scrub_breach_*, so treat the Falling
+          behind and Past warn deadline verdicts as unreliable until fixed.
       data:
         - refId: A
           relativeTimeRange:

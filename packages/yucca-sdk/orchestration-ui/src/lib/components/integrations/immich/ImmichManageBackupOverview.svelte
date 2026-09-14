@@ -3,8 +3,8 @@
   import StackListItem from "$lib/components/ui/StackListItem.svelte";
   import RelativeTime from "$lib/components/util/RelativeTime.svelte";
   import type { LocalRepositoryDto, ScheduleDto } from "$lib/fetch-client";
+  import type { ImmichBackupStatus } from "$lib/services/immich.integration.service";
   import { handleCreateBackup } from "$lib/services/repository.service";
-  import { getBackupOutcome } from "$lib/utils/backup-status";
   import { Button, FormatBytes, Icon } from "@immich/ui";
   import {
     mdiAlert,
@@ -12,31 +12,36 @@
     mdiCheck,
     mdiCloudUploadOutline,
     mdiInformation,
+    mdiProgressUpload,
   } from "@mdi/js";
   import cronstrue from "cronstrue";
 
   type Props = {
     repository: LocalRepositoryDto;
     schedule: ScheduleDto;
+    status: ImmichBackupStatus;
   };
 
-  const { repository, schedule }: Props = $props();
+  const { repository, schedule, status }: Props = $props();
 
-  const outcome = $derived(getBackupOutcome(repository.metrics));
-
-  const status = $derived.by(() => {
-    switch (outcome) {
-      case "never": {
-        return { color: "warning", icon: mdiInformation } as const;
+  const appearance = $derived.by(() => {
+    switch (status.kind) {
+      case "running": {
+        return { color: "primary", icon: mdiProgressUpload } as const;
       }
+      case "offline":
+      case "missing":
       case "failed": {
         return { color: "danger", icon: mdiAlert } as const;
       }
       case "warn": {
         return { color: "warning", icon: mdiAlert } as const;
       }
-      default: {
+      case "complete": {
         return { color: "success", icon: mdiCheck } as const;
+      }
+      default: {
+        return { color: "warning", icon: mdiInformation } as const;
       }
     }
   });
@@ -44,7 +49,7 @@
 </script>
 
 <StackList>
-  <StackListItem title="Your library" footerColor={status.color}>
+  <StackListItem title="Your library" footerColor={appearance.color}>
     {#snippet icon()}
       <Icon icon={mdiArchiveOutline} />
     {/snippet}
@@ -71,20 +76,24 @@
     {/snippet}
 
     {#snippet footer()}
-      <Icon icon={status.icon} />
+      <Icon icon={appearance.icon} />
 
-      {#if outcome === "never"}
-        Backup is yet to run.
-      {:else if outcome === "failed"}
-        Last backup failed <RelativeTime time={repository.metrics.lastBackup!} />
-      {:else if outcome === "warn"}
-        Last backup finished with warnings <RelativeTime
-          time={repository.metrics.lastBackup!}
-        />
+      {#if status.kind === "offline"}
+        Backup storage is offline.
+      {:else if status.kind === "missing"}
+        Backup is missing on the service.
+      {:else if status.kind === "running"}
+        Backup in progress
+      {:else if status.kind === "failed"}
+        Last backup failed <RelativeTime time={status.lastBackup} />
+      {:else if status.kind === "warn"}
+        Last backup finished with warnings <RelativeTime time={status.lastBackup} />
+      {:else if status.kind === "complete"}
+        Last backup successful <RelativeTime time={status.lastBackup} />
+      {:else if status.kind === "paused"}
+        Backups paused
       {:else}
-        Last backup successful <RelativeTime
-          time={repository.metrics.lastBackup!}
-        />
+        Backup is yet to run.
       {/if}
     {/snippet}
   </StackListItem>

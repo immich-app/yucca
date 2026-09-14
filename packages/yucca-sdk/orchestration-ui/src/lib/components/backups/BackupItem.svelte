@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
+  import { getProvider } from "$lib/providers";
   import { getRepositoryActions } from "$lib/services/repository.service";
   import { getBackupOutcome } from "$lib/utils/backup-status";
   import { Badge, FormatBytes, Icon } from "@immich/ui";
@@ -9,10 +10,11 @@
 
   type Props = {
     repository: LocalRepositoryDto;
-    local?: boolean
   };
 
-  const { repository, local }: Props = $props();
+  const { repository }: Props = $props();
+
+  const local = getProvider().api === "orchestrator";
 
   const BackendNames = {
     yucca: "FUTO Backups",

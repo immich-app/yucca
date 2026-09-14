@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.40.2](https://github.com/immich-app/yucca/compare/v0.40.1...v0.40.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **michael:** answer GET of a missing blob or config with 404, not 500 ([#650](https://github.com/immich-app/yucca/issues/650)) ([dcf3065](https://github.com/immich-app/yucca/commit/dcf3065fee1b40df4d83d64383a16aa4b849b128))
+* **o11y:** show traffic rate in bits per second on all dashboards ([#639](https://github.com/immich-app/yucca/issues/639)) ([3e213f0](https://github.com/immich-app/yucca/commit/3e213f0891e39a372d53ee763423375efba6ae7f))
+
 ## [0.40.1](https://github.com/immich-app/yucca/compare/v0.40.0...v0.40.1) (2026-09-10)
 
 

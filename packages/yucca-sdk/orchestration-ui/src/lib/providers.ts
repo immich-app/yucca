@@ -1,46 +1,52 @@
 import * as yuccaApiClient from '@futo-org/backups-api-client';
 import * as orchestrationApiClient from './fetch-client';
 
-export abstract class BaseProvider {
-  abstract getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto>;
-}
+export type YuccaApi = 'orchestrator' | 'customer';
 
-/* eslint-disable @typescript-eslint/require-await */
-export const yuccaApiProvider = yuccaApiClient as BaseProvider;
+type GetRepositories =
+  () => Promise<orchestrationApiClient.RepositoryListResponseDto>;
 
-export const orchestrationApiProvider = orchestrationApiClient as BaseProvider;
+export type YuccaProvider = {
+  api: YuccaApi;
+  baseUrl: string;
+  getRepositories: GetRepositories;
+};
 
-export class MockProvider extends BaseProvider {
-  async getRepositories(): Promise<orchestrationApiClient.RepositoryListResponseDto> {
-    return {
-      repositories: [
-        {
-          id: 'repo1',
-          name: 'My Repository',
-          worm: false,
-          siteCode: 'local',
-          storageClusterCode: 'local-dev',
-          metrics: {
-            sizeBytes: 1337,
-          },
-        },
-      ],
-    };
-  }
-}
-/* eslint-enable @typescript-eslint/require-await */
+export type YuccaOptions = {
+  api: YuccaApi;
+  baseUrl?: string;
+};
+
+const clients = {
+  orchestrator: orchestrationApiClient,
+  customer: yuccaApiClient,
+};
 
 const KEY = '__yucca_provider__';
 
-export const setProvider = (provider: BaseProvider) => {
+export const configureYucca = ({
+  api,
+  baseUrl,
+}: YuccaOptions): YuccaProvider => {
+  const client = clients[api];
+  if (baseUrl !== undefined) {
+    client.defaults.baseUrl = baseUrl;
+  }
+
+  const provider: YuccaProvider = {
+    api,
+    baseUrl: client.defaults.baseUrl.replace(/\/$/, ''),
+    getRepositories: client.getRepositories as GetRepositories,
+  };
   (globalThis as any)[KEY] = provider;
+  return provider;
 };
 
-export const getProvider = (): BaseProvider => {
-  const provider = (globalThis as any)[KEY] as BaseProvider | undefined;
+export const getProvider = (): YuccaProvider => {
+  const provider = (globalThis as any)[KEY] as YuccaProvider | undefined;
   if (!provider) {
     throw new Error(
-      'Provider not set — call setProvider() before getProvider()',
+      'Yucca is not configured: call configureYucca() before rendering any component',
     );
   }
   return provider;

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { options } from "$lib/options";
   import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import {
     Alert,
@@ -26,8 +25,6 @@
   type Props = {
     onNavigate?: (route: string) => void;
   };
-
-  const { advanced } = options;
 
   const { onNavigate }: Props = $props();
 

@@ -104,11 +104,11 @@
       Print
     </Button>
   </HStack>
-
-  {#if /* intentionally hide this to not overcrowd the modal */ PasswordCredential && false}
+  {#if PasswordCredential}
     <Button
       leadingIcon={mdiAsterisk}
-      variant="outline"
+      variant="ghost"
+      shape="round"
       onclick={storeCredentials}
     >
       Save to password manager

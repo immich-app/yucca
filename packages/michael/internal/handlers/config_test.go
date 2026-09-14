@@ -72,6 +72,20 @@ func TestGetConfig_Success(t *testing.T) {
 	}
 }
 
+func TestGetConfig_NotFound(t *testing.T) {
+	store := &mockStorage{
+		getObjectFn: func(_ context.Context, _, _, _ string) (*storage.S3Object, error) {
+			return nil, &types.NoSuchKey{}
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodGet, "/"+testRepository+"/config", nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestGetConfig_IfNoneMatch304(t *testing.T) {
 	store := &mockStorage{
 		getObjectFn: func(_ context.Context, _, _, _ string) (*storage.S3Object, error) {
