@@ -45,7 +45,7 @@ export class ConfigRepository {
     }
   }
 
-  private async assertStateIsEmpty(statePath: string) {
+  async getStateSummary() {
     const [{ backends }] = await this.db
       .selectFrom('backends')
       .select((eb) => eb.fn.countAll<number>().as('backends'))
@@ -55,6 +55,18 @@ export class ConfigRepository {
       .selectFrom('repositories')
       .select((eb) => eb.fn.countAll<number>().as('repositories'))
       .execute();
+
+    const [{ activeSchedules }] = await this.db
+      .selectFrom('schedules')
+      .where('paused', '!=', 1)
+      .select((eb) => eb.fn.countAll<number>().as('activeSchedules'))
+      .execute();
+
+    return { backends, repositories, activeSchedules };
+  }
+
+  private async assertStateIsEmpty(statePath: string) {
+    const { backends, repositories } = await this.getStateSummary();
 
     if (backends === 0 && repositories === 0) {
       return;
