@@ -1,30 +1,84 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Kysely } from 'kysely';
 import { InjectKysely } from 'nestjs-kysely';
 import { randomBytes } from 'node:crypto';
 import { availableParallelism } from 'node:os';
+import { resolve } from 'node:path';
 import { ConfigurationKey } from '../enum';
+import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
 import { DB } from '../schema';
 import { yuccaWellKnown } from '../wellKnown';
+import { LoggingRepository } from './logging.repository';
 
 export type ResticPlacement = { siteCode: string | null; storageClusterCode: string | null };
 
 @Injectable()
 export class ConfigRepository {
-  constructor(@InjectKysely('orchestrator') private db: Kysely<DB>) {}
+  constructor(
+    @InjectKysely('orchestrator') private db: Kysely<DB>,
+    @Inject(ModuleConfigProvider) private moduleConfig: ModuleConfig,
+    private readonly logger: LoggingRepository,
+  ) {
+    this.logger.setContext(ConfigRepository.name);
+  }
 
   async bootstrap() {
+    const statePath = resolve(this.moduleConfig.statePath);
     const hasKey = await this.hasEncryptionKey();
 
     if (!hasKey) {
+      await this.assertStateIsEmpty(statePath);
+
+      this.logger.warn(
+        `Generating a new master encryption key for the state in ${statePath}. Backups written with a previous key cannot be decrypted with this one.`,
+      );
+
       await this.set(ConfigurationKey.EncryptionKey, randomBytes(32).toString('hex'));
     }
+
+    await this.recordStatePath(statePath);
 
     const hasSecret = await this.hasSessionSecret();
 
     if (!hasSecret) {
       await this.set(ConfigurationKey.SessionSecret, randomBytes(32).toString('hex'));
     }
+  }
+
+  private async assertStateIsEmpty(statePath: string) {
+    const [{ backends }] = await this.db
+      .selectFrom('backends')
+      .select((eb) => eb.fn.countAll<number>().as('backends'))
+      .execute();
+
+    const [{ repositories }] = await this.db
+      .selectFrom('repositories')
+      .select((eb) => eb.fn.countAll<number>().as('repositories'))
+      .execute();
+
+    if (backends === 0 && repositories === 0) {
+      return;
+    }
+
+    throw new Error(
+      `The state in ${statePath} has ${backends} backend(s) and ${repositories} repository(ies) but no master encryption key. Refusing to generate one, as that would make those backups undecryptable. Restore the original state database.`,
+    );
+  }
+
+  private async recordStatePath(statePath: string) {
+    const previous = await this.getOptional(ConfigurationKey.StatePath);
+
+    if (previous === statePath) {
+      return;
+    }
+
+    if (previous) {
+      this.logger.warn(
+        `The state database was created in ${previous} but is being opened from ${statePath}. If the original directory is still populated, two installations are now diverging.`,
+      );
+    }
+
+    await this.set(ConfigurationKey.StatePath, statePath);
   }
 
   private async set(key: ConfigurationKey, value: string) {

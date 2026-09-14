@@ -24,6 +24,7 @@ export enum ConfigurationKey {
   SkippedOnboardingExtraConfig = 'skipped-onboarding-extra-config',
   ResticOptionRestConnections = 'restic-o-rest-connections',
   SessionSecret = 'session-secret',
+  StatePath = 'state-path',
 }
 
 export enum MetadataKey {
