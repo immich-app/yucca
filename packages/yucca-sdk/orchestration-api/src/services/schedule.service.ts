@@ -175,7 +175,7 @@ export class ScheduleService {
 
     const schedule = {
       ...model,
-      paused: false,
+      paused,
       repositories,
     };
 
@@ -189,7 +189,7 @@ export class ScheduleService {
       schedule,
     });
 
-    this.createCronJob(id, dto.cron, false);
+    this.createCronJob(id, dto.cron, schedule.paused);
 
     return {
       schedule,
