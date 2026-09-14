@@ -9,8 +9,11 @@ workflow instead.
 
 | Stack | State key | Creates |
 |---|---|---|
-| `docs/project` | `yucca/pages/docs/project/<env>/` | The `docs-futo-cloud-<env>` Pages project (+ web analytics site). Shared by every stage of the env. |
-| `docs/site` | `yucca/pages/docs/site/<env>/<stage>/` | The custom domain and CNAME for one stage: `docs.futo.cloud` (prod, stage `main`) or `docs.pr-<n>.dev.futo.cloud` (dev preview). |
+| `docs/project` | `yucca/pages/docs/project/<env>/terraform.tfstate` | The `docs-futo-cloud-<env>` Pages project (+ web analytics site). Shared by every stage of the env. |
+| `docs/site` | `yucca/pages/docs/site/2/<env>/<stage>/terraform.tfstate` | The custom domain and CNAME for one stage: `docs.futo.cloud` (prod, stage `main`) or `docs.pr-<n>.dev.futo.cloud` (dev preview). |
+
+The `2` in the site key is a generation: `cloudflare_pages_domain` cannot refresh a
+hostname that no longer exists on the project, so a hostname change needs a clean state.
 
 `ENVIRONMENT` (→ `TF_VAR_env`) is `prod` on main and `dev` for pull-request
 previews; `TF_VAR_stage` is empty on main and `pr-<n>` for a preview.

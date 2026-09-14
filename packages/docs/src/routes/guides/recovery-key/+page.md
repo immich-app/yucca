@@ -33,7 +33,7 @@ When the app shows you the key during setup, it gives you three ways to keep it,
 Good places to keep it: a password manager, a printed copy somewhere safe, or a file on a different machine. A bad place: only on the machine you are backing up, because that is exactly the machine you are protecting against losing.
 
 > [!NOTE]
-> Your backups do contain a copy of the key, but you need the key to read them, so they are not a substitute for saving it yourself.
+> Some backups contain a copy of the key: an Immich backup with **Backup configuration** turned on, or a standalone backup where you deliberately added the app's `/data` folder to its paths. Neither is a substitute for saving the key yourself, because you need the key to read the backup that holds it.
 
 ## Seeing it again later
 
