@@ -429,3 +429,8 @@ spec:
             bearerTokenSecret:
               name: vmagent-remote-write
               key: token
+            # o11y's vmstorage runs no dedup (only vmselect, at 20s on read), so
+            # a cumulative series re-exported unchanged is paid for in mesh
+            # bandwidth and disk before anything drops it. Collapse it here.
+            streamAggrConfig:
+              dedupInterval: 20s

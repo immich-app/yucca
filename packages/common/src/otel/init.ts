@@ -26,7 +26,7 @@ const otelSDK = new NodeSDK({
       url: otelEnv.OTEL_METRICS,
       temporalityPreference: metrics.AggregationTemporality.CUMULATIVE,
     }),
-    exportIntervalMillis: 1000,
+    exportIntervalMillis: otelEnv.OTEL_METRICS_EXPORT_INTERVAL,
   }),
 
   // tracing
