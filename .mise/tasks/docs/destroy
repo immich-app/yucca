@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#MISE description="Tear down a docs preview stage (TF_VAR_stage=pr-<n>); the shared Pages project is kept"
+set -euo pipefail
+
+export ENVIRONMENT="${ENVIRONMENT:-dev}"
+export OP_ENV_FILE=tf/pages/.env
+: "${TF_VAR_stage:?set TF_VAR_stage=pr-<n> to name the preview to tear down}"
+export TF_VAR_stage
+
+tf/op-run.sh terragrunt run --all destroy --non-interactive --queue-exclude-external --working-dir tf/pages/docs/site -- -refresh=false -lock-timeout=5m

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#MISE description="Publish packages/docs/build to Cloudflare Pages (ENVIRONMENT=prod|dev, TF_VAR_stage=pr-<n> for a preview)"
+set -euo pipefail
+
+export ENVIRONMENT="${ENVIRONMENT:-dev}"
+export TF_VAR_stage="${TF_VAR_stage:-}"
+export OP_ENV_FILE=tf/pages/.env
+
+[ -d packages/docs/build ] || { echo "docs:deploy: packages/docs/build is missing — run mise docs:build first" >&2; exit 1; }
+
+tf/op-run.sh terragrunt run --all apply --non-interactive --parallelism 1 --working-dir tf/pages/docs
+
+outputs="$(op run --env-file="$OP_ENV_FILE" --no-masking -- terragrunt output -json --working-dir tf/pages/docs/site)"
+project="$(jq -r .pages_project_name.value <<<"$outputs")"
+branch="$(jq -r .pages_branch.value <<<"$outputs")"
+hostname="$(jq -r .hostname.value <<<"$outputs")"
+
+tf/op-run.sh wrangler pages deploy packages/docs/build --project-name="$project" --branch="$branch" --commit-dirty=true
+
+echo "deployed https://${hostname}"
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "hostname=${hostname}" >> "$GITHUB_OUTPUT"
+fi

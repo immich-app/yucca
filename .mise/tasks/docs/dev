@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run docs in development mode"
+set -e
+export DOCS_PORT=${DOCS_PORT:-36034}
+
+pnpm --filter docs dev --host --port $DOCS_PORT
