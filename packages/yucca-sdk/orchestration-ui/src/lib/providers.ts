@@ -24,7 +24,10 @@ const clients = {
 
 const KEY = '__yucca_provider__';
 
-export const configureYucca = ({ api, baseUrl }: YuccaOptions): YuccaProvider => {
+export const configureYucca = ({
+  api,
+  baseUrl,
+}: YuccaOptions): YuccaProvider => {
   const client = clients[api];
   if (baseUrl !== undefined) {
     client.defaults.baseUrl = baseUrl;
