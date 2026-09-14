@@ -256,7 +256,7 @@ func LoadConfig() Config {
 
 	otlpEndpoint := os.Getenv("OTLP_METRICS_ENDPOINT")
 	otlpURLPath := os.Getenv("OTLP_METRICS_URL_PATH")
-	otlpInterval := 1000 * time.Millisecond
+	otlpInterval := 10 * time.Second
 	if v := os.Getenv("OTLP_METRICS_INTERVAL_MS"); v != "" {
 		ms, err := strconv.Atoi(v)
 		if err != nil {
