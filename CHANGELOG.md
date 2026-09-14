@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/immich-app/yucca/compare/v0.42.0...v0.43.0) (2026-09-14)
+
+
+### Features
+
+* **yucca sdk:** log on bootstrap ([#667](https://github.com/immich-app/yucca/issues/667)) ([249d91e](https://github.com/immich-app/yucca/commit/249d91e87ed5803fb4cb5cb0a95bb8a702c42c91))
+
 ## [0.42.0](https://github.com/immich-app/yucca/compare/v0.41.0...v0.42.0) (2026-09-14)
 
 
