@@ -19,7 +19,7 @@ data:
         url: http://victoria-metrics.netops.svc:8428
         isDefault: true
         jsonData:
-          timeInterval: 10s
+          timeInterval: 5s
 ---
 apiVersion: v1
 kind: ConfigMap

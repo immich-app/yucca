@@ -7,6 +7,10 @@ metadata:
     {{- include "yucca-common.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicas | default 1 }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "yucca-common.selectorLabels" . | nindent 6 }}
@@ -19,6 +23,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
+      {{- with .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
       {{- with .Values.serviceAccountName }}
       serviceAccountName: {{ . }}
       {{- end }}

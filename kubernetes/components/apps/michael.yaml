@@ -17,7 +17,8 @@ spec:
       namespace: yucca
   interval: 1h
   retryInterval: 2m
-  timeout: 10m
+  # Must outlast the HelmRelease's own 15m rollout budget (draining gateways).
+  timeout: 20m
   path: ./kubernetes/apps/base/michael
   prune: true
   wait: true
