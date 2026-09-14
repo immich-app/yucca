@@ -1,10 +1,10 @@
 <script>
   import { TooltipProvider } from "@immich/ui";
-  import { MockProvider, setProvider } from "$lib/providers";
+  import { configureYucca } from "$lib/providers";
 
   const { children } = $props();
 
-  setProvider(new MockProvider());
+  configureYucca({ api: "orchestrator" });
 </script>
 
 <TooltipProvider>

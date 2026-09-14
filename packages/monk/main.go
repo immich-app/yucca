@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"maps"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,15 +49,33 @@ func main() {
 		pins[depth] = d
 	}
 
-	// Until the first successful cluster read, unpinned depths fall back to
-	// ceph's own defaults (both one week; osd_deep_scrub_interval's 28d on
-	// spice is that cluster's tuning, not ceph's default) so a cold start with
-	// an unreachable mon still serves sane thresholds; the target-interval and
-	// interval-read metrics show what was used and whether it is live.
-	intervals := collector.Intervals{Global: map[collector.Depth]time.Duration{
-		collector.Shallow: 7 * 24 * time.Hour,
-		collector.Deep:    7 * 24 * time.Hour,
-	}}
+	// Until the first successful cluster read, unpinned inputs fall back to
+	// ceph's own defaults (max and deep intervals both one week, min interval
+	// one day; osd_deep_scrub_interval's 28d on spice is that cluster's
+	// tuning, not ceph's default) so a cold start with an unreachable mon
+	// still serves overdue; late and breach stay unexported until a snapshot
+	// is computed from a successful read, and the interval-read metrics show
+	// whether it is live.
+	intervals := collector.Intervals{
+		Global: map[collector.Depth]time.Duration{
+			collector.Shallow: 7 * 24 * time.Hour,
+			collector.Deep:    7 * 24 * time.Hour,
+		},
+		Scheduler: collector.Policy{
+			Interval: map[collector.Depth]time.Duration{
+				collector.Shallow: collector.DefaultSchedulerMinInterval,
+				collector.Deep:    7 * 24 * time.Hour,
+			},
+			Ratio: maps.Clone(collector.DefaultSchedulerRatios),
+		},
+		Health: collector.Policy{
+			Interval: map[collector.Depth]time.Duration{
+				collector.Shallow: 7 * 24 * time.Hour,
+				collector.Deep:    7 * 24 * time.Hour,
+			},
+			Ratio: maps.Clone(collector.DefaultWarnRatios),
+		},
+	}
 	applyPins := func(iv collector.Intervals) collector.Intervals {
 		for depth, d := range pins {
 			iv.Global[depth] = d
@@ -81,28 +103,24 @@ func main() {
 	// every refresh forever.
 	collectFailing, intervalFailing := false, false
 	var lastCollectErr, lastIntervalErr string
-	collect := func() {
+	collect := func(parent context.Context) {
 		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		ctx, cancel := context.WithTimeout(parent, *timeout)
 		defer cancel()
-		if len(pins) < len(collector.Depths) {
-			if iv, err := collector.FetchIntervals(ctx, cmd); err == nil {
-				intervals = applyPins(iv)
-				exporter.StoreIntervalRead(true, start)
-				if intervalFailing {
-					intervalFailing = false
-					log.Info().Msg("interval read recovered")
-				}
-			} else {
-				exporter.StoreIntervalRead(false, start)
-				if !intervalFailing || err.Error() != lastIntervalErr {
-					intervalFailing = true
-					lastIntervalErr = err.Error()
-					log.Warn().Err(err).Msg("interval read failing, keeping previous targets")
-				}
+		if iv, err := collector.FetchIntervals(ctx, cmd); err == nil {
+			intervals = applyPins(iv)
+			exporter.StoreIntervalRead(true, start)
+			if intervalFailing {
+				intervalFailing = false
+				log.Info().Msg("interval read recovered")
 			}
 		} else {
-			exporter.StoreIntervalRead(true, start)
+			exporter.StoreIntervalRead(false, start)
+			if !intervalFailing || err.Error() != lastIntervalErr {
+				intervalFailing = true
+				lastIntervalErr = err.Error()
+				log.Warn().Err(err).Msg("interval read failing, keeping previous targets")
+			}
 		}
 		raw, err := collector.Fetch(ctx, cmd)
 		if err == nil {
@@ -125,10 +143,20 @@ func main() {
 		}
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	go func() {
-		collect()
-		for range time.Tick(*refresh) {
-			collect()
+		ticker := time.NewTicker(*refresh)
+		defer ticker.Stop()
+		collect(ctx)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				collect(ctx)
+			}
 		}
 	}()
 
@@ -142,7 +170,19 @@ func main() {
 		IdleTimeout:       2 * time.Minute,
 	}
 	log.Info().Str("version", version.Version).Str("listen", *listen).Msg("serving")
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal().Err(err).Msg("listen failed")
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("listen failed")
+		}
+	}()
+
+	<-ctx.Done()
+	log.Info().Msg("shutting down")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal().Err(err).Msg("shutdown error")
 	}
+	log.Info().Msg("shutdown complete")
 }

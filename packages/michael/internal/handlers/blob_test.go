@@ -79,6 +79,48 @@ func TestGetBlob_Success(t *testing.T) {
 	}
 }
 
+func TestGetBlob_NotFound(t *testing.T) {
+	store := &mockStorage{
+		getObjectFn: func(_ context.Context, _, _, _ string) (*storage.S3Object, error) {
+			return nil, &types.NoSuchKey{}
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodGet, "/"+testRepository+"/locks/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestGetBlob_MissingBucketIsStorageError(t *testing.T) {
+	store := &mockStorage{
+		getObjectFn: func(_ context.Context, _, _, _ string) (*storage.S3Object, error) {
+			return nil, &types.NoSuchBucket{}
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodGet, "/"+testRepository+"/data/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for a missing bucket, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCheckBlob_MissingBucketIsStorageError(t *testing.T) {
+	store := &mockStorage{
+		headObjectFn: func(_ context.Context, _, _ string) (int64, error) {
+			return 0, &types.NoSuchBucket{}
+		},
+	}
+	srv := newTestServer(store)
+	rec := doRequest(t, srv, http.MethodHead, "/"+testRepository+"/data/"+testBlobName, nil, defaultAuth(), nil)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 for a missing bucket, got %d", rec.Code)
+	}
+}
+
 func TestGetBlob_RangeRequest(t *testing.T) {
 	store := &mockStorage{
 		getObjectFn: func(_ context.Context, _, _, rangeH string) (*storage.S3Object, error) {

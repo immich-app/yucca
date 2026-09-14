@@ -451,8 +451,15 @@ export class RepositoryService {
     try {
       if (options.resticParameters) {
         const { endpoint, key, placement } = options.resticParameters;
-        const { total_size } = await this.restic.stats(endpoint, key, placement);
-        metrics.sizeBytes = total_size;
+        try {
+          const { total_size } = await this.restic.stats(endpoint, key, placement);
+          metrics.sizeBytes = total_size;
+        } catch (error) {
+          this.telemetry.submitStructuredLog('Failed to read repository stats', {
+            repositoryId: id,
+            error,
+          });
+        }
       }
 
       const updatedMetrics = await this.repositoryLocalMetrics.save(id, metrics);

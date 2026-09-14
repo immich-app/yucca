@@ -116,6 +116,7 @@ export function openStateDatabase(config: Pick<ModuleConfig, 'statePath'>, logge
 
   const database = new Database(databasePath);
   database.pragma('journal_mode = WAL');
+  database.pragma('wal_autocheckpoint = 1');
 
   return database;
 }

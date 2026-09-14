@@ -368,9 +368,14 @@ func (s *S3Storage) DeleteObject(ctx context.Context, bucket, key string) error 
 	return nil
 }
 
-// IsNotFound reports whether err is an S3 404 — the object (or bucket) does
-// not exist, as opposed to a storage failure.
+// IsNotFound reports whether err is an S3 404 for the object itself, as
+// opposed to a storage failure. A missing bucket is excluded: restic treats
+// 404 as permanent, so a repository routed to a cluster without its bucket
+// must surface as an error, not as "this blob does not exist".
 func IsNotFound(err error) bool {
+	if _, ok := errors.AsType[*types.NoSuchBucket](err); ok {
+		return false
+	}
 	if _, ok := errors.AsType[*types.NotFound](err); ok {
 		return true
 	}

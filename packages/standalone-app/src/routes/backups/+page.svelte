@@ -2,4 +2,4 @@
   import { BackupsList } from '@futo-org/backups-orchestrator-ui';
 </script>
 
-<BackupsList local />
+<BackupsList />
