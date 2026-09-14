@@ -119,13 +119,15 @@ func main() {
 		Handler: srv.Handler(),
 	}
 
-	// Graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Drive each backend pool's reconcile/probe loop until shutdown.
+	// The pools outlive the signal context on purpose: requests still draining
+	// after SIGTERM need a backend set someone is still resolving and probing.
+	poolCtx, stopPools := context.WithCancel(context.Background())
+	defer stopPools()
 	for _, pool := range pools {
-		go pool.Run(ctx)
+		go pool.Run(poolCtx)
 	}
 
 	go func() {
@@ -136,32 +138,56 @@ func main() {
 	}()
 
 	<-ctx.Done()
-	log.Info().Msg("shutting down")
+	// Restore default signal handling: a second SIGTERM/SIGINT from an impatient
+	// operator now kills the process instead of being swallowed by the drain.
+	stop()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
-		log.Fatal().Err(err).Msg("shutdown error")
+	if err := drain(srv, httpSrv, cfg.DrainDelay, cfg.ShutdownTimeout); err != nil {
+		log.Error().Err(err).Msg("shutdown deadline hit with requests still in flight")
 	}
+	stopPools()
 
 	if err := asnDB.Close(); err != nil {
 		log.Error().Err(err).Msg("ASN database close error")
 	}
 
+	// Telemetry gets its own budget: a drain that used up shutdownCtx would
+	// otherwise hand the exporters an already-expired deadline and lose the
+	// final flush — exactly the window worth having logs for.
+	telemetryCtx, cancelTelemetry := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelTelemetry()
+
 	if meterProvider != nil {
-		if err := meterProvider.Shutdown(shutdownCtx); err != nil {
+		if err := meterProvider.Shutdown(telemetryCtx); err != nil {
 			log.Error().Err(err).Msg("meter provider shutdown error")
 		}
 	}
 
 	if otelLogWriter != nil {
-		if err := otelLogWriter.Shutdown(shutdownCtx); err != nil {
+		if err := otelLogWriter.Shutdown(telemetryCtx); err != nil {
 			log.Error().Err(err).Msg("OTLP log provider shutdown error")
 		}
 	}
 
 	log.Info().Msg("shutdown complete")
+}
+
+// drain retires this instance in two phases. Phase one fails /readyz while
+// serving exactly as before, giving the readiness probe, the EndpointSlice and
+// Envoy's EDS push time to move new restic requests onto another replica. Only
+// then does phase two close the listener and wait out whatever is still in
+// flight — closing it up front would reset live blob transfers and fail the
+// backup that was running.
+func drain(srv *handlers.Server, httpSrv *http.Server, delay, timeout time.Duration) error {
+	srv.BeginDrain()
+	log.Info().Dur("drain_delay", delay).Msg("draining: readiness failing, still serving")
+	time.Sleep(delay)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	log.Info().Dur("timeout", timeout).Msg("closing listener, waiting for in-flight requests")
+	return httpSrv.Shutdown(ctx)
 }
 
 // buildClusters builds one Storage per storage cluster michael fronts, keyed by
