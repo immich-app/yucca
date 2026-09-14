@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.41.0](https://github.com/immich-app/yucca/compare/v0.40.2...v0.41.0) (2026-09-14)
+
+
+### Features
+
+* first batch of closed beta improvements ([#657](https://github.com/immich-app/yucca/issues/657)) ([42a9324](https://github.com/immich-app/yucca/commit/42a932406c4a65a7783c69444513922879936514))
+* **monk:** measure scrub lateness and mirror the mgr not-scrubbed check ([#644](https://github.com/immich-app/yucca/issues/644)) ([5cafca4](https://github.com/immich-app/yucca/commit/5cafca4853b33413fb9c702af00b2888f6918287))
+
+
+### Bug Fixes
+
+* **michael:** drain in-flight restic requests before closing the listener on rollout ([#660](https://github.com/immich-app/yucca/issues/660)) ([0b15733](https://github.com/immich-app/yucca/commit/0b1573300509c4022755d880e2a3f6950a3c63f1))
+* **monk:** shut down cleanly on SIGTERM and drop the per-PG map allocation ([5626011](https://github.com/immich-app/yucca/commit/5626011081b0680a1762b2aa713a55b16a75d98f))
+* **monk:** stop cleanly on SIGTERM and drop a per-PG map allocation ([#646](https://github.com/immich-app/yucca/issues/646)) ([5626011](https://github.com/immich-app/yucca/commit/5626011081b0680a1762b2aa713a55b16a75d98f))
+* **o11y:** keep sflow at its native 5s resolution ([#659](https://github.com/immich-app/yucca/issues/659)) ([33d0bb9](https://github.com/immich-app/yucca/commit/33d0bb948c8280e5636a968f845124d045f8fd70))
+* **o11y:** key the deep scrub verdict on lateness, not interval age ([#645](https://github.com/immich-app/yucca/issues/645)) ([85273ac](https://github.com/immich-app/yucca/commit/85273ac719adc7ac47b250fa0e81cc3fd7c9afb4))
+* **yucca sdk:** report interrupted backup runs to the backend on restart ([#651](https://github.com/immich-app/yucca/issues/651)) ([a744273](https://github.com/immich-app/yucca/commit/a744273730e3cbf492c9a2d17dc7213299129250))
+
 ## [0.40.2](https://github.com/immich-app/yucca/compare/v0.40.1...v0.40.2) (2026-09-11)
 
 
