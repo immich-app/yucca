@@ -418,3 +418,46 @@ func TestClientNetworkLogOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestReadyzReportsDrainState(t *testing.T) {
+	srv := newTestServer(&mockStorage{})
+	handler := srv.Handler()
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, readyPath, nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 before draining, got %d", rec.Code)
+	}
+
+	srv.BeginDrain()
+
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, readyPath, nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 while draining, got %d", rec.Code)
+	}
+}
+
+// A draining instance must keep serving: readiness only steers the gateway
+// away, it never rejects a request that still arrives.
+func TestDrainingStillServesRequests(t *testing.T) {
+	store := &mockStorage{
+		checkBucketFn:  func(context.Context, string) (bool, error) { return false, nil },
+		createBucketFn: func(context.Context, string) error { return nil },
+	}
+	srv := newTestServer(store)
+	srv.BeginDrain()
+
+	req := httptest.NewRequest(http.MethodPost, "/"+testRepository+"/?create=true", nil)
+	req.Header.Set("Authorization", makeBasicAuth(makeJWT(t, jwt.MapClaims{
+		"user":       testUser,
+		"repository": testRepository,
+		"writeOnce":  false,
+	})))
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected the repository create to succeed while draining, got %d: %s", rec.Code, rec.Body)
+	}
+}

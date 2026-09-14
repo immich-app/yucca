@@ -3,6 +3,27 @@
 # Stateless S3 proxy, safe to run N-way.
 replicas: 2
 
+# Never dip below the declared replica count mid-rollout. The Deployment default
+# (maxUnavailable 25%) would take 3 of father's 12 gateways down at once, on top
+# of the 3 it surges in — a quarter of the restic data plane gone while the
+# replacements are still probing their RGW backends.
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+# Half the fleet, not the lib chart's minAvailable: 1 — a node drain may
+# otherwise evict 11 of 12 gateways simultaneously.
+pdb:
+  minAvailable: 50%
+
+# Must exceed DRAIN_DELAY_MS + SHUTDOWN_TIMEOUT_MS (15s + 120s in the base
+# HelmRelease), or the kubelet SIGKILLs the pod while a restic blob is still on
+# the wire — precisely the failure the drain exists to avoid. It is a ceiling,
+# not a wait: an idle pod exits as soon as the drain delay elapses.
+terminationGracePeriodSeconds: 150
+
 # Generous requests, deliberately huge memory limits (never CPU-limit).
 resources:
   requests: { cpu: 250m, memory: 256Mi }
@@ -52,6 +73,10 @@ env:
     value: "3010"
   - name: LOG_LEVEL
     value: debug
+  # Dev only: the fleet default is 15s, which would make every `tilt down` and
+  # pod delete sit for a quarter minute with nothing to drain.
+  - name: DRAIN_DELAY_MS
+    value: "1000"
   # S3 object store = Rook-Ceph RGW. michael creates one bucket per restic
   # repository, so it needs a full RGW user (CephObjectStoreUser via
   # charts/ceph-objectuser), NOT a bucket-scoped ObjectBucketClaim. Rook writes
@@ -115,6 +140,11 @@ startupProbe:
   tcpSocket: { port: http }
   periodSeconds: 2
   failureThreshold: 90
+# Readiness is an HTTP endpoint, not a TCP connect, because it has to report
+# one thing a bound socket cannot: that the process has begun draining. Probed
+# every 2s so a SIGTERMed pod leaves the Service's endpoints well inside its
+# drain delay, taking new restic requests with it.
 readinessProbe:
-  tcpSocket: { port: http }
-  periodSeconds: 10
+  httpGet: { path: /readyz, port: http }
+  periodSeconds: 2
+  failureThreshold: 2
