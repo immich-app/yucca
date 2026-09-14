@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.42.0](https://github.com/immich-app/yucca/compare/v0.41.0...v0.42.0) (2026-09-14)
+
+
+### Features
+
+* **docs:** end-user documentation site at docs.futo.cloud ([#623](https://github.com/immich-app/yucca/issues/623)) ([5a14440](https://github.com/immich-app/yucca/commit/5a144405cf07d1b926a5e26b2dde04faf8a6a577))
+
+
+### Bug Fixes
+
+* **o11y:** dedup the netops o11y leg at 20s ([#661](https://github.com/immich-app/yucca/issues/661)) ([7e25b14](https://github.com/immich-app/yucca/commit/7e25b14278b881cca1ab7d19b8bcfdd5659c189f))
+* **otel:** export metrics every 10s and honour the otel env knobs ([#658](https://github.com/immich-app/yucca/issues/658)) ([ef1a5a6](https://github.com/immich-app/yucca/commit/ef1a5a68d90489858edca5b020c48a723d25af58))
+* **yucca sdk:** surface the state database path and guard master key generation ([#653](https://github.com/immich-app/yucca/issues/653)) ([0bfca45](https://github.com/immich-app/yucca/commit/0bfca45a5b0f6eaf38843514bd3ab7b81dc902e0))
+
 ## [0.41.0](https://github.com/immich-app/yucca/compare/v0.40.2...v0.41.0) (2026-09-14)
 
 
