@@ -64,6 +64,18 @@ type Config struct {
 	// address into. Only its LAST entry is trusted — see geoip.ClientAddr.
 	ClientIPHeader string
 
+	// DrainDelay is how long michael keeps serving normally after SIGTERM while
+	// /readyz already answers 503. It must outlast readiness detection plus
+	// EndpointSlice and Envoy EDS propagation: cut short, the gateway is still
+	// routing fresh restic requests at a socket that has begun closing.
+	DrainDelay time.Duration
+	// ShutdownTimeout caps how long in-flight requests get to finish once the
+	// drain delay has elapsed. One restic blob can be tens of megabytes over a
+	// slow client uplink, so this is minutes — and the pod's
+	// terminationGracePeriodSeconds must exceed DrainDelay + ShutdownTimeout, or
+	// the kubelet SIGKILLs mid-upload anyway.
+	ShutdownTimeout time.Duration
+
 	OTLPMetricsEndpoint string
 	OTLPMetricsURLPath  string
 	OTLPMetricsInterval time.Duration
@@ -239,6 +251,9 @@ func LoadConfig() Config {
 	asnDatabasePath := envOr("ASN_DB_PATH", "/etc/michael/asn.mmdb")
 	clientIPHeader := envOr("CLIENT_IP_HEADER", "X-Forwarded-For")
 
+	drainDelay := envDurationMS("DRAIN_DELAY_MS", 15*time.Second)
+	shutdownTimeout := envDurationMS("SHUTDOWN_TIMEOUT_MS", 2*time.Minute)
+
 	otlpEndpoint := os.Getenv("OTLP_METRICS_ENDPOINT")
 	otlpURLPath := os.Getenv("OTLP_METRICS_URL_PATH")
 	otlpInterval := 1000 * time.Millisecond
@@ -296,6 +311,8 @@ func LoadConfig() Config {
 		S3DefaultCluster:    defaultCluster,
 		ASNDatabasePath:     asnDatabasePath,
 		ClientIPHeader:      clientIPHeader,
+		DrainDelay:          drainDelay,
+		ShutdownTimeout:     shutdownTimeout,
 		OTLPMetricsEndpoint: otlpEndpoint,
 		OTLPMetricsURLPath:  otlpURLPath,
 		OTLPMetricsInterval: otlpInterval,
@@ -608,6 +625,18 @@ func boolOr(v *bool, fallback bool) bool {
 		return *v
 	}
 	return fallback
+}
+
+func envDurationMS(key string, fallback time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	ms, err := strconv.Atoi(v)
+	if err != nil || ms < 0 {
+		log.Fatal().Msgf("%s must be a number >= 0", key)
+	}
+	return time.Duration(ms) * time.Millisecond
 }
 
 func envOr(key, fallback string) string {
