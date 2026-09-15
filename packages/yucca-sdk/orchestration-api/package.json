@@ -16,7 +16,7 @@
   "keywords": [],
   "author": "",
   "license": "Source First License 1.1",
-  "packageManager": "pnpm@10.28.1",
+  "packageManager": "pnpm@10.34.5",
   "peerDependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
