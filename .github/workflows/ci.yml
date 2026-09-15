@@ -102,8 +102,9 @@ jobs:
       YUCCA_E2E_PREBUILT: '1'
       # Loop devices belong to the host kernel, so e2e runs sharing a
       # pokedex-large host must not all attach Ceph's OSD to the chart's
-      # /dev/loop100; the run number is unique across concurrent runs.
-      YUCCA_CEPH_LOOP_DEVICE: /dev/loop${{ github.run_number }}
+      # /dev/loop100. The attempt is part of it because a re-run keeps the run
+      # number and can land on the node still tearing down the failed attempt.
+      YUCCA_CEPH_LOOP_DEVICE: /dev/loop${{ github.run_number }}${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
