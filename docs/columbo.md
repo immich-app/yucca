@@ -158,7 +158,7 @@ as AI-generated with the executed queries listed — so the worst case is a
 misleading note that staff are told to verify.
 
 Hard limits per investigation: tool-call budget (`COLUMBO_MAX_TOOL_CALLS`,
-20), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 600), model calls retried on
+30), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 900), model calls retried on
 transport errors/timeouts/5xx with per-attempt deadlines
 (`COLUMBO_MODEL_TIMEOUT_SECONDS` 120 × `COLUMBO_MODEL_ATTEMPTS` 3 — the
 response body is buffered per attempt so a mid-body stall retries instead of
