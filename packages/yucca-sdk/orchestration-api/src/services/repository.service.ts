@@ -115,11 +115,13 @@ export class RepositoryService {
     const key = await this.config.deriveEncryptionKey(`repository-${remote.id}`);
     await this.restic.init(endpoint, key, placement);
 
+    const retentionPolicy = dto.retentionPolicy === undefined ? DEFAULT_RETENTION_POLICY : dto.retentionPolicy;
+
     await this.repository.create({
       id,
       remoteId: remote.id,
       backendId,
-      retentionPolicy: dto.retentionPolicy || DEFAULT_RETENTION_POLICY,
+      retentionPolicy,
       siteCode: remote.siteCode,
       storageClusterCode: remote.storageClusterCode,
     });
@@ -130,7 +132,7 @@ export class RepositoryService {
     }
 
     const repository: LocalRepositoryDto = {
-      ...(await this.getLocalRepository(id, { paths, retentionPolicy: DEFAULT_RETENTION_POLICY })),
+      ...(await this.getLocalRepository(id, { paths, retentionPolicy })),
       ...remote,
       id,
       backends: {
