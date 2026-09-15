@@ -191,3 +191,72 @@ func truncate(s string, n int) string {
 	}
 	return s[:n] + "…"
 }
+
+// ClientEvent is one row of the client-telemetry digest: a distinct
+// (event, status, version) combination the user's own backup client reported,
+// with how often it happened, when it last did, and one example error.
+type ClientEvent struct {
+	Event   string
+	Status  string
+	Version string
+	Count   string
+	Last    string
+	Error   string
+}
+
+// The client's error strings carry whole restic stack traces; the digest
+// keeps only enough to recognise the failure, and the agent can pull the
+// full text with a normal log query.
+const maxClientErrorChars = 400
+
+const clientTelemetryQuery = `_msg:"[telemetry]" | stats by (_msg, data.lastBackupStatus, data.version) ` +
+	`count() c, max(_time) last, row_any(data.error.message) err | sort by (last desc) | limit 100`
+
+// ClientTelemetry digests what this user's own backup client reported home.
+// The client ships structured logs to yucca-api, which records them under
+// `[telemetry] <summary>` with the payload flattened into `data.*` — the only
+// view anyone has of what happened on the user's machine, restic's own stderr
+// included. The query is fixed here rather than composed by the model, and
+// still goes through QueryLogs so it inherits the same per-user scoping as
+// everything else.
+func (c *Client) ClientTelemetry(ctx context.Context, lookback time.Duration) ([]ClientEvent, error) {
+	start := time.Now().Add(-lookback).Format(time.RFC3339)
+	end := time.Now().Format(time.RFC3339)
+	body, err := c.QueryLogs(ctx, clientTelemetryQuery, start, end, 1000)
+	if err != nil {
+		return nil, err
+	}
+
+	events := []ClientEvent{}
+	for _, line := range strings.Split(body, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		var row map[string]string
+		if err := json.Unmarshal([]byte(line), &row); err != nil {
+			return nil, err
+		}
+		events = append(events, ClientEvent{
+			Event:   strings.TrimPrefix(row["_msg"], "[telemetry] "),
+			Status:  row["data.lastBackupStatus"],
+			Version: row["data.version"],
+			Count:   row["c"],
+			Last:    row["last"],
+			Error:   parseRowAnyError(row["err"]),
+		})
+	}
+	return events, nil
+}
+
+// parseRowAnyError unwraps LogsQL's row_any output, which arrives as a JSON
+// object of the selected fields and is `{}` for rows that had no error.
+func parseRowAnyError(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	var fields map[string]string
+	if err := json.Unmarshal([]byte(raw), &fields); err != nil {
+		return ""
+	}
+	return truncate(strings.Join(strings.Fields(fields["data.error.message"]), " "), maxClientErrorChars)
+}

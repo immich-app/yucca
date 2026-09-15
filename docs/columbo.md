@@ -58,11 +58,30 @@ blob_type:="snapshots"` marks a completed backup, steady `data` saves a
 backup in progress, `locks` writes any operation including read-only ones;
 path regexes remain the fallback for older entries in retention). The
 catalog is maintained by hand in `investigateSystemPrompt`; update it when a
-service adds or renames per-user telemetry. On top of that, each investigation opens with a free scoped
-lookup of which of those names actually carry data for THIS account in the
-last 30 days (`/api/v1/label/__name__/values` + `extra_label`), so an
-account with no backup traffic is recognized in turn one instead of after a
-string of empty queries.
+service adds or renames per-user telemetry.
+
+The catalog also covers **client-side telemetry**: the user's own backup
+client (yucca-sdk's orchestration-api) ships structured logs home, and
+yucca-api records them as `_msg:"[telemetry] <summary>"` with the payload
+flattened into `data.*`. This is the only view of what happened on the
+user's machine — `[telemetry] Backup finished` carries `data.lastBackupStatus`,
+`data.version` (client version) and, on failure, restic's verbatim stderr in
+`data.error.message`. Those failures are frequently invisible server-side
+because the request never arrived (DNS, TLS, local permissions, restic's
+stuck-request timeout), which is exactly when an investigation would
+otherwise conclude "nothing found". Telemetry is opt-in, so its absence means
+the user declined it or runs an old client, not that no backups ran.
+
+On top of that, each investigation opens with two free scoped lookups (no
+tool budget): which metric names actually carry data for THIS account in the
+last 30 days (`/api/v1/label/__name__/values` + `extra_label`), and a digest
+of what its client reported home over the same window — one line per distinct
+(event, status, client version) with a count, the last occurrence and one
+example error, newest first. So an account with no backup traffic is
+recognized in turn one instead of after a string of empty queries, and a
+client failing on its own side usually tells its whole story before the model
+spends a single tool call. Both are fixed queries owned by the harness; the
+digest goes through the same `QueryLogs` scoping as everything else.
 
 ## Trust model
 
