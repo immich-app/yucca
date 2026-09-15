@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.44.0](https://github.com/immich-app/yucca/compare/v0.43.0...v0.44.0) (2026-09-15)
+
+
+### Features
+
+* **columbo:** seed client-side restic telemetry into investigations ([#686](https://github.com/immich-app/yucca/issues/686)) ([f42d358](https://github.com/immich-app/yucca/commit/f42d3584cb8b6cb23a27d4e82c256403838192c2))
+* **o11y:** stack michael ingress/egress by source ASN ([#685](https://github.com/immich-app/yucca/issues/685)) ([40c7028](https://github.com/immich-app/yucca/commit/40c702885496f91745868954c4079893fcdd7bbb))
+
+
+### Bug Fixes
+
+* **ci:** de-flake the e2e job (loop-device image, fail-fast wait, diagnostics, hook timeout) ([#621](https://github.com/immich-app/yucca/issues/621)) ([29a0b65](https://github.com/immich-app/yucca/commit/29a0b653e90548e1ac6b1c615181cf1a2e52b5d8))
+* **ci:** give each e2e attempt its own osd loop device ([#683](https://github.com/immich-app/yucca/issues/683)) ([eb26d63](https://github.com/immich-app/yucca/commit/eb26d63db5e5543101990d7d731e2ca380f28920))
+* **ci:** give each e2e ceph cluster its own osd loop device ([#681](https://github.com/immich-app/yucca/issues/681)) ([b7ba6b4](https://github.com/immich-app/yucca/commit/b7ba6b4d8f3be13b673c09a48b6b53353f33b89a))
+* **deps:** update aws-sdk-go-v2 monorepo ([#468](https://github.com/immich-app/yucca/issues/468)) ([2231db7](https://github.com/immich-app/yucca/commit/2231db7b2be390f0e8d80a88fc928f8dce637cbd))
+* **deps:** update module github.com/cloudwego/eino to v0.9.19 ([#673](https://github.com/immich-app/yucca/issues/673)) ([68a083f](https://github.com/immich-app/yucca/commit/68a083f95475ff65c3ed8733dc4e1f92f1061900))
+* **deps:** update module github.com/go-chi/chi/v5 to v5.3.2 ([#674](https://github.com/immich-app/yucca/issues/674)) ([6e25698](https://github.com/immich-app/yucca/commit/6e256985cf703a1f8e83ed4173015af91546fbf8))
+* **deps:** update module go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp to v1.43.0 [security] ([#71](https://github.com/immich-app/yucca/issues/71)) ([90d35e7](https://github.com/immich-app/yucca/commit/90d35e7292480659834efdaecee1db332f34b989))
+
 ## [0.43.0](https://github.com/immich-app/yucca/compare/v0.42.0...v0.43.0) (2026-09-14)
 
 
