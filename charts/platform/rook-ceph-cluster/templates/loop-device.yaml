@@ -74,6 +74,7 @@ spec:
                 - -c
                 - 'losetup -j "{{ .Values.loopDevice.path }}" | cut -d: -f1 | grep -qx "{{ .Values.storage.device }}"'
             periodSeconds: 5
+            timeoutSeconds: 5
           volumeMounts:
             - name: dev
               mountPath: /dev
