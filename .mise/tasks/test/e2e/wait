@@ -3,7 +3,7 @@
 # Targets the compose/`mise dev` flow (the k3d flow has its own readiness
 # handling in packages/e2e/k3d/run.sh and does not use this task).
 set -e
-source "$(dirname "$0")/../../restic-api/env"
+source "$(dirname "$0")/../../michael/env"
 source "$(dirname "$0")/../../yucca-api/env"
 
 echo Ensure dev environment is running before invoking tests.
@@ -24,7 +24,7 @@ wait_for_port() {
 }
 
 wait_for_port 8092 mock-oidc-provider
-wait_for_port "$RESTIC_API_PORT" restic-api
+wait_for_port "$RESTIC_API_PORT" michael
 wait_for_port "$YUCCA_API_PORT" yucca-api
 wait_for_port 22676 orchestration-api
 wait_for_port "${WEB_PORT:-36033}" web

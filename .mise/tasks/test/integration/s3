@@ -62,4 +62,4 @@ export RADOS_ENDPOINT RADOS_ACCESS_KEY_ID RADOS_SECRET_ACCESS_KEY
 
 echo "==> run the S3-backed integration suites"
 # Concurrent: each scopes itself to freshly generated repository/bucket names.
-mise run michael:test:integration ::: restic-api:test:integration ::: yucca-metrics-worker:test:integration
+mise run michael:test:integration ::: yucca-metrics-worker:test:integration
