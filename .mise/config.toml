@@ -31,7 +31,7 @@ uv = "0.9.18"
 # github backend: the aqua backend fails to verify cosign v3's sigstore
 # bundles ("No bundle found in attestation").
 "github:sigstore/cosign" = "v3.1.3"
-"github:grafana/dashboard-linter" = "0.2.0"
+"github:grafana/dashboard-linter" = "v0.3.0"
 
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
 opentofu = "1.11.5"

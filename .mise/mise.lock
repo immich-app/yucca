@@ -99,29 +99,29 @@ url_api = "https://api.github.com/repos/git-town/git-town/releases/assets/382552
 provenance = "github-attestations"
 
 [[tools."github:grafana/dashboard-linter"]]
-version = "0.2.0"
+version = "0.3.0"
 backend = "github:grafana/dashboard-linter"
-specifiers = ["0.2.0"]
+specifiers = ["v0.3.0"]
 
 [tools."github:grafana/dashboard-linter"."platforms.linux-arm64"]
-checksum = "sha256:3cc1022ceafd136e5ee6c2caa0ba6d01e3e2dea1c5eedefd012f0ae14f42defe"
-url = "https://github.com/grafana/dashboard-linter/releases/download/v0.2.0/dashboard-linter_0.2.0_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/451371030"
+checksum = "sha256:cca3c44ab921a4303dc3850b0cea56e0192112a185ebadceb173d7c7a5d3731b"
+url = "https://github.com/grafana/dashboard-linter/releases/download/v0.3.0/dashboard-linter_0.3.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/529030717"
 
 [tools."github:grafana/dashboard-linter"."platforms.linux-x64"]
-checksum = "sha256:6cf73633018ef705cd12eda88736b872f5858137baa9dc9df83262d721934fac"
-url = "https://github.com/grafana/dashboard-linter/releases/download/v0.2.0/dashboard-linter_0.2.0_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/451371029"
+checksum = "sha256:9a0eecb84ff22005dbd21c39ffd91534b407b511c45c21879df62ad0de33d79f"
+url = "https://github.com/grafana/dashboard-linter/releases/download/v0.3.0/dashboard-linter_0.3.0_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/529030764"
 
 [tools."github:grafana/dashboard-linter"."platforms.macos-arm64"]
-checksum = "sha256:1e1bd59a18b02b111df6c68edc7a421cb8feb01f042b3b415fd21fc86756fa45"
-url = "https://github.com/grafana/dashboard-linter/releases/download/v0.2.0/dashboard-linter_0.2.0_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/451371032"
+checksum = "sha256:910c20366491565faa241166676b54a53648ed2b30d8403017056bb18aeae75d"
+url = "https://github.com/grafana/dashboard-linter/releases/download/v0.3.0/dashboard-linter_0.3.0_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/529030741"
 
 [tools."github:grafana/dashboard-linter"."platforms.macos-x64"]
-checksum = "sha256:9b3d01f13f8cf353e66a4cde185ffa650b8d1191745ee0de3988855e1acdc218"
-url = "https://github.com/grafana/dashboard-linter/releases/download/v0.2.0/dashboard-linter_0.2.0_darwin_amd64.tar.gz"
-url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/451371033"
+checksum = "sha256:9ca2cd292b5aaaaa6827c417b26440033e35516e4896238c34c7cc97cbcb45cf"
+url = "https://github.com/grafana/dashboard-linter/releases/download/v0.3.0/dashboard-linter_0.3.0_darwin_amd64.tar.gz"
+url_api = "https://api.github.com/repos/grafana/dashboard-linter/releases/assets/529030719"
 
 [[tools."github:sigstore/cosign"]]
 version = "3.1.3"
