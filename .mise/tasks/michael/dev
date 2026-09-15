@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Run michael in development mode"
 set -e
-source "$(dirname "$0")/../restic-api/env"
+source "$(dirname "$0")/env"
 
 # No load balancer in front of a local run, so there is nothing to drain away
 # from — skip the fleet's 15s SIGTERM drain and let Ctrl-C exit immediately.

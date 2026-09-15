@@ -112,9 +112,9 @@ wait_for_http yucca-api http://localhost:3020/api/meta 200
 # call, and only answers once discovery has reached a live yucca-api.
 wait_for_http orchestration-api http://localhost:22676/api/yucca/onboarding 200
 
-echo "==> jest e2e (it-works, restic-api, yucca-api, orchestration-api)"
+echo "==> jest e2e (it-works, restic, yucca-api, orchestration-api)"
 # shellcheck disable=SC1091
-source .mise/tasks/restic-api/env
+source .mise/tasks/michael/env
 # shellcheck disable=SC1091
 source .mise/tasks/yucca-api/env
 # Three, not one per suite: orchestration-api alone runs ~105s and gates the
