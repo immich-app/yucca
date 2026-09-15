@@ -536,6 +536,8 @@ for app in LOCAL_APPS:
         flags += ['--set', 'replicas=1']
     if wiring.get('dev_keypair'):
         flags += ['--set', 'useDevKeypair=true']
+    if app.name == 'rook-ceph-cluster' and os.getenv('YUCCA_CEPH_LOOP_DEVICE'):
+        flags += ['--set', 'storage.device=%s' % os.getenv('YUCCA_CEPH_LOOP_DEVICE')]
     if wiring.get('dev_values'):
         for key in sorted(app.values.keys()):
             flags += ['--set-json', '%s=%s' % (key, str(encode_json(app.values[key])).rstrip('\n'))]
