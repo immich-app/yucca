@@ -236,7 +236,7 @@ describe('Immich integration repository binding', () => {
     const immichRepository = ctx.module.get(RepositoryIntegrationImmichRepository);
 
     const remoteId = await createRemoteRepository(ctx);
-    const { repository } = await repositoryService.linkRepository({ remoteId }, ctx.backendId);
+    const { repository } = await repositoryService.importRepository(remoteId, ctx.backendId);
 
     await integrationsService.configureImmichIntegration({ ...configuration, repositoryId: repository.id });
 
@@ -254,7 +254,7 @@ describe('Immich integration repository binding', () => {
     const first = await immichRepository.get();
 
     const remoteId = await createRemoteRepository(ctx);
-    const { repository } = await repositoryService.linkRepository({ remoteId }, ctx.backendId);
+    const { repository } = await repositoryService.importRepository(remoteId, ctx.backendId);
 
     await integrationsService.configureImmichIntegration({ ...configuration, repositoryId: repository.id });
 
