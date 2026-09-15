@@ -2,6 +2,7 @@ package o11y
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -226,5 +227,100 @@ func TestClientTelemetryTruncatesLongErrors(t *testing.T) {
 	}
 	if got := events[0].Error; got != stack[:maxClientErrorChars]+"…" {
 		t.Fatalf("error was not truncated to %d chars: len=%d", maxClientErrorChars, len(got))
+	}
+}
+
+func TestQueryRGWLogsRefusesWithoutBuckets(t *testing.T) {
+	srv, _, _ := recordingServer(t, http.StatusOK, "{}")
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	if _, err := client.QueryRGWLogs(context.Background(), nil, "*", "0", "1", 10); err == nil {
+		t.Fatal("an account with no buckets must not produce an unscoped gateway query")
+	}
+}
+
+func TestQueryRGWLogsScopesToOwnedBuckets(t *testing.T) {
+	srv, captured, form := recordingServer(t, http.StatusOK, "{}")
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	_, err := client.QueryRGWLogs(context.Background(), []string{"repo-a", "repo-b"},
+		`http_status:>=500 | stats by (op) count() c`, "0", "1", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if captured.URL.Path != "/select/logsql/query" {
+		t.Fatalf("unexpected path %q", captured.URL.Path)
+	}
+	query := formValue(t, *form, "query")
+	want := `SYSLOG_IDENTIFIER:="radosgw" and (_msg:"bucket=repo-a" or _msg:"bucket=repo-b") | extract ` +
+		`"op=<op> bucket=<bucket> status=<status> http_status=<http_status> latency=<latency>s request_id=<request_id> "` +
+		` | filter (http_status:>=500) | stats by (op) count() c`
+	if query != want {
+		t.Fatalf("query =\n%s\nwant\n%s", query, want)
+	}
+}
+
+func TestQueryRGWLogsWithoutFilterOmitsFilterPipe(t *testing.T) {
+	srv, _, form := recordingServer(t, http.StatusOK, "{}")
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	if _, err := client.QueryRGWLogs(context.Background(), []string{"repo-a"}, "", "0", "1", 10); err != nil {
+		t.Fatal(err)
+	}
+	if query := formValue(t, *form, "query"); strings.Contains(query, "| filter") {
+		t.Fatalf("empty filter should not add a filter pipe: %q", query)
+	}
+}
+
+func TestRGWScopeSurvivesModelSuppliedEscapes(t *testing.T) {
+	for _, query := range []string{
+		`* | union ({SYSLOG_IDENTIFIER="radosgw"})`,
+		`* | join by (bucket) ({*}) `,
+		`bucket:="someone-elses-repo" | union ({*})`,
+	} {
+		if _, err := scopeRGWLogsQL([]string{"repo-a"}, query); err == nil {
+			t.Fatalf("query %q should have been refused", query)
+		}
+	}
+
+	scoped, err := scopeRGWLogsQL([]string{"repo-a"}, `bucket:="someone-elses-repo"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(scoped, `SYSLOG_IDENTIFIER:="radosgw" and (_msg:"bucket=repo-a")`) {
+		t.Fatalf("a model-named bucket must stay ANDed behind the owned-bucket scope: %q", scoped)
+	}
+}
+
+func TestScopeRGWLogsQLCapsBucketCount(t *testing.T) {
+	buckets := make([]string, maxScopedBuckets+10)
+	for i := range buckets {
+		buckets[i] = fmt.Sprintf("repo-%d", i)
+	}
+	scoped, err := scopeRGWLogsQL(buckets, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(scoped, `_msg:"bucket=`); got != maxScopedBuckets {
+		t.Fatalf("bucket filters = %d, want %d", got, maxScopedBuckets)
+	}
+}
+
+func TestRepositoryIDsIsScopedToCustomer(t *testing.T) {
+	srv, captured, form := recordingServer(t, http.StatusOK, `{"status":"success","data":["repo-a","repo-b"]}`)
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	ids, err := client.RepositoryIDs(context.Background(), 30*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if captured.URL.Path != "/api/v1/label/repositoryId/values" {
+		t.Fatalf("unexpected path %q", captured.URL.Path)
+	}
+	if got := formValue(t, *form, "extra_label"); got != "customerId=user-1" {
+		t.Fatalf("extra_label = %q, want customerId=user-1", got)
+	}
+	if len(ids) != 2 || ids[0] != "repo-a" {
+		t.Fatalf("ids = %v", ids)
 	}
 }

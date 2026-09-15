@@ -13,6 +13,7 @@ package o11y
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -259,4 +260,96 @@ func parseRowAnyError(raw string) string {
 		return ""
 	}
 	return truncate(strings.Join(strings.Fields(fields["data.error.message"]), " "), maxClientErrorChars)
+}
+
+// maxScopedBuckets bounds how many bucket filters go into one RGW query, so
+// that an account which has churned through repositories cannot build an
+// unbounded query string. It sits far above any real account (the busiest in
+// prod has ~30), and the ids it would drop are whichever sort last, since the
+// label endpoint returns them lexicographically rather than by age.
+const maxScopedBuckets = 200
+
+// rgwExtractPattern lifts the fields out of radosgw's "req done" lines, which
+// arrive as one unstructured journald message per completed S3 request:
+//
+//	====== req done req=0x… op=get_obj bucket=<id> status=0 http_status=206 latency=0.084s request_id=tx… ======
+//
+// status is Ceph's internal code (0 = ok), http_status what the client saw.
+const rgwExtractPattern = `op=<op> bucket=<bucket> status=<status> http_status=<http_status> latency=<latency>s request_id=<request_id> `
+
+// RepositoryIDs lists this user's repository ids, which ARE the S3 bucket
+// names michael creates for them. Resolved from the metrics label endpoint
+// under the same extra_label scope as every other metrics read, so the set
+// can never include another tenant's bucket — this lookup is what makes
+// QueryRGWLogs safe, since the RGW logs themselves carry no per-user field.
+func (c *Client) RepositoryIDs(ctx context.Context, lookback time.Duration) ([]string, error) {
+	params := url.Values{}
+	params.Set("start", strconv.FormatInt(time.Now().Add(-lookback).Unix(), 10))
+	params.Set("extra_label", "customerId="+c.CustomerID)
+	body, err := c.do(ctx, c.MetricsURL+"/api/v1/label/repositoryId/values", params)
+	if err != nil {
+		return nil, err
+	}
+	var parsed struct {
+		Data []string `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		return nil, err
+	}
+	return parsed.Data, nil
+}
+
+// QueryRGWLogs reads the Ceph object-gateway access log restricted to the
+// buckets this user owns. It is the storage tier's own view of the same
+// requests michael serves, and answers "did the write actually reach Ceph,
+// and what did Ceph say" — the one question michael's logs cannot settle.
+//
+// This is the package's SECOND scoping mode and the reason it needs its own
+// method: radosgw logs to journald with no customerId or user field, so the
+// customerId filter that scopes every other log query would match nothing
+// here. The wall is the caller-supplied bucket set instead, which must come
+// from RepositoryIDs — never from the model. An empty set is refused rather
+// than run unscoped.
+func (c *Client) QueryRGWLogs(ctx context.Context, buckets []string, query, start, end string, limit int) (string, error) {
+	scoped, err := scopeRGWLogsQL(buckets, query)
+	if err != nil {
+		return "", err
+	}
+	params := url.Values{}
+	params.Set("query", scoped)
+	params.Set("start", start)
+	params.Set("end", end)
+	params.Set("limit", strconv.Itoa(limit))
+	return c.do(ctx, c.LogsURL+"/select/logsql/query", params)
+}
+
+// scopeRGWLogsQL builds the bucket-scoped query. The bucket filter is ANDed
+// ahead of anything the model supplied, and the model's own filter runs as a
+// `filter` pipe AFTER extract so it can name op/http_status/latency — pipes
+// can only narrow what the scope already selected, never widen it.
+func scopeRGWLogsQL(buckets []string, query string) (string, error) {
+	if len(buckets) == 0 {
+		return "", errors.New("this account owns no repositories, so it has no buckets to read gateway logs for")
+	}
+	if len(buckets) > maxScopedBuckets {
+		buckets = buckets[:maxScopedBuckets]
+	}
+	filter, pipes := splitLogsQLPipes(query)
+	if err := rejectScopeEscapingPipes(filter + " " + pipes); err != nil {
+		return "", err
+	}
+
+	scope := make([]string, 0, len(buckets))
+	for _, bucket := range buckets {
+		scope = append(scope, fmt.Sprintf("_msg:%q", "bucket="+bucket))
+	}
+	scoped := fmt.Sprintf(`SYSLOG_IDENTIFIER:="radosgw" and (%s) | extract %q`,
+		strings.Join(scope, " or "), rgwExtractPattern)
+	if strings.TrimSpace(filter) != "" && strings.TrimSpace(filter) != "*" {
+		scoped += fmt.Sprintf(" | filter (%s)", filter)
+	}
+	if pipes != "" {
+		scoped += " |" + pipes
+	}
+	return scoped, nil
 }
