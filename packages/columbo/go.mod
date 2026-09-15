@@ -3,7 +3,7 @@ module columbo
 go 1.27.0
 
 require (
-	github.com/cloudwego/eino v0.9.15
+	github.com/cloudwego/eino v0.9.19
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.13
 	github.com/itchyny/gojq v0.12.19
 	github.com/rs/zerolog v1.35.1
