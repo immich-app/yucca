@@ -141,9 +141,3 @@ export async function waitFor(predicate: () => boolean, timeoutMs = 2000): Promi
     await new Promise((resolve) => setImmediate(resolve));
   }
 }
-
-export const createRemoteRepository = async (ctx: TestContext) => {
-  const remoteId = randomUUID();
-  await mkdir(`${ctx.backendPath}/${remoteId}`, { recursive: true });
-  return remoteId;
-};
