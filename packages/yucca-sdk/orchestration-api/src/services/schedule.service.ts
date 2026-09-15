@@ -159,12 +159,12 @@ export class ScheduleService {
     });
   }
 
-  async createSchedule({ repositories, ...dto }: ScheduleCreateRequestDto): Promise<ScheduleCreateResponseDto> {
+  async createSchedule({ repositories, paused, ...dto }: ScheduleCreateRequestDto): Promise<ScheduleCreateResponseDto> {
     const id = randomUUID();
 
     const { ordering: _, ...model } = await this.schedule.create({
       id,
-      paused: 0,
+      paused: paused ? 1 : 0,
       ordering: JSON.stringify([]),
       ...dto,
     });
@@ -175,7 +175,7 @@ export class ScheduleService {
 
     const schedule = {
       ...model,
-      paused: false,
+      paused,
       repositories,
     };
 
@@ -189,7 +189,7 @@ export class ScheduleService {
       schedule,
     });
 
-    this.createCronJob(id, dto.cron, false);
+    this.createCronJob(id, dto.cron, schedule.paused);
 
     return {
       schedule,

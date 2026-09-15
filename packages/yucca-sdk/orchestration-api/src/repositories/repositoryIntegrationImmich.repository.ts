@@ -22,16 +22,20 @@ export class RepositoryIntegrationImmichRepository {
   }
 
   async upsert(id: string, scheduleId: string, configuration: ImmichRepositoryConfig) {
-    await this.db
-      .insertInto('repositoryIntegrationImmich')
-      .values({
-        id,
-        scheduleId,
-        configuration: JSON.stringify(configuration),
-      })
-      .onConflict((oc) => oc.column('id').doUpdateSet({ configuration: JSON.stringify(configuration), scheduleId }))
-      .returningAll()
-      .executeTakeFirstOrThrow();
+    await this.db.transaction().execute(async (tx) => {
+      await tx.deleteFrom('repositoryIntegrationImmich').where('id', '!=', id).execute();
+
+      await tx
+        .insertInto('repositoryIntegrationImmich')
+        .values({
+          id,
+          scheduleId,
+          configuration: JSON.stringify(configuration),
+        })
+        .onConflict((oc) => oc.column('id').doUpdateSet({ configuration: JSON.stringify(configuration), scheduleId }))
+        .returningAll()
+        .executeTakeFirstOrThrow();
+    });
   }
 
   async delete() {
