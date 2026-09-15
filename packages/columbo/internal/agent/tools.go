@@ -118,6 +118,23 @@ func (t *toolbox) availableMetrics(ctx context.Context) []string {
 	return names
 }
 
+// clientTelemetry is the free (no tool budget) prefetch of what this user's
+// own backup client reported home; nil means the lookup failed and the model
+// is told to query instead.
+func (t *toolbox) clientTelemetry(ctx context.Context) []o11y.ClientEvent {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	events, err := t.o11y.ClientTelemetry(ctx, maxLookback)
+	if err != nil {
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("client-telemetry prefetch failed")
+		return nil
+	}
+	if events == nil {
+		events = []o11y.ClientEvent{}
+	}
+	return events
+}
+
 func (t *toolbox) callsMade() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
