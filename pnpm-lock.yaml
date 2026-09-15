@@ -172,8 +172,8 @@ catalogs:
       specifier: ^9.5.0
       version: 9.5.0
     '@types/supertest':
-      specifier: ^6.0.2
-      version: 6.0.3
+      specifier: ^7.0.0
+      version: 7.2.1
     '@types/tail':
       specifier: ^2.2.3
       version: 2.2.3
@@ -967,7 +967,7 @@ importers:
         version: 25.9.6
       '@types/supertest':
         specifier: 'catalog:'
-        version: 6.0.3
+        version: 7.2.1
       globals:
         specifier: 'catalog:'
         version: 16.5.0
@@ -1091,7 +1091,7 @@ importers:
         version: 25.9.6
       '@types/supertest':
         specifier: 'catalog:'
-        version: 6.0.3
+        version: 7.2.1
       globals:
         specifier: 'catalog:'
         version: 16.5.0
@@ -3739,8 +3739,8 @@ packages:
   '@types/superagent@8.1.9':
     resolution: {integrity: sha512-pTVjI73witn+9ILmoJdajHGW2jkSaOzhiFYF1Rd3EQ94kymLqB9PjD9ISg7WaALC7+dCHT0FGe9T2LktLq/3GQ==}
 
-  '@types/supertest@6.0.3':
-    resolution: {integrity: sha512-8WzXq62EXFhJ7QsH3Ocb/iKQ/Ty9ZVWnVzoTKc9tyyFRRF3a74Tk2+TLFgaFFw364Ere+npzHKEJ6ga2LzIL7w==}
+  '@types/supertest@7.2.1':
+    resolution: {integrity: sha512-4CbBvoYVLHL7+yhbYrZET0vsvuyXTC05aRe7dNQkwMzm56auceoy6Yu3K50uZmwfHna1os3CMSgM/3QVkUtPTw==}
 
   '@types/tail@2.2.3':
     resolution: {integrity: sha512-Hnf352egOlDR4nVTaGX0t/kmTNXHMdovF2C7PVDFtHTHJPFmIspOI1b86vEOxU7SfCq/dADS7ptbqgG/WGGxnA==}
@@ -10181,7 +10181,7 @@ snapshots:
       '@types/node': 25.9.6
       form-data: 4.0.5
 
-  '@types/supertest@6.0.3':
+  '@types/supertest@7.2.1':
     dependencies:
       '@types/methods': 1.1.4
       '@types/superagent': 8.1.9
