@@ -3,19 +3,13 @@ name: Docs preview destroy
 on:
   # zizmor: ignore[dangerous-triggers]
   # Runs the base branch's teardown; never executes PR code.
+  #
+  # Deliberately unfiltered by paths: the close event matches against the PR's
+  # final diff, so a PR that deployed a preview and then reverted the docs
+  # changes would keep its custom domain and state forever. Tearing down a
+  # stage that was never deployed is a no-op.
   pull_request_target:
     types: [closed]
-    paths:
-      - 'packages/docs/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - '.npmrc'
-      - '.mise/config.toml'
-      - '.mise/tasks/docs/**'
-      - 'tf/pages/**'
-      - 'tf/op-run.sh'
-      - '.github/workflows/docs.yml'
   workflow_dispatch:
     inputs:
       pr_number:
