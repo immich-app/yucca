@@ -956,10 +956,10 @@
             "axisCenteredZero": false,
             "axisPlacement": "auto",
             "drawStyle": "line",
-            "fillOpacity": 0,
+            "fillOpacity": 35,
             "gradientMode": "none",
             "lineInterpolation": "linear",
-            "lineWidth": 2,
+            "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -968,7 +968,7 @@
             "spanNulls": true,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -1038,10 +1038,10 @@
             "axisCenteredZero": false,
             "axisPlacement": "auto",
             "drawStyle": "line",
-            "fillOpacity": 0,
+            "fillOpacity": 35,
             "gradientMode": "none",
             "lineInterpolation": "linear",
-            "lineWidth": 2,
+            "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -1050,7 +1050,7 @@
             "spanNulls": true,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
