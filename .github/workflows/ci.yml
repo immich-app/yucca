@@ -100,6 +100,10 @@ jobs:
       # rest_url; rendering it that way up front spares a yucca-api rollout.
       YUCCA_TOPOLOGY_LOCAL_REST: '1'
       YUCCA_E2E_PREBUILT: '1'
+      # Loop devices belong to the host kernel, so e2e runs sharing a
+      # pokedex-large host must not all attach Ceph's OSD to the chart's
+      # /dev/loop100; the run number is unique across concurrent runs.
+      YUCCA_CEPH_LOOP_DEVICE: /dev/loop${{ github.run_number }}
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
@@ -169,4 +173,5 @@ jobs:
             | while read -r ns name; do kubectl describe pod -n "$ns" "$name" || true; done
           echo "::endgroup::"
           echo "::group::ceph cluster"; kubectl -n rook-ceph get cephcluster,cephobjectstore -o wide; echo "::endgroup::"
+          echo "::group::host loop devices"; kubectl -n rook-ceph exec ds/rook-ceph-loop-device -- losetup -a || true; echo "::endgroup::"
           echo "::group::recent events"; kubectl get events -A --sort-by=.lastTimestamp | tail -80; echo "::endgroup::"
