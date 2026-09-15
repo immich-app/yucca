@@ -21,17 +21,15 @@ export class DiscordInviteService {
   async listClaims(): Promise<DiscordInviteClaimListResponseDto> {
     const claims = await this.invites.listClaims();
     return {
-      items: claims.map(
-        (claim): DiscordInviteClaimDto => ({
-          id: claim.id,
-          discordUserId: claim.discordUserId!,
-          discordUsername: claim.discordUsername,
-          batchId: claim.batchId,
-          inviteUsed: claim.inviteUsed,
-          inviteUsedAt: claim.inviteUsedAt,
-          createdAt: claim.createdAt,
-        }),
-      ),
+      items: claims.map((claim): DiscordInviteClaimDto => ({
+        id: claim.id,
+        discordUserId: claim.discordUserId!,
+        discordUsername: claim.discordUsername,
+        batchId: claim.batchId,
+        inviteUsed: claim.inviteUsed,
+        inviteUsedAt: claim.inviteUsedAt,
+        createdAt: claim.createdAt,
+      })),
     };
   }
 
