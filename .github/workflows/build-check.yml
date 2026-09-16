@@ -25,7 +25,7 @@ jobs:
     outputs:
       apps: ${{ steps.filter.outputs.changes }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       # Filter names are app names; each app's Dockerfile lives at
@@ -35,7 +35,7 @@ jobs:
       # package or root-manifest change is an input to every one of them and
       # per-app precision would be fiction; only the Go images, which copy
       # nothing but their own package, filter narrowly.
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
@@ -100,18 +100,18 @@ jobs:
         app: ${{ fromJSON(needs.changes.outputs.apps) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       # cache-from only: reads the per-app cache Deploy maintains on main
       # (standalone-app has no Deploy scope and always builds cold), and
       # writes nothing back, so PR builds stay fast without polluting it.
       - name: Build (no push)
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: packages/${{ matrix.app }}/Dockerfile
