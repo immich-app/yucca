@@ -17,9 +17,9 @@ const ownerJson = (eb: ExpressionBuilder<DB, 'repositories' | 'users'>) =>
 const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
-    lastStarted: eb.ref('repositoryMetrics.lastStarted'),
-    lastBackup: eb.ref('repositoryMetrics.lastBackup'),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
+    lastStarted: eb.ref('repositoryMetrics.lastStarted').$castTo<Date | null>(),
+    lastBackup: eb.ref('repositoryMetrics.lastBackup').$castTo<Date | null>(),
+    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup').$castTo<Date | null>(),
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   }).as('metrics');
 
