@@ -369,4 +369,42 @@ describe('RepositoryController (e2e)', () => {
       await expect(testUtils.getRepository(worm.id)).resolves.toEqual(expect.objectContaining({ worm: true }));
     });
   });
+
+  describe('repository queries', () => {
+    it('returns metric timestamps as Date instances', async () => {
+      await testUtils.setRepositoryMetrics(repository.id);
+      await testUtils.setRepositoryMeter(repository.id);
+      const repositories = testUtils.getRepositoryRepository();
+
+      const row = await repositories.get(repository.id);
+
+      expect(row.metrics.lastBackup).toBeInstanceOf(Date);
+      expect(row.metrics.lastSuccessfulBackup).toBeInstanceOf(Date);
+      expect(typeof row.metrics.sizeBytes).toBe('number');
+      expect(row.meter.lastUpdated).toBeInstanceOf(Date);
+      expect(typeof row.meter.sizeBytes).toBe('number');
+      expect(typeof row.meter.objectCount).toBe('number');
+    });
+
+    it('returns metric timestamps as Date instances for a user listing', async () => {
+      await testUtils.setRepositoryMetrics(repository.id);
+      await testUtils.setRepositoryMeter(repository.id);
+
+      const [row] = await testUtils.getRepositoryRepository().getByUser(user.id);
+
+      expect(row.metrics.lastBackup).toBeInstanceOf(Date);
+      expect(row.meter.lastUpdated).toBeInstanceOf(Date);
+    });
+
+    it('returns metric timestamps as Date instances for an active ticket', async () => {
+      await testUtils.setRepositoryMetrics(repository.id);
+      await testUtils.setRepositoryMeter(repository.id);
+      const ticket = await testUtils.createActiveTicket(user.id, repository.id, TicketAction.DeleteRepository);
+
+      const active = await testUtils.getTicketRepository().getActive(ticket.id, ticket.token);
+
+      expect(active?.metrics.lastBackup).toBeInstanceOf(Date);
+      expect(active?.meter.lastUpdated).toBeInstanceOf(Date);
+    });
+  });
 });

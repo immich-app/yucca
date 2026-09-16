@@ -4,6 +4,7 @@ import { ConnectionRepository } from 'src/repositories/connection.repository';
 import { CryptoRepository } from 'src/repositories/crypto.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { SessionRepository } from 'src/repositories/session.repository';
+import { TicketRepository } from 'src/repositories/ticket.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { DB } from 'src/schema';
 import { getKyselyConfig } from 'src/utils/database';
@@ -159,6 +160,48 @@ export const testUtils = {
   getRepository: (id: string) => {
     return getDb().selectFrom('repositories').selectAll().where('id', '=', id).executeTakeFirst();
   },
+
+  setRepositoryMetrics: (
+    repositoryId: string,
+    {
+      sizeBytes = 4096,
+      lastStarted = new Date(),
+      lastBackup = new Date(),
+      lastSuccessfulBackup = new Date(),
+      lastBackupDuration = 1234,
+    }: Partial<{
+      sizeBytes: number;
+      lastStarted: Date;
+      lastBackup: Date;
+      lastSuccessfulBackup: Date;
+      lastBackupDuration: number;
+    }> = {},
+  ) => {
+    return getDb()
+      .insertInto('repositoryMetrics')
+      .values({ id: repositoryId, sizeBytes, lastStarted, lastBackup, lastSuccessfulBackup, lastBackupDuration })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  },
+
+  setRepositoryMeter: (
+    repositoryId: string,
+    {
+      sizeBytes = 8192,
+      objectCount = 12,
+      storageClusterCode = 'local-dev',
+    }: Partial<{ sizeBytes: number; objectCount: number; storageClusterCode: string }> = {},
+  ) => {
+    return getDb()
+      .insertInto('repositoryMeter')
+      .values({ repositoryId, sizeBytes, objectCount, storageClusterCode })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  },
+
+  getRepositoryRepository: () => new RepositoryRepository(getDb()),
+
+  getTicketRepository: () => new TicketRepository(getDb()),
 
   createRepository: async (userId: string, name = 'My Repository', worm = false) => {
     const db = getDb();

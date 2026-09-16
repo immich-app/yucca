@@ -132,4 +132,32 @@ describe('RepositoryController (e2e)', () => {
   describe('DELETE /repository/:id', () => {
     it.todo('deletes a repository');
   });
+
+  describe('repository queries', () => {
+    it('returns metric timestamps as Date instances', async () => {
+      const owner = await testUtils.createUser({ name: 'owner' });
+      const repository = await testUtils.createRepository(owner.id);
+      await testUtils.setRepositoryMetrics(repository.id);
+      const repositories = testUtils.getRepositoryRepository();
+
+      const row = await repositories.get(repository.id);
+
+      expect(row.metrics.lastStarted).toBeInstanceOf(Date);
+      expect(row.metrics.lastBackup).toBeInstanceOf(Date);
+      expect(row.metrics.lastSuccessfulBackup).toBeInstanceOf(Date);
+      expect(typeof row.metrics.sizeBytes).toBe('number');
+    });
+
+    it('returns metric timestamps as Date instances when listing', async () => {
+      const owner = await testUtils.createUser({ name: 'owner' });
+      const repository = await testUtils.createRepository(owner.id);
+      await testUtils.setRepositoryMetrics(repository.id);
+
+      const page = await testUtils.getRepositoryRepository().list({ limit: 10 });
+
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0].id).toBe(repository.id);
+      expect(page.items[0].metrics.lastBackup).toBeInstanceOf(Date);
+    });
+  });
 });
