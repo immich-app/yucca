@@ -14,24 +14,39 @@ const ownerJson = (eb: ExpressionBuilder<DB, 'repositories' | 'users'>) =>
     disabled: eb.ref('users.disabled'),
   }).as('user');
 
-type RepositoryMetricsJson = {
-  sizeBytes: number;
-  lastStarted: Date | null;
-  lastBackup: Date | null;
-  lastSuccessfulBackup: Date | null;
-  lastBackupDuration: number | null;
+type RepositoryMetricsRow = {
+  metricsSizeBytes: string | number;
+  lastStarted?: Date;
+  lastBackup?: Date;
+  lastSuccessfulBackup?: Date;
+  lastBackupDuration?: number;
 };
 
-const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
-  jsonBuildObject({
-    sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
-    lastStarted: eb.ref('repositoryMetrics.lastStarted'),
-    lastBackup: eb.ref('repositoryMetrics.lastBackup'),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
-    lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
-  })
-    .$castTo<RepositoryMetricsJson>()
-    .as('metrics');
+const metricsColumns = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) => [
+  eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)).as('metricsSizeBytes'),
+  eb.ref('repositoryMetrics.lastStarted').as('lastStarted'),
+  eb.ref('repositoryMetrics.lastBackup').as('lastBackup'),
+  eb.ref('repositoryMetrics.lastSuccessfulBackup').as('lastSuccessfulBackup'),
+  eb.ref('repositoryMetrics.lastBackupDuration').as('lastBackupDuration'),
+];
+
+const withMetrics = <T extends RepositoryMetricsRow>({
+  metricsSizeBytes,
+  lastStarted,
+  lastBackup,
+  lastSuccessfulBackup,
+  lastBackupDuration,
+  ...row
+}: T) => ({
+  ...row,
+  metrics: {
+    sizeBytes: Number(metricsSizeBytes),
+    lastStarted: lastStarted ?? null,
+    lastBackup: lastBackup ?? null,
+    lastSuccessfulBackup: lastSuccessfulBackup ?? null,
+    lastBackupDuration: lastBackupDuration ?? null,
+  },
+});
 
 @Injectable()
 export class RepositoryRepository {
@@ -53,18 +68,21 @@ export class RepositoryRepository {
         'connections.type as connectionType',
       ])
       .select(ownerJson)
-      .select(metricsJson)
+      .select(metricsColumns)
       .orderBy('repositories.id', 'asc')
       .limit(limit + 1)
       .$if(cursor !== undefined, (qb) => qb.where('repositories.id', '>', cursor!))
       .$if(userId !== undefined, (qb) => qb.where('repositories.userId', '=', userId!))
       .execute();
 
-    return toCursorPage(rows, limit);
+    return toCursorPage(
+      rows.map((row) => withMetrics(row)),
+      limit,
+    );
   }
 
-  get(id: string) {
-    return this.db
+  async get(id: string) {
+    const row = await this.db
       .selectFrom('repositories')
       .innerJoin('users', 'users.id', 'repositories.userId')
       .innerJoin('connections', 'connections.id', 'repositories.connectionId')
@@ -80,8 +98,10 @@ export class RepositoryRepository {
         'connections.type as connectionType',
       ])
       .select(ownerJson)
-      .select(metricsJson)
+      .select(metricsColumns)
       .executeTakeFirstOrThrow();
+
+    return withMetrics(row);
   }
 
   async create(repository: Insertable<RepositoryTable>) {
