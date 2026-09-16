@@ -2,7 +2,6 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 import { TaskStatus, TaskType } from '../enum';
 import { BackendTypeSchema } from './backend.dto';
-import { TaskStatusSchema } from './runningTasks.dto';
 
 const BackupStatusSchema = z.enum(['incomplete', 'complete', 'warn', 'failed']);
 
