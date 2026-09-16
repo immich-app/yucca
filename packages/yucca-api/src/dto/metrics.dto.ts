@@ -7,9 +7,20 @@ export const BackupStatusSchema = z.enum(BackupStatus).meta({ id: 'BackupStatus'
 
 const SubmitBackupEndRequestSchema = z
   .object({
-    status: BackupStatusSchema,
+    status: BackupStatusSchema.optional(),
+    // TODO: drop support for `success` once new metrics consumers rolled out
+    // remove the line below, the `.refine` and `.transform` statements
+    success: z.boolean().optional(),
     durationMs: z.int().min(0),
   })
+  .refine(({ status, success }) => status !== undefined || success !== undefined, {
+    message: 'Either status or success is required',
+    path: ['status'],
+  })
+  .transform(({ status, success, durationMs }) => ({
+    status: status ?? (success ? BackupStatus.Complete : BackupStatus.Failed),
+    durationMs,
+  }))
   .meta({ id: 'SubmitBackupEndRequestDto' });
 
 const SubmitUpdateSizeRequestSchema = z

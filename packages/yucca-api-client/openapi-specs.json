@@ -1358,6 +1358,9 @@
           "status": {
             "$ref": "#/components/schemas/BackupStatus"
           },
+          "success": {
+            "type": "boolean"
+          },
           "durationMs": {
             "type": "integer",
             "minimum": 0,
@@ -1365,7 +1368,6 @@
           }
         },
         "required": [
-          "status",
           "durationMs"
         ]
       },

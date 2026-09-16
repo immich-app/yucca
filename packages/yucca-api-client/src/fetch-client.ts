@@ -135,7 +135,8 @@ export type DiscordLinkRequestResponseDto = {
     discordUsername: string;
 };
 export type SubmitBackupEndRequestDto = {
-    status: BackupStatus;
+    status?: BackupStatus;
+    success?: boolean;
     durationMs: number;
 };
 export type SubmitUpdateSizeRequestDto = {
