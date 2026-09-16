@@ -9,8 +9,8 @@ import { RepositoryTable } from 'src/schema/tables/repository.table';
 export const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
-    lastBackup: eb.ref('repositoryMetrics.lastBackup'),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
+    lastBackup: eb.ref('repositoryMetrics.lastBackup').$castTo<Date | null>(),
+    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup').$castTo<Date | null>(),
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   }).as('metrics');
 
@@ -18,7 +18,7 @@ export const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repository
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)),
     objectCount: eb.fn.coalesce('repositoryMeter.objectCount', eb.val(0)),
-    lastUpdated: eb.ref('repositoryMeter.timestamp'),
+    lastUpdated: eb.ref('repositoryMeter.timestamp').$castTo<Date>(),
   }).as('meter');
 
 @Injectable()
